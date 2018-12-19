@@ -181,6 +181,9 @@ class Blas {
               const framework::Tensor& mat_b, const MatDescriptor& dim_b,
               T alpha, framework::Tensor* mat_out, T beta) const;
 
+  template <typename T>
+  void VINV(int n, const T* a, T* y) const;
+
  private:
   const DeviceContext& context_;
 };
@@ -280,6 +283,11 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void BatchedGEMM(ARGS... args) const {
     Base()->template BatchedGEMM<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VINV(ARGS... args) const {
+    Base()->template VINV<T>(args...);
   }
 
  private:
