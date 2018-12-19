@@ -489,8 +489,11 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
     grad_to_var = dict()
 
     op_desc = _create_op_desc_(
-        "fill_constant", {}, {"Out": [_append_grad_suffix_(loss.name)]}, {
-            "shape": [1],
+        "fill_constant",
+        {},
+        {"Out": [_append_grad_suffix_(loss.name)]},
+        {
+            "shape": [1],  # TODO(panyx0718): This can be loss.shape.
             "value": 1.0,
             "dtype": loss.dtype,
             "force_cpu": False,
