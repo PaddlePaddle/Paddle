@@ -24,13 +24,14 @@ namespace operators {
 namespace jit {
 namespace gen {
 
-class LSTMJitCode : public VActJitCode {
+class LSTMJitCode : public VActFunc {
  public:
   explicit LSTMJitCode(bool compute_c1h1, const lstm_attr_t& attr,
                        size_t code_size, void* code_ptr = nullptr)
-      : VActJitCode(attr.d, operand_type::sigmoid /* this is bugy*/, code_size,
-                    code_ptr),
-        compute_c1h1_(compute_c1h1) {
+      : VActFunc(code_size, code_ptr),
+        num_(attr.d),
+        compute_c1h1_(compute_c1h1),
+        use_peephole_(attr.use_peephole) {
     auto typeExchange = [](KernelType type) -> gen::operand_type {
       if (type == KernelType::vsigmoid) {
         return operand_type::sigmoid;
@@ -45,8 +46,6 @@ class LSTMJitCode : public VActJitCode {
       }
       return operand_type::identity;
     };
-    num_ = attr.d;
-    use_peephole_ = attr.use_peephole;
     act_gate_ = typeExchange(attr.act_gate);
     act_cand_ = typeExchange(attr.act_cand);
     act_cell_ = typeExchange(attr.act_cell);

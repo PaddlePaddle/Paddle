@@ -80,7 +80,7 @@ struct rnn_attr_s {
   int d;
   KernelType act_gate, act_cand;
   rnn_attr_s() = default;
-  rnn_attr_s(int _d, KernelType _act_gate, KernelType _act_cand)
+  explicit rnn_attr_s(int _d, KernelType _act_gate, KernelType _act_cand)
       : d(_d), act_gate(_act_gate), act_cand(_act_cand) {}
 };
 
@@ -88,8 +88,8 @@ struct lstm_attr_s : public rnn_attr_s {
   bool use_peephole;
   KernelType act_cell;
   lstm_attr_s() = default;
-  lstm_attr_s(int _d, KernelType _act_gate, KernelType _act_cand,
-              KernelType _act_cell, bool _use_peephole = false)
+  explicit lstm_attr_s(int _d, KernelType _act_gate, KernelType _act_cand,
+                       KernelType _act_cell, bool _use_peephole = false)
       : rnn_attr_s(_d, _act_gate, _act_cand),
         use_peephole(_use_peephole),
         act_cell(_act_cell) {}
@@ -145,6 +145,8 @@ class Kernel {
 
 template <typename KernelTuples>
 class KernelImpl : public Kernel {
+  // TODO(TJ): rename KernelImpl to KernelMore which seems only used in more
+  // and add name interface for more implements easy for debug
   using T = typename KernelTuples::data_type;
   using Func = typename KernelTuples::func_type;
   using Attr = typename KernelTuples::attr_type;

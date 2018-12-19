@@ -24,13 +24,11 @@ namespace operators {
 namespace jit {
 namespace gen {
 
-class GRUJitCode : public VActJitCode {
+class GRUJitCode : public VActFunc {
  public:
   explicit GRUJitCode(int id, const gru_attr_t& attr, size_t code_size,
                       void* code_ptr = nullptr)
-      : VActJitCode(attr.d, operand_type::sigmoid /* this is bugy*/, code_size,
-                    code_ptr),
-        id_(id) {
+      : VActFunc(code_size, code_ptr), id_(id), num_(attr.d) {
     auto typeExchange = [](KernelType type) -> gen::operand_type {
       if (type == KernelType::vsigmoid) {
         return operand_type::sigmoid;
@@ -45,7 +43,6 @@ class GRUJitCode : public VActJitCode {
       }
       return operand_type::identity;
     };
-    num_ = attr.d;
     act_gate_ = typeExchange(attr.act_gate);
     act_cand_ = typeExchange(attr.act_cand);
 
