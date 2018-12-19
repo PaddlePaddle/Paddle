@@ -122,6 +122,7 @@ class GpuPassStrategy : public PassStrategy {
         "conv_bn_fuse_pass",                    //
         "conv_elementwise_add_act_fuse_pass",   //
         "conv_elementwise_add2_act_fuse_pass",  //
+        "conv_elementwise_add_fuse_pass",       //
     });
   }
 
