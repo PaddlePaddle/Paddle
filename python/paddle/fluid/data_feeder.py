@@ -254,8 +254,8 @@ class DataFeeder(object):
                         num_places=None,
                         drop_last=True):
         """
-        Converter the input data into a data that returned by reader into
-        multiple mini-batches. Each mini-batch will be feed on each device.
+        Converts the input data returned by a reader into data of
+        multiple mini-batches. Each mini-batch will be fed on each device.
 
         Args:
             reader(function): the reader is the function which can generate data.
@@ -270,8 +270,8 @@ class DataFeeder(object):
             dict: the result of conversion.
 
         Raises:
-            ValueError: If drop_last is False and the data batch which cannot
-            fit for devices.
+            ValueError: If drop_last is False and the data batch which cannot fit for devices.
+
         """
 
         def __reader_creator__():

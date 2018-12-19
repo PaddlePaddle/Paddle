@@ -393,9 +393,6 @@ def fill_constant_batch_size_like(input,
 
     It also sets *stop_gradient* to True.
 
-    >>> data = fluid.layers.fill_constant_batch_size_like(
-    >>>             input=like, shape=[1], value=0, dtype='int64')
-
     Args:
         input(${input_type}): ${input_comment}.
 
@@ -411,6 +408,14 @@ def fill_constant_batch_size_like(input,
 
     Returns:
         ${out_comment}.
+
+    Examples:
+
+        .. code-block:: python
+
+             data = fluid.layers.fill_constant_batch_size_like(
+                         input=like, shape=[1], value=0, dtype='int64')
+
     """
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -449,6 +454,7 @@ def argmin(x, axis=0):
 
           out = fluid.layers.argmin(x=in, axis=0)
           out = fluid.layers.argmin(x=in, axis=-1)
+
     """
     helper = LayerHelper("arg_min", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)

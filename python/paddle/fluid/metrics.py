@@ -391,6 +391,7 @@ class ChunkEvaluator(MetricBase):
     def update(self, num_infer_chunks, num_label_chunks, num_correct_chunks):
         """
         Update the states based on the layers.chunk_eval() ouputs.
+
         Args:
             num_infer_chunks(int|numpy.array): The number of chunks in Inference on the given minibatch.
             num_label_chunks(int|numpy.array): The number of chunks in Label on the given mini-batch.
@@ -450,9 +451,9 @@ class EditDistance(MetricBase):
                 distance, instance_error = distance_evaluator.eval()
 
     In the above example:
-        'distance' is the average of the edit distance in a pass.
 
-        'instance_error' is the instance error rate in a pass.
+        - 'distance' is the average of the edit distance in a pass.
+        - 'instance_error' is the instance error rate in a pass.
 
     """
 
@@ -567,12 +568,15 @@ class DetectionMAP(object):
     Calculate the detection mean average precision (mAP).
 
     The general steps are as follows:
+
     1. calculate the true positive and false positive according to the input
-        of detection and labels.
+       of detection and labels.
     2. calculate mAP value, support two versions: '11 point' and 'integral'.
 
     Please get more information from the following articles:
+
       https://sanchom.wordpress.com/tag/average-precision/
+
       https://arxiv.org/abs/1512.02325
 
     Args:
@@ -613,10 +617,12 @@ class DetectionMAP(object):
                 for data in batches:
                     loss, cur_map_v, accum_map_v = exe.run(fetch_list=fetch)
 
-        In the above example:
+    In the above example:
 
-            'cur_map_v' is the mAP of current mini-batch.
-            'accum_map_v' is the accumulative mAP of one pass.
+            - 'cur_map_v' is the mAP of current mini-batch.
+            - 'accum_map_v' is the accumulative mAP of one pass.
+
+ 
     """
 
     def __init__(self,
@@ -703,7 +709,7 @@ class DetectionMAP(object):
 
     def get_map_var(self):
         """
-        Returns: mAP variable of current mini-batch and
+        Returns: mAP variable of current mini-batch and \
             accumulative mAP variable cross mini-batches.
         """
         return self.cur_map, self.accum_map

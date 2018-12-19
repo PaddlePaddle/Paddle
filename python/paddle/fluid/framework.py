@@ -1630,8 +1630,8 @@ class Program(object):
                 parameters, e.g., :code:`trainable`, :code:`optimize_attr`, need
                 to print.
 
-        Returns
-            (str): The debug string.
+        Returns:
+            str : The debug string.
 
         Raises:
             ValueError: If any of required fields is not set and throw_on_error is
