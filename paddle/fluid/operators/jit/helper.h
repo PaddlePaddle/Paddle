@@ -107,7 +107,7 @@ typename KernelTuples::func_type Get(
   if (iter != pool.end()) {
     auto& impls = iter->second;
     for (auto& impl : impls) {
-      auto i = dynamic_cast<const KernelImpl<KernelTuples>*>(impl.get());
+      auto i = dynamic_cast<const KernelMore<KernelTuples>*>(impl.get());
       if (i && i->UseMe(attr)) {
         return i->GetFunc();
       }

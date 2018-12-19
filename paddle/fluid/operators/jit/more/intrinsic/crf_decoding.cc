@@ -156,7 +156,7 @@ void CRFDecoding(const int seq_len, const float* x, const float* w,
   }
 }
 
-bool CRFDecodingKernel::UseMe(int d) const {
+bool CRFDecodingKernel::UseMe(const int& d) const {
   return platform::MayIUse(platform::avx);
 }
 

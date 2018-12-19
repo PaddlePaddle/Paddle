@@ -144,28 +144,27 @@ class Kernel {
 };
 
 template <typename KernelTuples>
-class KernelImpl : public Kernel {
-  // TODO(TJ): rename KernelImpl to KernelMore which seems only used in more
-  // and add name interface for more implements easy for debug
+class KernelMore : public Kernel {
  public:
   using T = typename KernelTuples::data_type;
   using Func = typename KernelTuples::func_type;
   using Attr = typename KernelTuples::attr_type;
   virtual Func GetFunc() const { return func; }
-  // TODO(TJ): const &attr
-  virtual bool UseMe(Attr attr) const = 0;
+  virtual bool UseMe(const Attr& attr) const = 0;
+  virtual const char* ImplType() const = 0;
 
  protected:
   Func func{nullptr};
 };
 
 template <typename KernelTuples>
-class ReferKernel : public KernelImpl<KernelTuples> {
+class ReferKernel : public KernelMore<KernelTuples> {
  public:
   // Refer code can always be used
-  bool UseMe(typename KernelTuples::attr_type attr) const override {
+  bool UseMe(const typename KernelTuples::attr_type& attr) const override {
     return true;
   }
+  const char* ImplType() const override { return "Refer"; }
 };
 
 }  // namespace jit

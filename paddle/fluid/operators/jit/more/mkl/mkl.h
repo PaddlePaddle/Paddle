@@ -60,12 +60,13 @@ void VTanh(const T* x, T* y, int n) {
   }
 }
 
-#define DECLARE_MKL_KERNEL(name, tuples)                      \
-  template <typename T>                                       \
-  class name##Kernel : public KernelImpl<tuples<T>> {         \
-   public:                                                    \
-    name##Kernel() { this->func = name<T>; }                  \
-    bool UseMe(typename tuples<T>::attr_type) const override; \
+#define DECLARE_MKL_KERNEL(name, tuples)                             \
+  template <typename T>                                              \
+  class name##Kernel : public KernelMore<tuples<T>> {                \
+   public:                                                           \
+    name##Kernel() { this->func = name<T>; }                         \
+    bool UseMe(const typename tuples<T>::attr_type&) const override; \
+    const char* ImplType() const override { return "MKL"; }          \
   }
 
 // XYZN

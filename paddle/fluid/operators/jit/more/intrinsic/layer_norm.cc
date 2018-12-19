@@ -153,7 +153,7 @@ void LayerNorm(float* x, float* out, float* mean, float* var,
   }
 }
 
-bool LayerNormKernel::UseMe(int d) const {
+bool LayerNormKernel::UseMe(const int& d) const {
   return platform::MayIUse(platform::avx);
 }
 
