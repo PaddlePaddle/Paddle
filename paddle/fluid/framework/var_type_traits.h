@@ -40,6 +40,9 @@
 namespace paddle {
 namespace framework {
 
+const char *ToTypeName(int var_id);
+const std::type_index &ToTypeIndex(int var_id);
+
 namespace detail {
 
 template <bool kStop, int kStart, int kEnd, typename T1, typename T2,
@@ -144,58 +147,6 @@ REG_PROTO_VAR_TYPE_TRAIT(platform::PlaceList, proto::VarType::PLACE_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(ReaderHolder, proto::VarType::READER);
 
 /** End of variable type registration */
-
-// Besides register variable id, it is helpful to register a
-// var_id -> std::type_index (for example, get var names according to id)
-namespace detail {
-
-template <int kStart, int kEnd, bool kStop>
-struct VarIdToTypeIndexMapInitializerImpl {
-  static void Init(std::unordered_map<int, std::type_index> *m) {
-    using Type =
-        typename std::tuple_element<kStart, VarTypeRegistry::ArgTuple>::type;
-    constexpr int kId = VarTypeTrait<Type>::kId;
-    if (!std::is_same<Type, void>::value) {
-      m->emplace(kId, std::type_index(typeid(Type)));
-    }
-    VarIdToTypeIndexMapInitializerImpl<kStart + 1, kEnd,
-                                       kStart + 1 == kEnd>::Init(m);
-  }
-};
-
-template <int kStart, int kEnd>
-struct VarIdToTypeIndexMapInitializerImpl<kStart, kEnd, true> {
-  static void Init(std::unordered_map<int, std::type_index> *m) {}
-};
-
-// VarIdToTypeIndexMapInitializer is designed to initialize var_id ->
-// std::type_index map
-using VarIdToTypeIndexMapInitializer =
-    VarIdToTypeIndexMapInitializerImpl<0, VarTypeRegistry::kRegisteredTypeNum,
-                                       VarTypeRegistry::kRegisteredTypeNum ==
-                                           0>;
-
-struct VarIdToTypeIndexMapHolder {
- public:
-  static const std::type_index &ToTypeIndex(int var_id) {
-    static const VarIdToTypeIndexMapHolder instance;
-    auto it = instance.var_type_map_.find(var_id);
-    PADDLE_ENFORCE(it != instance.var_type_map_.end(),
-                   "VarId %d is not registered.", var_id);
-    return it->second;
-  }
-
- private:
-  VarIdToTypeIndexMapHolder() {
-    VarIdToTypeIndexMapInitializer::Init(&var_type_map_);
-  }
-  std::unordered_map<int, std::type_index> var_type_map_;
-};
-
-}  // namespace detail
-
-const char *ToTypeName(int var_id);
-const std::type_index &ToTypeIndex(int var_id);
 
 template <typename T>
 inline constexpr bool IsRegisteredVarType() {

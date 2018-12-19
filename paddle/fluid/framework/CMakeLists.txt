@@ -83,10 +83,7 @@ cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
 cc_library(var_type_traits SRCS var_type_traits DEPS lod_tensor selected_rows framework_proto) 
 if (WITH_GPU)
-  target_link_libraries(var_type_traits cudnn)
-  if (NOT WIN32)
-    target_link_libraries(var_type_traits nccl)
-  endif()
+  target_link_libraries(var_type_traits dynload_cuda)
 endif()
 cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
 
