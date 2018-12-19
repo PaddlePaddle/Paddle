@@ -22,24 +22,34 @@ namespace operators {
 namespace jit {
 namespace more {
 namespace mix {
+using T = float;
 
-template <typename T>
 void VSigmoid(const T* x, T* y, int n);
-
-template <typename T>
 void VTanh(const T* x, T* y, int n);
 
+void LSTMCtHt(lstm_t* step, const lstm_attr_t* attr);
+void LSTMC1H1(lstm_t* step, const lstm_attr_t* attr);
+void GRUH1(gru_t* step, const gru_attr_t* attr);
+void GRUHtPart1(gru_t* step, const gru_attr_t* attr);
+void GRUHtPart2(gru_t* step, const gru_attr_t* attr);
+
 #define DECLARE_MORE_KERNEL(name, tuples)                     \
-  template <typename T>                                       \
   class name##Kernel : public KernelImpl<tuples<T>> {         \
    public:                                                    \
-    name##Kernel() { this->func = name<T>; }                  \
+    name##Kernel() { this->func = name; }                     \
     bool UseMe(typename tuples<T>::attr_type) const override; \
   }
 
 // XYN
 DECLARE_MORE_KERNEL(VSigmoid, XYNTuples);
 DECLARE_MORE_KERNEL(VTanh, XYNTuples);
+
+DECLARE_MORE_KERNEL(LSTMCtHt, LSTMTuples);
+DECLARE_MORE_KERNEL(LSTMC1H1, LSTMTuples);
+
+DECLARE_MORE_KERNEL(GRUH1, GRUTuples);
+DECLARE_MORE_KERNEL(GRUHtPart1, GRUTuples);
+DECLARE_MORE_KERNEL(GRUHtPart2, GRUTuples);
 
 #undef DECLARE_MORE_KERNEL
 
