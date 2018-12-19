@@ -147,12 +147,12 @@ template <typename KernelTuples>
 class KernelImpl : public Kernel {
   // TODO(TJ): rename KernelImpl to KernelMore which seems only used in more
   // and add name interface for more implements easy for debug
+ public:
   using T = typename KernelTuples::data_type;
   using Func = typename KernelTuples::func_type;
   using Attr = typename KernelTuples::attr_type;
-
- public:
   virtual Func GetFunc() const { return func; }
+  // TODO(TJ): const &attr
   virtual bool UseMe(Attr attr) const = 0;
 
  protected:
