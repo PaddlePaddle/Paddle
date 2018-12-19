@@ -641,9 +641,14 @@ class AdamOptimizer(Optimizer):
         beta1 (float): The exponential decay rate for the 1st moment estimates.
         beta2 (float): The exponential decay rate for the 2nd moment estimates.
         epsilon (float): a small float value for numerical stability.
-        regularization: A Regularizer, such as
-                        fluid.regularizer.L2DecayRegularizer.
+        regularization: A Regularizer, such as fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
+        lazy_mode(bool: false): The official Adam algorithm has two moving-average accumulators
+        the accumulators are updated at every step. Every element of the two moving-average is updated
+        in both dense mode and sparse mode. If the size of parameter is very large, then the update
+        may be very slow. The lazy mode only update the element that has gradient is the current
+        mini-batch, so it will be much more faster. But this mode has different semantics with the
+        original Adam algorithm and may lead to different result.
 
     Examples:
         .. code-block:: python
@@ -663,7 +668,8 @@ class AdamOptimizer(Optimizer):
                  beta2=0.999,
                  epsilon=1e-8,
                  regularization=None,
-                 name=None):
+                 name=None,
+                 lazy_mode=False):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
@@ -676,6 +682,7 @@ class AdamOptimizer(Optimizer):
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
+        self._lazy_mode = lazy_mode
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -729,7 +736,8 @@ class AdamOptimizer(Optimizer):
             attrs={
                 "beta1": self._beta1,
                 "beta2": self._beta2,
-                "epsilon": self._epsilon
+                "epsilon": self._epsilon,
+                "lazy_mode": self._lazy_mode
             })
 
         return adam_op
