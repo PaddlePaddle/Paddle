@@ -691,6 +691,25 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   bool IsRuntime() const override { return true; }
 
+  // TODO(paddle-dev): Can this be template?
+  std::vector<InferShapeVarPtr> GetInputVarPtrs(
+      const std::string& name) override {
+    const std::vector<Variable*>& vars = InputVars(name);
+    std::vector<InferShapeVarPtr> res;
+    res.reserve(vars.size());
+    res.insert(res.begin(), vars.begin(), vars.end());
+    return res;
+  }
+
+  std::vector<InferShapeVarPtr> GetOutputVarPtrs(
+      const std::string& name) override {
+    const std::vector<Variable*>& vars = OutputVars(name);
+    std::vector<InferShapeVarPtr> res;
+    res.reserve(vars.size());
+    res.insert(res.begin(), vars.begin(), vars.end());
+    return res;
+  }
+
  protected:
   DDim GetDim(const std::string& name) const override {
     Variable* var = scope_.FindVar(name);
@@ -733,11 +752,22 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return ToVarType(var->Type());
   }
 
-  InferShapeVarPtr GetVarPtr(const std::string& name) override {
-    return scope_.FindVar(name);
+ private:
+  const std::vector<Variable*>& InputVars(const std::string& name) const {
+    auto it = ctx_.inputs.find(name);
+    PADDLE_ENFORCE(it != ctx_.inputs.end(),
+                   "Operator %s does not have the input %s.", op_.Type(), name);
+    return it->second;
   }
 
- private:
+  const std::vector<Variable*>& OutputVars(const std::string& name) const {
+    auto it = ctx_.outputs.find(name);
+    PADDLE_ENFORCE(it != ctx_.outputs.end(),
+                   "Operator %s does not have the outputs %s.", op_.Type(),
+                   name);
+    return it->second;
+  }
+
   const OperatorBase& op_;
   const Scope& scope_;
   const RuntimeContext& ctx_;

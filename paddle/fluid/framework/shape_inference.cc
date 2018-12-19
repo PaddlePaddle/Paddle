@@ -76,28 +76,6 @@ void InferShapeContext::SetReaderDims(const std::string &name,
   return this->SetRepeatedDims(arg_names[0], dims);
 }
 
-std::vector<InferShapeVarPtr> InferShapeContext::GetInputVarPtrs(
-    const std::string &name) {
-  const std::vector<std::string> arg_names = Inputs(name);
-  std::vector<InferShapeVarPtr> res;
-  res.reserve(arg_names.size());
-  std::transform(
-      arg_names.begin(), arg_names.end(), std::back_inserter(res),
-      [this](const std::string &name) { return this->GetVarPtr(name); });
-  return res;
-}
-
-std::vector<InferShapeVarPtr> InferShapeContext::GetOutputVarPtrs(
-    const std::string &name) {
-  const std::vector<std::string> arg_names = Outputs(name);
-  std::vector<InferShapeVarPtr> res;
-  res.reserve(arg_names.size());
-  std::transform(
-      arg_names.begin(), arg_names.end(), std::back_inserter(res),
-      [this](const std::string &name) { return this->GetVarPtr(name); });
-  return res;
-}
-
 std::vector<DDim> InferShapeContext::GetDims(
     const std::vector<std::string> &names) const {
   std::vector<DDim> ret;
