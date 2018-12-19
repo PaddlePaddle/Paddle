@@ -156,8 +156,8 @@ if '${WITH_FLUID_ONLY}'== 'OFF':
 
 # put all thirdparty libraries in paddle.libs
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
+package_data['paddle.libs']= []
 if os.name != 'nt':
-    package_data['paddle.libs']= []
     package_data['paddle.libs']=['libwarpctc' + ext_name]
     shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 
@@ -169,7 +169,7 @@ else:
     if os.name == 'nt':
         # copy the openblas.dll
         shutil.copy(os.path.dirname('${CBLAS_LIBRARIES}') + '/openblas' + ext_name, libs_path)
-        package_data['paddle.fluid'] += ['openblas' + ext_name]
+        package_data['paddle.libs'] += ['openblas' + ext_name]
 
 if '${WITH_MKLDNN}' == 'ON':
     if '${CMAKE_BUILD_TYPE}' == 'Release':
