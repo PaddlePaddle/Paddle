@@ -39,6 +39,9 @@ void prefetch_with_reconstruct(const std::string& id_name,
                                const framework::ExecutionContext& context,
                                const framework::Scope& scope,
                                framework::LoDTensor* original) {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& actual_ctx = *pool.Get(context.GetPlace());
+
   prefetch(id_name, out_name, table_names, epmap, height_sections, context,
            scope);
   auto& out = scope.FindVar(out_name)->Get<framework::LoDTensor>();
@@ -62,9 +65,10 @@ void prefetch_with_reconstruct(const std::string& id_name,
       PADDLE_THROW("paddle is not compiled with CUDA!");
 #else
       auto stream =
-          static_cast<platform::CUDADeviceContext*>(actual_ctx)->stream();
-      memory::Copy(boost::get<platform::CUDAPlace>(ids.place()), out_rows,
-                   cpu_place, original_row, original_width * sizeof(T), stream);
+          static_cast<platform::CUDADeviceContext*>(&actual_ctx)->stream();
+      memory::Copy(boost::get<platform::CUDAPlace>(ids.place()), original_row,
+                   platform::CPUPlace(), out_rows, original_width * sizeof(T),
+                   stream);
 #endif
     }
   }
