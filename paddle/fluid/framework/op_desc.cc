@@ -110,6 +110,30 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     }
   }
 
+  std::vector<InferShapeVarPtr> GetInputVarPtrs(
+      const std::string &name) override {
+    const std::vector<std::string> arg_names = Inputs(name);
+    std::vector<InferShapeVarPtr> res;
+    res.reserve(arg_names.size());
+    std::transform(arg_names.begin(), arg_names.end(), std::back_inserter(res),
+                   [this](const std::string &name) {
+                     return block_.FindVarRecursive(name);
+                   });
+    return res;
+  }
+
+  std::vector<InferShapeVarPtr> GetOutputVarPtrs(
+      const std::string &name) override {
+    const std::vector<std::string> arg_names = Outputs(name);
+    std::vector<InferShapeVarPtr> res;
+    res.reserve(arg_names.size());
+    std::transform(arg_names.begin(), arg_names.end(), std::back_inserter(res),
+                   [this](const std::string &name) {
+                     return block_.FindVarRecursive(name);
+                   });
+    return res;
+  }
+
   bool IsRuntime() const override;
 
  protected:
@@ -123,8 +147,6 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   void SetRepeatedDims(const std::string &name,
                        const std::vector<DDim> &dims) override;
-
-  InferShapeVarPtr GetVarPtr(const std::string &name) override;
 
   const OpDesc &op_;
   const BlockDesc &block_;
@@ -694,11 +716,6 @@ bool CompileTimeInferShapeContext::IsRuntime() const { return false; }
 proto::VarType::Type CompileTimeInferShapeContext::GetVarType(
     const std::string &name) const {
   return block_.FindVarRecursive(name)->GetType();
-}
-
-InferShapeVarPtr CompileTimeInferShapeContext::GetVarPtr(
-    const std::string &name) {
-  return block_.FindVarRecursive(name);
 }
 
 }  // namespace framework
