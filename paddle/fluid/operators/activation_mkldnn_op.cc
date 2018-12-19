@@ -12,8 +12,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <xxhash.h>
-
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 

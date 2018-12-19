@@ -12,8 +12,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <xxhash.h>
-#include <iomanip>
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/conv_op.h"
@@ -176,7 +174,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::shared_ptr<mkldnn::convolution_forward::primitive_desc> conv_pd;
     auto fwd_prop_kind = is_test ? mkldnn::prop_kind::forward_inference
                                  : mkldnn::prop_kind::forward_training;
-
     if (bias) {
       bias_tz = paddle::framework::vectorize2int(bias->dims());
       auto bias_md = platform::MKLDNNMemDesc(
