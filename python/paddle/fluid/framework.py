@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import collections
 import contextlib
+import os
 import re
 import six
 import sys
@@ -27,11 +28,18 @@ from .proto import framework_pb2
 try:
     from . import core
 except ImportError as e:
-    raise ImportError(
-        """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
-    if you encounters \"libmkldnn.so not found\" errors. If you have python
-    installed in other directory, replace \"/usr/local/lib\" with your own
-    directory. The original error is: \n""" + cpt.get_exception_message(e))
+    if os.name == 'nt':
+        raise ImportError(
+            """NOTE: You may need to run \"set PATH=c:\python27\lib:%PATH%\"
+        if you encounters \"mkldnn.dll not found\" errors. If you have python
+        installed in other directory, replace \"c:\python27\lib" with your own
+        directory. The original error is: \n""" + cpt.get_exception_message(e))
+    else:
+        raise ImportError(
+            """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
+        if you encounters \"libmkldnn.so not found\" errors. If you have python
+        installed in other directory, replace \"/usr/local/lib\" with your own
+        directory. The original error is: \n""" + cpt.get_exception_message(e))
 except Exception as e:
     raise e
 from . import unique_name
@@ -563,8 +571,8 @@ class Operator(object):
     OP_WITHOUT_KERNEL_SET = {
         'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
         'rnn_memory_helper_grad', 'conditional_block', 'while', 'send', 'recv',
-        'listen_and_serv', 'parallel_do', 'save_combine', 'load_combine',
-        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id'
+        'listen_and_serv', 'save_combine', 'load_combine', 'ncclInit', 'select',
+        'checkpoint_notify', 'gen_nccl_id'
     }
 
     def __init__(self,
@@ -1084,19 +1092,15 @@ class Block(object):
             raise ValueError("var %s not in this block" % name)
         return v
 
-    def _var_recursive(self, name):
+    def _find_var_recursive(self, name):
         """
         Get a Variable by name from this block recursively.
 
         Args:
             name(str): the Variable's name.
 
-        Raises:
-            ValueError: this block and this parent block doesn't
-                have a Variable with the giving name.
-
         Returns:
-            Variable: the Variable with the giving name.
+            Variable: the Variable with the giving name. Or None if not found.
         """
         frontier = list()
         visited = set()
@@ -1122,8 +1126,27 @@ class Block(object):
                 frontier.append(prog.block(cur.forward_block_idx))
 
             visited.add(id(cur))
+        return None
 
-        raise ValueError("Var {0} is not found recursively".format(name))
+    def _var_recursive(self, name):
+        """
+        Get a Variable by name from this block recursively.
+
+        Args:
+            name(str): the Variable's name.
+
+        Raises:
+            ValueError: this block and this parent block doesn't
+                have a Variable with the giving name.
+
+        Returns:
+            Variable: the Variable with the giving name.
+        """
+        var = self._find_var_recursive(name)
+        if var:
+            return var
+        else:
+            raise ValueError("Var {0} is not found recursively".format(name))
 
     def all_parameters(self):
         return list(self.iter_parameters())
