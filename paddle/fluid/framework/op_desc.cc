@@ -149,8 +149,29 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool IsRuntime() const override;
 
+  std::vector<proto::VarType::Type> GetInputsVarType(
+      const std::string &name) const override {
+    return GetVarTypes(Inputs(name));
+  }
+
+  std::vector<proto::VarType::Type> GetOutputsVarType(
+      const std::string &name) const override {
+    return GetVarTypes(Outputs(name));
+  }
+
  protected:
-  proto::VarType::Type GetVarType(const std::string &name) const override;
+  std::vector<proto::VarType::Type> GetVarTypes(
+      const std::vector<std::string> &names) const {
+    std::vector<proto::VarType::Type> retv;
+    retv.resize(names.size());
+    std::transform(
+        names.begin(), names.end(), retv.begin(),
+        std::bind(std::mem_fn(&CompileTimeInferShapeContext::GetVarType), this,
+                  std::placeholders::_1));
+    return retv;
+  }
+
+  proto::VarType::Type GetVarType(const std::string &name) const;
 
   DDim GetDim(const std::string &name) const {
     auto var = block_.FindVarRecursive(name);

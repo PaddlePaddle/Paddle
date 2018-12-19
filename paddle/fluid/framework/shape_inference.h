@@ -34,9 +34,9 @@ class InferShapeContext {
   virtual bool HasOutput(const std::string &name) const = 0;
 
   virtual std::vector<proto::VarType::Type> GetInputsVarType(
-      const std::string &name) const;
+      const std::string &name) const = 0;
   virtual std::vector<proto::VarType::Type> GetOutputsVarType(
-      const std::string &name) const;
+      const std::string &name) const = 0;
 
   virtual bool HasInputs(const std::string &name) const = 0;
   virtual bool HasOutputs(const std::string &name) const = 0;
@@ -82,11 +82,6 @@ class InferShapeContext {
   virtual std::vector<DDim> GetRepeatedDims(const std::string &name) const = 0;
   virtual void SetRepeatedDims(const std::string &name,
                                const std::vector<DDim> &dims) = 0;
-
-  std::vector<proto::VarType::Type> GetVarTypes(
-      const std::vector<std::string> &names) const;
-
-  virtual proto::VarType::Type GetVarType(const std::string &name) const = 0;
 };
 
 }  // namespace framework

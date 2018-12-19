@@ -68,25 +68,5 @@ void InferShapeContext::SetDims(const std::vector<std::string> &names,
   }
 }
 
-std::vector<proto::VarType::Type> InferShapeContext::GetInputsVarType(
-    const std::string &name) const {
-  return GetVarTypes(Inputs(name));
-}
-
-std::vector<proto::VarType::Type> InferShapeContext::GetOutputsVarType(
-    const std::string &name) const {
-  return GetVarTypes(Outputs(name));
-}
-
-std::vector<proto::VarType::Type> InferShapeContext::GetVarTypes(
-    const std::vector<std::string> &names) const {
-  std::vector<proto::VarType::Type> retv;
-  retv.resize(names.size());
-  std::transform(names.begin(), names.end(), retv.begin(),
-                 std::bind(std::mem_fn(&InferShapeContext::GetVarType), this,
-                           std::placeholders::_1));
-  return retv;
-}
-
 }  // namespace framework
 }  // namespace paddle
