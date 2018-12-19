@@ -40,3 +40,6 @@ std::unique_ptr<ir::Graph> SubblockToGraphPass::ApplyImpl(
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
+
+REGISTER_PASS(subblock_to_graph_pass,
+              paddle::framework::ir::SubblockToGraphPass);
