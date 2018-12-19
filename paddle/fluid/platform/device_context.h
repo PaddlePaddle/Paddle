@@ -18,7 +18,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/temporay_allocator.h"
+#include "paddle/fluid/platform/temporary_allocator.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"

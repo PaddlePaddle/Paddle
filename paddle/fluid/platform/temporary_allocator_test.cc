@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/temporay_allocator.h"
+#include "paddle/fluid/platform/temporary_allocator.h"
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/create_tensor_with_allocationptr.h"

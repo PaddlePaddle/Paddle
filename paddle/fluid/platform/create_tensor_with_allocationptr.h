@@ -14,7 +14,7 @@
 
 #pragma once
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/temporay_allocator.h"
+#include "paddle/fluid/platform/temporary_allocator.h"
 namespace paddle {
 namespace platform {
 
@@ -27,8 +27,8 @@ paddle::framework::Tensor GetTensor(
   auto shared_allocation =
       std::shared_ptr<memory::allocation::Allocation>(allocation_ptr, deleter);
 
-  PADDLE_ENFORCE(dynamic_cast<TemporayAllocation *>(allocation_ptr) != nullptr,
-                 "The AllocationPtr must be TemporayAllocation.");
+  PADDLE_ENFORCE(dynamic_cast<TemporaryAllocation *>(allocation_ptr) != nullptr,
+                 "The AllocationPtr must be TemporaryAllocation.");
   PADDLE_ENFORCE_EQ(allocation_ptr->size(),
                     framework::product(dim) * sizeof(T));
 

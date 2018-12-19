@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/temporay_allocator.h"
+#include "paddle/fluid/platform/temporary_allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 
 DEFINE_double(limit_of_temporary_allocation, -1,
@@ -22,25 +22,25 @@ namespace paddle {
 namespace platform {
 namespace alloc = memory::allocation;
 
-TemporayAllocation::TemporayAllocation(
+TemporaryAllocation::TemporaryAllocation(
     alloc::AllocationPtr &&underlying_allocation)
     : Allocation(underlying_allocation->ptr(), underlying_allocation->size(),
                  underlying_allocation->place()),
       underlying_allocation_(std::move(underlying_allocation)) {}
 
 TemporaryAllocator::TemporaryAllocator(platform::Place place) : place_(place) {
-  temp_mem_queue_.reset(new std::deque<TemporayAllocation *>());
+  temp_mem_queue_.reset(new std::deque<TemporaryAllocation *>());
 }
 
 bool TemporaryAllocator::IsAllocThreadSafe() const { return true; }
 
 void TemporaryAllocator::Release(const std::function<void()> &callback) {
-  std::shared_ptr<std::deque<TemporayAllocation *>> t_allocations;
+  std::shared_ptr<std::deque<TemporaryAllocation *>> t_allocations;
   {
     std::unique_lock<std::mutex> lock(mtx_);
     callback();
     t_allocations = temp_mem_queue_;
-    temp_mem_queue_.reset(new std::deque<TemporayAllocation *>());
+    temp_mem_queue_.reset(new std::deque<TemporaryAllocation *>());
     wait_delete_mem_ = 0;
   }
   for (auto tmp : *t_allocations) {
@@ -51,7 +51,7 @@ void TemporaryAllocator::Release(const std::function<void()> &callback) {
 }
 
 void TemporaryAllocator::Free(alloc::Allocation *allocation) {
-  auto *temp_allocation = dynamic_cast<TemporayAllocation *>(allocation);
+  auto *temp_allocation = dynamic_cast<TemporaryAllocation *>(allocation);
   PADDLE_ENFORCE_NOT_NULL(temp_allocation);
   if (platform::is_gpu_place(temp_allocation->place())) {
     size_t wait_delete_mem = 0;
@@ -86,7 +86,7 @@ alloc::Allocation *TemporaryAllocator::AllocateImpl(
     size_t size, alloc::Allocator::Attr attr) {
   auto raw_allocation =
       alloc::AllocatorFacade::Instance().Alloc(place_, size, attr);
-  auto temp_mem = new TemporayAllocation(std::move(raw_allocation));
+  auto temp_mem = new TemporaryAllocation(std::move(raw_allocation));
   VLOG(10) << "Alloc temporary allocation: " << temp_mem->ptr() << ": " << size;
   return temp_mem;
 }

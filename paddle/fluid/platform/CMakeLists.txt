@@ -56,7 +56,7 @@ ELSE()
     set(MKLDNN_CTX_DEPS)
 ENDIF()
 
-cc_library(temp_allocator SRCS temporay_allocator.cc DEPS  allocator_facade)
+cc_library(temp_allocator SRCS temporary_allocator.cc DEPS  allocator_facade)
 
 nv_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce) 
 IF(WITH_GPU)
@@ -97,7 +97,7 @@ ENDIF()
 nv_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
 
 if(WITH_GPU)
-    nv_test(temporal_allocator_test SRCS temporay_allocator_test.cc DEPS temp_allocator tensor)
+    nv_test(temporal_allocator_test SRCS temporary_allocator_test.cc DEPS temp_allocator tensor)
 else()
-    cc_test(temporal_allocator_test SRCS temporay_allocator_test.cc DEPS temp_allocator tensor)
+    cc_test(temporal_allocator_test SRCS temporary_allocator_test.cc DEPS temp_allocator tensor)
 endif()

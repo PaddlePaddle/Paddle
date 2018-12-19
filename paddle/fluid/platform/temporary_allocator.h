@@ -21,9 +21,9 @@
 namespace paddle {
 namespace platform {
 
-class TemporayAllocation : public memory::allocation::Allocation {
+class TemporaryAllocation : public memory::allocation::Allocation {
  public:
-  explicit TemporayAllocation(
+  explicit TemporaryAllocation(
       memory::allocation::AllocationPtr &&underlying_allocation);
 
   memory::allocation::AllocationPtr underlying_allocation_;
@@ -52,7 +52,7 @@ class TemporaryAllocator : public memory::allocation::Allocator {
 
   // When the allocation is not held by any variable, it should be placed
   // to temp_mem_queue immediately.
-  std::shared_ptr<std::deque<TemporayAllocation *>> temp_mem_queue_{nullptr};
+  std::shared_ptr<std::deque<TemporaryAllocation *>> temp_mem_queue_{nullptr};
 
   std::mutex mtx_;
   size_t wait_delete_mem_{0};
