@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
@@ -450,18 +449,6 @@ class ScopedActivationDescriptor {
   cudnnActivationDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedActivationDescriptor);
 };
-
-inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
-  use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
-#ifdef PADDLE_WITH_CUDA
-  if (use_cudnn) {
-    auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
-  }
-#endif
-  return use_cudnn;
-}
 
 #if CUDNN_VERSION >= 7001
 class ScopedCTCLossDescriptor {

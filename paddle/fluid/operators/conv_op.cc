@@ -84,7 +84,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   framework::DataLayout layout = framework::StringToDataLayout(data_format);
 
 #ifdef PADDLE_WITH_CUDA
-  if (platform::CanCUDNNBeUsed(ctx)) {
+  if (framework::CanCUDNNBeUsed(ctx)) {
     library = framework::LibraryType::kCUDNN;
   }
 #endif
@@ -369,7 +369,7 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
 #ifdef PADDLE_WITH_CUDA
-  if (platform::CanCUDNNBeUsed(ctx)) {
+  if (framework::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif

@@ -92,7 +92,8 @@ inline void CopyOrShare(const framework::Variable &src,
       TensorCopy(src_sr.value(), dst_place, dst_sr->mutable_value());
     }
   } else {
-    PADDLE_THROW("Expect LoDTensor/SelectedRows, get %s", src.Type().name());
+    PADDLE_THROW("Expect LoDTensor/SelectedRows, get %s",
+                 framework::ToTypeName(src.Type()));
   }
 }
 

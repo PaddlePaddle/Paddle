@@ -74,7 +74,7 @@ class AffineGridOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
-    if (platform::CanCUDNNBeUsed(ctx)) {
+    if (framework::CanCUDNNBeUsed(ctx)) {
       library = framework::LibraryType::kCUDNN;
     }
 #endif
@@ -184,7 +184,7 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
-    if (platform::CanCUDNNBeUsed(ctx)) {
+    if (framework::CanCUDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
