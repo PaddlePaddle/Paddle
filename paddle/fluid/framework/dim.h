@@ -54,10 +54,6 @@ class Dim : public Array<int64_t, N> {
 
   HOSTDEVICE Dim() = default;
 
-  HOSTDEVICE int64_t* data() { return this->GetMutable(); }
-
-  HOSTDEVICE const int64_t* data() const { return this->Get(); }
-
   HOST std::string to_string() const;
 };
 
@@ -281,6 +277,11 @@ HOSTDEVICE Dim<N> linear_to_dimension(int linear_index, const Dim<N>& extents) {
   result[N - 1] = linear_index;
 
   return result;
+}
+
+template <int D, typename T1, typename T2>
+inline void static_dim_assign(const T1* in, T2* out) {
+  UnrollAssign<D>::Run(in, out);
 }
 
 }  // namespace framework

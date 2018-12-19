@@ -22,6 +22,29 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+template <typename T1, typename T2>
+inline void dynamic_dim_assign(const T1* in, T2* out, int n) {
+#define STATIC_DIM_ASSIGN_CASE(rank)          \
+  case rank:                                  \
+    static_dim_assign<rank, T1, T2>(in, out); \
+    return
+  switch (n) {
+    STATIC_DIM_ASSIGN_CASE(0);
+    STATIC_DIM_ASSIGN_CASE(1);
+    STATIC_DIM_ASSIGN_CASE(2);
+    STATIC_DIM_ASSIGN_CASE(3);
+    STATIC_DIM_ASSIGN_CASE(4);
+    STATIC_DIM_ASSIGN_CASE(5);
+    STATIC_DIM_ASSIGN_CASE(6);
+    STATIC_DIM_ASSIGN_CASE(7);
+    STATIC_DIM_ASSIGN_CASE(8);
+    STATIC_DIM_ASSIGN_CASE(9);
+    default:
+      PADDLE_THROW("Invalid rank %d", n);
+  }
+#undef STATIC_DIM_ASSIGN_CASE
+}
+
 /**
  * \brief A dynamically sized dimension.
  *
@@ -33,8 +56,13 @@ class DDim {
 
   DDim() : rank_(1) { dim_[0] = 0; }
 
-  DDim(const int* d, int n);
-  DDim(const int64_t* d, int n);
+  DDim(const int* d, int n) : rank_(n) {
+    dynamic_dim_assign(d, dim_.GetMutable(), n);
+  }
+
+  DDim(const int64_t* d, int n) : rank_(n) {
+    dynamic_dim_assign(d, dim_.GetMutable(), n);
+  }
 
   template <int D>
   /*implicit*/ DDim(const Dim<D>& in) : rank_(D) {  // NOLINT
@@ -81,19 +109,11 @@ class DDim {
 
   DDim operator*(const DDim& d) const;
 
-  // Make DDim act like std::vector<int64_t>
-  using iterator = int64_t*;
-  using const_iterator = const int64_t*;
+  inline const int64_t* Get() const { return dim_.Get(); }
 
-  int64_t* data() { return dim_.data(); }
-  const int64_t* data() const { return dim_.data(); }
+  inline int64_t* GetMutable() { return dim_.GetMutable(); }
 
-  iterator begin() { return data(); }
-  const_iterator begin() const { return data(); }
-  iterator end() { return data() + rank_; }
-  const_iterator end() const { return data() + rank_; }
-
-  int size() const { return rank_; }
+  inline int size() const { return rank_; }
 
  private:
   template <int M>
