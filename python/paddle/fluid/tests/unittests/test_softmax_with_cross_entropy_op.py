@@ -28,6 +28,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
 
     def initParams(self):
         self.numeric_stable_mode = False
+        self.dtype = np.float64
 
     def setUp(self):
         self.initParams()
@@ -35,20 +36,21 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         batch_size = 41
         class_num = 37
 
+        # NOTE: numpy float16 have very low accuracy, use float64 for numpy check.
         logits = np.random.uniform(0.1, 1.0,
-                                   [batch_size, class_num]).astype("float64")
+                                   [batch_size, class_num]).astype(np.float64)
         softmax = np.apply_along_axis(stable_softmax, 1, logits)
         labels = np.random.randint(0, class_num, [batch_size, 1], dtype="int64")
 
         cross_entropy = np.asmatrix(
             [[-np.log(softmax[i][labels[i][0]])]
              for i in range(softmax.shape[0])],
-            dtype="float64")
+            dtype=np.float64)
 
         self.inputs = {"Logits": logits, "Label": labels}
         self.outputs = {
-            "Softmax": softmax.astype("float64"),
-            "Loss": cross_entropy.astype("float64")
+            "Softmax": softmax.astype(np.float64),
+            "Loss": cross_entropy.astype(np.float64)
         }
         self.attrs = {"numeric_stable_mode": self.numeric_stable_mode}
 
@@ -62,6 +64,18 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
 class TestSoftmaxWithCrossEntropyOpNoCudnn(TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.numeric_stable_mode = True
+
+
+class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
+    def initParams(self):
+        self.numeric_stable_mode = False
+        self.dtype = np.float16
+
+
+class TestSoftmaxWithCrossEntropyOpNoCudnnFp16(TestSoftmaxWithCrossEntropyOp):
+    def initParams(self):
+        self.numeric_stable_mode = True
+        self.dtype = np.float16
 
 
 class TestSoftmaxWithCrossEntropyOp2(OpTest):
