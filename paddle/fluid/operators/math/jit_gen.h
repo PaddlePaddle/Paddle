@@ -18,9 +18,6 @@ limitations under the License. */
 #include <type_traits>
 #include "paddle/fluid/platform/macros.h"
 
-#if defined(_WIN32) && defined(_WINSOCKAPI_)
-#define _WINSOCK2API_ /* Prevent inclusion of winsock2.h */
-#endif
 #define XBYAK_USE_MMAP_ALLOCATOR
 #include "xbyak/xbyak.h"
 #include "xbyak/xbyak_util.h"

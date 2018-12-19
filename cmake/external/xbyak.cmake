@@ -13,8 +13,8 @@
 # limitations under the License.
 
 set(WITH_XBYAK ON)
-if(APPLE)
-    SET(WITH_XBYAK OFF CACHE STRING "Disable XBYAK in MacOS" FORCE)
+if(WIN32 OR APPLE)
+    SET(WITH_XBYAK OFF CACHE STRING "Disable XBYAK in Windows and MacOS" FORCE)
     return()
 endif()
 
