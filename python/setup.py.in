@@ -107,9 +107,9 @@ packages=['paddle',
           'paddle.fluid.distributed',
           'paddle.fluid.layers',
           'paddle.fluid.contrib',
-          'paddle.fluid.contrib.utils',
           'paddle.fluid.contrib.decoder',
           'paddle.fluid.contrib.quantize',
+          'paddle.fluid.contrib.utils',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details']
 
@@ -160,10 +160,11 @@ if '${WITH_FLUID_ONLY}'== 'OFF':
 
 # put all thirdparty libraries in paddle.libs
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
-if os.name != 'nt':
-    package_data['paddle.libs']= []
-    package_data['paddle.libs']=['libwarpctc' + ext_name]
-    shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
+
+package_data['paddle.libs']= []
+package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name]
+shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
+
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_LIB}', libs_path)
     shutil.copy('${MKLML_IOMP_LIB}', libs_path)

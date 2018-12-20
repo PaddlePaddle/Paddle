@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,11 +13,30 @@
 # limitations under the License.
 
 from __future__ import print_function
-from . import lookup_table_utils
-from .lookup_table_utils import *
-from . import hdfs_utils
-from .hdfs_utils import *
 
-__all__ = []
-__all__ += lookup_table_utils.__all__
-__all__ += hdfs_utils.__all__
+import unittest
+from paddle.fluid.tests.unittests.test_mul_op import TestMulOp, TestMulOp2, TestFP16MulOp1, TestFP16MulOp2
+
+
+class TestNGRAPHMulOp(TestMulOp):
+    def init_dtype_type(self):
+        pass
+
+
+class TestNGRAPHMulOp2(TestMulOp2):
+    def init_dtype_type(self):
+        pass
+
+
+class TestNGRAPHFP16MulOp1(TestFP16MulOp1):
+    def init_dtype_type(self):
+        pass
+
+
+class TestNGRAPHFP16MulOp2(TestFP16MulOp2):
+    def init_dtype_type(self):
+        pass
+
+
+if __name__ == "__main__":
+    unittest.main()
