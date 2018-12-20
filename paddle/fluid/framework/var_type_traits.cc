@@ -13,7 +13,20 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/framework/lod_rank_table.h"
+#include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/macros.h"
+#ifdef PADDLE_WITH_CUDA
+#ifndef _WIN32
+#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
+#endif
+#include <cudnn.h>
+#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
+#include "paddle/fluid/operators/cudnn_rnn_cache.h"
+#endif
 
 namespace paddle {
 namespace framework {
