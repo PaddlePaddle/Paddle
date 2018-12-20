@@ -1324,6 +1324,9 @@ class Block(object):
     def _prepend_op(self, *args, **kwargs):
         op_desc = self.desc._prepend_op()
         op = Operator(self, op_desc, *args, **kwargs)
+        if _in_imperative_mode():
+            _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
+                                       [v._ivar for v in op.outputs], self.desc)
         self.ops.insert(0, op)
         return op
 
