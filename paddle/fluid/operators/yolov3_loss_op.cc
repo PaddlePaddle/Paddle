@@ -35,13 +35,16 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
     auto dim_gtlabel = ctx->GetInputDim("GTLabel");
     auto anchors = ctx->Attrs().Get<std::vector<int>>("anchors");
     int anchor_num = anchors.size() / 2;
+    auto anchor_mask = ctx->Attrs().Get<std::vector<int>>("anchor_mask");
+    int mask_num = anchor_mask.size();
     auto class_num = ctx->Attrs().Get<int>("class_num");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4, "Input(X) should be a 4-D tensor.");
     PADDLE_ENFORCE_EQ(dim_x[2], dim_x[3],
                       "Input(X) dim[3] and dim[4] should be euqal.");
-    PADDLE_ENFORCE_EQ(dim_x[1], anchor_num * (5 + class_num),
-                      "Input(X) dim[1] should be equal to (anchor_number * (5 "
-                      "+ class_num)).");
+    PADDLE_ENFORCE_EQ(
+        dim_x[1], mask_num * (5 + class_num),
+        "Input(X) dim[1] should be equal to (anchor_mask_number * (5 "
+        "+ class_num)).");
     PADDLE_ENFORCE_EQ(dim_gtbox.size(), 3,
                       "Input(GTBox) should be a 3-D tensor");
     PADDLE_ENFORCE_EQ(dim_gtbox[2], 4, "Input(GTBox) dim[2] should be 5");
@@ -55,6 +58,11 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
                       "Attr(anchors) length should be greater then 0.");
     PADDLE_ENFORCE_EQ(anchors.size() % 2, 0,
                       "Attr(anchors) length should be even integer.");
+    for (size_t i = 0; i < anchor_mask.size(); i++) {
+      PADDLE_ENFORCE_LT(
+          anchor_mask[i], anchor_num,
+          "Attr(anchor_mask) should not crossover Attr(anchors).");
+    }
     PADDLE_ENFORCE_GT(class_num, 0,
                       "Attr(class_num) should be an integer greater then 0.");
 
@@ -74,7 +82,7 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "The input tensor of YOLO v3 loss operator, "
+             "The input tensor of YOLOv3 loss operator, "
              "This is a 4-D tensor with shape of [N, C, H, W]."
              "H and W should be same, and the second dimention(C) stores"
              "box locations, confidence score and classification one-hot"
@@ -99,13 +107,20 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("class_num", "The number of classes to predict.");
     AddAttr<std::vector<int>>("anchors",
                               "The anchor width and height, "
-                              "it will be parsed pair by pair.");
-    AddAttr<int>("input_size",
-                 "The input size of YOLOv3 net, "
-                 "generally this is set as 320, 416 or 608.")
-        .SetDefault(406);
+                              "it will be parsed pair by pair.")
+        .SetDefault(std::vector<int>{});
+    AddAttr<std::vector<int>>("anchor_mask",
+                              "The mask index of anchors used in "
+                              "current YOLOv3 loss calculation.")
+        .SetDefault(std::vector<int>{});
+    AddAttr<int>("downsample",
+                 "The downsample ratio from network input to YOLOv3 loss "
+                 "input, so 32, 16, 8 should be set for the first, second, "
+                 "and thrid YOLOv3 loss operators.")
+        .SetDefault(32);
     AddAttr<float>("ignore_thresh",
-                   "The ignore threshold to ignore confidence loss.");
+                   "The ignore threshold to ignore confidence loss.")
+        .SetDefault(0.7);
     AddComment(R"DOC(
          This operator generate yolov3 loss by given predict result and ground
          truth boxes.
