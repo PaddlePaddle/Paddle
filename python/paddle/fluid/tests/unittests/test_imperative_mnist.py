@@ -18,14 +18,15 @@ import numpy as np
 
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.imperative.nn import Conv2D, Pool2D
+from paddle.fluid.imperative.nn import Conv2D, Pool2D, FC
+from paddle.fluid.imperative.base import to_variable
 
 
 class SimpleImgConvPool(fluid.imperative.PyLayer):
     def __init__(self,
                  num_channels,
-                 num_filters,
                  filter_size,
+                 num_filters,
                  pool_size,
                  pool_stride,
                  pool_padding=0,
@@ -81,24 +82,24 @@ class MNIST(fluid.imperative.PyLayer):
         super(MNIST, self).__init__(param_attr=param_attr, bias_attr=bias_attr)
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
-            num_channels=3,
-            filter_size=5,
-            num_filters=20,
-            pool_size=2,
-            pool_stride=2,
-            act="relu")
+            1, 5, 20, 2, 2, act="relu")
 
         self._simple_img_conv_pool_2 = SimpleImgConvPool(
-            num_channels=3,
-            filter_size=5,
-            num_filters=50,
-            pool_size=2,
-            pool_stride=2,
-            act="relu")
+            20, 5, 50, 2, 2, act="relu")
+
+        pool_2_shape = 50 * 8 * 8
+        SIZE = 10
+        scale = (2.0 / (pool_2_shape**2 * SIZE))**0.5
+        self._fc = FC(-1,
+                      10,
+                      param_attr=fluid.param_attr.ParamAttr(
+                          initializer=fluid.initializer.NormalInitializer(
+                              loc=0.0, scale=scale)))
 
     def forward(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
+        x = self._fc(x)
         return x
 
 
@@ -107,8 +108,20 @@ class TestImperativeMnist(unittest.TestCase):
         with fluid.imperative.guard():
             mnist = MNIST()
 
-            data = np.random.rand(2, 3, 5, 5).astype('float32')
-            mnist(data)
+            x_data = np.random.rand(128, 1, 28, 28).astype('float32')
+            img = to_variable(x_data)
+            y_data = np.random.rand(128, 1).astype('int64')
+            label = to_variable(y_data)
+            label._stop_gradient = True
+
+            predict = mnist(img)
+            print(predict.shape, predict.dtype, label.shape, label.dtype)
+            out = fluid.layers.cross_entropy(predict, label)
+            print(out.shape, out.dtype)
+            out._backward()
+            filter_grad = mnist._simple_img_conv_pool_1._conv2d._filter_param._gradient(
+            )
+            print(filter_grad)
         #  np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
         #  with fluid.imperative.guard():
         #  mlp = MLP()

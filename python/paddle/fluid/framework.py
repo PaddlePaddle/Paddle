@@ -354,11 +354,11 @@ class Variable(object):
 
         self.block.vars[name] = self
         self.op = None
-        self.stop_gradient = stop_gradient
         self.is_data = is_data
         if _in_imperative_mode():
             self._ivar = core.VarBase()
             self._ivar.desc = self.desc
+            self._ivar.stop_gradient = stop_gradient
 
     def _numpy(self):
         scope = _imperative_tracer().get_scope()
@@ -366,7 +366,7 @@ class Variable(object):
         return np.array(tensor)
 
     def _backward(self):
-        scope = _imperative_tracer().get_scope(self.block.desc)
+        scope = _imperative_tracer().get_scope()
         self._ivar._run_backward(scope)
 
     def _gradient(self):
@@ -414,6 +414,14 @@ class Variable(object):
             None
         """
         self.desc = input
+
+    @property
+    def _stop_gradient(self):
+        return self._ivar.stop_gradient
+
+    @_stop_gradient.setter
+    def _stop_gradient(self, s):
+        self._ivar.stop_gradient = s
 
     @property
     def persistable(self):

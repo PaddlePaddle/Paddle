@@ -25,12 +25,22 @@ __all__ = ['PyLayer']
 
 class PyLayer(core.Layer):
     def __init__(self, *args, **kwargs):
+        self._once_built = True
+
         from ..layer_helper import LayerHelper
         self._helper = LayerHelper(type(self).__name__, **kwargs)
         self._dtype = kwargs.get("dtype", core.VarDesc.VarType.FP32)
 
+    def _build_once(self, inputs):
+        pass
+
     def __call__(self, *inputs):
+        if self._once_built:
+            self._build_once(*inputs)
+            self._once_built = False
+
         outputs = self.forward(*inputs)
+
         return outputs
 
     def forward(self, *inputs):
