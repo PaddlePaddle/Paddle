@@ -18,81 +18,91 @@ import numpy as np
 
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.imperative.nn import Conv2D
+from paddle.fluid.imperative.nn import Conv2D, Pool2D
 
 
-@contextlib.contextmanager
-def new_program_scope():
-    prog = fluid.Program()
-    startup_prog = fluid.Program()
-    scope = fluid.core.Scope()
-    with fluid.scope_guard(scope):
-        with fluid.program_guard(prog, startup_prog):
-            yield
+class SimpleImgConvPool(fluid.imperative.PyLayer):
+    def __init__(self,
+                 num_channels,
+                 num_filters,
+                 filter_size,
+                 pool_size,
+                 pool_stride,
+                 pool_padding=0,
+                 pool_type='max',
+                 global_pooling=False,
+                 conv_stride=1,
+                 conv_padding=0,
+                 conv_dilation=1,
+                 conv_groups=1,
+                 act=None,
+                 use_cudnn=False,
+                 param_attr=None,
+                 bias_attr=None):
+        super(SimpleImgConvPool, self).__init__()
 
-
-class MNIST(fluid.imperative.PyLayer):
-    def __init__(self):
-        super(MNIST, self).__init__()
-
-        groups = 1
-        dilation = [1, 1]
-        pad = [0, 0]
-        stride = [1, 1]
-        input_size = [2, 3, 5, 5]  # NCHW
-        assert np.mod(input_size[1], groups) == 0
-        f_c = input_size[1] // groups
-        filter_size = [6, f_c, 3, 3]
+        #  groups = 1
+        #  dilation = [1, 1]
+        #  pad = [0, 0]
+        #  stride = [1, 1]
+        #  input_size = [2, 3, 5, 5]  # NCHW
+        #  assert np.mod(input_size[1], groups) == 0
+        #  f_c = input_size[1] // groups
+        #  filter_size = [6, f_c, 3, 3]
 
         self._conv2d = Conv2D(
-            num_channels=3,
-            num_filters=20,
-            filter_size=3,
-            stride=stride,
-            padding=pad,
-            dilation=dilation,
-            groups=groups,
-            use_cudnn=False)
+            num_channels=num_channels,
+            num_filters=num_filters,
+            filter_size=filter_size,
+            stride=conv_stride,
+            padding=conv_padding,
+            dilation=conv_dilation,
+            groups=conv_groups,
+            param_attr=None,
+            bias_attr=None,
+            use_cudnn=use_cudnn)
+
+        self._pool2d = Pool2D(
+            pool_size=pool_size,
+            pool_type=pool_type,
+            pool_stride=pool_stride,
+            pool_padding=pool_padding,
+            global_pooling=global_pooling,
+            use_cudnn=use_cudnn)
 
     def forward(self, inputs):
         x = self._conv2d(inputs)
+        x = self._pool2d(x)
+        return x
+
+
+class MNIST(fluid.imperative.PyLayer):
+    def __init__(self, param_attr=None, bias_attr=None):
+        super(MNIST, self).__init__(param_attr=param_attr, bias_attr=bias_attr)
+
+        self._simple_img_conv_pool_1 = SimpleImgConvPool(
+            num_channels=3,
+            filter_size=5,
+            num_filters=20,
+            pool_size=2,
+            pool_stride=2,
+            act="relu")
+
+        self._simple_img_conv_pool_2 = SimpleImgConvPool(
+            num_channels=3,
+            filter_size=5,
+            num_filters=50,
+            pool_size=2,
+            pool_stride=2,
+            act="relu")
+
+    def forward(self, inputs):
+        x = self._simple_img_conv_pool_1(inputs)
+        x = self._simple_img_conv_pool_2(x)
         return x
 
 
 class TestImperativeMnist(unittest.TestCase):
-    #  def test_layer(self):
-    #  with fluid.imperative.guard():
-    #  cl = core.Layer()
-    #  cl.forward([])
-    #  l = fluid.imperative.PyLayer()
-    #  l.forward([])
-
-    #  def test_layer_in_out(self):
-    #  np_inp = np.array([1.0, 2.0, -1.0], dtype=np.float32)
-    #  with fluid.imperative.guard():
-    #  l = MyLayer()
-    #  x = l(np_inp)[0]
-    #  self.assertIsNotNone(x)
-    #  dy_out = x._numpy()
-    #  x._backward()
-    #  dy_grad = l._x_for_debug._gradient()
-
-    #  with new_program_scope():
-    #  inp = fluid.layers.data(
-    #  name="inp", shape=[3], append_batch_size=False)
-    #  l = MyLayer()
-    #  x = l(inp)[0]
-    #  param_grads = fluid.backward.append_backward(
-    #  x, parameter_list=[l._x_for_debug.name])[0]
-    #  exe = fluid.Executor(fluid.CPUPlace())
-
-    #  static_out, static_grad = exe.run(
-    #  feed={inp.name: np_inp},
-    #  fetch_list=[x.name, param_grads[1].name])
-
-    #  self.assertTrue(np.allclose(dy_out, static_out))
-    #  self.assertTrue(np.allclose(dy_grad, static_grad))
-
     def test_mnist_cpu_float32(self):
         with fluid.imperative.guard():
             mnist = MNIST()

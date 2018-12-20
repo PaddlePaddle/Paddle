@@ -29,18 +29,9 @@ class PyLayer(core.Layer):
         self._helper = LayerHelper(type(self).__name__, **kwargs)
         self._dtype = kwargs.get("dtype", core.VarDesc.VarType.FP32)
 
-    def __call__(self, inputs):
-        if not isinstance(inputs, list) and not isinstance(inputs, tuple):
-            inputs = [inputs]
-
-        var_inputs = []
-        for x in inputs:
-            py_var = base.to_variable(x)
-            var_inputs.append(py_var)
-
-        outputs = self.forward(var_inputs)
-
+    def __call__(self, *inputs):
+        outputs = self.forward(*inputs)
         return outputs
 
-    def forward(self, inputs):
-        return []
+    def forward(self, *inputs):
+        raise NotImplementedError
