@@ -14,10 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <iostream>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -205,7 +203,9 @@ class SampledSoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
 
     auto probs = EigenMatrix<T>::From(*probabilities);
     auto smp_logits = EigenMatrix<T>::From(*sampled_logits);
-    smp_logits.device(*dev_ctx.eigen_device()) -= probs.log();
+    smp_logits.device(*dev_ctx.eigen_device()) =
+        (smp_logits - probs.log().unaryExpr(math::TolerableValue<T>()))
+            .unaryExpr(math::TolerableValue<T>());
 
     /* UNDERSTAND: so raw
     std::cout << "sampled subtracted logits" << std::endl;
