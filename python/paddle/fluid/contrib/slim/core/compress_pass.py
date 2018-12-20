@@ -19,6 +19,16 @@ __all__ = ['Context', 'CompressPass']
 
 
 class Context(object):
+    """
+    The context in the process of compression.
+    Args:
+        exe: The executor used to execute graph.
+        graph: The graph to be compressed.
+        scope: The scope used to execute graph.
+        program_exe: The program_exe is used to execute the program
+                     created for modifying the variables in scope.
+    """
+
     def __init__(self, exe, graph, scope, program_exe=None):
         # The total number of epoches to be trained.
         self.epoch = 0
@@ -33,6 +43,19 @@ class Context(object):
 
 
 class CompressPass(object):
+    """
+    The pass used to compress model.
+    Args:
+        place: The device used in compression.
+        data_reader: The data_reader used to run graph.
+        data_feeder: The data_feeder used to run graph.
+        scope: The scope used to run graph.
+        metrics: The metrics for evaluating model.
+        epoch: The total epoches of trainning in compression.
+        program_exe: The program_exe is used to execute the program
+                     created for modifying the variables in scope.
+    """
+
     def __init__(self,
                  place=None,
                  data_reader=None,
@@ -41,11 +64,6 @@ class CompressPass(object):
                  metrics=None,
                  epoch=None,
                  program_exe=None):
-        """
-        Args:
-            
-            strategies: Strategies to be applied on target model when 'apply()' was called.
-        """
         self.strategies = []
         self.place = CPUPlace() if place is None else place
         self.data_reader = data_reader

@@ -67,29 +67,29 @@ class ConfigFactory(object):
 
     def _parse_config(self, config):
         assert config
-        with open(config, 'r') as file:
-            dict = self._ordered_load(file)
-            for key in dict:
+        with open(config, 'r') as config_file:
+            key_values = self._ordered_load(config_file)
+            for key in key_values:
                 # parse version
                 if key == 'version' and self.version is None:
-                    self.version = int(dict['version'])
-                    assert self.version == int(dict['version'])
+                    self.version = int(key_values['version'])
+                    assert self.version == int(key_values['version'])
 
                 # parse pruners
                 if key == 'pruners' or key == 'strategies':
-                    instances = dict[key]
+                    instances = key_values[key]
                     for name in instances:
                         self._new_instance(name, instances[name])
 
                 if key == 'compress_pass':
-                    compress_pass = self._new_instance(key, dict[key])
-                    for name in dict[key]['strategies']:
+                    compress_pass = self._new_instance(key, key_values[key])
+                    for name in key_values[key]['strategies']:
                         strategy = self.instance(name)
                         compress_pass.add_strategy(strategy)
 
                 if key == 'include':
-                    for file in dict[key]:
-                        self._parse_config(file.strip())
+                    for config_file in key_values[key]:
+                        self._parse_config(config_file.strip())
 
     def _ordered_load(self,
                       stream,
