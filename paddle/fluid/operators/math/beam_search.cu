@@ -20,11 +20,7 @@ namespace operators {
 namespace math {
 
 struct Triple {
-  __device__ __forceinline__ Triple() {
-    offset = -1;
-    id = -1;
-    score = -INFINITY;
-  }
+  __device__ __forceinline__ Triple() {}
   __device__ __forceinline__ Triple(int o, int i, float s)
       : offset(o), id(i), score(s) {}
 
@@ -78,18 +74,15 @@ __device__ __forceinline__ int SelectLocalTopBeam(
     top_beam[i].set(-1, -1, -INFINITY);
   }
 
-  int seq_length = seq_offset_end - seq_offset_start;
-
-  int index = seq_offset_start * seq_width;
   int num_items = 0;
   for (int offset = seq_offset_start; offset < seq_offset_end; ++offset) {
     int pre_id = static_cast<int>(pre_ids[offset]);
     if (pre_id == end_id) {
       Triple tmp(offset, end_id, pre_scores[offset]);
       Insert(top_beam, tmp, beam_size);
-      num_items = (num_items + 1 > beam_size) ? beam_size : num_items + 1;
-      index++;
+      num_items++;
     } else {
+      int index = offset * seq_width;
       if (!IsAccumulated) {
         float pre_score = pre_scores[offset];
         for (int i = 0; i < seq_width; ++i) {
@@ -97,29 +90,116 @@ __device__ __forceinline__ int SelectLocalTopBeam(
           Triple tmp(offset, static_cast<int>(ids[index]), score);
           Insert(top_beam, tmp, beam_size);
           index++;
-          num_items = (num_items + 1 > beam_size) ? beam_size : num_items + 1;
+          num_items++;
         }
       } else {
         for (int i = 0; i < seq_width; ++i) {
           Triple tmp(offset, static_cast<int>(ids[index]), scores[index]);
           Insert(top_beam, tmp, beam_size);
           index++;
-          num_items = (num_items + 1 > beam_size) ? beam_size : num_items + 1;
+          num_items++;
         }
       }
     }
   }
 
-  return num_items;
+  return num_items > beam_size ? beam_size : num_items;
+}
+
+template <int NumThreadsPerSeq, bool IsAccumulated = true>
+__device__ __forceinline__ int SelectTopBeam(
+    Triple* top_beam, const int64_t* pre_ids, const float* pre_scores,
+    const int64_t* ids, const float* scores, const int seq_offset_start,
+    const int seq_offset_end, const int seq_width, int beam_size, int end_id) {
+  // top_beam is shared memory
+  const int tid = threadIdx.x;
+  const int tid_of_seq = threadIdx.x % NumThreadsPerSeq;
+
+  int num_used_threads = (seq_width + beam_size - 1) / beam_size;
+  num_used_threads =
+      NumThreadsPerSeq < num_used_threads ? NumThreadsPerSeq : num_used_threads;
+  num_used_threads =
+      num_used_threads > 32
+          ? (num_used_threads >> 5) << 5
+          : (num_used_threads > 16
+                 ? ((num_used_threads >> 4) << 4)
+                 : (num_used_threads > 8
+                        ? ((num_used_threads >> 3) << 3)
+                        : (num_used_threads > 4
+                               ? ((num_used_threads >> 2) << 2)
+                               : (num_used_threads > 2
+                                      ? ((num_used_threads >> 1) << 1)
+                                      : num_used_threads))));
+
+  if (tid_of_seq < num_used_threads) {
+    Triple* top_beam_local = top_beam + tid * beam_size;
+    for (int i = 0; i < beam_size; ++i) {
+      top_beam_local[i].set(-1, -1, -INFINITY);
+    }
+
+    int seq_length = seq_offset_end - seq_offset_start;
+
+    for (int offset = seq_offset_start; offset < seq_offset_end; ++offset) {
+      int pre_id = static_cast<int>(pre_ids[offset]);
+      if (pre_id == end_id) {
+        if (tid_of_seq == 0) {
+          Triple tmp(offset, end_id, pre_scores[offset]);
+          Insert(top_beam_local, tmp, beam_size);
+        }
+      } else {
+        int index = offset * seq_width + tid_of_seq;
+        if (!IsAccumulated) {
+          float pre_score = pre_scores[offset];
+          for (int i = tid_of_seq; i < seq_width; i += num_used_threads) {
+            float score = pre_score + __logf(scores[index]);
+            int id = ids ? static_cast<int>(ids[index]) : i;
+            Triple tmp(offset, id, score);
+            Insert(top_beam_local, tmp, beam_size);
+            index += num_used_threads;
+          }
+        } else {
+          for (int i = tid_of_seq; i < seq_width; i += num_used_threads) {
+            int id = ids ? static_cast<int>(ids[index]) : i;
+            float score = scores[index];
+            Triple tmp(offset, id, score);
+            Insert(top_beam_local, tmp, beam_size);
+            index += num_used_threads;
+          }
+        }
+      }
+    }
+
+    while (num_used_threads > 1) {
+      if (num_used_threads > 16) {
+        __syncthreads();
+      }
+
+      num_used_threads = num_used_threads >> 1;
+      if (tid_of_seq < num_used_threads) {
+        int index_in_sh = (num_used_threads + tid) * beam_size;
+        for (int i = 0; i < beam_size; i++) {
+          Insert(top_beam_local, top_beam[index_in_sh], beam_size);
+          index_in_sh++;
+        }
+      }
+    }
+
+    if (tid_of_seq == 0) {
+      int num_items = 0;
+      for (int i = 0; i < beam_size; ++i) {
+        num_items = (top_beam[i].score > -INFINITY) ? num_items + 1 : num_items;
+      }
+      return num_items;
+    }
+  }
+
+  return 0;
 }
 
 __device__ __forceinline__ bool PruneEndBeams(Triple* top_beam,
                                               const int64_t* pre_ids,
-                                              const int seq_offset_start,
-                                              const int seq_offset_end,
                                               const int end_id, int num_items) {
   bool finish_flag = true;
-  int seq_length = seq_offset_end - seq_offset_start;
   for (int i = 0; i < num_items; ++i) {
     int offset = top_beam[i].offset;
     if (top_beam[i].id != end_id ||
@@ -129,21 +209,6 @@ __device__ __forceinline__ bool PruneEndBeams(Triple* top_beam,
     }
   }
   return finish_flag;
-}
-
-__device__ __forceinline__ void Sort(Triple* data, const int num_data) {
-  if (num_data <= 1) {
-    return;
-  }
-  for (int i = 0; i < num_data; ++i) {
-    for (int j = i + 1; j < num_data; ++j) {
-      if (data[j].offset < data[i].offset) {
-        Triple tmp = data[i];
-        data[i] = data[j];
-        data[j] = tmp;
-      }
-    }
-  }
 }
 
 __device__ __forceinline__ void WriteBack(
@@ -192,8 +257,7 @@ __global__ void BeamSearchKernel(
           seq_offset_end, seq_width, beam_size, end_id);
     }
 
-    bool finish_flag = PruneEndBeams(top_beam, pre_ids, seq_offset_start,
-                                     seq_offset_end, end_id, num_items);
+    bool finish_flag = PruneEndBeams(top_beam, pre_ids, end_id, num_items);
 
     int selected_seq_length = finish_flag ? 0 : num_items;
     // [0, MaxSeqs - 1], length of each sequences
@@ -215,34 +279,35 @@ __global__ void BeamSearchKernel(
   }
 }
 
-template <int MaxLength>
+template <int MaxLength, int NumThreadsPerSeq>
 __global__ void BeamSearchKernelSingle(
     int64_t* selected_ids, float* selected_scores, size_t* selected_offsets,
     const int64_t* pre_ids, const float* pre_scores, const int64_t* ids,
     const float* scores, const int seq_length, const int seq_width,
     int beam_size, int end_id, bool is_accumulated) {
-  const int tid = threadIdx.x;  // use 1 thread only
+  __shared__ Triple top_beam[MaxLength];
+  const int tid = threadIdx.x;
 
   const int seq_offset_start = 0;
   const int seq_offset_end = seq_length;
-  if (tid == 0) {
-    Triple top_beam[MaxLength];  // Ensure MaxLength >= beam_size
-    int num_items = 0;
-    if (is_accumulated) {
-      num_items = SelectLocalTopBeam<true>(
-          top_beam, pre_ids, pre_scores, ids, scores, seq_offset_start,
-          seq_offset_end, seq_width, beam_size, end_id);
-    } else {
-      num_items = SelectLocalTopBeam<false>(
-          top_beam, pre_ids, pre_scores, ids, scores, seq_offset_start,
-          seq_offset_end, seq_width, beam_size, end_id);
-    }
 
-    bool finish_flag = PruneEndBeams(top_beam, pre_ids, seq_offset_start,
-                                     seq_offset_end, end_id, num_items);
+  int num_items = 0;
+  if (is_accumulated) {
+    num_items = SelectTopBeam<NumThreadsPerSeq, true>(
+        top_beam, pre_ids, pre_scores, ids, scores, seq_offset_start,
+        seq_offset_end, seq_width, beam_size, end_id);
+  } else {
+    num_items = SelectTopBeam<NumThreadsPerSeq, false>(
+        top_beam, pre_ids, pre_scores, ids, scores, seq_offset_start,
+        seq_offset_end, seq_width, beam_size, end_id);
+  }
+
+  if (tid == 0) {
+    bool finish_flag = PruneEndBeams(top_beam, pre_ids, end_id, num_items);
 
     int selected_seq_start = 0;
     int selected_seq_length = finish_flag ? 0 : num_items;
+    // printf("selected_seq_length: %d\n", selected_seq_length);
 
     selected_offsets[0] = 0;
 
@@ -269,17 +334,20 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
     // LOG(INFO) << "pre_scores: " << pre_scores;
     // LOG(INFO) << "ids: " << ids;
     // LOG(INFO) << "scores: " << scores;
-    auto abs_lod = framework::ToAbsOffset(ids.lod());
+    auto abs_lod = framework::ToAbsOffset(scores.lod());
 
     const int64_t* pre_ids_data = pre_ids.data<int64_t>();
     const float* pre_scores_data = pre_scores.data<float>();
-    const int64_t* ids_data = ids.data<int64_t>();
+    int64_t* ids_data = nullptr;
+    if (ids.IsInitialized()) {
+      ids_data = const_cast<int64_t*>(ids.data<int64_t>());
+    }
     const float* scores_data = scores.data<float>();
 
     const size_t num_seqs = abs_lod[level].size() - 1;
     size_t seq_width = 1;
-    for (int i = 1; i < ids.dims().size(); i++) {
-      seq_width *= ids.dims()[i];
+    for (int i = 1; i < scores.dims().size(); i++) {
+      seq_width *= scores.dims()[i];
     }
 
     // Reserve a big enough memory.
@@ -293,23 +361,26 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
     framework::LoD* selected_lod = selected_ids->mutable_lod();
     selected_lod->resize(2);
     (*selected_lod)[0].assign(abs_lod[level].begin(), abs_lod[level].end());
-    if ((*selected_lod)[1].size() != (ids.dims()[0] + 1)) {
-      (*selected_lod)[1].resize(ids.dims()[0] + 1);
+    if ((*selected_lod)[1].size() != (scores.dims()[0] + 1)) {
+      (*selected_lod)[1].resize(scores.dims()[0] + 1);
     }
     size_t* selected_offsets =
         (*selected_lod)[1].CUDAMutableData(context.GetPlace());
 
     if (num_seqs == 1) {
       const int seq_length = static_cast<int>(abs_lod[level][1]);
-      switch (platform::GetPowerOfTwo(beam_size)) {
+      const int block_dim_x = 1024;
+      switch (platform::GetPowerOfTwo(beam_size * seq_width)) {
         CUDA_LAUNCH_KERNEL_HELPER(
-            BeamSearchKernelSingle<
-                kPowerOfTwoDim><<<1, 32, 0, context.stream()>>>(
+            BeamSearchKernelSingle2<
+                kPowerOfTwoDim,
+                block_dim_x><<<1, block_dim_x, 2048, context.stream()>>>(
                 selected_ids_data, selected_scores_data, selected_offsets,
-                pre_ids_data, pre_scores_data, ids_data, scores_data,
-                seq_length, static_cast<int>(seq_width),
-                static_cast<int>(beam_size), static_cast<int>(end_id),
-                is_accumulated));
+                pre_ids_data, pre_scores_data,
+                const_cast<const int64_t*>(ids_data), scores_data, seq_length,
+                static_cast<int>(seq_width), static_cast<int>(beam_size),
+                static_cast<int>(end_id), false));
+        // is_accumulated));
       }
     } else if (num_seqs <= 4) {
       const size_t* seq_offsets = abs_lod[level].CUDAData(context.GetPlace());
@@ -319,10 +390,10 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
             BeamSearchKernel<kPowerOfTwoDim, 32,
                              4><<<1, num_seqs * 32, 1024, context.stream()>>>(
                 selected_ids_data, selected_scores_data, selected_offsets,
-                pre_ids_data, pre_scores_data, ids_data, scores_data,
-                seq_offsets, static_cast<int>(num_seqs),
-                static_cast<int>(seq_width), static_cast<int>(beam_size),
-                end_id, is_accumulated));
+                pre_ids_data, pre_scores_data,
+                const_cast<const int64_t*>(ids_data), scores_data, seq_offsets,
+                static_cast<int>(num_seqs), static_cast<int>(seq_width),
+                static_cast<int>(beam_size), end_id, is_accumulated));
       }
     } else {
       LOG(FATAL) << "Not implemented.";
@@ -340,12 +411,6 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
       selected_ids->Resize(final_selected_dims);
       selected_scores->Resize(final_selected_dims);
     }
-    // LOG(INFO) << "selected_lod: " << *selected_lod;
-    // LOG(INFO) << "selected_dims: " << selected_dims;
-    // LOG(INFO) << "selected_ids: " << *selected_ids;
-    // LOG(INFO) << "selected_scores: " << *selected_scores;
-    // LOG(INFO) <<
-    // "============================================================================";
   }
 };
 

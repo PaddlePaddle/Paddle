@@ -800,6 +800,10 @@ void OperatorWithKernel::TransferInplaceVarsBack(
 Scope* OperatorWithKernel::TryTransferData(
     const Scope& scope, const OpKernelType& expected_kernel_key,
     std::vector<std::string>* transfered_inplace_vars) const {
+  if (type_ == "is_empty") {
+    return nullptr;
+  }
+
   Scope* new_scope = nullptr;
   for (auto& var_name_item : Inputs()) {
     for (auto& var_name : var_name_item.second) {
