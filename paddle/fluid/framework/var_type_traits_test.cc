@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/var_type_traits.h"
 #include <gtest/gtest.h>
 #include <cstdint>
+#include <iostream>
 #include <unordered_set>
 
 namespace paddle {
@@ -29,15 +30,27 @@ struct TypeIndexChecker {
     static_assert(std::is_same<typename VarTypeTrait<Type>::Type, Type>::value,
                   "Type must be the same");
     constexpr auto kId = VarTypeTrait<Type>::kId;
-    if (!std::is_same<Type, void>::value) {
-      std::type_index actual_type(typeid(Type));
-      EXPECT_EQ(std::string(ToTypeName(kId)), std::string(actual_type.name()));
-      EXPECT_EQ(ToTypeIndex(kId), actual_type);
-      EXPECT_TRUE(var_id_set->count(kId) == 0);              // NOLINT
-      EXPECT_TRUE(type_index_set->count(actual_type) == 0);  // NOLINT
-      var_id_set->insert(kId);
-      type_index_set->insert(std::type_index(typeid(Type)));
+    std::type_index actual_type(typeid(Type));
+    EXPECT_EQ(std::string(ToTypeName(kId)), std::string(actual_type.name()));
+    // For some reasons, comparing std::type_index using EXPECT_EQ would fail
+    // in MAC CI
+    bool is_same_type_index = (ToTypeIndex(kId) == actual_type);
+    if (!is_same_type_index) {
+      std::string s1 = ToTypeName(kId);
+      std::string s2 = actual_type.name();
+      PADDLE_THROW("Step %d: type %s is not the same as %s, var_id %d", kPos,
+                   s1.c_str(), s2.c_str(), kId);
     }
+    EXPECT_TRUE(is_same_type_index);
+    EXPECT_TRUE(ToTypeId(actual_type) == kId);  // NOLINT
+    is_same_type_index = (ToTypeIndex(ToTypeId(actual_type)) == actual_type);
+    EXPECT_TRUE(is_same_type_index);
+    EXPECT_EQ(ToTypeId(ToTypeIndex(kId)), kId);
+
+    EXPECT_TRUE(var_id_set->count(kId) == 0);              // NOLINT
+    EXPECT_TRUE(type_index_set->count(actual_type) == 0);  // NOLINT
+    var_id_set->insert(kId);
+    type_index_set->insert(std::type_index(typeid(Type)));
     TypeIndexChecker<kPos + 1, kEnd, kPos + 1 == kEnd>::Check(var_id_set,
                                                               type_index_set);
   }
@@ -75,13 +88,11 @@ TEST(var_type_traits, check_proto_type_id) {
 }
 
 TEST(var_type_traits, test_registry) {
-  using Registry =
-      detail::VarTypeRegistryImpl<int8_t, int32_t, size_t, double, void>;
+  using Registry = detail::VarTypeRegistryImpl<int8_t, int32_t, size_t, double>;
   ASSERT_TRUE(Registry::TypePos<int8_t>() == 0);
   ASSERT_TRUE(Registry::TypePos<int32_t>() == 1);
   ASSERT_TRUE(Registry::TypePos<size_t>() == 2);
   ASSERT_TRUE(Registry::TypePos<double>() == 3);
-  ASSERT_TRUE(Registry::TypePos<void>() == -1);
   ASSERT_TRUE(Registry::TypePos<float>() == -1);
 }
 
