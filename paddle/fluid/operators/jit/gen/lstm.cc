@@ -138,5 +138,5 @@ DECLARE_LSTM_CREATOR(LSTMC1H1);
 
 namespace gen = paddle::operators::jit::gen;
 
-REGISTER_JITKERNEL_GEN(lstmctht, gen::LSTMCtHtCreator);
-REGISTER_JITKERNEL_GEN(lstmc1h1, gen::LSTMC1H1Creator);
+REGISTER_JITKERNEL_GEN(kLSTMCtHt, gen::LSTMCtHtCreator);
+REGISTER_JITKERNEL_GEN(kLSTMC1H1, gen::LSTMC1H1Creator);

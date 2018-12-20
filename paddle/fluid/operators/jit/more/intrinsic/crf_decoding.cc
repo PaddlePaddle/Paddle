@@ -178,4 +178,4 @@ bool CRFDecodingKernel::UseMe(const int& d) const {
 
 namespace intrinsic = paddle::operators::jit::more::intrinsic;
 
-REGISTER_JITKERNEL_MORE(crfdecoding, intrinsic, intrinsic::CRFDecodingKernel);
+REGISTER_JITKERNEL_MORE(kCRFDecoding, intrinsic, intrinsic::CRFDecodingKernel);

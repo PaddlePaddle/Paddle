@@ -30,13 +30,13 @@ class GRUJitCode : public VActFunc {
                       void* code_ptr = nullptr)
       : VActFunc(code_size, code_ptr), id_(id), num_(attr.d) {
     auto typeExchange = [](KernelType type) -> gen::operand_type {
-      if (type == KernelType::vsigmoid) {
+      if (type == KernelType::kVSigmoid) {
         return operand_type::SIGMOID;
-      } else if (type == KernelType::vrelu) {
+      } else if (type == KernelType::kVRelu) {
         return operand_type::RELU;
-      } else if (type == KernelType::vtanh) {
+      } else if (type == KernelType::kVTanh) {
         return operand_type::TANH;
-      } else if (type == KernelType::videntity) {
+      } else if (type == KernelType::kVIdentity) {
         return operand_type::IDENTITY;
       } else {
         LOG(FATAL) << "Do not support this jit::KernelType: " << type;
