@@ -14,10 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/cpu_info.h"
 
-#if defined(_WIN32)
-#define NOMINMAX  // msvc max/min macro conflict with std::min/max
-#endif
-
 #ifdef PADDLE_WITH_XBYAK
 #include "xbyak/xbyak.h"
 #include "xbyak/xbyak_util.h"
@@ -27,7 +23,7 @@ limitations under the License. */
 #include <sys/sysctl.h>
 #include <sys/types.h>
 #elif defined(_WIN32)
-#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
 #include <windows.h>
 #else
 #include <unistd.h>
