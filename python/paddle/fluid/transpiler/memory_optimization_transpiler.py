@@ -35,11 +35,10 @@ dtype_to_size = {
 }
 
 SUB_BLOCK_OPS = [
-    "while", "while_grad", "parallel_do", "parallel_do_grad",
-    "conditional_block", "conditional_block_grad"
+    "while", "while_grad", "conditional_block", "conditional_block_grad"
 ]
 
-SUB_BLOCK_PAIR = [("while", "while_grad"), ("parallel_do", "parallel_do_grad"),
+SUB_BLOCK_PAIR = [("while", "while_grad"),
                   ("conditional_block", "conditional_block_grad")]
 
 PRINT_LOG = False

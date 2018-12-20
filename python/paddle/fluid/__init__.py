@@ -102,6 +102,13 @@ def __bootstrap__():
     import sys
     import os
     import platform
+
+    if os.name == 'nt':
+        third_lib_path = os.path.abspath(os.path.dirname(
+            __file__)) + os.sep + '..' + os.sep + 'libs'
+        os.environ['path'] += ';' + third_lib_path
+        sys.path.append(third_lib_path)
+
     from . import core
 
     in_test = 'unittest' in sys.modules
@@ -128,13 +135,12 @@ def __bootstrap__():
         'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
         'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
         'allocator_strategy', 'reader_queue_speed_test_mode',
-        'print_sub_graph_dir', 'pe_profile_fname'
+        'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
 
     if os.name != 'nt':
-        read_env_flags.append('warpctc_dir')
         read_env_flags.append('cpu_deterministic')
 
     if core.is_compiled_with_dist():
