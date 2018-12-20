@@ -188,11 +188,13 @@ std::vector<Variable*> OpBase::ApplyGrad(framework::Scope* scope) {
   std::vector<Variable*> ret;
   for (size_t i = 0; i < input_vars_->size(); ++i) {
     bool found = false;
+    VarBase* origin_var = (*input_vars_)[i];
     for (const std::string& outvar : grad_op_desc_->OutputArgumentNames()) {
       Variable* var = scope->FindVar(outvar);
-      VarBase* origin_var = (*input_vars_)[i];
       std::string orig_var = grad_to_var_->at(outvar);
-      PADDLE_ENFORCE(origin_var->var_desc_->Name() == orig_var);
+      if (origin_var->var_desc_->Name() != orig_var) {
+        continue;
+      }
       VLOG(3) << "apply grad " << outvar << " with origin " << orig_var;
       origin_var->ApplyGrad(scope, var);
       found = true;
