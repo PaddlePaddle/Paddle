@@ -29,6 +29,7 @@ from . import utils
 from .. import unique_name
 from functools import reduce
 from .. import core
+from ..imperative import layers
 
 __all__ = [
     'fc',
@@ -2797,6 +2798,10 @@ def batch_norm(input,
     helper = LayerHelper('batch_norm', **locals())
     dtype = helper.input_dtype()
 
+    # use fp32 for bn parameter
+    if dtype == core.VarDesc.VarType.FP16:
+        dtype = core.VarDesc.VarType.FP32
+
     input_shape = input.shape
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
@@ -2831,7 +2836,7 @@ def batch_norm(input,
             trainable=False,
             do_model_average=do_model_average_for_mean_and_var),
         shape=param_shape,
-        dtype=input.dtype)
+        dtype=dtype)
     mean.stop_gradient = True
 
     variance = helper.create_parameter(
@@ -2841,7 +2846,7 @@ def batch_norm(input,
             trainable=False,
             do_model_average=do_model_average_for_mean_and_var),
         shape=param_shape,
-        dtype=input.dtype)
+        dtype=dtype)
     variance.stop_gradient = True
 
     # create output
@@ -9426,3 +9431,47 @@ def huber_loss(input, label, delta):
                  'Residual': residual},
         attrs={'delta': delta})
     return out
+
+
+class FC(layers.PyLayer):
+    def __init__(self,
+                 size,
+                 param_attr=None,
+                 num_flatten_dims=1,
+                 dtype=core.VarDesc.VarType.FP32):
+        super(FC, self).__init__()
+        self._size = size
+        self._num_flatten_dims = num_flatten_dims
+        self._dtype = dtype
+        self._helper = LayerHelper('FC', param_attr=param_attr)
+
+    def _build_once(self, inputs):
+        input_shape = inputs[0].shape
+        param_shape = [
+            reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:], 1)
+        ] + [self._size]
+        self._w = self._helper.create_parameter(
+            attr=self._helper.param_attr,
+            shape=param_shape,
+            dtype=self._dtype,
+            is_bias=False)
+
+    def forward(self, inputs):
+        tmp = self._helper.create_variable_for_type_inference(self._dtype)
+        self._helper.append_op(
+            type="mul",
+            inputs={"X": inputs[0],
+                    "Y": self._w},
+            outputs={"Out": tmp},
+            attrs={
+                "x_num_col_dims": self._num_flatten_dims,
+                "y_num_col_dims": 1
+            })
+
+        out = self._helper.create_variable_for_type_inference(self._dtype)
+        self._helper.append_op(
+            type="sum",
+            inputs={"X": [tmp]},
+            outputs={"Out": out},
+            attrs={"use_mkldnn": False})
+        return out
