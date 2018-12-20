@@ -209,7 +209,7 @@ void NgraphEngine::Prepare(const framework::BlockDesc& block,
     ++idx;
   }
 
-  while (idx < ops_desc.size() &&
+  while (idx < static_cast<int>(ops_desc.size()) &&
          ops_desc.at(idx)->Type() == framework::kFetchOpType) {
     std::string fetch_target_name = ops_desc.at(idx)->Input("X")[0];
     fetches_.insert(fetch_target_name);
@@ -238,7 +238,8 @@ void NgraphEngine::Prepare(const framework::BlockDesc& block,
 
 void NgraphEngine::GetNgInputShape(
     std::shared_ptr<framework::OperatorBase> op) {
-  op->RuntimeInferShape(scope_, place_);
+  framework::RuntimeContext ctx(op->Inputs(), op->Outputs(), scope_);
+  op->RuntimeInferShape(scope_, place_, ctx);
   for (auto& var_name_item : op->Inputs()) {
     for (auto& var_name : var_name_item.second) {
       auto* var = scope_.FindVar(var_name);
