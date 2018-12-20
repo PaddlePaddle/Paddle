@@ -22,27 +22,31 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#define PADDLE_VISIT_DDIM_BASE(rank, callback) \
+  case (rank): {                               \
+    constexpr auto kRank = (rank);             \
+    return (callback);                         \
+  }
+
+#define PADDLE_VISIT_DDIM(rank, callback)    \
+  switch (rank) {                            \
+    PADDLE_VISIT_DDIM_BASE(0, callback);     \
+    PADDLE_VISIT_DDIM_BASE(1, callback);     \
+    PADDLE_VISIT_DDIM_BASE(2, callback);     \
+    PADDLE_VISIT_DDIM_BASE(3, callback);     \
+    PADDLE_VISIT_DDIM_BASE(4, callback);     \
+    PADDLE_VISIT_DDIM_BASE(5, callback);     \
+    PADDLE_VISIT_DDIM_BASE(6, callback);     \
+    PADDLE_VISIT_DDIM_BASE(7, callback);     \
+    PADDLE_VISIT_DDIM_BASE(8, callback);     \
+    PADDLE_VISIT_DDIM_BASE(9, callback);     \
+    default:                                 \
+      PADDLE_THROW("Invalid rank %d", rank); \
+  }
+
 template <typename T1, typename T2>
 inline void dynamic_dim_assign(const T1* in, T2* out, int n) {
-#define STATIC_DIM_ASSIGN_CASE(rank)          \
-  case rank:                                  \
-    static_dim_assign<rank, T1, T2>(in, out); \
-    return
-  switch (n) {
-    STATIC_DIM_ASSIGN_CASE(0);
-    STATIC_DIM_ASSIGN_CASE(1);
-    STATIC_DIM_ASSIGN_CASE(2);
-    STATIC_DIM_ASSIGN_CASE(3);
-    STATIC_DIM_ASSIGN_CASE(4);
-    STATIC_DIM_ASSIGN_CASE(5);
-    STATIC_DIM_ASSIGN_CASE(6);
-    STATIC_DIM_ASSIGN_CASE(7);
-    STATIC_DIM_ASSIGN_CASE(8);
-    STATIC_DIM_ASSIGN_CASE(9);
-    default:
-      PADDLE_THROW("Invalid rank %d", n);
-  }
-#undef STATIC_DIM_ASSIGN_CASE
+  PADDLE_VISIT_DDIM(n, (static_dim_assign<kRank, T1, T2>(in, out)));
 }
 
 /**
@@ -84,22 +88,26 @@ class DDim {
   inline int64_t operator[](int idx) const { return dim_[idx]; }
 
   inline int64_t& at(int idx) {
-    PADDLE_ENFORCE(idx >= 0 && idx < rank_);
+    PADDLE_ENFORCE(idx >= 0 && idx < rank_, "Invalid idx %d", idx);
     return dim_[idx];
   }
 
   inline int64_t at(int idx) const {
-    PADDLE_ENFORCE(idx >= 0 && idx < rank_);
+    PADDLE_ENFORCE(idx >= 0 && idx < rank_, "Invalid idx %d", idx);
     return dim_[idx];
   }
 
   template <typename Visitor>
   typename std::result_of<Visitor(Dim<0>&)>::type apply_visitor(
-      Visitor&& visitor);
+      Visitor&& visitor) {
+    PADDLE_VISIT_DDIM(rank_, visitor(UnsafeCast<kRank>()));
+  }
 
   template <typename Visitor>
   typename std::result_of<Visitor(const Dim<0>&)>::type apply_visitor(
-      Visitor&& visitor) const;
+      Visitor&& visitor) const {
+    PADDLE_VISIT_DDIM(rank_, visitor(UnsafeCast<kRank>()));
+  }
 
   bool operator==(const DDim& d) const;
 
@@ -128,55 +136,22 @@ class DDim {
     return *reinterpret_cast<const Dim<M>*>(p);
   }
 
+  // Construct DDim with given rank
+  // Only used in friend functions
+  explicit DDim(int rank) : rank_(rank) {
+    PADDLE_ENFORCE(rank_ >= 0 && rank_ < kMaxRank, "Invalid rank %d", rank);
+  }
+
   friend DDim slice_ddim(const DDim& dim, int begin, int end);
   friend DDim stride(const DDim& ddim);
   friend DDim stride_numel(const DDim& ddim);
 
+ private:
   Dim<kMaxRank> dim_;
   int rank_;
 };
 
-#define PADDLE_VISIT_DDIM(rank) \
-  case rank:                    \
-    return visitor(UnsafeCast<rank>())
-
-template <typename Visitor>
-typename std::result_of<Visitor(Dim<0>&)>::type DDim::apply_visitor(
-    Visitor&& visitor) {
-  switch (rank_) {
-    PADDLE_VISIT_DDIM(0);
-    PADDLE_VISIT_DDIM(1);
-    PADDLE_VISIT_DDIM(2);
-    PADDLE_VISIT_DDIM(3);
-    PADDLE_VISIT_DDIM(4);
-    PADDLE_VISIT_DDIM(5);
-    PADDLE_VISIT_DDIM(6);
-    PADDLE_VISIT_DDIM(7);
-    PADDLE_VISIT_DDIM(8);
-    PADDLE_VISIT_DDIM(9);
-    default:
-      PADDLE_THROW("Invalid rank %d", rank_);
-  }
-}
-
-template <typename Visitor>
-typename std::result_of<Visitor(const Dim<0>&)>::type DDim::apply_visitor(
-    Visitor&& visitor) const {
-  switch (rank_) {
-    PADDLE_VISIT_DDIM(0);
-    PADDLE_VISIT_DDIM(1);
-    PADDLE_VISIT_DDIM(2);
-    PADDLE_VISIT_DDIM(3);
-    PADDLE_VISIT_DDIM(4);
-    PADDLE_VISIT_DDIM(5);
-    PADDLE_VISIT_DDIM(6);
-    PADDLE_VISIT_DDIM(7);
-    PADDLE_VISIT_DDIM(8);
-    PADDLE_VISIT_DDIM(9);
-    default:
-      PADDLE_THROW("Invalid rank %d", rank_);
-  }
-}
+#undef PADDLE_VISIT_DDIM_BASE
 #undef PADDLE_VISIT_DDIM
 
 /**
