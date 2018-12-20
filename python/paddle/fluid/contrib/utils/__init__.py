@@ -13,10 +13,11 @@
 # limitations under the License.
 
 from __future__ import print_function
-#from . import lookup_table_utils
-#from .lookup_table_utils import *
+from . import lookup_table_utils
+from .lookup_table_utils import *
 from . import hdfs_utils
 from .hdfs_utils import *
 
-#__all__ = lookup_table_utils.__all__
-__all__ = hdfs_utils.__all__
+__all__ = []
+__all__ += lookup_table_utils.__all__
+__all__ += hdfs_utils.__all__
