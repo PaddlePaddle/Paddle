@@ -12,11 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/var_type_traits.h"
 #include <gtest/gtest.h>
 #include <cstdint>
 #include <iostream>
 #include <unordered_set>
+
+#include "paddle/fluid/framework/lod_rank_table.h"
+#include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#ifdef PADDLE_WITH_CUDA
+#ifndef _WIN32
+#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
+#endif
+#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
+#include "paddle/fluid/operators/cudnn_rnn_cache.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -32,19 +45,9 @@ struct TypeIndexChecker {
     constexpr auto kId = VarTypeTrait<Type>::kId;
     std::type_index actual_type(typeid(Type));
     EXPECT_EQ(std::string(ToTypeName(kId)), std::string(actual_type.name()));
-    // For some reasons, comparing std::type_index using EXPECT_EQ would fail
-    // in MAC CI
-    bool is_same_type_index = (ToTypeIndex(kId) == actual_type);
-    if (!is_same_type_index) {
-      std::string s1 = ToTypeName(kId);
-      std::string s2 = actual_type.name();
-      PADDLE_THROW("Step %d: type %s is not the same as %s, var_id %d", kPos,
-                   s1.c_str(), s2.c_str(), kId);
-    }
-    EXPECT_TRUE(is_same_type_index);
-    EXPECT_TRUE(ToTypeId(actual_type) == kId);  // NOLINT
-    is_same_type_index = (ToTypeIndex(ToTypeId(actual_type)) == actual_type);
-    EXPECT_TRUE(is_same_type_index);
+    EXPECT_EQ(ToTypeIndex(kId), actual_type);
+    EXPECT_EQ(ToTypeId(actual_type), kId);
+    EXPECT_EQ(ToTypeIndex(ToTypeId(actual_type)), actual_type);
     EXPECT_EQ(ToTypeId(ToTypeIndex(kId)), kId);
 
     EXPECT_TRUE(var_id_set->count(kId) == 0);              // NOLINT

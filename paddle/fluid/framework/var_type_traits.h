@@ -20,22 +20,47 @@
 #include <typeinfo>
 #include <vector>
 #include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
+#include <cudnn.h>
 #ifndef _WIN32
 #include <nccl.h>
-#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #endif
-#include <cudnn.h>
-#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
-#include "paddle/fluid/operators/cudnn_rnn_cache.h"
 #endif
+
+// Users should add forward declarations here
+namespace paddle {
+
+namespace platform {
+#ifdef PADDLE_WITH_CUDA
+#ifndef _WIN32
+class Communicator;
+#endif
+#endif
+}  // namespace platform
+
+namespace framework {
+class Tensor;
+class LoDTensor;
+class SelectedRows;
+class LoDRankTable;
+class ReaderHolder;
+class Scope;
+}  // namespace framework
+
+namespace operators {
+template <typename T>
+class AlgorithmsCache;
+
+class CudnnRNNCache;
+
+namespace reader {
+class LoDTensorBlockingQueueHolder;
+}  // namespace reader
+}  // namespace operators
+
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
