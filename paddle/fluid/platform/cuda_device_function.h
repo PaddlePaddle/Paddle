@@ -32,7 +32,11 @@ namespace platform {
 #endif
 
 inline static int GetPowerOfTwo(int dim) {
-  if (dim > 128) {
+  if (dim > 512) {
+    return 1024;
+  } else if (dim > 256) {
+    return 512;
+  } else if (dim > 128) {
     return 256;
   } else if (dim > 64) {
     return 128;

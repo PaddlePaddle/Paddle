@@ -323,7 +323,7 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::LoDTensor& pre_ids,
                   const framework::LoDTensor& pre_scores,
-                  const framework::LoDTensor& ids,
+                  const framework::LoDTensor* ids,
                   const framework::LoDTensor& scores,
                   framework::LoDTensor* selected_ids,
                   framework::LoDTensor* selected_scores, size_t level,
@@ -338,10 +338,8 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
 
     const int64_t* pre_ids_data = pre_ids.data<int64_t>();
     const float* pre_scores_data = pre_scores.data<float>();
-    int64_t* ids_data = nullptr;
-    if (ids.IsInitialized()) {
-      ids_data = const_cast<int64_t*>(ids.data<int64_t>());
-    }
+    const int64_t* ids_data =
+        ids ? const_cast<int64_t*>(ids->data<int64_t>()) : nullptr;
     const float* scores_data = scores.data<float>();
 
     const size_t num_seqs = abs_lod[level].size() - 1;
@@ -374,13 +372,12 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
         CUDA_LAUNCH_KERNEL_HELPER(
             BeamSearchKernelSingle<
                 kPowerOfTwoDim,
-                block_dim_x><<<1, block_dim_x, 2048, context.stream()>>>(
+                block_dim_x><<<1, block_dim_x, 0, context.stream()>>>(
                 selected_ids_data, selected_scores_data, selected_offsets,
                 pre_ids_data, pre_scores_data,
                 const_cast<const int64_t*>(ids_data), scores_data, seq_length,
                 static_cast<int>(seq_width), static_cast<int>(beam_size),
-                static_cast<int>(end_id), false));
-        // is_accumulated));
+                static_cast<int>(end_id), is_accumulated));
       }
     } else if (num_seqs <= 4) {
       const size_t* seq_offsets = abs_lod[level].CUDAData(context.GetPlace());
@@ -388,7 +385,7 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
       switch (platform::GetPowerOfTwo(beam_size)) {
         CUDA_LAUNCH_KERNEL_HELPER(
             BeamSearchKernel<kPowerOfTwoDim, 32,
-                             4><<<1, num_seqs * 32, 1024, context.stream()>>>(
+                             4><<<1, num_seqs * 32, 0, context.stream()>>>(
                 selected_ids_data, selected_scores_data, selected_offsets,
                 pre_ids_data, pre_scores_data,
                 const_cast<const int64_t*>(ids_data), scores_data, seq_offsets,

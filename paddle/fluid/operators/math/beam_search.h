@@ -107,7 +107,7 @@ class BeamSearchFunctor {
   void operator()(const DeviceContext& context,
                   const framework::LoDTensor& pre_ids,
                   const framework::LoDTensor& pre_scores,
-                  const framework::LoDTensor& ids,
+                  const framework::LoDTensor* ids,
                   const framework::LoDTensor& scores,
                   framework::LoDTensor* selected_ids,
                   framework::LoDTensor* selected_scores, size_t level,

@@ -3697,6 +3697,7 @@ def beam_search(pre_ids,
                 beam_size,
                 end_id,
                 level=0,
+                is_accumulated=True,
                 name=None):
     """
     Beam search is a classical algorithm for selecting candidate words in a
@@ -3774,8 +3775,12 @@ def beam_search(pre_ids,
                 end_id=end_id)
     """
     helper = LayerHelper('beam_search', **locals())
-    score_type = scores.dtype
-    id_type = ids.dtype
+    score_type = pre_scores.dtype
+    id_type = pre_ids.dtype
+
+    inputs = {"pre_ids": pre_ids, "pre_scores": pre_scores, "scores": scores}
+    if ids is not None:
+        inputs["ids"] = ids
 
     selected_scores = helper.create_variable_for_type_inference(
         dtype=score_type)
@@ -3783,12 +3788,7 @@ def beam_search(pre_ids,
 
     helper.append_op(
         type='beam_search',
-        inputs={
-            'pre_ids': pre_ids,
-            'pre_scores': pre_scores,
-            'ids': ids,
-            'scores': scores,
-        },
+        inputs=inputs,
         outputs={
             'selected_ids': selected_ids,
             'selected_scores': selected_scores,
@@ -3798,6 +3798,7 @@ def beam_search(pre_ids,
             'level': level,
             'beam_size': beam_size,
             'end_id': end_id,
+            'is_accumulated': is_accumulated,
         })
 
     return selected_ids, selected_scores

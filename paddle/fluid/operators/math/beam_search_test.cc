@@ -95,7 +95,7 @@ void TestBeamSearch() {
   size_t beam_size = 2;
   int end_id = 0;
   paddle::operators::math::BeamSearchFunctor<DeviceContext, float> beamsearch;
-  beamsearch(*context, pre_ids, pre_scores, ids, scores, &selected_ids,
+  beamsearch(*context, pre_ids, pre_scores, &ids, scores, &selected_ids,
              &selected_scores, level, beam_size, end_id, true);
 
   ASSERT_EQ(selected_ids.lod(), selected_scores.lod());

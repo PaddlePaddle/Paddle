@@ -26,13 +26,13 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext &context,
                   const framework::LoDTensor &pre_ids,
                   const framework::LoDTensor &pre_scores,
-                  const framework::LoDTensor &ids,
+                  const framework::LoDTensor *ids,
                   const framework::LoDTensor &scores,
                   framework::LoDTensor *selected_ids,
                   framework::LoDTensor *selected_scores, size_t level,
                   size_t beam_size, int end_id, bool is_accumulated) {
     // Input the arguments that needed by this class.
-    ids_ = &ids;
+    ids_ = ids;
     scores_ = &scores;
     beam_size_ = beam_size;
     lod_level_ = level;

@@ -36,7 +36,8 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("ids",
              "(LoDTensor) The LoDTensor containing the candidates ids. Its "
              "shape should be (batch_size * beam_size, K), where K supposed to "
-             "be beam_size.");
+             "be beam_size.")
+        .AsDispensable();
     AddInput("scores",
              "(LoDTensor) The LodTensor containing the accumulated scores "
              "corresponding to Input(ids) and its shape is the same as the "
@@ -78,7 +79,7 @@ class BeamSearchOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     for (const std::string &arg :
-         std::vector<std::string>({"pre_ids", "ids", "scores"})) {
+         std::vector<std::string>({"pre_ids", "scores"})) {
       PADDLE_ENFORCE(ctx->HasInput(arg), "BeamSearch need input argument '%s'",
                      arg);
     }
