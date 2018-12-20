@@ -1281,8 +1281,6 @@ class Block(object):
         """
         op_desc = self.desc.append_op()
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
-        print("append_op", kwargs.get("type"), kwargs.get("stop_gradient",
-                                                          False))
         if _in_imperative_mode():
             _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
                                        [v._ivar for v in op.outputs], self.desc,
@@ -1336,8 +1334,6 @@ class Block(object):
     def _prepend_op(self, *args, **kwargs):
         op_desc = self.desc._prepend_op()
         op = Operator(self, op_desc, *args, **kwargs)
-        print("prepend_op", kwargs.get("type"), kwargs.get("stop_gradient",
-                                                           False))
         if _in_imperative_mode():
             _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
                                        [v._ivar for v in op.outputs], self.desc,

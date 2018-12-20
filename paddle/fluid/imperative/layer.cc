@@ -115,7 +115,6 @@ framework::Variable* CreateVariable(const std::string& name,
     varname = string::Sprintf("%s@%d", varname, id);
   }
 
-  LOG(ERROR) << "creating var " << varname;
   VLOG(3) << "creating var " << varname;
   framework::Variable* var = scope->Var(varname);
   framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
@@ -183,8 +182,6 @@ std::vector<Variable*> OpBase::ApplyGrad(framework::Scope* scope) {
         << framework::vectorize(var->Get<framework::LoDTensor>().dims()).size();
   }
 
-  LOG(ERROR) << "grad_op_desc_" << grad_op_desc_->Proto()->DebugString();
-
   for (const std::string& outvar : grad_op_desc_->OutputArgumentNames()) {
     VLOG(3) << "op grad output var " << outvar;
     block_->FindRecursiveOrCreateVar(outvar);
@@ -194,8 +191,6 @@ std::vector<Variable*> OpBase::ApplyGrad(framework::Scope* scope) {
       framework::VarDesc* var_desc = block_->FindVar(outvar);
       if (var_desc->GetType() == framework::proto::VarType::LOD_TENSOR) {
         var->GetMutable<framework::LoDTensor>();
-        // framework::Tensor* tensor = var->GetMutable<framework::LoDTensor>();
-        // tensor->mutable_data(platform::CPUPlace());
       } else {
         LOG(ERROR) << "tracer doesn't support yet";
       }

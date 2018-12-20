@@ -115,9 +115,7 @@ class TestImperativeMnist(unittest.TestCase):
             label._stop_gradient = True
 
             predict = mnist(img)
-            print(predict.shape, predict.dtype, label.shape, label.dtype)
             out = fluid.layers.cross_entropy(predict, label)
-            print(out.shape, out.dtype)
             out._backward()
             filter_grad = mnist._simple_img_conv_pool_1._conv2d._filter_param._gradient(
             )
