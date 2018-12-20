@@ -46,14 +46,14 @@ using zmm_t = const Xbyak::Zmm;
 using Label = Xbyak::Label;
 
 typedef enum {
-  mul = 0,
-  add,
-  sub,
-  relu,
-  exp,
-  sigmoid,
-  tanh,
-  identity
+  MUL = 0,
+  ADD,
+  SUB,
+  RELU,
+  EXP,
+  SIGMOID,
+  TANH,
+  IDENTITY
 } operand_type;
 
 #define DECLARE_JIT_CODE(codename) \

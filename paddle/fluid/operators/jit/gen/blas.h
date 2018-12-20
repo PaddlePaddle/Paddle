@@ -34,7 +34,7 @@ class VXXJitCode : public JitCode {
         type_(type),
         scalar_index_(scalar_index),
         with_relu_(with_relu) {
-    if (!(type_ == operand_type::mul || type_ == operand_type::add)) {
+    if (!(type_ == operand_type::MUL || type_ == operand_type::ADD)) {
       LOG(FATAL) << "Do not support this operand type: " << type_;
     }
     this->genCode();
@@ -47,9 +47,9 @@ class VXXJitCode : public JitCode {
     } else {
       base += "_Vec";
     }
-    if (type_ == operand_type::mul) {
+    if (type_ == operand_type::MUL) {
       base += "_Mul";
-    } else if (type_ == operand_type::add) {
+    } else if (type_ == operand_type::ADD) {
       base += "_Add";
     }
     if (scalar_index_ == 2) {
@@ -90,12 +90,12 @@ class VXXJitCode : public JitCode {
     }                                                                          \
   };
 
-DECLARE_BLAS_JITCODE(VMul, operand_type::mul, 0, false);
-DECLARE_BLAS_JITCODE(VAdd, operand_type::add, 0, false);
-DECLARE_BLAS_JITCODE(VSub, operand_type::sub, 0, false);
-DECLARE_BLAS_JITCODE(VAddRelu, operand_type::add, 0, true);
-DECLARE_BLAS_JITCODE(VScal, operand_type::mul, 1, false);
-DECLARE_BLAS_JITCODE(VAddBias, operand_type::add, 1, false);
+DECLARE_BLAS_JITCODE(VMul, operand_type::MUL, 0, false);
+DECLARE_BLAS_JITCODE(VAdd, operand_type::ADD, 0, false);
+DECLARE_BLAS_JITCODE(VSub, operand_type::SUB, 0, false);
+DECLARE_BLAS_JITCODE(VAddRelu, operand_type::ADD, 0, true);
+DECLARE_BLAS_JITCODE(VScal, operand_type::MUL, 1, false);
+DECLARE_BLAS_JITCODE(VAddBias, operand_type::ADD, 1, false);
 
 #undef DECLARE_BLAS_JITCODE
 
