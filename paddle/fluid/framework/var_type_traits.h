@@ -42,6 +42,7 @@ namespace framework {
 
 const char *ToTypeName(int var_id);
 const std::type_index &ToTypeIndex(int var_id);
+int ToTypeId(const std::type_index &type);
 
 namespace detail {
 
@@ -75,10 +76,10 @@ struct VarTypeRegistryImpl {
   using ArgTuple = std::tuple<Args...>;
 
   // TypePos() returns the position in which T is inside Args...
-  // If T is not inside Args... or T is void, return -1
+  // If T is not inside Args..., return -1
   template <typename T>
   static constexpr int TypePos() {
-    return std::is_same<T, void>::value ? -1 : TypePosFinder<T, Args...>::kPos;
+    return TypePosFinder<T, Args...>::kPos;
   }
 
   // IsRegistered() returns whether T is registered inside RegistryImpl
@@ -90,19 +91,22 @@ struct VarTypeRegistryImpl {
 
 }  // namespace detail
 
-#define REG_PROTO_VAR_TYPE_TRAIT(type, proto_id)         \
-  template <>                                            \
-  struct VarTypeTrait<type> {                            \
-    static_assert(VarTypeRegistry::IsRegistered<type>(), \
-                  "Must be registered type");            \
-    using Type = type;                                   \
-    static constexpr int kId = proto_id;                 \
+#define REG_PROTO_VAR_TYPE_TRAIT(type, proto_id)           \
+  template <>                                              \
+  struct VarTypeTrait<type> {                              \
+    static_assert(VarTypeRegistry::IsRegistered<type>(),   \
+                  "Must be registered type");              \
+    using Type = type;                                     \
+    static constexpr int kId = static_cast<int>(proto_id); \
   }
 
 /**
  * The following codes are designed to register variable types.
  * Only registered types can be stored in Variable.
  * This registry mechanism is designed to speed up Variable.
+ *
+ * Caution: If you want to add more var types, please consider carefully
+ * whether you really need to add it.
  */
 
 // Users should add other variable types below.
@@ -110,10 +114,9 @@ struct VarTypeRegistryImpl {
 class Scope;
 
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
-    LoDTensor, SelectedRows, std::vector<Scope *>, LoDRankTable, LoDTensorArray,
-    platform::PlaceList, ReaderHolder, Tensor, std::string, Scope *,
+    Tensor, LoDTensor, SelectedRows, std::vector<Scope *>, LoDRankTable,
+    LoDTensorArray, platform::PlaceList, ReaderHolder, std::string, Scope *,
     std::map<size_t, Tensor>, operators::reader::LoDTensorBlockingQueueHolder,
-    int, float,
 #ifdef PADDLE_WITH_CUDA
 #ifndef _WIN32
     ncclUniqueId, platform::Communicator,
@@ -123,13 +126,11 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     operators::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>,
     operators::CudnnRNNCache,
 #endif
-    void>;  // void indicates end of registration, add other types before void
+    int, float>;
 
 template <typename T>
 struct VarTypeTrait {
-  static_assert(std::is_same<T, void>::value ||
-                    VarTypeRegistry::IsRegistered<T>(),
-                "Must be registered type");
+  static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
   using Type = T;
   // Default id generation
   static constexpr int kId = VarTypeRegistry::TypePos<T>() +
