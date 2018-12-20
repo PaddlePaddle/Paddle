@@ -68,7 +68,8 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
 
   void CreateScaleLossGradOp(ir::Graph *result,
                              const std::string &loss_grad_name,
-                             ir::Node *out_var_node) const;
+                             ir::Node *out_var_node,
+                             proto::VarType::Type dtype) const;
 
   VarHandle *CreateReduceOp(ir::Graph *result, const std::string &og,
                             int dst_dev_id) const;
@@ -102,7 +103,6 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
   mutable std::string loss_var_name_;
   mutable std::vector<platform::Place> places_;
   mutable std::vector<Scope *> local_scopes_;
-  mutable std::unordered_set<std::string> grad_names_;
 
   mutable BuildStrategy strategy_;
   mutable std::unordered_map<std::string, VarDesc *> all_vars_;
