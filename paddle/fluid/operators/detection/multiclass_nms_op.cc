@@ -424,8 +424,9 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
 
     int num_kept = batch_starts.back();
     if (num_kept == 0) {
-      T* od = outs->mutable_data<T>({1}, ctx.GetPlace());
+      T* od = outs->mutable_data<T>({1,1}, ctx.GetPlace());
       od[0] = -1;
+      batch_starts.back() = 1;
     } else {
       outs->mutable_data<T>({num_kept, out_dim}, ctx.GetPlace());
       if (score_dims.size() == 3) {

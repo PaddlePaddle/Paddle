@@ -100,19 +100,21 @@ void ClipTiledBoxes(const platform::DeviceContext& ctx,
   T* boxes_data = boxes->mutable_data<T>(ctx.GetPlace());
   const T* im_info_data = im_info.data<T>();
   T zero(0);
+  T im_w = im_info_data[1] / im_info_data[2];
+  T im_h = im_info_data[0] / im_info_data[2];
   for (int64_t i = 0; i < boxes->numel(); ++i) {
     if (i % 4 == 0) {
       boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[1] - 1), zero);
+          std::max(std::min(boxes_data[i], im_w - 1), zero);
     } else if (i % 4 == 1) {
       boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[0] - 1), zero);
+          std::max(std::min(boxes_data[i], im_h - 1), zero);
     } else if (i % 4 == 2) {
       boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[1] - 1), zero);
+          std::max(std::min(boxes_data[i], im_w - 1), zero);
     } else {
       boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[0] - 1), zero);
+          std::max(std::min(boxes_data[i], im_h - 1), zero);
     }
   }
 }
