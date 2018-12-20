@@ -109,6 +109,11 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 1.0e-8) "
                    "Constant for numerical stability")
         .SetDefault(1.0e-8f);
+    AddAttr<bool>(
+        "lazy_mode",
+        "(bool, default false) "
+        "only update the parameter that has gradient in sparse update")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Adam Optimizer.

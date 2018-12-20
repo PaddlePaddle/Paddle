@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <stdlib.h>
 #include <limits>
 
 #include "glog/logging.h"  // For VLOG
@@ -420,7 +421,15 @@ void GRPCClient::Proceed() {
       sync_cond_.notify_all();
     }
   }
-  VLOG(3) << "GRPCClient Proceed end";
+
+  // Last log message
+  // Avoid using VLOG() and LOG(): in the destructor of google::LogMessage() a
+  // static Mutex log_mutex is used for synchronization, which might have been
+  // destructed at this moment.
+  if (FLAGS_v >= 3) {
+    std::string msg("GRPCClient Proceed end");
+    fwrite(msg.c_str(), msg.length(), 1, stdout);
+  }
 }
 
 std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {
