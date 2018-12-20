@@ -29,12 +29,13 @@ class OpBase;
 
 class VarBase {
  public:
-  VarBase()
+  explicit VarBase(bool stop_gradient = false)
       : pre_op_(nullptr),
         pre_op_out_idx_(-1),
         var_desc_(nullptr),
         var_(nullptr),
-        grads_(nullptr) {}
+        grads_(nullptr),
+        stop_gradient_(stop_gradient) {}
 
   virtual ~VarBase() {}
 
@@ -50,6 +51,8 @@ class VarBase {
   framework::VarDesc* var_desc_;
   framework::Variable* var_;
   framework::Variable* grads_;
+
+  bool stop_gradient_;
 };
 
 class OpBase {

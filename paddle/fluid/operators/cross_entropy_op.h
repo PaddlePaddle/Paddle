@@ -110,6 +110,8 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
     auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
     auto* label = ctx.Input<Tensor>("Label");
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    LOG(ERROR) << "CROSS ENTROPY GRAD DX: "
+               << ctx.op().Output(framework::GradVarName("X"));
     T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
 
     // Following computation only depends on the last dimension size. So it's

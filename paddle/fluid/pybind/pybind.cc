@@ -111,7 +111,8 @@ PYBIND11_MODULE(core, m) {
   BindException(&m);
 
   py::class_<imperative::VarBase, PyVarBase>(m, "VarBase", R"DOC()DOC")
-      .def(py::init<>())
+      // .def(py::init<>())
+      .def(py::init<bool>(), py::arg("stop_gradient") = false)
       .def("_run_backward",
            [](imperative::VarBase &self, framework::Scope *scope) {
              self.RunBackward(scope);
@@ -129,7 +130,13 @@ PYBIND11_MODULE(core, m) {
           [](imperative::VarBase &self, framework::VarDesc *var_desc) {
             self.var_desc_ = var_desc;
           },
-          py::return_value_policy::reference);
+          py::return_value_policy::reference)
+      .def_property(
+          "stop_gradient",
+          [](const imperative::VarBase &self) { return self.stop_gradient_; },
+          [](imperative::VarBase &self, bool stop_gradient) {
+            self.stop_gradient_ = stop_gradient;
+          });
 
   py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
       .def(py::init<>())
