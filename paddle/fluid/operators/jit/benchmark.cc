@@ -146,7 +146,7 @@ template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
 void BenchLSTMKernel() {
   for (bool use_peephole : {true, false}) {
     for (int d : TestSizes()) {
-      const jit::lstm_attr_t attr(d, jit::vsigmoid, jit::vtanh, jit::vtanh,
+      const jit::lstm_attr_t attr(d, jit::kVSigmoid, jit::kVTanh, jit::kVTanh,
                                   use_peephole);
       std::vector<T> x(4 * d), ct_1(d), ct(d), ht(d), wp(3 * d), checked(2 * d);
       RandomVec<T>(4 * d, x.data(), -2.f, 2.f);
@@ -175,7 +175,7 @@ void BenchLSTMKernel() {
 template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
 void BenchGRUKernel() {
   for (int d : TestSizes()) {
-    const jit::gru_attr_t attr(d, jit::vsigmoid, jit::vtanh);
+    const jit::gru_attr_t attr(d, jit::kVSigmoid, jit::kVTanh);
     std::vector<T> x(3 * d), ht_1(d), ht(d);
     RandomVec<T>(3 * d, x.data(), -2.f, 2.f);
     RandomVec<T>(d, ht_1.data(), -2.f, 2.f);
@@ -204,28 +204,28 @@ int main(int argc, char* argv[]) {
   using T = float;
   using PlaceType = paddle::platform::CPUPlace;
   // xyzn
-  BenchXYZNKernel<jit::vmul, T, PlaceType>();
-  BenchXYZNKernel<jit::vadd, T, PlaceType>();
-  BenchXYZNKernel<jit::vaddrelu, T, PlaceType>();
-  BenchXYZNKernel<jit::vsub, T, PlaceType>();
+  BenchXYZNKernel<jit::kVMul, T, PlaceType>();
+  BenchXYZNKernel<jit::kVAdd, T, PlaceType>();
+  BenchXYZNKernel<jit::kVAddRelu, T, PlaceType>();
+  BenchXYZNKernel<jit::kVSub, T, PlaceType>();
 
   // axyn
-  BenchAXYNKernel<jit::vscal, T, PlaceType>();
-  BenchAXYNKernel<jit::vaddbias, T, PlaceType>();
+  BenchAXYNKernel<jit::kVScal, T, PlaceType>();
+  BenchAXYNKernel<jit::kVAddBias, T, PlaceType>();
 
   // xyn
-  BenchXYNKernel<jit::vrelu, T, PlaceType>();
-  BenchXYNKernel<jit::videntity, T, PlaceType>();
-  BenchXYNKernel<jit::vexp, T, PlaceType>();
-  BenchXYNKernel<jit::vsigmoid, T, PlaceType>();
-  BenchXYNKernel<jit::vtanh, T, PlaceType>();
+  BenchXYNKernel<jit::kVRelu, T, PlaceType>();
+  BenchXYNKernel<jit::kVIdentity, T, PlaceType>();
+  BenchXYNKernel<jit::kVExp, T, PlaceType>();
+  BenchXYNKernel<jit::kVSigmoid, T, PlaceType>();
+  BenchXYNKernel<jit::kVTanh, T, PlaceType>();
 
   // lstm and peephole
-  BenchLSTMKernel<jit::lstmctht, T, PlaceType>();
-  BenchLSTMKernel<jit::lstmc1h1, T, PlaceType>();
+  BenchLSTMKernel<jit::kLSTMCtHt, T, PlaceType>();
+  BenchLSTMKernel<jit::kLSTMC1H1, T, PlaceType>();
 
   // gru functions
-  BenchGRUKernel<jit::gruh1, T, PlaceType>();
-  BenchGRUKernel<jit::gruhtpart1, T, PlaceType>();
-  BenchGRUKernel<jit::gruhtpart2, T, PlaceType>();
+  BenchGRUKernel<jit::kGRUH1, T, PlaceType>();
+  BenchGRUKernel<jit::kGRUHtPart1, T, PlaceType>();
+  BenchGRUKernel<jit::kGRUHtPart2, T, PlaceType>();
 }

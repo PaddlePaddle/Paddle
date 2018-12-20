@@ -30,7 +30,7 @@ void VSigmoid(const T* x, T* y, int n) {
     y[i] = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
     y[i] = static_cast<T>(0) - y[i];
   }
-  auto compute = Get<KernelType::vexp, XYNTuples<T>, platform::CPUPlace>(n);
+  auto compute = Get<KernelType::kVExp, XYNTuples<T>, platform::CPUPlace>(n);
   compute(y, y, n);
   for (int i = 0; i < n; ++i) {
     y[i] = static_cast<T>(1) / (static_cast<T>(1) + y[i]);
@@ -39,9 +39,9 @@ void VSigmoid(const T* x, T* y, int n) {
 
 void VTanh(const T* x, T* y, int n) {
   const T a = 2, b = -1;
-  auto compute_scal = Get<vscal, AXYNTuples<T>, platform::CPUPlace>(n);
-  auto compute_addbias = Get<vaddbias, AXYNTuples<T>, platform::CPUPlace>(n);
-  auto compute_sigmoid = Get<vsigmoid, XYNTuples<T>, platform::CPUPlace>(n);
+  auto compute_scal = Get<kVScal, AXYNTuples<T>, platform::CPUPlace>(n);
+  auto compute_addbias = Get<kVAddBias, AXYNTuples<T>, platform::CPUPlace>(n);
+  auto compute_sigmoid = Get<kVSigmoid, XYNTuples<T>, platform::CPUPlace>(n);
   compute_scal(&a, x, y, n);
   compute_sigmoid(y, y, n);
   compute_scal(&a, y, y, n);
@@ -49,14 +49,14 @@ void VTanh(const T* x, T* y, int n) {
 }
 
 void (*getActFunc(KernelType type, int d))(const T*, T*, int) {  // NOLINT
-  if (type == vsigmoid) {
-    return Get<vsigmoid, XYNTuples<T>, platform::CPUPlace>(d);
-  } else if (type == vrelu) {
-    return Get<vrelu, XYNTuples<T>, platform::CPUPlace>(d);
-  } else if (type == vtanh) {
-    return Get<vtanh, XYNTuples<T>, platform::CPUPlace>(d);
-  } else if (type == videntity) {
-    return Get<videntity, XYNTuples<T>, platform::CPUPlace>(d);
+  if (type == kVSigmoid) {
+    return Get<kVSigmoid, XYNTuples<T>, platform::CPUPlace>(d);
+  } else if (type == kVRelu) {
+    return Get<kVRelu, XYNTuples<T>, platform::CPUPlace>(d);
+  } else if (type == kVTanh) {
+    return Get<kVTanh, XYNTuples<T>, platform::CPUPlace>(d);
+  } else if (type == kVIdentity) {
+    return Get<kVIdentity, XYNTuples<T>, platform::CPUPlace>(d);
   }
   PADDLE_THROW("Not support type: %s", type);
   return nullptr;
@@ -72,9 +72,9 @@ void LSTMCtHt(lstm_t* step, const lstm_attr_t* attr) {
   const int d = attr->d;
   const int d2 = d * 2;
   const int d3 = d * 3;
-  auto vmul_d = Get<vmul, XYZNTuples<T>, platform::CPUPlace>(d);
-  auto vadd_d = Get<vadd, XYZNTuples<T>, platform::CPUPlace>(d);
-  auto vadd_d2 = Get<vadd, XYZNTuples<T>, platform::CPUPlace>(d2);
+  auto vmul_d = Get<kVMul, XYZNTuples<T>, platform::CPUPlace>(d);
+  auto vadd_d = Get<kVAdd, XYZNTuples<T>, platform::CPUPlace>(d);
+  auto vadd_d2 = Get<kVAdd, XYZNTuples<T>, platform::CPUPlace>(d2);
   auto act_gate_d = getActFunc(attr->act_gate, d);
   auto act_gate_d2 = getActFunc(attr->act_gate, d2);
   auto act_gate_d3 = getActFunc(attr->act_gate, d3);
@@ -114,8 +114,8 @@ void LSTMC1H1(lstm_t* step, const lstm_attr_t* attr) {
   int d = attr->d;
   int d2 = d * 2;
   int d3 = d * 3;
-  auto vmul_d = Get<vmul, XYZNTuples<T>, platform::CPUPlace>(d);
-  auto vadd_d = Get<vadd, XYZNTuples<T>, platform::CPUPlace>(d);
+  auto vmul_d = Get<kVMul, XYZNTuples<T>, platform::CPUPlace>(d);
+  auto vadd_d = Get<kVAdd, XYZNTuples<T>, platform::CPUPlace>(d);
   auto act_gate_d = getActFunc(attr->act_gate, d);
   auto act_cand_d = getActFunc(attr->act_cand, d);
   auto act_cell_d = getActFunc(attr->act_cell, d);
@@ -143,7 +143,7 @@ void GRUH1(gru_t* step, const gru_attr_t* attr) {
   int d2 = d * 2;
   auto act_gate = getActFunc(attr->act_gate, d);
   auto act_cand = getActFunc(attr->act_cand, d);
-  auto vmul_d = Get<vmul, XYZNTuples<T>, platform::CPUPlace>(d);
+  auto vmul_d = Get<kVMul, XYZNTuples<T>, platform::CPUPlace>(d);
   act_gate(gates, gates, d);
   act_cand(gates + d2, gates + d2, d);
   vmul_d(gates, gates + d2, ht, d);
@@ -156,7 +156,7 @@ void GRUHtPart1(gru_t* step, const gru_attr_t* attr) {
   T* ht = reinterpret_cast<T*>(step->ht);
   const T* ht_1 = reinterpret_cast<const T*>(step->ht_1);
   auto act_gate = getActFunc(attr->act_gate, attr->d);
-  auto vmul_d = Get<vmul, XYZNTuples<T>, platform::CPUPlace>(attr->d);
+  auto vmul_d = Get<kVMul, XYZNTuples<T>, platform::CPUPlace>(attr->d);
   act_gate(gates + attr->d, gates + attr->d, attr->d);
   vmul_d(ht_1, gates + attr->d, ht, attr->d);
 }
@@ -205,12 +205,12 @@ namespace mix = paddle::operators::jit::more::mix;
 #define REGISTER_MORE_KERNEL(key, func) \
   REGISTER_JITKERNEL_MORE(key, mix, mix::func##Kernel)
 
-REGISTER_MORE_KERNEL(vsigmoid, VSigmoid);
-REGISTER_MORE_KERNEL(vtanh, VTanh);
-REGISTER_MORE_KERNEL(lstmctht, LSTMCtHt);
-REGISTER_MORE_KERNEL(lstmc1h1, LSTMC1H1);
-REGISTER_MORE_KERNEL(gruh1, GRUH1);
-REGISTER_MORE_KERNEL(gruhtpart1, GRUHtPart1);
-REGISTER_MORE_KERNEL(gruhtpart2, GRUHtPart2);
+REGISTER_MORE_KERNEL(kVSigmoid, VSigmoid);
+REGISTER_MORE_KERNEL(kVTanh, VTanh);
+REGISTER_MORE_KERNEL(kLSTMCtHt, LSTMCtHt);
+REGISTER_MORE_KERNEL(kLSTMC1H1, LSTMC1H1);
+REGISTER_MORE_KERNEL(kGRUH1, GRUH1);
+REGISTER_MORE_KERNEL(kGRUHtPart1, GRUHtPart1);
+REGISTER_MORE_KERNEL(kGRUHtPart2, GRUHtPart2);
 
 #undef REGISTER_MORE_KERNEL

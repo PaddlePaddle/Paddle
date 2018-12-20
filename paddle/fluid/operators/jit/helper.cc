@@ -26,25 +26,25 @@ namespace jit {
 
 const char* to_string(KernelType kt) {
   switch (kt) {
-    ONE_CASE(vmul);
-    ONE_CASE(vadd);
-    ONE_CASE(vaddrelu);
-    ONE_CASE(vsub);
-    ONE_CASE(vscal);
-    ONE_CASE(vaddbias);
-    ONE_CASE(vrelu);
-    ONE_CASE(videntity);
-    ONE_CASE(vexp);
-    ONE_CASE(vsigmoid);
-    ONE_CASE(vtanh);
-    ONE_CASE(lstmctht);
-    ONE_CASE(lstmc1h1);
-    ONE_CASE(gruh1);
-    ONE_CASE(gruhtpart1);
-    ONE_CASE(gruhtpart2);
-    ONE_CASE(crfdecoding);
-    ONE_CASE(layernorm);
-    ONE_CASE(nchw16cmulnc);
+    ONE_CASE(kVMul);
+    ONE_CASE(kVAdd);
+    ONE_CASE(kVAddRelu);
+    ONE_CASE(kVSub);
+    ONE_CASE(kVScal);
+    ONE_CASE(kVAddBias);
+    ONE_CASE(kVRelu);
+    ONE_CASE(kVIdentity);
+    ONE_CASE(kVExp);
+    ONE_CASE(kVSigmoid);
+    ONE_CASE(kVTanh);
+    ONE_CASE(kLSTMCtHt);
+    ONE_CASE(kLSTMC1H1);
+    ONE_CASE(kGRUH1);
+    ONE_CASE(kGRUHtPart1);
+    ONE_CASE(kGRUHtPart2);
+    ONE_CASE(kCRFDecoding);
+    ONE_CASE(kLayerNorm);
+    ONE_CASE(kNCHW16CMulNC);
     default:
       PADDLE_THROW("Not support type: %d, or forget to add it.", kt);
       return "NOT JITKernel";
@@ -57,19 +57,18 @@ KernelType to_kerneltype(const std::string& act) {
   std::string lower = act;
   std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
   if (lower == "relu" || lower == "vrelu") {
-    return vrelu;
+    return kVRelu;
   } else if (lower == "identity" || lower == "videntity" || lower == "") {
-    return videntity;
+    return kVIdentity;
   } else if (lower == "exp" || lower == "vexp") {
-    return vexp;
+    return kVExp;
   } else if (lower == "sigmoid" || lower == "vsigmoid") {
-    return vsigmoid;
+    return kVSigmoid;
   } else if (lower == "tanh" || lower == "vtanh") {
-    return vtanh;
+    return kVTanh;
   }
   PADDLE_THROW("Not support type: %s, or forget to add this case", act);
-
-  return non_kernel;
+  return kNone;
 }
 
 }  // namespace jit

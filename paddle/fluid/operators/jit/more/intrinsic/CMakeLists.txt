@@ -5,5 +5,5 @@ cc_library(jit_kernel_intrinsic SRCS ${jit_kernel_cc_intrinsic} DEPS jit_kernel_
 set(JIT_KERNEL_DEPS ${JIT_KERNEL_DEPS} jit_kernel_intrinsic PARENT_SCOPE)
 
 # use mkl kernels by name and type
-USE_JITKERNEL_MORE(crfdecoding, intrinsic)
-USE_JITKERNEL_MORE(layernorm, intrinsic)
+USE_JITKERNEL_MORE(kCRFDecoding, intrinsic)
+USE_JITKERNEL_MORE(kLayerNorm, intrinsic)

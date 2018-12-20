@@ -129,11 +129,11 @@ namespace mkl = paddle::operators::jit::more::mkl;
   REGISTER_JITKERNEL_MORE(key, mkl, mkl::func##Kernel<float>, \
                           mkl::func##Kernel<double>)
 
-REGISTER_MKL_KERNEL(vmul, VMul);
-REGISTER_MKL_KERNEL(vadd, VAdd);
-REGISTER_MKL_KERNEL(vscal, VScal);
-REGISTER_MKL_KERNEL(vexp, VExp);
-REGISTER_MKL_KERNEL(vsigmoid, VSigmoid);
-REGISTER_MKL_KERNEL(vtanh, VTanh);
+REGISTER_MKL_KERNEL(kVMul, VMul);
+REGISTER_MKL_KERNEL(kVAdd, VAdd);
+REGISTER_MKL_KERNEL(kVScal, VScal);
+REGISTER_MKL_KERNEL(kVExp, VExp);
+REGISTER_MKL_KERNEL(kVSigmoid, VSigmoid);
+REGISTER_MKL_KERNEL(kVTanh, VTanh);
 
 #undef REGISTER_MKL_KERNEL

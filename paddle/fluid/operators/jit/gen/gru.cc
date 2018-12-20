@@ -111,6 +111,6 @@ DECLARE_GRU_CREATOR(GRUHtPart2);
 
 namespace gen = paddle::operators::jit::gen;
 
-REGISTER_JITKERNEL_GEN(gruh1, gen::GRUH1Creator);
-REGISTER_JITKERNEL_GEN(gruhtpart1, gen::GRUHtPart1Creator);
-REGISTER_JITKERNEL_GEN(gruhtpart2, gen::GRUHtPart2Creator);
+REGISTER_JITKERNEL_GEN(kGRUH1, gen::GRUH1Creator);
+REGISTER_JITKERNEL_GEN(kGRUHtPart1, gen::GRUHtPart1Creator);
+REGISTER_JITKERNEL_GEN(kGRUHtPart2, gen::GRUHtPart2Creator);

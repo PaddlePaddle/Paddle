@@ -115,13 +115,13 @@ void VTanh(const T* x, T* y, int n) {
 
 template <typename T>
 void (*getActFunc(KernelType type))(const T*, T*, int) {  // NOLINT
-  if (type == vsigmoid) {
+  if (type == kVSigmoid) {
     return VSigmoid<T>;
-  } else if (type == vrelu) {
+  } else if (type == kVRelu) {
     return VRelu<T>;
-  } else if (type == vtanh) {
+  } else if (type == kVTanh) {
     return VTanh<T>;
-  } else if (type == videntity) {
+  } else if (type == kVIdentity) {
     return VIdentity<T>;
   }
   PADDLE_THROW("Not support type: %s", type);

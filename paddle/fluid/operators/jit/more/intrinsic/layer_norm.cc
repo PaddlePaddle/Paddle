@@ -165,4 +165,4 @@ bool LayerNormKernel::UseMe(const int& d) const {
 
 namespace intrinsic = paddle::operators::jit::more::intrinsic;
 
-REGISTER_JITKERNEL_MORE(layernorm, intrinsic, intrinsic::LayerNormKernel);
+REGISTER_JITKERNEL_MORE(kLayerNorm, intrinsic, intrinsic::LayerNormKernel);

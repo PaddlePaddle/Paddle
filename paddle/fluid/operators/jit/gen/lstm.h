@@ -33,13 +33,13 @@ class LSTMJitCode : public VActFunc {
         compute_c1h1_(compute_c1h1),
         use_peephole_(attr.use_peephole) {
     auto typeExchange = [](KernelType type) -> gen::operand_type {
-      if (type == KernelType::vsigmoid) {
+      if (type == KernelType::kVSigmoid) {
         return operand_type::SIGMOID;
-      } else if (type == KernelType::vrelu) {
+      } else if (type == KernelType::kVRelu) {
         return operand_type::RELU;
-      } else if (type == KernelType::vtanh) {
+      } else if (type == KernelType::kVTanh) {
         return operand_type::TANH;
-      } else if (type == KernelType::videntity) {
+      } else if (type == KernelType::kVIdentity) {
         return operand_type::IDENTITY;
       } else {
         LOG(FATAL) << "Do not support this jit::KernelType: " << type;
