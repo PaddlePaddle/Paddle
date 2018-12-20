@@ -131,9 +131,7 @@ std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy(
 
 std::unique_ptr<ir::Graph> BuildStrategy::Apply(
     const ProgramDesc &main_program, const std::vector<platform::Place> &places,
-    const std::string &loss_var_name,
-    const std::unordered_set<std::string> &param_names,
-    const std::vector<Scope *> &local_scopes,
+    const std::string &loss_var_name, const std::vector<Scope *> &local_scopes,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     const bool use_cuda, platform::NCCLContextMap *nccl_ctxs) const {
 #else
@@ -149,9 +147,6 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->SetNotOwned<const std::vector<platform::Place>>("places", &places);
       pass->Erase("loss_var_name");
       pass->SetNotOwned<const std::string>("loss_var_name", &loss_var_name);
-      pass->Erase("params");
-      pass->SetNotOwned<const std::unordered_set<std::string>>("params",
-                                                               &param_names);
       pass->Erase("local_scopes");
       pass->SetNotOwned<const std::vector<Scope *>>("local_scopes",
                                                     &local_scopes);
