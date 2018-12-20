@@ -34,12 +34,12 @@ std::unique_ptr<ir::Graph> SubblockToGraphPass::ApplyImpl(
 
   // Filter out the nodes that has sub-block
   for (auto* node : graph->Nodes()) {
-    if (node->IsOp() && node->Op()->HasAttr(kSubblockAttrKeyStr)) {
-      auto* sub_block_desc = boost::get<framework::BlockDesc*>(
-          node->Op()->GetAttr(kSubblockAttrKeyStr));
+    if (node->IsOp() && node->Op() && node->Op()->HasAttr("sub_block")) {
+      auto* sub_block_desc =
+          boost::get<framework::BlockDesc*>(node->Op()->GetAttr("sub_block"));
       // sub-block to program desc
       for (auto op : sub_block_desc->Proto()->ops()) {
-        LOG(INFO) << op.type() << " in subblock";
+        VLOG(4) << op.type() << " in subblock";
       }
 
       framework::proto::ProgramDesc fake_proto;
