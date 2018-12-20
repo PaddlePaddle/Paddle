@@ -25,7 +25,6 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.device import get_places
-from paddle.fluid.layers.control_flow import ParallelDo
 
 BATCH_SIZE = 64
 
@@ -82,19 +81,7 @@ def train(nn_type,
         net_conf = conv_net
 
     if parallel:
-        places = get_places()
-        pd = ParallelDo(places)
-        with pd.do():
-            img_ = pd.read_input(img)
-            label_ = pd.read_input(label)
-            prediction, avg_loss, acc = net_conf(img_, label_)
-            for o in [avg_loss, acc]:
-                pd.write_output(o)
-
-        avg_loss, acc = pd()
-        # get mean loss and acc through every devices.
-        avg_loss = fluid.layers.mean(avg_loss)
-        acc = fluid.layers.mean(acc)
+        raise NotImplementedError()
     else:
         prediction, avg_loss, acc = net_conf(img, label)
 
@@ -273,7 +260,7 @@ def inject_all_tests():
     for use_cuda in (False, True):
         if use_cuda and not core.is_compiled_with_cuda():
             continue
-        for parallel in (False, True):
+        for parallel in (False, ):
             for nn_type in ('mlp', 'conv'):
                 inject_test_method(use_cuda, parallel, nn_type, True)
 

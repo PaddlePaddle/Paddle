@@ -97,7 +97,7 @@ class TestLearningRateDecay(unittest.TestCase):
         startup_prog = fluid.Program()
 
         with fluid.program_guard(main_prog, startup_prog):
-            decayed_lr = fluid_decay_fn(**kwargs)
+            decayed_lr = fluid_decay_fn(**kwargs)("float32")
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
