@@ -75,6 +75,10 @@ class RPCServer {
   void RegisterRPC(const std::string& rpc_name, RequestHandler* handler,
                    int thread_num = 5);
 
+  int GetThreadNum(const std::string& rpc_name) {
+    return rpc_thread_num_[rpc_name];
+  }
+
   // Wait util all the clients have reached the barrier for one
   // rpc method. This function should be called in the
   // RequestHandler if you want to run the server/client in a
