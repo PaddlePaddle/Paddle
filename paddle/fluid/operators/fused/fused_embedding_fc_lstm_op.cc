@@ -115,8 +115,7 @@ void FusedEmbeddingFCLSTMOp::InferShape(
 framework::OpKernelType FusedEmbeddingFCLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return framework::OpKernelType(
-      framework::ToDataType(
-          ctx.Input<framework::LoDTensor>("Embeddings")->type()),
+      ctx.Input<framework::LoDTensor>("Embeddings")->type(),
       ctx.device_context());
 }
 
