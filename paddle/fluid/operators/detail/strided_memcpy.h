@@ -98,8 +98,8 @@ struct StridedCopyDimVisitor {
   template <int D>
   void operator()(const framework::Dim<D>& dst_dim) const {
     StridedMemcpyFunctor<T, D> functor;
-    functor(dev_ctx_, src_, src_stride_.data(), dst_dim.data(),
-            dst_stride_.data(), dst_);
+    functor(dev_ctx_, src_, src_stride_.Get(), dst_dim.Get(), dst_stride_.Get(),
+            dst_);
   }
 
   const platform::DeviceContext& dev_ctx_;
