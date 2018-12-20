@@ -22,10 +22,8 @@ from op_test import OpTest
 class TestAccuracyOp(OpTest):
     def setUp(self):
         self.op_type = "accuracy"
-        self.dtype = np.float32
-        self.init_dtype()
         n = 8192
-        infer = np.random.random((n, 1)).astype(self.dtype)
+        infer = np.random.random((n, 1)).astype("float32")
         indices = np.random.randint(0, 2, (n, 1))
         label = np.random.randint(0, 2, (n, 1))
         self.inputs = {'Out': infer, 'Indices': indices, "Label": label}
@@ -36,24 +34,13 @@ class TestAccuracyOp(OpTest):
                     num_correct += 1
                     break
         self.outputs = {
-            'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
+            'Accuracy': np.array([num_correct / float(n)]).astype("float32"),
             'Correct': np.array([num_correct]).astype("int32"),
             'Total': np.array([n]).astype("int32")
         }
 
-    def init_dtype(self):
-        pass
-
     def test_check_output(self):
         self.check_output()
-
-
-class TestAccuracyOpFp16(TestAccuracyOp):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        self.check_output(atol=1e-3)
 
 
 if __name__ == '__main__':

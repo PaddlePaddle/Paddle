@@ -2798,10 +2798,6 @@ def batch_norm(input,
     helper = LayerHelper('batch_norm', **locals())
     dtype = helper.input_dtype()
 
-    # use fp32 for bn parameter
-    if dtype == core.VarDesc.VarType.FP16:
-        dtype = core.VarDesc.VarType.FP32
-
     input_shape = input.shape
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
@@ -2836,7 +2832,7 @@ def batch_norm(input,
             trainable=False,
             do_model_average=do_model_average_for_mean_and_var),
         shape=param_shape,
-        dtype=dtype)
+        dtype=input.dtype)
     mean.stop_gradient = True
 
     variance = helper.create_parameter(
@@ -2846,7 +2842,7 @@ def batch_norm(input,
             trainable=False,
             do_model_average=do_model_average_for_mean_and_var),
         shape=param_shape,
-        dtype=dtype)
+        dtype=input.dtype)
     variance.stop_gradient = True
 
     # create output
