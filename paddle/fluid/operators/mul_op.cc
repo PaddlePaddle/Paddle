@@ -49,7 +49,8 @@ class MulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(
         y_dims.size(), y_num_col_dims,
         "The input tensor Y's rank of MulOp should be larger than "
-        "y_num_col_dims.");
+        "y_num_col_dims: %ld vs %ld",
+        y_dims.size(), y_num_col_dims);
 
     auto x_mat_dims = framework::flatten_to_2d(x_dims, x_num_col_dims);
     auto y_mat_dims = framework::flatten_to_2d(y_dims, y_num_col_dims);

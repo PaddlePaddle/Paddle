@@ -372,7 +372,7 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
       const int block_dim_x = 1024;
       switch (platform::GetPowerOfTwo(beam_size * seq_width)) {
         CUDA_LAUNCH_KERNEL_HELPER(
-            BeamSearchKernelSingle2<
+            BeamSearchKernelSingle<
                 kPowerOfTwoDim,
                 block_dim_x><<<1, block_dim_x, 2048, context.stream()>>>(
                 selected_ids_data, selected_scores_data, selected_offsets,
