@@ -130,7 +130,6 @@ void AddOutputToLeafOps(ir::Graph *graph) {
 
 static const char kLossVarName[] = "loss_var_name";
 static const char kPlaces[] = "places";
-static const char kParams[] = "params";
 static const char kLocalScopes[] = "local_scopes";
 static const char kStrategy[] = "strategy";
 static const char kNumTrainers[] = "num_trainers";
@@ -147,9 +146,6 @@ void MultiDevSSAGraphBuilder::Init() const {
   nccl_ctxs_ = &Get<platform::NCCLContextMap>("nccl_ctxs");
 #endif
 
-  for (auto &p : Get<const std::unordered_set<std::string>>(kParams)) {
-    grad_names_.insert(GradVarName(p));
-  }
   balance_vars_.resize(places_.size(), 0);
   if (strategy_.enable_data_balance_ && places_.size() == 1) {
     LOG(WARNING) << "It is no need to enable data balance when there is only "
@@ -359,7 +355,9 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
           BuildStrategy::GradientScaleStrategy::kCustomized) {
         // TODO(paddle-dev): Why is there no input for this op_handle?
         auto loss_grad_name = node->Op()->OutputArgumentNames()[0];
-        CreateScaleLossGradOp(&result, loss_grad_name, node->outputs[0]);
+        auto out_dtype = all_vars_.at(loss_grad_name)->GetDataType();
+        CreateScaleLossGradOp(&result, loss_grad_name, node->outputs[0],
+                              out_dtype);
       }
       // This assumes the backward generating code will ensure IsScaleLossOp
       // is true only for the op that scale the final scalar loss.
@@ -662,13 +660,13 @@ int MultiDevSSAGraphBuilder::GetVarDeviceID(
 
 void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(
     ir::Graph *result, const std::string &loss_grad_name,
-    ir::Node *out_var_node) const {
+    ir::Node *out_var_node, proto::VarType::Type dtype) const {
   for (size_t i = 0; i < places_.size(); ++i) {
     // Insert ScaleCost OpHandle
     auto *dev_ctx = platform::DeviceContextPool::Instance().Get(places_[i]);
     auto *op_handle = new ScaleLossGradOpHandle(
         result->CreateEmptyNode("scale_loss_grad", ir::Node::Type::kOperation),
-        local_scopes_.size(), local_scopes_[i], places_[i], dev_ctx);
+        local_scopes_.size(), local_scopes_[i], places_[i], dev_ctx, dtype);
     result->Get<GraphOps>(kGraphOps).emplace_back(op_handle);
 
     // FIXME: Currently ScaleLossGradOp only use device_count as scale
@@ -896,7 +894,6 @@ REGISTER_PASS(multi_devices_pass,
               paddle::framework::details::MultiDevSSAGraphBuilder)
     .RequirePassAttr(paddle::framework::details::kLossVarName)
     .RequirePassAttr(paddle::framework::details::kPlaces)
-    .RequirePassAttr(paddle::framework::details::kParams)
     .RequirePassAttr(paddle::framework::details::kLocalScopes)
     .RequirePassAttr(paddle::framework::details::kStrategy)
     .RequirePassAttr(paddle::framework::details::kNumTrainers);
