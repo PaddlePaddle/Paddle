@@ -75,6 +75,7 @@ class CpuPassStrategy : public PassStrategy {
     // not be damaged by smaller ones.
     passes_.assign({
         "infer_clean_graph_pass",         //
+        "subblock_to_graph_pass",         //
         "attention_lstm_fuse_pass",       //
         "seqconv_eltadd_relu_fuse_pass",  //
         // "embedding_fc_lstm_fuse_pass", //

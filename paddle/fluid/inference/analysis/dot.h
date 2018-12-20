@@ -119,20 +119,41 @@ class Dot {
     nodes_.emplace(id, Node{label, attrs});
   }
 
+  const Node& GetNode(const std::string& id) const {
+    auto it = nodes_.find(id);
+    CHECK(it != nodes_.end());
+    return it->second;
+  }
+
   void AddEdge(const std::string& source, const std::string& target,
                const std::vector<Attr>& attrs) {
     CHECK(!source.empty());
     CHECK(!target.empty());
     auto sid = nodes_.at(source).id();
     auto tid = nodes_.at(target).id();
-    edges_.emplace_back(sid, tid, attrs);
+    AddRawEdge(sid, tid, attrs);
+  }
+
+  void AddRawEdge(const std::string& source, const std::string& target,
+                  const std::vector<Attr>& attrs) {
+    edges_.emplace_back(source, target, attrs);
+  }
+
+  void AddSubgraph(const std::string& dot_str) {
+    sub_graphs_.push_back(dot_str);
+  }
+
+  std::vector<std::pair<std::string, Node>> nodes() const {
+    return std::vector<std::pair<std::string, Node>>(nodes_.begin(),
+                                                     nodes_.end());
   }
 
   // Compile to DOT language codes.
-  std::string Build() const {
+  std::string Build(const std::string& graph_guard = "digraph",
+                    const std::string& graph_id = "G") const {
     std::stringstream ss;
     const std::string indent = "   ";
-    ss << "digraph G {" << '\n';
+    ss << graph_guard << " " << graph_id << " {" << '\n';
 
     // Add graph attrs
     for (const auto& attr : attrs_) {
@@ -141,6 +162,10 @@ class Dot {
     // add nodes
     for (auto& item : nodes_) {
       ss << indent << item.second.repr() << '\n';
+    }
+    // add sub-graphs
+    for (auto& item : sub_graphs_) {
+      ss << indent << item << "\n";
     }
     // add edges
     for (auto& edge : edges_) {
@@ -154,6 +179,7 @@ class Dot {
   std::unordered_map<std::string, Node> nodes_;
   std::vector<Edge> edges_;
   std::vector<Attr> attrs_;
+  std::vector<std::string> sub_graphs_;
 };
 
 }  // namespace analysis

@@ -19,10 +19,15 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+// sub_block attribute name in OpDesc. TODO(Superjomn) unify these.
 const char kSubblockAttrKeyStr[] = "sub_block";
+
+// sub-block graph as an attribute in the graph.
+const char kSubblockGraphAttr[] = "__sub_block_grpah__";
 
 class SubblockToGraphPass : public Pass {
  public:
+  using subgraphs_t = std::unordered_map<const Node*, std::unique_ptr<Graph>>;
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
 };
 
