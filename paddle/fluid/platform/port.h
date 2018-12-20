@@ -37,10 +37,6 @@
 #define GOOGLE_GLOG_DLL_DECL
 #include <io.h>  // _popen, _pclose
 #include <stdio.h>
-#ifdef _WINSOCKAPI_
-/* Prevent inclusion of winsock.h in windows.h */
-#define WIN32_LEAN_AND_MEAN
-#endif
 #include <windows.h>
 #include <numeric>  // std::accumulate in msvc
 #ifndef S_ISDIR     // windows port for sys/stat.h
