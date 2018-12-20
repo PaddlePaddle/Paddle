@@ -34,8 +34,6 @@ class CompileTimeInferShapeContext : public InferShapeContext {
  public:
   CompileTimeInferShapeContext(const OpDesc &op, const BlockDesc &block);
 
-  InferShapeOpPtr GetOp() const override { return &op_; }
-
   bool HasInput(const std::string &name) const override;
 
   bool HasOutput(const std::string &name) const override;

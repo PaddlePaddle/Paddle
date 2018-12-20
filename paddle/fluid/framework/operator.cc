@@ -481,8 +481,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
   RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
       : op_(op), scope_(scope) {}
 
-  InferShapeOpPtr GetOp() const override { return &op_; }
-
   bool HasInput(const std::string& name) const override {
     // has only one input
     const auto& ins = op_.Inputs();
