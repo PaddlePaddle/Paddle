@@ -413,9 +413,10 @@ def yolov3_loss(x,
                 gtbox,
                 gtlabel,
                 anchors,
+                anchor_mask,
                 class_num,
                 ignore_thresh,
-                input_size,
+                downsample,
                 name=None):
     """
     ${comment}
@@ -430,9 +431,10 @@ def yolov3_loss(x,
         gtlabel (Variable): class id of ground truth boxes, shoud be ins shape
                             of [N, B].
         anchors (list|tuple): ${anchors_comment}
+        anchor_mask (list|tuple): ${anchor_mask_comment}
         class_num (int): ${class_num_comment}
         ignore_thresh (float): ${ignore_thresh_comment}
-        input_size (int): ${input_size_comment}
+        downsample (int): ${downsample_comment}
         name (string): the name of yolov3 loss
 
     Returns:
@@ -452,7 +454,8 @@ def yolov3_loss(x,
         x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
         gtbox = fluid.layers.data(name='gtbox', shape=[6, 5], dtype='float32')
         gtlabel = fluid.layers.data(name='gtlabel', shape=[6, 1], dtype='int32')
-        anchors = [10, 13, 16, 30, 33, 23]
+        anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
+        anchors = [0, 1, 2]
         loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80
                                         anchors=anchors, ignore_thresh=0.5)
     """
@@ -466,6 +469,8 @@ def yolov3_loss(x,
         raise TypeError("Input gtlabel of yolov3_loss must be Variable")
     if not isinstance(anchors, list) and not isinstance(anchors, tuple):
         raise TypeError("Attr anchors of yolov3_loss must be list or tuple")
+    if not isinstance(anchor_mask, list) and not isinstance(anchor_mask, tuple):
+        raise TypeError("Attr anchor_mask of yolov3_loss must be list or tuple")
     if not isinstance(class_num, int):
         raise TypeError("Attr class_num of yolov3_loss must be an integer")
     if not isinstance(ignore_thresh, float):
@@ -480,9 +485,10 @@ def yolov3_loss(x,
 
     attrs = {
         "anchors": anchors,
+        "anchor_mask": anchor_mask,
         "class_num": class_num,
         "ignore_thresh": ignore_thresh,
-        "input_size": input_size,
+        "downsample": downsample,
     }
 
     helper.append_op(
