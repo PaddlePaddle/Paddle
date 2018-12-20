@@ -217,9 +217,6 @@ std::vector<Variable*> OpBase::ApplyGrad(framework::Scope* scope) {
     VarBase* origin_var = (*input_vars_)[i];
     for (const std::string& outvar : grad_op_desc_->OutputArgumentNames()) {
       Variable* var = scope->FindVar(outvar);
-      if (var->IsInitialized()) {
-        VLOG(3) << "get grad op output var " << outvar;
-      }
       std::string orig_var_name = grad_to_var_->at(outvar);
       if (origin_var->var_desc_->Name() != orig_var_name ||
           origin_var->stop_gradient_) {
