@@ -223,3 +223,6 @@ endif (NOT WIN32)
 
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
+
+cc_library(dummy_class_type_index SRCS dummy_class_type_index.cc)
+cc_test(dummy_class_test SRCS dummy_class_test.cc DEPS enforce glog dummy_class_type_index)
