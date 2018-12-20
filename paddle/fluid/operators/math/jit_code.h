@@ -47,7 +47,6 @@ extern const float exp_float_consts[];
 extern const int exp_int_0x7f[];
 extern int g_tmp_mem[];
 
-#define ALIGN32 __attribute__((aligned(32)))
 #define EXP_HIG 88.3762626647949f
 #define EXP_LOW -88.3762626647949f
 #define CEPHES_LOG2EF 1.44269504088896341

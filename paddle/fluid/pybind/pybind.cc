@@ -214,7 +214,7 @@ PYBIND11_MODULE(core, m) {
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
-      .def("_dtype", [](Tensor &self) { return ToDataType(self.type()); });
+      .def("_dtype", [](Tensor &self) { return self.type(); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -960,6 +960,14 @@ All parameter, weight, gradient are variables in Paddle.
           R"DOC(The type is BOOL, fuse_elewise_add_act_ops indicate whether
                      to fuse elementwise_add_op and activation_op,
                      it may make the execution faster. Default False)DOC")
+      .def_property(
+          "memory_optimize",
+          [](const BuildStrategy &self) { return self.memory_optimize_; },
+          [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; })
+      .def_property(
+          "memory_early_delete",
+          [](const BuildStrategy &self) { return self.memory_early_delete_; },
+          [](BuildStrategy &self, bool b) { self.memory_early_delete_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);
