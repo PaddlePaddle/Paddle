@@ -39,9 +39,9 @@ void VXXJitCode::genCode() {
     if (scalar_index_ != 2) {
       vmovups(ymm_src2, ptr[param2 + offset]);
     }
-    if (type_ == operand_type::mul) {
+    if (type_ == operand_type::MUL) {
       vmulps(ymm_dst, ymm_src1, ymm_src2);
-    } else if (type_ == operand_type::add) {
+    } else if (type_ == operand_type::ADD) {
       vaddps(ymm_dst, ymm_src1, ymm_src2);
     }
     if (with_relu_) {
@@ -79,10 +79,10 @@ void VXXJitCode::genCode() {
       }
     }
     switch (type_) {
-      case operand_type::mul:
+      case operand_type::MUL:
         vmulps(xmm_dst, xmm_src1, xmm_src2);
         break;
-      case operand_type::add:
+      case operand_type::ADD:
         vaddps(xmm_dst, xmm_src1, xmm_src2);
         break;
       default:

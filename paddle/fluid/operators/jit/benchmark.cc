@@ -19,6 +19,7 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -26,17 +27,10 @@ DEFINE_int32(burning, 10, "Burning times.");
 DEFINE_int32(repeat, 3000, "Repeat times.");
 DEFINE_int32(max_size, 1000, "The Max size would be tested.");
 
-inline double GetCurrentUS() {
-  struct timeval time;
-  gettimeofday(&time, NULL);
-  return 1e+6 * time.tv_sec + time.tv_usec;
-}
-
 template <typename T>
 void RandomVec(const int n, T* a, const T lower = static_cast<T>(-20.f),
-               const T upper = static_cast<T>(20.f)) {
-  static unsigned int seed = 100;
-  std::mt19937 rng(seed++);
+               const T upper = static_cast<T>(20.f), unsigned int seed = 100) {
+  std::mt19937 rng(seed);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
   for (int i = 0; i < n; ++i) {
     a[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
@@ -58,12 +52,12 @@ struct BenchFunc {
     for (int i = 0; i < FLAGS_burning; ++i) {
       tgt(args...);
     }
-    auto start = GetCurrentUS();
+    auto start = paddle::platform::PosixInNsec() / 1e-3;
     for (int i = 0; i < FLAGS_repeat; ++i) {
       tgt(args...);
     }
-    auto end = GetCurrentUS();
-    return (end - start) / FLAGS_repeat;
+    auto end = paddle::platform::PosixInNsec() / 1e-3;
+    return static_cast<double>(end - start) / FLAGS_repeat;
   }
 };
 

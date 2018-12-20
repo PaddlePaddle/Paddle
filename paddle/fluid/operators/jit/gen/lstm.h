@@ -34,17 +34,17 @@ class LSTMJitCode : public VActFunc {
         use_peephole_(attr.use_peephole) {
     auto typeExchange = [](KernelType type) -> gen::operand_type {
       if (type == KernelType::vsigmoid) {
-        return operand_type::sigmoid;
+        return operand_type::SIGMOID;
       } else if (type == KernelType::vrelu) {
-        return operand_type::relu;
+        return operand_type::RELU;
       } else if (type == KernelType::vtanh) {
-        return operand_type::tanh;
+        return operand_type::TANH;
       } else if (type == KernelType::videntity) {
-        return operand_type::identity;
+        return operand_type::IDENTITY;
       } else {
         LOG(FATAL) << "Do not support this jit::KernelType: " << type;
       }
-      return operand_type::identity;
+      return operand_type::IDENTITY;
     };
     act_gate_ = typeExchange(attr.act_gate);
     act_cand_ = typeExchange(attr.act_cand);
@@ -63,19 +63,19 @@ class LSTMJitCode : public VActFunc {
     }
     auto AddTypeStr = [&](operand_type type) {
       switch (type) {
-        case operand_type::relu:
+        case operand_type::RELU:
           base += "_Relu";
           break;
-        case operand_type::exp:
+        case operand_type::EXP:
           base += "_Exp";
           break;
-        case operand_type::sigmoid:
+        case operand_type::SIGMOID:
           base += "_Sigmoid";
           break;
-        case operand_type::tanh:
+        case operand_type::TANH:
           base += "_Tanh";
           break;
-        case operand_type::identity:
+        case operand_type::IDENTITY:
           base += "_Identity";
           break;
         default:
