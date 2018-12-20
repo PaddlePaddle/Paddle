@@ -136,12 +136,6 @@ class DDim {
     return *reinterpret_cast<const Dim<M>*>(p);
   }
 
-  // Construct DDim with given rank
-  // Only used in friend functions
-  explicit DDim(int rank) : rank_(rank) {
-    PADDLE_ENFORCE(rank_ >= 0 && rank_ < kMaxRank, "Invalid rank %d", rank);
-  }
-
   friend DDim slice_ddim(const DDim& dim, int begin, int end);
   friend DDim stride(const DDim& ddim);
   friend DDim stride_numel(const DDim& ddim);
