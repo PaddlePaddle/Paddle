@@ -16,9 +16,6 @@ limitations under the License. */
 #include <limits>
 #include <string>
 #include "paddle/fluid/operators/math/jit_kernel_macro.h"
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
 
 namespace paddle {
 namespace operators {
@@ -133,8 +130,8 @@ class CRFDecodeKernelImpl : public CRFDecodeKernel<T> {
           /* AVX instructions.*/                                               \
           __m128i lo_max_j = _mm256_extractf128_si256(max_j, 0);               \
           __m128i hi_max_j = _mm256_extractf128_si256(max_j, 1);               \
-          __m128i lo_mask = _mm256_extractf128_si256((__m256i)mask, 0);        \
-          __m128i hi_mask = _mm256_extractf128_si256((__m256i)mask, 1);        \
+          __m128i lo_mask = _mm256_extractf128_si256(*(__m256i*)&mask, 0);     \
+          __m128i hi_mask = _mm256_extractf128_si256(*(__m256i*)&mask, 1);     \
           lo_max_j = _mm_andnot_si128(lo_mask, lo_max_j);                      \
           hi_max_j = _mm_andnot_si128(hi_mask, hi_max_j);                      \
           lo_mask = _mm_and_si128(lo_mask, _mm_set1_epi32(i));                 \

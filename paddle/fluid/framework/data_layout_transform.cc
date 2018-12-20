@@ -85,7 +85,7 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
   out->mutable_data(expected_kernel_type.place_, in.type());
 
   framework::VisitDataType(
-      framework::ToDataType(in.type()),
+      in.type(),
       CastDataLayout(pool.Get(expected_kernel_type.place_), axis, in, out));
 
   out->set_layout(expected_kernel_type.data_layout_);
@@ -101,7 +101,7 @@ void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
     case mkldnn::memory::data_type::f32:
       return platform::to_void_cast(tensor.data<float>());
     case mkldnn::memory::data_type::s8:
-      return platform::to_void_cast(tensor.data<char>());
+      return platform::to_void_cast(tensor.data<int8_t>());
     case mkldnn::memory::data_type::u8:
       return platform::to_void_cast(tensor.data<unsigned char>());
     case mkldnn::memory::data_type::s16:
@@ -144,7 +144,7 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
 
   memory::data_type in_type = ToMKLDNNDataType(in.type());
   PADDLE_ENFORCE(in_type != memory::data_type::data_undef,
-                 "Input tensor type is not supported: ", in.type().name());
+                 "Input tensor type is not supported: %s", in.type());
   memory::data_type out_type = in_type;
 
   auto in_format = platform::MKLDNNFormatForSize(in_tz.size(), in.format());
