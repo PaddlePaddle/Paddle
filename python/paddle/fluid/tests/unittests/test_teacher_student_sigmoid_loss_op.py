@@ -27,9 +27,6 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
     """
 
     def setUp(self):
-        """
-            ut
-        """
         self.op_type = "teacher_student_sigmoid_loss"
         batch_size = 16
         num_classes = 1
@@ -50,21 +47,13 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
             elif label < 1.0:
                 outs.append(max(x, 0.0) + log(1.0 + exp(-abs(x))) + \
                             max(x, 0.0) - x * label + log(1.0 + exp(-abs(x))))
-                #print "33 python x:", x, "python label:", label, "term1:", max(x, 0.0) + log(1.0 + exp(-abs(x))), "term2:", max(x, 0.0) - x * label + log(1.0 + exp(-abs(x)))
             else:
                 outs.append(max(x, 0.0) - x + log(1.0 + exp(-abs(x))) + \
                             max(x, 0.0) - x * (label - 1.0) + log(1.0 + exp(-abs(x))))
-                #print "44 python x:", x, "python label:", label, "term1:", max(x, 0.0) - x + log(1.0 + exp(-abs(x))), "term2:", max(x, 0.0) - x * (label - 1.0) + log(1.0 + exp(-abs(x)))
         self.outputs = {'Y': np.array(outs)}
 
     def test_check_output(self):
-        """
-            ut
-        """
         self.check_output()
 
     def test_check_grad(self):
-        """
-            ut
-        """
         self.check_grad(["X"], "Y", numeric_grad_delta=0.005)
