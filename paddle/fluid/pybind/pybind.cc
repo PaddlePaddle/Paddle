@@ -932,9 +932,7 @@ All parameter, weight, gradient are variables in Paddle.
           R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default False.)DOC")
       .def_property(
           "fuse_broadcast_op",
-          [](const BuildStrategy &self) {
-            return self.fuse_broadcast_op_;
-          },
+          [](const BuildStrategy &self) { return self.fuse_broadcast_op_; },
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.fuse_broadcast_op_ = b;
