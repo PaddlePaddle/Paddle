@@ -82,10 +82,10 @@ namespace jitkernel {
 #define REGISTER_JITKERNEL_ARGS(ker_key, ker_class, marco_define_name,     \
                                 marco_declare, macro_find_key, macro_impl) \
   marco_define_name(ker_key, ker_class);                                   \
-  REGISTER_JITKERNEL_WITH_DTYPE(ker_class, float, JITKERNEL_DECLARE,       \
-                                JITKERNEL_FIND_KEY, JITKERNEL_IMPL);       \
-  REGISTER_JITKERNEL_WITH_DTYPE(ker_class, double, JITKERNEL_DECLARE,      \
-                                JITKERNEL_FIND_KEY, JITKERNEL_IMPL)
+  REGISTER_JITKERNEL_WITH_DTYPE(ker_class, float, marco_declare,           \
+                                macro_find_key, macro_impl);               \
+  REGISTER_JITKERNEL_WITH_DTYPE(ker_class, double, marco_declare,          \
+                                macro_find_key, macro_impl)
 
 #define REGISTER_JITKERNEL(ker_key, ker_class)                       \
   REGISTER_JITKERNEL_ARGS(ker_key, ker_class, JITKERNEL_DEFINE_NAME, \

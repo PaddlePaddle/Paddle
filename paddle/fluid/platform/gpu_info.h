@@ -35,6 +35,9 @@ int GetCUDARuntimeVersion(int id);
 //! Get the driver version of the ith GPU
 int GetCUDADriverVersion(int id);
 
+//! Wheter the current device support TensorCore
+bool TensorCoreAvailable();
+
 //! Get the MultiProcessors of the ith GPU.
 int GetCUDAMultiProcessors(int i);
 

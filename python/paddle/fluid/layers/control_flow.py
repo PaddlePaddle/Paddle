@@ -896,9 +896,10 @@ def array_to_lod_tensor(x, table):
 
 def increment(x, value=1.0, in_place=True):
     """
-    This function performs an operation that increments each value in the
+    This function performs an operation that increments the value in the
     input :math:`x` by an amount: :math:`value` as mentioned in the input
-    parameter. This operation is performed in-place by default.
+    parameter. This operation is performed in-place by default. Notice that
+    the number of elements in :math:`x` must be equal to 1.
 
     Args:
         x (Variable|list): The tensor that has the input values.
@@ -911,7 +912,8 @@ def increment(x, value=1.0, in_place=True):
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(name='data', shape=[32, 32], dtype='float32')
+          data = fluid.layers.data(name='data', shape=[1], dtype='float32',
+                                   append_batch_size=False)
           data = fluid.layers.increment(x=data, value=3.0, in_place=True)
     """
     helper = LayerHelper("increment", **locals())

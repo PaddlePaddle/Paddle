@@ -140,8 +140,8 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
         if (next_compute_op != nullptr) {
           if (compute_ref_cnt_map.count(next_compute_op)) {
             compute_ref_cnt_map[next_compute_op]->AddVar(var_name);
-            VLOG(50) << "Add reference count of " << var_name << " to Operator "
-                     << next_compute_op->Name();
+            VLOG(5) << "Add reference count of " << var_name << " to Operator "
+                    << next_compute_op->Name();
           } else {
             // Create new reference_count_op_handle
             ir::Node *ref_cnt_node = graph->CreateEmptyNode(

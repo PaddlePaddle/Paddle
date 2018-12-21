@@ -15,7 +15,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <nccl.h>
 #endif
-#include <sys/time.h>
 #include <thread>  // NOLINT
 
 #include "google/protobuf/io/coded_stream.h"
@@ -26,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/grpc_variable_response.h"
 #include "paddle/fluid/operators/distributed/proto_encoder_helper.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -42,7 +42,8 @@ static void SerializeDestroyCallback(void* payload) {
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg, const std::string& out_name,
-                           const int trainer_id) {
+                           const int trainer_id,
+                           const std::string& table_name) {
   platform::RecordRPCEvent record_event("serial", &ctx);
   VarMsg request;
   TensorPayload* payload = nullptr;
@@ -62,6 +63,9 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   }
   if (!out_name.empty()) {
     request.set_out_varname(out_name);
+  }
+  if (!table_name.empty()) {
+    request.set_table_name(table_name);
   }
   if (var->IsType<framework::LoDTensor>()) {
     request.set_type(::sendrecv::LOD_TENSOR);

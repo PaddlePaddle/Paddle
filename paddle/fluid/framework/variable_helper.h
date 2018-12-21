@@ -11,14 +11,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#pragma once
 
-#include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
-
-namespace ops = paddle::operators;
-
-REGISTER_OP_CUDA_KERNEL(
-    tensorrt_engine,
-    ops::TensorRTEngineKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::TensorRTEngineKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::TensorRTEngineKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::TensorRTEngineKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/variable.h"
+namespace paddle {
+namespace framework {
+void InitializeVariable(Variable *var, proto::VarType::Type var_type);
+}
+}

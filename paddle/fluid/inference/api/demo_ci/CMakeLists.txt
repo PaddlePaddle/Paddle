@@ -46,8 +46,6 @@ if(WITH_GPU)
     endif()
   endif(NOT WIN32)
 endif()
-
-include_directories("D:/Paddle/")
 include_directories("${PADDLE_LIB}")
 include_directories("${PADDLE_LIB}/third_party/install/protobuf/include")
 include_directories("${PADDLE_LIB}/third_party/install/glog/include")

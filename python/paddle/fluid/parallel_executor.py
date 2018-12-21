@@ -124,15 +124,10 @@ class ParallelExecutor(object):
                     os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
                 exec_strategy.num_threads = cpu_num * 2
 
-        # Set 1 thread num under nccl2 distribute 
-        #   env to make sure all gpus run ops in same order.
-        if num_trainers > 1:
-            assert (use_cuda)
-            # FIXME(gongwb): avoid this set.
-            exec_strategy.num_threads = 1
-
         if build_strategy is None:
             build_strategy = BuildStrategy()
+
+        build_strategy.num_trainers = num_trainers
 
         main = main_program
         main = main if main else framework.default_main_program()
