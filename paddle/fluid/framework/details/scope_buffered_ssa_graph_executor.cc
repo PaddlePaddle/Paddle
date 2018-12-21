@@ -66,17 +66,15 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
   platform::RecordEvent e("ScopeBufferedSSAGraphExecutorAfterRun", nullptr);
   ++drop_scope_counter_;
 
+  bool stream_end = false;
   if (!fetch_tensors.empty()) {
-    // Wait All computational streams
-    for (auto p : places_) {
-      platform::DeviceContextPool::Instance().Get(p)->Wait();
-    }
+    WaitComputationalStreams();
+    stream_end = true;
   }
 
   if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
-    // Wait All computational streams
-    for (auto p : places_) {
-      platform::DeviceContextPool::Instance().Get(p)->Wait();
+    if (!stream_end) {
+      WaitComputationalStreams();
     }
 
     for (auto &scope : local_scopes_) {
