@@ -157,17 +157,9 @@ bool CheckLoD(const LoD &in, int tensor_height) {
     if (level.size() < 2) return false;
     // check: the first offset(the begin offset) of each level should be 0.
     if (level.front() != 0) return false;
-    // check: all the offsets in a level should be ascending(no same items
-    // allows).
-    auto beg = level.begin();
-    auto end = level.end();
-    // Do not use std::is_sorted, because we need strictly sorted lod
-    if (beg != end) {
-      for (auto it = beg + 1; it != end; ++it) {
-        if (*(it - 1) >= *it) {
-          return false;
-        }
-      }
+    // check: all the offsets in a level should be ascending(allow same items)
+    if (!std::is_sorted(level.begin(), level.end())) {
+      return false;
     }
   }
   // check: the lowest level's last offset should equals `tensor_height` if
