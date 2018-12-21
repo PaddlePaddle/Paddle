@@ -28,17 +28,17 @@ namespace paddle {
 namespace framework {
 
 // Statically sized, statically indexed dimension
-template <int N>
-class Dim : public Array<int64_t, N> {
+template <int D>
+class Dim : public Array<int64_t, D> {
  public:
-  static_assert(N >= 0, "N must be not less than 0");
+  static_assert(D >= 0, "D must be not less than 0");
 
-  static constexpr int kRank = N;
-  using BaseClass = Array<int64_t, N>;
+  static constexpr int kRank = D;
+  using BaseClass = Array<int64_t, D>;
 
-  inline Dim(int64_t head, const Dim<N - 1>& tail) {
+  inline Dim(int64_t head, const Dim<D - 1>& tail) {
     (*this)[0] = head;
-    new (this->GetMutable() + 1) Dim<N - 1>(tail);
+    new (this->GetMutable() + 1) Dim<D - 1>(tail);
   }
 
   template <typename... Args>
@@ -47,7 +47,7 @@ class Dim : public Array<int64_t, N> {
 
   /** Construct a Dim from a linear index and size.  Uses Fortran order
    * indexing. */
-  HOSTDEVICE Dim(int64_t idx, const Dim<N>& size);
+  HOSTDEVICE Dim(int64_t idx, const Dim<D>& size);
 
   /** Construct a Dim with each dimension set to the given index */
   HOSTDEVICE explicit Dim(int64_t idx) { this->Fill(idx); }
@@ -77,42 +77,42 @@ struct FortranOrderIndexingConstructorFunctor<kStart, kEnd, true> {
 };
 }  // namespace detail
 
-template <int N>
-HOSTDEVICE Dim<N>::Dim(int64_t idx, const Dim<N>& size) {
-  detail::FortranOrderIndexingConstructorFunctor<0, N, N == 0>::Run(
+template <int D>
+HOSTDEVICE Dim<D>::Dim(int64_t idx, const Dim<D>& size) {
+  detail::FortranOrderIndexingConstructorFunctor<0, D, D == 0>::Run(
       size.Get(), &idx, this->GetMutable());
 }
 
-template <int idx, int N>
-HOSTDEVICE inline int64_t get(const Dim<N>& dim) {
+template <int idx, int D>
+HOSTDEVICE inline int64_t get(const Dim<D>& dim) {
   return dim[idx];
 }
 
-template <int idx, int N>
-HOSTDEVICE inline int64_t& get(Dim<N>& dim) {  // NOLINT
+template <int idx, int D>
+HOSTDEVICE inline int64_t& get(Dim<D>& dim) {  // NOLINT
   return dim[idx];
 }
 
-template <int N>
-HOSTDEVICE inline int64_t get(const Dim<N>& dim, int idx) {
+template <int D>
+HOSTDEVICE inline int64_t get(const Dim<D>& dim, int idx) {
   return dim[idx];
 }
 
-template <int N>
-HOSTDEVICE inline int64_t& get(Dim<N>& dim, int idx) {  // NOLINT
+template <int D>
+HOSTDEVICE inline int64_t& get(Dim<D>& dim, int idx) {  // NOLINT
   return dim[idx];
 }
 
 // Dot product of two dims
-template <int N>
-HOSTDEVICE inline int64_t linearize(const Dim<N>& a, const Dim<N>& b) {
-  return UnrollProduct<N>::Run(a.Get(), b.Get());
+template <int D>
+HOSTDEVICE inline int64_t linearize(const Dim<D>& a, const Dim<D>& b) {
+  return UnrollProduct<D>::Run(a.Get(), b.Get());
 }
 
 // Product of a Dim
-template <int N>
-HOSTDEVICE inline int64_t product(const Dim<N>& a) {
-  return UnrollProduct<N>::Run(a.Get());
+template <int D>
+HOSTDEVICE inline int64_t product(const Dim<D>& a) {
+  return UnrollProduct<D>::Run(a.Get());
 }
 
 // Is 0 <= idx_i < size_i for all i?
@@ -135,9 +135,9 @@ struct ContainedFunctor<kStart, kEnd, true> {
 };
 }  // namespace detail
 
-template <int N>
-HOSTDEVICE inline bool contained(const Dim<N>& idx, const Dim<N>& size) {
-  return detail::ContainedFunctor<0, N, N == 0>::Run(idx.Get(), size.Get());
+template <int D>
+HOSTDEVICE inline bool contained(const Dim<D>& idx, const Dim<D>& size) {
+  return detail::ContainedFunctor<0, D, D == 0>::Run(idx.Get(), size.Get());
 }
 
 /**
@@ -160,40 +160,40 @@ struct ExPrefixMulFunctor<kStart, kEnd, true> {
 };
 }  // namespace detail
 
-template <int N>
-HOSTDEVICE inline Dim<N> ex_prefix_mul(const Dim<N>& src) {
-  Dim<N> ret;
-  detail::ExPrefixMulFunctor<0, N, N == 0>::Run(src.Get(), ret.GetMutable());
+template <int D>
+HOSTDEVICE inline Dim<D> ex_prefix_mul(const Dim<D>& src) {
+  Dim<D> ret;
+  detail::ExPrefixMulFunctor<0, D, D == 0>::Run(src.Get(), ret.GetMutable());
   return ret;
 }
 
 /**
  * Add two dimensions together
  */
-template <int N>
-HOSTDEVICE inline Dim<N> dim_plus(const Dim<N>& a, const Dim<N>& b) {
-  Dim<N> ret;
-  UnrollAdd<N>::Run(a.Get(), b.Get(), ret.GetMutable());
+template <int D>
+HOSTDEVICE inline Dim<D> dim_plus(const Dim<D>& a, const Dim<D>& b) {
+  Dim<D> ret;
+  UnrollAdd<D>::Run(a.Get(), b.Get(), ret.GetMutable());
   return ret;
 }
 
-template <int N>
-HOSTDEVICE inline Dim<N> operator+(const Dim<N>& lhs, const Dim<N>& rhs) {
+template <int D>
+HOSTDEVICE inline Dim<D> operator+(const Dim<D>& lhs, const Dim<D>& rhs) {
   return dim_plus(lhs, rhs);
 }
 
 /**
  * Multiply two dimensions together
  */
-template <int N>
-HOSTDEVICE inline Dim<N> dim_mult(const Dim<N>& a, const Dim<N>& b) {
-  Dim<N> ret;
-  UnrollMul<N>::Run(a.Get(), b.Get(), ret.GetMutable());
+template <int D>
+HOSTDEVICE inline Dim<D> dim_mult(const Dim<D>& a, const Dim<D>& b) {
+  Dim<D> ret;
+  UnrollMul<D>::Run(a.Get(), b.Get(), ret.GetMutable());
   return ret;
 }
 
-template <int i>
-HOSTDEVICE Dim<i> operator*(const Dim<i>& lhs, const Dim<i>& rhs) {
+template <int D>
+HOSTDEVICE Dim<D> operator*(const Dim<D>& lhs, const Dim<D>& rhs) {
   return dim_mult(lhs, rhs);
 }
 
@@ -224,10 +224,10 @@ struct NormalizeStridesFunctor<kStart, kEnd, true> {
 };
 }  // namespace detail
 
-template <int N>
-HOSTDEVICE Dim<N> normalize_strides(const Dim<N>& size, const Dim<N>& stride) {
-  Dim<N> ret;
-  detail::NormalizeStridesFunctor<0, N, N == 0>::Run(size.Get(), stride.Get(),
+template <int D>
+HOSTDEVICE Dim<D> normalize_strides(const Dim<D>& size, const Dim<D>& stride) {
+  Dim<D> ret;
+  detail::NormalizeStridesFunctor<0, D, D == 0>::Run(size.Get(), stride.Get(),
                                                      ret.GetMutable());
   return ret;
 }
@@ -245,10 +245,10 @@ HOSTDEVICE inline Dim<sizeof...(Args)> make_dim(Args... idxes) {
 }
 
 // Allows us to output a Dim
-template <int N>
-inline std::ostream& operator<<(std::ostream& os, const Dim<N>& d) {
+template <int D>
+inline std::ostream& operator<<(std::ostream& os, const Dim<D>& d) {
   os << d[0];
-  for (int i = 1; i < N; ++i) {
+  for (int i = 1; i < D; ++i) {
     os << ", " << d[i];
   }
   return os;
@@ -258,23 +258,23 @@ inline std::ostream& operator<<(std::ostream& os, const Dim<0>& d) {
   return os;
 }
 
-template <int N>
-HOST std::string Dim<N>::to_string() const {
+template <int D>
+HOST std::string Dim<D>::to_string() const {
   std::stringstream stream;
   stream << *this;
   return stream.str();
 }
 
-template <int N>
-HOSTDEVICE Dim<N> linear_to_dimension(int linear_index, const Dim<N>& extents) {
-  Dim<N> result;
+template <int D>
+HOSTDEVICE Dim<D> linear_to_dimension(int linear_index, const Dim<D>& extents) {
+  Dim<D> result;
 
-  for (int i = 0; i < N - 1; ++i) {
+  for (int i = 0; i < D - 1; ++i) {
     result[i] = linear_index % extents[i];
     linear_index /= extents[i];
   }
 
-  result[N - 1] = linear_index;
+  result[D - 1] = linear_index;
 
   return result;
 }

@@ -124,16 +124,16 @@ class DDim {
   inline int size() const { return rank_; }
 
  private:
-  template <int M>
-  inline Dim<M>& UnsafeCast() {
-    return const_cast<Dim<M>&>(const_cast<const DDim*>(this)->UnsafeCast<M>());
+  template <int D>
+  inline Dim<D>& UnsafeCast() {
+    return const_cast<Dim<D>&>(const_cast<const DDim*>(this)->UnsafeCast<D>());
   }
 
-  template <int M>
-  inline const Dim<M>& UnsafeCast() const {
-    static_assert(M >= 0 && M <= kMaxRank, "Invalid rank");
+  template <int D>
+  inline const Dim<D>& UnsafeCast() const {
+    static_assert(D >= 0 && D <= kMaxRank, "Invalid rank");
     auto* p = static_cast<const void*>(&dim_);
-    return *reinterpret_cast<const Dim<M>*>(p);
+    return *reinterpret_cast<const Dim<D>*>(p);
   }
 
   friend DDim slice_ddim(const DDim& dim, int begin, int end);

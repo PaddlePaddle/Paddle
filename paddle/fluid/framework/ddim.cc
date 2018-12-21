@@ -42,7 +42,8 @@ struct DDimEqualityVisitor {
 };
 
 bool DDim::operator==(const DDim& d) const {
-  return rank_ == d.rank_ && this->apply_visitor(DDimEqualityVisitor(d.Get()));
+  return size() == d.size() &&
+         this->apply_visitor(DDimEqualityVisitor(d.Get()));
 }
 
 bool DDim::operator!=(const DDim& d) const { return !(*this == d); }
@@ -61,7 +62,7 @@ struct DDimPlusVisitor {
 };
 
 DDim DDim::operator+(const DDim& d) const {
-  PADDLE_ENFORCE(rank_ == d.rank_);
+  PADDLE_ENFORCE(size() == d.size());
   DDim ret;
   ret.rank_ = rank_;
   ret.apply_visitor(DDimPlusVisitor(Get(), d.Get()));
@@ -82,7 +83,7 @@ struct DDimMulVisitor {
 };
 
 DDim DDim::operator*(const DDim& d) const {
-  PADDLE_ENFORCE(rank_ == d.rank_);
+  PADDLE_ENFORCE(size() == d.size());
   DDim ret;
   ret.rank_ = rank_;
   ret.apply_visitor(DDimMulVisitor(Get(), d.Get()));
@@ -121,13 +122,11 @@ int64_t product(const DDim& ddim) {
 }
 
 DDim slice_ddim(const DDim& dim, int begin, int end) {
-  PADDLE_ENFORCE(begin >= 0,
-                 "Begin index can't be less than zero in ddim slice.");
-  int len = end - begin;
-  DDim ret;
-  ret.rank_ = len;
-  dynamic_dim_assign(dim.Get() + begin, ret.GetMutable(), ret.rank_);
-  return ret;
+  PADDLE_ENFORCE(begin >= 0 && end <= dim.size(),
+                 "[begin(%d), end(%d)) must be inside [0, %d) in ddim slice.",
+                 begin, end, dim.size());
+  // Constructor of DDim would check whether end - begin is valid
+  return DDim(dim.Get() + begin, end - begin);
 }
 
 int arity(const DDim& d) { return d.size(); }
@@ -138,8 +137,8 @@ struct DDimPrinter {
   std::ostream& os;
   explicit DDimPrinter(std::ostream& os_) : os(os_) {}
 
-  template <typename T>
-  void operator()(const T& t) {
+  template <int D>
+  void operator()(const Dim<D>& t) {
     os << t;
   }
 };
@@ -152,12 +151,11 @@ std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
 }
 
 DDim flatten_to_2d(const DDim& src, int num_col_dims) {
-  int rank = src.size();
-  return make_ddim({product(slice_ddim(src, 0, num_col_dims)),
-                    product(slice_ddim(src, num_col_dims, rank))});
+  return DDim({product(slice_ddim(src, 0, num_col_dims)),
+               product(slice_ddim(src, num_col_dims, src.size()))});
 }
 
-DDim flatten_to_1d(const DDim& src) { return make_ddim({product(src)}); }
+DDim flatten_to_1d(const DDim& src) { return DDim({product(src)}); }
 
 DDim stride(const DDim& ddim) {
   DDim strides;
