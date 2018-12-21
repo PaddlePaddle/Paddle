@@ -24,7 +24,7 @@ namespace paddle {
 namespace operators {
 namespace ngraphs {
 
-static void BuildFillConstantNode(
+void BuildFillConstantNode(
     const std::shared_ptr<paddle::framework::OperatorBase>& op,
     std::shared_ptr<
         std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
