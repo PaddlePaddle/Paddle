@@ -180,7 +180,7 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     }
     // Wait() must be called because `inputs_data` may be destructed before
     // kernel ends
-    /* context.Wait(); */
+    context.Wait();
   }
 };
 
@@ -258,7 +258,7 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
     }
     // Wait() must be called because `outputs_data` may be destructed before
     // kernel ends
-    /* context.Wait(); */
+    context.Wait();
   }
 };
 

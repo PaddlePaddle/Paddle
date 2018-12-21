@@ -64,24 +64,21 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
   }
 
   platform::RecordEvent e("ScopeBufferedSSAGraphExecutorAfterRun", nullptr);
-  ++drop_scope_counter_;
+  drop_scope_counter_ += 1;
 
-  if (!fetch_tensors.empty()) {
+  if (!fetch_tensors.empty() ||
+      drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
+    drop_scope_counter_ = 0;
     // Wait All computational streams
     for (auto p : places_) {
       platform::DeviceContextPool::Instance().Get(p)->Wait();
     }
-  }
-
-  if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
-    drop_scope_counter_ = 0;
     for (auto &scope : local_scopes_) {
       auto &local_scope =
           *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
       scope->DeleteScope(local_scope);
     }
   }
-
   if (eptr) {
     std::rethrow_exception(eptr);
   } else {

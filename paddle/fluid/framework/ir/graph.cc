@@ -20,10 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 
-DEFINE_bool(enforce_when_check_program, true,
-            "Checking whether the program is correct or not. We will log "
-            "errors rather than throwing exceptions if this flag turned off");
-
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -48,56 +44,27 @@ void CheckProgram(const ProgramDesc &program) {
         break;
       case _INT(OpRole::kBackward):
       case _INT(OpRole::kBackward) | _INT(OpRole::kLoss):
-        if (!FLAGS_enforce_when_check_program) {
-          PADDLE_ENFORCE(
-              visit.find(_INT(OpRole::kOptimize)) == visit.end(),
-              "Cannot add backward operator %s after optimize operator.",
-              op->Type());
-        } else {
-          if (visit.find(_INT(OpRole::kOptimize)) != visit.end()) {
-            LOG(ERROR)
-                << "Cannot add backward operator %s after optimize operator."
-                << op->Type();
-          }
-        }
+        PADDLE_ENFORCE(
+            visit.find(_INT(OpRole::kOptimize)) == visit.end(),
+            "Cannot add backward operator %s after optimize operator.",
+            op->Type());
         break;
       case _INT(OpRole::kForward) | _INT(OpRole::kLoss):
-        if (!FLAGS_enforce_when_check_program) {
-          PADDLE_ENFORCE(visit.find(_INT(OpRole::kBackward) |
-                                    _INT(OpRole::kLoss)) == visit.end(),
-                         "Cannot add backward|loss operator before "
-                         "forward|loss operator %s.",
-                         op->Type());
-          PADDLE_ENFORCE(
-              visit.find(_INT(OpRole::kOptimize)) == visit.end(),
-              "Cannot add forward|loss operator %s after optimize operator.",
-              op->Type());
-        } else {
-          if (visit.find(_INT(OpRole::kBackward) | _INT(OpRole::kLoss)) !=
-              visit.end()) {
-            LOG(ERROR) << "Cannot add backward|loss operator before "
-                       << "forward|loss operator %s." << op->Type();
-          }
-
-          if (visit.find(_INT(OpRole::kOptimize)) != visit.end()) {
-            LOG(ERROR) << "Cannot add forward|loss operator %s after optimize "
-                          "operator."
-                       << op->Type();
-          }
-        }
+        PADDLE_ENFORCE(visit.find(_INT(OpRole::kBackward) |
+                                  _INT(OpRole::kLoss)) == visit.end(),
+                       "Cannot add backward|loss operator before "
+                       "forward|loss operator %s.",
+                       op->Type());
+        PADDLE_ENFORCE(
+            visit.find(_INT(OpRole::kOptimize)) == visit.end(),
+            "Cannot add forward|loss operator %s after optimize operator.",
+            op->Type());
         break;
       case _INT(OpRole::kOptimize):
       case _INT(OpRole::kOptimize) | _INT(OpRole::kLRSched):
-        if (!FLAGS_enforce_when_check_program) {
-          PADDLE_ENFORCE(visit.find(_INT(OpRole::kBackward)) != visit.end(),
-                         "Optimize operators %s must follow backward operator.",
-                         op->Type());
-        } else {
-          if (visit.find(_INT(OpRole::kBackward)) == visit.end()) {
-            LOG(ERROR) << "Optimize operators %s must follow backward operator."
-                       << op->Type();
-          }
-        }
+        PADDLE_ENFORCE(visit.find(_INT(OpRole::kBackward)) != visit.end(),
+                       "Optimize operators %s must follow backward operator.",
+                       op->Type());
         break;
       case _INT(OpRole::kLRSched):
       case _INT(OpRole::kDist):

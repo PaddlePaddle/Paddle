@@ -294,7 +294,7 @@ if(WITH_PSLIB)
     list(APPEND EXTERNAL_LIBS pslib_brpc)
     list(APPEND EXTERNAL_LIBS libmct)
 endif(WITH_PSLIB)
-
+    
 if(WITH_AMD_GPU)
     find_package(HIP)
     include(hip)
