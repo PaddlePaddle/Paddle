@@ -13,7 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <vector>
 
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/reductions.h"
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
@@ -107,6 +110,112 @@ template class SoftmaxGradFunctor<platform::CUDADeviceContext, float>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext, double>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext,
                                   platform::float16>;
+
+// NOTE: upgrade value type for float16 and float32
+static __device__ __forceinline__ float real_exp(platform::float16 x) {
+  return ::Eigen::numext::exp(static_cast<float>(x));
+}
+static __device__ __forceinline__ double real_exp(float x) {
+  return exp(static_cast<double>(x));
+}
+static __device__ __forceinline__ double real_exp(double x) { return exp(x); }
+
+static __device__ __forceinline__ platform::float16 real_log(
+    platform::float16 x) {
+  return ::Eigen::numext::log(x);
+}
+static __device__ __forceinline__ float real_log(float x) { return logf(x); }
+static __device__ __forceinline__ double real_log(double x) { return log(x); }
+
+template <typename T, typename ACCURATE_T>
+struct SubtractAndExpFunctor {
+  __host__ __device__ SubtractAndExpFunctor(const T* logits,
+                                            const T* max_logits,
+                                            const int num_cols)
+      : logits_(logits), max_logits_(max_logits), num_cols_(num_cols) {}
+
+  __host__ __device__ ACCURATE_T operator()(const int gid) const {
+    return real_exp(logits_[gid] - (max_logits_ + gid / num_cols_));
+  }
+
+  const T* logits_;
+  const T* max_logits_;
+  const int num_cols_;
+};
+
+template <typename T, typename ACCURATE_T>
+__global__ void GenerateProb(const T* logits, const T* sum_probs,
+                             const T* max_logits, ACCURATE_T* output,
+                             const int num_rows, const int num_cols,
+                             const bool log_space) {
+  const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+  const int row = tid / num_cols;
+  const int col = tid % num_cols;
+
+  if (row < num_rows && col < num_cols) {
+    if (log_space)
+      output[tid] =
+          logits[tid] - (max_logits + row) - real_log(sum_probs + row);
+    else
+      output[tid] =
+          real_exp(logits[tid] - (max_logits + row)) / (sum_probs + row);
+  }
+}
+
+template <typename T, typename ACCURATE_T>
+void SoftmaxCudaAccurateFunctor<T, ACCURATE_T>::operator()(
+    const platform::CUDADeviceContext& ctx, const framework::Tensor* X,
+    framework::Tensor* Y, bool log_space) {
+  Tensor max_logits, sum_probs;
+  framework::DDim max_dims({X->dims()[0], 1});
+  max_logits.Resize(max_dims);
+  sum_probs.Resize(X->dims());
+  auto* max_logits_data = max_logits.mutable_data<T>(ctx.GetPlace());
+  auto* logits_data = X->data<T>();
+  auto* sum_probs_data = sum_probs.mutable_data<T>(ctx.GetPlace());
+  int num_rows = X->dims()[0];
+  int num_cols = X->dims()[1];
+
+  // Use ACCURATE_T for internal exp space
+  Tensor acc_out_tensor;
+  acc_out_tensor.Resize(Y->dims());
+  ACCURATE_T* acc_out_data =
+      acc_out_tensor.mutable_data<ACCURATE_T>(ctx.GetPlace());
+
+  cub::Max op;
+  paddle::operators::math::LaunchRowReduction<float, float, cub::Max>(
+      &ctx, max_logits_data, logits_data, num_rows, num_cols, op, 0.0f);
+
+  cub::CountingInputIterator<int> counting_iterator(0);
+  typedef cub::TransformInputIterator<ACCURATE_T,
+                                      SubtractAndExpFunctor<T, ACCURATE_T>,
+                                      cub::CountingInputIterator<int>>
+      InputIterType;
+
+  InputIterType input_itr(counting_iterator,
+                          SubtractAndExpFunctor<T, ACCURATE_T>(
+                              logits_data, max_logits_data, num_cols));
+
+  paddle::operators::math::LaunchRowReduction<T, cub::Sum, InputIterType>(
+      ctx, const_cast<T*>(sum_probs.data<T>()), input_itr, num_rows, num_cols);
+
+  const int num_threads = 128;
+  // divide ceil
+  const int num_blocks = (num_rows * num_cols + num_threads - 1) / num_threads;
+
+  GenerateProb<<<num_blocks, num_threads, 0, ctx.stream()>>>(
+      logits_data, sum_probs_data, max_logits_data, acc_out_data, num_rows,
+      num_cols, log_space);
+
+  // transform data type, if log_space = false, may lost accuracy
+  T* out_data = Y->mutable_data<T>(ctx.GetPlace());
+  platform::Transform<platform::CUDADeviceContext> trans;
+  trans(ctx, acc_out_data, acc_out_data + acc_out_tensor.numel(), out_data,
+        CastOpTransformFunctor<ACCURATE_T, T>());
+}
+
+template class SoftmaxCudaAccurateFunctor<platform::float16, float>;
 
 }  // namespace math
 }  // namespace operators
