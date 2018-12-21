@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/operators/jit/kernels.h"
 
-#include "paddle/fluid/operators/math/jit_kernel.h"
 #ifdef PADDLE_WITH_XBYAK
 #include "xbyak/xbyak.h"
 #include "xbyak/xbyak_util.h"
@@ -109,10 +109,8 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
         constexpr int simd_width = 16;
         int C = c / simd_width;
 
-        const auto& multiply =
-            math::jitkernel::KernelPool::Instance()
-                .template Get<math::jitkernel::EltwiseMulnChw16cNCKernel<T>>(n);
-
+        auto multiply = jit::Get<jit::kNCHW16CMulNC, jit::NCHW16CMulNCTuples<T>,
+                                 platform::CPUPlace>(0);
 #pragma omp parallel for collapse(2)
         for (int ni = 0; ni < n; ni++) {
           for (int ci = 0; ci < C; ci++) {
@@ -123,7 +121,7 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
             auto ptr_z =
                 z_data + ni * C * h * w * simd_width + ci * h * w * simd_width;
 
-            multiply->Compute(ptr_x, ptr_y, ptr_z, h, w);
+            multiply(ptr_x, ptr_y, ptr_z, h, w);
           }
         }
       }
