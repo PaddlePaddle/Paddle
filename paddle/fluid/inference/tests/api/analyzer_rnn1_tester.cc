@@ -265,6 +265,17 @@ TEST(Analyzer_rnn1, compare) {
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
+// Compare Deterministic result
+TEST(Analyzer_rnn1, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
+}
+
 // Test Multi-Thread.
 TEST(Analyzer_rnn1, multi_thread) {
   contrib::AnalysisConfig cfg;
