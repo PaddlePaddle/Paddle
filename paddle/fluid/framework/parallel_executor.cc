@@ -190,7 +190,6 @@ std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
 
 ParallelExecutor::ParallelExecutor(
     const std::vector<platform::Place> &places,
-    const std::unordered_set<std::string> &params,
     const std::unordered_set<std::string> &bcast_vars,
     const ProgramDesc &main_program, const std::string &loss_var_name,
     Scope *scope, const std::vector<Scope *> &local_scopes,
@@ -209,7 +208,7 @@ ParallelExecutor::ParallelExecutor(
                    "the number of places must be greater than 1.");
   }
 
-  // Step 1. Bcast the params to devs.
+  // Step 1. Bcast the bcast_vars to devs.
   // Create local scopes
   if (local_scopes.empty()) {
     member_->own_local_scope_ = true;
@@ -249,12 +248,12 @@ ParallelExecutor::ParallelExecutor(
 // ncclOp
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
-      main_program, member_->places_, loss_var_name, params,
-      member_->local_scopes_, member_->use_cuda_, member_->nccl_ctxs_.get());
+      main_program, member_->places_, loss_var_name, member_->local_scopes_,
+      member_->use_cuda_, member_->nccl_ctxs_.get());
 #else
   std::unique_ptr<ir::Graph> graph =
       build_strategy.Apply(main_program, member_->places_, loss_var_name,
-                           params, member_->local_scopes_, member_->use_cuda_);
+                           member_->local_scopes_, member_->use_cuda_);
 #endif
   auto max_memory_size = GetEagerDeletionThreshold();
   if (max_memory_size >= 0) {
