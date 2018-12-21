@@ -276,7 +276,7 @@ inline void throw_on_error(T e) {
   do {                                                    \
     auto __cond = COND;                                   \
     if (UNLIKELY(::paddle::platform::is_error(__cond))) { \
-      PADDLE_THROW_ERROR(COND, __VA_ARGS__);              \
+      PADDLE_THROW_ERROR(__cond, __VA_ARGS__);            \
     }                                                     \
   } while (0)
 
