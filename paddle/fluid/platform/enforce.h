@@ -258,30 +258,30 @@ inline void throw_on_error(T e) {
 #define PADDLE_THROW(...) \
   throw ::paddle::platform::EnforceNotMet(__FILE__, __LINE__, __VA_ARGS__)
 
-#define PADDLE_THROW_ERROR(COND, ...)                                   \
-  PADDLE_THROW_I(__VA_ARGS__,                                           \
-                 ::paddle::platform::throw_on_error(COND, __VA_ARGS__), \
-                 ::paddle::platform::throw_on_error(COND, __VA_ARGS__), \
-                 ::paddle::platform::throw_on_error(COND, __VA_ARGS__), \
-                 ::paddle::platform::throw_on_error(COND, __VA_ARGS__), \
-                 ::paddle::platform::throw_on_error(COND, __VA_ARGS__), \
-                 ::paddle::platform::throw_on_error(COND, __VA_ARGS__), \
-                 ::paddle::platform::throw_on_error(COND, __VA_ARGS__), \
-                 ::paddle::platform::throw_on_error(COND, __VA_ARGS__), \
-                 ::paddle::platform::throw_on_error(COND))
+#define __PADDLE_THROW_ERROR(COND, ...)                                   \
+  __PADDLE_THROW_ERROR_I(                                                 \
+      __VA_ARGS__, ::paddle::platform::throw_on_error(COND, __VA_ARGS__), \
+      ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
+      ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
+      ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
+      ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
+      ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
+      ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
+      ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
+      ::paddle::platform::throw_on_error(COND))
 
-#define PADDLE_THROW_I(_, _9, _8, _7, _6, _5, _4, _3, _2, X_, ...) X_;
+#define __PADDLE_THROW_ERROR_I(_, _9, _8, _7, _6, _5, _4, _3, _2, X_, ...) X_;
 
 #define __PADDLE_UNARY_COMPARE(COND, ...)                 \
   do {                                                    \
     auto __cond = COND;                                   \
     if (UNLIKELY(::paddle::platform::is_error(__cond))) { \
-      PADDLE_THROW_ERROR(__cond, __VA_ARGS__);            \
+      __PADDLE_THROW_ERROR(__cond, __VA_ARGS__);          \
     }                                                     \
   } while (0)
 
 #ifndef REPLACE_ENFORCE_GLOG
-#define PADDLE_ENFORCE(COND, ...)                                       \
+#define __PADDLE_ENFORCE_I(COND, ...)                                   \
   do {                                                                  \
     try {                                                               \
       __PADDLE_UNARY_COMPARE(COND, __VA_ARGS__);                        \
@@ -292,8 +292,11 @@ inline void throw_on_error(T e) {
   } while (0)
 
 #else
-#define PADDLE_ENFORCE(COND, ...) __PADDLE_UNARY_COMPARE(COND, __VA_ARGS__);
+#define __PADDLE_ENFORCE_I(COND, ...) __PADDLE_UNARY_COMPARE(COND, __VA_ARGS__);
 #endif  // REPLACE_ENFORCE_GLOG
+
+#define __PADDLE_ENFORCE(args) __PADDLE_ENFORCE_I args
+#define PADDLE_ENFORCE(...) __PADDLE_ENFORCE((__VA_ARGS__))
 
 #define PADDLE_THROW_EOF()                                                     \
   do {                                                                         \
