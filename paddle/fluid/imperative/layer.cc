@@ -153,9 +153,6 @@ void VarBase::ApplyGrad(framework::Scope* scope, Variable* grad) {
 
 std::vector<Variable*> OpBase::ApplyGrad(framework::Scope* scope) {
   VLOG(3) << "op grad " << grad_op_desc_->Type();
-  if (!grad_to_var_) {
-    return {};
-  }
 
   for (const std::string& grad_invar : grad_op_desc_->InputArgumentNames()) {
     if (grad_to_var_->find(grad_invar) == grad_to_var_->end()) {
