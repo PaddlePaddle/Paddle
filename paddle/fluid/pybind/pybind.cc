@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -109,6 +110,12 @@ PYBIND11_MODULE(core, m) {
   using namespace paddle::framework;  // NOLINT
 
   BindException(&m);
+
+  m.def(
+      "_append_python_callable_object_and_return_id",
+      [](py::object py_obj) -> size_t {
+        return paddle::operators::AppendPythonCallableObjectAndReturnId(py_obj);
+      });
 
   py::class_<imperative::VarBase, PyVarBase>(m, "VarBase", R"DOC()DOC")
       .def(py::init<>())

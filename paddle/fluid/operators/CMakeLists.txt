@@ -42,8 +42,7 @@ if (WITH_DISTRIBUTE)
     SET(OP_PREFETCH_DEPS ${OP_PREFETCH_DEPS} parameter_prefetch)
 endif()
 
-register_operators(EXCLUDES warpctc_op conv_fusion_op DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
-
+register_operators(EXCLUDES py_func_op warpctc_op conv_fusion_op DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 # warpctc_op needs cudnn 7 above
 if (WITH_GPU AND NOT WIN32)
@@ -91,5 +90,9 @@ cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor memory)
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
 cc_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc DEPS save_combine_op load_combine_op)
 nv_test(dropout_op_test SRCS dropout_op_test.cc DEPS dropout_op tensor)
+
+if (WITH_PYTHON)
+  cc_library(py_func_op SRCS py_func_op.cc DEPS op_registry python pybind)
+endif()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
