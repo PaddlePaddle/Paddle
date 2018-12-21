@@ -18,7 +18,9 @@ All layers just related to the neural network.
 from __future__ import print_function
 
 import numpy as np
+import six
 import os
+import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable, OpProtoHolder
@@ -29,6 +31,7 @@ from . import utils
 from .. import unique_name
 from functools import reduce
 from .. import core
+from ..imperative import layers
 
 __all__ = [
     'fc',
@@ -175,6 +178,7 @@ __all__ = [
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
     'lstm',
+    'py_func',
     'psroi_pool',
     'huber_loss',
 ]
@@ -9326,6 +9330,224 @@ def get_tensor_from_selected_rows(x, name=None):
     return out
 
 
+class PyFuncRegistry(object):
+    _register_funcs = []
+
+    def __init__(self, func):
+        if func is None or not callable(func):
+            raise TypeError('func must be a Python function')
+
+        self._func = func
+        # find named args using reflection 
+        args = inspect.getargspec(self._func)
+        if len(args[0]) == 0 and args[1] is None and args[2] is None:
+            # Function with no inputs
+            self._named_args = None
+        else:
+            self._named_args = args[0]
+        self._id = core._append_python_callable_object_and_return_id(self)
+        '''
+        Why record self here?
+
+        1. For debug usage. Users can call 
+           :code:`py_func.registered_func(idx)` method 
+           to find the registered function corresponding
+           to :code:`idx`. 
+
+        2. For increasing reference count of self. 
+           It seems that to release Python object 
+           whose reference count is 1 would cause
+           segmentation fault error in C++ side. 
+           May be lack of Python GC in C++ side?
+        '''
+        PyFuncRegistry._register_funcs.append(self)
+
+    @classmethod
+    def registered_func(cls, idx):
+        return cls._register_funcs[idx]._func
+
+    @classmethod
+    def registered_func_num(cls):
+        return len(cls._register_funcs)
+
+    @property
+    def id(self):
+        return self._id
+
+    def __call__(self, *args):
+        if self._named_args is None:
+            func_ret = self._func()
+        else:
+            kwargs = dict()
+            idx = 0
+            for arg in self._named_args:
+                kwargs[arg] = args[idx]
+                idx += 1
+            func_ret = self._func(*args[idx:], **kwargs)
+
+        if not isinstance(func_ret, (list, tuple)):
+            func_ret = (func_ret, )
+
+        ret = []
+        for each_ret in func_ret:
+            if each_ret is None or isinstance(each_ret, core.LoDTensor):
+                ret.append(each_ret)
+                continue
+
+            if not isinstance(each_ret, np.ndarray):
+                each_ret = np.array(each_ret)
+
+            tensor = core.LoDTensor()
+            tensor.set(each_ret, core.CPUPlace())
+            ret.append(tensor)
+
+        return tuple(ret)
+
+
+@templatedoc()
+def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
+    """
+    PyFunc Operator.
+    
+    User can use :code:`py_func` to register operators in Python side.
+    The inputs of :code:`func` is :code:`LoDTensor` and outputs can be
+    numpy array or :code:`LoDTensor`. Paddle would call the registered
+    :code:`func` in forward part, and call :code:`backward_func` in
+    backward part (if :code:`backward_func` is not None).
+
+    User should set the right data type and shape of :code:`out` before
+    calling this function. However, data types and shapes of gradients of
+    :code:`out` and :code:`x` would be inferred automatically.
+
+    Input orders of :code:`backward_func` would be: forward inputs
+    :code:`x`, forward outputs :code:`out` and backward input gradients of
+    :code:`out`. If some variables of :code:`out` have no gradient, the input
+    tensor would be None in Python side. If some variables of :code:`in` have
+    no gradient, users should return None.
+
+    This function can also be used to debug the running network. User can
+    add a :code:`py_func` operator without output, and print input 
+    :code:`x` inside :code:`func`.
+
+    Args:
+        func (callable): forward Python function.
+        x (Variable|list(Variable)|tuple(Variable)): inputs of :code:`func`.
+        out (Variable|list(Variable)|tuple(Variable)): outputs of :code:`func`.
+            Paddle cannot infer shapes and data types of :code:`out`. Users
+            should create :code:`out` beforehand. 
+        backward_func (callable|None): backward Python function.
+                                       None means no backward. Default None. 
+        skip_vars_in_backward_input (Variable|list(Variable)|tuple(Variable)):
+            Variables that are not needed in :code:`backward_func` inputs. 
+            These variables must be any of :code:`x` and :code:`out`.
+            If set, these vars would not be inputs of :code:`backward_func`,
+            Only useful when :code:`backward_func` is not None. Default None. 
+
+    Returns:
+        out (Variable|list(Variable)|tuple(Variable)): input :code:`out`
+
+    Examples:
+    
+        >>> import paddle.fluid as fluid
+        >>> import six
+        >>>
+        >>> def create_tmp_var(name, dtype, shape):
+        >>>     return fluid.default_main_program().current_block().create_var(
+        >>>         name=name, dtype=dtype, shape=shape) 
+        >>>
+        >>> # tanh activation has been provided by Paddle C++ op
+        >>> # Here, we only use tanh to be an example to show the usage 
+        >>> # of py_func
+        >>> def tanh(x):
+        >>>     return np.tanh(x)
+        >>> 
+        >>> # forward input x is skipped
+        >>> def tanh_grad(y, dy):
+        >>>     return np.array(dy) * (1 - np.square(np.array(y)))
+        >>>
+        >>> def debug_func(x):
+        >>>     print(x) 
+        >>>
+        >>> def simple_net(img, label):
+        >>>     hidden = img
+        >>>     for idx in six.moves.range(4):
+        >>>         hidden = fluid.layers.fc(hidden, size=200)
+        >>>         new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
+        >>>             dtype=hidden.dtype, shape=hidden.shape)    
+        >>>
+        >>>         # user-defined layers with forward and backward
+        >>>         hidden = fluid.layers.py_func(func=tanh, x=hidden, 
+        >>>             out=new_hidden, backward_func=tanh_grad, 
+        >>>             skip_vars_in_backward_input=hidden)
+        >>>
+        >>>         # user-defined debug layers to print variables
+        >>>         fluid.layers.py_func(func=debug_func, x=hidden, out=None)
+        >>>
+        >>>     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+        >>>     loss = fluid.layers.cross_entropy(input=prediction, label=label)
+        >>>     return fluid.layers.mean(loss)
+    """
+    helper = LayerHelper('py_func', **locals())
+    if x is None:
+        x = []
+    elif isinstance(x, Variable):
+        x = [x]
+    elif not isinstance(x, (list, tuple)):
+        raise TypeError('Input must be Variable/list(Variable)/tuple(Variable)')
+
+    if out is None:
+        out_list = []
+    elif isinstance(out, Variable):
+        out_list = [out]
+    elif isinstance(out, (list, tuple)):
+        out_list = out
+    else:
+        raise TypeError(
+            'Output must be Variable/list(Variable)/tuple(Variable)')
+
+    fwd_func_id = PyFuncRegistry(func).id
+    bwd_func_id = PyFuncRegistry(
+        backward_func).id if backward_func is not None else -1
+
+    for each_out in out_list:
+        if len(each_out.shape) == 0:
+            raise ValueError(
+                'Output shapes of py_func op should be provided by users manually'
+            )
+
+    backward_skip_vars = set()
+    if backward_func is not None and skip_vars_in_backward_input is not None:
+        if isinstance(skip_vars_in_backward_input, Variable):
+            skip_vars_in_backward_input = [skip_vars_in_backward_input]
+
+        fwd_in_out = [v.name for v in x]
+        fwd_in_out.extend([v.name for v in out_list])
+        fwd_in_out = set(fwd_in_out)
+        backward_skip_vars = set()
+        for v in skip_vars_in_backward_input:
+            if not v.name in fwd_in_out:
+                raise ValueError(
+                    'Variable {} is not found in forward inputs and outputs'
+                    .format(v.name))
+            backward_skip_vars.add(v.name)
+
+    helper.append_op(
+        type='py_func',
+        inputs={'X': x},
+        outputs={'Out': out_list},
+        attrs={
+            'forward_callable_id': fwd_func_id,
+            'backward_callable_id': bwd_func_id,
+            'backward_skip_vars': list(backward_skip_vars)
+        })
+    return out
+
+
+# For debug usage
+py_func.registered_func = PyFuncRegistry.registered_func
+py_func.registered_func_num = PyFuncRegistry.registered_func_num
+
+
 @templatedoc()
 def psroi_pool(input,
                rois,
@@ -9426,3 +9648,47 @@ def huber_loss(input, label, delta):
                  'Residual': residual},
         attrs={'delta': delta})
     return out
+
+
+class FC(layers.PyLayer):
+    def __init__(self,
+                 size,
+                 param_attr=None,
+                 num_flatten_dims=1,
+                 dtype=core.VarDesc.VarType.FP32):
+        super(FC, self).__init__()
+        self._size = size
+        self._num_flatten_dims = num_flatten_dims
+        self._dtype = dtype
+        self._helper = LayerHelper('FC', param_attr=param_attr)
+
+    def _build_once(self, inputs):
+        input_shape = inputs[0].shape
+        param_shape = [
+            reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:], 1)
+        ] + [self._size]
+        self._w = self._helper.create_parameter(
+            attr=self._helper.param_attr,
+            shape=param_shape,
+            dtype=self._dtype,
+            is_bias=False)
+
+    def forward(self, inputs):
+        tmp = self._helper.create_variable_for_type_inference(self._dtype)
+        self._helper.append_op(
+            type="mul",
+            inputs={"X": inputs[0],
+                    "Y": self._w},
+            outputs={"Out": tmp},
+            attrs={
+                "x_num_col_dims": self._num_flatten_dims,
+                "y_num_col_dims": 1
+            })
+
+        out = self._helper.create_variable_for_type_inference(self._dtype)
+        self._helper.append_op(
+            type="sum",
+            inputs={"X": [tmp]},
+            outputs={"Out": out},
+            attrs={"use_mkldnn": False})
+        return out
