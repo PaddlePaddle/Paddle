@@ -25,6 +25,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class OperatorBase;
+
 using InferShapeVarPtr = boost::variant<VarDesc *, Variable *>;
 
 class InferShapeContext {
