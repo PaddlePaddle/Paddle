@@ -69,11 +69,12 @@ class AutoWRLock {
  public:
   explicit AutoWRLock(RWLock* rw_lock) : lock_(rw_lock) { Lock(); }
 
+  ~AutoWRLock() { UnLock(); }
+
+ private:
   inline void Lock() { lock_->WRLock(); }
 
   inline void UnLock() { lock_->UNLock(); }
-
-  ~AutoWRLock() { UnLock(); }
 
  private:
   RWLock* lock_;
@@ -83,11 +84,12 @@ class AutoRDLock {
  public:
   explicit AutoRDLock(RWLock* rw_lock) : lock_(rw_lock) { Lock(); }
 
+  ~AutoRDLock() { UnLock(); }
+
+ private:
   inline void Lock() { lock_->RDLock(); }
 
   inline void UnLock() { lock_->UNLock(); }
-
-  ~AutoRDLock() { UnLock(); }
 
  private:
   RWLock* lock_;
