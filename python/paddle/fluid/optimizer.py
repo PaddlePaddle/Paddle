@@ -50,21 +50,17 @@ class Optimizer(object):
 
     def __init__(self, learning_rate, regularization=None, name=None):
         if not isinstance(learning_rate, float) and \
-                not isinstance(learning_rate, framework.Variable) and \
-                not callable(learning_rate):
-            raise TypeError(
-                "learning rate should be float or Variable or callable(dtype)")
+                not isinstance(learning_rate, framework.Variable):
+            raise TypeError("learning rate should be float or Variable")
         self._name = name
         self.regularization = regularization
         self._learning_rate = learning_rate
         # the learning rate type should be inferenced from loss
         self._dtype = None
         # each program should have a independent learning rate
-        # program -> Variable(learning_rate) or:
-        # program -> callable(return learning_rate Variable)
+        # program -> Variable(learning_rate)
         self._learning_rate_map = dict()
-        if isinstance(self._learning_rate, framework.Variable) or \
-            callable(self._learning_rate):
+        if isinstance(self._learning_rate, framework.Variable):
             self._learning_rate_map[framework.default_main_program(
             )] = self._learning_rate
         # Dictionary of accumulators. Some optimizer subclasses need to
@@ -78,11 +74,12 @@ class Optimizer(object):
         lr = self._global_learning_rate()
 
         if isinstance(lr, framework.Variable):
-            return
-        elif callable(lr):
-            dtype = 'float32' if self._dtype is None else self._dtype
-            self._learning_rate_map[framework.default_main_program()] = lr(
-                dtype)
+            # NOTE: cast to optimizer dtype if needed, this is for
+            # training with fp16 which learning rate should also be
+            # a 
+            if self._dtype:
+                if lr.dtype != self._dtype:
+                    layers.cast(lr, self._dtype)
             return
         else:
             if not isinstance(self._learning_rate, float):
