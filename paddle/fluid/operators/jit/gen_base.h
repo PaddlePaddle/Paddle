@@ -36,6 +36,8 @@ class GenBase : public Kernel {
     if (FLAGS_dump_jitcode) {
       this->dumpCode(code);
     }
+    // Note: failed to cast with reinterpret_cast<const Func> on Mac clang,
+    // then workaround with const_cast. Any better idea is appreciated.
     return reinterpret_cast<Func>(const_cast<unsigned char*>(code));
   }
 
