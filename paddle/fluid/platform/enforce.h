@@ -266,7 +266,7 @@ inline void throw_on_error(T e) {
     if (UNLIKELY(::paddle::platform::is_error(__cond))) {        \
       ::paddle::platform::throw_on_error(__cond, ##__VA_ARGS__); \
     }                                                            \
-  } while (0)  // NOLINT
+  } while (0)
 
 #ifndef REPLACE_ENFORCE_GLOG
 #define PADDLE_ENFORCE(COND, ...)                                       \
@@ -277,7 +277,7 @@ inline void throw_on_error(T e) {
       throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
                                               __FILE__, __LINE__);      \
     }                                                                   \
-  } while (0)  // NOLINT
+  } while (0)
 
 #else
 #define PADDLE_ENFORCE(COND, ...) __PADDLE_UNARY_COMPARE(COND, ##__VA_ARGS__);
