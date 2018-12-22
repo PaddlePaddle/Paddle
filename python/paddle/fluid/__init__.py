@@ -136,8 +136,7 @@ def __bootstrap__():
         'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
         'allocator_strategy', 'reader_queue_speed_test_mode',
         'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir',
-        'inner_op_parallelism'
-        'min_param_size_to_use_multithread'
+        'inner_op_parallelism', 'min_param_size_to_use_multithread'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
