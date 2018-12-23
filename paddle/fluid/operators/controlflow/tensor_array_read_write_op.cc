@@ -54,6 +54,38 @@ class WriteToArrayOp : public ArrayOp {
   }
 };
 
+class WriteToArraySharedOp : public ArrayOp {
+ public:
+  WriteToArraySharedOp(const std::string &type,
+                       const framework::VariableNameMap &inputs,
+                       const framework::VariableNameMap &outputs,
+                       const framework::AttributeMap &attrs)
+      : ArrayOp(type, inputs, outputs, attrs) {}
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
+    auto *x = scope.FindVar(Input("X"));
+    if (x == nullptr) return;
+    auto &x_tensor = x->Get<framework::LoDTensor>();
+    size_t offset = GetOffset(scope, place);
+    auto *out =
+        scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
+    // Resize to hold the offset.
+    if (offset >= out->size()) {
+      VLOG(10) << "Resize " << Output("Out") << " from " << out->size()
+               << " to " << offset + 1;
+      out->resize(offset + 1);
+    }
+
+    auto *out_tensor = &out->at(offset);
+    // Still need to copy now, must be some overhead here!
+    // TODO(Superjomn) try to remove this copy.
+    out_tensor->set_lod(x_tensor.lod());
+    framework::TensorCopyShared(x_tensor, out_tensor);
+  }
+};
+
 class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -231,3 +263,8 @@ REGISTER_OPERATOR(write_to_array, ops::WriteToArrayOp,
 REGISTER_OPERATOR(read_from_array, ops::ReadFromArrayOp,
                   ops::ReadFromArrayInferShape, ops::ReadFromArrayProtoMaker,
                   ops::ReadFromArrayGradMaker);
+
+// Just for inference.
+REGISTER_OPERATOR(write_to_array_shared, ops::WriteToArraySharedOp,
+                  ops::WriteToArrayInferShape, ops::WriteToArrayOpProtoMaker,
+                  ops::WriteToArrayGradMaker, ops::WriteToArrayInferVarType);

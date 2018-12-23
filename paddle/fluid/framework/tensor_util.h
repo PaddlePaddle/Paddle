@@ -42,6 +42,9 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 Tensor* dst);
 
+// Share data and memory from src to dst.
+void TensorCopyShared(const Tensor& src, Tensor* dst);
+
 void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
                     Tensor* dst);
 

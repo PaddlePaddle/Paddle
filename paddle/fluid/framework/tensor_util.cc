@@ -112,6 +112,11 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   TensorCopy(src, dst_place, *dev_ctx, dst);
 }
 
+void TensorCopyShared(const Tensor& src, Tensor* dst) {
+  PADDLE_ENFORCE(src.IsInitialized());
+  dst->ShareDataWith(src);
+}
+
 void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
                     Tensor* dst) {
   VLOG(3) << "TensorCopySync " << src.dims() << " from " << src.place()
