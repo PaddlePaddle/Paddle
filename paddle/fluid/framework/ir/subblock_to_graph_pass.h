@@ -19,9 +19,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-// sub_block attribute name in OpDesc. TODO(Superjomn) unify these.
-const char kSubblockAttrKeyStr[] = "sub_block";
-
 // sub-block graph as an attribute in the graph.
 const char kSubblockGraphAttr[] = "__sub_block_grpah__";
 
