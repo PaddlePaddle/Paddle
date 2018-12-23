@@ -85,6 +85,49 @@ DeviceContextPool::DeviceContextPool(
   }
 }
 
+DeviceTemporaryAllocator* DeviceTemporaryAllocator::allocators = nullptr;
+
+#ifdef PADDLE_WITH_CUDA
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const platform::Place& place, const cudaStream_t& stream) {
+  PADDLE_ENFORCE(platform::is_gpu_place(place));
+  auto place_stream = std::make_pair(place, stream);
+  {
+    std::unique_lock<std::mutex> lock(mtx_);
+    if (!device_allocator_.count(place_stream)) {
+      device_allocator_[place_stream].reset(new TemporaryAllocator(place));
+      device_allocator_[place_stream]->SetCallback([stream]() {
+        PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+        PADDLE_ENFORCE(cudaGetLastError());
+      });
+    }
+  }
+  return *device_allocator_.at(place_stream);
+}
+
+template <>
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const platform::CUDADeviceContext& dev_ctx) {
+  auto place_stream = std::make_pair(dev_ctx.GetPlace(), dev_ctx.stream());
+  if (device_allocator_.count(place_stream)) {
+    return *device_allocator_.at(place_stream);
+  }
+  return Get(dev_ctx.GetPlace(), dev_ctx.stream());
+}
+#endif
+
+template <>
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const platform::CPUDeviceContext& dev_ctx) {
+  return cpu_allocator_;
+}
+
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const platform::Place& place) {
+  PADDLE_ENFORCE(platform::is_cpu_place(place), "You should pass CPUPlace");
+  return cpu_allocator_;
+}
+
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
@@ -271,8 +314,12 @@ CUDADeviceContext::~CUDADeviceContext() {
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const {
-  PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
-  PADDLE_ENFORCE(cudaGetLastError());
+  auto& allocator =
+      DeviceTemporaryAllocator::Instance().Get<CUDADeviceContext>(*this);
+  allocator.Release([=]() {
+    PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
+    PADDLE_ENFORCE(cudaGetLastError());
+  });
 }
 
 int CUDADeviceContext::GetComputeCapability() const {

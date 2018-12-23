@@ -1,30 +1,31 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License. */
 
 #pragma once
+
 #include <cmath>
-#include <string>
-#include "paddle/fluid/operators/math/jit_kernel_impl.h"
+#include <limits>
+#include "paddle/fluid/operators/jit/helper.h"
+#include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
-namespace math {
-namespace jitkernel {
+namespace jit {
 namespace refer {
-/* Refer code only focus on correctness */
 
+// Refer code only focus on correctness
 template <typename T>
 void VMul(const T* x, const T* y, T* z, int n) {
   for (int i = 0; i < n; ++i) {
@@ -44,6 +45,13 @@ void VAddRelu(const T* x, const T* y, T* z, int n) {
   for (int i = 0; i < n; ++i) {
     z[i] = x[i] + y[i];
     z[i] = z[i] > 0 ? z[i] : 0;
+  }
+}
+
+template <typename T>
+void VSub(const T* x, const T* y, T* z, int n) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] - y[i];
   }
 }
 
@@ -69,7 +77,11 @@ void VRelu(const T* x, T* y, int n) {
 }
 
 template <typename T>
-inline void VIdentity(const T* x, T* y, int n) {}
+inline void VIdentity(const T* x, T* y, int n) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = x[i];
+  }
+}
 
 template <typename T>
 void VExp(const T* x, T* y, int n) {
@@ -102,19 +114,21 @@ void VTanh(const T* x, T* y, int n) {
 }
 
 template <typename T>
-void (*getActFunc(const std::string& type))(const T*, T*, int) {  // NOLINT
-  if (type == "sigmoid") {
+void (*getActFunc(KernelType type))(const T*, T*, int) {  // NOLINT
+  if (type == kVSigmoid) {
     return VSigmoid<T>;
-  } else if (type == "relu") {
+  } else if (type == kVRelu) {
     return VRelu<T>;
-  } else if (type == "tanh") {
+  } else if (type == kVTanh) {
     return VTanh<T>;
-  } else if (type == "identity" || type == "") {
+  } else if (type == kVIdentity) {
     return VIdentity<T>;
   }
   PADDLE_THROW("Not support type: %s", type);
   return nullptr;
 }
+
+// TODO(TJ): add refer gemm and make LSTM kernels combine as same GRU kernels
 
 // compute ct and ht
 template <typename T>
@@ -231,8 +245,134 @@ void GRUHtPart2(gru_t* step, const gru_attr_t* attr) {
   }
 }
 
+template <typename T>
+void CRFDecoding(const int seq_len, const T* x, const T* w, T* alpha,
+                 int* track, int right) {
+  constexpr int state_trans_base_idx = 2;
+  for (int i = 0; i < right; ++i) {
+    alpha[i] = w[i] + x[i];
+  }
+  for (int k = 1; k < seq_len; ++k) {
+    for (int i = 0; i < right; ++i) {
+      T max_score = -std::numeric_limits<T>::max();
+      int max_j = 0;
+      for (int j = 0; j < right; ++j) {
+        T score = alpha[(k - 1) * right + j] +
+                  w[(j + state_trans_base_idx) * right + i];
+        if (score > max_score) {
+          max_score = score;
+          max_j = j;
+        }
+      }
+      alpha[k * right + i] = max_score + x[k * right + i];
+      track[k * right + i] = max_j;
+    }
+  }
+}
+
+template <typename T>
+void LayerNorm(T* x, T* out, T* mean, T* var, const T* scale, const T* bias,
+               int height, const float epsilon, int right) {
+  // get mean
+  for (int i = 0; i < height; i++) {
+    T sum = 0.0;
+    int offset = i * right;
+    for (int j = 0; j < right; j++) {
+      sum += x[offset + j];
+    }
+    mean[i] = sum / right;
+  }
+
+  // get variance
+  for (int i = 0; i < height; i++) {
+    T sum = 0.0;
+    int offset = i * right;
+    for (int j = 0; j < right; j++) {
+      sum += (x[offset + j] - mean[i]) * (x[offset + j] - mean[i]);
+    }
+    var[i] = sum / right;
+  }
+
+  for (int i = 0; i < height; i++) {
+    int offset = i * right;
+    T sqrt_var = std::sqrt(var[i] + (T)epsilon);
+    for (int j = 0; j < right; j++) {
+      out[offset + j] = (x[offset + j] - mean[i]) / sqrt_var;
+    }
+  }
+  if (scale) {
+    for (int i = 0; i < height; i++) {
+      int offset = i * right;
+      for (int j = 0; j < right; j++) {
+        out[offset + j] *= scale[j];
+      }
+    }
+  }
+
+  if (bias) {
+    for (int i = 0; i < height; i++) {
+      int offset = i * right;
+      for (int j = 0; j < right; j++) {
+        out[offset + j] += bias[j];
+      }
+    }
+  }
+}
+
+template <typename T>
+void NCHW16CMulNC(const T* x, const T* y, T* z, int height, int width) {
+  int offset = 0;
+  for (int h = 0; h < height; ++h) {
+    for (int w = 0; w < width; ++w) {
+      for (int i = 0; i < 16; ++i) {
+        z[i + offset] = y[i] * x[i + offset];
+      }
+      offset += ZMM_FLOAT_BLOCK;
+    }
+  }
+}
+
+#define DECLARE_REFER_KERNEL(name, tuples)             \
+  template <typename T>                                \
+  class name##Kernel : public ReferKernel<tuples<T>> { \
+   public:                                             \
+    name##Kernel() { this->func = name<T>; }           \
+  }
+
+// const T* x, const T* y, T* z, int n
+DECLARE_REFER_KERNEL(VMul, XYZNTuples);
+DECLARE_REFER_KERNEL(VAdd, XYZNTuples);
+DECLARE_REFER_KERNEL(VAddRelu, XYZNTuples);
+DECLARE_REFER_KERNEL(VSub, XYZNTuples);
+
+// const T* a, const T* x, T* y, int n
+DECLARE_REFER_KERNEL(VScal, AXYNTuples);
+DECLARE_REFER_KERNEL(VAddBias, AXYNTuples);
+
+// const T* x, T* y, int n
+DECLARE_REFER_KERNEL(VRelu, XYNTuples);
+DECLARE_REFER_KERNEL(VIdentity, XYNTuples);
+DECLARE_REFER_KERNEL(VExp, XYNTuples);
+DECLARE_REFER_KERNEL(VSigmoid, XYNTuples);
+DECLARE_REFER_KERNEL(VTanh, XYNTuples);
+
+// lstm_t*, const lstm_attr_t*
+DECLARE_REFER_KERNEL(LSTMCtHt, LSTMTuples);
+DECLARE_REFER_KERNEL(LSTMC1H1, LSTMTuples);
+
+// gru_t*, const gru_attr_t*
+DECLARE_REFER_KERNEL(GRUH1, GRUTuples);
+DECLARE_REFER_KERNEL(GRUHtPart1, GRUTuples);
+DECLARE_REFER_KERNEL(GRUHtPart2, GRUTuples);
+
+DECLARE_REFER_KERNEL(CRFDecoding, CRFDecodingTuples);
+DECLARE_REFER_KERNEL(LayerNorm, LayerNormTuples);
+
+DECLARE_REFER_KERNEL(NCHW16CMulNC, NCHW16CMulNCTuples);
+
+#undef DECLARE_REFER_KERNEL
+
 }  // namespace refer
-}  // namespace jitkernel
-}  // namespace math
+}  // namespace jit
 }  // namespace operators
 }  // namespace paddle
