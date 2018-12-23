@@ -29,7 +29,7 @@ class CrossEntropyMultiLabelFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& ctx, framework::Tensor* out,
                   const framework::Tensor* prob,
-                  const framework::Tensor* labels, const int ignore_index) {
+                  const framework::Tensor* labels) {
     const int batch_size = prob->dims()[0];
     const int class_num = prob->dims()[1];
     const int true_num = labels->dims()[1];

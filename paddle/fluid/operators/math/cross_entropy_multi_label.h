@@ -62,7 +62,7 @@ class CrossEntropyMultiLabelFunctor {
  public:
   void operator()(const DeviceContext& context, framework::Tensor* out,
                   const framework::Tensor* prob,
-                  const framework::Tensor* labels, const int ignore_index);
+                  const framework::Tensor* labels);
 };
 
 /*

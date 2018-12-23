@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <iostream>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
@@ -96,6 +97,40 @@ void CPUPutAlongD1(const platform::DeviceContext& ctx, framework::Tensor* array,
   for (int i = 0; i < batch_size; ++i) {
     for (int j = 0; j < num_put; ++j) {
       auto array_index = p_index[i * idx_slice_size + j];
+      p_array[i * array_slice_size + array_index] +=
+          p_value[i * value_slice_size + j];
+    }
+  }
+}
+
+template <typename T>
+void CPUPutReverseAlongD1(const platform::DeviceContext& ctx,
+                          framework::Tensor* array,
+                          const framework::Tensor& index,
+                          const framework::Tensor& value) {
+  PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
+  // UNDERSTAND: check shape src(B, C), index(B, K), out should also be (B, K)
+  PADDLE_ENFORCE(index.dims().size() == 2 && array->dims().size() == 2 &&
+                 index.dims()[0] == array->dims()[0] &&
+                 index.dims() == value.dims());
+  const auto batch_size = index.dims()[0];
+  const auto num_put = index.dims()[1];
+  auto array_dims = array->dims();
+  auto idx_dims = index.dims();
+
+  // UNDERSTAND: no allocations here
+  T* p_array = array->data<T>();
+  const int64_t* p_index = index.data<int64_t>();
+  const T* p_value = value.data<T>();
+
+  // slice sizes
+  const auto array_slice_size = array_dims[1];
+  const auto idx_slice_size = idx_dims[1];
+  const auto value_slice_size = idx_slice_size;
+
+  for (int i = 0; i < batch_size; ++i) {
+    for (int j = num_put - 1; j > -1; --j) {
+      auto array_index = p_index[i * idx_slice_size + j];
       p_array[i * array_slice_size + array_index] =
           p_value[i * value_slice_size + j];
     }
@@ -139,95 +174,73 @@ class SampledSoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
     sampled_logits->mutable_data<T>(samples_dim, context.GetPlace());
 
     // UNDERSTAND: sampling
-    const auto& sampler_type = context.Attr<std::string>("sampler");
+    const auto& sampler_type = context.Attr<std::string>("sampler_type");
+    const auto seed = context.Attr<int>("seed");
+    const auto unique = context.Attr<bool>("unique");
+    const auto avoid_indices =
+        context.Attr<std::vector<int64_t>>("avoid_indices");
+
+    const auto remove_accidental_hits =
+        context.Attr<bool>("remove_accidental_hits");
+
     auto sampler_with_prob =
         math::SampleWithProb<platform::CPUDeviceContext, T>();
-    const auto& custom_negative_classes =
-        context.Attr<std::vector<int>>("custom_negative_classes");
+    std::vector<int64_t> hits;
+    std::vector<int64_t> num_tries_vec;
 
     if (sampler_type == "log_uniform") {
-      sampler_with_prob(dev_ctx, math::LogUniformSampler(num_classes),
-                        num_classes, num_samples, label, samples, probabilities,
-                        custom_negative_classes);
+      sampler_with_prob(dev_ctx, math::LogUniformSampler(num_classes, seed),
+                        unique, num_samples, remove_accidental_hits, label,
+                        samples, probabilities, &hits, &num_tries_vec,
+                        avoid_indices);
     } else {
-      sampler_with_prob(dev_ctx, math::UniformSampler(num_classes), num_classes,
-                        num_samples, label, samples, probabilities,
-                        custom_negative_classes);
+      sampler_with_prob(dev_ctx, math::UniformSampler(num_classes - 1, seed),
+                        unique, num_samples, remove_accidental_hits, label,
+                        samples, probabilities, &hits, &num_tries_vec,
+                        avoid_indices);
     }
 
-    /* UNDERSTAND: so raw
-    std::cout << "logits" << std::endl;
-    const auto logits_data = logits->data<T>();
-    for (int i = 0; i < logits->numel(); ++i) {
-      std::cout << logits_data[i] << '\t';
-      if ((i+1) % num_classes == 0)
-        std::cout << '\n';
-    }
-
-    // UNDERSTAND: so raw
-    const auto label_data = label->data<int64_t>();
-    std::cout << "labels" << std::endl;
-    for (int i = 0; i < label->numel(); ++i) {
-      std::cout << label_data[i] << '\t';
-      if ((i+1) % (num_true) == 0)
-        std::cout << '\n';
-    }
-
-    // UNDERSTAND: so raw
-    std::cout << "samples" << std::endl;
-    for (int i = 0; i < samples->numel(); ++i) {
-      std::cout << samples_data[i] << '\t';
-      if ((i+1) % (num_samples + num_true) == 0)
-        std::cout << '\n';
-    }
-
-    // UNDERSTAND: so raw
-    std::cout << "probabilities" << std::endl;
-    for (int i = 0; i < probabilities->numel(); ++i) {
-      std::cout << probabilities_data[i] << '\t';
-      if ((i+1) % (num_samples + num_true) == 0)
-        std::cout << '\n';
-    }
-    */
-    // UNDERSTAND: generating sampled logits and subtract it by logQ
-    CPUTakeAlongD1<T>(dev_ctx, *logits, *samples, sampled_logits);
     /*
-    // UNDERSTAND: so raw
-    std::cout << "sampled logits" << std::endl;
-    for (int i = 0; i < sampled_logits->numel(); ++i) {
-      std::cout << sampled_logits_data[i] << '\t';
-      if ((i+1) % (num_samples + num_true) == 0)
-        std::cout << '\n';
+    std::cout <<"avoid indices' s" << std::endl;
+    for (const auto& x: avoid_indices) {
+      std::cout << x << ", ";
     }
+    std::cout << std::endl;
+    std::cout << "Hit's" << std::endl;
+    for (const auto& x: hits) {
+      std::cout << x << ", ";
+    }
+    std::cout << std::endl;
+    std::cout << "num tries's" << std::endl;
+    for (const auto& x: num_tries_vec) {
+      std::cout << x << ", ";
+    }
+    std::cout << std::endl;
     */
 
+    // UNDERSTAND: gather sampled logits
+    CPUTakeAlongD1<T>(dev_ctx, *logits, *samples, sampled_logits);
+
+    /* UNDERSTAND: remove accidental hits, i.e. set the logit of the accidental
+    hits to be negative limit to dicard them */
+    if (remove_accidental_hits) {
+      const T kApproInf = 1e20;
+      auto sampled_logits_data = sampled_logits->data<T>();
+      for (const int64_t id : hits) {
+        sampled_logits_data[id] -= kApproInf;
+      }
+    }
+
+    // subtracted sampled logits with logQ(y|x)
     auto probs = EigenMatrix<T>::From(*probabilities);
     auto smp_logits = EigenMatrix<T>::From(*sampled_logits);
     smp_logits.device(*dev_ctx.eigen_device()) =
         (smp_logits - probs.log().unaryExpr(math::TolerableValue<T>()))
             .unaryExpr(math::TolerableValue<T>());
 
-    /* UNDERSTAND: so raw
-    std::cout << "sampled subtracted logits" << std::endl;
-    for (int i = 0; i < sampled_logits->numel(); ++i) {
-      std::cout << sampled_logits_data[i] << '\t';
-      if ((i+1) % (num_samples + num_true) == 0)
-        std::cout << '\n';
-    }
-    */
-
     // UNDERSTAND: main logic here
     math::SoftmaxFunctor<platform::CPUDeviceContext, T, false>()(
         dev_ctx, sampled_logits, sampled_softmax);
-
-    /* UNDERSTAND: so raw
-    std::cout << "sampled softmax" << std::endl;
-    for (int i = 0; i < sampled_softmax->numel(); ++i) {
-      std::cout << sampled_softmax_data[i] << '\t';
-      if ((i+1) % (num_samples + num_true) == 0)
-        std::cout << '\n';
-    }
-    */
 
     Tensor shrinked_label_tmp;
     Tensor* shrinked_label = &shrinked_label_tmp;
@@ -237,17 +250,7 @@ class SampledSoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
       for (int j = 0; j < num_true; ++j)
         shrinked_lebel_data[i * num_true + j] = j;
     math::CrossEntropyMultiLabelFunctor<platform::CPUDeviceContext, T>()(
-        dev_ctx, loss, sampled_softmax, shrinked_label,
-        context.Attr<int64_t>("ignore_index"));
-
-    /* UNDERSTAND: so raw
-    auto loss_data = loss->data<T>();
-    std::cout << "loss" << std::endl;
-    for (int i = 0; i < loss->numel(); ++i) {
-      std::cout << loss_data[i] << '\t';
-    }
-    std::cout << std::endl;
-    */
+        dev_ctx, loss, sampled_softmax, shrinked_label);
   }
 };
 
@@ -281,8 +284,7 @@ class SampledSoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     // const int64_t* label_data = label->data<int64_t>();
     T* sampled_logits_grad_data = sampled_logits_grad->data<T>();
     const T* out_grad_data = out_grad->data<T>();
-    /* UNDERSTAND: still do it by loop, this kind of sparse oprtation is fast
-    for CPU implementation */
+    /* UNDERSTAND: still do it by loop */
     const int num_true = label->dims()[1];
     for (int i = 0; i < batch_size; ++i) {
       for (int j = 0; j < num_true; ++j) {
