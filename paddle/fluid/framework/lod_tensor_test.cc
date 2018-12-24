@@ -217,6 +217,11 @@ TEST(LoD, CheckLoD) {
   // check with underlying tensor storage.
   ASSERT_TRUE(CheckLoD(relative_lod, 5));
   ASSERT_FALSE(CheckLoD(relative_lod, 9));
+
+  // check whether lod is ascending-sorted (allow same items)
+  ASSERT_TRUE(CheckLoD({{0, 1, 2, 3, 4, 5}}, 5));
+  ASSERT_TRUE(CheckLoD({{0, 1, 3, 3, 4, 5}}, 5));
+  ASSERT_FALSE(CheckLoD({{0, 1, 3, 2, 5}}, 5));
 }
 
 TEST(LoD, CheckAbsLoD) {
