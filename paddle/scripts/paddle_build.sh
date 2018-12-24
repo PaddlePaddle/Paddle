@@ -929,6 +929,7 @@ function main() {
         gen_fluid_lib
         test_fluid_lib
         assert_api_spec_approvals
+        assert_doc_spec_approvals
         ;;
       assert_api)
         assert_api_not_changed ${PYTHON_ABI:-""}
