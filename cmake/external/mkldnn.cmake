@@ -109,7 +109,7 @@ else(WIN32)
             DEPENDS mkldnn shared_mkldnn)
 endif(WIN32)
 ADD_CUSTOM_TARGET(mkldnn_shared_lib ALL DEPENDS ${MKLDNN_SHARED_LIB})
-
+ADD_DEPENDENCIES(mkldnn_shared_lib ${MKLDNN_PROJECT} mkldnn)
 IF(WITH_C_API)
   INSTALL(FILES ${MKLDNN_SHARED_LIB} DESTINATION lib)
 ENDIF()
