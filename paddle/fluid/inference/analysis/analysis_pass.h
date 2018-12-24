@@ -43,9 +43,14 @@ class AnalysisPass {
   // Human-readable long description.
   virtual std::string description() const { return "No DOC"; }
 
+  void SetSupportSubgraph(bool x) { support_subgraph_ = x; }
+  bool support_subgraph() const { return support_subgraph_; }
+
  protected:
   // User should implement these.
   virtual void RunImpl(Argument* argument) = 0;
+
+  bool support_subgraph_{true};
 };
 
 }  // namespace analysis

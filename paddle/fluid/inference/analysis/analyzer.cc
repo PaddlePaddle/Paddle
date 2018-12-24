@@ -15,7 +15,8 @@
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include <string>
 #include <vector>
-#include "paddle/fluid/inference/analysis/passes/ir_analysis_compose_pass.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
 #include "paddle/fluid/inference/analysis/passes/passes.h"
 
 namespace paddle {
@@ -24,14 +25,57 @@ namespace analysis {
 
 Analyzer::Analyzer() {}
 
-void Analyzer::Run(Argument *argument) { RunIrAnalysis(argument); }
+void Analyzer::Run(Argument *argument) {
+  ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
+  if (argument->use_tensorrt_valid() && argument->use_tensorrt()) {
+    InitTensorRTAttrs(argument);
+  }
+  RunIrAnalysis(argument);
+  CollectFusionStatis(argument);
+}
 
 void Analyzer::RunIrAnalysis(Argument *argument) {
-  std::vector<std::string> passes({"ir_analysis_compose_pass"});
+  // All the AnalysisPass to run.
+  std::vector<std::string> passes({
+      "ir_graph_build_pass", "ir_analysis_pass",
+      "ir_params_sync_among_devices_pass",
+  });
 
-  for (auto &pass : passes) {
-    PassRegistry::Global().Retreive(pass)->Run(argument);
+  for (const auto &pass : passes) {
+    VLOG(2) << "Run pass " << pass;
+    auto *the_pass = PassRegistry::Global().Retreive(pass);
+    the_pass->Run(argument);
   }
+}
+
+void Analyzer::InitTensorRTAttrs(Argument *argument) {
+  if (argument->use_tensorrt_valid() && argument->use_tensorrt()) {
+    LOG(INFO) << "Initing TensorRT pass";
+    argument->SetTensorRtNodeTeller([](const framework::ir::Node *node) {
+      std::unordered_set<std::string> teller_set(
+          {"mul", "conv2d", "pool2d", "relu", "softmax", "sigmoid",
+           "depthwise_conv2d", "batch_norm", "concat", "tanh", "pad",
+           "elementwise_add", "elementwise_mul", "dropout", "split", "prelu",
+           "conv2d_transpose", "leaky_relu"});
+      if (!node->IsOp()) return false;
+
+      if (teller_set.count(node->Op()->Type())) {
+        return true;
+      } else {
+        return false;
+      }
+    });
+  }
+}
+
+void Analyzer::CollectFusionStatis(Argument *argument) {
+  if (!argument->main_graph().Has(framework::ir::kFuseStatisAttr)) {
+    LOG(INFO) << "argument has no fuse statis";
+    return;
+  }
+  argument->SetFusionStatis(
+      argument->main_graph().Get<Argument::fusion_statis_t>(
+          framework::ir::kFuseStatisAttr));
 }
 
 }  // namespace analysis

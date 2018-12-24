@@ -45,6 +45,9 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+/*
+ * The main entrance for inference IR analysis.
+ */
 class Analyzer final {
  public:
   Analyzer();
@@ -55,6 +58,10 @@ class Analyzer final {
 
  protected:
   void RunIrAnalysis(Argument* argument);
+  void InitTensorRTAttrs(Argument* argument);
+  void CollectFusionStatis(Argument* argument);
+  // Assign a Scope for IR passes to modify the weights.
+  void AssignScopeToModify(Argument* argument);
 };
 
 }  // namespace analysis
