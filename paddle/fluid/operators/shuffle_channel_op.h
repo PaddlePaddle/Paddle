@@ -21,10 +21,10 @@ namespace operators {
 template <typename DeviceContext, typename T>
 class ShuffleChannelOpKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<framework::Tensor>("X");
     auto* output = ctx.Output<framework::Tensor>("Out");
-    auto group = ctx.Input<framework::Tensor>("group");
+    int group = ctx.Attr<int>("group");
 
     auto input_dims = input->dims();
     auto num = input_dims[0];
@@ -34,21 +34,19 @@ class ShuffleChannelOpKernel : public framework::OpKernel<T> {
 
     auto feature_map_size = channel * height * weight;
     auto sp_sz = height * weight;
-
     int group_row = group;
-    int group_column = channels / group_row;
+    int group_column = channel / group_row;
 
     const T* input_data = input->data<T>();
-    T* output_data = out->mutable_data<T>(ctx.GetPlace());
-
+    T* output_data = output->mutable_data<T>(ctx.GetPlace());
     for (int n = 0; n < num; ++n) {
-      output_data_temp = output_data + n * feature_map_size;
-      input_data_temp = input_data + n * feature_map_size;
       for (int i = 0; i < group_row; ++i) {
         for (int j = 0; j < group_column; ++j) {
-          const auto* p_i = input_data_temp + (i * group_column + j) * sp_sz;
-          auto* p_o = output_data_temp + (j * group_row + i) * sp_sz;
-          memcpy(p_o, p_i, sizeof(Dtype) * sp_sz);
+          const T* p_i = input_data + n * feature_map_size +
+                         (i * group_column + j) * sp_sz;
+          T* p_o =
+              output_data + n * feature_map_size + (j * group_row + i) * sp_sz;
+          memcpy(p_o, p_i, sizeof(int) * sp_sz);
         }
       }
     }
@@ -61,7 +59,7 @@ class ShuffleChannelGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<framework::Tensor>("X");
-    auto group = ctx.Input<framework::Tensor>("group");
+    int group = ctx.Attr<int>("group");
 
     auto input_dims = input->dims();
     auto num = input_dims[0];
@@ -72,7 +70,7 @@ class ShuffleChannelGradOpKernel : public framework::OpKernel<T> {
     auto sp_sz = height * weight;
 
     int group_row = group;
-    int group_column = channels / group_row;
+    int group_column = channel / group_row;
 
     auto* output_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
@@ -81,19 +79,17 @@ class ShuffleChannelGradOpKernel : public framework::OpKernel<T> {
 
     T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
     const T* output_grad_data = output_grad->data<T>();
-
     for (int n = 0; n < num; ++n) {
-      output_grad_temp = output_grad_data + n * feature_map_size;
-      input_grad_temp = input_grad_data + n * feature_map_size;
       for (int i = 0; i < group_row; ++i) {
         for (int j = 0; j < group_column; ++j) {
-          const auto* p_i = output_grad_temp + (i * group_column + j) * sp_sz;
-          auto* p_o = input_grad_temp + (j * group_row + i) * sp_sz;
-          memcpy(p_o, p_i, sizeof(Dtype) * sp_sz);
+          const T* p_i = output_grad_data + n * feature_map_size +
+                         (i * group_column + j) * sp_sz;
+          T* p_o = input_grad_data + n * feature_map_size +
+                   (j * group_row + i) * sp_sz;
+          memcpy(p_o, p_i, sizeof(int) * sp_sz);
         }
       }
     }
-    return;
   }
 };
 
