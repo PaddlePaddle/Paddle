@@ -102,11 +102,14 @@ class RequestSend final : public RequestBase {
     std::string varname = GetReqName();
     VLOG(4) << "RequestSend var_name:" << varname;
 
-    auto scope = request_->GetMutableLocalScope();
+    auto* scope = request_->GetMutableLocalScope();
     auto invar = request_->GetVar();
     int trainer_id = request_->GetTrainerId();
     framework::Variable* outvar = nullptr;
 
+    if (!request_handler_->sync_mode()) {
+      request_->ReleaseOwnershipOfLocalScope();
+    }
     request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
     Finish(reply_, &responder_);
   }

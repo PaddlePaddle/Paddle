@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/string/printf.h"
@@ -53,13 +54,11 @@ bool RequestSendHandler::Handle(const std::string& varname,
     // Async
     if (!sync_mode_) {
       VLOG(3) << "async process var: " << varname;
-      try {
+      framework::Async([this, scope, varname]() {
         executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
                                       scope);
-      } catch (std::exception& e) {
-        LOG(ERROR) << "async: run sub program error " << e.what();
-        return false;
-      }
+      });
+
       return true;
     } else {  // sync
       rpc_server_->WaitCond(kRequestSend);

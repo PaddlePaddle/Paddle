@@ -64,7 +64,9 @@ class VariableResponse {
     }
   }
 
-  virtual ~VariableResponse() { delete local_scope_; }
+  virtual ~VariableResponse() {
+    if (local_scope_) delete local_scope_;
+  }
 
   int Parse(Source* source, const sendrecv::VariableMessage& meta) {
     meta_ = meta;
@@ -79,6 +81,12 @@ class VariableResponse {
 
   inline const framework::Scope& GetLocalScope() const { return *local_scope_; }
   inline framework::Scope* GetMutableLocalScope() const { return local_scope_; }
+  inline void ReleaseOwnershipOfLocalScope() {
+    PADDLE_ENFORCE(create_scope_,
+                   "only when create_scope_ is true can you release the "
+                   "ownership of local scope");
+    local_scope_ = nullptr;
+  }
   inline std::string Varname() const { return meta_.varname(); }
   inline std::string OutVarname() const { return meta_.out_varname(); }
   inline std::string TableName() const { return meta_.table_name(); }
