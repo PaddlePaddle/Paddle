@@ -38,6 +38,7 @@ class ClipByNormKernel : public framework::OpKernel<T> {
 
     Tensor* output = nullptr;
     const Tensor* input = nullptr;
+    std::unique_ptr<framework::Variable> tmp_var;
     if (in_var->IsType<framework::LoDTensor>()) {
       input = context.Input<Tensor>("X");
 
@@ -48,12 +49,12 @@ class ClipByNormKernel : public framework::OpKernel<T> {
 
       // merge ids in selected rows first
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
-      SelectedRows* merged_input =
-          const_cast<framework::Scope&>(context.scope())
-              .Var()
-              ->GetMutable<SelectedRows>();
+      tmp_var.reset(new framework::Variable());
+      SelectedRows* merged_input = tmp_var->GetMutable<SelectedRows>();
       merge_func(context.template device_context<DeviceContext>(), *x,
                  merged_input);
+      context.AddTempVar(std::move(tmp_var));
+
       input = &(merged_input->value());
 
       SelectedRows* output_selected_rows = context.Output<SelectedRows>("Out");

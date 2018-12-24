@@ -349,12 +349,12 @@ class MomentumOpKernel : public framework::OpKernel<T> {
         VLOG(3) << "Grad SelectedRows contains no data!";
         return;
       }
-      auto* merged_grad = const_cast<framework::Scope&>(ctx.scope())
-                              .Var()
-                              ->GetMutable<framework::SelectedRows>();
+      std::unique_ptr<framework::Variable> var(new framework::Variable());
+      auto* merged_grad = var->GetMutable<framework::SelectedRows>();
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(ctx.template device_context<DeviceContext>(), *grad,
                  merged_grad);
+      ctx.AddTempVar(std::move(var));
 
       const int64_t* rows = nullptr;
 #ifdef PADDLE_WITH_CUDA

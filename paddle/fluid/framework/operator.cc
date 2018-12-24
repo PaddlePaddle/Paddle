@@ -1005,16 +1005,14 @@ Scope* OperatorWithKernel::PrepareData(
         new_scope = TryCreateTransferScope(kernel_type_for_var,
                                            expected_kernel_key, &scope);
       }
-      if (!new_scope) {
-        new_scope = &scope.NewScope();
-      }
 
-      auto* trans_var = new_scope->Var(var_name);
-      input_vars[i] = trans_var;
+      std::unique_ptr<Variable> trans_var(new Variable());
+      input_vars[i] = trans_var.get();
 
       Tensor out;
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
-      SetTensorToVariable(*var, out, trans_var);
+      SetTensorToVariable(*var, out, trans_var.get());
+      scope.AddTempVar(std::move(trans_var));
     }
   }
 

@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/temp_variable_pool.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -41,8 +42,13 @@ class Scope;
  */
 class Scope {
  public:
-  Scope() {}
+  Scope() : Scope(nullptr) {}
+
   ~Scope();
+
+  /// Store temporary variables. These variables would be deleted when scope
+  /// is deleted.
+  void AddTempVar(std::unique_ptr<Variable>&& var) const;
 
   /// Create a sub-scope. Returns a reference other than a pointer so
   /// to prevent from manual deletion.
@@ -99,7 +105,13 @@ class Scope {
 
  private:
   // Call Scope::NewScope for a sub-scope.
-  explicit Scope(Scope const* parent) : parent_(parent) {}
+  explicit Scope(Scope const* parent) : parent_(parent) {
+    InitTempVariablePool();
+  }
+
+  // Init TempVariablePool. This function can only be called
+  // inside constructor, because it is not thread-safe
+  void InitTempVariablePool();
 
   // Called by Var.
   Variable* VarInternal(const std::string& name);
@@ -119,12 +131,29 @@ class Scope {
 
   // Scope in `kids_` are owned by this class.
   mutable std::list<Scope*> kids_;
-  const Scope* parent_{nullptr};
+  const Scope* parent_;
+
+  // Temp variable pool
+  mutable std::weak_ptr<TempVariablePool> tmp_vars_;
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 
  private:
   mutable std::mutex mutex_;
+
+  template <typename LockType>
+  struct LockGuard {
+#ifdef PADDLE_ON_INFERENCE
+    // When in inference scenario, the scopes will not be written by two threads
+    // in a mean time, but a scope may be read by multiple threads concurrently,
+    // and the mutex will cause serious performance issue.
+    // So the mutex is disabled when defined `PADDLE_ON_INFERENCE`.
+    inline explicit LockGuard(LockType& mtx) {}  // NOLINT
+#else
+    inline explicit LockGuard(LockType& mtx) : guard_(mtx) {}  // NOLINT
+    std::lock_guard<LockType> guard_;
+#endif
+  };
 };
 
 // Generate some debug string about the inherience structure of scope, quite

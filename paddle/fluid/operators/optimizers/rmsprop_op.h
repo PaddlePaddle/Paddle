@@ -216,12 +216,11 @@ class RmspropOpKernel : public framework::OpKernel<T> {
       }
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto &grad = grad_var->Get<framework::SelectedRows>();
-      auto *merged_grad = const_cast<framework::Scope &>(ctx.scope())
-                              .Var()
-                              ->GetMutable<framework::SelectedRows>();
-
+      std::unique_ptr<framework::Variable> var(new framework::Variable());
+      auto *merged_grad = var->GetMutable<framework::SelectedRows>();
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(dev_ctx, grad, merged_grad);
+      ctx.AddTempVar(std::move(var));
 
       platform::ForRange<DeviceContext> for_range(dev_ctx, limit);
       const int64_t *rows;

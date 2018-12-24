@@ -327,12 +327,12 @@ class AdamOpKernel : public framework::OpKernel<T> {
         // merge duplicated rows if any.
         // The rows of grad_merge have been sorted inside MergeAdd functor
         scatter::MergeAdd<DeviceContext, T> merge_func;
-        auto* grad_merge_var = const_cast<framework::Scope&>(ctx.scope())
-                                   .Var()
-                                   ->GetMutable<framework::SelectedRows>();
+        std::unique_ptr<framework::Variable> var(new framework::Variable());
+        auto* grad_merge_var = var->GetMutable<framework::SelectedRows>();
         merge_func(ctx.template device_context<DeviceContext>(), grad,
                    grad_merge_var);
         grad_merge_ptr = grad_merge_var;
+        ctx.AddTempVar(std::move(var));
       }
 
       auto& grad_merge = *grad_merge_ptr;

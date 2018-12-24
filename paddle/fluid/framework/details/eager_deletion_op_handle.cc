@@ -60,13 +60,17 @@ EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
 
 void EagerDeletionOpHandle::RunImpl() {
-  auto *exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  Scope *exec_scope{nullptr};
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (auto &name : var_names_) {
     auto it = ref_cnts_->find(name);
-    // Var not found, not reference count has not decreased to 0
+    // Var not found, or reference count has not decreased to 0
     if (it == ref_cnts_->end() || it->second.fetch_sub(1) != 1) {
       continue;
+    }
+
+    if (exec_scope == nullptr) {
+      exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
     }
 
     auto *var = exec_scope->FindVar(name);

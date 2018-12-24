@@ -174,6 +174,10 @@ class ExecutionContext {
 
   const Scope& scope() const { return scope_; }
 
+  void AddTempVar(std::unique_ptr<Variable>&& var) const {
+    scope_.AddTempVar(std::move(var));
+  }
+
   template <typename T>
   inline const T& Attr(const std::string& name) const {
     return op_.Attr<T>(name);
