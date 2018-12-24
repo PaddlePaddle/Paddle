@@ -106,7 +106,7 @@ framework::proto::ProgramDesc IRPassManager::AcquireProgram(
   pass->SetNotOwned("program", &desc);
   auto *the_graph = graph->release();
   *graph = pass->Apply(std::unique_ptr<Graph>(the_graph));
-  return desc.Proto();
+  return *desc.Proto();
 }
 
 }  // namespace analysis
