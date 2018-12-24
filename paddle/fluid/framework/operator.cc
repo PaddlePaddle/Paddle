@@ -174,9 +174,20 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       platform::SetDeviceId(dev_id);
 #endif
     }
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::RecordEvent record_event(Type(), pool.Get(place));
-    RunImpl(scope, place);
+
+    // The profile has a process-wide mutex, results in serious performance
+    // issue
+    // in concurrency scenerio. Here use an `if` to fix this issue.
+    // Please not remove the `if`, ask @Superjomn if there are any concern.
+    if (platform::IsProfileEnabled()) {
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      platform::RecordEvent record_event(Type(), pool.Get(place));
+      RunImpl(scope, place);
+    } else {
+      RunImpl(scope, place);
+    }
+
     if (VLOG_IS_ON(3)) {
       VLOG(3) << place << " " << DebugStringEx(&scope);
     }
@@ -204,18 +215,6 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   } catch (...) {
     std::rethrow_exception(std::current_exception());
   }
-
-  // The profile has a process-wide mutex, results in serious performance issue
-  // in concurrency scenerio. Here use an `if` to fix this issue.
-  // Please not remove the `if`, ask @Superjomn if there are any concern.
-  if (platform::IsProfileEnabled()) {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::RecordEvent record_event(Type(), pool.Get(place));
-    RunImpl(scope, place);
-  } else {
-    RunImpl(scope, place);
-  }
-  VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
