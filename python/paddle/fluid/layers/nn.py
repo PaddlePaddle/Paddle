@@ -173,7 +173,7 @@ __all__ = [
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
     'lstm',
-    'shufflechannel',
+    'shuffle_channel',
     'psroi_pool',
 ]
 
@@ -9334,17 +9334,20 @@ def shuffle_channel(x, group=1, name=None):
     with multiple group convolutional layers.
     
     Args: 
-        x: The input tensor variable.
+        x: The input tensor variable..
+        group: The num of group
 
 
     Returns:
         Variable: channel shuffled tensor variable.
 
     Raises:
-        ValueError: If group in not a int type variable.
+        ValueError: If group in not an int type variable.
 
     Examples:
         .. code-block:: python
+
+        out = fluid.layers.shuffle_channel(x=group_conv,group=4)
     
 
     """
@@ -9361,6 +9364,7 @@ def shuffle_channel(x, group=1, name=None):
         inputs={"X": x},
         outputs={"Out": out},
         attrs={"group": group})
+    return out
 
 
 @templatedoc()
