@@ -143,6 +143,7 @@ class DistributeTranspilerConfig(object):
     mode = "pserver"
     print_log = False
     wait_port = True
+    async_wait = True
 
 
 class DistributeTranspiler(object):
@@ -303,6 +304,11 @@ class DistributeTranspiler(object):
         self.startup_program = startup_program
         self.origin_startup_program = self.startup_program.clone()
 
+        if self.sync_mode:
+            self.send_recv_sync_mode = False
+        else:
+            self.send_recv_sync_mode = self.config.async_wait
+
         if self.config.mode == "nccl2":
             assert (isinstance(trainers, str))
             self.origin_program._trainers_endpoints = trainers.split(",")
@@ -410,7 +416,7 @@ class DistributeTranspiler(object):
                         self.grad_name_to_param_name[grad_varname],
                         splited_grad_varname
                     ],
-                    "sync_mode": not self.sync_mode,
+                    "sync_mode": self.send_recv_sync_mode,
                 })
             for _, var in enumerate(splited_vars):
                 send_vars.append(var)
@@ -488,7 +494,7 @@ class DistributeTranspiler(object):
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                         OP_ROLE_VAR_ATTR_NAME:
                         [param_varname, recv_op_role_var_name],
-                        "sync_mode": not self.sync_mode
+                        "sync_mode": self.send_recv_sync_mode
                     })
 
         if self.sync_mode:
@@ -1228,7 +1234,7 @@ class DistributeTranspiler(object):
                         if self.sync_mode else []
                     },
                     attrs={
-                        "sync_mode": not self.sync_mode,
+                        "sync_mode": self.send_recv_sync_mode,
                         "epmap": pserver_endpoints,
                         "trainer_id": self.trainer_id,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
