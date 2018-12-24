@@ -79,7 +79,7 @@ function cmake_gen() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/lib/libpython2.7.dylib"
-            pip install -r ${PADDLE_ROOT}/python/requirements.txt
+            pip install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
