@@ -31,6 +31,7 @@ std::unique_ptr<ir::Graph> SubblockToGraphPass::ApplyImpl(
   }
 
   auto& sub_graphs = graph->Get<subgraphs_t>(kSubblockGraphAttr);
+  sub_graphs.clear();
 
   // Filter out the nodes that has sub-block
   for (auto* node : graph->Nodes()) {
