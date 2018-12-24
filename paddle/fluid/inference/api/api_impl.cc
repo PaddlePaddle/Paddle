@@ -129,14 +129,14 @@ bool NativePaddlePredictor::Init(
 
   // Initialize the inference program
   if (!config_.model_dir.empty()) {
-    LOG(INFO) << "Loading model and parameters from " << config_.model_dir;
+    VLOG(3) << "Loading model and parameters from " << config_.model_dir;
     // Parameters are saved in separate files sited in
     // the specified `dirname`.
     inference_program_ = paddle::inference::Load(executor_.get(), scope_.get(),
                                                  config_.model_dir);
   } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
-    LOG(INFO) << "Loading model from " << config_.prog_file;
-    LOG(INFO) << "Loading parameters from " << config_.param_file;
+    VLOG(3) << "Loading model from " << config_.prog_file;
+    VLOG(3) << "Loading parameters from " << config_.param_file;
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
     // in Python API `fluid.io.save_inference_model`.
