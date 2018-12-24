@@ -40,8 +40,9 @@ using platform::Transform;
 
 static std::vector<int64_t> PathToRows(const framework::LoDTensor& path) {
   std::set<int64_t> rows;
+  const int64_t* paths = path.data<int64_t>();
   for (int64_t i = 0; i < path.numel(); ++i) {
-    int64_t row = path.data<int64_t>()[i];
+    int64_t row = paths[i];
     if (row < 0) {
       continue;
     }
