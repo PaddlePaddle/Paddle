@@ -126,7 +126,9 @@ class DDim {
  private:
   template <int D>
   inline Dim<D>& UnsafeCast() {
-    return const_cast<Dim<D>&>(const_cast<const DDim*>(this)->UnsafeCast<D>());
+    static_assert(D >= 0 && D <= kMaxRank, "Invalid rank");
+    auto* p = static_cast<void*>(&dim_);
+    return *reinterpret_cast<Dim<D>*>(p);
   }
 
   template <int D>

@@ -131,8 +131,6 @@ DDim slice_ddim(const DDim& dim, int begin, int end) {
 
 int arity(const DDim& d) { return d.size(); }
 
-/// \cond HIDDEN
-
 struct DDimPrinter {
   std::ostream& os;
   explicit DDimPrinter(std::ostream& os_) : os(os_) {}
@@ -142,8 +140,6 @@ struct DDimPrinter {
     os << t;
   }
 };
-
-/// \endcond
 
 std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
   ddim.apply_visitor(DDimPrinter(os));
