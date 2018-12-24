@@ -43,7 +43,7 @@ template <size_t I, typename... ARGS>
 struct CastToPyBufferImpl<true, I, ARGS...> {
   using CUR_TYPE = typename std::tuple_element<I, std::tuple<ARGS...>>::type;
   pybind11::buffer_info operator()(const framework::Tensor &tensor) {
-    if (std::type_index(typeid(CUR_TYPE)) == tensor.type()) {
+    if (framework::DataTypeTrait<CUR_TYPE>::DataType == tensor.type()) {
       auto dim_vec = framework::vectorize(tensor.dims());
       std::vector<size_t> dims_outside;
       std::vector<size_t> strides;
