@@ -22,21 +22,11 @@ from op_test import OpTest
 class TestFillZerosLikeOp(OpTest):
     def setUp(self):
         self.op_type = "fill_zeros_like"
-        self.dtype = np.float32
-        self.init_dtype()
-        self.inputs = {'X': np.random.random((219, 232)).astype(self.dtype)}
+        self.inputs = {'X': np.random.random((219, 232)).astype("float32")}
         self.outputs = {'Out': np.zeros_like(self.inputs["X"])}
-
-    def init_dtype(self):
-        pass
 
     def test_check_output(self):
         self.check_output()
-
-
-class TestFillZerosLikeOpFp16(TestFillZerosLikeOp):
-    def init_dtype(self):
-        self.dtype = np.float16
 
 
 if __name__ == "__main__":
