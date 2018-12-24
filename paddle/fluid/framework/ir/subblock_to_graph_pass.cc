@@ -29,7 +29,6 @@ std::unique_ptr<ir::Graph> SubblockToGraphPass::ApplyImpl(
   if (!graph->Has(kSubblockGraphAttr)) {
     graph->Set(kSubblockGraphAttr, new subgraphs_t);
   }
-
   auto& sub_graphs = graph->Get<subgraphs_t>(kSubblockGraphAttr);
   sub_graphs.clear();
 
