@@ -14,6 +14,7 @@
 """HDFS Utils"""
 
 import os
+import sys
 import subprocess
 import multiprocessing
 from datetime import datetime
@@ -24,7 +25,7 @@ import errno
 
 import logging
 
-__all__ = ["HDFSClient", "multi_download"]
+__all__ = ["HDFSClient", "multi_download", "multi_upload"]
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
 _logger = logging.getLogger("hdfs_utils")
@@ -93,13 +94,15 @@ class HDFSClient(object):
 
     def upload(self, hdfs_path, local_path, overwrite=False, retry_times=5):
         """
-            upload the local file to hdfs
-            Args:
-                hdfs_path: hdfs path, target path 
-                local_path: local file path, source path
-                overwrite: will overwrite the original file
-                retry_times: max times retry to upload
-            Returns:
+        upload the local file to hdfs
+
+        Args:
+            hdfs_path(str): the hdfs file path
+            local_path(str): the local file path
+            overwrite(bool|None): will overwrite the file on HDFS or not
+            retry_times(int|5): retry times
+
+        Returns:
                 True or False
         """
         assert hdfs_path is not None
@@ -109,7 +112,7 @@ class HDFSClient(object):
             _logger.warn(
                 "The Local path: {} is dir and I will support it later, return".
                 format(local_path))
-            return
+            return False
 
         base = os.path.basename(local_path)
         if not self.is_exist(hdfs_path):
@@ -141,14 +144,16 @@ class HDFSClient(object):
 
     def download(self, hdfs_path, local_path, overwrite=False, unzip=False):
         """
-            download from hdfs
-            Args:
-                hdfs_path: hdfs path, target path 
-                local_path: local file path, source path
-                overwrite: will remove original file and overwrite it.
-                unzip: ignore this param
-            Returns
-                True or False
+        download file from HDFS
+
+        Args:
+            hdfs_path(str): the hdfs file path
+            local_path(str): the local file path
+            overwrite(bool|None): will overwrite the file on HDFS or not
+            unzip(bool|False): if the download file is compressed by zip, unzip it or not.
+
+        Returns:
+            True or False
         """
         _logger.info('Downloading %r to %r.', hdfs_path, local_path)
         _logger.info('Download of %s to %r complete.', hdfs_path, local_path)
@@ -188,13 +193,13 @@ class HDFSClient(object):
 
     def is_exist(self, hdfs_path=None):
         """
-            whether the remote hdfs path exists?
-            Args:
-                hdfs_path: default value(${OUTPUT_PATH}/${SYS_USER_ID}/${SYS_JOB_ID}/tmp)
-                fs_name: The default values are the same as in the job configuration
-                fs_ugi: The default values are the same as in the job configuration
-            Returns:
-                True or False
+        whether the remote HDFS path exists
+
+        Args:
+            hdfs_path(str): the hdfs file path
+
+        Returns:
+            True or False
         """
         exist_cmd = ['-test', '-e', hdfs_path]
         returncode, output, errors = self.__run_hdfs_cmd(
@@ -211,13 +216,13 @@ class HDFSClient(object):
 
     def is_dir(self, hdfs_path=None):
         """
-            whether the remote hdfs path exists?
-            Args:
-                remote_file_path: default value(${OUTPUT_PATH}/${SYS_USER_ID}/${SYS_JOB_ID}/tmp)
-                fs_name: The default values are the same as in the job configuration
-                fs_ugi: The default values are the same as in the job configuration
-            Returns:
-                True or False
+        whether the remote HDFS path is directory
+
+        Args:
+            hdfs_path(str): the hdfs file path
+
+        Returns:
+            True or False
         """
 
         if not self.is_exist(hdfs_path):
@@ -237,17 +242,17 @@ class HDFSClient(object):
 
     def delete(self, hdfs_path):
         """
-            Remove a file or directory from HDFS.
+        Remove a file or directory from HDFS.
+
+        whether the remote HDFS path exists
 
         Args:
-            param hdfs_path: HDFS path.
-            param recursive: Recursively delete files and directories. By default,
-            this method will raise an :class:`HdfsError` if trying to delete a
-            non-empty directory.
+        hdfs_path: HDFS path.
+
         Returns:
+            True or False
             This function returns `True` if the deletion was successful and `False` if
             no file or directory previously existed at `hdfs_path`.
-
         """
         _logger.info('Deleting %r.', hdfs_path)
 
@@ -273,16 +278,14 @@ class HDFSClient(object):
 
     def rename(self, hdfs_src_path, hdfs_dst_path, overwrite=False):
         """
-        Rename a file or folder.
-        Args:    
-            :param hdfs_src_path: Source path.
-            :param hdfs_dst_path: Destination path. If the path already exists and is
-              a directory, the source will be moved into it. If the path exists and is
-              a file, or if a parent destination directory is missing, this method will
-              raise an :class:`HdfsError`.
+        Move a file or folder on HDFS.
+
+        Args:
+        hdfs_path(str): HDFS path.
+        overwrite(bool|False): If the path already exists and overwrite is False, will return False.
+
         Returns:
-             This function returns `True` if the rename was successful and `False` if
-             rename was faild.       
+            True or False
         """
         assert hdfs_src_path is not None
         assert hdfs_dst_path is not None
@@ -320,17 +323,20 @@ class HDFSClient(object):
                 raise
 
     def makedirs(self, hdfs_path):
-        """Create a remote directory, recursively if necessary.
+        """
+        Create a remote directory, recursively if necessary.
+
         Args:
-            :param hdfs_path: Remote path. Intermediate directories will be created
-              appropriately.
+        hdfs_path(str): Remote path. Intermediate directories will be created appropriately.
+
         Returns:
-            True if make a directories was successful, False when make a directiries was failed. 
+            True or False
         """
         _logger.info('Creating directories to %r.', hdfs_path)
         assert hdfs_path is not None
 
         if self.is_exist(hdfs_path):
+            _logger.error("HDFS path is exist: {}".format(hdfs_path))
             return
 
         mkdirs_commands = ['-mkdir', hdfs_path]
@@ -346,11 +352,13 @@ class HDFSClient(object):
 
     def ls(self, hdfs_path):
         """
-        ls a hdfs_path.
-        Args:    
-            :param hdfs_path: hdfs_path will be ls.
+        ls directory contents about HDFS hdfs_path
+
+        Args:
+        hdfs_path(str): Remote HDFS path will be ls.
+
         Returns:
-             This function returns a `list` that contaion all files in the hdfs_path.        
+            List: a contents list about hdfs_path.
         """
         assert hdfs_path is not None
 
@@ -378,11 +386,15 @@ class HDFSClient(object):
 
     def lsr(self, hdfs_path, only_file=True, sort=True):
         """
-        ls a hdfs_path sort by time.
-        Args:    
-            :param hdfs_path: hdfs_path will be ls.
+        list directory contents about HDFS hdfs_path recursively
+
+        Args:
+        hdfs_path(str): Remote HDFS path.
+        only_file(bool|True): will discard folders.
+        sort(bool|True): will be sorted by create time.
+
         Returns:
-             This function returns a `list` that contaion all files sorted by time in the hdfs_path.        
+            List: a contents list about hdfs_path.
         """
 
         def sort_by_time(v1, v2):
@@ -422,21 +434,106 @@ class HDFSClient(object):
             return ret_lines
 
 
+def multi_download(client,
+                   hdfs_path,
+                   local_path,
+                   trainer_id,
+                   trainers,
+                   multi_processes=5):
+    """
+    Download files from HDFS using multi process.
+
+    Args:
+        client(HDFSClient): instance of HDFSClient
+        hdfs_path(str): path on hdfs
+        local_path(str): path on local
+        trainer_id(int): current trainer id
+        trainers(int): all trainers number
+        multi_processes(int|5): the download data process at the same time, default=5
+
+    Returns:
+        List:
+        Download files in local folder.
+    """
+
+    def __subprocess_download(datas):
+        for data in datas:
+            re_path = os.path.relpath(os.path.dirname(data), hdfs_path)
+            if re_path == os.curdir:
+                sub_local_re_path = local_path
+            else:
+                sub_local_re_path = os.path.join(local_path, re_path)
+            client.download(data, sub_local_re_path)
+
+    assert isinstance(client, HDFSClient)
+
+    client.make_local_dirs(local_path)
+    _logger.info("Make local dir {} successfully".format(local_path))
+
+    all_need_download = client.lsr(hdfs_path, sort=True)
+    need_download = all_need_download[trainer_id::trainers]
+    _logger.info("Get {} files From all {} files need to be download from {}".
+                 format(len(need_download), len(all_need_download), hdfs_path))
+
+    _logger.info("Start {} multi process to download datas".format(
+        multi_processes))
+    procs = []
+    for i in range(multi_processes):
+        process_datas = need_download[i::multi_processes]
+        p = multiprocessing.Process(
+            target=__subprocess_download, args=(process_datas, ))
+        procs.append(p)
+        p.start()
+
+    # complete the processes
+    for proc in procs:
+        proc.join()
+
+    _logger.info("Finish {} multi process to download datas".format(
+        multi_processes))
+
+    local_downloads = []
+    for data in need_download:
+        data_name = os.path.basename(data)
+        re_path = os.path.relpath(os.path.dirname(data), hdfs_path)
+        if re_path == os.curdir:
+            local_re_path = os.path.join(local_path, data_name)
+        else:
+            local_re_path = os.path.join(local_path, re_path, data_name)
+        local_downloads.append(local_re_path)
+
+    return local_downloads
+
+
+def getfilelist(path):
+    rlist = []
+    for dir, folder, file in os.walk(path):
+        for i in file:
+            t = os.path.join(dir, i)
+            rlist.append(t)
+    for r in rlist:
+        print(r)
+
+
 def multi_upload(client,
                  hdfs_path,
                  local_path,
                  multi_processes=5,
-                 overwrite=False):
+                 overwrite=False,
+                 sync=True):
     """
-    Upload file to hdfs.
+    Upload files to HDFS using multi process.
+
     Args:
-        :param overwrite: will overwrite hdfs file or not
-        :param multi_processes: the upload data process at the same time, default=5
-        :param client: instance of HDFSClient
-        :param hdfs_path: path on hdfs
-        :param local_path: path on local
+        client(HDFSClient): instance of HDFSClient
+        hdfs_path(str): path on hdfs
+        local_path(str): path on local
+        multi_processes(int|5): the upload data process at the same time, default=5
+        overwrite(bool|False): will overwrite file on HDFS or not
+        sync(bool|True): upload files sync or not.
+
     Returns:
-        
+        None
     """
 
     def __subprocess_upload(datas):
@@ -446,13 +543,6 @@ def multi_upload(client,
             client.upload(hdfs_re_path, data, overwrite, retry_times=5)
 
     def get_local_files(path):
-        """
-            Get all local files
-        Args:
-            path: local file path
-        Returns:
-            A list that contation all files in the path.
-        """
         rlist = []
 
         if not os.path.isdir(path):
@@ -486,71 +576,6 @@ def multi_upload(client,
 
     _logger.info("Finish {} multi process to upload datas".format(
         multi_processes))
-
-
-def multi_download(client,
-                   hdfs_path,
-                   local_path,
-                   trainer_id,
-                   trainers,
-                   file_cnt,
-                   multi_processes=5):
-    """
-    multi_download
-    Args:
-        :param client: instance of HDFSClient
-        :param hdfs_path: path on hdfs
-        :param local_path: path on local
-        :param trainer_id: current trainer id
-        :param trainers: all trainers number
-        :param file_cnt: all file number
-        :param multi_processes: the download data process at the same time, default=5
-        :return: None
-    Returns:
-        A list that be downloaded. 
-    """
-
-    def __subprocess_download(datas):
-        for data in datas:
-            re_path = os.path.relpath(os.path.dirname(data), hdfs_path)
-            local_re_path = os.path.join(local_path, re_path)
-            client.download(data, local_re_path)
-
-    assert isinstance(client, HDFSClient)
-
-    client.make_local_dirs(local_path)
-    _logger.info("Make local dir {} successfully".format(local_path))
-
-    all_need_download = client.lsr(hdfs_path, sort=True)[:file_cnt]
-    need_download = all_need_download[trainer_id::trainers]
-    _logger.info("Get {} files From all {} files need to be download from {}".
-                 format(len(need_download), len(all_need_download), hdfs_path))
-
-    _logger.info("Start {} multi process to download datas".format(
-        multi_processes))
-    procs = []
-    for i in range(multi_processes):
-        process_datas = need_download[i::multi_processes]
-        p = multiprocessing.Process(
-            target=__subprocess_download, args=(process_datas, ))
-        procs.append(p)
-        p.start()
-
-    # complete the processes
-    for proc in procs:
-        proc.join()
-
-    _logger.info("Finish {} multi process to download datas".format(
-        multi_processes))
-
-    local_downloads = []
-    for data in need_download:
-        data_name = os.path.basename(data)
-        re_path = os.path.relpath(os.path.dirname(data), hdfs_path)
-        local_re_path = os.path.join(local_path, re_path, data_name)
-        local_downloads.append(local_re_path)
-
-    return local_downloads
 
 
 if __name__ == "__main__":
