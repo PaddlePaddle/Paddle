@@ -30,6 +30,18 @@ class SampledSoftmaxWithCrossEntropyOpMaker
              "(Tensor) The ground truth which is a 2-D tensor. Label is a "
              "Tensor<int64> with shape [N x NT], where NT is the number of"
              "true labels for each example.");
+    AddInput(
+        "CustomSamples",
+        "(Tensor, default: Tensor<int64_t>), A 2-D tensor with shaoe [N x "
+        "S+NT]."
+        "The customized sample labels with true labels at first. This tensor"
+        "is only use_custom_samples is true.");
+    AddInput(
+        "CustomProbabilities",
+        "(Tensor, default: Tensor<float>), A 2-D tensor with shaoe [N x S+NT]."
+        "The customized sample probabilities with true labels at first. This "
+        "tensor is only use_custom_samples is true.");
+
     AddOutput(
         "Samples",
         "(Tensor, default: Tensor<int64_t>), A 2-D tensor with shape [N x "
@@ -48,36 +60,15 @@ class SampledSoftmaxWithCrossEntropyOpMaker
     AddOutput("Loss",
               "(Tensor, default: Tensor<float>), A 2-D tensor. The cross "
               "entropy loss with shape [N x 1].");
-    AddAttr<std::string>(
-        "sampler_type",
-        "[\"log_uniform\"|\"uniform\"]"
-        "The sampler type which is used by SampleWithProb Functor to generate "
-        "samples and probabilities.")
-        .SetDefault("log_uniform")
-        .AddCustomChecker([](const std::string& sampler) {
-          PADDLE_ENFORCE(
-              sampler == "log_uniform" || sampler == "uniform",
-              "sampled_softmax_with_cross_entropy now only support two samples"
-              "uniform and log_uniform");
-        });
+
+    AddAttr<bool>(
+        "use_custom_samples",
+        "An indicator whether to use custom samples with probabilities, if True"
+        "the operator will use custom samples and custom probabilities"
+        "otherwise, the operator will generate them by itself.")
+        .SetDefault(false);
     AddAttr<int>("num_samples", "The number of negative samples.");
-    AddAttr<bool>(
-        "unique",
-        "An indicator whether to use unique sampling, aka. sampling without "
-        "replacement.")
-        .SetDefault(false);
-    AddAttr<bool>(
-        "remove_accidental_hits",
-        "An indicator whether to remove an example from a sample when it "
-        "accidentally hits true labels.")
-        .SetDefault(false);
     AddAttr<int>("seed", "Random seed for generating samples").SetDefault(0);
-    AddAttr<std::vector<int64_t>>(
-        "avoid_indices",
-        "(std::vector<int64_t>, default {}), Specifies a set of target values"
-        "that is ignored and does not contribute to the input gradient. This "
-        "attribute is valid because multilabel is indeed a sparse label.")
-        .SetDefault(std::vector<int64_t>({}));
 
     AddComment(R"DOC(
 TODO(chenfeiyu): Write documentation for this Operator.
@@ -130,7 +121,6 @@ class SampledSoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Loss"), "Output(Loss) should be not null.");
 
     auto logits_dims = ctx->GetInputDim("Logits");
-    const int num_classes = logits_dims[1];
     auto labels_dims = ctx->GetInputDim("Label");
 
     PADDLE_ENFORCE_EQ(
@@ -139,22 +129,8 @@ class SampledSoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(labels_dims.size(), 2UL,
                       "The labels should be a 2-D tensor.");
 
-    const auto& avoid_indices =
-        ctx->Attrs().Get<std::vector<int64_t>>("avoid_indices");
-    const int num_avoids = avoid_indices.size();
-    const auto unique = ctx->Attrs().Get<bool>("unique");
-
     const int num_samples = ctx->Attrs().Get<int>("num_samples");
     const int num_sampled_classes = labels_dims[1] + num_samples;
-    if (num_avoids) {
-      PADDLE_ENFORCE_EQ(
-          unique, true,
-          "Avoid indices only supported when using unique sampling");
-      PADDLE_ENFORCE_LE(num_avoids + num_samples, num_classes,
-                        "When using unique sampling, num_samples + num_avoids "
-                        "must be less than"
-                        "or equal to num_classes");
-    }
     ctx->SetOutputDim("Samples", {logits_dims[0], num_sampled_classes});
     ctx->SetOutputDim("SampledSoftmax", {logits_dims[0], num_sampled_classes});
     ctx->SetOutputDim("Loss", {logits_dims[0], 1});
@@ -223,7 +199,6 @@ class SampledSoftmaxGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetInput("Label", Input("Label"));
     grad_op->SetInput("Samples", Output("Samples"));
     grad_op->SetInput("SampledSoftmax", Output("SampledSoftmax"));
-
     grad_op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
     grad_op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
     grad_op->SetAttrMap(Attrs());

@@ -97,40 +97,6 @@ void CPUPutAlongD1(const platform::DeviceContext& ctx, framework::Tensor* array,
   for (int i = 0; i < batch_size; ++i) {
     for (int j = 0; j < num_put; ++j) {
       auto array_index = p_index[i * idx_slice_size + j];
-      p_array[i * array_slice_size + array_index] +=
-          p_value[i * value_slice_size + j];
-    }
-  }
-}
-
-template <typename T>
-void CPUPutReverseAlongD1(const platform::DeviceContext& ctx,
-                          framework::Tensor* array,
-                          const framework::Tensor& index,
-                          const framework::Tensor& value) {
-  PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
-  // UNDERSTAND: check shape src(B, C), index(B, K), out should also be (B, K)
-  PADDLE_ENFORCE(index.dims().size() == 2 && array->dims().size() == 2 &&
-                 index.dims()[0] == array->dims()[0] &&
-                 index.dims() == value.dims());
-  const auto batch_size = index.dims()[0];
-  const auto num_put = index.dims()[1];
-  auto array_dims = array->dims();
-  auto idx_dims = index.dims();
-
-  // UNDERSTAND: no allocations here
-  T* p_array = array->data<T>();
-  const int64_t* p_index = index.data<int64_t>();
-  const T* p_value = value.data<T>();
-
-  // slice sizes
-  const auto array_slice_size = array_dims[1];
-  const auto idx_slice_size = idx_dims[1];
-  const auto value_slice_size = idx_slice_size;
-
-  for (int i = 0; i < batch_size; ++i) {
-    for (int j = num_put - 1; j > -1; --j) {
-      auto array_index = p_index[i * idx_slice_size + j];
       p_array[i * array_slice_size + array_index] =
           p_value[i * value_slice_size + j];
     }
@@ -157,79 +123,47 @@ class SampledSoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
     const auto num_true = label_dim[1];
     const auto num_samples = context.Attr<int>("num_samples");
     const auto samples_dim = samples->dims();
-
-    // UNDERSTAND: allocate memoroes for outputs
+    const bool use_custom_samples = context.Attr<bool>("use_custom_samples");
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    samples->mutable_data<int64_t>(context.GetPlace());
-    sampled_softmax->mutable_data<T>(context.GetPlace());
-    loss->mutable_data<T>(context.GetPlace());
 
     // UNDERSTAND: allocate memories for temporaries
     Tensor probabilities_tmp;
     Tensor* probabilities = &probabilities_tmp;
-    probabilities->mutable_data<T>(samples_dim, context.GetPlace());
     Tensor sampled_logits_tmp;
     Tensor* sampled_logits = &sampled_logits_tmp;
     sampled_logits->mutable_data<T>(samples_dim, context.GetPlace());
+    Tensor shrinked_label_tmp;
+    Tensor* shrinked_label = &shrinked_label_tmp;
+    auto shrinked_lebel_data =
+        shrinked_label->mutable_data<int64_t>(label_dim, context.GetPlace());
+    for (int i = 0; i < batch_size; ++i)
+      for (int j = 0; j < num_true; ++j)
+        shrinked_lebel_data[i * num_true + j] = j;
 
-    // UNDERSTAND: sampling
-    const auto& sampler_type = context.Attr<std::string>("sampler_type");
-    const auto seed = context.Attr<int>("seed");
-    const auto unique = context.Attr<bool>("unique");
-    const auto avoid_indices =
-        context.Attr<std::vector<int64_t>>("avoid_indices");
+    // UNDERSTAND: allocate memoroes for outputs
+    sampled_softmax->mutable_data<T>(context.GetPlace());
+    loss->mutable_data<T>(context.GetPlace());
 
-    const auto remove_accidental_hits =
-        context.Attr<bool>("remove_accidental_hits");
-
-    auto sampler_with_prob =
-        math::SampleWithProb<platform::CPUDeviceContext, T>();
-    std::vector<int64_t> hits;
-    std::vector<int64_t> num_tries_vec;
-
-    if (sampler_type == "log_uniform") {
-      sampler_with_prob(dev_ctx, math::LogUniformSampler(num_classes, seed),
-                        unique, num_samples, remove_accidental_hits, label,
-                        samples, probabilities, &hits, &num_tries_vec,
-                        avoid_indices);
+    if (use_custom_samples) {
+      const Tensor* custom_samples = context.Input<Tensor>("CustomSamples");
+      const Tensor* custom_probabilities =
+          context.Input<Tensor>("CustomProbabilities");
+      samples->ShareDataWith(*custom_samples);
+      probabilities->ShareDataWith(*custom_probabilities);
     } else {
-      sampler_with_prob(dev_ctx, math::UniformSampler(num_classes - 1, seed),
-                        unique, num_samples, remove_accidental_hits, label,
-                        samples, probabilities, &hits, &num_tries_vec,
-                        avoid_indices);
+      samples->mutable_data<int64_t>(context.GetPlace());
+      probabilities->mutable_data<T>(samples_dim, context.GetPlace());
+      // UNDERSTAND: sampling
+      const auto seed = context.Attr<int>("seed");
+      auto sampler_with_prob =
+          math::SampleWithProb<platform::CPUDeviceContext, T>();
+      sampler_with_prob(dev_ctx, math::LogUniformSampler(num_classes, seed),
+                        num_samples, label, samples, probabilities);
     }
-
-    /*
-    std::cout <<"avoid indices' s" << std::endl;
-    for (const auto& x: avoid_indices) {
-      std::cout << x << ", ";
-    }
-    std::cout << std::endl;
-    std::cout << "Hit's" << std::endl;
-    for (const auto& x: hits) {
-      std::cout << x << ", ";
-    }
-    std::cout << std::endl;
-    std::cout << "num tries's" << std::endl;
-    for (const auto& x: num_tries_vec) {
-      std::cout << x << ", ";
-    }
-    std::cout << std::endl;
-    */
 
     // UNDERSTAND: gather sampled logits
     CPUTakeAlongD1<T>(dev_ctx, *logits, *samples, sampled_logits);
-
-    /* UNDERSTAND: remove accidental hits, i.e. set the logit of the accidental
-    hits to be negative limit to dicard them */
-    if (remove_accidental_hits) {
-      const T kApproInf = 1e20;
-      auto sampled_logits_data = sampled_logits->data<T>();
-      for (const int64_t id : hits) {
-        sampled_logits_data[id] -= kApproInf;
-      }
-    }
 
     // subtracted sampled logits with logQ(y|x)
     auto probs = EigenMatrix<T>::From(*probabilities);
@@ -238,17 +172,19 @@ class SampledSoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
         (smp_logits - probs.log().unaryExpr(math::TolerableValue<T>()))
             .unaryExpr(math::TolerableValue<T>());
 
+    /* debug
+    const auto sampled_logits_data = sampled_logits->data<T>();
+    for (int i = 0; i < sampled_logits->numel(); ++i) {
+      std::cout << sampled_logits_data[i] << ", ";
+      if ((i + 1) % samples_dim[1] == 0)
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+    */
+
     // UNDERSTAND: main logic here
     math::SoftmaxFunctor<platform::CPUDeviceContext, T, false>()(
         dev_ctx, sampled_logits, sampled_softmax);
-
-    Tensor shrinked_label_tmp;
-    Tensor* shrinked_label = &shrinked_label_tmp;
-    auto shrinked_lebel_data =
-        shrinked_label->mutable_data<int64_t>(label_dim, context.GetPlace());
-    for (int i = 0; i < batch_size; ++i)
-      for (int j = 0; j < num_true; ++j)
-        shrinked_lebel_data[i * num_true + j] = j;
     math::CrossEntropyMultiLabelFunctor<platform::CPUDeviceContext, T>()(
         dev_ctx, loss, sampled_softmax, shrinked_label);
   }

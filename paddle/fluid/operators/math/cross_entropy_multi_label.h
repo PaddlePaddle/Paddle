@@ -65,46 +65,6 @@ class CrossEntropyMultiLabelFunctor {
                   const framework::Tensor* labels);
 };
 
-/*
-template <typename T>
-class XeMlGradFunctor{
-public:
-  XeMlGradFunctor(T* dx,
-                  const T* dy,          // NOLINT
-                  const T* x,           // NOLINT
-                  const int64_t* label, // NOLINT
-                  size_t num_classes, size_t num_true, size_t ignore_index)
-    : dx_(dx),
-      dy_(dy),
-      x_(x),
-      label_(label),
-      num_classes_(num_classes),
-      num_true_(num_true),
-      ignore_index_(ignore_index) {}
-
-  HOSTDEVICE void operator()(size_t sample_id) {
-    // UNDERSTAND: it only computes for a single example, batch it by loop
-    for (size_t x_offset = sample_id * num_classes_;
-         x_offset < (sample_id + 1) * num_classes_; ++x_offset) {
-      dx_[x_offset] = static_cast<T>(0);
-    }
-    for (size_t j = 0; j < num_true_; ++j) {
-      auto lbl_offset = sample_id * num_true_ + j;
-      auto x_is_true_offset = sample_id * num_classes_ + label_[lbl_offset];
-      dx_[x_is_true_offset] -= dy_[sample_id] / x_[x_is_true_offset];
-    }
-  }
-
-private:
-  T* dx_;
-  const T* dy_;
-  const T* x_;
-  const int64_t* label_;
-  std::size_t num_classes_;
-  std::size_t num_true_;
-  std::size_t ignore_index_;
-};
-*/
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
