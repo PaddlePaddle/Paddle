@@ -936,6 +936,12 @@ function main() {
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
         ;;
+      gen_fluid_lib)
+        gen_fluid_lib
+        ;;
+      test_fluid_lib)
+        test_fluid_lib
+        ;;
       *)
         print_usage
         exit 0
