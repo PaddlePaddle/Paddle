@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import collections
 from .... import layers
 
 __all__ = ['Pruner', 'MagnitudePruner', 'RatioPruner']
@@ -46,6 +47,42 @@ class MagnitudePruner(Pruner):
             thres = threshold
         zeros_mask = layers.less_than(x=param, y=thres)
         return zeros_mask
+
+
+class StructurePruner(Pruner):
+    """
+    Pruner used to pruning parameters by groups.
+    """
+
+    def __init__(self, ratios, group_dims, criterions):
+        self.ratios = ratios
+        self.group_dims = group_dims
+        self.criterions = criterions
+
+    def prune(self, params):
+        params = params if isinstance(params,
+                                      collections.Iterable) else [params]
+        masks = []
+        for param in params:
+            name = param.name
+            ratio = self.ratios[name] if name in self.ratios else self.ratios[
+                '*']
+            group_dim = self.group_dims[
+                name] if name in self.group_dims else self.group_dims['*']
+            criterion = self.criterions[
+                name] if name in self.criterions else self.criterions['*']
+            if criterion == 'l1_norm':
+                l1_norms = fluid.layers.reduce_sum(
+                    fluid.layers.abs(param), dim=group_dim, keep_dim=True)
+                tmp = fluid.layers.reshape(l1_norms, shape=[-1])
+                tmp = fluid.layers.topk(tmp, k=tmp.shape[0] * (1 - ratio))
+                threhold = tmp[-1]
+                zero_mask = l1_norms > threhold
+                masks.append(zero_mask)
+            else:
+                raise NotImplementedError(
+                    "criterion {} is not implemented!".format(criterion))
+        return masks
 
 
 class RatioPruner(Pruner):
