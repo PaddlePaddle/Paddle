@@ -65,7 +65,7 @@ template <>
 void set_constant_with_place<platform::CUDAPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
-  framework::VisitDataType(framework::ToDataType(tensor->type()),
+  framework::VisitDataType(tensor->type(),
                            TensorSetConstantGPU(context, tensor, value));
 }
 

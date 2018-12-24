@@ -267,7 +267,11 @@ function(cc_library TARGET_NAME)
           list(APPEND cc_library_DEPS dynload_mklml)
         endif()
         add_dependencies(${TARGET_NAME} mklml)
-        target_link_libraries(${TARGET_NAME} "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
+        if(WIN32)
+          target_link_libraries(${TARGET_NAME} ${MKLML_IOMP_LIB})
+        else(WIN32)
+          target_link_libraries(${TARGET_NAME} "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
+        endif(WIN32)
       endif()
       # remove link to python, see notes at:
       # https://github.com/pybind/pybind11/blob/master/docs/compiling.rst#building-manually

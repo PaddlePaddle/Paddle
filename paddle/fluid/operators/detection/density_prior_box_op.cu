@@ -146,7 +146,8 @@ class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
 
     // At least use 32 threads, at most 512 threads.
     // blockx is multiple of 32.
-    int blockx = std::min(((feature_width * num_priors + 31) >> 5) << 5, 512L);
+    int blockx = std::min(
+        static_cast<long>(((feature_width * num_priors + 31) >> 5) << 5), 512L);
     int gridx = (feature_width * num_priors + blockx - 1) / blockx;
     dim3 threads(blockx, 1);
     dim3 grids(gridx, feature_height);
