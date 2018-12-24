@@ -14,16 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <stdlib.h>
-#if defined __APPLE__
-#include <time.h>
-#else
-#include <time.h>
-#if defined _WIN32
-#include <windows.h>
-#else
-#include <sys/time.h>
-#endif
-#endif
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace platform {
