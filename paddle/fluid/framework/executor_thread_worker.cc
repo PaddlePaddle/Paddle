@@ -180,6 +180,7 @@ void ExecutorThreadWorker::SetDevice() {
   return;
 #else
   static unsigned concurrency_cap = std::thread::hardware_concurrency();
+  LOG(WARNING) << "concurrency capacity " << concurrency_cap;
   int thread_id = this->thread_id_;
 
   if (static_cast<unsigned>(thread_id) < concurrency_cap) {
@@ -236,6 +237,49 @@ static void print_fetch_var(Scope* scope, const std::string& var_name) {
 
   _ForEachDataType_(PrintLoDTensorCallback);
   VLOG(1) << "print_fetch_var: unrecognized data type:" << tensor.type();
+}
+
+void ExecutorThreadWorker::TrainFilesWithTimer() {
+  platform::SetNumThreads(1);
+  SetDevice();
+  thread_reader_->Start();
+  std::vector<double> op_total_time;
+  std::vector<std::string> op_name;
+  for (auto& op : ops_) {
+    op_name.push_back(op->Type());
+  }
+  op_total_time.resize(ops_.size());
+  for (int i = 0; i < op_total_time.size(); ++i) {
+    op_total_time[i] = 0.0;
+  }
+  platform::Timer timeline;
+  double total_time = 0.0;
+  double read_time = 0.0;
+  int cur_batch;
+  int batch_cnt = 0;
+  timeline.Start();
+  while ((cur_batch = thread_reader_->Next()) > 0) {
+    timeline.Pause();
+    read_time += timeline.ElapsedSec();
+    total_time += timeline.ElapsedSec();
+    for (int i = 0; i < ops_.size(); ++i) {
+      timeline.Start();
+      ops_[i]->Run(*thread_scope_, place_);
+      timeline.Pause();
+      op_total_time[i] += timeline.ElapsedSec();
+      total_time += timeline.ElapsedSec();
+    }
+    ++batch_cnt;
+    thread_scope_->DropKids();
+    if (batch_cnt > 0 && batch_cnt % 1000 == 0) {
+      for (int i = 0; i < ops_.size(); ++i) {
+        fprintf(stderr, "op_name:[%d][%s], op_mean_time:[%fs]\n", i,
+                op_name[i].c_str(), op_total_time[i] / batch_cnt);
+      }
+      fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
+    }
+    timeline.Start();
+  }
 }
 
 void ExecutorThreadWorker::TrainFiles() {
