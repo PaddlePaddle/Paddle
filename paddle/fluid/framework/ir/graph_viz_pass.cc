@@ -115,7 +115,7 @@ void DotDrawGraph(const Graph& graph, paddle::inference::analysis::Dot* dot,
   for (const Node* n : graph.Nodes()) {
     std::string node_id =
         FormatName(n) + "(" + std::to_string(n->id() + node_id_offset) + ")";
-    if (n->IsOp()) {
+    if (n->IsOp() && n->Op()) {
       decltype(op_attrs) attr =
           marked_nodes.count(n) ? marked_op_attrs : op_attrs;
       // the node_id is unique within a graph.
