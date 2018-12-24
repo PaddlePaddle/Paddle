@@ -12,28 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/jit_kernel.h"
-#include <iostream>
-#include <string>
+/*
+ * This file contains the list of the ngraph operators for Paddle.
+ *
+ * ATTENTION: It requires some C++11 features, for lower version C++ or C, we
+ * might release another API.
+ */
 
-namespace paddle {
-namespace operators {
-namespace math {
-namespace jitkernel {
+#pragma once
 
-KernelPool& KernelPool::Instance() {
-  static thread_local KernelPool g_jit_kernels;
-  return g_jit_kernels;
-}
-
-std::shared_ptr<const Kernel> KernelPool::Get(const std::string& key) const {
-  if (kers_.find(key) == kers_.end()) {
-    return nullptr;
-  }
-  return kers_.at(key);
-}
-
-}  // namespace jitkernel
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+#include "ops/binary_unnary_op.h"
+#include "ops/mul_op.h"
