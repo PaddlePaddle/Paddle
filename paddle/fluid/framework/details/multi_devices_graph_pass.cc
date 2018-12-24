@@ -42,6 +42,12 @@ namespace {
 typedef std::vector<OpHandleBase *> GraphOps;
 const char kGraphOps[] = "ops";
 
+bool IsSameOpRole(const ir::Node &node, const framework::OpRole &role) {
+  return boost::get<int>(
+             node.Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+         static_cast<int>(role);
+}
+
 void PolishGraphToSupportDataHazards(ir::Graph *graph) {
   for (auto &var_map : graph->Get<GraphVars>(kGraphVars)) {
     for (auto &name_pair : var_map) {
@@ -179,42 +185,6 @@ void MultiDevSSAGraphBuilder::CreateOpHandleIOs(ir::Graph *result,
   }
 }
 
-std::vector<std::string> MultiDevSSAGraphBuilder::FindDistTrainSendVars(
-    const std::vector<ir::Node *> &nodes) const {
-  std::vector<std::string> send_vars;
-  // since parameters are all in block 0,
-  // it's enough to only scan send ops in block 0
-  for (auto &node : nodes) {
-    OpDesc *op = node->Op();
-    // TODO(Yancey1989): use a graceful method to find send op,
-    // instead of the the hard code string
-    if (op->Type() == "send") {
-      auto op_vars = op->InputArgumentNames();
-      send_vars.reserve(send_vars.size() +
-                        std::distance(op_vars.begin(), op_vars.end()));
-      send_vars.insert(send_vars.end(), op_vars.begin(), op_vars.end());
-    }
-  }
-  return send_vars;
-}
-
-std::vector<std::string> MultiDevSSAGraphBuilder::FindDistTrainRecvVars(
-    const std::vector<ir::Node *> &nodes) const {
-  std::vector<std::string> recv_vars;
-  for (auto &node : nodes) {
-    OpDesc *op = node->Op();
-    // TODO(Yancey1989): use a graceful method to find recv op,
-    // instead of the hard code string
-    if (op->Type() == "recv") {
-      auto op_vars = op->OutputArgumentNames();
-      recv_vars.reserve(recv_vars.size() +
-                        std::distance(op_vars.begin(), op_vars.end()));
-      recv_vars.insert(recv_vars.end(), op_vars.begin(), op_vars.end());
-    }
-  }
-  return recv_vars;
-}
-
 size_t MultiDevSSAGraphBuilder::GetAppropriateDeviceID(
     const std::vector<std::string> &var_names) const {
   int64_t numel_sum = 0;
@@ -242,13 +212,11 @@ size_t MultiDevSSAGraphBuilder::GetAppropriateDeviceID(
 // some optimizer ops might not depend on any nodes), we manually move all
 // optimizer nodes after last backward nodes.
 // However, the assumption by SSAGraphBuilder should be relaxed in the future.
-std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(const ir::Graph &graph) {
-  std::vector<ir::Node *> ret = ir::TopologySortOperations(graph);
+std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(
+    const std::vector<ir::Node *> &ret) {
   size_t last_backward = 0;
   for (size_t i = 0; i < ret.size(); ++i) {
-    if (boost::get<int>(
-            ret[i]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-        static_cast<int>(OpRole::kBackward)) {
+    if (IsSameOpRole(*ret[i], OpRole::kBackward)) {
       last_backward = i;
     }
   }
@@ -292,7 +260,11 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   Init();
   // Give the topology sort order and rebuild the graph structure.
-  std::vector<ir::Node *> sorted_ops = SortOpsAndDelayOptimizeOp(*graph);
+  std::vector<ir::Node *> sorted_ops = ir::TopologySortOperations(*graph);
+  if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
+    sorted_ops = SortOpsAndDelayOptimizeOp(sorted_ops);
+  }
+
   auto nodes = graph->ReleaseNodes();
   ir::Graph &result = *graph;
 
@@ -310,11 +282,6 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   result.Set(kGraphDepVars, new GraphDepVars);
   result.Set(kGraphOps, new GraphOps);
 
-  // find send/recv vars so that we can place the distributed training
-  // related op in the place 0
-  auto send_vars = FindDistTrainSendVars(sorted_ops);
-  auto recv_vars = FindDistTrainRecvVars(sorted_ops);
-
   std::vector<std::unordered_set<std::string>> bcast_var_name_set;
   bcast_var_name_set.resize(places_.size());
 
@@ -325,9 +292,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   std::unordered_map<std::string, int> sharded_var_device;
 
   for (ir::Node *node : sorted_ops) {
-    if (boost::get<int>(
-            node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-        static_cast<int>(OpRole::kRPC)) {
+    if (IsSameOpRole(*node, OpRole::kRPC)) {
       int op_dev_id = CreateRPCOp(&result, node, &sharded_var_device);
       PADDLE_ENFORCE(op_dev_id != -1,
                      "Can not schedule the RPC operator to the right place.");
@@ -341,9 +306,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
         }
       }
       is_dist_train = true;
-    } else if (boost::get<int>(node->Op()->GetAttr(
-                   OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-               static_cast<int>(OpRole::kDist)) {
+    } else if (IsSameOpRole(*node, OpRole::kDist)) {
       int op_dev_id = CreateDistTrainOp(&result, node, &sharded_var_device);
       if (node->Op()->Type() == "concat") {
         auto origin_param_name = node->Op()->OutputArgumentNames()[0];
@@ -628,9 +591,8 @@ int MultiDevSSAGraphBuilder::GetOpDeviceID(
   if (strategy_.reduce_ != BuildStrategy::ReduceStrategy::kReduce) {
     return -1;
   }
-  int op_role = boost::get<int>(
-      node->Op()->GetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
-  if (op_role != static_cast<int>(framework::OpRole::kOptimize)) {
+
+  if (!IsSameOpRole(*node, framework::OpRole::kOptimize)) {
     return -1;
   }
   auto param_grad = boost::get<std::vector<std::string>>(

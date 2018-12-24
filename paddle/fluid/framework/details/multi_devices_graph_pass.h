@@ -57,12 +57,6 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
       ir::Graph *result, ir::Node *node,
       std::unordered_map<std::string, int> *sharded_var_device) const;
 
-  std::vector<std::string> FindDistTrainSendVars(
-      const std::vector<ir::Node *> &nodes) const;
-
-  std::vector<std::string> FindDistTrainRecvVars(
-      const std::vector<ir::Node *> &nodes) const;
-
   void CreateComputationalOps(ir::Graph *result, ir::Node *node,
                               size_t num_places) const;
 
