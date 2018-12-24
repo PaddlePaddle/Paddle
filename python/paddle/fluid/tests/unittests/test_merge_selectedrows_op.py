@@ -29,8 +29,8 @@ class TestMergeSelectedRows(unittest.TestCase):
 
     def check_with_place(self, place):
         scope = core.Scope()
-        x_rows = [0, 5, 5, 4, 20]
-        out_rows = [0, 4, 5, 20]
+        x_rows = [0, 5, 5, 4, 19]
+        out_rows = [0, 4, 5, 19]
         height = 20
         row_numel = 2
 

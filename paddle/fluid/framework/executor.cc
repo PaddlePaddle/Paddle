@@ -100,7 +100,7 @@ static void DeleteUnusedTensors(
           continue;
         }
         auto* var = scope.FindVar(name);
-        if (var != nullptr) {
+        if (var == nullptr) {
           continue;
         }
 
