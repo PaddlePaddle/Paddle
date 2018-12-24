@@ -53,6 +53,15 @@ def adjust_prob(prob, num_samples, num_tries):
         return -np.expm1(num_tries * np.log1p(-prob))
 
 
+def take_along_axis1(array, index):
+    out = np.zeros_like(index, dtype=array.dtype)
+    n_row, n_col = index.shape
+    for i in range(n_row):
+        for j in range(n_col):
+            out[i, j] = array[i, index[i, j]]
+    return out
+
+
 def sample_prob(sampler, num_samples, label):
     batch_size, num_true = label.shape
     num_sampled_classes = num_samples + num_true
@@ -99,14 +108,13 @@ def sampled_softmax_with_cross_entropy(logits, label, num_samples, seed,
     else:
         sampler = LogUniformSampler(num_classes, seed)
         samples, probabilities = sample_prob(sampler, num_samples, labels)
-    sampled_logits = np.take_along_axis(logits, samples, axis=1)
+    sampled_logits = take_along_axis1(logits, samples)
     sampled_logits -= np.log(probabilities)
     sampled_softmax = np.apply_along_axis(
         func1d=stable_softmax, axis=1, arr=sampled_logits)
     shifted_true_labels = np.tile(np.arange(num_true), (batch_size, 1))
     log_sampled_softmax = np.log(sampled_softmax)
-    loss = -np.sum(np.take_along_axis(
-        log_sampled_softmax, shifted_true_labels, axis=1),
+    loss = -np.sum(take_along_axis1(log_sampled_softmax, shifted_true_labels),
                    axis=1,
                    keepdims=True) / num_true
     return (loss, samples, sampled_softmax)
@@ -174,8 +182,8 @@ class TestSampledSoftmaxWithCrossEntropy(OpTest):
 
     def test_check_grad(self):
         pass
-        #self.check_grad(
-        #    ["Logits", "SampledSoftmax"], "Loss", max_relative_error=0.02)
+        self.check_grad(
+            ["Logits", "SampledSoftmax"], "Loss", max_relative_error=0.02)
 
 
 if __name__ == '__main__':
