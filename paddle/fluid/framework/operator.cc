@@ -1001,18 +1001,24 @@ Scope* OperatorWithKernel::PrepareData(
       // If this op is not called by an Executor or ParallelExecutor, it should
       // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
       // variables, that behavior a lot different.
+      Variable* trans_var;
       if (!run_by_executor_) {
         new_scope = TryCreateTransferScope(kernel_type_for_var,
                                            expected_kernel_key, &scope);
+        if (!new_scope) {
+          new_scope = &scope.NewScope();
+        }
+        trans_var = new_scope->Var(var_name);
+      } else {
+        trans_var = new Variable();
+        scope.AddTempVar(std::unique_ptr<Variable>(trans_var));
       }
 
-      std::unique_ptr<Variable> trans_var(new Variable());
-      input_vars[i] = trans_var.get();
+      input_vars[i] = trans_var;
 
       Tensor out;
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
-      SetTensorToVariable(*var, out, trans_var.get());
-      scope.AddTempVar(std::move(trans_var));
+      SetTensorToVariable(*var, out, trans_var);
     }
   }
 
