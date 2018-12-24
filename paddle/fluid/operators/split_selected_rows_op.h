@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-static int FindOutIdx(int row, const std::vector<int>& abs_sections) {
+static int FindOutIdx(int row, const std::vector<int64_t>& abs_sections) {
   for (size_t i = 1; i < abs_sections.size(); ++i) {
     if (row < abs_sections[i]) {
       return i - 1;
@@ -30,9 +30,9 @@ static int FindOutIdx(int row, const std::vector<int>& abs_sections) {
   return abs_sections.size() - 1;
 }
 
-static std::vector<int> ToAbsoluteSection(
-    const std::vector<int>& height_sections) {
-  std::vector<int> abs_sections;
+static std::vector<int64_t> ToAbsoluteSection(
+    const std::vector<int64_t>& height_sections) {
+  std::vector<int64_t> abs_sections;
   abs_sections.resize(height_sections.size());
   abs_sections[0] = 0;
   for (size_t i = 1; i < height_sections.size(); ++i) {
@@ -47,7 +47,7 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<framework::SelectedRows>("X");
     auto outs = ctx.MultiOutput<framework::SelectedRows>("Out");
-    auto height_sections = ctx.Attr<std::vector<int>>("height_sections");
+    auto height_sections = ctx.Attr<std::vector<int64_t>>("height_sections");
 
     auto abs_sections = ToAbsoluteSection(height_sections);
 
@@ -72,10 +72,11 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < outs_rows_idx.size(); ++i) {
       auto rows_idx = outs_rows_idx[i];
       outs[i]->set_height(height_sections[i]);
+      auto dims = x->GetCompleteDims();
+      dims[0] = rows_idx.size();
+      outs[i]->mutable_value()->mutable_data<T>(dims, x->place());
+      outs[i]->mutable_rows()->clear();
       if (rows_idx.size() > 0) {
-        auto dims = x->GetCompleteDims();
-        dims[0] = rows_idx.size();
-        outs[i]->mutable_value()->mutable_data<T>(dims, x->place());
         for (auto idx : rows_idx) {
           outs[i]->mutable_rows()->push_back(idx - abs_sections[i]);
         }
@@ -98,6 +99,8 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
           }
         }
       }
+      PADDLE_ENFORCE_EQ(rows_idx.size(), outs[i]->rows().size(),
+                        "rows should has the same size with tensor dim 0");
     }
   }
 };

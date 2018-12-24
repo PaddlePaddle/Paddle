@@ -74,7 +74,7 @@ class CreatePyReaderOpMaker : public FileReaderMakerBase {
              "Name of the `LoDTensorBlockingQueueHolder` variable");
 
     AddComment(R"DOC(
-			Create PyReader to support LoDTensor data feeding in Python side.
+      Create PyReader to support LoDTensor data feeding in Python side.
       )DOC");
   }
 };

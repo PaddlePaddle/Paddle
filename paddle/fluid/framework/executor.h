@@ -26,60 +26,22 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-extern void InitializeVariable(Variable* var, proto::VarType::Type var_type);
-
-template <typename T>
-std::unordered_map<std::string, T> GetNonPersistableReferenceCount(
-    const ProgramDesc& prog, size_t block_id) {
-  auto& block = prog.Block(block_id);
-  std::unordered_set<std::string> ignored_vars;
-  std::unordered_map<std::string, T> ref_cnts;
-
-  for (auto var_desc : block.AllVars()) {
-    auto type = var_desc->Proto()->type().type();
-    if (type != proto::VarType::LOD_TENSOR || var_desc->Persistable()) {
-      ignored_vars.insert(var_desc->Name());  // ignore persistable vars
-    }
-  }
-
-  for (auto op_desc : block.AllOps()) {
-    for (auto& input : op_desc->Inputs()) {
-      for (auto& input_name : input.second) {
-        if (!ignored_vars.count(input_name)) {
-          if (ref_cnts.count(input_name))
-            ++ref_cnts[input_name];
-          else
-            ref_cnts[input_name] = 1;
-        }
-      }
-    }
-
-    for (auto& output : op_desc->Outputs()) {
-      for (auto output_name : output.second) {
-        if (!ignored_vars.count(output_name)) {
-          if (ref_cnts.count(output_name))
-            ++ref_cnts[output_name];
-          else
-            ref_cnts[output_name] = 1;
-        }
-      }
-    }
-  }
-  return ref_cnts;
-}
 
 struct ExecutorPrepareContext {
-  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
+  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id,
+                         const std::vector<std::string>& skip_ref_cnt_vars =
+                             std::vector<std::string>());
+
   ~ExecutorPrepareContext();
 
-  void ResetReferenceCount() { cur_ref_cnts_ = ref_cnts_; }
+  void ResetReferenceCount() { runtime_ref_cnts_ = global_ref_cnts_; }
 
   const framework::ProgramDesc& prog_;
   size_t block_id_;
   std::vector<std::unique_ptr<OperatorBase>> ops_;
 
-  std::unordered_map<std::string, int> ref_cnts_;
-  std::unordered_map<std::string, int> cur_ref_cnts_;
+  std::unordered_map<std::string, size_t> global_ref_cnts_;
+  std::unordered_map<std::string, size_t> runtime_ref_cnts_;
 };
 
 class Executor {
@@ -115,10 +77,14 @@ class Executor {
            const std::string& fetch_holder_name = "fetch");
 
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
-      const ProgramDesc& program, int block_id);
+      const ProgramDesc& program, int block_id,
+      const std::vector<std::string>& skip_ref_cnt_vars =
+          std::vector<std::string>());
 
   static std::vector<std::shared_ptr<ExecutorPrepareContext>> Prepare(
-      const ProgramDesc& program, const std::vector<int>& block_ids);
+      const ProgramDesc& program, const std::vector<int>& block_ids,
+      const std::vector<std::vector<std::string>>& skip_ref_cnt_vars =
+          std::vector<std::vector<std::string>>());
 
   void CreateVariables(const ProgramDesc& pdesc, Scope* scope, int block_id);
 

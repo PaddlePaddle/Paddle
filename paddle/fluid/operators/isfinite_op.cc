@@ -40,10 +40,9 @@ class OverflowOp : public framework::OperatorWithKernel {
     int dtype = -1;
     auto *x_var = ctx.InputVar("X");
     if (x_var->IsType<framework::LoDTensor>()) {
-      dtype = framework::ToDataType(x_var->Get<framework::LoDTensor>().type());
+      dtype = x_var->Get<framework::LoDTensor>().type();
     } else if (x_var->IsType<framework::SelectedRows>()) {
-      dtype = framework::ToDataType(
-          x_var->Get<framework::SelectedRows>().value().type());
+      dtype = x_var->Get<framework::SelectedRows>().value().type();
     } else {
       PADDLE_THROW("Cannot find the input data type by all input data");
     }
@@ -60,7 +59,7 @@ class OverflowOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor) 1-dim tensor, contains a bool scalar. The output "
               "tensor of overflow operator.");
     AddComment(string::Sprintf(R"DOC(
-Overflow operator.
+Overflow %s operator.
 
 $$Out = any(X)$$
 
@@ -69,6 +68,8 @@ Out = Inf if any X contains Inf,
 Out = Nan if any X contains Nan,
 Out = 0 if no Inf/Nan detected.
 If X contains both Inf/Nan, it will return the first indicator it meeted.
+
+%s
 )DOC",
                                GetName(), GetComments()));
   }

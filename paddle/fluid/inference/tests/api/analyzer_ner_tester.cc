@@ -20,7 +20,6 @@ using contrib::AnalysisConfig;
 
 struct DataRecord {
   std::vector<std::vector<int64_t>> word_data_all, mention_data_all;
-  std::vector<std::vector<int64_t>> rnn_word_datas, rnn_mention_datas;
   std::vector<size_t> lod;  // two inputs have the same lod info.
   size_t batch_iter{0};
   size_t batch_size{1};
@@ -45,8 +44,6 @@ struct DataRecord {
       CHECK(!data.mention_data_all.empty());
       CHECK_EQ(data.word_data_all.size(), data.mention_data_all.size());
       for (size_t j = 0; j < data.word_data_all.size(); j++) {
-        data.rnn_word_datas.push_back(data.word_data_all[j]);
-        data.rnn_mention_datas.push_back(data.mention_data_all[j]);
         // calculate lod
         data.lod.push_back(data.lod.back() + data.word_data_all[j].size());
       }
@@ -87,8 +84,8 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   lod_mention_tensor.shape.assign({size, 1});
   lod_mention_tensor.lod.assign({one_batch.lod});
   // assign data
-  TensorAssignData<int64_t>(&lod_word_tensor, one_batch.rnn_word_datas);
-  TensorAssignData<int64_t>(&lod_mention_tensor, one_batch.rnn_mention_datas);
+  TensorAssignData<int64_t>(&lod_word_tensor, one_batch.word_data_all);
+  TensorAssignData<int64_t>(&lod_mention_tensor, one_batch.mention_data_all);
   // Set inputs.
   input_slots->assign({lod_word_tensor, lod_mention_tensor});
   for (auto &tensor : *input_slots) {
@@ -96,9 +93,17 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   }
 }
 
-void SetConfig(contrib::AnalysisConfig *cfg) {
-  cfg->prog_file = FLAGS_infer_model + "/__model__";
-  cfg->param_file = FLAGS_infer_model + "/param";
+void SetConfig(contrib::AnalysisConfig *cfg, bool memory_load = false) {
+  if (memory_load) {
+    std::string buffer_prog, buffer_param;
+    ReadBinaryFile(FLAGS_infer_model + "/__model__", &buffer_prog);
+    ReadBinaryFile(FLAGS_infer_model + "/param", &buffer_param);
+    cfg->SetModelBuffer(&buffer_prog[0], buffer_prog.size(), &buffer_param[0],
+                        buffer_param.size());
+  } else {
+    cfg->prog_file = FLAGS_infer_model + "/__model__";
+    cfg->param_file = FLAGS_infer_model + "/param";
+  }
   cfg->use_gpu = false;
   cfg->device = 0;
   cfg->specify_input_name = true;
@@ -117,14 +122,15 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 // Easy for profiling independently.
-TEST(Analyzer_Chinese_ner, profile) {
+void profile(bool memory_load = false) {
   contrib::AnalysisConfig cfg;
-  SetConfig(&cfg);
+  SetConfig(&cfg, memory_load);
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
@@ -138,6 +144,12 @@ TEST(Analyzer_Chinese_ner, profile) {
       EXPECT_EQ(result[i], chinese_ner_result_data[i]);
     }
   }
+}
+
+TEST(Analyzer_Chinese_ner, profile) { profile(); }
+
+TEST(Analyzer_Chinese_ner, profile_memory_load) {
+  profile(true /* memory_load */);
 }
 
 // Check the fuse status
@@ -163,7 +175,19 @@ TEST(Analyzer_Chinese_ner, compare) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
+
+// Compare Deterministic result
+TEST(Analyzer_Chinese_ner, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
 }
 
 }  // namespace inference

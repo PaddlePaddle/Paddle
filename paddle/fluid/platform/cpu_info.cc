@@ -22,7 +22,6 @@ limitations under the License. */
 #ifdef __APPLE__
 #include <sys/sysctl.h>
 #include <sys/types.h>
-
 #elif defined(_WIN32)
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
 #include <windows.h>
@@ -56,10 +55,17 @@ DEFINE_double(
     "Default use 50% of CPU memory as the pinned_memory for PaddlePaddle,"
     "reserve the rest for page tables, etc");
 
+// If use_pinned_memory is true, CPUAllocator calls mlock, which
+// returns pinned and locked memory as staging areas for data exchange
+// between host and device.  Allocates too much would reduce the amount
+// of memory available to the system for paging.  So, by default, we
+// should set false to use_pinned_memory.
+DEFINE_bool(use_pinned_memory, true, "If set, allocate cpu pinned memory.");
+
 namespace paddle {
 namespace platform {
 
-inline size_t CpuTotalPhysicalMemory() {
+size_t CpuTotalPhysicalMemory() {
 #ifdef __APPLE__
   int mib[2];
   mib[0] = CTL_HW;
@@ -116,7 +122,6 @@ size_t CUDAPinnedMaxChunkSize() {
   return CUDAPinnedMaxAllocSize() / 256;
 }
 
-namespace jit {
 #ifdef PADDLE_WITH_XBYAK
 static Xbyak::util::Cpu cpu;
 bool MayIUse(const cpu_isa_t cpu_isa) {
@@ -128,7 +133,7 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
       return cpu.has(Cpu::tAVX);
     case avx2:
       return cpu.has(Cpu::tAVX2);
-    case avx512_common:
+    case avx512f:
       return cpu.has(Cpu::tAVX512F);
     case avx512_core:
       return true && cpu.has(Cpu::tAVX512F) && cpu.has(Cpu::tAVX512BW) &&
@@ -158,6 +163,5 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
 }
 #endif
 
-}  // namespace jit
 }  // namespace platform
 }  // namespace paddle

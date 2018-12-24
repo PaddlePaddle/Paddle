@@ -28,11 +28,7 @@ FetchOpHandle::FetchOpHandle(ir::Node *node, FeedFetchList *data, size_t offset,
       offset_(offset),
       local_scopes_(local_scopes) {}
 
-FetchOpHandle::~FetchOpHandle() {
-  for (auto *input_var : inputs_) {
-    input_var->RemoveOutput(this, this->Node());
-  }
-}
+FetchOpHandle::~FetchOpHandle() {}
 
 void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
   PADDLE_THROW("Nobody should wait FetchOp. Unexpceted Error");

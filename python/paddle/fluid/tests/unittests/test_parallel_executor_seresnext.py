@@ -232,6 +232,46 @@ class TestResnet(TestParallelExecutorBase):
         for loss in zip(all_reduce_last_loss, reduce_last_loss):
             self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
 
+        if not use_cuda:
+            return
+
+        all_reduce_first_loss_seq, all_reduce_last_loss_seq = self.check_network_convergence(
+            model,
+            feed_dict={"image": img,
+                       "label": label},
+            iter=iter,
+            batch_size=batch_size,
+            use_cuda=use_cuda,
+            use_reduce=False,
+            optimizer=optimizer,
+            enable_sequential_execution=True)
+
+        reduce_first_loss_seq, reduce_last_loss_seq = self.check_network_convergence(
+            model,
+            feed_dict={"image": img,
+                       "label": label},
+            iter=iter,
+            batch_size=batch_size,
+            use_cuda=use_cuda,
+            use_reduce=True,
+            optimizer=optimizer,
+            enable_sequential_execution=True)
+
+        for loss in zip(all_reduce_first_loss, all_reduce_first_loss_seq):
+            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+        for loss in zip(all_reduce_last_loss, all_reduce_last_loss_seq):
+            self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
+
+        for loss in zip(reduce_first_loss, reduce_first_loss_seq):
+            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+        for loss in zip(reduce_last_loss, reduce_last_loss_seq):
+            self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
+
+        for loss in zip(all_reduce_first_loss_seq, reduce_first_loss_seq):
+            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+        for loss in zip(all_reduce_last_loss_seq, reduce_last_loss_seq):
+            self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
+
     def _check_resnet_convergence(self,
                                   model,
                                   use_cuda=True,

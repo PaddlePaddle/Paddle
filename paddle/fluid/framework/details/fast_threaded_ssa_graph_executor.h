@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include <ThreadPool.h>
 #include <string>
 #include <vector>
-#include "ThreadPool.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
@@ -46,11 +46,13 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<OpHandleBase *> bootstrap_ops_;
 
   ::ThreadPool pool_;
+  ::ThreadPool prepare_pool_;
   platform::DeviceContextPool fetch_ctxs_;
   std::atomic<int> remaining_;
 
   void RunOpAsync(std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
-                  OpHandleBase *op, BlockingQueue<size_t> *complete_q);
+                  OpHandleBase *op,
+                  const std::shared_ptr<BlockingQueue<size_t>> &complete_q);
 
   void PrepareAtomicOpDeps();
 

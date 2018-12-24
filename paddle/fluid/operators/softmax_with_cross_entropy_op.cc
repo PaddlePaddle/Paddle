@@ -44,6 +44,12 @@ class SoftmaxWithCrossEntropyOpMaker
         "(bool, default: false), A flag to indicate whether to interpretate "
         "the given labels as soft labels.")
         .SetDefault(false);
+    AddAttr<bool>(
+        "numeric_stable_mode",
+        "(bool, default: false), A flag to indicate whether to use more "
+        "numerically stable algorithm. This flag is only valid when "
+        "soft_label is false and GPU is used.")
+        .SetDefault(false);
     AddAttr<int>(
         "ignore_index",
         "(int, default -100), Specifies a target value that is ignored and"
@@ -125,9 +131,8 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -167,8 +172,7 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(
-            ctx.Input<Tensor>(framework::GradVarName("Loss"))->type()),
+        ctx.Input<Tensor>(framework::GradVarName("Loss"))->type(),
         ctx.device_context());
   }
 };

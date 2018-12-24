@@ -20,6 +20,8 @@ limitations under the License. */
 
 using ::grpc::ServerAsyncResponseWriter;
 
+DECLARE_bool(rpc_disable_reuse_port);
+
 namespace paddle {
 namespace operators {
 namespace distributed {
@@ -102,9 +104,10 @@ class RequestSend final : public RequestBase {
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = request_->GetVar();
+    int trainer_id = request_->GetTrainerId();
     framework::Variable* outvar = nullptr;
 
-    request_handler_->Handle(varname, scope, invar, &outvar);
+    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
     Finish(reply_, &responder_);
   }
 
@@ -133,13 +136,14 @@ class RequestGet final : public RequestBase {
   void Process() override {
     // proc request.
     std::string varname = request_.varname();
+    int trainer_id = request_.trainer_id();
     VLOG(4) << "RequestGet " << varname;
 
     auto scope = request_handler_->scope();
     auto invar = scope->FindVar(varname);
     framework::Variable* outvar = nullptr;
 
-    request_handler_->Handle(varname, scope, invar, &outvar);
+    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
 
     if (outvar) {
       SerializeToByteBuffer(varname, outvar, *request_handler_->dev_ctx(),
@@ -152,6 +156,98 @@ class RequestGet final : public RequestBase {
   sendrecv::VariableMessage request_;
   ::grpc::ByteBuffer reply_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
+};
+
+class RequestGetMonomerVariable final : public RequestBase {
+ public:
+  explicit RequestGetMonomerVariable(GrpcService::AsyncService* service,
+                                     ::grpc::ServerCompletionQueue* cq,
+                                     RequestHandler* request_handler,
+                                     int req_id, RPCServer* rpc_server)
+      : RequestBase(service, cq, request_handler, req_id),
+        responder_(&ctx_),
+        rpc_server_(rpc_server) {
+    auto method_id =
+        static_cast<int>(distributed::GrpcMethod::kGetMonomerVariable);
+    service_->RequestAsyncUnary(
+        method_id, &ctx_, &request_, &responder_, cq_, cq_,
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
+  }
+
+  virtual ~RequestGetMonomerVariable() {}
+
+  std::string GetReqName() override { return request_.varname(); }
+
+  void Process() override {
+    // proc request.
+    std::string varname = request_.varname();
+
+    rpc_server_->WaitVarCond(varname);
+    MonomerHandle h = rpc_server_->GetMonomer(varname);
+
+    auto scope = h.scope_;
+    auto invar = scope->FindVar(varname);
+    framework::Variable* outvar = nullptr;
+
+    request_handler_->Handle(varname, scope, invar, &outvar,
+                             request_.trainer_id());
+
+    if (outvar) {
+      SerializeToByteBuffer(varname, outvar, *h.dev_ctx_, &reply_);
+    }
+    Finish(reply_, &responder_);
+  }
+
+ protected:
+  sendrecv::VariableMessage request_;
+  ::grpc::ByteBuffer reply_;
+  ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
+  RPCServer* rpc_server_{nullptr};
+};
+
+class RequestGetMonomerBarrier final : public RequestBase {
+ public:
+  explicit RequestGetMonomerBarrier(GrpcService::AsyncService* service,
+                                    ::grpc::ServerCompletionQueue* cq,
+                                    RequestHandler* request_handler, int req_id,
+                                    RPCServer* rpc_server)
+      : RequestBase(service, cq, request_handler, req_id),
+        responder_(&ctx_),
+        rpc_server_(rpc_server) {
+    auto method_id =
+        static_cast<int>(distributed::GrpcMethod::kGetMonomerBarrier);
+    service_->RequestAsyncUnary(
+        method_id, &ctx_, &request_, &responder_, cq_, cq_,
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
+  }
+
+  virtual ~RequestGetMonomerBarrier() {}
+
+  std::string GetReqName() override { return request_.varname(); }
+
+  void Process() override {
+    // proc request.
+    std::string varname = request_.varname();
+    VLOG(4) << "RequestGetMonomerBarrier " << varname;
+
+    rpc_server_->WaitVarCond(varname);
+    MonomerHandle h = rpc_server_->GetMonomer(varname);
+
+    framework::Scope* scope = nullptr;
+    framework::Variable* invar = nullptr;
+    framework::Variable* outvar = nullptr;
+
+    request_handler_->Handle(varname, scope, invar, &outvar,
+                             request_.trainer_id());
+
+    Finish(reply_, &responder_);
+  }
+
+ protected:
+  sendrecv::VariableMessage request_;
+  sendrecv::VoidMessage reply_;
+  ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
+  RPCServer* rpc_server_{nullptr};
 };
 
 class RequestPrefetch final : public RequestBase {
@@ -179,6 +275,8 @@ class RequestPrefetch final : public RequestBase {
     // prefetch process...
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
+    std::string table_name = request_->TableName();
+    int trainer_id = request_->GetTrainerId();
     VLOG(4) << "RequestPrefetch, in_var_name: " << in_var_name
             << " out_var_name: " << out_var_name;
 
@@ -187,7 +285,8 @@ class RequestPrefetch final : public RequestBase {
     // out var must be created in local scope!
     framework::Variable* outvar = scope->Var(out_var_name);
 
-    request_handler_->Handle(in_var_name, scope, invar, &outvar, out_var_name);
+    request_handler_->Handle(in_var_name, scope, invar, &outvar, trainer_id,
+                             out_var_name, table_name);
 
     SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
                           &reply_);
@@ -225,12 +324,13 @@ class RequestCheckpointNotify final : public RequestBase {
 
     std::string checkpoint_notify = request_->Varname();
     std::string checkpoint_dir = request_->OutVarname();
+    int trainer_id = request_->GetTrainerId();
 
     VLOG(4) << "RequestCheckpointNotify notify: " << checkpoint_notify
             << ", dir: " << checkpoint_dir;
 
     request_handler_->Handle(checkpoint_notify, scope, nullptr, nullptr,
-                             checkpoint_dir);
+                             trainer_id, checkpoint_dir);
     Finish(reply_, &responder_);
   }
 
@@ -241,11 +341,25 @@ class RequestCheckpointNotify final : public RequestBase {
 };
 
 void AsyncGRPCServer::WaitServerReady() {
-  VLOG(4) << "AsyncGRPCServer is wait server ready";
+  VLOG(4) << "AsyncGRPCServer is waiting server ready";
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
   VLOG(4) << "AsyncGRPCServer WaitSeverReady";
 }
+
+// Define an option subclass in order to disable SO_REUSEPORT for the
+// server socket.
+// Come from:
+// https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/distributed_runtime/rpc/grpc_server_lib.cc
+class NoReusePortOption : public ::grpc::ServerBuilderOption {
+ public:
+  void UpdateArguments(::grpc::ChannelArguments* args) override {
+    args->SetInt(GRPC_ARG_ALLOW_REUSEPORT, 0);
+  }
+
+  void UpdatePlugins(std::vector<std::unique_ptr<::grpc::ServerBuilderPlugin>>*
+                         plugins) override {}
+};
 
 void AsyncGRPCServer::StartServer() {
   ::grpc::ServerBuilder builder;
@@ -254,6 +368,10 @@ void AsyncGRPCServer::StartServer() {
 
   builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
+  if (FLAGS_rpc_disable_reuse_port) {
+    builder.SetOption(
+        std::unique_ptr<::grpc::ServerBuilderOption>(new NoReusePortOption));
+  }
   builder.RegisterService(&service_);
 
   for (auto t : rpc_call_map_) {
@@ -342,6 +460,12 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
     b = new RequestSend(&service_, cq.get(), handler, req_id);
   } else if (rpc_name == kRequestGet) {
     b = new RequestGet(&service_, cq.get(), handler, req_id);
+  } else if (rpc_name == kRequestGetMonomerVariable) {
+    b = new RequestGetMonomerVariable(&service_, cq.get(), handler, req_id,
+                                      this);
+  } else if (rpc_name == kRequestGetMonomerBarrier) {
+    b = new RequestGetMonomerBarrier(&service_, cq.get(), handler, req_id,
+                                     this);
   } else if (rpc_name == kRequestPrefetch) {
     b = new RequestPrefetch(&service_, cq.get(), handler, req_id);
   } else if (rpc_name == kRequestCheckpoint) {
@@ -352,7 +476,7 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
 
   reqs[req_id] = b;
 
-  VLOG(4) << "Create RequestSend status:" << b->Status();
+  VLOG(4) << "TryToRegisterNewOne status:" << b->Status();
 }
 
 void AsyncGRPCServer::HandleRequest(
@@ -364,7 +488,7 @@ void AsyncGRPCServer::HandleRequest(
   while (true) {
     VLOG(4) << "HandleRequest " << rpc_name << " wait next";
     if (!cq->Next(&tag, &ok)) {
-      VLOG(3) << "CompletionQueue " << rpc_name << " shutdown!";
+      LOG(WARNING) << "CompletionQueue " << rpc_name << " shutdown!";
       break;
     }
 
@@ -387,9 +511,8 @@ void AsyncGRPCServer::HandleRequest(
     // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
     // https://groups.google.com/forum/#!topic/grpc-io/ywATt88Ef_I
     if (!ok) {
-      LOG(WARNING) << "completion queue:" << rpc_name
-                   << " recv no regular event"
-                   << " context:" << base->Status2String(rpc_name);
+      VLOG(4) << "completion queue:" << rpc_name << " recv no regular event"
+              << " context:" << base->Status2String(rpc_name);
       TryToRegisterNewOne(rpc_name, req_id);
       delete base;
       continue;

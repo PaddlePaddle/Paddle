@@ -20,7 +20,7 @@ import string
 
 from six.moves import cStringIO
 from ..proto import framework_pb2
-from ..framework import OpProtoHolder, Variable
+from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_
 from ..layer_helper import LayerHelper
 
 __all__ = [
@@ -178,6 +178,15 @@ def generate_layer_fn(op_type):
                         "operator {0} must input same dtype. {1} vs {2}".format(
                             op_type, dtype, each.dtype))
 
+        if dtype is None:
+            arg_dtype = kwargs.get("dtype")
+            if arg_dtype:
+                if not isinstance(arg_dtype, core.VarDesc.VarType):
+                    dtype = convert_np_dtype_to_dtype_(arg_dtype)
+                else:
+                    dtype = arg_dtype
+            else:
+                dtype = core.VarDesc.VarType.FP32
         return dtype
 
     def func(*args, **kwargs):
@@ -202,10 +211,12 @@ def generate_layer_fn(op_type):
             out_var = out[0] if (isinstance(out, list) or
                                  isinstance(out, tuple)) else out
         else:
-            out_var = helper.create_tmp_variable(dtype=dtype)
+            out_var = helper.create_variable_for_type_inference(dtype=dtype)
         outputs[o_name] = [out_var]
         for name in intermediate_output_names:
-            outputs[name] = [helper.create_tmp_variable(dtype=dtype)]
+            outputs[name] = [
+                helper.create_variable_for_type_inference(dtype=dtype)
+            ]
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=kwargs)
         return helper.append_activation(out_var)
@@ -229,7 +240,7 @@ def generate_layer_fn_noattr(op_type):
 
     def func(x, name=None):
         helper = LayerHelper(op_type, **locals())
-        output = helper.create_tmp_variable(dtype=x.dtype)
+        output = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": output})
         return output
 

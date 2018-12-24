@@ -24,6 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+
 // Test if the graph contains circle.
 bool HasCircle(const Graph &graph);
 
@@ -36,6 +37,15 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph);
 // Build an adjacency list of operations for the `graph`.
 std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     const Graph &graph);
+
+template <typename T>
+std::vector<T *> FilterByNodeWrapper(const Graph &graph) {
+  std::vector<T *> ret;
+  for (ir::Node *n : graph.Nodes()) {
+    if (n->IsWrappedBy<T>()) ret.push_back(&n->Wrapper<T>());
+  }
+  return ret;
+}
 
 }  // namespace ir
 }  // namespace framework

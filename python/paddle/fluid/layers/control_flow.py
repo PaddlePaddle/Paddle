@@ -80,8 +80,8 @@ def split_lod_tensor(input, mask, level=0):
 
     """
     helper = LayerHelper('split_lod_tensor', **locals())
-    out_true = helper.create_tmp_variable(dtype=input.dtype)
-    out_false = helper.create_tmp_variable(dtype=input.dtype)
+    out_true = helper.create_variable_for_type_inference(dtype=input.dtype)
+    out_false = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type='split_lod_tensor',
         inputs={
@@ -131,7 +131,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
                 in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
     """
     helper = LayerHelper('merge_lod_tensor', **locals())
-    out = helper.create_tmp_variable(dtype=in_true.dtype)
+    out = helper.create_variable_for_type_inference(dtype=in_true.dtype)
     helper.append_op(
         type='merge_lod_tensor',
         inputs={'X': x,
@@ -226,156 +226,6 @@ class BlockGuard(object):
         return True
 
 
-class ParallelDo(object):
-    """
-    ParallelDo is used to represent multi-thread data parallel processing.
-
-    Its vanilla implementation can be shown as the following (:math:`|` means
-    single thread and :math:`||||` means multiple threads)
-
-    .. code-block:: text
-
-      In the forward pass
-        |      Split input onto different devices
-        |      Copy parameter onto different devices
-        ||||   Compute forward pass in parallel
-        |      Merge output from different devices
-
-      In the backward pass
-        |      Split output@grad onto different devices
-        ||||   Compute backward pass in parallel
-        |      accumulate param@grad from different devices to the first device
-        |      Merge input@grad from different devices
-        |      Copy param@grad to the place of parallel_do_op
-
-    Examples:
-
-    .. code-block:: python
-
-      images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
-      label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-
-      # ParallelDo version & Single-thread version
-      if thread_num > 1:
-          places = fluid.layers.get_places(thread_num)
-          pd = fluid.layers.control_flow.ParallelDo(places)
-          with pd.do():
-              images = pd.read_input(images)
-              label = pd.read_input(label)
-              predict = cnn_model(images)
-              cost = fluid.layers.cross_entropy(input=predict, label=label)
-
-              avg_cost = fluid.layers.mean(x=cost)
-              pd.write_output(avg_cost)
-
-          avg_cost = pd()
-          avg_cost = fluid.layers.mean(avg_cost)
-      else:
-          predict = cnn_model(images)
-          cost = fluid.layers.cross_entropy(input=predict, label=label)
-          avg_cost = fluid.layers.mean(x=cost)
-
-    .. warning::
-
-       It will be soon deprecated, please use ParallelExecutor instead.
-    """
-
-    def __init__(self, places, use_nccl=False, name=None):
-        warnings.warn(
-            "API ParallelDo is deprecated since 0.15.0. Please use ParallelExecutor instead.",
-            Warning)
-        self.helper = LayerHelper("parallel_do", name=name)
-        self.inputs = []
-        self.places = places
-        self.outputs = []
-        self.status = StaticRNN.BEFORE_RNN_BLOCK
-        self.use_nccl = use_nccl
-
-    def do(self):
-        return BlockGuardWithCompletion(self)
-
-    def parent_block(self):
-        prog = self.helper.main_program
-        parent_idx = prog.current_block().parent_idx
-        assert parent_idx >= 0
-        parent_block = prog.block(parent_idx)
-        return parent_block
-
-    def __call__(self, *args, **kwargs):
-        if self.status != StaticRNN.AFTER_RNN_BLOCK:
-            raise ValueError("RNN output can only be retrieved after rnn block")
-        if len(self.outputs) == 0:
-            raise ValueError("RNN has no output")
-        elif len(self.outputs) == 1:
-            return self.outputs[0]
-        else:
-            return self.outputs
-
-    def read_input(self, var):
-        self.inputs.append(var)
-        return var
-
-    def write_output(self, var):
-        self.outputs.append(var)
-
-    def get_parameters(self):
-        main_program = self.helper.main_program
-        current_block = main_program.current_block()
-        parent_block = self.parent_block()
-
-        local_inputs = set()
-        params = list()
-        for var in self.inputs:
-            local_inputs.add(var.name)
-
-        for op in current_block.ops:
-            for iname in op.input_names:
-                for in_var_name in op.input(iname):
-                    if in_var_name not in local_inputs:
-                        params.append(in_var_name)
-
-            for oname in op.output_names:
-                for out_var_name in op.output(oname):
-                    local_inputs.add(out_var_name)
-
-        params = list(set(params))
-
-        return [parent_block.var(name) for name in params]
-
-    def _complete_op(self):
-        main_program = self.helper.main_program
-        current_block = main_program.current_block()
-        parent_block = self.parent_block()
-
-        step_scope = parent_block.create_var(
-            type=core.VarDesc.VarType.STEP_SCOPES)
-
-        self.outputs = [
-            parent_block.create_var(
-                name=o.name,
-                shape=o.shape,
-                dtype=o.dtype,
-                lod_level=o.lod_level,
-                persistable=o.persistable,
-                stop_gradient=o.stop_gradient) for o in self.outputs
-        ]
-
-        inputs = [parent_block.var(i.name) for i in self.inputs]
-        outputs = [parent_block.var(o.name) for o in self.outputs]
-
-        parent_block.append_op(
-            type='parallel_do',
-            inputs={
-                'inputs': inputs,
-                'parameters': self.get_parameters(),
-                'places': self.places
-            },
-            outputs={'outputs': outputs,
-                     'parallel_scopes': [step_scope]},
-            attrs={'sub_block': current_block,
-                   'use_nccl': self.use_nccl})
-
-
 class BlockGuardWithCompletion(BlockGuard):
     """
     BlockGuardWithCompletion class.
@@ -384,9 +234,8 @@ class BlockGuardWithCompletion(BlockGuard):
     """
 
     def __init__(self, rnn):
-        if not (isinstance(rnn, StaticRNN) or isinstance(rnn, ParallelDo)):
-            raise TypeError(
-                "BlockGuardWithCompletion takes a StaticRNN or ParallelDo")
+        if not isinstance(rnn, StaticRNN):
+            raise TypeError("BlockGuardWithCompletion takes a StaticRNN")
         super(BlockGuardWithCompletion, self).__init__(rnn.helper.main_program)
         self.rnn = rnn
 
@@ -524,7 +373,7 @@ class StaticRNN(object):
         if not isinstance(o, Variable):
             raise TypeError("step output takes a Variable")
 
-        tmp_o = self.helper.create_tmp_variable(dtype=o.dtype)
+        tmp_o = self.helper.create_variable_for_type_inference(dtype=o.dtype)
         self.helper.append_op(
             type='rnn_memory_helper',
             inputs={'X': [o]},
@@ -606,7 +455,8 @@ class StaticRNN(object):
             pre_memories.append(mem.pre_mem.name)
             mem_var = rnn_block.var(mem.mem.name)
             assert isinstance(mem_var, Variable)
-            new_mem = self.helper.create_tmp_variable(dtype=mem_var.dtype)
+            new_mem = self.helper.create_variable_for_type_inference(
+                dtype=mem_var.dtype)
 
             rnn_block.append_op(
                 type='rnn_memory_helper',
@@ -716,8 +566,9 @@ class While(object):
 
         out_vars = []
         for inner_out_name in inner_outputs:
-            if inner_out_name in parent_block.vars:
-                out_vars.append(parent_block.var(inner_out_name))
+            inner_var = parent_block._find_var_recursive(inner_out_name)
+            if inner_var:
+                out_vars.append(inner_var)
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
@@ -813,7 +664,7 @@ def max_sequence_len(rank_table):
         ${out_comment}.
     """
     helper = LayerHelper("max_seqence_len", **locals())
-    res = helper.create_tmp_variable(dtype="int64")
+    res = helper.create_variable_for_type_inference(dtype="int64")
     helper.append_op(
         type="max_sequence_len",
         inputs={"RankTable": rank_table},
@@ -884,7 +735,7 @@ def array_to_lod_tensor(x, table):
           lod_tensor = fluid.layers.array_to_lod_tensor(array, table)
     """
     helper = LayerHelper("array_to_lod_tensor", **locals())
-    tmp = helper.create_tmp_variable(dtype=x.dtype)
+    tmp = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="array_to_lod_tensor",
         inputs={'X': x,
@@ -895,9 +746,10 @@ def array_to_lod_tensor(x, table):
 
 def increment(x, value=1.0, in_place=True):
     """
-    This function performs an operation that increments each value in the
+    This function performs an operation that increments the value in the
     input :math:`x` by an amount: :math:`value` as mentioned in the input
-    parameter. This operation is performed in-place by default.
+    parameter. This operation is performed in-place by default. Notice that
+    the number of elements in :math:`x` must be equal to 1.
 
     Args:
         x (Variable|list): The tensor that has the input values.
@@ -910,12 +762,13 @@ def increment(x, value=1.0, in_place=True):
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(name='data', shape=[32, 32], dtype='float32')
+          data = fluid.layers.data(name='data', shape=[1], dtype='float32',
+                                   append_batch_size=False)
           data = fluid.layers.increment(x=data, value=3.0, in_place=True)
     """
     helper = LayerHelper("increment", **locals())
     if not in_place:
-        out = helper.create_tmp_variable(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         out = x
     helper.append_op(
@@ -1012,7 +865,7 @@ def less_than(x, y, force_cpu=None, cond=None, **ignored):
     """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
-        cond = helper.create_tmp_variable(dtype='bool')
+        cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True
 
     attrs = dict()
@@ -1051,7 +904,7 @@ def equal(x, y, cond=None, **ignored):
     """
     helper = LayerHelper("equal", **locals())
     if cond is None:
-        cond = helper.create_tmp_variable(dtype='bool')
+        cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True
 
     helper.append_op(
@@ -1098,7 +951,7 @@ def array_read(array, i):
             array,
             Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         raise TypeError("array should be tensor array vairable")
-    out = helper.create_tmp_variable(dtype=array.dtype)
+    out = helper.create_variable_for_type_inference(dtype=array.dtype)
     helper.append_op(
         type='read_from_array',
         inputs={'X': [array],
@@ -1133,7 +986,7 @@ def shrink_memory(x, i, table):
         usage.
     """
     helper = LayerHelper('shrink_memory', **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='shrink_rnn_memory',
         inputs={'X': [x],
@@ -1170,7 +1023,7 @@ def array_length(array):
 
     """
     helper = LayerHelper('array_length', **locals())
-    tmp = helper.create_tmp_variable(dtype='int64')
+    tmp = helper.create_variable_for_type_inference(dtype='int64')
     tmp.stop_gradient = True
     helper.append_op(
         type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]})
@@ -1261,10 +1114,11 @@ class ConditionalBlock(object):
             if each_name not in input_set
         ]
 
-        out_list = [
-            parent_block.var(var_name) for var_name in parent_block.vars
-            if var_name in intermediate
-        ]
+        out_list = []
+        for inner_out_name in intermediate:
+            inner_var = parent_block._find_var_recursive(inner_out_name)
+            if inner_var:
+                out_list.append(inner_var)
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
@@ -1585,12 +1439,11 @@ class DynamicRNN(object):
         self.lod_rank_table = None
         self.max_seq_len = None
         self.step_idx = None
-        self.zero_idx = fill_constant(
-            shape=[1], value=0, dtype='int64', force_cpu=True)
+        self.zero_idx = None
         self.mem_dict = dict()
         self.output_array = []
         self.outputs = []
-        self.cond = self.helper.create_tmp_variable(dtype='bool')
+        self.cond = self.helper.create_variable_for_type_inference(dtype='bool')
         self.cond.stop_gradient = False
         self.while_op = While(self.cond)
         self.input_array = []
@@ -1791,6 +1644,7 @@ class DynamicRNN(object):
 
         """
         self._assert_in_rnn_block_('memory')
+        self._init_zero_idx_()
         if init is not None:
             if not isinstance(init, Variable):
                 raise TypeError(
@@ -1904,6 +1758,22 @@ class DynamicRNN(object):
             array_write(x=each, i=self.step_idx, array=outside_array)
             self.output_array.append(outside_array)
 
+    def _init_zero_idx_(self):
+        if self.zero_idx is None:
+            parent_block = self._parent_block_()
+            self.zero_idx = parent_block.create_var(
+                name=unique_name.generate('zero_idx'), dtype='int64')
+            parent_block.append_op(
+                type='fill_constant',
+                inputs={},
+                outputs={'Out': [self.zero_idx]},
+                attrs={
+                    'shape': [1],
+                    'dtype': self.zero_idx.dtype,
+                    'value': float(0),
+                    'force_cpu': True
+                })
+
     def _parent_block_(self):
         prog = self.helper.main_program
         parent_idx = prog.current_block().parent_idx
@@ -1924,7 +1794,7 @@ def reorder_lod_tensor_by_rank(x, rank_table):
     helper.is_instance('x', Variable)
     helper.is_instance('rank_table', Variable)
 
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='reorder_lod_tensor_by_rank',
         inputs={'X': [x],
@@ -1958,7 +1828,7 @@ def is_empty(x, cond=None, **ignored):
     """
     helper = LayerHelper("is_empty", **locals())
     if cond is None:
-        cond = helper.create_tmp_variable(dtype='bool')
+        cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True
     elif not isinstance(cond, Variable):
         raise TypeError("cond takes a variable")

@@ -16,6 +16,7 @@
 #include <vector>
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -29,16 +30,14 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       local_scopes_(local_scopes),
       places_(places),
       graph_(std::move(graph)),
-      pool_(strategy.num_threads_ +
-            1),  // add one more thread for generate op_deps
+      pool_(strategy.num_threads_),
+      prepare_pool_(1),  // add one more thread for generate op_deps
       fetch_ctxs_(places) {
-  auto &ops = graph_->Get<details::GraphOps>("ops");
-
-  for (auto &op : ops) {
+  for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
     int dep = static_cast<int>(op->NotReadyInputSize());
-    op_deps_.emplace(op.get(), dep);
+    op_deps_.emplace(op, dep);
     if (dep == 0) {
-      bootstrap_ops_.emplace_back(op.get());
+      bootstrap_ops_.emplace_back(op);
     }
   }
 
@@ -54,13 +53,13 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   paddle::framework::FeedFetchList fetches;
   fetches.resize(fetch_tensors.size());
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
-  std::vector<std::unique_ptr<FetchOpHandle>> fetch_ops;
+  std::vector<FetchOpHandle *> fetch_ops;
 
   for (auto &fetch_var_name : fetch_tensors) {
     for (auto &var_map : graph_->Get<details::GraphVars>("vars")) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
-        fetched_vars[fetch_var_name].push_back(it->second.rbegin()->get());
+        fetched_vars[fetch_var_name].push_back(*it->second.rbegin());
       }
     }
   }
@@ -92,13 +91,13 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
 
   size_t num_complete = 0;
   remaining_ = 0;
-  BlockingQueue<size_t> complete_q;
+  auto complete_q = std::make_shared<BlockingQueue<size_t>>();
   for (auto op : bootstrap_ops_) {
-    RunOpAsync(op_deps.get(), op, &complete_q);
+    RunOpAsync(op_deps.get(), op, complete_q);
   }
 
   while (num_complete != op_deps->size()) {
-    size_t num_comp = complete_q.Pop();
+    size_t num_comp = complete_q->Pop();
     if (num_comp == -1UL) {
       int remaining = 0;
       while (true) {
@@ -107,10 +106,13 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
           break;
         }
         for (int i = 0; i < remaining; ++i) {
-          complete_q.Pop();
+          complete_q->Pop();
         }
       }
-      exception_.ReThrow();
+      if (exception_.IsCaught()) {
+        ClearFetchOp(graph_.get(), &fetch_ops);
+        exception_.ReThrow();
+      }
     }
     num_complete += num_comp;
   }
@@ -120,14 +122,17 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
 }
 void FastThreadedSSAGraphExecutor::RunOpAsync(
     std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
-    OpHandleBase *op, BlockingQueue<size_t> *complete_q) {
+    OpHandleBase *op,
+    const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
   ++remaining_;
   this->pool_.enqueue([=] {
     OpHandleBase *op_to_run = op;
     size_t complete = 0;
     while (op_to_run != nullptr) {
       try {
-        op_to_run->Run(strategy_.use_cuda_);
+        if (LIKELY(!strategy_.dry_run_)) {
+          op_to_run->Run(strategy_.use_cuda_);
+        }
         ++complete;
       } catch (...) {
         exception_.Catch(std::current_exception());
@@ -144,7 +149,7 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
             if (op_to_run == nullptr) {
               op_to_run = pending_op;
             } else {
-              this->RunOpAsync(op_deps, pending_op, complete_q);
+              RunOpAsync(op_deps, pending_op, complete_q);
             }
           }
         }
@@ -155,9 +160,8 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
   });
 }
 void FastThreadedSSAGraphExecutor::PrepareAtomicOpDeps() {
-  atomic_op_deps_ = pool_.enqueue([&] {
-    std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps =
-        new std::unordered_map<OpHandleBase *, std::atomic<int>>;
+  atomic_op_deps_ = prepare_pool_.enqueue([&] {
+    auto *op_deps = new std::unordered_map<OpHandleBase *, std::atomic<int>>;
     for (auto &pair : op_deps_) {
       (*op_deps)[pair.first] = pair.second;
     }

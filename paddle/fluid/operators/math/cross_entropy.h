@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <limits>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/hostdevice.h"
@@ -30,6 +31,26 @@ struct TolerableValue {
     if (x == INFINITY) return kApproInf;
     if (x == -INFINITY) return -kApproInf;
     return x;
+  }
+};
+
+// NOTE(dzh): float16 value clip behave different.
+// 1. Our ValueClipping has a  hardcore threshold 1e20
+// for float number. 1e20 will resulting in overflow in float16.
+// 2. float16 should expose the the real number overflow to python.
+// because mixed-training depends the inf/nan value to determine
+// if the scale value will be adjusted.
+// Also. In standard implementation of cross entropy, other
+// framework not has the ValueClipping.
+template <>
+struct TolerableValue<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& x) const {
+    if (platform::isfinite(x))
+      return x;
+    else if (x > static_cast<platform::float16>(0))
+      return std::numeric_limits<platform::float16>::max();
+    else
+      return std::numeric_limits<platform::float16>::min();
   }
 };
 

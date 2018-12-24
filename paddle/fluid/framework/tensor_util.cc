@@ -36,6 +36,11 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   auto size = src.numel() * SizeOfType(src.type());
 
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+              << dst_place;
+      return;
+    }
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }
@@ -71,6 +76,11 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     if (platform::is_same_place(src_place, dst_place)) {
+      if (src_ptr == dst_ptr) {
+        VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+                << dst_place;
+        return;
+      }
       memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
                    stream);
     } else {
@@ -114,6 +124,11 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
   auto size = src.numel() * SizeOfType(src.type());
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data from " << src_place << " to "
+              << dst_place;
+      return;
+    }
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }
@@ -130,9 +145,20 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, nullptr);
   } else if (platform::is_gpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
+    if (src_ptr == dst_ptr && platform::is_same_place(src_place, dst_place)) {
+      VLOG(3) << "Skip copy the same data from " << src_place << " to "
+              << dst_place;
+      return;
+    }
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
+  } else if (platform::is_cuda_pinned_place(src_place) &&
+             platform::is_gpu_place(dst_place)) {
+    auto src_pinned_place = boost::get<platform::CUDAPinnedPlace>(src_place);
+    auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
+    memory::Copy(dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size,
+                 nullptr);
   }
 #endif
 }
@@ -160,8 +186,8 @@ struct AnyDTypeVisitor {
 template <typename Predicate, typename DevCtx>
 inline void AnyImpl(Predicate predicate, const framework::Tensor& tensor,
                     const DevCtx& ctx, framework::Tensor* out) {
-  VisitDataType(ToDataType(tensor.type()), AnyDTypeVisitor<Predicate, DevCtx>(
-                                               predicate, tensor, ctx, out));
+  VisitDataType(tensor.type(), AnyDTypeVisitor<Predicate, DevCtx>(
+                                   predicate, tensor, ctx, out));
 }
 
 template <typename Predicate>
@@ -353,7 +379,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
      // int32_t  size
      // void*    protobuf message
     proto::VarType::TensorDesc desc;
-    desc.set_data_type(framework::ToDataType(tensor.type()));
+    desc.set_data_type(tensor.type());
     auto dims = framework::vectorize(tensor.dims());
     auto* pb_dims = desc.mutable_dims();
     pb_dims->Resize(static_cast<int>(dims.size()), 0);
@@ -435,9 +461,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     tensor->Resize(framework::make_ddim(dims));
     void* buf;
     auto ctx = platform::CPUDeviceContext();
-    size_t size =
-        tensor->numel() *
-        framework::SizeOfType(framework::ToTypeIndex(desc.data_type()));
+    size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
       Tensor cpu_tensor;

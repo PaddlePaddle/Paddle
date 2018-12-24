@@ -58,11 +58,11 @@ def accuracy(input, label, k=1, correct=None, total=None):
     """
     helper = LayerHelper("accuracy", **locals())
     topk_out, topk_indices = nn.topk(input, k=k)
-    acc_out = helper.create_tmp_variable(dtype="float32")
+    acc_out = helper.create_variable_for_type_inference(dtype="float32")
     if correct is None:
-        correct = helper.create_tmp_variable(dtype="int64")
+        correct = helper.create_variable_for_type_inference(dtype="int64")
     if total is None:
-        total = helper.create_tmp_variable(dtype="int64")
+        total = helper.create_variable_for_type_inference(dtype="int64")
     helper.append_op(
         type="accuracy",
         inputs={
@@ -124,8 +124,8 @@ def auc(input,
             auc_out=fluid.layers.auc(input=prediction, label=label)
     """
     helper = LayerHelper("auc", **locals())
-    auc_out = helper.create_tmp_variable(dtype="float64")
-    batch_auc_out = helper.create_tmp_variable(dtype="float64")
+    auc_out = helper.create_variable_for_type_inference(dtype="float64")
+    batch_auc_out = helper.create_variable_for_type_inference(dtype="float64")
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
 
     # for batch auc

@@ -15,7 +15,7 @@ cmake .. -DFLUID_INSTALL_DIR=$PADDLE_LIB \
          -DWITH_MKL=OFF \
          -DWITH_MKLDNN=OFF
 make -j8
-make -j8 inference_lib_dist
+make -j8 fluid_lib_dist
 ```
 
 ### step 2. generate program desc

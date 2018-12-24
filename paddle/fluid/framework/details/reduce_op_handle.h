@@ -23,19 +23,45 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/device_context.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
 namespace paddle {
 namespace framework {
 namespace details {
+struct CollectiveContext {
+  std::vector<std::string> endpoints_;
+  int trainer_id_{0};
+
+  std::string String() const {
+    std::stringstream ss;
+    ss << "endpoints_:";
+    for (auto e : endpoints_) {
+      ss << e << ",";
+    }
+
+    ss << "trainer_id_:" << trainer_id_;
+
+    return ss.str();
+  }
+
+  static CollectiveContext *GetInstance() {
+    std::call_once(init_flag_,
+                   [&]() { context_.reset(new CollectiveContext()); });
+    return context_.get();
+  }
+
+ private:
+  static std::once_flag init_flag_;
+  static std::unique_ptr<CollectiveContext> context_;
+};
 
 struct ReduceOpHandle : public OpHandleBase {
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   const platform::NCCLContextMap *nccl_ctxs_;
   ReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places,
@@ -46,7 +72,8 @@ struct ReduceOpHandle : public OpHandleBase {
         nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs_) {
       for (auto &p_ctx : nccl_ctxs_->contexts_) {
-        dev_ctxes_[platform::CUDAPlace(p_ctx.first)] = p_ctx.second.ctx_.get();
+        this->SetDeviceContext(platform::CUDAPlace(p_ctx.first),
+                               p_ctx.second.ctx_.get());
       }
     }
   }
@@ -62,6 +89,19 @@ struct ReduceOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+
+#if defined PADDLE_WITH_CUDA && defined PADDLE_WITH_DISTRIBUTE
+  template <typename DevCtx, typename DataType>
+  void GatherSelectedRows(
+      const std::vector<const SelectedRows *> &src_selecte_rows_,
+      const std::vector<platform::Place> &in_places,
+      const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
+      VarHandle *out_var_handle, const platform::Place &out_place,
+      SelectedRows *dst_selecte_rows);
+#endif
+
+  void Wait(
+      const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes);
 
   template <typename T>
   std::vector<const T *> GetInputValues(

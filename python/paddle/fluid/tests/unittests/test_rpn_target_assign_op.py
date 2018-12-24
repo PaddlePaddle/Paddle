@@ -50,8 +50,10 @@ def rpn_target_assign(anchor_by_gt_overlap,
             fg_inds, size=(len(fg_inds) - num_fg), replace=False)
     else:
         disable_inds = fg_inds[num_fg:]
+
     labels[disable_inds] = -1
     fg_inds = np.where(labels == 1)[0]
+    bbox_inside_weight = np.zeros((len(fg_inds), 4), dtype=np.float32)
 
     num_bg = rpn_batch_size_per_im - np.sum(labels == 1)
     bg_inds = np.where(anchor_to_gt_max < rpn_negative_overlap)[0]
@@ -59,18 +61,27 @@ def rpn_target_assign(anchor_by_gt_overlap,
         enable_inds = bg_inds[np.random.randint(len(bg_inds), size=num_bg)]
     else:
         enable_inds = bg_inds[:num_bg]
+
+    fg_fake_inds = np.array([], np.int32)
+    fg_value = np.array([fg_inds[0]], np.int32)
+    fake_num = 0
+    for bg_id in enable_inds:
+        if bg_id in fg_inds:
+            fake_num += 1
+            fg_fake_inds = np.hstack([fg_fake_inds, fg_value])
     labels[enable_inds] = 0
+
+    bbox_inside_weight[fake_num:, :] = 1
     fg_inds = np.where(labels == 1)[0]
     bg_inds = np.where(labels == 0)[0]
-
-    loc_index = fg_inds
-    score_index = np.hstack((fg_inds, bg_inds))
+    loc_index = np.hstack([fg_fake_inds, fg_inds])
+    score_index = np.hstack([fg_inds, bg_inds])
     labels = labels[score_index]
     assert not np.any(labels == -1), "Wrong labels with -1"
 
-    gt_inds = anchor_to_gt_argmax[fg_inds]
+    gt_inds = anchor_to_gt_argmax[loc_index]
 
-    return loc_index, score_index, labels, gt_inds
+    return loc_index, score_index, labels, gt_inds, bbox_inside_weight
 
 
 def get_anchor(n, c, h, w):
@@ -123,9 +134,12 @@ def rpn_target_assign_in_python(all_anchors,
         gt_boxes_slice = gt_boxes_slice[not_crowd_inds]
         iou = _bbox_overlaps(inside_anchors, gt_boxes_slice)
 
-        loc_inds, score_inds, labels, gt_inds = rpn_target_assign(
-            iou, rpn_batch_size_per_im, rpn_positive_overlap,
-            rpn_negative_overlap, rpn_fg_fraction, use_random)
+        loc_inds, score_inds, labels, gt_inds, bbox_inside_weight = \
+                         rpn_target_assign(iou, rpn_batch_size_per_im,
+                                           rpn_positive_overlap,
+                                           rpn_negative_overlap,
+                                           rpn_fg_fraction,
+                                           use_random)
         # unmap to all anchor 
         loc_inds = inds_inside[loc_inds]
         score_inds = inds_inside[score_inds]
@@ -139,6 +153,7 @@ def rpn_target_assign_in_python(all_anchors,
             score_indexes = score_inds
             tgt_labels = labels
             tgt_bboxes = box_deltas
+            bbox_inside_weights = bbox_inside_weight
         else:
             loc_indexes = np.concatenate(
                 [loc_indexes, loc_inds + i * anchor_num])
@@ -146,8 +161,10 @@ def rpn_target_assign_in_python(all_anchors,
                 [score_indexes, score_inds + i * anchor_num])
             tgt_labels = np.concatenate([tgt_labels, labels])
             tgt_bboxes = np.vstack([tgt_bboxes, box_deltas])
+            bbox_inside_weights = np.vstack([bbox_inside_weights, \
+                                             bbox_inside_weight])
 
-    return loc_indexes, score_indexes, tgt_bboxes, tgt_labels
+    return loc_indexes, score_indexes, tgt_bboxes, tgt_labels, bbox_inside_weights
 
 
 class TestRpnTargetAssignOp(OpTest):
@@ -182,10 +199,12 @@ class TestRpnTargetAssignOp(OpTest):
         rpn_fg_fraction = 0.5
         use_random = False
 
-        loc_index, score_index, tgt_bbox, labels = rpn_target_assign_in_python(
-            all_anchors, gt_boxes, is_crowd, im_info, lod, rpn_straddle_thresh,
-            rpn_batch_size_per_im, rpn_positive_overlap, rpn_negative_overlap,
-            rpn_fg_fraction, use_random)
+        loc_index, score_index, tgt_bbox, labels, bbox_inside_weights = \
+            rpn_target_assign_in_python(all_anchors, gt_boxes, is_crowd,
+                                   im_info, lod, rpn_straddle_thresh,
+                                   rpn_batch_size_per_im, rpn_positive_overlap,
+                                   rpn_negative_overlap,
+                                   rpn_fg_fraction, use_random)
         labels = labels[:, np.newaxis]
 
         self.op_type = "rpn_target_assign"
@@ -207,7 +226,8 @@ class TestRpnTargetAssignOp(OpTest):
             'LocationIndex': loc_index.astype('int32'),
             'ScoreIndex': score_index.astype('int32'),
             'TargetBBox': tgt_bbox.astype('float32'),
-            'TargetLabel': labels.astype('int32')
+            'TargetLabel': labels.astype('int32'),
+            'BBoxInsideWeight': bbox_inside_weights.astype('float32')
         }
 
     def test_check_output(self):

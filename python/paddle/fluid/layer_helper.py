@@ -17,10 +17,13 @@ from __future__ import print_function
 import copy
 import itertools
 import six
+import sys
+import numpy as np
 
 from .framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating
 from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
+from paddle.fluid.imperative import base
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
 from six.moves import zip
@@ -46,23 +49,21 @@ class LayerHelper(object):
     def startup_program(self):
         return default_startup_program()
 
+    def to_variable(self, x):
+        return base.to_variable(x, self.main_program.current_block())
+
     def append_op(self, *args, **kwargs):
         return self.main_program.current_block().append_op(*args, **kwargs)
 
     def multiple_input(self, input_param_name='input'):
         inputs = self.kwargs.get(input_param_name, [])
-        type_error = TypeError(
-            "Input of {0} layer should be Variable or sequence of Variable".
-            format(self.layer_type))
-        if isinstance(inputs, Variable):
-            inputs = [inputs]
-        elif not isinstance(inputs, list) and not isinstance(inputs, tuple):
-            raise type_error
+        ret = []
+        if isinstance(inputs, list) or isinstance(inputs, tuple):
+            for inp in inputs:
+                ret.append(self.to_variable(inp))
         else:
-            for each in inputs:
-                if not isinstance(each, Variable):
-                    raise type_error
-        return inputs
+            ret.append(self.to_variable(inputs))
+        return ret
 
     def input(self, input_param_name='input'):
         inputs = self.multiple_input(input_param_name)
@@ -324,10 +325,19 @@ class LayerHelper(object):
             raise ValueError("no Parameter name %s found" % name)
         return param
 
-    def create_tmp_variable(self, dtype, stop_gradient=False):
+    def create_variable_for_type_inference(self, dtype, stop_gradient=False):
+        """Create a temporary variable that should be type inferred layer.
+
+        Note:
+            The default type will be set to LOD_TENSOR. However, when
+            the var is used as operator output, its type will be updated
+            based on operator's `VarTypeInference` implementation in
+            infer_var_type.
+        """
         return self.main_program.current_block().create_var(
             name=unique_name.generate(".".join([self.name, 'tmp'])),
             dtype=dtype,
+            type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,
             stop_gradient=stop_gradient)
 
@@ -388,7 +398,7 @@ class LayerHelper(object):
 
         b = self.create_parameter(
             attr=bias_attr, shape=size, dtype=input_var.dtype, is_bias=True)
-        tmp = self.create_tmp_variable(dtype=input_var.dtype)
+        tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
         self.append_op(
             type='elementwise_add',
             inputs={'X': [input_var],
@@ -414,7 +424,7 @@ class LayerHelper(object):
         tmp = input_var
         # NOTE(dzhwinter): some activation support inplace compution.
         if not core.IsInplace(act_type):
-            tmp = self.create_tmp_variable(dtype=input_var.dtype)
+            tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},

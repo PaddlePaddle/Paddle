@@ -16,8 +16,10 @@ from __future__ import print_function
 
 import collections
 import contextlib
+import os
 import re
 import six
+import sys
 
 import numpy as np
 
@@ -26,11 +28,18 @@ from .proto import framework_pb2
 try:
     from . import core
 except ImportError as e:
-    raise ImportError(
-        """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
-    if you encounters \"libmkldnn.so not found\" errors. If you have python
-    installed in other directory, replace \"/usr/local/lib\" with your own
-    directory. The original error is: \n""" + cpt.get_exception_message(e))
+    if os.name == 'nt':
+        raise ImportError(
+            """NOTE: You may need to run \"set PATH=c:\python27\lib:%PATH%\"
+        if you encounters \"mkldnn.dll not found\" errors. If you have python
+        installed in other directory, replace \"c:\python27\lib" with your own
+        directory. The original error is: \n""" + cpt.get_exception_message(e))
+    else:
+        raise ImportError(
+            """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
+        if you encounters \"libmkldnn.so not found\" errors. If you have python
+        installed in other directory, replace \"/usr/local/lib\" with your own
+        directory. The original error is: \n""" + cpt.get_exception_message(e))
 except Exception as e:
     raise e
 from . import unique_name
@@ -48,6 +57,16 @@ TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
+
+_imperative_tracer_ = None
+
+
+def _in_imperative_mode():
+    return _imperative_tracer_ is not None
+
+
+def _imperative_tracer():
+    return _imperative_tracer_
 
 
 class NameScope(object):
@@ -89,12 +108,13 @@ def name_scope(prefix=None):
 
     Examples:
         .. code-block:: python
+
           with name_scope("encoder"):
              ...
           with name_scope("decoder"):
              ...
-             with name_scope("attention"):
-                ...
+          with name_scope("attention"):
+             ...
     """
     # TODO(panyx0718): Only [0-9a-z].
     assert prefix, "namescope prefix cannot be empty."
@@ -344,6 +364,21 @@ class Variable(object):
         self.op = None
         self.stop_gradient = stop_gradient
         self.is_data = is_data
+        if _in_imperative_mode():
+            self._ivar = core.VarBase()
+            self._ivar.desc = self.desc
+
+    def _numpy(self):
+        scope = _imperative_tracer().get_scope(self.block.desc)
+        tensor = core.get_variable_tensor(scope, self.desc.name())
+        return np.array(tensor)
+
+    def _backward(self):
+        scope = _imperative_tracer().get_scope(self.block.desc)
+        self._ivar._run_backward(scope)
+
+    def _gradient(self):
+        return np.array(self._ivar._grad())
 
     def __str__(self):
         return self.to_string(True)
@@ -536,8 +571,8 @@ class Operator(object):
     OP_WITHOUT_KERNEL_SET = {
         'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
         'rnn_memory_helper_grad', 'conditional_block', 'while', 'send', 'recv',
-        'listen_and_serv', 'parallel_do', 'save_combine', 'load_combine',
-        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id'
+        'listen_and_serv', 'save_combine', 'load_combine', 'ncclInit', 'select',
+        'checkpoint_notify', 'gen_nccl_id'
     }
 
     def __init__(self,
@@ -654,6 +689,23 @@ class Operator(object):
         if self._has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
+        if _in_imperative_mode():
+            self.iop = core.OpBase()
+            self.iop.desc = self.desc
+            self.inputs = []
+            if inputs is not None:
+                for inp in inputs.values():
+                    if isinstance(inp, Variable):
+                        self.inputs.append(inp)
+                    elif isinstance(inp, list) or isinstance(inp, tuple):
+                        self.inputs.extend(inp[:])
+            self.outputs = []
+            if outputs is not None:
+                for out in outputs.values():
+                    if isinstance(out, Variable):
+                        self.outputs.append(out)
+                    elif isinstance(out, list) or isinstance(out, tuple):
+                        self.outputs.extend(out[:])
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
@@ -1040,19 +1092,15 @@ class Block(object):
             raise ValueError("var %s not in this block" % name)
         return v
 
-    def _var_recursive(self, name):
+    def _find_var_recursive(self, name):
         """
         Get a Variable by name from this block recursively.
 
         Args:
             name(str): the Variable's name.
 
-        Raises:
-            ValueError: this block and this parent block doesn't
-                have a Variable with the giving name.
-
         Returns:
-            Variable: the Variable with the giving name.
+            Variable: the Variable with the giving name. Or None if not found.
         """
         frontier = list()
         visited = set()
@@ -1078,8 +1126,27 @@ class Block(object):
                 frontier.append(prog.block(cur.forward_block_idx))
 
             visited.add(id(cur))
+        return None
 
-        raise ValueError("Var {0} is not found recursively".format(name))
+    def _var_recursive(self, name):
+        """
+        Get a Variable by name from this block recursively.
+
+        Args:
+            name(str): the Variable's name.
+
+        Raises:
+            ValueError: this block and this parent block doesn't
+                have a Variable with the giving name.
+
+        Returns:
+            Variable: the Variable with the giving name.
+        """
+        var = self._find_var_recursive(name)
+        if var:
+            return var
+        else:
+            raise ValueError("Var {0} is not found recursively".format(name))
 
     def all_parameters(self):
         return list(self.iter_parameters())
@@ -1205,6 +1272,9 @@ class Block(object):
         """
         op_desc = self.desc.append_op()
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
+        if _in_imperative_mode():
+            _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
+                                       [v._ivar for v in op.outputs], self.desc)
         self.ops.append(op)
         return op
 
@@ -1254,6 +1324,9 @@ class Block(object):
     def _prepend_op(self, *args, **kwargs):
         op_desc = self.desc._prepend_op()
         op = Operator(self, op_desc, *args, **kwargs)
+        if _in_imperative_mode():
+            _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
+                                       [v._ivar for v in op.outputs], self.desc)
         self.ops.insert(0, op)
         return op
 
@@ -1441,6 +1514,7 @@ class Program(object):
         self._is_chief = False
         self._slice_vars_and_attrs = []
         self._endpoints = []
+        self._trainers_endpoints = []
         self._distributed_lookup_table = None
 
     @property
@@ -1496,6 +1570,9 @@ class Program(object):
             >>> with program._optimized_guard([p,g]):
             >>>     p = p - 0.001 * g
         """
+        tmp_role = self._current_role
+        tmp_var = self._op_role_var
+
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.Optimize
         self._op_role_var = [
@@ -1503,11 +1580,11 @@ class Program(object):
             for var in param_and_grads
         ]
         yield
-        self._op_role_var = []
-        self._current_role = OpRole.Forward
+        self._op_role_var = tmp_var
+        self._current_role = tmp_role
 
     @contextlib.contextmanager
-    def _lr_schedule_guard(self):
+    def _lr_schedule_guard(self, is_with_opt=False):
         """
         A with guard to set :code:`LRSched` :code:`OpRole` and
         :code:`OpRoleVar` automatically. The :code:`OpRoleVar` is
@@ -1515,6 +1592,10 @@ class Program(object):
 
         Notes: This is a very low level API. Users should not use it directly.
 
+        Args:
+            is_with_opt: Only set to true if these ops a in the middle
+                 of a bunch of optimize ops so that it can be treated
+                 correctly. For example, sgd->lr_op->sgd->lr_op->sgd.
 
         Examples:
 
@@ -1522,13 +1603,19 @@ class Program(object):
             >>> with program.lr_schedule_guard():
             >>>     lr = lr * decay
         """
+
+        tmp_role = self._current_role
+        tmp_var = self._op_role_var
+
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.LRSched
+        if is_with_opt:
+            self._current_role = int(OpRole.LRSched) | int(OpRole.Optimize)
         # TODO(typhoonzero): how to set target learning rate var
         self._op_role_var = []
         yield
-        self._op_role_var = []
-        self._current_role = OpRole.Forward
+        self._op_role_var = tmp_var
+        self._current_role = tmp_role
 
     def __str__(self):
         """
@@ -1685,6 +1772,7 @@ class Program(object):
 
         p._copy_param_info_from(self)
         p._copy_data_info_from(self)
+        p._copy_dist_param_info_from(self)
         return p
 
     def _prune(self, targets):
@@ -1924,6 +2012,25 @@ class Program(object):
             raise ValueError("_copy_param_info_from should be invoked with two "
                              "program, with represent the same topology")
         self.global_block()._copy_param_info_from(other.global_block())
+
+    def _copy_dist_param_info_from(self, other):
+        """
+        Copy the information of distributed information from other program.
+
+        Args:
+            other(Program): Other program
+
+        Returns:
+            None
+        """
+        if not isinstance(other, Program):
+            raise TypeError("_copy_dist_param_info_from should be invoked with "
+                            "Program")
+        self._is_distributed = other._is_distributed
+        self._is_chief = other._is_chief
+        self._slice_vars_and_attrs = other._slice_vars_and_attrs
+        self._endpoints = other._endpoints
+        self._distributed_lookup_table = other._distributed_lookup_table
 
     def _copy_data_info_from(self, other):
         """
@@ -2175,3 +2282,12 @@ def _get_var(name, program=None):
     assert isinstance(program, Program)
 
     return program.global_block().var(name)
+
+
+@contextlib.contextmanager
+def _imperative_guard(tracer):
+    global _imperative_tracer_
+    tmp_trace = _imperative_tracer_
+    _imperative_tracer_ = tracer
+    yield
+    _imperative_tracer_ = tmp_trace

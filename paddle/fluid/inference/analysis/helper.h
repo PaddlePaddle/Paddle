@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace inference {
@@ -101,20 +102,20 @@ class OrderedRegistry {
  public:
   T *Register(const std::string &name, T *x) {
     PADDLE_ENFORCE(!dic_.count(name), "duplicate key [%s]", name);
-    dic_[name] = data_.size();
-    data_.emplace_back(std::unique_ptr<T>(x));
-    return data_.back().get();
+    dic_[name] = elements_.size();
+    elements_.emplace_back(std::unique_ptr<T>(x));
+    return elements_.back().get();
   }
 
   T *Lookup(const std::string &name) {
     auto it = dic_.find(name);
     if (it == dic_.end()) return nullptr;
-    return data_[it->second].get();
+    return elements_[it->second].get();
   }
 
  protected:
   std::unordered_map<std::string, int> dic_;
-  std::vector<std::unique_ptr<T>> data_;
+  std::vector<std::unique_ptr<T>> elements_;
 };
 
 template <typename T>
@@ -122,20 +123,6 @@ T &GetFromScope(const framework::Scope &scope, const std::string &name) {
   framework::Variable *var = scope.FindVar(name);
   PADDLE_ENFORCE(var != nullptr);
   return *var->GetMutable<T>();
-}
-
-static void ExecShellCommand(const std::string &cmd, std::string *message) {
-  char buffer[128];
-  std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
-  if (!pipe) {
-    LOG(ERROR) << "error running command: " << cmd;
-    return;
-  }
-  while (!feof(pipe.get())) {
-    if (fgets(buffer, 128, pipe.get()) != nullptr) {
-      *message += buffer;
-    }
-  }
 }
 
 static framework::proto::ProgramDesc LoadProgramDesc(
