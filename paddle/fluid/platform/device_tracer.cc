@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <deque>
 #include <fstream>
+#include <list>
 #include <map>
 #include <mutex>  // NOLINT
 #include <numeric>
@@ -195,6 +196,16 @@ class DeviceTracerImpl : public DeviceTracer {
  public:
   DeviceTracerImpl() : enabled_(false) {}
 
+  EventList &GetEventList() {
+    if (!g_event_list) {
+      std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
+      g_event_list = std::make_shared<EventList>();
+      g_thread_id = g_next_thread_id++;
+      g_all_event_lists.emplace_front(g_event_list);
+    }
+    return *g_event_list;
+  }
+
   void AddAnnotation(uint64_t id, const std::string &anno) {
     std::lock_guard<std::mutex> l(trace_mu_);
     correlations_[id] = anno;
@@ -357,10 +368,8 @@ class DeviceTracerImpl : public DeviceTracer {
   bool enabled_;
   uint64_t start_ns_;
   uint64_t end_ns_;
-  std::vector<KernelRecord> kernel_records_;
-  std::vector<MemRecord> mem_records_;
-  std::vector<CPURecord> cpu_records_;
-  std::unordered_map<uint32_t, std::string> correlations_;
+  static std::list<std::shared_ptr<AllRecord>> g_all_thread_local_records;
+  static thread_local std::shared_ptr<AllRecord> thread_local_records;
 };
 
 void CreateTracer(DeviceTracer **t) { *t = new DeviceTracerImpl(); }

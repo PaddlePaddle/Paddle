@@ -15,6 +15,8 @@ limitations under the License. */
 
 #include <chrono>  // NOLINT
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/port.h"
@@ -61,6 +63,13 @@ class DeviceTracer {
     int64_t stream_id;
     uint32_t correlation_id;
     uint64_t bytes;
+  };
+
+  struct AllRecord {
+    std::vector<KernelRecord> kernel_records;
+    std::vector<MemRecord> mem_records;
+    std::vector<CPURecord> cpu_records;
+    std::unordered_map<uint32_t, std::string> correlations;
   };
 
   virtual ~DeviceTracer() {}
