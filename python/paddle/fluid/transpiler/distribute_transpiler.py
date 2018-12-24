@@ -304,11 +304,6 @@ class DistributeTranspiler(object):
         self.startup_program = startup_program
         self.origin_startup_program = self.startup_program.clone()
 
-        if self.sync_mode:
-            self.send_recv_sync_mode = False
-        else:
-            self.send_recv_sync_mode = self.config.async_wait
-
         if self.config.mode == "nccl2":
             assert (isinstance(trainers, str))
             self.origin_program._trainers_endpoints = trainers.split(",")
@@ -322,6 +317,10 @@ class DistributeTranspiler(object):
 
         self.trainer_num = trainers
         self.sync_mode = sync_mode
+        if self.sync_mode:
+            self.send_recv_sync_mode = False
+        else:
+            self.send_recv_sync_mode = self.config.async_wait
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
         self.pserver_endpoints = pserver_endpoints
