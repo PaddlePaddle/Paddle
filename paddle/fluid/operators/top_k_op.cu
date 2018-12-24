@@ -16,7 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
-#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -151,7 +150,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
         if (k < MaxLength - (*beam)) {
           topk[k] = topk[k + *beam];
         } else {
-          topk[k].set(-static_cast<T>(INFINITY), -1);
+          topk[k].set(-INFINITY, -1);
         }
       }
       if (!(*is_empty)) {
@@ -161,7 +160,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
     }
 
     *max = topk[MaxLength - 1];
-    if ((*max).v == -static_cast<T>(1)) *is_empty = true;
+    if ((*max).v == -1) *is_empty = true;
     *beam = 0;
   }
 }
@@ -182,7 +181,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
         if (k < MaxLength - *beam) {
           topk[k] = topk[k + *beam];
         } else {
-          topk[k].set(-static_cast<T>(INFINITY), -1);
+          topk[k].set(-INFINITY, -1);
         }
       }
       if (!(*is_empty)) {
@@ -279,7 +278,7 @@ __global__ void KeMatrixTopK(T* output, int output_stride, int64_t* indices,
     bool firststep = true;
 
     for (int j = 0; j < MaxLength; j++) {
-      topk[j].set(-static_cast<T>(INFINITY), -1);
+      topk[j].set(-INFINITY, -1);
     }
     while (top_num) {
       ThreadGetTopK<T, MaxLength, BlockSize>(
@@ -363,7 +362,5 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(
-    top_k, paddle::operators::TopkOpCUDAKernel<float>,
-    paddle::operators::TopkOpCUDAKernel<double>,
-    paddle::operators::TopkOpCUDAKernel<paddle::platform::float16>);
+REGISTER_OP_CUDA_KERNEL(top_k, paddle::operators::TopkOpCUDAKernel<float>,
+                        paddle::operators::TopkOpCUDAKernel<double>);

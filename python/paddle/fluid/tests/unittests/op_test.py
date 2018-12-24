@@ -368,8 +368,6 @@ class OpTest(unittest.TestCase):
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
                     return [place]
-                else:
-                    return []
             else:
                 return []
         places = [fluid.CPUPlace()]
