@@ -444,7 +444,7 @@ EOF
         if [ "$1" == "cp27-cp27m" ]; then
             set -e
             pip install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
-            python -c installation_validate.py
+            python installation_validate.py
         elif [ "$1" == "cp35-cp35m" ]; then
             pip3.5 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         elif [ "$1" == "cp36-cp36m" ]; then
