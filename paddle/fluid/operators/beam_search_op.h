@@ -33,18 +33,12 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NOT_NULL(pre_ids);
     PADDLE_ENFORCE_NOT_NULL(pre_scores);
 
-    // LOG(INFO) << "<<< pre_ids >>>";
-    // LOG(INFO) << "  dims: " << pre_ids->dims();
-    // LOG(INFO) << "  lod:  " << pre_ids->lod();
-    // LOG(INFO) << "<<< pre_scores >>>";
-    // LOG(INFO) << "  dims: " << pre_scores->dims();
-    // LOG(INFO) << "  lod:  " << pre_scores->lod();
-    // LOG(INFO) << "<<< ids >>>";
-    // LOG(INFO) << "  dims: " << ids->dims();
-    // LOG(INFO) << "  lod:  " << ids->lod();
-    // LOG(INFO) << "<<< scores >>>";
-    // LOG(INFO) << "  dims: " << scores->dims();
-    // LOG(INFO) << "  lod:  " << scores->lod();
+    LOG(INFO) << "pre_ids:" << *pre_ids;
+    LOG(INFO) << "pre_scores: " << *pre_scores;
+    if (ids) {
+      LOG(INFO) << "ids: " << *ids;
+    }
+    LOG(INFO) << "scores: " << *scores;
 
     size_t level = context.Attr<int>("level");
     size_t beam_size = context.Attr<int>("beam_size");
@@ -52,7 +46,8 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     bool is_accumulated = context.Attr<bool>("is_accumulated");
 
     // LOG(INFO) << "level: " << level << ", beam_size: " << beam_size
-    //           << ", end_id: " << end_id;
+    //           << ", end_id: " << end_id << ", is_accumulated: " <<
+    //           is_accumulated;
 
     auto selected_ids = context.Output<framework::LoDTensor>("selected_ids");
     auto selected_scores =

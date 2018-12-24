@@ -39,19 +39,20 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     end_id_ = end_id;
     sent_offset_ = 0;
 
-    auto abs_lod = framework::ToAbsOffset(ids_->lod());
+    auto abs_lod = framework::ToAbsOffset(scores_->lod());
     auto &high_level = abs_lod[lod_level_];
 
-    // LOG(INFO) << "ids.abs_lod: " << abs_lod;
+    // LOG(INFO) << "abs_lod: " << abs_lod;
 
-    auto items = SelectTopBeamSizeItems(pre_ids, pre_scores);
+    auto items = SelectTopBeamSizeItems(pre_ids, pre_scores, is_accumulated);
     auto selected_items = ToMap(items, high_level.back());
-    // LOG(INFO) << "selected_items:";
-    // for (size_t i = 0; i < selected_items.size(); ++i) {
-    //   for (auto &item : selected_items[i]) {
-    //     LOG(INFO) << item.ToString();
-    //   }
-    // }
+    VLOG(3) << "selected_items:";
+    for (size_t i = 0; i < selected_items.size(); ++i) {
+      VLOG(3) << "offset: " << i;
+      for (auto &item : selected_items[i]) {
+        VLOG(3) << item.ToString();
+      }
+    }
 
     PruneEndBeams(pre_ids, &selected_items);
     // calculate the output tensor's height
@@ -63,6 +64,7 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     selected_ids->Resize(dims);
     selected_scores->Resize(dims);
+    // LOG(INFO) << "dims: " << dims;
 
     auto *ids_data = selected_ids->mutable_data<int64_t>(platform::CPUPlace());
     auto *scores_data =
@@ -90,8 +92,8 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     }
     selected_ids->set_lod(lod);
     selected_scores->set_lod(lod);
-    // LOG(INFO) << "selected_ids: " << *selected_ids;
-    // LOG(INFO) << "selected_scores: " << *selected_scores;
+    LOG(INFO) << "selected_ids: " << *selected_ids;
+    LOG(INFO) << "selected_scores: " << *selected_scores;
   }
 
   /*
@@ -130,7 +132,7 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
   void PruneEndBeams(const framework::LoDTensor &pre_ids,
                      std::vector<std::vector<Item>> *items) {
     auto *pre_ids_data = pre_ids.data<int64_t>();
-    auto abs_lod = framework::ToAbsOffset(ids_->lod());
+    auto abs_lod = framework::ToAbsOffset(scores_->lod());
     auto &high_level = abs_lod[lod_level_];
     for (size_t src_idx = 0; src_idx < high_level.size() - 1; ++src_idx) {
       size_t src_prefix_start = high_level[src_idx];
@@ -177,12 +179,12 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
    */
   std::vector<std::vector<Item>> SelectTopBeamSizeItems(
       const framework::LoDTensor &pre_ids,
-      const framework::LoDTensor &pre_scores) {
+      const framework::LoDTensor &pre_scores, bool is_accumulated) {
     std::vector<std::vector<Item>> result;
     std::vector<Item> items;
     // for each source sentence, select the top beam_size items across all
     // candidate sets.
-    while (NextItemSet(pre_ids, pre_scores, &items)) {
+    while (NextItemSet(pre_ids, pre_scores, &items, is_accumulated)) {
       std::nth_element(
           std::begin(items), std::begin(items) + beam_size_, std::end(items),
           [](const Item &a, const Item &b) { return a.score > b.score; });
@@ -192,13 +194,13 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
       }
       result.emplace_back(items);
     }
-    // LOG(INFO) << "SelectTopBeamSizeItems result size " << result.size();
-    // for (auto &items : result) {
-    //   LOG(INFO) << "item set:";
-    //   for (auto &item : items) {
-    //     LOG(INFO) << item.ToString();
-    //   }
-    // }
+    VLOG(3) << "SelectTopBeamSizeItems result size " << result.size();
+    for (auto &items : result) {
+      VLOG(3) << "item set:";
+      for (auto &item : items) {
+        VLOG(3) << item.ToString();
+      }
+    }
 
     return result;
   }
@@ -209,30 +211,35 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
    */
   bool NextItemSet(const framework::LoDTensor &pre_ids,
                    const framework::LoDTensor &pre_scores,
-                   std::vector<Item> *items) {
-    if (sent_offset_ >= ids_->NumElements(lod_level_)) {
+                   std::vector<Item> *items, bool is_accumulated) {
+    if (sent_offset_ >= scores_->NumElements(lod_level_)) {
       return false;
     }
+
     // find the current candidates
-    auto ids = *ids_;
-    auto scores = *scores_;
+    auto abs_lod = framework::ToAbsOffset(scores_->lod());
 
-    auto abs_lod = framework::ToAbsOffset(ids.lod());
+    auto *ids_data = ids_ ? ids_->data<int64_t>() : nullptr;
+    auto *scores_data = scores_->data<float>();
 
-    auto *ids_data = ids.data<int64_t>();
-    auto *scores_data = scores.data<float>();
-
-    size_t instance_dim = 1;
-    for (int i = 1; i < ids.dims().size(); i++) {
-      instance_dim *= ids.dims()[i];
+    size_t seq_width = 1;
+    for (int i = 1; i < scores_->dims().size(); i++) {
+      seq_width *= scores_->dims()[i];
     }
+
+    LOG(INFO) << "seq_width: " << seq_width;
 
     auto *pre_ids_data = pre_ids.data<int64_t>();
     auto *pre_scores_data = pre_scores.data<float>();
+
+    size_t seq_offset_start = abs_lod[lod_level_][sent_offset_];
+    size_t seq_offset_end = abs_lod[lod_level_][sent_offset_ + 1];
+    LOG(INFO) << "seq_offset_start: " << seq_offset_start
+              << ", seq_offset_end: " << seq_offset_end;
+
     items->clear();
-    items->reserve(framework::product(ids.dims()));
-    for (size_t offset = abs_lod[lod_level_][sent_offset_];
-         offset < abs_lod[lod_level_][sent_offset_ + 1]; offset++) {
+    items->reserve((seq_offset_end - seq_offset_start) * seq_width);
+    for (size_t offset = seq_offset_start; offset < seq_offset_end; offset++) {
       auto pre_id = pre_ids_data[offset];
       auto pre_score = pre_scores_data[offset];
       if (pre_id == end_id_) {
@@ -240,18 +247,16 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
         // other candidate ids can be ignored.
         items->emplace_back(offset, end_id_, pre_score);
       } else {
-        for (size_t d = 0; d < instance_dim; d++) {
-          const size_t dim_offset = offset * instance_dim + d;
-          items->emplace_back(offset, ids_data[dim_offset],
-                              scores_data[dim_offset]);
+        for (size_t d = 0; d < seq_width; d++) {
+          const size_t index = offset * seq_width + d;
+          int64_t id = ids_data ? ids_data[index] : static_cast<int64_t>(d);
+          float score = is_accumulated
+                            ? scores_data[index]
+                            : pre_score + std::log(scores_data[index]);
+          items->emplace_back(offset, id, score);
         }
       }
     }
-
-    // LOG(INFO) << "Next item:";
-    // for (auto &item : *items) {
-    //   LOG(INFO) << item.ToString();
-    // }
 
     sent_offset_++;
     return true;
