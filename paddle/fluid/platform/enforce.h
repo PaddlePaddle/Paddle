@@ -298,7 +298,7 @@ inline void throw_on_error(T e) {
 #define __PADDLE_ENFORCE_I(COND, ...) __PADDLE_UNARY_COMPARE(COND, __VA_ARGS__);
 #endif  // REPLACE_ENFORCE_GLOG
 
-#define __PADDLE_ENFORCE(args) __PADDLE_ENFORCE_I args
+#define __PADDLE_ENFORCE(__args) __PADDLE_ENFORCE_I __args
 #define PADDLE_ENFORCE(...) __PADDLE_ENFORCE((__VA_ARGS__))
 
 #define PADDLE_THROW_EOF()                                                     \
