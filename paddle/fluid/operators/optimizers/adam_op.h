@@ -315,19 +315,8 @@ struct SparseAdamFunctor<T, CPUAdam> {
     for (size_t i = 0U, j = 0U; i != row_count; ++i) {
       if (i == *(rows_ + j)) {
         for (size_t k = 0U; k != row_numel_; ++k) {
-          T mom1 = moment1_[i * row_numel_ + k];
-          T mom2 = moment2_[i * row_numel_ + k];
-          T p = param_[i * row_numel_ + k];
-
           T g = grad_[j * row_numel_ + k];
-          mom1 = beta1_ * mom1 + (1 - beta1_) * g;
-          mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
-
-          p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
-          // Write back to global memory
-          moment1_out_[i * row_numel_ + k] = mom1;
-          moment2_out_[i * row_numel_ + k] = mom2;
-          param_out_[i * row_numel_ + k] = p;
+          adam_update(i * row_numel_ + k, g);
         }
         ++j;
       } else {
