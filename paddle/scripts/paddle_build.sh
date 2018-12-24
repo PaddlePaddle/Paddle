@@ -908,6 +908,7 @@ function main() {
         ;;
       assert_api)
         assert_api_not_changed ${PYTHON_ABI:-""}
+        assert_api_spec_approvals
         ;;
       test_inference)
         gen_capi_package
