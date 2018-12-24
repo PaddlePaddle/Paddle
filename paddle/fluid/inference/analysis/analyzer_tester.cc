@@ -78,10 +78,10 @@ void TestWord2vecPrediction(const std::string& model_path) {
   // The outputs' buffers are in CPU memory.
   for (size_t i = 0; i < std::min(static_cast<size_t>(5UL), num_elements);
        i++) {
-    LOG(INFO) << "data: "
-              << static_cast<float*>(outputs.front().data.data())[i];
-    PADDLE_ENFORCE_EQ(static_cast<float*>(outputs.front().data.data())[i],
-                      result[i]);
+    LOG(INFO) << "data: " << static_cast<float*>(outputs.front().data.data())[i]
+              << " result: " << result[i];
+    PADDLE_ENFORCE(static_cast<float*>(outputs.front().data.data())[i],
+                   result[i]);
   }
 }
 
