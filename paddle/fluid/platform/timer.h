@@ -14,74 +14,33 @@ limitations under the License. */
 
 #pragma once
 #include <sys/time.h>
-#include <pmmintrin.h>
-#include <string>
-#include <vector>
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace platform {
 
 // A Standard Timer implementation for debugging
-
 class Timer {
  public:
-    Timer() {
-        reset();
-    }
-
-    inline void reset() {
-        _start.tv_sec = 0;
-        _start.tv_usec = 0;
-
-        _count = 0;
-        _elapsed = 0;
-        _paused = true;
-    }
-
-    inline void start() {
-        reset();
-        resume();
-    }
-
-    inline void pause() {
-        if (_paused) {
-            return;
-        }
-        _elapsed += tickus();
-        ++_count;
-        _paused = true;
-    }
-
-    inline void resume() {
-        gettimeofday(&_start, NULL);
-        _paused = false;
-    }
-
-    inline int count() const {
-        return _count;
-    }
-
-    inline double elapsed_us() const {
-        return static_cast<double>(_elapsed);
-    }
-    inline double elapsed_ms() const {
-        return _elapsed / 1000.0;
-    }
-    inline double elapsed_sec() const {
-        return _elapsed / 1000000.0;
-    }
+  Timer() { Reset(); }
+  void Reset();
+  void Start();
+  void Pause();
+  void Resume();
+  int Count();
+  double ElapsedUS();
+  double ElapsedMS();
+  double ElapsedSec();
 
  private:
-    struct timeval _start;
-    struct timeval _now;
+  struct timeval _start;
+  struct timeval _now;
+  int _count;
+  int _elapsed;
+  bool _paused;
 
-    int32_t _count;
-    int64_t _elapsed;
-    bool _paused;
-
-    inline int64_t tickus() {
-        gettimeofday(&_now, NULL);
-        return (_now.tv_sec - _start.tv_sec) * 1000 * 1000L +
-            (_now.tv_usec - _start.tv_usec);
-    }
+  int64_t Tickus();
 };
+
+}  // namespace platform
+}  // namespace paddle
