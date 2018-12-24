@@ -56,12 +56,18 @@ class Analyzer final {
 
   DISABLE_COPY_AND_ASSIGN(Analyzer);
 
+  void SetSubgraphMode(bool x = true) { sub_graph_mode_ = x; }
+  bool sub_graph_mode() const { return sub_graph_mode_; }
+
  protected:
   void RunIrAnalysis(Argument* argument);
   void InitTensorRTAttrs(Argument* argument);
   void CollectFusionStatis(Argument* argument);
   // Assign a Scope for IR passes to modify the weights.
   void AssignScopeToModify(Argument* argument);
+
+ private:
+  bool sub_graph_mode_{false};
 };
 
 }  // namespace analysis

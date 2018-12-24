@@ -98,6 +98,26 @@ struct Argument {
  private:                                                                 \
   unique_ptr_t field__##_;
 
+ public:
+#define CP_MEMBER(member__) member__##_ = other.member__##_;
+
+  Argument(const Argument& other) {
+    // Only copy the fields from config settings.
+    // The other unique pointer should be carefully dealed with.
+    CP_MEMBER(model_dir);
+    CP_MEMBER(model_program_path);
+    CP_MEMBER(model_params_path);
+    CP_MEMBER(model_from_memory);
+    CP_MEMBER(ir_analysis_passes);
+    CP_MEMBER(mkldnn_enabled_op_types);
+    CP_MEMBER(use_gpu);
+    CP_MEMBER(gpu_device_id);
+    CP_MEMBER(use_tensorrt);
+    CP_MEMBER(tensorrt_node_teller);
+    CP_MEMBER(tensorrt_max_batch_size);
+    CP_MEMBER(tensorrt_workspace_size);
+  }
+
   // Model path
   DECL_ARGUMENT_FIELD(model_dir, ModelDir, std::string);
   // Model specified with program and parameters files.

@@ -187,6 +187,8 @@ class Graph {
   void ResolveHazard(
       const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
 
+  const ProgramDesc &program() const { return program_; }
+
  private:
   std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
       const ProgramDesc &program);

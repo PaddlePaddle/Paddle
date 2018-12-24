@@ -1,16 +1,36 @@
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
-// Created by chunwei on 18-12-24.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-#ifndef PADDLE_SUBGRAPH_ANALYSIS_PASS_H
-#define PADDLE_SUBGRAPH_ANALYSIS_PASS_H
+#pragma once
+#include <string>
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
 
+namespace paddle {
+namespace inference {
+namespace analysis {
 
-
-class SubgraphAnalysisPass {
-
+/* Analysis the subgraph generated from subblock. */
+class SubgraphAnalysisPass : public AnalysisPass {
+ public:
+  SubgraphAnalysisPass() {
+    // Nested sub-graph analysis is too complex, not support yet.
+    SetSupportSubgraph(false);
+  }
+  void RunImpl(Argument* argument) override;
+  std::string repr() const override { return "subgraph-analysis-pass"; }
 };
 
-
-
-#endif //PADDLE_SUBGRAPH_ANALYSIS_PASS_H
+}  // namespace analysis
+}  // namespace inference
+}  // namespace paddle

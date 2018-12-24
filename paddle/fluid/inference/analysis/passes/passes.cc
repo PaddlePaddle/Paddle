@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/passes.h"
-#include "paddle/fluid/inference/analysis/passes/ir_analysis_compose_pass.cc"
 #include "paddle/fluid/inference/analysis/passes/ir_analysis_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_params_sync_among_devices_pass.h"
@@ -22,12 +21,10 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 PassRegistry::PassRegistry() {
-  passes_.emplace("ir_analysis_pass",
-                  std::unique_ptr<AnalysisPass>(new IrAnalysisPass));
   passes_.emplace("ir_graph_build_pass",
                   std::unique_ptr<AnalysisPass>(new IrGraphBuildPass));
-  passes_.emplace("ir_analysis_compose_pass",
-                  std::unique_ptr<AnalysisPass>(new IrAnalysisComposePass));
+  passes_.emplace("ir_analysis_pass",
+                  std::unique_ptr<AnalysisPass>(new IrAnalysisPass));
   passes_.emplace(
       "ir_params_sync_among_devices_pass",
       std::unique_ptr<AnalysisPass>(new IrParamsSyncAmongDevicesPass));

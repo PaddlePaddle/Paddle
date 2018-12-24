@@ -30,6 +30,10 @@ namespace analysis {
  */
 class IrParamsSyncAmongDevicesPass : public AnalysisPass {
  public:
+  IrParamsSyncAmongDevicesPass() {
+    // Not work with subgraph, just need to run once in the whole graph.
+    SetSupportSubgraph(false);
+  }
   void RunImpl(Argument *argument) override;
   std::string repr() const override;
 };
