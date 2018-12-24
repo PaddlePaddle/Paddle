@@ -304,8 +304,13 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
 
   // start executing ops in multiple threads
   for (int thidx = 0; thidx < actual_thread_num; ++thidx) {
-    threads.push_back(
-        std::thread(&ExecutorThreadWorker::TrainFiles, workers[thidx].get()));
+    if (debug) {
+      threads.push_back(std::thread(&ExecutorThreadWorker::TrainFilesWithTimer,
+                                    workers[thidx].get()));
+    } else {
+      threads.push_back(
+          std::thread(&ExecutorThreadWorker::TrainFiles, workers[thidx].get()));
+    }
   }
 
   for (auto& th : threads) {
