@@ -197,6 +197,27 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
       };
       workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
     }
+    std::vector<int> channels = ctx.Attr<std::vector<int>>("split_channels");
+    if (channels.size()) {
+      auto outs = ctx.MultiOutput<framework::Tensor>("Outputs");
+      if (x_dims[0] == 1) {
+        // share data with Output
+        framework::Tensor t;
+        t.ShareDataWith(*output);
+        auto y_dims = output->dims();
+        t.Resize({y_dims[1], y_dims[2], y_dims[3]});
+        int s = 0;
+        for (size_t i = 0; i < channels.size(); ++i) {
+          int e = s + channels[i];
+          outs[i]->ShareDataWith(t.Slice(s, e));
+          outs[i]->Resize({x_dims[0], channels[i], y_dims[2], y_dims[3]});
+          s = e;
+        }
+      } else {
+        // TODO(qingiqng): do copy when batch size large than 1
+        PADDLE_THROW("Batch size greater than 1 is Unsupported");
+      }
+    }
   }
 };
 #endif
