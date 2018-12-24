@@ -49,6 +49,13 @@ class Conv2DFusionOpMaker : public Conv2DOpMaker {
               "padding, stride, dilation size.")
         .AsDuplicable()
         .AsDispensable();
+    AddInput("AlgoCache",
+             "The cache of convolution algorithm, a RAW type variable.")
+        .AsDispensable();
+    AddAttr<int>(
+        "search_times",
+        "The number of exhaustive search times for convolution algorithm.")
+        .SetDefault(-1);
   }
 };
 
