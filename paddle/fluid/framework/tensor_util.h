@@ -167,7 +167,8 @@ paddle::framework::Tensor GetTensor(
   PADDLE_ENFORCE_EQ(allocation_ptr->size(),
                     framework::product(dim) * sizeof(T));
 
-  paddle::framework::Tensor temp_tensor(std::type_index(typeid(T)));
+  paddle::framework::Tensor temp_tensor(
+      framework::ToDataType(std::type_index(typeid(T))));
   temp_tensor.Resize(dim);
   temp_tensor.ResetHolder(std::move(shared_allocation));
   return temp_tensor;
