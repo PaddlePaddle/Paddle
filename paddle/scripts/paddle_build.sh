@@ -79,6 +79,7 @@ function cmake_gen() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/lib/libpython2.7.dylib"
+            pip install -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -441,7 +442,9 @@ EOF
         # make install should also be test when unittest
         make install -j 8
         if [ "$1" == "cp27-cp27m" ]; then
+            set -e
             pip install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+            python -c installation_validate.py
         elif [ "$1" == "cp35-cp35m" ]; then
             pip3.5 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         elif [ "$1" == "cp36-cp36m" ]; then
