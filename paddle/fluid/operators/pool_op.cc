@@ -40,7 +40,7 @@ int PoolOutputSize(int input_size, int filter_size, int padding, int stride,
   return output_size;
 }
 
-void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
+void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE(ctx->HasInput("X"), "X(Input) of Pooling should not be null.");
   PADDLE_ENFORCE(ctx->HasOutput("Out"),
                  "Out(Output) of Pooling should not be null.");
@@ -52,6 +52,7 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
   bool ceil_mode = ctx->Attrs().Get<bool>("ceil_mode");
+  bool adaptive = ctx->Attrs().Get<bool>("adaptive");
 
   PADDLE_ENFORCE(in_x_dims.size() == 4 || in_x_dims.size() == 5,
                  "Pooling intput should be 4-D or 5-D tensor.");
@@ -72,16 +73,20 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
                     "Paddings size and pooling size should be the same.");
 
   std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
-  for (size_t i = 0; i < ksize.size(); ++i) {
-    output_shape.push_back(PoolOutputSize(in_x_dims[i + 2], ksize[i],
-                                          paddings[i], strides[i], ceil_mode));
+  if (adaptive) {
+    output_shape.insert(output_shape.end(), ksize.begin(), ksize.end());
+  } else {
+    for (size_t i = 0; i < ksize.size(); ++i) {
+      output_shape.push_back(PoolOutputSize(
+          in_x_dims[i + 2], ksize[i], paddings[i], strides[i], ceil_mode));
+    }
   }
   ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   ctx->ShareLoD("X", "Out");
 }
 
 framework::OpKernelType PoolOp::GetExpectedKernelType(
-    const framework::ExecutionContext &ctx) const {
+    const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
@@ -99,12 +104,11 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
   }
 #endif
 
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(ctx.Input<Tensor>("X")->type(), ctx.GetPlace(),
+                                 layout_, library_);
 }
 
-void PoolOpGrad::InferShape(framework::InferShapeContext *ctx) const {
+void PoolOpGrad::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
   PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
                  "Input(X@GRAD) should not be null.");
@@ -112,7 +116,7 @@ void PoolOpGrad::InferShape(framework::InferShapeContext *ctx) const {
 }
 
 framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
-    const framework::ExecutionContext &ctx) const {
+    const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
@@ -130,7 +134,7 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   }
 #endif
 
-  auto input_data_type = framework::ToDataType(ctx.Input<Tensor>("X")->type());
+  auto input_data_type = ctx.Input<Tensor>("X")->type();
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(library_, framework::LibraryType::kCUDNN,
                       "float16 can only be used when CUDNN is used");
@@ -151,8 +155,7 @@ void Pool2dOpMaker::Make() {
             "The format of output tensor is also NCHW, "
             "where N is batch size, C is the number of channels, "
             "H is the height of the feature, "
-            "and W is the width of the feature.")
-      .Reuse("X");
+            "and W is the width of the feature.");
 
   AddAttr<std::string>("pooling_type",
                        "(string), pooling type, can be \"max\" for max-pooling "
@@ -182,6 +185,20 @@ void Pool2dOpMaker::Make() {
       "If global_pooling = true, paddings and ksize will be ignored.")
       .SetDefault({0, 0});
   AddAttr<bool>(
+      "exclusive",
+      "(bool, default True) When true, will exclude the zero-padding in the "
+      "averaging calculating, otherwise, include the zero-padding. Note, it "
+      "is only used when pooling_type is avg. The defalut is True.")
+      .SetDefault(true);
+  AddAttr<bool>(
+      "adaptive",
+      "(bool, default False) When true, will perform adaptive pooling instead, "
+      "output shape in H and W dimensions will be same as ksize, input data "
+      "will be divided into grids specify by ksize averagely and perform "
+      "pooling in each grid area to get output pooling value.")
+      .SetDefault(false);
+
+  AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
@@ -201,6 +218,11 @@ void Pool2dOpMaker::Make() {
       "Defaults to \"NHWC\". Specify the data format of the output data, "
       "the input will be transformed automatically. ")
       .SetDefault("AnyLayout");
+  AddAttr<bool>("is_test",
+                "(bool, default false) Set to true for inference only, false "
+                "for training. Some layers may run faster when this is true.")
+      .SetDefault(false);
+
   // TODO(dzhwinter): need to registered layout transform function
 
   AddComment(R"DOC(
@@ -237,8 +259,41 @@ Example:
        W_{out} = \\frac{(W_{in} - ksize[1] + 2 * paddings[1] + strides[1] - 1)}{strides[1]} + 1
        $$
 
+  For exclusive = true:
+       $$
+       hstart = i * strides[0] - paddings[0]
+       hend = hstart + ksize[0]
+       wstart = j * strides[1] - paddings[1]
+       wend = wstart + ksize[1]
+       Output(i ,j) = \\frac{sum(Input[hstart:hend, wstart:wend])}{ksize[0] * ksize[1]}
+       $$
+  For exclusive = false:
+       $$
+       hstart = max(0, i * strides[0] - paddings[0])
+       hend = min(H, hstart + ksize[0])
+       wstart = max(0, j * strides[1] - paddings[1])
+       wend = min(W, wstart + ksize[1])
+       Output(i ,j) = \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
+       $$
+
+  For adaptive = true:
+      $$
+      hstart = floor(i * H_{in} / H_{out})
+      hend = ceil((i + 1) * H_{in} / H_{out})
+      wstart = floor(j * W_{in} / W_{out})
+      wend = ceil((j + 1) * W_{in} / W_{out})
+      Output(i ,j) = \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
+      $$
 )DOC");
 }
+
+class PoolOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
+  }
+};
 
 void Pool3dOpMaker::Make() {
   AddInput("X",
@@ -252,8 +307,7 @@ void Pool3dOpMaker::Make() {
             "The format of output tensor is also NCDHW, "
             "where N is batch size, C is "
             "the number of channels, and D, H and W is the depth, height and "
-            "width of the feature, respectively.")
-      .Reuse("X");
+            "width of the feature, respectively.");
 
   AddAttr<std::string>("pooling_type",
                        "(string) Pooling type, can be \"max\" for max-pooling "
@@ -285,6 +339,19 @@ void Pool3dOpMaker::Make() {
       "If global_pooling = true, ksize and paddings will be ignored.")
       .SetDefault({0, 0, 0});  // TODO(Chengduo): Add checker. (Currently,
                                // TypedAttrChecker don't support vector type.)
+  AddAttr<bool>(
+      "exclusive",
+      "(bool, default True) When true, will exclude the zero-padding in the "
+      "averaging calculating, otherwise, include the zero-padding. Note, it "
+      "is only used when pooling_type is avg. The defalut is True.")
+      .SetDefault(true);
+  AddAttr<bool>(
+      "adaptive",
+      "(bool, default False) When true, will perform adaptive pooling instead, "
+      "output shape in H and W dimensions will be same as ksize, input data "
+      "will be divided into grids specify by ksize averagely and perform "
+      "pooling in each grid area to get output pooling value.")
+      .SetDefault(false);
 
   AddAttr<bool>(
       "use_cudnn",
@@ -336,6 +403,37 @@ Example:
        H_{out} = \frac{(H_{in} - ksize[1] + 2 * paddings[1] + strides[1] -1)}{strides[1]} + 1 \\
        W_{out} = \frac{(W_{in} - ksize[2] + 2 * paddings[2] + strides[2] -1)}{strides[2]} + 1
   $$
+  For exclusive = true:
+  $$
+  dstart = i * strides[0] - paddings[0]
+  dend = dstart + ksize[0]
+  hstart = j * strides[1] - paddings[1]
+  hend = hstart + ksize[1]
+  wstart = k * strides[2] - paddings[2]
+  wend = wstart + ksize[2]
+  Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{ksize[0] * ksize[1] * ksize[2]}
+  $$
+  For exclusive = false:
+  $$
+  dstart = max(0, i * strides[0] - paddings[0])
+  dend = min(D, dstart + ksize[0])
+  hstart = max(0, j * strides[1] - paddings[1])
+  hend = min(H, hstart + ksize[1])
+  wstart = max(0, k * strides[2] - paddings[2])
+  wend = min(W, wstart + ksize[2])
+  Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
+  $$
+
+  For adaptive = true:
+  $$
+  dstart = floor(i * D_{in} / D_{out})
+  dend = ceil((i + 1) * D_{in} / D_{out})
+  hstart = floor(j * H_{in} / H_{out})
+  hend = ceil((j + 1) * H_{in} / H_{out})
+  wstart = floor(k * W_{in} / W_{out})
+  wend = ceil((k + 1) * W_{in} / W_{out})
+  Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
+  $$
 
 )DOC");
 }
@@ -345,6 +443,7 @@ Example:
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(pool2d, ops::PoolOp, ops::Pool2dOpMaker,
+                  ops::PoolOpInferVarType,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad);
 
@@ -356,6 +455,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OPERATOR(pool3d, ops::PoolOp, ops::Pool3dOpMaker,
+                  ops::PoolOpInferVarType,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(pool3d_grad, ops::PoolOpGrad);
 

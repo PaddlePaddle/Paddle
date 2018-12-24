@@ -247,7 +247,7 @@ class DistSeResneXt2x2(TestDistRunnerBase):
 
         # Reader
         train_reader = paddle.batch(
-            paddle.dataset.flowers.train(), batch_size=batch_size)
+            paddle.dataset.flowers.test(use_xmap=False), batch_size=batch_size)
         test_reader = paddle.batch(
             paddle.dataset.flowers.test(use_xmap=False), batch_size=batch_size)
 

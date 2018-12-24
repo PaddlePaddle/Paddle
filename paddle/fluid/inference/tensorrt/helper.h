@@ -52,7 +52,7 @@ class NaiveLogger : public nvinfer1::ILogger {
   void log(nvinfer1::ILogger::Severity severity, const char* msg) override {
     switch (severity) {
       case Severity::kINFO:
-        LOG(INFO) << msg;
+        VLOG(3) << msg;
         break;
       case Severity::kWARNING:
         LOG(WARNING) << msg;

@@ -20,6 +20,10 @@ from .memory_optimization_transpiler import memory_optimize, release_memory
 from .ps_dispatcher import HashName, RoundRobin
 
 __all__ = [
-    "DistributeTranspiler", "memory_optimize", "release_memory", "HashName",
-    "RoundRobin", "DistributeTranspilerConfig"
+    "DistributeTranspiler",
+    "memory_optimize",
+    "release_memory",
+    "HashName",
+    "RoundRobin",
+    "DistributeTranspilerConfig",
 ]

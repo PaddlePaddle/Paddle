@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <sys/time.h>
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
+#include "paddle/fluid/platform/port.h"
 
 #include "paddle/fluid/operators/distributed/send_recv.grpc.pb.h"
 #include "paddle/fluid/operators/distributed/send_recv.pb.h"
@@ -38,12 +39,14 @@ typedef void (*DestroyCallback)(void*);
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg,
-                           const std::string& out_varname = std::string());
+                           const std::string& out_varname = std::string(),
+                           const int trainer_id = 0,
+                           const std::string& table_name = std::string());
 
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                const framework::Scope* scope,
-                               framework::Variable** var);
+                               framework::Variable** var, int* trainer_id);
 
 }  // namespace distributed
 }  // namespace operators

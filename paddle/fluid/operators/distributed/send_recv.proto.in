@@ -28,6 +28,9 @@ service SendRecvService {
   rpc PrefetchVariable(VariableMessage) returns (VariableMessage) {}
 
   rpc CheckpointNotify(VariableMessage) returns (VoidMessage) {}
+
+  rpc GetMonomerVariable(VariableMessage) returns (VariableMessage) {}
+  rpc GetMonomerBarrier(VariableMessage) returns (VoidMessage) {}
 }
 
 // VariableMessage is serialized paddle variable message.
@@ -79,6 +82,8 @@ message VariableMessage {
   // server stops profiling and generates a profile to /tmp/profile_ps_*
   // when profile switches from 1 to 2.
   int64 profile = 11;
+  int64 trainer_id = 12;
+  string table_name = 13;
 }
 
 message VoidMessage {}

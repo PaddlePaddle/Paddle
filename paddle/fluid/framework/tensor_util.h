@@ -57,8 +57,15 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
 template <typename T>
 void TesnorToVector(const Tensor& src, std::vector<T>* dst);
 
+// copy the result bool to cpu
 bool TensorContainsNAN(const framework::Tensor& tensor);
 bool TensorContainsInf(const framework::Tensor& tensor);
+bool TensorIsfinite(const framework::Tensor& tensor);
+
+// store the result bool in gpu tensor, async operation. Faster than above ones.
+void TensorContainsNAN(const framework::Tensor& tensor, framework::Tensor* out);
+void TensorContainsInf(const framework::Tensor& tensor, framework::Tensor* out);
+void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out);
 
 void TensorToStream(std::ostream& os, const Tensor& tensor,
                     const platform::DeviceContext& dev_ctx);

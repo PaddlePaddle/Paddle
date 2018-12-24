@@ -54,7 +54,7 @@ class RNNMemoryHelperOpShapeInference : public framework::InferShapeBase {
                    "Input(X) of rnn_memory_helper op should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output of rnn_memory_helper op should not be null.");
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
@@ -99,7 +99,7 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
       auto &in_var_tensor = in_var->Get<framework::LoDTensor>();
 
       framework::AttributeMap attrs;
-      attrs["dtype"] = framework::ToDataType(in_var_tensor.type());
+      attrs["dtype"] = in_var_tensor.type();
       attrs["shape"] = framework::vectorize2int(in_var_tensor.dims());
       attrs["value"] = 0.0f;
 

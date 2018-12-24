@@ -14,9 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/blas.h"
-
-DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace operators {
@@ -30,20 +29,24 @@ inline void FCCompute(const BlasT<DeviceContext, T>& blas, const int M,
   if (B == NULL) {
     return;
   }
-
+  if (relu) {
+    auto compute =
+        jit::Get<jit::kVAddRelu, jit::XYZNTuples<T>, platform::CPUPlace>(N);
+    for (int i = 0; i < M; i++) {
+      T* dst = Y + i * N;
+      compute(B, dst, dst, N);
+    }
+  } else {
+    auto compute =
+        jit::Get<jit::kVAdd, jit::XYZNTuples<T>, platform::CPUPlace>(N);
 #ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for if (FLAGS_paddle_num_threads > 1)
+#pragma omp parallel for
 #endif
-  for (int i = 0; i < M; i++) {
-    blas.AXPY(N, static_cast<T>(1), B, Y + i * N);
+    for (int i = 0; i < M; i++) {
+      T* dst = Y + i * N;
+      compute(B, dst, dst, N);
+    }
   }
-
-  if (!relu) {
-    return;
-  }
-
-  // TODO(TJ): fuse relu
-  LOG(FATAL) << "Not implemented!";
 }
 
 }  // namespace math

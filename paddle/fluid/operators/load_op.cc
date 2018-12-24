@@ -40,8 +40,9 @@ class LoadOp : public framework::OperatorBase {
 
     auto out_var_name = Output("Out");
     auto *out_var = scope.FindVar(out_var_name);
-    PADDLE_ENFORCE(out_var != nullptr, "Output variable %s cannot be found",
-                   out_var_name);
+    PADDLE_ENFORCE(out_var != nullptr,
+                   "Output variable %s cannot be found in scope %p",
+                   out_var_name, &scope);
 
     if (out_var->IsType<framework::LoDTensor>()) {
       LoadLodTensor(fin, place, out_var);
@@ -64,7 +65,7 @@ class LoadOp : public framework::OperatorBase {
     DeserializeFromStream(fin, tensor, dev_ctx);
 
     auto load_as_fp16 = Attr<bool>("load_as_fp16");
-    auto in_dtype = framework::ToDataType(tensor->type());
+    auto in_dtype = tensor->type();
     auto out_dtype = load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 
     if (in_dtype != out_dtype) {

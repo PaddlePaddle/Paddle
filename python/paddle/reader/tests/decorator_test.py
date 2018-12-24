@@ -62,10 +62,10 @@ class TestBuffered(unittest.TestCase):
         for idx, i in enumerate(b()):
             elapsed_time = time.time() - last_time
             if i == 0:
-                time.sleep(0.3)
+                time.sleep(1)
             else:
                 # read time should be short, meaning already buffered.
-                self.assertLess(elapsed_time, 0.05)
+                self.assertLess(elapsed_time, 0.08)
             last_time = time.time()
 
 
@@ -201,6 +201,22 @@ class TestMultiProcessReader(unittest.TestCase):
     def test_multi_process_reader(self):
         self.reader_test(use_pipe=False)
         self.reader_test(use_pipe=True)
+
+
+class TestFakeReader(unittest.TestCase):
+    def test_fake_reader(self):
+        def reader():
+            for i in range(10):
+                yield i
+
+        data_num = 100
+        fake_reader = paddle.reader.Fake()(reader, data_num)
+        for _ in range(10):
+            i = 0
+            for data in fake_reader():
+                self.assertEqual(data, 0)
+                i += 1
+            self.assertEqual(i, data_num)
 
 
 if __name__ == '__main__':

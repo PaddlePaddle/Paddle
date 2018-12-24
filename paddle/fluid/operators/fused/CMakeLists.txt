@@ -1,0 +1,6 @@
+include(operators)
+register_operators(EXCLUDES fusion_transpose_flatten_concat_op)
+if (WITH_GPU)
+  op_library(fusion_transpose_flatten_concat_op)
+  file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fusion_transpose_flatten_concat);\n")
+endif()

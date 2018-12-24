@@ -55,6 +55,46 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     exe.run(pserver_prog)
 
 
+def run_pserver_with_empty_block(use_cuda, sync_mode, ip, port, trainers,
+                                 trainer_id):
+    x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+    y_predict = fluid.layers.fc(input=x, size=1, act=None, bias_attr=False)
+    y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+
+    # loss function
+    cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+    avg_cost = fluid.layers.mean(cost)
+
+    # optimizer
+    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    sgd_optimizer.minimize(avg_cost)
+
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    exe = fluid.Executor(place)
+
+    ps1 = ip + ":" + str(int(port) + 1)
+    ps2 = ip + ":" + port
+    pserver_endpoints = ps1 + "," + ps2
+
+    config = fluid.DistributeTranspilerConfig()
+    config.slice_var_up = False
+    t = fluid.DistributeTranspiler(config=config)
+    t.transpile(
+        trainer_id,
+        pservers=pserver_endpoints,
+        trainers=trainers,
+        sync_mode=sync_mode)
+    pserver_prog = t.get_pserver_program(ps2)
+
+    # pserver2 have no parameter
+    assert (len(pserver_prog.blocks) == 2)
+    assert (len(pserver_prog.blocks[1].ops) == 0)
+
+    pserver_startup = t.get_startup_program(ps2, pserver_prog)
+    exe.run(pserver_startup)
+    exe.run(pserver_prog)
+
+
 class TestListenAndServOp(OpTest):
     def setUp(self):
         self.ps_timeout = 5
@@ -63,9 +103,9 @@ class TestListenAndServOp(OpTest):
         self.trainers = 1
         self.trainer_id = 0
 
-    def _start_pserver(self, use_cuda, sync_mode):
+    def _start_pserver(self, use_cuda, sync_mode, pserver_func):
         p = Process(
-            target=run_pserver,
+            target=pserver_func,
             args=(use_cuda, sync_mode, self.ip, self.port, self.trainers,
                   self.trainer_id))
         p.daemon = True
@@ -92,7 +132,7 @@ class TestListenAndServOp(OpTest):
 
     def test_handle_signal_in_serv_op(self):
         # run pserver on CPU in sync mode
-        p1 = self._start_pserver(False, True)
+        p1 = self._start_pserver(False, True, run_pserver)
         self._wait_ps_ready(p1.pid)
 
         # raise SIGTERM to pserver
@@ -100,7 +140,24 @@ class TestListenAndServOp(OpTest):
         p1.join()
 
         # run pserver on CPU in async mode
-        p2 = self._start_pserver(False, False)
+        p2 = self._start_pserver(False, False, run_pserver)
+        self._wait_ps_ready(p2.pid)
+
+        # raise SIGTERM to pserver
+        os.kill(p2.pid, signal.SIGTERM)
+        p2.join()
+
+    def test_list_and_serv_run_empty_optimize_block(self):
+        # run pserver on CPU in sync mode
+        p1 = self._start_pserver(False, True, run_pserver_with_empty_block)
+        self._wait_ps_ready(p1.pid)
+
+        # raise SIGTERM to pserver
+        os.kill(p1.pid, signal.SIGINT)
+        p1.join()
+
+        # run pserver on CPU in async mode
+        p2 = self._start_pserver(False, False, run_pserver_with_empty_block)
         self._wait_ps_ready(p2.pid)
 
         # raise SIGTERM to pserver

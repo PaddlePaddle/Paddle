@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <random>
+#include <string>
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -36,6 +37,8 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     auto* y_data = y->mutable_data<T>(context.GetPlace());
     float dropout_prob = context.Attr<float>("dropout_prob");
 
+    auto dropout_implementation =
+        context.Attr<std::string>("dropout_implementation");
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<T>(context.GetPlace());
@@ -49,14 +52,20 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
       engine.seed(seed);
 
       std::uniform_real_distribution<float> dist(0, 1);
+
       size_t size = framework::product(mask->dims());
       for (size_t i = 0; i < size; ++i) {
         if (dist(engine) < dropout_prob) {
           mask_data[i] = 0;
           y_data[i] = 0;
         } else {
-          mask_data[i] = 1;
-          y_data[i] = x_data[i];
+          if (dropout_implementation == "upscale_in_train") {
+            mask_data[i] = 1.0f / static_cast<T>(1.0f - dropout_prob);
+            y_data[i] = x_data[i] / static_cast<T>(1.0f - dropout_prob);
+          } else {
+            mask_data[i] = 1;
+            y_data[i] = x_data[i];
+          }
         }
       }
     } else {
@@ -64,7 +73,11 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();
-      Y.device(place) = X * (1.0f - dropout_prob);
+      if (dropout_implementation == "upscale_in_train") {
+        Y.device(place) = X;
+      } else {
+        Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
+      }
     }
   }
 };

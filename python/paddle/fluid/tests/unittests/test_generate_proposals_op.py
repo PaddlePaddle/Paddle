@@ -277,7 +277,6 @@ class TestGenerateProposalsOp(OpTest):
             'eta': self.eta
         }
 
-        print("lod = ", self.lod)
         self.outputs = {
             'RpnRois': (self.rpn_rois[0], [self.lod]),
             'RpnRoiProbs': (self.rpn_roi_probs[0], [self.lod])
@@ -295,7 +294,7 @@ class TestGenerateProposalsOp(OpTest):
         self.post_nms_topN = 5000  # train 6000, test 1000
         self.nms_thresh = 0.7
         self.min_size = 3.0
-        self.eta = 0.8
+        self.eta = 1.
 
     def init_test_input(self):
         batch_size = 1

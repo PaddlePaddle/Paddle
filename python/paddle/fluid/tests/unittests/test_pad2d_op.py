@@ -20,11 +20,17 @@ from op_test import OpTest
 class TestPad2dOp(OpTest):
     def setUp(self):
         self.pad_value = 0.0
+        self.variable_paddings = False
         self.initTestCase()
         self.op_type = "pad2d"
         self.inputs = {'X': np.random.random(self.shape).astype("float32"), }
         self.attrs = {}
-        self.attrs['paddings'] = np.array(self.paddings).flatten()
+        if self.variable_paddings:
+            self.attrs['paddings'] = []
+            self.inputs['Paddings'] = np.array(self.paddings).flatten().astype(
+                "int32")
+        else:
+            self.attrs['paddings'] = np.array(self.paddings).flatten()
         self.attrs['pad_value'] = self.pad_value
         self.attrs['mode'] = self.mode
         self.attrs['data_format'] = self.data_format
@@ -96,6 +102,25 @@ class TestCase5(TestPad2dOp):
         self.mode = "constant"
         self.pad_value = 1.2
         self.data_format = "NHWC"
+
+
+class TestCase6(TestPad2dOp):
+    def initTestCase(self):
+        self.shape = (2, 4, 4, 2)
+        self.paddings = [0, 1, 2, 3]
+        self.mode = "constant"
+        self.pad_value = 1.2
+        self.data_format = "NHWC"
+        self.variable_paddings = True
+
+
+class TestCase7(TestPad2dOp):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 4)
+        self.paddings = [0, 1, 2, 3]
+        self.mode = "reflect"
+        self.data_format = "NCHW"
+        self.variable_paddings = True
 
 
 if __name__ == '__main__':

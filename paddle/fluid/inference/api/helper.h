@@ -15,17 +15,37 @@
 #pragma once
 
 #include <glog/logging.h>
-#include <sys/time.h>
+
 #include <algorithm>
+#include <chrono>  // NOLINT
+#include <iterator>
 #include <numeric>
 #include <sstream>
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/api/timer.h"
+#include "paddle/fluid/platform/port.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace inference {
+
+// Timer for timer
+class Timer {
+ public:
+  std::chrono::high_resolution_clock::time_point start;
+  std::chrono::high_resolution_clock::time_point startu;
+
+  void tic() { start = std::chrono::high_resolution_clock::now(); }
+  double toc() {
+    startu = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> time_span =
+        std::chrono::duration_cast<std::chrono::duration<double>>(startu -
+                                                                  start);
+    double used_time_ms = static_cast<double>(time_span.count()) * 1000.0;
+    return used_time_ms;
+  }
+};
 
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
@@ -93,6 +113,65 @@ static void TensorAssignData(PaddleTensor *tensor,
   }
 }
 
+template <typename T>
+static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
+                                    const std::vector<std::vector<T>> &data) {
+  int size{0};
+  auto *ptr = tensor->mutable_data<T>(PaddlePlace::kCPU);
+  int c = 0;
+  for (const auto &f : data) {
+    for (T v : f) {
+      ptr[c++] = v;
+    }
+  }
+  return size;
+}
+
+static bool CompareTensor(const PaddleTensor &a, const PaddleTensor &b) {
+  if (a.dtype != b.dtype) {
+    LOG(ERROR) << "dtype not match";
+    return false;
+  }
+
+  if (a.lod.size() != b.lod.size()) {
+    LOG(ERROR) << "lod not match";
+    return false;
+  }
+  for (size_t i = 0; i < a.lod.size(); i++) {
+    if (a.lod[i].size() != b.lod[i].size()) {
+      LOG(ERROR) << "lod not match";
+      return false;
+    }
+    for (size_t j = 0; j < a.lod[i].size(); j++) {
+      if (a.lod[i][j] != b.lod[i][j]) {
+        LOG(ERROR) << "lod not match";
+        return false;
+      }
+    }
+  }
+
+  if (a.shape.size() != b.shape.size()) {
+    LOG(INFO) << "shape not match";
+    return false;
+  }
+  for (size_t i = 0; i < a.shape.size(); i++) {
+    if (a.shape[i] != b.shape[i]) {
+      LOG(ERROR) << "shape not match";
+      return false;
+    }
+  }
+
+  auto *adata = static_cast<float *>(a.data.data());
+  auto *bdata = static_cast<float *>(b.data.data());
+  for (int i = 0; i < VecReduceToInt(a.shape); i++) {
+    if (adata[i] != bdata[i]) {
+      LOG(ERROR) << "data not match";
+      return false;
+    }
+  }
+  return true;
+}
+
 static std::string DescribeTensor(const PaddleTensor &tensor) {
   std::stringstream os;
   os << "Tensor [" << tensor.name << "]\n";
@@ -125,11 +204,32 @@ static std::string DescribeTensor(const PaddleTensor &tensor) {
   return os.str();
 }
 
+static std::string DescribeZeroCopyTensor(const ZeroCopyTensor &tensor) {
+  std::stringstream os;
+  os << "Tensor [" << tensor.name() << "]\n";
+
+  os << " - shape: " << to_string(tensor.shape()) << '\n';
+  os << " - lod: ";
+  for (auto &l : tensor.lod()) {
+    os << to_string(l) << "; ";
+  }
+  os << "\n";
+  os << " - data: ";
+  PaddlePlace place;
+  int size;
+  const auto *data = tensor.data<float>(&place, &size);
+  for (int i = 0; i < size; i++) {
+    os << data[i] << " ";
+  }
+  return os.str();
+}
+
 static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
                       double latency, int epoch = 1) {
   LOG(INFO) << "====== batch_size: " << batch_size << ", repeat: " << repeat
             << ", threads: " << num_threads << ", thread id: " << tid
-            << ", latency: " << latency << "ms ======";
+            << ", latency: " << latency << "ms, fps: " << 1 / (latency / 1000.f)
+            << " ======";
   if (epoch > 1) {
     int samples = batch_size * epoch;
     LOG(INFO) << "====== sample number: " << samples

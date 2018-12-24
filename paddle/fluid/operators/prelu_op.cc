@@ -49,16 +49,15 @@ class PReluOp : public framework::OperatorWithKernel {
     } else {
       PADDLE_THROW("Unkown mode %s", mode);
     }
-    ctx->SetOutputDim("Out", x_dim);
+    ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
-        platform::CPUPlace());
+    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -113,9 +112,8 @@ class PReluGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
-        platform::CPUPlace());
+    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
+                                   platform::CPUPlace());
   }
 };
 

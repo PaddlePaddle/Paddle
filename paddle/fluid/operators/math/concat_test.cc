@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/concat.h"
 #include <gtest/gtest.h>
 #include <vector>
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/math/concat_and_split.h"
 
 template <typename DeviceContext, typename Place>
 void testConcat() {

@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gflags/gflags.h>
-#include <sys/time.h>
 #include <time.h>
 #include <algorithm>
 #include <fstream>
@@ -22,7 +21,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/api/timer.h"
 #include "utils/logger/logger.h"
 
 DEFINE_string(model, "", "Directory of the inference model.");

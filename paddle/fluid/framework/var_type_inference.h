@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <string>
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/type_defs.h"
 
 namespace paddle {
@@ -22,6 +25,28 @@ class VarTypeInference {
  public:
   virtual ~VarTypeInference() {}
   virtual void operator()(const OpDesc& op_desc, BlockDesc* block) const = 0;
+};
+
+class PassInDtypeAndVarTypeToOutput : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const final {
+    auto in_out_var_names = this->GetInputOutputWithSameType();
+
+    for (auto& i_o_n : in_out_var_names) {
+      auto& x_name = op_desc.Input(i_o_n.first).at(0);
+      auto& out_name = op_desc.Output(i_o_n.second).at(0);
+
+      auto& x = block->FindRecursiveOrCreateVar(x_name);
+      auto& out = block->FindRecursiveOrCreateVar(out_name);
+      out.SetType(x.GetType());
+      out.SetDataType(x.GetDataType());
+    }
+  }
+
+ protected:
+  virtual std::unordered_map<std::string, std::string>
+  GetInputOutputWithSameType() const = 0;
 };
 
 }  // namespace framework

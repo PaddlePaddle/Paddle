@@ -16,33 +16,35 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/init.h"
 
 int main(int argc, char** argv) {
+  paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
   std::vector<char*> new_argv;
   std::string gflags_env;
   for (int i = 0; i < argc; ++i) {
     new_argv.push_back(argv[i]);
   }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   new_argv.push_back(
-      strdup("--tryfromenv=fraction_of_gpu_memory_to_use,use_pinned_memory"));
+      strdup("--tryfromenv=fraction_of_gpu_memory_to_use,allocator_strategy"));
+#elif __clang__
+  new_argv.push_back(
+      strdup("--tryfromenv=use_mkldnn,initial_cpu_memory_in_"
+             "mb,allocator_strategy"));
+  new_argv.push_back(strdup("--undefok=use_mkldnn,initial_cpu_memory_in_mb"));
 #else
-  new_argv.push_back(strdup(
-      "--tryfromenv=use_pinned_memory,use_mkldnn,initial_cpu_memory_in_mb"));
+  new_argv.push_back(
+      strdup("--tryfromenv=use_pinned_memory,use_mkldnn,initial_cpu_memory_in_"
+             "mb,allocator_strategy"));
   new_argv.push_back(strdup("--undefok=use_mkldnn,initial_cpu_memory_in_mb"));
 #endif
   int new_argc = static_cast<int>(new_argv.size());
   char** new_argv_address = new_argv.data();
   google::ParseCommandLineFlags(&new_argc, &new_argv_address, false);
-  paddle::memory::Used(paddle::platform::CPUPlace());
-
-#ifdef PADDLE_WITH_CUDA
-  paddle::memory::Used(paddle::platform::CUDAPlace(0));
-#endif
-
   paddle::framework::InitDevices(true);
   return RUN_ALL_TESTS();
 }

@@ -108,9 +108,8 @@ class ReshapeOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -164,7 +163,7 @@ dimension value will be copied from Input(X) at runtime. Note that the index of
 [2, 3, 4], Attr(shape) = [2, 3, 2, 0] is an invalid input.
 
 3. Input(Shape) has a higher priority than Attr(shape) if it is provided, while
-Attr(shape) still should be set correctly to gurantee shape inference in 
+Attr(shape) still should be set correctly to gurantee shape inference in
 compile-time.
 
 )DOC");
@@ -189,9 +188,8 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -259,7 +257,6 @@ class Reshape2Op : public ReshapeOp {
       : ReshapeOp(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    ReshapeOp::InferShape(ctx);
     PADDLE_ENFORCE(ctx->HasOutput("XShape"),
                    "Output(XShape) of ReshapeOp should not be null.");
     const auto &x_dims = ctx->GetInputDim("X");
@@ -270,6 +267,8 @@ class Reshape2Op : public ReshapeOp {
     }
     ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
     ctx->ShareLoD("X", /*->*/ "XShape");
+
+    ReshapeOp::InferShape(ctx);
   }
 };
 
@@ -321,9 +320,7 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(
-            ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))
-                ->type()),
+        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
         ctx.device_context());
   }
 };

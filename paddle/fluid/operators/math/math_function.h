@@ -13,18 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#ifdef PADDLE_WITH_MKLML
-#include "paddle/fluid/platform/dynload/mklml.h"
-#endif
-
-#ifdef PADDLE_USE_OPENBLAS
-#include <cblas.h>
-// remove typedef in openblas
-#undef FLOAT
-#undef INT
-#undef SIZE
-#endif
-
 #include <cmath>
 #include <vector>
 

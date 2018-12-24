@@ -42,6 +42,8 @@ class Pass {
     attr_dels_.clear();
   }
 
+  std::string Type() const { return type_; }
+
   std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph) const;
 
   // Get a reference to the attributed previously set.
@@ -49,7 +51,29 @@ class Pass {
   AttrType &Get(const std::string &attr_name) const {
     PADDLE_ENFORCE(attrs_.find(attr_name) != attrs_.end(),
                    "%s attr not registered for pass.", attr_name);
-    return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
+    try {
+      return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
+    } catch (boost::bad_any_cast &) {
+      PADDLE_THROW(
+          "Invalid attribute type of %s error, expected: %s, actual: %s",
+          attr_name, typeid(AttrType *).name(),
+          attrs_.at(attr_name).type().name());
+    }
+  }
+
+  bool Has(const std::string &attr_name) const {
+    return attrs_.count(attr_name) > 0;
+  }
+
+  void Erase(const std::string &attr_name) {
+    if (!Has(attr_name)) {
+      return;
+    }
+    if (attr_dels_.find(attr_name) != attr_dels_.end()) {
+      attr_dels_[attr_name]();
+      attr_dels_.erase(attr_name);
+    }
+    attrs_.erase(attr_name);
   }
 
   // Set a pointer to the attribute. Pass takes ownership of the attribute.
@@ -68,13 +92,16 @@ class Pass {
   // should delete the attribute.
   template <typename AttrType>
   void SetNotOwned(const std::string &attr_name, AttrType *attr) {
-    PADDLE_ENFORCE(attrs_.count(attr_name) == 0);
+    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the pass",
+                   attr_name);
     attrs_[attr_name] = attr;
   }
 
  protected:
-  virtual std::unique_ptr<Graph> ApplyImpl(
-      std::unique_ptr<Graph> graph) const = 0;
+  virtual std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const {
+    LOG(FATAL) << "Calling virtual Pass not implemented.";
+    return graph;
+  }
 
  private:
   template <typename PassType>
@@ -89,7 +116,10 @@ class Pass {
     required_graph_attrs_.insert(attrs.begin(), attrs.end());
   }
 
+  void RegisterType(const std::string &type) { type_ = type; }
+
   mutable bool applied_{false};
+  std::string type_;
   std::unordered_set<std::string> required_pass_attrs_;
   std::unordered_set<std::string> required_graph_attrs_;
   std::map<std::string, boost::any> attrs_;
@@ -143,10 +173,11 @@ struct PassRegistrar : public Registrar {
     PADDLE_ENFORCE(!PassRegistry::Instance().Has(pass_type),
                    "'%s' is registered more than once.", pass_type);
     PassRegistry::Instance().Insert(
-        pass_type, [this]() -> std::unique_ptr<Pass> {
+        pass_type, [this, pass_type]() -> std::unique_ptr<Pass> {
           std::unique_ptr<Pass> pass(new PassType());
           pass->RegisterRequiredPassAttrs(this->required_pass_attrs_);
           pass->RegisterRequiredGraphAttrs(this->required_graph_attrs_);
+          pass->RegisterType(pass_type);
           return pass;
         });
   }
@@ -173,26 +204,26 @@ struct PassRegistrar : public Registrar {
                 msg)
 
 // Register a new pass that can be applied on the IR.
-#define REGISTER_PASS(pass_type, pass_class)                          \
-  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                                \
-      __reg_pass__##pass_type,                                        \
-      "REGISTER_PASS must be called in global namespace");            \
-  static ::paddle::framework::ir::PassRegistrar<pass_class>           \
-      __pass_registrar_##pass_type##__(#pass_type);                   \
-  int TouchPassRegistrar_##pass_type() {                              \
-    __pass_registrar_##pass_type##__.Touch();                         \
-    return 0;                                                         \
-  }                                                                   \
-  static ::paddle::framework::ir::PassRegistrar<pass_class>           \
-      &__pass_tmp_registrar_##pass_type##__ __attribute__((unused)) = \
+#define REGISTER_PASS(pass_type, pass_class)                \
+  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                      \
+      __reg_pass__##pass_type,                              \
+      "REGISTER_PASS must be called in global namespace");  \
+  static ::paddle::framework::ir::PassRegistrar<pass_class> \
+      __pass_registrar_##pass_type##__(#pass_type);         \
+  int TouchPassRegistrar_##pass_type() {                    \
+    __pass_registrar_##pass_type##__.Touch();               \
+    return 0;                                               \
+  }                                                         \
+  static ::paddle::framework::ir::PassRegistrar<pass_class> \
+      &__pass_tmp_registrar_##pass_type##__ UNUSED =        \
           __pass_registrar_##pass_type##__
 
-#define USE_PASS(pass_type)                                           \
-  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                                \
-      __use_pass_itself_##pass_type,                                  \
-      "USE_PASS must be called in global namespace");                 \
-  extern int TouchPassRegistrar_##pass_type();                        \
-  static int use_pass_itself_##pass_type##_ __attribute__((unused)) = \
+#define USE_PASS(pass_type)                           \
+  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                \
+      __use_pass_itself_##pass_type,                  \
+      "USE_PASS must be called in global namespace"); \
+  extern int TouchPassRegistrar_##pass_type();        \
+  static int use_pass_itself_##pass_type##_ UNUSED =  \
       TouchPassRegistrar_##pass_type()
 
 }  // namespace ir

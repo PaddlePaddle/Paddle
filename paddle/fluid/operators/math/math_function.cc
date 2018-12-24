@@ -13,6 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/math_function.h"
+
+#ifdef PADDLE_WITH_MKLML
+#include "paddle/fluid/platform/dynload/mklml.h"
+#endif
+
+#ifdef PADDLE_USE_OPENBLAS
+#include <cblas.h>
+#endif
+
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/math/math_function_impl.h"
@@ -68,16 +77,14 @@ template <>
 void set_constant_with_place<platform::CPUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
-  framework::VisitDataType(framework::ToDataType(tensor->type()),
-                           TensorSetConstantCPU(tensor, value));
+  framework::VisitDataType(tensor->type(), TensorSetConstantCPU(tensor, value));
 }
 
 template <>
 void set_constant_with_place<platform::CUDAPinnedPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
-  framework::VisitDataType(framework::ToDataType(tensor->type()),
-                           TensorSetConstantCPU(tensor, value));
+  framework::VisitDataType(tensor->type(), TensorSetConstantCPU(tensor, value));
 }
 
 struct TensorSetConstantWithPlace : public boost::static_visitor<void> {

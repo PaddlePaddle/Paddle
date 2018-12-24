@@ -26,7 +26,11 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
     Test softmax with cross entropy operator with discreate one-hot labels.
     """
 
+    def initParams(self):
+        self.numeric_stable_mode = False
+
     def setUp(self):
+        self.initParams()
         self.op_type = "softmax_with_cross_entropy"
         batch_size = 41
         class_num = 37
@@ -46,12 +50,18 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             "Softmax": softmax.astype("float64"),
             "Loss": cross_entropy.astype("float64")
         }
+        self.attrs = {"numeric_stable_mode": self.numeric_stable_mode}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(["Logits"], "Loss")
+
+
+class TestSoftmaxWithCrossEntropyOpNoCudnn(TestSoftmaxWithCrossEntropyOp):
+    def initParams(self):
+        self.numeric_stable_mode = True
 
 
 class TestSoftmaxWithCrossEntropyOp2(OpTest):
@@ -93,7 +103,11 @@ class TestSoftmaxWithCrossEntropyOp3(OpTest):
     Test softmax with cross entropy operator with ignore_index.
     """
 
+    def initParams(self):
+        self.numeric_stable_mode = False
+
     def setUp(self):
+        self.initParams()
         self.op_type = "softmax_with_cross_entropy"
         batch_size = 41
         class_num = 37
@@ -114,13 +128,21 @@ class TestSoftmaxWithCrossEntropyOp3(OpTest):
             "Softmax": softmax.astype("float64"),
             "Loss": cross_entropy.astype("float64")
         }
-        self.attrs = {"ignore_index": ignore_index}
+        self.attrs = {
+            "ignore_index": ignore_index,
+            "numeric_stable_mode": self.numeric_stable_mode
+        }
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(["Logits"], "Loss")
+
+
+class TestSoftmaxWithCrossEntropyOp3NoCudnn(TestSoftmaxWithCrossEntropyOp3):
+    def initParams(self):
+        self.numeric_stable_mode = True
 
 
 if __name__ == "__main__":

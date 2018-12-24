@@ -19,7 +19,7 @@ limitations under the License. */
 #include <cuda_runtime.h>
 #include <stddef.h>
 #include <string>
-#include <tuple>
+#include <vector>
 
 namespace paddle {
 namespace platform {
@@ -30,6 +30,15 @@ int GetCUDADeviceCount();
 //! Get the compute capability of the ith GPU (format: major * 10 + minor)
 int GetCUDAComputeCapability(int i);
 
+//! Get the runtime version of the ith GPU
+int GetCUDARuntimeVersion(int id);
+
+//! Get the driver version of the ith GPU
+int GetCUDADriverVersion(int id);
+
+//! Wheter the current device support TensorCore
+bool TensorCoreAvailable();
+
 //! Get the MultiProcessors of the ith GPU.
 int GetCUDAMultiProcessors(int i);
 
@@ -38,6 +47,9 @@ int GetCUDAMaxThreadsPerMultiProcessor(int i);
 
 //! Get the current GPU device id in system.
 int GetCurrentDeviceId();
+
+//! Get a list of device ids from environment variable or use all.
+std::vector<int> GetSelectedDevices();
 
 //! Set the GPU device id for next execution.
 void SetDeviceId(int device_id);
@@ -72,8 +84,6 @@ void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
 
 //! Set memory dst with value count size asynchronously
 void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream);
-
-std::tuple<int, int, int> GpuMaxGridDim(int id);
 
 }  // namespace platform
 }  // namespace paddle

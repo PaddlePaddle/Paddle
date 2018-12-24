@@ -27,8 +27,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/ir/infer_clean_graph_pass.h"
 #include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/timer.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");
@@ -97,7 +99,6 @@ void NativePaddlePredictor::PrepareFeedFetch() {
 bool NativePaddlePredictor::Init(
     std::shared_ptr<framework::Scope> parent_scope) {
   VLOG(3) << "Predictor::init()";
-#if !defined(_WIN32)
   if (FLAGS_profile) {
     LOG(WARNING) << "Profiler is actived, might affect the performance";
     LOG(INFO) << "You can turn off by set gflags '-profile false'";
@@ -106,7 +107,9 @@ bool NativePaddlePredictor::Init(
                                            : platform::ProfilerState::kCPU;
     platform::EnableProfiler(tracking_device);
   }
-#endif
+
+  // no matter with or without MKLDNN
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
@@ -144,25 +147,6 @@ bool NativePaddlePredictor::Init(
     return false;
   }
 
-  if (!config_.feed_names.empty() || !config_.fetch_names.empty()) {
-    if (config_.feed_names.empty()) {
-      LOG(ERROR)
-          << "config.feed_names is empty, fill it to support program pruning.";
-      return false;
-    }
-    if (config_.fetch_names.empty()) {
-      LOG(ERROR)
-          << "config.fetch_names is empty, fill it to support program pruning.";
-      return false;
-    }
-    framework::proto::ProgramDesc desc;
-    LOG(INFO) << "begin to prune";
-    AutoPrune(config_.feed_names, config_.fetch_names, *inference_program_,
-              &desc);
-    LOG(INFO) << "prune done";
-    inference_program_.reset(new framework::ProgramDesc(desc));
-  }
-
   ctx_ = executor_->Prepare(*inference_program_, 0);
   executor_->CreateVariables(*inference_program_,
                              sub_scope_ ? sub_scope_ : scope_.get(), 0);
@@ -173,12 +157,10 @@ bool NativePaddlePredictor::Init(
 }
 
 NativePaddlePredictor::~NativePaddlePredictor() {
-#if !defined(_WIN32)
   if (FLAGS_profile) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
   }
-#endif
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
   }
@@ -191,7 +173,6 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   Timer timer;
   timer.tic();
   // set feed variable
-  std::vector<framework::LoDTensor> feeds;
   framework::Scope *scope = sub_scope_ != nullptr ? sub_scope_ : scope_.get();
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
@@ -202,7 +183,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   VLOG(4) << "Run prepared context";
   executor_->RunPreparedContext(ctx_.get(), scope,
                                 false, /* don't create local scope each time*/
-                                false /* don't create variable eatch time */);
+                                false /* don't create variable each time */);
   VLOG(4) << "Finish prepared context";
   // get fetch variable
   if (!GetFetch(output_data, scope)) {
@@ -210,6 +191,10 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
     return false;
   }
   VLOG(3) << "predict cost: " << timer.toc() << "ms";
+
+  // For some other vector like containers not cleaned after each batch.
+  tensor_array_batch_cleaner_.CollectNoTensorVars(scope_.get());
+  tensor_array_batch_cleaner_.ResetNoTensorVars();
   return true;
 }
 
@@ -238,22 +223,39 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                << inputs.size();
     return false;
   }
+
+  // Cache the inputs memory for better concurrency performance.
+  feed_tensors_.resize(inputs.size());
+
   for (size_t i = 0; i < inputs.size(); ++i) {
-    framework::LoDTensor input;
+    auto &input = feed_tensors_[i];
     framework::DDim ddim = framework::make_ddim(inputs[i].shape);
     void *input_ptr;
     if (inputs[i].dtype == PaddleDType::INT64) {
-      input_ptr = input.mutable_data<int64_t>(ddim, platform::CPUPlace());
+      input_ptr = input.mutable_data<int64_t>(ddim, place_);
     } else if (inputs[i].dtype == PaddleDType::FLOAT32) {
-      input_ptr = input.mutable_data<float>(ddim, platform::CPUPlace());
+      input_ptr = input.mutable_data<float>(ddim, place_);
     } else {
       LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
       return false;
     }
 
-    // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-    std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
-                inputs[i].data.length());
+    if (platform::is_cpu_place(place_)) {
+      // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
+      std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
+                  inputs[i].data.length());
+    } else {
+#ifdef PADDLE_WITH_CUDA
+      auto dst_gpu_place = boost::get<platform::CUDAPlace>(place_);
+      memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
+                   platform::CPUPlace(), inputs[i].data.data(),
+                   inputs[i].data.length(),
+                   0);  // stream 0 for sync copy
+#else
+      PADDLE_THROW("Not compile with CUDA, should not reach here.");
+#endif
+    }
+
     // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
     framework::LoD lod;
     for (auto &level : inputs[i].lod) {
@@ -301,10 +303,11 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
         framework::GetFetchVariable(*scope, "fetch", idx);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
-    if (type == typeid(float)) {
+    output->name = fetchs_[idx]->Input("X")[0];
+    if (type == framework::DataTypeTrait<float>::DataType) {
       GetFetchOne<float>(fetch, output);
       output->dtype = PaddleDType::FLOAT32;
-    } else if (type == typeid(int64_t)) {
+    } else if (type == framework::DataTypeTrait<int64_t>::DataType) {
       GetFetchOne<int64_t>(fetch, output);
       output->dtype = PaddleDType::INT64;
     } else {

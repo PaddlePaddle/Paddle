@@ -13,7 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sign_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 REGISTER_OP_CUDA_KERNEL(
     sign,
-    paddle::operators::SignKernel<paddle::platform::CUDADeviceContext, float>);
+    paddle::operators::SignKernel<paddle::platform::CUDADeviceContext, float>,
+    paddle::operators::SignKernel<paddle::platform::CUDADeviceContext, double>,
+    paddle::operators::SignKernel<paddle::platform::CUDADeviceContext,
+                                  paddle::platform::float16>);

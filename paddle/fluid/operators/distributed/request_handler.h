@@ -15,6 +15,7 @@
 #pragma once
 
 #include <time.h>
+#include <condition_variable>  // NOLINT
 
 #include <functional>
 #include <string>
@@ -36,6 +37,8 @@ namespace distributed {
 
 constexpr char kRequestSend[] = "RequestSend";
 constexpr char kRequestGet[] = "RequestGet";
+constexpr char kRequestGetMonomerVariable[] = "RequestGetMonomerVariable";
+constexpr char kRequestGetMonomerBarrier[] = "RequestGetMonomerBarrier";
 constexpr char kRequestPrefetch[] = "RequestPrefetch";
 constexpr char kRequestCheckpoint[] = "RequestCheckpoint";
 constexpr char kRequestPassBarrier[] = "RequestPassBarrier";
@@ -189,7 +192,9 @@ class RequestHandler {
   //    }
   virtual bool Handle(const std::string& varname, framework::Scope* scope,
                       framework::Variable* var, framework::Variable** outvar,
-                      const std::string& out_var_name = "") = 0;
+                      const int trainer_id,
+                      const std::string& out_var_name = "",
+                      const std::string& table_name = "") = 0;
 
  protected:
   const bool sync_mode_;

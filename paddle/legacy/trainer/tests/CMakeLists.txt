@@ -16,7 +16,11 @@ endfunction()
 trainer_test(test_Compare)
 trainer_test(test_PyDataProviderWrapper)
 trainer_test(test_recurrent_machine_generation)
-trainer_test(test_Trainer)
+if(NOT APPLE)
+  trainer_test(test_Trainer)
+else()
+  message(WARNING "These tests has been disabled in OSX for random fail: \n test_Trainer") 
+endif()
 
 ############### test_TrainerOnePass ##########################
 if(WITH_PYTHON)

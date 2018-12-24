@@ -49,14 +49,16 @@ class MulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(
         y_dims.size(), y_num_col_dims,
         "The input tensor Y's rank of MulOp should be larger than "
-        "y_num_col_dims.");
+        "y_num_col_dims: %ld vs %ld",
+        y_dims.size(), y_num_col_dims);
 
     auto x_mat_dims = framework::flatten_to_2d(x_dims, x_num_col_dims);
     auto y_mat_dims = framework::flatten_to_2d(y_dims, y_num_col_dims);
 
     PADDLE_ENFORCE_EQ(x_mat_dims[1], y_mat_dims[0],
                       "First matrix's width must be equal with second matrix's "
-                      "height. %s, %s");
+                      "height. %s, %s",
+                      x_mat_dims[1], y_mat_dims[0]);
     std::vector<int64_t> output_dims;
     output_dims.reserve(
         static_cast<size_t>(x_num_col_dims + y_dims.size() - y_num_col_dims));
@@ -126,6 +128,14 @@ or not. But the output only shares the LoD information with input $X$.
   }
 };
 
+class MulOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
+  }
+};
+
 class MulGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -178,7 +188,8 @@ class MulOpGradMaker : public framework::SingleGradOpDescMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpGradMaker);
+REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpInferVarType,
+                  ops::MulOpGradMaker);
 REGISTER_OPERATOR(mul_grad, ops::MulGradOp);
 REGISTER_OP_CPU_KERNEL(
     mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>,

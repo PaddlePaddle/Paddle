@@ -20,6 +20,7 @@ import six
 import sys
 import collections
 import math
+import paddle.fluid as fluid
 from op_test import OpTest
 
 
@@ -32,7 +33,7 @@ class TestDetectionMAPOp(OpTest):
         self.detect = np.array(self.detect).astype('float32')
         self.mAP = np.array(self.mAP).astype('float32')
 
-        if (len(self.class_pos_count) > 0):
+        if len(self.class_pos_count) > 0:
             self.class_pos_count = np.array(self.class_pos_count).astype(
                 'int32')
             self.true_pos = np.array(self.true_pos).astype('float32')
@@ -273,7 +274,7 @@ class TestDetectionMAPOp11Point(TestDetectionMAPOp):
 class TestDetectionMAPOpMultiBatch(TestDetectionMAPOp):
     def init_test_case(self):
         super(TestDetectionMAPOpMultiBatch, self).init_test_case()
-        self.class_pos_count = [0, 2, 1]
+        self.class_pos_count = [0, 2, 1, 0]
         self.true_pos_lod = [[0, 3, 2]]
         self.true_pos = [[0.7, 1.], [0.3, 0.], [0.2, 1.], [0.8, 0.], [0.1, 1.]]
         self.false_pos_lod = [[0, 3, 2]]

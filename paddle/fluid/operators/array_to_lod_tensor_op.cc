@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <paddle/fluid/operators/math/concat.h>
+#include <paddle/fluid/operators/math/concat_and_split.h>
 #include <numeric>
 
 #include "paddle/fluid/framework/lod_rank_table.h"
@@ -58,7 +58,7 @@ struct ArrayToLoDFunctor : public boost::static_visitor<void> {
     ArrayToLoDFunctorImpl<DeviceContext> functor;
     functor.dev_ctx_ = dev_ctx;
     functor.prev_functor_ = this;
-    framework::VisitDataType(framework::ToDataType(out->type()), functor);
+    framework::VisitDataType(out->type(), functor);
   }
 };
 
@@ -91,7 +91,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     PADDLE_ENFORCE(!x.empty(), "There's no element in the input array.");
     int rank = x[0].dims().size();
     platform::Place place = x[0].place();
-    std::type_index data_type = x[0].type();
+    auto data_type = x[0].type();
     int64_t batch_size = x[0].dims()[0];
     framework::DDim ins_dims = rank > 1
                                    ? framework::slice_ddim(x[0].dims(), 1, rank)

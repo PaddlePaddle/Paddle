@@ -56,13 +56,13 @@ struct Style {
 };
 
 template <typename... Args>
-static void PrettyLogEndl(const std::string& style, const char* fmt,
-                          const Args&... args) {
+static void PrettyLogEndl(const std::string &style, const char *fmt,
+                          const Args &... args) {
   std::cerr << style << Sprintf(fmt, args...) << reset() << std::endl;
 }
 template <typename... Args>
-static void PrettyLog(const std::string& style, const char* fmt,
-                      const Args&... args) {
+static void PrettyLog(const std::string &style, const char *fmt,
+                      const Args &... args) {
   std::cerr << style << Sprintf(fmt, args...) << reset();
 }
 

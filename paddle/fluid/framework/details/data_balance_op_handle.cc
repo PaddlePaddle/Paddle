@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 DataBalanceOpHandle::DataBalanceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
@@ -28,7 +28,7 @@ DataBalanceOpHandle::DataBalanceOpHandle(
     : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {
   if (ctxs) {
     for (auto &p : places_) {
-      this->dev_ctxes_[p] = ctxs->DevCtx(p);
+      this->SetDeviceContext(p, ctxs->DevCtx(p));
     }
   }
 }
@@ -89,8 +89,8 @@ void DataBalanceOpHandle::RunImpl() {
   PADDLE_ENFORCE_GT(places_.size(), 1,
                     "Data balance can only be enabled when the number of "
                     "places to run larger than 1.");
-  auto in_var_handles = DynamicCast<VarHandle>(inputs_);
-  auto out_var_handles = DynamicCast<VarHandle>(outputs_);
+  auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
+  auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
   PADDLE_ENFORCE(in_var_handles.size() % places_.size() == 0);
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), out_var_handles.size(),

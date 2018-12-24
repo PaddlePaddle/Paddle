@@ -18,6 +18,8 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+using contrib::AnalysisConfig;
+
 struct DataRecord {
   std::vector<int64_t> data;
   std::vector<size_t> lod;
@@ -78,6 +80,7 @@ struct DataRecord {
       }
     }
   }
+
   DataRecord NextBatch() {
     DataRecord data;
     data.data = batched_datas[batch_iter];
@@ -130,7 +133,8 @@ TEST(Analyzer_LAC, profile) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
@@ -155,7 +159,9 @@ TEST(Analyzer_LAC, fuse_statis) {
   SetConfig(&cfg);
 
   int num_ops;
-  auto fuse_statis = GetFuseStatis(cfg, &num_ops);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  auto fuse_statis = GetFuseStatis(
+      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
   ASSERT_TRUE(fuse_statis.count("fc_fuse"));
   ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
   EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
@@ -170,7 +176,19 @@ TEST(Analyzer_LAC, compare) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
+
+// Compare Deterministic result
+TEST(Analyzer_LAC, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
 }
 
 }  // namespace analysis

@@ -18,8 +18,6 @@ limitations under the License. */
 #include <fstream>
 #include <string>
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/inference/analysis/data_flow_graph.h"
-#include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 
 namespace paddle {
@@ -31,29 +29,6 @@ extern void ReadBinaryFile(const std::string& filename, std::string* contents);
 namespace analysis {
 
 DEFINE_string(inference_model_dir, "", "inference test model dir");
-
-static DataFlowGraph ProgramDescToDFG(
-    const framework::proto::ProgramDesc& desc) {
-  DataFlowGraph graph;
-  FluidToDataFlowGraphPass pass;
-  Argument argument;
-  argument.fluid_model_dir.reset(new std::string(FLAGS_inference_model_dir));
-  argument.origin_program_desc.reset(new framework::proto::ProgramDesc(desc));
-  pass.Initialize(&argument);
-  pass.Run(&graph);
-  pass.Finalize();
-  return graph;
-}
-
-class DFG_Tester : public ::testing::Test {
- protected:
-  void SetUp() override {
-    auto desc = LoadProgramDesc(FLAGS_inference_model_dir + "/__model__");
-    argument.origin_program_desc.reset(new framework::proto::ProgramDesc(desc));
-  }
-
-  Argument argument;
-};
 
 }  // namespace analysis
 }  // namespace inference

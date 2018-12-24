@@ -103,7 +103,7 @@ void OpHandleBase::WaitInputVarGenerated() {
 void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
   for (auto *in : inputs_) {
     if (NeedWait(in)) {
-      in->GeneratedOp()->RecordWaitEventOnCtx(dev_ctxes_[place]);
+      in->GeneratedOp()->RecordWaitEventOnCtx(dev_ctxes_.at(place));
     }
   }
 }

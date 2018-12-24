@@ -52,7 +52,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of GaussianRandomOp should not be null.");
-    auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
+    auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     std::vector<int64_t> temp;
     temp.reserve(shape.size());
     for (auto dim : shape) {
@@ -88,9 +88,9 @@ class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddOutput("Out", "Output matrix of gaussian random op");
 
-    AddAttr<std::vector<int>>("shape",
-                              "(vector<int>) "
-                              "The dimension of random tensor.");
+    AddAttr<std::vector<int64_t>>("shape",
+                                  "(vector<int64_t>) "
+                                  "The dimension of random tensor.");
     AddAttr<float>("mean",
                    "(float, default 0.0) "
                    "mean of random tensor.")
