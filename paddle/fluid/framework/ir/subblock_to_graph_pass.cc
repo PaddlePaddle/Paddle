@@ -47,7 +47,7 @@ std::unique_ptr<ir::Graph> SubblockToGraphPass::ApplyImpl(
       framework::ProgramDesc fake_program_desc(fake_proto);
       // Create a graph
       sub_graphs[node] = std::unique_ptr<Graph>(new Graph(fake_program_desc));
-      LOG(INFO) << "get sub-graph size " << sub_graphs[node]->Nodes().size();
+      VLOG(3) << "get sub-graph size " << sub_graphs[node]->Nodes().size();
     }
   }
   // Build a graph for the sub-block
