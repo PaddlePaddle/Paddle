@@ -17,7 +17,6 @@
 #include <string>
 #include <vector>
 
-#include "graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
@@ -1208,6 +1207,33 @@ PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
       {elementwise_add_out, elementwise_add_in_y_1});
   act_op->LinksFrom({elementwise_add_out_1}).LinksTo({act_out});
   return act_out;
+}
+
+PDNode *patterns::ConvElementwiseadd::operator()(PDNode *conv_in) {
+  conv_in->AsInput();
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+  auto conv_out = pattern->NewNode(conv_out_repr())
+                      ->assert_is_op_output("conv2d")
+                      ->assert_is_op_input("elementwise_add", "X")
+                      ->AsIntermediate();
+  auto conv_filter = pattern->NewNode(conv_filter_repr())
+                         ->assert_is_op_input("conv2d", "Filter")
+                         ->AsInput();
+  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
+                                ->assert_is_op("elementwise_add");
+  auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
+                                  ->assert_is_op_input("elementwise_add", "Y")
+                                  ->AsInput();
+  auto elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
+                                 ->assert_is_op_output("elementwise_add")
+                                 ->AsOutput();
+
+  conv_op->LinksFrom({conv_in, conv_filter});
+  conv_out->LinksFrom({conv_op});
+  elementwise_add_op->LinksFrom({conv_out, elementwise_add_in_y})
+      .LinksTo({elementwise_add_out});
+
+  return elementwise_add_out;
 }
 
 }  // namespace ir

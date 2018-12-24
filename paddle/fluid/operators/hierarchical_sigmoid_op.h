@@ -150,19 +150,27 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
                                                        label.data<int64_t>()));
     }
 
-    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-    auto pre_out_mat = EigenMatrix<T>::From(pre_out);
-    auto pre_out_grad_mat = EigenMatrix<T>::From(pre_out_grad);
-    auto out_grad_mat = EigenMatrix<T>::From(out_grad);
-
-    Eigen::array<int, 2> bcast{1, static_cast<int>(pre_out_grad.dims()[1])};
-
     // softrelu derivative
-    pre_out_grad_mat.device(place) =
-        static_cast<T>(1.0) - static_cast<T>(1.0) / pre_out_mat.exp();
+
+    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+
+    auto* pre_out_grad_data = pre_out_grad.data<T>();
+    auto* pre_out_data = pre_out.data<T>();
+    auto n = pre_out.numel();
+    blas.VEXP(n, pre_out_data, pre_out_grad_data);
+    blas.VINV(n, pre_out_grad_data, pre_out_grad_data);
+    for (int64_t i = 0; i < n; ++i) {
+      pre_out_grad_data[i] = 1.0 - pre_out_grad_data[i];
+    }
     bit_code->Sub(&pre_out_grad);  // the gradient of clip(w * x + b)
-    pre_out_grad_mat.device(place) =
-        pre_out_grad_mat * out_grad_mat.broadcast(bcast);
+    auto* out_grad_data = out_grad.data<T>();
+
+    int64_t dim0 = pre_out_grad.dims()[0];
+    int64_t dim1 = pre_out_grad.dims()[1];
+    for (int64_t i = 0; i < dim0; ++i) {
+      T tmp = out_grad_data[i];
+      blas.SCAL(dim1, tmp, pre_out_grad_data + i * dim1);
+    }
     // TODO(guosheng): multiply pre_out_grad with subgradient of clipping to
     // be consistent with the clipping in forward.
 
