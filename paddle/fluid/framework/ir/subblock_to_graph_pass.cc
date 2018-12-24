@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/subblock_to_graph_pass.h"
+#include "paddle/fluid/framework/ir/infer_clean_graph_pass.h"
 
 namespace paddle {
 namespace framework {
@@ -32,6 +33,8 @@ std::unique_ptr<ir::Graph> SubblockToGraphPass::ApplyImpl(
 
   auto& sub_graphs = graph->Get<subgraphs_t>(kSubblockGraphAttr);
 
+  InferCleanGraphPass clean_pass;
+
   // Filter out the nodes that has sub-block
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op() && node->Op()->HasAttr("sub_block")) {
@@ -48,6 +51,8 @@ std::unique_ptr<ir::Graph> SubblockToGraphPass::ApplyImpl(
       // Create a graph
       sub_graphs[node] = std::unique_ptr<Graph>(new Graph(fake_program_desc));
       LOG(INFO) << "get sub-graph size " << sub_graphs[node]->Nodes().size();
+      auto ptr = std::move(sub_graphs[node]);
+      sub_graphs[node] = clean_pass.Apply(std::move(ptr));
     }
   }
   // Build a graph for the sub-block
