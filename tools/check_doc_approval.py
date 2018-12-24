@@ -1,4 +1,5 @@
 import os
+import ast
 import hashlib
 import importlib
 import paddle.fluid
@@ -40,15 +41,7 @@ def get_module():
             except:
                 pass
             doc_md5_code = md5(doc_module)
-            if not os.path.getsize(doc_md5_file):
-                doc_dict[api_name] = doc_md5_code
-                print(doc_dict)
-            else:
-                try:
-                    if doc_dict[api_name] != doc_md5_code:
-                       return "FALSE"
-                except:
-                    return "FALSE" 
+            doc_dict[api_name] = doc_md5_code
 
 
 def doc_md5_dict(doc_md5_path):
@@ -58,14 +51,26 @@ def doc_md5_dict(doc_md5_path):
     return doc_md5_dict
 
 
+def check_doc_md5():
+    for k,v in doc_dict.items():
+        try:
+            if doc_ci_dict[k] != v:
+                return doc_dict
+        except:
+            return doc_dict
+
+
 if __name__ == "__main__":
     doc_dict = {}
-    doc_md5_file = "doc_md5.txt"
+    doc_ci_dict = {}
+    doc_md5_file = "/root/.cache/doc_md5.txt"
     if not os.path.exists(doc_md5_file):
         os.mknod(doc_md5_file)    
     else:
-        doc_dict = doc_md5_dict(doct_md5_file)
+        doc_ci_dict = doc_md5_dict(doc_md5_file)
     get_module()
     if not os.path.getsize(doc_md5_file):
         with open(doc_md5_file, 'wb')as f:
             f.write(str(doc_dict))
+    check_dic = check_doc_md5()
+    print(check_dic)

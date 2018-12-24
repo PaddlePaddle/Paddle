@@ -542,7 +542,7 @@ function assert_doc_spec_approvals() {
             echo "You must have shanyi15 approval for the api doc change! "
             exit 1
         fi
-        echo $check_doc >${PADDLE_ROOT}/tools/doc_md5.txt
+        echo $check_doc >/root/.cache/doc_md5.txt
 
     fi
 }
