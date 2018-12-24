@@ -5013,9 +5013,10 @@ def nce(input,
     else:
         num_neg_samples = int(num_neg_samples)
 
-    remote_prefetch = False
-    if os.environ.get('PADDLE_ENABLE_REMOTE_PREFETCH'):
-        remote_prefetch = True
+    remote_prefetch = is_sparse
+    print(
+        "With sparse mode, if your models has only small parameter prefetch may cause speed down"
+    )
 
     attrs = {
         'num_total_classes': int(num_total_classes),
@@ -5133,10 +5134,10 @@ def hsigmoid(input,
         pass
 
     weights = None
-    remote_prefetch = False
-    if os.environ.get('PADDLE_ENABLE_REMOTE_PREFETCH'):
-        remote_prefetch = True
-
+    remote_prefetch = is_sparse
+    print(
+        "With sparse mode, if your models has only small parameter prefetch may cause speed down"
+    )
     if not is_custom:
         weights = helper.create_parameter(
             attr=helper.param_attr,
