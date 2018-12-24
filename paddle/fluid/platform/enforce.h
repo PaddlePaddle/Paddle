@@ -261,7 +261,7 @@ inline void throw_on_error(T e) {
 #define __PADDLE_THROW_ERROR_I(_, _9, _8, _7, _6, _5, _4, _3, _2, X_, ...) X_;
 
 #define __THROW_ON_ERROR_ONE_ARG(COND, ARG) \
-  ::paddle::platform::throw_on_error(COND, "%s", std::string(ARG));
+  ::paddle::platform::throw_on_error(COND, ::paddle::string::Sprintf(ARG));
 
 #define __PADDLE_THROW_ON_ERROR(COND, ...)                                \
   __PADDLE_THROW_ERROR_I(                                                 \
