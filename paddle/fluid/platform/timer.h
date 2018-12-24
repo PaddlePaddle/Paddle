@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <stdlib.h>
 #include <sys/time.h>
-#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace platform {
@@ -22,14 +22,21 @@ namespace platform {
 // A Standard Timer implementation for debugging
 class Timer {
  public:
+  // a timer class for profiling
+  // Reset() will be called during initialization
+  // all timing variables will be set 0 in Reset()
   Timer() { Reset(); }
   void Reset();
   void Start();
   void Pause();
+  // Resume will get current system time
   void Resume();
   int Count();
+  // return elapsed time in us
   double ElapsedUS();
+  // return elapsed time in ms
   double ElapsedMS();
+  // return elapsed time in sec
   double ElapsedSec();
 
  private:
@@ -39,6 +46,7 @@ class Timer {
   int _elapsed;
   bool _paused;
 
+  // get us difference between start and now
   int64_t Tickus();
 };
 
