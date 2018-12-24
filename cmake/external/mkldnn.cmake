@@ -106,7 +106,7 @@ else(WIN32)
     SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/libmkldnn.so.0)
     ADD_CUSTOM_COMMAND(OUTPUT ${MKLDNN_SHARED_LIB}
             COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB}
-            DEPENDS mkldnn)
+            DEPENDS mkldnn shared_mkldnn)
 endif(WIN32)
 ADD_CUSTOM_TARGET(mkldnn_shared_lib ALL DEPENDS ${MKLDNN_SHARED_LIB})
 
