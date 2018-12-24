@@ -289,14 +289,14 @@ def _save_distributed_persistables(executor, dirname, main_program):
                         type=origin.type,
                         shape=origin.shape,
                         dtype=origin.dtype,
-                        persistable=origin.persistable)
+                        persistable=True)
 
                 slice_var = block.create_var(
                     name="{}.slice.{}".format(slice.name, idx),
                     type=slice.type,
                     shape=slice.shape,
                     dtype=slice.dtype,
-                    persistable=slice.persistable)
+                    persistable=True)
 
                 index = block_id if is_slice else idx
                 slice_vars[index] = slice_var
@@ -686,7 +686,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                     type=origin_var.type,
                     shape=origin_var.shape,
                     dtype=origin_var.dtype,
-                    persistable=origin_var.persistable)
+                    persistable=True)
 
                 load_block.append_op(
                     type='load',
@@ -701,7 +701,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                     type=slice_var.type,
                     shape=slice_var.shape,
                     dtype=slice_var.dtype,
-                    persistable=slice_var.persistable)
+                    persistable=True)
 
                 dim1_flatten = reduce(lambda x, y: x * y, slice.shape[1:])
                 start = int(offset / dim1_flatten)
@@ -722,7 +722,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                     type=origin_var.type,
                     shape=origin_var.shape,
                     dtype=origin_var.dtype,
-                    persistable=origin_var.persistable)
+                    persistable=True)
                 load_block.append_op(
                     type='load',
                     inputs={},
