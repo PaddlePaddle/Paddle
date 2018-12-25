@@ -6,6 +6,7 @@ import paddle.fluid
 
 
 files = [
+    "paddle.fluid",
     "paddle.fluid.average",
     "paddle.fluid.backward",
     "paddle.fluid.clip",
