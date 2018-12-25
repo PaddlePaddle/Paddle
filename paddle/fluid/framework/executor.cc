@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/detail/macros.h"
@@ -457,7 +458,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
 
   if (local_scope != scope) {
-    delete local_scope;
+    framework::Async([local_scope]() { delete local_scope; });
   } else {
     if (!keep_kids) {
       // By default, we should delete all kid scopes after run executor because

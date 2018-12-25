@@ -57,6 +57,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
       framework::Async([this, scope, varname]() {
         executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
                                       scope);
+        delete scope;
       });
 
       return true;
