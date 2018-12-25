@@ -1018,7 +1018,7 @@ class TestBook(unittest.TestCase):
     def test_shuffle_channel(self):
         program = Program()
         with program_guard(program):
-            x = layers.data(name="x", shape=[10, 16, 4, 4], dtype="float32")
+            x = layers.data(name="X", shape=[10, 16, 4, 4], dtype="float32")
             out = layers.shuffle_channel(x, group=2)
             self.assertIsNotNone(out)
         print(str(program))

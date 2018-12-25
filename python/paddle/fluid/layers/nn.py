@@ -9359,7 +9359,7 @@ def shuffle_channel(x, group=1, name=None):
     helper = LayerHelper("shuffle_channel", **locals())
 
     out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('x'))
+        dtype=helper.input_dtype('X'))
 
     if not isinstance(group, int):
         raise TypeError("group must be int type")
