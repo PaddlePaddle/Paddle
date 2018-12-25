@@ -105,7 +105,8 @@ class HuberLossGradKernel : public framework::OpKernel<T> {
       out0->mutable_data<T>(context.GetPlace());
       auto x_grad = EigenVector<T>::Flatten(*out0);
       // Under MSVC 2015 14.0.25431.01
-      // The compiler cannot deduce when partial parameter type specified however not all parameters type were defined
+      // The compiler cannot deduce when partial parameter type specified
+      // however not all parameters type were defined
       auto sign = -1.0f;
       x_grad.device(place) =
           out_grad * residual.unaryExpr(HuberLossBackward<T>(delta, sign));
@@ -115,7 +116,8 @@ class HuberLossGradKernel : public framework::OpKernel<T> {
       out1->mutable_data<T>(context.GetPlace());
       auto y_grad = EigenVector<T>::Flatten(*out1);
       // Under MSVC 2015 14.0.25431.01
-      // The compiler cannot deduce when partial parameter type specified however not all parameters type were defined
+      // The compiler cannot deduce when partial parameter type specified
+      // however not all parameters type were defined
       auto sign = 1.0f;
       y_grad.device(place) =
           out_grad * residual.unaryExpr(HuberLossBackward<T>(delta, sign));
