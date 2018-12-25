@@ -28,7 +28,7 @@ class ShuffleChannelOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
 
     // ENFORCE group
-    // auto group = ctx->Attrs().Get<int>("group");
+
     ctx->SetOutputDim("Out", input_dims);
   }
   /*
@@ -87,6 +87,10 @@ class ShuffleChannelGradOp : public framework::OperatorWithKernel {
                    "Output(X@Grad) should not be null");
 
     auto input_dims = ctx->GetInputDim("X");
+    PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
+
+    // ENFORCE group
+
     ctx->SetOutputDim(framework::GradVarName("X"), input_dims);
   }
   /*
