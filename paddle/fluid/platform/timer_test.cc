@@ -12,41 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/platform/timer.h"
+#include "gtest/gtest.h"
 
 TEST(Timer, Reset) {
-  platform::Timer timeline;
+  paddle::platform::Timer timeline;
   timeline.Start();
   sleep(3);
   timeline.Pause();
   timeline.Reset();
-  std::cout << paddle::string::Sprintf("after reset %fs", timeline.ElapsedSec())
-            << std::endl;
 }
 
 TEST(Timer, Start) {
-  platform::Timer timeline;
+  paddle::platform::Timer timeline;
   timeline.Start();
   sleep(3);
   timeline.Pause();
-  std::cout << paddle::string::Sprintf("after pause %fs", timeline.ElapsedSec())
-            << std::endl;
 }
 
 TEST(Timer, Pause) {
-  platform::Timer timeline;
+  paddle::platform::Timer timeline;
   timeline.Start();
   sleep(3);
   timeline.Pause();
-  std::cout << paddle::string::Sprintf("after pause %fus", timeline.ElapsedUS())
-            << std::endl;
 }
 
 TEST(Timer, Resume) {
-  platform::Timer timeline;
+  paddle::platform::Timer timeline;
   timeline.Start();
   sleep(3);
   timeline.Pause();
   timeline.Resume();
-  std::cout << paddle::string::Sprintf("after pause %fms", timeline.ElapsedMS())
-            << std::endl;
 }
