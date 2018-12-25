@@ -61,7 +61,7 @@ class Graph(object):
 
     def index(self, op):
         """
-        Return the index of the op.
+        Return the index of the op in current graph.
         """
         pass
 
