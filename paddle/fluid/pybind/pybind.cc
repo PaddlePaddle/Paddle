@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -109,6 +110,12 @@ PYBIND11_MODULE(core, m) {
   using namespace paddle::framework;  // NOLINT
 
   BindException(&m);
+
+  m.def(
+      "_append_python_callable_object_and_return_id",
+      [](py::object py_obj) -> size_t {
+        return paddle::operators::AppendPythonCallableObjectAndReturnId(py_obj);
+      });
 
   py::class_<imperative::VarBase, PyVarBase>(m, "VarBase", R"DOC()DOC")
       .def(py::init<>())
@@ -960,6 +967,14 @@ All parameter, weight, gradient are variables in Paddle.
           R"DOC(The type is BOOL, fuse_elewise_add_act_ops indicate whether
                      to fuse elementwise_add_op and activation_op,
                      it may make the execution faster. Default False)DOC")
+      .def_property(
+          "memory_optimize",
+          [](const BuildStrategy &self) { return self.memory_optimize_; },
+          [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; })
+      .def_property(
+          "memory_early_delete",
+          [](const BuildStrategy &self) { return self.memory_early_delete_; },
+          [](BuildStrategy &self, bool b) { self.memory_early_delete_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);
@@ -969,7 +984,6 @@ All parameter, weight, gradient are variables in Paddle.
                 cannot be updated after being finalized.)DOC");
 
   pe.def(py::init<const std::vector<platform::Place> &,
-                  const std::unordered_set<std::string> &,
                   const std::unordered_set<std::string> &, const ProgramDesc &,
                   const std::string &, Scope *, std::vector<Scope *> &,
                   const ExecutionStrategy &, const BuildStrategy &, size_t,

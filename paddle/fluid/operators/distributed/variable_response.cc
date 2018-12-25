@@ -118,7 +118,7 @@ bool VariableResponse::CopyLodTensorData(
 
   VLOG(6) << "Tensor.memory_size = " << tensor->memory_size()
           << ", Buffer Size = " << length;
-  PADDLE_ENFORCE_EQ(tensor->memory_size(), length);
+  PADDLE_ENFORCE_EQ(tensor->memory_size(), static_cast<unsigned int>(length));
   return ReadRaw(input, ctx, tensor->place(), tensor_data, length);
 }
 
