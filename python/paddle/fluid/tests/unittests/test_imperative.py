@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import contextlib
 import unittest
 import numpy as np
@@ -38,7 +39,9 @@ class MyLayer(fluid.imperative.PyLayer):
     def forward(self, inputs):
         x = fluid.layers.relu(inputs[0])
         self._x_for_debug = x
-        return [fluid.layers.elementwise_mul(x, x)]
+        x = fluid.layers.elementwise_mul(x, x)
+        x = fluid.layers.reduce_sum(x)
+        return [x]
 
 
 class MLP(fluid.imperative.PyLayer):
@@ -79,10 +82,12 @@ class TestImperative(unittest.TestCase):
         with new_program_scope():
             inp = fluid.layers.data(
                 name="inp", shape=[3], append_batch_size=False)
-            l = MyLayer()
-            x = l(inp)[0]
+            x = fluid.layers.relu(inp)
+            x_for_debug = x
+            x = fluid.layers.elementwise_mul(x, x)
+            x = fluid.layers.reduce_sum(x)
             param_grads = fluid.backward.append_backward(
-                x, parameter_list=[l._x_for_debug.name])[0]
+                x, parameter_list=[x_for_debug.name])[0]
             exe = fluid.Executor(fluid.CPUPlace())
 
             static_out, static_grad = exe.run(

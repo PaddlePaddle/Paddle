@@ -20,6 +20,7 @@ from __future__ import print_function
 import numpy as np
 import six
 import os
+import sys
 import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
@@ -9682,6 +9683,7 @@ class FC(layers.PyLayer):
             shape=param_shape,
             dtype=self._dtype,
             is_bias=False)
+        sys.stderr.write('created w: %s\n' % self._w.name)
 
     def forward(self, inputs):
         tmp = self._helper.create_variable_for_type_inference(self._dtype)

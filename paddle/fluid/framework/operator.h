@@ -81,6 +81,10 @@ class RuntimeContext {
   RuntimeContext(const VariableNameMap& innames,
                  const VariableNameMap& outnames, const Scope& scope);
 
+  RuntimeContext(const VariableValueMap& invars,
+                 const VariableValueMap& outvars)
+      : inputs(invars), outputs(outvars) {}
+
   VariableValueMap inputs;
   VariableValueMap outputs;
 };
@@ -101,6 +105,7 @@ class OperatorBase {
   /// Executor will call this interface function to Run an op.
   //  The implementation should be written at RunImpl
   void Run(const Scope& scope, const platform::Place& place);
+  void Run(const RuntimeContext& ctx, const platform::Place& place);
 
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}
@@ -167,6 +172,9 @@ class OperatorBase {
   void CheckAllInputOutputSet() const;
   virtual void RunImpl(const Scope& scope,
                        const platform::Place& place) const = 0;
+
+  virtual void RunImpl(const RuntimeContext& ctx,
+                       const platform::Place& place) const {}
 };
 
 class ExecutionContext {
@@ -458,6 +466,8 @@ class OperatorWithKernel : public OperatorBase {
   // same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
+  void RunImpl(const RuntimeContext& ctx,
+               const platform::Place& place) const final;
 
   /**
    * Transfer data from scope to a transfered scope. If there is no data need to
