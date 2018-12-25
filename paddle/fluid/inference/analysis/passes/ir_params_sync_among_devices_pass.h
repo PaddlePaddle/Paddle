@@ -33,6 +33,7 @@ class IrParamsSyncAmongDevicesPass : public AnalysisPass {
   IrParamsSyncAmongDevicesPass() {
     // Not work with subgraph, just need to run once in the whole graph.
     SetSupportSubgraph(false);
+    PADDLE_ENFORCE(!support_subgraph());
   }
   void RunImpl(Argument *argument) override;
   std::string repr() const override;

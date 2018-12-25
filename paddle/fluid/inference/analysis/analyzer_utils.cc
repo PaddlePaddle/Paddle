@@ -28,11 +28,12 @@ void RunAnalysis(Argument *argument, bool sub_graph_mode) {
       "ir_params_sync_among_devices_pass",
   });
 
+  std::string key = sub_graph_mode ? "[main_graph]" : "[sub_graph]";
   for (const auto &pass : passes) {
-    VLOG(2) << "Run pass " << pass;
     auto *the_pass = PassRegistry::Global().Retreive(pass);
     // If not compatible with sub-graph analysis, doesn't run this pass.
     if (sub_graph_mode && !the_pass->support_subgraph()) continue;
+    LOG(INFO) << key << " run pass " << pass;
     the_pass->Run(argument);
   }
 }

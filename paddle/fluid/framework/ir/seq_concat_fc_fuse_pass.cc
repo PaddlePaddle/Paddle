@@ -167,7 +167,7 @@ PDNode* BuildFCPattern(PDPattern* pattern, PDNode* fc_x) {
 
   PDNode* fc_out = pattern->NewNode(
       [](Node* x) {
-        return x && x->IsVar() &&                  // basic
+        return x && x->IsVar() && x->Var() &&      // basic
                !x->Var()->Proto()->persistable();  // is a parameter
       },
       "fc_out");

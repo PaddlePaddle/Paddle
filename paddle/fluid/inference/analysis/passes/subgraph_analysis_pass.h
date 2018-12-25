@@ -20,14 +20,28 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-/* Analysis the subgraph generated from subblock. */
+/*
+ * Analysis the subgraph generated from subblock.
+ * It works with the operators with sub-blocks, such as WhileOp, by executing
+ * the existing passes, it will fuse some nodes in the sub-graphs.
+ */
 class SubgraphAnalysisPass : public AnalysisPass {
  public:
   SubgraphAnalysisPass() {
     // Nested sub-graph analysis is too complex, not support yet.
     SetSupportSubgraph(false);
   }
-  void RunImpl(Argument* argument) override;
+
+  void RunImpl(Argument *argument) override;
+
+  // Copy the sub-graph's program desc to the main_graph's program desc.
+  void TransferAnalyzedProgramToBlockDesc(
+      const framework::ProgramDesc &subgraph_program,
+      framework::BlockDesc *block_in_main_graph,
+      framework::ProgramDesc *main_program);
+
+  void DrawGraph(Argument *argument);
+
   std::string repr() const override { return "subgraph-analysis-pass"; }
 };
 

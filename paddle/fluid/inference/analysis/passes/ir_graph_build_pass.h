@@ -28,7 +28,10 @@ namespace analysis {
  */
 class IrGraphBuildPass : public AnalysisPass {
  public:
-  IrGraphBuildPass() { support_subgraph_ = false; }
+  IrGraphBuildPass() {
+    SetSupportSubgraph(false);
+    PADDLE_ENFORCE(!support_subgraph());
+  }
   void RunImpl(Argument *argument) override;
 
   std::string repr() const override;

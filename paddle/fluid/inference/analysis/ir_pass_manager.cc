@@ -30,14 +30,17 @@ using string::PrettyLog;
 using string::Style;
 
 IRPassManager::IRPassManager(Argument *argument) {
-  ARGUMENT_CHECK_FIELD(argument, main_program);
-  graph_ = std::unique_ptr<Graph>(new Graph(argument->main_program()));
-  if (argument->Has("scope")) {
-    graph_->Set(framework::ir::kParamScopeAttr,
-                new framework::Scope *(
-                    const_cast<framework::Scope *>(&argument->scope())));
+  if (!argument->main_graph_valid()) {
+    ARGUMENT_CHECK_FIELD(argument, main_program);
+    graph_ = std::unique_ptr<Graph>(new Graph(argument->main_program()));
+    if (argument->scope_valid()) {
+      graph_->Set(framework::ir::kParamScopeAttr,
+                  new framework::Scope *(
+                      const_cast<framework::Scope *>(&argument->scope())));
+    }
+  } else {
+    graph_.reset(argument->ReleaseMainGraph());
   }
-
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
   CreatePasses(argument, argument->ir_analysis_passes());
 }
@@ -45,7 +48,7 @@ IRPassManager::IRPassManager(Argument *argument) {
 void IRPassManager::CreatePasses(Argument *argument,
                                  const std::vector<std::string> &passes) {
   std::string pre_pass;
-  int pass_num = 0;
+  static int pass_num = 0;
   for (const std::string &pass_name : passes) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
 
@@ -91,7 +94,9 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
   PADDLE_ENFORCE(graph.get());
   // Apply all the passes
   for (const auto &pass : passes_) {
-    PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
+    if (pass->Type() != "graph_viz_pass") {  // Avoid noising graphviz debug.
+      PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
+    }
     graph = pass->Apply(std::move(graph));
   }
   return std::move(graph);

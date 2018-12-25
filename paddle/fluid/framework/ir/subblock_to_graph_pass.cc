@@ -32,6 +32,7 @@ std::unique_ptr<ir::Graph> SubblockToGraphPass::ApplyImpl(
   }
 
   auto& sub_graphs = graph->Get<subgraphs_t>(kSubblockGraphAttr);
+  sub_graphs.clear();
 
   InferCleanGraphPass clean_pass;
 
@@ -48,6 +49,14 @@ std::unique_ptr<ir::Graph> SubblockToGraphPass::ApplyImpl(
       framework::proto::ProgramDesc fake_proto;
       TransformSubblockToProgram(sub_block_desc, &fake_proto);
       framework::ProgramDesc fake_program_desc(fake_proto);
+      // copy parameters to the fake program.
+      for (auto& var_name : graph->program().Block(0).LocalVarNames()) {
+        auto* var = graph->program().Block(0).FindVar(var_name);
+        if (var->Persistable()) {
+          *fake_program_desc.MutableBlock(0)->Var(var_name)->Proto() =
+              *var->Proto();
+        }
+      }
       // Create a graph
       sub_graphs[node] = std::unique_ptr<Graph>(new Graph(fake_program_desc));
       LOG(INFO) << "get sub-graph size " << sub_graphs[node]->Nodes().size();

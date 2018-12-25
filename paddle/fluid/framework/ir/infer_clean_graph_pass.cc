@@ -15,10 +15,7 @@
 #include "paddle/fluid/framework/ir/infer_clean_graph_pass.h"
 namespace paddle {
 namespace framework {
-namespace ir {
-
-
-}  // namespace ir
+namespace ir {}  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 

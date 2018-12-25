@@ -405,5 +405,20 @@ TEST(Analyzer_rnn1, ZeroCopyMultiThread) {
             << total_time_of_threads / FLAGS_num_threads / FLAGS_repeat;
 }
 
+TEST(Analyzer_rnn1, test_sub_graph_analysis) {
+  contrib::AnalysisConfig cfg(false);
+  SetConfig(&cfg);
+  cfg.fraction_of_gpu_memory = 0.1;
+  cfg.pass_builder()->DeletePass("attention_lstm_fuse_pass");
+  cfg.pass_builder()->DeletePass("seq_concat_fc_fuse_pass");
+  cfg.pass_builder()->TurnOnDebug();
+  std::vector<PaddleTensor> outputs;
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
+}
+
 }  // namespace inference
 }  // namespace paddle
