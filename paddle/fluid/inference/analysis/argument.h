@@ -99,23 +99,23 @@ struct Argument {
   unique_ptr_t field__##_;
 
  public:
-#define CP_MEMBER(member__) member__##_ = other.member__##_;
+#define CP_MEMBER(member__, setter__) Set##setter__(other.member__##_);
 
   Argument(const Argument& other) {
     // Only copy the fields from config settings.
     // The other unique pointer should be carefully dealed with.
-    CP_MEMBER(model_dir);
-    CP_MEMBER(model_program_path);
-    CP_MEMBER(model_params_path);
-    CP_MEMBER(model_from_memory);
-    CP_MEMBER(ir_analysis_passes);
-    CP_MEMBER(mkldnn_enabled_op_types);
-    CP_MEMBER(use_gpu);
-    CP_MEMBER(gpu_device_id);
-    CP_MEMBER(use_tensorrt);
-    CP_MEMBER(tensorrt_node_teller);
-    CP_MEMBER(tensorrt_max_batch_size);
-    CP_MEMBER(tensorrt_workspace_size);
+    CP_MEMBER(model_dir, ModelDir);
+    CP_MEMBER(model_program_path, ModelProgramPath);
+    CP_MEMBER(model_params_path, ModelParamsPath);
+    CP_MEMBER(model_from_memory, ModelFromMemory);
+    CP_MEMBER(ir_analysis_passes, IrAnalysisPasses);
+    CP_MEMBER(mkldnn_enabled_op_types, MKLDNNEnabledOpTypes);
+    CP_MEMBER(use_gpu, UseGPU);
+    CP_MEMBER(gpu_device_id, GPUDeviceId);
+    CP_MEMBER(use_tensorrt, UseTensorRT);
+    CP_MEMBER(tensorrt_node_teller, TensorRtNodeTeller);
+    CP_MEMBER(tensorrt_max_batch_size, TensorRtMaxBatchSize);
+    CP_MEMBER(tensorrt_workspace_size, TensorRtWorkspaceSize);
   }
 
   // Model path

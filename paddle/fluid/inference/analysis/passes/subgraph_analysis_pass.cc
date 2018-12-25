@@ -14,13 +14,16 @@
 
 #include "paddle/fluid/inference/analysis/passes/subgraph_analysis_pass.h"
 #include <vector>
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/subblock_to_graph_pass.h"
+#include "paddle/fluid/inference/analysis/analyzer_utils.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 using framework::ir::kSubblockGraphAttr;
 using framework::ir::SubblockToGraphPass;
+using framework::ir::kParamScopeAttr;
 
 void SubgraphAnalysisPass::RunImpl(Argument* argument) {
   if (!argument->main_graph().Has(kSubblockGraphAttr)) {
@@ -40,6 +43,12 @@ void SubgraphAnalysisPass::RunImpl(Argument* argument) {
     arg.SetScopeNotOwned(argument->scope_ptr());
     arg.SetMainProgramNotOwned(
         const_cast<framework::ProgramDesc*>(&graph->program()));
+    graph->Set(
+        kParamScopeAttr,
+        new framework::Scope*(
+            argument->main_graph().Get<framework::Scope*>(kParamScopeAttr)));
+    // Call the analyzer
+    RunAnalysis(&arg, true /*sub_block_mode*/);
   }
 }
 

@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/inference/analysis/analyzer_utils.h"
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
 #include "paddle/fluid/inference/analysis/passes/passes.h"
 
@@ -35,17 +36,7 @@ void Analyzer::Run(Argument *argument) {
 }
 
 void Analyzer::RunIrAnalysis(Argument *argument) {
-  // All the AnalysisPass to run.
-  std::vector<std::string> passes({
-      "ir_graph_build_pass", "ir_analysis_pass",
-      "ir_params_sync_among_devices_pass",
-  });
-
-  for (const auto &pass : passes) {
-    VLOG(2) << "Run pass " << pass;
-    auto *the_pass = PassRegistry::Global().Retreive(pass);
-    the_pass->Run(argument);
-  }
+  RunAnalysis(argument, sub_graph_mode_);
 }
 
 void Analyzer::InitTensorRTAttrs(Argument *argument) {

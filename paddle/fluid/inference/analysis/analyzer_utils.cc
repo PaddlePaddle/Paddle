@@ -12,25 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/analysis/analyzer_utils.h"
+#include <string>
+#include <vector>
 #include "paddle/fluid/inference/analysis/passes/passes.h"
-#include "paddle/fluid/inference/analysis/passes/ir_analysis_pass.h"
-#include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
-#include "paddle/fluid/inference/analysis/passes/ir_params_sync_among_devices_pass.h"
-#include "paddle/fluid/inference/analysis/passes/subgraph_analysis_pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
-PassRegistry::PassRegistry() {
-  passes_.emplace("ir_graph_build_pass",
-                  std::unique_ptr<AnalysisPass>(new IrGraphBuildPass));
-  passes_.emplace("ir_analysis_pass",
-                  std::unique_ptr<AnalysisPass>(new IrAnalysisPass));
-  passes_.emplace("subgraph_analysis_pass",
-                  std::unique_ptr<AnalysisPass>(new SubgraphAnalysisPass));
-  passes_.emplace(
+
+void RunAnalysis(Argument *argument, bool sub_graph_mode) {
+  // All the AnalysisPass to run.
+  std::vector<std::string> passes({
+      "ir_graph_build_pass", "ir_analysis_pass", "subgraph_analysis_pass",
       "ir_params_sync_among_devices_pass",
-      std::unique_ptr<AnalysisPass>(new IrParamsSyncAmongDevicesPass));
+  });
+
+  for (const auto &pass : passes) {
+    VLOG(2) << "Run pass " << pass;
+    auto *the_pass = PassRegistry::Global().Retreive(pass);
+    // If not compatible with sub-graph analysis, doesn't run this pass.
+    if (sub_graph_mode && !the_pass->support_subgraph()) continue;
+    the_pass->Run(argument);
+  }
 }
 
 }  // namespace analysis
