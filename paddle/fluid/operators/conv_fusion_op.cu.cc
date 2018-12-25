@@ -161,9 +161,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(workspace_size_in_bytes, workspace_size_limit,
                       "workspace_size to be allocated exceeds the limit");
 
-    if ((activation == "identity") &&
-        (algo != CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM) &&
-        (!residual)) {
+    if ((activation == "identity") && (!residual)) {
       // Only the CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM algo is
       // enabled with CUDNN_ACTIVATION_IDENTITY in cuDNN lib.
       // But test in some case, the speed is slower, change to use
