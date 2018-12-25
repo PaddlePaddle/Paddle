@@ -280,6 +280,11 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
 
   while (true) {
+#ifdef WITH_GPERFTOOLS
+    if (gProfileStarted) {
+      ProfilerFlush();
+    }
+#endif
     if (rpc_service_->IsExit()) {
       VLOG(4) << "get exit!rpc_processor break!";
       break;
@@ -490,14 +495,8 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 void SignalHandler::StopAndExit(int signal_num) {
-// Do not use VLOG here for the device for printing maybe already released.
-// exit will release interal allocated resoureces.
-#ifdef WITH_GPERFTOOLS
-  if (gProfileStarted) {
-    ProfilerFlush();
-    ProfilerStop();
-  }
-#endif
+  // Do not use VLOG here for the device for printing maybe already released.
+  // exit will release interal allocated resoureces.
   exit(0);
 }
 
