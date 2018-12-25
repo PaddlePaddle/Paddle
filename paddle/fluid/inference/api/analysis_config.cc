@@ -110,7 +110,7 @@ void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size,
   tensorrt_workspace_size_ = workspace_size;
   tensorrt_max_batchsize_ = max_batch_size;
   // Append after the infer_clean pass.
-  pass_builder()->InsertPass(1, "tensorrt_subgraph_pass");
+  pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
 }
 
 void contrib::AnalysisConfig::SetModelBuffer(const char *prog_buffer,
