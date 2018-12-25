@@ -46,19 +46,19 @@ inline proto::VarType::Type ToVarType(int type) {
 template <typename Visitor>
 inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
   switch (var.Type()) {
-    case proto::VarType_Type_LOD_TENSOR:
+    case proto::VarType::LOD_TENSOR:
       visitor(var.Get<LoDTensor>());
       return;
-    case proto::VarType_Type_LOD_RANK_TABLE:
+    case proto::VarType::LOD_RANK_TABLE:
       visitor(var.Get<LoDRankTable>());
       return;
-    case proto::VarType_Type_LOD_TENSOR_ARRAY:
+    case proto::VarType::LOD_TENSOR_ARRAY:
       visitor(var.Get<LoDTensorArray>());
       return;
-    case proto::VarType_Type_SELECTED_ROWS:
+    case proto::VarType::SELECTED_ROWS:
       visitor(var.Get<SelectedRows>());
       return;
-    case proto::VarType_Type_READER:
+    case proto::VarType::READER:
       visitor(var.Get<ReaderHolder>());
       return;
     default:

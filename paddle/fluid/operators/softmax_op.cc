@@ -50,7 +50,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
 #ifdef PADDLE_WITH_CUDA
-    if (framework::CanCUDNNBeUsed(ctx)) {
+    if (platform::CanCUDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
@@ -157,7 +157,7 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
 #ifdef PADDLE_WITH_CUDA
-    if (framework::CanCUDNNBeUsed(ctx)) {
+    if (platform::CanCUDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
