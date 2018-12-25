@@ -167,6 +167,7 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
     if (UNLIKELY(num_bytes == 0)) {
       return nullptr;
     }
+    /*
     auto buf = paddle::memory::Alloc(place_, num_bytes,
                                      memory::Allocator::kScratchpad);
     void* retv = buf->ptr();
@@ -175,12 +176,17 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
       allocations_.emplace(retv, std::move(buf));
     }
     return retv;
+    */
+    PADDLE_THROW("Cannot use eigen allocate");
   }
 
   void deallocate(void* buffer) const override {
     if (LIKELY(buffer)) {
+      /*
       std::lock_guard<std::mutex> lock(mtx_);
       allocations_.erase(buffer);
+      */
+      PADDLE_THROW("Cannot use eigen deallocate");
     }
   }
 
