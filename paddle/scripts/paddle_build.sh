@@ -92,6 +92,7 @@ function cmake_gen() {
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.5/include/python3.5m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/libpython3.5m.dylib"
                 WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+                pip3.5 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -104,6 +105,7 @@ function cmake_gen() {
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib"
                 WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+                pip3.6 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -116,6 +118,7 @@ function cmake_gen() {
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib"
                 WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+                pip3.7 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
