@@ -27,6 +27,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
+#ifdef WITH_GPERFTOOLS
+#include "gperftools/profiler.h"
+#endif
 
 DEFINE_int32(paddle_num_threads, 1,
              "Number of threads for each paddle instance.");
@@ -36,6 +39,44 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag p2p_init_flag;
+std::once_flag gperf_init_flag;
+
+static bool gprofile_started = false;
+bool IsGProfileStarted() { return gprofile_started; }
+
+void StartGPerf(std::string profile_path) {
+  std::call_once(gperf_init_flag, [&]() {
+#ifdef WITH_GPERFTOOLS
+    VLOG(1) << "ProfilerStart to " << profile_path;
+    ProfilerStart(profile_path.c_str());
+    gprofile_started = true;
+#else
+    LOG(WARNING) << "Paddle is not compiled with gperftools. "
+                    "FLAGS_pe_profile_fname will be ignored";
+#endif
+  });
+}
+
+void StopGPerf() {
+#ifdef WITH_GPERFTOOLS
+  if (gprofile_started) {
+    ProfilerStop();
+    gprofile_started = false;
+  }
+#else
+  LOG(WARNING) << "Paddle is not compiled with gperftools.";
+#endif
+}
+
+void FlushGPerf() {
+#ifdef WITH_GPERFTOOLS
+  if (gprofile_started) {
+    ProfilerFlush();
+  }
+#else
+  LOG(WARNING) << "Paddle is not compiled with gperftools.";
+#endif
+}
 
 void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {

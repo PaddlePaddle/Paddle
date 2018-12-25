@@ -22,6 +22,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+bool IsGProfileStarted();
+void StartGPerf(std::string profile_path);
+void StopGPerf();
+void FlushGPerf();
+
 void InitGflags(std::vector<std::string> argv);
 
 void InitGLOG(const std::string &prog_name);
