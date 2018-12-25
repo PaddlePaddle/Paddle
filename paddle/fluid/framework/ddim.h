@@ -60,6 +60,8 @@ class DDim {
 
   DDim() : rank_(1) { dim_[0] = 0; }
 
+  DDim(const DDim& ddim) { this->CopyFrom(ddim); }
+
   DDim(const int* d, int n) : rank_(n) {
     dynamic_dim_assign(d, dim_.GetMutable(), n);
   }
@@ -136,6 +138,12 @@ class DDim {
     static_assert(D >= 0 && D <= kMaxRank, "Invalid rank");
     auto* p = static_cast<const void*>(&dim_);
     return *reinterpret_cast<const Dim<D>*>(p);
+  }
+
+  inline void CopyFrom(const DDim& ddim) {
+    rank_ = ddim.rank_;
+    PADDLE_VISIT_DDIM(rank_,
+                      (void)(UnsafeCast<kRank>() = ddim.UnsafeCast<kRank>()));
   }
 
   friend DDim slice_ddim(const DDim& dim, int begin, int end);
