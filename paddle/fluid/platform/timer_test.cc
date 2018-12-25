@@ -13,22 +13,40 @@
 // limitations under the License.
 #include "paddle/fluid/platform/timer.h"
 
-TEST(TimerUsage, Print) {
+TEST(Timer, Reset) {
   platform::Timer timeline;
   timeline.Start();
   sleep(3);
   timeline.Pause();
-  std::cout << paddle::string::Sprintf("passed time %f", timeline.ElapsedSec())
-            << std::endl;
   timeline.Reset();
   std::cout << paddle::string::Sprintf("after reset %fs", timeline.ElapsedSec())
             << std::endl;
+}
 
-  std::cout << paddle::string::Sprintf("after reset %fus", timeline.ElapsedUS())
+TEST(Timer, Start) {
+  platform::Timer timeline;
+  timeline.Start();
+  sleep(3);
+  timeline.Pause();
+  std::cout << paddle::string::Sprintf("after pause %fs", timeline.ElapsedSec())
             << std::endl;
+}
 
-  std::cout << paddle::string::Sprintf("after reset %fms", timeline.ElapsedMS())
+TEST(Timer, Pause) {
+  platform::Timer timeline;
+  timeline.Start();
+  sleep(3);
+  timeline.Pause();
+  std::cout << paddle::string::Sprintf("after pause %fus", timeline.ElapsedUS())
             << std::endl;
-  std::cout << paddle::string::Sprintf("count is %d", timeline.Count())
+}
+
+TEST(Timer, Resume) {
+  platform::Timer timeline;
+  timeline.Start();
+  sleep(3);
+  timeline.Pause();
+  timeline.Resume();
+  std::cout << paddle::string::Sprintf("after pause %fms", timeline.ElapsedMS())
             << std::endl;
 }
