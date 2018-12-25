@@ -85,6 +85,17 @@ TEST(Analyzer_resnet50, compare) { compare(); }
 TEST(Analyzer_resnet50, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 
+// Compare Deterministic result
+TEST(Analyzer_resnet50, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
+}
+
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
