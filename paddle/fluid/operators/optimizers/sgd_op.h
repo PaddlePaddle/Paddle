@@ -72,6 +72,10 @@ class SGDOpKernel : public framework::OpKernel<T> {
         auto *out_data = param_out->data<T>();
         auto *lr = learning_rate->data<T>();
         for (size_t i = 0; i < grad_rows.size(); i++) {
+          if (grad_rows[i] < grad_height) {
+            VLOG(1) << "grad_rows[i] < grad_height error " << grad_rows[i]
+                    << ":" << grad_height;
+          }
           PADDLE_ENFORCE(grad_rows[i] < grad_height,
                          "Input rows index should less than height");
           for (size_t j = 0; j < grad_row_numel; j++) {

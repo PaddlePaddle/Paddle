@@ -15,6 +15,7 @@ limitations under the License. */
 #include <limits>
 #include <string>
 
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/grpc_server.h"
 
@@ -523,7 +524,7 @@ void AsyncGRPCServer::HandleRequest(
 
     switch (base->Status()) {
       case PROCESS: {
-        base->Process();
+        framework::Async([base]() { base->Process(); });
         break;
       }
       case FINISH: {
