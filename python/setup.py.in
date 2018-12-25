@@ -109,6 +109,10 @@ packages=['paddle',
           'paddle.fluid.contrib',
           'paddle.fluid.contrib.decoder',
           'paddle.fluid.contrib.quantize',
+          'paddle.fluid.contrib.slim',
+          'paddle.fluid.contrib.slim.core',
+          'paddle.fluid.contrib.slim.graph',
+          'paddle.fluid.contrib.slim.prune',
           'paddle.fluid.contrib.utils',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details']
@@ -140,8 +144,6 @@ if '${WITH_FLUID_ONLY}'== 'OFF':
                    '${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
 
 package_data={'paddle.fluid': ['core' + (ext_name if os.name != 'nt' else '.pyd')]}
-if os.name == 'nt':
-    package_data['paddle.fluid'] += ['openblas' + ext_name]
 
 if '${WITH_FLUID_ONLY}'== 'OFF':
     package_data['paddle.v2.master']=['libpaddle_master' + ext_name]
@@ -166,11 +168,17 @@ package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + 
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 
 if '${WITH_MKL}' == 'ON':
-    shutil.copy('${MKLML_LIB}', libs_path)
-    shutil.copy('${MKLML_IOMP_LIB}', libs_path)
-    package_data['paddle.libs']+=['libmklml_intel' + ext_name,'libiomp5' + ext_name]
+    shutil.copy('${MKLML_SHARED_LIB}', libs_path)
+    shutil.copy('${MKLML_SHARED_IOMP_LIB}', libs_path)
+    package_data['paddle.libs']+=[('libmklml_intel' if os.name != 'nt' else 'mklml') + ext_name, ('libiomp5' if os.name != 'nt' else 'libiomp5md') + ext_name]
+else:
+    if os.name == 'nt':
+        # copy the openblas.dll
+        shutil.copy(os.path.dirname('${CBLAS_LIBRARIES}') + '/openblas' + ext_name, libs_path)
+        package_data['paddle.libs'] += ['openblas' + ext_name]
+
 if '${WITH_MKLDNN}' == 'ON':
-    if '${CMAKE_BUILD_TYPE}' == 'Release':
+    if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
         # only change rpath in Release mode.
         # TODO(typhoonzero): use install_name_tool to patch mkl libs once
         # we can support mkl on mac.
@@ -181,7 +189,7 @@ if '${WITH_MKLDNN}' == 'ON':
         command = "patchelf --set-rpath '$ORIGIN/' ${MKLDNN_SHARED_LIB}"
         if os.system(command) != 0:
             raise Exception("patch libmkldnn.so failed, command: %s" % command)
-    package_data['paddle.libs']+=['libmkldnn.so.0']
+    package_data['paddle.libs']+=['libmkldnn.so.0' if os.name != 'nt' else ('mkldnn' + ext_name)]
     shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
 if '${WITH_NGRAPH}' == 'ON':
     # only change rpath in Release mode,
