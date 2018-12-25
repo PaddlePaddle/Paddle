@@ -9341,8 +9341,8 @@ def shuffle_channel(x, group=1, name=None):
     with multiple group convolutional layers.
     
     Args: 
-        x: The input tensor variable..
-        group: The num of group
+        x(Variable): The input tensor variable.
+        group(Integer): The num of group.
 
     Returns:
         Variable: channels shuffled tensor variable.
@@ -9358,8 +9358,7 @@ def shuffle_channel(x, group=1, name=None):
     """
     helper = LayerHelper("shuffle_channel", **locals())
 
-    out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('X'))
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     if not isinstance(group, int):
         raise TypeError("group must be int type")
