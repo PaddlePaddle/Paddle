@@ -78,12 +78,12 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
   VarHandlePtr h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
-  framework::AsyncIO([var_name_val, p_scope, p_ctx, s, method, h, this] {
-    auto* var = p_scope->FindVar(var_name_val);
+  // serialize the var
+  auto* var = p_scope->FindVar(var_name_val);
+  ::grpc::ByteBuffer req;
+  SerializeToByteBuffer(var_name_val, var, *p_ctx, &req, "", trainer_id_);
 
-    ::grpc::ByteBuffer req;
-    SerializeToByteBuffer(var_name_val, var, *p_ctx, &req, "", trainer_id_);
-
+  framework::AsyncIO([var_name_val, req, p_ctx, s, method, h, this] {
     VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
     // stub context
