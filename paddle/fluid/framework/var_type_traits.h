@@ -17,7 +17,7 @@
 #include <map>
 #include <string>
 #include <tuple>
-#include <typeinfo>
+#include <typeindex>
 #include <vector>
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -136,8 +136,6 @@ struct VarTypeRegistryImpl {
 
 // Users should add other variable types below.
 // Paddle would generate unique Ids for each registered variable types.
-class Scope;
-
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
     Tensor, LoDTensor, SelectedRows, std::vector<Scope *>, LoDRankTable,
     LoDTensorArray, platform::PlaceList, ReaderHolder, std::string, Scope *,
@@ -171,6 +169,8 @@ REG_PROTO_VAR_TYPE_TRAIT(LoDRankTable, proto::VarType::LOD_RANK_TABLE);
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensorArray, proto::VarType::LOD_TENSOR_ARRAY);
 REG_PROTO_VAR_TYPE_TRAIT(platform::PlaceList, proto::VarType::PLACE_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(ReaderHolder, proto::VarType::READER);
+REG_PROTO_VAR_TYPE_TRAIT(int, proto::VarType::INT32);
+REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
 
 /** End of variable type registration */
 

@@ -67,7 +67,6 @@ class Variable {
 
  private:
   struct Placeholder {
-    explicit Placeholder(int type) : type_(type) {}
     virtual ~Placeholder() = default;
 
     inline int Type() const { return type_; }
@@ -75,6 +74,11 @@ class Variable {
     inline void* Ptr() { return ptr_; }
 
    protected:
+    inline void Init(void* p, int type) {
+      ptr_ = p;
+      type_ = type;
+    }
+
     void* ptr_;
     int type_;
   };
@@ -86,9 +90,7 @@ class Variable {
     static_assert(
         IsRegisteredVarType<T>(),
         "Not registered type. Please register T inside var_type_traits.h");
-    PlaceholderImpl() : Placeholder(VarTypeTrait<T>::kId) {
-      this->ptr_ = &obj_;
-    }
+    PlaceholderImpl() { this->Init(&obj_, VarTypeTrait<T>::kId); }
 
    private:
     T obj_;

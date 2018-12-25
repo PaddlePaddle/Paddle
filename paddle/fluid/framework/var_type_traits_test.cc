@@ -88,6 +88,23 @@ TEST(var_type_traits, check_proto_type_id) {
   ASSERT_TRUE(CheckVarId<LoDTensorArray>(proto::VarType::LOD_TENSOR_ARRAY));
   ASSERT_TRUE(CheckVarId<platform::PlaceList>(proto::VarType::PLACE_LIST));
   ASSERT_TRUE(CheckVarId<ReaderHolder>(proto::VarType::READER));
+  ASSERT_TRUE(CheckVarId<int>(proto::VarType::INT32));
+  ASSERT_TRUE(CheckVarId<float>(proto::VarType::FP32));
+
+  ASSERT_EQ(proto::VarType_Type_LOD_TENSOR, proto::VarType::LOD_TENSOR);
+  ASSERT_EQ(proto::VarType_Type_SELECTED_ROWS, proto::VarType::SELECTED_ROWS);
+  ASSERT_EQ(proto::VarType_Type_STEP_SCOPES, proto::VarType::STEP_SCOPES);
+  ASSERT_EQ(proto::VarType_Type_LOD_RANK_TABLE, proto::VarType::LOD_RANK_TABLE);
+  ASSERT_EQ(proto::VarType_Type_LOD_TENSOR_ARRAY,
+            proto::VarType::LOD_TENSOR_ARRAY);
+  ASSERT_EQ(proto::VarType_Type_PLACE_LIST, proto::VarType::PLACE_LIST);
+  ASSERT_EQ(proto::VarType_Type_READER, proto::VarType::READER);
+  ASSERT_EQ(proto::VarType_Type_FEED_MINIBATCH, proto::VarType::FEED_MINIBATCH);
+  ASSERT_EQ(proto::VarType_Type_FETCH_LIST, proto::VarType::FETCH_LIST);
+  ASSERT_EQ(proto::VarType_Type_RAW, proto::VarType::RAW);
+  ASSERT_EQ(proto::VarType_Type_TUPLE, proto::VarType::TUPLE);
+  ASSERT_EQ(proto::VarType_Type_INT32, proto::VarType::INT32);
+  ASSERT_EQ(proto::VarType_Type_FP32, proto::VarType::FP32);
 }
 
 TEST(var_type_traits, test_registry) {
