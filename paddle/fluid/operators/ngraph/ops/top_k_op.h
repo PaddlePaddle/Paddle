@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/*Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,26 +23,26 @@ namespace paddle {
 namespace operators {
 namespace ngraphs {
 
-template <typename T>
-static void BuildBinaryNode(
+void BuildTopKNode(
     const std::shared_ptr<paddle::framework::OperatorBase>& op,
     std::shared_ptr<
         std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
         ngb_node_map) {
-  auto x = paddle::platform::GetInputNode(op, "X", ngb_node_map);
-  auto y = paddle::platform::GetInputNode(op, "Y", ngb_node_map);
-  auto out = std::make_shared<T>(x, y);
-  paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
-}
-
-template <typename T>
-static void BuildUnaryNode(
-    const std::shared_ptr<paddle::framework::OperatorBase>& op,
-    std::shared_ptr<
-        std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
-        ngb_node_map) {
+  auto op_attrs = paddle::framework::AttrReader(op->Attrs());
+  int k = op_attrs.Get<int>("k");
   auto input = paddle::platform::GetInputNode(op, "X", ngb_node_map);
-  auto out = std::make_shared<T>(input);
+  auto top_k = std::make_shared<ngraph::op::TopK>(
+      input, input->get_shape().size() - 1, ngraph::element::i64, k);
+  std::shared_ptr<ngraph::Node> indices =
+      std::make_shared<ngraph::op::GetOutputElement>(top_k, 0);
+  std::shared_ptr<ngraph::Node> out =
+      std::make_shared<ngraph::op::GetOutputElement>(top_k, 1);
+  auto dummy_out = paddle::platform::GetOutputNode(op, "Out", ngb_node_map);
+  if (dummy_out && dummy_out->get_element_type() != out->get_element_type()) {
+    out = std::make_shared<ngraph::op::Convert>(out,
+                                                dummy_out->get_element_type());
+  }
+  paddle::platform::SetOutputNode(op, "Indices", indices, ngb_node_map);
   paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
 }
 }  // namespace ngraphs
