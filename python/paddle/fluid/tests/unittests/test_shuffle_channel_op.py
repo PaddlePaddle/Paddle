@@ -25,11 +25,11 @@ import paddle.fluid.core as core
 class TestShuffleChannelOp(OpTest):
     def setUp(self):
         self.op_type = "shuffle_channel"
-        self.batch_size = 1
-        self.input_channels = 4
-        self.layer_h = 2
-        self.layer_w = 2
-        self.group = 2
+        self.batch_size = 10
+        self.input_channels = 16
+        self.layer_h = 4
+        self.layer_w = 4
+        self.group = 4
         self.x = np.random.random(
             (self.batch_size, self.input_channels, self.layer_h,
              self.layer_w)).astype('float32')
