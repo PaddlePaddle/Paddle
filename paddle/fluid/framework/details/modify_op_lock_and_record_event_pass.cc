@@ -45,8 +45,8 @@ std::unique_ptr<ir::Graph> ModifyOpLockAndRecordEventPass::ApplyImpl(
         IsLockAndRecordEventFreeComputationOpHandle(compute_op, graph_view);
     compute_op->SetLockAndRecordEventFree(is_lock_and_record_event_free);
     if (is_lock_and_record_event_free) {
-      VLOG(100) << "Set is_lock_and_record_event_free be true in op "
-                << compute_op->DebugString();
+      VLOG(10) << "Set is_lock_and_record_event_free be true in op "
+               << compute_op->DebugString();
     }
   }
   return ir_graph;

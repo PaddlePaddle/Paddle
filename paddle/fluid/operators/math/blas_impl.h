@@ -85,6 +85,11 @@ struct CBlas<float> {
   }
 
   template <typename... ARGS>
+  static float ASUM(ARGS... args) {
+    return platform::dynload::cblas_sasum(args...);
+  }
+
+  template <typename... ARGS>
   static void GEMM_BATCH(ARGS... args) {
     platform::dynload::cblas_sgemm_batch(args...);
   }
@@ -112,6 +117,11 @@ struct CBlas<float> {
   template <typename... ARGS>
   static void VPOW(ARGS... args) {
     platform::dynload::vsPowx(args...);
+  }
+
+  template <typename... ARGS>
+  static void VINV(ARGS... args) {
+    platform::dynload::vsInv(args...);
   }
 };
 
@@ -175,6 +185,11 @@ struct CBlas<double> {
   }
 
   template <typename... ARGS>
+  static double ASUM(ARGS... args) {
+    return platform::dynload::cblas_dasum(args...);
+  }
+
+  template <typename... ARGS>
   static void GEMM_BATCH(ARGS... args) {
     platform::dynload::cblas_dgemm_batch(args...);
   }
@@ -202,6 +217,11 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void VPOW(ARGS... args) {
     platform::dynload::vdPowx(args...);
+  }
+
+  template <typename... ARGS>
+  static void VINV(ARGS... args) {
+    platform::dynload::vdInv(args...);
   }
 };
 
@@ -268,6 +288,7 @@ struct CBlas<platform::float16> {
   static void VPOW(...) { PADDLE_THROW("float16 VPOW not supported on CPU"); }
   static void DOT(...) { PADDLE_THROW("float16 DOT not supported on CPU"); };
   static void SCAL(...) { PADDLE_THROW("float16 SCAL not supported on CPU"); };
+  static void ASUM(...) { PADDLE_THROW("float16 ASUM not supported on CPU"); };
 #ifdef PADDLE_WITH_MKLML
   static void GEMM_BATCH(...) {
     PADDLE_THROW("float16 GEMM_BATCH not supported on CPU");
@@ -478,6 +499,21 @@ void Blas<platform::CPUDeviceContext>::SCAL(int n, const T a, T *x) const {
 
 template <>
 template <typename T>
+T Blas<platform::CPUDeviceContext>::ASUM(int n, T *x, int inc) const {
+  auto sum = static_cast<T>(0.0);
+#ifdef PADDLE_WITH_MKLML
+  sum = CBlas<T>::ASUM(n, x, inc);
+#else
+  // TODO(jczaja): check if openblas does provide cblas_sasum/cblas_dasum
+  for (int c = 0; c < n; ++c) {
+    sum += x[c];
+  }
+#endif
+  return sum;
+}
+
+template <>
+template <typename T>
 void Blas<platform::CPUDeviceContext>::GEMV(bool trans_a, int M, int N, T alpha,
                                             const T *A, const T *B, T beta,
                                             T *C) const {
@@ -576,6 +612,17 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
         dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
         dim_a.stride_, dim_b.stride_);
   }
+}
+template <typename DeviceContext>
+template <typename T>
+void Blas<DeviceContext>::VINV(int n, const T *a, T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VINV(n, a, y);
+#else
+  for (int i = 0; i < n; ++i) {
+    y[i] = 1.0 / a[i];
+  }
+#endif
 }
 
 }  // namespace math

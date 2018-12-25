@@ -50,7 +50,7 @@ bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
         size_to_write = length - total_written;
       }
       // This log is useful to see how long a internal block size is of rpc.
-      VLOG(70) << "copy " << size_to_write << " data to CUDAPlace";
+      VLOG(7) << "copy " << size_to_write << " data to CUDAPlace";
       memory::Copy(boost::get<platform::CUDAPlace>(place),
                    reinterpret_cast<void*>(p), cpu, data, size_to_write,
                    gpu_dev_ctx.stream());
@@ -79,7 +79,7 @@ bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
     // TODO(gongwb): can we avoid copy?
     platform::CPUPlace cpu;
     // This log is useful to see how long a internal block size is of rpc.
-    VLOG(70) << "copy " << size_to_write << " data to CPUPlace";
+    VLOG(7) << "copy " << size_to_write << " data to CPUPlace";
     memory::Copy(cpu, reinterpret_cast<void*>(p), cpu, data, size_to_write);
 
     p += size_to_write;
@@ -114,11 +114,11 @@ bool VariableResponse::CopyLodTensorData(
   tensor->set_lod(lod);
 
   void* tensor_data =
-      tensor->mutable_data(ctx.GetPlace(), ToTypeIndex(meta_.data_type()));
+      tensor->mutable_data(ctx.GetPlace(), ToVarType(meta_.data_type()));
 
   VLOG(6) << "Tensor.memory_size = " << tensor->memory_size()
           << ", Buffer Size = " << length;
-  PADDLE_ENFORCE_EQ(tensor->memory_size(), length);
+  PADDLE_ENFORCE_EQ(tensor->memory_size(), static_cast<unsigned int>(length));
   return ReadRaw(input, ctx, tensor->place(), tensor_data, length);
 }
 
@@ -139,13 +139,13 @@ bool VariableResponse::CopySelectRowsTensorData(
   slr->set_height(meta_.slr_height());
   auto* tensor = slr->mutable_value();
   tensor->Resize(dims);
-  PADDLE_ENFORCE_EQ(static_cast<size_t>(tensor->numel()),
-                    length / framework::SizeOfType(
-                                 paddle::operators::distributed::ToTypeIndex(
-                                     meta_.data_type())));
+  PADDLE_ENFORCE_EQ(
+      static_cast<size_t>(tensor->numel()),
+      length / framework::SizeOfType(paddle::operators::distributed::ToVarType(
+                   meta_.data_type())));
   void* tensor_data = tensor->mutable_data(
       ctx.GetPlace(),
-      paddle::operators::distributed::ToTypeIndex(meta_.data_type()));
+      paddle::operators::distributed::ToVarType(meta_.data_type()));
 
   if (!ReadRaw(input, ctx, tensor->place(), tensor_data, length)) {
     return false;
@@ -159,8 +159,7 @@ bool VariableResponse::CopySelectRowsData(
     const platform::DeviceContext& ctx, int length) {
   auto* slr = GetVar()->GetMutable<framework::SelectedRows>();
   slr->mutable_rows()->clear();
-  slr->mutable_rows()->resize(length /
-                              framework::SizeOfType(typeid(int64_t)));  // int64
+  slr->mutable_rows()->resize(length / sizeof(int64_t));  // int64
   int64_t* rows_data = slr->mutable_rows()->data();
 
   // copy rows CPU data, GPU data will be copied lazily.
@@ -198,8 +197,8 @@ bool VariableResponse::ProcSerializedField(
 #endif
   }
 
-  VLOG(70) << "ProcSerializedField:" << meta_.varname()
-           << ", type:" << meta_.type() << std::endl;
+  VLOG(7) << "ProcSerializedField:" << meta_.varname()
+          << ", type:" << meta_.type() << std::endl;
   framework::DDim dims = GetDims(meta_.dims());
   if (meta_.type() == sendrecv::LOD_TENSOR) {
     PADDLE_ENFORCE(meta_.lod_size() >= 0, "lod info should be got first!");

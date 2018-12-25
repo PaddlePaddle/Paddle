@@ -38,9 +38,8 @@ void CheckProgram(const ProgramDesc &program) {
     switch (role_id) {
       case _INT(OpRole::kForward):
         if (visit.find(_INT(OpRole::kBackward)) != visit.end()) {
-          LOG(ERROR)
-              << "Cannot add backward operator before forward operator %s."
-              << op->Type();
+          LOG(ERROR) << "Cannot add backward operator before forward operator "
+                     << op->Type();
         }
         break;
       case _INT(OpRole::kBackward):
@@ -90,7 +89,7 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
 
 std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
     const ProgramDesc &program) {
-  VLOG(30) << "block in program:" << program_.Size();
+  VLOG(3) << "block in program:" << program_.Size();
   std::unordered_map<std::string, VarDesc *> all_vars;
   // var nodes for each var name, will have multiple versions in SSA
   std::map<std::string, std::vector<ir::Node *>> var_nodes;
@@ -158,12 +157,15 @@ void Graph::ResolveHazard(
     auto it_old = versions.rbegin();
     ++it_old;
     for (; it_old != versions.rend(); it_new = it_old, ++it_old) {
-      VLOG(30) << "deal with var: " << (*it_new)->Name();
+      VLOG(3) << "deal with var: " << (*it_new)->Name();
       ir::Node *write_op =
           (*it_new)->inputs.empty() ? nullptr : (*it_new)->inputs[0];
       const auto &read_ops = (*it_old)->outputs;
 
-      PADDLE_ENFORCE(write_op, "The write_op should not be empty.");
+      PADDLE_ENFORCE(
+          write_op,
+          string::Sprintf("The write_op of var %s should not be empty.",
+                          (*it_new)->Name()));
 
       // Add write after write dependence
       ir::Node *upstream_op =

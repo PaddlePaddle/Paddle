@@ -108,9 +108,7 @@ class MergeIdsOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(
-            ctx.MultiInput<framework::Tensor>("X").front()->type()),
-        ctx.GetPlace());
+        ctx.MultiInput<framework::Tensor>("X").front()->type(), ctx.GetPlace());
   }
 };
 

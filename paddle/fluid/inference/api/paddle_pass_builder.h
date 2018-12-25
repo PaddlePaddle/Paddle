@@ -98,9 +98,10 @@ class CpuPassStrategy : public PassStrategy {
     passes_.insert(passes_.begin(), "mkldnn_placement_pass");
 
     for (auto &pass :
-         std::vector<std::string>({"depthwise_conv_mkldnn_pass",  //
-                                   "conv_bias_mkldnn_fuse_pass",  //
-                                   "conv_relu_mkldnn_fuse_pass",  //
+         std::vector<std::string>({"depthwise_conv_mkldnn_pass",    //
+                                   "conv_bias_mkldnn_fuse_pass",    //
+                                   "conv3d_bias_mkldnn_fuse_pass",  //
+                                   "conv_relu_mkldnn_fuse_pass",    //
                                    "conv_elementwise_add_mkldnn_fuse_pass"})) {
       passes_.push_back(pass);
     }
@@ -116,12 +117,12 @@ class CpuPassStrategy : public PassStrategy {
 class GpuPassStrategy : public PassStrategy {
  public:
   GpuPassStrategy() : PassStrategy({}) {
-    // TODO(NHZlX) Problem with Data synchronization between GPU and CPU
-    // When running in GPU mode, the parameters are all on GPU. But the
-    // opearations of "conv_bn_fuse_pass" are on CPU.
     passes_.assign({
-        "infer_clean_graph_pass",
-        // "infer_clean_graph_pass", "conv_bn_fuse_pass",
+        "infer_clean_graph_pass",               //
+        "conv_bn_fuse_pass",                    //
+        "conv_elementwise_add_act_fuse_pass",   //
+        "conv_elementwise_add2_act_fuse_pass",  //
+        "conv_elementwise_add_fuse_pass",       //
     });
   }
 

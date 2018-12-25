@@ -62,10 +62,10 @@ class TestBuffered(unittest.TestCase):
         for idx, i in enumerate(b()):
             elapsed_time = time.time() - last_time
             if i == 0:
-                time.sleep(0.3)
+                time.sleep(1)
             else:
                 # read time should be short, meaning already buffered.
-                self.assertLess(elapsed_time, 0.05)
+                self.assertLess(elapsed_time, 0.08)
             last_time = time.time()
 
 

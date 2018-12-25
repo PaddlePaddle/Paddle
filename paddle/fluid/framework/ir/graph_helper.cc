@@ -18,6 +18,7 @@ limitations under the License. */
 #include <fstream>
 #include <iosfwd>
 #include <ostream>
+#include <unordered_map>
 #include <unordered_set>
 
 DEFINE_string(print_sub_graph_dir, "",
@@ -40,9 +41,8 @@ void SortHelper(
     }
   }
 
-  VLOG(30) << "topology sort insert: " << node->Name()
-           << reinterpret_cast<void *>(node) << " input "
-           << node->inputs.size();
+  VLOG(3) << "topology sort insert: " << node->Name()
+          << reinterpret_cast<void *>(node) << " input " << node->inputs.size();
   ret->push_back(node);
 }
 
@@ -111,9 +111,9 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     for (auto &var : n->inputs) {
       for (auto &adj_n : var->inputs) {
         PADDLE_ENFORCE(adj_n->NodeType() == ir::Node::Type::kOperation);
-        VLOG(40) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
-                 << " -> " << n->Name() << reinterpret_cast<void *>(n)
-                 << "  via " << var->Name() << reinterpret_cast<void *>(var);
+        VLOG(4) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
+                << " -> " << n->Name() << reinterpret_cast<void *>(n)
+                << "  via " << var->Name() << reinterpret_cast<void *>(var);
         adj_list[n].insert(adj_n);
       }
     }
@@ -122,7 +122,7 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
 }
 
 size_t GraphNum(const Graph &graph) {
-  std::unordered_set<ir::Node *> nodes = graph.Nodes();
+  std::unordered_set<ir::Node *> nodes(graph.Nodes());
   std::unordered_set<ir::Node *> visited_nodes;
   visited_nodes.reserve(nodes.size());
   std::deque<ir::Node *> q_nodes;

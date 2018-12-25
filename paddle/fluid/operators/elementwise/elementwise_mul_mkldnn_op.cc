@@ -16,39 +16,27 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
+#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
-#include "paddle/fluid/operators/math/jit_kernel.h"
-#include "xbyak.h"
-#include "xbyak_util.h"
+#ifdef PADDLE_WITH_XBYAK
+#include "xbyak/xbyak.h"
+#include "xbyak/xbyak_util.h"
+#endif
 
 namespace paddle {
 namespace operators {
 
 using framework::DataLayout;
 using mkldnn::memory;
-
-static mkldnn::memory::format StringToMKLDNNFormat(std::string& format) {
-  std::transform(format.begin(), format.end(), format.begin(), ::tolower);
-
-  if (!format.compare("nchw")) {
-    return memory::format::nchw;
-  } else if (!format.compare("nchw16c")) {
-    return memory::format::nChw16c;
-  } else if (!format.compare("nchw8c")) {
-    return memory::format::nChw8c;
-  } else if (!format.compare("nhwc")) {
-    return memory::format::nhwc;
-  } else {
-    return memory::format::any;
-  }
-}
+using platform::StringToMKLDNNFormat;
 
 static void UpdateDataFormat(const framework::ExecutionContext& ctx,
                              framework::Tensor* tensor, const char* attribute) {
   if (ctx.op().HasAttr(attribute)) {
     auto format_as_string = ctx.Attr<std::string>(attribute);
-    auto format = StringToMKLDNNFormat(format_as_string);
+    auto format = StringToMKLDNNFormat(&format_as_string);
     if (format != memory::format::any) {
       tensor->set_format(format);
     }
@@ -93,11 +81,10 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
     auto y_dims_untrimmed = y->dims();
     auto x_int_dims = paddle::framework::vectorize2int(x_dims);
 
-    UpdateDataFormat(ctx, (Tensor*)x, "x_data_format");
-    UpdateDataFormat(ctx, (Tensor*)y, "y_data_format");
+    UpdateDataFormat(ctx, const_cast<Tensor*>(x), "x_data_format");
+    UpdateDataFormat(ctx, const_cast<Tensor*>(y), "y_data_format");
 
-    Xbyak::util::Cpu cpu;
-    const bool is_avx512_enabled = cpu.has(Xbyak::util::Cpu::tAVX512F);
+    const bool is_avx512_enabled = platform::MayIUse(platform::avx512f);
     const bool are_dims_divisable = !(x_int_dims[1] % 16);
     const bool is_x_format_correct = x->format() == memory::format::nChw16c;
     const bool is_y_format_correct = y->format() == memory::format::nc;
@@ -123,10 +110,8 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
         constexpr int simd_width = 16;
         int C = c / simd_width;
 
-        const auto& multiply =
-            math::jitkernel::KernelPool::Instance()
-                .template Get<math::jitkernel::EltwiseMulnChw16cNCKernel<T>>(n);
-
+        auto multiply = jit::Get<jit::kNCHW16CMulNC, jit::NCHW16CMulNCTuples<T>,
+                                 platform::CPUPlace>(0);
 #pragma omp parallel for collapse(2)
         for (int ni = 0; ni < n; ni++) {
           for (int ci = 0; ci < C; ci++) {
@@ -137,7 +122,7 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
             auto ptr_z =
                 z_data + ni * C * h * w * simd_width + ci * h * w * simd_width;
 
-            multiply->Compute(ptr_x, ptr_y, ptr_z, h, w);
+            multiply(ptr_x, ptr_y, ptr_z, h, w);
           }
         }
       }
@@ -156,10 +141,10 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
         auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
         const auto& mkldnn_engine = dev_ctx.GetEngine();
         if (!(is_x_nchw || is_x_nc))
-          ReorderInput<T>((Tensor*)x, ctx.GetPlace(), mkldnn_engine,
+          ReorderInput<T>(const_cast<Tensor*>(x), ctx.GetPlace(), mkldnn_engine,
                           x->dims().size() == 4);
         if (!(is_y_nchw || is_y_nc))
-          ReorderInput<T>((Tensor*)y, ctx.GetPlace(), mkldnn_engine,
+          ReorderInput<T>(const_cast<Tensor*>(y), ctx.GetPlace(), mkldnn_engine,
                           y->dims().size() == 4);
       }
 

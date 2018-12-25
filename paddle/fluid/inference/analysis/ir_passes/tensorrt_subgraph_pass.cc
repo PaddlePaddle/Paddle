@@ -63,7 +63,6 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
 void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
                                             Graph *graph) const {
   auto *op_desc = node->Op();
-  static int counter{0};
   auto &subgraph = *Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
 
@@ -178,11 +177,12 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
     output_mapping.push_back(output_name_map[name]);
   }
 
-  *block_desc.Proto()->mutable_vars() =
-      const_cast<framework::ProgramDesc *>(&graph->program())
-          ->Proto()
-          ->blocks(0)
-          .vars();
+  auto *vars = block_desc.Proto()->mutable_vars();
+  for (framework::ir::Node *node : graph->Nodes()) {
+    if (node->IsVar() && node->Var()) {
+      *vars->Add() = *node->Var()->Proto();
+    }
+  }
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
                  "the block has no var-desc");
   PADDLE_ENFORCE(!output_mapping.empty());
@@ -191,8 +191,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
           block_desc.Proto()->SerializeAsString());
   SetAttr(op_desc->Proto(), "max_batch_size", Get<int>("max_batch_size"));
   SetAttr(op_desc->Proto(), "workspace_size", Get<int>("workspace_size"));
-  SetAttr(op_desc->Proto(), "engine_uniq_key",
-          "trt-" + std::to_string(counter++));
   SetAttr(op_desc->Proto(), "parameters", ExtractParameters(graph->Nodes()));
   SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
 }

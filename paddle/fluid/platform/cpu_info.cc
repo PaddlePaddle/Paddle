@@ -22,7 +22,6 @@ limitations under the License. */
 #ifdef __APPLE__
 #include <sys/sysctl.h>
 #include <sys/types.h>
-
 #elif defined(_WIN32)
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
 #include <windows.h>
@@ -123,7 +122,6 @@ size_t CUDAPinnedMaxChunkSize() {
   return CUDAPinnedMaxAllocSize() / 256;
 }
 
-namespace jit {
 #ifdef PADDLE_WITH_XBYAK
 static Xbyak::util::Cpu cpu;
 bool MayIUse(const cpu_isa_t cpu_isa) {
@@ -165,6 +163,5 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
 }
 #endif
 
-}  // namespace jit
 }  // namespace platform
 }  // namespace paddle

@@ -120,6 +120,7 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
                       "Dimensions of Input(X) and Mask must be the same.");
 
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));
   }
 };
 

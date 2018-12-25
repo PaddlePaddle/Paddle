@@ -206,7 +206,7 @@ void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
   PADDLE_ENFORCE(value->IsInitialized(),
                  "The value tensor should be initialized.");
   if (ids.numel() == 0) {
-    VLOG(30) << "keys is empty, please check data!";
+    VLOG(3) << "keys is empty, please check data!";
   } else {
     int64_t value_width = value_->numel() / value_->dims()[0];
     PADDLE_ENFORCE_EQ(value_width, value->numel() / value->dims()[0],
@@ -218,11 +218,11 @@ void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
       if (index < 0) {
         VLOG(5) << "id " << id << " not in the table, return 0";
         framework::VisitDataType(
-            framework::ToDataType(value_->type()),
+            value_->type(),
             TensorFillVisitor(value, i * value_width, value_width, 0.0));
       } else {
         framework::VisitDataType(
-            framework::ToDataType(value_->type()),
+            value_->type(),
             TensorCopyVisitor(value, i * value_width, *value_.get(),
                               index * value_width, value_width));
       }
