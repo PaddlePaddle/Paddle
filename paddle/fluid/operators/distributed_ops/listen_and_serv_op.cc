@@ -271,7 +271,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
 
   while (true) {
-    platform::FlushGPerf();
+    framework::FlushGPerf();
     if (rpc_service_->IsExit()) {
       VLOG(4) << "get exit!rpc_processor break!";
       break;
@@ -475,8 +475,7 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 void SignalHandler::StopAndExit(int signal_num) {
-  platform::FlushGPerf();
-  platform::StopGPerf();
+  framework::StopGPerf();
   // Do not use VLOG here for the device for printing maybe already released.
   // exit will release interal allocated resoureces.
   exit(0);
