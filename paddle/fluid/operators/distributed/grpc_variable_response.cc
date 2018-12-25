@@ -20,6 +20,7 @@
 #endif
 
 #include "paddle/fluid/operators/distributed/grpc_variable_response.h"
+#include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -290,6 +291,7 @@ int GRPCVariableResponse::Parse(Source* source) {
               platform::EventSortingKey::kDefault,
               string::Sprintf("%s_%lld", FLAGS_rpc_server_profile_path,
                               listener_id));
+          framework::StopGPerf();
         }
         break;
       }

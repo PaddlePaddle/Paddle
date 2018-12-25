@@ -57,21 +57,24 @@ void StartGPerf(std::string profile_path) {
   });
 }
 
-void StopGPerf() {
+void FlushGPerf() {
 #ifdef WITH_GPERFTOOLS
+  VLOG(1) << "FlushGPerf gprofile_started" << gprofile_started;
   if (gprofile_started) {
-    ProfilerStop();
-    gprofile_started = false;
+    ProfilerFlush();
   }
 #else
   LOG(WARNING) << "Paddle is not compiled with gperftools.";
 #endif
 }
 
-void FlushGPerf() {
+void StopGPerf() {
 #ifdef WITH_GPERFTOOLS
+  VLOG(1) << "StopGPerf gprofile_started" << gprofile_started;
   if (gprofile_started) {
-    ProfilerFlush();
+    FlushGPerf();
+    ProfilerStop();
+    gprofile_started = false;
   }
 #else
   LOG(WARNING) << "Paddle is not compiled with gperftools.";
