@@ -47,7 +47,7 @@ struct DataRecord {
       for (size_t j = 0; j < data.query_data_all.size(); j++) {
         // calculate lod
         data.lod1.push_back(data.lod1.back() + data.query_data_all[j].size());
-        data.lod2.push_back(data.lod2.back() + data.query_data_all[j].size());
+        data.lod2.push_back(data.lod2.back() + data.title_data_all[j].size());
       }
     }
     batch_iter += batch_size;
