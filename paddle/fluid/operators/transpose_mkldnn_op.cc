@@ -29,10 +29,6 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
-    const bool is_test = ctx.Attr<bool>("is_test");
-    PADDLE_ENFORCE(
-        is_test == true,
-        "TransposeMKLDNN works only for inference!. Set is_test = True");
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
@@ -68,6 +64,57 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
+    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
+                   "It must use CPUPlace.");
+    auto* out_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    if (!x_grad) return;
+
+    auto& dev_ctx =
+        ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
+    const auto& mkldnn_engine = dev_ctx.GetEngine();
+    std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
+    std::vector<int> reversed_axis(axis);
+    int ndims = axis.size();
+    if (ndims == 1) {
+      x_grad->ShareDataWith(*out_grad);
+      return;
+    }
+
+    for (size_t i = 0; i < axis.size(); i++) {
+      reversed_axis[axis[i]] = i;
+    }
+
+    const T* out_grad_data = out_grad->data<T>();
+    x_grad->mutable_data<T>(ctx.GetPlace());
+
+    std::vector<int> nchw_tz =
+        paddle::framework::vectorize2int(out_grad->dims());
+
+    const std::string key = platform::TransposeMKLDNNHandler::GetHash(
+        nchw_tz, axis, ctx.op().Output(framework::GradVarName("X")));
+
+    platform::TransposeMKLDNNHandler handler(nchw_tz, reversed_axis, dev_ctx,
+                                             mkldnn_engine, key);
+
+    auto transpose_src_memory_p = handler.AcquireSrcMemory(
+        out_grad->format(), platform::to_void_cast<T>(out_grad_data));
+    auto transpose_dst_memory_p =
+        handler.AcquireDstMemory(x_grad, ctx.GetPlace());
+    auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
+                                                transpose_src_memory_p);
+
+    std::vector<mkldnn::primitive> pipeline;
+    pipeline.push_back(*transpose_p);
+    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -77,3 +124,8 @@ REGISTER_OP_KERNEL(transpose2, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNOpKernel<float>);
 REGISTER_OP_KERNEL(transpose, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNOpKernel<float>);
+
+REGISTER_OP_KERNEL(transpose_grad, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::TransposeMKLDNNGradOpKernel<float>);
+REGISTER_OP_KERNEL(transpose2_grad, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::TransposeMKLDNNGradOpKernel<float>);
