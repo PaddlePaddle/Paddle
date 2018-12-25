@@ -39,26 +39,29 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag p2p_init_flag;
-std::once_flag gperf_init_flag;
 
+std::mutex gprofile_mu;
 static bool gprofile_started = false;
+
 bool IsGProfileStarted() { return gprofile_started; }
 
 void StartGPerf(std::string profile_path) {
-  std::call_once(gperf_init_flag, [&]() {
+  std::lock_guard<std::mutex> l(gprofile_mu);
 #ifdef WITH_GPERFTOOLS
-    VLOG(1) << "ProfilerStart to " << profile_path;
+  VLOG(1) << "ProfilerStart to " << profile_path;
+  if (!gprofile_started) {
     ProfilerStart(profile_path.c_str());
     gprofile_started = true;
+  }
 #else
-    LOG(WARNING) << "Paddle is not compiled with gperftools. "
-                    "FLAGS_pe_profile_fname will be ignored";
+  LOG(WARNING) << "Paddle is not compiled with gperftools. "
+                  "FLAGS_pe_profile_fname will be ignored";
 #endif
-  });
 }
 
 void FlushGPerf() {
 #ifdef WITH_GPERFTOOLS
+  std::lock_guard<std::mutex> l(gprofile_mu);
   VLOG(1) << "FlushGPerf gprofile_started" << gprofile_started;
   if (gprofile_started) {
     ProfilerFlush();
@@ -70,6 +73,7 @@ void FlushGPerf() {
 
 void StopGPerf() {
 #ifdef WITH_GPERFTOOLS
+  std::lock_guard<std::mutex> l(gprofile_mu);
   VLOG(1) << "StopGPerf gprofile_started" << gprofile_started;
   if (gprofile_started) {
     FlushGPerf();
