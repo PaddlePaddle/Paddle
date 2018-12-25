@@ -73,10 +73,10 @@ void FlushGPerf() {
 
 void StopGPerf() {
 #ifdef WITH_GPERFTOOLS
+  FlushGPerf();
   std::lock_guard<std::mutex> l(gprofile_mu);
   VLOG(1) << "StopGPerf gprofile_started" << gprofile_started;
   if (gprofile_started) {
-    FlushGPerf();
     ProfilerStop();
     gprofile_started = false;
   }
