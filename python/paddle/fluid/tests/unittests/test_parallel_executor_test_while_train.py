@@ -88,7 +88,7 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
 
                 self.assertTrue(
                     np.allclose(
-                        train_loss, test_loss, atol=1e-8),
+                        train_loss, test_loss, atol=1e-2),
                     "Train loss: " + str(train_loss) + "\n Test loss:" +
                     str(test_loss))
 

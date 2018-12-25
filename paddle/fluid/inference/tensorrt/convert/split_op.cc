@@ -19,9 +19,6 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-/*
- * SplitOp.
- */
 class SplitOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
@@ -40,16 +37,11 @@ class SplitOpConverter : public OpConverter {
     int axis = boost::get<int>(op_desc.GetAttr("axis"));
     std::vector<int> output_lengths =
         boost::get<std::vector<int>>(op_desc.GetAttr("sections"));
+    // split on batch is not supported in TensorRT
     PADDLE_ENFORCE(axis != 0);
-    if (axis < 0) {
-      axis += input_dims.nbDims;
-    } else {
-      axis -= 1;
-    }
+    axis += (axis < 0) ? input_dims.nbDims : -1;
 
     PADDLE_ENFORCE(output_lengths.size() == output_num);
-
-    //
     plugin::SplitPlugin* plugin = new plugin::SplitPlugin(axis, output_lengths);
     nvinfer1::IPluginLayer* layer =
         engine_->AddPlugin(&input, input_num, plugin);

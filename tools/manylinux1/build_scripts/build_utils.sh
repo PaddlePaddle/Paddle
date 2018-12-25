@@ -50,6 +50,15 @@ function do_cpython_build {
     mkdir -p ${prefix}/lib
     # -Wformat added for https://bugs.python.org/issue17547 on Python 2.6
 
+    if [ $(lex_pyver $py_ver) -eq $(lex_pyver 3.6) ]; then
+        wget https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz
+        tar -zxf sqlite-autoconf-3250300.tar.gz
+        cd sqlite-autoconf-3250300
+        ./configure --prefix=/usr/local
+        make -j8 && make install
+        cd ../ && rm sqlite-autoconf-3250300.tar.gz
+    fi
+
     # NOTE --enable-shared for generating libpython shared library needed for
     # linking of some of the nupic.core test executables.
     if [ $(lex_pyver $py_ver) -ge $(lex_pyver 3.7) ]; then
@@ -59,9 +68,9 @@ function do_cpython_build {
         make -j8 > /dev/null
         make altinstall > /dev/null
     else
-        CFLAGS="-Wformat" ./configure --prefix=${prefix} --enable-shared $unicode_flags > /dev/null
-        make -j8 > /dev/null
-        make install > /dev/null
+        LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH} CFLAGS="-Wformat" ./configure --prefix=${prefix} --enable-shared $unicode_flags > /dev/null
+        LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH} make -j8 > /dev/null
+        LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH} make install > /dev/null
     fi
     popd
     echo "ZZZ looking for libpython"

@@ -85,7 +85,7 @@ class SaveOp : public framework::OperatorBase {
                    filename);
 
     auto save_as_fp16 = Attr<bool>("save_as_fp16");
-    auto in_dtype = framework::ToDataType(tensor.type());
+    auto in_dtype = tensor.type();
     auto out_dtype = save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 
     if (in_dtype != out_dtype) {
@@ -110,7 +110,7 @@ class SaveOp : public framework::OperatorBase {
         lt_var != nullptr,
         "Can not find variable kLookupTablePath for SaveSelectedRows");
     std::string filename = lt_var->data();
-    VLOG(40) << "SaveSelectedRows get File name: " << filename;
+    VLOG(4) << "SaveSelectedRows get File name: " << filename;
 
     MkDirRecursively(DirName(filename).c_str());
 

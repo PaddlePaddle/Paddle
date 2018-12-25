@@ -23,7 +23,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -60,8 +60,15 @@ struct BuildStrategy {
     kCustomized = 2,
   };
 
+  enum class OptimizeStrategy {
+    // To be Implemented,bruteforce, recursive compute unused var names.
+    kBruteForce = 0,
+    kControlFlowGraph = 1,  // use cfg_graph algorithm, faster speed.
+  };
+
   ReduceStrategy reduce_{ReduceStrategy::kAllReduce};
   GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
+  OptimizeStrategy strategy_{OptimizeStrategy::kControlFlowGraph};
 
   std::string debug_graphviz_path_{""};
 
@@ -69,10 +76,17 @@ struct BuildStrategy {
 
   bool enable_data_balance_{false};
 
+  bool memory_optimize_{false};
+
+  bool memory_early_delete_{false};
+
   bool enable_sequential_execution_{false};
 
   bool fuse_broadcast_op_{false};
 
+  int num_trainers_{1};
+  int trainer_id_{0};
+  std::vector<std::string> trainers_endpoints_;
   bool remove_unnecessary_lock_{false};
 
   // NOTE:
@@ -92,16 +106,15 @@ struct BuildStrategy {
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
-  std::unique_ptr<ir::Graph> Apply(
-      const ProgramDesc &main_program,
-      const std::vector<platform::Place> &places,
-      const std::string &loss_var_name,
-      const std::unordered_set<std::string> &param_names,
-      const std::vector<Scope *> &local_scopes,
-#ifdef PADDLE_WITH_CUDA
-      const bool use_cuda, platform::NCCLContextMap *nccl_ctxs) const;
+  std::unique_ptr<ir::Graph> Apply(const ProgramDesc &main_program,
+                                   const std::vector<platform::Place> &places,
+                                   const std::string &loss_var_name,
+                                   const std::vector<Scope *> &local_scopes,
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+                                   const bool use_cuda,
+                                   platform::NCCLContextMap *nccl_ctxs) const;
 #else
-      const bool use_cuda) const;
+                                   const bool use_cuda) const;
 #endif
 
  private:

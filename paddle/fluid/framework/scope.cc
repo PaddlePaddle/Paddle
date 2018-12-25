@@ -38,6 +38,10 @@ DEFINE_double(
     "Memory size threshold (GB) when the garbage collector clear tensors."
     "Disabled when this value is less than 0");
 
+DEFINE_bool(fast_eager_deletion_mode, false,
+            "Fast eager deletion mode. If enabled, memory would release "
+            "immediately without waiting GPU kernel ends.");
+
 // When in inference scenario, the scopes will not be written by two threads in
 // a mean time, but a scope may be read by multiple threads concurrently, and
 // the mutex will cause serious performance issue.
@@ -57,6 +61,8 @@ int64_t GetEagerDeletionThreshold() {
              : static_cast<int64_t>(FLAGS_eager_delete_tensor_gb *
                                     (static_cast<int64_t>(1) << 30));
 }
+
+bool IsFastEagerDeletionModeEnabled() { return FLAGS_fast_eager_deletion_mode; }
 
 Scope::~Scope() { DropKids(); }
 
@@ -162,7 +168,7 @@ Variable* Scope::VarInternal(const std::string& name) {
 
   v = new Variable();
   vars_[name].reset(v);
-  VLOG(30) << "Create variable " << name;
+  VLOG(3) << "Create variable " << name;
   v->name_ = &(vars_.find(name)->first);
   return v;
 }

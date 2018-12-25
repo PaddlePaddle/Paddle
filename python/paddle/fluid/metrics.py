@@ -46,8 +46,8 @@ def _is_numpy_(var):
 
 
 def _is_number_(var):
-    return isinstance(var, int) or isinstance(var, float) or (isinstance(
-        var, np.ndarray) and var.shape == (1, ))
+    return isinstance(var, int) or isinstance(var, np.int64) or isinstance(
+        var, float) or (isinstance(var, np.ndarray) and var.shape == (1, ))
 
 
 def _is_number_or_matrix_(var):
@@ -222,13 +222,13 @@ class Precision(MetricBase):
     Examples:
         .. code-block:: python
 
-        metric = fluid.metrics.Precision()
-        for pass in range(PASSES):
-            metric.reset()
-            for data in train_reader():
-                loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
-            metric.update(preds=preds, labels=labels)
-            numpy_precision = metric.eval()
+            metric = fluid.metrics.Precision()
+            for pass in range(PASSES):
+                metric.reset()
+                for data in train_reader():
+                    loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
+                metric.update(preds=preds, labels=labels)
+                numpy_precision = metric.eval()
     """
 
     def __init__(self, name=None):
@@ -267,13 +267,13 @@ class Recall(MetricBase):
     Examples:
         .. code-block:: python
 
-        metric = fluid.metrics.Recall()
-        for pass in range(PASSES):
-            metric.reset()
-            for data in train_reader():
-                loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
-            metric.update(preds=preds, labels=labels)
-            numpy_recall = metric.eval()
+            metric = fluid.metrics.Recall()
+            for pass in range(PASSES):
+                metric.reset()
+                for data in train_reader():
+                    loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
+                metric.update(preds=preds, labels=labels)
+                numpy_recall = metric.eval()
     """
 
     def __init__(self, name=None):
@@ -449,8 +449,9 @@ class EditDistance(MetricBase):
                 distance_evaluator.update(distances, seq_num)
                 distance, instance_error = distance_evaluator.eval()
 
-        In the above example:
+    In the above example:
         'distance' is the average of the edit distance in a pass.
+
         'instance_error' is the instance error rate in a pass.
 
     """

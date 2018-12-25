@@ -76,8 +76,8 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
   }
 #endif
   return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::Tensor>(name)->type()),
-      ctx.GetPlace(), layout, library);
+      framework::GetDataTypeOfVar(ctx.InputVar(name)), ctx.GetPlace(), layout,
+      library);
 }
 
 class ActivationOp : public framework::OperatorWithKernel {
@@ -146,6 +146,13 @@ UNUSED constexpr char ReluDoc[] = R"DOC(
 Relu Activation Operator.
 
 $out = \max(x, 0)$
+
+)DOC";
+
+UNUSED constexpr char GeluDoc[] = R"DOC(
+Gelu Activation Operator.
+
+$out = \\frac{1 + erf(\\frac{x}{\\sqrt{2}})}{2} x$
 
 )DOC";
 
@@ -472,6 +479,7 @@ REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(LogSigmoid, LogSigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(Exp, ExpDoc);
 REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);
+REGISTER_ACTIVATION_OP_MAKER(Gelu, GeluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
@@ -489,6 +497,7 @@ REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);
 
 REGISTER_ACTIVATION_OP_GRAD_MAKER(Sigmoid, sigmoid);
 REGISTER_ACTIVATION_OP_GRAD_MAKER(Relu, relu);
+REGISTER_ACTIVATION_OP_GRAD_MAKER(Gelu, gelu);
 REGISTER_ACTIVATION_OP_GRAD_MAKER(Exp, exp);
 REGISTER_ACTIVATION_OP_GRAD_MAKER(Tanh, tanh);
 REGISTER_ACTIVATION_OP_GRAD_MAKER(Ceil, ceil);
@@ -525,6 +534,7 @@ namespace ops = paddle::operators;
   __macro(Round, round);             \
   __macro(Log, log);                 \
   __macro(Square, square);           \
+  __macro(Gelu, gelu);               \
   __macro(BRelu, brelu);             \
   __macro(Pow, pow);                 \
   __macro(STanh, stanh);             \

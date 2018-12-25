@@ -40,7 +40,7 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
                          size_t device_id) const;
   void Init() const;
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   mutable platform::NCCLContextMap *nccl_ctxs_;
 #endif
 
@@ -102,7 +102,6 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
   mutable std::string loss_var_name_;
   mutable std::vector<platform::Place> places_;
   mutable std::vector<Scope *> local_scopes_;
-  mutable std::unordered_set<std::string> grad_names_;
 
   mutable BuildStrategy strategy_;
   mutable std::unordered_map<std::string, VarDesc *> all_vars_;

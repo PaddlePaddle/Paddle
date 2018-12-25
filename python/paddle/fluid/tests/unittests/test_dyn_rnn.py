@@ -172,6 +172,7 @@ class TestDynRNN(unittest.TestCase):
             rnn = fluid.layers.DynamicRNN()
             with rnn.block():
                 in_ = rnn.step_input(sentence)
+                assert in_.lod_level == 1, "the lod level of in_ should be 1"
                 sent_emb = fluid.layers.embedding(
                     input=in_, size=[len(word_dict), 32], dtype='float32')
                 out_ = fluid.layers.fc(input=sent_emb, size=100, act='tanh')
@@ -179,6 +180,7 @@ class TestDynRNN(unittest.TestCase):
                 rnn1 = fluid.layers.DynamicRNN()
                 with rnn1.block():
                     in_1 = rnn1.step_input(out_)
+                    assert in_1.lod_level == 0, "the lod level of in_1 should be 0"
                     out_1 = fluid.layers.fc(input=[in_1], size=100, act='tanh')
                     rnn1.output(out_1)
 

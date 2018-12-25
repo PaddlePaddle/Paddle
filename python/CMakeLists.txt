@@ -48,18 +48,13 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
 IF(WIN32)
     # Python would use the .pyd by default under Windows series platform
     set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/)
-    get_filename_component(openblas_refpath ${CBLAS_LIBRARIES} DIRECTORY)
     set(FLUID_CORE ${FLUID_DST_DIR}/core.pyd)
-    add_custom_command(OUTPUT ${FLUID_CORE}
-            COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${FLUID_CORE}
-            COMMAND cmake -E copy ${openblas_refpath}/openblas.dll ${FLUID_DST_DIR}
-            DEPENDS paddle_pybind)
 ELSE()
     set(FLUID_CORE ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so)
-    add_custom_command(OUTPUT ${FLUID_CORE}
-            COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${FLUID_CORE}
-            DEPENDS paddle_pybind)
 ENDIF()
+add_custom_command(OUTPUT ${FLUID_CORE}
+        COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${FLUID_CORE}
+        DEPENDS paddle_pybind)
 add_custom_target(copy_paddle_pybind ALL DEPENDS ${FLUID_CORE})
 
 IF(WIN32)

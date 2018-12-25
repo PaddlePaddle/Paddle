@@ -130,9 +130,9 @@ void AddOutputToLeafOps(ir::Graph *graph) {
 
 static const char kLossVarName[] = "loss_var_name";
 static const char kPlaces[] = "places";
-static const char kParams[] = "params";
 static const char kLocalScopes[] = "local_scopes";
 static const char kStrategy[] = "strategy";
+static const char kNumTrainers[] = "num_trainers";
 
 void MultiDevSSAGraphBuilder::Init() const {
   all_vars_.clear();
@@ -142,13 +142,10 @@ void MultiDevSSAGraphBuilder::Init() const {
   places_ = Get<const std::vector<platform::Place>>(kPlaces);
   local_scopes_ = Get<const std::vector<Scope *>>(kLocalScopes);
   strategy_ = Get<const BuildStrategy>(kStrategy);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   nccl_ctxs_ = &Get<platform::NCCLContextMap>("nccl_ctxs");
 #endif
 
-  for (auto &p : Get<const std::unordered_set<std::string>>(kParams)) {
-    grad_names_.insert(GradVarName(p));
-  }
   balance_vars_.resize(places_.size(), 0);
   if (strategy_.enable_data_balance_ && places_.size() == 1) {
     LOG(WARNING) << "It is no need to enable data balance when there is only "
@@ -299,6 +296,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   auto nodes = graph->ReleaseNodes();
   ir::Graph &result = *graph;
 
+  int num_trainers = Get<int>(kNumTrainers);
+
   for (auto &node : nodes) {
     if (node->IsVar() && node->Var()) {
       all_vars_.emplace(node->Name(), node->Var());
@@ -383,7 +382,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
           CreateComputationalOps(&result, node, places_.size());
         }
 
-        if (!is_forwarding && places_.size() > 1) {
+        if (!is_forwarding && (places_.size() > 1 || num_trainers > 1)) {
           // Currently, we assume that once gradient is generated, it can be
           // broadcast, and each gradient is only broadcast once.
           if (static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
@@ -399,7 +398,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
               for (size_t i = 0; i < backward_vars.size(); i += 2) {
                 auto &p_name = backward_vars[i];
                 auto &g_name = backward_vars[i + 1];
-                VLOG(100) << "Bcast " << g_name << " for parameter " << p_name;
+                VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
 
                 switch (strategy_.reduce_) {
                   case BuildStrategy::ReduceStrategy::kReduce:
@@ -431,7 +430,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
     }
   }
   bool use_gpu = false;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   use_gpu = nccl_ctxs_ != nullptr;
 #endif
 
@@ -478,7 +477,7 @@ bool MultiDevSSAGraphBuilder::IsSparseGradient(const std::string &og) const {
 
 void MultiDevSSAGraphBuilder::SetCommunicationContext(
     OpHandleBase *op_handle, const platform::Place &p) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   if (nccl_ctxs_ == nullptr) {
     op_handle->SetDeviceContext(p,
                                 platform::DeviceContextPool::Instance().Get(p));
@@ -492,7 +491,7 @@ void MultiDevSSAGraphBuilder::SetCommunicationContext(
 void MultiDevSSAGraphBuilder::CreateBroadcastOp(ir::Graph *result,
                                                 const std::string &p_name,
                                                 size_t src_dev_id) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   auto *op_handle = new BroadcastOpHandle(
       result->CreateEmptyNode("broadcast", ir::Node::Type::kOperation),
       local_scopes_, places_, nccl_ctxs_);
@@ -522,7 +521,7 @@ void MultiDevSSAGraphBuilder::CreateBroadcastOp(ir::Graph *result,
 void MultiDevSSAGraphBuilder::CreateFusedBroadcastOp(
     ir::Graph *result,
     const std::vector<std::unordered_set<std::string>> &bcast_varnames) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   auto *op_handle = new FusedBroadcastOpHandle(
       result->CreateEmptyNode("fused_broadcast", ir::Node::Type::kOperation),
       local_scopes_, places_, nccl_ctxs_);
@@ -562,13 +561,13 @@ void MultiDevSSAGraphBuilder::CreateComputationalOp(ir::Graph *result,
                                                     int dev_id) const {
   result->Get<GraphOps>(kGraphOps).emplace_back(
       new ComputationOpHandle(result->CreateOpNode(node->Op()),
-                              local_scopes_[dev_id], places_[dev_id]));
+                              local_scopes_[dev_id], places_[dev_id], dev_id));
   CreateOpHandleIOs(result, node, dev_id);
 }
 
 void MultiDevSSAGraphBuilder::InsertAllReduceOp(ir::Graph *result,
                                                 const std::string &og) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
       result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
       local_scopes_, places_, nccl_ctxs_));
@@ -597,7 +596,7 @@ void MultiDevSSAGraphBuilder::InsertAllReduceOp(ir::Graph *result,
 
 void MultiDevSSAGraphBuilder::InsertDataBalanceOp(
     ir::Graph *result, const std::vector<std::string> &datas) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   result->Get<GraphOps>(kGraphOps).emplace_back(new DataBalanceOpHandle(
       result->CreateEmptyNode("data_balance", ir::Node::Type::kOperation),
       local_scopes_, places_, nccl_ctxs_));
@@ -685,8 +684,8 @@ void MultiDevSSAGraphBuilder::CreateComputationalOps(ir::Graph *result,
   for (size_t scope_idx = 0; scope_idx < num_places; ++scope_idx) {
     auto p = places_[scope_idx];
     auto s = local_scopes_[scope_idx];
-    result->Get<GraphOps>(kGraphOps).emplace_back(
-        new ComputationOpHandle(result->CreateOpNode(node->Op()), s, p));
+    result->Get<GraphOps>(kGraphOps).emplace_back(new ComputationOpHandle(
+        result->CreateOpNode(node->Op()), s, p, scope_idx));
     CreateOpHandleIOs(result, node, scope_idx);
   }
 }
@@ -694,7 +693,7 @@ void MultiDevSSAGraphBuilder::CreateComputationalOps(ir::Graph *result,
 VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(ir::Graph *result,
                                                    const std::string &og,
                                                    int dst_dev_id) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   result->Get<GraphOps>(kGraphOps).emplace_back(new ReduceOpHandle(
       result->CreateEmptyNode("reduce", ir::Node::Type::kOperation),
       local_scopes_, places_, nccl_ctxs_));
@@ -809,8 +808,8 @@ int MultiDevSSAGraphBuilder::CreateRPCOp(
           node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
       PADDLE_ENFORCE_EQ(send_param_grad.size(), 2U);
       op_dev_id = GetAppropriateDeviceID({send_param_grad[1]});
-      VLOG(100) << "send grad " << input_var_names[0] << " origin "
-                << send_param_grad[1] << " place: " << op_dev_id;
+      VLOG(10) << "send grad " << input_var_names[0] << " origin "
+               << send_param_grad[1] << " place: " << op_dev_id;
       for (auto &varname : input_var_names) {
         sharded_var_device->emplace(varname, op_dev_id);
       }
@@ -826,9 +825,9 @@ int MultiDevSSAGraphBuilder::CreateRPCOp(
     if (recv_param_grad.size() == 2U) {
       op_dev_id =
           GetVarDeviceID(*result, recv_param_grad[1], *sharded_var_device);
-      VLOG(100) << "recv param " << recv_param_grad[0]
-                << " get grad place: " << recv_param_grad[1]
-                << " place: " << op_dev_id;
+      VLOG(10) << "recv param " << recv_param_grad[0]
+               << " get grad place: " << recv_param_grad[1]
+               << " place: " << op_dev_id;
     } else {
       op_dev_id = GetAppropriateDeviceID(output_var_names);
     }
@@ -862,7 +861,7 @@ int MultiDevSSAGraphBuilder::CreateRPCOp(
       if (node->Op()->Type() == "fetch_barrier") {
         outvar_dev_id =
             GetVarDeviceID(*result, output->Name(), *sharded_var_device);
-        PADDLE_ENFORCE_NE(outvar_dev_id, -1);
+        PADDLE_ENFORCE_NE(outvar_dev_id, -1, "output name %s", output->Name());
       }
       p = places_[outvar_dev_id];
       ir::Node *new_node = nullptr;
@@ -893,6 +892,6 @@ REGISTER_PASS(multi_devices_pass,
               paddle::framework::details::MultiDevSSAGraphBuilder)
     .RequirePassAttr(paddle::framework::details::kLossVarName)
     .RequirePassAttr(paddle::framework::details::kPlaces)
-    .RequirePassAttr(paddle::framework::details::kParams)
     .RequirePassAttr(paddle::framework::details::kLocalScopes)
-    .RequirePassAttr(paddle::framework::details::kStrategy);
+    .RequirePassAttr(paddle::framework::details::kStrategy)
+    .RequirePassAttr(paddle::framework::details::kNumTrainers);

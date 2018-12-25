@@ -196,7 +196,7 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
 
   detector(graph.get(), [&](const GraphPatternDetector::subgraph_t& subgraph,
                             Graph* graph) {
-    VLOG(40) << "get one concat pattern";
+    VLOG(4) << "get one concat pattern";
     // fc
     GET_NODE(fc_w, detector.pattern());
     GET_NODE(fc_bias, detector.pattern());

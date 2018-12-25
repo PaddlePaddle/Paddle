@@ -72,8 +72,8 @@ static inline std::string join(const std::string& part1,
 
 static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
                                                 int dynload_flags) {
-  VLOG(30) << "Try to find library: " << dso_path
-           << " from default system path.";
+  VLOG(3) << "Try to find library: " << dso_path
+          << " from default system path.";
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
   // and /usr/local/lib path
   void* dso_handle = dlopen(dso_path.c_str(), dynload_flags);
@@ -201,6 +201,8 @@ void* GetCurandDsoHandle() {
 void* GetWarpCTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "warpctc.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.so");
 #endif
@@ -225,6 +227,8 @@ void* GetTensorRtDsoHandle() {
 void* GetMKLMLDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "mklml.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.so");
 #endif
