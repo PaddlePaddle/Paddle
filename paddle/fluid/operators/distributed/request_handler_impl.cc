@@ -85,8 +85,8 @@ bool RequestGetHandler::Handle(const std::string& varname,
   VLOG(4) << "RequestGetHandler:" << varname
           << " out_var_name: " << out_var_name;
 
-  // get var from pserver immediately without sync or async
-  string::Piece without_barrier_piece = string::Piece(WITHOUT_BARRIER_MESSAGE);
+  // get var from pserver immediately without barriers
+  string::Piece without_barrier_piece(WITHOUT_BARRIER_MESSAGE);
   string::Piece var_name_piece = string::Piece(varname);
 
   if (string::Contains(var_name_piece, without_barrier_piece)) {

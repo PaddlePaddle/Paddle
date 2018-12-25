@@ -165,14 +165,12 @@ VarHandlePtr GRPCClient::_AsyncGetVar(
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   GetProcessor* s = new GetProcessor(ch);
-  const std::string method_val = method;
 
-  VarHandlePtr h(
-      new VarHandle(ep, method_val, out_varname_val, p_ctx, p_scope));
+  VarHandlePtr h(new VarHandle(ep, method, out_varname_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
   framework::AsyncIO(
-      [var_name_val, out_varname_val, s, method_val, p_ctx, h, rpc_path, this] {
+      [var_name_val, out_varname_val, s, method, p_ctx, h, rpc_path, this] {
         // prepare input
         sendrecv::VariableMessage req;
         req.set_varname(var_name_val);
@@ -186,7 +184,7 @@ VarHandlePtr GRPCClient::_AsyncGetVar(
         // stub context
         s->response_call_back_ = ProcGetResponse;
 
-        platform::RecordRPCEvent record_event(method_val, p_ctx);
+        platform::RecordRPCEvent record_event(method, p_ctx);
 
         auto call =
             s->stub_g_.PrepareUnaryCall(s->context_.get(), rpc_path, buf, &cq_);
