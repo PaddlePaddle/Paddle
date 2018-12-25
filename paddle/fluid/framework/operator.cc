@@ -180,6 +180,11 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
+void OperatorBase::Run(const RuntimeContext& ctx,
+                       const platform::Place& place) {
+  RunImpl(ctx, place);
+}
+
 bool OperatorBase::HasInputs(const std::string& name) const {
   return inputs_.find(name) != inputs_.end();
 }
@@ -954,6 +959,51 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 }
 
+void OperatorWithKernel::RunImpl(const RuntimeContext& ctx,
+                                 const platform::Place& place) const {
+  Scope scope;
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(place);
+
+  // check if op[type] has kernel registered.
+  auto& all_op_kernels = AllOpKernels();
+  auto kernels_iter = all_op_kernels.find(type_);
+  if (kernels_iter == all_op_kernels.end()) {
+    PADDLE_THROW(
+        "There are no kernels which are registered in the %s operator.", type_);
+  }
+
+  OpKernelMap& kernels = kernels_iter->second;
+
+  auto expected_kernel_key = this->GetExpectedKernelType(
+      ExecutionContext(*this, scope, *dev_ctx, ctx));
+  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+
+  auto kernel_iter = kernels.find(expected_kernel_key);
+#ifdef PADDLE_WITH_MKLDNN
+  // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
+  if (kernel_iter == kernels.end() &&
+      expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
+    VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
+    expected_kernel_key.library_type_ = LibraryType::kPlain;
+    expected_kernel_key.data_layout_ = DataLayout::kAnyLayout;
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
+  if (kernel_iter == kernels.end()) {
+    PADDLE_THROW("op %s does not have kernel for %s", type_,
+                 KernelTypeToString(expected_kernel_key));
+  }
+
+  if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
+    dev_ctx = pool.Get(expected_kernel_key.place_);
+  }
+
+  RuntimeInferShapeContext infer_shape_ctx(*this, scope, ctx);
+  this->InferShape(&infer_shape_ctx);
+  kernel_iter->second(ExecutionContext(*this, scope, *dev_ctx, ctx));
+}
+
 void OperatorWithKernel::TransferInplaceVarsBack(
     const Scope& scope, const std::vector<std::string>& inplace_vars,
     const Scope& transfer_scope) const {
@@ -1041,12 +1091,9 @@ Scope* OperatorWithKernel::PrepareData(
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
-  auto& scope = ctx.scope();
   int data_type = -1;
-  std::string last_input_name;
   for (auto& input : this->inputs_) {
-    for (auto& ipt_name : input.second) {
-      auto* var = scope.FindVar(ipt_name);
+    for (const Variable* var : ctx.MultiInputVar(input.first)) {
       if (var != nullptr) {
         const Tensor* t = nullptr;
         if (var->IsType<Tensor>()) {
@@ -1062,10 +1109,9 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           int tmp = static_cast<int>(t->type());
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,
-              "DataType of Paddle Op %s must be the same. Get %s(%d) != %s(%d)",
-              Type(), last_input_name, data_type, ipt_name, tmp);
+              "DataType of Paddle Op %s must be the same. Get (%d) != (%d)",
+              Type(), data_type, tmp);
           data_type = tmp;
-          last_input_name = ipt_name;
         }
       }
     }

@@ -14,11 +14,11 @@
 
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -33,18 +33,26 @@ class VarBase {
       : pre_op_(nullptr),
         pre_op_out_idx_(-1),
         var_desc_(nullptr),
-        var_(nullptr),
-        grads_(nullptr) {}
+        var_(new framework::Variable()),
+        grads_(new framework::Variable()) {}
 
-  virtual ~VarBase() {}
+  virtual ~VarBase() {
+    if (var_) {
+      delete var_;
+      var_ = nullptr;
+    }
+    if (grads_) {
+      delete grads_;
+      grads_ = nullptr;
+    }
+  }
 
-  void ApplyGrad(framework::Scope* scope, framework::Variable* grad);
-
-  void RunBackward(framework::Scope* scope);
+  void RunBackward();
 
   framework::LoDTensor& Grad();
 
   OpBase* pre_op_;
+  std::string pre_op_out_name_;
   int pre_op_out_idx_;
 
   framework::VarDesc* var_desc_;
@@ -55,17 +63,12 @@ class VarBase {
 class OpBase {
  public:
   OpBase()
-      : input_vars_(new std::vector<VarBase*>()),
-        output_vars_(new std::vector<VarBase*>()),
-        pre_ops_(new std::vector<OpBase*>()),
-        pre_ops_out_idx_(new std::vector<int>()),
+      : pre_ops_(new std::map<std::string, std::vector<OpBase*>>()),
+        pre_ops_out_idx_(new std::map<std::string, std::vector<int>>()),
         op_desc_(nullptr),
         grad_op_desc_(nullptr) {}
 
   virtual ~OpBase() {
-    delete input_vars_;
-    delete output_vars_;
-
     delete pre_ops_;
     delete pre_ops_out_idx_;
 
@@ -73,16 +76,18 @@ class OpBase {
     if (grad_to_var_) delete grad_to_var_;
   }
 
-  std::vector<framework::Variable*> ApplyGrad(framework::Scope* scope);
+  std::map<std::string, std::vector<VarBase*>> ApplyGrad();
 
-  std::vector<VarBase*>* input_vars_;
-  std::vector<VarBase*>* output_vars_;
-  std::vector<OpBase*>* pre_ops_;
-  std::vector<int>* pre_ops_out_idx_;
+  std::map<std::string, std::vector<VarBase*>> input_vars_;
+  std::map<std::string, std::vector<VarBase*>> output_vars_;
+  std::map<std::string, std::vector<OpBase*>>* pre_ops_;
+  std::map<std::string, std::vector<int>>* pre_ops_out_idx_;
   framework::OpDesc* op_desc_;
 
   framework::OpDesc* grad_op_desc_;
   std::unordered_map<std::string, std::string>* grad_to_var_;
+  std::map<std::string, std::vector<framework::Variable*>> grad_input_vars_;
+  std::map<std::string, std::vector<framework::Variable*>> grad_output_vars_;
   framework::BlockDesc* block_;
 };
 

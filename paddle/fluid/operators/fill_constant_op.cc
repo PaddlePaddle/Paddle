@@ -68,6 +68,41 @@ class FillConstantOp : public framework::OperatorBase {
     auto &dev_ctx = *pool.Get(dev_place);
     math::set_constant(dev_ctx, tensor, value);
   }
+
+  void RunImpl(const framework::RuntimeContext &ctx,
+               const platform::Place &dev_place) const override {
+    auto data_type =
+        static_cast<framework::proto::VarType::Type>(Attr<int>("dtype"));
+    auto value = Attr<float>("value");
+    auto force_cpu = Attr<bool>("force_cpu");
+
+    framework::Tensor *tensor = nullptr;
+
+    auto &out_var = *ctx.outputs.at("Out")[0];
+
+    if (out_var.IsType<framework::LoDTensor>()) {
+      tensor = out_var.GetMutable<framework::LoDTensor>();
+      tensor->Resize(framework::make_ddim(Attr<std::vector<int64_t>>("shape")));
+    } else if (out_var.IsType<framework::SelectedRows>()) {
+      tensor = out_var.GetMutable<framework::SelectedRows>()->mutable_value();
+      tensor->Resize(framework::make_ddim(Attr<std::vector<int64_t>>("shape")));
+    } else {
+      PADDLE_THROW(
+          "fill constant op's output only"
+          "supports SelectedRows and LoDTensor");
+    }
+
+    if (force_cpu) {
+      auto cpu = platform::CPUPlace();
+      tensor->mutable_data(cpu, data_type);
+    } else {
+      tensor->mutable_data(dev_place, data_type);
+    }
+
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
+    math::set_constant(dev_ctx, tensor, value);
+  }
 };
 
 class FillConstantOpVarTypeInference : public framework::VarTypeInference {
