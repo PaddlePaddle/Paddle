@@ -55,7 +55,8 @@ TEST(RowReduction, GPU) {
 
   // Do reduction
   cub::Sum op;
-  paddle::operators::math::LaunchRowReduction<float, float, cub::Sum>(
+  paddle::operators::math::LaunchRowReduction<float, float *, float *,
+                                              cub::Sum>(
       &ctx, out_data, in_data, num_rows, num_cols, op, 0.0f);
   // copy result to cpu
   Tensor out_cpu_tensor;

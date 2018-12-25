@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -135,7 +136,7 @@ struct SubtractAndExpFunctor {
       : logits_(logits), max_logits_(max_logits), num_cols_(num_cols) {}
 
   __host__ __device__ ACCURATE_T operator()(const int gid) const {
-    return real_exp(logits_[gid] - (max_logits_ + gid / num_cols_));
+    return real_exp(logits_[gid] - (max_logits_[gid / num_cols_]));
   }
 
   const T* logits_;
@@ -144,7 +145,7 @@ struct SubtractAndExpFunctor {
 };
 
 template <typename T, typename ACCURATE_T>
-__global__ void GenerateProb(const T* logits, const T* sum_probs,
+__global__ void GenerateProb(const T* logits, const ACCURATE_T* sum_probs,
                              const T* max_logits, ACCURATE_T* output,
                              const int num_rows, const int num_cols,
                              const bool log_space) {
@@ -154,12 +155,13 @@ __global__ void GenerateProb(const T* logits, const T* sum_probs,
   const int col = tid % num_cols;
 
   if (row < num_rows && col < num_cols) {
-    if (log_space)
+    if (log_space) {
+      output[tid] = static_cast<ACCURATE_T>(logits[tid] - (max_logits[row])) -
+                    real_log(sum_probs[row]);
+    } else {
       output[tid] =
-          logits[tid] - (max_logits + row) - real_log(sum_probs + row);
-    else
-      output[tid] =
-          real_exp(logits[tid] - (max_logits + row)) / (sum_probs + row);
+          real_exp(logits[tid] - (max_logits[row])) / (sum_probs[row]);
+    }
   }
 }
 
@@ -173,7 +175,7 @@ void SoftmaxCudaAccurateFunctor<T, ACCURATE_T>::operator()(
   sum_probs.Resize(X->dims());
   auto* max_logits_data = max_logits.mutable_data<T>(ctx.GetPlace());
   auto* logits_data = X->data<T>();
-  auto* sum_probs_data = sum_probs.mutable_data<T>(ctx.GetPlace());
+  auto* sum_probs_data = sum_probs.mutable_data<ACCURATE_T>(ctx.GetPlace());
   int num_rows = X->dims()[0];
   int num_cols = X->dims()[1];
 
@@ -183,10 +185,13 @@ void SoftmaxCudaAccurateFunctor<T, ACCURATE_T>::operator()(
   ACCURATE_T* acc_out_data =
       acc_out_tensor.mutable_data<ACCURATE_T>(ctx.GetPlace());
 
-  cub::Max op;
-  paddle::operators::math::LaunchRowReduction<float, float, cub::Max>(
-      &ctx, max_logits_data, logits_data, num_rows, num_cols, op, 0.0f);
+  // RowReduce to find max along every batch (axis 1)
+  cub::Max max_op;
+  paddle::operators::math::LaunchRowReduction<T, T*, const T*, cub::Max>(
+      &ctx, max_logits_data, logits_data, num_rows, num_cols, max_op,
+      std::numeric_limits<T>::lowest());  // NOLINT
 
+  // RowReduce to calculate exp(x - x.max())
   cub::CountingInputIterator<int> counting_iterator(0);
   typedef cub::TransformInputIterator<ACCURATE_T,
                                       SubtractAndExpFunctor<T, ACCURATE_T>,
@@ -197,14 +202,17 @@ void SoftmaxCudaAccurateFunctor<T, ACCURATE_T>::operator()(
                           SubtractAndExpFunctor<T, ACCURATE_T>(
                               logits_data, max_logits_data, num_cols));
 
-  paddle::operators::math::LaunchRowReduction<T, cub::Sum, InputIterType>(
-      ctx, const_cast<T*>(sum_probs.data<T>()), input_itr, num_rows, num_cols);
+  cub::Sum sum_op;
+  paddle::operators::math::LaunchRowReduction<ACCURATE_T, ACCURATE_T*,
+                                              InputIterType, cub::Sum>(
+      &ctx, sum_probs_data, input_itr, num_rows, num_cols, sum_op,
+      static_cast<ACCURATE_T>(0.0f));
 
   const int num_threads = 128;
-  // divide ceil
-  const int num_blocks = (num_rows * num_cols + num_threads - 1) / num_threads;
+  const int num_blocks =
+      (num_rows * num_cols + num_threads - 1) / num_threads;  // divide ceil
 
-  GenerateProb<<<num_blocks, num_threads, 0, ctx.stream()>>>(
+  GenerateProb<T, ACCURATE_T><<<num_blocks, num_threads, 0, ctx.stream()>>>(
       logits_data, sum_probs_data, max_logits_data, acc_out_data, num_rows,
       num_cols, log_space);
 

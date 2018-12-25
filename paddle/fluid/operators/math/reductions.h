@@ -68,9 +68,9 @@ static __global__ void RowReduceKernel(
   if (row < num_rows && lane == 0) out[row] = sum;
 }
 
-template <typename OUT_T, typename IN_T, typename Op>
-void LaunchRowReduction(platform::CUDADeviceContext* ctx, OUT_T* out, IN_T* in,
-                        int num_rows, int num_cols, Op op, OUT_T init) {
+template <typename T, typename OUT_T, typename IN_T, typename Op>
+void LaunchRowReduction(const platform::CUDADeviceContext* ctx, OUT_T out,
+                        IN_T in, int num_rows, int num_cols, Op op, T init) {
   if (num_cols < 1024) {
     const int threads_per_block = 128;
     const int warps_per_block = threads_per_block / 32;
@@ -97,7 +97,7 @@ void LaunchRowReduction(platform::CUDADeviceContext* ctx, OUT_T* out, IN_T* in,
 
     PADDLE_ENFORCE_EQ(success, 0, "CUB segmented reduce error");
     if (i == 0) {
-      temp_storage.Resize({static_cast<int64>(temp_storage_bytes)});
+      temp_storage.Resize({static_cast<int64_t>(temp_storage_bytes)});
       // do allocate
       temp_storage.mutable_data<uint8_t>(ctx->GetPlace());
     }
