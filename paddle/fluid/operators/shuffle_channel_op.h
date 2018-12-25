@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -76,7 +76,6 @@ class ShuffleChannelGradOpKernel : public framework::OpKernel<T> {
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* input_grad =
         ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-
     T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
     const T* output_grad_data = output_grad->data<T>();
     for (int n = 0; n < num; ++n) {
