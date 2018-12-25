@@ -355,9 +355,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
           BuildStrategy::GradientScaleStrategy::kCustomized) {
         // TODO(paddle-dev): Why is there no input for this op_handle?
         auto loss_grad_name = node->Op()->OutputArgumentNames()[0];
-        auto out_dtype = all_vars_.at(loss_grad_name)->GetDataType();
-        CreateScaleLossGradOp(&result, loss_grad_name, node->outputs[0],
-                              out_dtype);
+        CreateScaleLossGradOp(&result, loss_grad_name, node->outputs[0]);
       }
       // This assumes the backward generating code will ensure IsScaleLossOp
       // is true only for the op that scale the final scalar loss.
@@ -660,13 +658,13 @@ int MultiDevSSAGraphBuilder::GetVarDeviceID(
 
 void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(
     ir::Graph *result, const std::string &loss_grad_name,
-    ir::Node *out_var_node, proto::VarType::Type dtype) const {
+    ir::Node *out_var_node) const {
   for (size_t i = 0; i < places_.size(); ++i) {
     // Insert ScaleCost OpHandle
     auto *dev_ctx = platform::DeviceContextPool::Instance().Get(places_[i]);
     auto *op_handle = new ScaleLossGradOpHandle(
         result->CreateEmptyNode("scale_loss_grad", ir::Node::Type::kOperation),
-        local_scopes_.size(), local_scopes_[i], places_[i], dev_ctx, dtype);
+        local_scopes_.size(), local_scopes_[i], places_[i], dev_ctx);
     result->Get<GraphOps>(kGraphOps).emplace_back(op_handle);
 
     // FIXME: Currently ScaleLossGradOp only use device_count as scale

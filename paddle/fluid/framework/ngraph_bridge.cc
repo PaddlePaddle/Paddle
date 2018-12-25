@@ -31,10 +31,12 @@ std::map<std::string,
                             std::shared_ptr<std::unordered_map<
                                 std::string, std::shared_ptr<ngraph::Node>>>)>>
     NgraphBridge::NG_NODE_MAP = {
+        {"fill_constant", paddle::operators::ngraphs::BuildFillConstantNode},
         {"mul", paddle::operators::ngraphs::BuildMulNode},
         {"mul_grad", paddle::operators::ngraphs::BuildMulGradNode},
         {"relu", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Relu>},
-        {"tanh", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Tanh>}};
+        {"tanh", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Tanh>},
+        {"top_k", paddle::operators::ngraphs::BuildTopKNode}};
 
 void NgraphBridge::BuildNgNode(const std::shared_ptr<OperatorBase>& op) {
   auto& op_type = op->Type();

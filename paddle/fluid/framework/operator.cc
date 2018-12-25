@@ -476,6 +476,28 @@ const Tensor* ExecutionContext::LegacyInput<Tensor>(
 template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const {
+  auto it = ctx_.inputs.find(name);
+  if (it == ctx_.inputs.end()) {
+    return {};
+  }
+  const std::vector<Variable*>& vars = it->second;
+  std::vector<const Tensor*> res;
+  res.reserve(vars.size());
+  std::transform(vars.begin(), vars.end(), std::back_inserter(res),
+                 [&](Variable* var) -> const Tensor* {
+                   if (var == nullptr) return nullptr;
+                   PADDLE_ENFORCE(
+                       var->IsType<LoDTensor>(),
+                       "should be LoDTensor, but the received type is %s",
+                       var->Type().name());
+                   return &(var->Get<LoDTensor>());
+                 });
+  return res;
+}
+
+template <>
+const std::vector<const Tensor*> ExecutionContext::LegacyMultiInput<Tensor>(
+    const std::string& name) const {
   auto names = op().Inputs(name);
   std::vector<const Tensor*> res;
   res.reserve(names.size());
