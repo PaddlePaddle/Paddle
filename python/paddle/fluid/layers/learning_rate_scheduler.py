@@ -63,7 +63,6 @@ def noam_decay(d_model, warmup_steps):
     Returns:
         The decayed learning rate.
     """
-
     with default_main_program()._lr_schedule_guard():
         global_step = _decay_step_counter(1)
 
@@ -231,9 +230,9 @@ def polynomial_decay(learning_rate,
         if cycle:
             div_res = ops.ceil(global_step / decay_steps)
             zero_var = tensor.fill_constant(
-                shape=[1], dtype="float32", value=0.0)
+                shape=[1], dtype='float32', value=0.0)
             one_var = tensor.fill_constant(
-                shape=[1], dtype="float32", value=1.0)
+                shape=[1], dtype='float32', value=1.0)
 
             with control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
@@ -241,7 +240,7 @@ def polynomial_decay(learning_rate,
             decay_steps = decay_steps * div_res
         else:
             decay_steps_var = tensor.fill_constant(
-                shape=[1], dtype="float32", value=float(decay_steps))
+                shape=[1], dtype='float32', value=float(decay_steps))
             global_step = nn.elementwise_min(x=global_step, y=decay_steps_var)
 
         decayed_lr = (learning_rate - end_learning_rate) * \

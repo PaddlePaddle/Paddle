@@ -74,12 +74,6 @@ class Optimizer(object):
         lr = self._global_learning_rate()
 
         if isinstance(lr, framework.Variable):
-            # NOTE: cast to optimizer dtype if needed, this is for
-            # training with fp16 which learning rate should also be
-            # a 
-            if self._dtype:
-                if lr.dtype != self._dtype:
-                    layers.cast(lr, self._dtype)
             return
         else:
             if not isinstance(self._learning_rate, float):
