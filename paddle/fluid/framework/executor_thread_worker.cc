@@ -365,10 +365,12 @@ void AsyncExecutorThreadWorker::SetPSlibPtr(
     std::shared_ptr<paddle::distributed::PSlib> pslib_ptr) {
   _pslib_ptr = pslib_ptr;
 }
+
 void AsyncExecutorThreadWorker::SetPullDenseThread(
     std::shared_ptr<DensePullThread> dpt) {
   _pull_dense_thread = dpt;
 }
+
 void AsyncExecutorThreadWorker::TrainOneNetwork() {
   PrepareParams();
 
