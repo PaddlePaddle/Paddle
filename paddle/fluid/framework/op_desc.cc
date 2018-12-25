@@ -540,7 +540,7 @@ void OpDesc::CheckAttrs() {
     // not by users.
     return;
   }
-  checker->Check(attrs_);
+  checker->Check(&attrs_);
 }
 
 void OpDesc::InferShape(const BlockDesc &block) const {
