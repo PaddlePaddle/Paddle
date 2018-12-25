@@ -7943,7 +7943,7 @@ def unstack(x, axis=0, num=None):
             num = x.shape[axis]
 
     outs = []
-    for _ in num:
+    for _ in range(num):
         outs.append(helper.create_variable_for_type_inference(x.dtype))
 
     helper.append_op(
