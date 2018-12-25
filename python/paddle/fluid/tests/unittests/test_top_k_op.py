@@ -21,15 +21,19 @@ from op_test import OpTest
 
 class TestTopkOp(OpTest):
     def setUp(self):
+        self.variable_k = False
         self.set_args()
         self.op_type = "top_k"
         k = self.top_k
         input = np.random.random((self.row, k)).astype("float32")
         output = np.ndarray((self.row, k))
         indices = np.ndarray((self.row, k)).astype("int64")
-
         self.inputs = {'X': input}
-        self.attrs = {'k': k}
+
+        if self.variable_k:
+            self.inputs['K'] = np.array([k]).astype("int32")
+        else:
+            self.attrs = {'k': k}
 
         for rowid in range(self.row):
             row = input[rowid]
@@ -105,6 +109,13 @@ class TestTopkOp4(TestTopkOp):
     def set_args(self):
         self.row = 40000
         self.top_k = 1
+
+
+class TestTopkOp5(TestTopkOp):
+    def set_args(self):
+        self.row = 40000
+        self.top_k = 3
+        self.variable_k = True
 
 
 if __name__ == "__main__":

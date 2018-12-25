@@ -326,6 +326,17 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     auto* indices = ctx.Output<Tensor>("Indices");
     size_t k = static_cast<int>(ctx.Attr<int>("k"));
 
+    auto* k_t = ctx.Input<Tensor>("K");
+    if (k_t) {
+      Tensor k_host;
+      framework::TensorCopySync(*k_t, platform::CPUPlace(), &k_host);
+      k = k_host.data<int>()[0];
+      framework::DDim output_dims = output->dims();
+      output_dims[output_dims.size() - 1] = k;
+      output->Resize(output_dims);
+      indices->Resize(output_dims);
+    }
+
     const T* input_data = input->data<T>();
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
     // FIXME(typhoonzero): data is always converted to type T?
