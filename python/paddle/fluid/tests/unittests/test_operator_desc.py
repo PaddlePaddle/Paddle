@@ -69,7 +69,7 @@ class TestOperator(unittest.TestCase):
             set(mul_op.attr_names),
             set([
                 "x_num_col_dims", "y_num_col_dims", "op_role", "op_role_var",
-                "op_namescope"
+                "op_namescope", "op_callstack"
             ]))
         self.assertEqual(mul_op.has_attr("x_num_col_dims"), True)
         self.assertEqual(mul_op.attr_type("x_num_col_dims"), core.AttrType.INT)
