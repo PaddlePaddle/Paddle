@@ -41,6 +41,10 @@ DEFINE_int32(rpc_prefetch_thread_num, 12, "number of threads for rpc prefetch");
 namespace paddle {
 namespace operators {
 
+#ifdef WITH_GPERFTOOLS
+static bool gProfileStarted = false;
+#endif
+
 void RunServer(std::shared_ptr<distributed::RPCServer> service) {
   service->StartServer();
   VLOG(4) << "RunServer thread end";
@@ -486,8 +490,14 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 void SignalHandler::StopAndExit(int signal_num) {
-  // Do not use VLOG here for the device for printing maybe already released.
-  // exit will release interal allocated resoureces.
+// Do not use VLOG here for the device for printing maybe already released.
+// exit will release interal allocated resoureces.
+#ifdef WITH_GPERFTOOLS
+  if (gProfileStarted) {
+    ProfilerFlush();
+    ProfilerStop();
+  }
+#endif
   exit(0);
 }
 
