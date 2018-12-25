@@ -55,6 +55,8 @@ __all__ = [
     'softmax',
     'pool2d',
     'pool3d',
+    'adaptive_pool2d',
+    'adaptive_pool3d',
     'batch_norm',
     'beam_search_decode',
     'conv2d_transpose',
@@ -9342,24 +9344,22 @@ def shuffle_channel(x, group=1, name=None):
         x: The input tensor variable..
         group: The num of group
 
-
     Returns:
-        Variable: channel shuffled tensor variable.
+        Variable: channels shuffled tensor variable.
 
     Raises:
-        ValueError: If group in not an int type variable.
+        ValueError: If group is not an int type variable.
 
     Examples:
         .. code-block:: python
 
         out = fluid.layers.shuffle_channel(x=group_conv,group=4)
-    
 
     """
     helper = LayerHelper("shuffle_channel", **locals())
 
     out = helper.create_variable_for_type_inference(
-        dtype=helper.intput_dtype('x'))
+        dtype=helper.input_dtype('x'))
 
     if not isinstance(group, int):
         raise TypeError("group must be int type")
