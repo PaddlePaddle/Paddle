@@ -22,9 +22,15 @@ from . import op_frequence
 from .op_frequence import *
 from . import quantize
 from .quantize import *
+from . import slim
+from .slim import *
+from . import utils
+from .utils import *
 
 __all__ = []
 __all__ += decoder.__all__
 __all__ += memory_usage_calc.__all__
 __all__ += op_frequence.__all__
 __all__ += quantize.__all__
+__all__ += slim.__all__
+__all__ += utils.__all__
