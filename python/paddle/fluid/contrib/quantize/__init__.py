@@ -16,5 +16,8 @@ from __future__ import print_function
 
 from . import quantize_transpiler
 from .quantize_transpiler import *
+from . import graph_quantize_transpiler
+from .graph_quantize_transpiler import *
 
 __all__ = quantize_transpiler.__all__
+__all__ += graph_quantize_transpiler.__all__
