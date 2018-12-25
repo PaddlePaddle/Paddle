@@ -276,7 +276,6 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
       all_vars_.emplace(node->Name(), node->Var());
     }
   }
-  std::unordered_set<std::string> og_has_been_broadcast;
 
   // We cannot invoke resize. It is a bug of GCC 4.8
   result.Set(kGraphVars, new GraphVars(places_.size()));
@@ -347,47 +346,48 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
         }
 
         if (!is_forwarding && (places_.size() > 1 || num_trainers > 1)) {
+          bool is_bk_op =
+              static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
+                                    OpProtoAndCheckerMaker::OpRoleAttrName())) &
+                                static_cast<int>(OpRole::kBackward));
+          if (!is_bk_op) continue;
           // Currently, we assume that once gradient is generated, it can be
           // broadcast, and each gradient is only broadcast once.
-          if (static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
-                                    OpProtoAndCheckerMaker::OpRoleAttrName())) &
-                                static_cast<int>(OpRole::kBackward))) {
-            try {
-              auto backward_vars = boost::get<std::vector<std::string>>(
-                  node->Op()->GetNullableAttr(
-                      OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+          try {
+            auto backward_vars = boost::get<std::vector<std::string>>(
+                node->Op()->GetNullableAttr(
+                    OpProtoAndCheckerMaker::OpRoleVarAttrName()));
 
-              PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
+            PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
 
-              for (size_t i = 0; i < backward_vars.size(); i += 2) {
-                auto &p_name = backward_vars[i];
-                auto &g_name = backward_vars[i + 1];
-                VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
+            for (size_t i = 0; i < backward_vars.size(); i += 2) {
+              auto &p_name = backward_vars[i];
+              auto &g_name = backward_vars[i + 1];
+              VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
 
-                switch (strategy_.reduce_) {
-                  case BuildStrategy::ReduceStrategy::kReduce:
-                    cur_device_id = GetAppropriateDeviceID({g_name});
-                    CreateReduceOp(&result, g_name, cur_device_id);
-                    shared_var_device.emplace(g_name, cur_device_id);
-                    if (!is_dist_train) {
-                      bcast_var_name_set[cur_device_id].emplace(p_name);
-                    }
-                    break;
-                  case BuildStrategy::ReduceStrategy::kAllReduce:
-                    if (IsSparseGradient(g_name)) {
-                      CreateReduceOp(&result, g_name, 0);
-                      CreateBroadcastOp(&result, g_name, 0);
-                    } else {
-                      InsertAllReduceOp(&result, g_name);
-                    }
-                    break;
-                  default:
-                    LOG(FATAL) << "Unknown reduce strategy ";
-                    break;
-                }
+              switch (strategy_.reduce_) {
+                case BuildStrategy::ReduceStrategy::kReduce:
+                  cur_device_id = GetAppropriateDeviceID({g_name});
+                  CreateReduceOp(&result, g_name, cur_device_id);
+                  shared_var_device.emplace(g_name, cur_device_id);
+                  if (!is_dist_train) {
+                    bcast_var_name_set[cur_device_id].emplace(p_name);
+                  }
+                  break;
+                case BuildStrategy::ReduceStrategy::kAllReduce:
+                  if (IsSparseGradient(g_name)) {
+                    CreateReduceOp(&result, g_name, 0);
+                    CreateBroadcastOp(&result, g_name, 0);
+                  } else {
+                    InsertAllReduceOp(&result, g_name);
+                  }
+                  break;
+                default:
+                  LOG(FATAL) << "Unknown reduce strategy ";
+                  break;
               }
-            } catch (boost::bad_get e) {
             }
+          } catch (boost::bad_get e) {
           }
         }
       }
