@@ -56,10 +56,27 @@ ELSE()
     set(MKLDNN_CTX_DEPS)
 ENDIF()
 
+cc_library(temp_allocator SRCS temporary_allocator.cc DEPS  allocator_facade)
+
+nv_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce) 
+IF(WITH_GPU)
+  set(STREAM_CALLBACK_DEPS stream_callback_manager)
+ELSE()
+  set(STREAM_CALLBACK_DEPS)
+ENDIF()
+
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
-cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc
-    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS})
+cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc ${STREAM_CALLBACK_DEPS}
+    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}  temp_allocator)
+
+if(WIN32)
+    if(WITH_GPU AND NOT WITH_DSO)
+        get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
+        target_link_libraries(device_context ${cuda_modules})
+    endif(WITH_GPU AND NOT WITH_DSO)
+endif(WIN32)
+
 nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
 
 cc_test(init_test SRCS init_test.cc DEPS device_context)
@@ -78,3 +95,9 @@ IF(WITH_GPU)
   nv_test(cuda_helper_test SRCS cuda_helper_test.cu)
 ENDIF()
 nv_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
+
+if(WITH_GPU)
+    nv_test(temporal_allocator_test SRCS temporary_allocator_test.cc DEPS temp_allocator tensor)
+else()
+    cc_test(temporal_allocator_test SRCS temporary_allocator_test.cc DEPS temp_allocator tensor)
+endif()

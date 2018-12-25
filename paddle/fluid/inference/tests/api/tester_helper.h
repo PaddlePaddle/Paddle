@@ -30,16 +30,22 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/tests/api/config_printer.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
+#include "paddle/fluid/inference/utils/benchmark.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DEFINE_string(model_name, "", "model name");
 DEFINE_string(infer_model, "", "model path");
 DEFINE_string(infer_data, "", "data file");
+DEFINE_string(refer_result, "", "reference result for comparison");
 DEFINE_int32(batch_size, 1, "batch size.");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
 DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");
 DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
 DEFINE_bool(use_analysis, true,
             "Running the inference program in analysis mode.");
+DEFINE_bool(record_benchmark, false,
+            "Record benchmark after profiling the model");
+DEFINE_double(accuracy, 1e-3, "Result Accuracy.");
 
 DECLARE_bool(profile);
 DECLARE_int32(paddle_num_threads);
@@ -80,7 +86,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         float *pdata = static_cast<float *>(out.data.data());
         float *pdata_ref = static_cast<float *>(ref_out.data.data());
         for (size_t j = 0; j < size; ++j) {
-          EXPECT_NEAR(pdata_ref[j], pdata[j], 1e-3);
+          EXPECT_NEAR(pdata_ref[j], pdata[j], FLAGS_accuracy);
         }
         break;
       }
@@ -192,8 +198,16 @@ void TestOneThreadPrediction(
         predictor->Run(inputs[j], outputs, batch_size);
       }
     }
-    PrintTime(batch_size, num_times, 1, 0, run_timer.toc() / num_times,
-              inputs.size());
+
+    double latency = run_timer.toc() / num_times;
+    PrintTime(batch_size, num_times, 1, 0, latency, inputs.size());
+    if (FLAGS_record_benchmark) {
+      Benchmark benchmark;
+      benchmark.SetName(FLAGS_model_name);
+      benchmark.SetBatchSize(batch_size);
+      benchmark.SetLatency(latency);
+      benchmark.PersistToFile("benchmark_record.txt");
+    }
   }
 }
 
@@ -267,6 +281,26 @@ void TestPrediction(const PaddlePredictor::Config *config,
   } else {
     TestMultiThreadPrediction(config, inputs, outputs, num_threads,
                               use_analysis);
+  }
+}
+
+void CompareDeterministic(
+    const PaddlePredictor::Config *config,
+    const std::vector<std::vector<PaddleTensor>> &inputs) {
+  int batch_size = FLAGS_batch_size;
+  int num_times = FLAGS_repeat;
+  auto predictor = CreateTestPredictor(config, FLAGS_use_analysis);
+
+  // warmup run
+  std::vector<PaddleTensor> warmup_outputs, outputs;
+  predictor->Run(inputs[0], &warmup_outputs, batch_size);
+
+  // run num_times to Compare Deterministic Result.
+  for (int i = 0; i < num_times; i++) {
+    for (size_t j = 0; j < inputs.size(); j++) {
+      predictor->Run(inputs[j], &outputs, batch_size);
+      CompareResult(outputs, warmup_outputs);
+    }
   }
 }
 
@@ -361,7 +395,7 @@ static bool CompareTensorData(const framework::LoDTensor &a,
   }
 
   for (size_t i = 0; i < a_size; i++) {
-    if (a.type() == typeid(float)) {
+    if (a.type() == framework::proto::VarType::FP32) {
       const auto *a_data = a.data<float>();
       const auto *b_data = b.data<float>();
       if (std::abs(a_data[i] - b_data[i]) > 1e-3) {
@@ -370,7 +404,7 @@ static bool CompareTensorData(const framework::LoDTensor &a,
             b_data[i]);
         return false;
       }
-    } else if (a.type() == typeid(int64_t)) {
+    } else if (a.type() == framework::proto::VarType::INT64) {
       const auto *a_data = a.data<int64_t>();
       const auto *b_data = b.data<int64_t>();
       if (std::abs(a_data[i] - b_data[i]) > 1e-3) {

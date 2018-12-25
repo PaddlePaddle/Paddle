@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <stdlib.h>
 #include <limits>
 
 #include "glog/logging.h"  // For VLOG
@@ -293,8 +294,7 @@ VarHandlePtr GRPCClient::AsyncGetMonomerBarrier(const std::string& ep,
   const auto ch = GetChannel(ep);
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
   const std::string method = "SendMonomerFetchBarrierRPC";
-  VarHandlePtr h(
-      new VarHandle(ep, method, FETCH_BARRIER_MESSAGE, nullptr, nullptr));
+  VarHandlePtr h(new VarHandle(ep, method, var_name, nullptr, nullptr));
   s->Prepare(h, time_out);
 
   VLOG(30) << s->GetVarHandlePtr()->String() << " begin";
@@ -390,8 +390,7 @@ void GRPCClient::Proceed() {
       VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
     } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
-      // FIXME(gongwb): parse error_details?
-      LOG(ERROR) << c->GetVarHandlePtr()->String()
+      LOG(FATAL) << c->GetVarHandlePtr()->String()
                  << " meets grpc error, error_code:" << c->status_.error_code()
                  << " error_message:" << c->status_.error_message()
                  << " error_details:" << c->status_.error_details();
@@ -422,7 +421,15 @@ void GRPCClient::Proceed() {
       sync_cond_.notify_all();
     }
   }
-  VLOG(3) << "GRPCClient Proceed end";
+
+  // Last log message
+  // Avoid using VLOG() and LOG(): in the destructor of google::LogMessage() a
+  // static Mutex log_mutex is used for synchronization, which might have been
+  // destructed at this moment.
+  if (FLAGS_v >= 3) {
+    std::string msg("GRPCClient Proceed end");
+    fwrite(msg.c_str(), msg.length(), 1, stdout);
+  }
 }
 
 std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {

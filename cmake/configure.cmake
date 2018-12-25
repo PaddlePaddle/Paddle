@@ -84,8 +84,13 @@ if(NOT WITH_GOLANG)
     add_definitions(-DPADDLE_WITHOUT_GOLANG)
 endif(NOT WITH_GOLANG)
 
+if(WITH_PSLIB)
+    add_definitions(-DPADDLE_WITH_PSLIB)
+endif()
+
 if(WITH_GPU)
     add_definitions(-DPADDLE_WITH_CUDA)
+    add_definitions(-DEIGEN_USE_GPU)
 
     FIND_PACKAGE(CUDA REQUIRED)
 
