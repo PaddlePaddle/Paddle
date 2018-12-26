@@ -37,7 +37,7 @@ def scope_prog_guard(main_prog, startup_prog):
 
 def load_param_from_file(vars_name, param_dir, dtype="float32"):
     """
-    Load parameters from files.
+    Load parameters from files. The parameter should be LoDTensor.
 
     Args:
         vars_name(list): the parameter file that need be loaded.
@@ -71,4 +71,5 @@ def load_param_from_file(vars_name, param_dir, dtype="float32"):
         for var in vars_name:
             var_tensor[var] = \
                 np.array(fluid.global_scope().var(var).get_tensor())
+
     return var_tensor
