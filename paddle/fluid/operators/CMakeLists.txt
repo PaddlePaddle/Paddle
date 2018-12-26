@@ -18,6 +18,10 @@ add_subdirectory(reduce_ops)
 add_subdirectory(sequence_ops)
 add_subdirectory(jit)
 
+if (WITH_GPU)
+    add_subdirectory(k_select)
+endif()
+
 if(WITH_DISTRIBUTE)
     add_subdirectory(distributed)
     add_subdirectory(distributed_ops)
@@ -43,7 +47,7 @@ if (WITH_DISTRIBUTE)
     SET(OP_PREFETCH_DEPS ${OP_PREFETCH_DEPS} parameter_prefetch)
 endif()
 
-register_operators(EXCLUDES py_func_op warpctc_op conv_fusion_op DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 # warpctc_op needs cudnn 7 above
 if (WITH_GPU AND NOT WIN32)
@@ -59,6 +63,10 @@ if (WITH_GPU AND NOT WIN32)
     endif()
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
+endif()
+
+if (WITH_GPU)
+    op_library(dgc_op DEPS k_select)
 endif()
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})

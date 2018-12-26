@@ -32,7 +32,8 @@ struct AllReduceOpHandle : public OpHandleBase {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
-                    const platform::NCCLContextMap *ctxs);
+                    const platform::NCCLContextMap *ctxs,
+                    bool enable_dgc = false);
 #else
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places);
@@ -45,12 +46,15 @@ struct AllReduceOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+  void DGC(unsigned int idx, const std::string &name);
 
  private:
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   const platform::NCCLContextMap *nccl_ctxs_;
+  bool enable_dgc_{false};
+  std::vector<Scope *> local_dgc_scopes_;
 #endif
 };
 

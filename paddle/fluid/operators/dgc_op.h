@@ -15,8 +15,6 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/k_select/k_select.h"
 
 namespace paddle {

@@ -84,6 +84,10 @@ struct BuildStrategy {
 
   bool fuse_broadcast_op_{false};
 
+  // dgc: deep gradients compression
+  // https://arxiv.org/pdf/1712.01887.pdf
+  bool enable_dgc_{false};
+
   int num_trainers_{1};
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;

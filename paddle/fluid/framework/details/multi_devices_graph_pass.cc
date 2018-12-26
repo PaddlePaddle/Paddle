@@ -570,7 +570,7 @@ void MultiDevSSAGraphBuilder::InsertAllReduceOp(ir::Graph *result,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
       result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-      local_scopes_, places_, nccl_ctxs_));
+      local_scopes_, places_, nccl_ctxs_, strategy_.enable_dgc_));
 #else
   result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
       result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),

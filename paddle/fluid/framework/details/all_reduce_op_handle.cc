@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -24,14 +25,17 @@ namespace framework {
 namespace details {
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
-                                     const std::vector<Scope *> &local_scopes,
-                                     const std::vector<platform::Place> &places,
-                                     const platform::NCCLContextMap *ctxs)
+AllReduceOpHandle::AllReduceOpHandle(
+    ir::Node *node, const std::vector<Scope *> &local_scopes,
+    const std::vector<platform::Place> &places,
+    const platform::NCCLContextMap *ctxs, bool enable_dgc,
+    const std::vector<Scope *> &local_dgc_scopes)
     : OpHandleBase(node),
       local_scopes_(local_scopes),
       places_(places),
-      nccl_ctxs_(ctxs) {
+      nccl_ctxs_(ctxs),
+      enable_dgc_(enable_dgc),
+      local_dgc_scopes_(local_dgc_scopes) {
   if (nccl_ctxs_) {
     for (auto &p : places_) {
       this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
@@ -44,6 +48,45 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<platform::Place> &places)
     : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 #endif
+
+template <typename DeviceContext, typename T>
+void InitialDGCVars(Scope *scope, DeviceContext *dev_ctx,
+                    const std::string &var_name) {
+  auto tensor = scope->Var(var_name)->GetMutable<framework::LoDTensor>();
+  operators::math::SetConstant<DeviceContext, T> set_zero;
+  set_zero(dev_ctx, tensor, static_cast<T>(0.0));
+}
+
+void AllReduceOpHandle::DGC(unsigned int idx, const std::string &name,
+                            DeviceContext *dev_ctx, proto::VarType::Type type) {
+  auto U_name = name + "_dgc_u_";
+  auto V_name = name + "_dgc_v_";
+  auto G_name = name + "_dgc_g_";
+  if (local_dgc_scopes_[idx]->FindVar() == nullptr) {
+    // FIXME(gongwb): use variant template arguments.
+    if (type == framework::proto::VarType::FP32) {
+      InitialDGCVars<platform::CUDADeviceContext, float>(scope, dev_ctx,
+                                                         U_name);
+      InitialDGCVars<platform::CUDADeviceContext, float>(scope, dev_ctx,
+                                                         V_name);
+      InitialDGCVars<platform::CUDADeviceContext, float>(scope, dev_ctx,
+                                                         G_name);
+    } else if (type == framework::proto::VarType::FP64) {
+      InitialDGCVars<platform::CUDADeviceContext, double>(scope, dev_ctx,
+                                                          U_name);
+      InitialDGCVars<platform::CUDADeviceContext, double>(scope, dev_ctx,
+                                                          V_name);
+      InitialDGCVars<platform::CUDADeviceContext, double>(scope, dev_ctx,
+                                                          G_name);
+    }
+  }
+
+  auto U = local_dgc_scopes_[idx]->Var(U_name);
+  auto V = local_dgc_scopes_[idx]->Var(V_name);
+  auto G = local_dgc_scopes_[idx]->Var(G_name);
+
+  auto o_G = local_scopes_[idx]->Var(name);
+}
 
 void AllReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
@@ -99,15 +142,20 @@ void AllReduceOpHandle::RunImpl() {
           numel = static_cast<size_t>(lod_tensor.numel());
         }
 
-        int dev_id = boost::get<platform::CUDAPlace>(p).device;
-        auto &nccl_ctx = nccl_ctxs_->at(dev_id);
-        auto stream = nccl_ctx.stream();
-        auto comm = nccl_ctx.comm_;
-        all_reduce_calls.emplace_back([=] {
-          PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-              buffer, buffer, numel, static_cast<ncclDataType_t>(dtype),
-              ncclSum, comm, stream));
-        });
+        if (enable_dgc_ && numel > 1000) {
+          VLOG(10) << "enable_dgc:" << enable_dgc_ << ", numel:" << numel;
+          DGC(i, in_var_handles[i]->name_);
+        } else {
+          int dev_id = boost::get<platform::CUDAPlace>(p).device;
+          auto &nccl_ctx = nccl_ctxs_->at(dev_id);
+          auto stream = nccl_ctx.stream();
+          auto comm = nccl_ctx.comm_;
+          all_reduce_calls.emplace_back([=] {
+            PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+                buffer, buffer, numel, static_cast<ncclDataType_t>(dtype),
+                ncclSum, comm, stream));
+          });
+        }
       }
       this->RunAndRecordEvent([&] {
         platform::NCCLGroupGuard guard;
