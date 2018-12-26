@@ -247,39 +247,15 @@ ParallelExecutor::ParallelExecutor(
     if (nccl_id_var != nullptr) {
       nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
     }
-
     if (build_strategy.enable_parallel_graph_ && places.size() > 1) {
       if (nccl_id == nullptr) {
         nccl_id = new ncclUniqueId();
         PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(nccl_id));
       }
     }
+
     member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
         member_->places_, nccl_id, num_trainers, trainer_id));
-
-/**
-if (build_strategy.enable_parallel_graph_ && places.size() > 1) {
-  // parallel graph mode should initialize nccl by ncclCommInitRank since
-  // it call nccl operator per device per thread.
-  if (nccl_id_var == nullptr) {
-    nccl_id = new ncclUniqueId();
-    PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(nccl_id));
-    *member_->global_scope_->Var(NCCL_ID_VARNAME)
-         ->GetMutable<ncclUniqueId>() = *nccl_id;
-  } else {
-    nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
-  }
-} else if (nccl_id_var != nullptr) {  // the other executor type.
-  // the distributed training with nccl mode would initialize the nccl id in
-  // startup_program.
-  nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
-} else {
-  // initlize NCCL by ncclCommInitAll, do not need to intialize the nccl_id.
-}
-
-member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
-    member_->places_, nccl_id, num_trainers, trainer_id));
-**/
 #else
     PADDLE_THROW("Not compiled with CUDA");
 #endif
