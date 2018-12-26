@@ -104,25 +104,17 @@ class HuberLossGradKernel : public framework::OpKernel<T> {
     if (out0) {
       out0->mutable_data<T>(context.GetPlace());
       auto x_grad = EigenVector<T>::Flatten(*out0);
-      // Under MSVC 2015 14.0.25431.01
-      // The compiler cannot deduce when partial parameter type specified
-      // however not all parameters type were defined
-      auto sign = -1.0f;
-      using signType = decltype(sign);
+      // MSVC not treat it well when partial template arguments were specified
       x_grad.device(place) =
-          out_grad * residual.unaryExpr(HuberLossBackward<T>(static_cast<signType>(delta), sign));
+          out_grad * residual.unaryExpr(HuberLossBackward<T>(delta, static_cast<T>(-1.0)));
     }
 
     if (out1) {
       out1->mutable_data<T>(context.GetPlace());
       auto y_grad = EigenVector<T>::Flatten(*out1);
-      // Under MSVC 2015 14.0.25431.01
-      // The compiler cannot deduce when partial parameter type specified
-      // however not all parameters type were defined
-      auto sign = 1.0f;
-      using signType = decltype(sign);
+      // MSVC not treat it well when partial template arguments were specified
       y_grad.device(place) =
-          out_grad * residual.unaryExpr(HuberLossBackward<T>(static_cast<signType>(delta), sign));
+          out_grad * residual.unaryExpr(HuberLossBackward<T>(delta, static_cast<T>(1.0)));
     }
   }
 };
