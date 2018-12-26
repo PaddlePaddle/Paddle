@@ -186,8 +186,8 @@ struct AnyDTypeVisitor {
 template <typename Predicate, typename DevCtx>
 inline void AnyImpl(Predicate predicate, const framework::Tensor& tensor,
                     const DevCtx& ctx, framework::Tensor* out) {
-  VisitDataType(ToDataType(tensor.type()), AnyDTypeVisitor<Predicate, DevCtx>(
-                                               predicate, tensor, ctx, out));
+  VisitDataType(tensor.type(), AnyDTypeVisitor<Predicate, DevCtx>(
+                                   predicate, tensor, ctx, out));
 }
 
 template <typename Predicate>
@@ -379,7 +379,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
      // int32_t  size
      // void*    protobuf message
     proto::VarType::TensorDesc desc;
-    desc.set_data_type(framework::ToDataType(tensor.type()));
+    desc.set_data_type(tensor.type());
     auto dims = framework::vectorize(tensor.dims());
     auto* pb_dims = desc.mutable_dims();
     pb_dims->Resize(static_cast<int>(dims.size()), 0);
@@ -461,9 +461,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     tensor->Resize(framework::make_ddim(dims));
     void* buf;
     auto ctx = platform::CPUDeviceContext();
-    size_t size =
-        tensor->numel() *
-        framework::SizeOfType(framework::ToTypeIndex(desc.data_type()));
+    size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
       Tensor cpu_tensor;

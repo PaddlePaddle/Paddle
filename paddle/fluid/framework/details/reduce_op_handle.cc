@@ -218,18 +218,18 @@ void ReduceOpHandle::RunImpl() {
       }
 
 #if defined PADDLE_WITH_CUDA && defined PADDLE_WITH_DISTRIBUTE
-      if (framework::IsType<const float>(in_selected_rows[0]->value().type())) {
+      if (in_selected_rows[0]->value().type() ==
+          framework::proto::VarType::FP32) {
         GatherSelectedRows<platform::CUDADeviceContext, float>(
             in_selected_rows, in_places, dev_ctxes_, out_var_handle, t_out_p,
             out_var->GetMutable<framework::SelectedRows>());
-      } else if (framework::IsType<const double>(
-                     in_selected_rows[0]->value().type())) {
+      } else if (in_selected_rows[0]->value().type() ==
+                 framework::proto::VarType::FP64) {
         GatherSelectedRows<platform::CUDADeviceContext, double>(
             in_selected_rows, in_places, dev_ctxes_, out_var_handle, t_out_p,
             out_var->GetMutable<framework::SelectedRows>());
       } else {
-        PADDLE_ENFORCE(false,
-                       "only support double or float when gahter SelectedRows");
+        PADDLE_THROW("only support double or float when gather SelectedRows");
       }
 #endif
     });
@@ -246,7 +246,7 @@ void ReduceOpHandle::RunImpl() {
         if (!FLAGS_cpu_deterministic) {
           ReduceLoDTensor func(lod_tensors,
                                out_var->GetMutable<framework::LoDTensor>());
-          VisitDataType(ToDataType(lod_tensors[0]->type()), func);
+          VisitDataType(lod_tensors[0]->type(), func);
         } else {
           // We sum lod_tensors to reduce_sum_trg which is in local_scopes_0
           // here, but it doesn't mean reduce_sum_trg must be in local_scopes_0.
@@ -256,7 +256,7 @@ void ReduceOpHandle::RunImpl() {
                                       ->FindVar(out_var_handle->name_)
                                       ->GetMutable<framework::LoDTensor>();
           ReduceLoDTensor func(lod_tensors, &reduce_sum_trg);
-          VisitDataType(ToDataType(lod_tensors[0]->type()), func);
+          VisitDataType(lod_tensors[0]->type(), func);
 
           auto trg = out_var->GetMutable<framework::LoDTensor>();
           if (reduce_sum_trg.data<void>() != trg->data<void>()) {

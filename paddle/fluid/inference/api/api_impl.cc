@@ -208,11 +208,14 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                   inputs[i].data.length());
     } else {
 #ifdef PADDLE_WITH_CUDA
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto *dev_ctx =
+          static_cast<const platform::CUDADeviceContext *>(pool.Get(place_));
       auto dst_gpu_place = boost::get<platform::CUDAPlace>(place_);
       memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
                    platform::CPUPlace(), inputs[i].data.data(),
-                   inputs[i].data.length(),
-                   0);  // stream 0 for sync copy
+                   inputs[i].data.length(), dev_ctx->stream());
 #else
       PADDLE_THROW("Not compile with CUDA, should not reach here.");
 #endif
@@ -266,10 +269,10 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     auto type = fetch.type();
     auto output = &(outputs->at(i));
     output->name = fetchs_[idx]->Input("X")[0];
-    if (type == typeid(float)) {
+    if (type == framework::DataTypeTrait<float>::DataType) {
       GetFetchOne<float>(fetch, output);
       output->dtype = PaddleDType::FLOAT32;
-    } else if (type == typeid(int64_t)) {
+    } else if (type == framework::DataTypeTrait<int64_t>::DataType) {
       GetFetchOne<int64_t>(fetch, output);
       output->dtype = PaddleDType::INT64;
     } else {

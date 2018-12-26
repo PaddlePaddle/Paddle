@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
+#include <algorithm>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -94,6 +95,7 @@ class ParallelExecutorPrivate {
     }
   }
 
+  BuildStrategy build_strategy_;
   std::vector<platform::Place> places_;
   std::vector<Scope *> local_scopes_;
   Scope *global_scope_;  // not owned
@@ -170,6 +172,14 @@ std::unique_ptr<ir::Graph> ParallelExecutorPrivate::PrepareGCAndRefCnts(
     eager_deletion_pass->SetNotOwned(details::kAllPlaces, &places_);
     graph = eager_deletion_pass->Apply(std::move(graph));
     VLOG(10) << "EagerDeletionPass Applied";
+
+    if (build_strategy_.memory_early_delete_) {
+      auto early_delete_pass =
+          ir::PassRegistry::Instance().Get("memory_early_delete_pass");
+      early_delete_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
+      graph = early_delete_pass->Apply(std::move(graph));
+    }
+    VLOG(10) << "MemoryEarlyDeletePass Applied.";
   }
 
   return graph;
@@ -181,7 +191,6 @@ std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
 
 ParallelExecutor::ParallelExecutor(
     const std::vector<platform::Place> &places,
-    const std::unordered_set<std::string> &params,
     const std::unordered_set<std::string> &bcast_vars,
     const ProgramDesc &main_program, const std::string &loss_var_name,
     Scope *scope, const std::vector<Scope *> &local_scopes,
@@ -190,6 +199,7 @@ ParallelExecutor::ParallelExecutor(
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
+  member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ =
       build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
 
@@ -210,7 +220,7 @@ ParallelExecutor::ParallelExecutor(
         "ParallelGraph executor.");
   }
 
-  // Step 1. Bcast the params to devs.
+  // Step 1. Bcast the bcast_vars to devs.
   // Create local scopes
   if (local_scopes.empty()) {
     member_->own_local_scope_ = true;
@@ -267,25 +277,24 @@ ParallelExecutor::ParallelExecutor(
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   if (build_strategy.enable_parallel_graph_) {
     for (size_t i = 0; i < member_->places_.size(); ++i) {
-      std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
-          main_program, {member_->places_[i]}, loss_var_name, params,
-          {member_->local_scopes_[i]}, member_->use_cuda_,
-          member_->nccl_ctxs_.get());
+      std::unique_ptr<ir::Graph> graph =
+          build_strategy.Apply(main_program, {member_->places_[i]},
+                               loss_var_name, {member_->local_scopes_[i]},
+                               member_->use_cuda_, member_->nccl_ctxs_.get());
       graphs.push_back(std::move(graph));
     }
   } else {
     std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
-        main_program, member_->places_, loss_var_name, params,
-        member_->local_scopes_, member_->use_cuda_, member_->nccl_ctxs_.get());
+        main_program, member_->places_, loss_var_name, member_->local_scopes_,
+        member_->use_cuda_, member_->nccl_ctxs_.get());
     graphs.push_back(std::move(graph));
   }
 #else
   std::unique_ptr<ir::Graph> graph =
       build_strategy.Apply(main_program, member_->places_, loss_var_name,
-                           params, member_->local_scopes_, member_->use_cuda_);
+                           member_->local_scopes_, member_->use_cuda_);
   graphs.push_back(std::move(graph));
 #endif
-
   auto max_memory_size = GetEagerDeletionThreshold();
   // TODO(Yancey1989): fix gc failed on ParallelGraph strategy.
   if (max_memory_size >= 0 && !build_strategy.enable_parallel_graph_) {
@@ -475,5 +484,6 @@ ParallelExecutor::~ParallelExecutor() {
 }  // namespace framework
 }  // namespace paddle
 
+USE_PASS(memory_early_delete_pass);
 USE_PASS(reference_count_pass);
 USE_PASS(eager_deletion_pass);
