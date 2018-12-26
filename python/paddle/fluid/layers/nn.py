@@ -86,6 +86,7 @@ __all__ = [
     'transpose',
     'im2sequence',
     'nce',
+    'sampled_softmax_with_cross_entropy',
     'hsigmoid',
     'beam_search',
     'row_conv',
@@ -117,6 +118,7 @@ __all__ = [
     'random_crop',
     'mean_iou',
     'relu',
+    'gelu',
     'selu',
     'log',
     'crop',
@@ -5551,6 +5553,91 @@ def softmax_with_cross_entropy(logits,
     return loss
 
 
+def sampled_softmax_with_cross_entropy(logits,
+                                       label,
+                                       num_samples,
+                                       remove_accidental_hits=True,
+                                       seed=0):
+    """
+    **Sampled Softmax With Cross Entropy Operator.**
+
+    Cross entropy loss with sampled softmax is used as the output layer for 
+    larger output classes extensively. This operator samples a number of samples
+    for each example(row), and computes the softmax normalized values for each 
+    row of the sampled tensor, after which cross-entropy loss is computed. 
+    This provides a more numerically stable gradient.
+
+    Because this operator performs a softmax on logits internally, it expects
+    unscaled logits. This operator should not be used with the output of
+    softmax operator since that would produce incorrect results.
+    
+    For examples with T true labels (T >= 1), we assume that each true label has
+    a probability of 1/T. For each sample, S samples are generated using a
+    log uniform distribution. True labels are concatenated with hese samples to
+    form T + S samples for each example. So, assume the shape of logits is
+    [N x K], the shape for samples is [N x (T+S)]. For each sampled label, a 
+    probability is calculated, which corresponds to the Q(y|x) in 
+    [Jean et al., 2014](http://arxiv.org/abs/1412.2007).
+    
+    Logits are sampled according to the sampled labels. Then if 
+    remove_accidental_hits is True, if a sample[i, j] accidentally hits true 
+    labels, then the corresponding sampled_logits[i, j] is minus by 1e20 to 
+    make its softmax result close to zero. Then samled logits are subtracted by
+    logQ(y|x), these sampled logits and re-indexed labels are used to compute 
+    a softmax with cross entropy.
+
+    Args:
+        logits (Variable): The unscaled log probabilities, which is a 2-D tensor
+            with shape [N x K]. N is the batch_size, and K is the class number.
+        label (Variable): The ground truth which is a 2-D tensor. Label is a 
+            Tensor<int64> with shape [N x T], where T is the number of true 
+            labels per example. 
+        num_samples (int): The number for each example, num_samples should be 
+            less than the number of class.
+        seed (int): The random seed for generating random number, which is used
+            in the process of sampling. Default is 0.
+        remove_accidental_hits (bool): A flag indicating whether to remove 
+            accidental hits when sampling. If True and if a sample[i, j] 
+            accidentally hits true labels, then the corresponding 
+            sampled_logits[i, j] is minus by 1e20 to make its softmax result 
+            close to zero. Default is True.
+
+    Returns:
+        Variable: Return the cross entropy loss which is a 2-D tensor with shape
+                  [N x 1].
+
+    Examples:
+        .. code-block:: python
+
+            logits = fluid.layers.data(name='data', shape=[256], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[5], dtype='int64')
+            fc = fluid.layers.fc(input=data, size=100)
+            out = fluid.layers.sampled_softmax_with_cross_entropy(
+                logits=fc, label=label, num_samples=25)
+    """
+    helper = LayerHelper('sampled_softmax_with_cross_entropy', **locals())
+    samples = helper.create_variable_for_type_inference(dtype='int64')
+    sampled_softmax \
+        = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
+
+    helper.append_op(
+        type='sampled_softmax_with_cross_entropy',
+        inputs={'Logits': logits,
+                'Label': label},
+        outputs={
+            'Samples': samples,
+            'SampledSoftmax': sampled_softmax,
+            'Loss': loss
+        },
+        attrs={
+            'remove_accidental_hits': remove_accidental_hits,
+            'num_samples': num_samples,
+            'seed': seed
+        })
+    return loss
+
+
 def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     """
     This layer computes the smooth L1 loss for Variable :attr:`x` and :attr:`y`.
@@ -6880,6 +6967,38 @@ def relu(x, name=None):
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="relu", inputs={"X": helper.input('x')}, outputs={"Out": out})
+    return out
+
+
+def gelu(x, name=None):
+    """
+    Relu takes one input data (Tensor) and produces one output data (Tensor)
+    where the Gaussian Error Linear function, 
+    y = 0.5 * x *  (1 + erf(x / sqrt(2))), is applied to
+    the tensor elementwise.
+
+    .. math::
+
+        Out = 0.5 * x *  (1 + erf(\\frac{x}{\\sqrt(2)}))
+
+    Args:
+        x (Variable): The input tensor.
+        name (str|None, default None): A name for this layer If set None,
+            the layer will be named automatically.
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.gelu(x)
+    """
+    helper = LayerHelper('gelu', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type="gelu", inputs={"X": x}, outputs={"Out": out})
     return out
 
 
