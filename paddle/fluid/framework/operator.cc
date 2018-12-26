@@ -16,7 +16,6 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include <algorithm>
-
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -1104,8 +1103,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &(var->Get<SelectedRows>().value());
         }
         if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s is not initialized",
-                         ipt_name);
+          PADDLE_ENFORCE(t->IsInitialized(), "Input is not initialized");
           int tmp = static_cast<int>(t->type());
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,
