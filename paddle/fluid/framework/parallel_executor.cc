@@ -107,6 +107,7 @@ class ParallelExecutorPrivate {
   bool own_local_scope_;
   bool use_cuda_;
   bool use_all_reduce_;
+  size_t num_parallel_devices_;
 
   // global_ref_cnts_ is only initialized when ParallelExecutor constructs, and
   // then keeps unchanged
@@ -202,6 +203,7 @@ ParallelExecutor::ParallelExecutor(
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ =
       build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
+  member_->num_parallel_devices_ = num_trainers * places.size();
 
   if (!member_->use_all_reduce_) {
     PADDLE_ENFORCE(places.size() > 1,
@@ -212,12 +214,12 @@ ParallelExecutor::ParallelExecutor(
   if (build_strategy.enable_parallel_graph_) {
     PADDLE_ENFORCE(
         member_->use_all_reduce_,
-        "build_strategy.reduce should be `AllReduce` if you want to use"
-        "ParallelGraph executor.");
+        "build_strategy.reduce should be `AllReduce` if you want to enable"
+        "ParallelGraph.");
     PADDLE_ENFORCE(
         member_->use_cuda_,
-        "execution_strategy.use_cuda should be True if you want to use"
-        "ParallelGraph executor.");
+        "execution_strategy.use_cuda should be True if you want to enable "
+        "ParallelGraph.");
   }
 
   // Step 1. Bcast the bcast_vars to devs.
@@ -241,27 +243,43 @@ ParallelExecutor::ParallelExecutor(
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
     ncclUniqueId *nccl_id = nullptr;
-    if (build_strategy.enable_parallel_graph_ && places.size() > 1) {
-      // parallel graph mode should initialize nccl by ncclCommInitRank since
-      // it call nccl operator per device per thread.
-      if (nccl_id_var == nullptr) {
-        nccl_id = new ncclUniqueId();
-        PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(nccl_id));
-        *member_->global_scope_->Var(NCCL_ID_VARNAME)
-             ->GetMutable<ncclUniqueId>() = *nccl_id;
-      } else {
-        nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
-      }
-    } else if (nccl_id_var != nullptr) {  // the other executor type.
-      // the distributed training with nccl mode would initialize the nccl id in
-      // startup_program.
+    // nccl collective would broadcast nccl id by gen_nccl_id operator.
+    if (nccl_id_var != nullptr) {
       nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
-    } else {
-      // initlize NCCL by ncclCommInitAll, do not need to intialize the nccl_id.
     }
 
+    if (build_strategy.enable_parallel_graph_ && places.size() > 1) {
+      if (nccl_id == nullptr) {
+        nccl_id = new ncclUniqueId();
+        PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(nccl_id));
+      }
+    }
     member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
         member_->places_, nccl_id, num_trainers, trainer_id));
+
+/**
+if (build_strategy.enable_parallel_graph_ && places.size() > 1) {
+  // parallel graph mode should initialize nccl by ncclCommInitRank since
+  // it call nccl operator per device per thread.
+  if (nccl_id_var == nullptr) {
+    nccl_id = new ncclUniqueId();
+    PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(nccl_id));
+    *member_->global_scope_->Var(NCCL_ID_VARNAME)
+         ->GetMutable<ncclUniqueId>() = *nccl_id;
+  } else {
+    nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+  }
+} else if (nccl_id_var != nullptr) {  // the other executor type.
+  // the distributed training with nccl mode would initialize the nccl id in
+  // startup_program.
+  nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+} else {
+  // initlize NCCL by ncclCommInitAll, do not need to intialize the nccl_id.
+}
+
+member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
+    member_->places_, nccl_id, num_trainers, trainer_id));
+**/
 #else
     PADDLE_THROW("Not compiled with CUDA");
 #endif
@@ -274,25 +292,27 @@ ParallelExecutor::ParallelExecutor(
   // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
   // ncclOp
   std::vector<std::unique_ptr<ir::Graph>> graphs;
+  member_->num_parallel_devices_ = member_->places_.size() * num_trainers;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   if (build_strategy.enable_parallel_graph_) {
     for (size_t i = 0; i < member_->places_.size(); ++i) {
-      std::unique_ptr<ir::Graph> graph =
-          build_strategy.Apply(main_program, {member_->places_[i]},
-                               loss_var_name, {member_->local_scopes_[i]},
-                               member_->use_cuda_, member_->nccl_ctxs_.get());
+      std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
+          main_program, {member_->places_[i]}, loss_var_name,
+          {member_->local_scopes_[i]}, member_->num_parallel_devices_,
+          member_->use_cuda_, member_->nccl_ctxs_.get());
       graphs.push_back(std::move(graph));
     }
   } else {
     std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
         main_program, member_->places_, loss_var_name, member_->local_scopes_,
-        member_->use_cuda_, member_->nccl_ctxs_.get());
+        member_->num_parallel_devices_, member_->use_cuda_,
+        member_->nccl_ctxs_.get());
     graphs.push_back(std::move(graph));
   }
 #else
-  std::unique_ptr<ir::Graph> graph =
-      build_strategy.Apply(main_program, member_->places_, loss_var_name,
-                           member_->local_scopes_, member_->use_cuda_);
+  std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
+      main_program, member_->places_, loss_var_name, member_->local_scopes_,
+      member_->num_parallel_devices_, member_->use_cuda_);
   graphs.push_back(std::move(graph));
 #endif
   auto max_memory_size = GetEagerDeletionThreshold();
