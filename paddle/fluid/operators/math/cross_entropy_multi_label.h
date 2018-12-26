@@ -65,6 +65,13 @@ class CrossEntropyMultiLabelFunctor {
                   const framework::Tensor* labels);
 };
 
+template <typename DeviceContext, typename T>
+class CrossEntropyMultiLabelGradFunctor {
+ public:
+  void operator()(const DeviceContext& context, framework::Tensor* out,
+                  const framework::Tensor* prob,
+                  const framework::Tensor* labels);
+};
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

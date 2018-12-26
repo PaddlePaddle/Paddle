@@ -14,13 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include <iostream>
-#include <string>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/cross_entropy_multi_label.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sample_prob.h"
 #include "paddle/fluid/operators/math/softmax.h"
 
@@ -32,11 +31,12 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-// UNDERSTAND: something like take_along_axis in numpy
+// UNDERSTAND: something like take_along_axis in numpy.
 template <typename T>
-void CPUTakeAlongD1(const platform::DeviceContext& ctx,
-                    const framework::Tensor& array,
-                    const framework::Tensor& index, framework::Tensor* value) {
+static void CPUTakeAlongD1(const platform::DeviceContext& ctx,
+                           const framework::Tensor& array,
+                           const framework::Tensor& index,
+                           framework::Tensor* value) {
   PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
   // UNDERSTAND: check shape src(B, C), index(B, K), out should also be (B, K)
   PADDLE_ENFORCE(index.dims().size() == 2 && array.dims().size() == 2 &&
@@ -69,11 +69,13 @@ void CPUTakeAlongD1(const platform::DeviceContext& ctx,
   }
 }
 
-// UNDERSTAND: something like put_along_axis in numpy
+// UNDERSTAND: something like put_along_axis in numpy but if there is duplicate
+// indices, scatter is done in += way.
 template <typename T>
-void CPUPutAlongD1(const platform::DeviceContext& ctx, framework::Tensor* array,
-                   const framework::Tensor& index,
-                   const framework::Tensor& value) {
+static void CPUPutAlongD1(const platform::DeviceContext& ctx,
+                          framework::Tensor* array,
+                          const framework::Tensor& index,
+                          const framework::Tensor& value) {
   PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
   // UNDERSTAND: check shape src(B, C), index(B, K), out should also be (B, K)
   PADDLE_ENFORCE(index.dims().size() == 2 && array->dims().size() == 2 &&
@@ -97,8 +99,33 @@ void CPUPutAlongD1(const platform::DeviceContext& ctx, framework::Tensor* array,
   for (int i = 0; i < batch_size; ++i) {
     for (int j = 0; j < num_put; ++j) {
       auto array_index = p_index[i * idx_slice_size + j];
-      p_array[i * array_slice_size + array_index] =
+      p_array[i * array_slice_size + array_index] +=
           p_value[i * value_slice_size + j];
+    }
+  }
+}
+
+// UNDERSTAND: compute accidentdal hits from samples and minus corresponding
+// logits by a float max, here 1e20
+template <typename T>
+static void compute_remove_accidental_hits(const platform::DeviceContext& ctx,
+                                           framework::Tensor* sampled_logits,
+                                           const framework::Tensor& samples,
+                                           const int num_true) {
+  const auto batch_size = sampled_logits->dims()[0];
+  const auto num_sampled_classes = sampled_logits->dims()[1];
+  T* sampled_logits_data = sampled_logits->data<T>();
+  const auto samples_data = samples.data<int64_t>();
+
+  std::unordered_set<int64_t> tmp_true_labels;
+  for (int i = 0; i < batch_size; ++i) {
+    tmp_true_labels.clear();
+    tmp_true_labels.insert(samples_data + i * num_sampled_classes,
+                           samples_data + i * num_sampled_classes + num_true);
+    for (int j = num_true; j < num_sampled_classes; ++j) {
+      const auto idx = i * num_sampled_classes + j;
+      if (tmp_true_labels.find(samples_data[idx]) != tmp_true_labels.end())
+        sampled_logits_data[idx] -= 1e20;
     }
   }
 }
@@ -110,20 +137,29 @@ class SampledSoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(context.GetPlace()),
                    "This kernel only runs on CPU.");
+    // get necessary inputs
     const Tensor* logits = context.Input<Tensor>("Logits");
     const Tensor* label = context.Input<Tensor>("Label");
 
+    // get necessary outputs
     Tensor* samples = context.Output<Tensor>("Samples");
     Tensor* sampled_softmax = context.Output<Tensor>("SampledSoftmax");
     Tensor* loss = context.Output<Tensor>("Loss");
 
+    // shapes
     const auto batch_size = logits->dims()[0];
     const auto num_classes = logits->dims()[1];
     const auto label_dim = label->dims();
     const auto num_true = label_dim[1];
-    const auto num_samples = context.Attr<int>("num_samples");
     const auto samples_dim = samples->dims();
+
+    // attrs
+    const auto num_samples = context.Attr<int>("num_samples");
     const bool use_custom_samples = context.Attr<bool>("use_custom_samples");
+    const bool remove_accidental_hits =
+        context.Attr<bool>("remove_accidental_hits");
+
+    // device contexts
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
 
@@ -162,9 +198,44 @@ class SampledSoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
                         num_samples, label, samples, probabilities);
     }
 
-    // UNDERSTAND: gather sampled logits
+    // UNDERSTAND: gather sampled logits and remove accidental hits if needed
     CPUTakeAlongD1<T>(dev_ctx, *logits, *samples, sampled_logits);
+    if (remove_accidental_hits) {
+      compute_remove_accidental_hits<T>(dev_ctx, sampled_logits, *samples,
+                                        num_true);
+    }
 
+    /* Debug
+    const auto num_sampled_classes = samples_dim[1];
+    std::cout << "Sampled Logits" << std::endl;
+    const auto sampled_logits_data = sampled_logits->data<T>();
+    for (int i = 0; i < sampled_logits->numel(); ++i) {
+      std::cout << sampled_logits_data[i] << ", ";
+      if ((i + 1) % num_sampled_classes == 0)
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+    */
+    /* Debug
+    std::cout << "Samples" << std::endl;
+    const auto samples_data = samples->data<int64_t>();
+    for (int i = 0; i < samples->numel(); ++i) {
+      std::cout << samples_data[i] << ", ";
+      if ((i + 1) % num_sampled_classes == 0)
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+    */
+    /* Debug
+    std::cout << "Probabilities" << std::endl;
+    const auto probabilities_data = probabilities->data<T>();
+    for (int i = 0; i < probabilities->numel(); ++i) {
+      std::cout << probabilities_data[i] << ", ";
+      if ((i + 1) % num_sampled_classes == 0)
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+    */
     // subtracted sampled logits with logQ(y|x)
     auto probs = EigenMatrix<T>::From(*probabilities);
     auto smp_logits = EigenMatrix<T>::From(*sampled_logits);
@@ -172,21 +243,22 @@ class SampledSoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
         (smp_logits - probs.log().unaryExpr(math::TolerableValue<T>()))
             .unaryExpr(math::TolerableValue<T>());
 
-    /* debug
-    const auto sampled_logits_data = sampled_logits->data<T>();
-    for (int i = 0; i < sampled_logits->numel(); ++i) {
-      std::cout << sampled_logits_data[i] << ", ";
-      if ((i + 1) % samples_dim[1] == 0)
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
-    */
-
     // UNDERSTAND: main logic here
     math::SoftmaxFunctor<platform::CPUDeviceContext, T, false>()(
         dev_ctx, sampled_logits, sampled_softmax);
     math::CrossEntropyMultiLabelFunctor<platform::CPUDeviceContext, T>()(
         dev_ctx, loss, sampled_softmax, shrinked_label);
+
+    /* Debug
+    std::cout << "Sampled Softmax" << std::endl;
+    const auto sampled_softmax_data = sampled_softmax->data<T>();
+    for (int i = 0; i < sampled_softmax->numel(); ++i) {
+      std::cout << sampled_softmax_data[i] << ", ";
+      if ((i + 1) % num_sampled_classes == 0)
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+    */
   }
 };
 
@@ -202,6 +274,15 @@ class SampledSoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     auto logit_grad = context.Output<Tensor>(framework::GradVarName("Logits"));
     logit_grad->mutable_data<T>(context.GetPlace());
 
+    auto& dev_ctx =
+        context.template device_context<platform::CPUDeviceContext>();
+    math::SetConstant<platform::CPUDeviceContext, T> set_zero;
+    set_zero(dev_ctx, logit_grad, static_cast<T>(0));
+
+    // shape
+    const int batch_size = logit_grad->dims()[0];
+    const int num_true = label->dims()[1];
+
     Tensor sampled_logits_grad_tmp;
     Tensor* sampled_logits_grad = &sampled_logits_grad_tmp;
     sampled_logits_grad->ShareDataWith(
@@ -216,12 +297,9 @@ class SampledSoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
         sampled_logits_grad_mat *
         out_grad_mat.broadcast(Eigen::DSizes<int, 2>(1, num_sampled_classes));
 
-    const int batch_size = logit_grad->dims()[0];
-    // const int64_t* label_data = label->data<int64_t>();
     T* sampled_logits_grad_data = sampled_logits_grad->data<T>();
     const T* out_grad_data = out_grad->data<T>();
     /* UNDERSTAND: still do it by loop */
-    const int num_true = label->dims()[1];
     for (int i = 0; i < batch_size; ++i) {
       for (int j = 0; j < num_true; ++j) {
         sampled_logits_grad_data[i * num_sampled_classes + j] -=
@@ -230,8 +308,6 @@ class SampledSoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     }
 
     // UNDERSTAND: scatter it back to logit_grad
-    auto& dev_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
     CPUPutAlongD1<T>(dev_ctx, logit_grad, *samples, *sampled_logits_grad);
   }
 };

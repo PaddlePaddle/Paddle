@@ -35,12 +35,14 @@ class SampledSoftmaxWithCrossEntropyOpMaker
         "(Tensor, default: Tensor<int64_t>), A 2-D tensor with shaoe [N x "
         "S+NT]."
         "The customized sample labels with true labels at first. This tensor"
-        "is only use_custom_samples is true.");
+        "is only use_custom_samples is true.")
+        .AsDispensable();
     AddInput(
         "CustomProbabilities",
         "(Tensor, default: Tensor<float>), A 2-D tensor with shaoe [N x S+NT]."
         "The customized sample probabilities with true labels at first. This "
-        "tensor is only use_custom_samples is true.");
+        "tensor is only use_custom_samples is true.")
+        .AsDispensable();
 
     AddOutput(
         "Samples",
@@ -67,15 +69,21 @@ class SampledSoftmaxWithCrossEntropyOpMaker
         "the operator will use custom samples and custom probabilities"
         "otherwise, the operator will generate them by itself.")
         .SetDefault(false);
+    AddAttr<bool>(
+        "remove_accidental_hits",
+        "An indicator whether to remove accidental hits when samples hits true"
+        "labels, the removal is implemented by subtracting the corresponding"
+        "logits by float_max to subpress their softmax to be zero.")
+        .SetDefault(true);
     AddAttr<int>("num_samples", "The number of negative samples.");
     AddAttr<int>("seed", "Random seed for generating samples").SetDefault(0);
 
     AddComment(R"DOC(
 TODO(chenfeiyu): Write documentation for this Operator.
-Softmax With Cross Entropy Operator.
+Sampled Softmax With Cross Entropy Operator.
 
-Cross entropy loss with softmax is used as the output layer extensively. This
-operator computes the softmax normalized values for each row of the input
+Cross entropy loss with sampled softmax is used as the output layer extensively.
+This operator computes the softmax normalized values for each row of the input
 tensor, after which cross-entropy loss is computed. This provides a more
 numerically stable gradient.
 
@@ -190,9 +198,6 @@ class SampledSoftmaxGradMaker : public framework::SingleGradOpDescMaker {
 
  protected:
   std::unique_ptr<framework::OpDesc> Apply() const override {
-    /* UNDERSTAND: new a OpDesc, then, what SetInput(), SetOutput(), SetType()
-    does?
-    */
     auto* grad_op = new framework::OpDesc();
     grad_op->SetType("sampled_softmax_with_cross_entropy_grad");
     grad_op->SetInput("Logits", Input("Logits"));

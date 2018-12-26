@@ -27,8 +27,8 @@ namespace math {
 
 using Tensor = framework::Tensor;
 
-/* UNDERSTAND: utility functor to adjust probability for unique sampling, return
-whatever as it is if not using unique samping */
+/* UNDERSTAND: utility function to adjust probability for unique sampling,
+return whatever as it is if not using unique samping */
 template <typename T>
 static T adjust_prob(const T prob, const int num_samples, const int num_tries) {
   if (num_samples == num_tries) {
@@ -58,19 +58,8 @@ class SampleWithProb {
     T* probabilities_data = P->mutable_data<T>(ret_dim, context.GetPlace());
 
     // temp sets for unique sampling
-    std::unordered_set<int64_t> tmp_true_labels;
     std::unordered_set<int64_t> tmp_samples;
-
     for (int i = 0; i < batch_size; ++i) {
-      // init again
-      tmp_samples.clear();
-      tmp_true_labels.clear();
-      int num_tries = 0;
-
-      // add true labels to true_label set
-      tmp_true_labels.insert(label_data + i * num_true,
-                             label_data + (i + 1) * num_true);
-
       int j = 0;  // column index
       // add true labels, not that efficient
       while (j < num_true) {
@@ -81,22 +70,23 @@ class SampleWithProb {
         ++j;
       }
 
-      // add (possibly not)negative labels to samples
-      // may be use a more efficient sampler to sample N unique samples.
+      // sample num_samles unique samples for an example, note that they are not
+      // all negative samples
+      tmp_samples.clear();
+      int num_tries = 0;
       while (j < num_sampled_classes) {
         ++num_tries;
         auto v = sampler.Sample();
         auto samples_index = i * num_sampled_classes + j;
-        if (tmp_true_labels.find(v) == tmp_true_labels.end()) {
-          if (tmp_samples.insert(v).second) {
-            samples_data[samples_index] = v;
-            probabilities_data[samples_index] = sampler.Probability(v);
-            ++j;
-          }
+        if (tmp_samples.insert(v).second) {
+          samples_data[samples_index] = v;
+          probabilities_data[samples_index] = sampler.Probability(v);
+          ++j;
         }
       }
 
-      // compute Q(y|x), so called probabilities here
+      // compute Q(y|x), because of unique sampling, probabilities need to be
+      // adjusted
       for (int k = 0; k < num_sampled_classes; ++k) {
         auto samples_index = i * num_sampled_classes + k;
         probabilities_data[samples_index] = adjust_prob(
