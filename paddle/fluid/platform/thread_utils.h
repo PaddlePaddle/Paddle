@@ -96,14 +96,12 @@ template <typename T>
 void TaskQueue<T>::Push(const T &v) {
   std::lock_guard<std::mutex> l(mut_);
   queue_.emplace(v);
-  LOG(INFO) << this << " cv notify all";
   cv_.notify_all();
-  LOG(INFO) << "push one";
 }
 
 template <typename T>
 bool TaskQueue<T>::Pop(T *cv) {
-  LOG(INFO) << "wait to pop one from " << this;
+  // LOG(INFO) << "wait to pop one from " << this;
   std::unique_lock<std::mutex> l(mut_);
   cv_.wait(l, [this] { return !queue_.empty() || killed_.load(); });
   if (killed_.load()) {
@@ -112,7 +110,7 @@ bool TaskQueue<T>::Pop(T *cv) {
   }
   *cv = std::move(queue_.front());
   queue_.pop();
-  LOG(INFO) << "pop one";
+  // LOG(INFO) << "pop one";
   return true;
 }
 

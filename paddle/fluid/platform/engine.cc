@@ -20,6 +20,7 @@
 #include <sstream>
 #include <type_traits>
 
+#include <chrono>
 #include "engine.h"
 #include "engine_impl.h"
 #include "thread_utils.h"
@@ -68,14 +69,14 @@ void ThreadedResource::ProcessQueueFront() {
     }
   }
 #endif
-  LOG(INFO) << "process queue front";
+  // LOG(INFO) << "process queue front";
   if (queue_.empty()) return;
   // read task is running, but the front is write, hold.
   if (running_read_count_ > 0 && queue_.front().is_write) return;
   // a write operation is running and not finished, hold.
   if (write_is_running_) return;
 
-  LOG(INFO) << "continue to check queue";
+  // LOG(INFO) << "continue to check queue";
   if (queue_.front().is_write) {
     // Should wait for all previous read finish.
     if (running_read_count_ > 0) {
@@ -111,18 +112,18 @@ void ThreadedResource::ProcessQueueFront() {
       }
       queue_.pop_front();
     }
-    LOG(INFO) << "ProcessHead:\t" << debug_string();
   }
 }
 
 std::string ThreadedResource::debug_string() const {
   std::stringstream ss;
-  ss << "Var " << name_ << " size: " << queue_.size();
+  if (queue_.empty()) return "";
+  ss << name() << " ";
   for (auto &opr : queue_) {
     auto opr_ptr = opr.operation->Cast<ThreadedOperation>();
     ss << "\t" << opr_ptr->name << ":" << opr.is_write << " "
-       << "\tpending_read:" << running_read_count_ << "\tpending_write"
-       << write_is_running_ << "\n";
+       << "\tpending_read: " << running_read_count_
+       << "\tpending_write: " << write_is_running_ << "\n";
   }
   return ss.str();
 }
@@ -130,7 +131,6 @@ std::string ThreadedResource::debug_string() const {
 class MultiThreadEngine : public Engine {
  public:
   void PushAsync(OperationHandle opr, RunContext ctx) override {
-    LOG(INFO) << "push a func " << opr->Cast<ThreadedOperation>()->name;
 #if USE_PROFILE
     auto opr_name = opr->Cast<ThreadedOperation>()->name;
 // profile::Profiler::Get()->AddPushAction(opr_name);
@@ -147,16 +147,16 @@ class MultiThreadEngine : public Engine {
     auto topr = opr->Cast<ThreadedOperation>();
     topr->ctx = ctx;
     for (auto res : topr->read_res) {
-      LOG(INFO) << "inc read "
-                << res->template Cast<ThreadedResource>()->name();
+      VLOG(4) << "inc read " << res->template Cast<ThreadedResource>()->name();
       CHECK(res);
       res->template Cast<ThreadedResource>()->AppendDependency(opr, false);
     }
     for (auto res : topr->write_res) {
-      LOG(INFO) << "inc write "
-                << res->template Cast<ThreadedResource>()->name();
+      VLOG(4) << "inc write " << res->template Cast<ThreadedResource>()->name();
       res->template Cast<ThreadedResource>()->AppendDependency(opr, true);
     }
+
+    // LOG(INFO) << "status: \n" << StatusInfo();
   }
 
   void PushSync(SyncFn fn, RunContext ctx,
@@ -178,7 +178,7 @@ class MultiThreadEngine : public Engine {
   }
 
   void WaitForAllFinished() override {
-    LOG(INFO) << "num_pending_tasks_ " << num_pending_tasks_;
+    // LOG(INFO) << "num_pending_tasks_ " << num_pending_tasks_;
     std::unique_lock<std::mutex> l(mut_);
     finish_cond_.wait(
         l, [this]() { return num_pending_tasks_ == 0 || terminated_; });
@@ -195,7 +195,7 @@ class MultiThreadEngine : public Engine {
 
   static CallbackOnComplete CreateCompleteCallback(const void *engine,
                                                    OperationHandle opr) {
-    LOG(INFO) << "call CallbackOnComplete";
+    // LOG(INFO) << "call CallbackOnComplete";
     DLOG(INFO) << "create Callback engine " << engine;
     CHECK_EQ(opr->Cast<ThreadedOperation>()->engine, engine);
     static CallbackOnComplete::Fn fn = [](OperationHandle opr) {
@@ -255,7 +255,7 @@ struct ThreadQueueBlock {
           OperationHandle o;
           while (true) {
             bool suc = task_queue.Pop(&o);
-            LOG(INFO) << "really pop one task";
+            // LOG(INFO) << "really pop one task";
             if (!suc) {
               LOG(WARNING) << "thread " << std::this_thread::get_id()
                            << " stop ...";
@@ -268,7 +268,7 @@ struct ThreadQueueBlock {
                 MultiThreadEngine::CreateCompleteCallback(engine, o);
             CHECK_EQ(complete_callback.engine, engine);
             CHECK(ptr->fn);
-            LOG(INFO) << "task " << ptr->name << " execute";
+            // LOG(INFO) << "task " << ptr->name << " execute";
             ptr->fn(ptr->ctx, complete_callback);
           }
         }) {}
