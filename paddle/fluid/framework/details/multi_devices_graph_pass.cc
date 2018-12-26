@@ -161,66 +161,6 @@ void MultiDevSSAGraphBuilder::Init() const {
   }
 }
 
-std::vector<ir::Node *> MultiDevSSAGraphBuilder::SortForReduce(
-    const std::vector<ir::Node *> &topo_ops) const {
-  std::unordered_map<std::string, int> shared_var_device;
-  std::vector<ir::Node *> sorted_ops;
-  std::unordered_map<std::string, std::vector<ir::Node *>> delayed_op;
-
-  for (ir::Node *node : topo_ops) {
-    int op_dev_id = GetOpDeviceID(node, shared_var_device, &delayed_op);
-    if (op_dev_id > -1) {
-      // This op only runs on one specific device.
-      sorted_ops.emplace_back(node);
-      for (ir::Node *n : node->outputs) {
-        shared_var_device.emplace(n->Name(), op_dev_id);
-        if (delayed_op.count(n->Name())) {
-          auto &ops = delayed_op.at(n->Name());
-          sorted_ops.insert(sorted_ops.begin(), ops.begin(), ops.end());
-          delayed_op.at(n->Name()).clear();
-        }
-      }
-    } else if (op_dev_id == -1) {
-      // This op runs on all devices, and its output may have parameter's
-      // gradients.
-      sorted_ops.emplace_back(node);
-      bool is_bk_op =
-          static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
-                                OpProtoAndCheckerMaker::OpRoleAttrName())) &
-                            static_cast<int>(OpRole::kBackward));
-      if (!is_bk_op) continue;
-      // Currently, we assume that once gradient is generated, it can be
-      // broadcast, and each gradient is only broadcast once.
-      std::vector<std::string> backward_vars;
-      try {
-        backward_vars =
-            boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
-                OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-      } catch (boost::bad_get e) {
-      }
-      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
-
-      for (size_t i = 0; i < backward_vars.size(); i += 2) {
-        auto &g_name = backward_vars[i + 1];
-
-        size_t cur_device_id = GetAppropriateDeviceID({g_name});
-        shared_var_device.emplace(g_name, cur_device_id);
-        if (delayed_op.count(g_name)) {
-          auto &ops = delayed_op.at(g_name);
-          sorted_ops.insert(sorted_ops.end(), ops.begin(), ops.end());
-          delayed_op.at(g_name).clear();
-        }
-      }
-
-    } else if (op_dev_id == -2) {
-      // The Op on which the Op depends has not yet been generated
-    }
-  }
-
-  PADDLE_ENFORCE_EQ(sorted_ops.size(), topo_ops.size());
-  return sorted_ops;
-}
-
 std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   Init();
@@ -393,6 +333,63 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   AddOutputToLeafOps(&result);
   result.Erase<GraphOps>(kGraphOps);
   return graph;
+}
+
+std::vector<ir::Node *> MultiDevSSAGraphBuilder::SortForReduce(
+    const std::vector<ir::Node *> &topo_ops) const {
+  std::unordered_map<std::string, int> shared_var_device;
+  std::vector<ir::Node *> sorted_ops;
+  std::unordered_map<std::string, std::vector<ir::Node *>> delayed_op;
+
+  auto insert_delayed_op = [&](const std::string &var_name, int dev_id) {
+    shared_var_device.emplace(var_name, dev_id);
+    if (delayed_op.count(var_name)) {
+      auto &ops = delayed_op.at(var_name);
+      sorted_ops.insert(sorted_ops.end(), ops.begin(), ops.end());
+      delayed_op.at(var_name).clear();
+    }
+  };
+
+  for (ir::Node *node : topo_ops) {
+    int op_dev_id = GetOpDeviceID(node, shared_var_device, &delayed_op);
+    if (op_dev_id > -1) {
+      // This op only runs on one specific device.
+      sorted_ops.emplace_back(node);
+      for (ir::Node *n : node->outputs) {
+        insert_delayed_op(n->Name(), op_dev_id);
+      }
+    } else if (op_dev_id == -1) {
+      // This op runs on all devices, and its output may have parameter's
+      // gradients.
+      sorted_ops.emplace_back(node);
+      bool is_bk_op =
+          static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
+                                OpProtoAndCheckerMaker::OpRoleAttrName())) &
+                            static_cast<int>(OpRole::kBackward));
+      if (!is_bk_op) continue;
+      // Currently, we assume that once gradient is generated, it can be
+      // broadcast, and each gradient is only broadcast once.
+      std::vector<std::string> backward_vars;
+      try {
+        backward_vars =
+            boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
+                OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+      } catch (boost::bad_get e) {
+      }
+      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
+
+      for (size_t i = 0; i < backward_vars.size(); i += 2) {
+        auto &g_name = backward_vars[i + 1];
+        size_t cur_device_id = GetAppropriateDeviceID({g_name});
+        insert_delayed_op(g_name, static_cast<int>(cur_device_id));
+      }
+    } else if (op_dev_id == -2) {
+      // The Op on which the Op depends has not yet been generated.
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(sorted_ops.size(), topo_ops.size());
+  return sorted_ops;
 }
 
 void MultiDevSSAGraphBuilder::CreateOpHandleIOs(ir::Graph *result,
