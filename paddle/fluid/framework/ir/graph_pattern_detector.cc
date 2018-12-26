@@ -1101,12 +1101,6 @@ PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
   return out_var;
 }
 
-// only support "identity" and "relu" now.
-/*
-std::unordered_set<std::string> conv_act_set({"identity", "sigmoid", "relu",
-                                              "relu6", "relux", "tanh",
-                                              "band_pass"});
-*/
 std::unordered_set<std::string> conv_act_set({"identity", "relu"});
 
 PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
