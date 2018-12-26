@@ -5010,10 +5010,12 @@ def nce(input,
             alias_probs_[little[0]] = 1.0
             alias_[little[0]] = -1
 
-        probs = assign(input=np.array(custom_dist).astype('float32'))
-        custom_alias = assign(input=np.array(alias_).astype('int32'))
+        probs = assign(
+            input=np.array(custom_dist).astype('float32'), init_once=True)
+        custom_alias = assign(
+            input=np.array(alias_).astype('int32'), init_once=True)
         custom_alias_probs = assign(
-            input=np.array(alias_probs_).astype('float32'))
+            input=np.array(alias_probs_).astype('float32'), init_once=True)
 
         inputs['CustomDistProbs'] = probs
         inputs['CustomDistAlias'] = custom_alias
