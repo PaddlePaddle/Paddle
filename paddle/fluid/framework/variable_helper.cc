@@ -56,5 +56,6 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
         var_type);
   }
 }
+
 }  // namespace framework
 }  // namespace paddle

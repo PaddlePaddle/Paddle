@@ -79,6 +79,7 @@ cc_library(reader SRCS reader.cc DEPS lod_tensor ddim)
 cc_test(reader_test SRCS reader_test.cc DEPS reader)
 
 cc_test(variable_test SRCS variable_test.cc)
+cc_test(variable_helper_test SRCS variable_helper_test.cc DEPS lod_tensor selected_rows proto_desc)
 
 cc_library(threadpool SRCS threadpool.cc DEPS enforce)
 cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)

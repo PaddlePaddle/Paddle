@@ -14,9 +14,57 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable.h"
+
 namespace paddle {
 namespace framework {
-void InitializeVariable(Variable *var, proto::VarType::Type var_type);
+void InitializeVariable(Variable* var, proto::VarType::Type var_type);
+
+template <typename Visitor>
+size_t VarSizeInBytes(Variable* var, proto::VarType::Type var_type,
+                      Visitor visitor) {
+  size_t ret = 0;
+  switch (var_type) {
+    case proto::VarType::LOD_TENSOR:
+      ret = visitor.template apply<LoDTensor>(var);
+      break;
+    case proto::VarType::SELECTED_ROWS:
+      ret = visitor.template apply<SelectedRows>(var);
+      break;
+    case proto::VarType::LOD_TENSOR_ARRAY:
+      ret = visitor.template apply<LoDTensorArray>(var);
+    default:
+      break;
+  }
+  return ret;
 }
+
+struct VarSizeVisitor {
+  template <typename T>
+  size_t apply(Variable* var) {
+    return 0;
+  }
+};
+
+template <>
+size_t VarSizeVisitor::apply<LoDTensor>(Variable* var) {
+  return var->Get<LoDTensor>().memory_size();
 }
+
+template <>
+size_t VarSizeVisitor::apply<SelectedRows>(Variable* var) {
+  return var->Get<SelectedRows>().value().memory_size();
+}
+
+template <>
+size_t VarSizeVisitor::apply<LoDTensorArray>(Variable* var) {
+  auto& array = var->Get<LoDTensorArray>();
+  size_t ret = 0;
+  for (auto& v : array) ret += v.memory_size();
+  return ret;
+}
+}  // namespace framework
+}  // namespace paddle
