@@ -413,31 +413,26 @@ void NgraphEngine::Run(const framework::Scope& scope,
     std::shared_ptr<ngraph::runtime::Tensor> ti;
     auto* var = scope.FindVar(vi);
     if (var && var->IsType<framework::LoDTensor>()) {
-      auto* tensor_pd = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+      auto* tensor_pd = GetMutableLoDTensorOrSelectedRowsValueFromVar(var);
       PADDLE_ENFORCE(sp == Ddim2Shape(tensor_pd->dims()),
                      "Ensure ngraph tensor layout align with paddle tensor");
-      // auto ng_type = pd2ng_type_map.at(GetDataTypeOfVar(var));
       auto ng_type = var_type_map_.at(vi);
       if (ng_type == ngraph::element::f32) {
-        const float* arr = tensor_pd->data<float>();
-        ti = backend_->create_tensor(ngraph::element::f32, sp,
-                                     const_cast<float*>(arr));
+        auto pd_arr = tensor_pd->mutable_data<float>(place);
+        ti = backend_->create_tensor(ngraph::element::f32, sp, pd_arr);
       } else if (ng_type == ngraph::element::i32) {
         const int* arr = tensor_pd->data<int>();
         ti = backend_->create_tensor(ngraph::element::i32, sp,
                                      const_cast<int*>(arr));
       } else if (ng_type == ngraph::element::i64) {
-        const int64_t* arr = tensor_pd->data<int64_t>();
-        ti = backend_->create_tensor(ngraph::element::i64, sp,
-                                     const_cast<int64_t*>(arr));
+        auto pd_arr = tensor_pd->mutable_data<int64_t>(place);
+        ti = backend_->create_tensor(ngraph::element::i64, sp, pd_arr);
       } else if (ng_type == ngraph::element::f64) {
-        const double* arr = tensor_pd->data<double>();
-        ti = backend_->create_tensor(ngraph::element::f64, sp,
-                                     const_cast<double*>(arr));
+        auto pd_arr = tensor_pd->mutable_data<double>(place);
+        ti = backend_->create_tensor(ngraph::element::f64, sp, pd_arr);
       } else if (ng_type == ngraph::element::boolean) {
-        const bool* arr = tensor_pd->data<bool>();
-        ti = backend_->create_tensor(ngraph::element::boolean, sp,
-                                     const_cast<bool*>(arr));
+        auto pd_arr = tensor_pd->mutable_data<bool>(place);
+        ti = backend_->create_tensor(ngraph::element::boolean, sp, pd_arr);
       } else {
         PADDLE_THROW("Data type not handling for var %s", vi);
       }
@@ -489,7 +484,7 @@ void NgraphEngine::Run(const framework::Scope& scope,
     }
   }
 
-  backend_->call(ngraph_function_, t_out, t_in);
+  backend_->call(backend_->compile(ngraph_function_), t_out, t_in);
 }  // NgraphEngine::Run
 }  // namespace operators
 }  // namespace paddle
