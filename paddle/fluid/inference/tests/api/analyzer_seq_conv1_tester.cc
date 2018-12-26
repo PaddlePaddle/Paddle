@@ -109,24 +109,14 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   title3_tensor.name = "title3";
   l1_tensor.name = "l1";
   auto one_batch = data->NextBatch();
-  int title1_size = one_batch.title1_lod[one_batch.title1_lod.size() - 1];
-  title1_tensor.shape.assign({title1_size, 1});
-  title1_tensor.lod.assign({one_batch.title1_lod});
-  int title2_size = one_batch.title2_lod[one_batch.title2_lod.size() - 1];
-  title2_tensor.shape.assign({title2_size, 1});
-  title2_tensor.lod.assign({one_batch.title2_lod});
-  int title3_size = one_batch.title3_lod[one_batch.title3_lod.size() - 1];
-  title3_tensor.shape.assign({title3_size, 1});
-  title3_tensor.lod.assign({one_batch.title3_lod});
-  int l1_size = one_batch.l1_lod[one_batch.l1_lod.size() - 1];
-  l1_tensor.shape.assign({l1_size, 1});
-  l1_tensor.lod.assign({one_batch.l1_lod});
-
   // assign data
-  TensorAssignData<int64_t>(&title1_tensor, one_batch.title1);
-  TensorAssignData<int64_t>(&title2_tensor, one_batch.title2);
-  TensorAssignData<int64_t>(&title3_tensor, one_batch.title3);
-  TensorAssignData<int64_t>(&l1_tensor, one_batch.l1);
+  TensorAssignData<int64_t>(&title1_tensor, one_batch.title1,
+                            one_batch.title1_lod);
+  TensorAssignData<int64_t>(&title2_tensor, one_batch.title2,
+                            one_batch.title2_lod);
+  TensorAssignData<int64_t>(&title3_tensor, one_batch.title3,
+                            one_batch.title3_lod);
+  TensorAssignData<int64_t>(&l1_tensor, one_batch.l1, one_batch.l1_lod);
   // Set inputs.
   input_slots->assign({title1_tensor, title2_tensor, title3_tensor, l1_tensor});
   for (auto &tensor : *input_slots) {

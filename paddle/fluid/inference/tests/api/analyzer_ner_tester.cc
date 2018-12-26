@@ -78,14 +78,11 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   lod_word_tensor.name = "word";
   lod_mention_tensor.name = "mention";
   auto one_batch = data->NextBatch();
-  int size = one_batch.lod[one_batch.lod.size() - 1];  // token batch size
-  lod_word_tensor.shape.assign({size, 1});
-  lod_word_tensor.lod.assign({one_batch.lod});
-  lod_mention_tensor.shape.assign({size, 1});
-  lod_mention_tensor.lod.assign({one_batch.lod});
   // assign data
-  TensorAssignData<int64_t>(&lod_word_tensor, one_batch.word_data_all);
-  TensorAssignData<int64_t>(&lod_mention_tensor, one_batch.mention_data_all);
+  TensorAssignData<int64_t>(&lod_word_tensor, one_batch.word_data_all,
+                            one_batch.lod);
+  TensorAssignData<int64_t>(&lod_mention_tensor, one_batch.mention_data_all,
+                            one_batch.lod);
   // Set inputs.
   input_slots->assign({lod_word_tensor, lod_mention_tensor});
   for (auto &tensor : *input_slots) {

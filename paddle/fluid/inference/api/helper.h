@@ -114,6 +114,16 @@ static void TensorAssignData(PaddleTensor *tensor,
 }
 
 template <typename T>
+static void TensorAssignData(PaddleTensor *tensor,
+                             const std::vector<std::vector<T>> &data,
+                             const std::vector<size_t> &lod) {
+  int size = lod[lod.size() - 1];
+  tensor->shape.assign({size, 1});
+  tensor->lod.assign({lod});
+  TensorAssignData(tensor, data);
+}
+
+template <typename T>
 static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
                                     const std::vector<std::vector<T>> &data) {
   int size{0};
