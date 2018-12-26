@@ -101,3 +101,5 @@ if(WITH_GPU)
 else()
     cc_test(temporal_allocator_test SRCS temporary_allocator_test.cc DEPS temp_allocator tensor)
 endif()
+
+cc_library(naive_engine SRCS engine.cc)
