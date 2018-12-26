@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 
 #define NCCL_ID_VARNAME "NCCLID"
 
@@ -38,6 +39,8 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
     return ncclInt;
   } else if (type == framework::proto::VarType::INT64) {
     return ncclInt64;
+  } else if (type == framework::proto::VarType::FP16) {
+    return ncclFloat16;
   } else {
     PADDLE_THROW("Not supported");
   }
