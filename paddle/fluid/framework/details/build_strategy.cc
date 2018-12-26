@@ -153,6 +153,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Erase("local_scopes");
       pass->SetNotOwned<const std::vector<Scope *>>("local_scopes",
                                                     &local_scopes);
+      pass->Erase("num_parallel_devices");
       pass->Set<size_t>("num_parallel_devices",
                         new size_t(num_parallel_devices));
 
