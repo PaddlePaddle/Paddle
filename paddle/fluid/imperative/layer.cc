@@ -31,11 +31,6 @@ using framework::Variable;
 void AddTo(Variable* src, Variable* dst) {
   framework::LoDTensor* dst_tensor = dst->GetMutable<framework::LoDTensor>();
   framework::LoDTensor* src_tensor = src->GetMutable<framework::LoDTensor>();
-
-  VLOG(3) << "apply var grad " << src_tensor->data<float>()[0] << " "
-          << src_tensor->data<float>()[1] << " "
-          << src_tensor->data<float>()[2];
-
   PADDLE_ENFORCE(dst_tensor->numel() == src_tensor->numel(), "%lld vs %lld",
                  dst_tensor->numel(), src_tensor->numel());
   float* dst_data = dst_tensor->mutable_data<float>(platform::CPUPlace());
@@ -43,10 +38,6 @@ void AddTo(Variable* src, Variable* dst) {
   for (size_t i = 0; i < src_tensor->numel(); ++i) {
     dst_data[i] += src_data[i];
   }
-
-  VLOG(3) << "apply var dst grad " << dst_tensor->data<float>()[0] << " "
-          << dst_tensor->data<float>()[1] << " "
-          << dst_tensor->data<float>()[2];
 }
 
 class Autograd {
@@ -55,16 +46,10 @@ class Autograd {
 
   void RunBackward(VarBase* var) {
     PADDLE_ENFORCE(var->pre_op_->op_desc_);
-    // TODO(panyx0718): Only create for vars that "require_grad"
-    LOG(ERROR) << reinterpret_cast<void*>(var->grads_) << " vs "
-               << reinterpret_cast<void*>(
-                      var->pre_op_
-                          ->output_vars_[var->pre_op_out_name_]
-                                        [var->pre_op_out_idx_]
-                          ->grads_);
-    var->pre_op_->output_vars_[var->pre_op_out_name_][var->pre_op_out_idx_]
-        ->grads_->GetMutable<framework::LoDTensor>()
-        ->ShareDataWith(var->grads_->Get<framework::LoDTensor>());
+    PADDLE_ENFORCE(
+        var->grads_ ==
+        var->pre_op_->output_vars_[var->pre_op_out_name_][var->pre_op_out_idx_]
+            ->grads_);
 
     std::deque<OpBase*> ready;
     ready.push_back(var->pre_op_);
@@ -76,7 +61,6 @@ class Autograd {
       ready.pop_front();
       std::map<std::string, std::vector<VarBase*>> input_grads =
           ready_op->ApplyGrad();
-      VLOG(3) << "after apply grad";
 
       for (auto it : input_grads) {
         const std::vector<VarBase*>& ingrads = it.second;
@@ -160,17 +144,12 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
     for (size_t i = 0; i < it.second.size(); ++i) {
       outputs.push_back(new framework::Variable());
       outputs.back()->GetMutable<framework::LoDTensor>();
-      /*
-      auto& accum_grad_t = it.second[i]->Get<framework::LoDTensor>();
-      Variable* grad_var = outputs.back();
-      float* data = grad_var->GetMutable<framework::LoDTensor>()
-          ->mutable_data<float>(accum_grad_t.dims(), platform::CPUPlace());
-      std::fill(data, data + accum_grad_t.numel(), 0.0);*/
     }
   }
 
   framework::RuntimeContext ctx(grad_input_vars_, grad_outputs);
 
+  // No need to do static infer shape here.
   // grad_op_desc_->InferShape(*block_);
   grad_op_desc_->InferVarType(block_);
 
@@ -184,7 +163,6 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
     for (size_t i = 0; i < outputs.size(); ++i) {
       framework::Variable* orig_grad = origin_outputs[i];
       AddTo(outputs[i], orig_grad);
-      VLOG(3) << "done add to " << grad_op_desc_->Outputs().at(it.first)[i];
     }
   }
   return input_vars_;

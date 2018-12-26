@@ -69,8 +69,8 @@ class FillConstantOp : public framework::OperatorBase {
     math::set_constant(dev_ctx, tensor, value);
   }
 
-  void RunImpl(const framework::RuntimeContext &ctx,
-               const platform::Place &dev_place) const override {
+  void RunImplPrepared(const framework::RuntimeContext &ctx,
+                       const platform::Place &dev_place) const override {
     auto data_type =
         static_cast<framework::proto::VarType::Type>(Attr<int>("dtype"));
     auto value = Attr<float>("value");

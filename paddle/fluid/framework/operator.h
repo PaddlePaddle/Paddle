@@ -173,8 +173,10 @@ class OperatorBase {
   virtual void RunImpl(const Scope& scope,
                        const platform::Place& place) const = 0;
 
-  virtual void RunImpl(const RuntimeContext& ctx,
-                       const platform::Place& place) const {}
+  virtual void RunImplPrepared(const RuntimeContext& ctx,
+                               const platform::Place& place) const {
+    PADDLE_THROW("%s doesn't support RunPreparedImpl", Type());
+  }
 };
 
 class ExecutionContext {
@@ -466,8 +468,8 @@ class OperatorWithKernel : public OperatorBase {
   // same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
-  void RunImpl(const RuntimeContext& ctx,
-               const platform::Place& place) const final;
+  void RunImplPrepared(const RuntimeContext& ctx,
+                       const platform::Place& place) const final;
 
   /**
    * Transfer data from scope to a transfered scope. If there is no data need to

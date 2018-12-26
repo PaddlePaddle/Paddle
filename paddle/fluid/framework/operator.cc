@@ -182,7 +182,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 
 void OperatorBase::Run(const RuntimeContext& ctx,
                        const platform::Place& place) {
-  RunImpl(ctx, place);
+  RunImplPrepared(ctx, place);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
@@ -959,9 +959,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 }
 
-void OperatorWithKernel::RunImpl(const RuntimeContext& ctx,
-                                 const platform::Place& place) const {
-  Scope scope;
+void OperatorWithKernel::RunImplPrepared(const RuntimeContext& ctx,
+                                         const platform::Place& place) const {
+  Scope dummy_scope;
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
@@ -976,7 +976,7 @@ void OperatorWithKernel::RunImpl(const RuntimeContext& ctx,
   OpKernelMap& kernels = kernels_iter->second;
 
   auto expected_kernel_key = this->GetExpectedKernelType(
-      ExecutionContext(*this, scope, *dev_ctx, ctx));
+      ExecutionContext(*this, dummy_scope, *dev_ctx, ctx));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
@@ -999,9 +999,9 @@ void OperatorWithKernel::RunImpl(const RuntimeContext& ctx,
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  RuntimeInferShapeContext infer_shape_ctx(*this, scope, ctx);
+  RuntimeInferShapeContext infer_shape_ctx(*this, dummy_scope, ctx);
   this->InferShape(&infer_shape_ctx);
-  kernel_iter->second(ExecutionContext(*this, scope, *dev_ctx, ctx));
+  kernel_iter->second(ExecutionContext(*this, dummy_scope, *dev_ctx, ctx));
 }
 
 void OperatorWithKernel::TransferInplaceVarsBack(
