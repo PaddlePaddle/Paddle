@@ -104,9 +104,8 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
   }
 #endif
 
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(ctx.Input<Tensor>("X")->type(), ctx.GetPlace(),
+                                 layout_, library_);
 }
 
 void PoolOpGrad::InferShape(framework::InferShapeContext* ctx) const {
@@ -135,7 +134,7 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   }
 #endif
 
-  auto input_data_type = framework::ToDataType(ctx.Input<Tensor>("X")->type());
+  auto input_data_type = ctx.Input<Tensor>("X")->type();
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(library_, framework::LibraryType::kCUDNN,
                       "float16 can only be used when CUDNN is used");

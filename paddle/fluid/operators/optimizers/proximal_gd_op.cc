@@ -46,9 +46,8 @@ class ProximalGDOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type =
-        framework::ToDataType(ctx.Input<Tensor>("Param")->type());
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(ctx.Input<Tensor>("Param")->type(),
+                                   ctx.GetPlace());
   }
 };
 

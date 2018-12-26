@@ -509,11 +509,11 @@ function assert_api_spec_approvals() {
       if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
           APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-          python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7845005 2887803 728699 13348433`
+          python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
           echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
           if [ "${APPROVALS}" == "FALSE" ]; then
-              echo "You must have at least 2 approvals for the api change! ${API_FILE}"
-          exit 1
+              echo "You must have panyx0718 approval for the api change! ${API_FILE}"
+              exit 1
           fi
       fi
     done
@@ -521,11 +521,11 @@ function assert_api_spec_approvals() {
     HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true`
     if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
         APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-        python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7845005 2887803 728699 13348433`
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
-            echo "You must have at least 2 approvals for the const_cast"
-        exit 1
+            echo "You must have panyx0718 approval for the const_cast"
+            exit 1
         fi
     fi
 

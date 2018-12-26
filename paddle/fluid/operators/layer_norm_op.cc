@@ -153,8 +153,7 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
     if (t == nullptr) {
       PADDLE_THROW("can't find Y@GRAD");
     }
-    return framework::OpKernelType(framework::ToDataType(t->type()),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(t->type(), ctx.GetPlace());
   }
 };
 

@@ -33,7 +33,7 @@ struct FuseVarsOpHandle : public OpHandleBase {
   FuseVarsOpHandle(ir::Node *node, Scope *local_scope,
                    const platform::Place &place,
                    const std::unordered_map<std::string, int64_t> &inputs_numel,
-                   const std::type_index &var_type)
+                   const proto::VarType::Type var_type)
       : OpHandleBase(node),
         local_scope_(local_scope),
         place_(place),
@@ -57,7 +57,7 @@ struct FuseVarsOpHandle : public OpHandleBase {
   Scope *local_scope_;
   const platform::Place place_;
   const std::unordered_map<std::string, int64_t> inputs_numel_;
-  const std::type_index type_;
+  const proto::VarType::Type type_;
   int64_t total_numel_;
 };
 }  // namespace details
