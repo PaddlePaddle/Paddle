@@ -561,7 +561,7 @@ class TestDistLookupTable(TestDistLookupTableBase):
             'lookup_table_grad', 'split_selected_rows', 'send',
             'sequence_pool_grad', 'lookup_table_grad', 'sequence_pool_grad',
             'lookup_table_grad', 'sum', 'split_ids', 'send', 'send_barrier',
-            'recv', 'recv', 'recv', 'fetch_barrier', 'concat'
+            'recv', 'recv', 'fetch_barrier'
         ]
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
         startup_ops = [
@@ -648,8 +648,7 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
             'mul_grad', 'send', 'concat_grad', 'sequence_pool_grad',
             'lookup_table_grad', 'split_selected_rows', 'send',
             'sequence_pool_grad', 'lookup_table_grad', 'sequence_pool_grad',
-            'lookup_table_grad', 'sum', 'split_ids', 'send', 'recv', 'recv',
-            'recv', 'concat'
+            'lookup_table_grad', 'sum', 'split_ids', 'send', 'recv', 'recv'
         ]
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
         startup_ops = [
