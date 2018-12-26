@@ -132,56 +132,6 @@ void AddOutputToLeafOps(ir::Graph *graph) {
     op->AddOutput(dummy_leaf);
   }
 }
-
-// Topology sort the graph nodes from inputs to outputs.
-// Since SSAGraphBuilder depends on forward/backward nodes to assign devices
-// to parameter/gradients before optimizer ops, topo sort is insufficient. (
-// some optimizer ops might not depend on any nodes), we manually move all
-// optimizer nodes after last backward nodes.
-// However, the assumption by SSAGraphBuilder should be relaxed in the future.
-std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(
-    const std::vector<ir::Node *> &ret) {
-  size_t last_backward = 0;
-  for (size_t i = 0; i < ret.size(); ++i) {
-    if (IsSameOpRole(*ret[i], OpRole::kBackward)) {
-      last_backward = i;
-    }
-  }
-
-  std::vector<ir::Node *> optimize_ops;
-  std::vector<ir::Node *> sorted_ret;
-  for (size_t i = 0; i < ret.size(); ++i) {
-    if (i < last_backward) {
-      if (static_cast<bool>(boost::get<int>(ret[i]->Op()->GetAttr(
-                                OpProtoAndCheckerMaker::OpRoleAttrName())) &
-                            static_cast<int>(OpRole::kOptimize))) {
-        optimize_ops.push_back(ret[i]);
-      } else {
-        sorted_ret.push_back(ret[i]);
-      }
-    } else if (i == last_backward) {
-      sorted_ret.push_back(ret[i]);
-      // Verify that no operations before optimize ops depends on optimize ops.
-      std::unordered_set<ir::Node *> optimize_set(optimize_ops.begin(),
-                                                  optimize_ops.end());
-      for (ir::Node *n : sorted_ret) {
-        for (ir::Node *in : n->inputs) {
-          for (ir::Node *pre_n : in->inputs) {
-            PADDLE_ENFORCE(optimize_set.find(pre_n) == optimize_set.end(),
-                           "optimize operations cannot be depended by forward "
-                           "or backward node %s -> %s",
-                           pre_n->Name(), n->Name());
-          }
-        }
-      }
-      sorted_ret.insert(sorted_ret.end(), optimize_ops.begin(),
-                        optimize_ops.end());
-    } else {
-      sorted_ret.push_back(ret[i]);
-    }
-  }
-  return sorted_ret;
-}
 }  // namespace
 
 static const char kLossVarName[] = "loss_var_name";
@@ -211,60 +161,11 @@ void MultiDevSSAGraphBuilder::Init() const {
   }
 }
 
-void MultiDevSSAGraphBuilder::CreateOpHandleIOs(ir::Graph *result,
-                                                ir::Node *node,
-                                                size_t place_id) const {
-  auto p = places_[place_id];
-  auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
-  op_handle->SetDeviceContext(p,
-                              platform::DeviceContextPool::Instance().Get(p));
-
-  for (ir::Node *input : node->inputs) {
-    VarHandle *var = CreateOrGetLatestVarHandle(result, input, p, place_id);
-    op_handle->AddInput(var);
-  }
-
-  for (ir::Node *output : node->outputs) {
-    ir::Node *new_node = nullptr;
-    if (output->Var()) {
-      new_node = result->CreateVarNode(output->Var());
-    } else {
-      new_node =
-          result->CreateEmptyNode(output->Name(), ir::Node::Type::kVariable);
-    }
-    CreateOpOutput(result, op_handle, new_node, p, place_id);
-  }
-}
-
-size_t MultiDevSSAGraphBuilder::GetAppropriateDeviceID(
-    const std::vector<std::string> &var_names) const {
-  int64_t numel_sum = 0;
-  for (auto var_name : var_names) {
-    if (all_vars_.find(var_name) == all_vars_.end()) continue;
-    auto var_desc = all_vars_.at(var_name);
-    PADDLE_ENFORCE_NOT_NULL(var_desc);
-    auto dim = framework::make_ddim(var_desc->GetShape());
-    int64_t numel = framework::product(dim);
-    PADDLE_ENFORCE_GT(numel, 0);
-    numel_sum += numel;
-  }
-
-  auto smallest =
-      std::min_element(std::begin(balance_vars_), std::end(balance_vars_));
-  size_t dev_id =
-      static_cast<size_t>(std::distance(std::begin(balance_vars_), smallest));
-  balance_vars_[dev_id] += numel_sum;
-  return dev_id;
-}
-
 std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   Init();
   // Give the topology sort order and rebuild the graph structure.
   std::vector<ir::Node *> sorted_ops = ir::TopologySortOperations(*graph);
-  if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
-    sorted_ops = SortOpsAndDelayOptimizeOp(sorted_ops);
-  }
 
   auto nodes = graph->ReleaseNodes();
   ir::Graph &result = *graph;
@@ -431,12 +332,50 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   return graph;
 }
 
-bool MultiDevSSAGraphBuilder::IsSparseGradient(const std::string &og) const {
-  PADDLE_ENFORCE(all_vars_.count(og) != 0);
-  if (all_vars_.at(og)->GetType() == proto::VarType::SELECTED_ROWS) {
-    return true;
+void MultiDevSSAGraphBuilder::CreateOpHandleIOs(ir::Graph *result,
+                                                ir::Node *node,
+                                                size_t place_id) const {
+  auto p = places_[place_id];
+  auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
+  op_handle->SetDeviceContext(p,
+                              platform::DeviceContextPool::Instance().Get(p));
+
+  for (ir::Node *input : node->inputs) {
+    VarHandle *var = CreateOrGetLatestVarHandle(result, input, p, place_id);
+    op_handle->AddInput(var);
   }
-  return false;
+
+  for (ir::Node *output : node->outputs) {
+    ir::Node *new_node = nullptr;
+    if (output->Var()) {
+      new_node = result->CreateVarNode(output->Var());
+    } else {
+      new_node =
+          result->CreateEmptyNode(output->Name(), ir::Node::Type::kVariable);
+    }
+    CreateOpOutput(result, op_handle, new_node, p, place_id);
+  }
+}
+
+size_t MultiDevSSAGraphBuilder::GetAppropriateDeviceID(
+    const std::vector<std::string> &var_names) const {
+  int64_t numel_sum = 0;
+  for (auto var_name : var_names) {
+    if (all_vars_.find(var_name) == all_vars_.end()) continue;
+    auto var_desc = all_vars_.at(var_name);
+    PADDLE_ENFORCE_NOT_NULL(var_desc);
+    auto dim = framework::make_ddim(var_desc->GetShape());
+    int64_t numel = framework::product(dim);
+    PADDLE_ENFORCE_GT(numel, 0);
+    numel_sum += numel;
+  }
+
+  auto smallest =
+      std::min_element(std::begin(balance_vars_), std::end(balance_vars_));
+  size_t dev_id =
+      static_cast<size_t>(std::distance(std::begin(balance_vars_), smallest));
+  balance_vars_[dev_id] += numel_sum;
+  return dev_id;
 }
 
 void MultiDevSSAGraphBuilder::SetCommunicationContext(
@@ -836,6 +775,14 @@ int MultiDevSSAGraphBuilder::CreateRPCOp(
     }
   }
   return op_dev_id;
+}
+
+bool MultiDevSSAGraphBuilder::IsSparseGradient(const std::string &og) const {
+  PADDLE_ENFORCE(all_vars_.count(og) != 0);
+  if (all_vars_.at(og)->GetType() == proto::VarType::SELECTED_ROWS) {
+    return true;
+  }
+  return false;
 }
 
 bool MultiDevSSAGraphBuilder::IsScaleLossOp(ir::Node *node) const {
