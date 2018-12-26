@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/var_type.h"
 
 namespace paddle {
 namespace framework {
@@ -26,6 +27,8 @@ void Tensor::check_memory_size() const {
       "first to re-allocate memory.\n"
       "or maybe the required data-type mismatches the data already stored.");
 }
+
+Tensor::Tensor(const proto::VarType::Type& dtype) : type_(dtype), offset_(0) {}
 
 size_t Tensor::memory_size() const {
   return holder_ == nullptr ? 0UL : holder_->size() - offset_;
@@ -100,6 +103,13 @@ Tensor& Tensor::Resize(const DDim& dims) {
 const DDim& Tensor::dims() const { return dims_; }
 
 int64_t Tensor::numel() const { return product(dims_); }
+
+void Tensor::ResetHolder(std::shared_ptr<memory::Allocation> holder) {
+  if (holder_) {
+    PADDLE_ENFORCE_EQ(numel() * SizeOfType(type()), holder->size());
+  }
+  holder_ = holder;
+}
 
 }  // namespace framework
 }  // namespace paddle

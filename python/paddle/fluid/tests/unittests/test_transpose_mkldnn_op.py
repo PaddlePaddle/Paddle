@@ -23,16 +23,6 @@ class TestTransposeMKLDNN(TestTransposeOp):
     def init_op_type(self):
         self.op_type = "transpose2"
         self.use_mkldnn = True
-        self.is_test = True
-        return
-
-    def test_check_grad(self):
-        return
-
-    def test_check_grad_no_input(self):
-        return
-
-    def test_check_grad_no_filter(self):
         return
 
 
