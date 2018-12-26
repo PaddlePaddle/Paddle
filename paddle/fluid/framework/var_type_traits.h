@@ -155,13 +155,24 @@ template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
   using Type = T;
-  // Default id generation
+  /**
+   * Unique VarType Id generation.
+   *
+   * The auto-generated id should not be the same as any protobuf id defined in
+   * framework.proto. Therefore, we generate id by adding the type pos and
+   * maximum protobuf id (i.e., proto::VarType::TUPLE).
+   *
+   * However, we may need more protobuf id in the future.
+   * To avoid changing this auto id generation algorithm frequently, we
+   * generate id by adding the type pos and twice of maximum protobuf id (i.e.,
+   * proto::VarType::TUPLE).
+   */
   static constexpr int kId = VarTypeRegistry::TypePos<T>() +
                              static_cast<int>(proto::VarType::TUPLE) * 2;
 };
 
 // Users should set some of variable type ids to be what is defined in
-// framework.proto here
+// framework.proto below
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensor, proto::VarType::LOD_TENSOR);
 REG_PROTO_VAR_TYPE_TRAIT(SelectedRows, proto::VarType::SELECTED_ROWS);
 REG_PROTO_VAR_TYPE_TRAIT(std::vector<Scope *>, proto::VarType::STEP_SCOPES);
