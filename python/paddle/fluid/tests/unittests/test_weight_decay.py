@@ -149,6 +149,7 @@ class TestWeightDecay(unittest.TestCase):
                 learning_rate=self.learning_rate)
 
             optimizer.minimize(avg_cost)
+
             for params in param_list:
                 updated_p = fluid.layers.elementwise_sub(
                     x=params[0], y=params[1])

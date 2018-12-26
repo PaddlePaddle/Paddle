@@ -45,7 +45,7 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
 #endif
 
   int GetVarDeviceID(
-      const ir::Graph &graph, const std::string &varname,
+      const std::string &varname,
       const std::unordered_map<std::string, int> &sharded_var_device) const;
 
   bool IsScaleLossOp(ir::Node *node) const;
@@ -70,7 +70,7 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
                              int dev_id) const;
 
   int GetOpDeviceID(
-      const ir::Graph &graph, ir::Node *node,
+      ir::Node *node,
       const std::unordered_map<std::string, int> &sharded_var_device) const;
 
   void InsertAllReduceOp(ir::Graph *result, const std::string &og) const;
@@ -92,6 +92,14 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
 
   void SetCommunicationContext(OpHandleBase *op_handle,
                                const platform::Place &p) const;
+
+  std::vector<ir::Node *> SortForReduce(const std::vector<ir::Node *> &) const;
+
+  int GetOpDeviceID(
+      ir::Node *node,
+      const std::unordered_map<std::string, int> &shared_var_device,
+      std::unordered_map<std::string, std::vector<ir::Node *>> *delay_ops)
+      const;
 
   mutable std::string loss_var_name_;
   mutable std::vector<platform::Place> places_;

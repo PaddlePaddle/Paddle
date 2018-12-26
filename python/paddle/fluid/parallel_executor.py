@@ -164,7 +164,7 @@ class ParallelExecutor(object):
 
         places = list(map(place_obj, self._places))
 
-        # step6: init ParallelExecutor
+        # step7: init ParallelExecutor
         self.executor = core.ParallelExecutor(
             places, persistable_vars, main.desc,
             cpt.to_text(loss_name)
