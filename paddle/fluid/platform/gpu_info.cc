@@ -203,13 +203,17 @@ size_t GpuMaxChunkSize() {
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
                     enum cudaMemcpyKind kind, cudaStream_t stream) {
   PADDLE_ENFORCE(cudaMemcpyAsync(dst, src, count, kind, stream),
-                 "cudaMemcpyAsync failed in paddle::platform::GpuMemcpyAsync");
+                 "cudaMemcpyAsync failed in paddle::platform::GpuMemcpyAsync "
+                 "(%p -> %p, length: %d)",
+                 src, dst, static_cast<int>(count));
 }
 
 void GpuMemcpySync(void *dst, const void *src, size_t count,
                    enum cudaMemcpyKind kind) {
   PADDLE_ENFORCE(cudaMemcpy(dst, src, count, kind),
-                 "cudaMemcpy failed in paddle::platform::GpuMemcpySync");
+                 "cudaMemcpy failed in paddle::platform::GpuMemcpySync (%p -> "
+                 "%p, length: %d)",
+                 src, dst, static_cast<int>(count));
 }
 
 void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,

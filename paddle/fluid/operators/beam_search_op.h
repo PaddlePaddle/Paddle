@@ -33,12 +33,12 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NOT_NULL(pre_ids);
     PADDLE_ENFORCE_NOT_NULL(pre_scores);
 
-    LOG(INFO) << "pre_ids:" << *pre_ids;
-    LOG(INFO) << "pre_scores: " << *pre_scores;
-    if (ids) {
-      LOG(INFO) << "ids: " << *ids;
-    }
-    LOG(INFO) << "scores: " << *scores;
+    // LOG(INFO) << "pre_ids:" << *pre_ids;
+    // LOG(INFO) << "pre_scores: " << *pre_scores;
+    // if (ids) {
+    //   LOG(INFO) << "ids: " << *ids;
+    // }
+    // LOG(INFO) << "scores: " << *scores;
 
     size_t level = context.Attr<int>("level");
     size_t beam_size = context.Attr<int>("beam_size");

@@ -38,9 +38,12 @@ void PrepareCPUTensors(paddle::framework::LoDTensor* ids,
   auto* scores_data = scores->mutable_data<float>(place);
   std::vector<int64_t> ids_vec_data({4, 2, 5, 2, 1, 3, 3, 5, 2, 8, 2, 1});
   std::vector<float> scores_vec_data(
-      {0.5f, 0.3f, 0.6f, 0.2f, 0.3f, 0.1f, 0.9f, 0.5f, 0.1f, 0.7f, 0.5f, 0.1f});
+      {0.6f, 0.3f, 0.5f, 0.2f, 0.3f, 0.1f, 0.9f, 0.5f, 0.1f, 0.7f, 0.5f, 0.1f});
 
-  for (int i = 0; i < 12; i++) {
+  CHECK_EQ(static_cast<size_t>(ids->numel()), ids_vec_data.size());
+  CHECK_EQ(static_cast<size_t>(ids->numel()), scores_vec_data.size());
+
+  for (int i = 0; i < ids->numel(); i++) {
     ids_data[i] = ids_vec_data[i];
     scores_data[i] = scores_vec_data[i];
   }
@@ -114,10 +117,7 @@ void TestBeamSearch() {
     cpu_selected_scores.set_lod(selected_scores.lod());
   }
 
-  LOG(INFO) << "selected id: " << cpu_selected_ids;
-  LOG(INFO) << "selected score: " << cpu_selected_scores;
-
-  std::vector<int64_t> expected_ids({5, 4, 3, 8});
+  std::vector<int64_t> expected_ids({4, 5, 3, 8});
   std::vector<float> expected_scores({0.6f, 0.5f, 0.9f, 0.7f});
   for (int i = 0; i < 4; i++) {
     ASSERT_EQ(expected_ids[i], cpu_selected_ids.data<int64_t>()[i]);

@@ -42,8 +42,6 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     auto abs_lod = framework::ToAbsOffset(scores_->lod());
     auto &high_level = abs_lod[lod_level_];
 
-    // LOG(INFO) << "abs_lod: " << abs_lod;
-
     auto items = SelectTopBeamSizeItems(pre_ids, pre_scores, is_accumulated);
     auto selected_items = ToMap(items, high_level.back());
     VLOG(3) << "selected_items:";
@@ -64,7 +62,6 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     selected_ids->Resize(dims);
     selected_scores->Resize(dims);
-    // LOG(INFO) << "dims: " << dims;
 
     auto *ids_data = selected_ids->mutable_data<int64_t>(platform::CPUPlace());
     auto *scores_data =
@@ -92,8 +89,8 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     }
     selected_ids->set_lod(lod);
     selected_scores->set_lod(lod);
-    LOG(INFO) << "selected_ids: " << *selected_ids;
-    LOG(INFO) << "selected_scores: " << *selected_scores;
+    // LOG(INFO) << "selected_ids: " << *selected_ids;
+    // LOG(INFO) << "selected_scores: " << *selected_scores;
   }
 
   /*
