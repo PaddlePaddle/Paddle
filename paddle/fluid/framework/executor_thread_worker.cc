@@ -272,12 +272,18 @@ void ExecutorThreadWorker::TrainFilesWithTimer() {
     }
     ++batch_cnt;
     thread_scope_->DropKids();
-    if (batch_cnt > 0 && batch_cnt % 1000 == 0) {
-      for (size_t i = 0; i < ops_.size(); ++i) {
-        fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
-                op_name[i].c_str(), op_total_time[i] / batch_cnt);
+    if (thread_id_ == 0) {
+      if (batch_cnt > 0 && batch_cnt % 1000 == 0) {
+        for (size_t i = 0; i < ops_.size(); ++i) {
+          fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
+                  op_name[i].c_str(), op_total_time[i] / batch_cnt);
+        }
+        fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
+        int fetch_var_num = fetch_var_names_.size();
+        for (int i = 0; i < fetch_var_num; ++i) {
+          print_fetch_var(thread_scope_, fetch_var_names_[i]);
+        }
       }
-      fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
     }
     timeline.Start();
   }
