@@ -106,7 +106,8 @@ class HuberLossGradKernel : public framework::OpKernel<T> {
       auto x_grad = EigenVector<T>::Flatten(*out0);
       // MSVC not treat it well when partial template arguments were specified
       x_grad.device(place) =
-          out_grad * residual.unaryExpr(HuberLossBackward<T>(delta, static_cast<T>(-1.0)));
+          out_grad *
+          residual.unaryExpr(HuberLossBackward<T>(delta, static_cast<T>(-1.0)));
     }
 
     if (out1) {
@@ -114,7 +115,8 @@ class HuberLossGradKernel : public framework::OpKernel<T> {
       auto y_grad = EigenVector<T>::Flatten(*out1);
       // MSVC not treat it well when partial template arguments were specified
       y_grad.device(place) =
-          out_grad * residual.unaryExpr(HuberLossBackward<T>(delta, static_cast<T>(1.0)));
+          out_grad *
+          residual.unaryExpr(HuberLossBackward<T>(delta, static_cast<T>(1.0)));
     }
   }
 };
