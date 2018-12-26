@@ -106,6 +106,17 @@ TEST(Analyzer_Text_Classification, compare) {
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
+// Compare Deterministic result
+TEST(Analyzer_Text_Classification, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
+}
+
 TEST(Analyzer_Text_Classification, compare_against_embedding_fc_lstm_fused) {
   AnalysisConfig cfg;
   SetConfig(&cfg);

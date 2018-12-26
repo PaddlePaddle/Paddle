@@ -29,10 +29,6 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
-    const bool is_test = ctx.Attr<bool>("is_test");
-    PADDLE_ENFORCE(
-        is_test == true,
-        "ConvTransposeMKLDNN works only for inference!. Set is_test = True");
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
@@ -47,69 +43,75 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       return;
     }
 
-    std::vector<int> nchw_axis(ndims, 0);
-    for (size_t i = 0; i < nchw_axis.size(); ++i) {
-      nchw_axis[i] = i;
-    }
-
     std::vector<int> nchw_tz = paddle::framework::vectorize2int(input->dims());
-    std::string data_format = ctx.Attr<std::string>("data_format");
 
-    auto src_md =
-        input->format() != mkldnn::memory::format::nchw
-            ? platform::MKLDNNMemDesc(nchw_tz, platform::MKLDNNGetDataType<T>(),
-                                      input->format())
-            : Axis2MemoryDesc(nchw_tz, nchw_axis);
+    const std::string key = platform::TransposeMKLDNNHandler::GetHash(
+        nchw_tz, axis, ctx.op().Output("Out"));
 
-    this->TransposeKernel(ctx.GetPlace(), Axis2MemoryDesc(nchw_tz, axis),
-                          src_md, output, input_data, nchw_tz, mkldnn_engine);
+    platform::TransposeMKLDNNHandler handler(nchw_tz, axis, dev_ctx,
+                                             mkldnn_engine, key);
+
+    auto transpose_src_memory_p = handler.AcquireSrcMemory(
+        input->format(), platform::to_void_cast<T>(input_data));
+    auto transpose_dst_memory_p =
+        handler.AcquireDstMemory(output, ctx.GetPlace());
+    auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
+                                                transpose_src_memory_p);
+
+    std::vector<mkldnn::primitive> pipeline;
+    pipeline.push_back(*transpose_p);
+    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
   }
+};
 
- protected:
-  mkldnn::memory::desc Axis2MemoryDesc(std::vector<int>& nchw_tz,
-                                       std::vector<int>& axis) const {
-    mkldnn_memory_desc_t mem_fmt;
+template <typename T>
+class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
+    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
+                   "It must use CPUPlace.");
+    auto* out_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    if (!x_grad) return;
 
-    mem_fmt.primitive_kind = mkldnn_memory;
-    mem_fmt.ndims = axis.size();
-    for (unsigned int i = 0; i < nchw_tz.size(); ++i) {
-      mem_fmt.dims[i] = nchw_tz[i];  // logical dimensions (nchw format,
-                                     // regardless physical layout)
+    auto& dev_ctx =
+        ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
+    const auto& mkldnn_engine = dev_ctx.GetEngine();
+    std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
+    std::vector<int> reversed_axis(axis);
+    int ndims = axis.size();
+    if (ndims == 1) {
+      x_grad->ShareDataWith(*out_grad);
+      return;
     }
-    mem_fmt.data_type = mkldnn_f32;
-    mem_fmt.format = mkldnn_blocked;
 
-    unsigned int total_stride = 1;
-    for (int i = nchw_tz.size() - 1; i >= 0; --i) {
-      mem_fmt.layout_desc.blocking.padding_dims[i] =
-          nchw_tz[i];  // logical dimensions (nchw format, regardless physical
-                       // layout)
-      mem_fmt.layout_desc.blocking.block_dims[i] = 1;
-      mem_fmt.layout_desc.blocking.offset_padding_to_data[i] = 0;  // no offset
-      mem_fmt.layout_desc.blocking.strides[0][axis[i]] = total_stride;
-      mem_fmt.layout_desc.blocking.strides[1][axis[i]] = 1;
-      total_stride *= nchw_tz[axis[i]];
+    for (size_t i = 0; i < axis.size(); i++) {
+      reversed_axis[axis[i]] = i;
     }
-    mem_fmt.layout_desc.blocking.offset_padding = 0;  // no initial offset
-    return mem_fmt;
-  }
 
-  void TransposeKernel(platform::Place place, mkldnn::memory::desc md_o,
-                       mkldnn::memory::desc md_i, Tensor* output,
-                       const T* data_i, std::vector<int>& nchw_dims,
-                       const mkldnn::engine& eng) const {
-    // Make Memory primitive descriptors
-    auto mpd_o = mkldnn::memory::primitive_desc(md_o, eng);
-    auto mpd_i = mkldnn::memory::primitive_desc(md_i, eng);
+    const T* out_grad_data = out_grad->data<T>();
+    x_grad->mutable_data<T>(ctx.GetPlace());
 
-    auto data_o = output->mutable_data<T>(
-        place, paddle::memory::Allocator::kDefault, mpd_o.get_size());
+    std::vector<int> nchw_tz =
+        paddle::framework::vectorize2int(out_grad->dims());
 
-    auto src = mkldnn::memory(mpd_i, (T*)(data_i));
-    auto dst = mkldnn::memory(mpd_o, data_o);
+    const std::string key = platform::TransposeMKLDNNHandler::GetHash(
+        nchw_tz, axis, ctx.op().Output(framework::GradVarName("X")));
 
-    auto r = mkldnn::reorder(src, dst);
-    mkldnn::stream(mkldnn::stream::kind::eager).submit({r}).wait();
+    platform::TransposeMKLDNNHandler handler(nchw_tz, reversed_axis, dev_ctx,
+                                             mkldnn_engine, key);
+
+    auto transpose_src_memory_p = handler.AcquireSrcMemory(
+        out_grad->format(), platform::to_void_cast<T>(out_grad_data));
+    auto transpose_dst_memory_p =
+        handler.AcquireDstMemory(x_grad, ctx.GetPlace());
+    auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
+                                                transpose_src_memory_p);
+
+    std::vector<mkldnn::primitive> pipeline;
+    pipeline.push_back(*transpose_p);
+    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
   }
 };
 
@@ -122,3 +124,8 @@ REGISTER_OP_KERNEL(transpose2, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNOpKernel<float>);
 REGISTER_OP_KERNEL(transpose, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNOpKernel<float>);
+
+REGISTER_OP_KERNEL(transpose_grad, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::TransposeMKLDNNGradOpKernel<float>);
+REGISTER_OP_KERNEL(transpose2_grad, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::TransposeMKLDNNGradOpKernel<float>);

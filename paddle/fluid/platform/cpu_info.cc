@@ -22,7 +22,6 @@ limitations under the License. */
 #ifdef __APPLE__
 #include <sys/sysctl.h>
 #include <sys/types.h>
-
 #elif defined(_WIN32)
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
 #include <windows.h>

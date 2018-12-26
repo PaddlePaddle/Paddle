@@ -106,16 +106,15 @@ struct BuildStrategy {
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
-  std::unique_ptr<ir::Graph> Apply(
-      const ProgramDesc &main_program,
-      const std::vector<platform::Place> &places,
-      const std::string &loss_var_name,
-      const std::unordered_set<std::string> &param_names,
-      const std::vector<Scope *> &local_scopes,
+  std::unique_ptr<ir::Graph> Apply(const ProgramDesc &main_program,
+                                   const std::vector<platform::Place> &places,
+                                   const std::string &loss_var_name,
+                                   const std::vector<Scope *> &local_scopes,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-      const bool use_cuda, platform::NCCLContextMap *nccl_ctxs) const;
+                                   const bool use_cuda,
+                                   platform::NCCLContextMap *nccl_ctxs) const;
 #else
-      const bool use_cuda) const;
+                                   const bool use_cuda) const;
 #endif
 
  private:
