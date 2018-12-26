@@ -20,7 +20,6 @@
 
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/imperative/engine.h"
 #include "paddle/fluid/imperative/layer.h"
 
@@ -53,19 +52,14 @@ class Tracer {
  public:
   explicit Tracer(framework::BlockDesc* root_block,
                   framework::BlockDesc* startup_block)
-      : root_block_(root_block), startup_block_(startup_block) {
-    root_scope_ = new framework::Scope();
-    scopes_[root_block_] = root_scope_;
-    scopes_[startup_block_] = root_scope_;
-  }
+      : root_block_(root_block), startup_block_(startup_block) {}
 
-  virtual ~Tracer() { delete root_scope_; }
+  virtual ~Tracer() {}
 
   void Trace(OpBase* op,
              const std::map<std::string, std::vector<VarBase*>>& inputs,
              const std::map<std::string, std::vector<VarBase*>>& outputs,
              framework::BlockDesc* block) {
-    // framework::Scope* scope = GetScope(block);
     std::map<std::string, VarBase*> vars;
 
     framework::OpDesc* op_desc = op->op_desc_;
@@ -94,8 +88,7 @@ class Tracer {
           (*op->pre_ops_)[it.first].push_back(nullptr);
         }
         VLOG(3) << "input vname " << inp->var_desc_->Name() << " "
-                << inp->var_->Get<framework::LoDTensor>().dims().size()
-                << reinterpret_cast<void*>(inp->var_);
+                << inp->var_->IsInitialized();
       }
     }
 
@@ -119,8 +112,6 @@ class Tracer {
         out->pre_op_out_idx_ = i;
 
         VLOG(3) << "output vname " << out->var_desc_->Name() << " "
-                << out->var_->Get<framework::LoDTensor>().dims().size() << " "
-                << reinterpret_cast<void*>(out->var_) << " "
                 << out->var_->IsInitialized();
       }
     }
@@ -167,7 +158,6 @@ class Tracer {
           if (!var->grads_->IsInitialized()) {
             InitVar(var->var_, var->grads_);
           }
-          LOG(ERROR) << grad_outvar << " map to " << var->var_desc_->Name();
           grad_out_vars.push_back(var->grads_);
         }
       }
@@ -175,22 +165,9 @@ class Tracer {
     op->block_ = block;
   }
 
-  framework::Scope* GetScope(framework::BlockDesc* block) {
-    if (scopes_.find(block) != scopes_.end()) {
-      return scopes_.at(block);
-    }
-    framework::BlockDesc* parent_block = block->ParentBlock();
-    PADDLE_ENFORCE(scopes_.find(parent_block) != scopes_.end());
-    framework::Scope* scope = &scopes_[parent_block]->NewScope();
-    scopes_[block] = scope;
-    return scope;
-  }
-
  private:
-  std::map<framework::BlockDesc*, framework::Scope*> scopes_;
   framework::BlockDesc* root_block_;
   framework::BlockDesc* startup_block_;
-  framework::Scope* root_scope_;
 };
 
 }  // namespace imperative

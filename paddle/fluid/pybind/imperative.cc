@@ -28,9 +28,7 @@ void BindTracer(pybind11::module *m) {
               framework::BlockDesc *startup_block) {
              new (&self) imperative::Tracer(root_block, startup_block);
            })
-      .def("trace", &imperative::Tracer::Trace)
-      .def("get_scope", &imperative::Tracer::GetScope,
-           pybind11::return_value_policy::reference);
+      .def("trace", &imperative::Tracer::Trace);
 }
 
 }  // namespace pybind
