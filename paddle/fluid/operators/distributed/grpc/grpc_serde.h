@@ -27,8 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/platform/port.h"
 
-#include "paddle/fluid/operators/distributed/send_recv.grpc.pb.h"
-#include "paddle/fluid/operators/distributed/send_recv.pb.h"
+#include "paddle/fluid/operators/distributed/distributed_pb.h"
 
 namespace paddle {
 namespace operators {

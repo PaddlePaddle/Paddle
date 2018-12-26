@@ -7,9 +7,27 @@ if(WITH_GRPC)
 else()
     set(cc_generic_services "true")
 endif()
-configure_file(send_recv.proto.in ${CMAKE_CURRENT_SOURCE_DIR}/send_recv.proto @ONLY)
+configure_file(send_recv.proto.in ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto @ONLY)
 
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+
+cc_library(distributed_base SRCS rpc_client.cc rpc_server.cc
+    request_handler_impl.cc sendrecvop_utils.cc variable_response.cc collective_client.cc collective_server.cc)
+
+
+cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler)
+cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_rpc memory)
+
+
+
+cc_test(rpc_server_test SRCS rpc_server_test.cc
+  DEPS ${RPC_DEPS} sendrecvop_rpc gflags glog executor proto_desc lookup_sparse_table_op SERIAL)
+
+if(WITH_GPU)
+  cc_test(collective_server_test SRCS collective_server_test.cc 
+    DEPS sendrecvop_rpc ${RPC_DEPS} executor selected_rows_functor scope math_function SERIAL)
+endif()
+
 
 if(WITH_GRPC)
   grpc_library(sendrecvop_rpc SRCS grpc_bytebuffer_stream.cc sendrecvop_utils.cc grpc_client.cc

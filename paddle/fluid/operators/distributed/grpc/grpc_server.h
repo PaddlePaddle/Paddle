@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/distributed/grpc_service.h"
+#include "paddle/fluid/operators/distributed/grpc/grpc_service.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/operators/distributed/send_recv.grpc.pb.h"
