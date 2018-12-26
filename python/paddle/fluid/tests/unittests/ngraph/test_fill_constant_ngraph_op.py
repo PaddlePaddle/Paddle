@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,30 +13,24 @@
 # limitations under the License.
 
 from __future__ import print_function
-
 import unittest
-import numpy as np
-from op_test import OpTest
+from paddle.fluid.tests.unittests.test_fill_constant_op import TestFillConstantOp1, TestFillConstantOp2, TestFillConstantOpWithSelectedRows
 
 
-class TestFillZerosLikeOp(OpTest):
+class TestNGRAPHFillConstantOp1(TestFillConstantOp1):
     def setUp(self):
-        self.op_type = "fill_zeros_like"
-        self.dtype = np.float32
-        self.init_dtype()
-        self.inputs = {'X': np.random.random((219, 232)).astype(self.dtype)}
-        self.outputs = {'Out': np.zeros_like(self.inputs["X"])}
-
-    def init_dtype(self):
-        pass
-
-    def test_check_output(self):
-        self.check_output()
+        super(TestNGRAPHFillConstantOp1, self).setUp()
 
 
-class TestFillZerosLikeOpFp16(TestFillZerosLikeOp):
-    def init_dtype(self):
-        self.dtype = np.float16
+class TestNGRAPHFillConstantOp2(TestFillConstantOp2):
+    def setUp(self):
+        super(TestNGRAPHFillConstantOp2, self).setUp()
+
+
+class TestNGRAPHFillConstantOpWithSelectedRows(
+        TestFillConstantOpWithSelectedRows):
+    def setUp(self):
+        super(TestFillConstantOpWithSelectedRows, self).setUp()
 
 
 if __name__ == "__main__":

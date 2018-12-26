@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,32 +11,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import print_function
 
 import unittest
-import numpy as np
-from op_test import OpTest
+from paddle.fluid.tests.unittests.test_top_k_op import TestTopkOp, TestTopkOp3d, TestTopkOp2, TestTopkOp3, TestTopkOp4
 
 
-class TestFillZerosLikeOp(OpTest):
+class TestNGRAPHTopkOp(TestTopkOp):
     def setUp(self):
-        self.op_type = "fill_zeros_like"
-        self.dtype = np.float32
-        self.init_dtype()
-        self.inputs = {'X': np.random.random((219, 232)).astype(self.dtype)}
-        self.outputs = {'Out': np.zeros_like(self.inputs["X"])}
-
-    def init_dtype(self):
-        pass
-
-    def test_check_output(self):
-        self.check_output()
+        super(TestNGRAPHTopkOp, self).setUp()
 
 
-class TestFillZerosLikeOpFp16(TestFillZerosLikeOp):
-    def init_dtype(self):
-        self.dtype = np.float16
+class TestNGRAPHTopkOp2(TestTopkOp2):
+    def setUp(self):
+        super(TestNGRAPHTopkOp2, self).setUp()
+
+
+class TestNGRAPHTopkOp3(TestTopkOp3):
+    def setUp(self):
+        super(TestNGRAPHTopkOp3, self).setUp()
+
+
+class TestNGRAPHTopkOp4(TestTopkOp4):
+    def setUp(self):
+        super(TestNGRAPHTopkOp4, self).setUp()
 
 
 if __name__ == "__main__":
