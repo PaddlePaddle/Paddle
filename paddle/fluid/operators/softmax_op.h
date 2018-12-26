@@ -47,6 +47,7 @@ class SoftmaxKernel : public framework::OpKernel<T> {
 };
 
 // specialized for fp16
+#ifdef PADDLE_WITH_CUDA
 template <>
 class SoftmaxKernel<platform::CUDADeviceContext, platform::float16>
     : public framework::OpKernel<platform::float16> {
@@ -67,6 +68,7 @@ class SoftmaxKernel<platform::CUDADeviceContext, platform::float16>
         &Out_2d);
   }
 };
+#endif
 
 template <typename DeviceContext, typename T>
 class SoftmaxGradKernel : public framework::OpKernel<T> {
