@@ -20,7 +20,7 @@ limitations under the License. */
 #include <tuple>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph_helper.h"
-
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
@@ -81,7 +81,7 @@ class ParallelExecutorPrivate {
   std::unique_ptr<ir::Graph> PrepareGCAndRefCnts(
       std::unique_ptr<ir::Graph> graph, size_t max_memory_size);
 
-  inline void MemoryUsedInRuntime() const;
+  inline void MemoryUsedInRuntime();
 
   inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
 
@@ -106,8 +106,8 @@ class ParallelExecutorPrivate {
   std::unique_ptr<details::SSAGraphExecutor> executor_;
 
   // memory statistics
-  size_t model_vars_max_size = 0ul;
-  size_t temp_vars_max_size = 0ul;
+  size_t model_vars_max_size_ = 0ul;
+  size_t temp_vars_max_size_ = 0ul;
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
@@ -124,26 +124,27 @@ class ParallelExecutorPrivate {
   details::GarbageCollectorMap gcs_;
 };
 
-inline void ParallelExecutorPrivate::MemoryUsedInRuntime() const {
+inline void ParallelExecutorPrivate::MemoryUsedInRuntime() {
   auto get_scope_size = [&](Scope *scope) -> size_t {
     size_t total_size = 0ul;
-    for (auto &var_name : scope_->LocalVarNames()) {
-      Variable *var = scope_->FindVar(var_name);
+    for (auto &var_name : scope->LocalVarNames()) {
+      Variable *var = scope->FindVar(var_name);
       total_size +=
           VarSizeInBytes(var, ToDataType(var->Type()), VarSizeVisitor());
     }
     return total_size;
-  } int global_scope_size = get_scope_size(global_scope_);
+  };
+  size_t global_scope_size = get_scope_size(global_scope_);
   std::vector<size_t> local_scope_sizes;
   local_scope_sizes.reserve(local_scopes_.size());
   for (auto *scope : local_scopes_) {
     local_scope_sizes.emplace_back(get_scope_size(scope));
   }
-  int temp_vars_size =
+  size_t temp_vars_size =
       std::accumulate(local_scope_sizes.begin(), local_scope_sizes.end(), 0,
                       std::plus<size_t>());
-  model_vars_max_size = std::max(model_vars_max_size, global_scope_size);
-  temp_vars_max_size = std::max(temp_vars_size, temp_vars_max_size);
+  model_vars_max_size_ = std::max(model_vars_max_size_, global_scope_size);
+  temp_vars_max_size_ = std::max(temp_vars_size, temp_vars_max_size_);
   std::stringstream os;
   for (size_t i = 0; i < local_scope_sizes.size(); ++i) {
     os << "Local Scope " << i << " "
@@ -151,8 +152,8 @@ inline void ParallelExecutorPrivate::MemoryUsedInRuntime() const {
   }
 
   VLOG(3) << "Total Memory Max Costs : "
-          << model_vars_max_size + temp_vars_max_size
-          << "Global Scope(model vars total size) : " << model_vars_max_size
+          << model_vars_max_size_ + temp_vars_max_size_
+          << "Global Scope(model vars total size) : " << model_vars_max_size_
           << os.str();
 }
 
