@@ -9335,13 +9335,13 @@ def get_tensor_from_selected_rows(x, name=None):
     return out
 
 
-def shuffle_channel(x, group=1, name=None):
+def shuffle_channel(x, group, name=None):
     """
     **Shuffle Channel Operator**
     This operator obtains the group convolutional layer with channels shuffled.
     First, divide the input channels in each group into several subgroups,
     then, feed each group in the next layer with different subgroups.
-    Shuffle channel operation makes it possible to build more powerful structures
+    Channel shuffling operation makes it possible to build more powerful structures
     with multiple group convolutional layers.
     
     Args: 
