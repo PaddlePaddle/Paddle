@@ -60,9 +60,10 @@ void BindAsyncExecutor(py::module* m) {
 #else
 void BindAsyncExecutor(py::module* m) {
   py::class_<framework::AsyncExecutor>(*m, "AsyncExecutor")
-      .def(py::init([](framework::Scope* scope, const platform::Place& place) {
+      .def(py::init([](const std::shared_ptr<framework::Scope>& scope,
+                       const platform::Place& place) {
         return std::unique_ptr<framework::AsyncExecutor>(
-            new framework::AsyncExecutor(scope, place));
+            new framework::AsyncExecutor(scope.get(), place));
       }))
       .def("run_from_files", &framework::AsyncExecutor::RunFromFile);
 }  // end BindAsyncExecutor

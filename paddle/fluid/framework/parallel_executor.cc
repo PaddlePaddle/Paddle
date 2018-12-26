@@ -64,10 +64,14 @@ class ParallelExecutorPrivate {
   }
 
   ~ParallelExecutorPrivate() {
-    if (own_local_scope_) {
+    auto *deleter =
+        std::get_deleter<ParallelExecutor::EmptyDeleter>(global_scope_);
+    // When global_scope is created by Scope::NewScope. The deleter would be
+    // empty. In this case, destruction of Scope would be done by Python.
+    if (own_local_scope_ && deleter == nullptr) {
       for (size_t i = 1; i < local_scopes_.size(); ++i) {
         // Skip the first scope, since it is the global scope.
-        Scope *local_scope = local_scopes_[i];
+        Scope *local_scope = local_scopes_[i].get();
         if (global_scope_->HasKid(local_scope)) {
           global_scope_->DeleteScope(local_scope);
         }
@@ -96,8 +100,8 @@ class ParallelExecutorPrivate {
 
   BuildStrategy build_strategy_;
   std::vector<platform::Place> places_;
-  std::vector<Scope *> local_scopes_;
-  Scope *global_scope_;  // not owned
+  std::vector<std::shared_ptr<Scope>> local_scopes_;
+  std::shared_ptr<Scope> global_scope_;
   std::unique_ptr<details::SSAGraphExecutor> executor_;
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
@@ -184,7 +188,12 @@ std::unique_ptr<ir::Graph> ParallelExecutorPrivate::PrepareGCAndRefCnts(
   return graph;
 }
 
-std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
+template <typename T>
+static std::shared_ptr<T> MakeSharedWithNoDeleter(T *ptr) {
+  return std::shared_ptr<T>(ptr, ParallelExecutor::EmptyDeleter());
+}
+
+std::vector<std::shared_ptr<Scope>> &ParallelExecutor::GetLocalScopes() {
   return member_->local_scopes_;
 }
 
@@ -192,7 +201,8 @@ ParallelExecutor::ParallelExecutor(
     const std::vector<platform::Place> &places,
     const std::unordered_set<std::string> &bcast_vars,
     const ProgramDesc &main_program, const std::string &loss_var_name,
-    Scope *scope, const std::vector<Scope *> &local_scopes,
+    const std::shared_ptr<Scope> &scope,
+    const std::vector<std::shared_ptr<Scope>> &local_scopes,
     const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
     size_t num_trainers, size_t trainer_id)
     : member_(new ParallelExecutorPrivate(places)) {
@@ -214,13 +224,15 @@ ParallelExecutor::ParallelExecutor(
     member_->own_local_scope_ = true;
     member_->local_scopes_.emplace_back(member_->global_scope_);
     for (size_t i = 1; i < member_->places_.size(); ++i) {
-      member_->local_scopes_.emplace_back(&scope->NewScope());
+      member_->local_scopes_.emplace_back(
+          MakeSharedWithNoDeleter(&scope->NewScope()));
     }
   } else {
     member_->own_local_scope_ = false;
     PADDLE_ENFORCE_EQ(member_->places_.size(), local_scopes.size());
     for (size_t i = 0; i < member_->places_.size(); ++i) {
-      member_->local_scopes_.emplace_back(&local_scopes[i]->NewScope());
+      member_->local_scopes_.emplace_back(
+          MakeSharedWithNoDeleter(&local_scopes[i]->NewScope()));
     }
   }
 
@@ -242,18 +254,23 @@ ParallelExecutor::ParallelExecutor(
   if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
     BCastParamsToDevices(bcast_vars);
   }
-// Startup Program has been run. All local scopes has correct parameters.
+  // Startup Program has been run. All local scopes has correct parameters.
 
-// Step 2. Convert main_program to SSA form and dependency graph. Also, insert
-// ncclOp
+  // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
+  // ncclOp
+  std::vector<Scope *> scopes(member_->local_scopes_.size());
+  for (size_t i = 0; i < scopes.size(); ++i) {
+    scopes[i] = member_->local_scopes_[i].get();
+  }
+
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
-      main_program, member_->places_, loss_var_name, member_->local_scopes_,
-      member_->use_cuda_, member_->nccl_ctxs_.get());
+      main_program, member_->places_, loss_var_name, scopes, member_->use_cuda_,
+      member_->nccl_ctxs_.get());
 #else
   std::unique_ptr<ir::Graph> graph =
       build_strategy.Apply(main_program, member_->places_, loss_var_name,
-                           member_->local_scopes_, member_->use_cuda_);
+                           scopes, member_->use_cuda_);
 #endif
   auto max_memory_size = GetEagerDeletionThreshold();
   if (max_memory_size >= 0) {
@@ -289,17 +306,15 @@ ParallelExecutor::ParallelExecutor(
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
     member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, member_->places_,
-        std::move(graph)));
+        exec_strategy, scopes, member_->places_, std::move(graph)));
   } else {
     member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, member_->places_,
-        std::move(graph)));
+        exec_strategy, scopes, member_->places_, std::move(graph)));
   }
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
-      exec_strategy, member_->local_scopes_, std::move(var_infos),
-      member_->places_, std::move(member_->executor_)));
+      exec_strategy, scopes, std::move(var_infos), member_->places_,
+      std::move(member_->executor_)));
 }
 
 void ParallelExecutor::BCastParamsToDevices(
@@ -396,7 +411,7 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
 
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &map = tensors[i];
-    auto *scope = member_->local_scopes_[i];
+    auto *scope = member_->local_scopes_[i].get();
     for (auto &pair : map) {
       auto *trg = scope->Var(pair.first)->GetMutable<LoDTensor>();
       trg->ShareDataWith(pair.second);

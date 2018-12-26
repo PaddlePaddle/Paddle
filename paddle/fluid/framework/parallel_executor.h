@@ -40,18 +40,19 @@ class ParallelExecutor {
   DISABLE_COPY_AND_ASSIGN(ParallelExecutor);
 
  public:
-  explicit ParallelExecutor(const std::vector<platform::Place> &places,
-                            const std::unordered_set<std::string> &bcast_vars,
-                            const ProgramDesc &main_program,
-                            const std::string &loss_var_name, Scope *scope,
-                            const std::vector<Scope *> &local_scopes,
-                            const ExecutionStrategy &exec_strategy,
-                            const BuildStrategy &build_strategy,
-                            size_t num_trainers = 1, size_t trainer_id = 0);
+  explicit ParallelExecutor(
+      const std::vector<platform::Place> &places,
+      const std::unordered_set<std::string> &bcast_vars,
+      const ProgramDesc &main_program, const std::string &loss_var_name,
+      const std::shared_ptr<Scope> &scope,
+      const std::vector<std::shared_ptr<Scope>> &local_scopes,
+      const ExecutionStrategy &exec_strategy,
+      const BuildStrategy &build_strategy, size_t num_trainers = 1,
+      size_t trainer_id = 0);
 
   ~ParallelExecutor();
 
-  std::vector<Scope *> &GetLocalScopes();
+  std::vector<std::shared_ptr<Scope>> &GetLocalScopes();
 
   /**
    * Feed tensors to local scopes. The size of tensors should be equal to the
@@ -65,6 +66,27 @@ class ParallelExecutor {
 
   void Run(const std::vector<std::string> &fetch_tensors,
            const std::string &fetched_var_name);
+
+  /**
+   * HOTFIX(zjl): Scope is created in Python, but the destructor of
+   * ParallelExecutor needs to access the Scope object, which may cause
+   * seg fault when exit, since the destruction order of Scope in Python and
+   * ParallelExecutor in C++ is uncertain.
+   *
+   * Here, we use an EmptyDeleter to make Scope be std::shared_ptr<Scope>,
+   * If Scope is created by constructor in Python, the deleter would be
+   * std::default_delete<Scope>. If Scope is created by Scope::NewScope in
+   * Python or C++, the deleter would be EmptyDeleter.
+   *
+   * The best way to solve this bug is to rewrite Scope using smart pointers.
+   * But it takes a long time to do it because many codes rely on raw
+   * pointers of Scope
+   */
+  // TODO(zjl): rewrite Scope using smart pointers
+  struct EmptyDeleter {
+    // Using void* instead of T* contributes to smaller binary sizes
+    inline void operator()(void *) {}
+  };
 
  private:
   void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;

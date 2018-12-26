@@ -454,7 +454,7 @@ All parameter, weight, gradient are variables in Paddle.
             },
         py::return_value_policy::copy);
 
-  py::class_<Scope>(m, "Scope", R"DOC(
+  py::class_<Scope, std::shared_ptr<Scope>>(m, "Scope", R"DOC(
     Scope is an association of a name to Variable. All variables belong to Scope.
 
     Variables in a parent scope can be retrieved from local scope.
@@ -480,9 +480,13 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::reference)
       .def("find_var", &Scope::FindVar, py::return_value_policy::reference)
-      .def(py::init<>())
-      .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
-           py::return_value_policy::reference)
+      .def(py::init([] { return std::make_shared<Scope>(); }))
+      .def("new_scope",
+           [](Scope &self) -> std::shared_ptr<Scope> {
+             // No deleter, it would be managed by parent scope
+             return std::shared_ptr<Scope>(&self.NewScope(),
+                                           ParallelExecutor::EmptyDeleter());
+           })
       .def("drop_kids", &Scope::DropKids);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
@@ -634,10 +638,11 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
-      .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
-                     int block_id, bool create_local_scope, bool create_vars) {
+      .def("run", [](Executor &self, const ProgramDesc &prog,
+                     const std::shared_ptr<Scope> &scope, int block_id,
+                     bool create_local_scope, bool create_vars) {
         pybind11::gil_scoped_release release;
-        self.Run(prog, scope, block_id, create_local_scope, create_vars);
+        self.Run(prog, scope.get(), block_id, create_local_scope, create_vars);
       });
 
   m.def("init_gflags", framework::InitGflags);
@@ -985,7 +990,8 @@ All parameter, weight, gradient are variables in Paddle.
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &, const ProgramDesc &,
-                  const std::string &, Scope *, std::vector<Scope *> &,
+                  const std::string &, const std::shared_ptr<Scope> &,
+                  std::vector<std::shared_ptr<Scope>> &,
                   const ExecutionStrategy &, const BuildStrategy &, size_t,
                   size_t>())
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
@@ -993,7 +999,7 @@ All parameter, weight, gradient are variables in Paddle.
       // of vec<Scope*> will be freed by Python GC. We can only return Scope*
       // one by one and mark them as reference.
       .def("local_scopes",
-           [](ParallelExecutor &self) -> std::vector<Scope *> * {
+           [](ParallelExecutor &self) -> std::vector<std::shared_ptr<Scope>> * {
              return &self.GetLocalScopes();
            },
            py::return_value_policy::reference)
