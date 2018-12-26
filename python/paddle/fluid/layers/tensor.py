@@ -310,7 +310,10 @@ def assign(input, output=None, init_once=False):
     if output is None:
         if init_once:
             output = helper.create_parameter(
-                attr=ParamAttr(), shape=input.shape, dtype=input.dtype)
+                attr=ParamAttr(),
+                shape=input.shape,
+                dtype=input.dtype,
+                default_initializer=Constant(0.0))
         else:
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)

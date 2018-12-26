@@ -26,7 +26,7 @@ from ..initializer import Normal, Constant
 from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat
+from .tensor import concat, assign
 from . import utils
 from .. import unique_name
 from functools import reduce
