@@ -15,8 +15,10 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/temporary_allocator.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
@@ -38,6 +40,71 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
+
+/*! \brief device temporary allocator singleton.
+ *
+ * Some operator needs temporary memory during computation, for example,
+ * conv_gemm, which needs use col to store the result of im2col. If we
+ * create a stack memory which is used by CUDA Kernel, before the
+ * Computation(...) returns, we should add ctx->Wait(), because the
+ * execution of CUDA is async, if there doesn't have ctx->Wait(),
+ * the temporary memory will be released before the CUDA Kernel uses
+ * it.
+ *
+ * DeviceTemporaryAllocator is a singleton, which contains a
+ * `TemporaryAllocator` for each <Place, Stream>. And the TemporaryAllocator
+ * contains a temp_allocation_queue which is used to store the temporary
+ * allocations. The allocation, which is allocated by TemporaryAllocator,
+ * is a unique_ptr,  and when it is not held by any variable, it will be
+ * pushed into the temp_allocation_queue. There are two opportunities to free
+ * the allocations of temp_allocation_queue:
+ *  - when the Stream calls cudaStreamSynchronize;
+ *  - when the allocation size of opportunities exceeds a certain threshold
+ *    (defined by FLAGS_limit_of_temporary_allocation).
+ *
+ * */
+class DeviceTemporaryAllocator {
+ public:
+  static DeviceTemporaryAllocator& Instance() {
+    PADDLE_ENFORCE_NOT_NULL(allocators,
+                            "Need to Create DeviceTemporaryAllocator first!");
+    return *allocators;
+  }
+
+  static DeviceTemporaryAllocator& Init() {
+    if (allocators == nullptr) {
+      allocators = new DeviceTemporaryAllocator();
+    }
+    return *allocators;
+  }
+
+/*! \brief  Return handle of single temporary allocator. */
+#ifdef PADDLE_WITH_CUDA
+  platform::TemporaryAllocator& Get(const platform::Place& place,
+                                    const cudaStream_t& stream);
+#endif
+  template <typename DeviceContext>
+  platform::TemporaryAllocator& Get(const DeviceContext& dev_ctx);
+
+  platform::TemporaryAllocator& Get(const platform::Place& place);
+
+ private:
+  DeviceTemporaryAllocator() : cpu_allocator_(platform::CPUPlace()) {}
+
+  static DeviceTemporaryAllocator* allocators;
+
+  platform::TemporaryAllocator cpu_allocator_;
+
+#ifdef PADDLE_WITH_CUDA
+  std::map<std::pair<platform::Place, cudaStream_t>,
+           std::unique_ptr<platform::TemporaryAllocator>>
+      device_allocator_;
+#endif
+
+  std::mutex mtx_;
+
+  DISABLE_COPY_AND_ASSIGN(DeviceTemporaryAllocator);
+};
 
 class DeviceContext {
  public:

@@ -16,10 +16,15 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include <algorithm>
-
+#include <sstream>
+#include <string>
+#include <vector>
+#include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
@@ -142,12 +147,14 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
                                const Scope& scope) {
   for (auto& var_name_item : innames) {
     std::vector<Variable*>& input_vars = inputs[var_name_item.first];
+    input_vars.reserve(var_name_item.second.size());
     for (auto& var_name : var_name_item.second) {
       input_vars.push_back(scope.FindVar(var_name));
     }
   }
   for (auto& var_name_item : outnames) {
     std::vector<Variable*>& output_vars = outputs[var_name_item.first];
+    output_vars.reserve(var_name_item.second.size());
     for (auto& var_name : var_name_item.second) {
       output_vars.push_back(scope.FindVar(var_name));
     }
@@ -155,27 +162,59 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  VLOG(4) << place << " " << DebugStringEx(&scope);
-  if (platform::is_gpu_place(place)) {
+  try {
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << place << " " << DebugStringEx(&scope);
+    }
+    if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
-    PADDLE_THROW("Cannot run operator on place %s", place);
+      PADDLE_THROW("Cannot run operator on place %s", place);
 #else
-    auto dev_id = boost::get<platform::CUDAPlace>(place).device;
-    platform::SetDeviceId(dev_id);
+      auto dev_id = boost::get<platform::CUDAPlace>(place).device;
+      platform::SetDeviceId(dev_id);
 #endif
-  }
+    }
 
-  // The profile has a process-wide mutex, results in serious performance issue
-  // in concurrency scenerio. Here use an `if` to fix this issue.
-  // Please not remove the `if`, ask @Superjomn if there are any concern.
-  if (platform::IsProfileEnabled()) {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::RecordEvent record_event(Type(), pool.Get(place));
-    RunImpl(scope, place);
-  } else {
-    RunImpl(scope, place);
+    // The profile has a process-wide mutex, results in serious performance
+    // issue
+    // in concurrency scenerio. Here use an `if` to fix this issue.
+    // Please not remove the `if`, ask @Superjomn if there are any concern.
+    if (platform::IsProfileEnabled()) {
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      platform::RecordEvent record_event(Type(), pool.Get(place));
+      RunImpl(scope, place);
+    } else {
+      RunImpl(scope, place);
+    }
+
+    if (VLOG_IS_ON(3)) {
+      VLOG(3) << place << " " << DebugStringEx(&scope);
+    }
+  } catch (platform::EnforceNotMet exception) {
+    if (Attrs().count("sub_block") != 0) {
+      throw exception;
+    }
+
+    auto& callstack = Attr<std::vector<std::string>>(
+        OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+
+    if (callstack.empty()) {
+      throw exception;
+    }
+    std::ostringstream sout;
+    sout << "Invoke operator " << Type() << " error.\n";
+    sout << "Python Callstacks: \n";
+    for (auto& line : callstack) {
+      sout << line;
+    }
+    sout << "C++ Callstacks: \n";
+    sout << exception.err_str_;
+    exception.err_str_ = sout.str();
+    throw exception;
+  } catch (...) {
+    std::rethrow_exception(std::current_exception());
   }
-  VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
@@ -474,6 +513,28 @@ const Tensor* ExecutionContext::LegacyInput<Tensor>(
 template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const {
+  auto it = ctx_.inputs.find(name);
+  if (it == ctx_.inputs.end()) {
+    return {};
+  }
+  const std::vector<Variable*>& vars = it->second;
+  std::vector<const Tensor*> res;
+  res.reserve(vars.size());
+  std::transform(vars.begin(), vars.end(), std::back_inserter(res),
+                 [&](Variable* var) -> const Tensor* {
+                   if (var == nullptr) return nullptr;
+                   PADDLE_ENFORCE(
+                       var->IsType<LoDTensor>(),
+                       "should be LoDTensor, but the received type is %s",
+                       var->Type().name());
+                   return &(var->Get<LoDTensor>());
+                 });
+  return res;
+}
+
+template <>
+const std::vector<const Tensor*> ExecutionContext::LegacyMultiInput<Tensor>(
+    const std::string& name) const {
   auto names = op().Inputs(name);
   std::vector<const Tensor*> res;
   res.reserve(names.size());
@@ -556,30 +617,28 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   bool HasOutput(const std::string& name) const override {
     // has only one output
-    const auto& outs = op_.Outputs();
+    const auto& outs = ctx_.outputs;
     auto it = outs.find(name);
     if (it == outs.end()) {
       return false;
     }
     const auto& out = it->second;
-    if (out.size() == 0 || out[0] == kEmptyVarName) {
+    if (out.size() == 0) {
       return false;
     }
     PADDLE_ENFORCE_EQ(out.size(), 1UL,
                       "Output %s should not have more than one outputs", name);
-    return scope_.FindVar(out[0]) != nullptr;
+    return out[0] != nullptr;
   }
 
   bool HasInputs(const std::string& name) const override {
-    if (!op_.HasInputs(name)) {
+    const auto& ins = ctx_.inputs;
+    auto it = ins.find(name);
+    if (it == ins.end() || it->second.empty()) {
       return false;
     }
-    auto inputs = op_.Inputs(name);
-    if (inputs.empty()) {
-      return false;
-    }
-    for (auto& input : inputs) {
-      if (scope_.FindVar(input) == nullptr) {
+    for (auto& input : it->second) {
+      if (input == nullptr) {
         return false;
       }
     }
@@ -587,15 +646,13 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasOutputs(const std::string& name) const override {
-    if (!op_.HasOutputs(name)) {
+    const auto& outs = ctx_.outputs;
+    auto it = outs.find(name);
+    if (it == outs.end() || it->second.empty()) {
       return false;
     }
-    auto outputs = op_.Outputs(name);
-    if (outputs.empty()) {
-      return false;
-    }
-    for (auto& output : outputs) {
-      if (scope_.FindVar(output) == nullptr) {
+    for (auto& output : it->second) {
+      if (output == nullptr) {
         return false;
       }
     }
@@ -616,16 +673,18 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
                 size_t j = 0) override {
-    PADDLE_ENFORCE_LT(i, Inputs(in).size());
-    PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    const std::string& input_n = Inputs(in)[i];
-    const std::string& output_n = Outputs(out)[j];
+    auto in_it = ctx_.inputs.find(in);
+    auto out_it = ctx_.outputs.find(out);
+    PADDLE_ENFORCE(in_it != ctx_.inputs.end() && in_it->second.size() > i,
+                   "Inputs %s should have %llu argument", in, i);
+    PADDLE_ENFORCE(out_it != ctx_.outputs.end() && out_it->second.size() > j,
+                   "Outputs %s should have %llu argument", out, j);
 
-    Variable* in_var = scope_.FindVar(input_n);
-    Variable* out_var = scope_.FindVar(output_n);
+    Variable* in_var = in_it->second[i];
+    Variable* out_var = out_it->second[j];
+
     PADDLE_ENFORCE(in_var->Type() == out_var->Type(),
-                   "The type of %s and %s is not the same.", output_n,
-                   GetDim(input_n));
+                   "The type of %s and %s is not the same.", in, out);
 
     if (in_var->IsType<framework::SelectedRows>()) {
       auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
@@ -646,13 +705,16 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
                 size_t j = 0) const override {
-    const std::vector<std::string>& inputs = Inputs(in);
-    const std::vector<std::string>& outputs = Outputs(out);
-    PADDLE_ENFORCE_LT(i, inputs.size());
-    PADDLE_ENFORCE_LT(j, outputs.size());
-    Variable* in_var = scope_.FindVar(inputs.at(i));
+    auto in_it = ctx_.inputs.find(in);
+    auto out_it = ctx_.outputs.find(out);
+    PADDLE_ENFORCE(in_it != ctx_.inputs.end() && in_it->second.size() > i,
+                   "Inputs %s should have %llu argument", in, i);
+    PADDLE_ENFORCE(out_it != ctx_.outputs.end() && out_it->second.size() > j,
+                   "Outputs %s should have %llu argument", out, j);
+
+    Variable* in_var = in_it->second.at(i);
     if (!in_var->IsType<LoDTensor>()) return;
-    Variable* out_var = scope_.FindVar(outputs.at(j));
+    Variable* out_var = out_it->second.at(j);
     PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
                    "The %d-th output of Output(%s) must be LoDTensor.", j, out);
     auto in_tensor = in_var->Get<LoDTensor>();
@@ -687,9 +749,64 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   bool IsRuntime() const override { return true; }
 
+  // TODO(paddle-dev): Can this be template?
+  std::vector<InferShapeVarPtr> GetInputVarPtrs(
+      const std::string& name) override {
+    const std::vector<Variable*>& vars = InputVars(name);
+    std::vector<InferShapeVarPtr> res;
+    res.reserve(vars.size());
+    res.insert(res.begin(), vars.begin(), vars.end());
+    return res;
+  }
+
+  std::vector<InferShapeVarPtr> GetOutputVarPtrs(
+      const std::string& name) override {
+    const std::vector<Variable*>& vars = OutputVars(name);
+    std::vector<InferShapeVarPtr> res;
+    res.reserve(vars.size());
+    res.insert(res.begin(), vars.begin(), vars.end());
+    return res;
+  }
+
+  DDim GetInputDim(const std::string& name) const override {
+    const std::vector<Variable*>& vars = InputVars(name);
+    PADDLE_ENFORCE_EQ(vars.size(), 1UL,
+                      "Input(%s) should hold one element, but now it holds %d",
+                      name, vars.size());
+    return this->GetDim(vars[0]);
+  }
+
+  std::vector<DDim> GetInputsDim(const std::string& name) const override {
+    const std::vector<Variable*>& vars = InputVars(name);
+    return GetDims(vars);
+  }
+
+  std::vector<proto::VarType::Type> GetInputsVarType(
+      const std::string& name) const override {
+    return GetVarTypes(InputVars(name));
+  }
+
+  std::vector<proto::VarType::Type> GetOutputsVarType(
+      const std::string& name) const override {
+    return GetVarTypes(OutputVars(name));
+  }
+
+  void SetOutputDim(const std::string& name, const DDim& dim) override {
+    auto& vars = OutputVars(name);
+    PADDLE_ENFORCE_EQ(vars.size(), 1UL,
+                      "Output(%s) should hold one element, but now it holds %d",
+                      name, vars.size());
+    SetDim(vars[0], dim);
+  }
+
+  void SetOutputsDim(const std::string& name,
+                     const std::vector<DDim>& dims) override {
+    auto& vars = OutputVars(name);
+    SetDims(vars, dims);
+  }
+
  protected:
-  DDim GetDim(const std::string& name) const override {
-    Variable* var = scope_.FindVar(name);
+  DDim GetDim(Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(var);
     if (var->IsType<LoDTensor>()) {
       return var->Get<LoDTensor>().dims();
@@ -697,25 +814,44 @@ class RuntimeInferShapeContext : public InferShapeContext {
       return var->Get<SelectedRows>().GetCompleteDims();
     } else {
       PADDLE_THROW(
-          "Only LoDTensor/SelectedRows support 'GetDim', but Variable %s's "
+          "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
           "type_id is %s.",
-          name, var->Type().name());
+          var->Type().name());
     }
+  }
+
+  std::vector<DDim> GetDims(const std::vector<Variable*>& vars) const {
+    std::vector<DDim> ret;
+    ret.reserve(vars.size());
+    std::transform(vars.begin(), vars.end(), std::back_inserter(ret),
+                   [this](Variable* var) { return this->GetDim(var); });
+    return ret;
   }
 
   std::vector<DDim> GetRepeatedDims(const std::string& name) const override {
     PADDLE_THROW("Only compile time support this method");
   }
 
-  void SetDim(const std::string& name, const DDim& dim) override {
-    Variable* var = scope_.FindVar(name);
+  void SetDim(Variable* var, const DDim& dim) {
     if (var->IsType<LoDTensor>()) {
       var->GetMutable<LoDTensor>()->Resize(dim);
     } else if (var->IsType<SelectedRows>()) {
       var->GetMutable<SelectedRows>()->set_height(dim[0]);
     } else {
-      PADDLE_THROW("Variable %s type_id %s, expect LoDTensor/SelectedRows.",
-                   name, var->Type().name());
+      PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
+                   var->Type().name());
+    }
+  }
+
+  void SetDims(const std::vector<Variable*>& vars,
+               const std::vector<DDim>& dims) {
+    size_t length = vars.size();
+    PADDLE_ENFORCE_EQ(length, dims.size());
+    for (size_t i = 0; i < length; ++i) {
+      if (vars[i] == nullptr) {
+        continue;
+      }
+      SetDim(vars[i], dims[i]);
     }
   }
 
@@ -724,16 +860,36 @@ class RuntimeInferShapeContext : public InferShapeContext {
     PADDLE_THROW("Only compile time support this method");
   }
 
-  proto::VarType::Type GetVarType(const std::string& name) const override {
-    auto* var = scope_.FindVar(name);
+  std::vector<proto::VarType::Type> GetVarTypes(
+      const std::vector<Variable*>& vars) const {
+    std::vector<proto::VarType::Type> retv;
+    retv.resize(vars.size());
+    std::transform(vars.begin(), vars.end(), retv.begin(),
+                   std::bind(std::mem_fn(&RuntimeInferShapeContext::GetVarType),
+                             this, std::placeholders::_1));
+    return retv;
+  }
+
+  proto::VarType::Type GetVarType(Variable* var) const {
     return ToVarType(var->Type());
   }
 
-  InferShapeVarPtr GetVarPtr(const std::string& name) override {
-    return scope_.FindVar(name);
+ private:
+  const std::vector<Variable*>& InputVars(const std::string& name) const {
+    auto it = ctx_.inputs.find(name);
+    PADDLE_ENFORCE(it != ctx_.inputs.end(),
+                   "Operator %s does not have the input %s.", op_.Type(), name);
+    return it->second;
   }
 
- private:
+  const std::vector<Variable*>& OutputVars(const std::string& name) const {
+    auto it = ctx_.outputs.find(name);
+    PADDLE_ENFORCE(it != ctx_.outputs.end(),
+                   "Operator %s does not have the outputs %s.", op_.Type(),
+                   name);
+    return it->second;
+  }
+
   const OperatorBase& op_;
   const Scope& scope_;
   const RuntimeContext& ctx_;
@@ -864,8 +1020,7 @@ Scope* OperatorWithKernel::PrepareData(
 
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
       auto& var_name = var_name_item.second[i];
-      auto* var = scope.FindVar(var_name);
-      input_vars[i] = var;
+      auto* var = input_vars[i];
 
       // Only tensor can be tranfer to another device.
       if (var == nullptr || !VarIsTensor(*var)) {
@@ -943,8 +1098,8 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &(var->Get<SelectedRows>().value());
         }
         if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s is not initialized: %s",
-                         ipt_name, DebugString());
+          PADDLE_ENFORCE(t->IsInitialized(), "Input %s is not initialized",
+                         ipt_name);
           int tmp = static_cast<int>(t->type());
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,
