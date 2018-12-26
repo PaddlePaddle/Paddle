@@ -38,7 +38,8 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
   auto teller =
       Get<SubgraphDetector::NodeInsideSubgraphTeller>("tensorrt_node_teller");
 
-  SubGraphFuser fuser(graph.get(), teller, 2 /*min subgraph size*/);
+  SubGraphFuser fuser(graph.get(), teller,
+                      Get<int>("min_subgraph_size") /*min subgraph size*/);
   fuser();
 
   for (auto *node : graph->Nodes()) {
@@ -233,4 +234,5 @@ REGISTER_PASS(tensorrt_subgraph_pass,
               paddle::inference::analysis::TensorRtSubgraphPass)
     .RequirePassAttr("tensorrt_node_teller")
     .RequirePassAttr("max_batch_size")
-    .RequirePassAttr("workspace_size");
+    .RequirePassAttr("workspace_size")
+    .RequirePassAttr("min_subgraph_size");

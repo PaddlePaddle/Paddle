@@ -75,6 +75,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                         argument->tensorrt_node_teller_ptr());
       pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
+      pass->Set("min_subgraph_size",
+                new int(argument->tensorrt_min_subgraph_size()));
     }
 
     // graph_ = pass->Apply(std::move(graph_));
