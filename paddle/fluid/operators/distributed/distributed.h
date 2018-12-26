@@ -18,15 +18,15 @@
 
 #ifdef PADDLE_WITH_GRPC
 
-#include "paddle/fluid/operators/distributed/grpc_client.h"
-#include "paddle/fluid/operators/distributed/grpc_server.h"
+#include "paddle/fluid/operators/distributed/grpc/grpc_client.h"
+#include "paddle/fluid/operators/distributed/grpc/grpc_server.h"
 #define RPCSERVER_T paddle::operators::distributed::AsyncGRPCServer
 #define RPCCLIENT_T paddle::operators::distributed::GRPCClient
 
 #else  // PADDLE_WITH_GRPC
 
-#include "paddle/fluid/operators/distributed/brpc_client.h"
-#include "paddle/fluid/operators/distributed/brpc_server.h"
+#include "paddle/fluid/operators/distributed/brpc/brpc_client.h"
+#include "paddle/fluid/operators/distributed/brpc/brpc_server.h"
 #define RPCSERVER_T paddle::operators::distributed::AsyncBRPCServer
 #define RPCCLIENT_T paddle::operators::distributed::BRPCClient
 

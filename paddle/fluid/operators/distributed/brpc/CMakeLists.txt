@@ -7,7 +7,8 @@ brpc_library(sendrecvop_rpc SRCS brpc_client.cc brpc_server.cc rpc_server.cc rpc
   PROTO ${CMAKE_CURRENT_BINARY_DIR}/../send_recv.proto 
   DEPS distributed_base lod_tensor selected_rows memory)
 
-set(RPC_DEPS brpc ssl crypto protobuf leveldb snappystream snappy zlib)
+set(BRPC_DEPS brpc ssl crypto protobuf leveldb snappystream snappy zlib)
+set(RPC_DEPS ${BRPC_DEPS} PARENT_SCOPE)
 
 cc_test(brpc_serde_test SRCS brpc_serde_test.cc
-    DEPS ${RPC_DEPS} sendrecvop_rpc gflags glog executor proto_desc lookup_sparse_table_op SERIAL)
+    DEPS ${BRPC_DEPS} sendrecvop_rpc gflags glog executor proto_desc lookup_sparse_table_op SERIAL)
