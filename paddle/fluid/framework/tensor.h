@@ -69,6 +69,8 @@ class Tensor {
  public:
   Tensor() : type_(proto::VarType::FP32), offset_(0) {}
 
+  explicit Tensor(const proto::VarType::Type&);
+
   /*! Return a pointer to mutable memory block. */
   template <typename T>
   T* data();
@@ -161,6 +163,8 @@ class Tensor {
   std::shared_ptr<memory::Allocation> MoveMemoryHolder() {
     return std::move(holder_);
   }
+
+  void ResetHolder(std::shared_ptr<memory::Allocation> holder);
 
  private:
   /*! holds the memory block if allocated. */
