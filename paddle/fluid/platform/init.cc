@@ -62,7 +62,7 @@ void StartGPerf(std::string profile_path) {
 void FlushGPerf() {
 #ifdef WITH_GPERFTOOLS
   std::lock_guard<std::mutex> l(gprofile_mu);
-  VLOG(1) << "FlushGPerf gprofile_started" << gprofile_started;
+  VLOG(1) << "FlushGPerf gprofile_started, enabled=" << gprofile_started;
   if (gprofile_started) {
     ProfilerFlush();
   }
@@ -75,7 +75,7 @@ void StopGPerf() {
 #ifdef WITH_GPERFTOOLS
   FlushGPerf();
   std::lock_guard<std::mutex> l(gprofile_mu);
-  VLOG(1) << "StopGPerf gprofile_started" << gprofile_started;
+  VLOG(1) << "StopGPerf gprofile_started, enabled=" << gprofile_started;
   if (gprofile_started) {
     ProfilerStop();
     gprofile_started = false;

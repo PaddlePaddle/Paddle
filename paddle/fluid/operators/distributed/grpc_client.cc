@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "glog/logging.h"  // For VLOG
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/distributed/grpc_client.h"
 #include "paddle/fluid/operators/distributed/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
@@ -71,20 +72,23 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
-  const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   SendProcessor* s = new SendProcessor(ch);
   const std::string method = "SendRPC";
-  VarHandlePtr h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
+
+  framework::Scope* tmp_scope = scope.NewTmpScope();
+  framework::CopyVariable(var_name_val, scope, tmp_scope);
+
+  VarHandlePtr h(
+      new VarHandle(ep, method, var_name_val, p_ctx, tmp_scope, true));
   s->Prepare(h, time_out);
 
-  // serialize the var
-  auto* var = p_scope->FindVar(var_name_val);
-  ::grpc::ByteBuffer req;
-  SerializeToByteBuffer(var_name_val, var, *p_ctx, &req, "", trainer_id_);
-
-  framework::AsyncIO([var_name_val, req, p_ctx, s, method, h, this] {
+  framework::AsyncIO([var_name_val, tmp_scope, p_ctx, s, method, h, this] {
     VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
+    // serialize the var
+    auto* var = tmp_scope->FindLocalVar(var_name_val);
+    ::grpc::ByteBuffer req;
+    SerializeToByteBuffer(var_name_val, var, *p_ctx, &req, "", trainer_id_);
 
     // stub context
     s->response_call_back_ = nullptr;
@@ -382,44 +386,49 @@ void GRPCClient::Proceed() {
 
   VLOG(3) << "GRPCClient Proceed begin";
   while (!stopped_ && cq_.Next(&tag, &ok)) {
-    BaseProcessor* c = static_cast<BaseProcessor*>(tag);
-    GPR_ASSERT(ok);
-    PADDLE_ENFORCE(c);
+    framework::Async([this, tag, ok]() {
+      BaseProcessor* c = static_cast<BaseProcessor*>(tag);
+      GPR_ASSERT(ok);
+      PADDLE_ENFORCE(c);
 
-    if (c->status_.ok()) {
-      VLOG(3) << c->GetVarHandlePtr()->String() << " process";
-      c->Process();
-    } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
-      LOG(FATAL) << c->GetVarHandlePtr()->String()
-                 << " meets grpc error, error_code:" << c->status_.error_code()
-                 << " error_message:" << c->status_.error_message()
-                 << " error_details:" << c->status_.error_details();
+      if (c->status_.ok()) {
+        VLOG(3) << c->GetVarHandlePtr()->String() << " process";
+        c->Process();
+      } else if (c->status_.error_code() ==
+                 grpc::StatusCode::DEADLINE_EXCEEDED) {
+        LOG(FATAL) << c->GetVarHandlePtr()->String()
+                   << " meets grpc error, error_code:"
+                   << c->status_.error_code()
+                   << " error_message:" << c->status_.error_message()
+                   << " error_details:" << c->status_.error_details();
+        {
+          std::lock_guard<std::mutex> lk(sync_mutex_);
+          ok_ = false;
+        }
+        c->Finish(false);
+      } else {
+        LOG(FATAL) << c->GetVarHandlePtr()->String()
+                   << " meets grpc error, error_code:"
+                   << c->status_.error_code()
+                   << " error_message:" << c->status_.error_message()
+                   << " error_details:" << c->status_.error_details();
+
+        c->Finish(false);
+      }
+
+      bool notify = false;
       {
         std::lock_guard<std::mutex> lk(sync_mutex_);
-        ok_ = false;
+        req_count_--;
+        notify = (req_count_ <= 0 || !c->status_.ok());
       }
-      c->Finish(false);
-    } else {
-      LOG(FATAL) << c->GetVarHandlePtr()->String()
-                 << " meets grpc error, error_code:" << c->status_.error_code()
-                 << " error_message:" << c->status_.error_message()
-                 << " error_details:" << c->status_.error_details();
 
-      c->Finish(false);
-    }
+      delete c;
 
-    bool notify = false;
-    {
-      std::lock_guard<std::mutex> lk(sync_mutex_);
-      req_count_--;
-      notify = (req_count_ <= 0 || !c->status_.ok());
-    }
-
-    delete c;
-
-    if (notify) {
-      sync_cond_.notify_all();
-    }
+      if (notify) {
+        sync_cond_.notify_all();
+      }
+    });
   }
 
   // Last log message

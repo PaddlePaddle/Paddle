@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -56,5 +55,32 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
         var_type);
   }
 }
+
+void CopyVariable(const std::string& var_name,
+                  const framework::Scope& src_scope,
+                  framework::Scope* dst_scope) {
+  auto* src_var = src_scope.FindVar(var_name);
+  PADDLE_ENFORCE(src_var != nullptr, "");
+  platform::CPUPlace cpu;
+  auto* dst_var = dst_scope->Var(var_name);
+  if (src_var->IsType<framework::LoDTensor>()) {
+    auto& src_tensor = src_var->Get<framework::LoDTensor>();
+    auto* dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
+
+    dst_tensor->set_lod(src_tensor.lod());
+    paddle::framework::TensorCopy(src_tensor, cpu, dst_tensor);
+  } else if (src_var->IsType<framework::SelectedRows>()) {
+    auto& src_slr = src_var->Get<framework::SelectedRows>();
+    auto* dst_slr = dst_var->GetMutable<framework::SelectedRows>();
+    dst_slr->set_rows(src_slr.rows());
+    dst_slr->set_height(src_slr.height());
+    paddle::framework::TensorCopy(src_slr.value(), cpu,
+                                  dst_slr->mutable_value());
+  } else {
+    PADDLE_THROW("Serialize does not support type: %s",
+                 typeid(src_var->Type()).name());
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle
