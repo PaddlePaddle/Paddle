@@ -312,7 +312,7 @@ class TestResnet(TestParallelExecutorBase):
             batch_size=batch_size,
             use_cuda=use_cuda,
             use_reduce=use_reduce,
-            optimizer=optimizer(lr_scale=lr_scale),
+            optimizer=optimizer(),
             use_parallel_graph=use_parallel_graph)
 
         self.assertAlmostEquals(

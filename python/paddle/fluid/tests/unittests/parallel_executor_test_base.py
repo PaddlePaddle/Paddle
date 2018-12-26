@@ -60,71 +60,69 @@ class TestParallelExecutorBase(unittest.TestCase):
         startup = fluid.Program()
         startup.random_seed = 1  # Fix random seed
         main.random_seed = 1
-        self.scope = fluid.Scope()
-        with fluid.scope_guard(self.scope):
-            with fluid.program_guard(main, startup):
-                if seed is not None:
-                    startup.random_seed = seed
-                    main.random_seed = seed
+        with fluid.program_guard(main, startup):
+            if seed is not None:
+                startup.random_seed = seed
+                main.random_seed = seed
 
-                loss = method(use_feed=feed_dict is not None)
+            loss = method(use_feed=feed_dict is not None)
 
-                optimizer().minimize(loss)
+            optimizer().minimize(loss)
 
-                if memory_opt:
-                    fluid.memory_optimize(main)
+            if memory_opt:
+                fluid.memory_optimize(main)
 
-                place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-                startup_exe = fluid.Executor(place)
-                startup_exe.run(startup)
-                exec_strategy = fluid.ExecutionStrategy()
-                exec_strategy.allow_op_delay = allow_op_delay
-                if use_fast_executor:
-                    exec_strategy.use_experimental_executor = True
-                build_strategy.enable_parallel_graph = use_parallel_graph
-                build_strategy = fluid.BuildStrategy()
-                build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
-                    if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
-                build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
-                build_strategy.memory_optimize = use_ir_memory_optimize
-                build_strategy.enable_sequential_execution = enable_sequential_execution
-                if use_cuda and core.is_compiled_with_cuda():
-                    build_strategy.remove_unnecessary_lock = True
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            startup_exe = fluid.Executor(place)
+            startup_exe.run(startup)
+            exec_strategy = fluid.ExecutionStrategy()
+            exec_strategy.allow_op_delay = allow_op_delay
+            if use_fast_executor:
+                exec_strategy.use_experimental_executor = True
+            build_strategy = fluid.BuildStrategy()
+            build_strategy.enable_parallel_graph = use_parallel_graph
+            build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
+                if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
+            build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
+            build_strategy.memory_optimize = use_ir_memory_optimize
+            build_strategy.enable_sequential_execution = enable_sequential_execution
+            if use_cuda and core.is_compiled_with_cuda():
+                build_strategy.remove_unnecessary_lock = True
 
-                if use_parallel_executor:
-                    exe = fluid.ParallelExecutor(
-                        use_cuda,
-                        loss_name=loss.name,
-                        exec_strategy=exec_strategy,
-                        build_strategy=build_strategy)
-                else:
-                    exe = fluid.Executor(place=place)
+            if use_parallel_executor:
+                exe = fluid.ParallelExecutor(
+                    use_cuda,
+                    loss_name=loss.name,
+                    exec_strategy=exec_strategy,
+                    build_strategy=build_strategy)
+            else:
+                exe = fluid.Executor(place=place)
 
-                if batch_size is not None:
-                    batch_size *= fluid.core.get_cuda_device_count(
-                    ) if use_cuda else int(
-                        os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-                begin = time.time()
-                first_loss, = run_executor(
-                    exe=exe, feed=feed_dict, fetch_list=[loss.name])
+            if batch_size is not None:
+                batch_size *= fluid.core.get_cuda_device_count(
+                ) if use_cuda else int(
+                    os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+            begin = time.time()
+            first_loss, = run_executor(
+                exe=exe, feed=feed_dict, fetch_list=[loss.name])
 
-                for i in range(iter):
-                    run_executor(exe=exe, feed=feed_dict, fetch_list=[])
+            for i in range(iter):
+                run_executor(exe=exe, feed=feed_dict, fetch_list=[])
 
-                last_loss, = run_executor(
-                    exe=exe, feed=feed_dict, fetch_list=[loss.name])
-                end = time.time()
+            last_loss, = run_executor(
+                exe=exe, feed=feed_dict, fetch_list=[loss.name])
+            end = time.time()
 
-                if batch_size is not None:
-                    print("%.4f Instance per second" % (
-                        (batch_size * iter + 2) / (end - begin)))
+            if batch_size is not None:
+                print("%.4f Instance per second" % (
+                    (batch_size * iter + 2) / (end - begin)))
 
-                avg_last_loss_val = np.array(last_loss).mean()
-                avg_first_loss_val = np.array(first_loss).mean()
-                if math.isnan(float(avg_last_loss_val)) or math.isnan(
-                        float(avg_first_loss_val)):
-                    sys.exit("got NaN loss, training failed.")
+            avg_last_loss_val = np.array(last_loss).mean()
+            avg_first_loss_val = np.array(first_loss).mean()
+            if math.isnan(float(avg_last_loss_val)) or math.isnan(
+                    float(avg_first_loss_val)):
+                sys.exit("got NaN loss, training failed.")
 
-                print(first_loss, last_loss)
-                # self.assertGreater(first_loss[0], last_loss[0])
-                return first_loss, last_loss
+            print(first_loss, last_loss)
+            # self.assertGreater(first_loss[0], last_loss[0])
+            return first_loss, last_loss

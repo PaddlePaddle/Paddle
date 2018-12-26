@@ -112,6 +112,7 @@ struct BuildStrategy {
                                    const std::vector<platform::Place> &places,
                                    const std::string &loss_var_name,
                                    const std::vector<Scope *> &local_scopes,
+                                   const size_t &num_parallel_devices_,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
                                    const bool use_cuda,
                                    platform::NCCLContextMap *nccl_ctxs) const;
