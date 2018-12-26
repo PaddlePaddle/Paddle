@@ -301,7 +301,8 @@ def embedding(input,
               is_distributed=False,
               padding_idx=None,
               param_attr=None,
-              dtype='float32'):
+              dtype='float32',
+              name=None):
     """
     **Embedding Layer**
 
@@ -326,6 +327,8 @@ def embedding(input,
             :math:`size[0] + dim`.
         param_attr(ParamAttr): Parameters for this layer
         dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+        name (str|None): A name for this layer(optional). If set None, the layer
+                         will be named automatically.
 
     Returns:
         Variable: The tensor variable storing the embeddings of the \
