@@ -108,8 +108,9 @@ class HuberLossGradKernel : public framework::OpKernel<T> {
       // The compiler cannot deduce when partial parameter type specified
       // however not all parameters type were defined
       auto sign = -1.0f;
+      using signType = decltype(sign);
       x_grad.device(place) =
-          out_grad * residual.unaryExpr(HuberLossBackward<T>(delta, sign));
+          out_grad * residual.unaryExpr(HuberLossBackward<T>(static_cast<signType>(delta), sign));
     }
 
     if (out1) {
@@ -119,8 +120,9 @@ class HuberLossGradKernel : public framework::OpKernel<T> {
       // The compiler cannot deduce when partial parameter type specified
       // however not all parameters type were defined
       auto sign = 1.0f;
+      using signType = decltype(sign);
       y_grad.device(place) =
-          out_grad * residual.unaryExpr(HuberLossBackward<T>(delta, sign));
+          out_grad * residual.unaryExpr(HuberLossBackward<T>(static_cast<signType>(delta), sign));
     }
   }
 };
