@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/imperative/tracer.h"
 
 namespace paddle {
