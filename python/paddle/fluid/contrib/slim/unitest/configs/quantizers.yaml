@@ -1,0 +1,11 @@
+version: 1.0
+quantizers:
+    quantizer_1:
+        class: 'DynamicQuantizer'
+        weight_bits: 8
+        activation_bits: 8
+    quantizer_2:
+        class: 'StaticQuantizer'
+        weight_bits: 8
+        activation_bits: 8
+        window_size: 10000

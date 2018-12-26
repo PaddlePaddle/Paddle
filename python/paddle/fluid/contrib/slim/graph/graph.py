@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 from ....framework import Program
 from ....io import save_inference_model, load_inference_model
 
@@ -27,6 +28,24 @@ class Graph(object):
     """
 
     def __init__(self):
+        pass
+
+    def has(self, attr_name):
+        """
+        Test attr_name whether in the graph or not.
+        """
+        pass
+
+    def set(self, attr_name, attr):
+        """
+        Register attr for graph using the given attr_name.
+        """
+        pass
+
+    def get(self, attr_name):
+        """
+        Get attr from the graph by attr_name.
+        """
         pass
 
     def all_parameters(self):
@@ -71,7 +90,7 @@ class Graph(object):
         """
         pass
 
-    def create_var(self, name, type, shape, dtype):
+    def create_var(self, *args, **kwargs):
         """
         Create a var in the graph.
         """
@@ -83,15 +102,21 @@ class Graph(object):
         """
         pass
 
-    def insert_op(self, idx, type, attrs, inputs, outputs):
+    def insert_op(self, index, *args, **kwargs):
         """
-        Insert an operation before the idx op.
+        Insert an operation before the index op.
         """
         pass
 
-    def remove_op(self, idx):
+    def prepend_op(self, *args, **kwargs):
         """
-        Remove the index idx operation.
+        Insert an operation before the first op.
+        """
+        pass
+
+    def remove_op(self, index):
+        """
+        Remove the index operation.
         """
         pass
 
@@ -117,41 +142,61 @@ class ImitationGraph(Graph):
     def __init__(self, program=None):
         super(ImitationGraph, self).__init__()
         self.program = Program() if program is None else program
+        self._attrs = collections.OrderedDict()
+
+    def has(self, attr_name):
+        return attr_name in self._attrs
+
+    def set(self, attr_name, attr):
+        if not has(attr_name):
+            self._attrs[attr_name] = attr
+        else:
+            raise ValueError("{} attr already set in the graph.".format(
+                attr_name))
+
+    def get(self, attr_name):
+        if has(attr_name):
+            return self._attrs[attr_name]
+        else:
+            raise ValueError("{} attr not registered in the graph.".format(
+                attr_name))
 
     def all_parameters(self):
-        return self.program.global_block().all_parameters()
+        return self.program.block(0).all_parameters()
 
     def create_parameter(self, *args, **kwargs):
-        return self.program.global_block().create_parameter(*args, **kwargs)
+        return self.program.block(0).create_parameter(*args, **kwargs)
 
     def all_vars(self):
-        return self.program.list_vars()
+        for each_var in list(self.program.block(0).vars.values()):
+            yield each_var
 
     def vars_map(self):
-        return self.program.blocks[0].vars
+        return self.program.block(0).vars
 
     def all_ops(self):
-        return self.program.blocks[0].ops
+        return self.program.block(0).ops
 
     def index(self, op):
-        return self.program.blocks[0].ops.index(op)
+        return self.program.block(0).ops.index(op)
 
     def var(self, name):
-        return self.program.blocks[0].var(name)
+        return self.program.block(0).var(name)
 
-    def create_var(self, name, type, shape, dtype):
-        return self.program.blocks[0].create_var(
-            name=name, type=type, shape=shape, dtype=dtype)
+    def create_var(self, *args, **kwargs):
+        return self.program.block(0).create_var(*args, **kwargs)
 
     def remove_var(self, name):
-        self.program.blocks[0]._remove_var(name)
+        self.program.block(0)._remove_var(name)
 
-    def insert_op(self, idx, type, attrs, inputs, outputs):
-        return self.program.blocks[0]._insert_op(
-            idx, type=type, attrs=attrs, inputs=inputs, outputs=outputs)
+    def insert_op(self, index, *args, **kwargs):
+        return self.program.block(0)._insert_op(index=index, *args, **kwargs)
 
-    def remove_op(self, idx):
-        self.program.blocks[0]._remove_op(idx)
+    def prepend_op(self, *args, **kwargs):
+        return self.program.block(0)._prepend_op(*args, **kwargs)
+
+    def remove_op(self, index):
+        self.program.block(0)._remove_op(index)
 
     def clone(self, for_test=False):
         return ImitationGraph(self.program.clone(for_test))

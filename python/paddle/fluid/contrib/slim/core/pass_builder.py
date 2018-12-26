@@ -21,9 +21,12 @@ __all__ = ['build_compressor']
 def build_compressor(place=None,
                      data_reader=None,
                      data_feeder=None,
+                     feed_vars=None,
+                     fetch_vars=None,
                      scope=None,
                      metrics=None,
                      epoch=None,
+                     program_exe=None,
                      config=None):
     if config is not None:
         factory = ConfigFactory(config)
@@ -33,7 +36,10 @@ def build_compressor(place=None,
     comp_pass.place = place
     comp_pass.data_reader = data_reader
     comp_pass.data_feeder = data_feeder
+    comp_pass.feed_vars = feed_vars
+    comp_pass.fetch_vars = fetch_vars
     comp_pass.scope = scope
     comp_pass.metrics = metrics
     comp_pass.epoch = epoch
+    comp_pass.program_exe = program_exe
     return comp_pass
