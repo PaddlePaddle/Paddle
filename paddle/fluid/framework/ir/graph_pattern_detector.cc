@@ -1101,9 +1101,7 @@ PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
   return out_var;
 }
 
-std::unordered_set<std::string> conv_act_set({"identity", "sigmoid", "relu",
-                                              "relu6", "relux", "tanh",
-                                              "band_pass"});
+std::unordered_set<std::string> conv_act_set({"identity", "relu"});
 
 PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
   conv_in->AsInput();
@@ -1169,13 +1167,13 @@ PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
                                   ->AsInput();
   auto elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
                                  ->assert_is_op_output("elementwise_add")
-                                 ->assert_is_op_input("elementwise_add", "X")
+                                 ->assert_is_op_input("elementwise_add", "Y")
                                  ->AsIntermediate();
 
   auto elementwise_add_op_1 = pattern->NewNode(elementwise_add_op_1_repr())
                                   ->assert_is_op("elementwise_add");
   auto elementwise_add_in_y_1 = pattern->NewNode(elementwise_add_in_y_1_repr())
-                                    ->assert_is_op_input("elementwise_add", "Y")
+                                    ->assert_is_op_input("elementwise_add", "X")
                                     ->AsInput();
   auto elementwise_add_out_1 = pattern->NewNode(elementwise_add_out_1_repr())
                                    ->assert_is_op_output("elementwise_add")
@@ -1203,8 +1201,8 @@ PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
   conv_op->LinksFrom({conv_in, conv_filter}).LinksTo({conv_out});
   elementwise_add_op->LinksFrom({conv_out, elementwise_add_in_y})
       .LinksTo({elementwise_add_out});
-  elementwise_add_op_1->LinksFrom(
-      {elementwise_add_out, elementwise_add_in_y_1});
+  elementwise_add_op_1->LinksFrom({elementwise_add_out, elementwise_add_in_y_1})
+      .LinksTo({elementwise_add_out_1});
   act_op->LinksFrom({elementwise_add_out_1}).LinksTo({act_out});
   return act_out;
 }
