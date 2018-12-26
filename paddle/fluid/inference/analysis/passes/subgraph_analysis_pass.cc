@@ -37,7 +37,6 @@ void SubgraphAnalysisPass::RunImpl(Argument* argument) {
   auto& graphs = argument->main_graph().Get<SubblockToGraphPass::subgraphs_t>(
       kSubblockGraphAttr);
   for (auto& elem : graphs) {
-    LOG(INFO) << "analysis sub-graph " << elem.first->Op();
     auto& graph = elem.second;
 
     Argument arg(*argument);

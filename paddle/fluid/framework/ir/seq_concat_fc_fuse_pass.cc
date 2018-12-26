@@ -140,7 +140,7 @@ PDNode* BuildFCPattern(PDPattern* pattern, PDNode* fc_x) {
 
   PDNode* fc_bias = pattern->NewNode(
       [](Node* x) {
-        return x && x->IsVar() &&                     // basic
+        return x && x->IsVar() && x->Var() &&         // basic
                VarLinksToOp(x, "elementwise_add") &&  // link
                x->Var()->Proto()->persistable();      // is a parameter
       },
