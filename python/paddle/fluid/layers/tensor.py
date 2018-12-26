@@ -285,7 +285,7 @@ def sums(input, out=None):
     return out
 
 
-def assign(input, output=None):
+def assign(input, output=None, init_once=False):
     """
     **Assign**
 
@@ -294,6 +294,7 @@ def assign(input, output=None):
     Args:
         input(Variable|numpy.ndarray): The source variable
         output(Variable|None): The destination variable
+        init_once(bool|false): assign value into global var only in startup program.
 
     Returns:
         Variable: The destination variable that was supplied as the *output*.
@@ -307,10 +308,18 @@ def assign(input, output=None):
     """
     helper = LayerHelper('assign', **locals())
     if output is None:
-        output = helper.create_variable_for_type_inference(dtype=input.dtype)
+        if init_once:
+            output = helper.create_parameter(
+                attr=ParamAttr(), shape=input.shape, dtype=input.dtype)
+        else:
+            output = helper.create_variable_for_type_inference(
+                dtype=input.dtype)
     if isinstance(input, Variable):
+        if init_once:
+            raise ValueError("init once only support numpy assign!")
         helper.append_op(
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
+
     elif isinstance(input, numpy.ndarray):
         dtype = convert_np_dtype_to_dtype_(input.dtype)
         if dtype == VarDesc.VarType.FP32:
@@ -325,14 +334,24 @@ def assign(input, output=None):
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
 
-        helper.append_op(
-            type='assign_value',
-            outputs={'Out': [output]},
-            attrs={
-                'dtype': dtype,
-                'shape': list(input.shape),
-                value_name: values
-            })
+        if init_once:
+            helper.startup_program.global_block().append_op(
+                type='assign_value',
+                outputs={'Out': [output]},
+                attrs={
+                    'dtype': dtype,
+                    'shape': list(input.shape),
+                    value_name: values
+                })
+        else:
+            helper.append_op(
+                type='assign_value',
+                outputs={'Out': [output]},
+                attrs={
+                    'dtype': dtype,
+                    'shape': list(input.shape),
+                    value_name: values
+                })
     else:
         raise ValueError("Wrong type for assign input: %s" % type(input))
 
