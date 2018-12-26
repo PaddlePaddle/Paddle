@@ -292,10 +292,11 @@ ParallelExecutor::ParallelExecutor(
   graphs.push_back(std::move(graph));
 #endif
   auto max_memory_size = GetEagerDeletionThreshold();
-  // TODO(Yancey1989): fix gc failed on ParallelGraph strategy.
-  if (max_memory_size >= 0 && !build_strategy.enable_parallel_graph_) {
-    graphs[0] = member_->PrepareGCAndRefCnts(
-        std::move(graphs[0]), static_cast<size_t>(max_memory_size));
+  if (max_memory_size >= 0) {
+    for (size_t i = 0; i < graphs.size(); ++i) {
+      graphs[i] = member_->PrepareGCAndRefCnts(
+          std::move(graphs[i]), static_cast<size_t>(max_memory_size));
+    }
   }
 
   // Step 3. Create vars in each scope. Passes may also create new vars.
