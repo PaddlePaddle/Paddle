@@ -108,6 +108,8 @@ class Engine {
   virtual void Terminate() = 0;
 
   static Engine *Get();
+
+  virtual std::string StatusInfo() const { return ""; }
 };
 
 struct EngineProperty {

@@ -103,3 +103,4 @@ else()
 endif()
 
 cc_library(naive_engine SRCS engine.cc)
+cc_test(test_naive_engine SRCS engine_test.cc DEPS naive_engine)

@@ -15,11 +15,12 @@
 #pragma once
 
 #include <gtest/gtest_prod.h>
+#include <atomic>  // NOLINT
 #include <deque>
+#include <mutex>  // NOLINT
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
-
 #include "engine.h"
 
 namespace engine {
@@ -32,7 +33,7 @@ struct Resource {
   template <typename T>
   inline T *Cast() {
     static_assert(std::is_base_of<Resource, T>::value,
-                  "should be inherinted from Resource");
+                  "should be inherited from Resource");
 #ifdef NDEBUG
     return static_cast<T *>(this);
 #else
@@ -51,7 +52,7 @@ struct Operation {
   template <typename T>
   inline T *Cast() {
     static_assert(std::is_base_of<Operation, T>::value,
-                  "should be inherinted from Operation");
+                  "should be inherited from Operation");
 #ifdef NDEBUG
     return static_cast<T *>(this);
 #else
@@ -76,6 +77,7 @@ class DebugEngine : public Engine {
 
   void PushAsync(OperationHandle opr, RunContext ctx) override {
     auto cb = CreateCompleteCallback(opr);
+    // Directly execute the task.
     opr->Cast<DebugOpr>()->fn(ctx, cb);
   }
 
@@ -84,6 +86,7 @@ class DebugEngine : public Engine {
                  const std::vector<ResourceHandle> &write_res) override {
     auto opr = NewOperation(fn, read_res, write_res);
     auto cb = CreateCompleteCallback(opr);
+    // Directly execute the task.
     fn(ctx, cb);
   }
 
@@ -103,11 +106,13 @@ class DebugEngine : public Engine {
 
   // Create a new Resource.
   ResourceHandle NewResource(const std::string &name = "") override {
+    // In debug mode, all tasks execute directly without need to considering the
+    // dependency.
     return nullptr;
   }
 
+  // No dependency considering.
   void WaitForAllFinished() override {}
-
   void WaitForResource(const std::vector<ResourceHandle> &res) override {}
 
   void Terminate() override { LOG(WARNING) << "DebugEngine terminated"; }
@@ -126,6 +131,10 @@ class DebugEngine : public Engine {
 
 static std::mutex opr_mut;
 
+// ---------------------------------------------------------------------------------------
+///////////////////////////////////   Threaded Engine
+///////////////////////////////////////
+// ---------------------------------------------------------------------------------------
 struct ThreadedOperation : public Operation {
   Engine *engine;
   Engine::AsyncFn fn;
@@ -135,14 +144,13 @@ struct ThreadedOperation : public Operation {
   std::vector<ResourceHandle> write_res;
   // Name for debug.
   std::string name;
-  // Runing context.
+  // Running context.
   RunContext ctx;
-  // Some resources are ready.
-  void TellResReady(int num = 1, const std::string &name = "") {
+  // Tell some resources are ready.
+  void UpdateResourceReady(int num = 1, const std::string &name = "") {
     noready_resource_count_ -= num;
-    DLOG(INFO) << this->name << " res " << name << " ready, still need "
-               << noready_resource_count_ << " t "
-               << std::this_thread::get_id();
+    VLOG(9) << this->name << " res " << name << " ready, still need "
+            << noready_resource_count_ << " t " << std::this_thread::get_id();
   }
   // Whether the operation is ready to run.
   bool ReadyToExecute() { return noready_resource_count_.load() == 0; }
@@ -182,7 +190,8 @@ class ThreadedResource : public Resource {
 
   ThreadedResource(const Dispatcher &dispatcher, const std::string &name = "")
       : dispatcher_(dispatcher), name_(name) {}
-  // Append a read/write denpendency to the queue.
+
+  // Append a read/write dependency to the queue.
   void AppendDependency(OperationHandle opr, bool is_write);
 
   // Finish a read/write dependency to the queue.
@@ -205,9 +214,10 @@ class ThreadedResource : public Resource {
         : operation(operation), is_write(is_write) {}
   };
 
+  // task queue depend on this resource.
   std::deque<ResourceBlock> queue_;
-  std::atomic<int> pending_read_count_{0};
-  std::atomic<bool> pending_write_{false};
+  std::atomic<int> running_read_count_{0};
+  std::atomic<bool> write_is_running_{false};
   std::mutex mut_;
   Dispatcher dispatcher_;
   std::string name_;
@@ -216,10 +226,10 @@ class ThreadedResource : public Resource {
 class ThreadedResourceTestHelper {
  public:
   int pending_read_count(ResourceHandle res) {
-    return res->Cast<ThreadedResource>()->pending_read_count_;
+    return res->Cast<ThreadedResource>()->running_read_count_;
   }
   int pending_write(ResourceHandle res) {
-    return res->Cast<ThreadedResource>()->pending_write_;
+    return res->Cast<ThreadedResource>()->write_is_running_;
   }
   int queue_size(ResourceHandle res) {
     return res->Cast<ThreadedResource>()->queue_.size();

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <glog/logging.h>
+#include <atomic>
 #include <condition_variable>
 #include <cstddef>
 #include <queue>
@@ -27,11 +28,11 @@
 namespace swiftcpp {
 namespace thread {
 
-// Cocurrent blocking queue.
+// Concurrent blocking queue.
 template <typename T>
 class TaskQueue {
  public:
-  TaskQueue() = default;
+  TaskQueue() { killed_ = false; }
   ~TaskQueue() = default;
 
   void Push(T &&v);
@@ -48,7 +49,7 @@ class TaskQueue {
  private:
   std::mutex mut_;
   std::condition_variable cv_;
-  std::atomic<bool> killed_{false};
+  std::atomic<bool> killed_;
   // std::atomic<int> num_pending_tasks_;
   std::queue<T> queue_;
 
@@ -61,7 +62,7 @@ class ThreadPool {
   ThreadPool(int n, const task_t &task) : task_(task) {
     for (int i = 0; i < n; i++) {
       workers_.emplace_back(task);
-      DLOG(WARNING) << "new thread " << workers_.back().get_id();
+      LOG(WARNING) << "new thread " << workers_.back().get_id();
     }
   }
 
@@ -87,24 +88,31 @@ template <typename T>
 void TaskQueue<T>::Push(T &&v) {
   std::lock_guard<std::mutex> l(mut_);
   queue_.emplace(std::forward<T>(v));
-  cv_.notify_one();
+  cv_.notify_all();
+  LOG(INFO) << "push one to " << this;
 }
 
 template <typename T>
 void TaskQueue<T>::Push(const T &v) {
   std::lock_guard<std::mutex> l(mut_);
   queue_.emplace(v);
-  cv_.notify_one();
+  LOG(INFO) << this << " cv notify all";
+  cv_.notify_all();
+  LOG(INFO) << "push one";
 }
 
 template <typename T>
 bool TaskQueue<T>::Pop(T *cv) {
+  LOG(INFO) << "wait to pop one from " << this;
   std::unique_lock<std::mutex> l(mut_);
-  // ++num_pending_tasks_;
   cv_.wait(l, [this] { return !queue_.empty() || killed_.load(); });
-  if (killed_.load()) return false;
+  if (killed_.load()) {
+    LOG(WARNING) << "kill signal get, all threads will exit";
+    return false;
+  }
   *cv = std::move(queue_.front());
   queue_.pop();
+  LOG(INFO) << "pop one";
   return true;
 }
 
@@ -116,7 +124,7 @@ size_t TaskQueue<T>::Size() const {
 template <typename T>
 void TaskQueue<T>::SignalForKill() {
   killed_ = true;
-  DLOG(INFO) << "queue singal for kill...";
+  LOG(INFO) << "queue singal for kill...";
   cv_.notify_all();
 }
 
