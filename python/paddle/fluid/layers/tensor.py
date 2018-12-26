@@ -314,6 +314,7 @@ def assign(input, output=None, init_once=False):
                 shape=input.shape,
                 dtype=input.dtype,
                 default_initializer=Constant(0.0))
+            output.stop_gradient = True
         else:
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)
