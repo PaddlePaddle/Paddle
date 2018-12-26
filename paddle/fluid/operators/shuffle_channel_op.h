@@ -50,7 +50,6 @@ class ShuffleChannelOpKernel : public framework::OpKernel<T> {
         }
       }
     }
-    return;
   }
 };
 

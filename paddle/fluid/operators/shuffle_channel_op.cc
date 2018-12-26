@@ -29,15 +29,13 @@ class ShuffleChannelOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("Out", input_dims);
   }
-  /*
-   protected:
-    framework::OpKernelType GetExpectedKernelType(
-        const framework::ExecutionContext& ctx) const override {
-      return framework::OpKernelType(
-          framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
-          ctx.device_context());
-    }
-  */
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
+                                   ctx.device_context());
+  }
 };
 
 class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -89,16 +87,13 @@ class ShuffleChannelGradOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim(framework::GradVarName("X"), input_dims);
   }
-  /*
-   protected:
-    framework::OpKernelType GetExpectedKernelType(
-        const framework::ExecutionContext& ctx) const override {
-      return framework::OpKernelType(
-          framework::ToDataType(
-                  framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
-          ctx.device_context());
-    }
-  */
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
+                                   ctx.device_context());
+  }
 };
 
 }  // namespace operators
