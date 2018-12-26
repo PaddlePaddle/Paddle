@@ -211,7 +211,9 @@ class TestCRFModel(unittest.TestCase):
                 use_cuda=True)
 
         self.check_network_convergence(
-            is_sparse=False, build_strategy=build_strategy, use_cuda=False)
+            is_sparse=False,
+            build_strategy=self._new_build_strategy(),
+            use_cuda=False)
 
     def test_update_sparse_parameter_reduce(self):
         if core.is_compiled_with_cuda():
