@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/temporary_allocator.h"
 
 namespace paddle {
 namespace framework {
@@ -151,5 +152,26 @@ void TensorToVector(const Tensor& src, std::vector<T>* dst) {
                src_ptr, size);
 }
 
+template <typename T>
+paddle::framework::Tensor GetTensor(
+    memory::allocation::AllocationPtr temp_allocation_ptr,
+    const framework::DDim& dim) {
+  auto& deleter = temp_allocation_ptr.get_deleter();
+  auto* allocation_ptr = temp_allocation_ptr.release();
+  auto shared_allocation =
+      std::shared_ptr<memory::allocation::Allocation>(allocation_ptr, deleter);
+
+  PADDLE_ENFORCE(
+      dynamic_cast<platform::TemporaryAllocation*>(allocation_ptr) != nullptr,
+      "The AllocationPtr must be TemporaryAllocation.");
+  PADDLE_ENFORCE_EQ(allocation_ptr->size(),
+                    framework::product(dim) * sizeof(T));
+
+  paddle::framework::Tensor temp_tensor(
+      framework::ToDataType(std::type_index(typeid(T))));
+  temp_tensor.Resize(dim);
+  temp_tensor.ResetHolder(std::move(shared_allocation));
+  return temp_tensor;
+}
 }  // namespace framework
 }  // namespace paddle

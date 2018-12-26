@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fill_zeros_like_op.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
@@ -22,4 +23,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
+                             paddle::platform::float16>,
     ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, bool>);
