@@ -21,7 +21,6 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 
-#from op_test import get_places, prog_scope_guard
 import paddle.fluid as fluid
 
 
@@ -75,27 +74,21 @@ class TestWeightDecay(unittest.TestCase):
         self.train_data = [next(reader) for _ in range(5)]
         self.learning_rate = .5
 
-    def run_program(self, place, feed_list, loss):
+    def run_executor(self, place, feed_list, loss):
         exe = fluid.Executor(place)
         feeder = fluid.DataFeeder(feed_list=feed_list, place=place)
         exe.run(fluid.default_startup_program())
-
         main_prog = fluid.default_main_program()
-        param_list = [var.name for var in main_prog.block(0).all_parameters()]
-
-        param_sum = []
+        loss_set = []
         for data in self.train_data:
             out = exe.run(main_prog,
                           feed=feeder.feed(data),
-                          fetch_list=param_list + [loss.name])
+                          fetch_list=[loss.name])
 
-            print("loss              %s" % (np.average(out[-1])))
-            p_sum = 0
-            for v in out[0:-1]:
-                p_sum += np.sum(np.abs(v))
-            param_sum.append(p_sum)
+            print("loss              %s" % (np.average(out)))
+            loss_set.append(np.average(out))
 
-        return param_sum
+        return loss_set
 
     def run_parallel_exe(self,
                          place,
@@ -109,9 +102,6 @@ class TestWeightDecay(unittest.TestCase):
         feeder = fluid.DataFeeder(feed_list=feed_list, place=place)
         exe.run(fluid.default_startup_program())
 
-        main_prog = fluid.default_main_program()
-        param_list = [var.name for var in main_prog.block(0).all_parameters()]
-
         exec_strategy = fluid.ExecutionStrategy()
         if use_fast_executor:
             exec_strategy.use_experimental_executor = True
@@ -119,9 +109,7 @@ class TestWeightDecay(unittest.TestCase):
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
                 if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
-        # build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
         build_strategy.memory_optimize = use_ir_memory_optimize
-        # build_strategy.enable_sequential_execution = enable_sequential_execution
 
         parallel_exe = fluid.ParallelExecutor(
             use_cuda,
@@ -129,16 +117,14 @@ class TestWeightDecay(unittest.TestCase):
             exec_strategy=exec_strategy,
             build_strategy=build_strategy)
 
-        param_sum = []
+        loss_set = []
         for data in self.train_data:
             out = parallel_exe.run(feed=feeder.feed(data),
-                                   fetch_list=param_list + [loss.name])
-            p_sum = 0
-            print("loss              %s" % (np.average(out[-1])))
-            for v in out[0:-1]:
-                p_sum += np.sum(np.abs(v))
-            param_sum.append(p_sum)
-        return param_sum
+                                   fetch_list=[loss.name])
+            print("loss              %s" % (np.average(out)))
+            loss_set.append(np.average(out))
+
+        return loss_set
 
     def check_weight_decay(self,
                            place,
@@ -169,36 +155,32 @@ class TestWeightDecay(unittest.TestCase):
                 fluid.layers.assign(input=updated_p, output=params[0])
 
             if use_parallel_exe:
-                param_sum = self.run_parallel_exe(
+                loss = self.run_parallel_exe(
                     place, [data, label],
                     loss=avg_cost,
                     use_cuda=True,
                     use_reduce=use_reduce)
             else:
-                param_sum = self.run_program(
-                    place, [data, label], loss=avg_cost)
+                loss = self.run_executor(place, [data, label], loss=avg_cost)
 
-        return param_sum
+        return loss
 
     def test_weight_decay(self):
         model = partial(bow_net, is_sparse=False)
         for place in get_places():
-            param_sum = self.check_weight_decay(
-                place, model, use_parallel_exe=False)
+            loss = self.check_weight_decay(place, model, use_parallel_exe=False)
 
-            param_sum2 = self.check_weight_decay(
+            loss2 = self.check_weight_decay(
                 place, model, use_parallel_exe=True, use_reduce=False)
 
-            for i in range(len(param_sum)):
-                assert np.isclose(
-                    a=param_sum[i] * 2, b=param_sum2[i], rtol=5e-5)
+            for i in range(len(loss)):
+                assert np.isclose(a=loss[i], b=loss2[i], rtol=5e-5)
 
-            param_sum3 = self.check_weight_decay(
+            loss3 = self.check_weight_decay(
                 place, model, use_parallel_exe=True, use_reduce=True)
 
-            for i in range(len(param_sum)):
-                assert np.isclose(
-                    a=param_sum[i] * 2, b=param_sum3[i], rtol=5e-5)
+            for i in range(len(loss)):
+                assert np.isclose(a=loss[i], b=loss3[i], rtol=5e-5)
 
 
 if __name__ == '__main__':
