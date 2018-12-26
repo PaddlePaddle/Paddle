@@ -5,7 +5,7 @@ grpc_library(sendrecvop_rpc SRCS grpc_bytebuffer_stream.cc grpc_client.cc
 
 set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
-set(GRPC_DEPS grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
+set(GRPC_DEPS distributed_base grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
 set(RPC_DEPS ${GRPC_DEPS} PARENT_SCOPE)
 
 cc_test(grpc_serde_test SRCS grpc_serde_test.cc 
