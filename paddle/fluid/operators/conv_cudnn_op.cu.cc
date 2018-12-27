@@ -304,11 +304,11 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
             std::type_index(typeid(platform::float16))) {
       CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
           cudnn_conv_desc, CUDNN_TENSOR_OP_MATH));
-      VLOG(5) << "use cudnn_tensor_op_math for bwd";
+      VLOG(5) << "use cudnn_tensor_op_math for backward";
     } else {
       CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
           cudnn_conv_desc, CUDNN_DEFAULT_MATH));
-      VLOG(5) << "NOT use cudnn_tensor_op_math for bwd";
+      VLOG(5) << "NOT use cudnn_tensor_op_math for backward";
     }
 #endif
 

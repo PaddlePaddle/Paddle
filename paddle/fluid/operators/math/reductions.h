@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,15 +15,13 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <cub/cub.cuh>  // NOLINT
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/temporary_allocator.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
-
-using Tensor = framework::Tensor;
 
 struct RowOffset {
   __host__ __device__ explicit RowOffset(const int& cols) : cols_(cols) {}
@@ -52,8 +50,6 @@ static __global__ void RowReduceKernel(
   int col = lane;
 
   if (row < num_rows && col < num_cols) {
-    sum = in[row * num_cols + col];
-    col += 32;
     for (; col < num_cols; col += 32) {
       sum = op(sum, in[row * num_cols + col]);
     }
@@ -88,18 +84,18 @@ void LaunchRowReduction(const platform::CUDADeviceContext* ctx, OUT_T out,
       transform_iter(counting_iter, row_offset_op);
 
   std::size_t temp_storage_bytes = 0;
-  Tensor temp_storage;
+  uint8_t* tmp_allocation_ptr;
+
   for (int i = 0; i < 2; ++i) {
     auto success = cub::DeviceSegmentedReduce::Reduce(
-        i == 0 ? nullptr : temp_storage.mutable_data<uint8_t>(ctx->GetPlace()),
-        temp_storage_bytes, in, out, num_rows, transform_iter,
-        transform_iter + 1, op, init, ctx->stream());
+        i == 0 ? nullptr : tmp_allocation_ptr, temp_storage_bytes, in, out,
+        num_rows, transform_iter, transform_iter + 1, op, init, ctx->stream());
 
     PADDLE_ENFORCE_EQ(success, 0, "CUB segmented reduce error");
     if (i == 0) {
-      temp_storage.Resize({static_cast<int64_t>(temp_storage_bytes)});
-      // do allocate
-      temp_storage.mutable_data<uint8_t>(ctx->GetPlace());
+      tmp_allocation_ptr =
+          platform::DeviceTemporaryAllocator::Instance().Get(ctx).Allocate(
+              temp_storage_bytes * sizeof(uint8_t));
     }
   }
 }

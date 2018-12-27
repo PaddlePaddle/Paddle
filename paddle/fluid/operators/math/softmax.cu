@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/temporary_allocator.h"
 
 namespace paddle {
 namespace operators {
@@ -180,10 +181,9 @@ void SoftmaxCudaAccurateFunctor<T, ACCURATE_T>::operator()(
   int num_cols = X->dims()[1];
 
   // Use ACCURATE_T for internal exp space
-  Tensor acc_out_tensor;
-  acc_out_tensor.Resize(Y->dims());
   ACCURATE_T* acc_out_data =
-      acc_out_tensor.mutable_data<ACCURATE_T>(ctx.GetPlace());
+      platform::DeviceTemporaryAllocator::Instance().Get(ctx).Allocate(
+          Y->numel() * sizeof(ACCURATE_T));
 
   // RowReduce to find max along every batch (axis 1)
   cub::Max max_op;
@@ -219,7 +219,7 @@ void SoftmaxCudaAccurateFunctor<T, ACCURATE_T>::operator()(
   // transform data type, if log_space = false, may lost accuracy
   T* out_data = Y->mutable_data<T>(ctx.GetPlace());
   platform::Transform<platform::CUDADeviceContext> trans;
-  trans(ctx, acc_out_data, acc_out_data + acc_out_tensor.numel(), out_data,
+  trans(ctx, acc_out_data, acc_out_data + Y->numel(), out_data,
         CastOpTransformFunctor<ACCURATE_T, T>());
 }
 
