@@ -108,6 +108,10 @@ inference_analysis_api_test_with_refer_result(test_analyzer_mobilenet_transpose 
 inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
   "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz")
 
+# seq_pool1
+inference_analysis_api_test_with_fake_data(test_analyzer_seq_pool1
+"${INFERENCE_DEMO_INSTALL_DIR}/seq_pool1" analyzer_seq_pool1_tester.cc "seq_pool1.tar.gz")
+
 # mobilenet with depthwise_conv op
 inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_conv
   "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz")
