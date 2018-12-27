@@ -116,7 +116,7 @@ class SplitIdsOpKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_THROW(
           "% should be LoDTensor or SelectedRows, but the received type is %s",
-          ctx.Inputs("Ids")[0], ids_var->Type().name());
+          ctx.Inputs("Ids")[0], framework::ToTypeName(ids_var->Type()));
     }
   }
 };

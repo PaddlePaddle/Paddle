@@ -108,7 +108,7 @@ TEST(InferVarType, sum_op_without_infer_var_type) {
 
   op->InferVarType(prog.MutableBlock(0));
 
-  ASSERT_EQ(proto::VarType_Type_LOD_TENSOR,
+  ASSERT_EQ(proto::VarType::LOD_TENSOR,
             prog.MutableBlock(0)->Var("test2_out")->GetType());
 }
 
