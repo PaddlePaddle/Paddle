@@ -105,7 +105,6 @@ class OperatorBase {
   /// Executor will call this interface function to Run an op.
   //  The implementation should be written at RunImpl
   void Run(const Scope& scope, const platform::Place& place);
-  void RunPrepared(const RuntimeContext& ctx, const platform::Place& place);
 
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}
@@ -172,11 +171,6 @@ class OperatorBase {
   void CheckAllInputOutputSet() const;
   virtual void RunImpl(const Scope& scope,
                        const platform::Place& place) const = 0;
-
-  virtual void RunImplPrepared(const RuntimeContext& ctx,
-                               const platform::Place& place) const {
-    PADDLE_THROW("%s doesn't support RunPreparedImpl", Type());
-  }
 };
 
 class ExecutionContext {
@@ -469,8 +463,6 @@ class OperatorWithKernel : public OperatorBase {
   // same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
-  void RunImplPrepared(const RuntimeContext& ctx,
-                       const platform::Place& place) const final;
 
   /**
    * Transfer data from scope to a transfered scope. If there is no data need to
