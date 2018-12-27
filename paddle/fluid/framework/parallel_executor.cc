@@ -320,6 +320,7 @@ void ParallelExecutor::BCastParamsToDevices(
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       std::vector<void *> buffers;
+      buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
       ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
       for (size_t i = 0; i < member_->places_.size(); ++i) {
@@ -353,9 +354,7 @@ void ParallelExecutor::BCastParamsToDevices(
 #endif
     } else {
       platform::CPUPlace cpu;
-      for (size_t i = 0; i < member_->places_.size(); ++i) {
-        if (i == 0) continue;
-
+      for (size_t i = 1; i < member_->places_.size(); ++i) {
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
 

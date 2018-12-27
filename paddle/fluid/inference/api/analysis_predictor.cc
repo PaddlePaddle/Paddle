@@ -328,6 +328,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetUseTensorRT(true);
     argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
+    argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
   }
 
   if (config_.use_mkldnn_) {
