@@ -315,7 +315,7 @@ class Optimizer(object):
                         block=loss.block,
                         name=param._ivar._grad_name(),
                         stop_gradient=True)
-                    grad_var._value = param._ivar._grad_var()
+                    grad_var._value = param._ivar.grad_value()
                     params_grads.append((param, grad_var))
 
             optimize_ops = self._create_optimization_pass(params_grads, loss,
