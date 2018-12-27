@@ -68,7 +68,8 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
 
   void CreateScaleLossGradOp(ir::Graph *result,
                              const std::string &loss_grad_name,
-                             ir::Node *out_var_node) const;
+                             ir::Node *out_var_node,
+                             proto::VarType::Type dtype) const;
 
   VarHandle *CreateReduceOp(ir::Graph *result, const std::string &og,
                             int dst_dev_id) const;
