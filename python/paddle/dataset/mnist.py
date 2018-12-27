@@ -49,14 +49,19 @@ def reader_creator(image_filename, label_filename, buffer_size):
 
                 offset_img = 0
                 # read from Big-endian
+                # get file info from magic byte
+                # image file : 16B
+                magic_byte_img = '>IIII'
                 magic_img, image_num, rows, cols = struct.unpack_from(
-                    '>IIII', img_buf, offset_img)
-                offset_img += struct.calcsize('>IIII')
+                    magic_byte_img, img_buf, offset_img)
+                offset_img += struct.calcsize(magic_byte_img)
 
                 offset_lab = 0
-                magic_lab, label_num = struct.unpack_from('>ii', lab_buf,
-                                                          offset_lab)
-                offset_lab += struct.calcsize('>ii')
+                # label file : 8B
+                magic_byte_lab = '>II'
+                magic_lab, label_num = struct.unpack_from(magic_byte_lab,
+                                                          lab_buf, offset_lab)
+                offset_lab += struct.calcsize(magic_byte_lab)
 
                 while True:
                     if step_label >= label_num:
