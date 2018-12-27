@@ -83,7 +83,7 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
       z = ctx.Output<framework::LoDTensor>("Out");
     } else {
       PADDLE_THROW("X's type[%s] is not supported by elementwise_op.",
-                   x_var->Type().name());
+                   framework::ToTypeName(x_var->Type()));
     }
 
     z->mutable_data<T>(ctx.GetPlace());

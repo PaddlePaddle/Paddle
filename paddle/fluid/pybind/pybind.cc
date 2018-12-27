@@ -125,9 +125,7 @@ PYBIND11_MODULE(core, m) {
       // .def(py::init<>())
       .def(py::init<bool>(), py::arg("stop_gradient") = false)
       .def("_run_backward",
-           [](imperative::VarBase &self, framework::Scope *scope) {
-             self.RunBackward(scope);
-           })
+           [](imperative::VarBase &self) { self.RunBackward(); })
       .def("_grad_name", &imperative::VarBase::GradName)
       .def("_grad", &imperative::VarBase::Grad)
       .def_property("grad_value",
@@ -154,9 +152,9 @@ PYBIND11_MODULE(core, m) {
           [](const imperative::VarBase &self) { return self.stop_gradient_; },
           [](imperative::VarBase &self, bool stop_gradient) {
             self.stop_gradient_ = stop_gradient;
-          });
+          })
 
-  py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
+          py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
       .def(py::init<>())
       .def_property(
           "desc", [](const imperative::OpBase &self) { return self.op_desc_; },
