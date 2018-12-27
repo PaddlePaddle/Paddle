@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import collections
+from collections import defaultdict
 import contextlib
 import os
 import re
@@ -369,13 +370,11 @@ class Variable(object):
             self._ivar.stop_gradient = stop_gradient
 
     def _numpy(self):
-        scope = _imperative_tracer().get_scope()
-        tensor = core.get_variable_tensor(scope, self.desc.name())
+        tensor = self._ivar.value.get_tensor()
         return np.array(tensor)
 
     def _backward(self):
-        scope = _imperative_tracer().get_scope()
-        self._ivar._run_backward(scope)
+        self._ivar._run_backward()
 
     def _gradient(self):
         return np.array(self._ivar._grad())
@@ -710,20 +709,20 @@ class Operator(object):
         if _in_imperative_mode():
             self.iop = core.OpBase()
             self.iop.desc = self.desc
-            self.inputs = []
+            self.inputs = defaultdict(list)
             if inputs is not None:
-                for inp in inputs.values():
-                    if isinstance(inp, Variable):
-                        self.inputs.append(inp)
-                    elif isinstance(inp, list) or isinstance(inp, tuple):
-                        self.inputs.extend(inp[:])
-            self.outputs = []
+                for k, v in six.iteritems(inputs):
+                    if isinstance(v, Variable):
+                        self.inputs[k].append(v._ivar)
+                    elif isinstance(v, list) or isinstance(v, tuple):
+                        self.inputs[k].extend([var._ivar for var in v])
+            self.outputs = defaultdict(list)
             if outputs is not None:
-                for out in outputs.values():
-                    if isinstance(out, Variable):
-                        self.outputs.append(out)
-                    elif isinstance(out, list) or isinstance(out, tuple):
-                        self.outputs.extend(out[:])
+                for k, v in six.iteritems(outputs):
+                    if isinstance(v, Variable):
+                        self.outputs[k].append(v._ivar)
+                    elif isinstance(v, list) or isinstance(v, tuple):
+                        self.outputs[k].extend([var._ivar for var in v])
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
@@ -1302,8 +1301,7 @@ class Block(object):
 
     def _trace_op(self, op, stop_gradient=False):
         if _in_imperative_mode():
-            _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
-                                       [v._ivar for v in op.outputs], self.desc,
+            _imperative_tracer().trace(op.iop, op.inputs, op.outputs, self.desc,
                                        stop_gradient)
 
     def _insert_op(self, index, *args, **kwargs):

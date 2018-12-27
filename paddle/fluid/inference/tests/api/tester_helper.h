@@ -176,6 +176,18 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
   (*inputs).emplace_back(input_slots);
 }
 
+void GetInputPerBatch(const std::vector<std::vector<int64_t>> &in,
+                      std::vector<std::vector<int64_t>> *out,
+                      std::vector<size_t> *lod, size_t batch_iter,
+                      size_t batch_end) {
+  lod->clear();
+  lod->push_back(0);
+  for (auto it = in.begin() + batch_iter; it < in.begin() + batch_end; it++) {
+    out->push_back(*it);
+    lod->push_back(lod->back() + (*it).size());  // calculate lod
+  }
+}
+
 void TestOneThreadPrediction(
     const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs,
