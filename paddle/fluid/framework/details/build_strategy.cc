@@ -82,12 +82,21 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (strategy.memory_optimize_) {
       auto analysis_var_pass = AppendPass("analysis_var_pass");
     }
+
     // Convert graph to run on multi-devices.
-    auto multi_devices_pass = AppendPass("multi_devices_pass");
-    multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
-                                                         &strategy_);
-    multi_devices_pass->Set<int>("num_trainers",
-                                 new int(strategy_.num_trainers_));
+    if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
+      auto multi_devices_pass = AppendPass("allreduce_mode_multi_devices_pass");
+      multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
+                                                           &strategy_);
+      multi_devices_pass->Set<int>("num_trainers",
+                                   new int(strategy_.num_trainers_));
+    } else {
+      auto multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass");
+      multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
+                                                           &strategy_);
+      multi_devices_pass->Set<int>("num_trainers",
+                                   new int(strategy_.num_trainers_));
+    }
 
     // Add a graph print pass to record a graph with device info.
     if (!strategy_.debug_graphviz_path_.empty()) {
@@ -129,6 +138,12 @@ std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy(
   return pass_builder_;
 }
 
+bool BuildStrategy::IsMultiDevPass(const std::string &pass_name) const {
+  // FIXME(zcd) temporary code
+  return pass_name == "reduce_mode_multi_devices_pass" ||
+         pass_name == "allreduce_mode_multi_devices_pass";
+}
+
 std::unique_ptr<ir::Graph> BuildStrategy::Apply(
     const ProgramDesc &main_program, const std::vector<platform::Place> &places,
     const std::string &loss_var_name, const std::vector<Scope *> &local_scopes,
@@ -142,7 +157,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
-    if (pass->Type() == "multi_devices_pass") {
+    if (IsMultiDevPass(pass->Type())) {
       pass->Erase("places");
       pass->SetNotOwned<const std::vector<platform::Place>>("places", &places);
       pass->Erase("loss_var_name");
@@ -155,6 +170,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Erase("nccl_ctxs");
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
+
     } else if (pass->Type() == "analysis_var_pass") {
       const std::vector<OpDesc *> *all_op_descs =
           new std::vector<OpDesc *>(main_program.Block(0).AllOps());
@@ -195,7 +211,8 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 USE_PASS(fuse_elewise_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
-USE_PASS(multi_devices_pass);
+USE_PASS(reduce_mode_multi_devices_pass);
+USE_PASS(allreduce_mode_multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);
 USE_PASS(analysis_var_pass);

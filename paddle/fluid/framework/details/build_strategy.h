@@ -104,6 +104,8 @@ struct BuildStrategy {
 
   bool IsFinalized() const { return is_finalized_; }
 
+  bool IsMultiDevPass(const std::string &pass_name) const;
+
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
   std::unique_ptr<ir::Graph> Apply(const ProgramDesc &main_program,
