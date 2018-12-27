@@ -74,6 +74,7 @@ cc_library(threadpool SRCS threadpool.cc DEPS enforce)
 cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
 cc_library(scope SRCS scope.cc DEPS glog threadpool)
+cc_library(scope_pool SRCS scope_pool.cc DEPS scope)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
 cc_library(data_device_transform SRCS data_device_transform.cc DEPS tensor)
