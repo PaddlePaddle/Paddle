@@ -93,6 +93,8 @@ class Tracer {
           LOG(ERROR) << "tracer doesn't support yet";
         }
       }
+
+      outputs[i]->stop_gradient_ = stop_gradient;
       outputs[i]->var_ = var;
       outputs[i]->pre_op_ = op;
       outputs[i]->pre_op_out_idx_ = i;
@@ -106,6 +108,7 @@ class Tracer {
       CreateGradOp(*op_desc, {}, {block}, &grad_op_desc, grad_to_var);
       op->grad_op_desc_ = grad_op_desc;
       op->grad_to_var_ = grad_to_var;
+      VLOG(3) << "tracer create grad op " << grad_op_desc->Type();
     }
     op->block_ = block;
   }

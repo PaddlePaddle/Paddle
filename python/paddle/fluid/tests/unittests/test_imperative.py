@@ -36,7 +36,7 @@ class MyLayer(fluid.imperative.PyLayer):
         super(MyLayer, self).__init__()
 
     def forward(self, inputs):
-        x = fluid.layers.relu(inputs[0])
+        x = fluid.layers.relu(inputs)
         self._x_for_debug = x
         return [fluid.layers.elementwise_mul(x, x)]
 
@@ -52,7 +52,7 @@ class MLP(fluid.imperative.PyLayer):
                            initializer=fluid.initializer.Constant(value=0.1)))
 
     def forward(self, inputs):
-        x = self._fc1(inputs[0])
+        x = self._fc1(inputs)
         x = self._fc2(x)
         x = fluid.layers.reduce_sum(x)
         return x
@@ -64,13 +64,14 @@ class TestImperative(unittest.TestCase):
             cl = core.Layer()
             cl.forward([])
             l = fluid.imperative.PyLayer()
-            l.forward([])
+            self.assertRaises(NotImplementedError, l.forward, [])
 
     def test_layer_in_out(self):
         np_inp = np.array([1.0, 2.0, -1.0], dtype=np.float32)
         with fluid.imperative.guard():
+            var_inp = fluid.imperative.base.to_variable(np_inp)
             l = MyLayer()
-            x = l(np_inp)[0]
+            x = l(var_inp)[0]
             self.assertIsNotNone(x)
             dy_out = x._numpy()
             x._backward()
@@ -95,8 +96,9 @@ class TestImperative(unittest.TestCase):
     def test_mlp(self):
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
         with fluid.imperative.guard():
+            var_inp = fluid.imperative.base.to_variable(np_inp)
             mlp = MLP()
-            out = mlp(np_inp)
+            out = mlp(var_inp)
             dy_out = out._numpy()
             out._backward()
             dy_grad = mlp._fc1._w._gradient()
