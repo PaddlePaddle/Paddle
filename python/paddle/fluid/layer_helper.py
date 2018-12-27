@@ -369,7 +369,7 @@ class LayerHelper(object):
 
     def set_variable_initializer(self, var, initializer):
         assert isinstance(var, Variable)
-        self.startup_program.global_block().create_var(
+        return self.startup_program.global_block().create_var(
             name=var.name,
             type=var.type,
             dtype=var.dtype,

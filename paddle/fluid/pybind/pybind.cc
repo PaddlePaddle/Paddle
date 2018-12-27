@@ -117,10 +117,23 @@ PYBIND11_MODULE(core, m) {
            [](imperative::VarBase &self, framework::Scope *scope) {
              self.RunBackward(scope);
            })
+      .def("_grad_var",
+           [](const imperative::VarBase &self) {
+             LOG(ERROR) << "grad_var_ pointer: " << self.grads_;
+             return self.grads_;
+           },
+           py::return_value_policy::reference)
+      .def("_grad_name", &imperative::VarBase::GradName)
       .def("_grad", &imperative::VarBase::Grad)
+      .def("_print_var_pointer",
+           [](const imperative::VarBase &self) {
+             LOG(ERROR) << self.var_desc_->Name()
+                        << " print_var pointer: " << self.var_;
+           })
       .def_property("value",
                     [](const imperative::VarBase &self) { return self.var_; },
                     [](imperative::VarBase &self, framework::Variable *var) {
+                      LOG(ERROR) << "set var to pointer: " << var;
                       self.var_ = var;
                     },
                     py::return_value_policy::reference)

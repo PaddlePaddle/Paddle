@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle.fluid as fluid
 from paddle.fluid import core
+from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.imperative.nn import Conv2D, Pool2D, FC
 from paddle.fluid.imperative.base import to_variable
 
@@ -119,7 +120,11 @@ class TestImperativeMnist(unittest.TestCase):
             out._backward()
             filter_grad = mnist._simple_img_conv_pool_1._conv2d._filter_param._gradient(
             )
-            print(filter_grad)
+            #  print(filter_grad)
+
+            sgd = SGDOptimizer(learning_rate=1e-3)
+            sgd.minimize(out)
+
         #  np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
         #  with fluid.imperative.guard():
         #  mlp = MLP()
