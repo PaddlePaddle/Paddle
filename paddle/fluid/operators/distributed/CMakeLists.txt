@@ -12,7 +12,9 @@ configure_file(send_recv.proto.in ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto @O
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 
 cc_library(distributed_base SRCS rpc_client.cc rpc_server.cc
-    request_handler_impl.cc sendrecvop_utils.cc variable_response.cc collective_client.cc collective_server.cc)
+    request_handler_impl.cc sendrecvop_utils.cc
+    variable_response.cc collective_client.cc collective_server.cc
+    DEPS proto_desc lod_tensor selected_rows_functor memory)
 
 
 cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler)
