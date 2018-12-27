@@ -69,7 +69,7 @@ class Tensor {
  public:
   Tensor() : type_(proto::VarType::FP32), offset_(0) {}
 
-  explicit Tensor(std::type_index type);
+  explicit Tensor(const proto::VarType::Type&);
 
   /*! Return a pointer to mutable memory block. */
   template <typename T>

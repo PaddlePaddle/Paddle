@@ -3,14 +3,16 @@ set(INFERENCE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
     "A path setting inference demo download directories.")
 function (inference_download install_dir url filename)
     message(STATUS "Download inference test stuff from ${url}/${filename}")
-    execute_process(COMMAND bash -c "mkdir -p ${install_dir}")
-    execute_process(COMMAND bash -c "cd ${install_dir} && wget -q ${url}/${filename}")
+    file(DOWNLOAD "${url}/${filename}" "${install_dir}/${filename}")
     message(STATUS "finish downloading ${filename}")
 endfunction()
 
 function (inference_download_and_uncompress install_dir url filename)
     inference_download(${install_dir} ${url} ${filename})
-    execute_process(COMMAND bash -c "cd ${install_dir} && tar xzf ${filename}")
+    execute_process(
+            COMMAND ${CMAKE_COMMAND} -E tar xzf ${install_dir}/${filename}
+            WORKING_DIRECTORY ${install_dir}
+    )
 endfunction()
 
 set(WORD2VEC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/word2vec")
