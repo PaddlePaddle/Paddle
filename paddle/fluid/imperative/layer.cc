@@ -100,26 +100,6 @@ class Autograd {
   }
 };
 
-void CreateVariable(const std::string& name, const framework::DDim& dim,
-                    float val, bool random_name, framework::Variable* var) {
-  if (var->IsInitialized()) return;
-
-  std::string varname = name;
-  if (random_name) {
-    std::mt19937 rng;
-    rng.seed(std::random_device()());
-    std::uniform_int_distribution<std::mt19937::result_type> dist6(
-        1, std::numeric_limits<int>::max());
-    int id = dist6(rng);
-    varname = string::Sprintf("%s@%d", varname, id);
-  }
-
-  VLOG(3) << "creating var " << varname;
-  framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
-  float* data = tensor->mutable_data<float>(dim, platform::CPUPlace());
-  std::fill(data, data + tensor->numel(), val);
-}
-
 framework::LoDTensor& VarBase::Grad() {
   VLOG(3) << "get var grad " << var_desc_->Name();
   return *grads_->GetMutable<framework::LoDTensor>();
