@@ -45,12 +45,6 @@ class Autograd {
   Autograd() {}
 
   void RunBackward(VarBase* var) {
-    PADDLE_ENFORCE(var->pre_op_->op_desc_);
-    PADDLE_ENFORCE(
-        var->grads_ ==
-        var->pre_op_->output_vars_[var->pre_op_out_name_][var->pre_op_out_idx_]
-            ->grads_);
-
     std::deque<OpBase*> ready;
     ready.push_back(var->pre_op_);
 
@@ -66,7 +60,7 @@ class Autograd {
         const std::vector<VarBase*>& ingrads = it.second;
         for (size_t i = 0; i < ingrads.size(); ++i) {
           if (!ingrads[i]) continue;
-          OpBase* pre_op = (*ready_op->pre_ops_)[it.first][i];
+          OpBase* pre_op = ready_op->pre_ops_[it.first][i];
           if (!pre_op) continue;
 
           dep_counts[pre_op] -= 1;
@@ -91,7 +85,7 @@ class Autograd {
     while (!queue.empty()) {
       OpBase* candidate = queue.front();
       queue.pop_front();
-      for (auto it : *(candidate->pre_ops_)) {
+      for (auto it : candidate->pre_ops_) {
         for (OpBase* pre_op : it.second) {
           if (!pre_op) continue;
           if (visited.find(pre_op) == visited.end()) {
@@ -138,11 +132,13 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
   }
   VLOG(3) << "op grad " << grad_op_desc_->Type();
 
+  std::vector<std::unique_ptr<framework::Variable>> tmp_vars;
   std::map<std::string, std::vector<framework::Variable*>> grad_outputs;
   for (auto it : grad_output_vars_) {
     auto& outputs = grad_outputs[it.first];
     for (size_t i = 0; i < it.second.size(); ++i) {
-      outputs.push_back(new framework::Variable());
+      tmp_vars.emplace_back(new framework::Variable());
+      outputs.push_back(tmp_vars.back().get());
       outputs.back()->GetMutable<framework::LoDTensor>();
     }
   }
@@ -155,7 +151,15 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
 
   std::unique_ptr<framework::OperatorBase> opbase =
       framework::OpRegistry::CreateOp(*grad_op_desc_);
-  opbase->Run(ctx, platform::CPUPlace());
+  framework::OperatorWithKernel* op_kernel =
+      dynamic_cast<framework::OperatorWithKernel*>(opbase.get());
+  PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
+
+  framework::Scope scope;
+  platform::CPUPlace place;
+  PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place);
+  p.op.RuntimeInferShape(scope, place, ctx);
+  p.func(framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx));
 
   for (auto it : grad_output_vars_) {
     auto& outputs = grad_outputs[it.first];
@@ -169,11 +173,15 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
 }
 
 void VarBase::RunBackward() {
+  if (!pre_op_) return;
+
   auto grads_t = grads_->GetMutable<framework::LoDTensor>();
   float* data = grads_t->mutable_data<float>(platform::CPUPlace());
   std::fill(data, data + grads_t->numel(), 1.0);
 
-  if (!pre_op_) return;
+  PADDLE_ENFORCE(
+      grads_ ==
+      pre_op_->output_vars_[pre_op_out_name_][pre_op_out_idx_]->grads_);
   Autograd().RunBackward(this);
 }
 

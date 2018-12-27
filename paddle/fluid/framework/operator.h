@@ -105,7 +105,7 @@ class OperatorBase {
   /// Executor will call this interface function to Run an op.
   //  The implementation should be written at RunImpl
   void Run(const Scope& scope, const platform::Place& place);
-  void Run(const RuntimeContext& ctx, const platform::Place& place);
+  void RunPrepared(const RuntimeContext& ctx, const platform::Place& place);
 
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}
@@ -457,8 +457,9 @@ class OperatorWithKernel : public OperatorBase {
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,
                          const RuntimeContext& ctx) const override;
 
- protected:
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
+
+ protected:
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;
