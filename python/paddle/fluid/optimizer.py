@@ -109,7 +109,6 @@ class Optimizer(object):
         # create learning rate variable for every parameter
         param = param_and_grad[0]
         param_lr = param.optimize_attr['learning_rate']
-        print("param_lr: ", param_lr, self._global_learning_rate()._numpy())
         if type(param_lr) == Variable:
             return param_lr
         else:
@@ -311,15 +310,12 @@ class Optimizer(object):
                 parameters = program.global_block().all_parameters()
                 params_grads = []
                 for param in parameters:
+                    # create gradient variable
                     grad_var = Variable(
                         block=loss.block,
                         name=param._ivar._grad_name(),
                         stop_gradient=True)
                     grad_var._value = param._ivar._grad_var()
-                    print("create grad var: ", grad_var.name)
-                    print("grad_var value: ", grad_var._numpy())
-                    import sys
-                    sys.stdout.flush()
                     params_grads.append((param, grad_var))
 
             optimize_ops = self._create_optimization_pass(params_grads, loss,
@@ -380,10 +376,6 @@ class SGDOptimizer(Optimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
-
-        print("append sgd")
-        import sys
-        sys.stdout.flush()
 
         # create the optimize op
         sgd_op = block.append_op(

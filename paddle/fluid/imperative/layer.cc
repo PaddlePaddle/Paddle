@@ -192,7 +192,6 @@ std::vector<Variable*> OpBase::ApplyGrad(framework::Scope* scope) {
         LOG(ERROR) << "tracer doesn't support yet";
       }
     }
-    VLOG(3) << "op grad output var " << outvar << " is inited";
   }
 
   grad_op_desc_->InferShape(*block_);

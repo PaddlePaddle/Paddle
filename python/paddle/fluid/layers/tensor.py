@@ -132,16 +132,9 @@ def create_global_var(shape,
         persistable=persistable,
         name=name,
         stop_gradient=True)
-    print("set_variable_initializer, ", var.name)
-    if imperative_base.enabled():
-        var = helper.set_variable_initializer(
-            var, initializer=Constant(
-                value=float(value), force_cpu=force_cpu))
-        print("get var", var)
-    else:
-        helper.set_variable_initializer(
-            var, initializer=Constant(
-                value=float(value), force_cpu=force_cpu))
+    helper.set_variable_initializer(
+        var, initializer=Constant(
+            value=float(value), force_cpu=force_cpu))
 
     return var
 
