@@ -7,27 +7,17 @@ function(windows_symbolic TARGET)
   cmake_parse_arguments(windows_symbolic "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   set(final_path ${CMAKE_CURRENT_SOURCE_DIR}/${windows_symbolic_PATH})
   foreach(src ${windows_symbolic_SRCS})
-  get_filename_component(src ${src} NAME_WE)
-  if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${src}.cc OR NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${src}.cu)
-      message(FATAL " ${src}.cc and ${src}.cu must exsits, and ${src}.cu must be symbolic file.")
-  endif()
+    get_filename_component(src ${src} NAME_WE)
+    if (NOT EXISTS ${final_path}/${src}.cc OR NOT EXISTS ${final_path}/${src}.cu)
+        message(FATAL " ${src}.cc and ${src}.cu must exsits, and ${src}.cu must be symbolic file.")
+    endif()
 
-#only copy the xx.cu to.xx.cu when the content are modified
-  set(copy_flag 1)
-  if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu)
-  file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${src}.cc SOURCE_STR)
-  file(READ ${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu TARGET_STR)
-  if (SOURCE_STR STREQUAL TARGET_STR)
-    set(copy_flag 0)
-  endif()
-  endif()
-  if (copy_flag)
-  add_custom_command(OUTPUT .${src}.cu
-          COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu
-          COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/${src}.cc" "${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu"
-          COMMENT "create hidden file of ${src}.cu")
-  endif(copy_flag)
-  add_custom_target(${TARGET} ALL DEPENDS .${src}.cu)
+    file(GENERATE OUTPUT ${final_path}/.${src}.cu INPUT ${final_path}/${src}.cc)
+
+    add_custom_command(OUTPUT ${final_path}/.${src}.cu
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${final_path}/${src}.cc" "${final_path}/.${src}.cu"
+            COMMENT "create hidden file of ${src}.cu")
+    add_custom_target(${TARGET} ALL DEPENDS .${src}.cu)
   endforeach()
 endfunction()
 
@@ -48,10 +38,10 @@ if(WITH_GPU)
     nv_library(tensor SRCS tensor.cc .tensor_util.cu DEPS place memory data_type device_context)
     add_dependencies(tensor tensor_util)
   else()
-    nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context)
+    nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context )
   endif(WIN32)
 else()
-  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context)
+  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context )
 endif()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
@@ -84,6 +74,7 @@ cc_library(threadpool SRCS threadpool.cc DEPS enforce)
 cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
 cc_library(scope SRCS scope.cc DEPS glog threadpool)
+cc_library(scope_pool SRCS scope_pool.cc DEPS scope)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
 cc_library(data_device_transform SRCS data_device_transform.cc DEPS tensor)
