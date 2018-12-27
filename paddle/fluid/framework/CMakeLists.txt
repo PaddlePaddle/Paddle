@@ -68,18 +68,23 @@ cc_library(garbage_collector SRCS garbage_collector.cc DEPS device_context memor
 cc_library(reader SRCS reader.cc DEPS lod_tensor ddim)
 cc_test(reader_test SRCS reader_test.cc DEPS reader)
 
-cc_test(variable_test SRCS variable_test.cc)
-
 cc_library(threadpool SRCS threadpool.cc DEPS enforce)
 cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
-cc_library(scope SRCS scope.cc DEPS glog threadpool)
+cc_library(var_type_traits SRCS var_type_traits DEPS lod_tensor selected_rows framework_proto) 
+if (WITH_GPU)
+  target_link_libraries(var_type_traits dynload_cuda)
+endif()
+cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
+
+cc_library(scope SRCS scope.cc DEPS glog threadpool var_type_traits)
 cc_library(scope_pool SRCS scope_pool.cc DEPS scope)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
+cc_test(variable_test SRCS variable_test.cc DEPS tensor var_type_traits)
 
 cc_library(data_device_transform SRCS data_device_transform.cc DEPS tensor)
 nv_test(data_device_transform_test SRCS data_device_transform_test.cu
-        DEPS operator op_registry device_context math_function)
+        DEPS operator op_registry device_context math_function scope)
 
 if(WITH_GPU)
   if (WIN32)

@@ -395,7 +395,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
       PADDLE_THROW(
           string::Sprintf("MomentumOp only supports LoDTensor or SelectedRows "
                           "gradient, but the received Variable Type is %s",
-                          grad_var->Type().name()));
+                          framework::ToTypeName(grad_var->Type())));
     }
   }
 };
