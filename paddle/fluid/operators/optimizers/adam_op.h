@@ -509,6 +509,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
           for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
         } else {
           if (lazy_mode) {
+            VLOG(3) << "run cpu lazy mode";
             size_t row_count = grad_merge.rows().size();
             std::vector<int64_t> cpu_rows(grad_merge.rows());
             for (size_t row_index = 0; row_index < row_count; ++row_index) {
