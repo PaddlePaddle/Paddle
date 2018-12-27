@@ -220,6 +220,8 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
 
             feed_queue.close()
             self.validate()
+            if not use_decorate_paddle_reader:
+                thread.join()
 
     def validate(self):
         self.assertEqual(len(self.inputs), len(self.outputs))
