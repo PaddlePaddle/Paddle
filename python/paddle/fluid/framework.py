@@ -361,6 +361,7 @@ class Variable(object):
 
         self.block.vars[name] = self
         self.op = None
+        self.stop_gradient = stop_gradient
         self.is_data = is_data
         if _in_imperative_mode():
             self._ivar = core.VarBase()
@@ -368,7 +369,6 @@ class Variable(object):
             self._ivar.stop_gradient = stop_gradient
 
     def _numpy(self):
-        print("get_variable_tensor", self.desc.name())
         scope = _imperative_tracer().get_scope()
         tensor = core.get_variable_tensor(scope, self.desc.name())
         return np.array(tensor)
@@ -597,8 +597,7 @@ class Operator(object):
                  type=None,
                  inputs=None,
                  outputs=None,
-                 attrs=None,
-                 stop_gradient=False):
+                 attrs=None):
         self.block = block
         self.desc = desc
         # note: not add self.attrs here:
@@ -640,7 +639,6 @@ class Operator(object):
 
         if inputs is not None:
             for in_proto in proto.inputs:
-                print("create op: find_name", in_proto.name)
                 found = find_name(inputs, in_proto.name)
                 assert found or in_proto.dispensable, "Input {} not found".format(
                     in_proto.name)
@@ -1178,7 +1176,6 @@ class Block(object):
     def create_var(self, *args, **kwargs):
         var = Variable(block=self, *args, **kwargs)
         if 'initializer' in kwargs:
-            print("initializer, ", type(kwargs['initializer']))
             kwargs['initializer'](var, self)
         return var
 
@@ -1293,16 +1290,6 @@ class Block(object):
         """
         op_desc = self.desc.append_op()
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
-        print("op inputs: ", [v._numpy() for v in op.inputs])
-        print("op inputs: ", [v for v in op.inputs])
-        import sys
-        sys.stdout.flush()
-        for v in op.inputs:
-            v._ivar._print_var_pointer()
-        print("print var pointer end")
-        import sys
-        sys.stdout.flush()
-
         if _in_imperative_mode():
             _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
                                        [v._ivar for v in op.outputs], self.desc,
@@ -1360,10 +1347,6 @@ class Block(object):
             _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
                                        [v._ivar for v in op.outputs], self.desc,
                                        kwargs.get("stop_gradient", False))
-            print([v.name for v in op.outputs])
-            for v in op.outputs:
-                v._ivar._print_var_pointer()
-            print("fill_constant end")
         self.ops.insert(0, op)
         return op
 

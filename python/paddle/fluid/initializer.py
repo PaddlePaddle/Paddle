@@ -153,7 +153,6 @@ class ConstantInitializer(Initializer):
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
         # Initialization Ops should be prepended and not appended
-        print("fill_constant")
         op = block._prepend_op(
             type="fill_constant",
             outputs={"Out": var},

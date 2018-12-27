@@ -22,6 +22,7 @@ import numpy as np
 
 from .framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating
 from . import unique_name
+from paddle.fluid.imperative import base as imperative_base
 from paddle.fluid.imperative.base import to_variable
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr, WeightNormParamAttr
@@ -369,13 +370,16 @@ class LayerHelper(object):
 
     def set_variable_initializer(self, var, initializer):
         assert isinstance(var, Variable)
-        return self.startup_program.global_block().create_var(
-            name=var.name,
-            type=var.type,
-            dtype=var.dtype,
-            shape=var.shape,
-            persistable=True,
-            initializer=initializer)
+        if imperative_base.enabled():
+            initializer(var, self.startup_program.global_block())
+        else:
+            self.startup_program.global_block().create_var(
+                name=var.name,
+                type=var.type,
+                dtype=var.dtype,
+                shape=var.shape,
+                persistable=True,
+                initializer=initializer)
 
     def append_bias_op(self, input_var, dim_start=1, dim_end=None):
         """
