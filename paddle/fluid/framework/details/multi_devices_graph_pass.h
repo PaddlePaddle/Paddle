@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -38,24 +39,20 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
  private:
   void CreateOpHandleIOs(ir::Graph *result, ir::Node *node,
                          size_t device_id) const;
+
   void Init() const;
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   mutable platform::NCCLContextMap *nccl_ctxs_;
 #endif
 
-  int GetVarDeviceID(
-      const std::string &varname,
-      const std::unordered_map<std::string, int> &sharded_var_device) const;
+  int GetVarDeviceID(const std::string &varname) const;
 
   bool IsScaleLossOp(ir::Node *node) const;
 
-  int CreateRPCOp(
-      ir::Graph *result, ir::Node *node,
-      std::unordered_map<std::string, int> *sharded_var_device) const;
-  int CreateDistTrainOp(
-      ir::Graph *result, ir::Node *node,
-      std::unordered_map<std::string, int> *sharded_var_device) const;
+  int CreateRPCOp(ir::Graph *result, ir::Node *node) const;
+
+  int CreateDistTrainOp(ir::Graph *result, ir::Node *node) const;
 
   void CreateComputationalOps(ir::Graph *result, ir::Node *node,
                               size_t num_places) const;
@@ -67,12 +64,11 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
 
   VarHandle *CreateReduceOp(ir::Graph *result, const std::string &og,
                             int dst_dev_id) const;
+
   void CreateComputationalOp(ir::Graph *result, ir::Node *node,
                              int dev_id) const;
 
-  int GetOpDeviceID(
-      ir::Node *node,
-      const std::unordered_map<std::string, int> &sharded_var_device) const;
+  int GetOpDeviceID(ir::Node *node) const;
 
   void InsertAllReduceOp(ir::Graph *result, const std::string &og) const;
 
@@ -81,6 +77,13 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
 
   void CreateBroadcastOp(ir::Graph *result, const std::string &p_name,
                          size_t src_dev_id) const;
+
+  void CreateCollectionOp(ir::Graph *result, bool is_dist_train,
+                          const std::string &p_name,
+                          const std::string &g_name) const;
+
+  void PreProcess(ir::Graph *result, ir::Node *node) const;
+  bool IsPreProcessNode(ir::Node *node) const;
 
   void CreateFusedBroadcastOp(
       ir::Graph *result,
@@ -97,11 +100,9 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
   std::vector<ir::Node *> SortForReduceMode(
       const std::vector<ir::Node *> &) const;
 
-  int GetOpDeviceID(
-      ir::Node *node,
-      const std::unordered_map<std::string, int> &shared_var_device,
-      std::unordered_map<std::string, std::vector<ir::Node *>> *delay_ops)
-      const;
+  int GetOpDeviceID(ir::Node *node,
+                    std::unordered_map<std::string, std::vector<ir::Node *>>
+                        *delay_ops) const;
 
   mutable std::string loss_var_name_;
   mutable std::vector<platform::Place> places_;
@@ -110,6 +111,9 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
   mutable BuildStrategy strategy_;
   mutable std::unordered_map<std::string, VarDesc *> all_vars_;
   mutable std::vector<int64_t> balance_vars_;
+
+  mutable std::vector<std::unordered_set<std::string>> bcast_var_name_set_;
+  mutable std::unordered_map<std::string, int> sharded_var_device_;
 };
 }  // namespace details
 }  // namespace framework
