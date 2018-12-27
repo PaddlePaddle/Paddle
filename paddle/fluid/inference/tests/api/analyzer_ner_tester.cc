@@ -19,11 +19,9 @@ namespace inference {
 using contrib::AnalysisConfig;
 
 struct DataRecord {
-  std::vector<std::vector<int64_t>> word_data_all, mention_data_all;
+  std::vector<std::vector<int64_t>> word, mention;
   std::vector<size_t> lod;  // two inputs have the same lod info.
-  size_t batch_iter{0};
-  size_t batch_size{1};
-  size_t num_samples;  // total number of samples
+  size_t batch_iter{0}, batch_size{1}, num_samples;  // total number of samples
   DataRecord() = default;
   explicit DataRecord(const std::string &path, int batch_size = 1)
       : batch_size(batch_size) {
@@ -33,20 +31,10 @@ struct DataRecord {
     DataRecord data;
     size_t batch_end = batch_iter + batch_size;
     // NOTE skip the final batch, if no enough data is provided.
-    if (batch_end <= word_data_all.size()) {
-      data.word_data_all.assign(word_data_all.begin() + batch_iter,
-                                word_data_all.begin() + batch_end);
-      data.mention_data_all.assign(mention_data_all.begin() + batch_iter,
-                                   mention_data_all.begin() + batch_end);
-      // Prepare LoDs
-      data.lod.push_back(0);
-      CHECK(!data.word_data_all.empty());
-      CHECK(!data.mention_data_all.empty());
-      CHECK_EQ(data.word_data_all.size(), data.mention_data_all.size());
-      for (size_t j = 0; j < data.word_data_all.size(); j++) {
-        // calculate lod
-        data.lod.push_back(data.lod.back() + data.word_data_all[j].size());
-      }
+    if (batch_end <= word.size()) {
+      GetInputPerBatch(word, &data.word, &data.lod, batch_iter, batch_end);
+      GetInputPerBatch(mention, &data.mention, &data.lod, batch_iter,
+                       batch_end);
     }
     batch_iter += batch_size;
     return data;
@@ -65,8 +53,8 @@ struct DataRecord {
       // load mention data
       std::vector<int64_t> mention_data;
       split_to_int64(data[3], ' ', &mention_data);
-      word_data_all.push_back(std::move(word_data));
-      mention_data_all.push_back(std::move(mention_data));
+      word.push_back(std::move(word_data));
+      mention.push_back(std::move(mention_data));
     }
     num_samples = num_lines;
   }
@@ -78,14 +66,10 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   lod_word_tensor.name = "word";
   lod_mention_tensor.name = "mention";
   auto one_batch = data->NextBatch();
-  int size = one_batch.lod[one_batch.lod.size() - 1];  // token batch size
-  lod_word_tensor.shape.assign({size, 1});
-  lod_word_tensor.lod.assign({one_batch.lod});
-  lod_mention_tensor.shape.assign({size, 1});
-  lod_mention_tensor.lod.assign({one_batch.lod});
   // assign data
-  TensorAssignData<int64_t>(&lod_word_tensor, one_batch.word_data_all);
-  TensorAssignData<int64_t>(&lod_mention_tensor, one_batch.mention_data_all);
+  TensorAssignData<int64_t>(&lod_word_tensor, one_batch.word, one_batch.lod);
+  TensorAssignData<int64_t>(&lod_mention_tensor, one_batch.mention,
+                            one_batch.lod);
   // Set inputs.
   input_slots->assign({lod_word_tensor, lod_mention_tensor});
   for (auto &tensor : *input_slots) {
@@ -177,6 +161,17 @@ TEST(Analyzer_Chinese_ner, compare) {
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
+
+// Compare Deterministic result
+TEST(Analyzer_Chinese_ner, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
 }
 
 }  // namespace inference

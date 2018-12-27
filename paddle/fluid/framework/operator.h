@@ -49,6 +49,8 @@ constexpr char kTempVarName[] = "@TEMP@";
 /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
 constexpr char kGradVarSuffix[] = "@GRAD";
 
+constexpr size_t kGradVarSuffixSize = 5U;
+
 /// Variables with this suffix are supposed to be filled up with zeros.
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
@@ -60,7 +62,11 @@ constexpr char kNewGradSuffix[] = "@NEWGRAD@";
 extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
 
 inline std::string GradVarName(const std::string& var_name) {
-  return var_name + kGradVarSuffix;
+  std::string result;
+  result.reserve(var_name.size() + kGradVarSuffixSize);
+  result += var_name;
+  result += kGradVarSuffix;
+  return result;
 }
 
 proto::VarType::Type GetDataTypeOfVar(const Variable* var);
@@ -110,8 +116,8 @@ class OperatorBase {
   bool HasAttr(const std::string& name) const { return attrs_.count(name); }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
-                   name);
+    PADDLE_ENFORCE(attrs_.find(name) != attrs_.end(),
+                   "%s should be in AttributeMap", name);
     return boost::get<T>(attrs_.at(name));
   }
   const AttributeMap& Attrs() const { return attrs_; }
@@ -197,8 +203,31 @@ class ExecutionContext {
 
   const std::vector<const Variable*> MultiInputVar(
       const std::string& name) const {
-    auto names = op_.Inputs(name);
+    auto it = ctx_.inputs.find(name);
+    if (it == ctx_.inputs.end()) {
+      return {};
+    }
     std::vector<const Variable*> res;
+    res.reserve(it->second.size());
+    std::transform(it->second.begin(), it->second.end(),
+                   std::back_inserter(res),
+                   [this](Variable* var) { return var; });
+    return res;
+  }
+
+  std::vector<Variable*> MultiOutputVar(const std::string& name) const {
+    auto names = op_.Outputs(name);
+    auto it = ctx_.outputs.find(name);
+    if (it == ctx_.outputs.end()) {
+      return {};
+    }
+    return it->second;
+  }
+
+  const std::vector<Variable*> LegacyMultiInputVar(
+      const std::string& name) const {
+    auto names = op_.Inputs(name);
+    std::vector<Variable*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [this](const std::string& name) {
@@ -208,7 +237,7 @@ class ExecutionContext {
     return res;
   }
 
-  std::vector<Variable*> MultiOutputVar(const std::string& name) const {
+  std::vector<Variable*> LegacyMultiOutputVar(const std::string& name) const {
     auto names = op_.Outputs(name);
     std::vector<Variable*> res;
     res.reserve(names.size());
@@ -250,6 +279,38 @@ class ExecutionContext {
 
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
+    auto it = ctx_.inputs.find(name);
+    if (it == ctx_.inputs.end()) {
+      return {};
+    }
+    const std::vector<Variable*>& vars = it->second;
+    std::vector<const T*> res;
+    res.reserve(vars.size());
+    std::transform(vars.begin(), vars.end(), std::back_inserter(res),
+                   [&](Variable* var) -> const T* {
+                     return var == nullptr ? nullptr : &var->Get<T>();
+                   });
+    return res;
+  }
+
+  template <typename T>
+  std::vector<T*> MultiOutput(const std::string& name) const {
+    auto it = ctx_.outputs.find(name);
+    if (it == ctx_.outputs.end()) {
+      return {};
+    }
+    const std::vector<Variable*>& vars = it->second;
+    std::vector<T*> res;
+    res.reserve(vars.size());
+    std::transform(vars.begin(), vars.end(), std::back_inserter(res),
+                   [&](Variable* var) -> T* {
+                     return var == nullptr ? nullptr : var->GetMutable<T>();
+                   });
+    return res;
+  }
+
+  template <typename T>
+  const std::vector<const T*> LegacyMultiInput(const std::string& name) const {
     auto names = op_.Inputs(name);
     std::vector<const T*> res;
     res.reserve(names.size());
@@ -262,7 +323,7 @@ class ExecutionContext {
   }
 
   template <typename T>
-  std::vector<T*> MultiOutput(const std::string& name) const {
+  std::vector<T*> LegacyMultiOutput(const std::string& name) const {
     auto names = op_.Outputs(name);
     std::vector<T*> res;
     res.reserve(names.size());
@@ -319,6 +380,10 @@ const Tensor* ExecutionContext::LegacyInput<Tensor>(
 
 template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
+    const std::string& name) const;
+
+template <>
+const std::vector<const Tensor*> ExecutionContext::LegacyMultiInput<Tensor>(
     const std::string& name) const;
 
 template <>

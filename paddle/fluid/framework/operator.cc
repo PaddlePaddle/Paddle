@@ -181,11 +181,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
-  if (inputs_.find(name) != inputs_.end()) {
-    return true;
-  } else {
-    return false;
-  }
+  return inputs_.find(name) != inputs_.end();
 }
 
 std::string OperatorBase::Input(const std::string& name) const {
@@ -384,7 +380,7 @@ const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var) {
     return &(var.Get<SelectedRows>().value());
   } else {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
-                 var.Type().name());
+                 ToTypeName(var.Type()));
   }
 }
 
@@ -395,7 +391,7 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
     return var->GetMutable<SelectedRows>()->mutable_value();
   } else {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
-                 var->Type().name());
+                 ToTypeName(var->Type()));
   }
 }
 
@@ -476,6 +472,28 @@ const Tensor* ExecutionContext::LegacyInput<Tensor>(
 template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const {
+  auto it = ctx_.inputs.find(name);
+  if (it == ctx_.inputs.end()) {
+    return {};
+  }
+  const std::vector<Variable*>& vars = it->second;
+  std::vector<const Tensor*> res;
+  res.reserve(vars.size());
+  std::transform(vars.begin(), vars.end(), std::back_inserter(res),
+                 [&](Variable* var) -> const Tensor* {
+                   if (var == nullptr) return nullptr;
+                   PADDLE_ENFORCE(
+                       var->IsType<LoDTensor>(),
+                       "should be LoDTensor, but the received type is %s",
+                       ToTypeName(var->Type()));
+                   return &(var->Get<LoDTensor>());
+                 });
+  return res;
+}
+
+template <>
+const std::vector<const Tensor*> ExecutionContext::LegacyMultiInput<Tensor>(
+    const std::string& name) const {
   auto names = op().Inputs(name);
   std::vector<const Tensor*> res;
   res.reserve(names.size());
@@ -486,7 +504,7 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
                    PADDLE_ENFORCE(
                        var->IsType<LoDTensor>(),
                        "%s should be LoDTensor, but the received type is %s",
-                       sub_name, var->Type().name());
+                       sub_name, ToTypeName(var->Type()));
                    return &(var->Get<LoDTensor>());
                  });
   return res;
@@ -515,7 +533,7 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
                    PADDLE_ENFORCE(
                        var->IsType<LoDTensor>(),
                        "%s should be LoDTensor, but the received type is %s",
-                       sub_name, var->Type().name());
+                       sub_name, ToTypeName(var->Type()));
                    return var->GetMutable<LoDTensor>();
                  });
   return res;
@@ -757,7 +775,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       PADDLE_THROW(
           "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
           "type_id is %s.",
-          var->Type().name());
+          ToTypeName(var->Type()));
     }
   }
 
@@ -780,7 +798,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       var->GetMutable<SelectedRows>()->set_height(dim[0]);
     } else {
       PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
-                   var->Type().name());
+                   ToTypeName(var->Type()));
     }
   }
 
@@ -1039,8 +1057,8 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &(var->Get<SelectedRows>().value());
         }
         if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s is not initialized: %s",
-                         ipt_name, DebugString());
+          PADDLE_ENFORCE(t->IsInitialized(), "Input %s is not initialized",
+                         ipt_name);
           int tmp = static_cast<int>(t->type());
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,

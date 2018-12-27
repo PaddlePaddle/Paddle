@@ -1101,9 +1101,7 @@ PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
   return out_var;
 }
 
-std::unordered_set<std::string> conv_act_set({"identity", "sigmoid", "relu",
-                                              "relu6", "relux", "tanh",
-                                              "band_pass"});
+std::unordered_set<std::string> conv_act_set({"identity", "relu"});
 
 PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
   conv_in->AsInput();
@@ -1169,13 +1167,13 @@ PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
                                   ->AsInput();
   auto elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
                                  ->assert_is_op_output("elementwise_add")
-                                 ->assert_is_op_input("elementwise_add", "X")
+                                 ->assert_is_op_input("elementwise_add", "Y")
                                  ->AsIntermediate();
 
   auto elementwise_add_op_1 = pattern->NewNode(elementwise_add_op_1_repr())
                                   ->assert_is_op("elementwise_add");
   auto elementwise_add_in_y_1 = pattern->NewNode(elementwise_add_in_y_1_repr())
-                                    ->assert_is_op_input("elementwise_add", "Y")
+                                    ->assert_is_op_input("elementwise_add", "X")
                                     ->AsInput();
   auto elementwise_add_out_1 = pattern->NewNode(elementwise_add_out_1_repr())
                                    ->assert_is_op_output("elementwise_add")
@@ -1203,8 +1201,8 @@ PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
   conv_op->LinksFrom({conv_in, conv_filter}).LinksTo({conv_out});
   elementwise_add_op->LinksFrom({conv_out, elementwise_add_in_y})
       .LinksTo({elementwise_add_out});
-  elementwise_add_op_1->LinksFrom(
-      {elementwise_add_out, elementwise_add_in_y_1});
+  elementwise_add_op_1->LinksFrom({elementwise_add_out, elementwise_add_in_y_1})
+      .LinksTo({elementwise_add_out_1});
   act_op->LinksFrom({elementwise_add_out_1}).LinksTo({act_out});
   return act_out;
 }
@@ -1234,6 +1232,78 @@ PDNode *patterns::ConvElementwiseadd::operator()(PDNode *conv_in) {
       .LinksTo({elementwise_add_out});
 
   return elementwise_add_out;
+}
+
+PDNode *patterns::ConvAffineChannel::operator()(
+    paddle::framework::ir::PDNode *conv_input, bool with_eltwise_add) {
+  // Create Operators
+  conv_input->assert_is_op_input("conv2d", "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+
+  PDNode *eltwise_op = nullptr;
+  if (with_eltwise_add) {
+    eltwise_op =
+        pattern->NewNode(eltwise_repr())->assert_is_op("elementwise_add");
+  }
+
+  auto *affine_channel_op =
+      pattern->NewNode(affine_channel_repr())->assert_is_op("affine_channel");
+  // Create variables
+  // Conv Filter
+  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
+                              ->AsInput()
+                              ->assert_is_persistable_var()
+                              ->assert_is_op_input("conv2d", "Filter");
+
+  auto *conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("conv2d");
+
+  PDNode *eltwise_y_in_var = nullptr;
+  PDNode *eltwise_out_var = nullptr;
+  if (with_eltwise_add) {
+    // Conv output as Bias input
+    conv_out_var->assert_is_op_input("elementwise_add", "X");
+    // Bias
+    eltwise_y_in_var = pattern->NewNode(eltwise_y_in_repr())
+                           ->assert_is_op_input("elementwise_add", "Y")
+                           ->AsInput();
+    eltwise_out_var = pattern->NewNode(eltwise_out_repr())
+                          ->AsIntermediate()
+                          ->assert_is_only_output_of_op("elementwise_add");
+  } else {
+    // Conv output as AffineChannel input
+    conv_out_var->assert_is_op_input("affine_channel", "X");
+  }
+
+  // AC Scale
+  auto *ac_scale_var = pattern->NewNode(ac_scale_repr())
+                           ->AsInput()
+                           ->assert_is_persistable_var()
+                           ->assert_is_op_input("affine_channel", "Scale");
+  // AC Bias
+  auto *ac_bias_var = pattern->NewNode(ac_bias_repr())
+                          ->AsInput()
+                          ->assert_is_persistable_var()
+                          ->assert_is_op_input("affine_channel", "Bias");
+
+  // AC output
+  auto *ac_out_var = pattern->NewNode(ac_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("affine_channel");
+
+  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
+
+  if (with_eltwise_add) {
+    eltwise_op->LinksFrom({conv_out_var, eltwise_y_in_var})
+        .LinksTo({eltwise_out_var});
+    affine_channel_op->LinksFrom({eltwise_out_var, ac_scale_var, ac_bias_var})
+        .LinksTo({ac_out_var});
+  } else {
+    affine_channel_op->LinksFrom({conv_out_var, ac_scale_var, ac_bias_var})
+        .LinksTo({ac_out_var});
+  }
+  return ac_out_var;
 }
 
 }  // namespace ir
