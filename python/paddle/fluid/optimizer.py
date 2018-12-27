@@ -30,6 +30,7 @@ from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
+from .imperative import base as imperative_base
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
@@ -108,6 +109,7 @@ class Optimizer(object):
         # create learning rate variable for every parameter
         param = param_and_grad[0]
         param_lr = param.optimize_attr['learning_rate']
+        print("param_lr: ", param_lr, self._global_learning_rate()._numpy())
         if type(param_lr) == Variable:
             return param_lr
         else:
@@ -301,19 +303,38 @@ class Optimizer(object):
         This method combines interface `append_backward()` and
         `create_optimization_pass()` into one.
         """
-        params_grads = append_backward(loss, parameter_list, no_grad_set,
-                                       [error_clip_callback])
+        if imperative_base.enabled:
+            if parameter_list is not None:
+                params_grads = parameter_list
+            else:
+                program = loss.block.program
+                parameters = program.global_block().all_parameters()
+                params_grads = []
+                for param in parameters:
+                    grad_var = Variable(
+                        block=loss.block,
+                        name=param._ivar._grad_name(),
+                        stop_gradient=True)
+                    grad_var._value = param._ivar._grad_var()
+                    print("create grad var: ", grad_var.name)
+                    print("grad_var value: ", grad_var._numpy())
+                    import sys
+                    sys.stdout.flush()
+                    params_grads.append((param, grad_var))
+        else:
+            params_grads = append_backward(loss, parameter_list, no_grad_set,
+                                           [error_clip_callback])
 
-        params_grads = sorted(params_grads, key=lambda x: x[0].name)
+            params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
-        params_grads, table_param_and_grad, table_optimize_op = \
-            self._process_distribute_lookuptable(params_grads, loss, startup_program)
+            params_grads, table_param_and_grad, table_optimize_op = \
+                self._process_distribute_lookuptable(params_grads, loss, startup_program)
 
-        params_grads = append_gradient_clip_ops(params_grads)
+            params_grads = append_gradient_clip_ops(params_grads)
 
-        # Add regularization if any
-        params_grads = append_regularization_ops(params_grads,
-                                                 self.regularization)
+            # Add regularization if any
+            params_grads = append_regularization_ops(params_grads,
+                                                     self.regularization)
 
         optimize_ops = self._create_optimization_pass(params_grads, loss,
                                                       startup_program)
@@ -355,6 +376,10 @@ class SGDOptimizer(Optimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+
+        print("append sgd")
+        import sys
+        sys.stdout.flush()
 
         # create the optimize op
         sgd_op = block.append_op(
@@ -477,7 +502,7 @@ class LarsMomentumOptimizer(Optimizer):
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
-        
+
 
     Examples:
         .. code-block:: python

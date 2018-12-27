@@ -45,6 +45,15 @@ class VarBase {
 
   framework::LoDTensor& Grad();
 
+  inline framework::Variable* GradVar() { return grads_; }
+
+  inline std::string GradName() const {
+    PADDLE_ENFORCE(
+        var_desc_,
+        "Couldn't get gradient variable's name, please call backward() first");
+    return string::Sprintf("%s@IGrad", var_desc_->Name());
+  }
+
   OpBase* pre_op_;
   int pre_op_out_idx_;
 

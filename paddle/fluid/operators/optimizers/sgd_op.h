@@ -29,6 +29,8 @@ class SGDOpKernel : public framework::OpKernel<T> {
     const auto *param_var = ctx.InputVar("Param");
     const auto *grad_var = ctx.InputVar("Grad");
 
+    LOG(ERROR) << "grad_var: " << grad_var;
+
     if (param_var->IsType<framework::LoDTensor>()) {
       const auto *param = ctx.Input<framework::Tensor>("Param");
       auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
@@ -39,8 +41,11 @@ class SGDOpKernel : public framework::OpKernel<T> {
         const auto *grad = ctx.Input<framework::Tensor>("Grad");
 
         auto p = framework::EigenVector<T>::Flatten(*param);
+        LOG(ERROR) << "param flattened";
         auto g = framework::EigenVector<T>::Flatten(*grad);
+        LOG(ERROR) << "grad flattened";
         auto o = framework::EigenVector<T>::Flatten(*param_out);
+        LOG(ERROR) << "paramout flattened";
         auto *lr = learning_rate->data<T>();
 
         o = p - lr[0] * g;

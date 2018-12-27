@@ -104,7 +104,7 @@ class Autograd {
 framework::Variable* CreateVariable(const std::string& name,
                                     const framework::DDim& dim, float val,
                                     framework::Scope* scope,
-                                    bool random_name = true) {
+                                    bool random_name = false) {
   std::string varname = name;
   if (random_name) {
     std::mt19937 rng;

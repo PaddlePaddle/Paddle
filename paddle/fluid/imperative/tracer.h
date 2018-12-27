@@ -52,7 +52,7 @@ class Tracer {
              const std::vector<VarBase*>& outputs, framework::BlockDesc* block,
              const bool stop_gradient) {
     framework::OpDesc* op_desc = op->op_desc_;
-    VLOG(3) << "tracer tracing " << op_desc->Type();
+    LOG(ERROR) << "tracer tracing " << op_desc->Type();
     op_desc->InferShape(*block);
     op_desc->InferVarType(block);
     std::unique_ptr<framework::OperatorBase> op_base =
@@ -61,7 +61,10 @@ class Tracer {
     *op->input_vars_ = inputs;
     for (VarBase* input : inputs) {
       const std::string vname = input->var_desc_->Name();
+      LOG(ERROR) << "input: " << vname;
+      LOG(ERROR) << "input var: " << input->var_;
       framework::Variable* var = root_scope_->Var(vname);
+      LOG(ERROR) << "var_ in tracer pointer: " << var;
       input->var_ = var;
       if (!var->IsInitialized()) {
         framework::VarDesc* var_desc = block->FindVar(vname);
@@ -84,6 +87,7 @@ class Tracer {
     *op->output_vars_ = outputs;
     for (size_t i = 0; i < outputs.size(); ++i) {
       const std::string vname = outputs[i]->var_desc_->Name();
+      LOG(ERROR) << "output name: " << vname;
       framework::Variable* var = root_scope_->Var(vname);
       if (!var->IsInitialized()) {
         framework::VarDesc* var_desc = block->FindVar(vname);
@@ -98,7 +102,7 @@ class Tracer {
       outputs[i]->pre_op_out_idx_ = i;
     }
 
-    VLOG(3) << "tracer running " << op_desc->Type();
+    LOG(ERROR) << "tracer running " << op_desc->Type();
     op_base->Run(*root_scope_, platform::CPUPlace());
     if (!stop_gradient) {
       framework::OpDesc* grad_op_desc;
