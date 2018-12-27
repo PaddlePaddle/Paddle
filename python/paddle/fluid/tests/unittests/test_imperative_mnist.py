@@ -43,15 +43,6 @@ class SimpleImgConvPool(fluid.imperative.PyLayer):
                  bias_attr=None):
         super(SimpleImgConvPool, self).__init__()
 
-        #  groups = 1
-        #  dilation = [1, 1]
-        #  pad = [0, 0]
-        #  stride = [1, 1]
-        #  input_size = [2, 3, 5, 5]  # NCHW
-        #  assert np.mod(input_size[1], groups) == 0
-        #  f_c = input_size[1] // groups
-        #  filter_size = [6, f_c, 3, 3]
-
         self._conv2d = Conv2D(
             num_channels=num_channels,
             num_filters=num_filters,
@@ -108,47 +99,21 @@ class TestImperativeMnist(unittest.TestCase):
     def test_mnist_cpu_float32(self):
         with fluid.imperative.guard():
             mnist = MNIST()
-
-            x_data = np.random.rand(128, 1, 28, 28).astype('float32')
-            img = to_variable(x_data)
-            y_data = np.random.rand(128, 1).astype('int64')
-            label = to_variable(y_data)
-            label._stop_gradient = True
-
-            predict = mnist(img)
-            out = fluid.layers.cross_entropy(predict, label)
-            out._backward()
-            filter_grad = mnist._simple_img_conv_pool_1._conv2d._filter_param._gradient(
-            )
-            #  print(filter_grad)
-
             sgd = SGDOptimizer(learning_rate=1e-3)
-            sgd.minimize(out)
 
-        #  np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-        #  with fluid.imperative.guard():
-        #  mlp = MLP()
-        #  out = mlp(np_inp)
-        #  dy_out = out._numpy()
-        #  out._backward()
-        #  dy_grad = mlp._fc1._w._gradient()
+            for i in range(1):
+                x_data = np.random.rand(128, 1, 28, 28).astype('float32')
+                img = to_variable(x_data)
+                y_data = np.random.rand(128, 1).astype('int64')
+                label = to_variable(y_data)
+                label._stop_gradient = True
 
-        #  with new_program_scope():
-        #  inp = fluid.layers.data(
-        #  name="inp", shape=[2, 2], append_batch_size=False)
-        #  mlp = MLP()
-        #  out = mlp(inp)
-        #  param_grads = fluid.backward.append_backward(
-        #  out, parameter_list=[mlp._fc1._w.name])[0]
-        #  exe = fluid.Executor(fluid.CPUPlace())
-        #  exe.run(fluid.default_startup_program())
-
-        #  static_out, static_grad = exe.run(
-        #  feed={inp.name: np_inp},
-        #  fetch_list=[out.name, param_grads[1].name])
-
-        #  self.assertTrue(np.allclose(dy_out, static_out))
-        #  self.assertTrue(np.allclose(dy_grad, static_grad))
+                predict = mnist(img)
+                out = fluid.layers.cross_entropy(predict, label)
+                out._backward()
+                filter_grad = mnist._simple_img_conv_pool_1._conv2d._filter_param._gradient(
+                )
+                sgd.minimize(out)
 
 
 if __name__ == '__main__':

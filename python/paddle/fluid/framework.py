@@ -1289,13 +1289,22 @@ class Block(object):
             Operator: the append Operator.
         """
         op_desc = self.desc.append_op()
-        op = Operator(block=self, desc=op_desc, *args, **kwargs)
+        op = Operator(
+            block=self,
+            desc=op_desc,
+            type=kwargs.get("type", None),
+            inputs=kwargs.get("inputs", None),
+            outputs=kwargs.get("outputs", None),
+            attrs=kwargs.get("attrs", None))
+        self.ops.append(op)
+        self._trace_op(op, kwargs.get("stop_gradient", False))
+        return op
+
+    def _trace_op(self, op, stop_gradient=False):
         if _in_imperative_mode():
             _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
                                        [v._ivar for v in op.outputs], self.desc,
-                                       kwargs.get("stop_gradient", False))
-        self.ops.append(op)
-        return op
+                                       stop_gradient)
 
     def _insert_op(self, index, *args, **kwargs):
         """
@@ -1342,12 +1351,15 @@ class Block(object):
 
     def _prepend_op(self, *args, **kwargs):
         op_desc = self.desc._prepend_op()
-        op = Operator(self, op_desc, *args, **kwargs)
-        if _in_imperative_mode():
-            _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
-                                       [v._ivar for v in op.outputs], self.desc,
-                                       kwargs.get("stop_gradient", False))
+        op = Operator(
+            self,
+            op_desc,
+            type=kwargs.get("type", None),
+            inputs=kwargs.get("inputs", None),
+            outputs=kwargs.get("outputs", None),
+            attrs=kwargs.get("attrs", None))
         self.ops.insert(0, op)
+        self._trace_op(op, kwargs.get("stop_gradient", False))
         return op
 
     def _sync_with_cpp(self):

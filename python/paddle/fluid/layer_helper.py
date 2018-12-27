@@ -23,7 +23,6 @@ import numpy as np
 from .framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating
 from . import unique_name
 from paddle.fluid.imperative import base as imperative_base
-from paddle.fluid.imperative.base import to_variable
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
@@ -51,7 +50,7 @@ class LayerHelper(object):
         return default_startup_program()
 
     def to_variable(self, x):
-        return base.to_variable(x, self.main_program.current_block())
+        return imperative_base.to_variable(x, self.main_program.current_block())
 
     def append_op(self, *args, **kwargs):
         return self.main_program.current_block().append_op(*args, **kwargs)
@@ -371,7 +370,7 @@ class LayerHelper(object):
     def set_variable_initializer(self, var, initializer):
         assert isinstance(var, Variable)
         if imperative_base.enabled():
-            initializer(var, self.startup_program.global_block())
+            initializer(var, var.block)
         else:
             self.startup_program.global_block().create_var(
                 name=var.name,
