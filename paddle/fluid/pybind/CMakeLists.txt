@@ -1,5 +1,5 @@
 
-set(PYBIND_DEPS pybind python proto_desc memory executor async_executor prune feed_fetch_method pass_builder parallel_executor profiler layer)
+set(PYBIND_DEPS pybind python proto_desc memory executor async_executor prune feed_fetch_method pass_builder parallel_executor profiler layer scope_pool)
 if(WITH_PYTHON)
   list(APPEND PYBIND_DEPS py_func_op)
 endif()

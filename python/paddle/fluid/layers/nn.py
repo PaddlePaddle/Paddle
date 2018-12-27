@@ -4530,7 +4530,7 @@ def topk(input, k, name=None):
     Args:
         input(Variable): The input variable which can be a vector or Tensor with
             higher rank.
-        k(int):  The number of top elements to look for along the last dimension
+        k(int | Variable):  The number of top elements to look for along the last dimension
                  of input.
         name(str|None): A name for this layer(optional). If set None, the layer
                        will be named automatically.
@@ -4553,12 +4553,18 @@ def topk(input, k, name=None):
     helper = LayerHelper("top_k", **locals())
     values = helper.create_variable_for_type_inference(dtype=input.dtype)
     indices = helper.create_variable_for_type_inference(dtype="int64")
+    inputs = {"X": [input]}
+    attrs = None
+    if isinstance(k, Variable):
+        inputs['K'] = k
+    else:
+        attrs = {'k': k}
     helper.append_op(
         type="top_k",
-        inputs={"X": [input]},
+        inputs=inputs,
         outputs={"Out": [values],
                  "Indices": [indices]},
-        attrs={"k": k})
+        attrs=attrs)
     values.stop_gradient = True
     indices.stop_gradient = True
     return values, indices

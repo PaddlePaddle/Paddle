@@ -88,6 +88,7 @@ endif()
 cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
 
 cc_library(scope SRCS scope.cc DEPS glog threadpool var_type_traits)
+cc_library(scope_pool SRCS scope_pool.cc DEPS scope)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 cc_test(variable_test SRCS variable_test.cc DEPS tensor var_type_traits)
 
