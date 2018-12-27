@@ -93,7 +93,8 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
   void SetCommunicationContext(OpHandleBase *op_handle,
                                const platform::Place &p) const;
 
-  std::vector<ir::Node *> SortForReduce(const std::vector<ir::Node *> &) const;
+  std::vector<ir::Node *> SortForReduceMode(
+      const std::vector<ir::Node *> &) const;
 
   int GetOpDeviceID(
       ir::Node *node,
