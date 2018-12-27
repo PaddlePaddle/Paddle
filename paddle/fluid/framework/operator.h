@@ -49,6 +49,8 @@ constexpr char kTempVarName[] = "@TEMP@";
 /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
 constexpr char kGradVarSuffix[] = "@GRAD";
 
+constexpr size_t kGradVarSuffixSize = 5U;
+
 /// Variables with this suffix are supposed to be filled up with zeros.
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
@@ -60,7 +62,11 @@ constexpr char kNewGradSuffix[] = "@NEWGRAD@";
 extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
 
 inline std::string GradVarName(const std::string& var_name) {
-  return var_name + kGradVarSuffix;
+  std::string result;
+  result.reserve(var_name.size() + kGradVarSuffixSize);
+  result += var_name;
+  result += kGradVarSuffix;
+  return result;
 }
 
 proto::VarType::Type GetDataTypeOfVar(const Variable* var);
@@ -110,8 +116,8 @@ class OperatorBase {
   bool HasAttr(const std::string& name) const { return attrs_.count(name); }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
-                   name);
+    PADDLE_ENFORCE(attrs_.find(name) != attrs_.end(),
+                   "%s should be in AttributeMap", name);
     return boost::get<T>(attrs_.at(name));
   }
   const AttributeMap& Attrs() const { return attrs_; }
