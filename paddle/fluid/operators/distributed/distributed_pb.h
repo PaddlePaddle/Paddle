@@ -18,12 +18,12 @@
 
 #ifdef PADDLE_WITH_GRPC
 
-#include "paddle/fluid/operators/distributed/grpc/send_recv.grpc.pb.h"
-#include "paddle/fluid/operators/distributed/grpc/send_recv.pb.h"
+#include "paddle/fluid/operators/distributed/send_recv.grpc.pb.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
 
 #else  // PADDLE_WITH_GRPC
 
-#include "paddle/fluid/operators/distributed/brpc/send_recv.pb.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
 
 #endif  // PADDLE_WITH_GRPC
 
