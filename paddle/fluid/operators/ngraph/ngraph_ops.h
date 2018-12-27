@@ -22,4 +22,6 @@ limitations under the License. */
 #pragma once
 
 #include "ops/binary_unnary_op.h"
+#include "ops/fill_constant_op.h"
 #include "ops/mul_op.h"
+#include "ops/top_k_op.h"
