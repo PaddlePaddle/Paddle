@@ -118,7 +118,6 @@ class Tracer {
 
     VLOG(3) << "tracer running " << op_desc->Type();
     framework::RuntimeContext ctx(invars_map, outvars_map);
-    // op_base->RunPrepared(ctx, platform::CPUPlace());
 
     // TODO(panyx0718): Cache p.
     framework::OperatorWithKernel* op_kernel =
