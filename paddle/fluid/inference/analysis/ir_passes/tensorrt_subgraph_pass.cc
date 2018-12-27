@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
+#include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
+#include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
 
 namespace paddle {
 namespace inference {
@@ -36,7 +38,8 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
   auto teller =
       Get<SubgraphDetector::NodeInsideSubgraphTeller>("tensorrt_node_teller");
 
-  SubGraphFuser fuser(graph.get(), teller, 2 /*min subgraph size*/);
+  SubGraphFuser fuser(graph.get(), teller,
+                      Get<int>("min_subgraph_size") /*min subgraph size*/);
   fuser();
 
   for (auto *node : graph->Nodes()) {
@@ -197,10 +200,26 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
 
 std::vector<std::string> ExtractParameters(
     const std::unordered_set<Node *> &nodes) {
+  // We can judge whether a variable is a parameter by
+  // its presistable property, but sometimes the presistable
+  // of the feed op output is true, so we have to identify it.
+  std::vector<std::string> feed_outputs;
+  for (const auto &node : nodes) {
+    if (!node->IsOp()) continue;
+    std::string op_type = node->Op()->Type();
+    if (op_type == "feed") {
+      std::vector<std::string> output_names = node->Op()->OutputArgumentNames();
+      std::copy(output_names.begin(), output_names.end(),
+                std::back_inserter(feed_outputs));
+    }
+  }
+
   std::vector<std::string> parameters;
   for (const auto &node : nodes) {
     if (!node->IsVar()) continue;
-    if (node->Var()->Persistable()) {
+    if (node->Var()->Persistable() &&
+        std::find(feed_outputs.begin(), feed_outputs.end(), node->Name()) ==
+            feed_outputs.end()) {
       parameters.push_back(node->Name());
     }
   }
@@ -215,4 +234,5 @@ REGISTER_PASS(tensorrt_subgraph_pass,
               paddle::inference::analysis::TensorRtSubgraphPass)
     .RequirePassAttr("tensorrt_node_teller")
     .RequirePassAttr("max_batch_size")
-    .RequirePassAttr("workspace_size");
+    .RequirePassAttr("workspace_size")
+    .RequirePassAttr("min_subgraph_size");
