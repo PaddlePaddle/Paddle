@@ -95,8 +95,7 @@ class BeamSearchOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = framework::OpKernelType(
         ctx.Input<framework::LoDTensor>("pre_ids")->type(),
-        platform::CPUPlace());
-    // ctx.device_context());
+        ctx.device_context());
     return kt;
   }
 };
