@@ -131,8 +131,9 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     int in_col = input[0].numel() / in_row;
     int out_row = in_row, out_col = 0;
 
-    std::vector<T*> inputs_data(in_num);
+    std::vector<const T*> inputs_data;
     std::vector<int> inputs_col(in_num + 1);
+    inputs_data.reserve(in_num);
 
     inputs_col[0] = 0;
     bool sameShape = true;
@@ -143,7 +144,7 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
       }
       out_col += t_cols;
       inputs_col[i + 1] = out_col;
-      inputs_data[i] = const_cast<T*>(input[i].data<T>());
+      inputs_data.emplace_back(input[i].data<T>());
     }
 
     // computation
