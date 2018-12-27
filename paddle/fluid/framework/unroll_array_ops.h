@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <cstddef>
 #include <type_traits>
 #include "paddle/fluid/platform/hostdevice.h"
 
@@ -52,19 +53,28 @@ struct UnrollAssign<kStart, kEnd, true> {
 };
 
 template <typename T, size_t kStart, size_t kEnd, bool kStop>
-struct UnrollVarArgsAssign {
+struct UnrollVarArgsAssignImpl {
   template <typename... Args>
   HOSTDEVICE inline static void Run(T *d, T val, Args... args) {
     static_assert(sizeof...(args) + 1 == kEnd - kStart, "Wrong argument");
     d[kStart] = val;
-    UnrollVarArgsAssign<T, kStart + 1, kEnd, kStart + 1 == kEnd>::Run(d,
-                                                                      args...);
+    UnrollVarArgsAssignImpl<T, kStart + 1, kEnd, kStart + 1 == kEnd>::Run(
+        d, args...);
   }
 };
 
 template <typename T, size_t kStart, size_t kEnd>
-struct UnrollVarArgsAssign<T, kStart, kEnd, true> {
+struct UnrollVarArgsAssignImpl<T, kStart, kEnd, true> {
   HOSTDEVICE inline static void Run(T *d) {}
+};
+
+template <typename T>
+struct UnrollVarArgsAssign {
+  template <typename... Args>
+  HOSTDEVICE inline static void Run(T *d, Args... args) {
+    UnrollVarArgsAssignImpl<T, 0, sizeof...(Args), sizeof...(Args) == 0>::Run(
+        d, args...);
+  }
 };
 
 template <size_t kStart, size_t kEnd, bool kStop>
@@ -150,8 +160,8 @@ using UnrollFillConstant = detail::UnrollFillConstant<0, N, N == 0>;
 template <size_t N>
 using UnrollAssign = detail::UnrollAssign<0, N, N == 0>;
 
-template <typename T, size_t N>
-using UnrollVarArgsAssign = detail::UnrollVarArgsAssign<T, 0, N, N == 0>;
+template <typename T>
+using UnrollVarArgsAssign = detail::UnrollVarArgsAssign<T>;
 
 template <size_t N>
 using UnrollCompare = detail::UnrollCompare<0, N, N == 0>;
