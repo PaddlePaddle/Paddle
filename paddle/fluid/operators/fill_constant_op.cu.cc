@@ -17,4 +17,6 @@ limitations under the License. */
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(fill_constant, ops::FillConstantKernel<float>,
                         ops::FillConstantKernel<double>,
-                        ops::FillConstantKernel<int64_t>);
+                        ops::FillConstantKernel<int64_t>,
+                        ops::FillConstantKernel<int>,
+                        ops::FillConstantKernel<paddle::platform::float16>);

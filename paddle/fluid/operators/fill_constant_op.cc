@@ -87,4 +87,5 @@ REGISTER_OPERATOR(fill_constant, ops::FillConstantOp, ops::FillConstantOpMaker,
 REGISTER_OP_CPU_KERNEL(fill_constant, ops::FillConstantKernel<float>,
                        ops::FillConstantKernel<double>,
                        ops::FillConstantKernel<int64_t>,
-                       ops::FillConstantKernel<int>);
+                       ops::FillConstantKernel<int>,
+                       ops::FillConstantKernel<paddle::platform::float16>);
