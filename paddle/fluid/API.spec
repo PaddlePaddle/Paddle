@@ -464,11 +464,7 @@ paddle.fluid.unique_name.switch ArgSpec(args=['new_generator'], varargs=None, ke
 paddle.fluid.unique_name.guard ArgSpec(args=[], varargs='args', keywords='kwds', defaults=None)
 paddle.fluid.recordio_writer.convert_reader_to_recordio_file ArgSpec(args=['filename', 'reader_creator', 'feeder', 'compressor', 'max_num_records', 'feed_order'], varargs=None, keywords=None, defaults=(Compressor.Snappy, 1000, None))
 paddle.fluid.recordio_writer.convert_reader_to_recordio_files ArgSpec(args=['filename', 'batch_per_file', 'reader_creator', 'feeder', 'compressor', 'max_num_records', 'feed_order'], varargs=None, keywords=None, defaults=(Compressor.Snappy, 1000, None))
-paddle.fluid.Scope.__init__ __init__(self: paddle.fluid.core.Scope) -> None
-paddle.fluid.Scope.drop_kids drop_kids(self: paddle.fluid.core.Scope) -> None
-paddle.fluid.Scope.find_var find_var(self: paddle.fluid.core.Scope, arg0: unicode) -> paddle.fluid.core.Variable
-paddle.fluid.Scope.new_scope new_scope(self: paddle.fluid.core.Scope) -> paddle.fluid.core.Scope
-paddle.fluid.Scope.var var(self: paddle.fluid.core.Scope, arg0: unicode) -> paddle.fluid.core.Variable
+paddle.fluid.Scope Scope() -> paddle.fluid.core._Scope
 paddle.reader.map_readers ArgSpec(args=['func'], varargs='readers', keywords=None, defaults=None)
 paddle.reader.buffered ArgSpec(args=['reader', 'size'], varargs=None, keywords=None, defaults=None)
 paddle.reader.compose ArgSpec(args=[], varargs='readers', keywords='kwargs', defaults=None)
