@@ -380,7 +380,7 @@ const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var) {
     return &(var.Get<SelectedRows>().value());
   } else {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
-                 var.Type().name());
+                 ToTypeName(var.Type()));
   }
 }
 
@@ -391,7 +391,7 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
     return var->GetMutable<SelectedRows>()->mutable_value();
   } else {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
-                 var->Type().name());
+                 ToTypeName(var->Type()));
   }
 }
 
@@ -485,7 +485,7 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
                    PADDLE_ENFORCE(
                        var->IsType<LoDTensor>(),
                        "should be LoDTensor, but the received type is %s",
-                       var->Type().name());
+                       ToTypeName(var->Type()));
                    return &(var->Get<LoDTensor>());
                  });
   return res;
@@ -504,7 +504,7 @@ const std::vector<const Tensor*> ExecutionContext::LegacyMultiInput<Tensor>(
                    PADDLE_ENFORCE(
                        var->IsType<LoDTensor>(),
                        "%s should be LoDTensor, but the received type is %s",
-                       sub_name, var->Type().name());
+                       sub_name, ToTypeName(var->Type()));
                    return &(var->Get<LoDTensor>());
                  });
   return res;
@@ -533,7 +533,7 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
                    PADDLE_ENFORCE(
                        var->IsType<LoDTensor>(),
                        "%s should be LoDTensor, but the received type is %s",
-                       sub_name, var->Type().name());
+                       sub_name, ToTypeName(var->Type()));
                    return var->GetMutable<LoDTensor>();
                  });
   return res;
@@ -775,7 +775,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       PADDLE_THROW(
           "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
           "type_id is %s.",
-          var->Type().name());
+          ToTypeName(var->Type()));
     }
   }
 
@@ -798,7 +798,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       var->GetMutable<SelectedRows>()->set_height(dim[0]);
     } else {
       PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
-                   var->Type().name());
+                   ToTypeName(var->Type()));
     }
   }
 
