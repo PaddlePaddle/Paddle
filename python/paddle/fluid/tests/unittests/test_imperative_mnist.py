@@ -101,7 +101,7 @@ class TestImperativeMnist(unittest.TestCase):
             mnist = MNIST()
             sgd = SGDOptimizer(learning_rate=1e-3)
 
-            for i in range(1):
+            for i in range(2):
                 x_data = np.random.rand(128, 1, 28, 28).astype('float32')
                 img = to_variable(x_data)
                 y_data = np.random.rand(128, 1).astype('int64')

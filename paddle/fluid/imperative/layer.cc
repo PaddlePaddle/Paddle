@@ -61,6 +61,9 @@ class Autograd {
 
       for (size_t i = 0; i < input_grads.size(); ++i) {
         if (!input_grads[i]) continue;
+        if (ready_op->input_vars_->at(i)->stop_gradient_) {
+          continue;
+        }
         OpBase* pre_op = ready_op->pre_ops_->at(i);
         if (!pre_op) continue;
 
@@ -152,7 +155,7 @@ void VarBase::ApplyGrad(framework::Scope* scope, Variable* grad) {
 }
 
 std::vector<Variable*> OpBase::ApplyGrad(framework::Scope* scope) {
-  VLOG(3) << "op grad " << grad_op_desc_->Type();
+  VLOG(3) << "op grad type: " << grad_op_desc_->Type();
 
   for (const std::string& grad_invar : grad_op_desc_->InputArgumentNames()) {
     if (grad_to_var_->find(grad_invar) == grad_to_var_->end()) {
