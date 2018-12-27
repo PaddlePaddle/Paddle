@@ -191,7 +191,7 @@ def _fetch_var(name, scope=None, return_numpy=True):
     assert isinstance(name, str)
     if scope is None:
         scope = global_scope()
-    assert isinstance(scope, core.Scope)
+    assert isinstance(scope, core._Scope)
 
     var = scope.find_var(name)
     assert var is not None, (
