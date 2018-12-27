@@ -167,9 +167,8 @@ class ParallelExecutor(object):
         # step7: init ParallelExecutor
         self.executor = core.ParallelExecutor(
             places, persistable_vars, main.desc,
-            cpt.to_text(loss_name)
-            if loss_name else six.u(''), scope, local_scopes, exec_strategy,
-            build_strategy, num_trainers, trainer_id)
+            cpt.to_text(loss_name) if loss_name else six.u(''), scope,
+            local_scopes, exec_strategy, build_strategy)
 
         self.scope = scope
 
@@ -292,3 +291,6 @@ class ParallelExecutor(object):
     @property
     def device_count(self):
         return len(self._places)
+
+    def close(self):
+        pass

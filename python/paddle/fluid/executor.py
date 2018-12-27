@@ -14,11 +14,15 @@
 
 from __future__ import print_function
 
+import os
+import multiprocessing
 import numpy as np
 import contextlib
 import six
 from .framework import Program, default_main_program, Variable
 from . import core
+from . import compiler
+from .. import compat as cpt
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -275,11 +279,8 @@ class Executor(object):
 
     def __init__(self, place):
         self.place = place
-        p = core.Place()
-        p.set_place(place)
-        self.executor = core.Executor(p)
-
         self.program_caches = dict()
+        self.executor = None
         self._closed = False
 
     def _get_program_cache(self, program_cache_key):
@@ -361,6 +362,7 @@ class Executor(object):
         You can no long use this executor after calling this method.
         For the distributed training, this method would free the resource on PServers related to
         the current Trainer.
+        TODO(panyx0718): Why ParallelExecutor doesn't have close?
 
         Example:
             >>> cpu = core.CPUPlace()
@@ -368,9 +370,57 @@ class Executor(object):
             >>> ...
             >>> exe.close()
         """
-        if not self._closed:
+        if not self._closed and self.executor:
             self.executor.close()
             self._closed = True
+
+    def _run_parallel(self,
+                      exe,
+                      scope,
+                      feed=None,
+                      fetch_list=None,
+                      return_numpy=True):
+        if isinstance(feed, dict):
+            feed_tensor_dict = dict()
+            for feed_name in feed:
+                feed_tensor = feed[feed_name]
+                if not isinstance(feed_tensor, core.LoDTensor):
+                    feed_tensor = core.LoDTensor()
+                    # always set to CPU place, since the tensor need to be splitted
+                    # it is fast in CPU
+                    feed_tensor.set(feed[feed_name], core.CPUPlace())
+                feed_tensor_dict[feed_name] = feed_tensor
+
+            exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
+        elif isinstance(feed, list) or isinstance(feed, tuple):
+            if len(feed) != len(self._places):
+                raise ValueError(
+                    "Feed a list of tensor, the list should be the same size as places"
+                )
+
+            res = list()
+            for i, each in enumerate(feed):
+                if not isinstance(each, dict):
+                    raise TypeError(
+                        "Each element of feed list should be a dict")
+                res_dict = dict()
+                for feed_name in each:
+                    tensor = each[feed_name]
+                    if not isinstance(tensor, core.LoDTensor):
+                        tmp = core.LoDTensor()
+                        tmp.set(tensor, self._places[i])
+                        tensor = tmp
+                    res_dict[feed_name] = tensor
+                res.append(res_dict)
+            exe.feed_tensors_into_local_scopes(res)
+
+        fetch_var_name = '@FETCHED_VAR_NAME@'
+        exe.run(fetch_list, fetch_var_name)
+        arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
+
+        if return_numpy:
+            return as_numpy(arr)
+        return [arr[i] for i in range(len(arr))]
 
     def run(self,
             program=None,
@@ -428,6 +478,47 @@ class Executor(object):
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
 
+        if scope is None:
+            scope = global_scope()
+
+        compiled = isinstance(program, compiler._ProgramCompiler)
+        if not compiled:
+            p = core.Place()
+            p.set_place(self.place)
+            self.executor = core.Executor(p)
+            return self._run(
+                program,
+                feed=feed,
+                fetch_list=fetch_list,
+                feed_var_name=feed_var_name,
+                fetch_var_name=fetch_var_name,
+                scope=scope,
+                return_numpy=return_numpy,
+                use_program_cache=use_program_cache)
+
+        program._compile(scope, self.place)
+        self.executor = program._executor
+        if program._is_data_parallel:
+            return self._run_parallel(
+                exe=program._executor,
+                scope=scope,
+                feed=feed,
+                fetch_list=fetch_list,
+                return_numpy=return_numpy)
+        else:
+            return self._run(
+                program._program,
+                feed=feed,
+                fetch_list=fetch_list,
+                feed_var_name=feed_var_name,
+                fetch_var_name=fetch_var_name,
+                scope=scope,
+                return_numpy=return_numpy,
+                use_program_cache=use_program_cache)
+
+    def _run(self, program, feed, fetch_list, feed_var_name, fetch_var_name,
+             scope, return_numpy, use_program_cache):
+
         if feed is None:
             feed = {}
         if not isinstance(feed, dict):
@@ -443,9 +534,6 @@ class Executor(object):
             raise TypeError(
                 "Executor requires Program as its Parameter. But you passed in %s"
                 % (type(program)))
-
-        if scope is None:
-            scope = global_scope()
 
         cache_key = _get_program_cache_key(feed, fetch_list)
         if use_program_cache:
