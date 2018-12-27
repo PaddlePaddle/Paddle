@@ -52,12 +52,12 @@ std::unique_ptr<framework::Scope> GenerateVars(platform::Place place) {
   framework::Scope* scope = new framework::Scope();
   framework::Variable* var = scope->Var("var1");
   auto* slr = var->GetMutable<framework::SelectedRows>();
-  slr->set_height(1000);
+  slr->set_height(20000);
 
   auto* tensor = slr->mutable_value();
   auto* rows = slr->mutable_rows();
 
-  tensor->Resize(framework::make_ddim({3, 5}));
+  tensor->Resize(framework::make_ddim({20000, 1024}));
   tensor->mutable_data<float>(place);
 
   paddle::operators::math::set_constant(ctx, tensor, 32.7);
@@ -83,6 +83,7 @@ void Gather(const std::vector<distributed::RemoteVar>& vars,
 }
 
 TEST(PREFETCH, GPU) {
+  setenv("FLAGS_max_body_size", "2147483647", 1);
   platform::CUDAPlace place;
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);
