@@ -252,6 +252,7 @@ class GraphQuantizeTranspiler(object):
         return dequant_var
 
     def training_transpile(self, graph):
+        _NEED_INITIALIZED_VARS_OR_PARAMS.clear()
         self.is_test = False
         if graph is None:
             raise ValueError("The graph cannot be None!")
