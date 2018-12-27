@@ -216,8 +216,8 @@ class Vector {
       auto stream = dev_ctx->stream();
       void *src = gpu_->ptr();
       void *dst = cpu_.data();
-      memory::Copy(platform::CPUPlace(), dst, CUDAPlace().get(), src,
-                   gpu_->size(), stream);
+      paddle::memory::Copy(platform::CPUPlace(), dst, CUDAPlace().get(), src,
+                           gpu_->size(), stream);
       dev_ctx->Wait();
     }
 
@@ -263,8 +263,8 @@ class Vector {
       auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
           platform::DeviceContextPool::Instance().Get(place));
       auto stream = dev_ctx->stream();
-      memory::Copy(CUDAPlace().get(), dst, platform::CPUPlace(), src,
-                   gpu_->size(), stream);
+      paddle::memory::Copy(CUDAPlace().get(), dst, platform::CPUPlace(), src,
+                           gpu_->size(), stream);
     }
 
     void ImmutableCPU() const {
@@ -286,7 +286,7 @@ class Vector {
     bool IsInCPU() const { return flag_ & kDataInCPU; }
 
     mutable std::vector<T> cpu_;
-    mutable memory::AllocationPtr gpu_;
+    mutable paddle::memory::AllocationPtr gpu_;
     mutable int flag_;
 
     mutable std::mutex mtx_;

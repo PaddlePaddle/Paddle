@@ -28,8 +28,7 @@ void Tensor::check_memory_size() const {
       "or maybe the required data-type mismatches the data already stored.");
 }
 
-Tensor::Tensor(std::type_index type)
-    : type_(framework::ToDataType(type)), offset_(0) {}
+Tensor::Tensor(const proto::VarType::Type& dtype) : type_(dtype), offset_(0) {}
 
 size_t Tensor::memory_size() const {
   return holder_ == nullptr ? 0UL : holder_->size() - offset_;

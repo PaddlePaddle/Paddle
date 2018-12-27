@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -116,6 +117,9 @@ PYBIND11_MODULE(core, m) {
       [](py::object py_obj) -> size_t {
         return paddle::operators::AppendPythonCallableObjectAndReturnId(py_obj);
       });
+
+  m.add_object("_cleanup",
+               py::capsule([]() { ScopePool::Instance().Clear(); }));
 
   py::class_<imperative::VarBase, PyVarBase>(m, "VarBase", R"DOC()DOC")
       .def(py::init<>())
@@ -454,7 +458,7 @@ All parameter, weight, gradient are variables in Paddle.
             },
         py::return_value_policy::copy);
 
-  py::class_<Scope>(m, "Scope", R"DOC(
+  py::class_<Scope>(m, "_Scope", R"DOC(
     Scope is an association of a name to Variable. All variables belong to Scope.
 
     Variables in a parent scope can be retrieved from local scope.
@@ -474,16 +478,25 @@ All parameter, weight, gradient are variables in Paddle.
           param.set(param_array, place)
 
         )DOC")
+      .def("_remove_from_pool",
+           [](Scope &self) { ScopePool::Instance().Remove(&self); })
       .def("var",
            [](Scope &self, const std::string &name) -> Variable * {
              return self.Var(name);
            },
            py::return_value_policy::reference)
       .def("find_var", &Scope::FindVar, py::return_value_policy::reference)
-      .def(py::init<>())
       .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
            py::return_value_policy::reference)
       .def("drop_kids", &Scope::DropKids);
+
+  m.def("Scope",
+        []() -> Scope * {
+          auto *s = new Scope();
+          ScopePool::Instance().Insert(std::unique_ptr<Scope>(s));
+          return s;
+        },
+        py::return_value_policy::reference);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
