@@ -104,7 +104,7 @@ class TestConv2dOp(OpTest):
         input = np.random.randint(0, 10, self.input_size).astype(self.srctype)
 
         output = np.round(
-            conv2d_forward_naive(input * self.scale_in,
+            conv2d_forward_naive(input,
                                  np.round(filter * self.scale_weights[0]),
                                  self.groups, conv2d_param) *
             (self.scale_out /
@@ -129,7 +129,7 @@ class TestConv2dOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output_with_place(core.CPUPlace(), atol=1e-5)
 
 
 if __name__ == '__main__':
