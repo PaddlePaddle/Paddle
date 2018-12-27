@@ -148,7 +148,7 @@ class ParallelExecutor(object):
                 trainers_endpoints), "num_trainers == len(end_points)"
             build_strategy.trainers_endpoints = trainers_endpoints
 
-        # step5: get persistable_vars, parameter_vars, places. persistable_vars
+        # step6: get persistable_vars, places. persistable_vars
         # need be broadcast to other local_scope.
         persistable_vars = set([
             cpt.to_text(v.name) for v in [
@@ -164,7 +164,7 @@ class ParallelExecutor(object):
 
         places = list(map(place_obj, self._places))
 
-        # step6: init ParallelExecutor
+        # step7: init ParallelExecutor
         self.executor = core.ParallelExecutor(
             places, persistable_vars, main.desc,
             cpt.to_text(loss_name)

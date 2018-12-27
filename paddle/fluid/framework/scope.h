@@ -14,19 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-extern "C" {
-#include <xxhash.h>
-}
-
-#include <functional>
 #include <list>
-#include <memory>
+#include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -138,8 +131,7 @@ class Scope {
   DISABLE_COPY_AND_ASSIGN(Scope);
 
  private:
-  mutable RWLock kids_lock_;
-  mutable RWLock vars_lock_;
+  mutable std::mutex mutex_;
 };
 
 // Generate some debug string about the inherience structure of scope, quite

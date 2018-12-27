@@ -85,7 +85,6 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
 
     drop_scope_counter_ = 0;
   }
-
   if (eptr) {
     std::rethrow_exception(eptr);
   } else {
