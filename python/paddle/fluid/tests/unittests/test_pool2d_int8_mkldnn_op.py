@@ -148,7 +148,7 @@ class TestPool2D_Op(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output_with_place(core.CPUPlace(), atol=1e-5)
 
     def init_test_case(self):
         self.shape = [2, 3, 5, 5]
