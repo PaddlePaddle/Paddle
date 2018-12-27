@@ -209,6 +209,7 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
             else:
                 thread = threading.Thread(
                     target=feed_data, args=(feed_queue, reader))
+                thread.daemon = True
                 thread.start()
 
             self.outputs = []
