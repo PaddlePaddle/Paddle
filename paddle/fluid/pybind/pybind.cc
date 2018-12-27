@@ -139,7 +139,6 @@ PYBIND11_MODULE(core, m) {
       .def_property("value",
                     [](const imperative::VarBase &self) { return self.var_; },
                     [](imperative::VarBase &self, framework::Variable *var) {
-                      LOG(ERROR) << "set var to pointer: " << var;
                       self.var_ = var;
                     },
                     py::return_value_policy::reference)

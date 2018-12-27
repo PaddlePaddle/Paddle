@@ -84,7 +84,6 @@ class Tracer {
     *op->output_vars_ = outputs;
     for (size_t i = 0; i < outputs.size(); ++i) {
       const std::string vname = outputs[i]->var_desc_->Name();
-      LOG(ERROR) << "output name: " << vname;
       framework::Variable* var = root_scope_->Var(vname);
       if (!var->IsInitialized()) {
         framework::VarDesc* var_desc = block->FindVar(vname);

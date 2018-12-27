@@ -302,7 +302,7 @@ class Optimizer(object):
         This method combines interface `append_backward()` and
         `create_optimization_pass()` into one.
         """
-        if imperative_base.enabled:
+        if imperative_base.enabled():
             if parameter_list is not None:
                 params_grads = parameter_list
             else:
@@ -315,7 +315,7 @@ class Optimizer(object):
                         block=loss.block,
                         name=param._ivar._grad_name(),
                         stop_gradient=True)
-                    grad_var._value = param._ivar.grad_value()
+                    grad_var._value = param._ivar.grad_value
                     params_grads.append((param, grad_var))
 
             optimize_ops = self._create_optimization_pass(params_grads, loss,
