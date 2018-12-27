@@ -45,7 +45,6 @@ static void BuildUnaryNode(
   auto out = std::make_shared<T>(input);
   paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
 }
-
 }  // namespace ngraphs
 }  // namespace operators
 }  // namespace paddle
