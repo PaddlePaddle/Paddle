@@ -33,21 +33,10 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NOT_NULL(pre_ids);
     PADDLE_ENFORCE_NOT_NULL(pre_scores);
 
-    // LOG(INFO) << "pre_ids:" << *pre_ids;
-    // LOG(INFO) << "pre_scores: " << *pre_scores;
-    // if (ids) {
-    //   LOG(INFO) << "ids: " << *ids;
-    // }
-    // LOG(INFO) << "scores: " << *scores;
-
     size_t level = context.Attr<int>("level");
     size_t beam_size = context.Attr<int>("beam_size");
     int end_id = context.Attr<int>("end_id");
     bool is_accumulated = context.Attr<bool>("is_accumulated");
-
-    // LOG(INFO) << "level: " << level << ", beam_size: " << beam_size
-    //           << ", end_id: " << end_id << ", is_accumulated: " <<
-    //           is_accumulated;
 
     auto selected_ids = context.Output<framework::LoDTensor>("selected_ids");
     auto selected_scores =
@@ -56,8 +45,8 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NOT_NULL(selected_scores);
 
     math::BeamSearchFunctor<DeviceContext, T> alg;
-    alg(context.template device_context<DeviceContext>(), *pre_ids, *pre_scores,
-        ids, *scores, selected_ids, selected_scores, level, beam_size, end_id,
+    alg(context.template device_context<DeviceContext>(), pre_ids, pre_scores,
+        ids, scores, selected_ids, selected_scores, level, beam_size, end_id,
         is_accumulated);
   }
 };

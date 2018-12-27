@@ -24,25 +24,20 @@ template <typename T>
 class BeamSearchFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext &context,
-                  const framework::LoDTensor &pre_ids,
-                  const framework::LoDTensor &pre_scores,
+                  const framework::LoDTensor *pre_ids,
+                  const framework::LoDTensor *pre_scores,
                   const framework::LoDTensor *ids,
-                  const framework::LoDTensor &scores,
+                  const framework::LoDTensor *scores,
                   framework::LoDTensor *selected_ids,
                   framework::LoDTensor *selected_scores, size_t level,
                   size_t beam_size, int end_id, bool is_accumulated) {
-    // Input the arguments that needed by this class.
-    ids_ = ids;
-    scores_ = &scores;
-    beam_size_ = beam_size;
-    lod_level_ = level;
-    end_id_ = end_id;
     sent_offset_ = 0;
 
-    auto abs_lod = framework::ToAbsOffset(scores_->lod());
-    auto &high_level = abs_lod[lod_level_];
+    auto abs_lod = framework::ToAbsOffset(scores->lod());
+    auto &high_level = abs_lod[level];
 
-    auto items = SelectTopBeamSizeItems(pre_ids, pre_scores, is_accumulated);
+    auto items = SelectTopBeamSizeItems(pre_ids, pre_scores, ids, scores, level,
+                                        beam_size, end_id, is_accumulated);
     auto selected_items = ToMap(items, high_level.back());
     VLOG(3) << "selected_items:";
     for (size_t i = 0; i < selected_items.size(); ++i) {
@@ -52,7 +47,7 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
       }
     }
 
-    PruneEndBeams(pre_ids, &selected_items);
+    PruneEndBeams(pre_ids, abs_lod, &selected_items, level, end_id);
     // calculate the output tensor's height
     size_t num_instances = std::accumulate(
         std::begin(selected_items), std::end(selected_items), 0,
@@ -63,8 +58,9 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     selected_ids->Resize(dims);
     selected_scores->Resize(dims);
 
-    auto *ids_data = selected_ids->mutable_data<int64_t>(platform::CPUPlace());
-    auto *scores_data =
+    auto *selected_ids_data =
+        selected_ids->mutable_data<int64_t>(platform::CPUPlace());
+    auto *selected_scores_data =
         selected_scores->mutable_data<float>(platform::CPUPlace());
 
     // fill in data
@@ -73,8 +69,8 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     for (auto &items : selected_items) {
       low_level.push_back(low_offset);
       for (auto &item : items) {
-        ids_data[low_offset] = item.id;
-        scores_data[low_offset] = item.score;
+        selected_ids_data[low_offset] = item.id;
+        selected_scores_data[low_offset] = item.score;
         low_offset++;
       }
     }
@@ -109,6 +105,17 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     // the corresponding score
     float score;
 
+    inline bool operator<(const Item &in) const {
+      return (score < in.score) ||
+             ((score == in.score) && (offset < in.offset));
+    }
+
+    inline void operator=(const Item &in) {
+      offset = in.offset;
+      id = in.id;
+      score = in.score;
+    }
+
     std::string ToString() {
       std::ostringstream os;
       os << "{";
@@ -126,11 +133,12 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
    * Pruning must one step later than finishing (thus pre_ids is needed here),
    * since the end tokens must be writed out.
    */
-  void PruneEndBeams(const framework::LoDTensor &pre_ids,
-                     std::vector<std::vector<Item>> *items) {
-    auto *pre_ids_data = pre_ids.data<int64_t>();
-    auto abs_lod = framework::ToAbsOffset(scores_->lod());
-    auto &high_level = abs_lod[lod_level_];
+  void PruneEndBeams(const framework::LoDTensor *pre_ids,
+                     const framework::LoD &abs_lod,
+                     std::vector<std::vector<Item>> *items, size_t lod_level,
+                     int end_id) {
+    auto *pre_ids_data = pre_ids->data<int64_t>();
+    auto &high_level = abs_lod[lod_level];
     for (size_t src_idx = 0; src_idx < high_level.size() - 1; ++src_idx) {
       size_t src_prefix_start = high_level[src_idx];
       size_t src_prefix_end = high_level[src_idx + 1];
@@ -138,8 +146,8 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
       for (size_t offset = src_prefix_start; offset < src_prefix_end;
            offset++) {
         for (auto &item : items->at(offset)) {
-          if (item.id != static_cast<size_t>(end_id_) ||
-              pre_ids_data[offset] != end_id_) {
+          if (item.id != static_cast<size_t>(end_id) ||
+              pre_ids_data[offset] != end_id) {
             finish_flag = false;
             break;
           }
@@ -171,26 +179,104 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     return result;
   }
 
+  void Insert(std::vector<Item> *top_beam_ptr, const Item &item,
+              size_t beam_size) {
+    std::vector<Item> &top_beam = *top_beam_ptr;
+
+    size_t num_beams = top_beam.size();
+    if (num_beams < beam_size) {
+      top_beam.resize(num_beams + 1);
+      num_beams++;
+    } else {
+      if (item < top_beam[beam_size - 1]) {
+        return;
+      }
+    }
+
+    for (int k = static_cast<int>(num_beams) - 2; k >= 0; --k) {
+      if (top_beam[k] < item) {
+        top_beam[k + 1] = top_beam[k];
+      } else {
+        top_beam[k + 1] = item;
+        return;
+      }
+    }
+    top_beam[0] = item;
+  }
+
   /*
    * For each source, select top beam_size records.
    */
   std::vector<std::vector<Item>> SelectTopBeamSizeItems(
-      const framework::LoDTensor &pre_ids,
-      const framework::LoDTensor &pre_scores, bool is_accumulated) {
+      const framework::LoDTensor *pre_ids,
+      const framework::LoDTensor *pre_scores, const framework::LoDTensor *ids,
+      const framework::LoDTensor *scores, size_t lod_level, size_t beam_size,
+      int end_id, bool is_accumulated) {
     std::vector<std::vector<Item>> result;
+#if 1
     std::vector<Item> items;
     // for each source sentence, select the top beam_size items across all
     // candidate sets.
-    while (NextItemSet(pre_ids, pre_scores, &items, is_accumulated)) {
+    while (NextItemSet(pre_ids, pre_scores, ids, scores, &items, lod_level,
+                       end_id, is_accumulated)) {
       std::nth_element(
-          std::begin(items), std::begin(items) + beam_size_, std::end(items),
+          std::begin(items), std::begin(items) + beam_size, std::end(items),
           [](const Item &a, const Item &b) { return a.score > b.score; });
       // prune the top beam_size items.
-      if (items.size() > beam_size_) {
-        items.resize(beam_size_);
+      if (items.size() > beam_size) {
+        items.resize(beam_size);
       }
       result.emplace_back(items);
     }
+#else
+    // find the current candidates
+    auto abs_lod = framework::ToAbsOffset(scores->lod());
+
+    auto *pre_ids_data = pre_ids->data<int64_t>();
+    auto *pre_scores_data = pre_scores->data<float>();
+
+    auto *ids_data = ids ? ids->data<int64_t>() : nullptr;
+    auto *scores_data = scores->data<float>();
+
+    size_t num_seqs = scores->NumElements(lod_level);
+    size_t seq_width = 1;
+    for (int i = 1; i < scores->dims().size(); i++) {
+      seq_width *= scores->dims()[i];
+    }
+
+    for (size_t seq_id = 0; seq_id < num_seqs; ++seq_id) {
+      size_t seq_offset_start = abs_lod[lod_level][seq_id];
+      size_t seq_offset_end = abs_lod[lod_level][seq_id + 1];
+
+      std::vector<Item> top_beam;
+      top_beam.reserve(beam_size);
+
+      for (size_t offset = seq_offset_start; offset < seq_offset_end;
+           ++offset) {
+        auto pre_id = pre_ids_data[offset];
+        auto pre_score = pre_scores_data[offset];
+        if (pre_id == end_id) {
+          // Allocate all probability mass to end_id for finished branchs and
+          // the
+          // other candidate ids can be ignored.
+          Item item(offset, end_id, pre_score);
+          Insert(&top_beam, item, beam_size);
+        } else {
+          size_t index = offset * seq_width;
+          for (size_t d = 0; d < seq_width; d++, index++) {
+            int64_t id = ids_data ? ids_data[index] : static_cast<int64_t>(d);
+            float score = is_accumulated
+                              ? scores_data[index]
+                              : pre_score + std::log(scores_data[index]);
+            Item item(offset, id, score);
+            Insert(&top_beam, item, beam_size);
+          }
+        }
+      }
+
+      result.emplace_back(top_beam);
+    }
+#endif
     VLOG(3) << "SelectTopBeamSizeItems result size " << result.size();
     for (auto &items : result) {
       VLOG(3) << "item set:";
@@ -206,43 +292,41 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
    * Get the items of next source sequence, return false if no remaining items.
    * the candidates of a source
    */
-  bool NextItemSet(const framework::LoDTensor &pre_ids,
-                   const framework::LoDTensor &pre_scores,
-                   std::vector<Item> *items, bool is_accumulated) {
-    if (sent_offset_ >= scores_->NumElements(lod_level_)) {
+  bool NextItemSet(const framework::LoDTensor *pre_ids,
+                   const framework::LoDTensor *pre_scores,
+                   const framework::LoDTensor *ids,
+                   const framework::LoDTensor *scores, std::vector<Item> *items,
+                   size_t lod_level, int end_id, bool is_accumulated) {
+    if (sent_offset_ >= scores->NumElements(lod_level)) {
       return false;
     }
 
     // find the current candidates
-    auto abs_lod = framework::ToAbsOffset(scores_->lod());
+    auto abs_lod = framework::ToAbsOffset(scores->lod());
 
-    auto *ids_data = ids_ ? ids_->data<int64_t>() : nullptr;
-    auto *scores_data = scores_->data<float>();
+    auto *ids_data = ids ? ids->data<int64_t>() : nullptr;
+    auto *scores_data = scores->data<float>();
 
     size_t seq_width = 1;
-    for (int i = 1; i < scores_->dims().size(); i++) {
-      seq_width *= scores_->dims()[i];
+    for (int i = 1; i < scores->dims().size(); i++) {
+      seq_width *= scores->dims()[i];
     }
 
-    LOG(INFO) << "seq_width: " << seq_width;
+    auto *pre_ids_data = pre_ids->data<int64_t>();
+    auto *pre_scores_data = pre_scores->data<float>();
 
-    auto *pre_ids_data = pre_ids.data<int64_t>();
-    auto *pre_scores_data = pre_scores.data<float>();
-
-    size_t seq_offset_start = abs_lod[lod_level_][sent_offset_];
-    size_t seq_offset_end = abs_lod[lod_level_][sent_offset_ + 1];
-    LOG(INFO) << "seq_offset_start: " << seq_offset_start
-              << ", seq_offset_end: " << seq_offset_end;
+    size_t seq_offset_start = abs_lod[lod_level][sent_offset_];
+    size_t seq_offset_end = abs_lod[lod_level][sent_offset_ + 1];
 
     items->clear();
     items->reserve((seq_offset_end - seq_offset_start) * seq_width);
     for (size_t offset = seq_offset_start; offset < seq_offset_end; offset++) {
       auto pre_id = pre_ids_data[offset];
       auto pre_score = pre_scores_data[offset];
-      if (pre_id == end_id_) {
+      if (pre_id == end_id) {
         // Allocate all probability mass to eos_id for finished branchs and the
         // other candidate ids can be ignored.
-        items->emplace_back(offset, end_id_, pre_score);
+        items->emplace_back(offset, end_id, pre_score);
       } else {
         for (size_t d = 0; d < seq_width; d++) {
           const size_t index = offset * seq_width + d;
@@ -260,12 +344,7 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
   }
 
  protected:
-  size_t beam_size_;
-  const framework::LoDTensor *ids_;
-  const framework::LoDTensor *scores_;
-  size_t lod_level_{0};
   size_t sent_offset_{0};
-  int end_id_{0};
 };
 
 template class BeamSearchFunctor<platform::CPUDeviceContext, int>;

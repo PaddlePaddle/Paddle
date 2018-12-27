@@ -105,10 +105,10 @@ class BeamSearchFunctor {
    * that means no candidates is provided, and the task will stop running.
    */
   void operator()(const DeviceContext& context,
-                  const framework::LoDTensor& pre_ids,
-                  const framework::LoDTensor& pre_scores,
+                  const framework::LoDTensor* pre_ids,
+                  const framework::LoDTensor* pre_scores,
                   const framework::LoDTensor* ids,
-                  const framework::LoDTensor& scores,
+                  const framework::LoDTensor* scores,
                   framework::LoDTensor* selected_ids,
                   framework::LoDTensor* selected_scores, size_t level,
                   size_t beam_size, int end_id, bool is_accumulated);

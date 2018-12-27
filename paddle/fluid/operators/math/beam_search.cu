@@ -283,10 +283,10 @@ template <typename T>
 class BeamSearchFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::LoDTensor& pre_ids,
-                  const framework::LoDTensor& pre_scores,
+                  const framework::LoDTensor* pre_ids,
+                  const framework::LoDTensor* pre_scores,
                   const framework::LoDTensor* ids,
-                  const framework::LoDTensor& scores,
+                  const framework::LoDTensor* scores,
                   framework::LoDTensor* selected_ids,
                   framework::LoDTensor* selected_scores, size_t level,
                   size_t beam_size, int end_id, bool is_accumulated) {
@@ -296,17 +296,17 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
     // LOG(INFO) << "pre_scores: " << pre_scores;
     // LOG(INFO) << "ids: " << ids;
     // LOG(INFO) << "scores: " << scores;
-    auto abs_lod = framework::ToAbsOffset(scores.lod());
+    auto abs_lod = framework::ToAbsOffset(scores->lod());
 
-    const int64_t* pre_ids_data = pre_ids.data<int64_t>();
-    const float* pre_scores_data = pre_scores.data<float>();
+    const int64_t* pre_ids_data = pre_ids->data<int64_t>();
+    const float* pre_scores_data = pre_scores->data<float>();
     const int64_t* ids_data = ids ? ids->data<int64_t>() : nullptr;
-    const float* scores_data = scores.data<float>();
+    const float* scores_data = scores->data<float>();
 
     const size_t num_seqs = abs_lod[level].size() - 1;
     size_t seq_width = 1;
-    for (int i = 1; i < scores.dims().size(); i++) {
-      seq_width *= scores.dims()[i];
+    for (int i = 1; i < scores->dims().size(); i++) {
+      seq_width *= scores->dims()[i];
     }
 
     // Reserve a big enough memory.
@@ -319,7 +319,7 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
 
     framework::LoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
-    selected_lod[1].resize(scores.dims()[0] + 1);
+    selected_lod[1].resize(scores->dims()[0] + 1);
     size_t* selected_offsets =
         selected_lod[1].CUDAMutableData(context.GetPlace());
 
