@@ -84,11 +84,15 @@ bool IsCompiledWithCUDA() {
 }
 
 bool IsCompiledWithBrpc() {
-#if defined(PADDLE_WITH_BRPC) || defined(PADDLE_WITH_BRPC_RDMA)
-  return true;
-#else
+#ifndef PADDLE_WITH_DISTRIBUTE
   return false;
 #endif
+
+#ifdef PADDLE_WITH_GRPC
+  return false;
+#endif
+
+  return true;
 }
 
 bool IsCompiledWithDIST() {

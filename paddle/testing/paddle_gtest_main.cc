@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
 
   std::vector<std::string> envs;
   std::vector<std::string> undefok;
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_GRPC)
   envs.push_back("max_body_size");
 #endif
 
