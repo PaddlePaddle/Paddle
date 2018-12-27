@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/platform/temporary_allocator.h"
 #include <gtest/gtest.h>
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/create_tensor_with_allocationptr.h"
+#include "paddle/fluid/framework/tensor_util.h"
 DECLARE_double(limit_of_temporary_allocation);
 
 namespace paddle {
@@ -47,6 +46,7 @@ TEST(temporary_allocator, temporary_allocator) {
 
 TEST(temporary_allocator, add_callback) {
 #ifdef PADDLE_WITH_CUDA
+  const double limit = FLAGS_limit_of_temporary_allocation;
   FLAGS_limit_of_temporary_allocation = 10;
   platform::CUDAPlace gpu_place(0);
   TemporaryAllocator gpu_alloc(gpu_place);
@@ -63,7 +63,7 @@ TEST(temporary_allocator, add_callback) {
   });
   { gpu_alloc.Allocate(100); }
   PADDLE_ENFORCE(deleted);
-  FLAGS_limit_of_temporary_allocation = -1;
+  FLAGS_limit_of_temporary_allocation = limit;
 #endif
 }
 
@@ -75,8 +75,8 @@ TEST(temporary_allocator, create_tensor_with_allocationptr) {
     auto allocation = cpu_alloc.Allocate(memory_size);
     void* address = allocation->ptr();
     int numel = memory_size / sizeof(float);
-    framework::Tensor tensor =
-        GetTensor<float>(std::move(allocation), framework::make_ddim({numel}));
+    framework::Tensor tensor = framework::GetTensor<float>(
+        std::move(allocation), framework::make_ddim({numel}));
     PADDLE_ENFORCE_EQ(address, tensor.data<float>());
     PADDLE_ENFORCE_EQ(tensor.numel(), numel);
   }
@@ -90,8 +90,8 @@ TEST(temporary_allocator, create_tensor_with_allocationptr) {
     auto allocation = gpu_alloc.Allocate(memory_size);
     void* address = allocation->ptr();
     int numel = memory_size / sizeof(float);
-    framework::Tensor tensor =
-        GetTensor<float>(std::move(allocation), framework::make_ddim({numel}));
+    framework::Tensor tensor = framework::GetTensor<float>(
+        std::move(allocation), framework::make_ddim({numel}));
     PADDLE_ENFORCE_EQ(address, tensor.data<float>());
     PADDLE_ENFORCE_EQ(tensor.numel(), numel);
   }
@@ -116,7 +116,7 @@ TEST(temporary_allocator, create_tensor_with_allocationptr2) {
     {
       auto allocation = cpu_alloc.Allocate(memory_size);
       address = allocation->ptr();
-      framework::Tensor tensor = GetTensor<float>(
+      framework::Tensor tensor = framework::GetTensor<float>(
           std::move(allocation), framework::make_ddim({numel}));
       PADDLE_ENFORCE_EQ(address, tensor.data<float>());
       PADDLE_ENFORCE_EQ(tensor.numel(), numel);
@@ -138,7 +138,7 @@ TEST(temporary_allocator, create_tensor_with_allocationptr2) {
     {
       auto allocation = gpu_alloc.Allocate(memory_size);
       address = allocation->ptr();
-      framework::Tensor tensor = GetTensor<float>(
+      framework::Tensor tensor = framework::GetTensor<float>(
           std::move(allocation), framework::make_ddim({numel}));
       PADDLE_ENFORCE_EQ(address, tensor.data<float>());
       PADDLE_ENFORCE_EQ(tensor.numel(), numel);

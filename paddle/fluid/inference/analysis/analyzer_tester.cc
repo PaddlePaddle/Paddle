@@ -69,17 +69,17 @@ void TestWord2vecPrediction(const std::string& model_path) {
   std::vector<PaddleTensor> outputs;
   CHECK(predictor->Run(slots, &outputs));
 
-  PADDLE_ENFORCE(outputs.size(), 1UL);
+  PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
   // Check the output buffer size and result of each tid.
-  PADDLE_ENFORCE(outputs.front().data.length(), 33168UL);
+  PADDLE_ENFORCE_EQ(outputs.front().data.length(), 33168UL);
   float result[5] = {0.00129761, 0.00151112, 0.000423564, 0.00108815,
                      0.000932706};
   const size_t num_elements = outputs.front().data.length() / sizeof(float);
   // The outputs' buffers are in CPU memory.
   for (size_t i = 0; i < std::min(static_cast<size_t>(5UL), num_elements);
        i++) {
-    LOG(INFO) << "data: "
-              << static_cast<float*>(outputs.front().data.data())[i];
+    LOG(INFO) << "data: " << static_cast<float*>(outputs.front().data.data())[i]
+              << " result: " << result[i];
     PADDLE_ENFORCE(static_cast<float*>(outputs.front().data.data())[i],
                    result[i]);
   }
