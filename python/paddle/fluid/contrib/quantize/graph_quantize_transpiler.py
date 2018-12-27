@@ -15,8 +15,6 @@
 import collections
 import numpy as np
 from ....fluid import core
-from ....fluid.layer_helper import LayerHelper
-from ....fluid.layers.nn import autoincreased_step_counter
 from ....fluid.param_attr import ParamAttr
 from ....fluid.initializer import Constant
 from ....fluid import unique_name
@@ -25,6 +23,8 @@ from ....fluid.framework import Variable
 __all__ = ['GraphQuantizeTranspiler']
 
 _QUANTIZABLE_OP_TYPES = ['conv2d', 'depthwise_conv2d', 'mul']
+
+_NEED_INITIALIZED_VARS_OR_PARAMS = collections.OrderedDict()
 
 
 def _quantized_var_name(var_name):
@@ -129,7 +129,6 @@ class GraphQuantizeTranspiler(object):
         self.activation_quantize_type = activation_quantize_type
 
         self.window_size = window_size
-        self.helper = LayerHelper(self.__class__.__name__)
         self.fake_quant_op_types = [
             'fake_quantize_abs_max', 'fake_quantize_range_abs_max'
         ]
@@ -137,10 +136,25 @@ class GraphQuantizeTranspiler(object):
         self.is_test = None
         self.global_step = None
 
-    def _create_global_step(self):
+    def _create_global_step(self, graph):
         if self.weight_quantize_type == 'range_abs_max' or \
                 self.activation_quantize_type == 'range_abs_max':
-            self.global_step = autoincreased_step_counter()
+            counter_name = '@STEP_COUNTER@'
+            if counter_name not in graph.vars_map():
+                counter = graph.create_var(
+                    name=counter_name,
+                    dtype='int64',
+                    shape=[1],
+                    persistable=True)
+                _NEED_INITIALIZED_VARS_OR_PARAMS[counter] = Constant(
+                    value=0, force_cpu=True)
+                graph.prepend_op(
+                    type='increment',
+                    inputs={'X': [counter]},
+                    outputs={'Out': [counter]},
+                    attrs={'step': 1.0})
+                counter.stop_gradient = True
+            self.global_step = graph.var(counter_name)
 
     def _insert_quant_abs_max_op(self, graph, idx, var, quant_bits):
         """Insert fake_quantize_abs_max op.
@@ -172,27 +186,23 @@ class GraphQuantizeTranspiler(object):
             type=var.type,
             shape=var.shape,
             dtype=var.dtype)
-        scale = self.helper.create_parameter(
-            attr=ParamAttr(
-                name=_quantized_scale_name(var.name),
-                initializer=Constant(0.001),
-                trainable=False),
+        scale = graph.create_parameter(
+            name=_quantized_scale_name(var.name),
             shape=[1],
-            dtype=var.dtype)
+            dtype=var.dtype,
+            trainable=False)
         scale.stop_gradient = True
-
+        _NEED_INITIALIZED_VARS_OR_PARAMS[scale] = Constant(value=0.001)
         ins = {'X': var, 'InScale': scale}
         outs = {'Out': quant_var, 'OutScale': scale}
         if not self.is_test:
-            # A global step counter variable with type int64
-            scales = self.helper.create_global_variable(
+            scales = graph.create_var(
                 name=unique_name.generate('scales'),
                 persistable=True,
                 dtype=var.dtype,
                 shape=[self.window_size])
-            self.helper.set_variable_initializer(
-                scales, initializer=Constant(value=0))
-
+            _NEED_INITIALIZED_VARS_OR_PARAMS[scales] = Constant(value=0)
+            # A global step counter variable with type int64
             ins['Iter'] = self.global_step
             outs['OutScales'] = scales
 
@@ -242,6 +252,7 @@ class GraphQuantizeTranspiler(object):
         return dequant_var
 
     def training_transpile(self, graph):
+        _NEED_INITIALIZED_VARS_OR_PARAMS.clear()
         self.is_test = False
         if graph is None:
             raise ValueError("The graph cannot be None!")
@@ -282,7 +293,7 @@ class GraphQuantizeTranspiler(object):
                 raise ValueError("There is no dequanted inputs for op %s." %
                                  (op.type))
 
-        self._create_global_step()
+        self._create_global_step(graph)
         for op in list(graph.all_ops()):
             # rewrite the forward graph
             if op.type in _QUANTIZABLE_OP_TYPES:
@@ -290,6 +301,7 @@ class GraphQuantizeTranspiler(object):
             # rename the backward op inputs
             if op.type in grad_op_types:
                 _transpile_backward(graph, op)
+        return _NEED_INITIALIZED_VARS_OR_PARAMS
 
     def freeze_graph(self, graph, place, scope, fuse_bn=False):
         """
@@ -439,7 +451,7 @@ class GraphQuantizeTranspiler(object):
         def _load_var(name):
             return np.array(scope.find_var(name).get_tensor())
 
-        def convert_to_int8(var):
+        def _convert_to_int8(var):
             int8_var_name = var.name + ".int8"
             int8_var = graph.create_parameter(
                 name=int8_var_name.encode('ascii'),
@@ -462,7 +474,7 @@ class GraphQuantizeTranspiler(object):
                     var = graph.var(name)
                     if var.persistable:
                         if name not in input_map:
-                            int8_var = convert_to_int8(var)
+                            int8_var = _convert_to_int8(var)
                             input_map[name] = int8_var.name
                         op._rename_input(name, input_map[name])
         self._remove_unused_var(graph)

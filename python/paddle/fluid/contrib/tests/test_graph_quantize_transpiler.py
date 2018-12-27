@@ -13,11 +13,12 @@
 # limitations under the license.
 
 import unittest
-
+import random
 import numpy as np
 import paddle
 import paddle.fluid as fluid
 import six
+from paddle.fluid.framework import Program
 from paddle.fluid.contrib.quantize.graph_quantize_transpiler import GraphQuantizeTranspiler
 from paddle.fluid.contrib.quantize.graph_quantize_transpiler import _original_var_name
 from paddle.fluid.contrib.slim.graph.executor import get_executor
@@ -196,27 +197,30 @@ class TestGraphQuantizeTranspiler(unittest.TestCase):
                         opt.minimize(loss)
             return [img, label], loss
 
-        main = fluid.Program()
-        startup = fluid.Program()
-
-        import random
         random.seed(0)
         np.random.seed(0)
 
+        main = fluid.Program()
+        startup = fluid.Program()
         feeds, loss = build_program(main, startup, False)
-        graph = ImitationGraph(main)
-        test_graph = graph.clone(for_test=True).prune(feeds, loss)
-
-        quant_transpiler = GraphQuantizeTranspiler()
-        quant_transpiler.training_transpile(graph)
-        quant_transpiler.training_transpile(test_graph)
-
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-        exe = get_executor(graph, place)
+        program_exe = fluid.Executor(place)
+        program_exe.run(startup)
+
+        graph = ImitationGraph(main)
+        graph_transpiler = GraphQuantizeTranspiler(
+            activation_quantize_type='range_abs_max')
+        # graph_transpiler = GraphQuantizeTranspiler()
+        need_inited = graph_transpiler.training_transpile(graph)
+        init_program = Program()
+        for var, initializer in need_inited.iteritems():
+            init_program.global_block()._clone_variable(var)
+            initializer(var, init_program.global_block())
+        program_exe.run(program=init_program, scope=fluid.global_scope())
+
         iters = 5
         batch_size = 8
         class_num = 10
-        exe.run(ImitationGraph(startup))
 
         train_reader = paddle.batch(
             paddle.reader.shuffle(
@@ -225,6 +229,7 @@ class TestGraphQuantizeTranspiler(unittest.TestCase):
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size)
         feeder = fluid.DataFeeder(feed_list=feeds, place=place)
+        exe = get_executor(graph, place)
 
         for _ in range(iters):
             data = next(train_reader())
@@ -232,28 +237,28 @@ class TestGraphQuantizeTranspiler(unittest.TestCase):
                         feed=feeder.feed(data),
                         fetches=[loss.name])
 
-        test_data = next(test_reader())
+        test_graph = graph.clone(for_test=True).prune(feeds, loss)
         w_var = test_graph.var('conv2d_1.w_0.quantized')
+        test_data = next(test_reader())
         # Testing during training
         test_loss1, w_quant = exe.run(graph=test_graph,
                                       feed=feeder.feed(test_data),
                                       fetches=[loss.name, w_var.name])
 
         # Freeze program for inference, but the weight of fc/conv is still float type.
-        quant_transpiler.freeze_graph(test_graph, place, fluid.global_scope())
+        graph_transpiler.freeze_graph(test_graph, place, fluid.global_scope())
         test_loss2, = exe.run(graph=test_graph,
                               feed=feeder.feed(test_data),
                               fetches=[loss.name])
-
         self.assertAlmostEqual(test_loss1, test_loss2, delta=5e-3)
         w_freeze = np.array(fluid.global_scope().find_var('conv2d_1.w_0')
                             .get_tensor())
         self.assertAlmostEqual(np.sum(w_freeze), np.sum(w_quant))
 
         # Convert parameter to 8-bit.
-        quant_transpiler.convert_to_int8(test_graph, place,
-                                         fluid.global_scope())
         # Save the 8-bit parameter and model file.
+        graph_transpiler.convert_to_int8(test_graph, place,
+                                         fluid.global_scope())
         save_inference_graph_model('graph_model_8bit', ['image', 'label'],
                                    [loss.name], exe, test_graph)
         # Test whether the 8-bit parameter and model file can be loaded successfully.
