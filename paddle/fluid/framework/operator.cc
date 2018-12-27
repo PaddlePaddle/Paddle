@@ -179,8 +179,8 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
-void OperatorBase::Run(const RuntimeContext& ctx,
-                       const platform::Place& place) {
+void OperatorBase::RunPrepared(const RuntimeContext& ctx,
+                               const platform::Place& place) {
   RunImplPrepared(ctx, place);
 }
 
@@ -1092,7 +1092,9 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   int data_type = -1;
   for (auto& input : this->inputs_) {
-    for (const Variable* var : ctx.MultiInputVar(input.first)) {
+    const std::vector<const Variable*> vars = ctx.MultiInputVar(input.first);
+    for (size_t i = 0; i < vars.size(); ++i) {
+      const Variable* var = vars[i];
       if (var != nullptr) {
         const Tensor* t = nullptr;
         if (var->IsType<Tensor>()) {
@@ -1103,7 +1105,8 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &(var->Get<SelectedRows>().value());
         }
         if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input is not initialized");
+          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu)is not initialized",
+                         input.first, i);
           int tmp = static_cast<int>(t->type());
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,

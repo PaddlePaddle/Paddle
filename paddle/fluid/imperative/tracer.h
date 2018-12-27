@@ -82,10 +82,10 @@ class Tracer {
         invars.push_back(inp->var_);
         vars[inp->var_desc_->Name()] = inp;
         if (inp->pre_op_) {
-          (*op->pre_ops_)[it.first].push_back(inp->pre_op_);
-          (*op->pre_ops_out_idx_)[it.first].push_back(inp->pre_op_out_idx_);
+          op->pre_ops_[it.first].push_back(inp->pre_op_);
+          op->pre_ops_out_idx_[it.first].push_back(inp->pre_op_out_idx_);
         } else {
-          (*op->pre_ops_)[it.first].push_back(nullptr);
+          op->pre_ops_[it.first].push_back(nullptr);
         }
         VLOG(3) << "input vname " << inp->var_desc_->Name() << " "
                 << inp->var_->IsInitialized();
@@ -118,24 +118,33 @@ class Tracer {
 
     VLOG(3) << "tracer running " << op_desc->Type();
     framework::RuntimeContext ctx(invars_map, outvars_map);
-    op_base->Run(ctx, platform::CPUPlace());
+    // op_base->RunPrepared(ctx, platform::CPUPlace());
+
+    // TODO(panyx0718): Cache p.
+    framework::OperatorWithKernel* op_kernel =
+        dynamic_cast<framework::OperatorWithKernel*>(op_base.get());
+    PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
+
+    framework::Scope scope;
+    platform::CPUPlace place;
+    PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place);
+    p.op.RuntimeInferShape(scope, place, ctx);
+    p.func(framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx));
 
     if (block == startup_block_) {
       op->grad_op_desc_ = nullptr;
-      op->grad_to_var_ = nullptr;
     } else {
       framework::OpDesc* grad_op_desc;
       auto grad_to_var = new std::unordered_map<std::string, std::string>();
       CreateGradOp(*op_desc, {}, {block}, &grad_op_desc, grad_to_var);
       op->grad_op_desc_ = grad_op_desc;
-      op->grad_to_var_ = grad_to_var;
 
       for (auto it : grad_op_desc->Inputs()) {
         auto& grad_in_vars = op->grad_input_vars_[it.first];
         for (const std::string& grad_invar : it.second) {
           block->FindRecursiveOrCreateVar(grad_invar);
-          auto var_it = op->grad_to_var_->find(grad_invar);
-          if (var_it == op->grad_to_var_->end()) {
+          auto var_it = grad_to_var->find(grad_invar);
+          if (var_it == grad_to_var->end()) {
             auto fwd_var_it = vars.find(grad_invar);
             PADDLE_ENFORCE(fwd_var_it != vars.end());
             grad_in_vars.push_back(fwd_var_it->second->var_);
@@ -152,8 +161,8 @@ class Tracer {
         auto& grad_out_vars = op->grad_output_vars_[it.first];
         for (const std::string& grad_outvar : it.second) {
           block->FindRecursiveOrCreateVar(grad_outvar);
-          auto var_it = op->grad_to_var_->find(grad_outvar);
-          PADDLE_ENFORCE(var_it != op->grad_to_var_->end());
+          auto var_it = grad_to_var->find(grad_outvar);
+          PADDLE_ENFORCE(var_it != grad_to_var->end());
           VarBase* var = vars[var_it->second];
           if (!var->grads_->IsInitialized()) {
             InitVar(var->var_, var->grads_);
