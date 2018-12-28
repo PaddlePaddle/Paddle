@@ -220,6 +220,22 @@ static inline void CalcObjnessLossGrad(T* input_grad, const T* loss,
 }
 
 template <typename T>
+static void inline GtValid(bool* valid, const T* gtbox, const int n,
+                           const int b) {
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < b; j++) {
+      if (LessEqualZero(gtbox[j * 4 + 2]) || LessEqualZero(gtbox[j * 4 + 3])) {
+        valid[j] = false;
+      } else {
+        valid[j] = true;
+      }
+    }
+    valid += b;
+    gtbox += b * 4;
+  }
+}
+
+template <typename T>
 class Yolov3LossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -257,20 +273,28 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     int* gt_match_mask_data =
         gt_match_mask->mutable_data<int>({n, b}, ctx.GetPlace());
 
+    // calc valid gt box mask, avoid calc duplicately in following code
+    Tensor gt_valid_mask;
+    bool* gt_valid_mask_data =
+        gt_valid_mask.mutable_data<bool>({n, b}, ctx.GetPlace());
+    GtValid<T>(gt_valid_mask_data, gt_box_data, n, b);
+
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < mask_num; j++) {
         for (int k = 0; k < h; k++) {
           for (int l = 0; l < w; l++) {
+            // each predict box find a best match gt box, if overlap is bigger
+            // then ignore_thresh, ignore the objectness loss.
             int box_idx =
                 GetEntryIndex(i, j, k * w + l, mask_num, an_stride, stride, 0);
             Box<T> pred = GetYoloBox(input_data, anchors, l, k, anchor_mask[j],
                                      h, input_size, box_idx, stride);
             T best_iou = 0;
             for (int t = 0; t < b; t++) {
-              Box<T> gt = GetGtBox(gt_box_data, i, b, t);
-              if (LessEqualZero<T>(gt.w) || LessEqualZero<T>(gt.h)) {
+              if (!gt_valid_mask_data[i * b + t]) {
                 continue;
               }
+              Box<T> gt = GetGtBox(gt_box_data, i, b, t);
               T iou = CalcBoxIoU(pred, gt);
               if (iou > best_iou) {
                 best_iou = iou;
@@ -281,15 +305,18 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
               int obj_idx = (i * mask_num + j) * stride + k * w + l;
               obj_mask_data[obj_idx] = -1;
             }
+            // TODO(dengkaipeng): all losses should be calculated if best IoU
+            // is bigger then truth thresh should be calculated here, but
+            // currently, truth thresh is an unreachable value as 1.0.
           }
         }
       }
       for (int t = 0; t < b; t++) {
-        Box<T> gt = GetGtBox(gt_box_data, i, b, t);
-        if (LessEqualZero<T>(gt.w) || LessEqualZero<T>(gt.h)) {
+        if (!gt_valid_mask_data[i * b + t]) {
           gt_match_mask_data[i * b + t] = -1;
           continue;
         }
+        Box<T> gt = GetGtBox(gt_box_data, i, b, t);
         int gi = static_cast<int>(gt.x * w);
         int gj = static_cast<int>(gt.y * h);
         Box<T> gt_shift = gt;
@@ -297,6 +324,9 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
         gt_shift.y = 0.0;
         T best_iou = 0.0;
         int best_n = 0;
+        // each gt box find a best match anchor box as positive sample,
+        // for positive sample, all losses should be calculated, and for
+        // other samples, only objectness loss is required.
         for (int an_idx = 0; an_idx < an_num; an_idx++) {
           Box<T> an_box;
           an_box.x = 0.0;
@@ -304,7 +334,8 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
           an_box.w = anchors[2 * an_idx] / static_cast<T>(input_size);
           an_box.h = anchors[2 * an_idx + 1] / static_cast<T>(input_size);
           float iou = CalcBoxIoU<T>(an_box, gt_shift);
-          // TO DO: iou > 0.5 ?
+          // TODO(dengkaipeng): In paper, objectness loss is ignore when
+          // best IoU > 0.5, but darknet code didn't implement this.
           if (iou > best_iou) {
             best_iou = iou;
             best_n = an_idx;
