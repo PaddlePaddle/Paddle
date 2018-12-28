@@ -11,17 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import print_function
 
-import dist_ctr
-from test_dist_base import runtime_main
+import os
+import unittest
+from test_dist_base import TestDistBase
 
 
-class TestDistCTRWithL2Decay(dist_ctr.TestDistCTR2x2):
-    def config(self):
-        self.use_l2_decay = True
+class TestDistCTR2x2(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._enforce_place = "CPU"
+
+    def test_dist_ctr(self):
+        need_envs = {"USE_L2_DECAY": "1"}
+        self.check_with_place(
+            "dist_ctr.py",
+            delta=1e-7,
+            check_error_log=False,
+            need_envs=need_envs)
 
 
 if __name__ == "__main__":
-    runtime_main(TestDistCTRWithL2Decay)
+    unittest.main()
