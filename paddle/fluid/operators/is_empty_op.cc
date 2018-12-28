@@ -29,6 +29,7 @@ class IsEmptyOp : public framework::OperatorWithKernel {
                    "Input(X) of IsEmptyOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of IsEmptyOp should not be null.");
+
     ctx->SetOutputDim("Out", {1});
   }
 
