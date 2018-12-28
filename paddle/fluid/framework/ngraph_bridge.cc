@@ -12,13 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_NGRAPH
 #include <algorithm>
 #include <functional>
-
-#include "paddle/fluid/framework/ngraph_bridge.h"
+#include <vector>
 
 #include "ngraph/ngraph.hpp"
+#include "paddle/fluid/framework/ngraph_bridge.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/ngraph/ngraph_ops.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/ngraph_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -27,13 +30,18 @@ std::map<std::string,
          std::function<void(const std::shared_ptr<OperatorBase>&,
                             std::shared_ptr<std::unordered_map<
                                 std::string, std::shared_ptr<ngraph::Node>>>)>>
-    NgraphBridge::NG_NODE_MAP = {};
+    NgraphBridge::NG_NODE_MAP = {
+        {"fill_constant", paddle::operators::ngraphs::BuildFillConstantNode},
+        {"mul", paddle::operators::ngraphs::BuildMulNode},
+        {"mul_grad", paddle::operators::ngraphs::BuildMulGradNode},
+        {"relu", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Relu>},
+        {"tanh", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Tanh>},
+        {"top_k", paddle::operators::ngraphs::BuildTopKNode}};
 
-void NgraphBridge::build_graph(const std::shared_ptr<OperatorBase>& op) {
+void NgraphBridge::BuildNgNode(const std::shared_ptr<OperatorBase>& op) {
   auto& op_type = op->Type();
-  NG_NODE_MAP[op_type](op, ngb_node_map);
+  NG_NODE_MAP[op_type](op, ngb_node_map_);
 }
 
 }  // namespace framework
 }  // namespace paddle
-#endif

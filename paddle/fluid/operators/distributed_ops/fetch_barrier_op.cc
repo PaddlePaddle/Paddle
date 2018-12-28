@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -43,7 +43,7 @@ class FetchBarrierOp : public framework::OperatorBase {
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
 
     for (auto& ep : eps) {
-      VLOG(30) << "fetch barrier, ep: " << ep;
+      VLOG(3) << "fetch barrier, ep: " << ep;
       rpc_client->AsyncSendFetchBarrier(ep);
     }
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");

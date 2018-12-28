@@ -32,18 +32,23 @@ limitations under the License. */
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/pybind/async_executor_py.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/recordio.h"
@@ -78,6 +83,18 @@ bool IsCompiledWithCUDA() {
 #endif
 }
 
+bool IsCompiledWithBrpc() {
+#ifndef PADDLE_WITH_DISTRIBUTE
+  return false;
+#endif
+
+#ifdef PADDLE_WITH_GRPC
+  return false;
+#endif
+
+  return true;
+}
+
 bool IsCompiledWithDIST() {
 #ifdef PADDLE_WITH_DISTRIBUTE
   return true;
@@ -86,18 +103,67 @@ bool IsCompiledWithDIST() {
 #endif
 }
 
-PYBIND11_PLUGIN(core) {
+PYBIND11_MODULE(core, m) {
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
-  py::module m("core", "C++ core of PaddlePaddle");
+  m.doc() = "C++ core of PaddlePaddle";
 
   // using framework in this function. Since it is inside a function, it will
   // not cause namespace pollution.
   using namespace paddle::framework;  // NOLINT
 
   BindException(&m);
+
+  m.def(
+      "_append_python_callable_object_and_return_id",
+      [](py::object py_obj) -> size_t {
+        return paddle::operators::AppendPythonCallableObjectAndReturnId(py_obj);
+      });
+
+  m.add_object("_cleanup",
+               py::capsule([]() { ScopePool::Instance().Clear(); }));
+
+  py::class_<imperative::VarBase, PyVarBase>(m, "VarBase", R"DOC()DOC")
+      .def(py::init<>())
+      .def("_run_backward",
+           [](imperative::VarBase &self) { self.RunBackward(); })
+      .def("_grad", &imperative::VarBase::Grad)
+      .def_property(
+          "desc",
+          [](const imperative::VarBase &self) { return self.var_desc_; },
+          [](imperative::VarBase &self, framework::VarDesc *var_desc) {
+            self.var_desc_ = var_desc;
+          },
+          py::return_value_policy::reference)
+      .def_property("var",
+                    [](const imperative::VarBase &self) { return self.var_; },
+                    [](imperative::VarBase &self, framework::Variable *var) {
+                      self.var_ = var;
+                    },
+                    py::return_value_policy::reference);
+
+  py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
+      .def(py::init<>())
+      .def_property(
+          "desc", [](const imperative::OpBase &self) { return self.op_desc_; },
+          [](imperative::OpBase &self, framework::OpDesc *op_desc) {
+            if (op_desc) {
+              self.op_desc_ = op_desc;
+            }
+          },
+          py::return_value_policy::reference);
+
+  py::class_<imperative::Layer, PyLayer /* <--- trampoline*/> layer(m, "Layer");
+  layer.def(py::init<>())
+      .def("forward",
+           [](imperative::Layer &self,
+              const std::vector<imperative::VarBase> &inputs) {
+             return self.Forward(inputs);
+           })
+      .def("backward", &imperative::Layer::Backward);
+  BindTracer(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
@@ -167,7 +233,7 @@ PYBIND11_PLUGIN(core) {
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
-      .def("_dtype", [](Tensor &self) { return ToDataType(self.type()); });
+      .def("_dtype", [](Tensor &self) { return self.type(); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -297,6 +363,8 @@ PYBIND11_PLUGIN(core) {
       .def("get_tensor",
            [](SelectedRows &self) { return self.mutable_value(); },
            py::return_value_policy::reference)
+      .def("numel",
+           [](SelectedRows &self) -> int64_t { return self.value().numel(); })
       .def("set_height", &SelectedRows::set_height)
       .def("height", &SelectedRows::height)
       .def("set_rows",
@@ -398,17 +466,45 @@ All parameter, weight, gradient are variables in Paddle.
             },
         py::return_value_policy::copy);
 
-  py::class_<Scope>(m, "Scope", "")
+  py::class_<Scope>(m, "_Scope", R"DOC(
+    Scope is an association of a name to Variable. All variables belong to Scope.
+
+    Variables in a parent scope can be retrieved from local scope.
+
+    You need to specify a scope to run a Net, i.e., `exe.Run(&scope)`.
+    One net can run in different scopes and update different variable in the
+    scope.
+
+    You can create var in a scope and get it from the scope.
+
+    Examples:
+        .. code-block:: python
+
+          # create tensor from a scope and set value to it.
+          param = scope.var('Param').get_tensor()
+          param_array = np.full((height, row_numel), 5.0).astype("float32")
+          param.set(param_array, place)
+
+        )DOC")
+      .def("_remove_from_pool",
+           [](Scope &self) { ScopePool::Instance().Remove(&self); })
       .def("var",
            [](Scope &self, const std::string &name) -> Variable * {
              return self.Var(name);
            },
            py::return_value_policy::reference)
       .def("find_var", &Scope::FindVar, py::return_value_policy::reference)
-      .def(py::init<>())
       .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
            py::return_value_policy::reference)
       .def("drop_kids", &Scope::DropKids);
+
+  m.def("Scope",
+        []() -> Scope * {
+          auto *s = new Scope();
+          ScopePool::Instance().Insert(std::unique_ptr<Scope>(s));
+          return s;
+        },
+        py::return_value_policy::reference);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
@@ -571,6 +667,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
 #ifdef PADDLE_WITH_CUDA
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
@@ -581,6 +678,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
+  m.def("get_variable_tensor", framework::GetVariableTensor);
 
   m.def("_is_program_version_supported", IsProgramVersionSupported);
 
@@ -861,6 +959,24 @@ All parameter, weight, gradient are variables in Paddle.
           },
           R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default False.)DOC")
       .def_property(
+          "num_trainers",
+          [](const BuildStrategy &self) { return self.num_trainers_; },
+          [](BuildStrategy &self, int num_trainers) {
+            self.num_trainers_ = num_trainers;
+          })
+      .def_property(
+          "trainers_endpoints",
+          [](const BuildStrategy &self) { return self.trainers_endpoints_; },
+          [](BuildStrategy &self,
+             const std::vector<std::string> &trainers_endpoints) {
+            self.trainers_endpoints_ = trainers_endpoints;
+          })
+      .def_property("trainer_id",
+                    [](const BuildStrategy &self) { return self.trainer_id_; },
+                    [](BuildStrategy &self, int trainer_id) {
+                      self.trainer_id_ = trainer_id;
+                    })
+      .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {
             return self.fuse_elewise_add_act_ops_;
@@ -872,6 +988,14 @@ All parameter, weight, gradient are variables in Paddle.
           R"DOC(The type is BOOL, fuse_elewise_add_act_ops indicate whether
                      to fuse elementwise_add_op and activation_op,
                      it may make the execution faster. Default False)DOC")
+      .def_property(
+          "memory_optimize",
+          [](const BuildStrategy &self) { return self.memory_optimize_; },
+          [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; })
+      .def_property(
+          "memory_early_delete",
+          [](const BuildStrategy &self) { return self.memory_early_delete_; },
+          [](BuildStrategy &self, bool b) { self.memory_early_delete_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);
@@ -881,7 +1005,6 @@ All parameter, weight, gradient are variables in Paddle.
                 cannot be updated after being finalized.)DOC");
 
   pe.def(py::init<const std::vector<platform::Place> &,
-                  const std::unordered_set<std::string> &,
                   const std::unordered_set<std::string> &, const ProgramDesc &,
                   const std::string &, Scope *, std::vector<Scope *> &,
                   const ExecutionStrategy &, const BuildStrategy &, size_t,
@@ -907,7 +1030,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindRecordIOWriter(&m);
-  return m.ptr();
+  BindAsyncExecutor(&m);
 }
 }  // namespace pybind
 }  // namespace paddle

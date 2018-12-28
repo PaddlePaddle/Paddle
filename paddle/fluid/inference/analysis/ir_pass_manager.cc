@@ -63,6 +63,11 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("graph_viz_path", new std::string(std::move(dot_file_path)));
       pass_num++;
     }
+    if (pass_name == "mkldnn_placement_pass") {
+      pass->Set("mkldnn_enabled_op_types",
+                new std::unordered_set<std::string>(
+                    argument->mkldnn_enabled_op_types()));
+    }
 
     if (pass_name == "tensorrt_subgraph_pass") {
       PADDLE_ENFORCE(argument->tensorrt_node_teller_valid());
@@ -70,6 +75,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                         argument->tensorrt_node_teller_ptr());
       pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
+      pass->Set("min_subgraph_size",
+                new int(argument->tensorrt_min_subgraph_size()));
     }
 
     // graph_ = pass->Apply(std::move(graph_));

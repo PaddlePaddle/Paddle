@@ -72,7 +72,7 @@ struct LoDTensorToArrayFunctor : public boost::static_visitor<void> {
     LoDTensorToArrayFunctorImpl<DeviceContext> func;
     func.prev_functor_ = this;
     func.dev_ctx_ = dev_ctx;
-    framework::VisitDataType(framework::ToDataType(input_.type()), func);
+    framework::VisitDataType(input_.type(), func);
   }
 };
 
@@ -192,6 +192,10 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
     // The first dim of each LoDTensor in Output can only be set at run-time.;
     // We still have to Resize each LoDTensor in Output.
     context->SetOutputDim("Out", x_dim);
+    // The lod level should be passed to out in compile time.
+    if (!context->IsRuntime()) {
+      context->DecreaseLoDLevel("X", /*->*/ "Out");
+    }
   }
 };
 

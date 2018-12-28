@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -50,15 +50,17 @@ class SendOp : public framework::OperatorBase {
     std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
-        VLOG(30) << "sending " << ins[i] << " to " << epmap[i];
+        VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
         rets.push_back(rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]));
       } else {
-        VLOG(30) << "don't send no-initialied variable: " << ins[i];
+        VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
     }
     if (sync_send) {
       for (size_t i = 0; i < rets.size(); i++) {
+        VLOG(7) << "before sync_send " << ins[i] << "from " << epmap[i];
         PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+        VLOG(7) << "after sync_send " << ins[i] << "from " << epmap[i];
       }
     }
   }

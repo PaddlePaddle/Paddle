@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 #=================================================
 #                   Utils
 #=================================================
@@ -79,6 +78,7 @@ function cmake_gen() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/lib/libpython2.7.dylib"
+            pip install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -91,6 +91,7 @@ function cmake_gen() {
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.5/include/python3.5m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/libpython3.5m.dylib"
                 WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+                pip3.5 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -103,6 +104,7 @@ function cmake_gen() {
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib"
                 WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+                pip3.6 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -115,6 +117,7 @@ function cmake_gen() {
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib"
                 WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+                pip3.7 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -149,7 +152,7 @@ function cmake_gen() {
             elif [ "$1" == "cp37-cp37m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.7.0/bin/:${PATH}
-                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.7.0/bin/python3
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.7.0/bin/python3.7
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.7.0/include/python3.7m
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.7.0/lib/libpython3.so"
            fi
@@ -414,13 +417,6 @@ EOF
         else
             ctest --output-on-failure
         fi
-
-        # make install should also be test when unittest
-        make install -j `nproc`
-        pip install ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
-        if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
-            paddle version
-        fi
     fi
 }
 
@@ -437,14 +433,34 @@ EOF
         export http_proxy=
         export https_proxy=
         # TODO: jiabin need to refine this part when these tests fixed on mac
-        ctest --output-on-failure -j $1
+        ctest --output-on-failure -j $2
         # make install should also be test when unittest
         make install -j 8
-        pip install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+        if [ "$1" == "cp27-cp27m" ]; then
+            set -e
+            pip install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+            python ${PADDLE_ROOT}/paddle/scripts/installation_validate.py
+        elif [ "$1" == "cp35-cp35m" ]; then
+            pip3.5 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+        elif [ "$1" == "cp36-cp36m" ]; then
+            pip3.6 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+        elif [ "$1" == "cp37-cp37m" ]; then
+            pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+        fi
+      
         if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
             paddle version
         fi
-        pip uninstall -y paddlepaddle
+
+        if [ "$1" == "cp27-cp27m" ]; then
+            pip uninstall -y paddlepaddle
+        elif [ "$1" == "cp35-cp35m" ]; then
+            pip3.5 uninstall -y paddlepaddle
+        elif [ "$1" == "cp36-cp36m" ]; then
+            pip3.6 uninstall -y paddlepaddle
+        elif [ "$1" == "cp37-cp37m" ]; then
+            pip3.7 uninstall -y paddlepaddle
+        fi
     fi
 }
 
@@ -454,12 +470,15 @@ function assert_api_not_changed() {
     virtualenv .env
     source .env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid,paddle.reader > new.spec
     if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then
         # Use sed to make python2 and python3 sepc keeps the same
         sed -i 's/arg0: str/arg0: unicode/g' new.spec
         sed -i "s/\(.*Transpiler.*\).__init__ ArgSpec(args=\['self'].*/\1.__init__ /g" new.spec
     fi
+    # ComposeNotAligned has significant difference between py2 and py3
+    sed -i '/.*ComposeNotAligned.*/d' new.spec
+
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
     deactivate
 }
@@ -469,18 +488,45 @@ function assert_api_spec_approvals() {
         BRANCH="develop"
     fi
 
-    API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/API.spec" || true`
-    echo "checking API.spec change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
-    if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
-        # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
+    API_FILES=("paddle/fluid/API.spec"
+               "paddle/fluid/framework/operator.h"
+               "paddle/fluid/framework/tensor.h"
+               "paddle/fluid/framework/lod_tensor.h"
+               "paddle/fluid/framework/selected_rows.h"
+               "paddle/fluid/framework/op_desc.h"
+               "paddle/fluid/framework/block_desc.h"
+               "paddle/fluid/framework/var_desc.h"
+               "paddle/fluid/framework/scope.h"
+               "paddle/fluid/framework/ir/node.h"
+               "paddle/fluid/framework/ir/graph.h"
+               "paddle/fluid/framework/framework.proto"
+               "paddle/fluid/operators/distributed/send_recv.proto.in")
+    for API_FILE in ${API_FILES[*]}; do
+      API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" || true`
+      echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
+      if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
+          # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
+          APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+          python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
+          echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+          if [ "${APPROVALS}" == "FALSE" ]; then
+              echo "You must have panyx0718 approval for the api change! ${API_FILE}"
+              exit 1
+          fi
+      fi
+    done
+
+    HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true`
+    if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
         APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-        python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7845005 2887803 728699 13348433`
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
-            echo "You must have at least 2 approvals for the api change!"
-        exit 1
+            echo "You must have panyx0718 approval for the const_cast"
+            exit 1
         fi
     fi
+
 }
 
 
@@ -672,6 +718,55 @@ EOF
     ${DOCKERFILE_GPU_ENV}
     ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
+    elif [ "$1" == "cp36-cp36m" ]; then
+        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
+    ADD python/dist/*.whl /
+    # run paddle version to install python packages first
+    RUN apt-get update && ${NCCL_DEPS}
+    RUN apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
+        libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
+        xz-utils tk-dev libffi-dev liblzma-dev
+    RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
+        tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
+        ./configure -prefix=/usr/local && make -j8 && make install && cd ../ && rm sqlite-autoconf-3250300.tar.gz && \
+        wget -q https://www.python.org/ftp/python/3.6.0/Python-3.6.0.tgz && \
+        tar -xzf Python-3.6.0.tgz && cd Python-3.6.0 && \
+        CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+        make -j8 > /dev/null && make altinstall > /dev/null
+    RUN apt-get install -y libgtk2.0-dev dmidecode python3-tk && \
+        pip3.6 install opencv-python && pip3.6 install /*.whl; apt-get install -f -y && \
+        apt-get clean -y && \
+        rm -f /*.whl && \
+        ${PADDLE_VERSION} && \
+        ldconfig
+    ${DOCKERFILE_CUDNN_DSO}
+    ${DOCKERFILE_CUBLAS_DSO}
+    ${DOCKERFILE_GPU_ENV}
+    ENV NCCL_LAUNCH_MODE PARALLEL
+EOF
+    elif [ "$1" == "cp37-cp37m" ]; then
+        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
+    ADD python/dist/*.whl /
+    # run paddle version to install python packages first
+    RUN apt-get update && ${NCCL_DEPS}
+    RUN apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
+        libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
+        xz-utils tk-dev libffi-dev liblzma-dev
+    RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
+        tar -xzf Python-3.7.0.tgz && cd Python-3.7.0 && \
+        CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+        make -j8 > /dev/null && make altinstall > /dev/null
+    RUN apt-get install -y libgtk2.0-dev dmidecode python3-tk && \
+        pip3.7 install opencv-python && pip3.7 install /*.whl; apt-get install -f -y && \
+        apt-get clean -y && \
+        rm -f /*.whl && \
+        ${PADDLE_VERSION} && \
+        ldconfig
+    ${DOCKERFILE_CUDNN_DSO}
+    ${DOCKERFILE_CUBLAS_DSO}
+    ${DOCKERFILE_GPU_ENV}
+    ENV NCCL_LAUNCH_MODE PARALLEL
+EOF
     else
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     ADD python/dist/*.whl /
@@ -819,6 +914,7 @@ function main() {
         ;;
       assert_api)
         assert_api_not_changed ${PYTHON_ABI:-""}
+        assert_api_spec_approvals
         ;;
       test_inference)
         gen_capi_package
@@ -831,7 +927,7 @@ function main() {
       maccheck)
         cmake_gen ${PYTHON_ABI:-""}
         build_mac
-        run_mac_test ${PROC_RUN:-1}
+        run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       macbuild)
         cmake_gen ${PYTHON_ABI:-""}
@@ -842,6 +938,15 @@ function main() {
         build
         run_test
         assert_api_not_changed ${PYTHON_ABI:-""}
+        ;;
+      cmake_gen)
+        cmake_gen ${PYTHON_ABI:-""}
+        ;;
+      gen_fluid_lib)
+        gen_fluid_lib
+        ;;
+      test_fluid_lib)
+        test_fluid_lib
         ;;
       *)
         print_usage

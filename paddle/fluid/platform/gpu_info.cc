@@ -18,8 +18,18 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/string/split.h"
 
-DEFINE_double(fraction_of_gpu_memory_to_use, 0.92,
+#ifndef _WIN32
+constexpr static float fraction_of_gpu_memory_to_use = 0.92f;
+#else
+// fraction_of_gpu_memory_to_use cannot be too high on windows,
+// since the win32 graphic sub-system can occupy some GPU memory
+// which may lead to insufficient memory left for paddle
+constexpr static float fraction_of_gpu_memory_to_use = 0.5f;
+#endif
+
+DEFINE_double(fraction_of_gpu_memory_to_use, fraction_of_gpu_memory_to_use,
               "Allocate a trunk of gpu memory that is this fraction of the "
               "total gpu memory size. Future memory usage will be allocated "
               "from the trunk. If the trunk doesn't have enough gpu memory, "
@@ -35,6 +45,15 @@ DEFINE_bool(
     "precision); cuDNN uses Tensor Cores to speed up both convolutions(the "
     "input and output must be half precision) and recurrent neural networks "
     "(RNNs).");
+
+DEFINE_string(selected_gpus, "",
+              "A list of device ids separated by comma, like: 0,1,2,3. "
+              "This option is useful when doing multi process training and "
+              "each process have only one device (GPU). If you want to use "
+              "all visible devices, set this to empty string. NOTE: the "
+              "reason of doing this is that we want to use P2P communication"
+              "between GPU devices, use CUDA_VISIBLE_DEVICES can only use"
+              "share-memory only.");
 
 namespace paddle {
 namespace platform {
@@ -112,6 +131,24 @@ int GetCurrentDeviceId() {
   return device_id;
 }
 
+//! Get a list of device ids from environment variable or use all.
+std::vector<int> GetSelectedDevices() {
+  // use user specified GPUs in single-node multi-process mode.
+  std::vector<int> devices;
+  if (!FLAGS_selected_gpus.empty()) {
+    auto devices_str = paddle::string::Split(FLAGS_selected_gpus, ',');
+    for (auto id : devices_str) {
+      devices.push_back(atoi(id.c_str()));
+    }
+  } else {
+    int count = GetCUDADeviceCount();
+    for (int i = 0; i < count; ++i) {
+      devices.push_back(i);
+    }
+  }
+  return devices;
+}
+
 void SetDeviceId(int id) {
   // TODO(qijun): find a better way to cache the cuda device count
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
@@ -144,8 +181,8 @@ size_t GpuMaxChunkSize() {
   size_t available = 0;
 
   GpuMemoryUsage(&available, &total);
-  VLOG(100) << "GPU Usage " << available / 1024 / 1024 << "M/"
-            << total / 1024 / 1024 << "M";
+  VLOG(10) << "GPU Usage " << available / 1024 / 1024 << "M/"
+           << total / 1024 / 1024 << "M";
   size_t reserving = static_cast<size_t>(0.05 * total);
   // If available less than minimum chunk size, no usable memory exists.
   available =

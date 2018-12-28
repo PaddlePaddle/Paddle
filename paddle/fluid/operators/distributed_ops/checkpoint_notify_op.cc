@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
 #include "paddle/fluid/string/printf.h"
 
@@ -46,8 +46,8 @@ class CheckpointNotifyOp : public framework::OperatorBase {
       auto lookup_table_save_dir =
           string::Sprintf("%s/%s_%d", dir, lookup_table_name, i);
       rpc_client->AsyncCheckpointNotify(epmap[i], lookup_table_save_dir);
-      VLOG(30) << "checkpoint notify sending lookup table: "
-               << lookup_table_name << " and dir:" << dir << " to " << epmap[i];
+      VLOG(3) << "checkpoint notify sending lookup table: " << lookup_table_name
+              << " and dir:" << dir << " to " << epmap[i];
     }
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
   }

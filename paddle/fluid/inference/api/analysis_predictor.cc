@@ -31,6 +31,7 @@
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #endif
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -54,8 +55,7 @@ bool IsPersistable(const framework::VarDesc *var) {
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
     const std::shared_ptr<framework::ProgramDesc> &program) {
-  VLOG(30) << "Predictor::init()";
-#if !defined(_WIN32)
+  VLOG(3) << "Predictor::init()";
   if (FLAGS_profile) {
     LOG(WARNING) << "Profiler is actived, might affect the performance";
     LOG(INFO) << "You can turn off by set gflags '-profile false'";
@@ -63,7 +63,6 @@ bool AnalysisPredictor::Init(
                                            : platform::ProfilerState::kCPU;
     platform::EnableProfiler(tracking_device);
   }
-#endif
 
   // no matter with or without MKLDNN
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
@@ -170,11 +169,10 @@ void AnalysisPredictor::SetMkldnnThreadID(int tid) {
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
-  VLOG(30) << "Predictor::predict";
+  VLOG(3) << "Predictor::predict";
   inference::Timer timer;
   timer.tic();
   // set feed variable
-  std::vector<framework::LoDTensor> feeds;
   framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
@@ -190,17 +188,21 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to get fetches";
     return false;
   }
-  VLOG(30) << "predict cost: " << timer.toc() << "ms";
+  VLOG(3) << "predict cost: " << timer.toc() << "ms";
 
-  // Fix TensorArray reuse not cleaned bug.
-  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
-  tensor_array_batch_cleaner_.ResetTensorArray();
+  // All the containers in the scope will be hold in inference, but the
+  // operators assume that the container will be reset after each batch.
+  // Here is a bugfix, collect all the container variables, and reset then to a
+  // bool; the next time, the operator will call MutableData and construct a new
+  // container again, so that the container will be empty for each batch.
+  tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+  tensor_array_batch_cleaner_.ResetNoTensorVars();
   return true;
 }
 
 bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                 framework::Scope *scope) {
-  VLOG(30) << "Predictor::set_feed";
+  VLOG(3) << "Predictor::set_feed";
   if (inputs.size() != feeds_.size()) {
     LOG(ERROR) << "wrong feed input size, need " << feeds_.size() << " but get "
                << inputs.size();
@@ -215,17 +217,32 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     framework::DDim ddim = framework::make_ddim(inputs[i].shape);
     void *input_ptr;
     if (inputs[i].dtype == PaddleDType::INT64) {
-      input_ptr = input.mutable_data<int64_t>(ddim, platform::CPUPlace());
+      input_ptr = input.mutable_data<int64_t>(ddim, place_);
     } else if (inputs[i].dtype == PaddleDType::FLOAT32) {
-      input_ptr = input.mutable_data<float>(ddim, platform::CPUPlace());
+      input_ptr = input.mutable_data<float>(ddim, place_);
     } else {
       LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
       return false;
     }
 
-    // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-    std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
-                inputs[i].data.length());
+    if (platform::is_cpu_place(place_)) {
+      // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
+      std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
+                  inputs[i].data.length());
+    } else {
+#ifdef PADDLE_WITH_CUDA
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto *dev_ctx =
+          static_cast<const platform::CUDADeviceContext *>(pool.Get(place_));
+      auto dst_gpu_place = boost::get<platform::CUDAPlace>(place_);
+      memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
+                   platform::CPUPlace(), inputs[i].data.data(),
+                   inputs[i].data.length(), dev_ctx->stream());
+#else
+      PADDLE_THROW("Not compile with CUDA, should not reach here.");
+#endif
+    }
     // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
     framework::LoD lod;
     for (auto &level : inputs[i].lod) {
@@ -265,7 +282,7 @@ void AnalysisPredictor::GetFetchOne(const framework::LoDTensor &fetch,
 
 bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
                                  framework::Scope *scope) {
-  VLOG(30) << "Predictor::get_fetch";
+  VLOG(3) << "Predictor::get_fetch";
   outputs->resize(fetchs_.size());
   for (size_t i = 0; i < fetchs_.size(); ++i) {
     int idx = boost::get<int>(fetchs_[i]->GetAttr("col"));
@@ -274,10 +291,11 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
         framework::GetFetchVariable(*scope, "fetch", idx);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
-    if (type == typeid(float)) {
+    output->name = fetchs_[idx]->Input("X")[0];
+    if (type == framework::proto::VarType::FP32) {
       GetFetchOne<float>(fetch, output);
       output->dtype = PaddleDType::FLOAT32;
-    } else if (type == typeid(int64_t)) {
+    } else if (type == framework::proto::VarType::INT64) {
       GetFetchOne<int64_t>(fetch, output);
       output->dtype = PaddleDType::INT64;
     } else {
@@ -293,6 +311,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   argument_.SetUseGPU(config_.use_gpu);
   argument_.SetGPUDeviceId(config_.device);
+  argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   if (!config_.model_dir.empty()) {
     argument_.SetModelDir(config_.model_dir);
@@ -309,6 +328,11 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetUseTensorRT(true);
     argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
+    argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
+  }
+
+  if (config_.use_mkldnn_) {
+    argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
   }
 
   auto passes = config_.pass_builder()->AllPasses();
@@ -328,7 +352,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
-  VLOG(30) << "create AnalysisConfig";
+  VLOG(3) << "create AnalysisConfig";
   if (config.use_gpu) {
     // 1. GPU memeroy
     PADDLE_ENFORCE_GT(
@@ -342,7 +366,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(config.fraction_of_gpu_memory);
       flags.push_back(flag);
-      VLOG(30) << "set flag: " << flag;
+      VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
     }
   }
@@ -406,7 +430,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 bool AnalysisPredictor::ZeroCopyRun() {
   executor_->Run();
   // Fix TensorArray reuse not cleaned bug.
-  tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
+  tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
   tensor_array_batch_cleaner_.ResetTensorArray();
   return true;
 }
@@ -433,20 +457,24 @@ bool AnalysisPredictor::LoadProgramDesc() {
     return false;
   }
 
-  std::string pb_content;
-  // Read binary
-  std::ifstream fin(filename, std::ios::in | std::ios::binary);
-  PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);
-  fin.seekg(0, std::ios::end);
-
-  pb_content.resize(fin.tellg());
-  fin.seekg(0, std::ios::beg);
-  fin.read(&(pb_content.at(0)), pb_content.size());
-  fin.close();
-
   // Create ProgramDesc
   framework::proto::ProgramDesc proto;
-  proto.ParseFromString(pb_content);
+  if (!config_.model_from_memory()) {
+    std::string pb_content;
+    // Read binary
+    std::ifstream fin(filename, std::ios::in | std::ios::binary);
+    PADDLE_ENFORCE(static_cast<bool>(fin.is_open()), "Cannot open file %s",
+                   filename);
+    fin.seekg(0, std::ios::end);
+    pb_content.resize(fin.tellg());
+    fin.seekg(0, std::ios::beg);
+    fin.read(&(pb_content.at(0)), pb_content.size());
+    fin.close();
+
+    proto.ParseFromString(pb_content);
+  } else {
+    proto.ParseFromString(config_.prog_file);
+  }
   inference_program_.reset(new framework::ProgramDesc(proto));
   return true;
 }
@@ -454,6 +482,7 @@ bool AnalysisPredictor::LoadProgramDesc() {
 bool AnalysisPredictor::LoadParameters() {
   PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
                           "The inference program should be loaded first.");
+
   const auto &global_block = inference_program_->MutableBlock(0);
 
   // create a temporary program to load parameters.
@@ -508,12 +537,10 @@ bool AnalysisPredictor::LoadParameters() {
 }
 
 AnalysisPredictor::~AnalysisPredictor() {
-#if !defined(_WIN32)
   if (FLAGS_profile) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
   }
-#endif
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
   }

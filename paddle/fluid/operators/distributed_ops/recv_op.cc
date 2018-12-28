@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -47,7 +47,7 @@ class RecvOp : public framework::OperatorBase {
 
     std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < outs.size(); i++) {
-      VLOG(30) << "getting " << outs[i] << " from " << epmap[i];
+      VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
       rets.push_back(rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i]));
     }
     if (sync_mode) {

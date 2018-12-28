@@ -23,7 +23,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
@@ -48,7 +48,14 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 void AllReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
 
+// FIXME(typhoonzero): If scope0(global scope) have NCCL_ID_VAR,
+// this is a distributed or inter-process call, find a better way.
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  if (NoDummyInputSize() == 1 &&
+      local_scopes_[0]->FindLocalVar(NCCL_ID_VARNAME) == nullptr) {
+#else
   if (NoDummyInputSize() == 1) {
+#endif
     return;  // No need to all reduce when GPU count = 1;
   } else {
     // Wait input done
@@ -74,7 +81,7 @@ void AllReduceOpHandle::RunImpl() {
     }
 
     if (platform::is_gpu_place(lod_tensors[0]->place())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       PADDLE_ENFORCE(nccl_ctxs_, "nccl_ctxs should not be nullptr.");
       int dtype = -1;
       size_t numel = 0;
@@ -120,7 +127,7 @@ void AllReduceOpHandle::RunImpl() {
 
       // Reduce All Tensor to trg in CPU
       ReduceLoDTensor func(lod_tensors, &trg);
-      VisitDataType(ToDataType(lod_tensors[0]->type()), func);
+      VisitDataType(lod_tensors[0]->type(), func);
 
       for (size_t i = 1; i < local_scopes_.size(); ++i) {
         auto &scope =

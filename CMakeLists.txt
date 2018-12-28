@@ -54,7 +54,7 @@ option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
 option(WITH_DOUBLE      "Compile PaddlePaddle with double precision"    OFF)
 option(WITH_RDMA        "Compile PaddlePaddle with RDMA support"        OFF)
 option(WITH_TIMER       "Compile PaddlePaddle with stats timer"         OFF)
-option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler"        OFF)
+option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
 option(WITH_DOC         "Compile PaddlePaddle with documentation"       OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
@@ -65,6 +65,7 @@ option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
 option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
+option(WITH_PSLIB       "Compile with pslib support"                    OFF)
 option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
 option(EIGEN_USE_THREADS "Compile with multi-threaded Eigen"            OFF)
 option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
@@ -125,18 +126,12 @@ if(ANDROID OR IOS)
     add_definitions(-DPADDLE_MOBILE_INFERENCE)
 endif()
 
-if (APPLE OR WIN32)
+if (APPLE)
     set(WITH_MKL OFF CACHE STRING
-        "Disable MKL for building on mac and windows" FORCE)
+        "Disable MKL for building on mac" FORCE)
 endif()
 
 if (WIN32)
-    set(WITH_AVX OFF CACHE STRING
-            "Disable AVX when compiling for Windows" FORCE)
-    set(WITH_DSO OFF CACHE STRING
-            "Disable DSO when compiling for Windows" FORCE)
-    set(WITH_MKL OFF CACHE STRING
-            "Disable MKL when compiling for Windows" FORCE)
     set(WITH_DISTRIBUTE OFF CACHE STRING
             "Disable DISTRIBUTE when compiling for Windows" FORCE)
     set(WITH_C_API OFF CACHE STRING
@@ -209,12 +204,19 @@ include(external/xxhash)    # download xxhash
 include(external/dlpack)
 include(external/snappy)    # download snappy
 include(external/snappystream) # download snappystream
+include(external/warpctc)   # download, build, install warpctc
 
 if (NOT WIN32)
-# there is no official support of warpctc, nccl, cupti in windows
-include(external/warpctc)   # download, build, install warpctc
+# there is no official support of nccl, cupti in windows
 include(cupti)
+include(external/gzstream)
 endif (NOT WIN32)
+
+if(WITH_PSLIB)
+    include(external/libmct)
+    include(external/pslib_brpc)
+    include(external/pslib)
+endif(WITH_PSLIB)
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
@@ -253,6 +255,12 @@ elseif()
     set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
 endif()
 
+if (WITH_PROFILER)
+    find_package(Gperftools REQUIRED)
+    include_directories(${GPERFTOOLS_INCLUDE_DIR})
+    add_definitions(-DWITH_GPERFTOOLS)
+endif()
+
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation
@@ -277,6 +285,12 @@ set(EXTERNAL_LIBS
     ${PYTHON_LIBRARIES}
 )
 
+if(WITH_PSLIB)
+    list(APPEND EXTERNAL_LIBS pslib)
+    list(APPEND EXTERNAL_LIBS pslib_brpc)
+    list(APPEND EXTERNAL_LIBS libmct)
+endif(WITH_PSLIB)
+    
 if(WITH_AMD_GPU)
     find_package(HIP)
     include(hip)

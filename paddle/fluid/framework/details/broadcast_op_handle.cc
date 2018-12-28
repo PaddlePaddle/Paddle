@@ -60,7 +60,7 @@ void BroadcastOpHandle::BroadcastOneVar(
   PADDLE_ENFORCE_NOT_NULL(in_var);
   Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
   if (UNLIKELY(!in_tensor.IsInitialized())) {
-    VLOG(30) << "in var " << in_var_handle.name_ << "not inited, return!";
+    VLOG(3) << "in var " << in_var_handle.name_ << "not inited, return!";
     return;
   }
 
@@ -82,7 +82,7 @@ void BroadcastOpHandle::BroadcastOneVar(
       });
     }
   } else {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     VarHandle *out_handle = nullptr;
     int root_id = boost::get<platform::CUDAPlace>(in_tensor.place()).device;
     std::vector<std::function<void()>> broadcast_calls;

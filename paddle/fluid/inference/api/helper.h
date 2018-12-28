@@ -15,10 +15,6 @@
 #pragma once
 
 #include <glog/logging.h>
-#if !defined(_WIN32)
-#include <sys/time.h>
-#else
-#endif
 
 #include <algorithm>
 #include <chrono>  // NOLINT
@@ -28,6 +24,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
 
 namespace paddle {
@@ -114,6 +111,16 @@ static void TensorAssignData(PaddleTensor *tensor,
       static_cast<T *>(tensor->data.data())[c++] = v;
     }
   }
+}
+
+template <typename T>
+static void TensorAssignData(PaddleTensor *tensor,
+                             const std::vector<std::vector<T>> &data,
+                             const std::vector<size_t> &lod) {
+  int size = lod[lod.size() - 1];
+  tensor->shape.assign({size, 1});
+  tensor->lod.assign({lod});
+  TensorAssignData(tensor, data);
 }
 
 template <typename T>
