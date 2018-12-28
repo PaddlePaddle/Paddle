@@ -431,17 +431,19 @@ class AdamOpKernel : public framework::OpKernel<T> {
       } else {
         // merge duplicated rows if any.
         // The rows of grad_merge have been sorted inside MergeAdd functor
+        framework::SelectedRows* grad_merge_var;
         scatter::MergeAdd<DeviceContext, T> merge_func;
         if (platform::is_cpu_place(ctx.GetPlace())) {
-          grad_merge_ptr = &cpu_grad_merge;
+          grad_merge_var = &cpu_grad_merge;
         } else {
           // FIXME(qiao): GPU also need to fix this
-          auto* grad_merge_var = const_cast<framework::Scope&>(ctx.scope())
-                                     .Var()
-                                     ->GetMutable<framework::SelectedRows>();
+          grad_merge_var = const_cast<framework::Scope&>(ctx.scope())
+                               .Var()
+                               ->GetMutable<framework::SelectedRows>();
         }
         merge_func(ctx.template device_context<DeviceContext>(), grad,
-                   grad_merge_ptr, true);
+                   grad_merge_var, true);
+        grad_merge_ptr = grad_merge_var;
       }
 
       auto& grad_merge = *grad_merge_ptr;
