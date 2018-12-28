@@ -19,7 +19,7 @@
 #include <nccl.h>
 #endif
 
-#include "paddle/fluid/operators/distributed/grpc_variable_response.h"
+#include "paddle/fluid/operators/distributed/grpc/grpc_variable_response.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {

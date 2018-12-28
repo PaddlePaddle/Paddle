@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-#include "paddle/fluid/operators/distributed/brpc_variable_response.h"
+#include "paddle/fluid/operators/distributed/brpc/brpc_variable_response.h"
 #include "paddle/fluid/operators/distributed/send_recv.pb.h"
 
 namespace paddle {
