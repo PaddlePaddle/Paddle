@@ -319,7 +319,7 @@ class GraphQuantizeTranspiler(object):
         self.is_test = True
 
         if fuse_bn:
-            # TODO: BNFuseTranspiler
+            # TODO(wzzju): BNFuseTranspiler
             pass
 
         persistable_vars = [
