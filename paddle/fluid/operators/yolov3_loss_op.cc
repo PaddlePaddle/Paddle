@@ -29,6 +29,11 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
                    "Input(GTLabel) of Yolov3LossOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Loss"),
                    "Output(Loss) of Yolov3LossOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("ObjectnessMask"),
+        "Output(ObjectnessMask) of Yolov3LossOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("GTMatchMask"),
+                   "Output(GTMatchMask) of Yolov3LossOp should not be null.");
 
     auto dim_x = ctx->GetInputDim("X");
     auto dim_gtbox = ctx->GetInputDim("GTBox");
@@ -68,6 +73,12 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
 
     std::vector<int64_t> dim_out({dim_x[0]});
     ctx->SetOutputDim("Loss", framework::make_ddim(dim_out));
+
+    std::vector<int64_t> dim_obj_mask({dim_x[0], mask_num, dim_x[2], dim_x[3]});
+    ctx->SetOutputDim("ObjectnessMask", framework::make_ddim(dim_obj_mask));
+
+    std::vector<int64_t> dim_gt_match_mask({dim_gtbox[0], dim_gtbox[1]});
+    ctx->SetOutputDim("GTMatchMask", framework::make_ddim(dim_gt_match_mask));
   }
 
  protected:
@@ -103,6 +114,16 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Loss",
               "The output yolov3 loss tensor, "
               "This is a 1-D tensor with shape of [N]");
+    AddOutput("ObjectnessMask",
+              "This is an intermediate tensor with shape of [N, M, H, W], "
+              "M is the number of anchor masks. This parameter caches the "
+              "mask for calculate objectness loss in gradient kernel.")
+        .AsIntermediate();
+    AddOutput("GTMatchMask",
+              "This is an intermediate tensor with shape if [N, B], "
+              "B is the max box number of GT boxes. This parameter caches "
+              "matched mask index of each GT boxes for gradient calculate.")
+        .AsIntermediate();
 
     AddAttr<int>("class_num", "The number of classes to predict.");
     AddAttr<std::vector<int>>("anchors",
@@ -208,6 +229,8 @@ class Yolov3LossGradMaker : public framework::SingleGradOpDescMaker {
     op->SetInput("GTBox", Input("GTBox"));
     op->SetInput("GTLabel", Input("GTLabel"));
     op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+    op->SetInput("ObjectnessMask", Output("ObjectnessMask"));
+    op->SetInput("GTMatchMask", Output("GTMatchMask"));
 
     op->SetAttrMap(Attrs());
 

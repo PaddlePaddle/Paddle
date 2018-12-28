@@ -116,13 +116,17 @@ def YOLOv3Loss(x, gtbox, gtlabel, attrs):
     anchor_boxes = np.tile(anchor_boxes[np.newaxis, :, :], (n, 1, 1))
     ious = batch_xywh_box_iou(gtbox_shift, anchor_boxes)
     iou_matches = np.argmax(ious, axis=-1)
+    gt_matches = iou_matches.copy()
     for i in range(n):
         for j in range(b):
             if gtbox[i, j, 2:].sum() == 0:
+                gt_matches[i, j] = -1
                 continue
             if iou_matches[i, j] not in anchor_mask:
+                gt_matches[i, j] = -1
                 continue
             an_idx = anchor_mask.index(iou_matches[i, j])
+            gt_matches[i, j] = an_idx
             gi = int(gtbox[i, j, 0] * w)
             gj = int(gtbox[i, j, 1] * h)
 
@@ -146,7 +150,8 @@ def YOLOv3Loss(x, gtbox, gtlabel, attrs):
             if objness[i, j] >= 0:
                 loss[i] += sce(pred_obj[i, j], objness[i, j])
 
-    return loss
+    return (loss, objness.reshape((n, mask_num, h, w)).astype('int32'), \
+            gt_matches.astype('int32'))
 
 
 class TestYolov3LossOp(OpTest):
@@ -173,11 +178,16 @@ class TestYolov3LossOp(OpTest):
             'GTBox': gtbox.astype('float32'),
             'GTLabel': gtlabel.astype('int32')
         }
-        self.outputs = {'Loss': YOLOv3Loss(x, gtbox, gtlabel, self.attrs)}
+        loss, objness, gt_matches = YOLOv3Loss(x, gtbox, gtlabel, self.attrs)
+        self.outputs = {
+            'Loss': loss,
+            'ObjectnessMask': objness,
+            "GTMatchMask": gt_matches
+        }
 
     def test_check_output(self):
         place = core.CPUPlace()
-        self.check_output_with_place(place, atol=1e-3)
+        self.check_output_with_place(place, atol=2e-3)
 
     def test_check_grad_ignore_gtbox(self):
         place = core.CPUPlace()
