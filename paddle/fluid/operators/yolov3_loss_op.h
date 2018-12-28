@@ -227,6 +227,8 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     auto* gt_box = ctx.Input<Tensor>("GTBox");
     auto* gt_label = ctx.Input<Tensor>("GTLabel");
     auto* loss = ctx.Output<Tensor>("Loss");
+    auto* objness_mask = ctx.Output<Tensor>("ObjectnessMask");
+    auto* gt_match_mask = ctx.Output<Tensor>("GTMatchMask");
     auto anchors = ctx.Attr<std::vector<int>>("anchors");
     auto anchor_mask = ctx.Attr<std::vector<int>>("anchor_mask");
     int class_num = ctx.Attr<int>("class_num");
@@ -241,19 +243,19 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     const int b = gt_box->dims()[1];
     int input_size = downsample * h;
 
+    const int stride = h * w;
+    const int an_stride = (class_num + 5) * stride;
+
     const T* input_data = input->data<T>();
     const T* gt_box_data = gt_box->data<T>();
     const int* gt_label_data = gt_label->data<int>();
     T* loss_data = loss->mutable_data<T>({n}, ctx.GetPlace());
     memset(loss_data, 0, loss->numel() * sizeof(T));
-
-    Tensor objness;
-    int* objness_data =
-        objness.mutable_data<int>({n, mask_num, h, w}, ctx.GetPlace());
-    memset(objness_data, 0, objness.numel() * sizeof(int));
-
-    const int stride = h * w;
-    const int an_stride = (class_num + 5) * stride;
+    int* obj_mask_data =
+        objness_mask->mutable_data<int>({n, mask_num, h, w}, ctx.GetPlace());
+    memset(obj_mask_data, 0, objness_mask->numel() * sizeof(int));
+    int* gt_match_mask_data =
+        gt_match_mask->mutable_data<int>({n, b}, ctx.GetPlace());
 
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < mask_num; j++) {
@@ -277,7 +279,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
 
             if (best_iou > ignore_thresh) {
               int obj_idx = (i * mask_num + j) * stride + k * w + l;
-              objness_data[obj_idx] = -1;
+              obj_mask_data[obj_idx] = -1;
             }
           }
         }
@@ -285,6 +287,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
       for (int t = 0; t < b; t++) {
         Box<T> gt = GetGtBox(gt_box_data, i, b, t);
         if (LessEqualZero<T>(gt.w) || LessEqualZero<T>(gt.h)) {
+          gt_match_mask_data[i * b + t] = -1;
           continue;
         }
         int gi = static_cast<int>(gt.x * w);
@@ -309,6 +312,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
         }
 
         int mask_idx = GetMaskIndex(anchor_mask, best_n);
+        gt_match_mask_data[i * b + t] = mask_idx;
         if (mask_idx >= 0) {
           int box_idx = GetEntryIndex(i, mask_idx, gj * w + gi, mask_num,
                                       an_stride, stride, 0);
@@ -316,7 +320,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
                                  box_idx, gi, gj, h, input_size, stride);
 
           int obj_idx = (i * mask_num + mask_idx) * stride + gj * w + gi;
-          objness_data[obj_idx] = 1;
+          obj_mask_data[obj_idx] = 1;
 
           int label = gt_label_data[i * b + t];
           int label_idx = GetEntryIndex(i, mask_idx, gj * w + gi, mask_num,
@@ -327,7 +331,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
       }
     }
 
-    CalcObjnessLoss<T>(loss_data, input_data + 4 * stride, objness_data, n,
+    CalcObjnessLoss<T>(loss_data, input_data + 4 * stride, obj_mask_data, n,
                        mask_num, h, w, stride, an_stride);
   }
 };
@@ -341,64 +345,35 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     auto* gt_label = ctx.Input<Tensor>("GTLabel");
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
+    auto* objness_mask = ctx.Input<Tensor>("ObjectnessMask");
+    auto* gt_match_mask = ctx.Input<Tensor>("GTMatchMask");
     auto anchors = ctx.Attr<std::vector<int>>("anchors");
     auto anchor_mask = ctx.Attr<std::vector<int>>("anchor_mask");
     int class_num = ctx.Attr<int>("class_num");
-    float ignore_thresh = ctx.Attr<float>("ignore_thresh");
     int downsample = ctx.Attr<int>("downsample");
 
-    const int n = input->dims()[0];
-    const int c = input->dims()[1];
-    const int h = input->dims()[2];
-    const int w = input->dims()[3];
-    const int an_num = anchors.size() / 2;
+    const int n = input_grad->dims()[0];
+    const int c = input_grad->dims()[1];
+    const int h = input_grad->dims()[2];
+    const int w = input_grad->dims()[3];
     const int mask_num = anchor_mask.size();
-    const int b = gt_box->dims()[1];
+    const int b = gt_match_mask->dims()[1];
     int input_size = downsample * h;
+
+    const int stride = h * w;
+    const int an_stride = (class_num + 5) * stride;
 
     const T* input_data = input->data<T>();
     const T* gt_box_data = gt_box->data<T>();
     const int* gt_label_data = gt_label->data<int>();
     const T* loss_grad_data = loss_grad->data<T>();
+    const int* obj_mask_data = objness_mask->data<int>();
+    const int* gt_match_mask_data = gt_match_mask->data<int>();
     T* input_grad_data =
         input_grad->mutable_data<T>({n, c, h, w}, ctx.GetPlace());
     memset(input_grad_data, 0, input_grad->numel() * sizeof(T));
 
-    Tensor objness;
-    int* objness_data =
-        objness.mutable_data<int>({n, mask_num, h, w}, ctx.GetPlace());
-    memset(objness_data, 0, objness.numel() * sizeof(int));
-
-    const int stride = h * w;
-    const int an_stride = (class_num + 5) * stride;
-
     for (int i = 0; i < n; i++) {
-      for (int j = 0; j < mask_num; j++) {
-        for (int k = 0; k < h; k++) {
-          for (int l = 0; l < w; l++) {
-            int box_idx =
-                GetEntryIndex(i, j, k * w + l, mask_num, an_stride, stride, 0);
-            Box<T> pred = GetYoloBox(input_data, anchors, l, k, anchor_mask[j],
-                                     h, input_size, box_idx, stride);
-            T best_iou = 0;
-            for (int t = 0; t < b; t++) {
-              Box<T> gt = GetGtBox(gt_box_data, i, b, t);
-              if (LessEqualZero<T>(gt.w) || LessEqualZero<T>(gt.h)) {
-                continue;
-              }
-              T iou = CalcBoxIoU(pred, gt);
-              if (iou > best_iou) {
-                best_iou = iou;
-              }
-            }
-
-            if (best_iou > ignore_thresh) {
-              int obj_idx = (i * mask_num + j) * stride + k * w + l;
-              objness_data[obj_idx] = -1;
-            }
-          }
-        }
-      }
       for (int t = 0; t < b; t++) {
         Box<T> gt = GetGtBox(gt_box_data, i, b, t);
         if (LessEqualZero<T>(gt.w) || LessEqualZero<T>(gt.h)) {
@@ -406,35 +381,14 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
         }
         int gi = static_cast<int>(gt.x * w);
         int gj = static_cast<int>(gt.y * h);
-        Box<T> gt_shift = gt;
-        gt_shift.x = 0.0;
-        gt_shift.y = 0.0;
-        T best_iou = 0.0;
-        int best_n = 0;
-        for (int an_idx = 0; an_idx < an_num; an_idx++) {
-          Box<T> an_box;
-          an_box.x = 0.0;
-          an_box.y = 0.0;
-          an_box.w = anchors[2 * an_idx] / static_cast<T>(input_size);
-          an_box.h = anchors[2 * an_idx + 1] / static_cast<T>(input_size);
-          float iou = CalcBoxIoU<T>(an_box, gt_shift);
-          // TO DO: iou > 0.5 ?
-          if (iou > best_iou) {
-            best_iou = iou;
-            best_n = an_idx;
-          }
-        }
 
-        int mask_idx = GetMaskIndex(anchor_mask, best_n);
+        int mask_idx = gt_match_mask_data[i * b + t];
         if (mask_idx >= 0) {
           int box_idx = GetEntryIndex(i, mask_idx, gj * w + gi, mask_num,
                                       an_stride, stride, 0);
-          CalcBoxLocationLossGrad<T>(input_grad_data, loss_grad_data[i],
-                                     input_data, gt, anchors, best_n, box_idx,
-                                     gi, gj, h, input_size, stride);
-
-          int obj_idx = (i * mask_num + mask_idx) * stride + gj * w + gi;
-          objness_data[obj_idx] = 1;
+          CalcBoxLocationLossGrad<T>(
+              input_grad_data, loss_grad_data[i], input_data, gt, anchors,
+              anchor_mask[mask_idx], box_idx, gi, gj, h, input_size, stride);
 
           int label = gt_label_data[i * b + t];
           int label_idx = GetEntryIndex(i, mask_idx, gj * w + gi, mask_num,
@@ -446,7 +400,7 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     }
 
     CalcObjnessLossGrad<T>(input_grad_data + 4 * stride, loss_grad_data,
-                           input_data + 4 * stride, objness_data, n, mask_num,
+                           input_data + 4 * stride, obj_mask_data, n, mask_num,
                            h, w, stride, an_stride);
   }
 };

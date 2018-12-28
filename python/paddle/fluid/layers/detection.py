@@ -483,6 +483,9 @@ def yolov3_loss(x,
         loss = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
 
+    objectness_mask = helper.create_variable_for_type_inference(dtype='int32')
+    gt_match_mask = helper.create_variable_for_type_inference(dtype='int32')
+
     attrs = {
         "anchors": anchors,
         "anchor_mask": anchor_mask,
@@ -496,7 +499,11 @@ def yolov3_loss(x,
         inputs={"X": x,
                 "GTBox": gtbox,
                 "GTLabel": gtlabel},
-        outputs={'Loss': loss},
+        outputs={
+            'Loss': loss,
+            'ObjectnessMask': objectness_mask,
+            'GTMatchMask': gt_match_mask
+        },
         attrs=attrs)
     return loss
 
