@@ -2585,12 +2585,7 @@ def adaptive_pool2d(input,
         raise ValueError(
             "invalid setting 'require_index' true when 'pool_type' is 'avg'.")
 
-    def _is_list_or_tuple_(data):
-        return (isinstance(data, list) or isinstance(data, tuple))
-
-    if not _is_list_or_tuple_(pool_size) or len(pool_size) != 2:
-        raise ValueError(
-            "'pool_size' should be a list or tuple with length as 2.")
+    pool_size = utils.convert_to_list(pool_size, 2, 'pool_size')
 
     if pool_type == "max":
         l_type = 'max_pool2d_with_index'
@@ -2686,12 +2681,7 @@ def adaptive_pool3d(input,
         raise ValueError(
             "invalid setting 'require_index' true when 'pool_type' is 'avg'.")
 
-    def _is_list_or_tuple_(data):
-        return (isinstance(data, list) or isinstance(data, tuple))
-
-    if not _is_list_or_tuple_(pool_size) or len(pool_size) != 3:
-        raise ValueError(
-            "'pool_size' should be a list or tuple with length as 3.")
+    pool_size = utils.convert_to_list(pool_size, 3, 'pool_size')
 
     if pool_type == "max":
         l_type = 'max_pool3d_with_index'
