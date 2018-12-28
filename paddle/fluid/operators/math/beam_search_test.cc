@@ -129,13 +129,13 @@ void TestBeamSearch() {
 }
 
 TEST(BeamSearch, CPU) {
-  // It seems that beam_search_op has bugs.
   TestBeamSearch<paddle::platform::CPUDeviceContext,
                  paddle::platform::CPUPlace>();
 }
 
+#ifdef PADDLE_WITH_CUDA
 TEST(BeamSearch, GPU) {
-  // It seems that beam_search_op has bugs.
   TestBeamSearch<paddle::platform::CUDADeviceContext,
                  paddle::platform::CUDAPlace>();
 }
+#endif

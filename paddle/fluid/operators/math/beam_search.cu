@@ -290,12 +290,6 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
                   framework::LoDTensor* selected_ids,
                   framework::LoDTensor* selected_scores, size_t level,
                   size_t beam_size, int end_id, bool is_accumulated) {
-    // LOG(INFO) <<
-    // "============================================================================";
-    // LOG(INFO) << "pre_ids: " << pre_ids;
-    // LOG(INFO) << "pre_scores: " << pre_scores;
-    // LOG(INFO) << "ids: " << ids;
-    // LOG(INFO) << "scores: " << scores;
     auto abs_lod = framework::ToAbsOffset(scores->lod());
 
     const int64_t* pre_ids_data = pre_ids->data<int64_t>();
@@ -368,8 +362,6 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
       selected_ids->Resize(final_selected_dims);
       selected_scores->Resize(final_selected_dims);
     }
-    // LOG(INFO) << "selected_ids: " << *selected_ids;
-    // LOG(INFO) << "selected_scores: " << *selected_scores;
   }
 };
 
