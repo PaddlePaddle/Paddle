@@ -41,6 +41,7 @@ typedef enum {
   kCRFDecoding,
   kLayerNorm,
   kNCHW16CMulNC,
+  kSeqPool,
 } KernelType;
 
 template <typename T>
@@ -110,6 +111,25 @@ struct GRUTuples {
   typedef T data_type;
   typedef gru_attr_t attr_type;
   typedef void (*func_type)(gru_t*, const gru_attr_t*);
+};
+
+typedef enum {
+  non = 0,
+  sum,
+  avg,
+  sqrt,
+} SeqPoolType;
+
+typedef struct {
+  int h, w;
+  SeqPoolType type;
+} seq_pool_attr_t;
+
+template <typename T>
+struct SeqPoolTuples {
+  typedef T data_type;
+  typedef seq_pool_attr_t attr_type;
+  typedef void (*func_type)(const T*, T*, const seq_pool_attr_t*);
 };
 
 template <typename T>
