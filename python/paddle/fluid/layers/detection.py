@@ -1449,13 +1449,7 @@ def multi_box_head(inputs,
             stride=stride)
 
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
-        compile_shape = [
-            mbox_loc.shape[0], cpt.floor_division(
-                mbox_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3], 4), 4
-        ]
-        run_shape = tensor.assign(numpy.array([0, -1, 4]).astype("int32"))
-        mbox_loc_flatten = nn.reshape(
-            mbox_loc, shape=compile_shape, actual_shape=run_shape)
+        mbox_loc_flatten = nn.flatten(mbox_loc, axis=1)
         mbox_locs.append(mbox_loc_flatten)
 
         # get conf
@@ -1467,16 +1461,7 @@ def multi_box_head(inputs,
             padding=pad,
             stride=stride)
         conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
-        new_shape = [0, -1, num_classes]
-        compile_shape = [
-            conf_loc.shape[0],
-            cpt.floor_division(conf_loc.shape[1] * conf_loc.shape[2] *
-                               conf_loc.shape[3], num_classes), num_classes
-        ]
-        run_shape = tensor.assign(
-            numpy.array([0, -1, num_classes]).astype("int32"))
-        conf_loc_flatten = nn.reshape(
-            conf_loc, shape=compile_shape, actual_shape=run_shape)
+        conf_loc_flatten = nn.flatten(conf_loc, axis=1)
         mbox_confs.append(conf_loc_flatten)
 
     if len(box_results) == 1:
@@ -1494,7 +1479,11 @@ def multi_box_head(inputs,
         box = tensor.concat(reshaped_boxes)
         var = tensor.concat(reshaped_vars)
         mbox_locs_concat = tensor.concat(mbox_locs, axis=1)
+        mbox_locs_concat = nn.reshape(
+            mbox_locs_concat, shape=[0L, -1L, 4L], inplace=True)
         mbox_confs_concat = tensor.concat(mbox_confs, axis=1)
+        mbox_confs_concat = nn.reshape(
+            mbox_confs_concat, shape=[0L, -1L, num_classes], inplace=True)
 
     box.stop_gradient = True
     var.stop_gradient = True
