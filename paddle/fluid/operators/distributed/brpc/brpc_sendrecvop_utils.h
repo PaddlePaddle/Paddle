@@ -14,39 +14,35 @@ limitations under the License. */
 
 #pragma once
 
+#include <sys/time.h>
 #include <iostream>
 #include <string>
 #include <vector>
 
+#include "brpc/channel.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/distributed/distributed_pb.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
-#include "paddle/fluid/platform/port.h"
-
-#include "paddle/fluid/operators/distributed/send_recv.grpc.pb.h"
-#include "paddle/fluid/operators/distributed/send_recv.pb.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
 
-typedef void (*DestroyCallback)(void*);
+void SerializeToIOBuf(const std::string& name, framework::Variable* var,
+                      const platform::DeviceContext& ctx, VarMsg* request,
+                      butil::IOBuf* iobuf, const std::string& out_varname,
+                      bool var_is_not_stable, const int trainer_id = 0,
+                      const std::string& table_name = std::string());
 
-void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
-                           const platform::DeviceContext& ctx,
-                           ::grpc::ByteBuffer* msg,
-                           const std::string& out_varname = std::string(),
-                           const int trainer_id = 0,
-                           const std::string& table_name = std::string());
-
-void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
-                               const platform::DeviceContext& ctx,
-                               const framework::Scope* scope,
-                               framework::Variable** var, int* trainer_id);
+void DeserializeFromIOBuf(const VarMsg& meta, const butil::IOBuf& iobuf,
+                          const platform::DeviceContext& ctx,
+                          const framework::Scope* scope,
+                          framework::Variable** var, int* trainer_id);
 
 }  // namespace distributed
 }  // namespace operators
