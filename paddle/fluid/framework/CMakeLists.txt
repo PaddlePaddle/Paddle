@@ -130,11 +130,9 @@ cc_test(version_test SRCS version_test.cc DEPS version)
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog version)
 
 if(WITH_NGRAPH)
-  if(NOT WIN32)
-    cc_library(ngraph_bridge SRCS ngraph_bridge.cc DEPS operator framework_proto ngraph)
-    cc_library(ngraph_operator SRCS ngraph_operator.cc DEPS ngraph_bridge operator op_info device_context tensor scope glog
-      shape_inference data_transform lod_tensor profiler ngraph)
-  endif(NOT WIN32)
+  cc_library(ngraph_bridge SRCS ngraph_bridge.cc DEPS operator framework_proto ngraph)
+  cc_library(ngraph_operator SRCS ngraph_operator.cc DEPS ngraph_bridge operator op_info device_context tensor scope glog
+             shape_inference data_transform lod_tensor profiler)
 endif(WITH_NGRAPH)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
@@ -176,11 +174,7 @@ if(WITH_DISTRIBUTE)
 
 else()
   if(WITH_NGRAPH)
-    if(NOT WIN32)
-      cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass ngraph ngraph_operator variable_helper)
-    else(NOT WIN32)
-      cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
-    endif(NOT WIN32)
+    cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass ngraph_operator variable_helper)
   else(WITH_NGRAPH)
     cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
   endif(WITH_NGRAPH)
