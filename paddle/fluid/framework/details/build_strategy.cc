@@ -134,7 +134,7 @@ std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy(
 std::unique_ptr<ir::Graph> BuildStrategy::Apply(
     const ProgramDesc &main_program, const std::vector<platform::Place> &places,
     const std::string &loss_var_name, const std::vector<Scope *> &local_scopes,
-    const size_t &num_parallel_devices,
+    const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     const bool use_cuda, platform::NCCLContextMap *nccl_ctxs) const {
 #else
@@ -153,9 +153,8 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Erase("local_scopes");
       pass->SetNotOwned<const std::vector<Scope *>>("local_scopes",
                                                     &local_scopes);
-      pass->Erase("num_parallel_devices");
-      pass->Set<size_t>("num_parallel_devices",
-                        new size_t(num_parallel_devices));
+      pass->Erase("nranks");
+      pass->Set<size_t>("nranks", new size_t(nranks));
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;

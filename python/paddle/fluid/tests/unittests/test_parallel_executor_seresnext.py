@@ -277,9 +277,7 @@ class TestResnet(TestParallelExecutorBase):
                                   use_cuda=True,
                                   use_reduce=False,
                                   iter=20,
-                                  delta2=1e-6,
-                                  use_parallel_graph=False,
-                                  lr_scale=1.0):
+                                  delta2=1e-6):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
@@ -298,8 +296,7 @@ class TestResnet(TestParallelExecutorBase):
             use_cuda=use_cuda,
             use_reduce=use_reduce,
             optimizer=optimizer,
-            use_parallel_executor=False,
-            use_parallel_graph=use_parallel_graph)
+            use_parallel_executor=False)
         parallel_first_loss, parallel_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
@@ -308,8 +305,7 @@ class TestResnet(TestParallelExecutorBase):
             batch_size=batch_size,
             use_cuda=use_cuda,
             use_reduce=use_reduce,
-            optimizer=optimizer,
-            use_parallel_graph=use_parallel_graph)
+            optimizer=optimizer)
 
         self.assertAlmostEquals(
             np.mean(parallel_first_loss), single_first_loss[0], delta=1e-6)
@@ -320,11 +316,6 @@ class TestResnet(TestParallelExecutorBase):
         if core.is_compiled_with_cuda():
             self._check_resnet_convergence(
                 model=SE_ResNeXt50Small, use_cuda=True)
-            self._check_resnet_convergence(
-                model=SE_ResNeXt50Small,
-                use_cuda=True,
-                use_parallel_graph=True,
-                lr_scale=core.get_cuda_device_count())
         self._check_resnet_convergence(
             model=SE_ResNeXt50Small, use_cuda=False, iter=2, delta2=1e-3)
 

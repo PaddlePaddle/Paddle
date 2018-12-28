@@ -175,8 +175,6 @@ class TestTransformer(TestParallelExecutorBase):
             self.check_network_convergence(transformer, use_cuda=True)
             self.check_network_convergence(
                 transformer, use_cuda=True, enable_sequential_execution=True)
-            self.check_network_convergence(
-                transformer, use_cuda=True, use_parallel_graph=True)
         self.check_network_convergence(transformer, use_cuda=False, iter=5)
 
 
