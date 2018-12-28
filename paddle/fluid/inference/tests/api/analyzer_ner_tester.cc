@@ -60,8 +60,7 @@ struct DataRecord {
   }
 };
 
-void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
-                   int batch_size) {
+void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data) {
   PaddleTensor lod_word_tensor, lod_mention_tensor;
   lod_word_tensor.name = "word";
   lod_mention_tensor.name = "mention";
@@ -100,7 +99,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   int epoch = FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;
   LOG(INFO) << "number of samples: " << epoch * FLAGS_batch_size;
   for (int bid = 0; bid < epoch; ++bid) {
-    PrepareInputs(&input_slots, &data, FLAGS_batch_size);
+    PrepareInputs(&input_slots, &data);
     (*inputs).emplace_back(input_slots);
   }
 }
