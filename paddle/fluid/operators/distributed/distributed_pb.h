@@ -13,23 +13,18 @@
 // limitations under the License.
 
 #pragma once
-#include <cstddef>  // for size_t
 
-namespace paddle {
-namespace framework {
-namespace details {
+#ifdef PADDLE_WITH_DISTRIBUTE
 
-struct ExecutionStrategy {
-  enum ExecutorType { kDefault = 0, kExperimental = 1 };
+#ifdef PADDLE_WITH_GRPC
 
-  size_t num_threads_{0};
-  bool use_cuda_{true};
-  bool allow_op_delay_{false};
-  size_t num_iteration_per_drop_scope_{1};
-  ExecutorType type_{kDefault};
-  bool dry_run_{false};
-};
+#include "paddle/fluid/operators/distributed/send_recv.grpc.pb.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
 
-}  //  namespace details
-}  //  namespace framework
-}  //  namespace paddle
+#else  // PADDLE_WITH_GRPC
+
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
+
+#endif  // PADDLE_WITH_GRPC
+
+#endif  // PADDLE_WITH_DISTRIBUTE
