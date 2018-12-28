@@ -181,7 +181,7 @@ TEST(Analyzer_seq_pool1, fuse_statis) {
   auto fuse_statis = GetFuseStatis(
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
   LOG(INFO) << "num_ops: " << num_ops;
-  EXPECT_EQ(num_ops, 314);
+  EXPECT_EQ(num_ops, 349);
 }
 
 }  // namespace analysis
