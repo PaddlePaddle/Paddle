@@ -23,7 +23,7 @@ nv_test(test_trt_elementwise_op SRCS test_elementwise_op.cc elementwise_op.cc
         DEPS ${FLUID_CORE_MODULES} ${GLOB_OPERATOR_DEPS} tensorrt_engine tensorrt_plugin
              elementwise_add_op elementwise_mul_op SERIAL)
 nv_test(test_trt_softmax_op SRCS test_softmax_op.cc softmax_op.cc
-        DEPS ${FLUID_CORE_MODULES} ${GLOB_OPERATOR_DEPS} tensorrt_engine softmax_op SERIAL)
+        DEPS ${FLUID_CORE_MODULES} ${GLOB_OPERATOR_DEPS} tensorrt_engine softmax_op temp_allocator SERIAL)
 nv_test(test_trt_batch_norm_op SRCS test_batch_norm_op.cc batch_norm_op.cc
         DEPS ${FLUID_CORE_MODULES} ${GLOB_OPERATOR_DEPS} tensorrt_engine batch_norm_op SERIAL)
 nv_test(test_trt_concat_op SRCS test_concat_op.cc concat_op.cc
