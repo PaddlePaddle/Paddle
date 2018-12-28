@@ -84,6 +84,9 @@ cc_test(init_test SRCS init_test.cc DEPS device_context)
 nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)
 nv_test(transform_test SRCS transform_test.cu DEPS memory place device_context)
 
+cc_library(timer SRCS timer.cc)
+cc_test(timer_test SRCS timer_test.cc DEPS timer)
+
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
 cc_library(profiler SRCS profiler.cc DEPS device_context device_tracer)
 cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)

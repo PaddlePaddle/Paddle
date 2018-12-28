@@ -20,10 +20,10 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/operators/distributed/brpc_rdma_pool.h"
-#include "paddle/fluid/operators/distributed/brpc_sendrecvop_utils.h"
-#include "paddle/fluid/operators/distributed/brpc_variable_response.h"
-#include "paddle/fluid/operators/distributed/send_recv.pb.h"
+#include "paddle/fluid/operators/distributed/brpc/brpc_rdma_pool.h"
+#include "paddle/fluid/operators/distributed/brpc/brpc_sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/brpc/brpc_variable_response.h"
+#include "paddle/fluid/operators/distributed/distributed_pb.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
