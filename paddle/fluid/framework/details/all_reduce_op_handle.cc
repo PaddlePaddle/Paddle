@@ -55,9 +55,6 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 void AllReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
 
-  // FIXME(typhoonzero): If scope0(global scope) have NCCL_ID_VAR,
-  // this is a distributed or inter-process call, find a better way.
-  // Wait input done
   WaitInputVarGenerated();
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());

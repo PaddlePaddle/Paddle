@@ -84,11 +84,15 @@ bool IsCompiledWithCUDA() {
 }
 
 bool IsCompiledWithBrpc() {
-#if defined(PADDLE_WITH_BRPC) || defined(PADDLE_WITH_BRPC_RDMA)
-  return true;
-#else
+#ifndef PADDLE_WITH_DISTRIBUTE
   return false;
 #endif
+
+#ifdef PADDLE_WITH_GRPC
+  return false;
+#endif
+
+  return true;
 }
 
 bool IsCompiledWithDIST() {
@@ -124,9 +128,7 @@ PYBIND11_MODULE(core, m) {
   py::class_<imperative::VarBase, PyVarBase>(m, "VarBase", R"DOC()DOC")
       .def(py::init<>())
       .def("_run_backward",
-           [](imperative::VarBase &self, framework::Scope *scope) {
-             self.RunBackward(scope);
-           })
+           [](imperative::VarBase &self) { self.RunBackward(); })
       .def("_grad", &imperative::VarBase::Grad)
       .def_property(
           "desc",
@@ -134,7 +136,13 @@ PYBIND11_MODULE(core, m) {
           [](imperative::VarBase &self, framework::VarDesc *var_desc) {
             self.var_desc_ = var_desc;
           },
-          py::return_value_policy::reference);
+          py::return_value_policy::reference)
+      .def_property("var",
+                    [](const imperative::VarBase &self) { return self.var_; },
+                    [](imperative::VarBase &self, framework::Variable *var) {
+                      self.var_ = var;
+                    },
+                    py::return_value_policy::reference);
 
   py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
       .def(py::init<>())
