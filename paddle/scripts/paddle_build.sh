@@ -527,6 +527,17 @@ function assert_api_spec_approvals() {
         fi
     fi
 
+    CHECK_DOCK_MD5=`python ${PADDLE_ROOT}/tools/check_doc_approval.py`
+    if [ "True" != ${CHECK_DOCK_MD5} ]; then
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 35982308`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "You must have shanyi15 approval for the api doc change! "
+            exit 1
+        fi
+        echo ${CHECK_DOCK_MD5} >/root/.cache/doc_md5.txt
+    fi
 }
 
 
