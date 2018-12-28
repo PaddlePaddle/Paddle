@@ -981,14 +981,6 @@ All parameter, weight, gradient are variables in Paddle.
                      to fuse elementwise_add_op and activation_op,
                      it may make the execution faster. Default False)DOC")
       .def_property(
-          "enable_parallel_graph",
-          [](const BuildStrategy &self) { return self.enable_parallel_graph_; },
-          [](BuildStrategy &self, bool b) { self.enable_parallel_graph_ = b; },
-          R"DOC(The type is BOOL, if set True, ParallelExecutor would build the main_program into multiple graphs,
-                each of the graphs would run with one device. This approach can achieve better performance in
-                some scenarios. Please note, this approach only supports all-reduce mode
-                on GPU device)DOC")
-      .def_property(
           "memory_optimize",
           [](const BuildStrategy &self) { return self.memory_optimize_; },
           [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; })

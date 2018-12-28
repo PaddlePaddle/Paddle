@@ -175,14 +175,13 @@ class TestCRFModel(unittest.TestCase):
                 print(pe.run(feed=feeder.feed(cur_batch),
                              fetch_list=[avg_cost.name])[0])
 
-    def _new_build_strategy(self, use_reduce=False, use_parallel_graph=False):
+    def _new_build_strategy(self, use_reduce=False):
         build_strategy = fluid.BuildStrategy()
 
         if use_reduce:
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
         else:
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
-        build_strategy.enable_parallel_graph = use_parallel_graph
 
         return build_strategy
 
@@ -203,11 +202,6 @@ class TestCRFModel(unittest.TestCase):
             self.check_network_convergence(
                 is_sparse=False,
                 build_strategy=self._new_build_strategy(),
-                use_cuda=True)
-            self.check_network_convergence(
-                is_sparse=False,
-                build_strategy=self._new_build_strategy(
-                    use_parallel_graph=True),
                 use_cuda=True)
 
         self.check_network_convergence(

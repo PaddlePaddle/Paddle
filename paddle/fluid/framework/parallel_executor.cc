@@ -107,7 +107,7 @@ class ParallelExecutorPrivate {
   bool own_local_scope_;
   bool use_cuda_;
   bool use_all_reduce_;
-  size_t num_parallel_devices_;
+  size_t nranks_;
 
   // global_ref_cnts_ is only initialized when ParallelExecutor constructs, and
   // then keeps unchanged
@@ -203,7 +203,7 @@ ParallelExecutor::ParallelExecutor(
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ =
       build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
-  member_->num_parallel_devices_ = num_trainers * places.size();
+  member_->nranks_ = num_trainers * places.size();
 
   if (!member_->use_all_reduce_) {
     PADDLE_ENFORCE(places.size() > 1,
@@ -211,16 +211,14 @@ ParallelExecutor::ParallelExecutor(
                    "the number of places must be greater than 1.");
   }
 
-  if (build_strategy.enable_parallel_graph_) {
-    PADDLE_ENFORCE(
-        member_->use_all_reduce_,
-        "build_strategy.reduce should be `AllReduce` if you want to enable"
-        "ParallelGraph.");
-    PADDLE_ENFORCE(
-        member_->use_cuda_,
-        "execution_strategy.use_cuda should be True if you want to enable "
-        "ParallelGraph.");
-  }
+  // FIXME(Yancey1989): parallel graph mode get better performance
+  // in GPU allreduce distributed training. Need an elegant way to
+  // choice the execution strategy.
+  build_strategy.enable_parallel_graph_ =
+      EnableParallelGraphExecution(main_program, exec_strategy, build_strategy);
+
+  VLOG(1) << "Enable ParallelGraph Execution: "
+          << build_strategy.enable_parallel_graph_;
 
   // Step 1. Bcast the bcast_vars to devs.
   // Create local scopes
@@ -242,20 +240,20 @@ ParallelExecutor::ParallelExecutor(
 // Bcast Parameters to all GPUs
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
-    ncclUniqueId *nccl_id = nullptr;
-    // nccl collective would broadcast nccl id by gen_nccl_id operator.
+    std::unique_ptr<ncclUniqueId> nccl_id;
+    // nccl collective would broadcast ncclUniqueId by gen_nccl_id operator.
     if (nccl_id_var != nullptr) {
-      nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+      nccl_id.reset(nccl_id_var->GetMutable<ncclUniqueId>());
     }
-    if (build_strategy.enable_parallel_graph_ && places.size() > 1) {
-      if (nccl_id == nullptr) {
-        nccl_id = new ncclUniqueId();
-        PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(nccl_id));
+    if (build_strategy.enable_parallel_graph_ && member_->nranks_ > 1UL) {
+      if (nccl_id.get() == nullptr) {
+        nccl_id.reset(new ncclUniqueId());
+        platform::dynload::ncclGetUniqueId(nccl_id.get());
       }
     }
 
     member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
-        member_->places_, nccl_id, num_trainers, trainer_id));
+        member_->places_, nccl_id.get(), num_trainers, trainer_id));
 #else
     PADDLE_THROW("Not compiled with CUDA");
 #endif
@@ -268,27 +266,25 @@ ParallelExecutor::ParallelExecutor(
   // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
   // ncclOp
   std::vector<std::unique_ptr<ir::Graph>> graphs;
-  member_->num_parallel_devices_ = member_->places_.size() * num_trainers;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   if (build_strategy.enable_parallel_graph_) {
     for (size_t i = 0; i < member_->places_.size(); ++i) {
       std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
           main_program, {member_->places_[i]}, loss_var_name,
-          {member_->local_scopes_[i]}, member_->num_parallel_devices_,
-          member_->use_cuda_, member_->nccl_ctxs_.get());
+          {member_->local_scopes_[i]}, member_->nranks_, member_->use_cuda_,
+          member_->nccl_ctxs_.get());
       graphs.push_back(std::move(graph));
     }
   } else {
     std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
         main_program, member_->places_, loss_var_name, member_->local_scopes_,
-        member_->num_parallel_devices_, member_->use_cuda_,
-        member_->nccl_ctxs_.get());
+        member_->nranks_, member_->use_cuda_, member_->nccl_ctxs_.get());
     graphs.push_back(std::move(graph));
   }
 #else
   std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
       main_program, member_->places_, loss_var_name, member_->local_scopes_,
-      member_->num_parallel_devices_, member_->use_cuda_);
+      member_->nranks_, member_->use_cuda_);
   graphs.push_back(std::move(graph));
 #endif
   auto max_memory_size = GetEagerDeletionThreshold();
@@ -468,6 +464,35 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
       t->set_lod(lod_tensors[j].lod());
     }
   }
+}
+
+bool ParallelExecutor::EnableParallelGraphExecution(
+    const ProgramDesc &main_program, const ExecutionStrategy &exec_strategy,
+    const BuildStrategy &build_strategy) const {
+  bool enable_parallel_graph = true;
+
+  // TODO(Yancey1989): support sparse update in ParallelGraph mode.
+  for (auto &var_desc : main_program.Block(0).AllVars()) {
+    if (var_desc->GetType() == proto::VarType::SELECTED_ROWS) {
+      enable_parallel_graph = false;
+    }
+  }
+
+  // TODO(Yancey1989): support pserver mode
+  for (auto &op_desc : main_program.Block(0).AllOps()) {
+    if (op_desc->Type() == "send" || op_desc->Type() == "recv") {
+      enable_parallel_graph = false;
+      break;
+    }
+  }
+
+  if (!member_->use_all_reduce_ || !member_->use_cuda_)
+    enable_parallel_graph = false;
+
+  if (build_strategy.enable_sequential_execution_ ||
+      exec_strategy.type_ == ExecutionStrategy::ExecutorType::kExperimental)
+    enable_parallel_graph = false;
+  return enable_parallel_graph;
 }
 
 ParallelExecutor::~ParallelExecutor() {

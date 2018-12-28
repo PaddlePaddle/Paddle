@@ -84,8 +84,6 @@ struct BuildStrategy {
 
   bool fuse_broadcast_op_{false};
 
-  bool enable_parallel_graph_{false};
-
   int num_trainers_{1};
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;
@@ -112,13 +110,20 @@ struct BuildStrategy {
                                    const std::vector<platform::Place> &places,
                                    const std::string &loss_var_name,
                                    const std::vector<Scope *> &local_scopes,
-                                   const size_t &num_parallel_devices_,
+                                   const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
                                    const bool use_cuda,
                                    platform::NCCLContextMap *nccl_ctxs) const;
 #else
                                    const bool use_cuda) const;
 #endif
+
+  // If set true, ParallelExecutor would build the main_program into multiple
+  // graphs,
+  // each of the graphs would run with one device. This approach can achieve
+  // better performance
+  // on some scenarios.
+  mutable bool enable_parallel_graph_ = false;
 
  private:
   mutable bool is_finalized_ = false;

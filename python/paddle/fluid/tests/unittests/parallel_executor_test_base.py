@@ -39,7 +39,6 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   seed=None,
                                   use_parallel_executor=True,
                                   use_reduce=False,
-                                  use_parallel_graph=False,
                                   use_ir_memory_optimize=False,
                                   fuse_elewise_add_act_ops=False,
                                   optimizer=fluid.optimizer.Adam,
@@ -80,7 +79,6 @@ class TestParallelExecutorBase(unittest.TestCase):
             if use_fast_executor:
                 exec_strategy.use_experimental_executor = True
             build_strategy = fluid.BuildStrategy()
-            build_strategy.enable_parallel_graph = use_parallel_graph
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
                 if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
             build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
