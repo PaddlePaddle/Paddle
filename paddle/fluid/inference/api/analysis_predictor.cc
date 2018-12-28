@@ -251,7 +251,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     input.set_lod(lod);
     int idx = -1;
     if (config_.specify_input_name) {
-      idx = feed_names_[inputs[i].name];
+      idx = feed_names_.at(inputs[i].name);
     } else {
       idx = boost::get<int>(feeds_[i]->GetAttr("col"));
     }
