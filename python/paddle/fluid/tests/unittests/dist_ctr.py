@@ -30,7 +30,12 @@ fluid.default_main_program().random_seed = 1
 
 
 class TestDistCTR2x2(TestDistRunnerBase):
+    def config(self):
+        self.use_l2_decay = False
+
     def get_model(self, batch_size=2):
+        self.config()
+
         dnn_input_dim, lr_input_dim = dist_ctr_reader.load_data_meta()
         """ network definition """
         dnn_data = fluid.layers.data(
@@ -97,7 +102,13 @@ class TestDistCTR2x2(TestDistRunnerBase):
 
         inference_program = paddle.fluid.default_main_program().clone()
 
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001)
+        regularization = None
+        if self.use_l2_decay:
+            regularization = fluid.regularizer.L2DecayRegularizer(
+                regularization_coeff=1e-3)
+
+        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001,
+                                            regularization=regularization)
         sgd_optimizer.minimize(avg_cost)
 
         dataset = dist_ctr_reader.Dataset()
