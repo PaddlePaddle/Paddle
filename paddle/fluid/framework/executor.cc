@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -100,7 +100,7 @@ static void DeleteUnusedTensors(
           continue;
         }
         auto* var = scope.FindVar(name);
-        if (var != nullptr) {
+        if (var == nullptr) {
           continue;
         }
 
@@ -119,7 +119,7 @@ static void DeleteUnusedTensors(
           }
         } else {
           PADDLE_THROW("Type %s of %s is not supported eager deletion",
-                       var->Type().name(), name);
+                       framework::ToTypeName(var->Type()), name);
         }
       }
     }
@@ -157,9 +157,9 @@ void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
   // TODO(typhoonzero): complete message will need to use real trainer_id,
   // except 0.
-  ::paddle::operators::distributed::RPCClient::GetInstance<
-      ::paddle::operators::distributed::GRPCClient>(0)
-      ->SendComplete();
+  auto client =
+      paddle::operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
+  client->SendComplete();
 #endif
 }
 

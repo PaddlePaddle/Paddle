@@ -48,13 +48,12 @@ class ConditionalOp : public framework::OperatorBase {
     if (!(ips.size() == 1UL && ips[0]->IsInitialized())) {
       PADDLE_THROW("should have one initialized input as condition");
     }
-    if (!(framework::IsType<bool>(ips[0]->type()) &&  // NOLINT
-          ips[0]->numel() == 1)) {
-      PADDLE_THROW(
-          "condition input's data type should be bool, "
-          "numel should be 1, actual numel is %d",
-          ips[0]->numel());
-    }
+
+    PADDLE_ENFORCE(ips[0]->type() == framework::proto::VarType::BOOL &&
+                       ips[0]->numel() == 1,
+                   "condition input's data type should be bool, "
+                   "numel should be 1, actual numel is %d",
+                   ips[0]->numel());
     bool res = false;
     if (platform::is_gpu_place(ips[0]->place())) {
 #ifdef PADDLE_WITH_CUDA

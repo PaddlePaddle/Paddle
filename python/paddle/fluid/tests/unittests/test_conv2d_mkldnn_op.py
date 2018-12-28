@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 
-from test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride
+from test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride, TestWithGroup, TestWith1x1, TestWithInput1x1Filter1x1
 
 
 class TestMKLDNN(TestConv2dOp):
@@ -32,6 +32,24 @@ class TestMKLDNNWithPad(TestWithPad):
 
 
 class TestMKLDNNWithStride(TestWithStride):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+        self.data_format = "NCHW"
+
+
+class TestMKLDNNWithGroup(TestWithGroup):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+        self.data_format = "NCHW"
+
+
+class TestMKLDNNWith1x1(TestWith1x1):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+        self.data_format = "NCHW"
+
+
+class TestMKLDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"

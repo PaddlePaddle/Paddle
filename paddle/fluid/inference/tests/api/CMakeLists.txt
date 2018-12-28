@@ -30,6 +30,13 @@ function(inference_analysis_api_test_with_fake_data target install_dir filename 
         ARGS --infer_model=${install_dir}/model)
 endfunction()
 
+function(inference_analysis_api_test_with_refer_result target install_dir filename)
+    inference_analysis_test(${target} SRCS ${filename}
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt
+             --refer_result=${install_dir}/result.txt)
+endfunction()
+
 # RNN1
 if(NOT APPLE AND WITH_MKLML)
     set(RNN1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn1")
@@ -68,6 +75,11 @@ set(LAC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lac")
 download_model_and_data(${LAC_INSTALL_DIR} "lac_model.tar.gz" "lac_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR} analyzer_lac_tester.cc)
 
+# MM DNN
+set(MM_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mm_dnn")
+download_model_and_data(${MM_DNN_INSTALL_DIR} "MM_DNN_model.tar.gz" "MM_DNN_data.txt.tar.gz")
+inference_analysis_api_test(test_analyzer_mm_dnn ${MM_DNN_INSTALL_DIR} analyzer_mm_dnn_tester.cc)
+
 # text_classification
 set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
 download_model_and_data(${TEXT_CLASSIFICATION_INSTALL_DIR} "text-classification-Senta.tar.gz" "text_classification_data.txt.tar.gz")
@@ -83,14 +95,25 @@ set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
 if (NOT EXISTS ${OCR_INSTALL_DIR})
     inference_download_and_uncompress(${OCR_INSTALL_DIR} "http://paddlemodels.cdn.bcebos.com/" "inference-vis-demos%2Focr.tar.gz")
 endif()
-inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
+inference_analysis_api_test_with_refer_result(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
+
+# mobilenet with transpose op
+set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
+if (NOT EXISTS ${MOBILENET_INSTALL_DIR})
+    inference_download_and_uncompress(${MOBILENET_INSTALL_DIR} "http://paddlemodels.cdn.bcebos.com/" "inference-vis-demos%2Fmobilenet.tar.gz")
+endif()
+inference_analysis_api_test_with_refer_result(test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR} analyzer_vis_tester.cc)
 
 # resnet50
 inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
   "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz")
 
+# seq_pool1
+inference_analysis_api_test_with_fake_data(test_analyzer_seq_pool1
+"${INFERENCE_DEMO_INSTALL_DIR}/seq_pool1" analyzer_seq_pool1_tester.cc "seq_pool1.tar.gz")
+
 # mobilenet with depthwise_conv op
-inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet
+inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_conv
   "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz")
 
 # anakin

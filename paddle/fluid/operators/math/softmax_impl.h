@@ -76,7 +76,6 @@ class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
   void operator()(const DeviceContext& context, const framework::Tensor* X,
                   framework::Tensor* Y) {
     auto in_dims = X->dims();
-    auto out_dims = Y->dims();
     const float* in_data = X->data<float>();
     float* out_data = Y->data<float>();
     const int kBatchDim = 0;

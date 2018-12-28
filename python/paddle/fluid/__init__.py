@@ -46,7 +46,7 @@ from . import transpiler
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
-from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
+from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
@@ -102,6 +102,13 @@ def __bootstrap__():
     import sys
     import os
     import platform
+
+    if os.name == 'nt':
+        third_lib_path = os.path.abspath(os.path.dirname(
+            __file__)) + os.sep + '..' + os.sep + 'libs'
+        os.environ['path'] += ';' + third_lib_path
+        sys.path.append(third_lib_path)
+
     from . import core
 
     in_test = 'unittest' in sys.modules
@@ -128,13 +135,12 @@ def __bootstrap__():
         'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
         'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
         'allocator_strategy', 'reader_queue_speed_test_mode',
-        'print_sub_graph_dir', 'pe_profile_fname'
+        'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
 
     if os.name != 'nt':
-        read_env_flags.append('warpctc_dir')
         read_env_flags.append('cpu_deterministic')
 
     if core.is_compiled_with_dist():
@@ -150,8 +156,9 @@ def __bootstrap__():
         read_env_flags += [
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
-            'cudnn_exhaustive_search', 'selected_gpus'
+            'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus'
         ]
+
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])

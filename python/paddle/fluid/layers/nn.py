@@ -18,7 +18,9 @@ All layers just related to the neural network.
 from __future__ import print_function
 
 import numpy as np
+import six
 import os
+import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable, OpProtoHolder
@@ -29,6 +31,7 @@ from . import utils
 from .. import unique_name
 from functools import reduce
 from .. import core
+from ..imperative import layers
 
 __all__ = [
     'fc',
@@ -52,6 +55,8 @@ __all__ = [
     'softmax',
     'pool2d',
     'pool3d',
+    'adaptive_pool2d',
+    'adaptive_pool3d',
     'batch_norm',
     'beam_search_decode',
     'conv2d_transpose',
@@ -173,7 +178,9 @@ __all__ = [
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
     'lstm',
+    'py_func',
     'psroi_pool',
+    'huber_loss',
 ]
 
 kIgnoreIndex = -100
@@ -495,7 +502,7 @@ def lstm(input,
     If Device is GPU, This op will use cudnn LSTM implementation
 
     A four-gate Long Short-Term Memory network with no peephole connections.
-    In the forward pass the output ht and cell output ct for a given iteration can be computed from the recurrent input ht-1, 
+    In the forward pass the output ht and cell output ct for a given iteration can be computed from the recurrent input ht-1,
     the cell input ct-1 and the previous layer input xt given matrices W, R and biases bW, bR from the following equations:
 
     $$ i_t = \\sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + bx_i + bh_i) $$
@@ -522,19 +529,19 @@ def lstm(input,
     - $\tilde{c_t}$ is also called candidate hidden state,
       which is computed based on the current input and the previous hidden state.
 
-    Where sigmoid is the sigmoid operator: sigmoid(x) = 1 / (1 + e^-x), * represents a point-wise multiplication, 
+    Where sigmoid is the sigmoid operator: sigmoid(x) = 1 / (1 + e^-x), * represents a point-wise multiplication,
     X represensts a matrix multiplication
 
 
     Args:
         input (Variable): LSTM input tensor, shape MUST be ( seq_len x batch_size x input_size )
-        init_h(Variable): The initial hidden state of the LSTM                       
+        init_h(Variable): The initial hidden state of the LSTM
                        This is a tensor with shape ( num_layers x batch_size x hidden_size)
                        if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
         init_c(Variable): The initial cell state of the LSTM.
                        This is a tensor with shape ( num_layers x batch_size x hidden_size )
                        if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
-        max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len 
+        max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len
         hidden_size (int): hidden size of the LSTM
         num_layers (int): total layers number of the LSTM
         dropout_prob(float|0.0): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
@@ -553,10 +560,10 @@ def lstm(input,
                          if is_bidirec set to True, shape will be ( seq_len x batch_sze x hidden_size*2)
         last_h(Tensor): the hidden state of the last step of LSTM
                         shape is ( num_layers x batch_size x hidden_size )
-                        if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)                     
+                        if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)
         last_c(Tensor): the cell state of the last step of LSTM
                         shape is ( num_layers x batch_size x hidden_size )
-                        if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)                     
+                        if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)
 
 
     Examples:
@@ -2500,6 +2507,204 @@ def pool3d(input,
     return pool_out
 
 
+@templatedoc(op_type="pool2d")
+def adaptive_pool2d(input,
+                    pool_size,
+                    pool_type="max",
+                    require_index=False,
+                    name=None):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): The input tensor of pooling operator. The format of
+                          input tensor is NCHW, where N is batch size, C is
+                          the number of channels, H is the height of the
+                          feature, and W is the width of the feature.
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain two integers, (pool_size_Height, pool_size_Width).
+        pool_type: ${pooling_type_comment}
+        require_index (bool): If true, the index of max pooling point along with outputs.
+            it cannot be set in average pooling type.
+        name (str|None): A name for this layer(optional). If set None, the
+                        layer will be named automatically.
+
+    Returns:
+        Variable: The pooling result.
+
+    Raises:
+        ValueError: 'pool_type' is not 'max' nor 'avg'.
+        ValueError: invalid setting 'require_index' true when 'pool_type' is 'avg'.
+        ValueError: 'pool_size' should be a list or tuple with length as 2.
+
+    Examples:
+        .. code-block:: python
+
+          # suppose input data in shape of [N, C, H, W], `pool_size` is [m, n], 
+          # output shape is [N, C, m, n], adaptive pool divide H and W dimentions
+          # of input data into m * n grids averagely and performs poolings in each 
+          # grid to get output.
+          # adaptive average pool performs calculations as follow:
+          # 
+          #     for i in range(m):
+          #         for j in range(n):
+          #             hstart = floor(i * H / m)
+          #             hend = ceil((i + 1) * H / m)
+          #             wstart = floor(i * W / n)
+          #             wend = ceil((i + 1) * W / n)
+          #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
+          #
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          pool_out = fluid.layers.adaptive_pool2d(
+                            input=data,
+                            pool_size=[3, 3],
+                            pool_type='avg')
+    """
+    if pool_type not in ["max", "avg"]:
+        raise ValueError(
+            "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
+            str(pool_type))
+
+    if pool_type == "avg" and require_index:
+        raise ValueError(
+            "invalid setting 'require_index' true when 'pool_type' is 'avg'.")
+
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if not _is_list_or_tuple_(pool_size) or len(pool_size) != 2:
+        raise ValueError(
+            "'pool_size' should be a list or tuple with length as 2.")
+
+    if pool_type == "max":
+        l_type = 'max_pool2d_with_index'
+    else:
+        l_type = "pool2d"
+
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_variable_for_type_inference(dtype)
+
+    outputs = {"Out": pool_out}
+    if pool_type == "max":
+        mask = helper.create_variable_for_type_inference(dtype)
+        outputs["Mask"] = mask
+
+    helper.append_op(
+        type=l_type,
+        inputs={"X": input},
+        outputs=outputs,
+        attrs={
+            "pooling_type": pool_type,
+            "ksize": pool_size,
+            "adaptive": True,
+        })
+
+    return (pool_out, mask) if require_index else pool_out
+
+
+@templatedoc(op_type="pool3d")
+def adaptive_pool3d(input,
+                    pool_size,
+                    pool_type="max",
+                    require_index=False,
+                    name=None):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): The input tensor of pooling operator. The format of
+                          input tensor is NCHW, where N is batch size, C is
+                          the number of channels, H is the height of the
+                          feature, and W is the width of the feature.
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain two integers, (Depth, Height, Width).
+        pool_type: ${pooling_type_comment}
+        require_index (bool): If true, the index of max pooling point along with outputs.
+            it cannot be set in average pooling type.
+        name (str|None): A name for this layer(optional). If set None, the
+                        layer will be named automatically.
+
+    Returns:
+        Variable: The pooling result.
+
+    Raises:
+        ValueError: 'pool_type' is not 'max' nor 'avg'.
+        ValueError: invalid setting 'require_index' true when 'pool_type' is 'avg'.
+        ValueError: 'pool_size' should be a list or tuple with length as 2.
+
+    Examples:
+        .. code-block:: python
+
+          # suppose input data in shape of [N, C, D, H, W], `pool_size` is [l, m, n],
+          # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimentions
+          # of input data into l * m * n grids averagely and performs poolings in each 
+          # grid to get output.
+          # adaptive average pool performs calculations as follow:
+          # 
+          #     for i in range(l):
+          #         for j in range(m):
+          #             for k in range(n):
+          #                 dstart = floor(i * D / l)
+          #                 dend = ceil((i + 1) * D / l)
+          #                 hstart = floor(j * H / m)
+          #                 hend = ceil((j + 1) * H / m)
+          #                 wstart = floor(k * W / n)
+          #                 wend = ceil((k + 1) * W / n)
+          #                 output[:, :, i, j, k] = 
+          #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
+          #
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          pool_out, mask = fluid.layers.adaptive_pool3d(
+                            input=data,
+                            pool_size=[3, 3],
+                            pool_type='avg')
+    """
+    if pool_type not in ["max", "avg"]:
+        raise ValueError(
+            "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
+            str(pool_type))
+
+    if pool_type == "avg" and require_index:
+        raise ValueError(
+            "invalid setting 'require_index' true when 'pool_type' is 'avg'.")
+
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if not _is_list_or_tuple_(pool_size) or len(pool_size) != 3:
+        raise ValueError(
+            "'pool_size' should be a list or tuple with length as 3.")
+
+    if pool_type == "max":
+        l_type = 'max_pool3d_with_index'
+    else:
+        l_type = "pool3d"
+
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_variable_for_type_inference(dtype)
+
+    outputs = {"Out": pool_out}
+    if pool_type == "max":
+        mask = helper.create_variable_for_type_inference(dtype)
+        outputs["Mask"] = mask
+
+    helper.append_op(
+        type=l_type,
+        inputs={"X": input},
+        outputs=outputs,
+        attrs={
+            "pooling_type": pool_type,
+            "ksize": pool_size,
+            "adaptive": True,
+        })
+
+    return (pool_out, mask) if require_index else pool_out
+
+
 def batch_norm(input,
                act=None,
                is_test=False,
@@ -2596,6 +2801,10 @@ def batch_norm(input,
     helper = LayerHelper('batch_norm', **locals())
     dtype = helper.input_dtype()
 
+    # use fp32 for bn parameter
+    if dtype == core.VarDesc.VarType.FP16:
+        dtype = core.VarDesc.VarType.FP32
+
     input_shape = input.shape
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
@@ -2630,7 +2839,7 @@ def batch_norm(input,
             trainable=False,
             do_model_average=do_model_average_for_mean_and_var),
         shape=param_shape,
-        dtype=input.dtype)
+        dtype=dtype)
     mean.stop_gradient = True
 
     variance = helper.create_parameter(
@@ -2640,7 +2849,7 @@ def batch_norm(input,
             trainable=False,
             do_model_average=do_model_average_for_mean_and_var),
         shape=param_shape,
-        dtype=input.dtype)
+        dtype=dtype)
     variance.stop_gradient = True
 
     # create output
@@ -4321,7 +4530,7 @@ def topk(input, k, name=None):
     Args:
         input(Variable): The input variable which can be a vector or Tensor with
             higher rank.
-        k(int):  The number of top elements to look for along the last dimension
+        k(int | Variable):  The number of top elements to look for along the last dimension
                  of input.
         name(str|None): A name for this layer(optional). If set None, the layer
                        will be named automatically.
@@ -4344,12 +4553,18 @@ def topk(input, k, name=None):
     helper = LayerHelper("top_k", **locals())
     values = helper.create_variable_for_type_inference(dtype=input.dtype)
     indices = helper.create_variable_for_type_inference(dtype="int64")
+    inputs = {"X": [input]}
+    attrs = None
+    if isinstance(k, Variable):
+        inputs['K'] = k
+    else:
+        attrs = {'k': k}
     helper.append_op(
         type="top_k",
-        inputs={"X": [input]},
+        inputs=inputs,
         outputs={"Out": [values],
                  "Indices": [indices]},
-        attrs={"k": k})
+        attrs=attrs)
     values.stop_gradient = True
     indices.stop_gradient = True
     return values, indices
@@ -4458,7 +4673,7 @@ def ctc_greedy_decoder(input, blank, name=None):
                       [0.5, 0.1, 0.3, 0.1]]
 
         input.lod = [[4, 4]]
-      
+
         Computation:
 
         step1: Apply argmax to first input sequence which is input.data[0:4]. Then we get:
@@ -4491,7 +4706,7 @@ def ctc_greedy_decoder(input, blank, name=None):
     Returns:
         Variable: CTC greedy decode result which is a 2-D tensor with shape [Lp, 1].
                   'Lp' is the sum if all output sequences' length. If all the sequences
-                  in result were empty, the result LoDTensor will be [-1] with 
+                  in result were empty, the result LoDTensor will be [-1] with
                   LoD [[]] and dims [1, 1].
 
     Examples:
@@ -4845,7 +5060,7 @@ def hsigmoid(input,
     """
     The hierarchical sigmoid operator is used to accelerate the training
     process of language model. This operator organizes the classes into a
-    complete binary tree, or you can use is_custom to pass your own tree to 
+    complete binary tree, or you can use is_custom to pass your own tree to
     implement hierarchical. Each leaf node represents a class(a word) and each
     internal node acts as a binary classifier. For each word there's a unique
     path from root to it's leaf node, hsigmoid calculate the cost for each
@@ -4861,7 +5076,7 @@ def hsigmoid(input,
         2. build a dict to store word_id -> word's leaf to root path, we call it path_table.
         3. build a dict to store word_id -> code of word's leaf to root path, we call it path_code. Code
          means label of each binary classification, using 1 indicate true, 0 indicate false.
-        4. now, each word should has its path and code along the path, you can pass a batch of path and code 
+        4. now, each word should has its path and code along the path, you can pass a batch of path and code
         related to the same batch of inputs.
 
 
@@ -4871,8 +5086,8 @@ def hsigmoid(input,
             and :math:`D` is the feature size.
         label (Variable): The tensor variable contains labels of training data.
             It's a tensor with shape is :math:`[N \\times 1]`.
-        num_classes: (int), The number of classes, must not be less than 2. with default tree this has to be set, 
-            it should never be None under is_custom=False, but while is_custom is true, it should be non leaf num 
+        num_classes: (int), The number of classes, must not be less than 2. with default tree this has to be set,
+            it should never be None under is_custom=False, but while is_custom is true, it should be non leaf num
             which indicates the num of classes using by binary classify.
         param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
              of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid
@@ -4885,15 +5100,15 @@ def hsigmoid(input,
              is not set, the bias is initialized zero. Default: None.
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
-        path_table: (Variable|None) this variable can store each batch of samples' path to root, 
+        path_table: (Variable|None) this variable can store each batch of samples' path to root,
             it should be in leaf -> root order
-            path_table should have the same shape with path_code, and for each sample i path_table[i] indicates a np.array like 
-            structure and each element in this array is indexes in parent nodes' Weight Matrix. 
-        path_code:  (Variable|None) this variable can store each batch of samples' code, 
+            path_table should have the same shape with path_code, and for each sample i path_table[i] indicates a np.array like
+            structure and each element in this array is indexes in parent nodes' Weight Matrix.
+        path_code:  (Variable|None) this variable can store each batch of samples' code,
             each code consist with every code of parent nodes. it should be in leaf -> root order
-        is_custom: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is 
+        is_custom: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is
              set you need to set path_table/path_code/num_classes, otherwise num_classes should be set
-        is_sparse: (bool|False)using sparse update instead of dense update, if set, the gradient 
+        is_sparse: (bool|False)using sparse update instead of dense update, if set, the gradient
              of W and input will be sparse.
 
     Returns:
@@ -7738,7 +7953,7 @@ def unstack(x, axis=0, num=None):
             num = x.shape[axis]
 
     outs = []
-    for _ in num:
+    for _ in range(num):
         outs.append(helper.create_variable_for_type_inference(x.dtype))
 
     helper.append_op(
@@ -9125,6 +9340,224 @@ def get_tensor_from_selected_rows(x, name=None):
     return out
 
 
+class PyFuncRegistry(object):
+    _register_funcs = []
+
+    def __init__(self, func):
+        if func is None or not callable(func):
+            raise TypeError('func must be a Python function')
+
+        self._func = func
+        # find named args using reflection 
+        args = inspect.getargspec(self._func)
+        if len(args[0]) == 0 and args[1] is None and args[2] is None:
+            # Function with no inputs
+            self._named_args = None
+        else:
+            self._named_args = args[0]
+        self._id = core._append_python_callable_object_and_return_id(self)
+        '''
+        Why record self here?
+
+        1. For debug usage. Users can call 
+           :code:`py_func.registered_func(idx)` method 
+           to find the registered function corresponding
+           to :code:`idx`. 
+
+        2. For increasing reference count of self. 
+           It seems that to release Python object 
+           whose reference count is 1 would cause
+           segmentation fault error in C++ side. 
+           May be lack of Python GC in C++ side?
+        '''
+        PyFuncRegistry._register_funcs.append(self)
+
+    @classmethod
+    def registered_func(cls, idx):
+        return cls._register_funcs[idx]._func
+
+    @classmethod
+    def registered_func_num(cls):
+        return len(cls._register_funcs)
+
+    @property
+    def id(self):
+        return self._id
+
+    def __call__(self, *args):
+        if self._named_args is None:
+            func_ret = self._func()
+        else:
+            kwargs = dict()
+            idx = 0
+            for arg in self._named_args:
+                kwargs[arg] = args[idx]
+                idx += 1
+            func_ret = self._func(*args[idx:], **kwargs)
+
+        if not isinstance(func_ret, (list, tuple)):
+            func_ret = (func_ret, )
+
+        ret = []
+        for each_ret in func_ret:
+            if each_ret is None or isinstance(each_ret, core.LoDTensor):
+                ret.append(each_ret)
+                continue
+
+            if not isinstance(each_ret, np.ndarray):
+                each_ret = np.array(each_ret)
+
+            tensor = core.LoDTensor()
+            tensor.set(each_ret, core.CPUPlace())
+            ret.append(tensor)
+
+        return tuple(ret)
+
+
+@templatedoc()
+def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
+    """
+    PyFunc Operator.
+    
+    User can use :code:`py_func` to register operators in Python side.
+    The inputs of :code:`func` is :code:`LoDTensor` and outputs can be
+    numpy array or :code:`LoDTensor`. Paddle would call the registered
+    :code:`func` in forward part, and call :code:`backward_func` in
+    backward part (if :code:`backward_func` is not None).
+
+    User should set the right data type and shape of :code:`out` before
+    calling this function. However, data types and shapes of gradients of
+    :code:`out` and :code:`x` would be inferred automatically.
+
+    Input orders of :code:`backward_func` would be: forward inputs
+    :code:`x`, forward outputs :code:`out` and backward input gradients of
+    :code:`out`. If some variables of :code:`out` have no gradient, the input
+    tensor would be None in Python side. If some variables of :code:`in` have
+    no gradient, users should return None.
+
+    This function can also be used to debug the running network. User can
+    add a :code:`py_func` operator without output, and print input 
+    :code:`x` inside :code:`func`.
+
+    Args:
+        func (callable): forward Python function.
+        x (Variable|list(Variable)|tuple(Variable)): inputs of :code:`func`.
+        out (Variable|list(Variable)|tuple(Variable)): outputs of :code:`func`.
+            Paddle cannot infer shapes and data types of :code:`out`. Users
+            should create :code:`out` beforehand. 
+        backward_func (callable|None): backward Python function.
+                                       None means no backward. Default None. 
+        skip_vars_in_backward_input (Variable|list(Variable)|tuple(Variable)):
+            Variables that are not needed in :code:`backward_func` inputs. 
+            These variables must be any of :code:`x` and :code:`out`.
+            If set, these vars would not be inputs of :code:`backward_func`,
+            Only useful when :code:`backward_func` is not None. Default None. 
+
+    Returns:
+        out (Variable|list(Variable)|tuple(Variable)): input :code:`out`
+
+    Examples:
+    
+        >>> import paddle.fluid as fluid
+        >>> import six
+        >>>
+        >>> def create_tmp_var(name, dtype, shape):
+        >>>     return fluid.default_main_program().current_block().create_var(
+        >>>         name=name, dtype=dtype, shape=shape) 
+        >>>
+        >>> # tanh activation has been provided by Paddle C++ op
+        >>> # Here, we only use tanh to be an example to show the usage 
+        >>> # of py_func
+        >>> def tanh(x):
+        >>>     return np.tanh(x)
+        >>> 
+        >>> # forward input x is skipped
+        >>> def tanh_grad(y, dy):
+        >>>     return np.array(dy) * (1 - np.square(np.array(y)))
+        >>>
+        >>> def debug_func(x):
+        >>>     print(x) 
+        >>>
+        >>> def simple_net(img, label):
+        >>>     hidden = img
+        >>>     for idx in six.moves.range(4):
+        >>>         hidden = fluid.layers.fc(hidden, size=200)
+        >>>         new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
+        >>>             dtype=hidden.dtype, shape=hidden.shape)    
+        >>>
+        >>>         # user-defined layers with forward and backward
+        >>>         hidden = fluid.layers.py_func(func=tanh, x=hidden, 
+        >>>             out=new_hidden, backward_func=tanh_grad, 
+        >>>             skip_vars_in_backward_input=hidden)
+        >>>
+        >>>         # user-defined debug layers to print variables
+        >>>         fluid.layers.py_func(func=debug_func, x=hidden, out=None)
+        >>>
+        >>>     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+        >>>     loss = fluid.layers.cross_entropy(input=prediction, label=label)
+        >>>     return fluid.layers.mean(loss)
+    """
+    helper = LayerHelper('py_func', **locals())
+    if x is None:
+        x = []
+    elif isinstance(x, Variable):
+        x = [x]
+    elif not isinstance(x, (list, tuple)):
+        raise TypeError('Input must be Variable/list(Variable)/tuple(Variable)')
+
+    if out is None:
+        out_list = []
+    elif isinstance(out, Variable):
+        out_list = [out]
+    elif isinstance(out, (list, tuple)):
+        out_list = out
+    else:
+        raise TypeError(
+            'Output must be Variable/list(Variable)/tuple(Variable)')
+
+    fwd_func_id = PyFuncRegistry(func).id
+    bwd_func_id = PyFuncRegistry(
+        backward_func).id if backward_func is not None else -1
+
+    for each_out in out_list:
+        if len(each_out.shape) == 0:
+            raise ValueError(
+                'Output shapes of py_func op should be provided by users manually'
+            )
+
+    backward_skip_vars = set()
+    if backward_func is not None and skip_vars_in_backward_input is not None:
+        if isinstance(skip_vars_in_backward_input, Variable):
+            skip_vars_in_backward_input = [skip_vars_in_backward_input]
+
+        fwd_in_out = [v.name for v in x]
+        fwd_in_out.extend([v.name for v in out_list])
+        fwd_in_out = set(fwd_in_out)
+        backward_skip_vars = set()
+        for v in skip_vars_in_backward_input:
+            if not v.name in fwd_in_out:
+                raise ValueError(
+                    'Variable {} is not found in forward inputs and outputs'
+                    .format(v.name))
+            backward_skip_vars.add(v.name)
+
+    helper.append_op(
+        type='py_func',
+        inputs={'X': x},
+        outputs={'Out': out_list},
+        attrs={
+            'forward_callable_id': fwd_func_id,
+            'backward_callable_id': bwd_func_id,
+            'backward_skip_vars': list(backward_skip_vars)
+        })
+    return out
+
+
+# For debug usage
+py_func.registered_func = PyFuncRegistry.registered_func
+py_func.registered_func_num = PyFuncRegistry.registered_func_num
+
+
 @templatedoc()
 def psroi_pool(input,
                rois,
@@ -9177,3 +9610,95 @@ def psroi_pool(input,
             'pooled_width': pooled_width
         })
     return out
+
+
+def huber_loss(input, label, delta):
+    """
+    Huber loss is a loss function used in robust.
+    Huber loss can evaluate the fitness of input to label.
+    Different from MSE loss, Huber loss is more robust for outliers.
+
+    When the difference between input and label is large than delta
+    .. math::
+
+        huber\_loss = delta * (label - input) - 0.5 * delta * delta
+
+    When the difference between input and label is less than delta
+    .. math::
+
+        huber\_loss = 0.5 * (label - input) * (label - input)
+
+
+    Args:
+        input (Variable): This input is a probability computed by the previous operator.
+                          The first dimension is batch size, and the last dimension is 1.
+        label (Variable): The groud truth whose first dimension is batch size
+                          and last dimension is 1.
+        delta (float): The parameter of huber loss, which controls
+                       the range of outliers
+
+    Returns:
+        huber\_loss (Variable): The huber loss with shape [batch_size, 1].
+
+    Examples:
+        .. code-block:: python
+
+            predictions = fluid.layers.softmax(x)
+            loss = fluid.layers.huber_loss(input=predictions, label=label, 1.0)
+    """
+    helper = LayerHelper('huber_loss', **locals())
+    residual = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    helper.append_op(
+        type='huber_loss',
+        inputs={'X': input,
+                'Y': label},
+        outputs={'Out': out,
+                 'Residual': residual},
+        attrs={'delta': delta})
+    return out
+
+
+class FC(layers.PyLayer):
+    def __init__(self,
+                 size,
+                 param_attr=None,
+                 num_flatten_dims=1,
+                 dtype=core.VarDesc.VarType.FP32):
+        super(FC, self).__init__()
+        self._size = size
+        self._num_flatten_dims = num_flatten_dims
+        self._dtype = dtype
+        self._helper = LayerHelper('FC', param_attr=param_attr)
+
+    def _build_once(self, inputs):
+        input_shape = inputs[0].shape
+        param_shape = [
+            reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:], 1)
+        ] + [self._size]
+        self._w = self._helper.create_parameter(
+            attr=self._helper.param_attr,
+            shape=param_shape,
+            dtype=self._dtype,
+            is_bias=False)
+
+    def forward(self, inputs):
+        tmp = self._helper.create_variable_for_type_inference(self._dtype)
+        self._helper.append_op(
+            type="mul",
+            inputs={"X": inputs[0],
+                    "Y": self._w},
+            outputs={"Out": tmp},
+            attrs={
+                "x_num_col_dims": self._num_flatten_dims,
+                "y_num_col_dims": 1
+            })
+
+        out = self._helper.create_variable_for_type_inference(self._dtype)
+        self._helper.append_op(
+            type="sum",
+            inputs={"X": [tmp]},
+            outputs={"Out": out},
+            attrs={"use_mkldnn": False})
+        return out
