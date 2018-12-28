@@ -1358,10 +1358,6 @@ def multi_box_head(inputs,
             clip=True)
     """
 
-    def _reshape_with_axis_(input, axis=1):
-        out = nn.flatten(x=input, axis=axis)
-        return out
-
     def _is_list_or_tuple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
 
@@ -1472,18 +1468,23 @@ def multi_box_head(inputs,
     else:
         reshaped_boxes = []
         reshaped_vars = []
+
+        def _flatten_(v):
+            out = nn.reshape(x=v, shape=(-1, v.shape[-1]), inplace=True)
+            return out
+
         for i in range(len(box_results)):
-            reshaped_boxes.append(_reshape_with_axis_(box_results[i], axis=3))
-            reshaped_vars.append(_reshape_with_axis_(var_results[i], axis=3))
+            reshaped_boxes.append(_flatten_(box_results[i]))
+            reshaped_vars.append(_flatten_(var_results[i]))
 
         box = tensor.concat(reshaped_boxes)
         var = tensor.concat(reshaped_vars)
         mbox_locs_concat = tensor.concat(mbox_locs, axis=1)
         mbox_locs_concat = nn.reshape(
-            mbox_locs_concat, shape=[0L, -1L, 4L], inplace=True)
+            mbox_locs_concat, shape=[0, -1, 4], inplace=True)
         mbox_confs_concat = tensor.concat(mbox_confs, axis=1)
         mbox_confs_concat = nn.reshape(
-            mbox_confs_concat, shape=[0L, -1L, num_classes], inplace=True)
+            mbox_confs_concat, shape=[0, -1, num_classes], inplace=True)
 
     box.stop_gradient = True
     var.stop_gradient = True
