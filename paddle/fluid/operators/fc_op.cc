@@ -146,7 +146,6 @@ class FCOpKernel : public framework::OpKernel<T> {
     auto w = ctx.Input<Tensor>("W");
     auto bias = ctx.Input<Tensor>("Bias");
     auto output = ctx.Output<Tensor>("Out");
-    auto in_dims = input->dims();
     auto w_dims = w->dims();
     auto out_dims = output->dims();
     int M = framework::product(out_dims) / out_dims[out_dims.size() - 1];

@@ -18,6 +18,7 @@ from . import framework
 import numpy as np
 import contextlib
 from .core import VarDesc
+from . import unique_name
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
@@ -207,16 +208,39 @@ class UniformInitializer(Initializer):
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
+
+        # to be compatible of fp16 initalizers
+        if var.dtype == VarDesc.VarType.FP16:
+            out_dtype = VarDesc.VarType.FP32
+            out_var = block.create_var(
+                name=unique_name.generate(".".join(['gaussian_random', 'tmp'])),
+                shape=var.shape,
+                dtype=out_dtype,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False)
+        else:
+            out_dtype = var.dtype
+            out_var = var
+
         op = block._prepend_op(
             type="uniform_random",
-            outputs={"Out": var},
+            outputs={"Out": out_var},
             attrs={
                 "shape": var.shape,
-                "dtype": int(var.dtype),
+                "dtype": out_dtype,
                 "min": self._low,
                 "max": self._high,
                 "seed": self._seed
             })
+
+        if var.dtype == VarDesc.VarType.FP16:
+            block.append_op(
+                type="cast",
+                inputs={"X": out_var},
+                outputs={"Out": var},
+                attrs={"in_dtype": out_var.dtype,
+                       "out_dtype": var.dtype})
+
         var.op = op
         return op
 
@@ -261,17 +285,39 @@ class NormalInitializer(Initializer):
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
+
+        # to be compatible of fp16 initalizers
+        if var.dtype == VarDesc.VarType.FP16:
+            out_dtype = VarDesc.VarType.FP32
+            out_var = block.create_var(
+                name=unique_name.generate(".".join(['gaussian_random', 'tmp'])),
+                shape=var.shape,
+                dtype=out_dtype,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False)
+        else:
+            out_dtype = var.dtype
+            out_var = var
+
         op = block._prepend_op(
             type="gaussian_random",
-            outputs={"Out": var},
+            outputs={"Out": out_var},
             attrs={
                 "shape": var.shape,
-                "dtype": int(var.dtype),
+                "dtype": out_dtype,
                 "mean": self._mean,
                 "std": self._std_dev,
                 "seed": self._seed,
                 "use_mkldnn": False
             })
+
+        if var.dtype == VarDesc.VarType.FP16:
+            block.append_op(
+                type="cast",
+                inputs={"X": out_var},
+                outputs={"Out": var},
+                attrs={"in_dtype": out_var.dtype,
+                       "out_dtype": var.dtype})
         var.op = op
         return op
 

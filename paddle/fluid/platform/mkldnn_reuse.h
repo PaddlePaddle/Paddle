@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
@@ -181,6 +182,21 @@ class MKLDNNHandler {
     return dims2str(operand_dims) + suffix;
   }
 
+  template <typename M>
+  static void SetDstMemory(
+      const framework::ExecutionContext& ctx, framework::Tensor* output,
+      std::vector<int> dst_tz, const mkldnn::engine& engine,
+      std::shared_ptr<mkldnn::memory::primitive_desc>& dst_pd,  // NOLINT
+      std::shared_ptr<mkldnn::memory>& dst_memory) {            // NOLINT
+    M* output_data = output->mutable_data<M>(ctx.GetPlace());
+    auto dst_md = platform::MKLDNNMemDesc(
+        {dst_tz}, paddle::framework::ToMKLDNNDataType(
+                      framework::DataTypeTrait<M>::DataType),
+        mkldnn::memory::format::nhwc);
+    dst_pd.reset(new mkldnn::memory::primitive_desc(dst_md, engine));
+    dst_memory.reset(new mkldnn::memory(*dst_pd, to_void_cast<M>(output_data)));
+  }
+
  protected:
   static std::string dims2str(const mkldnn::memory::dims& operand_dims) {
     std::string dstr = "";
@@ -199,7 +215,8 @@ class MKLDNNHandler {
 
 class TransposeMKLDNNHandler : public MKLDNNHandler {
  public:
-  TransposeMKLDNNHandler(std::vector<int>& dims, std::vector<int>& axis,
+  TransposeMKLDNNHandler(std::vector<int>& dims,  // NOLINT
+                         std::vector<int>& axis,  // NOLINT
                          const platform::MKLDNNDeviceContext& dev_ctx,
                          mkldnn::engine engine, const std::string& base_key)
       : platform::MKLDNNHandler(dev_ctx, engine, base_key),
@@ -287,8 +304,8 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
   }
 
  protected:
-  mkldnn_memory_desc_t Axis2MemoryDesc(std::vector<int>& nchw_tz,
-                                       std::vector<int>& axis) {
+  mkldnn_memory_desc_t Axis2MemoryDesc(std::vector<int>& nchw_tz,  // NOLINT
+                                       std::vector<int>& axis) {   // NOLINT
     mkldnn_memory_desc_t mem_fmt;
 
     mem_fmt.primitive_kind = mkldnn_memory;
