@@ -31,10 +31,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/operators/distributed/brpc_sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/brpc/brpc_sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/distributed_pb.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
-#include "paddle/fluid/operators/distributed/send_recv.pb.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {

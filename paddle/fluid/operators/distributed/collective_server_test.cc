@@ -21,9 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
-#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/operators/distributed/collective_client.h"
 #include "paddle/fluid/operators/distributed/collective_server.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
