@@ -42,6 +42,12 @@ size_t JitCodeKey<gru_attr_t>(const gru_attr_t& attr) {
          (static_cast<int>(attr.act_cand) << act_type_shift);
 }
 
+template <>
+size_t JitCodeKey<seq_pool_attr_t>(const seq_pool_attr_t& attr) {
+  size_t key = static_cast<size_t>(attr.type);
+  return key + (attr.w << act_type_shift);
+}
+
 }  // namespace jit
 }  // namespace operators
 }  // namespace paddle
