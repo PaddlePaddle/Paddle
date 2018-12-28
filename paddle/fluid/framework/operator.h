@@ -69,6 +69,15 @@ inline std::string GradVarName(const std::string& var_name) {
   return result;
 }
 
+inline std::string OriginVarName(const std::string& grad_var_name) {
+  std::size_t pos = grad_var_name.find_last_of(kGradVarSuffix);
+  if (pos == std::string::npos) {
+    return grad_var_name;
+  } else {
+    return grad_var_name.substr(0, pos);
+  }
+}
+
 proto::VarType::Type GetDataTypeOfVar(const Variable* var);
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);

@@ -57,7 +57,7 @@ class Tracer {
   void Trace(OpBase* op,
              const std::map<std::string, std::vector<VarBase*>>& inputs,
              const std::map<std::string, std::vector<VarBase*>>& outputs,
-             framework::BlockDesc* block) {
+             framework::BlockDesc* block, const bool stop_gradient) {
     std::map<std::string, VarBase*> vars;
 
     framework::OpDesc* op_desc = op->op_desc_;
