@@ -313,9 +313,7 @@ class TestResnet(TestParallelExecutorBase):
             np.mean(parallel_last_loss), single_last_loss[0], delta=delta2)
 
     def test_seresnext_with_learning_rate_decay(self):
-        if core.is_compiled_with_cuda():
-            self._check_resnet_convergence(
-                model=SE_ResNeXt50Small, use_cuda=True)
+        self._check_resnet_convergence(model=SE_ResNeXt50Small, use_cuda=True)
         self._check_resnet_convergence(
             model=SE_ResNeXt50Small, use_cuda=False, iter=2, delta2=1e-3)
 

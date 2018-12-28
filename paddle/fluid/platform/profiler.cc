@@ -186,7 +186,6 @@ RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
 
 RecordEvent::~RecordEvent() {
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
-  VLOG(5) << "call ~RecordEvent";
   std::lock_guard<std::mutex> l(profiler_mu);
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
