@@ -19,8 +19,8 @@ limitations under the License. */
 #include <string>
 
 #include "brpc/server.h"
+#include "paddle/fluid/operators/distributed/distributed_pb.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
-#include "paddle/fluid/operators/distributed/send_recv.pb.h"
 
 namespace paddle {
 namespace operators {

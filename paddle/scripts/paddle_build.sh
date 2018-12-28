@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 #=================================================
 #                   Utils
 #=================================================
@@ -417,13 +416,6 @@ EOF
             ctest -V
         else
             ctest --output-on-failure
-        fi
-
-        # make install should also be test when unittest
-        make install -j `nproc`
-        pip install ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
-        if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
-            paddle version
         fi
     fi
 }
@@ -922,6 +914,7 @@ function main() {
         ;;
       assert_api)
         assert_api_not_changed ${PYTHON_ABI:-""}
+        assert_api_spec_approvals
         ;;
       test_inference)
         gen_capi_package
@@ -945,6 +938,15 @@ function main() {
         build
         run_test
         assert_api_not_changed ${PYTHON_ABI:-""}
+        ;;
+      cmake_gen)
+        cmake_gen ${PYTHON_ABI:-""}
+        ;;
+      gen_fluid_lib)
+        gen_fluid_lib
+        ;;
+      test_fluid_lib)
+        test_fluid_lib
         ;;
       *)
         print_usage

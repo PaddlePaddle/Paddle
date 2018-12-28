@@ -399,7 +399,7 @@ void NgraphEngine::BuildNgFunction() {
   BuildNgNodes();
   ngraph_function_ = nullptr;
   ngraph::NodeVector func_outputs;
-  ngraph::op::ParameterVector func_inputs;
+  ngraph::ParameterVector func_inputs;
 
   for (auto& vo : var_out_) {
     func_outputs.push_back(var_node_map_->at(vo));

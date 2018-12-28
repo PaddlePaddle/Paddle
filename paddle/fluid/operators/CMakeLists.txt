@@ -46,7 +46,7 @@ endif()
 register_operators(EXCLUDES py_func_op warpctc_op conv_fusion_op DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 # warpctc_op needs cudnn 7 above
-if (WITH_GPU AND NOT WIN32)
+if (WITH_GPU)
     if (${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu.cc)
     else()
