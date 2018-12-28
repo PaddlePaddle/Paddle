@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/distributed/brpc_server.h"
+#include "paddle/fluid/operators/distributed/brpc/brpc_server.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/operators/distributed/brpc_sendrecvop_utils.h"
-#include "paddle/fluid/operators/distributed/brpc_variable_response.h"
+#include "paddle/fluid/operators/distributed/brpc/brpc_sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/brpc/brpc_variable_response.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 
 namespace sendrecv {

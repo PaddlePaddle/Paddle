@@ -14,7 +14,7 @@
 
 #ifdef PADDLE_WITH_BRPC_RDMA
 
-#include "paddle/fluid/operators/distributed/brpc_rdma_pool.h"
+#include "paddle/fluid/operators/distributed/brpc/brpc_rdma_pool.h"
 #include "brpc/channel.h"
 #include "brpc/rdma/rdma_helper.h"
 #include "paddle/fluid/platform/enforce.h"

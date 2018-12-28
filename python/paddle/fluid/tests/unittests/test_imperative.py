@@ -38,7 +38,9 @@ class MyLayer(fluid.imperative.PyLayer):
     def forward(self, inputs):
         x = fluid.layers.relu(inputs[0])
         self._x_for_debug = x
-        return [fluid.layers.elementwise_mul(x, x)]
+        x = fluid.layers.elementwise_mul(x, x)
+        x = fluid.layers.reduce_sum(x)
+        return [x]
 
 
 class MLP(fluid.imperative.PyLayer):
