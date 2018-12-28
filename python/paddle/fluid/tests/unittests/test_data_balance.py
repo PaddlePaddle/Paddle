@@ -194,4 +194,6 @@ class TestDataBalance(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    # Disable data balance unittest, because data balance would be removed
+    # unittest.main()
+    pass
