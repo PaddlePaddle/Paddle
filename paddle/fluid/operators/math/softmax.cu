@@ -14,6 +14,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/reductions.h"
@@ -21,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/temporary_allocator.h"
 
 namespace paddle {
 namespace operators {
@@ -181,9 +181,12 @@ void SoftmaxCudaAccurateFunctor<T, ACCURATE_T>::operator()(
   int num_cols = X->dims()[1];
 
   // Use ACCURATE_T for internal exp space
-  ACCURATE_T* acc_out_data =
+  auto tmp_allocation_ptr =
       platform::DeviceTemporaryAllocator::Instance().Get(ctx).Allocate(
           Y->numel() * sizeof(ACCURATE_T));
+  Tensor tmp_tensor = framework::GetTensor<ACCURATE_T>(
+      std::move(tmp_allocation_ptr), Y->dims());
+  auto* acc_out_data = tmp_tensor.mutable_data<ACCURATE_T>(ctx.GetPlace());
 
   // RowReduce to find max along every batch (axis 1)
   cub::Max max_op;

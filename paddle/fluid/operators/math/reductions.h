@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <cub/cub.cuh>  // NOLINT
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/temporary_allocator.h"
 
 namespace paddle {
 namespace operators {
@@ -84,12 +84,13 @@ void LaunchRowReduction(const platform::CUDADeviceContext* ctx, OUT_T out,
       transform_iter(counting_iter, row_offset_op);
 
   std::size_t temp_storage_bytes = 0;
-  uint8_t* tmp_allocation_ptr;
+  memory::allocation::AllocationPtr tmp_allocation_ptr;
 
   for (int i = 0; i < 2; ++i) {
     auto success = cub::DeviceSegmentedReduce::Reduce(
-        i == 0 ? nullptr : tmp_allocation_ptr, temp_storage_bytes, in, out,
-        num_rows, transform_iter, transform_iter + 1, op, init, ctx->stream());
+        i == 0 ? nullptr : tmp_allocation_ptr->ptr(), temp_storage_bytes, in,
+        out, num_rows, transform_iter, transform_iter + 1, op, init,
+        ctx->stream());
 
     PADDLE_ENFORCE_EQ(success, 0, "CUB segmented reduce error");
     if (i == 0) {
