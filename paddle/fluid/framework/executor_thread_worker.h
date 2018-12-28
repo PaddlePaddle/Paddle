@@ -155,6 +155,8 @@ class ExecutorThreadWorker {
   void SetDataFeed(const std::shared_ptr<DataFeed>& datafeed);
   // A multi-thread training function
   virtual void TrainFiles();
+  // with timer log
+  virtual void TrainFilesWithTimer();
   // set fetch variable names from python interface assigned by users
   void SetFetchVarNames(const std::vector<std::string>& fetch_var_names);
 #ifdef PADDLE_WITH_PSLIB

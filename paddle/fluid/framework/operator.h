@@ -81,6 +81,10 @@ class RuntimeContext {
   RuntimeContext(const VariableNameMap& innames,
                  const VariableNameMap& outnames, const Scope& scope);
 
+  RuntimeContext(const VariableValueMap& invars,
+                 const VariableValueMap& outvars)
+      : inputs(invars), outputs(outvars) {}
+
   VariableValueMap inputs;
   VariableValueMap outputs;
 };
@@ -447,8 +451,9 @@ class OperatorWithKernel : public OperatorBase {
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,
                          const RuntimeContext& ctx) const override;
 
- protected:
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
+
+ protected:
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;

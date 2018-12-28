@@ -16,7 +16,6 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include <algorithm>
-
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -1041,12 +1040,11 @@ Scope* OperatorWithKernel::PrepareData(
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
-  auto& scope = ctx.scope();
   int data_type = -1;
-  std::string last_input_name;
   for (auto& input : this->inputs_) {
-    for (auto& ipt_name : input.second) {
-      auto* var = scope.FindVar(ipt_name);
+    const std::vector<const Variable*> vars = ctx.MultiInputVar(input.first);
+    for (size_t i = 0; i < vars.size(); ++i) {
+      const Variable* var = vars[i];
       if (var != nullptr) {
         const Tensor* t = nullptr;
         if (var->IsType<Tensor>()) {
@@ -1057,15 +1055,14 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &(var->Get<SelectedRows>().value());
         }
         if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s is not initialized",
-                         ipt_name);
+          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu)is not initialized",
+                         input.first, i);
           int tmp = static_cast<int>(t->type());
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,
-              "DataType of Paddle Op %s must be the same. Get %s(%d) != %s(%d)",
-              Type(), last_input_name, data_type, ipt_name, tmp);
+              "DataType of Paddle Op %s must be the same. Get (%d) != (%d)",
+              Type(), data_type, tmp);
           data_type = tmp;
-          last_input_name = ipt_name;
         }
       }
     }
