@@ -152,9 +152,9 @@ PYBIND11_MODULE(core, m) {
           [](const imperative::VarBase &self) { return self.stop_gradient_; },
           [](imperative::VarBase &self, bool stop_gradient) {
             self.stop_gradient_ = stop_gradient;
-          })
+          });
 
-          py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
+  py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
       .def(py::init<>())
       .def_property(
           "desc", [](const imperative::OpBase &self) { return self.op_desc_; },

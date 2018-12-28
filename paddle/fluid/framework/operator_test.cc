@@ -288,3 +288,12 @@ TEST(OpKernel, multi_inputs) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_place);
 }
+
+TEST(Functions, all) {
+  std::string var_name("X");
+  std::string grad_var_name = paddle::framework::GradVarName(var_name);
+  ASSERT_EQ(grad_var_name.c_str(), "X@GRAD");
+  std::string original_var_name =
+      paddle::framework::OriginVarName(grad_var_name);
+  ASSERT_EQ(original_var_name.c_str(), "X");
+}
