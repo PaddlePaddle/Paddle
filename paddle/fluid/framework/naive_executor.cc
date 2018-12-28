@@ -26,6 +26,8 @@
 #include "paddle/fluid/platform/engine_impl.h"
 #include "paddle/fluid/string/pretty_log.h"
 
+DEFINE_int32(engine_size, 1, "");
+
 namespace paddle {
 namespace framework {
 
@@ -77,14 +79,14 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
 
 void NaiveExecutor::Run() {
 #ifndef PADDLE_ON_INFERENCE
-  LOG_FIRST_N(WARNING, 15) << "The NaiveExecutor can not work properly if the "
-                              "cmake flag ON_INFER is not set.";
-  LOG_FIRST_N(WARNING, 15) << "Unlike the training phase, all the scopes and "
-                              "variables will be reused to save the allocation "
-                              "overhead.";
-  LOG_FIRST_N(WARNING, 15) << "Please re-compile the inference library by "
-                              "setting the cmake flag ON_INFER=ON if you are "
-                              "running Paddle Inference";
+  LOG_FIRST_N(WARNING, 1) << "The NaiveExecutor can not work properly if the "
+                             "cmake flag ON_INFER is not set.";
+  LOG_FIRST_N(WARNING, 1) << "Unlike the training phase, all the scopes and "
+                             "variables will be reused to save the allocation "
+                             "overhead.";
+  LOG_FIRST_N(WARNING, 1) << "Please re-compile the inference library by "
+                             "setting the cmake flag ON_INFER=ON if you are "
+                             "running Paddle Inference";
 #endif  // PADDLE_ON_INFERENCE
 
   for (auto &op : ops_) {

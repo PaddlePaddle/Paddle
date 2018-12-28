@@ -22,6 +22,8 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/engine.h"
 
+DECLARE_int32(engine_size);
+
 namespace paddle {
 namespace framework {
 
@@ -33,7 +35,7 @@ class NaiveExecutor {
  public:
   explicit NaiveExecutor(const platform::Place& place) : place_(place) {
     engine::EngineProperty prop;
-    prop.num_cpu_threads = 2;
+    prop.num_cpu_threads = FLAGS_engine_size;
     engine_ = engine::CreateEngine("MultiThreadEnginePooled", prop);
   }
 
