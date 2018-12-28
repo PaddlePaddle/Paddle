@@ -41,7 +41,6 @@ class CPUPSROIPoolOpKernel : public framework::OpKernel<T> {
     int rois_num = rois->dims()[0];
 
     auto in_stride = framework::stride(in_dims);
-    auto roi_stride = framework::stride(rois->dims());
     auto out_stride = framework::stride(out->dims());
 
     const T* input_data = in->data<T>();
