@@ -84,6 +84,7 @@ def reader_creator(image_filename, label_filename, buffer_size):
 
     return reader
 
+
 def train():
     """
     MNIST training set creator.

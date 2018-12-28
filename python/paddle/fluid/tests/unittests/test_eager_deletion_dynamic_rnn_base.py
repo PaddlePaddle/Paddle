@@ -30,7 +30,9 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
         return
 
     if use_parallel_executor and os.name == 'nt':
-        print('Skip use_parallel_executor=True because Paddle comes without parallel support on windows')
+        print(
+            'Skip use_parallel_executor=True because Paddle comes without parallel support on windows'
+        )
         return
 
     word_dict = paddle.dataset.imdb.word_dict()

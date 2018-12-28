@@ -16,6 +16,13 @@ limitations under the License. */
 #include <stdlib.h>
 #include "paddle/fluid/platform/port.h"
 
+#ifdef _WIN32
+static unsigned sleep(unsigned seconds) {
+  Sleep(seconds * 1000);
+  return 0;
+}
+#endif
+
 namespace paddle {
 namespace platform {
 
