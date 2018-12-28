@@ -647,20 +647,16 @@ class Operator(object):
                     self.desc.set_input(in_proto.name, [])
 
         if outputs is not None:
-            given = set()
-            need = set()
-            for n in outputs:
-                given.add(n)
             for m in proto.outputs:
-                need.add(m.name)
-            if not given == need:
-                raise ValueError(("Incorrect setting for output(s) of "
-                                  "operator \"%s\". Need: [%s] Given: [%s]") %
-                                 (type,
-                                  ", ".join(six.binary_type(e) for e in need),
-                                  ", ".join(six.binary_type(e) for e in given)))
-
+                if (m.name not in outputs) and m.dispensable:
+                    continue
+                if not ((m.name in outputs) or m.dispensable):
+                    raise ValueError(
+                        ("Incorrect setting for output(s) of "
+                         "operator \"%s\", should set: [%s].") % (type, m.name))
             for out_proto in proto.outputs:
+                if out_proto.name not in outputs:
+                    continue
                 out_args = outputs[out_proto.name]
                 if not isinstance(out_args, list):
                     out_args = [out_args]
