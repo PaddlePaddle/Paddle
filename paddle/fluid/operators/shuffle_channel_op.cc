@@ -55,17 +55,12 @@ class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(R"DOC(
 		Shuffle Channel operator
-		This operator obtains the group convolutional layer with channels shuffled.
-		Firstly, divide the input channels in each group into several subgroups,
-		then, feed each group in the next layer with different subgroups.
-
-		According to the paper, "Suppose a convolution layer with G groups
-		whose output has (G * N) channels, first reshape the output channel dimension into(G,N),
-		transposing and then flattening it back as the input of next layer. "
+		This opearator shuffles the channels of input x.
+		It  divide the input channels in each group into several subgroups,
+		and obtain a new order by selecting element from every subgroup one by one.
 
 		Shuffle channel operation makes it possible to build more powerful structures
 		with multiple group convolutional layers.
-
 		please get more information from the following paper:
 		https://arxiv.org/pdf/1707.01083.pdf
         )DOC");
