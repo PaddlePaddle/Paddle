@@ -151,6 +151,10 @@ def __bootstrap__():
         read_env_flags.append('rpc_get_thread_num')
         read_env_flags.append('rpc_prefetch_thread_num')
         read_env_flags.append('rpc_disable_reuse_port')
+        if core.is_compiled_with_brpc():
+            read_env_flags.append('max_body_size')
+            #set brpc max body size
+            os.environ['FLAGS_max_body_size'] = "2147483647"
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
