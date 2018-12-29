@@ -28,7 +28,13 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
       places_(std::move(places)),
       graphs_(std::move(graphs)) {
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
-  // do not use threadpool for each graph execution.
+
+  // set the correct size of thread pool to each device.
+  strategy_.num_threads_ = strategy_.num_threads_ < places_.size()
+                               ? 1UL
+                               : strategy_.num_threads_ / places_.size();
+  VLOG(1) << "set num_threads: " << strategy_.num_threads_
+          << " to schedule operators on each device.";
   for (size_t i = 0; i < places.size(); ++i) {
     executors_.emplace_back(new details::ThreadedSSAGraphExecutor(
         strategy_, {local_scopes_[i]}, {places_[i]}, std::move(graphs_[i])));

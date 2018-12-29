@@ -28,6 +28,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#include "paddle/fluid/platform/nccl_helper.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -73,6 +77,9 @@ class ParallelExecutor {
                                     const BuildStrategy &build_strategy) const;
 
   ParallelExecutorPrivate *member_;
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  std::unique_ptr<ncclUniqueId> local_nccl_id_;
+#endif
 };
 
 }  // namespace framework
