@@ -36,6 +36,7 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag p2p_init_flag;
+std::once_flag tracer_init_flag;
 
 void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
@@ -169,6 +170,13 @@ void InitGLOG(const std::string &prog_name) {
 #ifndef _WIN32
   google::InstallFailureSignalHandler();
 #endif
+}
+
+void InitTracer() {
+  std::call_once(tracer_init_flag, [&]() {
+    //  std::set_unexpected();
+      VLOG(1) << "Init tracer! ";
+  });
 }
 
 }  // namespace framework

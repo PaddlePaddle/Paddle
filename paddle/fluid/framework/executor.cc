@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
+#include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -151,7 +152,9 @@ static void EnableFusedOp(ExecutorPrepareContext* ctx) {
 #endif
 }
 
-Executor::Executor(const platform::Place& place) : place_(place) {}
+Executor::Executor(const platform::Place& place) : place_(place) {
+  InitTracer();
+}
 
 void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
