@@ -24,20 +24,29 @@ __all__ = ['PyLayer']
 
 
 class PyLayer(core.Layer):
-    def __init__(self, *args, **kwargs):
-        self._once_built = True
-
+    def __init__(self,
+                 dtype=core.VarDesc.VarType.FP32,
+                 param_attr=None,
+                 bias_attr=None,
+                 name=None):
         from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(type(self).__name__, **kwargs)
-        self._dtype = kwargs.get("dtype", core.VarDesc.VarType.FP32)
+        self._helper = LayerHelper(
+            type(self).__name__,
+            param_attr=param_attr,
+            bias_attr=bias_attr,
+            dtype=dtype,
+            name=name)
+
+        self._once_built = False
+        self._dtype = dtype
 
     def _build_once(self, inputs):
         pass
 
     def __call__(self, *inputs):
-        if self._once_built:
+        if not self._once_built:
             self._build_once(*inputs)
-            self._once_built = False
+            self._once_built = True
 
         outputs = self.forward(*inputs)
 
