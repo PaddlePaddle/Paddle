@@ -46,6 +46,12 @@ pass_library(conv_elementwise_add_act_fuse_pass inference)
 pass_library(conv_elementwise_add2_act_fuse_pass inference)
 pass_library(conv_elementwise_add_fuse_pass inference)
 pass_library(conv_affine_channel_fuse_pass inference)
+pass_library(transpose_flatten_concat_fuse_pass inference)
+
+foreach (index RANGE 3 6)
+   file(APPEND ${pass_file} "USE_PASS(transpose_flatten${index}_concat_fuse_pass);\n")
+endforeach()
+
 if(WITH_MKLDNN)
     pass_library(mkldnn_placement_pass base)
     pass_library(depthwise_conv_mkldnn_pass base)

@@ -1306,6 +1306,55 @@ PDNode *patterns::ConvAffineChannel::operator()(
   return ac_out_var;
 }
 
+PDNode *patterns::TransposeFlattenConcat::operator()(PDNode *conv_in[],
+                                                     int times) {
+  // {trans, trans_out, flatten, flatten_out} * 4
+  PDNode *nodes[times * 4];
+
+  for (int i = 0; i < times; i++) {
+    nodes[i * 4] =
+        pattern->NewNode(GetNodeName("transpose" + std::to_string(i)))
+            ->assert_is_op("transpose2");
+    nodes[i * 4 + 1] =
+        pattern->NewNode(GetNodeName("transpose_out" + std::to_string(i)))
+            ->assert_is_op_output("transpose2")
+            ->assert_is_op_input("flatten2", "X")
+            ->AsIntermediate();
+    nodes[i * 4 + 2] =
+        pattern->NewNode(GetNodeName("flatten" + std::to_string(i)))
+            ->assert_is_op("flatten2");
+    nodes[i * 4 + 3] =
+        pattern->NewNode(GetNodeName("flatten_out" + std::to_string(i)))
+            ->assert_is_op_output("flatten2")
+            ->assert_is_op_nth_input("concat", "X", i)
+            ->AsIntermediate();
+  }
+
+  auto concat_op = pattern->NewNode(GetNodeName("concat"))
+                       ->assert_is_op("concat")
+                       ->assert_op_has_n_inputs("concat", times);
+  auto concat_out = pattern->NewNode(GetNodeName("concat_out"))
+                        ->assert_is_op_output("concat")
+                        ->AsOutput();
+
+  std::vector<PDNode *> flatten_outs;
+  for (int i = 0; i < times; i++) {
+    conv_in[i]->AsInput();
+    // trans
+    nodes[i * 4]->LinksFrom({conv_in[i]});
+    // trans_out
+    nodes[i * 4 + 1]->LinksFrom({nodes[i * 4]});
+    // flatten
+    nodes[i * 4 + 2]->LinksFrom({nodes[i * 4 + 1]});
+    // flatten_out
+    nodes[i * 4 + 3]->LinksFrom({nodes[i * 4 + 2]});
+    flatten_outs.push_back(nodes[i * 4 + 3]);
+  }
+
+  concat_op->LinksFrom(flatten_outs).LinksTo({concat_out});
+  return concat_out;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
