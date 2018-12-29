@@ -15,7 +15,9 @@
 from __future__ import print_function
 
 import collections
+from collections import defaultdict
 import contextlib
+import os
 import re
 import six
 import sys
@@ -27,11 +29,18 @@ from .proto import framework_pb2
 try:
     from . import core
 except ImportError as e:
-    raise ImportError(
-        """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
-    if you encounters \"libmkldnn.so not found\" errors. If you have python
-    installed in other directory, replace \"/usr/local/lib\" with your own
-    directory. The original error is: \n""" + cpt.get_exception_message(e))
+    if os.name == 'nt':
+        raise ImportError(
+            """NOTE: You may need to run \"set PATH=c:\python27\lib:%PATH%\"
+        if you encounters \"mkldnn.dll not found\" errors. If you have python
+        installed in other directory, replace \"c:\python27\lib" with your own
+        directory. The original error is: \n""" + cpt.get_exception_message(e))
+    else:
+        raise ImportError(
+            """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
+        if you encounters \"libmkldnn.so not found\" errors. If you have python
+        installed in other directory, replace \"/usr/local/lib\" with your own
+        directory. The original error is: \n""" + cpt.get_exception_message(e))
 except Exception as e:
     raise e
 from . import unique_name
@@ -361,13 +370,11 @@ class Variable(object):
             self._ivar.desc = self.desc
 
     def _numpy(self):
-        scope = _imperative_tracer().get_scope(self.block.desc)
-        tensor = core.get_variable_tensor(scope, self.desc.name())
+        tensor = self._ivar.var.get_tensor()
         return np.array(tensor)
 
     def _backward(self):
-        scope = _imperative_tracer().get_scope(self.block.desc)
-        self._ivar._run_backward(scope)
+        self._ivar._run_backward()
 
     def _gradient(self):
         return np.array(self._ivar._grad())
@@ -563,8 +570,8 @@ class Operator(object):
     OP_WITHOUT_KERNEL_SET = {
         'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
         'rnn_memory_helper_grad', 'conditional_block', 'while', 'send', 'recv',
-        'listen_and_serv', 'parallel_do', 'save_combine', 'load_combine',
-        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id'
+        'listen_and_serv', 'save_combine', 'load_combine', 'ncclInit', 'select',
+        'checkpoint_notify', 'gen_nccl_id'
     }
 
     def __init__(self,
@@ -640,20 +647,16 @@ class Operator(object):
                     self.desc.set_input(in_proto.name, [])
 
         if outputs is not None:
-            given = set()
-            need = set()
-            for n in outputs:
-                given.add(n)
             for m in proto.outputs:
-                need.add(m.name)
-            if not given == need:
-                raise ValueError(("Incorrect setting for output(s) of "
-                                  "operator \"%s\". Need: [%s] Given: [%s]") %
-                                 (type,
-                                  ", ".join(six.binary_type(e) for e in need),
-                                  ", ".join(six.binary_type(e) for e in given)))
-
+                if (m.name not in outputs) and m.dispensable:
+                    continue
+                if not ((m.name in outputs) or m.dispensable):
+                    raise ValueError(
+                        ("Incorrect setting for output(s) of "
+                         "operator \"%s\", should set: [%s].") % (type, m.name))
             for out_proto in proto.outputs:
+                if out_proto.name not in outputs:
+                    continue
                 out_args = outputs[out_proto.name]
                 if not isinstance(out_args, list):
                     out_args = [out_args]
@@ -684,20 +687,20 @@ class Operator(object):
         if _in_imperative_mode():
             self.iop = core.OpBase()
             self.iop.desc = self.desc
-            self.inputs = []
+            self.inputs = defaultdict(list)
             if inputs is not None:
-                for inp in inputs.values():
-                    if isinstance(inp, Variable):
-                        self.inputs.append(inp)
-                    elif isinstance(inp, list) or isinstance(inp, tuple):
-                        self.inputs.extend(inp[:])
-            self.outputs = []
+                for k, v in six.iteritems(inputs):
+                    if isinstance(v, Variable):
+                        self.inputs[k].append(v._ivar)
+                    elif isinstance(v, list) or isinstance(v, tuple):
+                        self.inputs[k].extend([var._ivar for var in v])
+            self.outputs = defaultdict(list)
             if outputs is not None:
-                for out in outputs.values():
-                    if isinstance(out, Variable):
-                        self.outputs.append(out)
-                    elif isinstance(out, list) or isinstance(out, tuple):
-                        self.outputs.extend(out[:])
+                for k, v in six.iteritems(outputs):
+                    if isinstance(v, Variable):
+                        self.outputs[k].append(v._ivar)
+                    elif isinstance(v, list) or isinstance(v, tuple):
+                        self.outputs[k].extend([var._ivar for var in v])
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
@@ -1265,8 +1268,7 @@ class Block(object):
         op_desc = self.desc.append_op()
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
         if _in_imperative_mode():
-            _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
-                                       [v._ivar for v in op.outputs], self.desc)
+            _imperative_tracer().trace(op.iop, op.inputs, op.outputs, self.desc)
         self.ops.append(op)
         return op
 
@@ -1316,6 +1318,8 @@ class Block(object):
     def _prepend_op(self, *args, **kwargs):
         op_desc = self.desc._prepend_op()
         op = Operator(self, op_desc, *args, **kwargs)
+        if _in_imperative_mode():
+            _imperative_tracer().trace(op.iop, op.inputs, op.outputs, self.desc)
         self.ops.insert(0, op)
         return op
 
@@ -1630,8 +1634,8 @@ class Program(object):
                 parameters, e.g., :code:`trainable`, :code:`optimize_attr`, need
                 to print.
 
-        Returns
-            (str): The debug string.
+        Returns:
+            str : The debug string.
 
         Raises:
             ValueError: If any of required fields is not set and throw_on_error is

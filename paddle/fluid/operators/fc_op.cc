@@ -79,9 +79,8 @@ framework::OpKernelType FCOp::GetExpectedKernelType(
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
   }
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
-      layout, library);
+  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                 ctx.GetPlace(), layout, library);
 }
 
 void FCOpGrad::InferShape(framework::InferShapeContext* ctx) const {
@@ -111,9 +110,8 @@ framework::OpKernelType FCOpGrad::GetExpectedKernelType(
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
   }
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
-      layout, library);
+  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                 ctx.GetPlace(), layout, library);
 }
 
 void FCOpMaker::Make() {
@@ -148,7 +146,6 @@ class FCOpKernel : public framework::OpKernel<T> {
     auto w = ctx.Input<Tensor>("W");
     auto bias = ctx.Input<Tensor>("Bias");
     auto output = ctx.Output<Tensor>("Out");
-    auto in_dims = input->dims();
     auto w_dims = w->dims();
     auto out_dims = output->dims();
     int M = framework::product(out_dims) / out_dims[out_dims.size() - 1];

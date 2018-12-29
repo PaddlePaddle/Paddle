@@ -32,11 +32,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -81,6 +83,18 @@ bool IsCompiledWithCUDA() {
 #endif
 }
 
+bool IsCompiledWithBrpc() {
+#ifndef PADDLE_WITH_DISTRIBUTE
+  return false;
+#endif
+
+#ifdef PADDLE_WITH_GRPC
+  return false;
+#endif
+
+  return true;
+}
+
 bool IsCompiledWithDIST() {
 #ifdef PADDLE_WITH_DISTRIBUTE
   return true;
@@ -102,12 +116,19 @@ PYBIND11_MODULE(core, m) {
 
   BindException(&m);
 
+  m.def(
+      "_append_python_callable_object_and_return_id",
+      [](py::object py_obj) -> size_t {
+        return paddle::operators::AppendPythonCallableObjectAndReturnId(py_obj);
+      });
+
+  m.add_object("_cleanup",
+               py::capsule([]() { ScopePool::Instance().Clear(); }));
+
   py::class_<imperative::VarBase, PyVarBase>(m, "VarBase", R"DOC()DOC")
       .def(py::init<>())
       .def("_run_backward",
-           [](imperative::VarBase &self, framework::Scope *scope) {
-             self.RunBackward(scope);
-           })
+           [](imperative::VarBase &self) { self.RunBackward(); })
       .def("_grad", &imperative::VarBase::Grad)
       .def_property(
           "desc",
@@ -115,7 +136,13 @@ PYBIND11_MODULE(core, m) {
           [](imperative::VarBase &self, framework::VarDesc *var_desc) {
             self.var_desc_ = var_desc;
           },
-          py::return_value_policy::reference);
+          py::return_value_policy::reference)
+      .def_property("var",
+                    [](const imperative::VarBase &self) { return self.var_; },
+                    [](imperative::VarBase &self, framework::Variable *var) {
+                      self.var_ = var;
+                    },
+                    py::return_value_policy::reference);
 
   py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
       .def(py::init<>())
@@ -206,7 +233,7 @@ PYBIND11_MODULE(core, m) {
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
-      .def("_dtype", [](Tensor &self) { return ToDataType(self.type()); });
+      .def("_dtype", [](Tensor &self) { return self.type(); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -439,7 +466,7 @@ All parameter, weight, gradient are variables in Paddle.
             },
         py::return_value_policy::copy);
 
-  py::class_<Scope>(m, "Scope", R"DOC(
+  py::class_<Scope>(m, "_Scope", R"DOC(
     Scope is an association of a name to Variable. All variables belong to Scope.
 
     Variables in a parent scope can be retrieved from local scope.
@@ -459,16 +486,25 @@ All parameter, weight, gradient are variables in Paddle.
           param.set(param_array, place)
 
         )DOC")
+      .def("_remove_from_pool",
+           [](Scope &self) { ScopePool::Instance().Remove(&self); })
       .def("var",
            [](Scope &self, const std::string &name) -> Variable * {
              return self.Var(name);
            },
            py::return_value_policy::reference)
       .def("find_var", &Scope::FindVar, py::return_value_policy::reference)
-      .def(py::init<>())
       .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
            py::return_value_policy::reference)
       .def("drop_kids", &Scope::DropKids);
+
+  m.def("Scope",
+        []() -> Scope * {
+          auto *s = new Scope();
+          ScopePool::Instance().Insert(std::unique_ptr<Scope>(s));
+          return s;
+        },
+        py::return_value_policy::reference);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
@@ -631,6 +667,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
 #ifdef PADDLE_WITH_CUDA
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
@@ -954,6 +991,14 @@ All parameter, weight, gradient are variables in Paddle.
           R"DOC(The type is BOOL, fuse_elewise_add_act_ops indicate whether
                      to fuse elementwise_add_op and activation_op,
                      it may make the execution faster. Default False)DOC")
+      .def_property(
+          "memory_optimize",
+          [](const BuildStrategy &self) { return self.memory_optimize_; },
+          [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; })
+      .def_property(
+          "memory_early_delete",
+          [](const BuildStrategy &self) { return self.memory_early_delete_; },
+          [](BuildStrategy &self, bool b) { self.memory_early_delete_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);
@@ -963,7 +1008,6 @@ All parameter, weight, gradient are variables in Paddle.
                 cannot be updated after being finalized.)DOC");
 
   pe.def(py::init<const std::vector<platform::Place> &,
-                  const std::unordered_set<std::string> &,
                   const std::unordered_set<std::string> &, const ProgramDesc &,
                   const std::string &, Scope *, std::vector<Scope *> &,
                   const ExecutionStrategy &, const BuildStrategy &, size_t,

@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/distributed/rpc_server.h"
+
 #include <fstream>
 #include <iostream>
 #include <limits>
 #include <string>
-
-#include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {

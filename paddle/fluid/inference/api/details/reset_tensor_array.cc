@@ -25,7 +25,7 @@ void TensorArrayBatchCleaner::CollectTensorArrays(framework::Scope *scope) {
       // TODO(Superjomn) should avoid the case when a TensorArray is a
       // parameter.
       if (var_name == "feed" || var_name == "fetch") continue;
-      if (var->Type() == typeid(framework::LoDTensorArray)) {
+      if (var->IsType<framework::LoDTensorArray>()) {
         VLOG(4) << "collect " << var_name;
         arrays_.push_back(var->GetMutable<framework::LoDTensorArray>());
       }

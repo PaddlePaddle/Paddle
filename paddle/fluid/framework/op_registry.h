@@ -23,7 +23,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 
-#include "glog/logging.h"  // For VLOG()
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#include "glog/logging.h"               // For VLOG()
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -319,7 +320,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 #define USE_OP(op_type)   \
   USE_OP_ITSELF(op_type); \
   USE_OP_KERNEL(op_type)
-// clang-format off
+// clang-format on
 
 }  // namespace framework
 }  // namespace paddle
