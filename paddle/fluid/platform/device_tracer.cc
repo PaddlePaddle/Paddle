@@ -36,6 +36,11 @@ thread_local std::deque<int> block_id_stack;
 // Tracking the nested event stacks.
 thread_local std::deque<std::string> annotation_stack;
 
+static std::vector<std::shared_ptr<DeviceTracer::AllRecord>>
+    g_all_thread_local_records;
+static thread_local std::shared_ptr<DeviceTracer::AllRecord>
+    thread_local_records;
+
 std::once_flag tracer_once_flag;
 DeviceTracer *tracer = nullptr;
 }  // namespace
@@ -196,19 +201,8 @@ class DeviceTracerImpl : public DeviceTracer {
  public:
   DeviceTracerImpl() : enabled_(false) {}
 
-  EventList &GetEventList() {
-    if (!g_event_list) {
-      std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
-      g_event_list = std::make_shared<EventList>();
-      g_thread_id = g_next_thread_id++;
-      g_all_event_lists.emplace_front(g_event_list);
-    }
-    return *g_event_list;
-  }
-
   void AddAnnotation(uint64_t id, const std::string &anno) {
-    std::lock_guard<std::mutex> l(trace_mu_);
-    correlations_[id] = anno;
+    GetThreadLocalAllRecord().correlations[id] = anno;
   }
 
   void AddCPURecords(const std::string &anno, uint64_t start_ns,
@@ -217,8 +211,7 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(1) << "Empty timeline annotation.";
       return;
     }
-    std::lock_guard<std::mutex> l(trace_mu_);
-    cpu_records_.push_back(
+    GetThreadLocalAllRecord().cpu_records.push_back(
         CPURecord{anno, start_ns, end_ns, device_id, thread_id});
   }
 
@@ -230,9 +223,8 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(3) << name << " cannot be traced";
       return;
     }
-    std::lock_guard<std::mutex> l(trace_mu_);
-    mem_records_.push_back(MemRecord{name, start_ns, end_ns, device_id,
-                                     stream_id, correlation_id, bytes});
+    GetThreadLocalAllRecord().mem_records.push_back(MemRecord{
+        name, start_ns, end_ns, device_id, stream_id, correlation_id, bytes});
   }
 
   void AddKernelRecords(std::string name, uint64_t start, uint64_t end,
@@ -243,8 +235,7 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(3) << correlation_id << " cannot be traced";
       return;
     }
-    std::lock_guard<std::mutex> l(trace_mu_);
-    kernel_records_.push_back(
+    GetThreadLocalAllRecord().kernel_records.push_back(
         KernelRecord{name, start, end, device_id, stream_id, correlation_id});
   }
 
@@ -287,38 +278,48 @@ class DeviceTracerImpl : public DeviceTracer {
     proto::Profile profile_pb;
     profile_pb.set_start_ns(start_ns_);
     profile_pb.set_end_ns(end_ns_);
-    for (const KernelRecord &r : kernel_records_) {
-      auto *event = profile_pb.add_events();
-      event->set_type(proto::Event::GPUKernel);
-      if (correlations_.find(r.correlation_id) != correlations_.end()) {
-        event->set_name(correlations_.at(r.correlation_id));
-      } else {
-        event->set_name(r.name);
+
+    std::unordered_map<uint32_t, std::string> all_correlations;
+    for (auto &all_records : g_all_thread_local_records) {
+      for (auto &item : all_records->correlations) {
+        all_correlations[item.first] = item.second;
       }
-      event->set_start_ns(r.start_ns);
-      event->set_end_ns(r.end_ns);
-      event->set_sub_device_id(r.stream_id);
-      event->set_device_id(r.device_id);
     }
 
-    for (const CPURecord &r : cpu_records_) {
-      auto *event = profile_pb.add_events();
-      event->set_type(proto::Event::CPU);
-      event->set_name(r.name);
-      event->set_start_ns(r.start_ns);
-      event->set_end_ns(r.end_ns);
-      event->set_sub_device_id(r.thread_id);
-      event->set_device_id(r.device_id);
-    }
-    for (const MemRecord &r : mem_records_) {
-      auto *event = profile_pb.add_events();
-      event->set_type(proto::Event::GPUKernel);
-      event->set_name(r.name);
-      event->set_start_ns(r.start_ns);
-      event->set_end_ns(r.end_ns);
-      event->set_sub_device_id(r.stream_id);
-      event->set_device_id(r.device_id);
-      event->mutable_memcopy()->set_bytes(r.bytes);
+    for (auto &all_records : g_all_thread_local_records) {
+      for (const KernelRecord &r : all_records->kernel_records) {
+        auto *event = profile_pb.add_events();
+        event->set_type(proto::Event::GPUKernel);
+        if (all_correlations.find(r.correlation_id) != all_correlations.end()) {
+          event->set_name(all_correlations.at(r.correlation_id));
+        } else {
+          event->set_name(r.name);
+        }
+        event->set_start_ns(r.start_ns);
+        event->set_end_ns(r.end_ns);
+        event->set_sub_device_id(r.stream_id);
+        event->set_device_id(r.device_id);
+      }
+
+      for (const CPURecord &r : all_records->cpu_records) {
+        auto *event = profile_pb.add_events();
+        event->set_type(proto::Event::CPU);
+        event->set_name(r.name);
+        event->set_start_ns(r.start_ns);
+        event->set_end_ns(r.end_ns);
+        event->set_sub_device_id(r.thread_id);
+        event->set_device_id(r.device_id);
+      }
+      for (const MemRecord &r : all_records->mem_records) {
+        auto *event = profile_pb.add_events();
+        event->set_type(proto::Event::GPUKernel);
+        event->set_name(r.name);
+        event->set_start_ns(r.start_ns);
+        event->set_end_ns(r.end_ns);
+        event->set_sub_device_id(r.stream_id);
+        event->set_device_id(r.device_id);
+        event->mutable_memcopy()->set_bytes(r.bytes);
+      }
     }
     std::ofstream profile_f;
     profile_f.open(profile_path, std::ios::out | std::ios::trunc);
@@ -341,6 +342,17 @@ class DeviceTracerImpl : public DeviceTracer {
     CUPTI_CALL(dynload::cuptiGetTimestamp(&end_ns_));
 #endif  // PADDLE_WITH_CUPTI
     enabled_ = false;
+  }
+
+  inline AllRecord &GetThreadLocalAllRecord() {
+    if (!thread_local_records) {
+      std::lock_guard<std::mutex> guard(trace_mu_);
+      if (!thread_local_records) {
+        thread_local_records = std::make_shared<AllRecord>();
+        g_all_thread_local_records.push_back(thread_local_records);
+      }
+    }
+    return *thread_local_records;
   }
 
  private:
@@ -368,8 +380,8 @@ class DeviceTracerImpl : public DeviceTracer {
   bool enabled_;
   uint64_t start_ns_;
   uint64_t end_ns_;
-  static std::list<std::shared_ptr<AllRecord>> g_all_thread_local_records;
-  static thread_local std::shared_ptr<AllRecord> thread_local_records;
+  //  static std::vector<std::shared_ptr<AllRecord>> g_all_thread_local_records;
+  //  static thread_local std::shared_ptr<AllRecord> thread_local_records;
 };
 
 void CreateTracer(DeviceTracer **t) { *t = new DeviceTracerImpl(); }
