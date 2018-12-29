@@ -147,7 +147,6 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
             ->GetMutable<CudnnRNNCache>();
 
     auto input_dims = input->dims();
-    auto weight_dims = weight->dims();
     auto init_h_dims = init_h->dims();
     auto init_c_dims = init_c->dims();
     in_grad->mutable_data<T>(ctx.GetPlace());
