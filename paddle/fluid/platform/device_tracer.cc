@@ -274,6 +274,7 @@ class DeviceTracerImpl : public DeviceTracer {
   }
 
   proto::Profile GenProfile(const std::string &profile_path) {
+    VLOG(2) << "generate timeline profile";
     std::lock_guard<std::mutex> l(trace_mu_);
     proto::Profile profile_pb;
     profile_pb.set_start_ns(start_ns_);

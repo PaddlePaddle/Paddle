@@ -500,6 +500,7 @@ void DisableProfiler(EventSortingKey sorted_key,
       tracer->Disable();
       tracer->GenProfile(profile_path);
     }
+    timeline_enabled = false;
   }
   g_state = ProfilerState::kDisabled;
   should_send_profile_state = true;

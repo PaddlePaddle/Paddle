@@ -219,7 +219,10 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
 
 
 @contextmanager
-def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
+def profiler(state,
+             sorted_key=None,
+             profile_path='/tmp/profile',
+             enable_timeline=True):
     """The profiler interface.
     Different from cuda_profiler, this profiler can be used to profile both CPU
     and GPU program. By default, it records the CPU and GPU operator kernels,
@@ -268,6 +271,6 @@ def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
                                 use_program_cache=True)
                         # ...
     """
-    start_profiler(state)
+    start_profiler(state, enable_timeline)
     yield
     stop_profiler(sorted_key, profile_path)
