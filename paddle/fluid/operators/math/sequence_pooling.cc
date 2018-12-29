@@ -254,7 +254,7 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       T* dst = output->mutable_data<T>(place);
       jit::seq_pool_attr_t attr;
       attr.w = input.numel() / input.dims()[0];
-      attr.type = jit::SeqPoolType::sum;
+      attr.type = jit::SeqPoolType::kSum;
       auto seqpool =
           jit::Get<jit::kSeqPool, jit::SeqPoolTuples<T>, platform::CPUPlace>(
               attr);

@@ -190,6 +190,24 @@ void BenchGRUKernel() {
   }
 }
 
+template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+void BenchSeqPoolKernel() {
+  std::vector<jit::SeqPoolType> pool_types = {jit::SeqPoolType::kSum};
+  for (auto type : pool_types) {
+    for (int h : TestSizes()) {
+      for (int w : TestSizes()) {
+        const jit::seq_pool_attr_t attr(h, w, type);
+        std::vector<T> x(h * w), y(w);
+        RandomVec<T>(h * w, x.data(), -2.f, 2.f);
+        const T* x_data = x.data();
+        T* y_data = y.data();
+        BenchAllImpls<KT, jit::SeqPoolTuples<T>, PlaceType>(attr, x_data,
+                                                            y_data, &attr);
+      }
+    }
+  }
+}
+
 // Benchmark all jit kernels including jitcode, mkl and refer.
 // To use this tool, run command: ./benchmark [options...]
 // Options:
@@ -228,4 +246,7 @@ int main(int argc, char* argv[]) {
   BenchGRUKernel<jit::kGRUH1, T, PlaceType>();
   BenchGRUKernel<jit::kGRUHtPart1, T, PlaceType>();
   BenchGRUKernel<jit::kGRUHtPart2, T, PlaceType>();
+
+  // seq pool function
+  BenchSeqPoolKernel<jit::kSeqPool, T, PlaceType>();
 }
