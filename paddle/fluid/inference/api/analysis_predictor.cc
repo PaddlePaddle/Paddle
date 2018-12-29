@@ -253,8 +253,8 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     if (config_.specify_input_name) {
       auto name = inputs[i].name;
       if (feed_names_.find(name) == feed_names_.end()) {
-        LOG(ERROR) << "feed names from program do not have name: " << name
-                   << " from specified input";
+        LOG(ERROR) << "feed names from program do not have name: [" << name
+                   << "] from specified input";
       }
       idx = feed_names_[name];
     } else {
