@@ -15,12 +15,15 @@
 import contextlib
 import unittest
 import numpy as np
+import six
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.imperative.nn import Conv2D, Pool2D, FC
 from paddle.fluid.imperative.base import to_variable
+from test_imperative_base import new_program_scope
 
 
 class SimpleImgConvPool(fluid.imperative.PyLayer):
@@ -97,21 +100,93 @@ class MNIST(fluid.imperative.PyLayer):
 
 class TestImperativeMnist(unittest.TestCase):
     def test_mnist_cpu_float32(self):
-        with fluid.imperative.guard():
-            mnist = MNIST()
-            sgd = SGDOptimizer(learning_rate=1e-3)
+        seed = 90
 
-            for i in range(2):
-                x_data = np.random.rand(128, 1, 28, 28).astype('float32')
+        with fluid.imperative.guard():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+
+            mnist = Conv2D(1, 20, 5)
+            sgd = SGDOptimizer(learning_rate=1e-3)
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=128)
+
+            dy_param_value = {}
+            for param in fluid.default_main_program().global_block(
+            ).all_parameters():
+                dy_param_value[param.name] = param._numpy()
+
+            for batch_id, data in enumerate(train_reader()):
+                if batch_id >= 1:
+                    break
+
+                x_data = np.array(
+                    [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
+                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                    128, 1)
+
                 img = to_variable(x_data)
-                y_data = np.random.rand(128, 1).astype('int64')
                 label = to_variable(y_data)
                 label._stop_gradient = True
 
-                predict = mnist(img)
-                out = fluid.layers.cross_entropy(predict, label)
-                out._backward()
-                sgd.minimize(out)
+                cost = mnist(img)
+                loss = fluid.layers.reduce_mean(cost)
+                dy_out = loss._numpy()
+
+                loss._backward()
+                sgd.minimize(loss)
+                dy_filter_param = mnist._filter_param._numpy()
+
+        with new_program_scope():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+
+            exe = fluid.Executor(fluid.CPUPlace())
+
+            mnist = Conv2D(1, 20, 5)
+            sgd = SGDOptimizer(learning_rate=1e-3)
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=128)
+
+            img = fluid.layers.data(
+                name='pixel', shape=[1, 28, 28], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            cost = mnist(img)
+            loss = fluid.layers.reduce_mean(cost)
+            sgd.minimize(loss)
+
+            # initialize params and fetch them
+            static_param_value = {}
+            static_param_name_list = []
+            for param in fluid.default_startup_program().global_block(
+            ).all_parameters():
+                static_param_name_list.append(param.name)
+
+            out = exe.run(fluid.default_startup_program(),
+                          fetch_list=static_param_name_list)
+
+            for i in range(len(static_param_name_list)):
+                static_param_value[static_param_name_list[i]] = out[i]
+
+            for batch_id, data in enumerate(train_reader()):
+                if batch_id >= 1:
+                    break
+
+                x_data = np.array(
+                    [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
+                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                    [128, 1])
+                static_out, static_filter_param = exe.run(
+                    fluid.default_main_program(),
+                    feed={"pixel": x_data,
+                          "label": y_data},
+                    fetch_list=[loss.name, mnist._filter_param.name])
+
+        for key, value in six.iteritems(static_param_value):
+            self.assertTrue(np.allclose(value.all(), dy_param_value[key].all()))
+        self.assertTrue(np.allclose(static_out.all(), dy_out.all()))
+        self.assertTrue(
+            np.allclose(static_filter_param.all(), dy_filter_param.all()))
 
 
 if __name__ == '__main__':

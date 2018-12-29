@@ -97,17 +97,23 @@ class Conv2D(layers.PyLayer):
                 persistable=True,
                 type=core.VarDesc.VarType.RAW)
 
-        self._pre_bias = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype)
+        self._bias_param = self._helper.create_parameter(
+            attr=self._helper.bias_attr,
+            shape=[num_filter_channels],
+            dtype=self._dtype,
+            is_bias=True)
 
     def forward(self, input):
+        pre_bias = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype)
+
         self._helper.append_op(
             type=self._l_type,
             inputs={
                 'Input': input,
                 'Filter': self._filter_param,
             },
-            outputs={"Output": self._pre_bias},
+            outputs={"Output": pre_bias},
             attrs={
                 'strides': self._stride,
                 'paddings': self._padding,
@@ -117,11 +123,17 @@ class Conv2D(layers.PyLayer):
                 'use_mkldnn': False,
             })
 
-        self._pre_act = self._helper.append_bias_op(
-            self._pre_bias, dim_start=1, dim_end=2)
+        pre_act = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype)
 
-        out = self._helper.append_activation(self._pre_act)
-        return out
+        self._helper.append_op(
+            type='elementwise_add',
+            inputs={'X': [pre_bias],
+                    'Y': [self._bias_param]},
+            outputs={'Out': [pre_act]},
+            attrs={'axis': 1})
+
+        return self._helper.append_activation(pre_act)
 
 
 class Pool2D(layers.PyLayer):
@@ -162,14 +174,13 @@ class Pool2D(layers.PyLayer):
         self._exclusive = exclusive
         self._l_type = 'pool2d'
 
-        self._pool_out = self._helper.create_variable_for_type_inference(
-            self._dtype)
-
     def forward(self, input):
+        pool_out = self._helper.create_variable_for_type_inference(self._dtype)
+
         self._helper.append_op(
             type=self._l_type,
             inputs={"X": input},
-            outputs={"Out": self._pool_out},
+            outputs={"Out": pool_out},
             attrs={
                 "pooling_type": self._pool_type,
                 "ksize": self._pool_size,
@@ -181,7 +192,7 @@ class Pool2D(layers.PyLayer):
                 "use_mkldnn": False,
                 "exclusive": self._exclusive,
             })
-        return self._pool_out
+        return pool_out
 
 
 class FC(layers.PyLayer):
@@ -203,8 +214,6 @@ class FC(layers.PyLayer):
                 shape=[size_in, size_out],
                 dtype=self._dtype,
                 is_bias=False)
-        self._tmp = self._helper.create_variable_for_type_inference(self._dtype)
-        self._out = self._helper.create_variable_for_type_inference(self._dtype)
 
     def _build_once(self, input):
         if self._size_in != -1:
@@ -221,19 +230,21 @@ class FC(layers.PyLayer):
             is_bias=False)
 
     def forward(self, input):
+        tmp = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
             type="mul",
             inputs={"X": input,
                     "Y": self._w},
-            outputs={"Out": self._tmp},
+            outputs={"Out": tmp},
             attrs={
                 "x_num_col_dims": self._num_flatten_dims,
                 "y_num_col_dims": 1
             })
 
+        out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
             type="sum",
-            inputs={"X": [self._tmp]},
-            outputs={"Out": self._out},
+            inputs={"X": [tmp]},
+            outputs={"Out": out},
             attrs={"use_mkldnn": False})
-        return self._out
+        return out

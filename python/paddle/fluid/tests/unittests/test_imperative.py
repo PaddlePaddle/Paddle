@@ -19,16 +19,7 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.layers.nn import FC
-
-
-@contextlib.contextmanager
-def new_program_scope():
-    prog = fluid.Program()
-    startup_prog = fluid.Program()
-    scope = fluid.core.Scope()
-    with fluid.scope_guard(scope):
-        with fluid.program_guard(prog, startup_prog):
-            yield
+from test_imperative_base import new_program_scope
 
 
 class MyLayer(fluid.imperative.PyLayer):
