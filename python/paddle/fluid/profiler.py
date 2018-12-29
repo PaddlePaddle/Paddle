@@ -122,7 +122,7 @@ def reset_profiler():
     core.reset_profiler()
 
 
-def start_profiler(state, enable_timeline=False):
+def start_profiler(state, enable_timeline=True):
     """
     Enable the profiler. Uers can use `fluid.profiler.start_profiler` and
     `fluid.profiler.stop_profiler` to insert the code, except the usage of
