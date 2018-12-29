@@ -72,13 +72,13 @@ cc_test(reader_test SRCS reader_test.cc DEPS reader)
 cc_library(threadpool SRCS threadpool.cc DEPS enforce)
 cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
-cc_library(var_type_traits SRCS var_type_traits DEPS lod_tensor selected_rows framework_proto) 
+cc_library(var_type_traits SRCS var_type_traits DEPS lod_tensor selected_rows framework_proto)
 if (WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
 cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
 
-cc_library(scope SRCS scope.cc DEPS glog threadpool var_type_traits)
+cc_library(scope SRCS scope.cc DEPS glog threadpool xxhash var_type_traits)
 cc_library(scope_pool SRCS scope_pool.cc DEPS scope)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 cc_test(variable_test SRCS variable_test.cc DEPS tensor var_type_traits)
@@ -189,9 +189,9 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         fast_threaded_ssa_graph_executor variable_helper)
 
 if(WITH_PSLIB)
-    cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc executor_thread_worker.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto variable_helper pslib_brpc pslib)
+    cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc executor_thread_worker.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto variable_helper pslib_brpc pslib timer)
 else()
-    cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc executor_thread_worker.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto variable_helper)
+    cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc executor_thread_worker.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto variable_helper timer)
 endif(WITH_PSLIB)
 
 
