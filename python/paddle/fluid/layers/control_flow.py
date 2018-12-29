@@ -1452,6 +1452,7 @@ class DynamicRNN(object):
     def step_input(self, x):
         """
         Mark a sequence as a dynamic RNN input.
+
         Args:
             x(Variable): The input sequence.
 
@@ -1505,6 +1506,7 @@ class DynamicRNN(object):
         """
         Mark a variable as a RNN input. The input will not be scattered into
         time steps.
+
         Args:
             x(Variable): The input variable.
 
@@ -1629,13 +1631,11 @@ class DynamicRNN(object):
         Args:
             init(Variable|None): The initialized variable.
 
-            shape(list|tuple): The memory shape. NOTE the shape does not contain
-            batch_size.
+            shape(list|tuple): The memory shape. NOTE the shape does not contain batch_size.
 
             value(float): the initalized value.
 
-            need_reorder(bool): True if the initialized memory depends on the
-            input sample.
+            need_reorder(bool): True if the initialized memory depends on the input sample.
 
             dtype(str|numpy.dtype): The data type of the initialized memory.
 
@@ -1714,6 +1714,7 @@ class DynamicRNN(object):
         """
         Update the memory from ex_mem to new_mem. NOTE that the shape and data
         type of :code:`ex_mem` and :code:`new_mem` must be same.
+        
         Args:
             ex_mem(Variable): the memory variable.
             new_mem(Variable): the plain variable generated in RNN block.

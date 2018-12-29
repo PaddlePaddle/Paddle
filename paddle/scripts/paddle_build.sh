@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 #=================================================
 #                   Utils
 #=================================================
@@ -79,6 +78,7 @@ function cmake_gen() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/lib/libpython2.7.dylib"
+            pip install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -91,6 +91,7 @@ function cmake_gen() {
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.5/include/python3.5m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/libpython3.5m.dylib"
                 WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+                pip3.5 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -103,6 +104,7 @@ function cmake_gen() {
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib"
                 WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+                pip3.6 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -115,6 +117,7 @@ function cmake_gen() {
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib"
                 WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+                pip3.7 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -414,13 +417,6 @@ EOF
         else
             ctest --output-on-failure
         fi
-
-        # make install should also be test when unittest
-        make install -j `nproc`
-        pip install ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
-        if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
-            paddle version
-        fi
     fi
 }
 
@@ -441,7 +437,9 @@ EOF
         # make install should also be test when unittest
         make install -j 8
         if [ "$1" == "cp27-cp27m" ]; then
+            set -e
             pip install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+            python ${PADDLE_ROOT}/paddle/scripts/installation_validate.py
         elif [ "$1" == "cp35-cp35m" ]; then
             pip3.5 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         elif [ "$1" == "cp36-cp36m" ]; then
@@ -529,6 +527,18 @@ function assert_api_spec_approvals() {
         fi
     fi
 
+    pip install ${PADDLE_ROOT}/build/opt/paddle/share/wheels/*.whl
+    CHECK_DOCK_MD5=`python ${PADDLE_ROOT}/tools/check_doc_approval.py`
+    if [ "True" != ${CHECK_DOCK_MD5} ]; then
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 35982308`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "You must have shanyi15 approval for the api doc change! "
+            exit 1
+        fi
+        echo ${CHECK_DOCK_MD5} >/root/.cache/doc_md5.txt
+    fi
 }
 
 
@@ -908,14 +918,15 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build
         assert_api_not_changed ${PYTHON_ABI:-""}
+        assert_api_spec_approvals
         run_test
         gen_capi_package
         gen_fluid_lib
         test_fluid_lib
-        assert_api_spec_approvals
         ;;
       assert_api)
         assert_api_not_changed ${PYTHON_ABI:-""}
+        assert_api_spec_approvals
         ;;
       test_inference)
         gen_capi_package
@@ -939,6 +950,15 @@ function main() {
         build
         run_test
         assert_api_not_changed ${PYTHON_ABI:-""}
+        ;;
+      cmake_gen)
+        cmake_gen ${PYTHON_ABI:-""}
+        ;;
+      gen_fluid_lib)
+        gen_fluid_lib
+        ;;
+      test_fluid_lib)
+        test_fluid_lib
         ;;
       *)
         print_usage

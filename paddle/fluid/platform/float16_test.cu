@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/float16.h"
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <bitset>

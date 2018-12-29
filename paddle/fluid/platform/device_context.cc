@@ -256,10 +256,11 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
 
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: " << place_.device
                           << ", CUDA Capability: " << compute_capability_
-                          << ", Driver Version: " << driver_version_ / 1000
+                          << ", Driver API Version: " << driver_version_ / 1000
                           << "." << (driver_version_ % 100) / 10
-                          << ", Runtime Version: " << runtime_version_ / 1000
-                          << "." << (runtime_version_ % 100) / 10;
+                          << ", Runtime API Version: "
+                          << runtime_version_ / 1000 << "."
+                          << (runtime_version_ % 100) / 10;
   size_t cudnn_dso_ver = dynload::cudnnGetVersion();
   LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
                           << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."

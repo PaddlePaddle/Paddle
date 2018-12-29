@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
 
-#include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
