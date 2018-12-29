@@ -527,7 +527,7 @@ function assert_api_spec_approvals() {
         fi
     fi
 
-    pip install ${PADDLE_ROOT}/opt/paddle/share/wheels/*.whl
+    pip install ${PADDLE_ROOT}/build/opt/paddle/share/wheels/*.whl
     CHECK_DOCK_MD5=`python ${PADDLE_ROOT}/tools/check_doc_approval.py`
     if [ "True" != ${CHECK_DOCK_MD5} ]; then
         APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
