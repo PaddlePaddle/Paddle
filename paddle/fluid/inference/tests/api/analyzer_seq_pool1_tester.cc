@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
@@ -20,6 +21,106 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+struct OneSlotInBatch {
+  std::string name;
+  std::vector<std::vector<float>> data;
+  std::vector<int> shape;
+  std::vector<size_t> lod;
+};
+
+struct DataRecord {
+  std::vector<std::vector<OneSlotInBatch>> batched_data;
+  std::map<std::string, std::vector<std::vector<float>>> datasets;
+  size_t batch_iter{0}, num_samples;  // total number of samples
+
+  DataRecord() = default;
+  explicit DataRecord(const std::string &path, int batch_size = 1) {
+    Load(path);
+    Prepare(batch_size);
+  }
+
+  void Load(const std::string &path) {
+    std::ifstream file(path);
+    constexpr int num_slots = 154;
+    std::string line;
+    int num_lines = 0;
+    while (std::getline(file, line)) {
+      num_lines++;
+      std::vector<std::string> data;
+      split(line, '\t', &data);
+      std::vector<float> slot_data;
+      split_to_float(data[1], ' ', &slot_data);
+      std::string name = data[0];
+      PADDLE_ENFORCE_EQ(slot_data.size() % 11, 0,
+                        "line %d, %s should be divisible", num_lines, name);
+      datasets[name].emplace_back(std::move(slot_data));
+    }
+    num_samples = num_lines / num_slots;
+    PADDLE_ENFORCE_EQ(num_samples * num_slots, static_cast<size_t>(num_lines),
+                      "num samples should be divisible");
+    PADDLE_ENFORCE_GT(num_samples, 0);
+  }
+
+  void Prepare(int bs) {
+    for (auto it = datasets.begin(); it != datasets.end(); ++it) {
+      PADDLE_ENFORCE_EQ(it->second.size(), num_samples,
+                        "size of each slot should be equal");
+    }
+    size_t num_batches = num_samples / bs;
+    EXPECT_GT(num_batches, 0);
+    batched_data.resize(num_batches);
+    for (auto &one_batch : batched_data) {
+      one_batch.resize(datasets.size());
+      size_t i = 0;
+      for (auto it = datasets.begin(); it != datasets.end(); ++it) {
+        auto &slot = one_batch[i];
+        slot.name = it->first;
+        slot.data.resize(bs);
+        slot.lod.resize(bs + 1);
+        slot.lod[0] = 0;
+        auto &lod = slot.lod;
+        auto &datas = it->second;
+        for (int k = 0; k < bs; ++k) {
+          size_t id = k + batch_iter * bs;
+          std::copy(datas[id].begin(), datas[id].end(),
+                    std::back_inserter(slot.data[k]));
+          size_t len = datas[id].size() / 11;
+          PADDLE_ENFORCE_EQ(len * 11, datas[id].size(),
+                            "%s %d size should be divisible", slot.name, id);
+          lod[k + 1] = lod[k] + len;
+        }
+        slot.shape.assign({static_cast<int>(lod[bs]), 11});
+        i++;
+      }
+    }
+  }
+
+  const std::vector<OneSlotInBatch> &NextBatch() {
+    if (batch_iter >= batched_data.size() - 1) {
+      batch_iter = -1;
+    }
+    return batched_data[++batch_iter];
+  }
+};
+
+static void TensorAssignSlot(PaddleTensor *tensor, const OneSlotInBatch &slot) {
+  tensor->name = slot.name + "_embed";
+  tensor->shape = slot.shape;
+  tensor->dtype = PaddleDType::FLOAT32;
+  tensor->lod.clear();
+  tensor->lod.emplace_back(slot.lod);
+  TensorAssignData(tensor, slot.data);
+}
+
+void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data) {
+  const auto &one_batch = data->NextBatch();
+  input_slots->resize(one_batch.size());
+  for (size_t i = 0; i < one_batch.size(); ++i) {
+    auto &slot = one_batch[i];
+    TensorAssignSlot(&((*input_slots)[i]), slot);
+  }
+}
+
 void SetConfig(AnalysisConfig *cfg) {
   cfg->param_file = FLAGS_infer_model + "/params";
   cfg->prog_file = FLAGS_infer_model + "/model";
@@ -27,62 +128,22 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->device = 0;
   cfg->enable_ir_optim = true;
   cfg->specify_input_name = true;
+  cfg->pass_builder()->TurnOnDebug();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
-  std::vector<std::string> feed_names = {
-      "slot10000_embed", "slot10001_embed", "slot10004_embed",
-      "slot10005_embed", "slot10008_embed", "slot10009_embed",
-      "slot10012_embed", "slot10013_embed", "slot10108_embed",
-      "slot13324_embed", "slot13325_embed", "slot13326_embed",
-      "slot13327_embed", "slot13328_embed", "slot13329_embed",
-      "slot13330_embed", "slot13331_embed", "slot15501_embed",
-      "slot15502_embed", "slot15503_embed", "slot15504_embed",
-      "slot15505_embed", "slot15506_embed", "slot15507_embed",
-      "slot15508_embed", "slot15516_embed", "slot15519_embed",
-      "slot15523_embed", "slot15531_embed", "slot15533_embed",
-      "slot15548_embed", "slot15564_embed", "slot15565_embed",
-      "slot15566_embed", "slot15570_embed", "slot15571_embed",
-      "slot15572_embed", "slot15573_embed", "slot15574_embed",
-      "slot15575_embed", "slot15576_embed", "slot15577_embed",
-      "slot15579_embed", "slot15581_embed", "slot15582_embed",
-      "slot15583_embed", "slot15584_embed", "slot5016_embed",
-      "slot5021_embed",  "slot6002_embed",  "slot6003_embed",
-      "slot6004_embed",  "slot6005_embed",  "slot6006_embed",
-      "slot6007_embed",  "slot6008_embed",  "slot6009_embed",
-      "slot6011_embed",  "slot6014_embed",  "slot6015_embed",
-      "slot6023_embed",  "slot6024_embed",  "slot6025_embed",
-      "slot6027_embed",  "slot6029_embed",  "slot6031_embed",
-      "slot6034_embed",  "slot6035_embed",  "slot6036_embed",
-      "slot6037_embed",  "slot6039_embed",  "slot6048_embed",
-      "slot6050_embed",  "slot6058_embed",  "slot6059_embed",
-      "slot6060_embed",  "slot6066_embed",  "slot6067_embed",
-      "slot6068_embed",  "slot6069_embed",  "slot6070_embed",
-      "slot6071_embed",  "slot6072_embed",  "slot6073_embed",
-      "slot6182_embed",  "slot6183_embed",  "slot6184_embed",
-      "slot6185_embed",  "slot6186_embed",  "slot6188_embed",
-      "slot6189_embed",  "slot6190_embed",  "slot6201_embed",
-      "slot6202_embed",  "slot6203_embed",  "slot6247_embed",
-      "slot6248_embed",  "slot6250_embed",  "slot6251_embed",
-      "slot6807_embed",  "slot6808_embed",  "slot6809_embed",
-      "slot6810_embed",  "slot6811_embed",  "slot6812_embed",
-      "slot6813_embed",  "slot6814_embed",  "slot6815_embed",
-      "slot6816_embed",  "slot6817_embed",  "slot6818_embed",
-      "slot6819_embed",  "slot6820_embed",  "slot6822_embed",
-      "slot6823_embed",  "slot6826_embed",  "slot7002_embed",
-      "slot7003_embed",  "slot7004_embed",  "slot7005_embed",
-      "slot7006_embed",  "slot7008_embed",  "slot7009_embed",
-      "slot7010_embed",  "slot7011_embed",  "slot7013_embed",
-      "slot7014_embed",  "slot7015_embed",  "slot7016_embed",
-      "slot7017_embed",  "slot7019_embed",  "slot7100_embed",
-      "slot7506_embed",  "slot7507_embed",  "slot7514_embed",
-      "slot7515_embed",  "slot7516_embed"};
-  SetFakeImageInput(inputs, FLAGS_infer_model, true, "model", "params",
-                    &feed_names);
+  DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
+  std::vector<PaddleTensor> input_slots;
+  int epoch = FLAGS_test_all_data ? data.batched_data.size() : 1;
+  LOG(INFO) << "number of samples: "
+            << data.batched_data.size() * FLAGS_batch_size;
+  for (int bid = 0; bid < epoch; ++bid) {
+    PrepareInputs(&input_slots, &data);
+    (*inputs).emplace_back(input_slots);
+  }
 }
 
-// Easy for profiling independently.
 void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
@@ -100,6 +161,17 @@ void profile(bool use_mkldnn = false) {
 
 TEST(Analyzer_seq_pool1, profile) { profile(); }
 
+// Compare result of NativeConfig and AnalysisConfig
+TEST(Analyzer_seq_pool1, compare) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
+
 // Check the fuse status
 TEST(Analyzer_seq_pool1, fuse_statis) {
   AnalysisConfig cfg;
@@ -109,7 +181,7 @@ TEST(Analyzer_seq_pool1, fuse_statis) {
   auto fuse_statis = GetFuseStatis(
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
   LOG(INFO) << "num_ops: " << num_ops;
-  EXPECT_EQ(num_ops, 314);
+  EXPECT_EQ(num_ops, 349);
 }
 
 }  // namespace analysis
