@@ -44,7 +44,7 @@ class LoadCombineOp : public framework::OperatorBase {
       LoadParamsFromBuffer(scope, place, &fin, load_as_fp16, out_var_names);
     } else {
       PADDLE_ENFORCE(!filename.empty(), "Cannot load file from memory");
-      std::stringstream fin(filename, std::ios::binary);
+      std::stringstream fin(filename, std::ios::in | std::ios::binary);
       LoadParamsFromBuffer(scope, place, &fin, load_as_fp16, out_var_names);
     }
   }
