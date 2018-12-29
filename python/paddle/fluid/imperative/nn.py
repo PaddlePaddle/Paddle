@@ -46,8 +46,15 @@ class Conv2D(layers.PyLayer):
                  name=None,
                  dtype=core.VarDesc.VarType.FP32):
         assert param_attr is not False, "param_attr should not be False here."
-        super(Conv2D, self).__init__(
-            param_attr=param_attr, bias_attr=bias_attr, name=name, dtype=dtype)
+        super(Conv2D, self).__init__(name=name, dtype=dtype)
+
+        from ..layer_helper import LayerHelper
+        self._helper = LayerHelper(
+            type(self).__name__,
+            param_attr=param_attr,
+            bias_attr=bias_attr,
+            dtype=dtype,
+            name=name)
 
         self._groups = groups
         self._stride = utils.convert_to_list(stride, 2, 'stride')
@@ -163,6 +170,9 @@ class Pool2D(layers.PyLayer):
 
         super(Pool2D, self).__init__(name=name, dtype=dtype)
 
+        from ..layer_helper import LayerHelper
+        self._helper = LayerHelper(type(self).__name__, dtype=dtype, name=name)
+
         self._pool_type = pool_type
         self._pool_size = utils.convert_to_list(pool_size, 2, 'pool_size')
         self._pool_padding = utils.convert_to_list(pool_padding, 2,
@@ -197,32 +207,22 @@ class Pool2D(layers.PyLayer):
 
 class FC(layers.PyLayer):
     def __init__(self,
-                 size_in,
-                 size_out,
-                 num_flatten_dims=1,
+                 size,
                  param_attr=None,
+                 num_flatten_dims=1,
                  dtype=core.VarDesc.VarType.FP32):
-        super(FC, self).__init__(param_attr=param_attr, dtype=dtype)
-
-        self._size_in = size_in
-        self._size_out = size_out
+        super(FC, self).__init__()
+        self._size = size
         self._num_flatten_dims = num_flatten_dims
         self._dtype = dtype
-        if self._size_in != -1:
-            self._w = self._helper.create_parameter(
-                attr=self._helper.param_attr,
-                shape=[size_in, size_out],
-                dtype=self._dtype,
-                is_bias=False)
+        from ..layer_helper import LayerHelper
+        self._helper = LayerHelper('FC', param_attr=param_attr)
 
     def _build_once(self, input):
-        if self._size_in != -1:
-            return
-
         input_shape = input.shape
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:], 1)
-        ] + [self._size_out]
+        ] + [self._size]
         self._w = self._helper.create_parameter(
             attr=self._helper.param_attr,
             shape=param_shape,

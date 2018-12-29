@@ -24,19 +24,7 @@ __all__ = ['PyLayer']
 
 
 class PyLayer(core.Layer):
-    def __init__(self,
-                 dtype=core.VarDesc.VarType.FP32,
-                 param_attr=None,
-                 bias_attr=None,
-                 name=None):
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(
-            type(self).__name__,
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            dtype=dtype,
-            name=name)
-
+    def __init__(self, dtype=core.VarDesc.VarType.FP32, name=None):
         self._once_built = False
         self._dtype = dtype
 

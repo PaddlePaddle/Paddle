@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.layers.nn import FC
+from paddle.fluid.imperative.nn import FC
 from test_imperative_base import new_program_scope
 
 

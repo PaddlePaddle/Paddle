@@ -74,7 +74,7 @@ class SimpleImgConvPool(fluid.imperative.PyLayer):
 
 class MNIST(fluid.imperative.PyLayer):
     def __init__(self, param_attr=None, bias_attr=None):
-        super(MNIST, self).__init__(param_attr=param_attr, bias_attr=bias_attr)
+        super(MNIST, self).__init__()
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
             1, 20, 5, 2, 2, act="relu")
@@ -85,8 +85,7 @@ class MNIST(fluid.imperative.PyLayer):
         pool_2_shape = 50 * 8 * 8
         SIZE = 10
         scale = (2.0 / (pool_2_shape**2 * SIZE))**0.5
-        self._fc = FC(-1,
-                      10,
+        self._fc = FC(10,
                       param_attr=fluid.param_attr.ParamAttr(
                           initializer=fluid.initializer.NormalInitializer(
                               loc=0.0, scale=scale)))
