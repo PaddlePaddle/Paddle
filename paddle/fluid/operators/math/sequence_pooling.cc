@@ -255,11 +255,11 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       jit::seq_pool_attr_t attr;
       attr.w = input.numel() / input.dims()[0];
       attr.type = jit::SeqPoolType::kSum;
-      auto seqpool =
-          jit::Get<jit::kSeqPool, jit::SeqPoolTuples<T>, platform::CPUPlace>(
-              attr);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         attr.h = static_cast<int>(lod[i + 1] - lod[i]);
+        auto seqpool =
+            jit::Get<jit::kSeqPool, jit::SeqPoolTuples<T>, platform::CPUPlace>(
+                attr);
         seqpool(src, dst, &attr);
         dst += attr.w;
         src += attr.h * attr.w;
