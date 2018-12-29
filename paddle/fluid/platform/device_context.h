@@ -209,39 +209,6 @@ class CudnnWorkspaceHandle {
   std::unique_ptr<std::lock_guard<std::mutex>> guard_;
 };
 
-#if CUDA_VERSION >= 9000
-class ScopedCublasMathMode {
- public:
-  ScopedCublasMathMode(cublasHandle_t handle, cublasMath_t new_math_mode)
-      : handle_(handle) {
-    need_reset = false;
-    PADDLE_ENFORCE(
-        platform::dynload::cublasGetMathMode(handle_, &old_math_mode_),
-        "Failed to get old cublas math mode");
-    if (old_math_mode_ != new_math_mode) {
-      PADDLE_ENFORCE(
-          platform::dynload::cublasSetMathMode(handle_, new_math_mode),
-          "Failed to set old cublas math mode");
-      need_reset = true;
-    }
-  }
-
-  ~ScopedCublasMathMode() {
-    if (need_reset) {
-      PADDLE_ENFORCE(
-          platform::dynload::cublasSetMathMode(handle_, old_math_mode_),
-          "Failed to set old cublas math mode");
-    }
-  }
-
- private:
-  cublasHandle_t handle_;
-  cublasMath_t old_math_mode_;
-  bool need_reset;
-};
-
-#endif
-
 class CUDADeviceContext : public DeviceContext {
  public:
   explicit CUDADeviceContext(CUDAPlace place);
@@ -264,6 +231,13 @@ class CUDADeviceContext : public DeviceContext {
 
   /*! \brief  Return cublas handle in the device context. */
   cublasHandle_t cublas_handle() const;
+
+  /*! \brief  Check whether tensor core is supported */
+  bool tensor_core_available() const;
+
+  /*! \brief  Return cublas handle supporting Tensor Core. If Tensor Core is
+   *  not supported, return the same handle as cublas_handle(). */
+  cublasHandle_t possible_cublas_tensor_core_handle() const;
 
   /*! \brief  Return cudnn  handle in the device context. */
   cudnnHandle_t cudnn_handle() const;
@@ -294,18 +268,6 @@ class CUDADeviceContext : public DeviceContext {
 
   void WaitStreamCallback() const { callback_manager_->Wait(); }
 
-#if CUDA_VERSION >= 9000
-  /*! \brief CublasCall may need to change cublas's config,
-   *  but the cublas may be hold by multi-thread, so we should
-   *  add lock here. */
-  template <typename Callback>
-  void CublasCall(Callback callback, cublasMath_t new_math) {
-    std::lock_guard<std::mutex> guard(cublas_mtx_);
-    ScopedCublasMathMode scoped_cublas_math(cublas_handle_, new_math);
-    callback();
-  }
-#endif
-
  private:
   CUDAPlace place_;
 
@@ -314,6 +276,7 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<CudnnHolder> cudnn_holder_;
   cudaStream_t stream_;
   cublasHandle_t cublas_handle_;
+  std::unique_ptr<cublasHandle_t> cublas_tensor_core_handle_;
 
   int compute_capability_;
   int runtime_version_;
