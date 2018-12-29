@@ -101,13 +101,13 @@ class ElementwiseWeightOpConverter : public OpConverter {
                                          0};
     if (op_type_ == "add") {
       nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Scale, *const_cast<nvinfer1::ITensor*>(X), scale_mode,
-          shift_weights.get(), scale_weights.get(), power_weights.get());
+          engine_, Scale, *X, scale_mode, shift_weights.get(),
+          scale_weights.get(), power_weights.get());
       layer = scale_layer;
     } else if (op_type_ == "mul") {
       nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Scale, *const_cast<nvinfer1::ITensor*>(X), scale_mode,
-          scale_weights.get(), shift_weights.get(), power_weights.get());
+          engine_, Scale, *X, scale_mode, scale_weights.get(),
+          shift_weights.get(), power_weights.get());
       layer = scale_layer;
     }
 
