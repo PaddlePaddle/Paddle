@@ -3717,14 +3717,17 @@ def beam_search(pre_ids,
     selects the top-K candidate word ids of current step from :attr:`ids`
     according to their :attr:`scores` for all source sentences, where K is
     :attr:`beam_size` and :attr:`ids, scores` are predicted results from the
-    computation cell. Additionally, :attr:`pre_ids` and :attr:`pre_scores` are
-    the output of beam_search at previous step, they are needed for special use
-    to handle ended candidate translations.
+    computation cell. If :attr:`ids` is not set, it will be calculated out
+    according to :attr:`scores`. Additionally, :attr:`pre_ids` and
+    :attr:`pre_scores` are the output of beam_search at previous step, they
+    are needed for special use to handle ended candidate translations.
 
-    Note that the :attr:`scores` passed in should be accumulated scores, and
-    length penalty should be done with extra operators before calculating the
-    accumulated scores if needed, also suggest finding top-K before it and
-    using the top-K candidates following.
+    Note that if :attr:`is_accumulated` is :attr:`True`, the :attr:`scores`
+    passed in should be accumulated scores. Else, the :attr:`scores` are
+    considered as the straightforward scores and will be transformed to the
+    log field and accumulated the :attr:`pre_scores` in this operator.
+    Length penalty should be done with extra operators before calculating the
+    accumulated scores if needed.
 
     Please see the following demo for a fully beam search usage example:
 
@@ -3754,6 +3757,8 @@ def beam_search(pre_ids,
             describes how these candidates belong to the prefix. The paths
             linking prefixes and selected candidates are organized and reserved
             in lod.
+        is_accumulated(bool, default True): Whether the input :attr:`score` is
+             accumulated scores.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
 

@@ -31,7 +31,7 @@ namespace platform {
   mask = __ballot_sync(FULL_WARP_MASK, (predicate))
 #endif
 
-inline static int GetPowerOfTwo(int dim) {
+inline static int RoundToPowerOfTwo(int dim) {
   if (dim > 512) {
     return 1024;
   } else if (dim > 256) {
