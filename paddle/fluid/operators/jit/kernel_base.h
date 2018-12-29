@@ -44,6 +44,13 @@ typedef enum {
   kSeqPool,
 } KernelType;
 
+typedef enum {
+  kNonePoolType = 0,
+  kSum,
+  kAvg,
+  kSqrt,
+} SeqPoolType;
+
 template <typename T>
 struct XYZNTuples {
   typedef T data_type;
@@ -113,16 +120,12 @@ struct GRUTuples {
   typedef void (*func_type)(gru_t*, const gru_attr_t*);
 };
 
-typedef enum {
-  non = 0,
-  sum,
-  avg,
-  sqrt,
-} SeqPoolType;
-
-typedef struct {
+typedef struct seq_pool_attr_s {
   int h, w;
   SeqPoolType type;
+  seq_pool_attr_s() = default;
+  explicit seq_pool_attr_s(int height, int width, SeqPoolType pool_type)
+      : h(height), w(width), type(pool_type) {}
 } seq_pool_attr_t;
 
 template <typename T>

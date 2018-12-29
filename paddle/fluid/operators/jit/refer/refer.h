@@ -334,7 +334,7 @@ void NCHW16CMulNC(const T* x, const T* y, T* z, int height, int width) {
 
 template <typename T>
 void SeqPool(const T* x, T* y, const seq_pool_attr_t* attr) {
-  PADDLE_ENFORCE(attr->type == SeqPoolType::sum, "Only support sum yet");
+  PADDLE_ENFORCE(attr->type == SeqPoolType::kSum, "Only support sum yet");
   for (int w = 0; w < attr->w; ++w) {
     const T* src = x + w;
     T* dst = y + w;
