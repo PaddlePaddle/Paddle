@@ -169,7 +169,7 @@ class TestConv2dOp(OpTest):
         self.dsttype = np.float32
 
 
-class TestMKLDNN(TestConv2dOp):
+class TestConv2d(TestConv2dOp):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -259,31 +259,31 @@ class TestInt8Input(TestConv2dOp):
         self.dsttype = np.int8
 
 
-class TestMKLDNNWithPad(TestWithPad):
+class TestINT8WithPad(TestWithPad):
     def init_kernel_type(self):
         self.srctype = np.int8
         self.dsttype = np.int8
 
 
-class TestMKLDNNWithStride(TestWithStride):
+class TestINT8WithStride(TestWithStride):
     def init_kernel_type(self):
         self.srctype = np.int8
         self.dsttype = np.int8
 
 
-class TestMKLDNNWithGroup(TestWithGroup):
+class TestINT8WithGroup(TestWithGroup):
     def init_kernel_type(self):
         self.srctype = np.int8
         self.dsttype = np.int8
 
 
-class TestMKLDNNWith1x1(TestWith1x1):
+class TestINT8With1x1(TestWith1x1):
     def init_kernel_type(self):
         self.srctype = np.int8
         self.dsttype = np.int8
 
 
-class TestMKLDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
+class TestINT8WithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
     def init_kernel_type(self):
         self.srctype = np.int8
         self.dsttype = np.int8
