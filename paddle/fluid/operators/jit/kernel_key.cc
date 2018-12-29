@@ -44,8 +44,11 @@ size_t JitCodeKey<gru_attr_t>(const gru_attr_t& attr) {
 
 template <>
 size_t JitCodeKey<seq_pool_attr_t>(const seq_pool_attr_t& attr) {
-  size_t key = static_cast<size_t>(attr.type);
-  return key + (attr.w << act_type_shift);
+  size_t key = attr.w;
+  // TODO(TJ): support height, then removed it from key
+  constexpr int w_shift = 30;
+  return (key << act_type_shift) + static_cast<int>(attr.type) +
+         (static_cast<size_t>(attr.h) << (act_type_shift + w_shift));
 }
 
 }  // namespace jit
