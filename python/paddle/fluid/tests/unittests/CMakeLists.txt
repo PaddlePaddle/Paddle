@@ -25,7 +25,7 @@ endif(NOT WITH_DISTRIBUTE)
 
 if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
-elseif(NOT ${CUDNN_VERSION} VERSION_LESS 7100)
+elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
 endif()
 
