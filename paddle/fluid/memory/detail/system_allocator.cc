@@ -17,6 +17,7 @@ limitations under the License. */
 
 #ifdef _WIN32
 #include <malloc.h>
+#include <windows.h>  // VirtualLock/VirtualUnlock
 #else
 #include <sys/mman.h>  // for mlock and munlock
 #endif
