@@ -115,9 +115,7 @@ class TestMNIST(TestParallelExecutorBase):
 
     def test_simple_fc(self):
         # use_cuda
-        if core.is_compiled_with_cuda():
-            self.check_simple_fc_convergence(True)
-            self.check_simple_fc_convergence(True, use_reduce=False)
+        self.check_simple_fc_convergence(True)
         self.check_simple_fc_convergence(False)
 
     def test_simple_fc_with_new_strategy(self):
@@ -154,8 +152,7 @@ class TestMNIST(TestParallelExecutorBase):
             np.mean(parallel_last_loss), single_last_loss, delta=1e-6)
 
     def test_simple_fc_parallel_accuracy(self):
-        if core.is_compiled_with_cuda():
-            self.check_simple_fc_parallel_accuracy(True)
+        self.check_simple_fc_parallel_accuracy(True)
         self.check_simple_fc_parallel_accuracy(False)
 
     def check_batchnorm_fc_convergence(self, use_cuda, use_fast_executor):
