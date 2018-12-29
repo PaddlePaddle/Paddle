@@ -9338,6 +9338,7 @@ def get_tensor_from_selected_rows(x, name=None):
 def shuffle_channel(x, group, name=None):
     """
     **Shuffle Channel Operator**
+
     This operator shuffles the channels of input x.
     It divide the input channels in each group into :attr:`group` subgroups,
     and obtain a new order by selecting element from every subgroup one by one.
@@ -9346,6 +9347,7 @@ def shuffle_channel(x, group, name=None):
     https://arxiv.org/pdf/1707.01083.pdf
     
     .. code-block:: text
+
         Given a 4-D tensor input with the shape (N, C, H, W):
             input.shape = (1, 4, 2, 2)
             input.data =[[[[0.1, 0.2],
@@ -9387,7 +9389,8 @@ def shuffle_channel(x, group, name=None):
 
     Examples:
         .. code-block:: python
-            input = fluid.layers.data(name='input', shape=[1,4,2,2], dtype='float32')
+
+            input = fluid.layers.data(name='input', shape=[4,2,2], dtype='float32')
             out = fluid.layers.shuffle_channel(x=input, group=2)
     """
     helper = LayerHelper("shuffle_channel", **locals())
