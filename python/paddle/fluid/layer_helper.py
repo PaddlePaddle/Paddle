@@ -314,11 +314,9 @@ class LayerHelper(object):
             WeightNormParamAttr.params_with_weight_norm.append(param)
             return param
         if _in_imperative_mode():
-            self.main_program.global_block().create_parameter(
-                dtype=dtype, shape=shape, **attr._to_kwargs())
             # In imperative mode, we want the returned parameter to be
             # initialized so that it can be used imperatively.
-            return self.startup_program.global_block().create_parameter(
+            return self.main_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
                 **attr._to_kwargs(with_initializer=True))

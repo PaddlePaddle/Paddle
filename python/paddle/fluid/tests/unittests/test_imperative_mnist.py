@@ -111,8 +111,6 @@ class TestImperativeMnist(unittest.TestCase):
                 predict = mnist(img)
                 out = fluid.layers.cross_entropy(predict, label)
                 out._backward()
-                filter_grad = mnist._simple_img_conv_pool_1._conv2d._filter_param._gradient(
-                )
                 sgd.minimize(out)
 
 

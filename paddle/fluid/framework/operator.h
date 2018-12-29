@@ -69,7 +69,7 @@ inline std::string GradVarName(const std::string& var_name) {
   return result;
 }
 
-inline std::string OriginVarName(const std::string& grad_var_name) {
+inline std::string GradOriginalVarName(const std::string& grad_var_name) {
   std::size_t pos = grad_var_name.rfind(kGradVarSuffix);
   if (pos == std::string::npos) {
     return grad_var_name;

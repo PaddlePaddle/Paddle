@@ -32,6 +32,11 @@ using framework::Variable;
 void AddTo(Variable* src, Variable* dst) {
   framework::LoDTensor* dst_tensor = dst->GetMutable<framework::LoDTensor>();
   framework::LoDTensor* src_tensor = src->GetMutable<framework::LoDTensor>();
+  // FIXME(minqiyang): loss_grad op will pass a zero grad of label
+  // ugly fix for it
+  if (src_tensor->numel() == 0) {
+    return;
+  }
   PADDLE_ENFORCE(dst_tensor->numel() == src_tensor->numel(),
                  "dst_numel %lld vs. src_numel %lld", dst_tensor->numel(),
                  src_tensor->numel());
@@ -157,13 +162,9 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
     auto& outputs = grad_outputs[it.first];
     auto& origin_outputs = it.second;
 
-    auto& forward_inputs = input_vars_[framework::OriginVarName(it.first)];
-
     for (size_t i = 0; i < outputs.size(); ++i) {
-      if (!forward_inputs[i]->stop_gradient_) {
-        framework::Variable* orig_grad = origin_outputs[i];
-        AddTo(outputs[i], orig_grad);
-      }
+      framework::Variable* orig_grad = origin_outputs[i];
+      AddTo(outputs[i], orig_grad);
     }
   }
   return input_vars_;

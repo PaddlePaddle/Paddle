@@ -294,24 +294,24 @@ TEST(VarNameTest, all) {
   std::string grad_var_name = paddle::framework::GradVarName(var_name);
   ASSERT_EQ(grad_var_name, "X@GRAD");
   std::string original_var_name =
-      paddle::framework::OriginVarName(grad_var_name);
+      paddle::framework::GradOriginalVarName(grad_var_name);
   ASSERT_EQ(original_var_name, "X");
-  original_var_name = paddle::framework::OriginVarName(original_var_name);
+  original_var_name = paddle::framework::GradOriginalVarName(original_var_name);
   ASSERT_EQ(original_var_name, "X");
 
   std::string var_name_2("XYZ");
   grad_var_name = paddle::framework::GradVarName(var_name_2);
   ASSERT_EQ(grad_var_name, "XYZ@GRAD");
-  original_var_name = paddle::framework::OriginVarName(grad_var_name);
+  original_var_name = paddle::framework::GradOriginalVarName(grad_var_name);
   ASSERT_EQ(original_var_name, "XYZ");
-  original_var_name = paddle::framework::OriginVarName(original_var_name);
+  original_var_name = paddle::framework::GradOriginalVarName(original_var_name);
   ASSERT_EQ(original_var_name, "XYZ");
 
   std::string var_name_3("");
   grad_var_name = paddle::framework::GradVarName(var_name_3);
   ASSERT_EQ(grad_var_name, "@GRAD");
-  original_var_name = paddle::framework::OriginVarName(grad_var_name);
+  original_var_name = paddle::framework::GradOriginalVarName(grad_var_name);
   ASSERT_EQ(original_var_name, "");
-  original_var_name = paddle::framework::OriginVarName(original_var_name);
+  original_var_name = paddle::framework::GradOriginalVarName(original_var_name);
   ASSERT_EQ(original_var_name, "");
 }

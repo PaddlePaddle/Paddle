@@ -81,7 +81,15 @@ class OpBase;
 
 class VarBase {
  public:
-  explicit VarBase(bool stop_gradient = false)
+  VarBase()
+      : pre_op_(nullptr),
+        pre_op_out_idx_(-1),
+        var_desc_(nullptr),
+        var_(new framework::Variable()),
+        grads_(new framework::Variable()),
+        stop_gradient_(false) {}
+
+  explicit VarBase(bool stop_gradient)
       : pre_op_(nullptr),
         pre_op_out_idx_(-1),
         var_desc_(nullptr),
@@ -89,22 +97,11 @@ class VarBase {
         grads_(new framework::Variable()),
         stop_gradient_(stop_gradient) {}
 
-  virtual ~VarBase() {
-    if (var_) {
-      delete var_;
-      var_ = nullptr;
-    }
-    if (grads_) {
-      delete grads_;
-      grads_ = nullptr;
-    }
-  }
+  virtual ~VarBase() {}
 
   void RunBackward();
 
   framework::LoDTensor& Grad();
-
-  inline framework::Variable* GradVar() { return grads_; }
 
   inline std::string GradName() const {
     PADDLE_ENFORCE(
