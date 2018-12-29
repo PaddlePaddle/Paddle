@@ -16,10 +16,15 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include <algorithm>
-
+#include <sstream>
+#include <string>
+#include <vector>
+#include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
@@ -157,27 +162,59 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  VLOG(4) << place << " " << DebugStringEx(&scope);
-  if (platform::is_gpu_place(place)) {
+  try {
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << place << " " << DebugStringEx(&scope);
+    }
+    if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
-    PADDLE_THROW("Cannot run operator on place %s", place);
+      PADDLE_THROW("Cannot run operator on place %s", place);
 #else
-    auto dev_id = boost::get<platform::CUDAPlace>(place).device;
-    platform::SetDeviceId(dev_id);
+      auto dev_id = boost::get<platform::CUDAPlace>(place).device;
+      platform::SetDeviceId(dev_id);
 #endif
-  }
+    }
 
-  // The profile has a process-wide mutex, results in serious performance issue
-  // in concurrency scenerio. Here use an `if` to fix this issue.
-  // Please not remove the `if`, ask @Superjomn if there are any concern.
-  if (platform::IsProfileEnabled()) {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::RecordEvent record_event(Type(), pool.Get(place));
-    RunImpl(scope, place);
-  } else {
-    RunImpl(scope, place);
+    // The profile has a process-wide mutex, results in serious performance
+    // issue
+    // in concurrency scenerio. Here use an `if` to fix this issue.
+    // Please not remove the `if`, ask @Superjomn if there are any concern.
+    if (platform::IsProfileEnabled()) {
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      platform::RecordEvent record_event(Type(), pool.Get(place));
+      RunImpl(scope, place);
+    } else {
+      RunImpl(scope, place);
+    }
+
+    if (VLOG_IS_ON(3)) {
+      VLOG(3) << place << " " << DebugStringEx(&scope);
+    }
+  } catch (platform::EnforceNotMet exception) {
+    if (Attrs().count("sub_block") != 0) {
+      throw exception;
+    }
+
+    auto& callstack = Attr<std::vector<std::string>>(
+        OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+
+    if (callstack.empty()) {
+      throw exception;
+    }
+    std::ostringstream sout;
+    sout << "Invoke operator " << Type() << " error.\n";
+    sout << "Python Callstacks: \n";
+    for (auto& line : callstack) {
+      sout << line;
+    }
+    sout << "C++ Callstacks: \n";
+    sout << exception.err_str_;
+    exception.err_str_ = sout.str();
+    throw exception;
+  } catch (...) {
+    std::rethrow_exception(std::current_exception());
   }
-  VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
@@ -475,6 +512,28 @@ const Tensor* ExecutionContext::LegacyInput<Tensor>(
 
 template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
+    const std::string& name) const {
+  auto it = ctx_.inputs.find(name);
+  if (it == ctx_.inputs.end()) {
+    return {};
+  }
+  const std::vector<Variable*>& vars = it->second;
+  std::vector<const Tensor*> res;
+  res.reserve(vars.size());
+  std::transform(vars.begin(), vars.end(), std::back_inserter(res),
+                 [&](Variable* var) -> const Tensor* {
+                   if (var == nullptr) return nullptr;
+                   PADDLE_ENFORCE(
+                       var->IsType<LoDTensor>(),
+                       "should be LoDTensor, but the received type is %s",
+                       var->Type().name());
+                   return &(var->Get<LoDTensor>());
+                 });
+  return res;
+}
+
+template <>
+const std::vector<const Tensor*> ExecutionContext::LegacyMultiInput<Tensor>(
     const std::string& name) const {
   auto names = op().Inputs(name);
   std::vector<const Tensor*> res;
@@ -1039,8 +1098,8 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &(var->Get<SelectedRows>().value());
         }
         if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s is not initialized: %s",
-                         ipt_name, DebugString());
+          PADDLE_ENFORCE(t->IsInitialized(), "Input %s is not initialized",
+                         ipt_name);
           int tmp = static_cast<int>(t->type());
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,
