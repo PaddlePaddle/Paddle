@@ -99,7 +99,7 @@ class Conv2D(layers.PyLayer):
 
         self._bias_param = self._helper.create_parameter(
             attr=self._helper.bias_attr,
-            shape=[num_filter_channels],
+            shape=[num_filters],
             dtype=self._dtype,
             is_bias=True)
 
