@@ -58,11 +58,16 @@ DEFINE_string(selected_gpus, "",
 namespace paddle {
 namespace platform {
 
-int GetCUDADeviceCount() {
+static int GetCUDADeviceCountImpl() {
   int count;
   PADDLE_ENFORCE(
       cudaGetDeviceCount(&count),
       "cudaGetDeviceCount failed in paddle::platform::GetCUDADeviceCount");
+  return count;
+}
+
+int GetCUDADeviceCount() {
+  static int count = GetCUDADeviceCountImpl();
   return count;
 }
 

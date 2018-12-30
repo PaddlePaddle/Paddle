@@ -30,12 +30,15 @@ namespace platform {
 template <typename LockType>
 class LockGuardPtr {
  public:
-  explicit LockGuardPtr(std::unique_ptr<LockType>& lock_ptr)  // NOLINT
-      : lock_(lock_ptr.get()) {
+  explicit LockGuardPtr(LockType* lock_ptr) : lock_(lock_ptr) {
     if (lock_) {
       lock_->lock();
     }
   }
+
+  explicit LockGuardPtr(std::unique_ptr<LockType>& lock_ptr)  // NOLINT
+      : LockGuardPtr(lock_ptr.get()) {}
+
   ~LockGuardPtr() {
     if (lock_) {
       lock_->unlock();

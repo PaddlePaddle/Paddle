@@ -38,6 +38,15 @@ limitations under the License. */
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION < 9000
+enum cublasMath_t { CUBLAS_DEFAULT_MATH = 0 };
+#endif
+#endif
+
+DECLARE_bool(enable_gpu_lock);
+DECLARE_bool(use_global_cublas_handle);
+
 namespace paddle {
 namespace platform {
 
@@ -217,6 +226,9 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
 
+  /*! \brief  Return device id in the device context. */
+  inline int device() const { return place_.device; }
+
   /*! \brief  Return place in the device context. */
   Place GetPlace() const override;
 
@@ -256,7 +268,7 @@ class CUDADeviceContext : public DeviceContext {
 
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
-    std::lock_guard<std::mutex> guard(mtx_);
+    LockGuardPtr<std::mutex> guard(FLAGS_enable_gpu_lock ? &mtx_ : nullptr);
     callback();
     PADDLE_ENFORCE(cudaEventRecord(ev, stream_));
   }
@@ -275,21 +287,18 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
   std::unique_ptr<CudnnHolder> cudnn_holder_;
   cudaStream_t stream_;
-  cublasHandle_t cublas_handle_;
-  std::unique_ptr<cublasHandle_t> cublas_tensor_core_handle_;
 
   int compute_capability_;
   int runtime_version_;
   int driver_version_;
   int multi_process_;
   int max_threads_per_mp_;
+  bool tensor_core_available_;
 
   mutable std::mutex mtx_;
 
   // StreamCallbackManager is thread-safe
   std::unique_ptr<StreamCallbackManager> callback_manager_;
-
-  mutable std::mutex cublas_mtx_;
 };
 
 template <>
@@ -348,7 +357,8 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
-  explicit DeviceContextPool(const std::vector<platform::Place>& places);
+  explicit DeviceContextPool(const std::vector<platform::Place>& places)
+      : DeviceContextPool(places, false) {}
 
   static DeviceContextPool& Instance() {
     PADDLE_ENFORCE_NOT_NULL(pool, "Need to Create DeviceContextPool first!");
@@ -358,7 +368,7 @@ class DeviceContextPool {
   /*! \brief  Create should only called by Init function */
   static DeviceContextPool& Init(const std::vector<platform::Place>& places) {
     if (pool == nullptr) {
-      pool = new DeviceContextPool(places);
+      pool = new DeviceContextPool(places, FLAGS_use_global_cublas_handle);
     }
     return *pool;
   }
@@ -376,9 +386,13 @@ class DeviceContextPool {
   size_t size() const { return device_contexts_.size(); }
 
  private:
+  DeviceContextPool(const std::vector<platform::Place>& places,
+                    bool init_with_global_handle);
+
   static DeviceContextPool* pool;
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
       device_contexts_;
+  bool init_with_global_handle_;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

@@ -16,13 +16,89 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/lock_guard_ptr.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
+DEFINE_bool(enable_gpu_lock, false, "Whether to enable gpu lock.");
+DEFINE_bool(use_global_cublas_handle, false,
+            "Whether to use global cublas handle.");
+
 namespace paddle {
 namespace platform {
+
+#ifdef PADDLE_WITH_CUDA
+class CuBlasHandleHolder {
+ public:
+  explicit CuBlasHandleHolder(const CUDADeviceContext& dev_ctx,
+                              cublasMath_t math_type)
+      : dev_id_(dev_ctx.device()) {
+    CUDADeviceGuard guard(dev_id_);
+    PADDLE_ENFORCE(dynload::cublasCreate(&handle_));
+    PADDLE_ENFORCE(dynload::cublasSetStream(handle_, dev_ctx.stream()));
+#if CUDA_VERSION >= 9000
+    PADDLE_ENFORCE(dynload::cublasSetMathMode(handle_, math_type));
+#endif
+  }
+
+  ~CuBlasHandleHolder() {
+    CUDADeviceGuard guard(dev_id_);
+    PADDLE_ENFORCE(dynload::cublasDestroy(handle_));
+  }
+
+  cublasHandle_t Handle() const { return handle_; }
+
+ private:
+  DISABLE_COPY_AND_ASSIGN(CuBlasHandleHolder);
+
+  cublasHandle_t handle_;
+  int dev_id_;
+};
+
+class CuBlasHandleHolderPool {
+ public:
+  template <cublasMath_t kMathType>
+  static const CuBlasHandleHolderPool& ThreadLocalInstance() {
+    thread_local CuBlasHandleHolderPool pool(kMathType);
+    return pool;
+  }
+
+  template <cublasMath_t kMathType>
+  static const CuBlasHandleHolderPool& GlobalInstance() {
+    static auto* pool = CreateGlobalPool(kMathType);
+    return *pool;
+  }
+
+  template <cublasMath_t kMathType>
+  static const CuBlasHandleHolderPool& Instance() {
+    return FLAGS_use_global_cublas_handle ? GlobalInstance<kMathType>()
+                                          : ThreadLocalInstance<kMathType>();
+  }
+
+  cublasHandle_t Get(const CUDADeviceContext& dev_ctx) const {
+    auto dev_id = dev_ctx.device();
+    if (!pool_[dev_id]) {
+      pool_[dev_id].reset(new CuBlasHandleHolder(dev_ctx, math_type_));
+    }
+    return pool_[dev_id]->Handle();
+  }
+
+ private:
+  explicit CuBlasHandleHolderPool(cublasMath_t math_type)
+      : pool_(GetCUDADeviceCount()), math_type_(math_type) {}
+  DISABLE_COPY_AND_ASSIGN(CuBlasHandleHolderPool);
+
+  static CuBlasHandleHolderPool* CreateGlobalPool(cublasMath_t math_type) {
+    return new CuBlasHandleHolderPool(math_type);
+  }
+
+  mutable std::vector<std::unique_ptr<CuBlasHandleHolder>> pool_;
+  cublasMath_t math_type_;
+};
+
+#endif
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
@@ -40,17 +116,34 @@ template <typename DevCtx, typename PlaceType>
 inline void EmplaceDeviceContext(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         map_ptr,
-    platform::Place p) {
+    platform::Place p, bool init_with_global_handle) {
   using PtrType = std::unique_ptr<DeviceContext>;
-  map_ptr->emplace(p, std::async(std::launch::deferred, [=] {
-                     // lazy evaluation. i.e., only create device context at
-                     // first `Get`
-                     return PtrType(new DevCtx(boost::get<PlaceType>(p)));
-                   }));
+  map_ptr->emplace(
+      p, std::async(std::launch::deferred, [=] {
+        // lazy evaluation. i.e., only create device context at
+        // first `Get`
+        auto* dev_ctx = new DevCtx(boost::get<PlaceType>(p));
+#ifdef PADDLE_WITH_CUDA
+        if (std::is_same<DevCtx, CUDADeviceContext>::value &&
+            init_with_global_handle) {
+          auto* cuda_dev_ctx = reinterpret_cast<CUDADeviceContext*>(dev_ctx);
+          CuBlasHandleHolderPool::GlobalInstance<CUBLAS_DEFAULT_MATH>().Get(
+              *cuda_dev_ctx);
+#if CUDA_VERSION >= 9000
+          if (cuda_dev_ctx->tensor_core_available()) {
+            CuBlasHandleHolderPool::GlobalInstance<CUBLAS_TENSOR_OP_MATH>().Get(
+                *cuda_dev_ctx);
+          }
+#endif
+        }
+#endif
+        return PtrType(dev_ctx);
+      }));
 }
 
-DeviceContextPool::DeviceContextPool(
-    const std::vector<platform::Place>& places) {
+DeviceContextPool::DeviceContextPool(const std::vector<platform::Place>& places,
+                                     bool init_with_global_handle)
+    : init_with_global_handle_(init_with_global_handle) {
   PADDLE_ENFORCE_GT(places.size(), 0);
   std::set<Place> set;
   for (auto& p : places) {
@@ -60,13 +153,16 @@ DeviceContextPool::DeviceContextPool(
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
-      EmplaceDeviceContext<MKLDNNDeviceContext, CPUPlace>(&device_contexts_, p);
+      EmplaceDeviceContext<MKLDNNDeviceContext, CPUPlace>(
+          &device_contexts_, p, init_with_global_handle);
 #else
-      EmplaceDeviceContext<CPUDeviceContext, CPUPlace>(&device_contexts_, p);
+      EmplaceDeviceContext<CPUDeviceContext, CPUPlace>(&device_contexts_, p,
+                                                       init_with_global_handle);
 #endif
     } else if (platform::is_gpu_place(p)) {
 #ifdef PADDLE_WITH_CUDA
-      EmplaceDeviceContext<CUDADeviceContext, CUDAPlace>(&device_contexts_, p);
+      EmplaceDeviceContext<CUDADeviceContext, CUDAPlace>(
+          &device_contexts_, p, init_with_global_handle);
 #else
       PADDLE_THROW(
           "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
@@ -75,7 +171,7 @@ DeviceContextPool::DeviceContextPool(
     } else if (platform::is_cuda_pinned_place(p)) {
 #ifdef PADDLE_WITH_CUDA
       EmplaceDeviceContext<CUDAPinnedDeviceContext, CUDAPinnedPlace>(
-          &device_contexts_, p);
+          &device_contexts_, p, init_with_global_handle);
 #else
       PADDLE_THROW(
           "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
@@ -245,19 +341,6 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
-  PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
-  PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
-
-  if (TensorCoreAvailable()) {
-#if CUDA_VERSION >= 9000
-    cublas_tensor_core_handle_.reset(new cublasHandle_t());
-    PADDLE_ENFORCE(dynload::cublasCreate(cublas_tensor_core_handle_.get()));
-    PADDLE_ENFORCE(
-        dynload::cublasSetStream(*cublas_tensor_core_handle_, stream_));
-    PADDLE_ENFORCE(dynload::cublasSetMathMode(*cublas_tensor_core_handle_,
-                                              CUBLAS_TENSOR_OP_MATH));
-#endif
-  }
 
   if (dynload::HasCUDNN()) {
     cudnn_holder_.reset(new CudnnHolder(&stream_, place));
@@ -277,6 +360,12 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
                           << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."
                           << (cudnn_dso_ver % 100) / 10 << ".";
+
+  LOG_FIRST_N(WARNING, 1) << "FLAGS_enable_gpu_lock = " << FLAGS_enable_gpu_lock
+                          << ", FLAGS_use_global_cublas_handle = "
+                          << FLAGS_use_global_cublas_handle;
+
+  tensor_core_available_ = TensorCoreAvailable();
 
   {
     // Check CUDA/CUDNN version compatiblity
@@ -318,11 +407,6 @@ CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
   Wait();
   WaitStreamCallback();
-  PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
-  if (cublas_tensor_core_handle_) {
-    PADDLE_ENFORCE(dynload::cublasDestroy(*cublas_tensor_core_handle_));
-    cublas_tensor_core_handle_.reset();
-  }
   eigen_stream_.reset();
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
@@ -352,16 +436,22 @@ Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
 }
 
 cublasHandle_t CUDADeviceContext::cublas_handle() const {
-  return cublas_handle_;
+  return CuBlasHandleHolderPool::Instance<CUBLAS_DEFAULT_MATH>().Get(*this);
 }
 
 cublasHandle_t CUDADeviceContext::possible_cublas_tensor_core_handle() const {
-  return cublas_tensor_core_handle_ ? *cublas_tensor_core_handle_
-                                    : cublas_handle_;
+#if CUDA_VERSION >= 9000
+  if (tensor_core_available_) {
+    return CuBlasHandleHolderPool::Instance<CUBLAS_TENSOR_OP_MATH>().Get(*this);
+  } else  // NOLINT
+#endif
+  {
+    return CuBlasHandleHolderPool::Instance<CUBLAS_DEFAULT_MATH>().Get(*this);
+  }
 }
 
 bool CUDADeviceContext::tensor_core_available() const {
-  return cublas_tensor_core_handle_ != nullptr;
+  return tensor_core_available_;
 }
 
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
