@@ -216,8 +216,9 @@ class MKLDNNHandler {
                         const std::vector<int>& strides,
                         const std::vector<int>& paddings,
                         const std::vector<int>& dilations, const int& groups,
-                        const mkldnn::memory::data_type& type,
+                        const mkldnn::memory::data_type& srcdt,
                         const mkldnn::memory::format& format,
+                        const mkldnn::memory::data_type& dstdt,
                         const std::string& suffix) {
     AppendKeyDims(key, input_dims);
     AppendKeyDims(key, weights_dims);
@@ -225,8 +226,9 @@ class MKLDNNHandler {
     AppendKeyVec(key, paddings);
     AppendKeyVec(key, dilations);
     AppendKey(key, std::to_string(groups));
-    AppendKey(key, std::to_string(type));
+    AppendKey(key, std::to_string(srcdt));
     AppendKey(key, std::to_string(format));
+    AppendKey(key, std::to_string(dstdt));
     AppendKey(key, suffix);
   }
 

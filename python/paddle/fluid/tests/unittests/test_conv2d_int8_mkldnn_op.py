@@ -47,6 +47,7 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.init_group()
         self.init_dilation()
         self.init_test_case()
+        self.init_fuse_relu()
         self.init_dtype()
 
         conv2d_param = {
@@ -78,14 +79,25 @@ class TestConv2dInt8Op(TestConv2dOp):
                 self.groups, conv2d_param).astype(np.float32) * (
                     self.scale_out / (self.scale_in * self.scale_weights[0] *
                                       0.5))
-            output = np.round(output1 - output2).astype(self.dsttype)
+            if self.fuse_relu:
+                output = np.maximum(np.round(output1 - output2),
+                                    0).astype(self.dsttype)
+            else:
+                output = np.round(output1 - output2).astype(self.dsttype)
         else:
             output1 = conv2d_forward_refer(
                 input.astype(np.int32),
                 np.round(filter * self.scale_weights[0]).astype(np.int32),
                 self.groups, conv2d_param).astype(np.float32)
-            output = np.round(output1 * (self.scale_out / (
-                self.scale_in * self.scale_weights[0]))).astype(self.dsttype)
+            if self.fuse_relu:
+                output = np.maximum(
+                    np.round(output1 * (self.scale_out / (
+                        self.scale_in * self.scale_weights[0]))),
+                    0).astype(self.dsttype)
+            else:
+                output = np.round(output1 * (self.scale_out / (
+                    self.scale_in *
+                    self.scale_weights[0]))).astype(self.dsttype)
 
         self.inputs = {
             'Input':
@@ -104,6 +116,7 @@ class TestConv2dInt8Op(TestConv2dOp):
             'Scale_in': self.scale_in,
             'Scale_out': self.scale_out,
             'Scale_weights': self.scale_weights,
+            'fuse_relu': self.fuse_relu
         }
         self.outputs = {'Output': output}
 
@@ -130,6 +143,9 @@ class TestConv2dInt8Op(TestConv2dOp):
     def init_dtype(self):
         self.srctype = np.uint8
         self.dsttype = np.int8
+
+    def init_fuse_relu(self):
+        self.fuse_relu = True
 
 
 class TestConv2d(TestConv2dInt8Op):
@@ -198,26 +214,53 @@ class TestWithInput1x1Filter1x1(TestConv2dInt8Op):
         self.groups = 3
 
 
-#--------------------test conv2d s8 int and s8 out--------------------
-
-
-def create_test_int8_class(parent):
+def create_test_int8_class(parent, input_dt, fuse_relu):
     class TestInt8Case(parent):
         def init_dtype(self):
-            self.srctype = np.int8
-            self.dsttype = np.int8
+            if input_dt == np.uint8:
+                self.srctype = np.uint8
+            else:
+                self.srctype = np.int8
+            if fuse_relu:
+                self.dsttype = np.uint8
+            else:
+                self.dsttype = np.int8
 
-    cls_name = "{0}_{1}".format(parent.__name__, "s8s8")
+        def init_fuse_relu(self):
+            self.fuse_relu = fuse_relu
+
+    cls_name = "{0}_input_{1}_relu_{2}".format(parent.__name__, input_dt,
+                                               fuse_relu)
     TestInt8Case.__name__ = cls_name
     globals()[cls_name] = TestInt8Case
 
 
-create_test_int8_class(TestConv2dInt8Op)
-create_test_int8_class(TestWithPad)
-create_test_int8_class(TestWithStride)
-create_test_int8_class(TestWithGroup)
-create_test_int8_class(TestWith1x1)
-create_test_int8_class(TestWithInput1x1Filter1x1)
+#--------------------test conv2d s8 int and u8 out--------------------
+
+create_test_int8_class(TestConv2dInt8Op, np.int8, True)
+create_test_int8_class(TestWithPad, np.int8, True)
+create_test_int8_class(TestWithStride, np.int8, True)
+create_test_int8_class(TestWithGroup, np.int8, True)
+create_test_int8_class(TestWith1x1, np.int8, True)
+create_test_int8_class(TestWithInput1x1Filter1x1, np.int8, True)
+
+#--------------------test conv2d s8 int and s8 out--------------------
+
+create_test_int8_class(TestConv2dInt8Op, np.int8, False)
+create_test_int8_class(TestWithPad, np.int8, False)
+create_test_int8_class(TestWithStride, np.int8, False)
+create_test_int8_class(TestWithGroup, np.int8, False)
+create_test_int8_class(TestWith1x1, np.int8, False)
+create_test_int8_class(TestWithInput1x1Filter1x1, np.int8, False)
+
+#--------------------test conv2d u8 int and s8 out--------------------
+
+create_test_int8_class(TestConv2dInt8Op, np.uint8, False)
+create_test_int8_class(TestWithPad, np.uint8, False)
+create_test_int8_class(TestWithStride, np.uint8, False)
+create_test_int8_class(TestWithGroup, np.uint8, False)
+create_test_int8_class(TestWith1x1, np.uint8, False)
+create_test_int8_class(TestWithInput1x1Filter1x1, np.uint8, False)
 
 if __name__ == '__main__':
     unittest.main()
