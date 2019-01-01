@@ -37,7 +37,7 @@ DEFINE_double(fraction_of_gpu_memory_to_use, fraction_of_gpu_memory_to_use,
               "until the gpu has no memory left for another trunk.");
 
 DEFINE_bool(
-    enable_cublas_tensor_op_math, false,
+    enable_cublas_tensor_op_math, true,
     "The enable_cublas_tensor_op_math indicate whether to use Tensor Core, "
     "but it may loss precision. Currently, There are two CUDA libraries that"
     " use Tensor Cores, cuBLAS and cuDNN. cuBLAS uses Tensor Cores to speed up"
