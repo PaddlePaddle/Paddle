@@ -47,7 +47,7 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.init_group()
         self.init_dilation()
         self.init_test_case()
-        self.init_int_out_dtype()
+        self.init_dtype()
 
         conv2d_param = {
             'stride': self.stride,
@@ -127,9 +127,9 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.scale_out = 0.5
         self.scale_weights = [10.0]
 
-    def init_int_out_dtype(self):
+    def init_dtype(self):
         self.srctype = np.uint8
-        self.dsttype = np.float32
+        self.dsttype = np.int8
 
 
 class TestConv2d(TestConv2dInt8Op):
@@ -203,7 +203,7 @@ class TestWithInput1x1Filter1x1(TestConv2dInt8Op):
 
 def create_test_int8_class(parent):
     class TestInt8Case(parent):
-        def init_int_out_dtype(self):
+        def init_dtype(self):
             self.srctype = np.int8
             self.dsttype = np.int8
 
