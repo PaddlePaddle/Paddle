@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,24 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include <cstddef>  // for size_t
+#include "paddle/fluid/platform/cudnn_desc.h"
+#include <gtest/gtest.h>
 
 namespace paddle {
-namespace framework {
-namespace details {
+namespace platform {
 
-struct ExecutionStrategy {
-  enum ExecutorType { kDefault = 0, kExperimental = 1 };
+TEST(TensorDescriptor, Empty) {
+  ActivationDescriptor a;
+  TensorDescriptor t;
+}
 
-  size_t num_threads_{0};
-  bool use_cuda_{true};
-  bool allow_op_delay_{false};
-  size_t num_iteration_per_drop_scope_{100};
-  ExecutorType type_{kDefault};
-  bool dry_run_{false};
-};
+TEST(TensorDescriptor, Normal) {
+  framework::Tensor tt;
+  tt.Resize({2, 3, 4});
+  tt.mutable_data<float>(platform::CPUPlace());
 
-}  //  namespace details
-}  //  namespace framework
-}  //  namespace paddle
+  TensorDescriptor desc;
+  desc.set(tt);
+  EXPECT_TRUE(desc.desc() != nullptr);
+}
+
+}  // namespace platform
+}  // namespace paddle

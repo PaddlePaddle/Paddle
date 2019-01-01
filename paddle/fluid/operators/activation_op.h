@@ -47,7 +47,80 @@ static std::unordered_set<std::string> InplaceOpSet = {
 static std::unordered_set<std::string> CanBeUsedBySelectedRows = {
     "abs", "abs_grad", "square", "square_grad", "sqrt", "sqrt_grad"};
 
-static bool IsInplace(std::string op) { return InplaceOpSet.count(op); }
+void ExtractActivationTensor(const framework::ExecutionContext& context,
+                             framework::Tensor* X, framework::Tensor* Out) {
+  auto x_var = context.InputVar("X");
+  auto out_var = context.OutputVar("Out");
+  PADDLE_ENFORCE(x_var != nullptr,
+                 "Cannot get input Variable X, variable name = %s",
+                 context.op().Input("X"));
+  PADDLE_ENFORCE(out_var != nullptr,
+                 "Cannot get output Variable Out, variable name = %s",
+                 context.op().Output("Out"));
+  if (CanBeUsedBySelectedRows.count(context.op().Type())) {
+    X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var),
+    "Cannot get input Tensor X, variable name = %s", context.op().Input("X");
+    Out = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
+        out_var);
+  } else {
+    X = context.Input<framework::Tensor>("X"),
+    "Cannot get input Tensor X, variable name = %s", context.op().Input("X");
+    Out = context.Output<framework::Tensor>("Out");
+  }
+
+  PADDLE_ENFORCE(Out != nullptr,
+                 "Cannot get output tensor Out, variable name = %s",
+                 context.op().Output("Out"));
+
+  Out->mutable_data<T>(context.GetPlace());
+}
+
+void ExtractActivationGradTensor(const framework::ExecutionContext& context,
+                                 framework::Tensor* Out,
+                                 framework::Tensor* dOut,
+                                 framework::Tensor* dX) {
+  auto out_var = context.InputVar("Out");
+  auto out_grad_var = context.InputVar(framework::GradVarName("Out"));
+  auto x_grad_var = context.OutputVar(framework::GradVarName("X"));
+  PADDLE_ENFORCE(out_var != nullptr,
+                 "Cannot get input Variable Out, variable name = %s",
+                 context.op().Input("Out"));
+  PADDLE_ENFORCE(out_grad_var != nullptr,
+                 "Cannot get input Variable %s, variable name = %s",
+                 framework::GradVarName("Out"),
+                 context.op().Input(framework::GradVarName("Out")));
+  PADDLE_ENFORCE(x_grad_var != nullptr,
+                 "Cannot get output Variable %s, variable name = %s",
+                 framework::GradVarName("X"),
+                 context.op().Output(framework::GradVarName("X")));
+
+  if (CanBeUsedBySelectedRows.count(context.op().Type())) {
+    Out = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*out_var),
+    "Cannot get input Tensor Out, variable name = %s",
+    context.op().Input("Out");
+    dOut = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(
+        *out_grad_var),
+    "Cannot get input Tensor %s, variable name = %s",
+    framework::GradVarName("Out"),
+    context.op().Input(framework::GradVarName("Out"));
+    dX = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
+        x_grad_var);
+  } else {
+    Out = context.Input<framework::Tensor>("Out"),
+    "Cannot get input Tensor Out, variable name = %s",
+    context.op().Input("Out");
+    dOut = context.Input<framework::Tensor>(framework::GradVarName("Out")),
+    "Cannot get input Tensor %s, variable name = %s",
+    framework::GradVarName("Out"),
+    context.op().Input(framework::GradVarName("Out"));
+    dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
+  }
+  PADDLE_ENFORCE(dX != nullptr,
+                 "Cannot get output tensor %s, variable name = %s",
+                 framework::GradVarName("X"),
+                 context.op().Output(framework::GradVarName("X")));
+  dX->mutable_data<T>(context.GetPlace());
+}
 
 template <typename DeviceContext, typename Functor>
 class ActivationKernel
@@ -56,38 +129,10 @@ class ActivationKernel
   using T = typename Functor::ELEMENT_TYPE;
 
   void Compute(const framework::ExecutionContext& context) const override {
-    auto x_var = context.InputVar("X");
-    auto out_var = context.OutputVar("Out");
-    PADDLE_ENFORCE(x_var != nullptr,
-                   "Cannot get input Variable X, variable name = %s",
-                   context.op().Input("X"));
-    PADDLE_ENFORCE(out_var != nullptr,
-                   "Cannot get output Variable Out, variable name = %s",
-                   context.op().Output("Out"));
-
-    framework::Tensor X, *Out;
-
-    if (CanBeUsedBySelectedRows.count(context.op().Type())) {
-      X = detail::Ref(
-          paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var),
-          "Cannot get input Tensor X, variable name = %s",
-          context.op().Input("X"));
-      Out = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
-          out_var);
-    } else {
-      X = detail::Ref(context.Input<framework::Tensor>("X"),
-                      "Cannot get input Tensor X, variable name = %s",
-                      context.op().Input("X"));
-      Out = context.Output<framework::Tensor>("Out");
-    }
-
-    PADDLE_ENFORCE(Out != nullptr,
-                   "Cannot get output tensor Out, variable name = %s",
-                   context.op().Output("Out"));
-
-    Out->mutable_data<T>(context.GetPlace());
-    auto x = framework::EigenVector<T>::Flatten(X);
-    auto out = framework::EigenVector<T>::Flatten(*Out);
+    framework::Tensor *X, *Out;
+    ExtractActivationTensor(context, X, Out);
+    auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
+    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
@@ -106,55 +151,11 @@ class ActivationGradKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& context) const override {
-    auto out_var = context.InputVar("Out");
-    auto out_grad_var = context.InputVar(framework::GradVarName("Out"));
-    auto x_grad_var = context.OutputVar(framework::GradVarName("X"));
-    PADDLE_ENFORCE(out_var != nullptr,
-                   "Cannot get input Variable Out, variable name = %s",
-                   context.op().Input("Out"));
-    PADDLE_ENFORCE(out_grad_var != nullptr,
-                   "Cannot get input Variable %s, variable name = %s",
-                   framework::GradVarName("Out"),
-                   context.op().Input(framework::GradVarName("Out")));
-    PADDLE_ENFORCE(x_grad_var != nullptr,
-                   "Cannot get output Variable %s, variable name = %s",
-                   framework::GradVarName("X"),
-                   context.op().Output(framework::GradVarName("X")));
-
-    framework::Tensor Out, dOut, *dX;
-    if (CanBeUsedBySelectedRows.count(context.op().Type())) {
-      Out = detail::Ref(
-          paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*out_var),
-          "Cannot get input Tensor Out, variable name = %s",
-          context.op().Input("Out"));
-      dOut =
-          detail::Ref(paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(
-                          *out_grad_var),
-                      "Cannot get input Tensor %s, variable name = %s",
-                      framework::GradVarName("Out"),
-                      context.op().Input(framework::GradVarName("Out")));
-      dX = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
-          x_grad_var);
-    } else {
-      Out = detail::Ref(context.Input<framework::Tensor>("Out"),
-                        "Cannot get input Tensor Out, variable name = %s",
-                        context.op().Input("Out"));
-      dOut = detail::Ref(
-          context.Input<framework::Tensor>(framework::GradVarName("Out")),
-          "Cannot get input Tensor %s, variable name = %s",
-          framework::GradVarName("Out"),
-          context.op().Input(framework::GradVarName("Out")));
-      dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
-    }
-    PADDLE_ENFORCE(dX != nullptr,
-                   "Cannot get output tensor %s, variable name = %s",
-                   framework::GradVarName("X"),
-                   context.op().Output(framework::GradVarName("X")));
-    dX->mutable_data<T>(context.GetPlace());
-
-    auto dout = framework::EigenVector<T>::Flatten(dOut);
-    auto out = framework::EigenVector<T>::Flatten(Out);
-    auto dx = framework::EigenVector<T>::Flatten(*dX);
+    framework::Tensor *Out, *dOut, *dX;
+    ExtractActivationGradTensor(context, Out, dOut, dX);
+    auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
+    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
+    auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
@@ -162,7 +163,7 @@ class ActivationGradKernel
     for (auto& attr : attrs) {
       *attr.second = context.Attr<float>(attr.first);
     }
-    bool inplace = functor.Inplace();
+    bool inplace = InplaceOpSet.count(context.op().Type());
     if (!inplace) {
       auto x_var = context.InputVar("X");
       PADDLE_ENFORCE(x_var != nullptr,
@@ -214,7 +215,6 @@ struct SigmoidFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct SigmoidGradFunctor : public BaseActivationFunctor<T> {
-  bool Inplace() const { return IsInplace("sigmoid"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
@@ -269,7 +269,6 @@ struct ExpFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct ExpGradFunctor : public BaseActivationFunctor<T> {
-  bool Inplace() const { return IsInplace("exp"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
@@ -288,7 +287,6 @@ struct ReluFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct ReluGradFunctor : public BaseActivationFunctor<T> {
-  bool Inplace() const { return IsInplace("relu"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
@@ -331,7 +329,6 @@ struct TanhFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct TanhGradFunctor : public BaseActivationFunctor<T> {
-  bool Inplace() const { return IsInplace("tanh"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
@@ -437,7 +434,6 @@ struct SqrtFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct SqrtGradFunctor : public BaseActivationFunctor<T> {
-  bool Inplace() const { return IsInplace("sqrt"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
@@ -456,7 +452,6 @@ struct CeilFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct ZeroGradFunctor : public BaseActivationFunctor<T> {
-  bool Inplace() const { return IsInplace("ceil"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
@@ -573,7 +568,6 @@ struct ReciprocalFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct ReciprocalGradFunctor : public BaseActivationFunctor<T> {
-  bool Inplace() const { return IsInplace("reciprocal"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
@@ -673,7 +667,6 @@ struct Relu6GradFunctor : public BaseActivationFunctor<T> {
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"threshold", &threshold}};
   }
-  bool Inplace() const { return IsInplace("relu6"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
@@ -755,7 +748,6 @@ struct SoftReluGradFunctor : public BaseActivationFunctor<T> {
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"threshold", &threshold}};
   }
-  bool Inplace() const { return IsInplace("soft_relu"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
@@ -936,7 +928,6 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"slope", &slope}, {"offset", &offset}};
   }
-  bool Inplace() { return IsInplace("hard_sigmoid"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
