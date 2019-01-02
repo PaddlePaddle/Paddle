@@ -29,8 +29,10 @@ void RPCServer::ShutDown() {
   ShutDownImpl();
 
   exit_flag_ = true;
-  barrier_cond_.notify_all();
-  rpc_cond_.notify_all();
+  // notify barriers to make rpc threads exit.
+  send_barrier_->Notify();
+  recv_barrier_->Notify();
+  state_cond_.notify_all();
 }
 
 void RPCServer::SavePort() const {
@@ -42,186 +44,146 @@ void RPCServer::SavePort() const {
   VLOG(4) << "selected port written to " << file_path;
 }
 
-void RPCServer::WaitBarrier(const std::string& rpc_name) {
-  std::unique_lock<std::mutex> lock(this->mutex_);
-  barrier_cond_.wait(lock, [this, &rpc_name] {
-    return ((barrier_counter_[rpc_name] == client_num_ && client_num_ != 0) ||
-            exit_flag_.load());
-  });
-
-  VLOG(3) << "batch_barrier_: " << rpc_name << " "
-          << barrier_counter_[rpc_name];
-}
-
-void RPCServer::IncreaseBatchBarrier(const std::string rpc_name) {
-  VLOG(4) << "RPCServer begin IncreaseBatchBarrier " << rpc_name;
-  int b = 0;
-  std::unique_lock<std::mutex> lock(mutex_);
-  b = ++barrier_counter_[rpc_name];
-  if (b >= client_num_) {
-    lock.unlock();
-    barrier_cond_.notify_all();
-    lock.lock();
-  }
-}
-
 void RPCServer::Complete() {
   {
     std::unique_lock<std::mutex> lock(mutex_);
-    client_num_--;
+    num_clients_--;
     need_reset_all_vars_ = true;
 
-    VLOG(4) << "decrease client_num to: " << client_num_;
-    if (cur_cond_.load() == rpc_cond_map_[kRequestGet]) {
-      barrier_counter_[kRequestGet]--;
+    VLOG(4) << "decrease client_num to: " << num_clients_;
+    // TODO(typhoonzero): comment why need to decrease here.
+    if (state_ == RPCServerState::STATE_SEND) {
+      send_barrier_->Decrease();
+    } else if (state_ == RPCServerState::STATE_RECV) {
+      recv_barrier_->Decrease();
     }
   }
-  barrier_cond_.notify_all();
+  send_barrier_->SetWorkerSize(num_clients_);
+  recv_barrier_->SetWorkerSize(num_clients_);
 }
 
-bool RPCServer::NeedResetAllVars() {
+int RPCServer::GetNumClients() {
   std::unique_lock<std::mutex> lock(mutex_);
-  return need_reset_all_vars_;
+  return num_clients_;
 }
 
-int RPCServer::GetClientNum() {
-  std::unique_lock<std::mutex> lock(mutex_);
-  return client_num_;
-}
-
-void RPCServer::ResetBarrierCounter() {
-  VLOG(3) << "RPCServer ResetBarrierCounter ";
-  std::unique_lock<std::mutex> lock(mutex_);
-  for (auto& t : barrier_counter_) {
-    t.second = 0;
+void RPCServer::RegisterRPC(const RequestType req_type, RequestHandler* handler,
+                            int thread_num) {
+  if (rpc_call_map_.find(req_type) == rpc_call_map_.end()) {
+    rpc_call_map_[req_type] = handler;
+  } else {
+    LOG(WARNING) << "RPC call handler already registered for type: "
+                 << req_type;
   }
-  need_reset_all_vars_ = false;
 }
 
-void RPCServer::RegisterRPC(const std::string& rpc_name,
-                            RequestHandler* handler, int thread_num) {
-  rpc_call_map_[rpc_name] = handler;
-  rpc_thread_num_[rpc_name] = thread_num;
-
-  static int cond = -1;
-  rpc_cond_map_[rpc_name] = ++cond;
-  VLOG(4) << "RegisterRPC rpc_name:" << rpc_name << ", handler:" << handler
-          << ", cond:" << rpc_cond_map_[rpc_name];
-}
-
-void RPCServer::SetCond(const std::string& rpc_name) {
-  VLOG(3) << "RPCServer SetCond " << rpc_name;
+void RPCServer::SetState(const RPCServerState state) {
+  VLOG(3) << "RPCServer SetState " << state;
   {
     std::unique_lock<std::mutex> lock(mutex_);
-    cur_cond_ = rpc_cond_map_[rpc_name];
+    state_ = state;
   }
-
-  rpc_cond_.notify_all();
+  state_cond_.notify_all();
 }
 
-void RPCServer::WaitCond(const std::string& rpc_name) {
-  VLOG(4) << "RPCServer WaitCond " << rpc_name;
-  int cond = 0;
-  {
-    std::unique_lock<std::mutex> lock(mutex_);
-    cond = rpc_cond_map_[rpc_name];
-  }
-
+void RPCServer::WaitState(const RPCServerState state) {
+  VLOG(4) << "RPCServer WaitCond " << state;
   std::unique_lock<std::mutex> lock(mutex_);
-  rpc_cond_.wait(
-      lock, [=] { return (cur_cond_.load() == cond || exit_flag_.load()); });
+  state_cond_.wait(lock,
+                   [=] { return (state_ == state || exit_flag_.load()); });
 }
 
-void RPCServer::RegisterVar(const std::string& var_name,
-                            const std::string& rpc_name,
-                            framework::Scope* scope,
-                            platform::DeviceContext* dev_ctx) {
-  MonomerHandle h;
-  h.var_name_ = var_name;
-  h.rpc_name_ = rpc_name;
-  h.scope_ = scope;
-  h.dev_ctx_ = dev_ctx;
+// void RPCServer::RegisterVar(const std::string& var_name,
+//                             const std::string& rpc_name,
+//                             framework::Scope* scope,
+//                             platform::DeviceContext* dev_ctx) {
+//   MonomerHandle h;
+//   h.var_name_ = var_name;
+//   h.rpc_name_ = rpc_name;
+//   h.scope_ = scope;
+//   h.dev_ctx_ = dev_ctx;
 
-  {
-    std::unique_lock<std::mutex> lock(mutex_);
-    if (var_map_.find(var_name) != var_map_.end()) {
-      PADDLE_ENFORCE(false, "%s alreay in var_map", var_name);
-    }
-    var_map_[var_name] = h;
-  }
+//   {
+//     std::unique_lock<std::mutex> lock(mutex_);
+//     if (var_map_.find(var_name) != var_map_.end()) {
+//       PADDLE_ENFORCE(false, "%s alreay in var_map", var_name);
+//     }
+//     var_map_[var_name] = h;
+//   }
 
-  rpc_cond_.notify_all();
-  VLOG(4) << "RegisterVar context:" << h.String();
-}
+//   rpc_cond_.notify_all();
+//   VLOG(4) << "RegisterVar context:" << h.String();
+// }
 
-void RPCServer::IncreaseVarBarrier(const std::string& var_name) {
-  int b = 0;
-  MonomerHandle h;
-  {
-    std::unique_lock<std::mutex> lock(mutex_);
-    b = ++var_map_[var_name].barrier_;
-    h = var_map_[var_name];
-  }
+// void RPCServer::IncreaseVarBarrier(const std::string& var_name) {
+//   int b = 0;
+//   MonomerHandle h;
+//   {
+//     std::unique_lock<std::mutex> lock(mutex_);
+//     b = ++var_map_[var_name].barrier_;
+//     h = var_map_[var_name];
+//   }
 
-  if (b >= client_num_) {
-    barrier_cond_.notify_all();
-  }
+//   if (b >= num_clients_) {
+//     barrier_cond_.notify_all();
+//   }
 
-  VLOG(4) << "IncreaseVarBarrier context:" << h.String();
-}
+//   VLOG(4) << "IncreaseVarBarrier context:" << h.String();
+// }
 
-void RPCServer::WaitVarBarrier(const std::string& var_name) {
-  VLOG(4) << "WaitBarrier var_name:" << var_name;
+// void RPCServer::WaitVarBarrier(const std::string& var_name) {
+//   VLOG(4) << "WaitBarrier var_name:" << var_name;
 
-  std::unique_lock<std::mutex> lock(mutex_);
-  barrier_cond_.wait(lock, [&]() {
-    return ((var_map_[var_name].barrier_ >= client_num_ && client_num_ != 0) ||
-            exit_flag_.load());
-  });
+//   std::unique_lock<std::mutex> lock(mutex_);
+//   barrier_cond_.wait(lock, [&]() {
+//     return (
+//         (var_map_[var_name].barrier_ >= num_clients_ && num_clients_ != 0) ||
+//         exit_flag_.load());
+//   });
 
-  VLOG(4) << "WaitBarrier context: " << var_map_[var_name].String();
-}
+//   VLOG(4) << "WaitBarrier context: " << var_map_[var_name].String();
+// }
 
-void RPCServer::SetVarCond(const std::string& var_name) {
-  VLOG(4) << "SetVarCond var_name:" << var_name;
-  {
-    std::unique_lock<std::mutex> lock(mutex_);
-    if (var_map_.find(var_name) != var_map_.end()) {
-      rpc_cond_.notify_all();
-    }
-  }
-}
+// void RPCServer::SetVarCond(const std::string& var_name) {
+//   VLOG(4) << "SetVarCond var_name:" << var_name;
+//   {
+//     std::unique_lock<std::mutex> lock(mutex_);
+//     if (var_map_.find(var_name) != var_map_.end()) {
+//       rpc_cond_.notify_all();
+//     }
+//   }
+// }
 
-void RPCServer::WaitVarCond(const std::string& var_name) {
-  VLOG(4) << "WaitVarCond var_name:" << var_name;
+// void RPCServer::WaitVarCond(const std::string& var_name) {
+//   VLOG(4) << "WaitVarCond var_name:" << var_name;
 
-  std::unique_lock<std::mutex> lock(mutex_);
-  rpc_cond_.wait(lock, [=] {
-    return (var_map_.find(var_name) != var_map_.end() || exit_flag_.load());
-  });
+//   std::unique_lock<std::mutex> lock(mutex_);
+//   rpc_cond_.wait(lock, [=] {
+//     return (var_map_.find(var_name) != var_map_.end() || exit_flag_.load());
+//   });
 
-  VLOG(4) << "WaitVarCond var_name:" << var_name << " end";
-}
+//   VLOG(4) << "WaitVarCond var_name:" << var_name << " end";
+// }
 
-MonomerHandle RPCServer::GetMonomer(const std::string& var_name) {
-  MonomerHandle h;
-  {
-    std::unique_lock<std::mutex> lock(mutex_);
-    h = var_map_[var_name];
-  }
+// MonomerHandle RPCServer::GetMonomer(const std::string& var_name) {
+//   MonomerHandle h;
+//   {
+//     std::unique_lock<std::mutex> lock(mutex_);
+//     h = var_map_[var_name];
+//   }
 
-  return h;
-}
+//   return h;
+// }
 
-void RPCServer::ClearRegisteredVars() {
-  std::unique_lock<std::mutex> lock(mutex_);
-  var_map_.clear();
-}
+// void RPCServer::ClearRegisteredVars() {
+//   std::unique_lock<std::mutex> lock(mutex_);
+//   var_map_.clear();
+// }
 
-void RPCServer::ClearVar(const std::string& var_name) {
-  std::unique_lock<std::mutex> lock(mutex_);
-  var_map_.erase(var_name);
-}
+// void RPCServer::ClearVar(const std::string& var_name) {
+//   std::unique_lock<std::mutex> lock(mutex_);
+//   var_map_.erase(var_name);
+// }
 }  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

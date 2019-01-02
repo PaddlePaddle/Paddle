@@ -9,6 +9,11 @@ else()
 endif()
 configure_file(send_recv.proto.in ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto @ONLY)
 
+
+cc_library(barrier SRCS barrier.cc)
+cc_library(rpc_server SRCS rpc_server.cc)
+
+
 # FIXME(typhoonzero): use add_subdirectory once we clean the dependency of these files
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 if(WITH_GRPC)
