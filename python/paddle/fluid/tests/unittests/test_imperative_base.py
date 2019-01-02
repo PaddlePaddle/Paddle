@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import contextlib
+import unittest
+import numpy as np
 
-from . import base
-from .base import *
+import paddle.fluid as fluid
+from paddle.fluid import core
 
-from . import layers
-from .layers import *
 
-from . import nn
-from .nn import *
-
-__all__ = []
-__all__ += layers.__all__
-__all__ += base.__all__
-__all__ += nn.__all__
+@contextlib.contextmanager
+def new_program_scope():
+    prog = fluid.Program()
+    startup_prog = fluid.Program()
+    scope = fluid.core.Scope()
+    with fluid.scope_guard(scope):
+        with fluid.program_guard(prog, startup_prog):
+            yield
