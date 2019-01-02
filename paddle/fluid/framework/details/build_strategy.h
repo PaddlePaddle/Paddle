@@ -74,8 +74,6 @@ struct BuildStrategy {
 
   bool fuse_elewise_add_act_ops_{false};
 
-  bool enable_data_balance_{false};
-
   bool memory_optimize_{false};
 
   bool memory_early_delete_{false};

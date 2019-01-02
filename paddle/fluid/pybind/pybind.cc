@@ -924,13 +924,6 @@ All parameter, weight, gradient are variables in Paddle.
                     writing the SSA Graph to file in the form of graphviz, you.
                     It is useful for debugging. Default "")DOC")
       .def_property(
-          "enable_data_balance",
-          [](const BuildStrategy &self) { return self.enable_data_balance_; },
-          [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
-            self.enable_data_balance_ = b;
-          })  // FIXME(chengudo): enable_data_balance seems not important
-      .def_property(
           "enable_sequential_execution",
           [](const BuildStrategy &self) {
             return self.enable_sequential_execution_;

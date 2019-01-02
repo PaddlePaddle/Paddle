@@ -36,12 +36,16 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
 
-  void CreateOpHandleIOs(ir::Graph *result, ir::Node *node,
-                         size_t device_id) const;
-
   virtual void Init() const;
 
   virtual std::vector<ir::Node *> SortOperations(const ir::Graph &graph) const;
+
+  virtual void CreateCollectionOp(ir::Graph *result, const std::string &p_name,
+                                  const std::string &g_name) const = 0;
+
+  virtual bool InsertPreprocessOps(ir::Graph *result, ir::Node *node) const = 0;
+
+  virtual void InsertPostprocessOps(ir::Graph *result) const = 0;
 
   bool IsScaleLossOp(ir::Node *node) const;
 
@@ -63,20 +67,8 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   void InsertAllReduceOp(ir::Graph *result, const std::string &og) const;
 
-  void InsertDataBalanceOp(ir::Graph *result,
-                           const std::vector<std::string> &datas) const;
-
   void CreateBroadcastOp(ir::Graph *result, const std::string &p_name,
                          size_t src_dev_id) const;
-
-  virtual void CreateCollectionOp(ir::Graph *result, const std::string &p_name,
-                                  const std::string &g_name) const = 0;
-
-  virtual bool InsertPreprocessOps(ir::Graph *result, ir::Node *node) const {
-    return false;
-  }
-
-  virtual void InsertPostprocessOps(ir::Graph *result) const {}
 
   void CreateFusedBroadcastOp(
       ir::Graph *result,
@@ -84,6 +76,9 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   void SetCommunicationContext(OpHandleBase *op_handle,
                                const platform::Place &p) const;
+
+  void CreateOpHandleIOs(ir::Graph *result, ir::Node *node,
+                         size_t device_id) const;
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   mutable platform::NCCLContextMap *nccl_ctxs_;
@@ -101,6 +96,12 @@ class AllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
  protected:
   virtual void CreateCollectionOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const;
+
+  virtual bool InsertPreprocessOps(ir::Graph *result, ir::Node *node) const {
+    return false;
+  }
+
+  virtual void InsertPostprocessOps(ir::Graph *result) const {}
 };
 
 class BalanceVarSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {

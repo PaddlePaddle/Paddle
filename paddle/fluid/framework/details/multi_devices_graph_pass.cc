@@ -150,12 +150,6 @@ void MultiDevSSAGraphBuilderBase::Init() const {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   nccl_ctxs_ = &Get<platform::NCCLContextMap>("nccl_ctxs");
 #endif
-
-  if (strategy_.enable_data_balance_ && places_.size() == 1) {
-    LOG(WARNING) << "It is no need to enable data balance when there is only "
-                    "one place. enable_data_balance is set to False.";
-    strategy_.enable_data_balance_ = false;
-  }
 }
 
 std::vector<ir::Node *> MultiDevSSAGraphBuilderBase::SortOperations(
@@ -193,12 +187,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
     } else {
       // This op runs on all devices
       // TODO(paddle-dev): Why is so special about "read" op?
-      if (node->Op()->Type() == "read" && strategy_.enable_data_balance_) {
-        node->Op()->SetAttr("throw_eof_exp", false);
-        CreateComputationalOps(&result, node, places_.size());
-        const auto &data_var_names = node->Op()->Output("Out");
-        InsertDataBalanceOp(&result, data_var_names);
-      } else if (IsScaleLossOp(node)) {
+      if (IsScaleLossOp(node)) {
         // user can customize loss@grad if not use_default_grad_scale_
         if (strategy_.gradient_scale_ !=
             BuildStrategy::GradientScaleStrategy::kCustomized) {
@@ -408,34 +397,6 @@ void MultiDevSSAGraphBuilderBase::InsertAllReduceOp(
                       vars.size(), i, og, p);
     vars.emplace_back(var);
     op_handle->AddOutput(var);
-  }
-}
-
-void MultiDevSSAGraphBuilderBase::InsertDataBalanceOp(
-    ir::Graph *result, const std::vector<std::string> &datas) const {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  result->Get<GraphOps>(kGraphOps).emplace_back(new DataBalanceOpHandle(
-      result->CreateEmptyNode("data_balance", ir::Node::Type::kOperation),
-      local_scopes_, places_, nccl_ctxs_));
-#else
-  result->Get<GraphOps>(kGraphOps).emplace_back(new DataBalanceOpHandle(
-      result->CreateEmptyNode("data_balance", ir::Node::Type::kOperation),
-      local_scopes_, places_));
-#endif
-  auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
-  for (size_t i = 0; i < places_.size(); ++i) {
-    auto &p = places_[i];
-    SetCommunicationContext(op_handle, p);
-    for (const std::string &d_name : datas) {
-      auto &vars = result->Get<GraphVars>(kGraphVars)[i][d_name];
-      PADDLE_ENFORCE(!vars.empty());
-      op_handle->AddInput(vars.back());
-      auto var = new VarHandle(
-          result->CreateEmptyNode(d_name, ir::Node::Type::kVariable),
-          vars.size(), i, d_name, p);
-      vars.emplace_back(var);
-      op_handle->AddOutput(var);
-    }
   }
 }
 
