@@ -233,7 +233,7 @@ def fc(input,
             dimensions will be flatten to form the first dimension of the final matrix (height of
             the matrix), and the rest `rank(X) - num_flatten_dims` dimensions are flattened to
             form the second dimension of the final matrix (width of the matrix). For example, suppose
-            `X` is a 6-dimensional tensor with a shape [2, 3, 4, 5, 6], and `num_flatten_dims` = 3.
+            `X` is a 5-dimensional tensor with a shape [2, 3, 4, 5, 6], and `num_flatten_dims` = 3.
             Then, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30].
         param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
             parameters/weights of this layer.
@@ -505,31 +505,33 @@ def lstm(input,
     In the forward pass the output ht and cell output ct for a given iteration can be computed from the recurrent input ht-1,
     the cell input ct-1 and the previous layer input xt given matrices W, R and biases bW, bR from the following equations:
 
-    $$ i_t = \\sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + bx_i + bh_i) $$
+    .. math::
 
-    $$ f_t = \\sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + bx_f + bh_f) $$
+       i_t &= \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + bx_i + bh_i)
 
-    $$ o_t = \\sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + bx_o + bh_o) $$
+       f_t &= \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + bx_f + bh_f)
 
-    $$ \\tilde{c_t} = tanh(W_{cx}x_t + W_{ch}h_{t-1} + bx_c + bh_c) $$
+       o_t &= \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + bx_o + bh_o)
 
-    $$ c_t = f_t \\odot c_{t-1} + i_t \\odot \\tilde{c_t} $$
+       \\tilde{c_t} &= tanh(W_{cx}x_t + W_{ch}h_{t-1} + bx_c + bh_c)
 
-    $$ h_t = o_t \\odot tanh(c_t) $$
+       c_t &= f_t \odot c_{t-1} + i_t \odot \\tilde{c_t}
 
-    - W terms denote weight matrices (e.g. $W_{ix}$ is the matrix
+       h_t &= o_t \odot tanh(c_t)
+
+    - $W$ terms denote weight matrices (e.g. $W_{ix}$ is the matrix
       of weights from the input gate to the input)
     - The b terms denote bias vectors ($bx_i$ and $bh_i$ are the input gate bias vector).
     - sigmoid is the logistic sigmoid function.
     - $i, f, o$ and $c$ are the input gate, forget gate, output gate,
       and cell activation vectors, respectively, all of which have the same size as
       the cell output activation vector $h$.
-    - The $\odot$ is the element-wise product of the vectors.
-    - `tanh` is the activation functions.
-    - $\tilde{c_t}$ is also called candidate hidden state,
+    - The :math:`\odot` is the element-wise product of the vectors.
+    - :math:`tanh` is the activation functions.
+    - :math:`\\tilde{c_t}` is also called candidate hidden state,
       which is computed based on the current input and the previous hidden state.
 
-    Where sigmoid is the sigmoid operator: sigmoid(x) = 1 / (1 + e^-x), * represents a point-wise multiplication,
+    Where sigmoid is the sigmoid operator: :math:`sigmoid(x) = 1 / (1 + e^{-x})` , * represents a point-wise multiplication,
     X represensts a matrix multiplication
 
 
@@ -556,14 +558,18 @@ def lstm(input,
 
 
     Returns:
-        rnn_out(Tensor): result of LSTM hidden, shape is (seq_len x batch_size x hidden_size)
-                         if is_bidirec set to True, shape will be ( seq_len x batch_sze x hidden_size*2)
-        last_h(Tensor): the hidden state of the last step of LSTM
-                        shape is ( num_layers x batch_size x hidden_size )
-                        if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)
-        last_c(Tensor): the cell state of the last step of LSTM
-                        shape is ( num_layers x batch_size x hidden_size )
-                        if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)
+        rnn_out(Tensor),last_h(Tensor),last_c(Tensor):
+
+                        Three tensors, rnn_out, last_h, last_c:
+
+                        - rnn_out is result of LSTM hidden, shape is (seq_len x batch_size x hidden_size) \
+                          if is_bidirec set to True, shape will be ( seq_len x batch_sze x hidden_size*2)
+                        - last_h is the hidden state of the last step of LSTM \
+                          shape is ( num_layers x batch_size x hidden_size ) \
+                          if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)
+                        - last_c(Tensor): the cell state of the last step of LSTM \
+                          shape is ( num_layers x batch_size x hidden_size ) \
+                          if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)
 
 
     Examples:
@@ -1220,6 +1226,8 @@ def dropout(x,
     probability) the outputs of some units to zero, while others are remain
     unchanged.
 
+    dropout op can be removed from the program to make the program more efficient.
+
     Args:
         x (Variable): The input tensor variable.
         dropout_prob (float): Probability of setting units to zero.
@@ -1230,20 +1238,22 @@ def dropout(x,
                     units will be dropped. DO NOT use a fixed seed in training.
         name (str|None): A name for this layer(optional). If set None, the layer
                          will be named automatically.
-        dropout_implementation(string): ['downgrade_in_infer'(defauld)|'upscale_in_train']
-                                        1. downgrade_in_infer(default), downgrade the outcome at inference
-                                           train: out = input * mask
-                                           inference: out = input * dropout_prob
-                                           (make is a tensor same shape with input, value is 0 or 1
-                                            ratio of 0 is dropout_prob)
-                                        2. upscale_in_train, upscale the outcome at training time
-                                           train: out = input * mask / ( 1.0 - dropout_prob )
-                                           inference: out = input
-                                           (make is a tensor same shape with input, value is 0 or 1
-                                            ratio of 0 is dropout_prob)
-                                           dropout op can be removed from the program.
-                                           the program will be efficient
+        dropout_implementation(string): ['downgrade_in_infer'(default)|'upscale_in_train']
 
+                                        1. downgrade_in_infer(default), downgrade the outcome at inference
+
+                                           - train: out = input * mask
+                                           - inference: out = input * dropout_prob
+
+                                           (mask is a tensor same shape with input, value is 0 or 1
+                                           ratio of 0 is dropout_prob)
+                                        2. upscale_in_train, upscale the outcome at training time
+
+                                           - train: out = input * mask / ( 1.0 - dropout_prob )
+                                           - inference: out = input
+
+                                           (mask is a tensor same shape with input, value is 0 or 1
+                                           ratio of 0 is dropout_prob)
 
 
     Returns:
@@ -1333,11 +1343,15 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
          A 2-D tensor with shape [N x 1], the cross entropy loss.
 
     Raises:
-        `ValueError`: 1) the 1st dimension of `input` and `label` are not equal.
-                      2) when `soft_label == True`, and the 2nd dimension of
-                         `input` and `label` are not equal.
-                      3) when `soft_label == False`, and the 2nd dimension of
-                         `label` is not 1.
+         ValueError:
+
+                      1. the 1st dimension of ``input`` and ``label`` are not equal.
+
+                      2. when ``soft_label == True``, and the 2nd dimension of
+                         ``input`` and ``label`` are not equal.
+
+                      3. when ``soft_label == False``, and the 2nd dimension of
+                         ``label`` is not 1.
 
     Examples:
         .. code-block:: python
@@ -1458,7 +1472,7 @@ def chunk_eval(input,
     F1-score of chunk detection.
 
     For some basics of chunking, please refer to
-    'Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>'.
+    `Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>`_ .
 
     ChunkEvalOp computes the precision, recall, and F1-score of chunk detection,
     and supports IOB, IOE, IOBES and IO (also known as plain) tagging schemes.
@@ -1823,7 +1837,7 @@ def conv2d(input,
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
-             and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+            and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d
@@ -2276,7 +2290,7 @@ def sequence_slice(input, offset, length, name=None):
 
     .. code-block:: text
 
-	- Case:
+              - Case:
 
             Given the input Variable **input**:
 
@@ -2292,7 +2306,8 @@ def sequence_slice(input, offset, length, name=None):
                 out.lod = [[2, 1]],
                 out.dims = (3, 2).
 
-    NOTE: The first dimension size of **input**, **offset** and **length**
+    Note:
+          The first dimension size of **input**, **offset** and **length**
           should be equal. The **offset** should start from 0.
 
     Args:
@@ -2540,12 +2555,12 @@ def adaptive_pool2d(input,
     Examples:
         .. code-block:: python
 
-          # suppose input data in shape of [N, C, H, W], `pool_size` is [m, n], 
+          # suppose input data in shape of [N, C, H, W], `pool_size` is [m, n],
           # output shape is [N, C, m, n], adaptive pool divide H and W dimentions
-          # of input data into m * n grids averagely and performs poolings in each 
+          # of input data into m * n grids averagely and performs poolings in each
           # grid to get output.
           # adaptive average pool performs calculations as follow:
-          # 
+          #
           #     for i in range(m):
           #         for j in range(n):
           #             hstart = floor(i * H / m)
@@ -2570,12 +2585,7 @@ def adaptive_pool2d(input,
         raise ValueError(
             "invalid setting 'require_index' true when 'pool_type' is 'avg'.")
 
-    def _is_list_or_tuple_(data):
-        return (isinstance(data, list) or isinstance(data, tuple))
-
-    if not _is_list_or_tuple_(pool_size) or len(pool_size) != 2:
-        raise ValueError(
-            "'pool_size' should be a list or tuple with length as 2.")
+    pool_size = utils.convert_to_list(pool_size, 2, 'pool_size')
 
     if pool_type == "max":
         l_type = 'max_pool2d_with_index'
@@ -2639,10 +2649,10 @@ def adaptive_pool3d(input,
 
           # suppose input data in shape of [N, C, D, H, W], `pool_size` is [l, m, n],
           # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimentions
-          # of input data into l * m * n grids averagely and performs poolings in each 
+          # of input data into l * m * n grids averagely and performs poolings in each
           # grid to get output.
           # adaptive average pool performs calculations as follow:
-          # 
+          #
           #     for i in range(l):
           #         for j in range(m):
           #             for k in range(n):
@@ -2652,7 +2662,7 @@ def adaptive_pool3d(input,
           #                 hend = ceil((j + 1) * H / m)
           #                 wstart = floor(k * W / n)
           #                 wend = ceil((k + 1) * W / n)
-          #                 output[:, :, i, j, k] = 
+          #                 output[:, :, i, j, k] =
           #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
           #
           data = fluid.layers.data(
@@ -2671,12 +2681,7 @@ def adaptive_pool3d(input,
         raise ValueError(
             "invalid setting 'require_index' true when 'pool_type' is 'avg'.")
 
-    def _is_list_or_tuple_(data):
-        return (isinstance(data, list) or isinstance(data, tuple))
-
-    if not _is_list_or_tuple_(pool_size) or len(pool_size) != 3:
-        raise ValueError(
-            "'pool_size' should be a list or tuple with length as 3.")
+    pool_size = utils.convert_to_list(pool_size, 3, 'pool_size')
 
     if pool_type == "max":
         l_type = 'max_pool3d_with_index'
@@ -3013,7 +3018,7 @@ def group_norm(input,
     """
     **Group Normalization Layer**
 
-    Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`
+    Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
 
     Args:
         input(Variable): The input tensor variable.
@@ -3140,8 +3145,8 @@ def conv2d_transpose(input,
 
            H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
            W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1 \\\\
-           H_{out} \in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
-           W_{out} \in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
+           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
 
     Args:
         input(Variable): The input image with [N, C, H, W] format.
@@ -4704,9 +4709,9 @@ def ctc_greedy_decoder(input, blank, name=None):
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Variable: CTC greedy decode result which is a 2-D tensor with shape [Lp, 1].
-                  'Lp' is the sum if all output sequences' length. If all the sequences
-                  in result were empty, the result LoDTensor will be [-1] with
+        Variable: CTC greedy decode result which is a 2-D tensor with shape [Lp, 1]. \
+                  'Lp' is the sum if all output sequences' length. If all the sequences \
+                  in result were empty, the result LoDTensor will be [-1] with  \
                   LoD [[]] and dims [1, 1].
 
     Examples:
@@ -5072,13 +5077,13 @@ def hsigmoid(input,
     <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_
 
     And if you want to use the costumed tree by set 'is_custom' as true you may need to do following things first:
-        1. using your word dict to build a binary tree, each leaf node should be an word of your word dict
-        2. build a dict to store word_id -> word's leaf to root path, we call it path_table.
-        3. build a dict to store word_id -> code of word's leaf to root path, we call it path_code. Code
-         means label of each binary classification, using 1 indicate true, 0 indicate false.
-        4. now, each word should has its path and code along the path, you can pass a batch of path and code
-        related to the same batch of inputs.
 
+    1. using your word dict to build a binary tree, each leaf node should be an word of your word dict
+    2. build a dict to store word_id -> word's leaf to root path, we call it path_table.
+    3. build a dict to store word_id -> code of word's leaf to root path, we call it path_code. Code
+       means label of each binary classification, using 1 indicate true, 0 indicate false.
+    4. now, each word should has its path and code along the path, you can pass a batch of path and code
+       related to the same batch of inputs.
 
     Args:
         input (Variable): The input tensor variable with shape
@@ -5485,11 +5490,11 @@ def softmax_with_cross_entropy(logits,
 
     .. math::
 
-        max_j = \\max_{i=0}^{K}{\\text{logit}_i}
+        max_j &= \\max_{i=0}^{K}{\\text{logit}_i}
 
-        log\\_max\\_sum_j = \\log\\sum_{i=0}^{K}\\exp(logit_i - max_j)
+        log\\_max\\_sum_j &= \\log\\sum_{i=0}^{K}\\exp(logit_i - max_j)
 
-        softmax_j = \\exp(logit_j - max_j - {log\\_max\\_sum}_j)
+        softmax_j &= \\exp(logit_j - max_j - {log\\_max\\_sum}_j)
 
     and then cross entropy loss is calculated by softmax and label.
 
@@ -5515,11 +5520,11 @@ def softmax_with_cross_entropy(logits,
                                along with the cross entropy loss. Default: False
 
     Returns:
-        Variable or Tuple of two Variables: Return the cross entropy loss if
-                              `return_softmax` is False, otherwise the tuple
-                              (loss, softmax), where the cross entropy loss is
-                              a 2-D tensor with shape [N x 1], and softmax is a
-                              2-D tensor with shape [N x K].
+        Variable or Tuple of two Variables: Return the cross entropy loss if \
+                                            `return_softmax` is False, otherwise the tuple \
+                                            (loss, softmax), where the cross entropy loss is \
+                                            a 2-D tensor with shape [N x 1], and softmax is a \
+                                            2-D tensor with shape [N x K].
 
     Examples:
         .. code-block:: python
@@ -5792,21 +5797,27 @@ def squeeze(input, axes, name=None):
     the single dimensions will be removed from the shape. If an axis is
     selected with shape entry not equal to one, an error is raised.
 
-    Examples:
-    Case 1:
-      Given
-        X.shape = (1, 3, 1, 5)
-      and
-        axes = [0]
-      we get:
-        Out.shape = (3, 1, 5)
-      Case 2:
-        Given
-          X.shape = (1, 3, 1, 5)
-        and
-          axes = []
-        we get:
-          Out.shape = (3, 5)
+    For example:
+
+    .. code-block:: text
+
+        Case 1:
+
+          Given
+            X.shape = (1, 3, 1, 5)
+          and
+            axes = [0]
+          we get:
+            Out.shape = (3, 1, 5)
+
+        Case 2:
+
+          Given
+            X.shape = (1, 3, 1, 5)
+          and
+            axes = []
+          we get:
+            Out.shape = (3, 5)
 
     Args:
         input (Variable): The input variable to be squeezed.
@@ -5842,6 +5853,9 @@ def unsqueeze(input, axes, name=None):
     Dimension indices in axes are as seen in the output tensor.
 
     For example:
+
+    .. code-block:: text
+
       Given a tensor such that tensor with shape [3, 4, 5],
       then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
 
@@ -6729,8 +6743,11 @@ def sequence_scatter(input, index, updates, name=None):
     the columns to update in each row of X.
 
     Here is an example:
+
     Given the following input:
+
     .. code-block:: text
+
         input.data = [[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
                       [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
                       [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
@@ -6743,7 +6760,9 @@ def sequence_scatter(input, index, updates, name=None):
         updates.lod =  [[  0,            3,                                 8,                         12]]
 
     Then we have the output:
+
     .. code-block:: text
+
         out.data = [[1.3, 1.3, 1.4, 1.0, 1.0, 1.0],
                     [1.0, 1.0, 1.4, 1.3, 1.2, 1.1],
                     [1.0, 1.0, 1.3, 1.2, 1.4, 1.1]]
@@ -6759,7 +6778,7 @@ def sequence_scatter(input, index, updates, name=None):
         name (str|None): The output variable name. Default None.
 
     Returns:
-        output (Variable): The output is a tensor with the same shape as input.
+        Variable: The output is a tensor with the same shape as input.
 
     Examples:
 
@@ -6933,7 +6952,7 @@ def mean_iou(input, label, num_classes):
 
     .. math::
 
-        IOU = \\frac{true\_positiv}{(true\_positive + false\_positive + false\_negative)}.
+        IOU = \\frac{true\_positive}{(true\_positive + false\_positive + false\_negative)}.
 
     The predictions are accumulated in a confusion matrix and mean-IOU
     is then calculated from it.
@@ -6946,9 +6965,13 @@ def mean_iou(input, label, num_classes):
         num_classes (int): The possible number of labels.
 
     Returns:
-        mean_iou (Variable): A Tensor representing the mean intersection-over-union with shape [1].
-        out_wrong(Variable): A Tensor with shape [num_classes]. The wrong numbers of each class.
-        out_correct(Variable): A Tensor with shape [num_classes]. The correct numbers of each class.
+        mean_iou (Variable),out_wrong(Variable),out_correct(Variable):
+
+                     Three variables:
+
+                     - mean_iou : A Tensor representing the mean intersection-over-union with shape [1].
+                     - out_wrong: A Tensor with shape [num_classes]. The wrong numbers of each class.
+                     - out_correct: A Tensor with shape [num_classes]. The correct numbers of each class.
 
     Examples:
 
@@ -7144,7 +7167,7 @@ def affine_grid(theta, out_shape, name=None):
     Args:
         theta (Variable): A batch of affine transform parameters with shape [N, 2, 3].
         out_shape (Variable | list | tuple): The shape of target output with format [N, C, H, W].
-        out_shape can be a Variable or a list or tuple.
+                                             ``out_shape`` can be a Variable or a list or tuple.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
 
@@ -7157,6 +7180,7 @@ def affine_grid(theta, out_shape, name=None):
     Examples:
 
         .. code-block:: python
+
             theta = fluid.layers.data(name="x", shape=[2, 3], dtype="float32")
             out_shape = fluid.layers.data(name="y", shape=[-1], dtype="float32")
             data = fluid.layers.affine_grid(theta, out_shape)
@@ -7192,9 +7216,10 @@ def affine_grid(theta, out_shape, name=None):
 
 def rank_loss(label, left, right, name=None):
     """
+
     **Rank loss layer for RankNet**
 
-    RankNet(http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf)
+    `RankNet <http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf>`_
     is a pairwise ranking model with a training sample consisting of a pair
     of documents, A and B. Label P indicates whether A is ranked higher than B
     or not:
@@ -7202,16 +7227,19 @@ def rank_loss(label, left, right, name=None):
     P = {0, 1} or {0, 0.5, 1}, where 0.5 means that there is no information
     about the rank of the input pair.
 
-    Rank loss layer takes three inputs: left (o_i), right (o_j) and
-    label (P_{i,j}). The inputs respectively represent RankNet's output scores
+    Rank loss layer takes three inputs: left ( :math:`o_i` ), right ( :math:`o_j` ) and
+    label ( :math:`P_{i,j}` ). The inputs respectively represent RankNet's output scores
     for documents A and B and the value of label P. The following equation
     computes rank loss C_{i,j} from the inputs:
 
-    $$
-      C_{i,j} = -\tilde{P_{ij}} * o_{i,j} + \log(1 + e^{o_{i,j}}) \\
-      o_{i,j} =  o_i - o_j  \\
-      \tilde{P_{i,j}} = \left \{0, 0.5, 1 \right \} \ or \ \left \{0, 1 \right \}
-    $$
+    .. math::
+
+      C_{i,j} &= -\\tilde{P_{ij}} * o_{i,j} + \log(1 + e^{o_{i,j}}) \\\\
+
+      o_{i,j} &=  o_i - o_j  \\\\
+
+      \\tilde{P_{i,j}} &= \\left \{0, 0.5, 1 \\right \} \ or \ \\left \{0, 1 \\right \}
+
 
     Rank loss layer takes batch inputs with size batch_size (batch_size >= 1).
 
@@ -7236,7 +7264,6 @@ def rank_loss(label, left, right, name=None):
             left = fluid.layers.data(name="left", shape=[4, 1], dtype="float32")
             right = fluid.layers.data(name="right", shape=[4, 1], dtype="float32")
             out = fluid.layers.rank_loss(label, left, right)
-
 
     """
     helper = LayerHelper('rank_loss', **locals())
@@ -7269,7 +7296,7 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
 
     .. math::
 
-        rank\_loss &= max(0, -label * (left - right) + margin)
+        rank\_loss = max(0, -label * (left - right) + margin)
 
     Args:
        label (Variable): Indicates whether the left is ranked higher than the right or not.
@@ -7278,12 +7305,17 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
        margin (float): Indicates the given margin.
        name (str|None): A name for this layer (optional). If set None, the layer
                        will be named automatically.
+
     Returns:
        Variable: The ranking loss.
+
     Raises:
        ValueError: Any of label, left, and right is not a Variable.
+
     Examples:
+
         .. code-block:: python
+
            label = fluid.layers.data(name="label", shape=[4, 1], dtype="float32")
            left = fluid.layers.data(name="left", shape=[4, 1], dtype="float32")
            right = fluid.layers.data(name="right", shape=[4, 1], dtype="float32")
@@ -7587,7 +7619,8 @@ def prelu(x, mode, param_attr=None, name=None):
     """
     Equation:
 
-        y = \max(0, x) + alpha * \min(0, x)
+    .. math::
+        y = \max(0, x) + \\alpha * \min(0, x)
 
     Args:
         x (Variable): The input tensor.
@@ -7653,8 +7686,8 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
 
         .. code-block:: python
 
-        x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
-        y = fluid.layers.brelu(x, t_min=1.0, t_max=20.0)
+            x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
+            y = fluid.layers.brelu(x, t_min=1.0, t_max=20.0)
     """
     helper = LayerHelper('brelu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -7683,8 +7716,8 @@ def leaky_relu(x, alpha=0.02, name=None):
 
         .. code-block:: python
 
-        x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
-        y = fluid.layers.leaky_relu(x, alpha=0.01)
+            x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
+            y = fluid.layers.leaky_relu(x, alpha=0.01)
     """
     helper = LayerHelper('leaky_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -7712,8 +7745,8 @@ def soft_relu(x, threshold=40.0, name=None):
 
         .. code-block:: python
 
-        x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
-        y = fluid.layers.soft_relu(x, threshold=20.0)
+            x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
+            y = fluid.layers.soft_relu(x, threshold=20.0)
     """
     helper = LayerHelper('soft_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -7730,22 +7763,31 @@ def flatten(x, axis=1, name=None):
     **Flatten layer**
     Flattens the input tensor into a 2D matrix.
 
-    Examples:
-    Case 1:
-      Given
-        X.shape = (3, 100, 100, 4)
-      and
-        axis = 2
-      We get:
-        Out.shape = (3 * 100, 4 * 100)
+    For Example:
 
-    Case 2:
-      Given
-        X.shape = (3, 100, 100, 4)
-      and
-        axis = 0
-      We get:
-        Out.shape = (1, 3 * 100 * 100 * 4)
+    .. code-block:: text
+
+        Case 1:
+
+          Given
+            X.shape = (3, 100, 100, 4)
+
+          and
+            axis = 2
+
+          We get:
+            Out.shape = (3 * 100, 4 * 100)
+
+        Case 2:
+
+          Given
+            X.shape = (3, 100, 100, 4)
+
+          and
+            axis = 0
+
+          We get:
+            Out.shape = (1, 3 * 100 * 100 * 4)
 
     Args:
         x (Variable): A tensor of rank >= axis.
@@ -7759,9 +7801,9 @@ def flatten(x, axis=1, name=None):
                         will be named automatically.
 
     Returns:
-        Variable: A 2D tensor with the contents of the input tensor, with input
-                  dimensions up to axis flattened to the outer dimension of
-                  the output and remaining input dimensions flattened into the
+        Variable: A 2D tensor with the contents of the input tensor, with input \
+                  dimensions up to axis flattened to the outer dimension of \
+                  the output and remaining input dimensions flattened into the \
                   inner dimension of the output.
 
     Raises:
@@ -7801,19 +7843,23 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
     The enumerated sequence has the same 1st dimension with variable `input`, and
     the 2nd dimension is `win_size`, padded by `pad_value` if necessary in generation.
 
-    Examples:
-    Case 1:
-      Input:
-        X.lod = [[0, 3, 5]]
-        X.data = [[1], [2], [3], [4], [5]]
-        X.dims = [5, 1]
-      Attrs:
-        win_size = 2
-        pad_value = 0
-      Output:
-        Out.lod = [[0, 3, 5]]
-        Out.data = [[1, 2], [2, 3], [3, 0], [4, 5], [5, 0]]
-        Out.dims = [5, 2]
+    .. code-block:: text
+
+        Case 1:
+
+          Input:
+            X.lod = [[0, 3, 5]]
+            X.data = [[1], [2], [3], [4], [5]]
+            X.dims = [5, 1]
+
+          Attrs:
+            win_size = 2
+            pad_value = 0
+
+          Output:
+            Out.lod = [[0, 3, 5]]
+            Out.data = [[1, 2], [2, 3], [3, 0], [4, 5], [5, 0]]
+            Out.dims = [5, 2]
 
     Args:
         input (Variable): The input variable which is a index sequence.
@@ -8896,6 +8942,7 @@ def similarity_focus(input, axis, indexes, name=None):
     SimilarityFocus Operator
 
     Generate a similarity focus mask with the same shape of input using the following method:
+
     1. Extract the 3-D tensor(here the first dimension is BatchSize) corresponding
        to the axis according to the indexes. For example, if axis=1 and indexes=[a],
        it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X
@@ -8969,14 +9016,16 @@ def similarity_focus(input, axis, indexes, name=None):
         indexes(list): Indicating the indexes of the selected dimension.
 
     Returns:
-        Variable: A tensor variable with the same shape and same type
-            as the input.
+        Variable: A tensor variable with the same shape and same type \
+                  as the input.
 
     Examples:
         .. code-block:: python
+
             data = fluid.layers.data(
               name='data', shape=[2, 3, 2, 2], dtype='float32')
             x = fluid.layers.layer_norm(input=data, axis=1, indexes=[0])
+
     """
     helper = LayerHelper('similarity_focus', **locals())
     # check attrs
@@ -9055,6 +9104,7 @@ def hash(input, hash_size, num_hash=1, name=None):
 
     Examples:
        .. code-block:: python
+
            word_dict = paddle.dataset.imdb.word_dict()
            x = fluid.layers.data(shape[1], dtype='int32', lod_level=1)
            out = fluid.layers.hash(input=x, num_hash=4, hash_size=1000)
@@ -9075,50 +9125,52 @@ def hash(input, hash_size, num_hash=1, name=None):
 def grid_sampler(x, grid, name=None):
     """
     This operation samples input X by using bilinear interpolation based on
-    flow field grid, which is usually gennerated by affine_grid. The grid of
+    flow field grid, which is usually gennerated by :code:`affine_grid` . The grid of
     shape [N, H, W, 2] is the concatenation of (grid_x, grid_y) coordinates
     with shape [N, H, W] each, where grid_x is indexing the 4th dimension
     (in width dimension) of input data x and grid_y is indexng the 3rd
     dimention (in height dimension), finally results is the bilinear
     interpolation value of 4 nearest corner points.
 
-    Step 1:
-    Get (x, y) grid coordinates and scale to [0, H-1/W-1].
+    .. code-block:: text
 
-    grid_x = 0.5 * (grid[:, :, :, 0] + 1) * (W - 1)
-    grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
+        Step 1:
+        Get (x, y) grid coordinates and scale to [0, H-1/W-1].
 
-    Step 2:
-    Indices input data X with grid (x, y) in each [H, W] area, and bilinear
-    interpolate point value by 4 nearest points.
+        grid_x = 0.5 * (grid[:, :, :, 0] + 1) * (W - 1)
+        grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
 
-      wn ------- y_n ------- en
-      |           |           |
-      |          d_n          |
-      |           |           |
-     x_w --d_w-- grid--d_e-- x_e
-      |           |           |
-      |          d_s          |
-      |           |           |
-      ws ------- y_s ------- wn
+        Step 2:
+        Indices input data X with grid (x, y) in each [H, W] area, and bilinear
+        interpolate point value by 4 nearest points.
 
-    x_w = floor(x)              // west side x coord
-    x_e = x_w + 1               // east side x coord
-    y_n = floor(y)              // north side y coord
-    y_s = y_s + 1               // south side y coord
+          wn ------- y_n ------- en
+          |           |           |
+          |          d_n          |
+          |           |           |
+         x_w --d_w-- grid--d_e-- x_e
+          |           |           |
+          |          d_s          |
+          |           |           |
+          ws ------- y_s ------- wn
 
-    d_w = grid_x - x_w          // distance to west side
-    d_e = x_e - grid_x          // distance to east side
-    d_n = grid_y - y_n          // distance to north side
-    d_s = y_s - grid_y          // distance to south side
+        x_w = floor(x)              // west side x coord
+        x_e = x_w + 1               // east side x coord
+        y_n = floor(y)              // north side y coord
+        y_s = y_s + 1               // south side y coord
 
-    wn = X[:, :, y_n, x_w]      // north-west point value
-    en = X[:, :, y_n, x_e]      // north-east point value
-    ws = X[:, :, y_s, x_w]      // south-east point value
-    es = X[:, :, y_s, x_w]      // north-east point value
+        d_w = grid_x - x_w          // distance to west side
+        d_e = x_e - grid_x          // distance to east side
+        d_n = grid_y - y_n          // distance to north side
+        d_s = y_s - grid_y          // distance to south side
 
-    output = wn * d_e * d_s + en * d_w * d_s
-           + ws * d_e * d_n + es * d_w * d_n
+        wn = X[:, :, y_n, x_w]      // north-west point value
+        en = X[:, :, y_n, x_e]      // north-east point value
+        ws = X[:, :, y_s, x_w]      // south-east point value
+        es = X[:, :, y_s, x_w]      // north-east point value
+
+        output = wn * d_e * d_s + en * d_w * d_s
+               + ws * d_e * d_n + es * d_w * d_n
 
     Args:
         x(Variable): Input data of shape [N, C, H, W].
@@ -9126,16 +9178,18 @@ def grid_sampler(x, grid, name=None):
         name (str, default None): The name of this layer.
 
     Returns:
-        out(Variable): Output of shape [N, C, H, W] data samples input X
+        Variable: Output of shape [N, C, H, W] data samples input X
         using bilnear interpolation based on input grid.
 
-    Exmples:
-    .. code-block:: python
+    Examples:
 
-        x = fluid.layers.data(name='x', shape=[3, 10, 32, 32], dtype='float32')
-        theta = fluid.layers.data(name='theta', shape=[3, 2, 3], dtype='float32')
-        grid = fluid.layers.affine_grid(input=theta, size=[3, 10, 32, 32]})
-        out = fluid.layers.grid_sampler(x=x, grid=grid)
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[3, 10, 32, 32], dtype='float32')
+            theta = fluid.layers.data(name='theta', shape=[3, 2, 3], dtype='float32')
+            grid = fluid.layers.affine_grid(input=theta, size=[3, 10, 32, 32]})
+            out = fluid.layers.grid_sampler(x=x, grid=grid)
+
     """
     helper = LayerHelper("grid_sampler", **locals())
 
@@ -9203,19 +9257,19 @@ def add_position_encoding(input, alpha, beta, name=None):
     """
     **Add Position Encoding Layer**
 
-    This layer accepts an input 3D-Tensor of shape [N x M x P], and return an
+    This layer accepts an input 3D-Tensor of shape [N x M x P], and returns an
     output Tensor of shape [N x M x P] with positional encoding value.
 
-    Refer to `Attention Is All You Need<http://arxiv.org/pdf/1706.03762.pdf>`_ .
+    Refer to `Attention Is All You Need <http://arxiv.org/pdf/1706.03762.pdf>`_ .
 
     .. math::
-        PE(pos, 2i) = \\sin{(pos / 10000^{2i / P})}   \\\\
-        PE(pos, 2i + 1) = \\cos{(pos / 10000^{2i / P})}  \\\\
-        Out(:, pos, i) = \\alpha * input(:, pos, i) + \\beta * PE(pos, i)
+        PE(pos, 2i) &= \\sin{(pos / 10000^{2i / P})}   \\\\
+        PE(pos, 2i + 1) &= \\cos{(pos / 10000^{2i / P})}  \\\\
+        Out(:, pos, i) &= \\alpha * input(:, pos, i) + \\beta * PE(pos, i)
 
     Where:
-    * PE(pos, 2i): the increment for the number at even position
-    * PE(pos, 2i + 1): the increment for the number at odd position
+      - :math:`PE(pos, 2i)` : the increment for the number at even position
+      - :math:`PE(pos, 2i + 1)` : the increment for the number at odd position
 
     Args:
         input (Variable): 3-D input tensor with shape [N x M x P]
@@ -9230,6 +9284,7 @@ def add_position_encoding(input, alpha, beta, name=None):
         .. code-block:: python
 
           position_tensor = fluid.layers.add_position_encoding(input=tensor)
+
     """
     helper = LayerHelper('add_position_encoding', **locals())
     dtype = helper.input_dtype()
@@ -9262,13 +9317,13 @@ def bilinear_tensor_product(x,
     For example:
 
     .. math::
-       out{i} = x * W_{i} * {y^\mathrm{T}}, i=0,1,...,size-1
+       out_{i} = x * W_{i} * {y^\mathrm{T}}, i=0,1,...,size-1
 
     In this formula:
       - :math:`x`: the first input contains M elements, shape is [batch_size, M].
       - :math:`y`: the second input contains N elements, shape is [batch_size, N].
       - :math:`W_{i}`: the i-th learned weight, shape is [M, N]
-      - :math:`out{i}`: the i-th element of out, shape is [batch_size, size].
+      - :math:`out_{i}`: the i-th element of out, shape is [batch_size, size].
       - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
 
     Args:
@@ -9348,7 +9403,7 @@ class PyFuncRegistry(object):
             raise TypeError('func must be a Python function')
 
         self._func = func
-        # find named args using reflection 
+        # find named args using reflection
         args = inspect.getargspec(self._func)
         if len(args[0]) == 0 and args[1] is None and args[2] is None:
             # Function with no inputs
@@ -9359,15 +9414,15 @@ class PyFuncRegistry(object):
         '''
         Why record self here?
 
-        1. For debug usage. Users can call 
-           :code:`py_func.registered_func(idx)` method 
+        1. For debug usage. Users can call
+           :code:`py_func.registered_func(idx)` method
            to find the registered function corresponding
-           to :code:`idx`. 
+           to :code:`idx`.
 
-        2. For increasing reference count of self. 
-           It seems that to release Python object 
+        2. For increasing reference count of self.
+           It seems that to release Python object
            whose reference count is 1 would cause
-           segmentation fault error in C++ side. 
+           segmentation fault error in C++ side.
            May be lack of Python GC in C++ side?
         '''
         PyFuncRegistry._register_funcs.append(self)
@@ -9418,7 +9473,7 @@ class PyFuncRegistry(object):
 def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     """
     PyFunc Operator.
-    
+
     User can use :code:`py_func` to register operators in Python side.
     The inputs of :code:`func` is :code:`LoDTensor` and outputs can be
     numpy array or :code:`LoDTensor`. Paddle would call the registered
@@ -9436,7 +9491,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     no gradient, users should return None.
 
     This function can also be used to debug the running network. User can
-    add a :code:`py_func` operator without output, and print input 
+    add a :code:`py_func` operator without output, and print input
     :code:`x` inside :code:`func`.
 
     Args:
@@ -9444,50 +9499,50 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         x (Variable|list(Variable)|tuple(Variable)): inputs of :code:`func`.
         out (Variable|list(Variable)|tuple(Variable)): outputs of :code:`func`.
             Paddle cannot infer shapes and data types of :code:`out`. Users
-            should create :code:`out` beforehand. 
+            should create :code:`out` beforehand.
         backward_func (callable|None): backward Python function.
-                                       None means no backward. Default None. 
+                                       None means no backward. Default None.
         skip_vars_in_backward_input (Variable|list(Variable)|tuple(Variable)):
-            Variables that are not needed in :code:`backward_func` inputs. 
+            Variables that are not needed in :code:`backward_func` inputs.
             These variables must be any of :code:`x` and :code:`out`.
             If set, these vars would not be inputs of :code:`backward_func`,
-            Only useful when :code:`backward_func` is not None. Default None. 
+            Only useful when :code:`backward_func` is not None. Default None.
 
     Returns:
         out (Variable|list(Variable)|tuple(Variable)): input :code:`out`
 
     Examples:
-    
+
         >>> import paddle.fluid as fluid
         >>> import six
         >>>
         >>> def create_tmp_var(name, dtype, shape):
         >>>     return fluid.default_main_program().current_block().create_var(
-        >>>         name=name, dtype=dtype, shape=shape) 
+        >>>         name=name, dtype=dtype, shape=shape)
         >>>
         >>> # tanh activation has been provided by Paddle C++ op
-        >>> # Here, we only use tanh to be an example to show the usage 
+        >>> # Here, we only use tanh to be an example to show the usage
         >>> # of py_func
         >>> def tanh(x):
         >>>     return np.tanh(x)
-        >>> 
+        >>>
         >>> # forward input x is skipped
         >>> def tanh_grad(y, dy):
         >>>     return np.array(dy) * (1 - np.square(np.array(y)))
         >>>
         >>> def debug_func(x):
-        >>>     print(x) 
+        >>>     print(x)
         >>>
         >>> def simple_net(img, label):
         >>>     hidden = img
         >>>     for idx in six.moves.range(4):
         >>>         hidden = fluid.layers.fc(hidden, size=200)
         >>>         new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
-        >>>             dtype=hidden.dtype, shape=hidden.shape)    
+        >>>             dtype=hidden.dtype, shape=hidden.shape)
         >>>
         >>>         # user-defined layers with forward and backward
-        >>>         hidden = fluid.layers.py_func(func=tanh, x=hidden, 
-        >>>             out=new_hidden, backward_func=tanh_grad, 
+        >>>         hidden = fluid.layers.py_func(func=tanh, x=hidden,
+        >>>             out=new_hidden, backward_func=tanh_grad,
         >>>             skip_vars_in_backward_input=hidden)
         >>>
         >>>         # user-defined debug layers to print variables
@@ -9658,47 +9713,3 @@ def huber_loss(input, label, delta):
                  'Residual': residual},
         attrs={'delta': delta})
     return out
-
-
-class FC(layers.PyLayer):
-    def __init__(self,
-                 size,
-                 param_attr=None,
-                 num_flatten_dims=1,
-                 dtype=core.VarDesc.VarType.FP32):
-        super(FC, self).__init__()
-        self._size = size
-        self._num_flatten_dims = num_flatten_dims
-        self._dtype = dtype
-        self._helper = LayerHelper('FC', param_attr=param_attr)
-
-    def _build_once(self, inputs):
-        input_shape = inputs[0].shape
-        param_shape = [
-            reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:], 1)
-        ] + [self._size]
-        self._w = self._helper.create_parameter(
-            attr=self._helper.param_attr,
-            shape=param_shape,
-            dtype=self._dtype,
-            is_bias=False)
-
-    def forward(self, inputs):
-        tmp = self._helper.create_variable_for_type_inference(self._dtype)
-        self._helper.append_op(
-            type="mul",
-            inputs={"X": inputs[0],
-                    "Y": self._w},
-            outputs={"Out": tmp},
-            attrs={
-                "x_num_col_dims": self._num_flatten_dims,
-                "y_num_col_dims": 1
-            })
-
-        out = self._helper.create_variable_for_type_inference(self._dtype)
-        self._helper.append_op(
-            type="sum",
-            inputs={"X": [tmp]},
-            outputs={"Out": out},
-            attrs={"use_mkldnn": False})
-        return out
