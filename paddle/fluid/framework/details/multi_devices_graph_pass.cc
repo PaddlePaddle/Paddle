@@ -142,7 +142,6 @@ static const char kNumTrainers[] = "num_trainers";
 
 void MultiDevSSAGraphBuilderBase::Init() const {
   all_vars_.clear();
-  balance_vars_.clear();
 
   loss_var_name_ = Get<const std::string>(kLossVarName);
   places_ = Get<const std::vector<platform::Place>>(kPlaces);
@@ -157,24 +156,6 @@ void MultiDevSSAGraphBuilderBase::Init() const {
                     "one place. enable_data_balance is set to False.";
     strategy_.enable_data_balance_ = false;
   }
-
-  Prepare();
-}
-
-bool MultiDevSSAGraphBuilderBase::IsDistTrain(
-    const std::vector<ir::Node *> &ops) const {
-  for (ir::Node *node : ops) {
-    if (OpHaveRole(*node, OpRole::kRPC)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-void MultiDevSSAGraphBuilderBase::Prepare() const {
-  bcast_var_name_set_.clear();
-  bcast_var_name_set_.resize(places_.size());
-  balance_vars_.resize(places_.size(), 0);
 }
 
 std::vector<ir::Node *> MultiDevSSAGraphBuilderBase::SortOperations(
@@ -204,10 +185,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   result.Set(kGraphOps, new GraphOps);
 
   bool is_forwarding = true;
-  bool is_dist_train = IsDistTrain(sorted_ops);
   bool insert_collection_ops = places_.size() > 1 || Get<int>(kNumTrainers) > 1;
-
-  Prepare();
 
   for (ir::Node *node : sorted_ops) {
     if (InsertPreprocessOps(&result, node)) {
@@ -260,7 +238,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
             auto &g_name = backward_vars[i + 1];
             VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
 
-            CreateCollectionOp(&result, is_dist_train, p_name, g_name);
+            CreateCollectionOp(&result, p_name, g_name);
           }
         } catch (boost::bad_get e) {
         }
@@ -312,27 +290,6 @@ void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
     }
     CreateOpOutput(result, op_handle, new_node, p, place_id);
   }
-}
-
-size_t MultiDevSSAGraphBuilderBase::GetAppropriateDeviceID(
-    const std::vector<std::string> &var_names) const {
-  int64_t numel_sum = 0;
-  for (auto var_name : var_names) {
-    if (all_vars_.find(var_name) == all_vars_.end()) continue;
-    auto var_desc = all_vars_.at(var_name);
-    PADDLE_ENFORCE_NOT_NULL(var_desc);
-    auto dim = framework::make_ddim(var_desc->GetShape());
-    int64_t numel = framework::product(dim);
-    PADDLE_ENFORCE_GT(numel, 0);
-    numel_sum += numel;
-  }
-
-  auto smallest =
-      std::min_element(std::begin(balance_vars_), std::end(balance_vars_));
-  size_t dev_id =
-      static_cast<size_t>(std::distance(std::begin(balance_vars_), smallest));
-  balance_vars_[dev_id] += numel_sum;
-  return dev_id;
 }
 
 void MultiDevSSAGraphBuilderBase::SetCommunicationContext(
@@ -482,18 +439,6 @@ void MultiDevSSAGraphBuilderBase::InsertDataBalanceOp(
   }
 }
 
-int MultiDevSSAGraphBuilderBase::GetVarDeviceID(
-    const std::string &varname) const {
-  auto got = sharded_var_device_.find(varname);
-  if (got == sharded_var_device_.end()) {
-    auto pos = varname.find(framework::kNewGradSuffix);
-    if (pos != std::string::npos) {
-      got = sharded_var_device_.find(varname.substr(0, pos));
-    }
-  }
-  return got == sharded_var_device_.end() ? -1 : got->second;
-}
-
 void MultiDevSSAGraphBuilderBase::CreateScaleLossGradOp(
     ir::Graph *result, const std::string &loss_grad_name,
     ir::Node *out_var_node, proto::VarType::Type dtype) const {
@@ -566,7 +511,39 @@ bool MultiDevSSAGraphBuilderBase::IsScaleLossOp(ir::Node *node) const {
          !loss_var_name_.empty();  // If loss_var is empty. This is test mode
 }
 
-int MultiDevSSAGraphBuilderBase::GetOpDeviceID(ir::Node *node) const {
+bool MultiDevSSAGraphBuilderBase::IsSparseGradient(
+    const std::string &og) const {
+  PADDLE_ENFORCE(all_vars_.count(og) != 0);
+  if (all_vars_.at(og)->GetType() == proto::VarType::SELECTED_ROWS) {
+    return true;
+  }
+  return false;
+}
+
+void AllReduceSSAGraphBuilder::CreateCollectionOp(
+    ir::Graph *result, const std::string &p_name,
+    const std::string &g_name) const {
+  if (IsSparseGradient(g_name)) {
+    CreateReduceOp(result, g_name, 0);
+    CreateBroadcastOp(result, g_name, 0);
+  } else {
+    InsertAllReduceOp(result, g_name);
+  }
+}
+
+int BalanceVarSSAGraphBuilder::GetVarDeviceID(
+    const std::string &varname) const {
+  auto got = sharded_var_device_.find(varname);
+  if (got == sharded_var_device_.end()) {
+    auto pos = varname.find(framework::kNewGradSuffix);
+    if (pos != std::string::npos) {
+      got = sharded_var_device_.find(varname.substr(0, pos));
+    }
+  }
+  return got == sharded_var_device_.end() ? -1 : got->second;
+}
+
+int BalanceVarSSAGraphBuilder::GetOpDeviceID(ir::Node *node) const {
   if (strategy_.reduce_ != BuildStrategy::ReduceStrategy::kReduce) {
     return -1;
   }
@@ -583,39 +560,57 @@ int MultiDevSSAGraphBuilderBase::GetOpDeviceID(ir::Node *node) const {
   return dev_id;
 }
 
-void AllReduceSSAGraphBuilder::CreateCollectionOp(
-    ir::Graph *result, bool is_dist_train, const std::string &p_name,
-    const std::string &g_name) const {
-  if (IsSparseGradient(g_name)) {
-    CreateReduceOp(result, g_name, 0);
-    CreateBroadcastOp(result, g_name, 0);
-  } else {
-    InsertAllReduceOp(result, g_name);
+size_t BalanceVarSSAGraphBuilder::GetAppropriateDeviceID(
+    const std::vector<std::string> &var_names) const {
+  int64_t numel_sum = 0;
+  for (auto var_name : var_names) {
+    if (all_vars_.find(var_name) == all_vars_.end()) continue;
+    auto var_desc = all_vars_.at(var_name);
+    PADDLE_ENFORCE_NOT_NULL(var_desc);
+    auto dim = framework::make_ddim(var_desc->GetShape());
+    int64_t numel = framework::product(dim);
+    PADDLE_ENFORCE_GT(numel, 0);
+    numel_sum += numel;
   }
+
+  auto smallest =
+      std::min_element(std::begin(balance_vars_), std::end(balance_vars_));
+  size_t dev_id =
+      static_cast<size_t>(std::distance(std::begin(balance_vars_), smallest));
+  balance_vars_[dev_id] += numel_sum;
+  return dev_id;
 }
 
-bool AllReduceSSAGraphBuilder::IsSparseGradient(const std::string &og) const {
-  PADDLE_ENFORCE(all_vars_.count(og) != 0);
-  if (all_vars_.at(og)->GetType() == proto::VarType::SELECTED_ROWS) {
-    return true;
-  }
-  return false;
+void BalanceVarSSAGraphBuilder::ResetState() const {
+  balance_vars_.clear();
+  sharded_var_device_.clear();
+
+  balance_vars_.resize(places_.size(), 0);
+}
+
+void ReduceSSAGraphBuilder::Init() const {
+  MultiDevSSAGraphBuilderBase::Init();
+  ResetState();
+}
+
+void ReduceSSAGraphBuilder::ResetState() const {
+  BalanceVarSSAGraphBuilder::ResetState();
+  bcast_var_name_set_.clear();
+  bcast_var_name_set_.resize(places_.size());
 }
 
 void ReduceSSAGraphBuilder::CreateCollectionOp(
-    ir::Graph *result, bool is_dist_train, const std::string &p_name,
+    ir::Graph *result, const std::string &p_name,
     const std::string &g_name) const {
   size_t cur_device_id = GetAppropriateDeviceID({g_name});
   CreateReduceOp(result, g_name, cur_device_id);
   sharded_var_device_.emplace(g_name, cur_device_id);
-  if (!is_dist_train) {
-    bcast_var_name_set_[cur_device_id].emplace(p_name);
-  }
+  bcast_var_name_set_[cur_device_id].emplace(p_name);
 }
 
 bool ReduceSSAGraphBuilder::InsertPreprocessOps(ir::Graph *result,
                                                 ir::Node *node) const {
-  int op_dev_id = MultiDevSSAGraphBuilderBase::GetOpDeviceID(node);
+  int op_dev_id = BalanceVarSSAGraphBuilder::GetOpDeviceID(node);
   if (op_dev_id != -1) {
     // This op only runs on one specific device.
     CreateComputationalOp(result, node, op_dev_id);
@@ -678,7 +673,7 @@ std::vector<ir::Node *> ReduceSSAGraphBuilder::SortForReduceMode(
   std::vector<ir::Node *> sorted_ops;
   std::unordered_map<std::string, std::vector<ir::Node *>> delayed_op;
   sorted_ops.reserve(topo_ops.size());
-  sharded_var_device_.clear();
+  ResetState();
 
   auto insert_delayed_op = [&](const std::string &var_name, int dev_id) {
     sharded_var_device_.emplace(var_name, dev_id);
@@ -728,8 +723,15 @@ std::vector<ir::Node *> ReduceSSAGraphBuilder::SortForReduceMode(
   }
 
   PADDLE_ENFORCE_EQ(sorted_ops.size(), topo_ops.size());
-  sharded_var_device_.clear();
+
+  ResetState();
   return sorted_ops;
+}
+
+void DistSSAGraphBuilder::ResetState() const {
+  BalanceVarSSAGraphBuilder::ResetState();
+  bcast_var_name_set_.clear();
+  bcast_var_name_set_.resize(places_.size());
 }
 
 bool DistSSAGraphBuilder::InsertPreprocessOps(ir::Graph *result,
@@ -767,6 +769,16 @@ bool DistSSAGraphBuilder::InsertPreprocessOps(ir::Graph *result,
     }
   }
   return insert_op;
+}
+
+bool DistSSAGraphBuilder::IsDistTrain(
+    const std::vector<ir::Node *> &ops) const {
+  for (ir::Node *node : ops) {
+    if (OpHaveRole(*node, OpRole::kRPC)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void SetOpInputsAllPlaces(ir::Graph *result, ir::Node *node, int num_places) {
@@ -917,6 +929,30 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   return op_dev_id;
 }
 
+void DistSSAGraphBuilder::CreateCollectionOp(ir::Graph *result,
+                                             const std::string &p_name,
+                                             const std::string &g_name) const {
+  size_t cur_device_id = 0;
+  switch (strategy_.reduce_) {
+    case BuildStrategy::ReduceStrategy::kReduce:
+      cur_device_id = GetAppropriateDeviceID({g_name});
+      CreateReduceOp(result, g_name, cur_device_id);
+      sharded_var_device_.emplace(g_name, cur_device_id);
+      break;
+    case BuildStrategy::ReduceStrategy::kAllReduce:
+      if (IsSparseGradient(g_name)) {
+        CreateReduceOp(result, g_name, 0);
+        CreateBroadcastOp(result, g_name, 0);
+      } else {
+        InsertAllReduceOp(result, g_name);
+      }
+      break;
+    default:
+      LOG(FATAL) << "Unknown reduce strategy ";
+      break;
+  }
+}
+
 void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
   if (strategy_.fuse_broadcast_op_) {
     CreateFusedBroadcastOp(result, bcast_var_name_set_);
@@ -947,3 +983,5 @@ REGISTER_MULT_DEVICES_PASS(reduce_mode_multi_devices_pass,
 REGISTER_MULT_DEVICES_PASS(
     allreduce_mode_multi_devices_pass,
     paddle::framework::details::AllReduceSSAGraphBuilder);
+REGISTER_MULT_DEVICES_PASS(dist_multi_devices_pass,
+                           paddle::framework::details::DistSSAGraphBuilder);
