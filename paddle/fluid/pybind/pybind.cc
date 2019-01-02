@@ -825,7 +825,7 @@ All parameter, weight, gradient are variables in Paddle.
             If :math:`num\_threads=1`, all the operators will execute one by one,
             but the order maybe difference between iterations.
             If it is not set, it will be set in ParallelExecutor according to the
-            device type and device count, for GPU, :math:`num\_threads=device\_count`, for CPU,
+            device type and device count, for GPU, :math:`num\_threads=device\_count*4`, for CPU,
             :math:`num\_threads=CPU\_NUM*4`, the explanation of:math:`CPU\_NUM` is in ParallelExecutor.
             if it is not set, ParallelExecutor will get the cpu count by calling
             `multiprocessing.cpu_count()`. Default 0.)DOC")
