@@ -245,17 +245,12 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
-  PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
-  PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
+  cublas_handle_.reset(new CublasHandleHolder(stream_, CUBLAS_DEFAULT_MATH));
 
   if (TensorCoreAvailable()) {
 #if CUDA_VERSION >= 9000
-    cublas_tensor_core_handle_.reset(new cublasHandle_t());
-    PADDLE_ENFORCE(dynload::cublasCreate(cublas_tensor_core_handle_.get()));
-    PADDLE_ENFORCE(
-        dynload::cublasSetStream(*cublas_tensor_core_handle_, stream_));
-    PADDLE_ENFORCE(dynload::cublasSetMathMode(*cublas_tensor_core_handle_,
-                                              CUBLAS_TENSOR_OP_MATH));
+    cublas_tensor_core_handle_.reset(
+        new CublasHandleHolder(stream_, CUBLAS_TENSOR_OP_MATH));
 #endif
   }
 
@@ -318,11 +313,8 @@ CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
   Wait();
   WaitStreamCallback();
-  PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
-  if (cublas_tensor_core_handle_) {
-    PADDLE_ENFORCE(dynload::cublasDestroy(*cublas_tensor_core_handle_));
-    cublas_tensor_core_handle_.reset();
-  }
+  cublas_handle_.reset();
+  cublas_tensor_core_handle_.reset();
   eigen_stream_.reset();
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
@@ -349,15 +341,6 @@ int CUDADeviceContext::GetMaxPhysicalThreadCount() const {
 
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
   return eigen_device_.get();
-}
-
-cublasHandle_t CUDADeviceContext::cublas_handle() const {
-  return cublas_handle_;
-}
-
-cublasHandle_t CUDADeviceContext::possible_cublas_tensor_core_handle() const {
-  return cublas_tensor_core_handle_ ? *cublas_tensor_core_handle_
-                                    : cublas_handle_;
 }
 
 bool CUDADeviceContext::tensor_core_available() const {

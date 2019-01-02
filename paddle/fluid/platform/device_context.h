@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/temporary_allocator.h"
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -229,15 +230,25 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return eigen device in the device context. */
   Eigen::GpuDevice* eigen_device() const;
 
-  /*! \brief  Return cublas handle in the device context. */
-  cublasHandle_t cublas_handle() const;
+  /*! \brief  Call cublas function safely. */
+  template <typename Callback>
+  inline void CublasCall(Callback&& callback) const {
+    cublas_handle_->Call(std::forward<Callback>(callback));
+  }
 
   /*! \brief  Check whether tensor core is supported */
   bool tensor_core_available() const;
 
-  /*! \brief  Return cublas handle supporting Tensor Core. If Tensor Core is
-   *  not supported, return the same handle as cublas_handle(). */
-  cublasHandle_t possible_cublas_tensor_core_handle() const;
+  /*! \brief  Call cublas function with Tensor Core safely. If
+      Tensor Core is not available, use DEFAULT_MATH instead. */
+  template <typename Callback>
+  inline void TensorCoreCublasCallIfAvailable(Callback&& callback) const {
+    if (cublas_tensor_core_handle_) {
+      cublas_tensor_core_handle_->Call(std::forward<Callback>(callback));
+    } else {
+      cublas_handle_->Call(std::forward<Callback>(callback));
+    }
+  }
 
   /*! \brief  Return cudnn  handle in the device context. */
   cudnnHandle_t cudnn_handle() const;
@@ -256,7 +267,6 @@ class CUDADeviceContext : public DeviceContext {
 
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
-    std::lock_guard<std::mutex> guard(mtx_);
     callback();
     PADDLE_ENFORCE(cudaEventRecord(ev, stream_));
   }
@@ -275,8 +285,9 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
   std::unique_ptr<CudnnHolder> cudnn_holder_;
   cudaStream_t stream_;
-  cublasHandle_t cublas_handle_;
-  std::unique_ptr<cublasHandle_t> cublas_tensor_core_handle_;
+
+  std::unique_ptr<CublasHandleHolder> cublas_handle_;
+  std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
 
   int compute_capability_;
   int runtime_version_;
@@ -284,12 +295,10 @@ class CUDADeviceContext : public DeviceContext {
   int multi_process_;
   int max_threads_per_mp_;
 
-  mutable std::mutex mtx_;
-
   // StreamCallbackManager is thread-safe
   std::unique_ptr<StreamCallbackManager> callback_manager_;
 
-  mutable std::mutex cublas_mtx_;
+  DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };
 
 template <>
