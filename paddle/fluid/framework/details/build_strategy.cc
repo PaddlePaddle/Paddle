@@ -67,7 +67,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     context->endpoints_ = strategy_.trainers_endpoints_;
     context->trainer_id_ = strategy_.trainer_id_;
     PADDLE_ENFORCE(strategy_.trainer_id_ >= 0, "trainer_id_ >= 0");
-    if (strategy_.trainer_id_ > 0) {
+    if (strategy_.trainer_id_ > 0 && strategy_.trainers_endpoints_.size() > 0) {
       PADDLE_ENFORCE((unsigned)(strategy_.trainer_id_) <
                          strategy_.trainers_endpoints_.size(),
                      "trainer_id_ < endpoints_ size");
