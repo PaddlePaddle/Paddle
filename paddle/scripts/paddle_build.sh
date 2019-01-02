@@ -918,11 +918,11 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build
         assert_api_not_changed ${PYTHON_ABI:-""}
-        assert_api_spec_approvals
         run_test
         gen_capi_package
         gen_fluid_lib
         test_fluid_lib
+        assert_api_spec_approvals
         ;;
       assert_api)
         assert_api_not_changed ${PYTHON_ABI:-""}
