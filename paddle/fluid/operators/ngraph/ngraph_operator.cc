@@ -20,18 +20,18 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/ngraph_operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/ngraph/ngraph_bridge.h"
+#include "paddle/fluid/operators/ngraph/ngraph_operator.h"
 
 #include "ngraph/ngraph.hpp"
 
 namespace paddle {
-namespace framework {
+namespace operators {
 
-static ngraph::Shape Ddim2Shape(const DDim& dims) {
+static ngraph::Shape Ddim2Shape(const framework::DDim& dims) {
   ngraph::Shape sp;
   for (int i = 0; i < dims.size(); ++i) {
     int k = dims[i];
@@ -41,12 +41,13 @@ static ngraph::Shape Ddim2Shape(const DDim& dims) {
   return sp;
 }
 
-static std::map<proto::VarType::Type, ngraph::element::Type> pd2ng_type_map = {
-    {proto::VarType::FP32, ngraph::element::f32},
-    {proto::VarType::FP64, ngraph::element::f64},
-    {proto::VarType::INT32, ngraph::element::i32},
-    {proto::VarType::INT64, ngraph::element::i64},
-    {proto::VarType::BOOL, ngraph::element::boolean},
+static std::map<framework::proto::VarType::Type, ngraph::element::Type>
+    pd2ng_type_map = {
+        {framework::proto::VarType::FP32, ngraph::element::f32},
+        {framework::proto::VarType::FP64, ngraph::element::f64},
+        {framework::proto::VarType::INT32, ngraph::element::i32},
+        {framework::proto::VarType::INT64, ngraph::element::i64},
+        {framework::proto::VarType::BOOL, ngraph::element::boolean},
 };
 
 typedef enum {                /* nGraph support state on ops          */
@@ -59,14 +60,15 @@ typedef enum {                /* nGraph support state on ops          */
 // perform graph build through bridge and execute computation
 class NgraphEngine {
  public:
-  explicit NgraphEngine(const Scope& scope, const platform::Place& place,
-                        const std::vector<std::shared_ptr<OperatorBase>>& ops,
-                        const std::unordered_map<
-                            std::string, ngraph::element::Type>& var_type_map,
-                        const std::unordered_set<std::string>& persist,
-                        const std::unordered_set<std::string>& fetches,
-                        const std::unordered_set<std::string>& post_op_inputs,
-                        op_state ng_op_state)
+  explicit NgraphEngine(
+      const framework::Scope& scope, const platform::Place& place,
+      const std::vector<std::shared_ptr<framework::OperatorBase>>& ops,
+      const std::unordered_map<std::string, ngraph::element::Type>&
+          var_type_map,
+      const std::unordered_set<std::string>& persist,
+      const std::unordered_set<std::string>& fetches,
+      const std::unordered_set<std::string>& post_op_inputs,
+      op_state ng_op_state)
       : scope_(scope),
         place_(place),
         fused_ops_(ops),
@@ -86,14 +88,14 @@ class NgraphEngine {
     GetNgFunction();
   }
 
-  void Run(const Scope& scope, const platform::Place& place) const;
+  void Run(const framework::Scope& scope, const platform::Place& place) const;
 
  private:
   static std::unordered_map<std::string, std::shared_ptr<ngraph::Function>>
       func_cache_;
-  const Scope& scope_;
+  const framework::Scope& scope_;
   const platform::Place& place_;
-  std::vector<std::shared_ptr<OperatorBase>> fused_ops_;
+  std::vector<std::shared_ptr<framework::OperatorBase>> fused_ops_;
   std::unordered_map<std::string, ngraph::element::Type> var_type_map_;
   std::unordered_set<std::string> persistables_;
   std::unordered_set<std::string> fetches_;
@@ -119,7 +121,7 @@ class NgraphEngine {
   // cache key to check if function is cached
   std::shared_ptr<std::string> GetCacheKey();
   // get ngraph input and define ngraph input parameters
-  void GetNgInputShape(std::shared_ptr<OperatorBase> op);
+  void GetNgInputShape(std::shared_ptr<framework::OperatorBase> op);
   // Call ngraph bridge to map ops
   void BuildNgNodes();
   // get the ngraph input and output var list
@@ -130,28 +132,30 @@ class NgraphEngine {
   void GetNgFunction();
 };
 
-std::vector<std::vector<std::vector<std::unique_ptr<OperatorBase>>::iterator>>
+std::vector<std::vector<
+    std::vector<std::unique_ptr<framework::OperatorBase>>::iterator>>
 NgraphOperator::NgraphOpIntervals(
-    std::vector<std::unique_ptr<paddle::framework::OperatorBase>>* ops) {
-  std::vector<std::vector<std::vector<std::unique_ptr<OperatorBase>>::iterator>>
+    std::vector<std::unique_ptr<framework::OperatorBase>>* ops) {
+  std::vector<std::vector<
+      std::vector<std::unique_ptr<framework::OperatorBase>>::iterator>>
       intervals;
   if (ops->empty()) {
     return intervals;
   }
   size_t size = ops->size();
   size_t left = 0;
-  while (left < size && ops->at(left)->Type() != kFeedOpType) {
+  while (left < size && ops->at(left)->Type() != framework::kFeedOpType) {
     ++left;
   }
   if (left == size) {
     return intervals;
   }
-  while (left < size && ops->at(left)->Type() == kFeedOpType) {
+  while (left < size && ops->at(left)->Type() == framework::kFeedOpType) {
     ++left;
   }
 
   size_t right = left;
-  while (right < size && ops->at(right)->Type() != kFetchOpType) {
+  while (right < size && ops->at(right)->Type() != framework::kFetchOpType) {
     ++right;
   }
   if (right == size) {
@@ -184,11 +188,12 @@ NgraphOperator::NgraphOpIntervals(
 }
 
 NgraphOperator::NgraphOperator(
-    const ProgramDesc& prog, size_t block_id,
-    std::vector<std::unique_ptr<OperatorBase>>::iterator start,
-    std::vector<std::unique_ptr<OperatorBase>>::iterator end,
-    const std::string& type, const VariableNameMap& inputs,
-    const VariableNameMap& outputs, const AttributeMap& attrs)
+    const framework::ProgramDesc& prog, size_t block_id,
+    std::vector<std::unique_ptr<framework::OperatorBase>>::iterator start,
+    std::vector<std::unique_ptr<framework::OperatorBase>>::iterator end,
+    const std::string& type, const framework::VariableNameMap& inputs,
+    const framework::VariableNameMap& outputs,
+    const framework::AttributeMap& attrs)
     : OperatorBase(type, inputs, outputs, attrs),
       pdesc_(prog),
       block_(block_id) {
@@ -198,7 +203,7 @@ NgraphOperator::NgraphOperator(
   }
 
   for (std::vector<std::unique_ptr<OperatorBase>>::iterator it = end;
-       (*it)->Type() != kFetchOpType; ++it) {
+       (*it)->Type() != framework::kFetchOpType; ++it) {
     for (auto& var_name_item : (*it)->Inputs()) {
       for (auto& var_name : var_name_item.second) {
         post_op_inputs_.insert(var_name);
@@ -206,7 +211,8 @@ NgraphOperator::NgraphOperator(
     }
   }
 
-  if ((*(start - 1))->Type() == kFeedOpType && (*end)->Type() == kFetchOpType) {
+  if ((*(start - 1))->Type() == framework::kFeedOpType &&
+      (*end)->Type() == framework::kFetchOpType) {
     is_full_ = true;
   }
 
@@ -216,9 +222,9 @@ NgraphOperator::NgraphOperator(
 void NgraphOperator::Process() {
   auto& bdesc = pdesc_.Block(block_);
   for (auto& var : bdesc.AllVars()) {
-    if (!(var->GetType() == proto::VarType::SELECTED_ROWS ||
-          var->GetType() == proto::VarType::LOD_TENSOR ||
-          var->GetType() == proto::VarType::LOD_TENSOR_ARRAY)) {
+    if (!(var->GetType() == framework::proto::VarType::SELECTED_ROWS ||
+          var->GetType() == framework::proto::VarType::LOD_TENSOR ||
+          var->GetType() == framework::proto::VarType::LOD_TENSOR_ARRAY)) {
       continue;
     }
 
@@ -242,14 +248,14 @@ void NgraphOperator::Process() {
   }
 
   for (auto* op : bdesc.AllOps()) {
-    if (op->Type() == kFetchOpType) {
+    if (op->Type() == framework::kFetchOpType) {
       std::string fetch_target_name = op->Input("X")[0];
       fetches_.insert(fetch_target_name);
     }
   }
 }
 
-void NgraphOperator::RunImpl(const Scope& scope,
+void NgraphOperator::RunImpl(const framework::Scope& scope,
                              const platform::Place& place) const {
   op_state ng_op_state = PARTIAL_TEST;
   auto& bdesc = pdesc_.Block(block_);
@@ -276,13 +282,14 @@ std::unordered_map<std::string, std::shared_ptr<ngraph::Function>>
 std::shared_ptr<ngraph::runtime::Backend> NgraphEngine::backend_ =
     ngraph::runtime::Backend::create("CPU");
 
-void NgraphEngine::GetNgInputShape(std::shared_ptr<OperatorBase> op) {
-  RuntimeContext ctx(op->Inputs(), op->Outputs(), scope_);
+void NgraphEngine::GetNgInputShape(
+    std::shared_ptr<framework::OperatorBase> op) {
+  framework::RuntimeContext ctx(op->Inputs(), op->Outputs(), scope_);
   op->RuntimeInferShape(scope_, place_, ctx);
   for (auto& var_name_item : op->Inputs()) {
     for (auto& var_name : var_name_item.second) {
       auto* var = scope_.FindVar(var_name);
-      if (var && var->IsType<LoDTensor>()) {
+      if (var && var->IsType<framework::LoDTensor>()) {
         auto* tensor_pd = GetLoDTensorOrSelectedRowsValueFromVar(*var);
         auto sp = Ddim2Shape(tensor_pd->dims());
         if (std::find(var_in_.begin(), var_in_.end(), var_name) !=
@@ -301,17 +308,21 @@ void NgraphEngine::GetNgInputShape(std::shared_ptr<OperatorBase> op) {
 }
 
 void NgraphEngine::BuildNgNodes() {
-  for (auto& var_name : var_out_) {
-    if (var_node_map_->find(var_name) == var_node_map_->end()) {
-      auto* var = scope_.FindVar(var_name);
-      if (var && var->IsType<LoDTensor>()) {
-        auto* tensor_pd = GetLoDTensorOrSelectedRowsValueFromVar(*var);
-        auto& ddim = tensor_pd->dims();
-        auto ng_shape = Ddim2Shape(ddim);
-        auto ng_type = var_type_map_.at(var_name);
-        auto prm =
-            std::make_shared<ngraph::op::Parameter>(ng_type, ng_shape, true);
-        (*var_node_map_)[var_name] = prm;
+  for (auto& op : fused_ops_) {
+    for (auto& var_name_item : op->Outputs()) {
+      for (auto& var_name : var_name_item.second) {
+        if (var_node_map_->find(var_name) == var_node_map_->end()) {
+          auto* var = scope_.FindVar(var_name);
+          if (var && var->IsType<framework::LoDTensor>()) {
+            auto* tensor_pd = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+            auto& ddim = tensor_pd->dims();
+            auto ng_shape = Ddim2Shape(ddim);
+            auto ng_type = var_type_map_.at(var_name);
+            auto prm = std::make_shared<ngraph::op::Parameter>(ng_type,
+                                                               ng_shape, true);
+            (*var_node_map_)[var_name] = prm;
+          }
+        }
       }
     }
   }
@@ -432,7 +443,7 @@ std::shared_ptr<std::string> NgraphEngine::GetCacheKey() {
 
   for (auto& var_name : var_out_) {
     auto* var = scope_.FindVar(var_name);
-    if (var && var->IsType<LoDTensor>()) {
+    if (var && var->IsType<framework::LoDTensor>()) {
       auto* tensor_pd = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       auto& ddim = tensor_pd->dims();
       for (int i = 0; i < ddim.size(); ++i) {
@@ -458,7 +469,8 @@ void NgraphEngine::GetNgFunction() {
   }
 }
 
-void NgraphEngine::Run(const Scope& scope, const platform::Place& place) const {
+void NgraphEngine::Run(const framework::Scope& scope,
+                       const platform::Place& place) const {
   std::vector<std::shared_ptr<ngraph::runtime::Tensor>> t_in;
   std::vector<std::shared_ptr<ngraph::runtime::Tensor>> t_out;
 
@@ -467,30 +479,26 @@ void NgraphEngine::Run(const Scope& scope, const platform::Place& place) const {
     auto sp = var_node_map_->at(vi)->get_shape();
     std::shared_ptr<ngraph::runtime::Tensor> ti;
     auto* var = scope.FindVar(vi);
-    if (var && var->IsType<LoDTensor>()) {
-      auto* tensor_pd = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+    if (var && var->IsType<framework::LoDTensor>()) {
+      auto* tensor_pd = GetMutableLoDTensorOrSelectedRowsValueFromVar(var);
       PADDLE_ENFORCE(sp == Ddim2Shape(tensor_pd->dims()),
                      "Ensure ngraph tensor layout align with paddle tensor");
-      if (tensor_pd->type() == proto::VarType::FP32) {
-        const float* arr = tensor_pd->data<float>();
-        ti = backend_->create_tensor(ngraph::element::f32, sp,
-                                     const_cast<float*>(arr));
-      } else if (tensor_pd->type() == proto::VarType::INT32) {
-        const int* arr = tensor_pd->data<int>();
-        ti = backend_->create_tensor(ngraph::element::i32, sp,
-                                     const_cast<int*>(arr));
-      } else if (tensor_pd->type() == proto::VarType::INT64) {
-        const int64_t* arr = tensor_pd->data<int64_t>();
-        ti = backend_->create_tensor(ngraph::element::i64, sp,
-                                     const_cast<int64_t*>(arr));
-      } else if (tensor_pd->type() == proto::VarType::FP64) {
-        const double* arr = tensor_pd->data<double>();
-        ti = backend_->create_tensor(ngraph::element::f64, sp,
-                                     const_cast<double*>(arr));
-      } else if (tensor_pd->type() == proto::VarType::BOOL) {
-        const bool* arr = tensor_pd->data<bool>();
-        ti = backend_->create_tensor(ngraph::element::boolean, sp,
-                                     const_cast<bool*>(arr));
+      auto ng_type = var_type_map_.at(vi);
+      if (ng_type == ngraph::element::f32) {
+        auto pd_arr = tensor_pd->mutable_data<float>(place);
+        ti = backend_->create_tensor(ng_type, sp, pd_arr);
+      } else if (ng_type == ngraph::element::i32) {
+        auto pd_arr = tensor_pd->mutable_data<int>(place);
+        ti = backend_->create_tensor(ng_type, sp, pd_arr);
+      } else if (ng_type == ngraph::element::i64) {
+        auto pd_arr = tensor_pd->mutable_data<int64_t>(place);
+        ti = backend_->create_tensor(ng_type, sp, pd_arr);
+      } else if (ng_type == ngraph::element::f64) {
+        auto pd_arr = tensor_pd->mutable_data<double>(place);
+        ti = backend_->create_tensor(ng_type, sp, pd_arr);
+      } else if (ng_type == ngraph::element::boolean) {
+        auto pd_arr = tensor_pd->mutable_data<bool>(place);
+        ti = backend_->create_tensor(ng_type, sp, pd_arr);
       } else {
         PADDLE_THROW("Data type not handling for var %s", vi);
       }
@@ -509,36 +517,36 @@ void NgraphEngine::Run(const Scope& scope, const platform::Place& place) const {
   }
 
   for (size_t i = 0; i < var_out_.size(); ++i) {
-    auto var_name = var_out_[i];
-    auto* var = scope.FindVar(var_name);
+    auto vo = var_out_[i];
+    auto* var = scope.FindVar(vo);
     std::shared_ptr<ngraph::runtime::Tensor> to;
-    if (var && var->IsType<LoDTensor>()) {
+    if (var && var->IsType<framework::LoDTensor>()) {
       auto* tensor_pd = GetMutableLoDTensorOrSelectedRowsValueFromVar(var);
       auto dd = tensor_pd->dims();
       ngraph::Shape sp = Ddim2Shape(dd);
-      auto ng_type = var_type_map_.at(var_name);
+      auto ng_type = var_type_map_.at(vo);
       if (ng_type == ngraph::element::f32) {
         auto pd_arr = tensor_pd->mutable_data<float>(place);
-        to = backend_->create_tensor(ngraph::element::f32, sp, pd_arr);
+        to = backend_->create_tensor(ng_type, sp, pd_arr);
       } else if (ng_type == ngraph::element::i64) {
         auto pd_arr = tensor_pd->mutable_data<int64_t>(place);
-        to = backend_->create_tensor(ngraph::element::i64, sp, pd_arr);
+        to = backend_->create_tensor(ng_type, sp, pd_arr);
       } else if (ng_type == ngraph::element::f64) {
         auto pd_arr = tensor_pd->mutable_data<double>(place);
-        to = backend_->create_tensor(ngraph::element::f64, sp, pd_arr);
+        to = backend_->create_tensor(ng_type, sp, pd_arr);
       } else if (ng_type == ngraph::element::boolean) {
         auto pd_arr = tensor_pd->mutable_data<bool>(place);
-        to = backend_->create_tensor(ngraph::element::boolean, sp, pd_arr);
+        to = backend_->create_tensor(ng_type, sp, pd_arr);
       } else {
-        PADDLE_THROW("Data type not handled in for var %s", var_name);
+        PADDLE_THROW("Data type not handled in for var %s", vo);
       }
       t_out.push_back(to);
     } else {
-      PADDLE_THROW("Cannot find var or tensor with var name %s", var_name);
+      PADDLE_THROW("Cannot find var or tensor with var name %s", vo);
     }
   }
 
   backend_->call(backend_->compile(ngraph_function_), t_out, t_in);
 }  // NgraphEngine::RunImpl
-}  // namespace framework
+}  // namespace operators
 }  // namespace paddle

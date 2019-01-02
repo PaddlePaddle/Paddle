@@ -30,9 +30,9 @@ limitations under the License. */
 #include "ngraph/type/element_type.hpp"
 
 namespace paddle {
-namespace framework {
+namespace operators {
 
-class NgraphOperator : public OperatorBase {
+class NgraphOperator : public framework::OperatorBase {
  public:
   static std::vector<
       std::vector<std::vector<std::unique_ptr<OperatorBase>>::iterator>>
@@ -40,16 +40,19 @@ class NgraphOperator : public OperatorBase {
       std::vector<std::unique_ptr<paddle::framework::OperatorBase>>* ops);
 
   explicit NgraphOperator(
-      const ProgramDesc& prog, size_t block_id,
+      const framework::ProgramDesc& prog, size_t block_id,
       std::vector<std::unique_ptr<OperatorBase>>::iterator start,
       std::vector<std::unique_ptr<OperatorBase>>::iterator end,
-      const std::string& type = "fused_op", const VariableNameMap& inputs = {},
-      const VariableNameMap& outputs = {}, const AttributeMap& attrs = {});
+      const std::string& type = "fused_op",
+      const framework::VariableNameMap& inputs = {},
+      const framework::VariableNameMap& outputs = {},
+      const framework::AttributeMap& attrs = {});
 
-  void RunImpl(const Scope& scope, const platform::Place& place) const final;
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& place) const final;
 
  private:
-  const ProgramDesc pdesc_;
+  const framework::ProgramDesc pdesc_;
   size_t block_;
   std::vector<std::shared_ptr<OperatorBase>> fused_ops_;
   std::unordered_map<std::string, ngraph::element::Type> var_type_map_;
@@ -60,5 +63,5 @@ class NgraphOperator : public OperatorBase {
 
   void Process();
 };
-}  // namespace framework
+}  // namespace operators
 }  // namespace paddle
