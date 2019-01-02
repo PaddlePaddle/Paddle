@@ -12,22 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-#include <functional>
-#include <vector>
-
 #include "ngraph/ngraph.hpp"
-#include "paddle/fluid/framework/ngraph_bridge.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/ngraph/ngraph_bridge.h"
 #include "paddle/fluid/operators/ngraph/ngraph_ops.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
 
 namespace paddle {
-namespace framework {
+namespace operators {
 
 std::map<std::string,
-         std::function<void(const std::shared_ptr<OperatorBase>&,
+         std::function<void(const std::shared_ptr<framework::OperatorBase>&,
                             std::shared_ptr<std::unordered_map<
                                 std::string, std::shared_ptr<ngraph::Node>>>)>>
     NgraphBridge::NG_NODE_MAP = {
@@ -41,10 +37,11 @@ std::map<std::string,
         {"tanh", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Tanh>},
         {"top_k", paddle::operators::ngraphs::BuildTopKNode}};
 
-void NgraphBridge::BuildNgNode(const std::shared_ptr<OperatorBase>& op) {
+void NgraphBridge::BuildNgNode(
+    const std::shared_ptr<framework::OperatorBase>& op) {
   auto& op_type = op->Type();
   NG_NODE_MAP[op_type](op, ngb_node_map_);
 }
 
-}  // namespace framework
+}  // namespace operators
 }  // namespace paddle

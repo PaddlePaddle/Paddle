@@ -33,6 +33,10 @@ if (WITH_GPU AND TENSORRT_FOUND)
     add_subdirectory(tensorrt)
 endif()
 
+if (WITH_NGRAPH)
+    add_subdirectory(ngraph)
+endif()
+
 SET(OP_HEADER_DEPS xxhash)
 if (WITH_GPU)
     SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)
