@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,11 +26,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/distributed/distributed_pb.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_service.h"
+#include "paddle/fluid/operators/distributed/request.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
@@ -40,7 +42,7 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-class RequestBase;
+class RPCRequestBase;
 
 class AsyncGRPCServer final : public RPCServer {
  public:
@@ -57,7 +59,7 @@ class AsyncGRPCServer final : public RPCServer {
       ::grpc::ServerCompletionQueue* cq, const std::string& rpc_name,
       std::function<void(const std::string&, int)> TryToRegisterNewOne);
 
-  void TryToRegisterNewOne(const std::string& rpc_name, int req_id);
+  void TryToRegisterNewOne(const RequestType rpc_name, int req_id);
   void ShutdownQueue();
   void ShutDownImpl() override;
 
@@ -78,11 +80,14 @@ class AsyncGRPCServer final : public RPCServer {
 
   int ready_;
 
-  std::map<std::string, std::unique_ptr<::grpc::ServerCompletionQueue>> rpc_cq_;
-  std::map<std::string, std::vector<std::unique_ptr<std::thread>>> rpc_threads_;
-  std::map<std::string, std::vector<RequestBase*>> rpc_reqs_;
+  std::unordered_map<std::string,
+                     std::unique_ptr<::grpc::ServerCompletionQueue>>
+      rpc_cq_;
+  std::unordered_map<std::string, std::vector<std::unique_ptr<std::thread>>>
+      rpc_threads_;
+  std::unordered_map<std::string, std::vector<RPCRequestBase*>> rpc_reqs_;
 };
 
-};  // namespace distributed
-};  // namespace operators
-};  // namespace paddle
+}  // namespace distributed
+}  // namespace operators
+}  // namespace paddle

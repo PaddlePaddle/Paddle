@@ -17,14 +17,14 @@ package sendrecv;
 option cc_generic_services = @cc_generic_services@;
 
 service SendRecvService {
-  rpc SendVariable(VariableMessage) returns (VoidMessage) {}
+  rpc SendVariable(VariableMessage) returns (VariableMessage) {}
   rpc GetVariable(VariableMessage) returns (VariableMessage) {}
   rpc PrefetchVariable(VariableMessage) returns (VariableMessage) {}
 
-  rpc CheckpointNotify(VariableMessage) returns (VoidMessage) {}
+  rpc CheckpointNotify(VariableMessage) returns (VariableMessage) {}
 
   rpc GetMonomerVariable(VariableMessage) returns (VariableMessage) {}
-  rpc GetMonomerBarrier(VariableMessage) returns (VoidMessage) {}
+  rpc GetMonomerBarrier(VariableMessage) returns (VariableMessage) {}
 }
 
 enum VarType {

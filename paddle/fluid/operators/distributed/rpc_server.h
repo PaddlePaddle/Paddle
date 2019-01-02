@@ -46,6 +46,7 @@ class RPCServer {
         need_reset_all_vars_(false) {}
 
   virtual ~RPCServer() {}
+
   virtual void StartServer() = 0;
   virtual void WaitServerReady() = 0;
 
@@ -61,8 +62,8 @@ class RPCServer {
 
   void Complete();
 
-  int GetThreadNum(const std::string& rpc_name) {
-    return rpc_thread_num_[rpc_name];
+  int GetThreadNum(const RequestType req_type) {
+    return rpc_thread_num_[req_type];
   }
 
   // ----------------------------------------------------------------
@@ -81,8 +82,8 @@ class RPCServer {
 
   // TODO(typhoonzero): in here or in handler or in collective server?
   // mark variable ready for workers to fetch, and only for fetch n
-  // (num_workers)
-  // times then the barrier will be removed.
+  // (num_workers) times then the barrier will be removed.
+  // TODO(typhoonzero): Should use var ready barriers for recv
   void MarkVarReady(const std::string& varname);
   void WaitVarReady(const std::string& varname);
   void ResetVarReady();
@@ -99,7 +100,7 @@ class RPCServer {
   std::unique_ptr<Barrier> send_barrier_;
   std::unique_ptr<Barrier> recv_barrier_;
   // TODO(typhoonzero): support mark each parameter ready for get.
-  std::unordered_map<std::string, Barrier> var_ready_map_;
+  std::unordered_map<std::string, std::unique_ptr<Barrier>> var_ready_map_;
 
  protected:
   std::string bind_address_;
@@ -109,7 +110,7 @@ class RPCServer {
   bool need_reset_all_vars_;
 
   std::unordered_map<RequestType, RequestHandler*, EnumClassHash> rpc_call_map_;
-  std::unordered_map<std::string, int> rpc_thread_num_;
+  std::unordered_map<RequestType, int, EnumClassHash> rpc_thread_num_;
   friend class RequestHandler;
 };
 

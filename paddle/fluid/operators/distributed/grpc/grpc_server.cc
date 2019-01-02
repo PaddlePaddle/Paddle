@@ -25,320 +25,6 @@ DECLARE_bool(rpc_disable_reuse_port);
 namespace paddle {
 namespace operators {
 namespace distributed {
-enum CallStatus { PROCESS = 0, FINISH };
-
-// reference:
-// https://stackoverflow.com/questions/41732884/grpc-multiple-services-in-cpp-async-server
-class RequestBase {
- public:
-  explicit RequestBase(GrpcService::AsyncService* service,
-                       ::grpc::ServerCompletionQueue* cq,
-                       RequestHandler* request_handler, int req_id)
-      : service_(service),
-        cq_(cq),
-        status_(PROCESS),
-        request_handler_(request_handler),
-        req_id_(req_id) {
-    PADDLE_ENFORCE(cq_);
-  }
-  virtual ~RequestBase() {}
-  virtual void Process() = 0;
-
-  std::string Status2String(const std::string& method) {
-    std::string status = "Process";
-    if (status_ == FINISH) {
-      status = "Finish";
-    }
-
-    std::ostringstream s;
-    s << method << " name:[" << GetReqName() << "]"
-      << ", ep:[" << ctx_.peer() << "]"
-      << " " << status << " using req_id:" << req_id_;
-    return s.str();
-  }
-
-  CallStatus Status() const {
-    std::lock_guard<std::mutex> l(status_mu_);
-    return status_;
-  }
-
-  template <typename T>
-  void Finish(const T& reply, ServerAsyncResponseWriter<T>* responder) {
-    std::lock_guard<std::mutex> l(status_mu_);
-    status_ = FINISH;
-    responder->Finish(reply, ::grpc::Status::OK,
-                      reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
-  }
-  virtual std::string GetReqName() = 0;
-
- protected:
-  mutable std::mutex status_mu_;
-  ::grpc::ServerContext ctx_;
-  GrpcService::AsyncService* service_;
-  ::grpc::ServerCompletionQueue* cq_;
-  CallStatus status_;
-  RequestHandler* request_handler_;
-  int req_id_;
-};
-
-class RequestSend final : public RequestBase {
- public:
-  explicit RequestSend(GrpcService::AsyncService* service,
-                       ::grpc::ServerCompletionQueue* cq,
-                       RequestHandler* request_handler, int req_id)
-      : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
-    request_.reset(new GRPCVariableResponse(request_handler->scope(),
-                                            request_handler->dev_ctx(),
-                                            !request_handler->sync_mode()));
-    int method_id = static_cast<int>(distributed::GrpcMethod::kSendVariable);
-    service_->RequestAsyncUnary(
-        method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
-        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
-  }
-  virtual ~RequestSend() {}
-  std::string GetReqName() override { return request_->Varname(); }
-
-  void Process() override {
-    std::string varname = GetReqName();
-    VLOG(4) << "RequestSend var_name:" << varname;
-
-    auto scope = request_->GetMutableLocalScope();
-    auto invar = request_->GetVar();
-    int trainer_id = request_->GetTrainerId();
-    framework::Variable* outvar = nullptr;
-
-    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
-    Finish(reply_, &responder_);
-  }
-
- protected:
-  sendrecv::VoidMessage reply_;
-  std::shared_ptr<GRPCVariableResponse> request_;
-  ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
-};
-
-class RequestGet final : public RequestBase {
- public:
-  explicit RequestGet(GrpcService::AsyncService* service,
-                      ::grpc::ServerCompletionQueue* cq,
-                      RequestHandler* request_handler, int req_id)
-      : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
-    auto method_id = static_cast<int>(distributed::GrpcMethod::kGetVariable);
-    service_->RequestAsyncUnary(
-        method_id, &ctx_, &request_, &responder_, cq_, cq_,
-        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
-  }
-
-  virtual ~RequestGet() {}
-
-  std::string GetReqName() override { return request_.varname(); }
-
-  void Process() override {
-    // proc request.
-    std::string varname = request_.varname();
-    int trainer_id = request_.trainer_id();
-    VLOG(4) << "RequestGet " << varname;
-
-    auto scope = request_handler_->scope();
-    auto invar = scope->FindVar(varname);
-    framework::Variable* outvar = nullptr;
-
-    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
-
-    if (outvar) {
-      SerializeToByteBuffer(varname, outvar, *request_handler_->dev_ctx(),
-                            &reply_);
-    }
-    Finish(reply_, &responder_);
-  }
-
- protected:
-  sendrecv::VariableMessage request_;
-  ::grpc::ByteBuffer reply_;
-  ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
-};
-
-class RequestGetMonomerVariable final : public RequestBase {
- public:
-  explicit RequestGetMonomerVariable(GrpcService::AsyncService* service,
-                                     ::grpc::ServerCompletionQueue* cq,
-                                     RequestHandler* request_handler,
-                                     int req_id, RPCServer* rpc_server)
-      : RequestBase(service, cq, request_handler, req_id),
-        responder_(&ctx_),
-        rpc_server_(rpc_server) {
-    auto method_id =
-        static_cast<int>(distributed::GrpcMethod::kGetMonomerVariable);
-    service_->RequestAsyncUnary(
-        method_id, &ctx_, &request_, &responder_, cq_, cq_,
-        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
-  }
-
-  virtual ~RequestGetMonomerVariable() {}
-
-  std::string GetReqName() override { return request_.varname(); }
-
-  void Process() override {
-    // proc request.
-    std::string varname = request_.varname();
-
-    rpc_server_->WaitVarCond(varname);
-    MonomerHandle h = rpc_server_->GetMonomer(varname);
-
-    auto scope = h.scope_;
-    auto invar = scope->FindVar(varname);
-    framework::Variable* outvar = nullptr;
-
-    request_handler_->Handle(varname, scope, invar, &outvar,
-                             request_.trainer_id());
-
-    if (outvar) {
-      SerializeToByteBuffer(varname, outvar, *h.dev_ctx_, &reply_);
-    }
-    Finish(reply_, &responder_);
-  }
-
- protected:
-  sendrecv::VariableMessage request_;
-  ::grpc::ByteBuffer reply_;
-  ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
-  RPCServer* rpc_server_{nullptr};
-};
-
-class RequestGetMonomerBarrier final : public RequestBase {
- public:
-  explicit RequestGetMonomerBarrier(GrpcService::AsyncService* service,
-                                    ::grpc::ServerCompletionQueue* cq,
-                                    RequestHandler* request_handler, int req_id,
-                                    RPCServer* rpc_server)
-      : RequestBase(service, cq, request_handler, req_id),
-        responder_(&ctx_),
-        rpc_server_(rpc_server) {
-    auto method_id =
-        static_cast<int>(distributed::GrpcMethod::kGetMonomerBarrier);
-    service_->RequestAsyncUnary(
-        method_id, &ctx_, &request_, &responder_, cq_, cq_,
-        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
-  }
-
-  virtual ~RequestGetMonomerBarrier() {}
-
-  std::string GetReqName() override { return request_.varname(); }
-
-  void Process() override {
-    // proc request.
-    std::string varname = request_.varname();
-    VLOG(4) << "RequestGetMonomerBarrier " << varname;
-
-    rpc_server_->WaitVarCond(varname);
-    MonomerHandle h = rpc_server_->GetMonomer(varname);
-
-    framework::Scope* scope = nullptr;
-    framework::Variable* invar = nullptr;
-    framework::Variable* outvar = nullptr;
-
-    request_handler_->Handle(varname, scope, invar, &outvar,
-                             request_.trainer_id());
-
-    Finish(reply_, &responder_);
-  }
-
- protected:
-  sendrecv::VariableMessage request_;
-  sendrecv::VoidMessage reply_;
-  ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
-  RPCServer* rpc_server_{nullptr};
-};
-
-class RequestPrefetch final : public RequestBase {
- public:
-  explicit RequestPrefetch(GrpcService::AsyncService* service,
-                           ::grpc::ServerCompletionQueue* cq,
-                           RequestHandler* request_handler, int req_id)
-      : RequestBase(service, cq, request_handler, req_id),
-        responder_(&ctx_),
-        local_scope_(nullptr) {
-    request_.reset(new GRPCVariableResponse(request_handler->scope(),
-                                            request_handler->dev_ctx(), true));
-    int method_id =
-        static_cast<int>(distributed::GrpcMethod::kPrefetchVariable);
-    service_->RequestAsyncUnary(
-        method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
-        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
-  }
-
-  virtual ~RequestPrefetch() {}
-
-  std::string GetReqName() override { return request_->Varname(); }
-
-  void Process() override {
-    // prefetch process...
-    std::string in_var_name = request_->Varname();
-    std::string out_var_name = request_->OutVarname();
-    std::string table_name = request_->TableName();
-    int trainer_id = request_->GetTrainerId();
-    VLOG(4) << "RequestPrefetch, in_var_name: " << in_var_name
-            << " out_var_name: " << out_var_name;
-
-    auto scope = request_->GetMutableLocalScope();
-    auto invar = scope->FindVar(in_var_name);
-    // out var must be created in local scope!
-    framework::Variable* outvar = scope->Var(out_var_name);
-
-    request_handler_->Handle(in_var_name, scope, invar, &outvar, trainer_id,
-                             out_var_name, table_name);
-
-    SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
-                          &reply_);
-    Finish(reply_, &responder_);
-  }
-
- protected:
-  std::shared_ptr<GRPCVariableResponse> request_;
-  ::grpc::ByteBuffer reply_;
-  ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
-  framework::Scope* local_scope_;
-};
-
-class RequestCheckpointNotify final : public RequestBase {
- public:
-  explicit RequestCheckpointNotify(GrpcService::AsyncService* service,
-                                   ::grpc::ServerCompletionQueue* cq,
-                                   RequestHandler* request_handler, int req_id)
-      : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
-    request_.reset(new GRPCVariableResponse(request_handler->scope(),
-                                            request_handler->dev_ctx()));
-    int method_id =
-        static_cast<int>(distributed::GrpcMethod::kCheckpointNotify);
-    service_->RequestAsyncUnary(
-        method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
-        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
-  }
-
-  virtual ~RequestCheckpointNotify() {}
-
-  std::string GetReqName() override { return request_->Varname(); }
-
-  void Process() override {
-    auto scope = request_->GetMutableLocalScope();
-
-    std::string checkpoint_notify = request_->Varname();
-    std::string checkpoint_dir = request_->OutVarname();
-    int trainer_id = request_->GetTrainerId();
-
-    VLOG(4) << "RequestCheckpointNotify notify: " << checkpoint_notify
-            << ", dir: " << checkpoint_dir;
-
-    request_handler_->Handle(checkpoint_notify, scope, nullptr, nullptr,
-                             trainer_id, checkpoint_dir);
-    Finish(reply_, &responder_);
-  }
-
- protected:
-  std::shared_ptr<GRPCVariableResponse> request_;
-  sendrecv::VoidMessage reply_;
-  ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
-};
 
 void AsyncGRPCServer::WaitServerReady() {
   VLOG(4) << "AsyncGRPCServer is waiting server ready";
@@ -387,21 +73,21 @@ void AsyncGRPCServer::StartServer() {
                 std::placeholders::_1, std::placeholders::_2);
 
   for (auto& t : rpc_call_map_) {
-    auto& rpc_name = t.first;
-    auto& cq = rpc_cq_[rpc_name];
-    auto threadnum = rpc_thread_num_[rpc_name];
-    auto& reqs = rpc_reqs_[rpc_name];
+    auto rpc_type = t.first;
+    auto& cq = rpc_cq_[rpc_type];
+    auto threadnum = rpc_thread_num_[rpc_type];
+    auto& reqs = rpc_reqs_[rpc_type];
 
     reqs.reserve(kRequestBufSize);
 
     for (int i = 0; i < kRequestBufSize; i++) {
-      VLOG(6) << "TryToRegisterNewOne on RPC NAME: " << rpc_name << " I: " << i;
-      TryToRegisterNewOne(rpc_name, i);
+      VLOG(6) << "TryToRegisterNewOne on RPC NAME: " << rpc_type << " I: " << i;
+      TryToRegisterNewOne(rpc_type, i);
     }
 
     for (int i = 0; i < threadnum; i++) {
-      rpc_threads_[rpc_name].emplace_back(new std::thread(std::bind(
-          &AsyncGRPCServer::HandleRequest, this, cq.get(), rpc_name, f)));
+      rpc_threads_[rpc_type].emplace_back(new std::thread(std::bind(
+          &AsyncGRPCServer::HandleRequest, this, cq.get(), rpc_type, f)));
       VLOG(4) << t.first << " creates threads!";
     }
   }
@@ -440,63 +126,66 @@ void AsyncGRPCServer::ShutDownImpl() {
   server_->Shutdown();
 }
 
-void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
+void AsyncGRPCServer::TryToRegisterNewOne(const RequestType rpc_type,
                                           int req_id) {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
-    VLOG(4) << "shutdown, do not TryToRegisterNewSendOne";
+    VLOG(4) << "shutdown, skip TryToRegisterNewOne";
     return;
   }
 
-  VLOG(4) << "TryToRegisterNewOne on RPC NAME: " << rpc_name
+  VLOG(4) << "TryToRegisterNewOne on RPC type: " << rpc_type
           << " REQ ID: " << req_id;
 
-  auto& reqs = rpc_reqs_[rpc_name];
-  auto& handler = rpc_call_map_[rpc_name];
-  auto& cq = rpc_cq_[rpc_name];
+  auto& reqs = rpc_reqs_[rpc_type];
+  auto& handler = rpc_call_map_[rpc_type];
+  auto& cq = rpc_cq_[rpc_type];
 
   RequestBase* b = nullptr;
-  if (rpc_name == kRequestSend) {
-    b = new RequestSend(&service_, cq.get(), handler, req_id);
-  } else if (rpc_name == kRequestGet) {
-    b = new RequestGet(&service_, cq.get(), handler, req_id);
-  } else if (rpc_name == kRequestGetMonomerVariable) {
-    b = new RequestGetMonomerVariable(&service_, cq.get(), handler, req_id,
-                                      this);
-  } else if (rpc_name == kRequestGetMonomerBarrier) {
-    b = new RequestGetMonomerBarrier(&service_, cq.get(), handler, req_id,
-                                     this);
-  } else if (rpc_name == kRequestPrefetch) {
-    b = new RequestPrefetch(&service_, cq.get(), handler, req_id);
-  } else if (rpc_name == kRequestCheckpoint) {
-    b = new RequestCheckpointNotify(&service_, cq.get(), handler, req_id);
-  } else {
-    PADDLE_ENFORCE(false, "not supported rpc");
+
+  switch (rpc_type) {
+    case RequestType::SEND:
+      b = new GRPCRequestSend(&service_, cq.get(), handler, req_id);
+      break;
+    case RequestType::RECV:
+      b = new GRPCRequestGet(&service_, cq.get(), handler, req_id);
+      break;
+    case RequestType::GET_MONOMER:
+      b = new GRPCRequestGetMonomer(&service_, cq.get(), handler, req_id);
+      break;
+    case RequestType::GET_MONOMER_BARRIER:
+      b = new GRPCRequestGetMonomerBarrier(&service_, cq.get(), handler,
+                                           req_id);
+      break;
+    case RequestType::PREFETCH:
+      b = new GRPCRequestPrefetch(&service_, cq.get(), handler, req_id);
+      break;
+    case RequestType::CHECKPOINT:
+      b = new GRPCRequestCheckpointNotify(&service_, cq.get(), handler, req_id);
+      break;
   }
-
   reqs[req_id] = b;
-
   VLOG(4) << "TryToRegisterNewOne status:" << b->Status();
 }
 
 void AsyncGRPCServer::HandleRequest(
-    ::grpc::ServerCompletionQueue* cq, const std::string& rpc_name,
+    ::grpc::ServerCompletionQueue* cq, const RequestType rpc_type,
     std::function<void(const std::string&, int)> TryToRegisterNewOne) {
   void* tag = NULL;
   bool ok = false;
 
   while (true) {
-    VLOG(4) << "HandleRequest " << rpc_name << " wait next";
+    VLOG(4) << "HandleRequest " << rpc_type << " wait next";
     if (!cq->Next(&tag, &ok)) {
-      LOG(WARNING) << "CompletionQueue " << rpc_name << " shutdown!";
+      LOG(WARNING) << "CompletionQueue " << rpc_type << " shutdown!";
       break;
     }
 
     int req_id = static_cast<int>(reinterpret_cast<intptr_t>(tag));
-    VLOG(4) << "HandleRequest " << rpc_name << ", req_id:" << req_id
+    VLOG(4) << "HandleRequest " << rpc_type << ", req_id:" << req_id
             << " get next";
 
-    auto& reqs = rpc_reqs_[rpc_name];
+    auto& reqs = rpc_reqs_[rpc_type];
     RequestBase* base = nullptr;
     {
       PADDLE_ENFORCE(req_id >= 0 && req_id < kRequestBufSize);
@@ -504,16 +193,16 @@ void AsyncGRPCServer::HandleRequest(
       base = reqs[req_id];
     }
 
-    VLOG(3) << base->Status2String(rpc_name);
+    VLOG(4) << base->Status2String(rpc_type);
 
     // reference:
     // https://github.com/tensorflow/tensorflow/issues/5596
     // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
     // https://groups.google.com/forum/#!topic/grpc-io/ywATt88Ef_I
     if (!ok) {
-      VLOG(4) << "completion queue:" << rpc_name << " recv no regular event"
-              << " context:" << base->Status2String(rpc_name);
-      TryToRegisterNewOne(rpc_name, req_id);
+      VLOG(4) << "completion queue:" << rpc_type << " recv no regular event"
+              << " context:" << base->Status2String(rpc_type);
+      TryToRegisterNewOne(rpc_type, req_id);
       delete base;
       continue;
     }
@@ -524,7 +213,7 @@ void AsyncGRPCServer::HandleRequest(
         break;
       }
       case FINISH: {
-        TryToRegisterNewOne(rpc_name, req_id);
+        TryToRegisterNewOne(rpc_type, req_id);
         delete base;
         break;
       }

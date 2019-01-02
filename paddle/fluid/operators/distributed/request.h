@@ -26,11 +26,10 @@ namespace distributed {
 enum RequestType {
   SEND = 0,
   RECV,
-  SEND_BARRIER,
-  RECV_BARRIER,
   PREFETCH,
   CHECKPOINT,
-  MONOMER
+  GET_MONOMER,
+  GET_MONOMER_BARRIER,
 };
 
 class RPCRequest {

@@ -70,6 +70,7 @@ int RPCServer::GetNumClients() {
 void RPCServer::RegisterRPC(const RequestType req_type, RequestHandler* handler,
                             int thread_num) {
   if (rpc_call_map_.find(req_type) == rpc_call_map_.end()) {
+    rpc_thread_num_[req_type] = thread_num;
     rpc_call_map_[req_type] = handler;
   } else {
     LOG(WARNING) << "RPC call handler already registered for type: "
@@ -91,6 +92,26 @@ void RPCServer::WaitState(const RPCServerState state) {
   std::unique_lock<std::mutex> lock(mutex_);
   state_cond_.wait(lock,
                    [=] { return (state_ == state || exit_flag_.load()); });
+}
+
+// ----------------------------------------------------------------
+// variable scope barriers
+void RPCServer::MarkVarReady(const std::string& varname) {
+  if (var_ready_map_.find(varname) != var_ready_map_.end()) {
+    var_ready_map_[varname].reset(new Barrier(num_clients_));
+  }
+}
+
+void RPCServer::WaitVarReady(const std::string& varname) {
+  if (var_ready_map_.find(varname) != var_ready_map_.end()) {
+    var_ready_map_[varname]->Wait();
+  }
+}
+
+void RPCServer::ResetVarReady() {
+  if (!var_ready_map_.empty()) {
+    var_ready_map_.clear();
+  }
 }
 
 // void RPCServer::RegisterVar(const std::string& var_name,
