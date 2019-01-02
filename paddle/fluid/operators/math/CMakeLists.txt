@@ -53,7 +53,7 @@ math_library(sequence2batch)
 math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function)
 math_library(sequence_scale)
-math_library(softmax DEPS math_function)
+math_library(softmax DEPS math_function temp_allocator)
 
 math_library(matrix_bit_code)
 
