@@ -184,9 +184,7 @@ void SoftmaxCudaAccurateFunctor<T, ACCURATE_T>::operator()(
   auto tmp_allocation_ptr =
       platform::DeviceTemporaryAllocator::Instance().Get(ctx).Allocate(
           Y->numel() * sizeof(ACCURATE_T));
-  Tensor tmp_tensor = framework::GetTensor<ACCURATE_T>(
-      std::move(tmp_allocation_ptr), Y->dims());
-  auto* acc_out_data = tmp_tensor.mutable_data<ACCURATE_T>(ctx.GetPlace());
+  ACCURATE_T* acc_out_data = static_cast<ACCURATE_T>(tmp_allocation_ptr->ptr());
 
   // RowReduce to find max along every batch (axis 1)
   cub::Max max_op;
