@@ -502,22 +502,22 @@ def lstm(input,
     If Device is GPU, This op will use cudnn LSTM implementation
 
     A four-gate Long Short-Term Memory network with no peephole connections.
-    In the forward pass the output ht and cell output ct for a given iteration can be computed from the recurrent input ht-1, 
+    In the forward pass the output ht and cell output ct for a given iteration can be computed from the recurrent input ht-1,
     the cell input ct-1 and the previous layer input xt given matrices W, R and biases bW, bR from the following equations:
 
     .. math::
-    
-       i_t &= \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + bx_i + bh_i) 
-       
-       f_t &= \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + bx_f + bh_f) 
-       
-       o_t &= \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + bx_o + bh_o) 
-       
+
+       i_t &= \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + bx_i + bh_i)
+
+       f_t &= \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + bx_f + bh_f)
+
+       o_t &= \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + bx_o + bh_o)
+
        \\tilde{c_t} &= tanh(W_{cx}x_t + W_{ch}h_{t-1} + bx_c + bh_c)
-       
-       c_t &= f_t \odot c_{t-1} + i_t \odot \\tilde{c_t} 
-       
-       h_t &= o_t \odot tanh(c_t) 
+
+       c_t &= f_t \odot c_{t-1} + i_t \odot \\tilde{c_t}
+
+       h_t &= o_t \odot tanh(c_t)
 
     - $W$ terms denote weight matrices (e.g. $W_{ix}$ is the matrix
       of weights from the input gate to the input)
@@ -531,19 +531,19 @@ def lstm(input,
     - :math:`\\tilde{c_t}` is also called candidate hidden state,
       which is computed based on the current input and the previous hidden state.
 
-    Where sigmoid is the sigmoid operator: :math:`sigmoid(x) = 1 / (1 + e^{-x})` , * represents a point-wise multiplication, 
+    Where sigmoid is the sigmoid operator: :math:`sigmoid(x) = 1 / (1 + e^{-x})` , * represents a point-wise multiplication,
     X represensts a matrix multiplication
 
 
     Args:
         input (Variable): LSTM input tensor, shape MUST be ( seq_len x batch_size x input_size )
-        init_h(Variable): The initial hidden state of the LSTM                       
+        init_h(Variable): The initial hidden state of the LSTM
                        This is a tensor with shape ( num_layers x batch_size x hidden_size)
                        if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
         init_c(Variable): The initial cell state of the LSTM.
                        This is a tensor with shape ( num_layers x batch_size x hidden_size )
                        if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
-        max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len 
+        max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len
         hidden_size (int): hidden size of the LSTM
         num_layers (int): total layers number of the LSTM
         dropout_prob(float|0.0): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
@@ -558,18 +558,18 @@ def lstm(input,
 
 
     Returns:
-        rnn_out(Tensor),last_h(Tensor),last_c(Tensor):  
-                        
+        rnn_out(Tensor),last_h(Tensor),last_c(Tensor):
+
                         Three tensors, rnn_out, last_h, last_c:
-                        
+
                         - rnn_out is result of LSTM hidden, shape is (seq_len x batch_size x hidden_size) \
                           if is_bidirec set to True, shape will be ( seq_len x batch_sze x hidden_size*2)
                         - last_h is the hidden state of the last step of LSTM \
                           shape is ( num_layers x batch_size x hidden_size ) \
-                          if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)                     
+                          if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)
                         - last_c(Tensor): the cell state of the last step of LSTM \
                           shape is ( num_layers x batch_size x hidden_size ) \
-                          if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)                     
+                          if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)
 
 
     Examples:
@@ -1255,7 +1255,7 @@ def dropout(x,
                                            (mask is a tensor same shape with input, value is 0 or 1
                                            ratio of 0 is dropout_prob)
 
-                                        
+
     Returns:
         Variable: A tensor variable is the shape with `x`.
 
@@ -1346,10 +1346,10 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
          ValueError:
 
                       1. the 1st dimension of ``input`` and ``label`` are not equal.
-                      
+
                       2. when ``soft_label == True``, and the 2nd dimension of
                          ``input`` and ``label`` are not equal.
-                         
+
                       3. when ``soft_label == False``, and the 2nd dimension of
                          ``label`` is not 1.
 
@@ -1471,7 +1471,7 @@ def chunk_eval(input,
     This function computes and outputs the precision, recall and
     F1-score of chunk detection.
 
-    For some basics of chunking, please refer to 
+    For some basics of chunking, please refer to
     `Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>`_ .
 
     ChunkEvalOp computes the precision, recall, and F1-score of chunk detection,
@@ -2306,7 +2306,7 @@ def sequence_slice(input, offset, length, name=None):
                 out.lod = [[2, 1]],
                 out.dims = (3, 2).
 
-    Note: 
+    Note:
           The first dimension size of **input**, **offset** and **length**
           should be equal. The **offset** should start from 0.
 
@@ -2555,12 +2555,12 @@ def adaptive_pool2d(input,
     Examples:
         .. code-block:: python
 
-          # suppose input data in shape of [N, C, H, W], `pool_size` is [m, n], 
+          # suppose input data in shape of [N, C, H, W], `pool_size` is [m, n],
           # output shape is [N, C, m, n], adaptive pool divide H and W dimentions
-          # of input data into m * n grids averagely and performs poolings in each 
+          # of input data into m * n grids averagely and performs poolings in each
           # grid to get output.
           # adaptive average pool performs calculations as follow:
-          # 
+          #
           #     for i in range(m):
           #         for j in range(n):
           #             hstart = floor(i * H / m)
@@ -2649,10 +2649,10 @@ def adaptive_pool3d(input,
 
           # suppose input data in shape of [N, C, D, H, W], `pool_size` is [l, m, n],
           # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimentions
-          # of input data into l * m * n grids averagely and performs poolings in each 
+          # of input data into l * m * n grids averagely and performs poolings in each
           # grid to get output.
           # adaptive average pool performs calculations as follow:
-          # 
+          #
           #     for i in range(l):
           #         for j in range(m):
           #             for k in range(n):
@@ -2662,7 +2662,7 @@ def adaptive_pool3d(input,
           #                 hend = ceil((j + 1) * H / m)
           #                 wstart = floor(k * W / n)
           #                 wend = ceil((k + 1) * W / n)
-          #                 output[:, :, i, j, k] = 
+          #                 output[:, :, i, j, k] =
           #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
           #
           data = fluid.layers.data(
@@ -4678,7 +4678,7 @@ def ctc_greedy_decoder(input, blank, name=None):
                       [0.5, 0.1, 0.3, 0.1]]
 
         input.lod = [[4, 4]]
-      
+
         Computation:
 
         step1: Apply argmax to first input sequence which is input.data[0:4]. Then we get:
@@ -4712,7 +4712,7 @@ def ctc_greedy_decoder(input, blank, name=None):
         Variable: CTC greedy decode result which is a 2-D tensor with shape [Lp, 1]. \
                   'Lp' is the sum if all output sequences' length. If all the sequences \
                   in result were empty, the result LoDTensor will be [-1] with  \
-                  LoD [[]] and dims [1, 1]. 
+                  LoD [[]] and dims [1, 1].
 
     Examples:
         .. code-block:: python
@@ -5065,7 +5065,7 @@ def hsigmoid(input,
     """
     The hierarchical sigmoid operator is used to accelerate the training
     process of language model. This operator organizes the classes into a
-    complete binary tree, or you can use is_custom to pass your own tree to 
+    complete binary tree, or you can use is_custom to pass your own tree to
     implement hierarchical. Each leaf node represents a class(a word) and each
     internal node acts as a binary classifier. For each word there's a unique
     path from root to it's leaf node, hsigmoid calculate the cost for each
@@ -5082,7 +5082,7 @@ def hsigmoid(input,
     2. build a dict to store word_id -> word's leaf to root path, we call it path_table.
     3. build a dict to store word_id -> code of word's leaf to root path, we call it path_code. Code
        means label of each binary classification, using 1 indicate true, 0 indicate false.
-    4. now, each word should has its path and code along the path, you can pass a batch of path and code 
+    4. now, each word should has its path and code along the path, you can pass a batch of path and code
        related to the same batch of inputs.
 
     Args:
@@ -5091,8 +5091,8 @@ def hsigmoid(input,
             and :math:`D` is the feature size.
         label (Variable): The tensor variable contains labels of training data.
             It's a tensor with shape is :math:`[N \\times 1]`.
-        num_classes: (int), The number of classes, must not be less than 2. with default tree this has to be set, 
-            it should never be None under is_custom=False, but while is_custom is true, it should be non leaf num 
+        num_classes: (int), The number of classes, must not be less than 2. with default tree this has to be set,
+            it should never be None under is_custom=False, but while is_custom is true, it should be non leaf num
             which indicates the num of classes using by binary classify.
         param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
              of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid
@@ -5105,15 +5105,15 @@ def hsigmoid(input,
              is not set, the bias is initialized zero. Default: None.
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
-        path_table: (Variable|None) this variable can store each batch of samples' path to root, 
+        path_table: (Variable|None) this variable can store each batch of samples' path to root,
             it should be in leaf -> root order
-            path_table should have the same shape with path_code, and for each sample i path_table[i] indicates a np.array like 
-            structure and each element in this array is indexes in parent nodes' Weight Matrix. 
-        path_code:  (Variable|None) this variable can store each batch of samples' code, 
+            path_table should have the same shape with path_code, and for each sample i path_table[i] indicates a np.array like
+            structure and each element in this array is indexes in parent nodes' Weight Matrix.
+        path_code:  (Variable|None) this variable can store each batch of samples' code,
             each code consist with every code of parent nodes. it should be in leaf -> root order
-        is_custom: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is 
+        is_custom: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is
              set you need to set path_table/path_code/num_classes, otherwise num_classes should be set
-        is_sparse: (bool|False)using sparse update instead of dense update, if set, the gradient 
+        is_sparse: (bool|False)using sparse update instead of dense update, if set, the gradient
              of W and input will be sparse.
 
     Returns:
@@ -6965,10 +6965,10 @@ def mean_iou(input, label, num_classes):
         num_classes (int): The possible number of labels.
 
     Returns:
-        mean_iou (Variable),out_wrong(Variable),out_correct(Variable): 
-        
+        mean_iou (Variable),out_wrong(Variable),out_correct(Variable):
+
                      Three variables:
-                      
+
                      - mean_iou : A Tensor representing the mean intersection-over-union with shape [1].
                      - out_wrong: A Tensor with shape [num_classes]. The wrong numbers of each class.
                      - out_correct: A Tensor with shape [num_classes]. The correct numbers of each class.
@@ -7166,7 +7166,7 @@ def affine_grid(theta, out_shape, name=None):
 
     Args:
         theta (Variable): A batch of affine transform parameters with shape [N, 2, 3].
-        out_shape (Variable | list | tuple): The shape of target output with format [N, C, H, W]. 
+        out_shape (Variable | list | tuple): The shape of target output with format [N, C, H, W].
                                              ``out_shape`` can be a Variable or a list or tuple.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
@@ -7762,9 +7762,9 @@ def flatten(x, axis=1, name=None):
     """
     **Flatten layer**
     Flattens the input tensor into a 2D matrix.
-    
+
     For Example:
-    
+
     .. code-block:: text
 
         Case 1:
@@ -8942,7 +8942,7 @@ def similarity_focus(input, axis, indexes, name=None):
     SimilarityFocus Operator
 
     Generate a similarity focus mask with the same shape of input using the following method:
-    
+
     1. Extract the 3-D tensor(here the first dimension is BatchSize) corresponding
        to the axis according to the indexes. For example, if axis=1 and indexes=[a],
        it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X
@@ -9403,7 +9403,7 @@ class PyFuncRegistry(object):
             raise TypeError('func must be a Python function')
 
         self._func = func
-        # find named args using reflection 
+        # find named args using reflection
         args = inspect.getargspec(self._func)
         if len(args[0]) == 0 and args[1] is None and args[2] is None:
             # Function with no inputs
@@ -9414,15 +9414,15 @@ class PyFuncRegistry(object):
         '''
         Why record self here?
 
-        1. For debug usage. Users can call 
-           :code:`py_func.registered_func(idx)` method 
+        1. For debug usage. Users can call
+           :code:`py_func.registered_func(idx)` method
            to find the registered function corresponding
-           to :code:`idx`. 
+           to :code:`idx`.
 
-        2. For increasing reference count of self. 
-           It seems that to release Python object 
+        2. For increasing reference count of self.
+           It seems that to release Python object
            whose reference count is 1 would cause
-           segmentation fault error in C++ side. 
+           segmentation fault error in C++ side.
            May be lack of Python GC in C++ side?
         '''
         PyFuncRegistry._register_funcs.append(self)
@@ -9473,7 +9473,7 @@ class PyFuncRegistry(object):
 def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     """
     PyFunc Operator.
-    
+
     User can use :code:`py_func` to register operators in Python side.
     The inputs of :code:`func` is :code:`LoDTensor` and outputs can be
     numpy array or :code:`LoDTensor`. Paddle would call the registered
@@ -9491,7 +9491,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     no gradient, users should return None.
 
     This function can also be used to debug the running network. User can
-    add a :code:`py_func` operator without output, and print input 
+    add a :code:`py_func` operator without output, and print input
     :code:`x` inside :code:`func`.
 
     Args:
@@ -9499,50 +9499,50 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         x (Variable|list(Variable)|tuple(Variable)): inputs of :code:`func`.
         out (Variable|list(Variable)|tuple(Variable)): outputs of :code:`func`.
             Paddle cannot infer shapes and data types of :code:`out`. Users
-            should create :code:`out` beforehand. 
+            should create :code:`out` beforehand.
         backward_func (callable|None): backward Python function.
-                                       None means no backward. Default None. 
+                                       None means no backward. Default None.
         skip_vars_in_backward_input (Variable|list(Variable)|tuple(Variable)):
-            Variables that are not needed in :code:`backward_func` inputs. 
+            Variables that are not needed in :code:`backward_func` inputs.
             These variables must be any of :code:`x` and :code:`out`.
             If set, these vars would not be inputs of :code:`backward_func`,
-            Only useful when :code:`backward_func` is not None. Default None. 
+            Only useful when :code:`backward_func` is not None. Default None.
 
     Returns:
         out (Variable|list(Variable)|tuple(Variable)): input :code:`out`
 
     Examples:
-    
+
         >>> import paddle.fluid as fluid
         >>> import six
         >>>
         >>> def create_tmp_var(name, dtype, shape):
         >>>     return fluid.default_main_program().current_block().create_var(
-        >>>         name=name, dtype=dtype, shape=shape) 
+        >>>         name=name, dtype=dtype, shape=shape)
         >>>
         >>> # tanh activation has been provided by Paddle C++ op
-        >>> # Here, we only use tanh to be an example to show the usage 
+        >>> # Here, we only use tanh to be an example to show the usage
         >>> # of py_func
         >>> def tanh(x):
         >>>     return np.tanh(x)
-        >>> 
+        >>>
         >>> # forward input x is skipped
         >>> def tanh_grad(y, dy):
         >>>     return np.array(dy) * (1 - np.square(np.array(y)))
         >>>
         >>> def debug_func(x):
-        >>>     print(x) 
+        >>>     print(x)
         >>>
         >>> def simple_net(img, label):
         >>>     hidden = img
         >>>     for idx in six.moves.range(4):
         >>>         hidden = fluid.layers.fc(hidden, size=200)
         >>>         new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
-        >>>             dtype=hidden.dtype, shape=hidden.shape)    
+        >>>             dtype=hidden.dtype, shape=hidden.shape)
         >>>
         >>>         # user-defined layers with forward and backward
-        >>>         hidden = fluid.layers.py_func(func=tanh, x=hidden, 
-        >>>             out=new_hidden, backward_func=tanh_grad, 
+        >>>         hidden = fluid.layers.py_func(func=tanh, x=hidden,
+        >>>             out=new_hidden, backward_func=tanh_grad,
         >>>             skip_vars_in_backward_input=hidden)
         >>>
         >>>         # user-defined debug layers to print variables
@@ -9713,47 +9713,3 @@ def huber_loss(input, label, delta):
                  'Residual': residual},
         attrs={'delta': delta})
     return out
-
-
-class FC(layers.PyLayer):
-    def __init__(self,
-                 size,
-                 param_attr=None,
-                 num_flatten_dims=1,
-                 dtype=core.VarDesc.VarType.FP32):
-        super(FC, self).__init__()
-        self._size = size
-        self._num_flatten_dims = num_flatten_dims
-        self._dtype = dtype
-        self._helper = LayerHelper('FC', param_attr=param_attr)
-
-    def _build_once(self, inputs):
-        input_shape = inputs[0].shape
-        param_shape = [
-            reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:], 1)
-        ] + [self._size]
-        self._w = self._helper.create_parameter(
-            attr=self._helper.param_attr,
-            shape=param_shape,
-            dtype=self._dtype,
-            is_bias=False)
-
-    def forward(self, inputs):
-        tmp = self._helper.create_variable_for_type_inference(self._dtype)
-        self._helper.append_op(
-            type="mul",
-            inputs={"X": inputs[0],
-                    "Y": self._w},
-            outputs={"Out": tmp},
-            attrs={
-                "x_num_col_dims": self._num_flatten_dims,
-                "y_num_col_dims": 1
-            })
-
-        out = self._helper.create_variable_for_type_inference(self._dtype)
-        self._helper.append_op(
-            type="sum",
-            inputs={"X": [tmp]},
-            outputs={"Out": out},
-            attrs={"use_mkldnn": False})
-        return out
