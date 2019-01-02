@@ -54,8 +54,6 @@ constexpr char kRequestPassBarrier[] = "RequestPassBarrier";
 
 class RPCServer;
 
-typedef std::shared_ptr<VarHandle> VarHandlePtr;
-
 class RequestHandler {
  public:
   RequestHandler()
@@ -74,23 +72,25 @@ class RequestHandler {
   void SetExecutor(framework::Executor* executor) { executor_ = executor; }
 
   // Used for dist lookup table prefetch
-  void SetPrefetchPreparedCtx(
-      std::unordered_map<
-          std::string, std::shared_ptr<framework::ExecutorPrepareContext>>* g) {
-    prefetch_var_name_to_prepared_ctx_ = g;
-  }
+  // void SetPrefetchPreparedCtx(
+  //     std::unordered_map<
+  //         std::string, std::shared_ptr<framework::ExecutorPrepareContext>>*
+  //         g) {
+  //   prefetch_var_name_to_prepared_ctx_ = g;
+  // }
 
-  void SetCheckpointNotifyPreparedCtx(
-      std::shared_ptr<framework::ExecutorPrepareContext> g) {
-    checkpoint_prepared_ctx_ = g;
-  }
+  // void SetCheckpointNotifyPreparedCtx(
+  //     std::shared_ptr<framework::ExecutorPrepareContext> g) {
+  //   checkpoint_prepared_ctx_ = g;
+  // }
 
   // Used for async.
-  void SetGradToPreparedCtx(
-      std::unordered_map<
-          std::string, std::shared_ptr<framework::ExecutorPrepareContext>>* g) {
-    grad_to_prepared_ctx_ = g;
-  }
+  // void SetGradToPreparedCtx(
+  //     std::unordered_map<
+  //         std::string, std::shared_ptr<framework::ExecutorPrepareContext>>*
+  //         g) {
+  //   grad_to_prepared_ctx_ = g;
+  // }
 
   void SetRPCServer(RPCServer* rpc_server) { rpc_server_ = rpc_server; }
 
@@ -114,7 +114,7 @@ class RequestHandler {
   //        SerializeToByteBuffer(varname, outvar,
   //           *request_handler_->dev_ctx(), &reply_);
   //    }
-  virtual bool Handle(Request* request, Scope* scope) = 0;
+  virtual bool Handle(RPCRequest* request, framework::Scope* scope) = 0;
 
  protected:
   const platform::DeviceContext* dev_ctx_;

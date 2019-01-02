@@ -18,7 +18,16 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-bool Handle(RPCRequest *request, Scope *scope) {
+static inline void BuildVar(const std::string& param_name,
+                            std::initializer_list<const char*> arguments,
+                            paddle::framework::proto::OpDesc::Var* var) {
+  var->set_parameter(param_name);
+  for (auto& arg_name : arguments) {
+    *var->mutable_arguments()->Add() = arg_name;
+  }
+}
+
+bool Handle(RPCRequest* request, Scope* scope) {
   VLOG(4) << "RequestPrefetchHandler " << varname;
 
   if (request->table_name_.empty()) {

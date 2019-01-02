@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/fluid/operators/distributed/handlers/checkpoint_handler.h"
 
 #include <string>
@@ -22,18 +20,21 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
+
 bool CheckpointHandler::Handle(RPCRequest *request, Scope *scope) {
   if (checkpoint_block_id_ == -1) {
-    LOG(WARN) << "when checkpoint_block_id_ = -1, there should be no RPC "
-                 "invoke." return false
+    LOG(WARNING) << "when checkpoint_block_id_ = -1, there should be no RPC "
+                    "invoke.";
+    return false;
   }
 
   // TODO(tangwei12): find out why scope will be error.
   auto *lt_var = scope->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
   lt_var->clear();
-  lt_var->append(out_var_name);
+  lt_var->append(request->out_var_name_);
   VLOG(4) << "RequestCheckpointHandler update var kLookupTablePath to: "
-          << out_var_name;
+          << request->out_var_name_;
   executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope);
   return true;
 }

@@ -15,19 +15,20 @@
 #include "paddle/fluid/operators/distributed/handlers/get_handler.h"
 
 #include <string>
+#include "paddle/fluid/operators/distributed/rpc_server.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
 
 bool GetHandlerSync::Handle(RPCRequest *request, Scope *scope) {
-  rpc_server_->WaitCond(kRequestGet);
-  *(request->outvar_) = scope->FindVar(request->varname_);
+  rpc_server_->WaitState(RPCServerState::STATE_RECV);
+  *(request->out_var_) = scope->FindVar(request->varname_);
   return true;
 }
 
 bool GetHandlerAsync::Handle(RPCRequest *request, Scope *scope) {
-  *(request->outvar_) = scope->FindVar(request->varname_);
+  *(request->out_var_) = scope->FindVar(request->varname_);
   return true;
 }
 
@@ -37,14 +38,14 @@ bool GetHandlerDCAsync::Handle(RPCRequest *request, Scope *scope) {
       "%s.trainer_%d_bak", request->varname_, request->trainer_id_);
   VLOG(3) << "getting " << param_bak_name << " trainer_id "
           << request->trainer_id_;
-  auto var = scope->FindVar(varname);
+  auto var = scope->FindVar(request->varname_);
   auto t_orig = var->Get<framework::LoDTensor>();
   auto param_bak = scope_->Var(param_bak_name);
   auto t = param_bak->GetMutable<framework::LoDTensor>();
   t->mutable_data(dev_ctx_->GetPlace(), t_orig.type());
-  VLOG(3) << "copying " << varname << " to " << param_bak_name;
+  VLOG(3) << "copying " << request->varname_ << " to " << param_bak_name;
   framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
-  *(request->outvar_) = scope->FindVar(request->varname_);
+  *(request->out_var_) = scope->FindVar(request->varname_);
   return true;
 }
 

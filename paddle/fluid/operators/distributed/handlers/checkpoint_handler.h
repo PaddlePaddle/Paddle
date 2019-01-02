@@ -14,12 +14,15 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/distributed/request.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
+
+using Scope = paddle::framework::Scope;
 
 class CheckpointHandler final : public RequestHandler {
  public:

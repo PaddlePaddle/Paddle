@@ -24,6 +24,8 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+using Scope = paddle::framework::Scope;
+
 class SendHandlerSync final : public RequestHandler {
  public:
   bool Handle(RPCRequest *request, Scope *scope) override;
