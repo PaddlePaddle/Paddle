@@ -20,7 +20,6 @@ import contextlib
 import os
 import re
 import six
-import sys
 
 import numpy as np
 
@@ -368,9 +367,10 @@ class Variable(object):
         if _in_imperative_mode():
             self._ivar = core.VarBase()
             self._ivar.desc = self.desc
+            self._ivar.stop_gradient = stop_gradient
 
     def _numpy(self):
-        tensor = self._ivar.var.get_tensor()
+        tensor = self._ivar.value.get_tensor()
         return np.array(tensor)
 
     def _backward(self):
@@ -378,6 +378,14 @@ class Variable(object):
 
     def _gradient(self):
         return np.array(self._ivar._grad())
+
+    @property
+    def _value(self):
+        return self._ivar.value
+
+    @_value.setter
+    def _value(self, v):
+        self._ivar.value = v
 
     def __str__(self):
         return self.to_string(True)
@@ -421,6 +429,14 @@ class Variable(object):
             None
         """
         self.desc = input
+
+    @property
+    def _stop_gradient(self):
+        return self._ivar.stop_gradient
+
+    @_stop_gradient.setter
+    def _stop_gradient(self, s):
+        self._ivar.stop_gradient = s
 
     @property
     def persistable(self):
@@ -681,9 +697,11 @@ class Operator(object):
                 self._update_desc_attr(attr_name, attr_val)
 
         self.desc.check_attrs()
+
         if self._has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
+
         if _in_imperative_mode():
             self.iop = core.OpBase()
             self.iop.desc = self.desc
@@ -1266,11 +1284,21 @@ class Block(object):
             Operator: the append Operator.
         """
         op_desc = self.desc.append_op()
-        op = Operator(block=self, desc=op_desc, *args, **kwargs)
-        if _in_imperative_mode():
-            _imperative_tracer().trace(op.iop, op.inputs, op.outputs, self.desc)
+        op = Operator(
+            block=self,
+            desc=op_desc,
+            type=kwargs.get("type", None),
+            inputs=kwargs.get("inputs", None),
+            outputs=kwargs.get("outputs", None),
+            attrs=kwargs.get("attrs", None))
         self.ops.append(op)
+        self._trace_op(op, kwargs.get("stop_gradient", False))
         return op
+
+    def _trace_op(self, op, stop_gradient=False):
+        if _in_imperative_mode():
+            _imperative_tracer().trace(op.iop, op.inputs, op.outputs, self.desc,
+                                       stop_gradient)
 
     def _insert_op(self, index, *args, **kwargs):
         """
@@ -1317,10 +1345,15 @@ class Block(object):
 
     def _prepend_op(self, *args, **kwargs):
         op_desc = self.desc._prepend_op()
-        op = Operator(self, op_desc, *args, **kwargs)
-        if _in_imperative_mode():
-            _imperative_tracer().trace(op.iop, op.inputs, op.outputs, self.desc)
+        op = Operator(
+            self,
+            op_desc,
+            type=kwargs.get("type", None),
+            inputs=kwargs.get("inputs", None),
+            outputs=kwargs.get("outputs", None),
+            attrs=kwargs.get("attrs", None))
         self.ops.insert(0, op)
+        self._trace_op(op, kwargs.get("stop_gradient", False))
         return op
 
     def _sync_with_cpp(self):
