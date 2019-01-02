@@ -152,11 +152,6 @@ void MultiDevSSAGraphBuilderBase::Init() const {
 #endif
 }
 
-std::vector<ir::Node *> MultiDevSSAGraphBuilderBase::SortOperations(
-    const ir::Graph &graph) const {
-  return ir::TopologySortOperations(graph);
-}
-
 std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   Init();
@@ -179,14 +174,13 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   result.Set(kGraphOps, new GraphOps);
 
   bool is_forwarding = true;
-  bool insert_collection_ops = places_.size() > 1 || Get<int>(kNumTrainers) > 1;
+  bool insert_collection_ops = NeedCollectionOps();
 
   for (ir::Node *node : sorted_ops) {
     if (InsertPreprocessOps(&result, node)) {
       continue;
     } else {
       // This op runs on all devices
-      // TODO(paddle-dev): Why is so special about "read" op?
       if (IsScaleLossOp(node)) {
         // user can customize loss@grad if not use_default_grad_scale_
         if (strategy_.gradient_scale_ !=
@@ -235,11 +229,6 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
     }
   }
 
-  // Insert broadcast operators principle:
-  // 1. Broadcast optimized parameters in Reduce strategy;
-  // 2. No need broadcast optimized parameters in AllReduce strategy because of
-  //    the optimization sub-graph would be run on every GPU;
-  // 3. Allways broadcast received parameters in Distribute Training.
   InsertPostprocessOps(&result);
 
   /*
@@ -254,6 +243,15 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   AddOutputToLeafOps(&result);
   result.Erase<GraphOps>(kGraphOps);
   return graph;
+}
+
+std::vector<ir::Node *> MultiDevSSAGraphBuilderBase::SortOperations(
+    const ir::Graph &graph) const {
+  return ir::TopologySortOperations(graph);
+}
+
+bool MultiDevSSAGraphBuilderBase::NeedCollectionOps() const {
+  return places_.size() > 0;
 }
 
 void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
@@ -909,7 +907,7 @@ void DistSSAGraphBuilder::CreateCollectionOp(ir::Graph *result,
       }
       break;
     default:
-      LOG(FATAL) << "Unknown reduce strategy ";
+      LOG(FATAL) << "Unknown reduce strategy.";
       break;
   }
 }
@@ -927,11 +925,24 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
   }
 }
 
+bool DistSSAGraphBuilder::NeedCollectionOps() const { return true; }
+
+std::unordered_set<std::string> &MultiDevSSAGraphBuilderRegistry() {
+  static std::unordered_set<std::string> regs;
+  return regs;
+}
+
+int RegisterMultiDevSSAGraphBuilder(const std::string &builder_mode) {
+  MultiDevSSAGraphBuilderRegistry().insert(builder_mode);
+  return 0;
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
 
-#define REGISTER_MULT_DEVICES_PASS(pass_name, pass_class)        \
+#define REGISTER_MULTI_DEVICES_PASS(pass_name, pass_class)       \
+  REGISTER_MULTI_DEV_PASS(pass_name);                            \
   REGISTER_PASS(pass_name, pass_class)                           \
       .RequirePassAttr(paddle::framework::details::kLossVarName) \
       .RequirePassAttr(paddle::framework::details::kPlaces)      \
@@ -939,10 +950,10 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
       .RequirePassAttr(paddle::framework::details::kStrategy)    \
       .RequirePassAttr(paddle::framework::details::kNumTrainers)
 
-REGISTER_MULT_DEVICES_PASS(reduce_mode_multi_devices_pass,
-                           paddle::framework::details::ReduceSSAGraphBuilder);
-REGISTER_MULT_DEVICES_PASS(
+REGISTER_MULTI_DEVICES_PASS(reduce_mode_multi_devices_pass,
+                            paddle::framework::details::ReduceSSAGraphBuilder);
+REGISTER_MULTI_DEVICES_PASS(
     allreduce_mode_multi_devices_pass,
     paddle::framework::details::AllReduceSSAGraphBuilder);
-REGISTER_MULT_DEVICES_PASS(dist_multi_devices_pass,
-                           paddle::framework::details::DistSSAGraphBuilder);
+REGISTER_MULTI_DEVICES_PASS(dist_multi_devices_pass,
+                            paddle::framework::details::DistSSAGraphBuilder);

@@ -17,8 +17,9 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <memory>
 
+#include "paddle/fluid/framework/details/all_reduce_deps_pass.h"
 #include "paddle/fluid/framework/details/memory_reuse_types.h"
-#include "paddle/fluid/framework/details/multi_devices_graph_check_pass.h"
+#include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/sequential_execution_pass.h"
@@ -83,20 +84,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       auto analysis_var_pass = AppendPass("analysis_var_pass");
     }
 
-    // Convert graph to run on multi-devices.
-    if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
-      auto multi_devices_pass = AppendPass("allreduce_mode_multi_devices_pass");
-      multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
-                                                           &strategy_);
-      multi_devices_pass->Set<int>("num_trainers",
-                                   new int(strategy_.num_trainers_));
-    } else {
-      auto multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass");
-      multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
-                                                           &strategy_);
-      multi_devices_pass->Set<int>("num_trainers",
-                                   new int(strategy_.num_trainers_));
-    }
+    AppendMultiDevPass(strategy);
 
     // Add a graph print pass to record a graph with device info.
     if (!strategy_.debug_graphviz_path_.empty()) {
@@ -122,6 +110,27 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
   }
 
+  // Convert graph to run on multi-devices.
+  void AppendMultiDevPass(const BuildStrategy &strategy) {
+    ir::Pass *multi_devices_pass;
+    if (strategy_.num_trainers_ > 1) {
+      multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
+    } else {
+      if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
+        multi_devices_pass =
+            AppendPass("allreduce_mode_multi_devices_pass").get();
+      } else if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
+        multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
+      } else {
+        PADDLE_THROW("Unknown reduce strategy.");
+      }
+    }
+    multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
+                                                         &strategy_);
+    multi_devices_pass->Set<int>("num_trainers",
+                                 new int(strategy_.num_trainers_));
+  }
+
  private:
   BuildStrategy strategy_;
 };
@@ -139,9 +148,8 @@ std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy(
 }
 
 bool BuildStrategy::IsMultiDevPass(const std::string &pass_name) const {
-  // FIXME(zcd) temporary code
-  return pass_name == "reduce_mode_multi_devices_pass" ||
-         pass_name == "allreduce_mode_multi_devices_pass";
+  return framework::details::MultiDevSSAGraphBuilderRegistry().count(
+             pass_name) > 0;
 }
 
 std::unique_ptr<ir::Graph> BuildStrategy::Apply(
@@ -213,6 +221,7 @@ USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
 USE_PASS(reduce_mode_multi_devices_pass);
 USE_PASS(allreduce_mode_multi_devices_pass);
+USE_PASS(dist_multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);
 USE_PASS(analysis_var_pass);
