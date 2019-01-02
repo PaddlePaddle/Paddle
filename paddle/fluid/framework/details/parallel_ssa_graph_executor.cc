@@ -34,7 +34,7 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
                                ? 1UL
                                : strategy_.num_threads_ / places_.size();
   VLOG(1) << "set num_threads: " << strategy_.num_threads_
-          << " to schedule operators on each device.";
+          << " to run the operators of the graph on each device.";
   for (size_t i = 0; i < places.size(); ++i) {
     executors_.emplace_back(new details::ThreadedSSAGraphExecutor(
         strategy_, {local_scopes_[i]}, {places_[i]}, std::move(graphs_[i])));
@@ -45,10 +45,10 @@ FeedFetchList ParallelSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   std::vector<std::future<FeedFetchList>> run_futures;
 
-  std::vector<FeedFetchList> fetch_datas;
+  std::vector<FeedFetchList> fetch_data;
   FeedFetchList ret;
 
-  fetch_datas.reserve(places_.size());
+  fetch_data.reserve(places_.size());
   ret.reserve(fetch_tensors.size());
   exception_holder_.Clear();
 
@@ -65,7 +65,7 @@ FeedFetchList ParallelSSAGraphExecutor::Run(
     if (pool_) {
       run_futures.emplace_back(pool_->enqueue(std::move(call)));
     } else {
-      fetch_datas.emplace_back(std::move(call()));
+      fetch_data.emplace_back(std::move(call()));
     }
   }
 
@@ -74,7 +74,7 @@ FeedFetchList ParallelSSAGraphExecutor::Run(
       if (exception_holder_.IsCaught()) {
         f.wait();
       } else {
-        fetch_datas.emplace_back(std::move(f.get()));
+        fetch_data.emplace_back(std::move(f.get()));
       }
     }
   }
@@ -86,7 +86,7 @@ FeedFetchList ParallelSSAGraphExecutor::Run(
     std::vector<const LoDTensor *> lodtensor_ptrs;
     lodtensor_ptrs.reserve(local_scopes_.size());
     for (size_t scope_idx = 0; scope_idx < local_scopes_.size(); ++scope_idx) {
-      lodtensor_ptrs.push_back(&fetch_datas.at(scope_idx).at(fetch_idx));
+      lodtensor_ptrs.push_back(&fetch_data.at(scope_idx).at(fetch_idx));
     }
     ret.emplace_back();
     ret.back().MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());

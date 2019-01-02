@@ -469,8 +469,9 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
 bool ParallelExecutor::EnableParallelGraphExecution(
     const ProgramDesc &main_program, const ExecutionStrategy &exec_strategy,
     const BuildStrategy &build_strategy) const {
-  bool enable_parallel_graph = true;
+  if (!FLAGS_enable_parallel_graph) return false;
 
+  bool enable_parallel_graph = true;
   // TODO(Yancey1989): support sparse update in ParallelGraph mode.
   for (auto &var_desc : main_program.Block(0).AllVars()) {
     if (var_desc->GetType() == proto::VarType::SELECTED_ROWS) {
@@ -492,7 +493,7 @@ bool ParallelExecutor::EnableParallelGraphExecution(
   if (build_strategy.enable_sequential_execution_ ||
       exec_strategy.type_ == ExecutionStrategy::ExecutorType::kExperimental)
     enable_parallel_graph = false;
-  return enable_parallel_graph && FLAGS_enable_parallel_graph;
+  return enable_parallel_graph;
 }
 
 ParallelExecutor::~ParallelExecutor() {
