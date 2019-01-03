@@ -113,7 +113,12 @@ class GRUUnitKernel : public framework::OpKernel<T> {
     auto c = g.slice(c_offsets, extents);  // output candidate
 
     // calculate final output
-    h.device(place) = u * (c - h_p) + h_p;
+    bool origin_mode = context.Attr<bool>("origin_mode");
+    if (origin_mode) {
+      h.device(place) = c + u * (h_p - c);  // (1 - u) * c + u * h_p
+    } else {
+      h.device(place) = u * (c - h_p) + h_p;  // u * c + (1 - u) * h_p
+    }
   }
 };
 
