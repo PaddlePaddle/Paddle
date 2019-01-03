@@ -43,6 +43,15 @@ struct FindRangeAbsMaxFunctor {
 };
 
 template <typename DeviceContext, typename T>
+struct FindMovingAverageAbsMaxFunctor {
+  void operator()(const DeviceContext& ctx, const framework::Tensor& in_accum,
+                  const framework::Tensor& in_state,
+                  const framework::Tensor& cur_scale,
+                  framework::Tensor* out_state, framework::Tensor* out_accum,
+                  framework::Tensor* out_scale);
+};
+
+template <typename DeviceContext, typename T>
 class FakeQuantizeAbsMaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -100,6 +109,51 @@ class FakeQuantizeRangeAbsMaxKernel : public framework::OpKernel<T> {
     FindRangeAbsMaxFunctor<DeviceContext, T>()(dev_ctx, cur_scale, *in_scale,
                                                *iter, window_size, out_scales,
                                                out_scale);
+    ClipAndFakeQuantFunctor<DeviceContext, T>()(dev_ctx, *in, *out_scale,
+                                                bin_cnt, out);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class FakeQuantizeMovingAverageAbsMaxKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* in = context.Input<framework::Tensor>("X");
+    auto* in_scale = context.Input<framework::Tensor>("InScale");
+
+    auto* out = context.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(context.GetPlace());
+
+    bool is_test = context.Attr<bool>("is_test");
+    int bit_length = context.Attr<int>("bit_length");
+    int bin_cnt = std::pow(2, bit_length - 1) - 1;
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+
+    // testing
+    if (is_test) {
+      ClipAndFakeQuantFunctor<DeviceContext, T>()(dev_ctx, *in, *in_scale,
+                                                  bin_cnt, out);
+      return;
+    }
+
+    // training
+
+    framework::Tensor cur_scale;
+    T* cur_scale_data = cur_scale.mutable_data<T>({1}, context.GetPlace());
+    FindAbsMaxFunctor<DeviceContext, T>()(dev_ctx, in->data<T>(), in->numel(),
+                                          cur_scale_data);
+
+    auto* out_state = context.Output<framework::Tensor>("OutState");
+    auto* out_accum = context.Output<framework::Tensor>("OutAccum");
+    auto* out_scale = context.Output<framework::Tensor>("OutScale");
+    out_state->mutable_data<T>(context.GetPlace());
+    out_accum->mutable_data<T>(context.GetPlace());
+    out_scale->mutable_data<T>(context.GetPlace());
+
+    FindMovingAverageAbsMaxFunctor<DeviceContext, T>()(
+        dev_ctx, *out_accum, *out_state, cur_scale, out_state, out_accum,
+        out_scale);
+
     ClipAndFakeQuantFunctor<DeviceContext, T>()(dev_ctx, *in, *out_scale,
                                                 bin_cnt, out);
   }
