@@ -217,8 +217,7 @@ class MKLDNNHandler {
                         const std::vector<int>& paddings,
                         const std::vector<int>& dilations, const int& groups,
                         const mkldnn::memory::data_type& srcdt,
-                        const mkldnn::memory::format& format,
-                        const mkldnn::memory::data_type& dstdt,
+                        const mkldnn::memory::format& format, const bool& relu,
                         const bool& residual, const std::string& suffix) {
     AppendKeyDims(key, input_dims);
     AppendKeyDims(key, weights_dims);
@@ -228,7 +227,7 @@ class MKLDNNHandler {
     AppendKey(key, std::to_string(groups));
     AppendKey(key, std::to_string(srcdt));
     AppendKey(key, std::to_string(format));
-    AppendKey(key, std::to_string(dstdt));
+    AppendKey(key, std::to_string(relu));
     AppendKey(key, std::to_string(residual));
     AppendKey(key, suffix);
   }

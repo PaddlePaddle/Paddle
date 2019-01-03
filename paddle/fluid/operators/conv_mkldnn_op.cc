@@ -358,13 +358,19 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           framework::DataTypeTrait<float>::DataType);
     }
 
+    if (fuse_residual_conn) {
+      auto residual = ctx.Input<Tensor>("ResidualData");
+      auto residual_dt = paddle::framework::ToMKLDNNDataType(residual->type());
+      if (dst_dt != residual_dt) dst_dt = residual_dt;
+    }
+
     // Get unique name for storing MKLDNN primitives
     std::string key;
     key.reserve(MaxKeyLength);
     platform::ConvMKLDNNHandler::AppendKey(
         key, src_tz, weights_tz, strides, paddings, dilations, groups, src_dt,
-        input->format(), dst_dt, fuse_residual_conn, ctx.op().Output("Output"));
-
+        input->format(), fuse_relu, fuse_residual_conn,
+        ctx.op().Output("Output"));
     const std::string key_conv_pd = key + "@conv_pd";
 
     bool need_s8_to_u8 = fuse_residual_conn && fuse_relu;
@@ -384,8 +390,10 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto user_src_key = key + "@user_src_mem_p";
     auto src_reorder_key = key + "@src_mem_preorder_p";
     auto residual_reorder_key = key + "@residual_data_mem_preorder_p";
+
     conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
         dev_ctx.GetBlob(prim_key));
+
     if (conv_p == nullptr || !is_test) {
       const K* filter_data = filter->data<K>();
       auto scale_in_data = ctx.Attr<float>("Scale_in");
@@ -393,6 +401,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
       auto scale_out_data =
           force_fp32_output ? 1.0f : ctx.Attr<float>("Scale_out");
+      float sum_scale =
+          fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
 
       bool is_multi_channel = scale_weights_data.size() > 1;
 
@@ -433,17 +443,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           platform::MKLDNNMemDesc(src_tz, src_dt, chosen_memory_format);
       auto weights_md = platform::MKLDNNMemDesc(
           weights_tz, memory::data_type::s8, chosen_memory_format);
-
-      float sum_scale = 1.0f;
-      if (fuse_residual_conn) {
-        auto residual = ctx.Input<Tensor>("ResidualData");
-        auto residual_dt =
-            paddle::framework::ToMKLDNNDataType(residual->type());
-        if (dst_dt != residual_dt) dst_dt = residual_dt;
-        sum_scale = scale_out_data / scale_in_eltwise_data;
-      }
       auto dst_md =
           platform::MKLDNNMemDesc(dst_tz, dst_dt, chosen_memory_format);
+
       // create a conv primitive descriptor and save it for usage in backward
       if (bias) {
         bias_tz = paddle::framework::vectorize2int(bias->dims());
@@ -484,33 +486,38 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
       if (fuse_residual_conn) {
         auto residual_param = ctx.Input<Tensor>("ResidualData");
-        auto residual_param_data = residual_param->data<T>();
-        PADDLE_ENFORCE(
-            residual_param_data != nullptr,
-            "Provide data if you want MKLDNN conv+elementwise_add fusion");
         PADDLE_ENFORCE_EQ(output->dims(), residual_param->dims(),
                           "Output and elementwise parameter need to have the "
                           "same dimension sizes");
         auto residual_dt =
             paddle::framework::ToMKLDNNDataType(residual_param->type());
-
         if (residual_param->format() != handler->GetDstFormat()) {
           auto residual_data_tz =
               paddle::framework::vectorize2int(residual_param->dims());
-          auto residual_data_type =
-              paddle::framework::ToMKLDNNDataType(residual_param->type());
 
           auto user_residual_md = platform::MKLDNNMemDesc(
-              residual_data_tz, residual_data_type, residual_param->format());
-          auto user_residual_memory_p = handler->AcquireResidualDataMemory(
-              user_residual_md, to_void_cast<T>(residual_param_data));
+              residual_data_tz, residual_dt, residual_param->format());
+
+          std::shared_ptr<mkldnn::memory> user_residual_memory_p;
           if (residual_dt == mkldnn::memory::data_type::u8) {
+            auto residual_param_data = residual_param->data<uint8_t>();
+            PADDLE_ENFORCE(
+                residual_param_data != nullptr,
+                "Provide data if you want MKLDNN conv+elementwise_add fusion");
+            user_residual_memory_p = handler->AcquireResidualDataMemory(
+                user_residual_md, to_void_cast<uint8_t>(residual_param_data));
             uint8_t* output_data =
                 output->mutable_data<uint8_t>(ctx.GetPlace());
             dst_memory_p = handler->AcquireDstMemoryFromResidualDataMemory(
                 user_residual_memory_p, to_void_cast<uint8_t>(output_data),
                 pipeline);
           } else {
+            auto residual_param_data = residual_param->data<int8_t>();
+            PADDLE_ENFORCE(
+                residual_param_data != nullptr,
+                "Provide data if you want MKLDNN conv+elementwise_add fusion");
+            user_residual_memory_p = handler->AcquireResidualDataMemory(
+                user_residual_md, to_void_cast<int8_t>(residual_param_data));
             int8_t* output_data = output->mutable_data<int8_t>(ctx.GetPlace());
             dst_memory_p = handler->AcquireDstMemoryFromResidualDataMemory(
                 user_residual_memory_p, to_void_cast<int8_t>(output_data),
@@ -542,11 +549,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       // create convolution op primitive
       auto scale_bias_key = key + "@scale_bias";
       if (bias) {
-        const float* bias_data = bias->data<float>();
+        const K* bias_data = bias->data<K>();
         auto user_bias_md = platform::MKLDNNMemDesc(
-            {bias_tz}, platform::MKLDNNGetDataType<float>(), memory::format::x);
+            {bias_tz}, platform::MKLDNNGetDataType<K>(), memory::format::x);
         auto user_bias_memory_p = handler->AcquireBiasMemory(
-            user_bias_md, to_void_cast<float>(bias_data));
+            user_bias_md, to_void_cast<K>(bias_data));
         std::shared_ptr<mkldnn::memory> bias_memory_p;
         int mask_reorder = is_multi_channel ? 1 << 0 : 1;
         int count =
