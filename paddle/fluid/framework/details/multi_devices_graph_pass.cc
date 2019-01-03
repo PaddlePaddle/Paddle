@@ -134,12 +134,6 @@ void AddOutputToLeafOps(ir::Graph *graph) {
 }
 }  // namespace
 
-static const char kLossVarName[] = "loss_var_name";
-static const char kPlaces[] = "places";
-static const char kLocalScopes[] = "local_scopes";
-static const char kStrategy[] = "strategy";
-static const char kNRanks[] = "nranks";
-
 void MultiDevSSAGraphBuilderBase::Init() const {
   all_vars_.clear();
 
@@ -172,10 +166,10 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   result.Set(kGraphOps, new GraphOps);
 
   bool is_forwarding = true;
-  bool insert_collection_ops = NeedCollectionOps();
+  bool insert_collection_ops = NeedCollectiveOps();
 
   for (ir::Node *node : sorted_ops) {
-    if (InsertPreprocessOps(&result, node)) {
+    if (DealWithSpecialOp(&result, node)) {
       continue;
     } else {
       // This op runs on all devices
@@ -212,7 +206,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
             auto &g_name = backward_vars[i + 1];
             VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
 
-            InsertCollectionOp(&result, p_name, g_name);
+            InsertCollectiveOp(&result, p_name, g_name);
           }
         } catch (boost::bad_get e) {
         }
@@ -245,7 +239,7 @@ void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
       loss_scale = 1;
       break;
     case BuildStrategy::GradientScaleStrategy::kCoeffNumDevice:
-      loss_scale = Get<size_t>("nranks");
+      loss_scale = Get<size_t>(kNRanks);
       break;
     case BuildStrategy::GradientScaleStrategy::kCustomized:
       loss_scale = 0;
@@ -269,7 +263,7 @@ std::vector<ir::Node *> MultiDevSSAGraphBuilderBase::SortOperations(
   return ir::TopologySortOperations(graph);
 }
 
-bool MultiDevSSAGraphBuilderBase::NeedCollectionOps() const {
+bool MultiDevSSAGraphBuilderBase::NeedCollectiveOps() const {
   return Get<size_t>(kNRanks) > 1;
 }
 
@@ -498,7 +492,7 @@ bool MultiDevSSAGraphBuilderBase::IsSparseGradient(
   return false;
 }
 
-void AllReduceSSAGraphBuilder::InsertCollectionOp(
+void AllReduceSSAGraphBuilder::InsertCollectiveOp(
     ir::Graph *result, const std::string &p_name,
     const std::string &g_name) const {
   if (IsSparseGradient(g_name)) {
@@ -577,7 +571,7 @@ void ReduceSSAGraphBuilder::ResetState() const {
   bcast_var_name_set_.resize(places_.size());
 }
 
-void ReduceSSAGraphBuilder::InsertCollectionOp(
+void ReduceSSAGraphBuilder::InsertCollectiveOp(
     ir::Graph *result, const std::string &p_name,
     const std::string &g_name) const {
   size_t cur_device_id = GetAppropriateDeviceID({g_name});
@@ -586,8 +580,8 @@ void ReduceSSAGraphBuilder::InsertCollectionOp(
   bcast_var_name_set_[cur_device_id].emplace(p_name);
 }
 
-bool ReduceSSAGraphBuilder::InsertPreprocessOps(ir::Graph *result,
-                                                ir::Node *node) const {
+bool ReduceSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
+                                              ir::Node *node) const {
   int op_dev_id = BalanceVarSSAGraphBuilder::GetOpDeviceID(node);
   if (op_dev_id != -1) {
     // This op only runs on one specific device.
@@ -712,8 +706,8 @@ void DistSSAGraphBuilder::ResetState() const {
   bcast_var_name_set_.resize(places_.size());
 }
 
-bool DistSSAGraphBuilder::InsertPreprocessOps(ir::Graph *result,
-                                              ir::Node *node) const {
+bool DistSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
+                                            ir::Node *node) const {
   bool insert_op = false;
   if (OpHaveRole(*node, OpRole::kRPC)) {
     int op_dev_id = CreateRPCOp(result, node);
@@ -907,7 +901,7 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   return op_dev_id;
 }
 
-void DistSSAGraphBuilder::InsertCollectionOp(ir::Graph *result,
+void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
                                              const std::string &p_name,
                                              const std::string &g_name) const {
   size_t cur_device_id = 0;

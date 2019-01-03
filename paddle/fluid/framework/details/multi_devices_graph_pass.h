@@ -31,6 +31,12 @@ namespace framework {
 class Scope;
 namespace details {
 
+constexpr char kLossVarName[] = "loss_var_name";
+constexpr char kPlaces[] = "places";
+constexpr char kLocalScopes[] = "local_scopes";
+constexpr char kStrategy[] = "strategy";
+constexpr char kNRanks[] = "nranks";
+
 class MultiDevSSAGraphBuilderBase : public ir::Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
@@ -40,14 +46,14 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   virtual std::vector<ir::Node *> SortOperations(const ir::Graph &graph) const;
 
-  virtual void InsertCollectionOp(ir::Graph *result, const std::string &p_name,
+  virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const = 0;
 
-  virtual bool InsertPreprocessOps(ir::Graph *result, ir::Node *node) const = 0;
+  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const = 0;
 
   virtual void InsertPostprocessOps(ir::Graph *result) const = 0;
 
-  bool NeedCollectionOps() const;
+  bool NeedCollectiveOps() const;
 
   bool IsScaleLossOp(ir::Node *node) const;
 
@@ -98,10 +104,10 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
 class AllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
  protected:
-  virtual void InsertCollectionOp(ir::Graph *result, const std::string &p_name,
+  virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const;
 
-  virtual bool InsertPreprocessOps(ir::Graph *result, ir::Node *node) const {
+  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const {
     return false;
   }
 
@@ -127,10 +133,10 @@ class ReduceSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
  protected:
   virtual void Init() const;
 
-  virtual void InsertCollectionOp(ir::Graph *result, const std::string &p_name,
+  virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const;
 
-  virtual bool InsertPreprocessOps(ir::Graph *result, ir::Node *node) const;
+  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
 
   virtual void InsertPostprocessOps(ir::Graph *result) const;
 
@@ -150,11 +156,11 @@ class ReduceSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
 
 class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
  protected:
-  virtual bool InsertPreprocessOps(ir::Graph *result, ir::Node *node) const;
+  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
 
   virtual void InsertPostprocessOps(ir::Graph *result) const;
 
-  virtual void InsertCollectionOp(ir::Graph *result, const std::string &p_name,
+  virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const;
 
   virtual void ResetState() const;

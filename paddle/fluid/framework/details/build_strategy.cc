@@ -167,15 +167,15 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
     if (IsMultiDevPass(pass->Type())) {
-      pass->Erase("places");
-      pass->SetNotOwned<const std::vector<platform::Place>>("places", &places);
-      pass->Erase("loss_var_name");
-      pass->SetNotOwned<const std::string>("loss_var_name", &loss_var_name);
-      pass->Erase("local_scopes");
-      pass->SetNotOwned<const std::vector<Scope *>>("local_scopes",
+      pass->Erase(kPlaces);
+      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
+      pass->Erase(kLossVarName);
+      pass->SetNotOwned<const std::string>(kLossVarName, &loss_var_name);
+      pass->Erase(kLocalScopes);
+      pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
-      pass->Erase("nranks");
-      pass->Set<size_t>("nranks", new size_t(nranks));
+      pass->Erase(kNRanks);
+      pass->Set<size_t>(kNRanks, new size_t(nranks));
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
