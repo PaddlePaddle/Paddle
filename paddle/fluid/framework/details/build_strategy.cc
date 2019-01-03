@@ -31,7 +31,11 @@ namespace framework {
 namespace details {
 
 static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
-  return (!strategy.enable_sequential_execution_ && strategy.num_trainers_ > 1);
+  // Should fix the allreduce op order if scheduling
+  // them in multiple threads or processes to avoid hang.
+  return (!strategy.enable_sequential_execution_ &&
+          strategy.num_trainers_ > 1) ||
+         strategy.enable_parallel_graph_;
 }
 
 class ParallelExecutorPassBuilder : public ir::PassBuilder {
@@ -86,8 +90,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     auto multi_devices_pass = AppendPass("multi_devices_pass");
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
                                                          &strategy_);
-    multi_devices_pass->Set<int>("num_trainers",
-                                 new int(strategy_.num_trainers_));
 
     // Add a graph print pass to record a graph with device info.
     if (!strategy_.debug_graphviz_path_.empty()) {
@@ -132,6 +134,7 @@ std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy(
 std::unique_ptr<ir::Graph> BuildStrategy::Apply(
     const ProgramDesc &main_program, const std::vector<platform::Place> &places,
     const std::string &loss_var_name, const std::vector<Scope *> &local_scopes,
+    const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     const bool use_cuda, platform::NCCLContextMap *nccl_ctxs) const {
 #else
@@ -150,6 +153,9 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Erase("local_scopes");
       pass->SetNotOwned<const std::vector<Scope *>>("local_scopes",
                                                     &local_scopes);
+      pass->Erase("nranks");
+      pass->Set<size_t>("nranks", new size_t(nranks));
+
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase("nccl_ctxs");

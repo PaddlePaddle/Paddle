@@ -175,41 +175,61 @@ class TestCRFModel(unittest.TestCase):
                 print(pe.run(feed=feeder.feed(cur_batch),
                              fetch_list=[avg_cost.name])[0])
 
-    def test_update_sparse_parameter_all_reduce(self):
+    def _new_build_strategy(self, use_reduce=False):
         build_strategy = fluid.BuildStrategy()
-        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
+
+        if use_reduce:
+            build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        else:
+            build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
+
+        return build_strategy
+
+    def test_update_sparse_parameter_all_reduce(self):
         if core.is_compiled_with_cuda():
             self.check_network_convergence(
-                is_sparse=True, build_strategy=build_strategy, use_cuda=True)
+                is_sparse=True,
+                build_strategy=self._new_build_strategy(),
+                use_cuda=True)
+
         self.check_network_convergence(
-            is_sparse=True, build_strategy=build_strategy, use_cuda=False)
+            is_sparse=True,
+            build_strategy=self._new_build_strategy(),
+            use_cuda=False)
 
     def test_update_dense_parameter_all_reduce(self):
-        build_strategy = fluid.BuildStrategy()
-        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
         if core.is_compiled_with_cuda():
             self.check_network_convergence(
-                is_sparse=False, build_strategy=build_strategy, use_cuda=True)
+                is_sparse=False,
+                build_strategy=self._new_build_strategy(),
+                use_cuda=True)
+
         self.check_network_convergence(
-            is_sparse=False, build_strategy=build_strategy, use_cuda=False)
+            is_sparse=False,
+            build_strategy=self._new_build_strategy(),
+            use_cuda=False)
 
     def test_update_sparse_parameter_reduce(self):
-        build_strategy = fluid.BuildStrategy()
-        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
         if core.is_compiled_with_cuda():
             self.check_network_convergence(
-                is_sparse=True, build_strategy=build_strategy, use_cuda=True)
+                is_sparse=True,
+                build_strategy=self._new_build_strategy(use_reduce=True),
+                use_cuda=True)
         self.check_network_convergence(
-            is_sparse=True, build_strategy=build_strategy, use_cuda=False)
+            is_sparse=True,
+            build_strategy=self._new_build_strategy(use_reduce=True),
+            use_cuda=False)
 
     def test_update_dense_parameter_reduce(self):
-        build_strategy = fluid.BuildStrategy()
-        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
         if core.is_compiled_with_cuda():
             self.check_network_convergence(
-                is_sparse=False, build_strategy=build_strategy, use_cuda=True)
+                is_sparse=False,
+                build_strategy=self._new_build_strategy(use_reduce=True),
+                use_cuda=True)
         self.check_network_convergence(
-            is_sparse=False, build_strategy=build_strategy, use_cuda=False)
+            is_sparse=False,
+            build_strategy=self._new_build_strategy(use_reduce=True),
+            use_cuda=False)
 
 
 if __name__ == '__main__':
