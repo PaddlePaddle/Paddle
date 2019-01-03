@@ -202,12 +202,6 @@ ParallelExecutor::ParallelExecutor(
       build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
   member_->nranks_ = build_strategy.num_trainers_ * places.size();
 
-  if (!member_->use_all_reduce_) {
-    PADDLE_ENFORCE(places.size() > 1,
-                   "If you set build_strategy.reduce with 'Reduce',"
-                   "the number of places must be greater than 1.");
-  }
-
   // Step 1. Bcast the bcast_vars to devs.
   // Create local scopes
   if (local_scopes.empty()) {
