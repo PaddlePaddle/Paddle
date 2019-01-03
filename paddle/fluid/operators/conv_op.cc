@@ -98,7 +98,12 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 #endif
 
   auto input_data_type = ctx.Input<Tensor>("Input")->type();
-
+  if (input_data_type != framework::proto::VarType::INT8 &&
+      input_data_type != framework::proto::VarType::UINT8) {
+    auto filter_data_type = ctx.Input<Tensor>("Filter")->type();
+    PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
+                      "input and filter data type should be consistent");
+  }
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(library, framework::LibraryType::kCUDNN,
                       "float16 can only be used when CUDNN is used");

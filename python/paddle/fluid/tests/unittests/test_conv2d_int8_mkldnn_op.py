@@ -66,29 +66,32 @@ class TestConv2dInt8Op(TestConv2dOp):
             input_shift = (np.ones(self.input_size) * 128).astype(np.uint8)
 
         if self.srctype == np.int8:
+            filter_int = np.round(filter * self.scale_weights[0] *
+                                  0.5).astype(np.int32)
+            scale_output_shift = self.scale_out / (self.scale_in *
+                                                   self.scale_weights[0] * 0.5)
             output1 = conv2d_forward_refer(
                 np.round((input.astype(np.int32) + input_shift) *
-                         self.scale_in).astype(np.int32),
-                np.round(filter * self.scale_weights[0] * 0.5).astype(np.int32),
-                self.groups, conv2d_param).astype(np.float32) * (
-                    self.scale_out / (self.scale_in * self.scale_weights[0] *
-                                      0.5))
+                         self.scale_in).astype(np.int32), filter_int,
+                self.groups,
+                conv2d_param).astype(np.float32) * scale_output_shift
             output2 = conv2d_forward_refer(
                 np.round((input_shift) * self.scale_in).astype(np.int32),
-                np.round(filter * self.scale_weights[0] * 0.5).astype(np.int32),
-                self.groups, conv2d_param).astype(np.float32) * (
-                    self.scale_out / (self.scale_in * self.scale_weights[0] *
-                                      0.5))
+                filter_int, self.groups,
+                conv2d_param).astype(np.float32) * scale_output_shift
             if self.fuse_relu:
                 output = np.maximum(np.round(output1 - output2),
                                     0).astype(self.dsttype)
             else:
                 output = np.round(output1 - output2).astype(self.dsttype)
         else:
+            filter_int = np.round(filter *
+                                  self.scale_weights[0]).astype(np.int32)
+            scale_output_shift = self.scale_out / (self.scale_in *
+                                                   self.scale_weights[0])
             output1 = conv2d_forward_refer(
-                input.astype(np.int32),
-                np.round(filter * self.scale_weights[0]).astype(np.int32),
-                self.groups, conv2d_param).astype(np.float32)
+                input.astype(np.int32), filter_int, self.groups,
+                conv2d_param).astype(np.float32)
             if self.fuse_relu:
                 output = np.maximum(
                     np.round(output1 * (self.scale_out / (
@@ -146,6 +149,9 @@ class TestConv2dInt8Op(TestConv2dOp):
 
     def init_fuse_relu(self):
         self.fuse_relu = True
+
+
+#--------------------test conv2d u8 in and u8 out--------------------
 
 
 class TestConv2d(TestConv2dInt8Op):
@@ -235,7 +241,7 @@ def create_test_int8_class(parent, input_dt, fuse_relu):
     globals()[cls_name] = TestInt8Case
 
 
-#--------------------test conv2d s8 int and u8 out--------------------
+#--------------------test conv2d s8 in and u8 out--------------------
 
 create_test_int8_class(TestConv2dInt8Op, np.int8, True)
 create_test_int8_class(TestWithPad, np.int8, True)
@@ -244,7 +250,7 @@ create_test_int8_class(TestWithGroup, np.int8, True)
 create_test_int8_class(TestWith1x1, np.int8, True)
 create_test_int8_class(TestWithInput1x1Filter1x1, np.int8, True)
 
-#--------------------test conv2d s8 int and s8 out--------------------
+#--------------------test conv2d s8 in and s8 out--------------------
 
 create_test_int8_class(TestConv2dInt8Op, np.int8, False)
 create_test_int8_class(TestWithPad, np.int8, False)
@@ -253,7 +259,7 @@ create_test_int8_class(TestWithGroup, np.int8, False)
 create_test_int8_class(TestWith1x1, np.int8, False)
 create_test_int8_class(TestWithInput1x1Filter1x1, np.int8, False)
 
-#--------------------test conv2d u8 int and s8 out--------------------
+#--------------------test conv2d u8 in and s8 out--------------------
 
 create_test_int8_class(TestConv2dInt8Op, np.uint8, False)
 create_test_int8_class(TestWithPad, np.uint8, False)
