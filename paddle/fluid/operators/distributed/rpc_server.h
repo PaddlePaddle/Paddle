@@ -77,8 +77,8 @@ class RPCServer {
   // For sync training, server side barrier controls
   void SetState(const RPCServerState state);
   void WaitState(const RPCServerState state);
-  const Barrier* SendBarrier() { return send_barrier_.get(); }
-  const Barrier* RecvBarrier() { return recv_barrier_.get(); }
+  Barrier* SendBarrier() { return send_barrier_.get(); }
+  Barrier* RecvBarrier() { return recv_barrier_.get(); }
 
   // TODO(typhoonzero): in here or in handler or in collective server?
   // mark variable ready for workers to fetch, and only for fetch n

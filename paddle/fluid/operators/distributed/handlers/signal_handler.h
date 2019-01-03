@@ -21,6 +21,8 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+using Scope = paddle::framework::Scope;
+
 class SignalHandler final : public RequestHandler {
  public:
   bool Handle(RPCRequest *request, Scope *scope) override;

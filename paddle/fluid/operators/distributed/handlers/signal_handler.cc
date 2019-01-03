@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/distributed/handlers/signal_handler.h"
+#include "paddle/fluid/operators/distributed/rpc_server.h"
 
 namespace paddle {
 namespace operators {
@@ -21,10 +22,12 @@ namespace distributed {
 bool SignalHandler::Handle(RPCRequest *request, Scope *scope) {
   if (request->varname_ == FETCH_BARRIER_MESSAGE) {
     VLOG(3) << "recv fetch barrier message";
-    rpc_server_->IncreaseBatchBarrier(kRequestGet);
+    // rpc_server_->IncreaseBatchBarrier(kRequestGet);
+    rpc_server_->RecvBarrier()->Increase();
   } else if (request->varname_ == BATCH_BARRIER_MESSAGE) {
     VLOG(3) << "recv BATCH_BARRIER_MESSAGE";
-    rpc_server_->IncreaseBatchBarrier(kRequestSend);
+    // rpc_server_->IncreaseBatchBarrier(kRequestSend);
+    rpc_server_->SendBarrier()->Increase();
   } else if (request->varname_ == COMPLETE_MESSAGE) {
     VLOG(3) << "recv complete message";
     rpc_server_->Complete();

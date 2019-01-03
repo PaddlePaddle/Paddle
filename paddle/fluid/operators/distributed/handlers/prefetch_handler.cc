@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/distributed/handlers/prefetch_handler.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/variable_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -27,16 +29,16 @@ static inline void BuildVar(const std::string& param_name,
   }
 }
 
-bool Handle(RPCRequest* request, Scope* scope) {
-  VLOG(4) << "RequestPrefetchHandler " << varname;
+bool PrefetchHandler::Handle(RPCRequest* request, Scope* scope) {
+  VLOG(4) << "RequestPrefetchHandler " << request->varname_;
 
   if (request->table_name_.empty()) {
     auto var_desc = program_->Block(0).FindVar(request->out_var_name_);
-    InitializeVariable(*(request->outvar_), var_desc->GetType());
+    InitializeVariable(*(request->out_var_), var_desc->GetType());
     executor_->RunPreparedContext(
         (*prefetch_var_name_to_prepared_ctx_)[request->varname_].get(), scope);
   } else {
-    (*(request->outvar_))->GetMutable<framework::LoDTensor>();
+    (*(request->out_var_))->GetMutable<framework::LoDTensor>();
     auto lookup_table_op = BuildLookupTableOp(
         request->table_name_, request->varname_, request->out_var_name_);
     paddle::platform::CPUPlace cpu_place;
