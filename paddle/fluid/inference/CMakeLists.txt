@@ -9,7 +9,7 @@ if (TENSORRT_FOUND)
   add_subdirectory(tensorrt)
 endif()
 
-set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor temp_allocator)
+set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
 
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api

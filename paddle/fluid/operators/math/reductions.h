@@ -95,7 +95,7 @@ void LaunchRowReduction(const platform::CUDADeviceContext* ctx, OUT_T out,
     PADDLE_ENFORCE_EQ(success, 0, "CUB segmented reduce error");
     if (i == 0) {
       tmp_allocation_ptr =
-          platform::DeviceTemporaryAllocator::Instance().Get(ctx).Allocate(
+          platform::DeviceTemporaryAllocator::Instance().Get(*ctx).Allocate(
               temp_storage_bytes * sizeof(uint8_t));
     }
   }
