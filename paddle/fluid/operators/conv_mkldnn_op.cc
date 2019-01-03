@@ -498,42 +498,22 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           auto user_residual_md = platform::MKLDNNMemDesc(
               residual_data_tz, residual_dt, residual_param->format());
 
-          std::shared_ptr<mkldnn::memory> user_residual_memory_p;
           if (residual_dt == mkldnn::memory::data_type::u8) {
-            auto residual_param_data = residual_param->data<uint8_t>();
-            PADDLE_ENFORCE(
-                residual_param_data != nullptr,
-                "Provide data if you want MKLDNN conv+elementwise_add fusion");
-            user_residual_memory_p = handler->AcquireResidualDataMemory(
-                user_residual_md, to_void_cast<uint8_t>(residual_param_data));
-            uint8_t* output_data =
-                output->mutable_data<uint8_t>(ctx.GetPlace());
-            dst_memory_p = handler->AcquireDstMemoryFromResidualDataMemory(
-                user_residual_memory_p, to_void_cast<uint8_t>(output_data),
-                pipeline);
+            dst_memory_p = platform::SetDstMemory<uint8_t>(
+                ctx, output, residual_param, user_residual_md, handler,
+                &pipeline);
           } else {
-            auto residual_param_data = residual_param->data<int8_t>();
-            PADDLE_ENFORCE(
-                residual_param_data != nullptr,
-                "Provide data if you want MKLDNN conv+elementwise_add fusion");
-            user_residual_memory_p = handler->AcquireResidualDataMemory(
-                user_residual_md, to_void_cast<int8_t>(residual_param_data));
-            int8_t* output_data = output->mutable_data<int8_t>(ctx.GetPlace());
-            dst_memory_p = handler->AcquireDstMemoryFromResidualDataMemory(
-                user_residual_memory_p, to_void_cast<int8_t>(output_data),
-                pipeline);
+            dst_memory_p = platform::SetDstMemory<int8_t>(
+                ctx, output, residual_param, user_residual_md, handler,
+                &pipeline);
           }
         } else {
           output->ShareDataWith(*residual_param);
           if (residual_dt == mkldnn::memory::data_type::u8) {
-            uint8_t* output_data =
-                output->mutable_data<uint8_t>(ctx.GetPlace());
-            dst_memory_p = handler->AcquireDstMemoryFromPrimitive(
-                to_void_cast<uint8_t>(output_data));
+            dst_memory_p =
+                platform::SetDstMemory<uint8_t>(ctx, output, handler);
           } else {
-            int8_t* output_data = output->mutable_data<int8_t>(ctx.GetPlace());
-            dst_memory_p = handler->AcquireDstMemoryFromPrimitive(
-                to_void_cast<int8_t>(output_data));
+            dst_memory_p = platform::SetDstMemory<int8_t>(ctx, output, handler);
           }
         }
       } else if (!force_fp32_output) {
@@ -605,23 +585,23 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             paddle::framework::ToMKLDNNDataType(residual_param->type());
         output->ShareDataWith(*residual_param);
         if (residual_dt == mkldnn::memory::data_type::u8) {
-          dst_memory_p =
-              platform::SetDstMemoryHandler<uint8_t>(ctx, output, handler);
+          platform::SetDstMemoryHandler<uint8_t>(ctx, output, handler,
+                                                 &dst_memory_p);
         } else {
-          dst_memory_p =
-              platform::SetDstMemoryHandler<int8_t>(ctx, output, handler);
+          platform::SetDstMemoryHandler<int8_t>(ctx, output, handler,
+                                                &dst_memory_p);
         }
       } else if (!force_fp32_output) {
         if (fuse_relu) {
-          dst_memory_p =
-              platform::SetDstMemoryHandler<uint8_t>(ctx, output, handler);
+          platform::SetDstMemoryHandler<uint8_t>(ctx, output, handler,
+                                                 &dst_memory_p);
         } else {
-          dst_memory_p =
-              platform::SetDstMemoryHandler<int8_t>(ctx, output, handler);
+          platform::SetDstMemoryHandler<int8_t>(ctx, output, handler,
+                                                &dst_memory_p);
         }
       } else {
-        dst_memory_p =
-            platform::SetDstMemoryHandler<float>(ctx, output, handler);
+        platform::SetDstMemoryHandler<float>(ctx, output, handler,
+                                             &dst_memory_p);
       }
 
       if (src_memory_reorder_p) {
