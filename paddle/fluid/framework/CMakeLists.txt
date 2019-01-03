@@ -184,7 +184,7 @@ endif()
 target_link_libraries(executor garbage_collector)
 
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
-        threaded_ssa_graph_executor scope_buffered_ssa_graph_executor
+        threaded_ssa_graph_executor scope_buffered_ssa_graph_executor parallel_ssa_graph_executor
         graph build_strategy
         fast_threaded_ssa_graph_executor variable_helper)
 

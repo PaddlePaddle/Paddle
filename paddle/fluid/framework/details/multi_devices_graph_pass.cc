@@ -138,7 +138,7 @@ static const char kLossVarName[] = "loss_var_name";
 static const char kPlaces[] = "places";
 static const char kLocalScopes[] = "local_scopes";
 static const char kStrategy[] = "strategy";
-static const char kNumTrainers[] = "num_trainers";
+static const char kNRanks[] = "nranks";
 
 void MultiDevSSAGraphBuilder::Init() const {
   all_vars_.clear();
@@ -174,7 +174,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   auto nodes = graph->ReleaseNodes();
   ir::Graph &result = *graph;
 
-  int num_trainers = Get<int>(kNumTrainers);
+  size_t nranks = Get<size_t>(kNRanks);
 
   for (auto &node : nodes) {
     if (node->IsVar() && node->Var()) {
@@ -251,7 +251,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
           CreateComputationalOps(&result, node, places_.size());
         }
 
-        if (!is_forwarding && (places_.size() > 1 || num_trainers > 1)) {
+        if (!is_forwarding && nranks > 1UL) {
           bool is_bk_op =
               static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
                                     OpProtoAndCheckerMaker::OpRoleAttrName())) &
@@ -649,12 +649,13 @@ int MultiDevSSAGraphBuilder::GetVarDeviceID(
 void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(
     ir::Graph *result, const std::string &loss_grad_name,
     ir::Node *out_var_node, proto::VarType::Type dtype) const {
+  size_t nranks = Get<size_t>("nranks");
   for (size_t i = 0; i < places_.size(); ++i) {
     // Insert ScaleCost OpHandle
     auto *dev_ctx = platform::DeviceContextPool::Instance().Get(places_[i]);
     auto *op_handle = new ScaleLossGradOpHandle(
         result->CreateEmptyNode("scale_loss_grad", ir::Node::Type::kOperation),
-        local_scopes_.size(), local_scopes_[i], places_[i], dev_ctx, dtype);
+        nranks, local_scopes_[i], places_[i], dev_ctx, dtype);
     result->Get<GraphOps>(kGraphOps).emplace_back(op_handle);
 
     // FIXME: Currently ScaleLossGradOp only use device_count as scale
@@ -887,4 +888,4 @@ REGISTER_PASS(multi_devices_pass,
     .RequirePassAttr(paddle::framework::details::kPlaces)
     .RequirePassAttr(paddle::framework::details::kLocalScopes)
     .RequirePassAttr(paddle::framework::details::kStrategy)
-    .RequirePassAttr(paddle::framework::details::kNumTrainers);
+    .RequirePassAttr(paddle::framework::details::kNRanks);
