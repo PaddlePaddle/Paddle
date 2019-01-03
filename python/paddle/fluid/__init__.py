@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 import os
-import sys
 # import all class inside framework into fluid module
 from . import framework
 from .framework import *
