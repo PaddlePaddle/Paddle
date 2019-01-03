@@ -168,7 +168,7 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
   mutable std::vector<std::unordered_set<std::string>> bcast_var_name_set_;
 };
 
-std::unordered_set<std::string> &MultiDevSSAGraphBuilderRegistry();
+std::unordered_set<std::string> &MultiDevSSAGraphBuilder();
 
 }  // namespace details
 }  // namespace framework

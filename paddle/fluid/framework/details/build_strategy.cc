@@ -17,7 +17,6 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <memory>
 
-#include "paddle/fluid/framework/details/all_reduce_deps_pass.h"
 #include "paddle/fluid/framework/details/memory_reuse_types.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
@@ -150,8 +149,7 @@ std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy(
 }
 
 bool BuildStrategy::IsMultiDevPass(const std::string &pass_name) const {
-  return framework::details::MultiDevSSAGraphBuilderRegistry().count(
-             pass_name) > 0;
+  return framework::details::MultiDevSSAGraphBuilder().count(pass_name) > 0;
 }
 
 std::unique_ptr<ir::Graph> BuildStrategy::Apply(

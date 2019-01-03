@@ -944,13 +944,13 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
   }
 }
 
-std::unordered_set<std::string> &MultiDevSSAGraphBuilderRegistry() {
+std::unordered_set<std::string> &MultiDevSSAGraphBuilder() {
   static std::unordered_set<std::string> regs;
   return regs;
 }
 
-int RegisterMultiDevSSAGraphBuilder(const std::string &builder_mode) {
-  MultiDevSSAGraphBuilderRegistry().insert(builder_mode);
+static int MultiDevSSAGraphBuilderRegister(const std::string &builder_mode) {
+  MultiDevSSAGraphBuilder().insert(builder_mode);
   return 0;
 }
 
@@ -963,7 +963,7 @@ int RegisterMultiDevSSAGraphBuilder(const std::string &builder_mode) {
       _reg_ssa_graph_builder_##pass_name,                                      \
       "REGISTER_MULTI_DEVICES_PASS must be called in global namespace.");      \
   int _reg_ssa_graph_builder_entry_##pass_name =                               \
-      paddle::framework::details::RegisterMultiDevSSAGraphBuilder(#pass_name); \
+      paddle::framework::details::MultiDevSSAGraphBuilderRegister(#pass_name); \
   REGISTER_PASS(pass_name, pass_class)                                         \
       .RequirePassAttr(paddle::framework::details::kLossVarName)               \
       .RequirePassAttr(paddle::framework::details::kPlaces)                    \
