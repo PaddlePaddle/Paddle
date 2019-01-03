@@ -210,7 +210,7 @@ class MKLDNNHandler {
     dst_memory.reset(new mkldnn::memory(*dst_pd, to_void_cast<T>(output_data)));
   }
 
-  static void AppendKey(std::string& key,  // NOLINT
+  static void AppendKey(std::string* key,
                         const mkldnn::memory::dims& input_dims,
                         const mkldnn::memory::dims& weights_dims,
                         const std::vector<int>& strides,
@@ -233,23 +233,21 @@ class MKLDNNHandler {
   }
 
  protected:
-  static void AppendKeyDims(std::string& key,  // NOLINT
+  static void AppendKeyDims(std::string* key,
                             const mkldnn::memory::dims& dims) {
     for (unsigned int i = 0; i < dims.size(); i++) {
       AppendKey(key, std::to_string(dims[i]));
     }
   }
 
-  static void AppendKeyVec(std::string& key,  // NOLINT
-                           const std::vector<int>& dims) {
+  static void AppendKeyVec(std::string* key, const std::vector<int>& dims) {
     for (unsigned int i = 0; i < dims.size(); i++) {
       AppendKey(key, std::to_string(dims[i]));
     }
   }
 
-  static void AppendKey(std::string& key,  // NOLINT
-                        const std::string& s) {
-    key.append(s);
+  static void AppendKey(std::string* key, const std::string& s) {
+    key->append(s);
   }
 
   static std::string dims2str(const mkldnn::memory::dims& operand_dims) {
@@ -657,28 +655,27 @@ using ConvTransposeMKLDNNHandler =
                               mkldnn::deconvolution_backward_weights>;
 
 template <typename T>
-static void SetDstMemory(
+static std::shared_ptr<mkldnn::memory> SetDstMemory(
     const framework::ExecutionContext& ctx, framework::Tensor* output,
-    const std::shared_ptr<ConvMKLDNNHandler> handler,
-    std::shared_ptr<mkldnn::memory>& dst_memory_p) {  // NOLINT
-
+    const std::shared_ptr<ConvMKLDNNHandler>& handler) {
   T* output_data = output->mutable_data<T>(
       ctx.GetPlace(), ::paddle::memory::Allocator::kDefault,
       handler->GetDstMemorySize());
-  dst_memory_p =
+  std::shared_ptr<mkldnn::memory> dst_memory_p =
       handler->AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
+  return dst_memory_p;
 }
 
 template <typename T>
-static void SetDstMemoryHandler(
+static std::shared_ptr<mkldnn::memory> SetDstMemoryHandler(
     const framework::ExecutionContext& ctx, framework::Tensor* output,
-    const std::shared_ptr<ConvMKLDNNHandler> handler,
-    std::shared_ptr<mkldnn::memory>& dst_memory_p) {  // NOLINT
-
+    const std::shared_ptr<ConvMKLDNNHandler>& handler) {
   T* output_data = output->mutable_data<T>(
       ctx.GetPlace(), ::paddle::memory::Allocator::kDefault,
       handler->GetDstMemorySize());
+  std::shared_ptr<mkldnn::memory> dst_memory_p;
   dst_memory_p->set_data_handle(to_void_cast<T>(output_data));
+  return dst_memory_p;
 }
 }  // namespace platform
 }  // namespace paddle

@@ -76,19 +76,19 @@ class TestConv2dInt8Op(TestConv2dOp):
             input_shift = (np.ones(self.input_size) * 128).astype(np.uint8)
 
         if self.srctype == np.int8:
+            filter_int = np.round(filter * self.scale_weights[0] *
+                                  0.5).astype(np.int32)
+            scale_output_shift = self.scale_out / (self.scale_in *
+                                                   self.scale_weights[0] * 0.5)
             output1 = conv2d_forward_refer(
                 np.round((input.astype(np.int32) + input_shift) *
-                         self.scale_in).astype(np.int32),
-                np.round(filter * self.scale_weights[0] * 0.5).astype(np.int32),
-                self.groups, conv2d_param).astype(np.float32) * (
-                    self.scale_out / (self.scale_in * self.scale_weights[0] *
-                                      0.5))
+                         self.scale_in).astype(np.int32), filter_int,
+                self.groups,
+                conv2d_param).astype(np.float32) * scale_output_shift
             output2 = conv2d_forward_refer(
                 np.round((input_shift) * self.scale_in).astype(np.int32),
-                np.round(filter * self.scale_weights[0] * 0.5).astype(np.int32),
-                self.groups, conv2d_param).astype(np.float32) * (
-                    self.scale_out / (self.scale_in * self.scale_weights[0] *
-                                      0.5))
+                filter_int, self.groups,
+                conv2d_param).astype(np.float32) * scale_output_shift
             if self.fuse_relu:
                 if self.fuse_residual:
                     input_residual = np.random.randint(
@@ -114,10 +114,13 @@ class TestConv2dInt8Op(TestConv2dOp):
                 else:
                     output = np.round(output1 - output2).astype(self.dsttype)
         else:
+            filter_int = np.round(filter *
+                                  self.scale_weights[0]).astype(np.int32)
+            scale_output_shift = self.scale_out / (self.scale_in *
+                                                   self.scale_weights[0])
             output1 = conv2d_forward_refer(
-                input.astype(np.int32),
-                np.round(filter * self.scale_weights[0]).astype(np.int32),
-                self.groups, conv2d_param).astype(np.float32)
+                input.astype(np.int32), filter_int, self.groups,
+                conv2d_param).astype(np.float32)
             if self.fuse_relu:
                 if self.fuse_residual:
                     input_residual = np.random.randint(
@@ -214,6 +217,9 @@ class TestConv2dInt8Op(TestConv2dOp):
 
     def init_fuse_residual(self):
         self.fuse_residual = True
+
+
+#--------------------test conv2d u8 in and u8 out with residual--------------------
 
 
 class TestConv2d(TestConv2dInt8Op):
@@ -377,14 +383,6 @@ create_test_int8_class(TestWithStride, np.uint8, True, False)
 create_test_int8_class(TestWithGroup, np.uint8, True, False)
 create_test_int8_class(TestWith1x1, np.uint8, True, False)
 create_test_int8_class(TestWithInput1x1Filter1x1, np.uint8, True, False)
-
-#--------------------test conv2d u8 in and s8 out with residual--------------------
-create_test_int8_class(TestConv2dInt8Op, np.uint8, False, True)
-create_test_int8_class(TestWithPad, np.uint8, False, True)
-create_test_int8_class(TestWithStride, np.uint8, False, True)
-create_test_int8_class(TestWithGroup, np.uint8, False, True)
-create_test_int8_class(TestWith1x1, np.uint8, False, True)
-create_test_int8_class(TestWithInput1x1Filter1x1, np.uint8, False, True)
 
 if __name__ == '__main__':
     unittest.main()
