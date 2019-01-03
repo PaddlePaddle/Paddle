@@ -47,7 +47,7 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   virtual void InsertPostprocessOps(ir::Graph *result) const = 0;
 
-  virtual bool NeedCollectionOps() const;
+  bool NeedCollectionOps() const;
 
   bool IsScaleLossOp(ir::Node *node) const;
 
@@ -157,8 +157,6 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
   virtual void CreateCollectionOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const;
 
-  virtual bool NeedCollectionOps() const;
-
   virtual void ResetState() const;
 
   int CreateRPCOp(ir::Graph *result, ir::Node *node) const;
@@ -172,16 +170,6 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
 
 std::unordered_set<std::string> &MultiDevSSAGraphBuilderRegistry();
 
-int RegisterMultiDevSSAGraphBuilder(const std::string &builder_mode);
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
-
-#define REGISTER_MULTI_DEV_PASS(_builder_mode)                        \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                     \
-      _reg_ssa_graph_builder_##_builder_mode,                         \
-      "REGISTER_MULTI_DEV_PASS must be called in global namespace."); \
-  int TouchFileReader##_builder_mode() { return 0; }                  \
-  int _reg_ssa_graph_builder_entry_##_builder_mode =                  \
-      paddle::framework::details::RegisterMultiDevSSAGraphBuilder(    \
-          #_builder_mode)

@@ -1,4 +1,3 @@
-
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve. Licensed under
 the Apache License, Version 2.0 (the "License"); you may not use this file
 except in compliance with the License.
@@ -18,13 +17,8 @@ package sendrecv;
 option cc_generic_services = @cc_generic_services@;
 
 service SendRecvService {
-  // For parameter server round-robin like hashing, do not split tensors.
-  // Send and recv only one tensor
-  // TODO(typhoonzero): add streaming API
   rpc SendVariable(VariableMessage) returns (VoidMessage) {}
-  // Argument VariableMessage for GetVariable should only contain varname.
   rpc GetVariable(VariableMessage) returns (VariableMessage) {}
-  // pre-fetch variable by given variable name and Ids
   rpc PrefetchVariable(VariableMessage) returns (VariableMessage) {}
 
   rpc CheckpointNotify(VariableMessage) returns (VoidMessage) {}
@@ -33,19 +27,12 @@ service SendRecvService {
   rpc GetMonomerBarrier(VariableMessage) returns (VoidMessage) {}
 }
 
-// VariableMessage is serialized paddle variable message.
-// It can be:
-// LoDTensor
-// SelectedRows
 enum VarType {
   LOD_TENSOR = 0;
   SELECTED_ROWS = 1;
   NCCL_ID = 2;
 }
 
-// NOTICE(gongwb):don't modify this proto if you are not
-//   not familar with how we serialize in sendrecvop_utils.h
-//   and deserilize it in  variable_response.h.
 message VariableMessage {
   enum Type {
     // Pod Types
@@ -62,21 +49,14 @@ message VariableMessage {
   string varname = 1;
   // TODO(Yancey1989): reference framework::proto::VarDesc::VarType
   VarType type = 2;
-  // bool persistable is not needed for sending.
-  // tensor info:
   Type data_type = 3;
   repeated int64 dims = 4;
 
-  // lod details:
   int64 lod_level = 5;
   repeated LodData lod = 6;
-  // selected_rows height, aka. original dim0
   int64 slr_height = 7;
-  // tensor data
   bytes serialized = 8;
-  // selected_rows data
   bytes rows = 9;
-  // Look up table block execution output variable name.
   string out_varname = 10;
   // If 1, the ps server will start profiling, the ps
   // server stops profiling and generates a profile to /tmp/profile_ps_*

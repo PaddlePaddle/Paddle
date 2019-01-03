@@ -136,7 +136,7 @@ if (WITH_MKLDNN)
     copy(mkldnn_lib
             SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
             DSTS ${dst_dir} ${dst_dir}/lib
-            DEPS mkldnn
+            DEPS mkldnn_shared_lib
             )
 endif ()
 

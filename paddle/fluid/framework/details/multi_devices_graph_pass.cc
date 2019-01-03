@@ -138,7 +138,7 @@ static const char kLossVarName[] = "loss_var_name";
 static const char kPlaces[] = "places";
 static const char kLocalScopes[] = "local_scopes";
 static const char kStrategy[] = "strategy";
-static const char kNumTrainers[] = "num_trainers";
+static const char kNRanks[] = "nranks";
 
 void MultiDevSSAGraphBuilderBase::Init() const {
   all_vars_.clear();
@@ -192,7 +192,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
       }
 
       // Insert collection ops
-      if (insert_collection_ops && !is_forwarding) {
+      if (!is_forwarding && insert_collection_ops) {
         try {
           bool is_bk_op =
               static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
@@ -245,7 +245,7 @@ void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
       loss_scale = 1;
       break;
     case BuildStrategy::GradientScaleStrategy::kCoeffNumDevice:
-      loss_scale = places_.size();
+      loss_scale = Get<size_t>("nranks");
       break;
     case BuildStrategy::GradientScaleStrategy::kCustomized:
       loss_scale = 0;
@@ -270,7 +270,7 @@ std::vector<ir::Node *> MultiDevSSAGraphBuilderBase::SortOperations(
 }
 
 bool MultiDevSSAGraphBuilderBase::NeedCollectionOps() const {
-  return places_.size() > 0;
+  return Get<size_t>(kNRanks) > 1;
 }
 
 void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
@@ -944,8 +944,6 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
   }
 }
 
-bool DistSSAGraphBuilder::NeedCollectionOps() const { return true; }
-
 std::unordered_set<std::string> &MultiDevSSAGraphBuilderRegistry() {
   static std::unordered_set<std::string> regs;
   return regs;
@@ -960,14 +958,18 @@ int RegisterMultiDevSSAGraphBuilder(const std::string &builder_mode) {
 }  // namespace framework
 }  // namespace paddle
 
-#define REGISTER_MULTI_DEVICES_PASS(pass_name, pass_class)       \
-  REGISTER_MULTI_DEV_PASS(pass_name);                            \
-  REGISTER_PASS(pass_name, pass_class)                           \
-      .RequirePassAttr(paddle::framework::details::kLossVarName) \
-      .RequirePassAttr(paddle::framework::details::kPlaces)      \
-      .RequirePassAttr(paddle::framework::details::kLocalScopes) \
-      .RequirePassAttr(paddle::framework::details::kStrategy)    \
-      .RequirePassAttr(paddle::framework::details::kNumTrainers)
+#define REGISTER_MULTI_DEVICES_PASS(pass_name, pass_class)                     \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                              \
+      _reg_ssa_graph_builder_##pass_name,                                      \
+      "REGISTER_MULTI_DEVICES_PASS must be called in global namespace.");      \
+  int _reg_ssa_graph_builder_entry_##pass_name =                               \
+      paddle::framework::details::RegisterMultiDevSSAGraphBuilder(#pass_name); \
+  REGISTER_PASS(pass_name, pass_class)                                         \
+      .RequirePassAttr(paddle::framework::details::kLossVarName)               \
+      .RequirePassAttr(paddle::framework::details::kPlaces)                    \
+      .RequirePassAttr(paddle::framework::details::kLocalScopes)               \
+      .RequirePassAttr(paddle::framework::details::kStrategy)                  \
+      .RequirePassAttr(paddle::framework::details::kNRanks)
 
 REGISTER_MULTI_DEVICES_PASS(reduce_mode_multi_devices_pass,
                             paddle::framework::details::ReduceSSAGraphBuilder);
