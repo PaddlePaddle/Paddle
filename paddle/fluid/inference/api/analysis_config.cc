@@ -57,9 +57,14 @@ void contrib::AnalysisConfig::SetModel(const std::string &prog_file_path,
 }
 void contrib::AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
                                            int device_id = 0) {
+#ifdef PADDLE_WITH_CUDA
   use_gpu_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
   device_id_ = device_id;
+#else
+  LOG(ERROR) << "Please compile with gpu to EnableGpu";
+  use_gpu_ = false;
+#endif
 }
 void contrib::AnalysisConfig::DisableGpu() { use_gpu_ = false; }
 

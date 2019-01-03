@@ -92,6 +92,7 @@ struct AnalysisConfig {
     config.prog_file = prog_file_;
     config.param_file = params_file_;
     config.use_gpu = use_gpu_;
+    config.fraction_of_gpu_memory = fraction_of_gpu_memory_for_pool();
     config.specify_input_name = specify_input_name_;
     return config;
   }
