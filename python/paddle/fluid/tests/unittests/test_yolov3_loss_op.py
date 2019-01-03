@@ -86,6 +86,10 @@ def YOLOv3Loss(x, gtbox, gtlabel, attrs):
     pred_box[:, :, :, :, 0] = (grid_x + sigmoid(pred_box[:, :, :, :, 0])) / w
     pred_box[:, :, :, :, 1] = (grid_y + sigmoid(pred_box[:, :, :, :, 1])) / h
 
+    x[:, :, :, :, 5:] = np.where(x[:, :, :, :, 5:] < -0.5, x[:, :, :, :, 5:],
+                                 np.ones_like(x[:, :, :, :, 5:]) * 1.0 /
+                                 class_num)
+
     mask_anchors = []
     for m in anchor_mask:
         mask_anchors.append((anchors[2 * m], anchors[2 * m + 1]))
@@ -207,7 +211,7 @@ class TestYolov3LossOp(OpTest):
         self.ignore_thresh = 0.7
         self.downsample = 32
         self.x_shape = (3, len(self.anchor_mask) * (5 + self.class_num), 5, 5)
-        self.gtbox_shape = (3, 10, 4)
+        self.gtbox_shape = (3, 5, 4)
 
 
 if __name__ == "__main__":

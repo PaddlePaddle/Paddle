@@ -159,7 +159,9 @@ static inline void CalcLabelLoss(T* loss, const T* input, const int index,
                                  const int label, const int class_num,
                                  const int stride) {
   for (int i = 0; i < class_num; i++) {
-    loss[0] += SCE<T>(input[index + i * stride], (i == label) ? 1.0 : 0.0);
+    T pred = input[index + i * stride] < -0.5 ? input[index + i * stride]
+                                              : 1.0 / class_num;
+    loss[0] += SCE<T>(pred, (i == label) ? 1.0 : 0.0);
   }
 }
 
@@ -169,8 +171,10 @@ static inline void CalcLabelLossGrad(T* input_grad, const T loss,
                                      const int label, const int class_num,
                                      const int stride) {
   for (int i = 0; i < class_num; i++) {
+    T pred = input[index + i * stride] < -0.5 ? input[index + i * stride]
+                                              : 1.0 / class_num;
     input_grad[index + i * stride] =
-        SCEGrad<T>(input[index + i * stride], (i == label) ? 1.0 : 0.0) * loss;
+        SCEGrad<T>(pred, (i == label) ? 1.0 : 0.0) * loss;
   }
 }
 
@@ -406,15 +410,12 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
 
     for (int i = 0; i < n; i++) {
       for (int t = 0; t < b; t++) {
-        Box<T> gt = GetGtBox(gt_box_data, i, b, t);
-        if (LessEqualZero<T>(gt.w) || LessEqualZero<T>(gt.h)) {
-          continue;
-        }
-        int gi = static_cast<int>(gt.x * w);
-        int gj = static_cast<int>(gt.y * h);
-
         int mask_idx = gt_match_mask_data[i * b + t];
         if (mask_idx >= 0) {
+          Box<T> gt = GetGtBox(gt_box_data, i, b, t);
+          int gi = static_cast<int>(gt.x * w);
+          int gj = static_cast<int>(gt.y * h);
+
           int box_idx = GetEntryIndex(i, mask_idx, gj * w + gi, mask_num,
                                       an_stride, stride, 0);
           CalcBoxLocationLossGrad<T>(
