@@ -72,30 +72,138 @@ class SensitivePruneStrategy(Strategy):
                 ratio -= delta_rate
 
     def _get_best_ratios(self):
-        pass
+        no_loss_ratios = {}
+        for param in self.sensitivities:
+            for ratio, loss in izip(self.sensitivities[param]['pruned_percent'],
+                                    self.sensitivities[param]['acc_loss']):
+                if loss == 0:
+                    no_loss_ratios[param] = ratio
+        ratio_sum = np.sum(no_loss_ratios.values())
+        return no_loss_ratios.keys(), self.target_ratio * no_loss_ratios.values(
+        ) / ratio_sum
+
+    def _prune_parameter(self, context, param, ratio):
+        """
+        
+        """
+        param_t = context.scope.find_var(param.name).get_tensor()
+        pruned_idx, pruned_axis = pruner.cal_pruned_idx(param.name,
+                                                        np.array(param_t),
+                                                        ratio)
+        pruned_param = pruner.prune_tensor(
+            np.array(param_t), pruned_idx, pruned_axis)
+        param.desc.set_shape(pruned_param.shape)
+        param_t.set(pruned_param, context.place)
+        return pruned_idx, pruned_axis
+
+    def _prune_parameter_by_idx(self, context, param, pruned_idx, pruned_axis):
+        param_t = context.scope.find_var(param.name).get_tensor()
+        pruned_param = pruner.prune_tensor(
+            np.array(param_t), pruned_idx, pruned_axis)
+        param.desc.set_shape(pruned_param.shape)
+        param_t.set(pruned_param, context.place)
+
+    def _forward_search_related_layer(self, graph, param):
+        visited = {}
+        for op in context.graph.ops():
+            visited[op.index()] = False
+        stack = []
+        for op in context.graph.ops():
+            if param.name in op.input_names():
+                stack.append(op)
+        visit_path = []
+        while len(stack) > 0:
+            top_op = stack[len(stack) - 1]
+            if visited[top_op.index] == False:
+                visit_path.append(top_op)
+                visited[top_op.index] = True
+            next_ops = None
+            if top_op.type(
+            ) == "conv2d" and param.name not in top_op.input_names():
+                next_ops = None
+            else:
+                next_ops = self._get_next_unvisited_op(context.graph, visited,
+                                                       top_op)
+
+            if next_op == None:
+                statck.pop()
+            else:
+                statck += next_ops
+        return visit_path
+
+    def _get_next_unvisited_op(graph, visited, top_op):
+        next_ops = []
+        for out_name in top_op.output_names():
+            for op in graph.ops():
+                if out_name in op.input_names() and visited[op.index(
+                )] == False:
+                    next_ops.append(op)
+        return next_ops
+
+    def _pruning_ralated_op(self, graph, param, ratio):
+        related_ops = self.forward_search_related_op(graph, param)
+        pruned_idxs = None
+        corrected_idxs = None
+
+        for idx, op in enumerate(related_ops):
+
+            if op.type() == "conv2d":
+                if param.name in op.input_names():
+                    pruned_idxs, pruned_axis = self._prune_parameter(
+                        context, param, ratio)
+                    corrected_idxs = pruned_idxs[:]
+                else:
+                    for param_name in op.input_names():
+                        if param_name in graph.all_parameters():
+                            conv_param = graph.get_param(param_name)
+                            self._prune_parameter_by_idx(
+                                context,
+                                conv_param,
+                                corrected_idxs,
+                                pruned_axis=1)
+            elif op.type() == "add":
+                for param_name in op.input_names():
+                    if param_name in graph.all_parameters():
+                        bias_param = graph.get_param(param_name)
+                        self._prune_parameter_by_idx(
+                            context, bias_param, corrected_idxs, pruned_axis=0)
+
+            elif op.type() == "concat":
+                concat_inputs = op.input_names()
+                last_op = related_ops[idx - 1]
+                for out_name in last_op.output_names():
+                    if out_name in concat_inputs:
+                        concat_idx = concat_inputs.index(out_name)
+                offset = 0
+                for ci in range(concat_idx):
+                    offset += graph.get_param(concat_inputs[ci]).shape[1]
+                corrected_idxs = [x + offset for x in pruned_idxs]
+
+            elif type == "batch_norm":
+                mean = graph.get_param(op.input_names()[2])
+                variance = graph.get_param(op.input_names()[3])
+                alpha = graph.get_param(op.input_names()[0])
+                beta = graph.get_param(op.input_names()[1])
+                self._prune_parameter(
+                    context, mean, corrected_idxs, pruned_axis=0)
+                self._prune_parameter(
+                    context, variance, corrected_idxs, pruned_axis=0)
+                self._prune_parameter(
+                    context, alpha, corrected_idxs, pruned_axis=0)
+                self._prune_parameter(
+                    context, beta, corrected_idxs, pruned_axis=0)
 
     def _prune_parameters(self, context, params, ratios):
         """
         Pruning parameters.
         """
-        prune_program = fluid.Program()
-        for param in params:
-            prune_program.global_block().clone_variable(param)
-        with fluid.program_guide(prune_program):
-            zero_masks = pruner.prune(params, ratios=ratios)
-            for param, mask in izip(params, zero_masks):
-                pruned_param = param * zero_mask
-                layers.assign(input=pruned_param, output=param)
-        context.program_exe.run(prune_program, scope=context.scope)
-
-    def _prune_graph(self, context):
-        pass
+        for param, ratio in izip(params, ratios):
+            self._pruning_ralated_layer(param, ratio)
 
     def on_compression_begin(self, context):
         self._compute_sensitivities(context)
         params, ratios = self._get_best_ratios()
-        masks = self._prune_parameters(context, params, ratios)
-        self._prune_graph(context, params, mask)
+        self._prune_parameters(context, params, ratios)
 
 
 class PruneStrategy(Strategy):

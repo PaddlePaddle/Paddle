@@ -16,7 +16,7 @@ import numpy as np
 import collections
 from .... import layers
 
-__all__ = ['Pruner', 'MagnitudePruner', 'RatioPruner']
+__all__ = ['Pruner', 'MagnitudePruner', 'RatioPruner', 'StructurePruner']
 
 
 class Pruner(object):
@@ -58,6 +58,29 @@ class StructurePruner(Pruner):
         self.ratios = ratios
         self.group_dims = group_dims
         self.criterions = criterions
+
+    def cal_pruned_idx(self, name, param, ratio):
+        pruning_axis = self.pruning_axis[
+            name] if name in self.pruning_axis else self.pruning_axis['*']
+        criterion = self.criterions[
+            name] if name in self.criterions else self.criterions['*']
+
+        prune_num = param.shape[pruning_axis] * ratio
+
+        reduce_dims = [i for i in range(len(param.shape)) if i != pruning_axis]
+
+        if criterion == 'l1_norm':
+            criterions = np.sum(np.abs(param), axis=tuple(reduce_dims))
+
+        pruned_idx = criterions.argsort()[:prune_num]
+        return pruned_idx, pruning_axis
+
+    def prune_tensor(self, tensor, pruned_idx, pruned_axis):
+        tmp = tensor
+        for i in range(pruned_axis):
+            tmp = tmp[:]
+        tmp = tmp[pruned_idx]
+        return tmp
 
     def prune(self, params):
         params = params if isinstance(params,
