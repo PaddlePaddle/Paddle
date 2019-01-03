@@ -19,10 +19,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/platform/debug/debug_support.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
@@ -155,7 +157,25 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
   }
 }
 
+void OperatorBase::PreHook() {
+  auto& callstack = Attr<std::vector<std::string>>(
+      OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+
+  std::ostringstream sout;
+  sout << "Invoke operator " << Type() << " error.\n";
+  sout << "Python Callstacks: \n";
+  for (auto& line : callstack) {
+    sout << line;
+  }
+  sout << "C++ Callstacks: \n";
+
+  platform::DebugSupport::GetInstance()->setActiveOperator(sout.str());
+}
+
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
+  VLOG(4) << "Call the prehook ... " << DebugStringEx(&scope);
+  PreHook();
+
   VLOG(4) << place << " " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
@@ -177,7 +197,12 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     RunImpl(scope, place);
   }
   VLOG(3) << place << " " << DebugStringEx(&scope);
+
+  VLOG(4) << "Call the posthook ... " << DebugStringEx(&scope);
+  PostHook();
 }
+
+void OperatorBase::PostHook() {}
 
 bool OperatorBase::HasInputs(const std::string& name) const {
   return inputs_.find(name) != inputs_.end();

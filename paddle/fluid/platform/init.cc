@@ -23,6 +23,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include "paddle/fluid/platform/debug/debug_support.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -172,10 +173,14 @@ void InitGLOG(const std::string &prog_name) {
 #endif
 }
 
+void unexpected() {
+  std::cout << platform::DebugSupport::GetInstance()->getActiveOperator();
+}
+
 void InitTracer() {
   std::call_once(tracer_init_flag, [&]() {
-    //  std::set_unexpected();
-      VLOG(1) << "Init tracer! ";
+    std::set_unexpected(unexpected);
+    VLOG(1) << "Init tracer! ";
   });
 }
 
