@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/depthwise_conv.h"
 #include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/fluid/operators/math/vol2col.h"
-#include "paddle/fluid/platform/create_tensor_with_allocationptr.h"
 
 namespace paddle {
 namespace operators {
@@ -158,13 +157,7 @@ class GemmConvKernel : public framework::OpKernel<T> {
     // to call the matrix multiplication interface.
     Tensor col_matrix;
     if (is_expand) {
-      auto tmp_allocation_ptr =
-          platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
-              framework::product(col_shape) * sizeof(T));
-      Tensor tep_tensor =
-          platform::GetTensor<T>(std::move(tmp_allocation_ptr), col_shape);
-
-      col.ShareDataWith(tep_tensor);
+      col = context.AllocateTmpTensor<T, DeviceContext>(col_shape, dev_ctx);
       col_matrix.ShareDataWith(col);
       col_matrix.Resize(col_matrix_shape);
     }
@@ -296,13 +289,7 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
     // to call the matrix multiplication interface.
     Tensor col_matrix;
     if (is_expand) {
-      auto tmp_allocation_ptr =
-          platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
-              framework::product(col_shape) * sizeof(T));
-      Tensor tep_tensor =
-          platform::GetTensor<T>(std::move(tmp_allocation_ptr), col_shape);
-
-      col.ShareDataWith(tep_tensor);
+      col = context.AllocateTmpTensor<T, DeviceContext>(col_shape, dev_ctx);
       col_matrix.ShareDataWith(col);
       col_matrix.Resize(col_matrix_shape);
     }

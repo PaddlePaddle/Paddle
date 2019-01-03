@@ -29,6 +29,19 @@ class TemporaryAllocation : public memory::allocation::Allocation {
   memory::allocation::AllocationPtr underlying_allocation_;
 };
 
+/*! \brief the TemporaryAllocator is used to alloc the temporary allocation
+ * which used by CUDA's async operation.
+ *
+ * The TemporaryAllocator contains a temp_allocation_queue which
+ * is used to store the temporary allocations. The allocation, which is
+ * allocated by TemporaryAllocator, is a unique_ptr, and when it is not held
+ * by any variable, it will be pushed into the  temp_allocation_queue.
+ *
+ * There is one opportunity to free the allocations of temp_allocation_queue:
+ *   - when the allocation size of opportunities exceeds a certain threshold
+ *     (defined by FLAGS_limit_of_temporary_allocation).
+ *
+ * */
 class TemporaryAllocator : public memory::allocation::Allocator {
  public:
   explicit TemporaryAllocator(platform::Place place);

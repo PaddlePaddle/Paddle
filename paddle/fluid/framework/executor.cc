@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -119,7 +119,7 @@ static void DeleteUnusedTensors(
           }
         } else {
           PADDLE_THROW("Type %s of %s is not supported eager deletion",
-                       var->Type().name(), name);
+                       framework::ToTypeName(var->Type()), name);
         }
       }
     }
