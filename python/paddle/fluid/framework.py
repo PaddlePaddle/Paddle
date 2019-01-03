@@ -28,6 +28,7 @@ from .. import compat as cpt
 from .proto import framework_pb2
 try:
     if os.name == 'nt':
+        import sys
         third_lib_path = os.path.abspath(os.path.dirname(
             __file__)) + os.sep + '..' + os.sep + 'libs'
         os.environ['path'] += ';' + third_lib_path
