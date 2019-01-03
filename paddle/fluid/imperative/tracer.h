@@ -50,16 +50,14 @@ void InitVar(framework::Variable* var, framework::Variable* grad_var) {
 
 class Tracer {
  public:
-  explicit Tracer(framework::BlockDesc* root_block,
-                  framework::BlockDesc* startup_block)
-      : root_block_(root_block), startup_block_(startup_block) {}
+  explicit Tracer(framework::BlockDesc* root_block) : root_block_(root_block) {}
 
   virtual ~Tracer() {}
 
   void Trace(OpBase* op,
              const std::map<std::string, std::vector<VarBase*>>& inputs,
              const std::map<std::string, std::vector<VarBase*>>& outputs,
-             framework::BlockDesc* block) {
+             framework::BlockDesc* block, const bool stop_gradient = false) {
     std::map<std::string, VarBase*> vars;
 
     framework::OpDesc* op_desc = op->op_desc_;
@@ -107,6 +105,7 @@ class Tracer {
         } else {
           LOG(ERROR) << "tracer doesn't support yet";
         }
+        out->stop_gradient_ = stop_gradient;
         out->pre_op_ = op;
         out->pre_op_out_name_ = it.first;
         out->pre_op_out_idx_ = i;
@@ -130,9 +129,7 @@ class Tracer {
     p.op.RuntimeInferShape(scope, place, ctx);
     p.func(framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx));
 
-    if (block == startup_block_) {
-      op->grad_op_desc_ = nullptr;
-    } else {
+    if (!stop_gradient) {
       framework::OpDesc* grad_op_desc;
       auto grad_to_var = new std::unordered_map<std::string, std::string>();
       CreateGradOp(*op_desc, {}, {block}, &grad_op_desc, grad_to_var);
@@ -156,6 +153,7 @@ class Tracer {
           }
         }
       }
+
       for (auto it : grad_op_desc->Outputs()) {
         auto& grad_out_vars = op->grad_output_vars_[it.first];
         for (const std::string& grad_outvar : it.second) {
@@ -170,12 +168,12 @@ class Tracer {
         }
       }
     }
+
     op->block_ = block;
   }
 
  private:
   framework::BlockDesc* root_block_;
-  framework::BlockDesc* startup_block_;
 };
 
 }  // namespace imperative
