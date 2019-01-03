@@ -212,7 +212,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
             auto &g_name = backward_vars[i + 1];
             VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
 
-            CreateCollectionOp(&result, p_name, g_name);
+            InsertCollectionOp(&result, p_name, g_name);
           }
         } catch (boost::bad_get e) {
         }
@@ -388,7 +388,7 @@ void MultiDevSSAGraphBuilderBase::CreateComputationalOp(ir::Graph *result,
   CreateOpHandleIOs(result, node, dev_id);
 }
 
-void MultiDevSSAGraphBuilderBase::InsertAllReduceOp(
+void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
     ir::Graph *result, const std::string &og) const {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
@@ -498,14 +498,14 @@ bool MultiDevSSAGraphBuilderBase::IsSparseGradient(
   return false;
 }
 
-void AllReduceSSAGraphBuilder::CreateCollectionOp(
+void AllReduceSSAGraphBuilder::InsertCollectionOp(
     ir::Graph *result, const std::string &p_name,
     const std::string &g_name) const {
   if (IsSparseGradient(g_name)) {
     CreateReduceOp(result, g_name, 0);
     CreateBroadcastOp(result, g_name, 0);
   } else {
-    InsertAllReduceOp(result, g_name);
+    CreateAllReduceOp(result, g_name);
   }
 }
 
@@ -577,7 +577,7 @@ void ReduceSSAGraphBuilder::ResetState() const {
   bcast_var_name_set_.resize(places_.size());
 }
 
-void ReduceSSAGraphBuilder::CreateCollectionOp(
+void ReduceSSAGraphBuilder::InsertCollectionOp(
     ir::Graph *result, const std::string &p_name,
     const std::string &g_name) const {
   size_t cur_device_id = GetAppropriateDeviceID({g_name});
@@ -907,7 +907,7 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   return op_dev_id;
 }
 
-void DistSSAGraphBuilder::CreateCollectionOp(ir::Graph *result,
+void DistSSAGraphBuilder::InsertCollectionOp(ir::Graph *result,
                                              const std::string &p_name,
                                              const std::string &g_name) const {
   size_t cur_device_id = 0;
@@ -922,7 +922,7 @@ void DistSSAGraphBuilder::CreateCollectionOp(ir::Graph *result,
         CreateReduceOp(result, g_name, 0);
         CreateBroadcastOp(result, g_name, 0);
       } else {
-        InsertAllReduceOp(result, g_name);
+        CreateAllReduceOp(result, g_name);
       }
       break;
     default:
