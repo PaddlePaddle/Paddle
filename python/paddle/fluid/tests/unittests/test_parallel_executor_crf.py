@@ -172,8 +172,9 @@ class TestCRFModel(unittest.TestCase):
             data = train_data()
             for i in range(10):
                 cur_batch = next(data)
-                print(pe.run(feed=feeder.feed(cur_batch),
-                             fetch_list=[avg_cost.name])[0])
+                print(
+                    pe.run(feed=feeder.feed(cur_batch),
+                           fetch_list=[avg_cost.name])[0])
 
     def _new_build_strategy(self, use_reduce=False):
         build_strategy = fluid.BuildStrategy()

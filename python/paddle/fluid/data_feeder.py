@@ -217,15 +217,13 @@ class DataFeeder(object):
         """
         if isinstance(self.place, core.CUDAPlace):
             places = [
-                core.CUDAPlace(i)
-                for i in six.moves.xrange(
-                    self._get_number_of_places_(num_places))
+                core.CUDAPlace(i) for i in
+                six.moves.xrange(self._get_number_of_places_(num_places))
             ]
         else:
             places = [
-                core.CPUPlace()
-                for _ in six.moves.xrange(
-                    self._get_number_of_places_(num_places))
+                core.CPUPlace() for _ in
+                six.moves.xrange(self._get_number_of_places_(num_places))
             ]
 
         if len(iterable) != len(places):

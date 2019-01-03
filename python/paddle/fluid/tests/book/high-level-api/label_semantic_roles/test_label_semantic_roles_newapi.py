@@ -81,8 +81,7 @@ def lstm_net():
         fluid.layers.embedding(
             size=[WORD_DICT_LEN, WORD_DIM],
             input=x,
-            param_attr=fluid.ParamAttr(name=EMBEDDING_NAME))
-        for x in word_input
+            param_attr=fluid.ParamAttr(name=EMBEDDING_NAME)) for x in word_input
         #name=EMBEDDING_NAME, trainable=False)) for x in word_input
     ]
     emb_layers.append(predicate_embedding)

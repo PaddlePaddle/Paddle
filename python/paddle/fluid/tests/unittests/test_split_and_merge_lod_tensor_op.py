@@ -167,14 +167,13 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
 
         g_vars = program.global_block().var(x.name + "@GRAD")
         g_out = [
-            item.sum()
-            for item in map(np.array,
-                            exe.run(program,
-                                    feed={'x': tensor,
-                                          'y': mask},
-                                    fetch_list=[g_vars],
-                                    scope=scope,
-                                    return_numpy=False))
+            item.sum() for item in map(np.array,
+                                       exe.run(program,
+                                               feed={'x': tensor,
+                                                     'y': mask},
+                                               fetch_list=[g_vars],
+                                               scope=scope,
+                                               return_numpy=False))
         ]
 
         g_out_sum = np.array(g_out).sum()

@@ -46,22 +46,20 @@ void SetConfig<contrib::AnalysisConfig>(contrib::AnalysisConfig* config,
                                         std::string model_dir, bool use_gpu,
                                         bool use_tensorrt, int batch_size) {
   if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
-    config->prog_file = model_dir + "/" + FLAGS_prog_filename;
-    config->param_file = model_dir + "/" + FLAGS_param_filename;
+    config->SetProgFile(model_dir + "/" + FLAGS_prog_filename);
+    config->SetParamsFile(model_dir + "/" + FLAGS_param_filename);
   } else {
-    config->model_dir = model_dir;
+    config->SetModel(model_dir);
   }
   if (use_gpu) {
-    config->use_gpu = true;
-    config->device = 0;
-    config->fraction_of_gpu_memory = 0.15;
+    config->EnableUseGpu(100, 0);
     if (use_tensorrt) {
       config->EnableTensorRtEngine(1 << 10, batch_size);
       config->pass_builder()->DeletePass("conv_bn_fuse_pass");
       config->pass_builder()->DeletePass("fc_fuse_pass");
       config->pass_builder()->TurnOnDebug();
     } else {
-      config->enable_ir_optim = true;
+      config->SwitchIrOptim();
     }
   }
 }
@@ -77,7 +75,8 @@ void profile(std::string model_dir, bool use_analysis, bool use_tensorrt) {
 
   std::vector<PaddleTensor> outputs;
   if (use_analysis || use_tensorrt) {
-    contrib::AnalysisConfig config(true);
+    contrib::AnalysisConfig config;
+    config.EnableUseGpu(100, 0);
     config.pass_builder()->TurnOnDebug();
     SetConfig<contrib::AnalysisConfig>(&config, model_dir, true, use_tensorrt,
                                        FLAGS_batch_size);
@@ -109,7 +108,8 @@ void compare(std::string model_dir, bool use_tensorrt) {
       &native_outputs, false);
 
   std::vector<PaddleTensor> analysis_outputs;
-  contrib::AnalysisConfig analysis_config(true);
+  contrib::AnalysisConfig analysis_config;
+  analysis_config.EnableUseGpu(50, 0);
   SetConfig<contrib::AnalysisConfig>(&analysis_config, model_dir, true,
                                      use_tensorrt, FLAGS_batch_size);
   TestOneThreadPrediction(
