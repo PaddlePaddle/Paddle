@@ -18,6 +18,10 @@ limitations under the License. */
 #include "grpc++/grpc++.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/operators/distributed/distributed_pb.h"
+#include "paddle/fluid/operators/distributed/grpc/grpc_serde.h"
+#include "paddle/fluid/operators/distributed/grpc/grpc_service.h"
+#include "paddle/fluid/operators/distributed/request.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 
 namespace paddle {
@@ -41,7 +45,8 @@ class GRPCRequestBase {
  public:
   explicit GRPCRequestBase(GrpcService::AsyncService* service,
                            ::grpc::ServerCompletionQueue* cq,
-                           RequestHandler* request_handler, int req_id)
+                           RequestHandler* request_handler, int req_id,
+                           int method_id)
       : responder_(&ctx_),
         service_(service),
         cq_(cq),
@@ -50,9 +55,12 @@ class GRPCRequestBase {
         req_id_(req_id) {
     PADDLE_ENFORCE(cq_);
     request_.reset(new GRPCVariableResponse(request_handler->scope(),
-                                            request_handler->dev_ctx(), true));
+                                            request_handler->dev_ctx(), false));
+    // FIXME(typhoonzero): fix this
     // !request_handler->sync_mode()));
-    int method_id = static_cast<int>(distributed::GrpcMethod::kSendVariable);
+
+    // FIXME(typhoonzero): better method_id
+    // int method_id = static_cast<int>(distributed::GrpcMethod::kSendVariable);
     // GRPC request is initialized in here:
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,

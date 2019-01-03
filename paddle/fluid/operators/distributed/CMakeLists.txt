@@ -36,14 +36,6 @@ if(WITH_GRPC)
     handlers barrier rpc_server rpc_client
     sendrecvop_utils variable_response)
 
-#   grpc_library(sendrecvop_rpc SRCS sendrecvop_utils.cc
-#         request_handler_impl.cc rpc_client.cc rpc_server.cc
-#         variable_response.cc
-#         collective_client.cc collective_server.cc
-#         ${GRPC_SRCS}
-#       PROTO ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto 
-#       DEPS lod_tensor selected_rows_functor memory)
-
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set(RPC_DEPS sendrecvop_rpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
 

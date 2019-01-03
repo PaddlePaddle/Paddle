@@ -145,23 +145,34 @@ void AsyncGRPCServer::TryToRegisterNewOne(const RequestType rpc_type,
 
   switch (rpc_type) {
     case RequestType::SEND:
-      b = new GRPCRequestSend(&service_, cq.get(), handler, req_id);
+      b = new GRPCRequestSend(
+          &service_, cq.get(), handler, req_id,
+          static_cast<int>(distributed::GrpcMethod::kSendVariable));
       break;
     case RequestType::RECV:
-      b = new GRPCRequestGet(&service_, cq.get(), handler, req_id);
+      b = new GRPCRequestGet(
+          &service_, cq.get(), handler, req_id,
+          static_cast<int>(distributed::GrpcMethod::kGetVariable));
       break;
     case RequestType::GET_MONOMER:
-      b = new GRPCRequestGetMonomer(&service_, cq.get(), handler, req_id);
+      b = new GRPCRequestGetMonomer(
+          &service_, cq.get(), handler, req_id,
+          static_cast<int>(distributed::GrpcMethod::kGetMonomerVariable));
       break;
     case RequestType::GET_MONOMER_BARRIER:
-      b = new GRPCRequestGetMonomerBarrier(&service_, cq.get(), handler,
-                                           req_id);
+      b = new GRPCRequestGetMonomerBarrier(
+          &service_, cq.get(), handler, req_id,
+          static_cast<int>(distributed::GrpcMethod::kGetMonomerBarrier));
       break;
     case RequestType::PREFETCH:
-      b = new GRPCRequestPrefetch(&service_, cq.get(), handler, req_id);
+      b = new GRPCRequestPrefetch(
+          &service_, cq.get(), handler, req_id,
+          static_cast<int>(distributed::GrpcMethod::kPrefetchVariable));
       break;
     case RequestType::CHECKPOINT:
-      b = new GRPCRequestCheckpointNotify(&service_, cq.get(), handler, req_id);
+      b = new GRPCRequestCheckpointNotify(
+          &service_, cq.get(), handler, req_id,
+          static_cast<int>(distributed::GrpcMethod::kCheckpointNotify));
       break;
   }
   reqs[req_id] = b;
