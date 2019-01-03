@@ -101,6 +101,8 @@ class DeviceTracer {
   // Generate a proto after done (Disabled).
   virtual proto::Profile GenProfile(const std::string& profile_path) = 0;
 
+  virtual void Reset() = 0;
+
   virtual bool IsEnabled() = 0;
 };
 

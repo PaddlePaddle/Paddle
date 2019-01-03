@@ -499,6 +499,7 @@ void DisableProfiler(EventSortingKey sorted_key,
     if (tracer->IsEnabled()) {
       tracer->Disable();
       tracer->GenProfile(profile_path);
+      tracer->Reset();
     }
     timeline_enabled = false;
   }

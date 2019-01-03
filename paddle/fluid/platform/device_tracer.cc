@@ -36,8 +36,7 @@ thread_local std::deque<int> block_id_stack;
 // Tracking the nested event stacks.
 thread_local std::deque<std::string> annotation_stack;
 
-static std::vector<std::shared_ptr<DeviceTracer::AllRecord>>
-    g_all_thread_local_records;
+static std::vector<std::shared_ptr<DeviceTracer::AllRecord>> g_all_records;
 static thread_local std::shared_ptr<DeviceTracer::AllRecord>
     thread_local_records;
 
@@ -281,13 +280,13 @@ class DeviceTracerImpl : public DeviceTracer {
     profile_pb.set_end_ns(end_ns_);
 
     std::unordered_map<uint32_t, std::string> all_correlations;
-    for (auto &all_records : g_all_thread_local_records) {
+    for (auto &all_records : g_all_records) {
       for (auto &item : all_records->correlations) {
         all_correlations[item.first] = item.second;
       }
     }
 
-    for (auto &all_records : g_all_thread_local_records) {
+    for (auto &all_records : g_all_records) {
       for (const KernelRecord &r : all_records->kernel_records) {
         auto *event = profile_pb.add_events();
         event->set_type(proto::Event::GPUKernel);
@@ -331,6 +330,16 @@ class DeviceTracerImpl : public DeviceTracer {
     return profile_pb;
   }
 
+  void Reset() {
+    std::lock_guard<std::mutex> l(trace_mu_);
+    for (auto &all_records : g_all_records) {
+      all_records->correlations.clear();
+      all_records->cpu_records.clear();
+      all_records->mem_records.clear();
+      all_records->kernel_records.clear();
+    }
+  }
+
   void Disable() {
 #ifdef PADDLE_WITH_CUPTI
     // flush might cause additional calls to DeviceTracker.
@@ -350,7 +359,7 @@ class DeviceTracerImpl : public DeviceTracer {
       std::lock_guard<std::mutex> guard(trace_mu_);
       if (!thread_local_records) {
         thread_local_records = std::make_shared<AllRecord>();
-        g_all_thread_local_records.push_back(thread_local_records);
+        g_all_records.push_back(thread_local_records);
       }
     }
     return *thread_local_records;
@@ -381,8 +390,6 @@ class DeviceTracerImpl : public DeviceTracer {
   bool enabled_;
   uint64_t start_ns_;
   uint64_t end_ns_;
-  //  static std::vector<std::shared_ptr<AllRecord>> g_all_thread_local_records;
-  //  static thread_local std::shared_ptr<AllRecord> thread_local_records;
 };
 
 void CreateTracer(DeviceTracer **t) { *t = new DeviceTracerImpl(); }
