@@ -304,7 +304,6 @@ def detection_output(loc,
             prior_box_var=prior_box_var,
             target_box=loc,
             code_type='decode_center_size')
-
     scores = nn.softmax(input=scores)
     scores = nn.transpose(scores, perm=[0, 2, 1])
     if arm_scores:
