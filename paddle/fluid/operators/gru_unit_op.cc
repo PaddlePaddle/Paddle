@@ -111,6 +111,10 @@ class GRUUnitOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The activation type used in update gate and reset gate.")
         .SetDefault(sigmoid)
         .InEnum({identity, sigmoid, tanh, relu});
+    AddAttr<bool>("origin_mode",
+                  "bool"
+                  "use origin mode in article https://arxiv.org/abs/1412.3555")
+        .SetDefault(false);
     AddComment(R"DOC(
 GRUUnit Operator implements partial calculations of the GRU unit as following:
 
