@@ -19,10 +19,10 @@
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/profiler.h"
 
-// async nccl allreduce or sync issue:
+// asynchronous nccl allreduce or synchronous issue:
 // https://github.com/PaddlePaddle/Paddle/issues/15049
 DEFINE_bool(
-    sync_nccl_allreduce, true,
+    sync_nccl_allreduce, false,
     "If set true, will call `cudaStreamSynchronize(nccl_stream)`"
     "after allreduce, this mode can get better performance in some scenarios.");
 
