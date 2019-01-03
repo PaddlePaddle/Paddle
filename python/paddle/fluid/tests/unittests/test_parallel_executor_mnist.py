@@ -86,6 +86,7 @@ class TestMNIST(TestParallelExecutorBase):
                        "label": label},
             use_cuda=use_cuda,
             use_reduce=False)
+
         reduce_first_loss, reduce_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
