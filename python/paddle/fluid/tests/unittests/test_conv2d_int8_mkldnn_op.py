@@ -65,27 +65,29 @@ class TestConv2dInt8Op(TestConv2dOp):
             input_shift = (np.ones(self.input_size) * 128).astype(np.uint8)
 
         if self.srctype == np.int8:
+            filter_int = np.round(filter * self.scale_weights[0] *
+                                  0.5).astype(np.int32)
+            scale_output_shift = self.scale_out / (self.scale_in *
+                                                   self.scale_weights[0] * 0.5)
             output1 = conv2d_forward_refer(
                 np.round((input.astype(np.int32) + input_shift) *
-                         self.scale_in).astype(np.int32),
-                np.round(filter * self.scale_weights[0] * 0.5).astype(np.int32),
-                self.groups, conv2d_param).astype(np.float32) * (
-                    self.scale_out / (self.scale_in * self.scale_weights[0] *
-                                      0.5))
+                         self.scale_in).astype(np.int32), filter_int,
+                self.groups,
+                conv2d_param).astype(np.float32) * scale_output_shift
             output2 = conv2d_forward_refer(
                 np.round((input_shift) * self.scale_in).astype(np.int32),
-                np.round(filter * self.scale_weights[0] * 0.5).astype(np.int32),
-                self.groups, conv2d_param).astype(np.float32) * (
-                    self.scale_out / (self.scale_in * self.scale_weights[0] *
-                                      0.5))
+                filter_int, self.groups,
+                conv2d_param).astype(np.float32) * scale_output_shift
             output = np.round(output1 - output2).astype(self.dsttype)
         else:
+            filter_int = np.round(filter *
+                                  self.scale_weights[0]).astype(np.int32)
+            scale_output_shift = self.scale_out / (self.scale_in *
+                                                   self.scale_weights[0])
             output1 = conv2d_forward_refer(
-                input.astype(np.int32),
-                np.round(filter * self.scale_weights[0]).astype(np.int32),
-                self.groups, conv2d_param).astype(np.float32)
-            output = np.round(output1 * (self.scale_out / (
-                self.scale_in * self.scale_weights[0]))).astype(self.dsttype)
+                input.astype(np.int32), filter_int, self.groups,
+                conv2d_param).astype(np.float32)
+            output = np.round(output1 * scale_output_shift).astype(self.dsttype)
 
         self.inputs = {
             'Input':
@@ -130,6 +132,9 @@ class TestConv2dInt8Op(TestConv2dOp):
     def init_dtype(self):
         self.srctype = np.uint8
         self.dsttype = np.int8
+
+
+#--------------------test conv2d u8 in and s8 out--------------------
 
 
 class TestConv2d(TestConv2dInt8Op):
@@ -198,7 +203,7 @@ class TestWithInput1x1Filter1x1(TestConv2dInt8Op):
         self.groups = 3
 
 
-#--------------------test conv2d s8 int and s8 out--------------------
+#--------------------test conv2d s8 in and s8 out--------------------
 
 
 def create_test_int8_class(parent):
