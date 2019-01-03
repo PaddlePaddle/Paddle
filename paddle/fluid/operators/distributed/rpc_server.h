@@ -36,7 +36,7 @@ enum RPCServerState { STATE_SEND, STATE_RECV, STATE_NONE };
 class RPCServer {
  public:
   explicit RPCServer(const std::string& address, int num_clients)
-      : state_(RPCServerState::STATE_NONE),
+      : state_(RPCServerState::STATE_RECV),
         send_barrier_(new Barrier(num_clients)),
         recv_barrier_(new Barrier(num_clients)),
         bind_address_(address),
@@ -47,8 +47,11 @@ class RPCServer {
 
   virtual ~RPCServer() {}
 
+  // ----------------------------------------------------------------
+  // Implementations:
   virtual void StartServer() = 0;
   virtual void WaitServerReady() = 0;
+  // ----------------------------------------------------------------
 
   void ShutDown();
 

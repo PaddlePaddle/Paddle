@@ -325,7 +325,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   framework::Scope &recv_scope = scope.NewScope();
 
   bool sync_mode = Attr<bool>("sync_mode");
-  bool dc_sgd = Attr<bool>("dc_asgd");
+  bool dc_asgd = Attr<bool>("dc_asgd");
   auto fan_in = Attr<int>("Fanin");
   auto inputs = Inputs("X");
 
@@ -339,25 +339,29 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
-  request_send_handler_.reset(
-      new distributed::RequestSendHandler(sync_mode, dc_sgd));
-  request_get_handler_.reset(
-      new distributed::RequestGetHandler(sync_mode, dc_sgd));
-  request_prefetch_handler_.reset(
-      new distributed::RequestPrefetchHandler(sync_mode));
-  request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
-      sync_mode, checkpoint_block_id));
+  if (sync_mode) {
+    request_send_handler_.reset(new distributed::SendHandlerSync());
+    request_get_handler_.reset(new distributed::GetHandlerSync());
+  } else {
+    request_send_handler_.reset(new distributed::SendHandlerAsync());
+    if (dc_asgd) {
+      request_get_handler_.reset(new distributed::GetHandlerDCAsync());
+    } else {
+      request_get_handler_.reset(new distributed::GetHandlerAsync());
+    }
+  }
+  request_prefetch_handler_.reset(new distributed::PrefetchHandler());
+  request_checkpoint_handler_.reset(new distributed::CheckpointHandler());
+  request_checkpoint_handler_->SetId(checkpoint_block_id);
 
-  rpc_service_->RegisterRPC(distributed::kRequestSend,
-                            request_send_handler_.get(),
+  rpc_service_->RegisterRPC(RequestType::SEND request_send_handler_.get(),
                             FLAGS_rpc_send_thread_num);
-  rpc_service_->RegisterRPC(distributed::kRequestGet,
-                            request_get_handler_.get(),
+  rpc_service_->RegisterRPC(RequestType::RECV, request_get_handler_.get(),
                             FLAGS_rpc_get_thread_num);
-  rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
+  rpc_service_->RegisterRPC(RequestType::PREFETCH,
                             request_prefetch_handler_.get(),
                             FLAGS_rpc_prefetch_thread_num);
-  rpc_service_->RegisterRPC(distributed::kRequestCheckpoint,
+  rpc_service_->RegisterRPC(RequestType::CHECKPOINT,
                             request_checkpoint_handler_.get());
 
   auto optimize_blocks =

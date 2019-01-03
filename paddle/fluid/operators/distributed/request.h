@@ -35,13 +35,22 @@ enum RequestType {
 class RPCRequest {
  public:
   RPCRequest() {}
+  explicit RPCRequest(const std::string &varname, framework::Variable *invar,
+                      framework::Variable **outvar, int trainer_id,
+                      RequestType req_type)
+      : trainer_id_(trainer_id),
+        varname_(varname),
+        var_(invar),
+        out_var_(outvar),
+        type_(req_type) {}
 
  public:
   int trainer_id_;
-  RequestType type_;
   std::string varname_;
   framework::Variable *var_;
   framework::Variable **out_var_;
+
+  RequestType type_;
   // prefetch table name and out_var_name.
   std::string out_var_name_;
   std::string table_name_;

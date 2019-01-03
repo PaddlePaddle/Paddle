@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/distributed/handlers/prefetch_handler.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable_helper.h"
 
@@ -45,6 +46,20 @@ bool PrefetchHandler::Handle(RPCRequest* request, Scope* scope) {
     lookup_table_op->Run(*scope, cpu_place);
   }
   return true;
+}
+
+std::unique_ptr<paddle::framework::OperatorBase>
+PrefetchHandler::BuildLookupTableOp(const std::string& table_name,
+                                    const std::string& id_name,
+                                    const std::string& out_name) {
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type("lookup_table");
+  BuildVar("W", {table_name.data()}, op_desc.add_inputs());
+  BuildVar("Ids", {id_name.data()}, op_desc.add_inputs());
+  BuildVar("Out", {out_name.data()}, op_desc.add_outputs());
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  return op;
 }
 
 }  // namespace distributed

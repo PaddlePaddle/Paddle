@@ -37,16 +37,7 @@ class PrefetchHandler final : public RequestHandler {
  private:
   std::unique_ptr<paddle::framework::OperatorBase> BuildLookupTableOp(
       const std::string& table_name, const std::string& id_name,
-      const std::string& out_name) {
-    paddle::framework::proto::OpDesc op_desc;
-    op_desc.set_type("lookup_table");
-    BuildVar("W", {table_name.data()}, op_desc.add_inputs());
-    BuildVar("Ids", {id_name.data()}, op_desc.add_inputs());
-    BuildVar("Out", {out_name.data()}, op_desc.add_outputs());
-
-    auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-    return op;
-  }
+      const std::string& out_name);
 
  private:
   std::unordered_map<std::string,

@@ -15,6 +15,7 @@ limitations under the License. */
 #include <limits>
 #include <string>
 
+#include "paddle/fluid/operators/distributed/grpc/grpc_request.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_server.h"
 
@@ -68,7 +69,7 @@ void AsyncGRPCServer::StartServer() {
   LOG(INFO) << "Server listening on " << bind_address_
             << " selected port: " << selected_port_;
 
-  std::function<void(const std::string&, int)> f =
+  std::function<void(const RequestType, int)> f =
       std::bind(&AsyncGRPCServer::TryToRegisterNewOne, this,
                 std::placeholders::_1, std::placeholders::_2);
 
@@ -81,14 +82,13 @@ void AsyncGRPCServer::StartServer() {
     reqs.reserve(kRequestBufSize);
 
     for (int i = 0; i < kRequestBufSize; i++) {
-      VLOG(6) << "TryToRegisterNewOne on RPC NAME: " << rpc_type << " I: " << i;
       TryToRegisterNewOne(rpc_type, i);
     }
 
     for (int i = 0; i < threadnum; i++) {
       rpc_threads_[rpc_type].emplace_back(new std::thread(std::bind(
           &AsyncGRPCServer::HandleRequest, this, cq.get(), rpc_type, f)));
-      VLOG(4) << t.first << " creates threads!";
+      VLOG(4) << "created thread for req type " << rpc_type;
     }
   }
 
@@ -138,10 +138,10 @@ void AsyncGRPCServer::TryToRegisterNewOne(const RequestType rpc_type,
           << " REQ ID: " << req_id;
 
   auto& reqs = rpc_reqs_[rpc_type];
-  auto& handler = rpc_call_map_[rpc_type];
+  auto* handler = rpc_call_map_[rpc_type];
   auto& cq = rpc_cq_[rpc_type];
 
-  RequestBase* b = nullptr;
+  GRPCRequestBase* b = nullptr;
 
   switch (rpc_type) {
     case RequestType::SEND:
@@ -170,7 +170,7 @@ void AsyncGRPCServer::TryToRegisterNewOne(const RequestType rpc_type,
 
 void AsyncGRPCServer::HandleRequest(
     ::grpc::ServerCompletionQueue* cq, const RequestType rpc_type,
-    std::function<void(const std::string&, int)> TryToRegisterNewOne) {
+    std::function<void(RequestType, int)> TryToRegisterNewOne) {
   void* tag = NULL;
   bool ok = false;
 
@@ -186,7 +186,7 @@ void AsyncGRPCServer::HandleRequest(
             << " get next";
 
     auto& reqs = rpc_reqs_[rpc_type];
-    RequestBase* base = nullptr;
+    GRPCRequestBase* base = nullptr;
     {
       PADDLE_ENFORCE(req_id >= 0 && req_id < kRequestBufSize);
       std::unique_lock<std::mutex> lock(cq_mutex_);

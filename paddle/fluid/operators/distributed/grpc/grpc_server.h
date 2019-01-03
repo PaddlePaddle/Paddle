@@ -42,7 +42,7 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-class RPCRequestBase;
+class GRPCRequestBase;
 
 class AsyncGRPCServer final : public RPCServer {
  public:
@@ -55,9 +55,8 @@ class AsyncGRPCServer final : public RPCServer {
 
  private:
   // HandleRequest needs to be thread-safe.
-  void HandleRequest(
-      ::grpc::ServerCompletionQueue* cq, const std::string& rpc_name,
-      std::function<void(const std::string&, int)> TryToRegisterNewOne);
+  void HandleRequest(::grpc::ServerCompletionQueue* cq, RequestType rpc_type,
+                     std::function<void(RequestType, int)> TryToRegisterNewOne);
 
   void TryToRegisterNewOne(const RequestType rpc_name, int req_id);
   void ShutdownQueue();
@@ -72,7 +71,7 @@ class AsyncGRPCServer final : public RPCServer {
   GrpcService::AsyncService service_;
   std::unique_ptr<::grpc::Server> server_;
 
-  // condition of the sub program
+  // FIXME(typhoonzero): not used
   std::condition_variable barrier_condition_;
 
   std::mutex mutex_ready_;
@@ -80,12 +79,15 @@ class AsyncGRPCServer final : public RPCServer {
 
   int ready_;
 
-  std::unordered_map<std::string,
-                     std::unique_ptr<::grpc::ServerCompletionQueue>>
+  std::unordered_map<RequestType,
+                     std::unique_ptr<::grpc::ServerCompletionQueue>,
+                     EnumClassHash>
       rpc_cq_;
-  std::unordered_map<std::string, std::vector<std::unique_ptr<std::thread>>>
+  std::unordered_map<RequestType, std::vector<std::unique_ptr<std::thread>>,
+                     EnumClassHash>
       rpc_threads_;
-  std::unordered_map<std::string, std::vector<RPCRequestBase*>> rpc_reqs_;
+  std::unordered_map<RequestType, std::vector<GRPCRequestBase*>, EnumClassHash>
+      rpc_reqs_;
 };
 
 }  // namespace distributed
