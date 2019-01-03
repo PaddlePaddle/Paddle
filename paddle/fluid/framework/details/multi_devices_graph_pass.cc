@@ -155,8 +155,6 @@ void MultiDevSSAGraphBuilderBase::Init() const {
 std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   Init();
-
-  // Give the topology sort order and rebuild the graph structure.
   std::vector<ir::Node *> sorted_ops = SortOperations(*graph);
 
   auto nodes = graph->ReleaseNodes();
@@ -183,14 +181,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
       // This op runs on all devices
       if (IsScaleLossOp(node)) {
         // user can customize loss@grad if not use_default_grad_scale_
-        if (strategy_.gradient_scale_ !=
-            BuildStrategy::GradientScaleStrategy::kCustomized) {
-          // TODO(paddle-dev): Why is there no input for this op_handle?
-          auto loss_grad_name = node->Op()->OutputArgumentNames()[0];
-          auto out_dtype = all_vars_.at(loss_grad_name)->GetDataType();
-          CreateScaleLossGradOp(&result, loss_grad_name, node->outputs[0],
-                                out_dtype);
-        }
+        InsertScaleLossGradOp(&result, node);
         // This assumes the backward generating code will ensure IsScaleLossOp
         // is true only for the op that scale the final scalar loss.
         // It also assumes backward op will always follow the forward op in
@@ -202,15 +193,15 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
 
       // Insert collection ops
       if (insert_collection_ops && !is_forwarding) {
-        bool is_bk_op =
-            static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
-                                  OpProtoAndCheckerMaker::OpRoleAttrName())) &
-                              static_cast<int>(OpRole::kBackward));
-        if (!is_bk_op) continue;
-
-        // Currently, we assume that once gradient is generated, it can be
-        // broadcast, and each gradient is only broadcast once.
         try {
+          bool is_bk_op =
+              static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
+                                    OpProtoAndCheckerMaker::OpRoleAttrName())) &
+                                static_cast<int>(OpRole::kBackward));
+          if (!is_bk_op) continue;
+
+          // Currently, we assume that once gradient is generated, it can be
+          // broadcast, and each gradient is only broadcast once.
           auto backward_vars =
               boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
                   OpProtoAndCheckerMaker::OpRoleVarAttrName()));
@@ -243,6 +234,34 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   AddOutputToLeafOps(&result);
   result.Erase<GraphOps>(kGraphOps);
   return graph;
+}
+
+void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
+    ir::Graph *result, const ir::Node *node) const {
+  // user can customize loss@grad if not use_default_grad_scale_
+  size_t loss_scale = 0;
+  switch (this->strategy_.gradient_scale_) {
+    case BuildStrategy::GradientScaleStrategy::kOne:
+      loss_scale = 1;
+      break;
+    case BuildStrategy::GradientScaleStrategy::kCoeffNumDevice:
+      loss_scale = places_.size();
+      break;
+    case BuildStrategy::GradientScaleStrategy::kCustomized:
+      loss_scale = 0;
+      break;
+    default:
+      LOG(FATAL) << "Unknown gradient scale strategy.";
+      break;
+  }
+
+  if (loss_scale) {
+    // TODO(paddle-dev): Why is there no input for this op_handle?
+    auto loss_grad_name = node->Op()->OutputArgumentNames()[0];
+    auto out_dtype = this->all_vars_.at(loss_grad_name)->GetDataType();
+    this->CreateScaleLossGradOp(result, loss_grad_name, node->outputs[0],
+                                loss_scale, out_dtype);
+  }
 }
 
 std::vector<ir::Node *> MultiDevSSAGraphBuilderBase::SortOperations(
@@ -400,13 +419,13 @@ void MultiDevSSAGraphBuilderBase::InsertAllReduceOp(
 
 void MultiDevSSAGraphBuilderBase::CreateScaleLossGradOp(
     ir::Graph *result, const std::string &loss_grad_name,
-    ir::Node *out_var_node, proto::VarType::Type dtype) const {
+    ir::Node *out_var_node, size_t loss_scale,
+    proto::VarType::Type dtype) const {
   for (size_t i = 0; i < places_.size(); ++i) {
-    // Insert ScaleCost OpHandle
     auto *dev_ctx = platform::DeviceContextPool::Instance().Get(places_[i]);
     auto *op_handle = new ScaleLossGradOpHandle(
         result->CreateEmptyNode("scale_loss_grad", ir::Node::Type::kOperation),
-        local_scopes_.size(), local_scopes_[i], places_[i], dev_ctx, dtype);
+        loss_scale, local_scopes_[i], places_[i], dev_ctx, dtype);
     result->Get<GraphOps>(kGraphOps).emplace_back(op_handle);
 
     // FIXME: Currently ScaleLossGradOp only use device_count as scale
