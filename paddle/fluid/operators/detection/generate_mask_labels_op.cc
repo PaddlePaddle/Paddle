@@ -60,11 +60,11 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
         "Output(MaskInt32) of GenerateMaskLabelsOp should not be null");
 
     auto im_info_dims = ctx->GetInputDim("ImInfo");
-    auto gt_classes_dims = ctx->GetInputDim("GtClasses");
-    auto is_crowd_dims = ctx->GetInputDim("IsCrowd");
-    auto gt_segms_dims = ctx->GetInputDim("GtSegms");
-    auto rois_dims = ctx->GetInputDim("Rois");
-    auto labels_int32_dims = ctx->GetInputDim("LabelsInt32");
+    //  auto gt_classes_dims = ctx->GetInputDim("GtClasses");
+    //  auto is_crowd_dims = ctx->GetInputDim("IsCrowd");
+    //  auto gt_segms_dims = ctx->GetInputDim("GtSegms");
+    //  auto rois_dims = ctx->GetInputDim("Rois");
+    //  auto labels_int32_dims = ctx->GetInputDim("LabelsInt32");
 
     PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
                       "The rank of Input(ImInfo) must be 2.");
@@ -154,6 +154,10 @@ static inline Tensor CropAndResize(const platform::CPUDeviceContext& context,
   return result;
 }
 
+/*
+ * Expand masks from shape (#masks, M ** 2) to (#masks, #classes * M ** 2)
+ * to encode class specific mask targets.
+ */
 template <typename T>
 static inline Tensor ExpandMaskTarget(const platform::CPUDeviceContext& context,
                                       const Tensor& masks,
