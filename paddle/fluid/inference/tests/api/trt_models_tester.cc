@@ -154,9 +154,9 @@ TEST(TensorRT_mobilenet, analysis) {
 
 TEST(AnalysisPredictor, use_gpu) {
   std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
-  AnalysisConfig config(true);
-  config.model_dir = model_dir;
-  config.fraction_of_gpu_memory = 0.15;
+  AnalysisConfig config;
+  config.EnableUseGpu(100, 0);
+  config.SetModel(model_dir);
   config.pass_builder()->TurnOnDebug();
 
   std::vector<std::vector<PaddleTensor>> inputs_all;
