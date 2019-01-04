@@ -17,7 +17,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
@@ -28,6 +31,22 @@ using SelectedRows = framework::SelectedRows;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
+
+template <typename T>
+struct ClipByNormFunctor {
+  ClipByNormFunctor(const T* scale, const T* x, T* out, const size_t& numel)
+      : scale_(scale), x_(x), out_(out), numel_(numel) {}
+  HOSTDEVICE inline void operator()(int64_t idx) const {
+    out_[numel_ - 1 - idx] = scale_[0] * x_[numel_ - 1 - idx];
+  }
+  const T* scale_;
+  const T* x_;
+  T* out_;
+  const size_t numel_;
+};
 
 template <typename DeviceContext, typename T>
 class ClipByNormKernel : public framework::OpKernel<T> {
@@ -69,17 +88,25 @@ class ClipByNormKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_NOT_NULL(input);
 
-    auto x = EigenVector<T>::Flatten(*input);
-    auto out = EigenVector<T>::Flatten(*output);
+    auto x = EigenVector<T>::Flatten(detail::Ref(input));
+    auto out_dims = output->dims();
+    output->Resize(framework::make_ddim({1}));
+    auto norm = EigenScalar<T>::From(detail::Ref(output));
     auto x_norm = x.square().sum().sqrt();
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
 
-    auto temp = (x_norm <= max_norm).template cast<T>().eval();
-    auto scaling = temp + (static_cast<T>(1) - temp) * max_norm / x_norm;
-    Eigen::array<int, 1> one_dim{{1}};
-    Eigen::DSizes<int, 1> m_dsize(input->numel());
-    out.device(place) = x * scaling.reshape(one_dim).broadcast(m_dsize);
+    auto temp = (x_norm <= max_norm).template cast<T>();
+    norm.device(place) = temp + (static_cast<T>(1) - temp) * max_norm / x_norm;
+
+    output->Resize(out_dims);
+    ClipByNormFunctor<T> functor(output->data<T>(), input->data<T>(),
+                                 output->mutable_data<T>(context.GetPlace()),
+                                 input->numel());
+    platform::ForRange<DeviceContext> for_range(
+        static_cast<const DeviceContext&>(context.device_context()),
+        input->numel());
+    for_range(functor);
   }
 };
 
