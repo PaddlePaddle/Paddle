@@ -26,6 +26,13 @@ import numpy as np
 from .. import compat as cpt
 from .proto import framework_pb2
 try:
+    if os.name == 'nt':
+        import sys
+        third_lib_path = os.path.abspath(os.path.dirname(
+            __file__)) + os.sep + '..' + os.sep + 'libs'
+        os.environ['path'] += ';' + third_lib_path
+        sys.path.append(third_lib_path)
+
     from . import core
 except ImportError as e:
     if os.name == 'nt':
