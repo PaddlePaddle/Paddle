@@ -126,7 +126,7 @@ struct AnalysisConfig {
 
   // GPU releated.
   bool use_gpu_{false};
-  int device_id_;
+  int device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
 
   // TensorRT releated.
@@ -156,7 +156,7 @@ struct AnalysisConfig {
 
   bool specify_input_name_{false};
 
-  int cpu_math_library_num_threads_;
+  int cpu_math_library_num_threads_{1};
 
   // A runtime cache, shouldn't be transferred to others.
   std::string serialized_info_cache_;

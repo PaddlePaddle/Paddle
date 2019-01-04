@@ -122,7 +122,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data) {
 }
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->SetModel(FLAGS_infer_model + "/params", FLAGS_infer_model + "/model");
+  cfg->SetModel(FLAGS_infer_model + "/model", FLAGS_infer_model + "/params");
   cfg->DisableGpu();
   cfg->SwitchSpecifyInputNames();
   cfg->pass_builder()->TurnOnDebug();
