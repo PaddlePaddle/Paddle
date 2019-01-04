@@ -102,13 +102,6 @@ def __bootstrap__():
     import sys
     import os
     import platform
-
-    if os.name == 'nt':
-        third_lib_path = os.path.abspath(os.path.dirname(
-            __file__)) + os.sep + '..' + os.sep + 'libs'
-        os.environ['path'] += ';' + third_lib_path
-        sys.path.append(third_lib_path)
-
     from . import core
 
     in_test = 'unittest' in sys.modules
