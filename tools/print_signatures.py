@@ -55,10 +55,10 @@ def visit_member(parent_name, member):
 def visit_all_module(mod):
     if (mod.__name__ in experimental_namespace):
         return
-    for member_name in (name
-                        for name in (mod.__all__
-                                     if hasattr(mod, "__all__") else dir(mod))
-                        if not name.startswith("_")):
+    for member_name in (
+            name
+            for name in (mod.__all__ if hasattr(mod, "__all__") else dir(mod))
+            if not name.startswith("_")):
         instance = getattr(mod, member_name, None)
         if instance is None:
             continue

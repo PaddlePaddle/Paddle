@@ -86,11 +86,12 @@ class TestArrayReadWrite(unittest.TestCase):
             map(default_main_program().global_block().var,
                 [each_x.name + "@GRAD" for each_x in x]))
         g_out = [
-            item.sum() for item in
-            exe.run(feed={'x0': tensor,
-                          'x1': tensor,
-                          'x2': tensor},
-                    fetch_list=g_vars)
+            item.sum()
+            for item in exe.run(
+                feed={'x0': tensor,
+                      'x1': tensor,
+                      'x2': tensor},
+                fetch_list=g_vars)
         ]
         g_out_sum = numpy.array(g_out).sum()
 

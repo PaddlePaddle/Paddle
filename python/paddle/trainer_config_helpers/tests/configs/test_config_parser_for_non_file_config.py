@@ -39,7 +39,7 @@ def main(print_whole_config, globals, locals):
     else:
         cmdstr = cmdstr + """print parse_config(configs, "").model_config"""
 
-    exec(cmdstr, globals, locals)
+    exec (cmdstr, globals, locals)
 
 
 if __name__ == '__main__':

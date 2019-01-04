@@ -44,8 +44,6 @@ class DataToLoDTensorConverter(object):
             self.dtype = 'int64'
         elif dtype == core.VarDesc.VarType.FP64:
             self.dtype = 'float64'
-        elif dtype == core.VarDesc.VarType.FP16:
-            self.dtype = 'float16'
         elif dtype == core.VarDesc.VarType.INT32:
             self.dtype = 'int32'
         elif dtype == core.VarDesc.VarType.UINT8:
@@ -217,13 +215,15 @@ class DataFeeder(object):
         """
         if isinstance(self.place, core.CUDAPlace):
             places = [
-                core.CUDAPlace(i) for i in
-                six.moves.xrange(self._get_number_of_places_(num_places))
+                core.CUDAPlace(i)
+                for i in six.moves.xrange(
+                    self._get_number_of_places_(num_places))
             ]
         else:
             places = [
-                core.CPUPlace() for _ in
-                six.moves.xrange(self._get_number_of_places_(num_places))
+                core.CPUPlace()
+                for _ in six.moves.xrange(
+                    self._get_number_of_places_(num_places))
             ]
 
         if len(iterable) != len(places):
@@ -270,7 +270,8 @@ class DataFeeder(object):
             dict: the result of conversion.
 
         Raises:
-            ValueError: If drop_last is False and the data batch which cannot fit for devices.
+            ValueError: If drop_last is False and the data batch which cannot
+            fit for devices.
         """
 
         def __reader_creator__():

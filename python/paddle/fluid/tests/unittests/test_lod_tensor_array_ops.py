@@ -93,9 +93,10 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
         expect = [
             numpy.array(
-                item, dtype='int32') for item in
-            [[12, 13, 14, 15, 16, 0, 1, 2, 23, 24, 25, 26, 27, 28, 29],
-             [17, 18, 3, 4, 5, 6, 11, 30], [19, 20, 7, 8, 9, 10], [21, 22]]
+                item, dtype='int32')
+            for item in [[
+                12, 13, 14, 15, 16, 0, 1, 2, 23, 24, 25, 26, 27, 28, 29
+            ], [17, 18, 3, 4, 5, 6, 11, 30], [19, 20, 7, 8, 9, 10], [21, 22]]
         ]
 
         lod = [[[5, 3, 0, 7]], [[2, 4, 1, 1]], [[2, 4]], [[2]]]
@@ -115,9 +116,9 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
         expect = [
             numpy.array(
-                item, dtype='int32') for item in
-            [[21, 0, 1, 2, 3, 4, 5, 6, 46, 47, 48, 49],
-             list(range(22, 39)) + list(range(7, 21)), list(range(39, 46))]
+                item, dtype='int32')
+            for item in [[21, 0, 1, 2, 3, 4, 5, 6, 46, 47, 48, 49], list(
+                range(22, 39)) + list(range(7, 21)), list(range(39, 46))]
         ]
         lod = [[[1, 2, 1], [1, 3, 4, 4]], [[4, 3], [1, 4, 4, 8, 4, 6, 4]],
                [[2], [6, 1]]]
@@ -207,10 +208,11 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
 
         exe = Executor(place)
         g_out = [
-            numpy.array(item).sum() for item in exe.run(program,
-                                                        feed={'x': tensor},
-                                                        fetch_list=[g_vars],
-                                                        return_numpy=False)
+            numpy.array(item).sum()
+            for item in exe.run(program,
+                                feed={'x': tensor},
+                                fetch_list=[g_vars],
+                                return_numpy=False)
         ]
         g_out_sum = numpy.array(g_out).sum()
 
