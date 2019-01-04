@@ -15,6 +15,7 @@
 import multiprocessing
 import os
 import six
+import sys
 from .. import compat as cpt
 
 from . import core
@@ -29,27 +30,50 @@ def _place_obj(place):
     return p
 
 
-class _ProgramCompiler(object):
+class CompiledProgram(object):
     def __init__(self, program):
         self._program = program
+        self._scope = None
+        self._place = None
+        self._executor = None
         self._compiled = False
         self._is_data_parallel = False
 
     def _with_data_parallel(self,
                             loss_name=None,
                             build_strategy=None,
-                            exec_strategy=None):
+                            exec_strategy=None,
+                            share_vars_from=None):
         assert not self._is_data_parallel, "Already compiled with parallel."
         self._is_data_parallel = True
         self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
         self._loss_name = loss_name
+        self._share_vars_from = share_vars_from
         return self
 
-    def _compile_data_parallel(self):
-        self._places = []
-        self._local_scopes = []
+    def _with_distributed(self):
+        raise NotImplementedError()
 
+    def _with_inference_optimize(self):
+        raise NotImplementedError()
+
+    def _compile_data_parallel(self):
+        if self._share_vars_from:
+            if self._scope:
+                sys.stderr.write("share_vars_from is set, scope is ignored.\n")
+            if not self._share_vars_from._is_data_parallel:
+                raise ValueError("share_vars_from is not data parallel. Cannot "
+                                 "share vars from it.")
+            if self._share_vars_from._executor is None:
+                raise ValueError(
+                    "share_vars_from is not compiled and run, so there is no "
+                    "var to share.")
+            self._local_scopes = self._share_vars_from._executor.local_scopes()
+        else:
+            self._local_scopes = []
+
+        self._places = []
         if self._exec_strategy is None:
             self._exec_strategy = ExecutionStrategy()
         if self._build_strategy is None:
@@ -104,12 +128,14 @@ class _ProgramCompiler(object):
 
     def _compile(self, scope, place):
         if self._compiled:
+            if scope and self._scope != scope:
+                raise ValueError("Cannot compile with different scope")
+            if place and self._place != place:
+                raise ValueError("Cannot compile with different place")
             return self
-        self._compiled = True
 
         self._scope = scope
         self._place = place
-
         if self._is_data_parallel:
             self._executor = self._compile_data_parallel()
         else:

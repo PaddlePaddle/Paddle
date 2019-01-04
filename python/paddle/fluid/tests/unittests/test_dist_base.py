@@ -132,7 +132,7 @@ class TestDistRunnerBase(object):
             build_stra.num_trainers = 1
             build_stra.trainer_id = 0
 
-        binary = compiler._ProgramCompiler(trainer_prog)._with_data_parallel(
+        binary = compiler.CompiledProgram(trainer_prog)._with_data_parallel(
             loss_name=avg_cost.name,
             build_strategy=build_stra,
             exec_strategy=strategy)
