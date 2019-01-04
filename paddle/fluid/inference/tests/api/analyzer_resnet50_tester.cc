@@ -35,13 +35,20 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 // Easy for profiling independently.
-void profile(bool use_mkldnn = false) {
+void profile(bool use_mkldnn = false, std::vector<std::string> passes = {}) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
   }
+
+  if (!passes.empty()) {
+    for (auto pass : passes) {
+      cfg.pass_builder()->AppendPass(pass);
+    }
+  }
+
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -53,6 +60,9 @@ void profile(bool use_mkldnn = false) {
 TEST(Analyzer_resnet50, profile) { profile(); }
 #ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_resnet50, profile_mkldnn) { profile(true /* use_mkldnn */); }
+TEST(Analyzer_resnet50, profile_feature_mkldnn) {
+  profile(true /* use_mkldnn */, {"conv_fuse_with_group_pass"});
+}
 #endif
 
 // Check the fuse status
@@ -67,11 +77,17 @@ TEST(Analyzer_resnet50, fuse_statis) {
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false) {
+void compare(bool use_mkldnn = false, std::vector<std::string> passes = {}) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+  }
+
+  if (!passes.empty()) {
+    for (auto pass : passes) {
+      cfg.pass_builder()->AppendPass(pass);
+    }
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -83,6 +99,9 @@ void compare(bool use_mkldnn = false) {
 TEST(Analyzer_resnet50, compare) { compare(); }
 #ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_resnet50, compare_mkldnn) { compare(true /* use_mkldnn */); }
+TEST(Analyzer_resnet50, compare_feature_mkldnn) {
+  compare(true /* use_mkldnn */, {"conv_fuse_with_group_pass"});
+}
 #endif
 
 // Compare Deterministic result
