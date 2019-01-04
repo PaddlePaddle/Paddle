@@ -194,8 +194,8 @@ template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
 void BenchSeqPoolKernel() {
   std::vector<jit::SeqPoolType> pool_types = {jit::SeqPoolType::kSum};
   for (auto type : pool_types) {
-    for (int h : TestSizes()) {
-      for (int w : TestSizes()) {
+    for (int w : TestSizes()) {
+      for (int h : TestSizes()) {
         const jit::seq_pool_attr_t attr(h, w, type);
         std::vector<T> x(h * w), y(w);
         RandomVec<T>(h * w, x.data(), -2.f, 2.f);
