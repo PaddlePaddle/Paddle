@@ -200,7 +200,7 @@ ParallelExecutor::ParallelExecutor(
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ =
       build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
-  member_->nranks_ = num_trainers * places.size();
+  member_->nranks_ = build_strategy.num_trainers_ * places.size();
 
   if (!member_->use_all_reduce_) {
     PADDLE_ENFORCE(places.size() > 1,
