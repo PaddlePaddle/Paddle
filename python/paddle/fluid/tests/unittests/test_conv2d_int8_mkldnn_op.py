@@ -153,7 +153,6 @@ class TestConv2dInt8Op(TestConv2dOp):
 
 #--------------------test conv2d u8 in and u8 out--------------------
 
-
 class TestConv2d(TestConv2dInt8Op):
     def init_test_case(self):
         self.pad = [0, 0]
@@ -219,7 +218,7 @@ class TestWithInput1x1Filter1x1(TestConv2dInt8Op):
     def init_group(self):
         self.groups = 3
 
-
+        
 def create_test_int8_class(parent, input_dt, fuse_relu):
     class TestInt8Case(parent):
         def init_dtype(self):
@@ -237,6 +236,7 @@ def create_test_int8_class(parent, input_dt, fuse_relu):
 
     cls_name = "{0}_input_{1}_relu_{2}".format(parent.__name__, input_dt,
                                                fuse_relu)
+
     TestInt8Case.__name__ = cls_name
     globals()[cls_name] = TestInt8Case
 
@@ -267,6 +267,7 @@ create_test_int8_class(TestWithStride, np.uint8, False)
 create_test_int8_class(TestWithGroup, np.uint8, False)
 create_test_int8_class(TestWith1x1, np.uint8, False)
 create_test_int8_class(TestWithInput1x1Filter1x1, np.uint8, False)
+
 
 if __name__ == '__main__':
     unittest.main()

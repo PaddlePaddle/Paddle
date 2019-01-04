@@ -332,6 +332,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             : dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
         "dilation in convolution is not implemented yet");
 
+    PADDLE_ENFORCE(is_conv3d != true, "int8 does not support conv3d currently");
+
     const T* input_data = input->data<T>();
 
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
@@ -360,6 +362,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         &key, src_tz, weights_tz, strides, paddings, dilations, groups, src_dt,
         input->format(), dst_dt, ctx.op().Output("Output"));
     const std::string key_conv_pd = key + "@conv_pd";
+
     std::shared_ptr<mkldnn::convolution_forward> conv_p = nullptr;
     std::shared_ptr<mkldnn::memory> src_memory_p = nullptr;
     std::shared_ptr<mkldnn::memory> user_src_memory_p = nullptr;
@@ -422,7 +425,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           platform::MKLDNNMemDesc(src_tz, src_dt, chosen_memory_format);
       auto weights_md = platform::MKLDNNMemDesc(
           weights_tz, memory::data_type::s8, chosen_memory_format);
-
       auto dst_md =
           platform::MKLDNNMemDesc(dst_tz, dst_dt, chosen_memory_format);
       // create a conv primitive descriptor and save it for usage in backward
