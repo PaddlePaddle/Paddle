@@ -344,6 +344,15 @@ void SeqPool(const T* x, T* y, const seq_pool_attr_t* attr) {
       src += attr->w;
     }
   }
+  if (attr->type == SeqPoolType::kAvg || attr->type == SeqPoolType::kSqrt) {
+    T scalar = static_cast<T>(1);
+    if (attr->type == SeqPoolType::kAvg) {
+      scalar = scalar / static_cast<T>(attr->h);
+    } else {
+      scalar = scalar / std::sqrt(static_cast<T>(attr->h));
+    }
+    VScal<T>(&scalar, y, y, attr->w);
+  }
 }
 
 #define DECLARE_REFER_KERNEL(name, tuples)             \
