@@ -44,8 +44,8 @@ void Main(bool use_gpu) {
   if (use_gpu) {
     config.EnableUseGpu(100, 0);
   }
-  config.SetModel(FLAGS_modeldir + "/__params__",
-                  FLAGS_modeldir + "/__model__");
+  config.SetModel(FLAGS_modeldir + "/__model__",
+                  FLAGS_modeldir + "/__params__");
 
   predictor = CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
   analysis_predictor = CreatePaddlePredictor(config);
