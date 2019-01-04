@@ -81,7 +81,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             if use_cuda and core.is_compiled_with_cuda():
                 build_strategy.remove_unnecessary_lock = True
             if use_parallel_executor:
-                binary = compiler.CompiledProgram(main)._with_data_parallel(
+                binary = compiler.CompiledProgram(main).with_data_parallel(
                     loss_name=loss.name,
                     build_strategy=build_strategy,
                     exec_strategy=exec_strategy)

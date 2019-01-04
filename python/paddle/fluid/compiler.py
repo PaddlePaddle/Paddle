@@ -34,6 +34,10 @@ class CompiledProgram(object):
     """
     Compiles a Program for execution.
 
+    1. Users first create the program with layers.
+    2. Optionally, users use CompiledProgram to optimize the program before run.
+    3. The original program or CompiledProgram is run by executor.
+
     The CompiledProgram is used to transform a program for various
     optimizations, for example.
       * Pre-compute some logic once so that each run is faster.
@@ -42,11 +46,19 @@ class CompiledProgram(object):
               training.
 
     Example:
-
+        .. code-block:: python
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(startup)
+            compiled_prog = compiler.CompiledProgram(main).with_data_parallel(
+                loss_name=loss.name)
+            for i in range(5):
+                test_loss, = exe.run(compiled_prog,
+                                     feed=feed_dict,
+                                     fetch_list=[loss.name])
 
     Args:
         program: Program instance that contains the model logic.
-
     """
 
     def __init__(self, program):
@@ -57,11 +69,32 @@ class CompiledProgram(object):
         self._compiled = False
         self._is_data_parallel = False
 
-    def _with_data_parallel(self,
-                            loss_name=None,
-                            build_strategy=None,
-                            exec_strategy=None,
-                            share_vars_from=None):
+    def with_data_parallel(self,
+                           loss_name=None,
+                           build_strategy=None,
+                           exec_strategy=None,
+                           share_vars_from=None):
+        """Configs the program to run in data parallel way.
+
+        Args:
+            loss_name (str): The loss name must set in training. Default None.
+            build_strategy(BuildStrategy): build_strategy is used to
+                build the graph so it can run on multiple devices/cores with
+                optimized topology.
+                For more information, please refer to fluid.BuildStrategy.
+                Default None.
+            exec_strategy(ExecutionStrategy): exec_strategy is used to
+                to select the a way to execute the graph, for example how many
+                threads are used, how many iterations to clean up the temp
+                variables. For more information, please refer
+                to fluid.ExecutionStrategy. Default None.
+            share_vars_from(CompiledProgram): If provide, this CompiledProgram
+                will share variables from `share_vars_from`. `share_vars_from`
+                must be run by the executor before this CompiledProgram so that
+                vars are ready.
+        Returns:
+            self
+        """
         assert not self._is_data_parallel, "Already compiled with parallel."
         self._is_data_parallel = True
         self._build_strategy = build_strategy
@@ -145,6 +178,16 @@ class CompiledProgram(object):
             self._exec_strategy, self._build_strategy)
 
     def _compile(self, scope, place):
+        """Compile the program based on the configs.
+
+        Args:
+            scope: The variables (resources) that are associated with
+               this compiled program.
+            place: The location that the compiled program will be run on.
+
+        Returns:
+            self
+        """
         if self._compiled:
             if scope and self._scope != scope:
                 raise ValueError("Cannot compile with different scope")
