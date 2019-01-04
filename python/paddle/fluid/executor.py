@@ -481,11 +481,13 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
-        compiled = isinstance(program, compiler._ProgramCompiler)
+        compiled = isinstance(program, compiler.CompiledProgram)
+        # For backward compatibility, run directly.
         if not compiled:
-            p = core.Place()
-            p.set_place(self.place)
-            self.executor = core.Executor(p)
+            if not self.executor:
+                p = core.Place()
+                p.set_place(self.place)
+                self.executor = core.Executor(p)
             return self._run(
                 program,
                 feed=feed,
