@@ -86,7 +86,7 @@ struct AnalysisConfig {
     return cpu_math_library_num_threads_;
   }
 
-  NativeConfig ToNativeConfig() {
+  NativeConfig ToNativeConfig() const {
     NativeConfig config;
     config.model_dir = model_dir_;
     config.prog_file = prog_file_;

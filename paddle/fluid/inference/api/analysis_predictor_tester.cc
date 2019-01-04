@@ -100,7 +100,7 @@ TEST(AnalysisPredictor, analysis_on) {
 TEST(AnalysisPredictor, ZeroCopy) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
-  config.SwitchUseFeedFetchOps(true);
+  config.SwitchUseFeedFetchOps(false);
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
   auto w0 = predictor->GetInputTensor("firstw");

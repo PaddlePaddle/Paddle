@@ -204,8 +204,8 @@ void PrepareZeroCopyInputs(ZeroCopyTensor *lod_attention_tensor,
 }
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->SetProgFile(FLAGS_infer_model + "/__model__");
-  cfg->SetParamsFile(FLAGS_infer_model + "/param");
+  cfg->SetModel(FLAGS_infer_model + "/__model__",
+                FLAGS_infer_model + "/__model__");
   cfg->EnableUseGpu(100, 0);
   cfg->EnableSpecifyInputNames();
   cfg->SwitchIrOptim();
