@@ -328,6 +328,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                      "residual fusion does not support force output with fp32");
     }
 
+
     bool is_conv3d = strides.size() == 3U;
     // TODO(tpatejko): add support for dilation
     PADDLE_ENFORCE(
@@ -336,6 +337,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                   dilations[2] == 1
             : dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
         "dilation in convolution is not implemented yet");
+
+    PADDLE_ENFORCE(is_conv3d != true, "int8 does not support conv3d currently");
 
     const T* input_data = input->data<T>();
 
@@ -579,6 +582,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         handler.reset(new platform::ConvMKLDNNHandler(conv_pd, dev_ctx,
                                                       mkldnn_engine, key));
       }
+
       if (fuse_residual_conn) {
         auto residual_param = ctx.Input<Tensor>("ResidualData");
         auto residual_dt =
