@@ -31,6 +31,24 @@ def _place_obj(place):
 
 
 class CompiledProgram(object):
+    """
+    Compiles a Program for execution.
+
+    The CompiledProgram is used to transform a program for various
+    optimizations, for example.
+      * Pre-compute some logic once so that each run is faster.
+      * Transform the program so that it can run in multiple devices.
+      * TODO: transform the program for optimized inference or distributed
+              training.
+
+    Example:
+
+
+    Args:
+        program: Program instance that contains the model logic.
+
+    """
+
     def __init__(self, program):
         self._program = program
         self._scope = None

@@ -291,6 +291,3 @@ class ParallelExecutor(object):
     @property
     def device_count(self):
         return len(self._places)
-
-    def close(self):
-        pass
