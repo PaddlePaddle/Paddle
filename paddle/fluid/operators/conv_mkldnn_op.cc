@@ -328,7 +328,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                      "residual fusion does not support force output with fp32");
     }
 
-
     bool is_conv3d = strides.size() == 3U;
     // TODO(tpatejko): add support for dilation
     PADDLE_ENFORCE(

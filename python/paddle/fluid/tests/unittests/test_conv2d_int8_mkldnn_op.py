@@ -221,6 +221,7 @@ class TestConv2dInt8Op(TestConv2dOp):
 
 #--------------------test conv2d u8 in and u8 out with residual--------------------
 
+
 class TestConv2d(TestConv2dInt8Op):
     def init_test_case(self):
         self.pad = [0, 0]
