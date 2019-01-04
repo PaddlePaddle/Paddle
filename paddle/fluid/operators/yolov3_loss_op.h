@@ -156,25 +156,25 @@ static void CalcBoxLocationLossGrad(T* input_grad, const T loss, const T* input,
 
 template <typename T>
 static inline void CalcLabelLoss(T* loss, const T* input, const int index,
-                                 const int label, const int class_num,
-                                 const int stride) {
+                                 const int label, const T score,
+                                 const int class_num, const int stride) {
   for (int i = 0; i < class_num; i++) {
     T pred = input[index + i * stride] < -0.5 ? input[index + i * stride]
                                               : 1.0 / class_num;
-    loss[0] += SCE<T>(pred, (i == label) ? 1.0 : 0.0);
+    loss[0] += SCE<T>(pred, (i == label) ? score : 0.0);
   }
 }
 
 template <typename T>
 static inline void CalcLabelLossGrad(T* input_grad, const T loss,
                                      const T* input, const int index,
-                                     const int label, const int class_num,
-                                     const int stride) {
+                                     const int label, const T score,
+                                     const int class_num, const int stride) {
   for (int i = 0; i < class_num; i++) {
     T pred = input[index + i * stride] < -0.5 ? input[index + i * stride]
                                               : 1.0 / class_num;
     input_grad[index + i * stride] =
-        SCEGrad<T>(pred, (i == label) ? 1.0 : 0.0) * loss;
+        SCEGrad<T>(pred, (i == label) ? score : 0.0) * loss;
   }
 }
 
@@ -246,6 +246,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("X");
     auto* gt_box = ctx.Input<Tensor>("GTBox");
     auto* gt_label = ctx.Input<Tensor>("GTLabel");
+    auto* gt_score = ctx.Input<Tensor>("GTScore");
     auto* loss = ctx.Output<Tensor>("Loss");
     auto* objness_mask = ctx.Output<Tensor>("ObjectnessMask");
     auto* gt_match_mask = ctx.Output<Tensor>("GTMatchMask");
@@ -269,6 +270,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     const T* gt_box_data = gt_box->data<T>();
     const int* gt_label_data = gt_label->data<int>();
+    const T* gt_score_data = gt_score->data<T>();
     T* loss_data = loss->mutable_data<T>({n}, ctx.GetPlace());
     memset(loss_data, 0, loss->numel() * sizeof(T));
     int* obj_mask_data =
@@ -358,9 +360,10 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
           obj_mask_data[obj_idx] = 1;
 
           int label = gt_label_data[i * b + t];
+          T score = gt_score_data[i * b + t];
           int label_idx = GetEntryIndex(i, mask_idx, gj * w + gi, mask_num,
                                         an_stride, stride, 5);
-          CalcLabelLoss<T>(loss_data + i, input_data, label_idx, label,
+          CalcLabelLoss<T>(loss_data + i, input_data, label_idx, label, score,
                            class_num, stride);
         }
       }
@@ -378,6 +381,7 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("X");
     auto* gt_box = ctx.Input<Tensor>("GTBox");
     auto* gt_label = ctx.Input<Tensor>("GTLabel");
+    auto* gt_score = ctx.Input<Tensor>("GTScore");
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
     auto* objness_mask = ctx.Input<Tensor>("ObjectnessMask");
@@ -401,6 +405,7 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     const T* gt_box_data = gt_box->data<T>();
     const int* gt_label_data = gt_label->data<int>();
+    const T* gt_score_data = gt_score->data<T>();
     const T* loss_grad_data = loss_grad->data<T>();
     const int* obj_mask_data = objness_mask->data<int>();
     const int* gt_match_mask_data = gt_match_mask->data<int>();
@@ -423,10 +428,11 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
               anchor_mask[mask_idx], box_idx, gi, gj, h, input_size, stride);
 
           int label = gt_label_data[i * b + t];
+          T score = gt_score_data[i * b + t];
           int label_idx = GetEntryIndex(i, mask_idx, gj * w + gi, mask_num,
                                         an_stride, stride, 5);
           CalcLabelLossGrad<T>(input_grad_data, loss_grad_data[i], input_data,
-                               label_idx, label, class_num, stride);
+                               label_idx, label, score, class_num, stride);
         }
       }
     }

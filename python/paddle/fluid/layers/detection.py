@@ -412,6 +412,7 @@ def polygon_box_transform(input, name=None):
 def yolov3_loss(x,
                 gtbox,
                 gtlabel,
+                gtscore,
                 anchors,
                 anchor_mask,
                 class_num,
@@ -428,8 +429,10 @@ def yolov3_loss(x,
                           and x, y, w, h should be relative value of input image.
                           N is the batch number and B is the max box number in 
                           an image.
-        gtlabel (Variable): class id of ground truth boxes, shoud be ins shape
+        gtlabel (Variable): class id of ground truth boxes, shoud be in shape
                             of [N, B].
+        gtscore (Variable): score of gtlabel, should be in same shape with gtlabel
+                            and score value in range (0, 1).
         anchors (list|tuple): ${anchors_comment}
         anchor_mask (list|tuple): ${anchor_mask_comment}
         class_num (int): ${class_num_comment}
@@ -444,6 +447,7 @@ def yolov3_loss(x,
         TypeError: Input x of yolov3_loss must be Variable
         TypeError: Input gtbox of yolov3_loss must be Variable"
         TypeError: Input gtlabel of yolov3_loss must be Variable"
+        TypeError: Input gtscore of yolov3_loss must be Variable"
         TypeError: Attr anchors of yolov3_loss must be list or tuple
         TypeError: Attr class_num of yolov3_loss must be an integer
         TypeError: Attr ignore_thresh of yolov3_loss must be a float number
@@ -467,6 +471,8 @@ def yolov3_loss(x,
         raise TypeError("Input gtbox of yolov3_loss must be Variable")
     if not isinstance(gtlabel, Variable):
         raise TypeError("Input gtlabel of yolov3_loss must be Variable")
+    if not isinstance(gtscore, Variable):
+        raise TypeError("Input gtscore of yolov3_loss must be Variable")
     if not isinstance(anchors, list) and not isinstance(anchors, tuple):
         raise TypeError("Attr anchors of yolov3_loss must be list or tuple")
     if not isinstance(anchor_mask, list) and not isinstance(anchor_mask, tuple):
@@ -496,9 +502,12 @@ def yolov3_loss(x,
 
     helper.append_op(
         type='yolov3_loss',
-        inputs={"X": x,
-                "GTBox": gtbox,
-                "GTLabel": gtlabel},
+        inputs={
+            "X": x,
+            "GTBox": gtbox,
+            "GTLabel": gtlabel,
+            "GTScore": gtscore
+        },
         outputs={
             'Loss': loss,
             'ObjectnessMask': objectness_mask,

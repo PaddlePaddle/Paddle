@@ -66,7 +66,7 @@ def batch_xywh_box_iou(box1, box2):
     return inter_area / union
 
 
-def YOLOv3Loss(x, gtbox, gtlabel, attrs):
+def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
     n, c, h, w = x.shape
     b = gtbox.shape[1]
     anchors = attrs['anchors']
@@ -148,7 +148,7 @@ def YOLOv3Loss(x, gtbox, gtlabel, attrs):
 
             for label_idx in range(class_num):
                 loss[i] += sce(x[i, an_idx, gj, gi, 5 + label_idx],
-                               int(label_idx == gtlabel[i, j]))
+                               int(label_idx == gtlabel[i, j]) * gtscore[i, j])
 
         for j in range(mask_num * h * w):
             if objness[i, j] >= 0:
@@ -165,6 +165,7 @@ class TestYolov3LossOp(OpTest):
         x = logit(np.random.uniform(0, 1, self.x_shape).astype('float32'))
         gtbox = np.random.random(size=self.gtbox_shape).astype('float32')
         gtlabel = np.random.randint(0, self.class_num, self.gtbox_shape[:2])
+        gtscore = np.random.random(self.gtbox_shape[:2]).astype('float32')
         gtmask = np.random.randint(0, 2, self.gtbox_shape[:2])
         gtbox = gtbox * gtmask[:, :, np.newaxis]
         gtlabel = gtlabel * gtmask
@@ -180,9 +181,11 @@ class TestYolov3LossOp(OpTest):
         self.inputs = {
             'X': x,
             'GTBox': gtbox.astype('float32'),
-            'GTLabel': gtlabel.astype('int32')
+            'GTLabel': gtlabel.astype('int32'),
+            'GTScore': gtscore.astype('float32')
         }
-        loss, objness, gt_matches = YOLOv3Loss(x, gtbox, gtlabel, self.attrs)
+        loss, objness, gt_matches = YOLOv3Loss(x, gtbox, gtlabel, gtscore,
+                                               self.attrs)
         self.outputs = {
             'Loss': loss,
             'ObjectnessMask': objness,
@@ -198,8 +201,8 @@ class TestYolov3LossOp(OpTest):
         self.check_grad_with_place(
             place, ['X'],
             'Loss',
-            no_grad_set=set(["GTBox", "GTLabel"]),
-            max_relative_error=0.15)
+            no_grad_set=set(["GTBox", "GTLabel", "GTScore"]),
+            max_relative_error=0.2)
 
     def initTestCase(self):
         self.anchors = [
@@ -207,11 +210,11 @@ class TestYolov3LossOp(OpTest):
             373, 326
         ]
         self.anchor_mask = [0, 1, 2]
-        self.class_num = 5
+        self.class_num = 10
         self.ignore_thresh = 0.7
         self.downsample = 32
         self.x_shape = (3, len(self.anchor_mask) * (5 + self.class_num), 5, 5)
-        self.gtbox_shape = (3, 5, 4)
+        self.gtbox_shape = (3, 10, 4)
 
 
 if __name__ == "__main__":
