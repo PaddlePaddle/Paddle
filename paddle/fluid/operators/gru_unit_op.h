@@ -113,8 +113,7 @@ class GRUUnitKernel : public framework::OpKernel<T> {
     auto c = g.slice(c_offsets, extents);  // output candidate
 
     // calculate final output
-    bool origin_mode = context.Attr<bool>("origin_mode");
-    if (origin_mode) {
+    if (context.Attr<bool>("origin_mode")) {
       h.device(place) = c + u * (h_p - c);  // (1 - u) * c + u * h_p
     } else {
       h.device(place) = u * (c - h_p) + h_p;  // u * c + (1 - u) * h_p
@@ -218,7 +217,11 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
       T* hidden_prev_grad_data =
           hidden_prev_grad->mutable_data<T>(context.GetPlace());
       auto d_h_p = EigenMatrix<T>::From(*hidden_prev_grad);
-      d_h_p.device(place) = d_r_h_p * r + d_h * (u.constant(T(1)) - u);
+      if (context.Attr<bool>("origin_mode")) {
+        d_h_p.device(place) = d_r_h_p * (u.constant(T(1)) - u) + d_h * r;
+      } else {
+        d_h_p.device(place) = d_r_h_p * r + d_h * (u.constant(T(1)) - u);
+      }
       blas.GEMM(false, true, batch_size, frame_size, frame_size * 2, 1,
                 gate_grad_data, frame_size * 3, weight_data, frame_size * 2, 1,
                 hidden_prev_grad_data, frame_size);
