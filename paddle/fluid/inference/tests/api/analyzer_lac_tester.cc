@@ -107,7 +107,7 @@ void GetOneBatch(std::vector<PaddleTensor> *input_slots, DataRecord *data,
 void SetConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model);
   cfg->DisableGpu();
-  cfg->EnableSpecifyInputNames();
+  cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim();
 }
 

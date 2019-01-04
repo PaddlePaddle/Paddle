@@ -21,11 +21,10 @@ namespace inference {
 namespace analysis {
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->SetParamsFile(FLAGS_infer_model + "/params");
-  cfg->SetProgFile(FLAGS_infer_model + "/model");
+  cfg->SetModel(FLAGS_infer_model + "/model", FLAGS_infer_model + "/params");
   cfg->DisableGpu();
   cfg->SwitchIrOptim();
-  cfg->EnableSpecifyInputNames();
+  cfg->SwitchSpecifyInputNames();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
 }
 

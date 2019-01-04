@@ -46,8 +46,8 @@ void SetConfig<contrib::AnalysisConfig>(contrib::AnalysisConfig* config,
                                         std::string model_dir, bool use_gpu,
                                         bool use_tensorrt, int batch_size) {
   if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
-    config->SetProgFile(model_dir + "/" + FLAGS_prog_filename);
-    config->SetParamsFile(model_dir + "/" + FLAGS_param_filename);
+    config->SetModel(model_dir + "/" + FLAGS_prog_filename,
+                     model_dir + "/" + FLAGS_param_filename);
   } else {
     config->SetModel(model_dir);
   }

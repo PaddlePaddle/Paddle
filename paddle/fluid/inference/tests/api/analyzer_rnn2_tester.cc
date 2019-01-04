@@ -107,7 +107,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
 void SetConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
   cfg->DisableGpu();
-  cfg->EnableSpecifyInputNames();
+  cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim();
 }
 

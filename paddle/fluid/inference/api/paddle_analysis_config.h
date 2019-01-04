@@ -61,12 +61,12 @@ struct AnalysisConfig {
 
   // Determine whether to perform graph optimization.
   void SwitchIrOptim(int x = true) { enable_ir_optim_ = x; }
-  bool ir_optim_enabled() const { return enable_ir_optim_; }
+  bool ir_optim() const { return enable_ir_optim_; }
 
   void SwitchUseFeedFetchOps(int x = true) { use_feed_fetch_ops_ = x; }
   bool use_feed_fetch_ops_enabled() const { return use_feed_fetch_ops_; }
 
-  void EnableSpecifyInputNames() { specify_input_name_ = true; }
+  void SwitchSpecifyInputNames(bool x = true) { specify_input_name_ = x; }
   bool specify_input_name() const { return specify_input_name_; }
 
   void EnableTensorRtEngine(int workspace_size = 1 << 20,

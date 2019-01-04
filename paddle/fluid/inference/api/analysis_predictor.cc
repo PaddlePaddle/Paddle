@@ -113,7 +113,7 @@ bool AnalysisPredictor::PrepareProgram(
     // Optimize the program, and load parameters and modify them in the
     // scope_.
     // This will change the scope_ address.
-    if (config_.ir_optim_enabled()) {
+    if (config_.ir_optim()) {
       status_ir_optim_enabled_ = true;
       OptimizeInferenceProgram();
     } else {
@@ -342,7 +342,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
 
   auto passes = config_.pass_builder()->AllPasses();
-  if (!config_.ir_optim_enabled()) passes.clear();
+  if (!config_.ir_optim()) passes.clear();
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetScopeNotOwned(const_cast<framework::Scope *>(scope_.get()));
   Analyzer().Run(&argument_);

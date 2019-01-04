@@ -71,10 +71,10 @@ std::ostream &operator<<(std::ostream &os,
     os << GenSpaces(num_spaces)
        << "prog_file and param_file: load from memory \n";
   }
-  os << GenSpaces(num_spaces)
-     << "enable_ir_optim: " << config.ir_optim_enabled() << "\n";
-  os << GenSpaces(num_spaces)
-     << "enable_ir_optim: " << config.ir_optim_enabled() << "\n";
+  os << GenSpaces(num_spaces) << "enable_ir_optim: " << config.ir_optim()
+     << "\n";
+  os << GenSpaces(num_spaces) << "enable_ir_optim: " << config.ir_optim()
+     << "\n";
   os << GenSpaces(num_spaces)
      << "use_feed_fetch_ops: " << config.use_feed_fetch_ops_enabled() << "\n";
   os << GenSpaces(num_spaces)
