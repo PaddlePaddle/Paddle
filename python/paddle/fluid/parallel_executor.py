@@ -128,6 +128,10 @@ class ParallelExecutor(object):
             build_strategy = BuildStrategy()
         build_strategy.num_trainers = num_trainers
         build_strategy.trainer_id = trainer_id
+        # FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
+        # num_trainers is 1, so the current fields of build_strategy doesn't tell if
+        # it's distributed model.
+        build_strategy.is_distribution = self.is_distribution(main_program)
 
         # step4: get main_program, scope, local_scopes
         main = main_program if main_program \
@@ -288,6 +292,14 @@ class ParallelExecutor(object):
             return executor.as_numpy(arr)
 
         return [arr[i] for i in range(len(arr))]
+
+    def is_distribution(self, main_program):
+        main = main_program if main_program \
+            else framework.default_main_program()
+        for op in main.global_block().ops:
+            if op.type in ["send", "recv"]:
+                return True
+        return False
 
     @property
     def device_count(self):

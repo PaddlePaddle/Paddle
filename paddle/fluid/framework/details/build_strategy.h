@@ -82,6 +82,10 @@ struct BuildStrategy {
 
   bool fuse_broadcast_op_{false};
 
+  // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
+  // num_trainers is 1, so the current fields of build_strategy doesn't tell if
+  // it's distributed model.
+  bool is_distribution_{false};
   int num_trainers_{1};
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;
