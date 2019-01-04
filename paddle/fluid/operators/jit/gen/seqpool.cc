@@ -35,7 +35,6 @@ void SeqPoolJitCode::genCode() {
     mov(reg32_scalar, scalar);
   }
 
-  // TODO(TJ): make height load from params
   const int group_len = max_num_regs * block * sizeof(float);
   for (int g = 0; g < num_groups; ++g) {
     pool_height<ymm_t>(g * group_len, block, max_num_regs);
@@ -44,59 +43,9 @@ void SeqPoolJitCode::genCode() {
     pool_height<ymm_t>(num_groups * group_len, block, rest_num_regs);
   }
 
-  // rest part
+  // part of rest_w * height
   const int rest = w_ % block;
-  const bool has_block4 = rest / 4 > 0;
-  const bool has_block2 = (rest % 4) / 2 > 0;
-  const bool has_block1 = (rest % 2) == 1;
-  const int w_offset = num_block * YMM_FLOAT_BLOCK * sizeof(float);
-  for (int h = 0; h < h_; ++h) {
-    int offset = h * w_ * sizeof(float) + w_offset;
-    const int shift_regs = (h == 0) ? 0 : max_num_regs;
-    int reg_idx = 0;
-    if (has_block4) {
-      vmovups(xmm_t(reg_idx + shift_regs), ptr[param1 + offset]);
-      offset += sizeof(float) * 4;
-      reg_idx++;
-    }
-    if (has_block2) {
-      vmovq(xmm_t(reg_idx + shift_regs), ptr[param1 + offset]);
-      offset += sizeof(float) * 2;
-      reg_idx++;
-    }
-    if (has_block1) {
-      vmovss(xmm_t(reg_idx + shift_regs), ptr[param1 + offset]);
-      reg_idx++;
-    }
-    rest_num_regs = reg_idx;
-    if (h > 0) {
-      for (int i = 0; i < reg_idx; ++i) {
-        vaddps(xmm_t(i), xmm_t(i), xmm_t(i + max_num_regs));
-      }
-    }
-  }
-  // save right now
-  int offset = w_offset;
-  if (type_ == SeqPoolType::kAvg || type_ == SeqPoolType::kSqrt) {
-    vbroadcastss(xmm_t(max_num_regs - 1), reg32_scalar);
-    for (int i = 0; i < rest_num_regs; ++i) {
-      vmulps(xmm_t(i), xmm_t(i), xmm_t(max_num_regs - 1));
-    }
-  }
-  int reg_idx = 0;
-  if (has_block4) {
-    vmovups(ptr[param2 + offset], xmm_t(reg_idx));
-    offset += sizeof(float) * 4;
-    reg_idx++;
-  }
-  if (has_block2) {
-    vmovq(ptr[param2 + offset], xmm_t(reg_idx));
-    offset += sizeof(float) * 2;
-    reg_idx++;
-  }
-  if (has_block1) {
-    vmovss(ptr[param2 + offset], xmm_t(reg_idx));
-  }
+  pool_height_of_rest_width(rest, (w_ - rest) * sizeof(float), max_num_regs);
   ret();
 }
 
