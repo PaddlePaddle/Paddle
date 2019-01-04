@@ -176,6 +176,8 @@ void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
 RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
   if (g_state == ProfilerState::kDisabled) return;
+  std::lock_guard<std::mutex> l(profiler_mu);
+
   is_enabled_ = true;
   dev_ctx_ = dev_ctx;
   name_ = name;
