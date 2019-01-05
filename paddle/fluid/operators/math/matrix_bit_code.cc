@@ -85,41 +85,6 @@ void MatrixBitCodeFunctor<T>::AddGrad(const framework::Tensor &tmat,
 }
 
 template <typename T>
-struct MatrixBitCodeFunctorSelectedRowsAddGrad
-    : public boost::static_visitor<void> {
-  const framework::Tensor &tmat_;
-  framework::SelectedRows *vec_;
-
-  MatrixBitCodeFunctorSelectedRowsAddGrad(const framework::Tensor &tmat,
-                                          framework::SelectedRows *vec)
-      : tmat_(tmat), vec_(vec) {}
-
-  template <typename CodeTable>
-  void operator()(const CodeTable &code_table) {
-    size_t batch_size = tmat_.dims()[0];
-    size_t width = tmat_.dims()[1];
-    auto *vec_data = vec_->mutable_value()->template data<T>();
-    auto *tmat_data = tmat_.data<T>();
-    for (size_t i = 0; i < batch_size; ++i) {
-      auto code = code_table.get_code(i);
-      int code_length = code.get_length();
-      for (int j = 0; j < code_length; ++j) {
-        size_t index = code.calc_index(j);
-        int64_t row_index = vec_->GetIndexFromId(static_cast<int64_t>(index));
-        vec_data[row_index] += tmat_data[i * width + j];
-      }
-    }
-  }
-};
-
-template <typename T>
-void MatrixBitCodeFunctor<T>::AddGrad(const framework::Tensor &tmat,
-                                      framework::SelectedRows *vec) {
-  MatrixBitCodeFunctorSelectedRowsAddGrad<T> func(tmat, vec);
-  code_table_.apply_visitor(func);
-}
-
-template <typename T>
 struct MatrixBitCodeFunctorSum : public boost::static_visitor<void> {
   const framework::Tensor &tmat_;
   framework::Tensor *sum_;

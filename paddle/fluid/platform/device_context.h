@@ -41,7 +41,28 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-/*! \brief device temporary allocator singleton */
+/*! \brief device temporary allocator singleton.
+ *
+ * Some operator needs temporary memory during computation, for example,
+ * conv_gemm, which needs use col to store the result of im2col. If we
+ * create a stack memory which is used by CUDA Kernel, before the
+ * Computation(...) returns, we should add ctx->Wait(), because the
+ * execution of CUDA is async, if there doesn't have ctx->Wait(),
+ * the temporary memory will be released before the CUDA Kernel uses
+ * it.
+ *
+ * DeviceTemporaryAllocator is a singleton, which contains a
+ * `TemporaryAllocator` for each <Place, Stream>. And the TemporaryAllocator
+ * contains a temp_allocation_queue which is used to store the temporary
+ * allocations. The allocation, which is allocated by TemporaryAllocator,
+ * is a unique_ptr,  and when it is not held by any variable, it will be
+ * pushed into the temp_allocation_queue. There are two opportunities to free
+ * the allocations of temp_allocation_queue:
+ *  - when the Stream calls cudaStreamSynchronize;
+ *  - when the allocation size of opportunities exceeds a certain threshold
+ *    (defined by FLAGS_limit_of_temporary_allocation).
+ *
+ * */
 class DeviceTemporaryAllocator {
  public:
   static DeviceTemporaryAllocator& Instance() {

@@ -351,6 +351,23 @@ paddle.fluid.contrib.QuantizeTranspiler.__init__ ArgSpec(args=['self', 'weight_b
 paddle.fluid.contrib.QuantizeTranspiler.convert_to_int8 ArgSpec(args=['self', 'program', 'place', 'scope'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.contrib.QuantizeTranspiler.freeze_program ArgSpec(args=['self', 'program', 'place', 'fuse_bn', 'scope'], varargs=None, keywords=None, defaults=(False, None))
 paddle.fluid.contrib.QuantizeTranspiler.training_transpile ArgSpec(args=['self', 'program', 'startup_program'], varargs=None, keywords=None, defaults=(None, None))
+paddle.fluid.contrib.build_compressor ArgSpec(args=['place', 'data_reader', 'data_feeder', 'scope', 'metrics', 'epoch', 'config'], varargs=None, keywords=None, defaults=(None, None, None, None, None, None, None))
+paddle.fluid.contrib.CompressPass.__init__ ArgSpec(args=['self', 'place', 'data_reader', 'data_feeder', 'scope', 'metrics', 'epoch', 'program_exe'], varargs=None, keywords=None, defaults=(None, None, None, None, None, None, None))
+paddle.fluid.contrib.CompressPass.add_strategy ArgSpec(args=['self', 'strategy'], varargs=None, keywords=None, defaults=None)
+paddle.fluid.contrib.CompressPass.apply ArgSpec(args=['self', 'graph'], varargs=None, keywords=None, defaults=None)
+paddle.fluid.contrib.ImitationGraph.__init__ ArgSpec(args=['self', 'program'], varargs=None, keywords=None, defaults=(None,))
+paddle.fluid.contrib.ImitationGraph.all_parameters ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
+paddle.fluid.contrib.SensitivePruneStrategy.__init__ ArgSpec(args=['self', 'pruner', 'start_epoch', 'end_epoch', 'delta_rate', 'acc_loss_threshold', 'sensitivities'], varargs=None, keywords=None, defaults=(None, 0, 10, 0.2, 0.2, None))
+paddle.fluid.contrib.SensitivePruneStrategy.on_batch_begin ArgSpec(args=['self', 'context'], varargs=None, keywords=None, defaults=None)
+paddle.fluid.contrib.SensitivePruneStrategy.on_batch_end ArgSpec(args=['self', 'context'], varargs=None, keywords=None, defaults=None)
+paddle.fluid.contrib.SensitivePruneStrategy.on_compress_begin ArgSpec(args=['self', 'context'], varargs=None, keywords=None, defaults=None)
+paddle.fluid.contrib.SensitivePruneStrategy.on_compress_end ArgSpec(args=['self', 'context'], varargs=None, keywords=None, defaults=None)
+paddle.fluid.contrib.SensitivePruneStrategy.on_epoch_begin ArgSpec(args=['self', 'context'], varargs=None, keywords=None, defaults=None)
+paddle.fluid.contrib.SensitivePruneStrategy.on_epoch_end ArgSpec(args=['self', 'context'], varargs=None, keywords=None, defaults=None)
+paddle.fluid.contrib.MagnitudePruner.__init__ ArgSpec(args=['self', 'threshold'], varargs=None, keywords=None, defaults=None)
+paddle.fluid.contrib.MagnitudePruner.prune ArgSpec(args=['self', 'param', 'threshold'], varargs=None, keywords=None, defaults=(None,))
+paddle.fluid.contrib.RatioPruner.__init__ ArgSpec(args=['self', 'ratios'], varargs=None, keywords=None, defaults=(None,))
+paddle.fluid.contrib.RatioPruner.prune ArgSpec(args=['self', 'param', 'ratio'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.contrib.load_persistables_for_increment ArgSpec(args=['dirname', 'executor', 'program', 'lookup_table_var', 'lookup_table_var_path'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.contrib.load_persistables_for_inference ArgSpec(args=['dirname', 'executor', 'program', 'lookup_table_var_name'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.contrib.convert_dist_to_sparse_program ArgSpec(args=['program'], varargs=None, keywords=None, defaults=None)
@@ -447,11 +464,7 @@ paddle.fluid.unique_name.switch ArgSpec(args=['new_generator'], varargs=None, ke
 paddle.fluid.unique_name.guard ArgSpec(args=[], varargs='args', keywords='kwds', defaults=None)
 paddle.fluid.recordio_writer.convert_reader_to_recordio_file ArgSpec(args=['filename', 'reader_creator', 'feeder', 'compressor', 'max_num_records', 'feed_order'], varargs=None, keywords=None, defaults=(Compressor.Snappy, 1000, None))
 paddle.fluid.recordio_writer.convert_reader_to_recordio_files ArgSpec(args=['filename', 'batch_per_file', 'reader_creator', 'feeder', 'compressor', 'max_num_records', 'feed_order'], varargs=None, keywords=None, defaults=(Compressor.Snappy, 1000, None))
-paddle.fluid.Scope.__init__ __init__(self: paddle.fluid.core.Scope) -> None
-paddle.fluid.Scope.drop_kids drop_kids(self: paddle.fluid.core.Scope) -> None
-paddle.fluid.Scope.find_var find_var(self: paddle.fluid.core.Scope, arg0: unicode) -> paddle.fluid.core.Variable
-paddle.fluid.Scope.new_scope new_scope(self: paddle.fluid.core.Scope) -> paddle.fluid.core.Scope
-paddle.fluid.Scope.var var(self: paddle.fluid.core.Scope, arg0: unicode) -> paddle.fluid.core.Variable
+paddle.fluid.Scope Scope() -> paddle.fluid.core._Scope
 paddle.reader.map_readers ArgSpec(args=['func'], varargs='readers', keywords=None, defaults=None)
 paddle.reader.buffered ArgSpec(args=['reader', 'size'], varargs=None, keywords=None, defaults=None)
 paddle.reader.compose ArgSpec(args=[], varargs='readers', keywords='kwargs', defaults=None)
