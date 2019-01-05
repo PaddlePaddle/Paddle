@@ -45,8 +45,7 @@ def to_variable(value, block=None):
             name=None,
             shape=value.shape,
             dtype=value.dtype)
-        scope = framework._imperative_tracer().get_scope(block.desc)
-        var = scope.var(py_var.name)
+        var = py_var._ivar.value
         tensor = var.get_tensor()
         tensor.set(value, core.CPUPlace())
         return py_var

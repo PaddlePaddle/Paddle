@@ -59,6 +59,7 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   tensorrt_workspace_size_ = other.tensorrt_workspace_size_;
   enable_memory_optim_ = other.enable_memory_optim_;
   memory_optim_force_update_ = other.memory_optim_force_update_;
+  tensorrt_min_subgraph_size_ = other.tensorrt_min_subgraph_size_;
   model_from_memory_ = other.model_from_memory_;
 
   if (use_gpu) {
@@ -81,12 +82,14 @@ void contrib::AnalysisConfig::EnableMKLDNN() {
 }
 
 void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size,
-                                                   int max_batch_size) {
+                                                   int max_batch_size,
+                                                   int min_subgraph_size) {
   use_tensorrt_ = true;
   tensorrt_workspace_size_ = workspace_size;
   tensorrt_max_batchsize_ = max_batch_size;
-  // Append after the infer_clean pass.
-  pass_builder()->InsertPass(1, "tensorrt_subgraph_pass");
+  tensorrt_min_subgraph_size_ = min_subgraph_size;
+  // Append after the conv+affine_channel fuse pass.
+  pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
 }
 
 void contrib::AnalysisConfig::EnableMemoryOptim(bool force_update_cache) {
