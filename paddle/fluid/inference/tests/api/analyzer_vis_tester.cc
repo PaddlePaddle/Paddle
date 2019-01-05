@@ -88,8 +88,6 @@ void profile(bool use_mkldnn = false) {
     cfg.EnableMKLDNN();
   }
   cfg.pass_builder()->TurnOnDebug();
-  cfg.EnableMemoryOptim();
-  cfg.Build();
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
