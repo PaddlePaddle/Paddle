@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
@@ -582,8 +583,8 @@ void AnalysisPredictor::CollectVarShapes() {
   for (auto var_name : inference_program_->Block(0).LocalVarNames()) {
     auto *var = sub_scope_->FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(var);
-    if (var->Type() == typeid(framework::LoDTensor) ||
-        var->Type() == typeid(framework::Tensor)) {
+    if (var->Type() == framework::VarTypeTrait<framework::LoDTensor>::kId ||
+        var->Type() == framework::VarTypeTrait<framework::Tensor>::kId) {
       auto &tensor = var->Get<framework::LoDTensor>();
       auto shape = framework::vectorize(tensor.dims());
       var_shapes[var_name].assign(shape.begin(), shape.end());
