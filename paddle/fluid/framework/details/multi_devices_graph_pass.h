@@ -45,7 +45,7 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
 #endif
 
   int GetVarDeviceID(
-      const ir::Graph &graph, const std::string &varname,
+      const std::string &varname,
       const std::unordered_map<std::string, int> &sharded_var_device) const;
 
   bool IsScaleLossOp(ir::Node *node) const;
@@ -57,18 +57,13 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
       ir::Graph *result, ir::Node *node,
       std::unordered_map<std::string, int> *sharded_var_device) const;
 
-  std::vector<std::string> FindDistTrainSendVars(
-      const std::vector<ir::Node *> &nodes) const;
-
-  std::vector<std::string> FindDistTrainRecvVars(
-      const std::vector<ir::Node *> &nodes) const;
-
   void CreateComputationalOps(ir::Graph *result, ir::Node *node,
                               size_t num_places) const;
 
   void CreateScaleLossGradOp(ir::Graph *result,
                              const std::string &loss_grad_name,
-                             ir::Node *out_var_node) const;
+                             ir::Node *out_var_node,
+                             proto::VarType::Type dtype) const;
 
   VarHandle *CreateReduceOp(ir::Graph *result, const std::string &og,
                             int dst_dev_id) const;
@@ -76,7 +71,7 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
                              int dev_id) const;
 
   int GetOpDeviceID(
-      const ir::Graph &graph, ir::Node *node,
+      ir::Node *node,
       const std::unordered_map<std::string, int> &sharded_var_device) const;
 
   void InsertAllReduceOp(ir::Graph *result, const std::string &og) const;
@@ -99,10 +94,18 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
   void SetCommunicationContext(OpHandleBase *op_handle,
                                const platform::Place &p) const;
 
+  std::vector<ir::Node *> SortForReduceMode(
+      const std::vector<ir::Node *> &) const;
+
+  int GetOpDeviceID(
+      ir::Node *node,
+      const std::unordered_map<std::string, int> &shared_var_device,
+      std::unordered_map<std::string, std::vector<ir::Node *>> *delay_ops)
+      const;
+
   mutable std::string loss_var_name_;
   mutable std::vector<platform::Place> places_;
   mutable std::vector<Scope *> local_scopes_;
-  mutable std::unordered_set<std::string> grad_names_;
 
   mutable BuildStrategy strategy_;
   mutable std::unordered_map<std::string, VarDesc *> all_vars_;

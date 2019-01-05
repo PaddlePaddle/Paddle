@@ -734,6 +734,38 @@ struct ConvElementwiseadd : public PatternBase {
   PATTERN_DECL_NODE(elementwise_add_out);
 };
 
+// Conv with affine_channel
+// op: conv + (elementwise_add +) affine_channel
+// named nodes:
+// conv_weight, conv_out, conv,
+// ac_x, ac_scale, ac_bias
+// affine_channel, ac_out
+struct ConvAffineChannel : public PatternBase {
+  ConvAffineChannel(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_affine_channel") {}
+
+  PDNode* operator()(PDNode* conv_input, bool with_eltwise_add);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv);
+  PATTERN_DECL_NODE(affine_channel);
+  PATTERN_DECL_NODE(eltwise);  // ELEMENTWISE_ADD
+  // CONV inputs
+  PATTERN_DECL_NODE(conv_weight);  // Filter
+  // CONV outputs
+  PATTERN_DECL_NODE(conv_out);  // tmp
+  // ELTWISE inputs
+  PATTERN_DECL_NODE(eltwise_y_in);
+  // ELTWISE outputs
+  PATTERN_DECL_NODE(eltwise_out);  // tmp
+
+  // AC(Affine_Channel) inputs
+  PATTERN_DECL_NODE(ac_scale);
+  PATTERN_DECL_NODE(ac_bias);
+  // AC outputs
+  PATTERN_DECL_NODE(ac_out);  // Out
+};
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.

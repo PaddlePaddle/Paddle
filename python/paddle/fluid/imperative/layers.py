@@ -24,21 +24,21 @@ __all__ = ['PyLayer']
 
 
 class PyLayer(core.Layer):
-    def __init__(self):
+    def __init__(self, dtype=core.VarDesc.VarType.FP32, name=None):
+        self._once_built = False
+        self._dtype = dtype
+
+    def _build_once(self, inputs):
         pass
 
-    def __call__(self, inputs):
-        # TODO(panyx0718): Support declarative mode as well.
-        assert base.enabled()
-        if not isinstance(inputs, list) and not isinstance(inputs, tuple):
-            inputs = [inputs]
+    def __call__(self, *inputs):
+        if not self._once_built:
+            self._build_once(*inputs)
+            self._once_built = True
 
-        var_inputs = []
-        for x in inputs:
-            py_var = base.to_variable(x)
-            var_inputs.append(py_var)
-        outputs = self.forward(var_inputs)
+        outputs = self.forward(*inputs)
+
         return outputs
 
-    def forward(self, inputs):
-        return []
+    def forward(self, *inputs):
+        raise NotImplementedError

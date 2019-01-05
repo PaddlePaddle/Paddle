@@ -46,7 +46,7 @@ from . import transpiler
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
-from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
+from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
@@ -128,13 +128,13 @@ def __bootstrap__():
         'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
         'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
         'allocator_strategy', 'reader_queue_speed_test_mode',
-        'print_sub_graph_dir', 'pe_profile_fname'
+        'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir',
+        'enable_parallel_graph'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
 
     if os.name != 'nt':
-        read_env_flags.append('warpctc_dir')
         read_env_flags.append('cpu_deterministic')
 
     if core.is_compiled_with_dist():
@@ -145,12 +145,17 @@ def __bootstrap__():
         read_env_flags.append('rpc_get_thread_num')
         read_env_flags.append('rpc_prefetch_thread_num')
         read_env_flags.append('rpc_disable_reuse_port')
+        if core.is_compiled_with_brpc():
+            read_env_flags.append('max_body_size')
+            #set brpc max body size
+            os.environ['FLAGS_max_body_size'] = "2147483647"
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
-            'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus'
+            'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
+            'cudnn_exhaustive_search_times', 'sync_nccl_allreduce'
         ]
 
     core.init_gflags([sys.argv[0]] +

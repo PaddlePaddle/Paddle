@@ -43,7 +43,6 @@ class NormKernel : public framework::OpKernel<T> {
     out_norm->mutable_data<T>(ctx.GetPlace());
 
     auto xdim = in_x->dims();
-    auto ndim = out_norm->dims();
     T eps = static_cast<T>(ctx.Attr<float>("epsilon"));
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis = xdim.size() + axis;

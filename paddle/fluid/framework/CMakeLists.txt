@@ -1,6 +1,6 @@
 
-# windows treat symbolic file as a real file, which is different with unix
-# We create a hidden file and compile it instead of origin source file.
+#windows treat symbolic file as a real file, which is different with unix
+#We create a hidden file and compile it instead of origin source file.
 function(windows_symbolic TARGET)
   set(oneValueArgs "")
   set(multiValueArgs SRCS PATH)
@@ -15,8 +15,7 @@ function(windows_symbolic TARGET)
     file(GENERATE OUTPUT ${final_path}/.${src}.cu INPUT ${final_path}/${src}.cc)
 
     add_custom_command(OUTPUT ${final_path}/.${src}.cu
-            COMMAND ${CMAKE_COMMAND} -E remove ${final_path}/.${src}.cu
-            COMMAND ${CMAKE_COMMAND} -E copy "${final_path}/${src}.cc" "${final_path}/.${src}.cu"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${final_path}/${src}.cc" "${final_path}/.${src}.cu"
             COMMENT "create hidden file of ${src}.cu")
     add_custom_target(${TARGET} ALL DEPENDS .${src}.cu)
   endforeach()
@@ -24,13 +23,14 @@ endfunction()
 
 add_subdirectory(ir)
 add_subdirectory(details)
-# ddim lib
+#ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(async_executor_proto SRCS data_feed.proto)
 
-cc_library(ddim SRCS ddim.cc DEPS eigen3 boost)
+cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
+cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
 cc_library(data_type SRCS data_type.cc DEPS framework_proto ddim device_context)
 cc_test(data_type_test SRCS data_type_test.cc DEPS data_type place tensor)
 if(WITH_GPU)
@@ -39,10 +39,10 @@ if(WITH_GPU)
     nv_library(tensor SRCS tensor.cc .tensor_util.cu DEPS place memory data_type device_context)
     add_dependencies(tensor tensor_util)
   else()
-    nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context)
+    nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context )
   endif(WIN32)
 else()
-  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context)
+  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context )
 endif()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
@@ -69,22 +69,28 @@ cc_library(garbage_collector SRCS garbage_collector.cc DEPS device_context memor
 cc_library(reader SRCS reader.cc DEPS lod_tensor ddim)
 cc_test(reader_test SRCS reader_test.cc DEPS reader)
 
-cc_test(variable_test SRCS variable_test.cc)
-
 cc_library(threadpool SRCS threadpool.cc DEPS enforce)
 cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
-cc_library(scope SRCS scope.cc DEPS glog threadpool)
+cc_library(var_type_traits SRCS var_type_traits DEPS lod_tensor selected_rows framework_proto)
+if (WITH_GPU)
+  target_link_libraries(var_type_traits dynload_cuda)
+endif()
+cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
+
+cc_library(scope SRCS scope.cc DEPS glog threadpool xxhash var_type_traits)
+cc_library(scope_pool SRCS scope_pool.cc DEPS scope)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
+cc_test(variable_test SRCS variable_test.cc DEPS tensor var_type_traits)
 
 cc_library(data_device_transform SRCS data_device_transform.cc DEPS tensor)
 nv_test(data_device_transform_test SRCS data_device_transform_test.cu
-        DEPS operator op_registry device_context math_function)
+        DEPS operator op_registry device_context math_function scope)
 
 if(WITH_GPU)
   if (WIN32)
-    # windows treat symbolic file as a real file, which is different with unix
-    # We create a hidden file and compile it instead of origin source file.
+#windows treat symbolic file as a real file, which is different with unix
+#We create a hidden file and compile it instead of origin source file.
       windows_symbolic(hidden_file SRCS data_type_transform.cu)
       nv_library(data_type_transform SRCS .data_type_transform.cu DEPS tensor)
       add_dependencies(data_type_transform hidden_file)
@@ -124,18 +130,17 @@ cc_test(version_test SRCS version_test.cc DEPS version)
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog version)
 
 if(WITH_NGRAPH)
-  if(NOT WIN32)
-    cc_library(ngraph_bridge SRCS ngraph_bridge.cc DEPS operator framework_proto ngraph)
-    cc_library(ngraph_operator SRCS ngraph_operator.cc DEPS ngraph_bridge operator op_info device_context tensor scope glog
-      shape_inference data_transform lod_tensor profiler ngraph)
-  endif(NOT WIN32)
+  cc_library(ngraph_bridge SRCS ngraph_bridge.cc DEPS operator framework_proto ngraph)
+  cc_library(ngraph_operator SRCS ngraph_operator.cc DEPS ngraph_bridge operator op_info device_context tensor scope glog
+             shape_inference data_transform lod_tensor profiler)
 endif(WITH_NGRAPH)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
 py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
-# Generate an empty __init__.py to make framework_py_proto as a valid python module.
+#Generate an empty \
+    #__init__.py to make framework_py_proto as a valid python module.
 add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
 add_dependencies(framework_py_proto framework_py_proto_init)
 if (NOT WIN32)
@@ -169,11 +174,7 @@ if(WITH_DISTRIBUTE)
 
 else()
   if(WITH_NGRAPH)
-    if(NOT WIN32)
-      cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass ngraph ngraph_operator variable_helper)
-    else(NOT WIN32)
-      cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
-    endif(NOT WIN32)
+    cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass ngraph_operator variable_helper)
   else(WITH_NGRAPH)
     cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
   endif(WITH_NGRAPH)
@@ -183,11 +184,16 @@ endif()
 target_link_libraries(executor garbage_collector)
 
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
-        threaded_ssa_graph_executor scope_buffered_ssa_graph_executor
+        threaded_ssa_graph_executor scope_buffered_ssa_graph_executor parallel_ssa_graph_executor
         graph build_strategy
         fast_threaded_ssa_graph_executor variable_helper)
 
-cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc executor_thread_worker.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto variable_helper)
+if(WITH_PSLIB)
+    cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc executor_thread_worker.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto variable_helper pslib_brpc pslib timer)
+else()
+    cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc executor_thread_worker.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto variable_helper timer)
+endif(WITH_PSLIB)
+
 
 cc_test(data_feed_test SRCS data_feed_test.cc DEPS async_executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto)
