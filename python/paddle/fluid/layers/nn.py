@@ -8749,6 +8749,7 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 def sigmoid_cross_entropy_with_logits(x,
                                       label,
                                       ignore_index=kIgnoreIndex,
+                                      normalize=False,
                                       name=None):
     """
     ${comment}
@@ -8775,7 +8776,8 @@ def sigmoid_cross_entropy_with_logits(x,
         type="sigmoid_cross_entropy_with_logits",
         inputs={"X": x,
                 "Label": label},
-        attrs={"ignore_index": ignore_index},
+        attrs={"ignore_index": ignore_index,
+               'normalize': normalize},
         outputs={"Out": out})
     return out
 

@@ -97,15 +97,16 @@ __global__ void AffineChannelScaleBiasGradientCUDAKernel(
       ds_sum += dy[index] * x[index];
       db_sum += dy[index];
     }
+    __syncthreads();
     auto ds_out =
         BlockReduce(ds_storage).Reduce(static_cast<double>(ds_sum), cub::Sum());
     auto db_out =
         BlockReduce(db_storage).Reduce(static_cast<double>(db_sum), cub::Sum());
+    __syncthreads();
     if (threadIdx.x == 0) {
       dscale[i] = ds_out;
       dbias[i] = db_out;
     }
-    __syncthreads();
   }
 }
 
