@@ -439,9 +439,10 @@ void TestSeqPoolKernel() {
   // TODO(TJ): support more
   std::vector<jit::SeqPoolType> pool_types = {jit::SeqPoolType::kSum};
   for (auto type : pool_types) {
-    for (int h : TestSizes()) {
-      for (int w : TestSizes()) {
-        const jit::seq_pool_attr_t attr(h, w, type);
+    for (int w : TestSizes()) {
+      jit::seq_pool_attr_t attr(w, type);
+      for (int h : TestSizes()) {
+        attr.h = h;
         auto ref = jit::GetRefer<KT, jit::SeqPoolTuples<T>>();
         EXPECT_TRUE(ref != nullptr);
         std::vector<T> x(h * w), yref(w);

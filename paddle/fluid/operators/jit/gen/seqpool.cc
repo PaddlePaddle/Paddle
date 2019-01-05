@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/gen/seqpool.h"
+#include <stddef.h>  // offsetof
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
@@ -21,20 +22,22 @@ namespace operators {
 namespace jit {
 namespace gen {
 
+thread_local float ALIGN32_BEG float_h[1] ALIGN32_END = {
+    1.f};  // TODO(TJ): try move to private
+
 void SeqPoolJitCode::genCode() {
   constexpr int block = YMM_FLOAT_BLOCK;
   constexpr int max_num_regs = 8;
   const int num_block = w_ / block;
   const int num_groups = num_block / max_num_regs;
   int rest_num_regs = num_block % max_num_regs;
-  if (type_ == SeqPoolType::kAvg) {
-    float scalar = 1.f / h_;
-    mov(reg32_scalar, scalar);
-  } else if (type_ == SeqPoolType::kSqrt) {
-    float scalar = 1.f / std::sqrt(static_cast<float>(h_));
-    mov(reg32_scalar, scalar);
+  mov(reg32_int_h, dword[param_attr]);
+  if (type_ == SeqPoolType::kAvg || type_ == SeqPoolType::kSqrt) {
+    mov(reg_tmp, reinterpret_cast<size_t>(float_h));
+    fild(dword[param_attr]);
+    fstp(dword[reg_tmp]);
+    mov(reg32_fp_h, dword[reg_tmp]);
   }
-
   const int group_len = max_num_regs * block * sizeof(float);
   for (int g = 0; g < num_groups; ++g) {
     pool_height<ymm_t>(g * group_len, block, max_num_regs);

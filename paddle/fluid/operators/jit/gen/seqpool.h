@@ -16,6 +16,7 @@
 
 #include <string>
 #include "glog/logging.h"
+#include "paddle/fluid/operators/jit/gen/act.h"  // for ones
 #include "paddle/fluid/operators/jit/gen/jitcode.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -29,7 +30,7 @@ class SeqPoolJitCode : public JitCode {
   explicit SeqPoolJitCode(const seq_pool_attr_t& attr,
                           size_t code_size = 256 * 1024,
                           void* code_ptr = nullptr)
-      : JitCode(code_size, code_ptr), h_(attr.h), w_(attr.w), type_(attr.type) {
+      : JitCode(code_size, code_ptr), w_(attr.w), type_(attr.type) {
     if (type_ != SeqPoolType::kSum) {
       LOG(FATAL) << "Only support sum pool yet ";
     }
@@ -55,39 +56,48 @@ class SeqPoolJitCode : public JitCode {
   void pool_height(int w_offset, int block, int max_num_regs) {
     int offset = w_offset;
     for (int i = 0; i < max_num_regs; ++i) {
-      vmovups(JMM(i), ptr[param1 + offset]);
+      vmovups(JMM(i), ptr[param_src + offset]);
       offset += sizeof(float) * block;
     }
-    if (h_ > 1) {
-      Label l_next_h;
-      mov(reg_h, 1);
-      mov(reg_tmp, param1);
-      add(reg_tmp, w_ * sizeof(float) + w_offset);
-      L(l_next_h);
-      {
-        mov(reg_ptr_src_i, reg_tmp);
-        for (int i = 0; i < max_num_regs; ++i) {
-          vmovups(JMM(i + max_num_regs), ptr[reg_ptr_src_i]);
-          // sum anyway
-          vaddps(JMM(i), JMM(i), JMM(i + max_num_regs));
-          add(reg_ptr_src_i, sizeof(float) * block);
-        }
-        inc(reg_h);
-        add(reg_tmp, w_ * sizeof(float));
-        cmp(reg_h, h_);
-        jl(l_next_h, T_NEAR);
+    cmp(reg32_int_h, 1);
+    Label l_next_h, l_h_done;
+    jle(l_h_done, T_NEAR);
+    mov(reg_h_i, 1);
+    mov(reg_tmp, param_src);
+    add(reg_tmp, w_ * sizeof(float) + w_offset);
+    L(l_next_h);
+    {
+      mov(reg_ptr_src_i, reg_tmp);
+      for (int i = 0; i < max_num_regs; ++i) {
+        vmovups(JMM(i + max_num_regs), ptr[reg_ptr_src_i]);
+        // sum anyway
+        vaddps(JMM(i), JMM(i), JMM(i + max_num_regs));
+        add(reg_ptr_src_i, sizeof(float) * block);
       }
+      inc(reg_h_i);
+      add(reg_tmp, w_ * sizeof(float));
+      cmp(reg_h_i, reg32_int_h);
+      jl(l_next_h, T_NEAR);
     }
+    L(l_h_done);
     // save right now
     if (type_ == SeqPoolType::kAvg || type_ == SeqPoolType::kSqrt) {
-      vbroadcastss(JMM(max_num_regs), reg32_scalar);
+      mov(reg_tmp, reinterpret_cast<size_t>(exp_float_consts));
+      vmovups(JMM(max_num_regs), ptr[reg_tmp + OFFSET_EXP_ONE]);
+      movd(JMM(max_num_regs + 1), reg32_fp_h);
+      if (type_ == SeqPoolType::kSqrt) {
+        vsqrtps(JMM(max_num_regs + 1), JMM(max_num_regs + 1));
+      }
+      vdivps(JMM(max_num_regs + 2), JMM(max_num_regs), JMM(max_num_regs + 1));
+      vbroadcastss(JMM(max_num_regs),
+                   JMM(max_num_regs + 2));  // TODO(TJ): fix me
     }
     offset = w_offset;
     for (int i = 0; i < max_num_regs; ++i) {
       if (type_ == SeqPoolType::kAvg || type_ == SeqPoolType::kSqrt) {
         vmulps(JMM(i), JMM(i), JMM(max_num_regs));
       }
-      vmovups(ptr[param2 + offset], JMM(i));
+      vmovups(ptr[param_dst + offset], JMM(i));
       offset += sizeof(float) * block;
     }
   }
@@ -97,47 +107,54 @@ class SeqPoolJitCode : public JitCode {
     const bool has_block4 = rest / 4 > 0;
     const bool has_block2 = (rest % 4) / 2 > 0;
     const bool has_block1 = (rest % 2) == 1;
-    if (h_ > 1) {
-      Label l_next_h;
-      mov(reg_h, 1);
-      mov(reg_tmp, param1);
-      add(reg_tmp, w_ * sizeof(float) + w_offset);
-      L(l_next_h);
-      {
-        // int used_regs =load_rest(rest, h * w_ * sizeof(float) + w_offset,
-        // max_num_regs);
-        int reg_idx = 0;
-        mov(reg_ptr_src_i, reg_tmp);
-        if (has_block4) {
-          vmovups(xmm_t(reg_idx + max_num_regs), ptr[reg_ptr_src_i]);
-          add(reg_ptr_src_i, sizeof(float) * 4);
-          reg_idx++;
-        }
-        if (has_block2) {
-          vmovups(xmm_t(reg_idx + max_num_regs), ptr[reg_ptr_src_i]);
-          add(reg_ptr_src_i, sizeof(float) * 2);
-          reg_idx++;
-        }
-        if (has_block1) {
-          vmovss(xmm_t(reg_idx + max_num_regs), ptr[reg_ptr_src_i]);
-          reg_idx++;
-        }
-        PADDLE_ENFORCE_EQ(reg_idx, rest_used_num_regs,
-                          "All heights should use same regs");
-        for (int i = 0; i < reg_idx; ++i) {
-          vaddps(xmm_t(i), xmm_t(i), xmm_t(i + max_num_regs));
-        }
-        inc(reg_h);
-        add(reg_tmp, w_ * sizeof(float));
-        cmp(reg_h, h_);
-        jl(l_next_h, T_NEAR);
+    cmp(reg32_int_h, 1);
+    Label l_next_h, l_h_done;
+    jle(l_h_done, T_NEAR);
+    mov(reg_h_i, 1);
+    mov(reg_tmp, param_src);
+    add(reg_tmp, w_ * sizeof(float) + w_offset);
+    L(l_next_h);
+    {
+      int reg_idx = 0;
+      mov(reg_ptr_src_i, reg_tmp);
+      if (has_block4) {
+        vmovups(xmm_t(reg_idx + max_num_regs), ptr[reg_ptr_src_i]);
+        add(reg_ptr_src_i, sizeof(float) * 4);
+        reg_idx++;
       }
+      if (has_block2) {
+        vmovups(xmm_t(reg_idx + max_num_regs), ptr[reg_ptr_src_i]);
+        add(reg_ptr_src_i, sizeof(float) * 2);
+        reg_idx++;
+      }
+      if (has_block1) {
+        vmovss(xmm_t(reg_idx + max_num_regs), ptr[reg_ptr_src_i]);
+        reg_idx++;
+      }
+      PADDLE_ENFORCE_EQ(reg_idx, rest_used_num_regs,
+                        "All heights should use same regs");
+      for (int i = 0; i < reg_idx; ++i) {
+        vaddps(xmm_t(i), xmm_t(i), xmm_t(i + max_num_regs));
+      }
+      inc(reg_h_i);
+      add(reg_tmp, w_ * sizeof(float));
+      cmp(reg_h_i, reg32_int_h);
+      jl(l_next_h, T_NEAR);
     }
+    L(l_h_done);
     // save right now
     if (type_ == SeqPoolType::kAvg || type_ == SeqPoolType::kSqrt) {
-      vbroadcastss(xmm_t(max_num_regs - 1), reg32_scalar);
+      mov(reg_tmp, reinterpret_cast<size_t>(exp_float_consts));
+      vmovups(xmm_t(max_num_regs), ptr[reg_tmp + OFFSET_EXP_ONE]);
+      movd(xmm_t(max_num_regs + 1), reg32_fp_h);
+      if (type_ == SeqPoolType::kSqrt) {
+        vsqrtps(xmm_t(max_num_regs + 1), xmm_t(max_num_regs + 1));
+      }
+      vdivps(xmm_t(max_num_regs + 2), xmm_t(max_num_regs),
+             xmm_t(max_num_regs + 1));
+      vbroadcastss(xmm_t(max_num_regs), xmm_t(max_num_regs + 2));
       for (int i = 0; i < rest_used_num_regs; ++i) {
-        vmulps(xmm_t(i), xmm_t(i), xmm_t(max_num_regs - 1));
+        vmulps(xmm_t(i), xmm_t(i), xmm_t(max_num_regs));
       }
     }
     save_rest(rest, w_offset);
@@ -151,17 +168,17 @@ class SeqPoolJitCode : public JitCode {
     const bool has_block1 = (rest % 2) == 1;
     int reg_idx = reg_start;
     if (has_block4) {
-      vmovups(xmm_t(reg_idx + num_shift_regs), ptr[param1 + w_offset]);
+      vmovups(xmm_t(reg_idx + num_shift_regs), ptr[param_src + w_offset]);
       w_offset += sizeof(float) * 4;
       reg_idx++;
     }
     if (has_block2) {
-      vmovq(xmm_t(reg_idx + num_shift_regs), ptr[param1 + w_offset]);
+      vmovq(xmm_t(reg_idx + num_shift_regs), ptr[param_src + w_offset]);
       w_offset += sizeof(float) * 2;
       reg_idx++;
     }
     if (has_block1) {
-      vmovss(xmm_t(reg_idx + num_shift_regs), ptr[param1 + w_offset]);
+      vmovss(xmm_t(reg_idx + num_shift_regs), ptr[param_src + w_offset]);
       reg_idx++;
     }
     return reg_idx;
@@ -174,32 +191,33 @@ class SeqPoolJitCode : public JitCode {
     const bool has_block1 = (rest % 2) == 1;
     int reg_idx = reg_start;
     if (has_block4) {
-      vmovups(ptr[param2 + w_offset], xmm_t(reg_idx));
+      vmovups(ptr[param_dst + w_offset], xmm_t(reg_idx));
       w_offset += sizeof(float) * 4;
       reg_idx++;
     }
     if (has_block2) {
-      vmovq(ptr[param2 + w_offset], xmm_t(reg_idx));
+      vmovq(ptr[param_dst + w_offset], xmm_t(reg_idx));
       w_offset += sizeof(float) * 2;
       reg_idx++;
     }
     if (has_block1) {
-      vmovss(ptr[param2 + w_offset], xmm_t(reg_idx));
+      vmovss(ptr[param_dst + w_offset], xmm_t(reg_idx));
     }
   }
 
  private:
-  int h_;
   int w_;
   SeqPoolType type_;
-  reg64_t param1{abi_param1};
-  reg64_t param2{abi_param2};
-  reg64_t param3{abi_param3};
-  reg32_t reg32_scalar{r8d};
+  reg64_t param_src{abi_param1};
+  reg64_t param_dst{abi_param2};
+  reg64_t param_attr{abi_param3};
+  reg64_t reg_tmp{rax};
 
-  reg64_t reg_h{r9};
-  reg64_t reg_ptr_src_i{r10};
-  reg64_t reg_tmp{r11};
+  reg32_t reg32_int_h{r8d};
+  reg32_t reg32_fp_h{r9d};
+
+  reg64_t reg_h_i{r10};
+  reg64_t reg_ptr_src_i{r11};
 };
 
 }  // namespace gen
