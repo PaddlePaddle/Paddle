@@ -46,7 +46,7 @@ typedef enum {
 
 typedef enum {
   kNonePoolType = 0,
-  kSum,
+  kSum = 1,
   kAvg,
   kSqrt,
 } SeqPoolType;
@@ -121,10 +121,10 @@ struct GRUTuples {
 };
 
 typedef struct seq_pool_attr_s {
-  int h, w;
+  int h, w;  // h should always be the first one
   SeqPoolType type;
   seq_pool_attr_s() = default;
-  explicit seq_pool_attr_s(int height, int width, SeqPoolType pool_type)
+  explicit seq_pool_attr_s(int width, SeqPoolType pool_type, int height = 1)
       : h(height), w(width), type(pool_type) {}
 } seq_pool_attr_t;
 
