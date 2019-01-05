@@ -167,7 +167,7 @@ bool FindSuitableTensorToReuse(
     if (!cluster->count(candidate)) continue;
 
     size_t space = space_table.at(candidate);
-    size_t space_diff = std::abs(space - space_required);
+    size_t space_diff = std::abs<size_t>(space - space_required);
     if (space_diff < best_fit.second) {
       best_fit.first = candidate;
       best_fit.second = space_diff;
