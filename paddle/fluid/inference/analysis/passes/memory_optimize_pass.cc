@@ -13,7 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
+#include <algorithm>
 #include <fstream>
+#include <limits>
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
@@ -33,8 +39,8 @@ using space_table_t = MemoryOptimizePass::space_table_t;
 
 // Collect the lifecycles of the tensors.
 // Traverse the graph in topological order.
-// TODO(Superjomn) the traversal order also affect the lifecycles, try to change
-// the order to improve the reuse performance latter.
+// The traversal order also affect the lifecycles, so different sort_kind is
+// used.
 void MemoryOptimizePass::CollectLifeCycle(
     std::unordered_map<std::string, lifecycle_t>* lifecycles,
     int sort_kind) const {
@@ -51,10 +57,8 @@ void MemoryOptimizePass::CollectLifeCycle(
     if (op_node->Name() == "feed") {
       for (auto* node : op_node->outputs) {
         auto var = node->Name();
-        if (!lifecycles->count(var)) {
-          (*lifecycles)[var] =
-              std::make_pair(max_lifecycle_, std::numeric_limits<int>::max());
-        }
+        lifecycles->emplace(var,
+                            std::make_pair(0, std::numeric_limits<int>::max()));
       }
     } else {
       // Normal operators.
@@ -62,8 +66,7 @@ void MemoryOptimizePass::CollectLifeCycle(
         if (node->Var()->Persistable()) continue;
         std::string var = node->Name();
         if (!lifecycles->count(var)) {
-          int dead = max_lifecycle_;
-          (*lifecycles)[var] = std::make_pair(max_lifecycle_, dead);
+          (*lifecycles)[var] = std::make_pair(max_lifecycle_, max_lifecycle_);
         } else {
           (*lifecycles)[var].second =
               std::max(max_lifecycle_, lifecycles->at(var).second);  // max()
@@ -142,7 +145,7 @@ bool FindSuitableTensorToReuse(
     std::string* tensor2use) {
   std::pair<std::string, size_t> best_fit;
   best_fit.second = std::numeric_limits<int>::max();
-  VLOG(3) << "Split Tensors to " << var_clusters.size() << " clusters";
+  VLOG(5) << "Split Tensors to " << var_clusters.size() << " clusters";
 
   // find the cluster this var belongs to.
   const std::unordered_set<std::string>* cluster = nullptr;
@@ -280,7 +283,9 @@ void MemoryOptimizePass::MakeReusePlan(
     // Gather the dead and born tensors.
     for (auto elem_it = life_cycles.begin(); elem_it != life_cycles.end();
          elem_it++) {
-      if (elem_it->second.first == -1) continue;
+      if (elem_it->second.first == -1) {
+        continue;
+      }
       const auto& tensor = elem_it->first;
       const auto& lifecycle = elem_it->second;
       VLOG(4) << "process " << tensor << " reuse " << lifecycle.first << "->"
@@ -291,7 +296,7 @@ void MemoryOptimizePass::MakeReusePlan(
         born_tensors.insert(tensor);
       }
       // Collect dead tensors whose memory can be reused.
-      else if (lifecycle.second < age) {
+      else if (lifecycle.second < age) {  // NOLINT
         dead_tensors.insert(tensor);
         // remove to avoid duplicate process.
         elem_it->second.first = -1;  // avoid duplicate search

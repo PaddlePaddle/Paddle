@@ -211,7 +211,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
 
 bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                 framework::Scope *scope) {
-  VLOG(3) << "Predictor::set_feed";
+  VLOG(3) << "Pred5ictor::set_feed";
   if (inputs.size() != feeds_.size()) {
     LOG(ERROR) << "wrong feed input size, need " << feeds_.size() << " but get "
                << inputs.size();
