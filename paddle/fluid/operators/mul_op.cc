@@ -147,12 +147,6 @@ class MulGradOp : public framework::OperatorWithKernel {
                    "Input(Out@GRAD) should not be null");
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
-    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-
-    auto x_mat_dims = framework::flatten_to_2d(
-        x_dims, ctx->Attrs().Get<int>("x_num_col_dims"));
-    auto y_mat_dims = framework::flatten_to_2d(
-        y_dims, ctx->Attrs().Get<int>("y_num_col_dims"));
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");

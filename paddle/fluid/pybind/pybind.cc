@@ -84,11 +84,15 @@ bool IsCompiledWithCUDA() {
 }
 
 bool IsCompiledWithBrpc() {
-#if defined(PADDLE_WITH_BRPC) || defined(PADDLE_WITH_BRPC_RDMA)
-  return true;
-#else
+#ifndef PADDLE_WITH_DISTRIBUTE
   return false;
 #endif
+
+#ifdef PADDLE_WITH_GRPC
+  return false;
+#endif
+
+  return true;
 }
 
 bool IsCompiledWithDIST() {
@@ -121,20 +125,39 @@ PYBIND11_MODULE(core, m) {
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
-  py::class_<imperative::VarBase, PyVarBase>(m, "VarBase", R"DOC()DOC")
-      .def(py::init<>())
+  py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
+      m, "VarBase", R"DOC()DOC")
+      // .def(py::init<>())
+      .def(py::init<bool>(), py::arg("stop_gradient") = false)
       .def("_run_backward",
-           [](imperative::VarBase &self, framework::Scope *scope) {
-             self.RunBackward(scope);
-           })
+           [](imperative::VarBase &self) { self.RunBackward(); })
+      .def("_grad_name", &imperative::VarBase::GradName)
       .def("_grad", &imperative::VarBase::Grad)
+      .def_property("grad_value",
+                    [](const imperative::VarBase &self) { return self.grads_; },
+                    [](imperative::VarBase &self, framework::Variable *grad) {
+                      self.grads_ = grad;
+                    },
+                    py::return_value_policy::reference)
+      .def_property("value",
+                    [](const imperative::VarBase &self) { return self.var_; },
+                    [](imperative::VarBase &self, framework::Variable *var) {
+                      self.var_ = var;
+                    },
+                    py::return_value_policy::reference)
       .def_property(
           "desc",
           [](const imperative::VarBase &self) { return self.var_desc_; },
           [](imperative::VarBase &self, framework::VarDesc *var_desc) {
             self.var_desc_ = var_desc;
           },
-          py::return_value_policy::reference);
+          py::return_value_policy::reference)
+      .def_property(
+          "stop_gradient",
+          [](const imperative::VarBase &self) { return self.stop_gradient_; },
+          [](imperative::VarBase &self, bool stop_gradient) {
+            self.stop_gradient_ = stop_gradient;
+          });
 
   py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
       .def(py::init<>())
