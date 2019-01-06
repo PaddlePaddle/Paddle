@@ -15,18 +15,24 @@
 from __future__ import print_function
 
 import collections
+from collections import defaultdict
 import contextlib
 import os
 import re
 import six
-import sys
-import traceback
 
 import numpy as np
 
 from .. import compat as cpt
 from .proto import framework_pb2
 try:
+    if os.name == 'nt':
+        import sys
+        third_lib_path = os.path.abspath(os.path.dirname(
+            __file__)) + os.sep + '..' + os.sep + 'libs'
+        os.environ['path'] += ';' + third_lib_path
+        sys.path.append(third_lib_path)
+
     from . import core
 except ImportError as e:
     if os.name == 'nt':
@@ -368,18 +374,25 @@ class Variable(object):
         if _in_imperative_mode():
             self._ivar = core.VarBase()
             self._ivar.desc = self.desc
+            self._ivar.stop_gradient = stop_gradient
 
     def _numpy(self):
-        scope = _imperative_tracer().get_scope(self.block.desc)
-        tensor = core.get_variable_tensor(scope, self.desc.name())
+        tensor = self._ivar.value.get_tensor()
         return np.array(tensor)
 
     def _backward(self):
-        scope = _imperative_tracer().get_scope(self.block.desc)
-        self._ivar._run_backward(scope)
+        self._ivar._run_backward()
 
     def _gradient(self):
         return np.array(self._ivar._grad())
+
+    @property
+    def _value(self):
+        return self._ivar.value
+
+    @_value.setter
+    def _value(self, v):
+        self._ivar.value = v
 
     def __str__(self):
         return self.to_string(True)
@@ -423,6 +436,14 @@ class Variable(object):
             None
         """
         self.desc = input
+
+    @property
+    def _stop_gradient(self):
+        return self._ivar.stop_gradient
+
+    @_stop_gradient.setter
+    def _stop_gradient(self, s):
+        self._ivar.stop_gradient = s
 
     @property
     def persistable(self):
@@ -605,10 +626,6 @@ class Operator(object):
         if role_var_name in op_attrs and len(op_attrs[role_var_name]) == 0:
             del op_attrs[role_var_name]
 
-        callstack_var_name = op_maker.kOpCreationCallstackAttrName()
-        op_attrs[callstack_var_name] = list(
-            reversed(traceback.format_stack()))[1:]
-
         if len(self.desc.type()) != 0:
             return
         if type is None:
@@ -653,20 +670,16 @@ class Operator(object):
                     self.desc.set_input(in_proto.name, [])
 
         if outputs is not None:
-            given = set()
-            need = set()
-            for n in outputs:
-                given.add(n)
             for m in proto.outputs:
-                need.add(m.name)
-            if not given == need:
-                raise ValueError(("Incorrect setting for output(s) of "
-                                  "operator \"%s\". Need: [%s] Given: [%s]") %
-                                 (type,
-                                  ", ".join(six.binary_type(e) for e in need),
-                                  ", ".join(six.binary_type(e) for e in given)))
-
+                if (m.name not in outputs) and m.dispensable:
+                    continue
+                if not ((m.name in outputs) or m.dispensable):
+                    raise ValueError(
+                        ("Incorrect setting for output(s) of "
+                         "operator \"%s\", should set: [%s].") % (type, m.name))
             for out_proto in proto.outputs:
+                if out_proto.name not in outputs:
+                    continue
                 out_args = outputs[out_proto.name]
                 if not isinstance(out_args, list):
                     out_args = [out_args]
@@ -691,26 +704,28 @@ class Operator(object):
                 self._update_desc_attr(attr_name, attr_val)
 
         self.desc.check_attrs()
+
         if self._has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
+
         if _in_imperative_mode():
             self.iop = core.OpBase()
             self.iop.desc = self.desc
-            self.inputs = []
+            self.inputs = defaultdict(list)
             if inputs is not None:
-                for inp in inputs.values():
-                    if isinstance(inp, Variable):
-                        self.inputs.append(inp)
-                    elif isinstance(inp, list) or isinstance(inp, tuple):
-                        self.inputs.extend(inp[:])
-            self.outputs = []
+                for k, v in six.iteritems(inputs):
+                    if isinstance(v, Variable):
+                        self.inputs[k].append(v._ivar)
+                    elif isinstance(v, list) or isinstance(v, tuple):
+                        self.inputs[k].extend([var._ivar for var in v])
+            self.outputs = defaultdict(list)
             if outputs is not None:
-                for out in outputs.values():
-                    if isinstance(out, Variable):
-                        self.outputs.append(out)
-                    elif isinstance(out, list) or isinstance(out, tuple):
-                        self.outputs.extend(out[:])
+                for k, v in six.iteritems(outputs):
+                    if isinstance(v, Variable):
+                        self.outputs[k].append(v._ivar)
+                    elif isinstance(v, list) or isinstance(v, tuple):
+                        self.outputs[k].extend([var._ivar for var in v])
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
@@ -1276,12 +1291,21 @@ class Block(object):
             Operator: the append Operator.
         """
         op_desc = self.desc.append_op()
-        op = Operator(block=self, desc=op_desc, *args, **kwargs)
-        if _in_imperative_mode():
-            _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
-                                       [v._ivar for v in op.outputs], self.desc)
+        op = Operator(
+            block=self,
+            desc=op_desc,
+            type=kwargs.get("type", None),
+            inputs=kwargs.get("inputs", None),
+            outputs=kwargs.get("outputs", None),
+            attrs=kwargs.get("attrs", None))
         self.ops.append(op)
+        self._trace_op(op, kwargs.get("stop_gradient", False))
         return op
+
+    def _trace_op(self, op, stop_gradient=False):
+        if _in_imperative_mode():
+            _imperative_tracer().trace(op.iop, op.inputs, op.outputs, self.desc,
+                                       stop_gradient)
 
     def _insert_op(self, index, *args, **kwargs):
         """
@@ -1328,11 +1352,15 @@ class Block(object):
 
     def _prepend_op(self, *args, **kwargs):
         op_desc = self.desc._prepend_op()
-        op = Operator(self, op_desc, *args, **kwargs)
-        if _in_imperative_mode():
-            _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
-                                       [v._ivar for v in op.outputs], self.desc)
+        op = Operator(
+            self,
+            op_desc,
+            type=kwargs.get("type", None),
+            inputs=kwargs.get("inputs", None),
+            outputs=kwargs.get("outputs", None),
+            attrs=kwargs.get("attrs", None))
         self.ops.insert(0, op)
+        self._trace_op(op, kwargs.get("stop_gradient", False))
         return op
 
     def _sync_with_cpp(self):
@@ -1646,8 +1674,8 @@ class Program(object):
                 parameters, e.g., :code:`trainable`, :code:`optimize_attr`, need
                 to print.
 
-        Returns
-            (str): The debug string.
+        Returns:
+            str : The debug string.
 
         Raises:
             ValueError: If any of required fields is not set and throw_on_error is

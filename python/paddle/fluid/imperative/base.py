@@ -28,8 +28,7 @@ def enabled():
 def guard():
     train = framework.Program()
     startup = framework.Program()
-    tracer = core.Tracer(train.current_block().desc,
-                         startup.current_block().desc)
+    tracer = core.Tracer(train.current_block().desc)
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
             with framework._imperative_guard(tracer):
@@ -46,8 +45,7 @@ def to_variable(value, block=None):
             name=None,
             shape=value.shape,
             dtype=value.dtype)
-        scope = framework._imperative_tracer().get_scope(block.desc)
-        var = scope.var(py_var.name)
+        var = py_var._ivar.value
         tensor = var.get_tensor()
         tensor.set(value, core.CPUPlace())
         return py_var
