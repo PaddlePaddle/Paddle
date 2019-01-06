@@ -101,6 +101,10 @@ class CompiledProgram(object):
         self._exec_strategy = exec_strategy
         self._loss_name = loss_name
         self._share_vars_from = share_vars_from
+        if self._exec_strategy is None:
+            self._exec_strategy = ExecutionStrategy()
+        if self._build_strategy is None:
+            self._build_strategy = BuildStrategy()
         return self
 
     def _with_distributed(self):
@@ -123,12 +127,6 @@ class CompiledProgram(object):
             self._local_scopes = self._share_vars_from._executor.local_scopes()
         else:
             self._local_scopes = []
-
-        self._places = []
-        if self._exec_strategy is None:
-            self._exec_strategy = ExecutionStrategy()
-        if self._build_strategy is None:
-            self._build_strategy = BuildStrategy()
 
         self._exec_strategy.use_cuda = isinstance(self._place, core.CUDAPlace)
         if self._exec_strategy.use_cuda:
@@ -194,6 +192,7 @@ class CompiledProgram(object):
             if place and self._place != place:
                 raise ValueError("Cannot compile with different place")
             return self
+        self._compiled = True
 
         self._scope = scope
         self._place = place
