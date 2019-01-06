@@ -53,7 +53,7 @@ class TestGRUUnitOp(OpTest):
         GRUActivationType.relu: relu,
     }
 
-    def set_inputs(self):
+    def set_inputs(self, origin_mode=False):
         batch_size = self.batch_size
         frame_size = self.frame_size
         self.op_type = 'gru_unit'
@@ -68,7 +68,8 @@ class TestGRUUnitOp(OpTest):
         }
         self.attrs = {
             'activation': GRUActivationType.tanh,
-            'gate_activation': GRUActivationType.sigmoid
+            'gate_activation': GRUActivationType.sigmoid,
+            'origin_mode': origin_mode
         }
 
     def set_outputs(self, origin_mode=False):
@@ -116,12 +117,12 @@ class TestGRUUnitOp(OpTest):
 
 class TestGRUUnitOpOriginMode(TestGRUUnitOp):
     def setUp(self):
-        self.set_inputs()
+        self.set_inputs(origin_mode=True)
         self.set_outputs(origin_mode=True)
 
 
 class TestGRUUnitOpWithBias(TestGRUUnitOp):
-    def set_inputs(self):
+    def set_inputs(self, origin_mode=False):
         batch_size = self.batch_size
         frame_size = self.frame_size
         super(TestGRUUnitOpWithBias, self).set_inputs()
@@ -129,7 +130,8 @@ class TestGRUUnitOpWithBias(TestGRUUnitOp):
             -0.1, 0.1, (1, frame_size * 3)).astype('float64')
         self.attrs = {
             'activation': GRUActivationType.identity,
-            'gate_activation': GRUActivationType.sigmoid
+            'gate_activation': GRUActivationType.sigmoid,
+            'origin_mode': origin_mode
         }
 
     def test_check_grad(self):
@@ -143,7 +145,7 @@ class TestGRUUnitOpWithBias(TestGRUUnitOp):
 
 class TestGRUUnitOpWithBiasOriginMode(TestGRUUnitOpWithBias):
     def setUp(self):
-        self.set_inputs()
+        self.set_inputs(origin_mode=True)
         self.set_outputs(origin_mode=True)
 
 
