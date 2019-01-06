@@ -270,6 +270,29 @@ class Executor(object):
     But the global scope variables will be persistent through different runs.
     All of ops in program will be running in sequence.
 
+
+    Example:
+    .. code-block:: python
+        # First create the Executor.
+        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        # Run the startup program once and only once.
+        # Not need to optimize/compile the startup program.
+        exe.run(fluid.default_startup_program())
+
+        # Run the main program directly without compile.
+        loss, = exe.run(fluid.default_main_program(),
+                        feed=feed_dict,
+                        fetch_list=[loss.name])
+        # Or, compiled the program and run. See `CompiledProgram` for more detail.
+        compiled_prog = compiler.CompiledProgram(
+            fluid.default_main_program()).with_data_parallel(
+            loss_name=loss.name)
+        loss, = exe.run(compiled_prog,
+                        feed=feed_dict,
+                        fetch_list=[loss.name])
+
     Args:
         place(core.CPUPlace|core.CUDAPlace(n)): indicate the executor run on which device
 
@@ -441,8 +464,9 @@ class Executor(object):
         operators in the program but not only the operators dependent by the fetch_list
 
         Args:
-            program(Program): the program that need to run, if not provied, then default_main_program will be used.
-            feed(dict): feed variable map, e.g. {"image": ImageData, "label": LableData}
+            program(Program|CompiledProgram): the program that need to run,
+                if not provided, then default_main_program will be used.
+            feed(dict): feed variable map, e.g. {"image": ImageData, "label": LabelData}
             fetch_list(list): a list of variable or variable names that user want to get, run will return them according to this list.
             feed_var_name(str): the name for the input variable of feed Operator.
             fetch_var_name(str): the name for the output variable of fetch Operator.
