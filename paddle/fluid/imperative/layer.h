@@ -14,17 +14,69 @@
 
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace imperative {
 
+class PreparedOp {
+ public:
+  PreparedOp(const framework::OperatorBase& op,
+             const framework::RuntimeContext& ctx,
+             framework::OperatorWithKernel::OpKernelFunc func,
+             platform::DeviceContext* dev_ctx)
+      : op(op), ctx(ctx), func(func), dev_ctx(dev_ctx) {}
+
+  static PreparedOp Prepare(const framework::RuntimeContext& ctx,
+                            const framework::OperatorWithKernel& op,
+                            const platform::Place& place) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx = pool.Get(place);
+
+    // check if op[type] has kernel registered.
+    auto& all_op_kernels = op.AllOpKernels();
+    auto kernels_iter = all_op_kernels.find(op.Type());
+    if (kernels_iter == all_op_kernels.end()) {
+      PADDLE_THROW(
+          "There are no kernels which are registered in the %s operator.",
+          op.Type());
+    }
+
+    framework::OperatorWithKernel::OpKernelMap& kernels = kernels_iter->second;
+
+    auto expected_kernel_key = op.GetExpectedKernelType(
+        framework::ExecutionContext(op, framework::Scope(), *dev_ctx, ctx));
+    VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+
+    auto kernel_iter = kernels.find(expected_kernel_key);
+#ifdef PADDLE_WITH_MKLDNN
+    // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
+    if (kernel_iter == kernels.end() &&
+        expected_kernel_key.library_type_ == framework::LibraryType::kMKLDNN) {
+      VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
+      expected_kernel_key.library_type_ = framework::LibraryType::kPlain;
+      expected_kernel_key.data_layout_ = framework::DataLayout::kAnyLayout;
+      kernel_iter = kernels.find(expected_kernel_key);
+    }
+#endif
+    if (kernel_iter == kernels.end()) {
+      PADDLE_THROW("op %s does not have kernel for %s", op.Type(),
+                   KernelTypeToString(expected_kernel_key));
+    }
+    return PreparedOp(op, ctx, kernel_iter->second, dev_ctx);
+  }
+
+  const framework::OperatorBase& op;
+  const framework::RuntimeContext& ctx;
+  framework::OperatorWithKernel::OpKernelFunc func;
+  platform::DeviceContext* dev_ctx;
+};
 class OpBase;
 
 class VarBase {
@@ -33,56 +85,62 @@ class VarBase {
       : pre_op_(nullptr),
         pre_op_out_idx_(-1),
         var_desc_(nullptr),
-        var_(nullptr),
-        grads_(nullptr) {}
+        var_(new framework::Variable()),
+        grads_(new framework::Variable()),
+        stop_gradient_(false) {}
+
+  explicit VarBase(bool stop_gradient)
+      : pre_op_(nullptr),
+        pre_op_out_idx_(-1),
+        var_desc_(nullptr),
+        var_(new framework::Variable()),
+        grads_(new framework::Variable()),
+        stop_gradient_(stop_gradient) {}
 
   virtual ~VarBase() {}
 
-  void ApplyGrad(framework::Scope* scope, framework::Variable* grad);
-
-  void RunBackward(framework::Scope* scope);
+  void RunBackward();
 
   framework::LoDTensor& Grad();
 
+  inline std::string GradName() const {
+    PADDLE_ENFORCE(
+        var_desc_,
+        "Couldn't get gradient variable's name, please call backward() first");
+    return string::Sprintf("%s@IGrad", var_desc_->Name());
+  }
+
   OpBase* pre_op_;
+  std::string pre_op_out_name_;
   int pre_op_out_idx_;
 
   framework::VarDesc* var_desc_;
   framework::Variable* var_;
   framework::Variable* grads_;
+
+  bool stop_gradient_;
 };
 
 class OpBase {
  public:
-  OpBase()
-      : input_vars_(new std::vector<VarBase*>()),
-        output_vars_(new std::vector<VarBase*>()),
-        pre_ops_(new std::vector<OpBase*>()),
-        pre_ops_out_idx_(new std::vector<int>()),
-        op_desc_(nullptr),
-        grad_op_desc_(nullptr) {}
+  OpBase() : op_desc_(nullptr), grad_op_desc_(nullptr) {}
 
   virtual ~OpBase() {
-    delete input_vars_;
-    delete output_vars_;
-
-    delete pre_ops_;
-    delete pre_ops_out_idx_;
-
     if (grad_op_desc_) delete grad_op_desc_;
-    if (grad_to_var_) delete grad_to_var_;
   }
 
-  std::vector<framework::Variable*> ApplyGrad(framework::Scope* scope);
+  std::map<std::string, std::vector<VarBase*>> ApplyGrad();
 
-  std::vector<VarBase*>* input_vars_;
-  std::vector<VarBase*>* output_vars_;
-  std::vector<OpBase*>* pre_ops_;
-  std::vector<int>* pre_ops_out_idx_;
   framework::OpDesc* op_desc_;
-
   framework::OpDesc* grad_op_desc_;
-  std::unordered_map<std::string, std::string>* grad_to_var_;
+
+  std::map<std::string, std::vector<VarBase*>> input_vars_;
+  std::map<std::string, std::vector<VarBase*>> output_vars_;
+  std::map<std::string, std::vector<OpBase*>> pre_ops_;
+  std::map<std::string, std::vector<int>> pre_ops_out_idx_;
+
+  std::map<std::string, std::vector<framework::Variable*>> grad_input_vars_;
+  std::map<std::string, std::vector<framework::Variable*>> grad_output_vars_;
   framework::BlockDesc* block_;
 };
 
