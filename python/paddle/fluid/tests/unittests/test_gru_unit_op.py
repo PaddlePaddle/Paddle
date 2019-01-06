@@ -71,7 +71,7 @@ class TestGRUUnitOp(OpTest):
             'gate_activation': GRUActivationType.sigmoid
         }
 
-    def set_outputs(self):
+    def set_outputs(self, origin_mode=False):
         # GRU calculations
         batch_size = self.batch_size
         frame_size = self.frame_size
@@ -93,7 +93,10 @@ class TestGRUUnitOp(OpTest):
         c = self.activate[self.attrs['activation']](np.dot(r_h_p, w_c) +
                                                     g[:, frame_size * 2:])
         g = np.hstack((u_r, c))
-        h = u * c + (1 - u) * h_p
+        if origin_mode:
+            h = (1 - u) * c + u * h_p
+        else:
+            h = u * c + (1 - u) * h_p
         self.outputs = {
             'Gate': g.astype('float64'),
             'ResetHiddenPrev': r_h_p.astype('float64'),
@@ -109,6 +112,12 @@ class TestGRUUnitOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['Input', 'HiddenPrev', 'Weight'], ['Hidden'])
+
+
+class TestGRUUnitOpOriginMode(TestGRUUnitOp):
+    def setUp(self):
+        self.set_inputs()
+        self.set_outputs(origin_mode=True)
 
 
 class TestGRUUnitOpWithBias(TestGRUUnitOp):
@@ -130,6 +139,12 @@ class TestGRUUnitOpWithBias(TestGRUUnitOp):
         self.check_grad(
             ['HiddenPrev', 'Weight', 'Bias'], ['Hidden'],
             no_grad_set=set('Input'))
+
+
+class TestGRUUnitOpWithBiasOriginMode(TestGRUUnitOpWithBias):
+    def setUp(self):
+        self.set_inputs()
+        self.set_outputs(origin_mode=True)
 
 
 if __name__ == '__main__':
