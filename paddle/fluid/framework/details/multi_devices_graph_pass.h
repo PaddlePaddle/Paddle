@@ -53,6 +53,8 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   virtual void InsertPostprocessOps(ir::Graph *result) const = 0;
 
+  bool UseGPU() const;
+
   bool NeedCollectiveOps() const;
 
   bool IsScaleLossOp(ir::Node *node) const;
@@ -156,6 +158,8 @@ class ReduceSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
 
 class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
  protected:
+  virtual void Init() const;
+
   virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
 
   virtual void InsertPostprocessOps(ir::Graph *result) const;
@@ -169,9 +173,8 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
 
   int CreateDistTrainOp(ir::Graph *result, ir::Node *node) const;
 
-  bool IsDistTrain(const std::vector<ir::Node *> &ops) const;
-
   mutable std::vector<std::unordered_set<std::string>> bcast_var_name_set_;
+  mutable bool need_broadcast_var_{false};
 };
 
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder();

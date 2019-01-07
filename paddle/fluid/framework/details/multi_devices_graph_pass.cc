@@ -263,6 +263,14 @@ std::vector<ir::Node *> MultiDevSSAGraphBuilderBase::SortOperations(
   return ir::TopologySortOperations(graph);
 }
 
+bool MultiDevSSAGraphBuilderBase::UseGPU() const {
+  bool use_gpu = false;
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  use_gpu = nccl_ctxs_ != nullptr;
+#endif
+  return use_gpu;
+}
+
 bool MultiDevSSAGraphBuilderBase::NeedCollectiveOps() const {
   return Get<size_t>(kNRanks) > 1;
 }
@@ -595,12 +603,7 @@ bool ReduceSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
 }
 
 void ReduceSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
-  bool use_gpu = false;
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  use_gpu = nccl_ctxs_ != nullptr;
-#endif
-
-  if (use_gpu) {
+  if (UseGPU()) {
     if (strategy_.fuse_broadcast_op_) {
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
@@ -700,6 +703,11 @@ std::vector<ir::Node *> ReduceSSAGraphBuilder::SortForReduceMode(
   return sorted_ops;
 }
 
+void DistSSAGraphBuilder::Init() const {
+  MultiDevSSAGraphBuilderBase::Init();
+  ResetState();
+}
+
 void DistSSAGraphBuilder::ResetState() const {
   BalanceVarSSAGraphBuilder::ResetState();
   bcast_var_name_set_.clear();
@@ -723,6 +731,7 @@ bool DistSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
       }
     }
     insert_op = true;
+    need_broadcast_var_ = true;
   } else if (OpHaveRole(*node, OpRole::kDist)) {
     int op_dev_id = CreateDistTrainOp(result, node);
     if (node->Op()->Type() == "concat") {
@@ -741,16 +750,6 @@ bool DistSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
     }
   }
   return insert_op;
-}
-
-bool DistSSAGraphBuilder::IsDistTrain(
-    const std::vector<ir::Node *> &ops) const {
-  for (ir::Node *node : ops) {
-    if (OpHaveRole(*node, OpRole::kRPC)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 void SetOpInputsAllPlaces(ir::Graph *result, ir::Node *node, int num_places) {
@@ -926,13 +925,17 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
 }
 
 void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
-  if (strategy_.fuse_broadcast_op_) {
-    CreateFusedBroadcastOp(result, bcast_var_name_set_);
-  } else {
-    for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {
-      auto &to_bcast_set = bcast_var_name_set_[dev_id];
-      for (auto &bcast_name : to_bcast_set) {
-        CreateBroadcastOp(result, bcast_name, dev_id);
+  if (need_broadcast_var_ ||
+      (UseGPU() &&
+       strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce)) {
+    if (strategy_.fuse_broadcast_op_) {
+      CreateFusedBroadcastOp(result, bcast_var_name_set_);
+    } else {
+      for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {
+        auto &to_bcast_set = bcast_var_name_set_[dev_id];
+        for (auto &bcast_name : to_bcast_set) {
+          CreateBroadcastOp(result, bcast_name, dev_id);
+        }
       }
     }
   }
