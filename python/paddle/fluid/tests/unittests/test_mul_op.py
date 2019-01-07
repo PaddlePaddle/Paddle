@@ -157,5 +157,27 @@ class TestFP16MulOp2(TestMulOp2):
                 no_grad_set=set('Y'))
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestInt8MulOp(OpTest):
+    def setUp(self):
+        self.op_type = "mul"
+        self.dtype = np.int8
+        self.inputs = {
+            'X': np.random.randint(-64, 64, (4, 4096)).astype(self.dtype),
+            'Y': np.ones((4096, 1024)).astype(self.dtype),
+            #'Y': np.random.randint(-127, 127, (4096, 512)).astype(self.dtype)
+        }
+        #self.inputs['Y'][0][-3] = -0
+        print(self.inputs['X'])
+        print(self.inputs['Y'])
+        print(self.inputs['X'].sum(axis=-1))
+        self.outputs = {'Out': np.dot(self.inputs['X'].astype(np.int32), self.inputs['Y'].astype(np.int32))}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-1)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -41,7 +41,11 @@ class MulKernel : public framework::OpKernel<T> {
                   *y, context.template Attr<int>("y_num_col_dims"))
             : *y;
 
-    z->mutable_data<T>(context.GetPlace());
+    if (std::is_same<T, int8_t>::value) {
+      z->mutable_data<int32_t>(context.GetPlace());
+    } else {
+      z->mutable_data<T>(context.GetPlace());
+    }
     auto z_dim = z->dims();
     if (z_dim.size() != 2) {
       z->Resize({x_matrix.dims()[0], y_matrix.dims()[1]});

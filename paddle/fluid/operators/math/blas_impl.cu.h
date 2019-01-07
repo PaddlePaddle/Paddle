@@ -381,6 +381,42 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
 #endif  // CUDA_VERSION >= 9010
 }
 
+template <>
+template <>
+inline void Blas<platform::CUDADeviceContext>::MatMul<int8_t>(
+    const framework::Tensor &mat_a, const framework::Tensor &mat_b,
+    framework::Tensor *mat_out) const {
+  auto dim_a = mat_a.dims();
+  auto dim_b = mat_b.dims();
+  auto dim_out = mat_out->dims();
+  PADDLE_ENFORCE(dim_a.size() == 2 && dim_b.size() == 2 && dim_out.size() == 2,
+                 "The input and output of matmul be matrix");
+  PADDLE_ENFORCE(
+      mat_a.place() == mat_b.place() && mat_a.place() == mat_out->place(),
+      "The places of matrices must be same");
+  bool trans_a = false, trans_b = false;
+  int M = dim_out[0];
+  int N = dim_out[1];
+  int K = !trans_a ? dim_a[1] : dim_a[0];
+  CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
+  CBLAS_TRANSPOSE transB = !trans_b ? CblasNoTrans : CblasTrans;
+
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  int alpha = 1, beta = 0;
+#if CUDA_VERSION >= 8000
+  PADDLE_ENFORCE(platform::dynload::cublasGemmEx(
+      context_.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha,
+      mat_b.data<int8_t>(), CUDA_R_8I, N, mat_a.data<int8_t>(), CUDA_R_8I,
+      K, &beta, mat_out->data<int32_t>(), CUDA_R_32I, N, CUDA_R_32I,
+      CUBLAS_GEMM_DFALT));
+#else
+  PADDLE_THROW("cublasGemmEx is supported on cuda >= 8.0");
+#endif
+}
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
