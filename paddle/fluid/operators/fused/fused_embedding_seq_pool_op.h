@@ -40,7 +40,7 @@ struct EmbeddingVSumFunctor {
     int64_t row_number = table_t->dims()[0];
     int64_t row_width = table_t->dims()[1];
     int64_t last_dim = output_t->dims()[1];
-    int64_t *ids = const_cast<int64_t *>(ids_t->data<int64_t>());
+    const int64_t *ids = ids_t->data<int64_t>();
     auto ids_lod = ids_t->lod()[0];
     int64_t ids_count = ids_t->numel() / ids_lod.back();
 
