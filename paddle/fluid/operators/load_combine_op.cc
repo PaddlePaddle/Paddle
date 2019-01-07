@@ -38,13 +38,13 @@ class LoadCombineOp : public framework::OperatorBase {
         static_cast<int>(out_var_names.size()), 0,
         "The number of output variables should be greater than 0.");
     if (!model_from_memory) {
-      std::ifstream fin(filename);
+      std::ifstream fin(filename, std::ios::binary);
       PADDLE_ENFORCE(static_cast<bool>(fin),
                      "Cannot open file %s for load_combine op", filename);
       LoadParamsFromBuffer(scope, place, &fin, load_as_fp16, out_var_names);
     } else {
       PADDLE_ENFORCE(!filename.empty(), "Cannot load file from memory");
-      std::stringstream fin(filename);
+      std::stringstream fin(filename, std::ios::in | std::ios::binary);
       LoadParamsFromBuffer(scope, place, &fin, load_as_fp16, out_var_names);
     }
   }
