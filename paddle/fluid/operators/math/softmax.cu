@@ -114,20 +114,15 @@ template class SoftmaxGradFunctor<platform::CUDADeviceContext,
                                   platform::float16>;
 
 // NOTE: upgrade value type for float16 and float32
-static __device__ __forceinline__ float real_exp(platform::float16 x) {
+static __device__ __forceinline__ float accurate_exp(platform::float16 x) {
   return ::Eigen::numext::exp(static_cast<float>(x));
 }
-static __device__ __forceinline__ double real_exp(float x) {
+static __device__ __forceinline__ double accurate_exp(float x) {
   return exp(static_cast<double>(x));
 }
-static __device__ __forceinline__ double real_exp(double x) { return exp(x); }
-
-static __device__ __forceinline__ platform::float16 real_log(
-    platform::float16 x) {
-  return ::Eigen::numext::log(x);
+static __device__ __forceinline__ double accurate_exp(double x) {
+  return exp(x);
 }
-static __device__ __forceinline__ float real_log(float x) { return logf(x); }
-static __device__ __forceinline__ double real_log(double x) { return log(x); }
 
 template <typename T, typename ACCURATE_T>
 struct SubtractAndExpFunctor {
@@ -137,7 +132,7 @@ struct SubtractAndExpFunctor {
       : logits_(logits), max_logits_(max_logits), num_cols_(num_cols) {}
 
   __host__ __device__ ACCURATE_T operator()(const int gid) const {
-    return real_exp(logits_[gid] - (max_logits_[gid / num_cols_]));
+    return accurate_exp(logits_[gid] - (max_logits_[gid / num_cols_]));
   }
 
   const T* logits_;
@@ -158,10 +153,10 @@ __global__ void GenerateProb(const T* logits, const ACCURATE_T* sum_probs,
   if (row < num_rows && col < num_cols) {
     if (log_space) {
       output[tid] = static_cast<ACCURATE_T>(logits[tid] - (max_logits[row])) -
-                    real_log(sum_probs[row]);
+                    ::Eigen::numext::log(sum_probs[row]);
     } else {
       output[tid] =
-          real_exp(logits[tid] - (max_logits[row])) / (sum_probs[row]);
+          accurate_exp(logits[tid] - (max_logits[row])) / (sum_probs[row]);
     }
   }
 }
