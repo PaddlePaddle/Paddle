@@ -29,8 +29,6 @@ void FusionSeqPoolConcatOp::InferShape(
   int axis = ctx->Attrs().Get<int>("axis");
   PADDLE_ENFORCE_EQ(axis, 1,
                     "FusionSeqPoolConcatOp only supports concat axis=1 yet.");
-  PADDLE_ENFORCE_EQ(ctx->Attrs().Get<std::string>("pooltype"), "SUM",
-                    "FusionSeqPoolConcatOp only supports sum pool type yet.");
 
   auto ins_dims = ctx->GetInputsDim("X");
   const size_t n = ins_dims.size();
@@ -74,6 +72,7 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<LoDTensor>("X");
     auto* out = ctx.Output<LoDTensor>("Out");
+    std::string pooltype = ctx.Attr<std::string>("pooltype");
     auto x0_lod = ins[0]->lod();
     auto x0_dims = ins[0]->dims();
     auto y_dims = out->dims();
@@ -92,6 +91,11 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(y_dims[1] % w, 0,
                       "The output of dims[1] should be dividable of w");
     jit::seq_pool_attr_t attr(w, jit::SeqPoolType::kSum);
+    if (pooltype == "AVERAGE") {
+      attr.type = jit::SeqPoolType::kAvg;
+    } else if (pooltype == "SQRT") {
+      attr.type = jit::SeqPoolType::kSqrt;
+    }
     auto seqpool =
         jit::Get<jit::kSeqPool, jit::SeqPoolTuples<T>, platform::CPUPlace>(
             attr);
