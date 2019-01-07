@@ -70,5 +70,10 @@ EnforceNotMet::EnforceNotMet(std::exception_ptr e, const char* f, int l) {
   }
 }
 
+template <typename... ARGS>
+EnforceNotMet::EnforceNotMet(const char* f, int l, ARGS... args) {
+  Init(string::Sprintf(args...), f, l);
+}
+
 }  // namespace platform
 }  // namespace paddle

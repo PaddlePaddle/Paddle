@@ -67,9 +67,7 @@ struct EnforceNotMet : public std::exception {
   EnforceNotMet(std::exception_ptr e, const char* f, int l);
 
   template <typename... ARGS>
-  EnforceNotMet(const char* f, int l, ARGS... args) {
-    Init(string::Sprintf(args...), f, l);
-  }
+  EnforceNotMet(const char* f, int l, ARGS... args);
 
   const char* what() const noexcept override { return err_str_.c_str(); }
 
