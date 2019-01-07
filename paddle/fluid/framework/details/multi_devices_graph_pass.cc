@@ -282,6 +282,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
                   break;
                 case BuildStrategy::ReduceStrategy::kAllReduce:
                   if (IsSparseGradient(g_name)) {
+                    std::cout << "reduce varname:" << g_name << " and broadcast"
+                              << std::endl;
                     CreateReduceOp(&result, g_name, 0);
                     CreateBroadcastOp(&result, g_name, 0);
                   } else {

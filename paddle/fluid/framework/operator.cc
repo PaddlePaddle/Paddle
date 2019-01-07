@@ -936,12 +936,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
   }
 
-  /*For profiling/benchmark only*/
-  if (FLAGS_benchmark) {
+  VLOG(10) << "before ctx wait"
+      /*For profiling/benchmark only*/
+      if (FLAGS_benchmark) {
     dev_ctx->Wait();
   }
+  VLOG(10) << "after ctx wait"
 
-  if (FLAGS_check_nan_inf) {
+      if (FLAGS_check_nan_inf) {
     for (auto& vname : OutputVars(true)) {
       auto* var = exec_scope.FindVar(vname);
       if (var == nullptr) continue;
