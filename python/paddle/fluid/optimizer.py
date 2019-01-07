@@ -674,6 +674,8 @@ class AdamOptimizer(Optimizer):
         may be very slow. The lazy mode only update the element that has gradient is the current
         mini-batch, so it will be much more faster. But this mode has different semantics with the
         original Adam algorithm and may lead to different result.
+        min_row_size_to_use_multithread: if adam use sparse update and the param rows is very large,
+                        you can use FLAGS_inner_op_parallelism and this flag to enable multi thread optimize.
 
     Examples:
         .. code-block:: python
@@ -694,7 +696,8 @@ class AdamOptimizer(Optimizer):
                  epsilon=1e-8,
                  regularization=None,
                  name=None,
-                 lazy_mode=False):
+                 lazy_mode=False,
+                 min_row_size_to_use_multithread=0):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
@@ -708,6 +711,7 @@ class AdamOptimizer(Optimizer):
         self._beta2 = beta2
         self._epsilon = epsilon
         self._lazy_mode = lazy_mode
+        self._min_row_size_to_use_multithread = min_row_size_to_use_multithread
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -762,7 +766,9 @@ class AdamOptimizer(Optimizer):
                 "beta1": self._beta1,
                 "beta2": self._beta2,
                 "epsilon": self._epsilon,
-                "lazy_mode": self._lazy_mode
+                "lazy_mode": self._lazy_mode,
+                "min_row_size_to_use_multithread":
+                self._min_row_size_to_use_multithread
             },
             stop_gradient=True)
 

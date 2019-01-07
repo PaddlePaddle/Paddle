@@ -354,6 +354,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
     using paddle::framework::LoDTensor;
     using paddle::operators::detail::Ref;
 
+    int64_t min_row_size_to_use_multithread =
+        ctx.Attr<int64_t>("min_row_size_to_use_multithread");
     bool lazy_mode = ctx.Attr<bool>("lazy_mode");
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
@@ -478,12 +480,12 @@ class AdamOpKernel : public framework::OpKernel<T> {
             }
           }
         } else if (FLAGS_inner_op_parallelism > 1 &&
-                   FLAGS_min_row_size_to_use_multithread > 0 &&
-                   param.dims()[0] > FLAGS_min_row_size_to_use_multithread) {
+                   min_row_size_to_use_multithread > 0 &&
+                   param.dims()[0] > min_row_size_to_use_multithread) {
           VLOG(3) << "use multi thread, inner_op_parallelism="
                   << FLAGS_inner_op_parallelism
                   << " min_row_size_to_use_multithread="
-                  << FLAGS_min_row_size_to_use_multithread;
+                  << min_row_size_to_use_multithread;
           if (FLAGS_inner_op_parallelism > 10) {
             LOG(WARNING) << "FLAGS_inner_op_parallelism "
                          << FLAGS_inner_op_parallelism << " is two large!";

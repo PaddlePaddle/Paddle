@@ -30,7 +30,6 @@ DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
-DEFINE_int32(min_row_size_to_use_multithread, 0, "");
 
 namespace paddle {
 namespace framework {
