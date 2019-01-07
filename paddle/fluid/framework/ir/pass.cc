@@ -25,7 +25,7 @@ std::unique_ptr<Graph> Pass::Apply(std::unique_ptr<Graph> graph) const {
                    "Required pass atrribute %s not set.", attr);
   }
   for (const std::string& attr : required_graph_attrs_) {
-    PADDLE_ENFORCE(graph->Has(attr), "Required graph atrribute %s not set.",
+    PADDLE_ENFORCE(graph->Has(attr), "Required graph attribute %s not set.",
                    attr);
   }
   auto applied_graph = ApplyImpl(std::move(graph));
