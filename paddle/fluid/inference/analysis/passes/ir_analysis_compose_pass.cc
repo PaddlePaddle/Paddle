@@ -42,11 +42,26 @@ void IrAnalysisComposePass::InitTensorRTAttrs(Argument *argument) {
   if (argument->use_tensorrt_valid() && argument->use_tensorrt()) {
     LOG(INFO) << "Initing TensorRT pass";
     argument->SetTensorRtNodeTeller([](const framework::ir::Node *node) {
-      std::unordered_set<std::string> teller_set(
-          {"mul", "conv2d", "pool2d", "relu", "softmax", "sigmoid",
-           "depthwise_conv2d", "batch_norm", "concat", "tanh", "pad",
-           "elementwise_add", "elementwise_mul", "dropout", "split", "prelu",
-           "conv2d_transpose", "leaky_relu"});
+      std::unordered_set<std::string> teller_set({"mul",
+                                                  "conv2d",
+                                                  "pool2d",
+                                                  "relu",
+                                                  "softmax",
+                                                  "sigmoid",
+                                                  "depthwise_conv2d",
+                                                  "batch_norm",
+                                                  "concat",
+                                                  "tanh",
+                                                  "pad",
+                                                  "elementwise_add",
+                                                  "elementwise_mul",
+                                                  "dropout",
+                                                  "split",
+                                                  "prelu",
+                                                  "conv2d_transpose",
+                                                  "leaky_relu",
+                                                  "matmul",
+                                                  "layer_norm"});
       if (!node->IsOp()) return false;
 
       if (teller_set.count(node->Op()->Type())) {

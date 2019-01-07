@@ -25,7 +25,7 @@ class PadOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "convert a fluid transpose op to tensorrt tranpose layer";
+    VLOG(3) << "convert a fluid pad op to tensorrt pad layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -52,7 +52,7 @@ class PadOpConverter : public OpConverter {
     PADDLE_ENFORCE(layer != nullptr);
     auto output_name = op_desc.Output("Out")[0];
     engine_->SetITensor(output_name, layer->getOutput(0));
-    layer->setName(("scale (Output: " + output_name + ")").c_str());
+    layer->setName(("Pad (Output: " + output_name + ")").c_str());
     layer->getOutput(0)->setName(output_name.c_str());
     if (test_mode) {  // the test framework can not determine which is the
                       // output, so place the declaration inside.

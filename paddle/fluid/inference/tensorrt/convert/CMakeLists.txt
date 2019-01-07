@@ -3,6 +3,7 @@ nv_library(tensorrt_converter
            SRCS mul_op.cc conv2d_op.cc fc_op.cc pool2d_op.cc elementwise_op.cc
                 batch_norm_op.cc activation_op.cc softmax_op.cc concat_op.cc dropout_op.cc
                 pad_op.cc split_op.cc prelu_op.cc leaky_relu_op.cc
+matmul_op.cc scale_op.cc  layer_norm_op.cc 
            DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto op_registry)
 
 nv_test(test_op_converter SRCS test_op_converter.cc DEPS
@@ -40,3 +41,12 @@ nv_test(test_trt_prelu_op SRCS test_prelu_op.cc prelu_op.cc
         prelu_op SERIAL)
 nv_test(test_trt_leaky_relu_op SRCS test_leaky_relu_op.cc leaky_relu_op.cc
         DEPS ${FLUID_CORE_MODULES} ${GLOB_OPERATOR_DEPS} tensorrt_engine activation_op SERIAL)
+
+nv_test(test_trt_matmul_op SRCS test_matmul_op.cc matmul_op.cc
+        DEPS ${FLUID_CORE_MODULES} ${GLOB_OPERATOR_DEPS} tensorrt_engine matmul_op SERIAL)
+nv_test(test_trt_scale_op SRCS test_scale_op.cc scale_op.cc
+        DEPS ${FLUID_CORE_MODULES} ${GLOB_OPERATOR_DEPS} tensorrt_engine scale_op SERIAL)
+nv_test(test_trt_layer_norm_op SRCS test_layer_norm_op.cc layer_norm_op.cc
+        DEPS ${FLUID_CORE_MODULES} ${GLOB_OPERATOR_DEPS} tensorrt_engine
+tensorrt_plugin
+layer_norm_op SERIAL)

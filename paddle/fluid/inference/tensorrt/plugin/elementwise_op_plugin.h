@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
 #include <vector>
+#include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
 namespace paddle {
@@ -24,26 +26,39 @@ namespace plugin {
 
 class ElementWisePlugin : public PluginTensorRT {
  public:
-  ElementWisePlugin(nvinfer1::ElementWiseOperation type,
-                    nvinfer1::Dims const &dims_x, nvinfer1::Dims const &dims_y,
-                    int axis)
+  ElementWisePlugin(std::string type, std::vector<int> const &shape_x,
+                    std::vector<int> const &shape_y, int axis)
       : type_(type),
-        dims_x_(dims_x),
-        dims_y_(dims_y),
+        shape_x_(shape_x),
+        shape_y_(shape_y),
         axis_(axis),
         prev_size_(1),
         midd_size_(1),
-        post_size_(1) {}
+        post_size_(1),
+        with_weights_(false) {}
+
+  ElementWisePlugin(std::string type, std::vector<int> const &shape_x,
+                    std::vector<int> const &shape_y, int axis,
+                    TensorRTEngine::Weight const &weights)
+      : type_(type),
+        shape_x_(shape_x),
+        shape_y_(shape_y),
+        axis_(axis),
+        prev_size_(1),
+        midd_size_(1),
+        post_size_(1),
+        with_weights_(true),
+        weights_(weights) {}
 
   ElementWisePlugin(void const *serial_data, size_t serial_length) {
     deserializeBase(serial_data, serial_length);
     DeserializeValue(&serial_data, &serial_length, &axis_);
-    DeserializeValue(&serial_data, &serial_length, &dims_x_);
-    DeserializeValue(&serial_data, &serial_length, &dims_y_);
+    DeserializeValue(&serial_data, &serial_length, &shape_x_);
+    DeserializeValue(&serial_data, &serial_length, &shape_y_);
   }
 
   ElementWisePlugin *clone() const override {
-    // return new ElementWisePlugin(dims_x_, dims_y_, axis_);
+    // return new ElementWisePlugin(shape_x_, shape_y_, axis_);
     return nullptr;
   }
 
@@ -61,24 +76,26 @@ class ElementWisePlugin : public PluginTensorRT {
 
  protected:
   size_t getSerializationSize() override {
-    return SerializedSize(axis_) + SerializedSize(dims_x_) +
-           SerializedSize(dims_y_) + getBaseSerializationSize();
+    return SerializedSize(axis_) + SerializedSize(shape_x_) +
+           SerializedSize(shape_y_) + getBaseSerializationSize();
   }
 
   void serialize(void *buffer) override {
     serializeBase(buffer);
     SerializeValue(&buffer, axis_);
-    SerializeValue(&buffer, dims_x_);
-    SerializeValue(&buffer, dims_y_);
+    SerializeValue(&buffer, shape_x_);
+    SerializeValue(&buffer, shape_y_);
   }
 
-  nvinfer1::ElementWiseOperation type_;
-  nvinfer1::Dims dims_x_;
-  nvinfer1::Dims dims_y_;
+  std::string type_;
+  std::vector<int> shape_x_;
+  std::vector<int> shape_y_;
   int axis_;
   int prev_size_;
   int midd_size_;
   int post_size_;
+  bool with_weights_;
+  TensorRTEngine::Weight weights_;
 };
 
 }  // namespace plugin

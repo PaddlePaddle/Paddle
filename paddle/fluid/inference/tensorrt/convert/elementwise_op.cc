@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/convert/util.h"
 #include "paddle/fluid/inference/tensorrt/plugin/elementwise_op_plugin.h"
 
 namespace paddle {
@@ -40,7 +41,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
-    VLOG(3) << "Convert a fluid elementwise op to TensorRT IScaleLayer";
+    VLOG(3) << "Convert a fluid elementwise op to TensorRT elementwise op";
 
     PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
     PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);  // Y is a weight
@@ -48,12 +49,46 @@ class ElementwiseWeightOpConverter : public OpConverter {
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     nvinfer1::Dims dims_x = X->getDimensions();
-    PADDLE_ENFORCE(dims_x.nbDims >= 3, "x dims experts 3, but %d is given.",
-                   dims_x.nbDims);
+
+    int axis = boost::get<int>(op_desc.GetAttr("axis"));
+    PADDLE_ENFORCE(axis != 0);
+    axis += (axis < 0) ? dims_x.nbDims : -1;
 
     auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
     PADDLE_ENFORCE_NOT_NULL(Y_v);
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+
+    if (dims_x.nbDims < 3) {
+      platform::CUDAPlace gpu_place;
+      std::unique_ptr<framework::LoDTensor> weight_tensor(
+          new framework::LoDTensor());
+      weight_tensor->Resize(Y_t->dims());
+      TensorCopySync((*Y_t), gpu_place, weight_tensor.get());
+      auto* weight_data = weight_tensor->mutable_data<float>(gpu_place);
+
+      TensorRTEngine::Weight shift_weights{
+          nvinfer1::DataType::kFLOAT, static_cast<void*>(weight_data),
+          weight_tensor->memory_size() / sizeof(float)};
+      std::vector<int> dims_y = framework::vectorize2int(weight_tensor->dims());
+
+      VLOG(3) << "do plugin";
+      std::vector<int> shape_x = dims_to_vector(dims_x);
+      plugin::ElementWisePlugin* plugin = new plugin::ElementWisePlugin(
+          op_type_, shape_x, dims_y, axis, shift_weights);
+      nvinfer1::IPluginLayer* layer = engine_->AddPlugin(
+          &X, 1, reinterpret_cast<plugin::PluginTensorRT*>(plugin));
+
+      auto output_name = op_desc.Output("Out")[0];
+      layer->setName(("elementwise (Output: " + output_name + ")").c_str());
+      engine_->weight_map[op_desc.Input("Y").front()] =
+          std::move(weight_tensor);
+      layer->getOutput(0)->setName(output_name.c_str());
+      engine_->SetITensor(output_name, layer->getOutput(0));
+      if (test_mode) {
+        engine_->DeclareOutput(output_name);
+      }
+      return;
+    }
 
     platform::CPUPlace cpu_place;
     std::unique_ptr<framework::LoDTensor> weight_tensor(
@@ -62,9 +97,14 @@ class ElementwiseWeightOpConverter : public OpConverter {
     TensorCopySync((*Y_t), cpu_place, weight_tensor.get());
     auto* weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());
+
+    TensorRTEngine::Weight shift_weights{
+        nvinfer1::DataType::kFLOAT, static_cast<void*>(weight_data),
+        weight_tensor->memory_size() / sizeof(float)};
+    std::vector<int> dims_y = framework::vectorize2int(weight_tensor->dims());
+
     auto scale_mode = nvinfer1::ScaleMode::kELEMENTWISE;
 
-    std::vector<int> dims_y = framework::vectorize2int(weight_tensor->dims());
     if (static_cast<int>(dims_y.size()) == dims_x.nbDims + 1) {
       if (dims_y[0] == 1) dims_y.erase(dims_y.begin());
     }
@@ -91,9 +131,6 @@ class ElementwiseWeightOpConverter : public OpConverter {
       PADDLE_THROW("TensorRT unsupported weight Shape for Elementwise op!");
     }
 
-    TensorRTEngine::Weight shift_weights{
-        nvinfer1::DataType::kFLOAT, static_cast<void*>(weight_data),
-        weight_tensor->memory_size() / sizeof(float)};
     TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT, nullptr,
                                          0};
     TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT, nullptr,
@@ -113,6 +150,9 @@ class ElementwiseWeightOpConverter : public OpConverter {
       engine_->DeclareOutput(output_name);
     }
   }
+
+ protected:
+  std::string op_type_;
 };
 
 class ElementwiseTensorOpConverter : public OpConverter {
@@ -153,8 +193,11 @@ class ElementwiseTensorOpConverter : public OpConverter {
       VLOG(3) << "Convert a fluid elementwise op to TensorRT "
                  "ElementWisePluginLayer";
 
+      std::vector<int> shape_x = dims_to_vector(dims_x);
+      std::vector<int> shape_y = dims_to_vector(dims_y);
+
       plugin::ElementWisePlugin* plugin =
-          new plugin::ElementWisePlugin(op_pair->second, dims_x, dims_y, axis);
+          new plugin::ElementWisePlugin(op_type_, shape_x, shape_y, axis);
       plugin->AddInput(X);
       plugin->AddInput(Y);
       nvinfer1::IPluginLayer* layer = engine_->AddPlugin(
@@ -186,6 +229,16 @@ const std::unordered_map<std::string, nvinfer1::ElementWiseOperation>
         {"min", nvinfer1::ElementWiseOperation::kMIN},
         {"pow", nvinfer1::ElementWiseOperation::kPOW},
         {"max", nvinfer1::ElementWiseOperation::kMAX},
+};
+
+class ElementwiseWeightAddOpConverter : public ElementwiseWeightOpConverter {
+ public:
+  ElementwiseWeightAddOpConverter() { op_type_ = "add"; }
+};
+
+class ElementwiseWeightMulOpConverter : public ElementwiseWeightOpConverter {
+ public:
+  ElementwiseWeightMulOpConverter() { op_type_ = "mul"; }
 };
 
 class ElementwiseTensorAddOpConverter : public ElementwiseTensorOpConverter {
@@ -227,7 +280,10 @@ class ElementwiseTensorPowOpConverter : public ElementwiseTensorOpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(elementwise_add_weight, ElementwiseWeightOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_add_weight,
+                          ElementwiseWeightAddOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_mul_weight,
+                          ElementwiseWeightMulOpConverter);
 
 REGISTER_TRT_OP_CONVERTER(elementwise_add_tensor,
                           ElementwiseTensorAddOpConverter);

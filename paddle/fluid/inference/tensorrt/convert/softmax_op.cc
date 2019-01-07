@@ -25,13 +25,37 @@ class SoftMaxOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(3)
-        << "convert a fluid softmax op to tensorrt softmax layer without bias";
+    VLOG(3) << "convert a fluid softmax op to tensorrt softmax layer";
+
+    nvinfer1::ILayer* layer = nullptr;
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, SoftMax,
-                                       *const_cast<nvinfer1::ITensor*>(input1));
+    nvinfer1::Dims dims_input = input1->getDimensions();
+    int num_ele = 1;
+    for (int i = 0; i < dims_input.nbDims; i++) {
+      num_ele *= dims_input.d[i];
+    }
+
+    bool need_do_reshape = (num_ele != dims_input.d[0]);
+    if (need_do_reshape) {
+      nvinfer1::DimsHW reshape_dims(dims_input.d[0], num_ele / dims_input.d[0]);
+      auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input1);
+      reshape_layer->setReshapeDimensions(reshape_dims);
+      layer = reshape_layer;
+      input1 = layer->getOutput(0);
+    }
+
+    auto* softmax_layer = TRT_ENGINE_ADD_LAYER(engine_, SoftMax, *input1);
+
+    layer = softmax_layer;
+    if (need_do_reshape) {
+      softmax_layer->setAxes(2);
+      auto* reshape_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
+      reshape_layer->setReshapeDimensions(dims_input);
+      layer = reshape_layer;
+    }
 
     auto output_name = op_desc.Output("Out")[0];
     engine_->SetITensor(output_name, layer->getOutput(0));

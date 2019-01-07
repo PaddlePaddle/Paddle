@@ -45,6 +45,24 @@ void ReorderCKtoKC(TensorRTEngine::Weight& iweights,  // NOLINT
            ostrides);
 }
 
+std::vector<int> flatten_to_2d(nvinfer1::Dims shape, int num_col_dims) {
+  std::vector<int> dims(2);
+
+  int sum = 1;
+  for (int i = 0; i < num_col_dims; i++) {
+    sum *= shape.d[i];
+  }
+  dims[0] = sum;
+
+  sum = 1;
+  for (int i = num_col_dims; i < shape.nbDims; i++) {
+    sum *= shape.d[i];
+  }
+  dims[1] = sum;
+
+  return dims;
+}
+
 /*
  * FC converter convert a MUL op in Fluid to a FC layer in TRT.
  */
@@ -54,13 +72,16 @@ class FcOpConverter : public OpConverter {
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(3) << "convert a fluid fc op to tensorrt fc layer without bias";
 
+    nvinfer1::ILayer* layer = nullptr;
     framework::OpDesc op_desc(op, nullptr);
     PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
     PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);  // Y is a weight
     PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
+    int x_num_col_dims = boost::get<int>(op_desc.GetAttr("x_num_col_dims"));
 
     // Declare inputs
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
+    auto x_dims = X->getDimensions();
 
     // Declare weights
     auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
@@ -96,15 +117,40 @@ class FcOpConverter : public OpConverter {
     // need to reorder the elements.
     ReorderCKtoKC(weight, &tmp_weight);
 
+    bool need_do_reshape = (x_num_col_dims >= 2);
+    if (need_do_reshape) {
+      std::vector<int> flattened_shape =
+          flatten_to_2d(x_dims, x_num_col_dims - 1);
+      nvinfer1::DimsNCHW reshape_dims(flattened_shape[0], flattened_shape[1], 1,
+                                      1);
+      PADDLE_ENFORCE_EQ(flattened_shape[1], weight_tensor.dims()[0]);
+
+      auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
+      reshape_layer->setReshapeDimensions(reshape_dims);
+      X = reshape_layer->getOutput(0);
+    }
+
     // Currently, the framework can only handle one fluid op -> one TRT layer,
     // but fc fuses `mul` and `bias` (2 fluid ops), so here is a trick, just
     // handle `mul`, leave `add` as another layer.
     // DEBUG
     TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, nullptr, 0};
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected,
-                                       *const_cast<nvinfer1::ITensor*>(X),
-                                       n_output, tmp_weight.get(), bias.get());
+    layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected,
+                                 *const_cast<nvinfer1::ITensor*>(X), n_output,
+                                 tmp_weight.get(), bias.get());
+
+    if (need_do_reshape) {
+      std::vector<int> flattened_shape =
+          flatten_to_2d(x_dims, x_num_col_dims - 1);
+      nvinfer1::DimsHW reshape_dims(flattened_shape[0],
+                                    weight_tensor.dims()[1]);
+
+      auto* reshape_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
+      reshape_layer->setReshapeDimensions(reshape_dims);
+      layer = reshape_layer;
+    }
 
     auto output_name = op_desc.Output("Out").front();
     layer->setName(("fc (Output: " + output_name + ")").c_str());

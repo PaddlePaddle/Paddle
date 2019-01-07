@@ -50,6 +50,16 @@ __global__ void ColumnWiseKernel(Operator op, const T* x, const T* y, T* out,
 }
 
 template <typename T, typename Operator>
+__global__ void RowWiseKernel(Operator op, const T* x, const T* y, T* out,
+                              int num_ele, int num_cols) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index < num_ele) {
+    int offset = index % num_cols;
+    out[index] = op(x[index], y[offset]);
+  }
+}
+
+template <typename T, typename Operator>
 static void ElementWise(Operator op, const T* x, const T* y, T* out,
                         int batch_size, int prev, int midd, int post,
                         cudaStream_t stream) {
@@ -62,7 +72,11 @@ static void ElementWise(Operator op, const T* x, const T* y, T* out,
     ColumnWiseKernel<<<num_blocks, num_threads, 0, stream>>>(
         op, x, y, out, batch_size, midd, post);
   } else if (post == 1) {
-    PADDLE_THROW("Not implemented.");
+    int sum_ele = batch_size * prev * midd;
+    int num_blocks = (sum_ele + 1023) / 1024;
+    PADDLE_ENFORCE_LT(num_blocks, kMaximumBlocks);
+    RowWiseKernel<<<num_blocks, 1024, 0, stream>>>(op, x, y, out, sum_ele,
+                                                   midd);
   } else {
     PADDLE_THROW("Not implemented.");
   }
@@ -73,41 +87,40 @@ static void ElementWise(Operator op, const T* x, const T* y, T* out,
 nvinfer1::Dims ElementWisePlugin::getOutputDimensions(
     int index, const nvinfer1::Dims* input_dims, int num_inputs) {
   PADDLE_ENFORCE_EQ(index, 0);
-  PADDLE_ENFORCE_EQ(num_inputs, 2);
+  // PADDLE_ENFORCE_EQ(num_inputs, 2);
   PADDLE_ENFORCE_NOT_NULL(input_dims);
   return input_dims[0];
 }
 
 int ElementWisePlugin::initialize() {
-  PADDLE_ENFORCE_GT(dims_y_.nbDims, 0);
+  PADDLE_ENFORCE_GT(shape_y_.size(), 0);
 
-  axis_ = (axis_ == -1) ? dims_x_.nbDims - dims_y_.nbDims : axis_;
-  int trimed_nb_dims = dims_y_.nbDims;
+  axis_ = (axis_ == -1) ? shape_x_.size() - shape_y_.size() : axis_;
+  int trimed_nb_dims = shape_y_.size();
   for (; trimed_nb_dims > 0; --trimed_nb_dims) {
-    if (dims_y_.d[trimed_nb_dims - 1] != 1) {
+    if (shape_y_[trimed_nb_dims - 1] != 1) {
       break;
     }
   }
-  dims_y_.nbDims = trimed_nb_dims;
 
-  PADDLE_ENFORCE_GE(dims_x_.nbDims, dims_y_.nbDims + axis_);
-  PADDLE_ENFORCE_LT(axis_, dims_x_.nbDims);
+  PADDLE_ENFORCE_GE(shape_x_.size(), trimed_nb_dims + axis_);
+  PADDLE_ENFORCE_LT(axis_, shape_x_.size());
 
   prev_size_ = 1;
   midd_size_ = 1;
   post_size_ = 1;
   for (int i = 0; i < axis_; ++i) {
-    prev_size_ *= dims_x_.d[i];
+    prev_size_ *= shape_x_[i];
   }
 
-  for (int i = 0; i < dims_y_.nbDims; ++i) {
-    PADDLE_ENFORCE_EQ(dims_x_.d[i + axis_], dims_y_.d[i],
+  for (int i = 0; i < trimed_nb_dims; ++i) {
+    PADDLE_ENFORCE_EQ(shape_x_[i + axis_], shape_y_[i],
                       "Broadcast dimension mismatch.");
-    midd_size_ *= dims_y_.d[i];
+    midd_size_ *= shape_y_[i];
   }
 
-  for (int i = axis_ + dims_y_.nbDims; i < dims_x_.nbDims; ++i) {
-    post_size_ *= dims_x_.d[i];
+  for (int i = axis_ + trimed_nb_dims; i < shape_x_.size(); ++i) {
+    post_size_ *= shape_x_[i];
   }
   return 0;
 }
@@ -116,15 +129,22 @@ int ElementWisePlugin::enqueue(int batch_size, const void* const* inputs,
                                void** outputs, void* workspace,
                                cudaStream_t stream) {
   const float* x = reinterpret_cast<const float*>(inputs[0]);
-  const float* y = reinterpret_cast<const float*>(inputs[1]);
+  const float* y = nullptr;
+  if (!with_weights_) {
+    y = reinterpret_cast<const float*>(inputs[1]);
+  } else {
+    y = reinterpret_cast<const float*>(weights_.get().values);
+  }
+
   float* out = reinterpret_cast<float*>(outputs[0]);
 
-  if (type_ == nvinfer1::ElementWiseOperation::kSUM) {
+  if (type_ == "add") {
     details::ElementWise(details::Add<float>(), x, y, out, batch_size,
                          prev_size_, midd_size_, post_size_, stream);
-  } else if (type_ == nvinfer1::ElementWiseOperation::kPROD) {
+  } else if (type_ == "mul") {
     details::ElementWise(details::Mul<float>(), x, y, out, batch_size,
                          prev_size_, midd_size_, post_size_, stream);
+
   } else {
     PADDLE_THROW("Not implemented.");
   }

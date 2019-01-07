@@ -99,6 +99,62 @@ TEST(elementwise_op, plugin) {
   }
 }
 
+TEST(elementwise_op, plugin2) {
+  for (std::string type : {"add", "mul"}) {
+    int batch_size = 8;
+    std::unordered_set<std::string> parameters;
+    framework::Scope scope;
+    TRTConvertValidation validator(batch_size, parameters, scope, 1 << 15);
+    validator.DeclInputVar("elementwise_" + type + "-X",
+                           nvinfer1::DimsHW(3, 3));
+    validator.DeclInputVar("elementwise_" + type + "-Y",
+                           nvinfer1::DimsHW(3, 3));
+    validator.DeclOutputVar("elementwise_" + type + "-Out",
+                            nvinfer1::DimsHW(3, 3));
+
+    // Prepare Op description
+    framework::OpDesc desc;
+    desc.SetType("elementwise_" + type);
+    desc.SetInput("X", {"elementwise_" + type + "-X"});
+    desc.SetInput("Y", {"elementwise_" + type + "-Y"});
+    desc.SetOutput("Out", {"elementwise_" + type + "-Out"});
+
+    int axis = 0;
+    desc.SetAttr("axis", axis);
+
+    validator.SetOp(*desc.Proto());
+    validator.Execute(batch_size);
+  }
+}
+
+TEST(elementwise_op, plugin3) {
+  for (std::string type : {"add", "mul"}) {
+    int batch_size = 1;
+    std::unordered_set<std::string> parameters({"elementwise_" + type + "-Y"});
+    framework::Scope scope;
+    std::vector<int> ele_y_shape = {20};
+    TRTConvertValidation validator(batch_size, parameters, scope, 1 << 15);
+    validator.DeclInputVar("elementwise_" + type + "-X",
+                           nvinfer1::DimsHW(3, 20));
+    validator.DeclParamVar("elementwise_" + type + "-Y", ele_y_shape);
+    validator.DeclOutputVar("elementwise_" + type + "-Out",
+                            nvinfer1::DimsHW(3, 20));
+
+    // Prepare Op description
+    framework::OpDesc desc;
+    desc.SetType("elementwise_" + type);
+    desc.SetInput("X", {"elementwise_" + type + "-X"});
+    desc.SetInput("Y", {"elementwise_" + type + "-Y"});
+    desc.SetOutput("Out", {"elementwise_" + type + "-Out"});
+
+    int axis = 2;
+    desc.SetAttr("axis", axis);
+
+    validator.SetOp(*desc.Proto());
+    validator.Execute(batch_size);
+  }
+}
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

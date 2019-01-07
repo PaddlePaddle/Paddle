@@ -24,9 +24,9 @@ TEST(fc_op, test) {
   std::unordered_set<std::string> parameters({"mul-Y"});
   framework::Scope scope;
   TRTConvertValidation validator(10, parameters, scope, 1000);
-  validator.DeclInputVar("mul-X", nvinfer1::Dims3(10, 1, 1));
-  validator.DeclParamVar("mul-Y", nvinfer1::Dims2(10, 2));
-  validator.DeclOutputVar("mul-Out", nvinfer1::Dims2(1, 2));
+  validator.DeclInputVar("mul-X", nvinfer1::DimsCHW(10, 1, 1));
+  validator.DeclParamVar("mul-Y", nvinfer1::DimsHW(10, 2));
+  validator.DeclOutputVar("mul-Out", nvinfer1::DimsCHW(2, 1, 1));
 
   // Prepare Op description
   framework::OpDesc desc;
@@ -35,9 +35,39 @@ TEST(fc_op, test) {
   desc.SetInput("Y", {"mul-Y"});
   desc.SetOutput("Out", {"mul-Out"});
 
+  int x_num_col_dims = 1;
+  int y_num_col_dims = 1;
+
+  desc.SetAttr("x_num_col_dims", x_num_col_dims);
+  desc.SetAttr("y_num_col_dims", y_num_col_dims);
   validator.SetOp(*desc.Proto());
 
   validator.Execute(10);
+}
+
+TEST(fc_op, test1) {
+  std::unordered_set<std::string> parameters({"mul-Y"});
+  framework::Scope scope;
+  TRTConvertValidation validator(10, parameters, scope, 1000);
+  validator.DeclInputVar("mul-X", nvinfer1::DimsHW(5, 20));
+  validator.DeclParamVar("mul-Y", nvinfer1::DimsHW(20, 30));
+  validator.DeclOutputVar("mul-Out", nvinfer1::DimsHW(5, 30));
+
+  // Prepare Op description
+  framework::OpDesc desc;
+  desc.SetType("mul");
+  desc.SetInput("X", {"mul-X"});
+  desc.SetInput("Y", {"mul-Y"});
+  desc.SetOutput("Out", {"mul-Out"});
+
+  int x_num_col_dims = 2;
+  int y_num_col_dims = 1;
+
+  desc.SetAttr("x_num_col_dims", x_num_col_dims);
+  desc.SetAttr("y_num_col_dims", y_num_col_dims);
+  validator.SetOp(*desc.Proto());
+
+  validator.Execute(1);
 }
 
 }  // namespace tensorrt
