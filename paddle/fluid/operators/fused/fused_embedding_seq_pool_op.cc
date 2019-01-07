@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fused_embedding_seq_pool_op.h"
+#include "paddle/fluid/operators/fused/fused_embedding_seq_pool_op.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
