@@ -153,7 +153,10 @@ class Layer {
     return vars;
   }
 
-  virtual void Backward() { LOG(ERROR) << "To support customize"; }
+  virtual std::vector<VarBase> Backward(const std::vector<VarBase>& inputs) {
+    std::vector<VarBase> vars;
+    return vars;
+  }
 };
 
 }  // namespace imperative
