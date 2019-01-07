@@ -24,7 +24,8 @@ struct GRUUnitFunctor<platform::CUDADeviceContext, T> {
   static void compute(const platform::CUDADeviceContext &context,
                       GRUMetaValue<T> value, int frame_size, int batch_size,
                       const detail::ActivationType active_node,
-                      const detail::ActivationType active_gate) {
+                      const detail::ActivationType active_gate,
+                      bool origin_mode) {
     auto stream = context.stream();
     dim3 threads;
     dim3 grid;
@@ -73,14 +74,14 @@ struct GRUUnitFunctor<platform::CUDADeviceContext, T> {
                                       T><<<grid, threads, 0, stream>>>(
           detail::forward::gru_finalOutput<T>(), value.gate_value,
           value.prev_out_value, value.output_value, frame_size, batch_size,
-          active_node);
+          active_node, origin_mode);
     } else {
       detail::KeGruForwardFinalOutput<detail::forward::gru_finalOutput<T>,
                                       /* is_batch= */ true,
                                       T><<<grid, threads, 0, stream>>>(
           detail::forward::gru_finalOutput<T>(), value.gate_value,
           value.prev_out_value, value.output_value, frame_size, batch_size,
-          active_node);
+          active_node, origin_mode);
     }
   }
 };
