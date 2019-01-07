@@ -32,13 +32,16 @@ struct Teller {
 
   virtual ~Teller() = default;
 };
-
-struct SomeTeller : public Teller {
-  bool operator()(const std::string& op_type,
-                  const framework::OpDesc& desc) override {
-    return op_type == "fc" && desc.Inputs().size() == 2;
-  }
-};
+/*
+ * A real example:
+ *
+ * struct SomeTeller : public Teller {
+ * bool operator()(const std::string& op_type,
+ *                const framework::OpDesc& desc) override {
+ *  return op_type == "fc" && desc.Inputs().size() == 2;
+ * }
+ *};
+ */
 
 /*
  * class OpTeller helps to tell whether a fluid
