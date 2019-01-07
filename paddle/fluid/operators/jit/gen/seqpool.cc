@@ -13,7 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/gen/seqpool.h"
-#include <stddef.h>  // offsetof
+#include "paddle/fluid/operators/jit/gen/act.h"  // for exp_float_consts ones
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
@@ -21,9 +21,6 @@ namespace paddle {
 namespace operators {
 namespace jit {
 namespace gen {
-
-thread_local float ALIGN32_BEG float_h[1] ALIGN32_END = {
-    1.f};  // TODO(TJ): try move to private
 
 void SeqPoolJitCode::genCode() {
   constexpr int block = YMM_FLOAT_BLOCK;
@@ -33,10 +30,17 @@ void SeqPoolJitCode::genCode() {
   int rest_num_regs = num_block % max_num_regs;
   mov(reg32_int_h, dword[param_attr]);
   if (type_ == SeqPoolType::kAvg || type_ == SeqPoolType::kSqrt) {
-    mov(reg_tmp, reinterpret_cast<size_t>(float_h));
+    mov(reg_tmp, reinterpret_cast<size_t>(exp_float_consts));
+    vmovups(xmm_t(1), ptr[reg_tmp + OFFSET_EXP_ONE]);
+    mov(reg_tmp, reinterpret_cast<size_t>(fp_h_));
     fild(dword[param_attr]);
     fstp(dword[reg_tmp]);
-    mov(reg32_fp_h, dword[reg_tmp]);
+    vmovss(xmm_t(0), ptr[reg_tmp]);
+    if (type_ == SeqPoolType::kSqrt) {
+      vsqrtps(xmm_t(0), xmm_t(0));
+    }
+    vdivps(xmm_t(1), xmm_t(1), xmm_t(0));
+    vmovss(ptr[reg_tmp], xmm_t(1));
   }
   const int group_len = max_num_regs * block * sizeof(float);
   for (int g = 0; g < num_groups; ++g) {
@@ -45,7 +49,6 @@ void SeqPoolJitCode::genCode() {
   if (rest_num_regs > 0) {
     pool_height<ymm_t>(num_groups * group_len, block, rest_num_regs);
   }
-
   // part of rest_w * height
   const int rest = w_ % block;
   pool_height_of_rest_width(rest, (w_ - rest) * sizeof(float), max_num_regs);
@@ -58,12 +61,10 @@ class SeqPoolCreator : public JitCodeCreator<seq_pool_attr_t> {
     return platform::MayIUse(platform::avx);
   }
   size_t CodeSize(const seq_pool_attr_t& attr) const override {
-    // TODO(TJ): remove attr.h when enabled height
-    bool yes =
-        attr.type == SeqPoolType::kAvg || attr.type == SeqPoolType::kSqrt;
-    return 96 /* basic */ +
-           ((attr.w / YMM_FLOAT_BLOCK + 4 /* rest */) * 2 /* for sum */
-            * (attr.h + (yes ? 3 : 1 /*for avg or sqrt*/))) *
+    return 96 +
+           ((attr.w / YMM_FLOAT_BLOCK + 4 /* for rest */) *
+                4 /* load, mul and save */ +
+            256) *
                8;
   }
   std::unique_ptr<GenBase> CreateJitCode(

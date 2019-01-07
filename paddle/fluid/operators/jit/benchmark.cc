@@ -192,7 +192,8 @@ void BenchGRUKernel() {
 
 template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
 void BenchSeqPoolKernel() {
-  std::vector<jit::SeqPoolType> pool_types = {jit::SeqPoolType::kSum};
+  std::vector<jit::SeqPoolType> pool_types = {
+      jit::SeqPoolType::kSum, jit::SeqPoolType::kAvg, jit::SeqPoolType::kSqrt};
   for (auto type : pool_types) {
     for (int w : TestSizes()) {
       jit::seq_pool_attr_t attr(w, type);
