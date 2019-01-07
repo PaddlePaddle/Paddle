@@ -11,4 +11,3 @@ if (TENSORRT_FOUND)
   file(APPEND ${pass_file} "USE_PASS(tensorrt_subgraph_pass);\n")
   set(INFER_IR_PASSES ${INFER_IR_PASSES} tensorrt_subgraph_pass CACHE INTERNAL "")
 endif()
-
