@@ -126,11 +126,6 @@ if(ANDROID OR IOS)
     add_definitions(-DPADDLE_MOBILE_INFERENCE)
 endif()
 
-if (APPLE)
-    set(WITH_MKL OFF CACHE STRING
-        "Disable MKL for building on mac" FORCE)
-endif()
-
 if (WIN32)
     set(WITH_DISTRIBUTE OFF CACHE STRING
             "Disable DISTRIBUTE when compiling for Windows" FORCE)
