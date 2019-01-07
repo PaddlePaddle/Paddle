@@ -61,7 +61,7 @@ class SumKernel : public framework::OpKernel<T> {
         if (start != 2) {
           math::SetConstant<DeviceContext, T> constant_functor;
           constant_functor(context.template device_context<DeviceContext>(),
-                           out, 0.0);
+                           out, static_cast<T>(0));
         }
       }
 
@@ -127,6 +127,9 @@ class SumKernel : public framework::OpKernel<T> {
         math::scatter::MergeAdd<DeviceContext, T> merge_add;
         merge_add(context.template device_context<DeviceContext>(), inputs,
                   out);
+
+        out->SyncIndex();
+
       } else {
         // no data, just set a empty out tensor.
         out->mutable_value()->mutable_data<T>(framework::make_ddim({0}),
@@ -160,7 +163,7 @@ class SumKernel : public framework::OpKernel<T> {
       }
     } else {
       PADDLE_THROW("Unexpected branch, output variable type is %s",
-                   out_var->Type().name());
+                   framework::ToTypeName(out_var->Type()));
     }
   }
 };

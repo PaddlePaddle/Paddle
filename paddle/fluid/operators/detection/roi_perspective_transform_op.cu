@@ -15,6 +15,10 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/float16.h"
+
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using paddle::platform::float16;
 
 namespace paddle {
 namespace operators {
@@ -31,12 +35,12 @@ namespace operators {
 
 template <typename T>
 __device__ bool GT_E(T a, T b) {
-  return (a > b) || fabs(a - b) < 1e-4;
+  return (a > b) || Eigen::numext::abs(a - b) < 1e-4;
 }
 
 template <typename T>
 __device__ bool LT_E(T a, T b) {
-  return (a < b) || fabs(a - b) < 1e-4;
+  return (a < b) || Eigen::numext::abs(a - b) < 1e-4;
 }
 
 template <typename T>

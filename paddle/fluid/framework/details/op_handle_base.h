@@ -25,13 +25,16 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-constexpr char kLocalExecScopeName[] = "@LCOAL_SCOPE@";
+constexpr char kLocalExecScopeName[] = "@LOCAL_SCOPE@";
 
 // Wraps ir::Node and provide helper utilities.
 // It's responsible for populating necessary fields of ir::Node.
 class OpHandleBase {
  public:
-  explicit OpHandleBase(ir::Node *node) : node_(node) {}
+  // Owned by `node`. No need to be deleted explicitly.
+  explicit OpHandleBase(ir::Node *node) : node_(node) {
+    node_->WrappedBy(this);
+  }
 
   virtual ~OpHandleBase();
 

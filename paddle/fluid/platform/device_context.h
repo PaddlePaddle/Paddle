@@ -15,13 +15,14 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
-
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/temporary_allocator.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/gpu_info.h"
-#define EIGEN_USE_GPU
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -39,6 +40,71 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
+
+/*! \brief device temporary allocator singleton.
+ *
+ * Some operator needs temporary memory during computation, for example,
+ * conv_gemm, which needs use col to store the result of im2col. If we
+ * create a stack memory which is used by CUDA Kernel, before the
+ * Computation(...) returns, we should add ctx->Wait(), because the
+ * execution of CUDA is async, if there doesn't have ctx->Wait(),
+ * the temporary memory will be released before the CUDA Kernel uses
+ * it.
+ *
+ * DeviceTemporaryAllocator is a singleton, which contains a
+ * `TemporaryAllocator` for each <Place, Stream>. And the TemporaryAllocator
+ * contains a temp_allocation_queue which is used to store the temporary
+ * allocations. The allocation, which is allocated by TemporaryAllocator,
+ * is a unique_ptr,  and when it is not held by any variable, it will be
+ * pushed into the temp_allocation_queue. There are two opportunities to free
+ * the allocations of temp_allocation_queue:
+ *  - when the Stream calls cudaStreamSynchronize;
+ *  - when the allocation size of opportunities exceeds a certain threshold
+ *    (defined by FLAGS_limit_of_temporary_allocation).
+ *
+ * */
+class DeviceTemporaryAllocator {
+ public:
+  static DeviceTemporaryAllocator& Instance() {
+    PADDLE_ENFORCE_NOT_NULL(allocators,
+                            "Need to Create DeviceTemporaryAllocator first!");
+    return *allocators;
+  }
+
+  static DeviceTemporaryAllocator& Init() {
+    if (allocators == nullptr) {
+      allocators = new DeviceTemporaryAllocator();
+    }
+    return *allocators;
+  }
+
+/*! \brief  Return handle of single temporary allocator. */
+#ifdef PADDLE_WITH_CUDA
+  platform::TemporaryAllocator& Get(const platform::Place& place,
+                                    const cudaStream_t& stream);
+#endif
+  template <typename DeviceContext>
+  platform::TemporaryAllocator& Get(const DeviceContext& dev_ctx);
+
+  platform::TemporaryAllocator& Get(const platform::Place& place);
+
+ private:
+  DeviceTemporaryAllocator() : cpu_allocator_(platform::CPUPlace()) {}
+
+  static DeviceTemporaryAllocator* allocators;
+
+  platform::TemporaryAllocator cpu_allocator_;
+
+#ifdef PADDLE_WITH_CUDA
+  std::map<std::pair<platform::Place, cudaStream_t>,
+           std::unique_ptr<platform::TemporaryAllocator>>
+      device_allocator_;
+#endif
+
+  std::mutex mtx_;
+
+  DISABLE_COPY_AND_ASSIGN(DeviceTemporaryAllocator);
+};
 
 class DeviceContext {
  public:
@@ -73,7 +139,108 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 #ifdef PADDLE_WITH_CUDA
 
 class EigenCudaStreamDevice;
-class CudnnHolder;
+class CudnnHolder {
+ public:
+  CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place);
+  ~CudnnHolder();
+  cudnnHandle_t cudnn_handle() const { return cudnn_handle_; }
+
+ private:
+  friend class CudnnWorkspaceHandle;
+  void ReallocateWorkspace(size_t required_workspace_len);
+
+  template <typename Callback>
+  void RunFuncImpl(Callback&& cudnn_func, size_t required_workspace_len) {
+    if (required_workspace_len > WorkspaceSize()) {
+      ReallocateWorkspace(required_workspace_len);
+    }
+    cudnn_func(WorkspacePtr());
+  }
+
+  inline void* WorkspacePtr() {
+    if (workspace_) {
+      return workspace_->ptr();
+    } else {
+      return nullptr;
+    }
+  }
+
+  inline size_t WorkspaceSize() {
+    if (workspace_) {
+      return workspace_->size();
+    } else {
+      return 0;
+    }
+  }
+
+  std::mutex& Mutex() { return mtx_; }
+
+  cudnnHandle_t cudnn_handle_;
+  memory::AllocationPtr workspace_;
+
+  const cudaStream_t* stream_;  // not owned;
+  const CUDAPlace place_;
+
+  std::mutex mtx_;
+};
+
+class CudnnWorkspaceHandle {
+ public:
+  /*! \brief The lock would not be acquired when constructor calls.
+   *  The lock would be acquired when RunFunc() is called first time. */
+  inline explicit CudnnWorkspaceHandle(CudnnHolder* holder) : holder_(holder) {}
+
+  /*! \brief Thread which call RunFunc() would acquire the lock first
+   *  before invoking cudnn functions. */
+  template <typename Callback>
+  inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_len) {
+    if (!guard_) {
+      guard_.reset(new std::lock_guard<std::mutex>(holder_->Mutex()));
+    }
+    holder_->RunFuncImpl(std::forward<Callback>(cudnn_func),
+                         required_workspace_len);
+  }
+
+  CudnnWorkspaceHandle(CudnnWorkspaceHandle&&) = default;
+  CudnnWorkspaceHandle& operator=(CudnnWorkspaceHandle&&) = delete;
+
+ private:
+  CudnnHolder* holder_;  // not own
+  std::unique_ptr<std::lock_guard<std::mutex>> guard_;
+};
+
+#if CUDA_VERSION >= 9000
+class ScopedCublasMathMode {
+ public:
+  ScopedCublasMathMode(cublasHandle_t handle, cublasMath_t new_math_mode)
+      : handle_(handle) {
+    need_reset = false;
+    PADDLE_ENFORCE(
+        platform::dynload::cublasGetMathMode(handle_, &old_math_mode_),
+        "Failed to get old cublas math mode");
+    if (old_math_mode_ != new_math_mode) {
+      PADDLE_ENFORCE(
+          platform::dynload::cublasSetMathMode(handle_, new_math_mode),
+          "Failed to set old cublas math mode");
+      need_reset = true;
+    }
+  }
+
+  ~ScopedCublasMathMode() {
+    if (need_reset) {
+      PADDLE_ENFORCE(
+          platform::dynload::cublasSetMathMode(handle_, old_math_mode_),
+          "Failed to set old cublas math mode");
+    }
+  }
+
+ private:
+  cublasHandle_t handle_;
+  cublasMath_t old_math_mode_;
+  bool need_reset;
+};
+
+#endif
 
 class CUDADeviceContext : public DeviceContext {
  public:
@@ -101,10 +268,14 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cudnn  handle in the device context. */
   cudnnHandle_t cudnn_handle() const;
 
-  /*! \brief  Run a cudnn function with the workspace provided by
-   * CUDADeviceContext */
-  void RunCudnnFuncWithWorkspace(const std::function<void(void*)>& cudnn_func,
-                                 size_t workspace_len) const;
+  /*! \brief  Return a cudnn workspace handle to call multiple cudnn
+   *  functions without interrupting by other threads.
+   *  Once the first cudnn function is called by the handle, a lock
+   *  would be acquired to prevent other threads from accessing the
+   *  workspace. Once the handle is destructed, the lock would be released.
+   *  CudnnWorkspaceHandle is an RAII object to implement thread-safe
+   *  sequential cudnn function calls. */
+  CudnnWorkspaceHandle cudnn_workspace_handle() const;
 
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
@@ -118,14 +289,22 @@ class CUDADeviceContext : public DeviceContext {
 
   template <typename Callback>
   void AddStreamCallback(Callback&& callback) const {
-    std::lock_guard<std::mutex> guard(callback_mtx_);
     callback_manager_->AddCallback(callback);
   }
 
-  void WaitStreamCallback() const {
-    std::lock_guard<std::mutex> guard(callback_mtx_);
-    callback_manager_->Wait();
+  void WaitStreamCallback() const { callback_manager_->Wait(); }
+
+#if CUDA_VERSION >= 9000
+  /*! \brief CublasCall may need to change cublas's config,
+   *  but the cublas may be hold by multi-thread, so we should
+   *  add lock here. */
+  template <typename Callback>
+  void CublasCall(Callback callback, cublasMath_t new_math) {
+    std::lock_guard<std::mutex> guard(cublas_mtx_);
+    ScopedCublasMathMode scoped_cublas_math(cublas_handle_, new_math);
+    callback();
   }
+#endif
 
  private:
   CUDAPlace place_;
@@ -144,10 +323,10 @@ class CUDADeviceContext : public DeviceContext {
 
   mutable std::mutex mtx_;
 
-  // This lock is only used by callback
-  // If we use mtx_ for StreamCallbackManager, deadlock may occur sometimes
-  mutable std::mutex callback_mtx_;
+  // StreamCallbackManager is thread-safe
   std::unique_ptr<StreamCallbackManager> callback_manager_;
+
+  mutable std::mutex cublas_mtx_;
 };
 
 template <>

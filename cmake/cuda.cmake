@@ -139,10 +139,12 @@ endfunction()
 message(STATUS "CUDA detected: " ${CUDA_VERSION})
 if (${CUDA_VERSION} LESS 7.0)
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs})
+  add_definitions("-DPADDLE_CUDA_BINVER=\"60\"")
 elseif (${CUDA_VERSION} LESS 8.0) # CUDA 7.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs7})
   list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
   list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
+  add_definitions("-DPADDLE_CUDA_BINVER=\"70\"")
 elseif (${CUDA_VERSION} LESS 9.0) # CUDA 8.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs8})
   list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
@@ -150,6 +152,7 @@ elseif (${CUDA_VERSION} LESS 9.0) # CUDA 8.x
   # CUDA 8 may complain that sm_20 is no longer supported. Suppress the
   # warning for now.
   list(APPEND CUDA_NVCC_FLAGS "-Wno-deprecated-gpu-targets")
+  add_definitions("-DPADDLE_CUDA_BINVER=\"80\"")
 endif()
 
 include_directories(${CUDA_INCLUDE_DIRS})
@@ -157,6 +160,9 @@ list(APPEND EXTERNAL_LIBS ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
 if(NOT WITH_DSO)
     # TODO(panyx0718): CUPTI only allows DSO?
     list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUPTI_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${NCCL_LIBRARY})
+    if(WIN32)
+      set_property(GLOBAL PROPERTY CUDA_MODULES ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+    endif(WIN32)
 endif(NOT WITH_DSO)
 
 # setting nvcc arch flags
@@ -196,10 +202,15 @@ elseif(CMAKE_BUILD_TYPE  STREQUAL "MinSizeRel")
     list(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_RELEASE})
 endif()
 else(NOT WIN32)
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
+list(APPEND CUDA_NVCC_FLAGS  "--compiler-options;/bigobj")
+if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
+  list(APPEND CUDA_NVCC_FLAGS  "-g -G")
+  # match the cl's _ITERATOR_DEBUG_LEVEL
+  list(APPEND CUDA_NVCC_FLAGS  "-D_DEBUG")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
   list(APPEND CUDA_NVCC_FLAGS "-O3 -DNDEBUG")
 else()
-  message(FATAL "Windows only support Release build now. Please set visual studio build type to Release, x64 build.")
+  message(FATAL "Windows only support Release or Debug build now. Please set visual studio build type to Release/Debug, x64 build.")
 endif()
 endif(NOT WIN32)
 

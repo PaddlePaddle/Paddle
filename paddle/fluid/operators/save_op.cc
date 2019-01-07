@@ -80,12 +80,12 @@ class SaveOp : public framework::OperatorBase {
 
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
-    std::ofstream fout(filename);
+    std::ofstream fout(filename, std::ios::binary);
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
                    filename);
 
     auto save_as_fp16 = Attr<bool>("save_as_fp16");
-    auto in_dtype = framework::ToDataType(tensor.type());
+    auto in_dtype = tensor.type();
     auto out_dtype = save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 
     if (in_dtype != out_dtype) {
@@ -122,7 +122,7 @@ class SaveOp : public framework::OperatorBase {
 
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
-    std::ofstream fout(filename);
+    std::ofstream fout(filename, std::ios::binary);
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
                    filename);
     framework::SerializeToStream(fout, selectedRows, dev_ctx);

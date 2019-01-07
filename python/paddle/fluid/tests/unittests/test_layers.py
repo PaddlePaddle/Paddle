@@ -170,9 +170,10 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             dat = layers.data(name='data', shape=[10], dtype='float32')
             lbl = layers.data(name='label', shape=[10], dtype='float32')
+            ignore_index = -1
             self.assertIsNotNone(
                 layers.sigmoid_cross_entropy_with_logits(
-                    x=dat, label=lbl))
+                    x=dat, label=lbl, ignore_index=ignore_index))
         print(str(program))
 
     def test_hsigmoid(self):
@@ -184,6 +185,25 @@ class TestBook(unittest.TestCase):
                 layers.hsigmoid(
                     input=x, label=y, num_classes=2))
         print(str(program))
+
+        # test hsigmod with custom tree structure
+        program2 = Program()
+        with program_guard(program2):
+            x2 = layers.data(name='x2', shape=[4, 8], dtype='float32')
+            y2 = layers.data(name='y2', shape=[4], dtype='int64')
+            path_table = layers.data(
+                name='path_table', shape=[4, 6], dtype='int64')
+            path_code = layers.data(
+                name='path_code', shape=[4, 6], dtype='int64')
+            self.assertIsNotNone(
+                layers.hsigmoid(
+                    input=x2,
+                    label=y2,
+                    num_classes=6,
+                    path_table=path_table,
+                    path_code=path_code,
+                    is_custom=True))
+            print(str(program2))
 
     def test_sequence_expand(self):
         program = Program()
@@ -201,6 +221,48 @@ class TestBook(unittest.TestCase):
             length = layers.data(name='length', shape=[1], dtype='int64')
             self.assertIsNotNone(layers.sequence_unpad(x=x, length=length))
         print(str(program))
+
+    def test_pool2d(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 224, 224], dtype='float32')
+            self.assertIsNotNone(
+                layers.pool2d(
+                    x,
+                    pool_size=[5, 3],
+                    pool_stride=[1, 2],
+                    pool_padding=(2, 1)))
+
+    def test_adaptive_pool2d(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 224, 224], dtype='float32')
+            self.assertIsNotNone(
+                layers.adaptive_pool2d(
+                    x, [3, 3], pool_type='avg'))
+            pool, mask = layers.adaptive_pool2d(x, [3, 3], require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
+            self.assertIsNotNone(layers.adaptive_pool2d(x, 3, pool_type='avg'))
+            pool, mask = layers.adaptive_pool2d(x, 3, require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
+
+    def test_adaptive_pool3d(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 244, 224, 224], dtype='float32')
+            self.assertIsNotNone(
+                layers.adaptive_pool3d(
+                    x, [3, 3, 3], pool_type='avg'))
+            pool, mask = layers.adaptive_pool3d(
+                x, [3, 3, 3], require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
+            self.assertIsNotNone(layers.adaptive_pool3d(x, 3, pool_type='avg'))
+            pool, mask = layers.adaptive_pool3d(x, 3, require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
 
     def test_lstm_unit(self):
         program = Program()
@@ -246,6 +308,17 @@ class TestBook(unittest.TestCase):
             data = layers.data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
             self.assertIsNotNone(layers.softmax(hid))
+        print(str(program))
+
+    def test_space_to_depth(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(
+                name='data',
+                shape=[32, 9, 6, 6],
+                append_batch_size=False,
+                dtype='float32')
+            self.assertIsNotNone(layers.space_to_depth(data, 3))
         print(str(program))
 
     def test_sequence_unsqueeze(self):
@@ -358,6 +431,10 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             x = layers.data(name='x', shape=[16], dtype='float32')
             y = layers.data(name='label', shape=[1], dtype='int64')
+            loss, softmax = layers.softmax_with_cross_entropy(
+                x, y, return_softmax=True)
+            self.assertIsNotNone(loss)
+            self.assertIsNotNone(softmax)
             loss = layers.softmax_with_cross_entropy(x, y)
             self.assertIsNotNone(loss)
         print(str(program))
@@ -465,6 +542,16 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
+    def test_psroi_pool(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
+            rois = layers.data(
+                name="rois", shape=[4], dtype="float32", lod_level=1)
+            output = layers.psroi_pool(x, rois, 5, 0.25, 7, 7)
+            self.assertIsNotNone(output)
+        print(str(program))
+
     def test_roi_align(self):
         program = Program()
         with program_guard(program):
@@ -482,6 +569,16 @@ class TestBook(unittest.TestCase):
             output = layers.resize_bilinear(x, out_shape=[12, 12])
             self.assertIsNotNone(output)
             output = layers.resize_bilinear(x, scale=3)
+            self.assertIsNotNone(output)
+        print(str(program))
+
+    def test_resize_nearest(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 9, 6], dtype="float32")
+            output = layers.resize_nearest(x, out_shape=[12, 12])
+            self.assertIsNotNone(output)
+            output = layers.resize_nearest(x, scale=3)
             self.assertIsNotNone(output)
         print(str(program))
 
@@ -581,13 +678,21 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             input = layers.data(
                 name="input", shape=[3, 100, 100], dtype="float32")
+            paddings = layers.fill_constant(shape=[4], dtype='int32', value=1)
             out = layers.pad2d(
                 input,
                 paddings=[1, 2, 3, 4],
                 mode='reflect',
                 data_format='NCHW',
                 name="shape")
+            out_1 = layers.pad2d(
+                input,
+                paddings=paddings,
+                mode='reflect',
+                data_format='NCHW',
+                name="shape")
             self.assertIsNotNone(out)
+            self.assertIsNotNone(out_1)
         print(str(program))
 
     def test_prelu(self):
@@ -782,6 +887,15 @@ class TestBook(unittest.TestCase):
             out = layers.cross_entropy(x, label, False, 4)
             self.assertIsNotNone(out)
 
+    def test_bpr_loss(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[30, 10], dtype="float32")
+            label = layers.data(name="label", shape=[30, 1], dtype="int32")
+            out = layers.bpr_loss(x, label)
+            self.assertIsNotNone(out)
+        print(str(program))
+
     def test_expand(self):
         program = Program()
         with program_guard(program):
@@ -888,6 +1002,25 @@ class TestBook(unittest.TestCase):
 
             self.assertIsNotNone(data_0)
             self.assertIsNotNone(data_1)
+        print(str(program))
+
+    def test_bilinear_tensor_product_layer(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='data', shape=[4], dtype="float32")
+
+            theta = layers.data(name="theta", shape=[5], dtype="float32")
+            out = layers.bilinear_tensor_product(data, theta, 6)
+
+        print(str(program))
+
+    def test_batch_norm(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(
+                name='data', shape=[32, 128, 128], dtype="float32")
+            out = layers.batch_norm(data)
+
         print(str(program))
 
 

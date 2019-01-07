@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import os
 from .layer_function_generator import generate_layer_fn, generate_layer_fn_noattr
 from .. import core
 from ..framework import convert_np_dtype_to_dtype_

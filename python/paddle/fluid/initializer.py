@@ -18,6 +18,7 @@ from . import framework
 import numpy as np
 import contextlib
 from .core import VarDesc
+from . import unique_name
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
@@ -33,13 +34,15 @@ def force_init_on_cpu():
     """
     The flag of whether force to init variables on CPU.
 
-    Returns::
+    Returns:
+        bool: the state if we should force init on CPU.
 
     Examples:
+
         .. code-block:: python
 
             if force_init_on_cpu():
-                pass
+                create_op('force_cpu': force_init_on_cpu())
 
     """
     return _force_init_on_cpu_
@@ -159,7 +162,8 @@ class ConstantInitializer(Initializer):
                 "dtype": int(var.dtype),
                 "value": float(self._value),
                 'force_cpu': self._force_cpu or force_init_on_cpu()
-            })
+            },
+            stop_gradient=True)
         var.op = op
         return op
 
@@ -205,16 +209,40 @@ class UniformInitializer(Initializer):
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
+
+        # to be compatible of fp16 initalizers
+        if var.dtype == VarDesc.VarType.FP16:
+            out_dtype = VarDesc.VarType.FP32
+            out_var = block.create_var(
+                name=unique_name.generate(".".join(['gaussian_random', 'tmp'])),
+                shape=var.shape,
+                dtype=out_dtype,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False)
+        else:
+            out_dtype = var.dtype
+            out_var = var
+
         op = block._prepend_op(
             type="uniform_random",
-            outputs={"Out": var},
+            outputs={"Out": out_var},
             attrs={
                 "shape": var.shape,
-                "dtype": int(var.dtype),
+                "dtype": out_dtype,
                 "min": self._low,
                 "max": self._high,
                 "seed": self._seed
-            })
+            },
+            stop_gradient=True)
+
+        if var.dtype == VarDesc.VarType.FP16:
+            block.append_op(
+                type="cast",
+                inputs={"X": out_var},
+                outputs={"Out": var},
+                attrs={"in_dtype": out_var.dtype,
+                       "out_dtype": var.dtype})
+
         var.op = op
         return op
 
@@ -259,17 +287,40 @@ class NormalInitializer(Initializer):
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
+
+        # to be compatible of fp16 initalizers
+        if var.dtype == VarDesc.VarType.FP16:
+            out_dtype = VarDesc.VarType.FP32
+            out_var = block.create_var(
+                name=unique_name.generate(".".join(['gaussian_random', 'tmp'])),
+                shape=var.shape,
+                dtype=out_dtype,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False)
+        else:
+            out_dtype = var.dtype
+            out_var = var
+
         op = block._prepend_op(
             type="gaussian_random",
-            outputs={"Out": var},
+            outputs={"Out": out_var},
             attrs={
                 "shape": var.shape,
-                "dtype": int(var.dtype),
+                "dtype": out_dtype,
                 "mean": self._mean,
                 "std": self._std_dev,
                 "seed": self._seed,
                 "use_mkldnn": False
-            })
+            },
+            stop_gradient=True)
+
+        if var.dtype == VarDesc.VarType.FP16:
+            block.append_op(
+                type="cast",
+                inputs={"X": out_var},
+                outputs={"Out": var},
+                attrs={"in_dtype": out_var.dtype,
+                       "out_dtype": var.dtype})
         var.op = op
         return op
 
@@ -323,7 +374,8 @@ class TruncatedNormalInitializer(Initializer):
                 "mean": self._mean,
                 "std": self._std_dev,
                 "seed": self._seed
-            })
+            },
+            stop_gradient=True)
         var.op = op
         return op
 
@@ -413,7 +465,8 @@ class XavierInitializer(Initializer):
                     "min": -limit,
                     "max": limit,
                     "seed": self._seed
-                })
+                },
+                stop_gradient=True)
 
         else:
             std = np.sqrt(2.0 / float(fan_in + fan_out))
@@ -426,7 +479,8 @@ class XavierInitializer(Initializer):
                     "mean": 0.0,
                     "std": std,
                     "seed": self._seed
-                })
+                },
+                stop_gradient=True)
         var.op = op
         return op
 
@@ -511,7 +565,8 @@ class MSRAInitializer(Initializer):
                     "min": -limit,
                     "max": limit,
                     "seed": self._seed
-                })
+                },
+                stop_gradient=True)
 
         else:
             std = np.sqrt(2.0 / float(fan_in))
@@ -524,7 +579,8 @@ class MSRAInitializer(Initializer):
                     "mean": 0.0,
                     "std": std,
                     "seed": self._seed
-                })
+                },
+                stop_gradient=True)
         var.op = op
         return op
 

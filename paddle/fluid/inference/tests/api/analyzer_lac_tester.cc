@@ -98,10 +98,8 @@ void GetOneBatch(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   auto one_batch = data->NextBatch();
   PaddleTensor input_tensor;
   input_tensor.name = "word";
-  input_tensor.shape.assign({static_cast<int>(one_batch.data.size()), 1});
-  input_tensor.lod.assign({one_batch.lod});
   input_tensor.dtype = PaddleDType::INT64;
-  TensorAssignData<int64_t>(&input_tensor, {one_batch.data});
+  TensorAssignData<int64_t>(&input_tensor, {one_batch.data}, one_batch.lod);
   PADDLE_ENFORCE_EQ(batch_size, static_cast<int>(one_batch.lod.size() - 1));
   input_slots->assign({input_tensor});
 }
@@ -133,7 +131,8 @@ TEST(Analyzer_LAC, profile) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
@@ -175,7 +174,19 @@ TEST(Analyzer_LAC, compare) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
+
+// Compare Deterministic result
+TEST(Analyzer_LAC, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
 }
 
 }  // namespace analysis

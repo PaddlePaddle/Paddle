@@ -3,13 +3,13 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
-
 #include <set>
 #include <string>
 #include <unordered_set>
@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/rw_lock.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
 namespace paddle {
@@ -84,6 +85,49 @@ DeviceContextPool::DeviceContextPool(
   }
 }
 
+DeviceTemporaryAllocator* DeviceTemporaryAllocator::allocators = nullptr;
+
+#ifdef PADDLE_WITH_CUDA
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const platform::Place& place, const cudaStream_t& stream) {
+  PADDLE_ENFORCE(platform::is_gpu_place(place));
+  auto place_stream = std::make_pair(place, stream);
+  {
+    std::unique_lock<std::mutex> lock(mtx_);
+    if (!device_allocator_.count(place_stream)) {
+      device_allocator_[place_stream].reset(new TemporaryAllocator(place));
+      device_allocator_[place_stream]->SetCallback([stream]() {
+        PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+        PADDLE_ENFORCE(cudaGetLastError());
+      });
+    }
+  }
+  return *device_allocator_.at(place_stream);
+}
+
+template <>
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const platform::CUDADeviceContext& dev_ctx) {
+  auto place_stream = std::make_pair(dev_ctx.GetPlace(), dev_ctx.stream());
+  if (device_allocator_.count(place_stream)) {
+    return *device_allocator_.at(place_stream);
+  }
+  return Get(dev_ctx.GetPlace(), dev_ctx.stream());
+}
+#endif
+
+template <>
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const platform::CPUDeviceContext& dev_ctx) {
+  return cpu_allocator_;
+}
+
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const platform::Place& place) {
+  PADDLE_ENFORCE(platform::is_cpu_place(place), "You should pass CPUPlace");
+  return cpu_allocator_;
+}
+
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
@@ -120,11 +164,24 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   }
 
   void* allocate(size_t num_bytes) const override {
-    return paddle::memory::Alloc(place_, num_bytes);
+    if (UNLIKELY(num_bytes == 0)) {
+      return nullptr;
+    }
+    auto buf = paddle::memory::Alloc(place_, num_bytes,
+                                     memory::Allocator::kScratchpad);
+    void* retv = buf->ptr();
+    {
+      std::lock_guard<std::mutex> lock(mtx_);
+      allocations_.emplace(retv, std::move(buf));
+    }
+    return retv;
   }
 
   void deallocate(void* buffer) const override {
-    paddle::memory::Free(place_, buffer);
+    if (LIKELY(buffer)) {
+      std::lock_guard<std::mutex> lock(mtx_);
+      allocations_.erase(buffer);
+    }
   }
 
   void* scratchpad() const override {
@@ -151,61 +208,36 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   const cudaDeviceProp* device_prop_;  // not owned;
   mutable void* scratch_;
   mutable unsigned int* semaphore_;
+  mutable std::mutex mtx_;  // to protect allocations_
+  mutable std::unordered_map<void*, memory::AllocationPtr> allocations_;
 };
 
-class CudnnHolder {
- public:
-  CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
-      : workspace_(nullptr), workspace_len_(0), stream_(stream), place_(place) {
-    PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
-    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
+CudnnHolder::CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
+    : workspace_(nullptr), stream_(stream), place_(place) {
+  PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
+  PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
+}
+
+CudnnHolder::~CudnnHolder() {
+  PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+}
+
+void CudnnHolder::ReallocateWorkspace(size_t required_workspace_len) {
+  if (required_workspace_len <= WorkspaceSize()) {
+    return;
   }
-
-  cudnnHandle_t cudnn_handle() const { return cudnn_handle_; }
-
-  void RunFunc(const std::function<void(void*)>& cudnn_func,
-               size_t required_workspace_len) {
-    std::lock_guard<std::mutex> lock(mtx_);
-    if (required_workspace_len > workspace_len_) {
-      ReallocateWorkspace(required_workspace_len);
-    }
-    cudnn_func(workspace_);
+  if (workspace_ != nullptr) {
+    // Maybe someone is using the current workspace
+    PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
+    workspace_.reset();
   }
-
-  ~CudnnHolder() {
-    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
-    if (workspace_ != nullptr) {
-      paddle::memory::Free(place_, workspace_);
-    }
-  }
-
- private:
-  void ReallocateWorkspace(size_t required_workspace_len) {
-    if (required_workspace_len <= workspace_len_) {
-      return;
-    }
-    if (workspace_ != nullptr) {
-      // Maybe someone is using the current workspace
-      PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
-      paddle::memory::Free(place_, workspace_);
-    }
-    workspace_ = paddle::memory::Alloc(place_, required_workspace_len);
-    workspace_len_ = required_workspace_len;
-  }
-
-  cudnnHandle_t cudnn_handle_;
-  void* workspace_;
-  size_t workspace_len_;
-
-  const cudaStream_t* stream_;  // not owned;
-  const CUDAPlace place_;
-
-  std::mutex mtx_;
-};
+  workspace_ = paddle::memory::Alloc(place_, required_workspace_len,
+                                     paddle::memory::Allocator::kScratchpad);
+}
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     : place_(place), cudnn_holder_(nullptr) {
-  SetDeviceId(place_.device);
+  CUDADeviceGuard guard(place_.device);
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
@@ -222,12 +254,50 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   driver_version_ = GetCUDADriverVersion(place_.device);
   runtime_version_ = GetCUDARuntimeVersion(place_.device);
 
-  LOG(INFO) << "device: " << place_.device
-            << ", CUDA Capability: " << compute_capability_
-            << ", Driver Version: " << driver_version_ / 1000 << "."
-            << (driver_version_ % 100) / 10
-            << ", Runtime Version: " << runtime_version_ / 1000 << "."
-            << (runtime_version_ % 100) / 10;
+  LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: " << place_.device
+                          << ", CUDA Capability: " << compute_capability_
+                          << ", Driver API Version: " << driver_version_ / 1000
+                          << "." << (driver_version_ % 100) / 10
+                          << ", Runtime API Version: "
+                          << runtime_version_ / 1000 << "."
+                          << (runtime_version_ % 100) / 10;
+  size_t cudnn_dso_ver = dynload::cudnnGetVersion();
+  LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
+                          << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."
+                          << (cudnn_dso_ver % 100) / 10 << ".";
+
+  {
+    // Check CUDA/CUDNN version compatiblity
+    auto local_cuda_version = runtime_version_ / 100;
+    auto compile_cuda_version = CUDA_VERSION / 100;
+    if (local_cuda_version < compile_cuda_version) {
+      LOG_FIRST_N(WARNING, 1)
+          << "WARNING: device: " << place_.device
+          << ". The installed Paddle is compiled with CUDA "
+          << compile_cuda_version / 10 << "." << compile_cuda_version % 10
+          << ", but CUDA runtime version in your machine is "
+          << local_cuda_version / 10 << "." << local_cuda_version % 10
+          << ", which may cause serious incompatible bug. "
+          << "Please recompile or reinstall Paddle with compatible CUDA "
+             "version.";
+    }
+
+    if (dynload::HasCUDNN()) {
+      auto local_cudnn_version = cudnn_dso_ver / 100;
+      auto compile_cudnn_version = CUDNN_VERSION / 100;
+      if (local_cuda_version < compile_cuda_version) {
+        LOG_FIRST_N(WARNING, 1)
+            << "WARNING: device: " << place_.device
+            << ". The installed Paddle is compiled with CUDNN "
+            << compile_cudnn_version / 10 << "." << compile_cudnn_version % 10
+            << ", but CUDNN version in your machine is "
+            << local_cudnn_version / 10 << "." << local_cudnn_version % 10
+            << ", which may cause serious incompatible bug. "
+            << "Please recompile or reinstall Paddle with compatible CUDNN "
+               "version.";
+      }
+    }
+  }
 
   callback_manager_.reset(new StreamCallbackManager(stream_));
 }
@@ -245,8 +315,12 @@ CUDADeviceContext::~CUDADeviceContext() {
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const {
-  PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
-  PADDLE_ENFORCE(cudaGetLastError());
+  auto& allocator =
+      DeviceTemporaryAllocator::Instance().Get<CUDADeviceContext>(*this);
+  allocator.Release([=]() {
+    PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
+    PADDLE_ENFORCE(cudaGetLastError());
+  });
 }
 
 int CUDADeviceContext::GetComputeCapability() const {
@@ -269,9 +343,8 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
   return cudnn_holder_->cudnn_handle();
 }
 
-void CUDADeviceContext::RunCudnnFuncWithWorkspace(
-    const std::function<void(void*)>& cudnn_func, size_t workspace_len) const {
-  cudnn_holder_->RunFunc(cudnn_func, workspace_len);
+CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
+  return CudnnWorkspaceHandle(cudnn_holder_.get());
 }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }

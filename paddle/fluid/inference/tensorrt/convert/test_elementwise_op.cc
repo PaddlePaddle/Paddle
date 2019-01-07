@@ -20,13 +20,12 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-TEST(elementwise_op, add_weight_test) {
+TEST(elementwise_op, add_weight) {
   std::unordered_set<std::string> parameters({"elementwise_add-Y"});
   framework::Scope scope;
   TRTConvertValidation validator(10, parameters, scope, 1 << 15);
   validator.DeclInputVar("elementwise_add-X", nvinfer1::DimsCHW(10, 3, 3));
   validator.DeclParamVar("elementwise_add-Y", nvinfer1::Dims3(10, 1, 1));
-  // validator.DeclParamVar("mul-Y", nvinfer1::Dims2(8, 2));
   validator.DeclOutputVar("elementwise_add-Out", nvinfer1::DimsCHW(10, 3, 3));
 
   // Prepare Op description
@@ -44,30 +43,65 @@ TEST(elementwise_op, add_weight_test) {
   validator.Execute(8);
 }
 
-TEST(elementwise_op, add_tensor_test) {
-  std::unordered_set<std::string> parameters;
-  framework::Scope scope;
-  TRTConvertValidation validator(8, parameters, scope, 1 << 15);
-  validator.DeclInputVar("elementwise_add-X", nvinfer1::DimsCHW(10, 3, 3));
-  validator.DeclInputVar("elementwise_add-Y", nvinfer1::Dims3(10, 3, 3));
-  // validator.DeclParamVar("mul-Y", nvinfer1::Dims2(8, 2));
-  validator.DeclOutputVar("elementwise_add-Out", nvinfer1::DimsCHW(10, 3, 3));
+TEST(elementwise_op, native) {
+  for (std::string type : {"add", "mul"}) {
+    int batch_size = 8;
+    std::unordered_set<std::string> parameters;
+    framework::Scope scope;
+    TRTConvertValidation validator(batch_size, parameters, scope, 1 << 15);
+    validator.DeclInputVar("elementwise_" + type + "-X",
+                           nvinfer1::DimsCHW(10, 3, 3));
+    validator.DeclInputVar("elementwise_" + type + "-Y",
+                           nvinfer1::Dims3(10, 3, 3));
+    validator.DeclOutputVar("elementwise_" + type + "-Out",
+                            nvinfer1::DimsCHW(10, 3, 3));
 
-  // Prepare Op description
-  framework::OpDesc desc;
-  desc.SetType("elementwise_add");
-  desc.SetInput("X", {"elementwise_add-X"});
-  desc.SetInput("Y", {"elementwise_add-Y"});
-  desc.SetOutput("Out", {"elementwise_add-Out"});
+    // Prepare Op description
+    framework::OpDesc desc;
+    desc.SetType("elementwise_" + type);
+    desc.SetInput("X", {"elementwise_" + type + "-X"});
+    desc.SetInput("Y", {"elementwise_" + type + "-Y"});
+    desc.SetOutput("Out", {"elementwise_" + type + "-Out"});
 
-  // the defalut axis of elementwise op is -1
+    int axis = -1;
+    desc.SetAttr("axis", axis);
 
-  validator.SetOp(*desc.Proto());
+    validator.SetOp(*desc.Proto());
+    validator.Execute(batch_size);
+  }
+}
 
-  validator.Execute(8);
+TEST(elementwise_op, plugin) {
+  for (std::string type : {"add", "mul"}) {
+    int batch_size = 8;
+    std::unordered_set<std::string> parameters;
+    framework::Scope scope;
+    TRTConvertValidation validator(batch_size, parameters, scope, 1 << 15);
+    validator.DeclInputVar("elementwise_" + type + "-X",
+                           nvinfer1::DimsCHW(10, 3, 3));
+    validator.DeclInputVar("elementwise_" + type + "-Y",
+                           nvinfer1::Dims3(10, 1, 1));
+    validator.DeclOutputVar("elementwise_" + type + "-Out",
+                            nvinfer1::DimsCHW(10, 3, 3));
+
+    // Prepare Op description
+    framework::OpDesc desc;
+    desc.SetType("elementwise_" + type);
+    desc.SetInput("X", {"elementwise_" + type + "-X"});
+    desc.SetInput("Y", {"elementwise_" + type + "-Y"});
+    desc.SetOutput("Out", {"elementwise_" + type + "-Out"});
+
+    int axis = -1;
+    desc.SetAttr("axis", axis);
+
+    validator.SetOp(*desc.Proto());
+    validator.Execute(batch_size);
+  }
 }
 
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
+
 USE_OP(elementwise_add);
+USE_OP(elementwise_mul);

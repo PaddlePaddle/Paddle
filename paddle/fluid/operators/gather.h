@@ -38,7 +38,8 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
                const Tensor& index, Tensor* output) {
   PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
   // check index of shape 1-D
-  PADDLE_ENFORCE(index.dims().size() == 1);
+  PADDLE_ENFORCE(index.dims().size() == 1 ||
+                 (index.dims().size() == 2 && index.dims()[1] == 1));
   int64_t index_size = index.dims()[0];
 
   auto src_dims = src.dims();
