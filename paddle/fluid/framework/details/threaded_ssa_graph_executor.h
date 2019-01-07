@@ -41,7 +41,8 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ThreadedSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,
                            const std::vector<platform::Place> &places,
-                           std::unique_ptr<ir::Graph> &&graph);
+                           std::unique_ptr<ir::Graph> &&graph,
+                           std::atomic<bool> *stw = nullptr);
 
   const ir::Graph &Graph() const override { return *graph_; }
   // Run a SSAGraph by a thread pool
@@ -82,6 +83,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ExecutionStrategy strategy_;
   // use std::list because clear(), push_back, and for_each are O(1)
   std::list<std::future<void>> run_op_futures_;
+  std::atomic<bool> *stw_{nullptr};
 };
 
 }  // namespace details

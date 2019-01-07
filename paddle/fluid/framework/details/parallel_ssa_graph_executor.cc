@@ -35,9 +35,12 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
                                : strategy_.num_threads_ / places_.size();
   VLOG(1) << "set num_threads: " << strategy_.num_threads_
           << " to run the operators of the graph on each device.";
+  stw_.reset(new std::atomic<bool>);
+  stw_->store(false, std::memory_order_relaxed);
   for (size_t i = 0; i < places.size(); ++i) {
     executors_.emplace_back(new details::ThreadedSSAGraphExecutor(
-        strategy_, {local_scopes_[i]}, {places_[i]}, std::move(graphs_[i])));
+        strategy_, {local_scopes_[i]}, {places_[i]}, std::move(graphs_[i]),
+        stw_.get()));
   }
 }
 
@@ -71,7 +74,7 @@ FeedFetchList ParallelSSAGraphExecutor::Run(
 
   if (pool_) {
     for (auto &f : run_futures) {
-      if (exception_holder_.IsCaught()) {
+      if (exception_holder_.IsCaught() || *stw_.get()) {
         f.wait();
       } else {
         fetch_data.emplace_back(std::move(f.get()));

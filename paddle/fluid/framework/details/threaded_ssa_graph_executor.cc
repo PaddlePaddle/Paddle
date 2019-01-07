@@ -24,7 +24,7 @@ namespace details {
 ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
-    std::unique_ptr<ir::Graph> &&graph)
+    std::unique_ptr<ir::Graph> &&graph, std::atomic<bool> *stw)
     : graph_(std::move(graph)),
       pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
                                        : nullptr),
@@ -32,7 +32,8 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
       places_(places),
       fetch_ctxs_(places),
       running_ops_(0),
-      strategy_(strategy) {}
+      strategy_(strategy),
+      stw_(stw) {}
 
 FeedFetchList ThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
@@ -76,12 +77,24 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &pending_ops,
                  &pending_vars, ready_vars.get(), &fetch_data);
 
-  auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
+  auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) -> bool {
     for (auto *op : set) {
       running_ops_++;
       RunOp(ready_vars, op);
+      if (stw_ && *stw_ == true) return false;
     }
     set.clear();
+    return true;
+  };
+
+  auto enforce_exception = [&]() {
+    if (exception_holder_.IsCaught()) {
+      for (auto &run_op_future : run_op_futures_) {
+        run_op_future.wait();
+      }
+      ClearFetchOp(graph_.get(), &fetch_ops);
+      exception_holder_.ReThrow();
+    }
   };
 
   // Clean run context
@@ -95,26 +108,26 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     //
     // NOTE: DelayedOps have a lower priority. It will be scheduled after all
     // ready_ops have been performed.
+    bool continued = true;
     if (ready_ops.empty() && strategy_.allow_op_delay_ && running_ops_ == 0) {
-      run_all_ops(delayed_ops);
+      continued = run_all_ops(delayed_ops);
     } else {
-      run_all_ops(ready_ops);
+      continued = run_all_ops(ready_ops);
     }
 
     // 2. Find ready variable
     bool timeout;
     auto cur_ready_vars = ready_vars->PopAll(1, &timeout);
 
+    if (!continued) {
+      enforce_exception();
+      ready_ops.clear();
+      break;
+    }
+
     if (timeout) {
-      if (exception_holder_.IsCaught()) {
-        for (auto &run_op_future : run_op_futures_) {
-          run_op_future.wait();
-        }
-        ClearFetchOp(graph_.get(), &fetch_ops);
-        exception_holder_.ReThrow();
-      } else {
-        continue;
-      }
+      enforce_exception();
+      continue;
     }
     // 3. Remove the dependency of ready_var.
     // Find the ready_ops after the ready_var.
@@ -222,6 +235,7 @@ void ThreadedSSAGraphExecutor::RunOp(
       VLOG(10) << op << " " << op->Name() << "Signal posted";
     } catch (...) {
       exception_holder_.Catch(std::current_exception());
+      if (stw_) *stw_ = true;
     }
   };
   if (pool_) {
