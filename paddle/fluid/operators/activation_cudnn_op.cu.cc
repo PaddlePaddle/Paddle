@@ -36,12 +36,14 @@ struct CudnnActivationFunctor {
     x_desc.set(x);
     out_desc.set(detail::Ref(out));
     PADDLE_ENFORCE(platform::dynload::cudnnActivationForward(
-        ctx_.cudnn_handle(), act_desc, platform::CudnnDataType<T>::kOne(),
-        x_desc, x.data<T>(), out_desc, out->mutable_data<T>(ctx_.GetPlace())));
+        ctx_.cudnn_handle(), act_desc.desc(),
+        platform::CudnnDataType<T>::kOne(), x_desc.desc(), x.data<T>(),
+        platform::CudnnDataType<T>::kZero(), out_desc.desc(),
+        out->mutable_data<T>(ctx_.GetPlace())));
   }
-  const T coef_{0};
+  const CUDADeviceContext& ctx_;
+  const T coef_;
   const cudnnActivationMode_t mode_;
-  const CUDADeviceContext ctx_;
 };
 
 template <typename T>
@@ -60,90 +62,92 @@ struct CudnnActivationGradFunctor {
     dout_desc.set(dout);
     dx_desc.set(detail::Ref(dx));
     PADDLE_ENFORCE(platform::dynload::cudnnActivationBackward(
-        ctx_.cudnn_handle(), act_desc, platform::CudnnDataType<T>::kOne(),
-        out_desc, out.data<T>(), dout_desc, dout.data<T>(), x_desc, x.data<T>(),
-        platform::CudnnDataType<T>::kZero(), dx_desc,
+        ctx_.cudnn_handle(), act_desc.desc(),
+        platform::CudnnDataType<T>::kOne(), out_desc.desc(), out.data<T>(),
+        dout_desc.desc(), dout.data<T>(), x_desc.desc(), x.data<T>(),
+        platform::CudnnDataType<T>::kZero(), dx_desc.desc(),
         dx->mutable_data<T>(ctx_.GetPlace())));
   }
-  const T coef_{0};
+  const CUDADeviceContext& ctx_;
+  const T coef_;
   const cudnnActivationMode_t mode_;
-  const CUDADeviceContext ctx_;
 };
 
 template <typename T>
 struct CudnnReluFunctor : public CudnnActivationFunctor<T> {
   explicit CudnnReluFunctor(const CUDADeviceContext& ctx)
-      : CudnnActivationFunctor(ctx, 0.0, CUDNN_ACTIVATION_RELU) {}
+      : CudnnActivationFunctor<T>(ctx, 0.0, CUDNN_ACTIVATION_RELU) {}
 };
 template <typename T>
 struct CudnnReluGradFunctor : public CudnnActivationGradFunctor<T> {
-  explicit CudnnReluFunctor(const CUDADeviceContext& ctx)
-      : CudnnActivationGradFunctor(ctx, 0.0, CUDNN_ACTIVATION_RELU) {}
+  explicit CudnnReluGradFunctor(const CUDADeviceContext& ctx)
+      : CudnnActivationGradFunctor<T>(ctx, 0.0, CUDNN_ACTIVATION_RELU) {}
 };
 
 template <typename T>
 struct CudnnRelu6Functor : public CudnnActivationFunctor<T> {
   explicit CudnnRelu6Functor(const CUDADeviceContext& ctx)
-      : CudnnActivationFunctor(ctx, 6.0, CUDNN_ACTIVATION_CLIPPED_RELU) {}
+      : CudnnActivationFunctor<T>(ctx, 6.0, CUDNN_ACTIVATION_CLIPPED_RELU) {}
 };
 template <typename T>
 struct CudnnRelu6GradFunctor : public CudnnActivationGradFunctor<T> {
-  explicit CudnnRelu6Functor(const CUDADeviceContext& ctx)
-      : CudnnActivationGradFunctor(ctx, 6.0, CUDNN_ACTIVATION_CLIPPED_RELU) {}
+  explicit CudnnRelu6GradFunctor(const CUDADeviceContext& ctx)
+      : CudnnActivationGradFunctor<T>(ctx, 6.0, CUDNN_ACTIVATION_CLIPPED_RELU) {
+  }
 };
 
 template <typename T>
 struct CudnnSigmoidFunctor : public CudnnActivationFunctor<T> {
   explicit CudnnSigmoidFunctor(const CUDADeviceContext& ctx)
-      : CudnnActivationFunctor(ctx, 0.0, CUDNN_ACTIVATION_SIGMOID) {}
+      : CudnnActivationFunctor<T>(ctx, 0.0, CUDNN_ACTIVATION_SIGMOID) {}
 };
 template <typename T>
 struct CudnnSigmoidGradFunctor : public CudnnActivationGradFunctor<T> {
-  explicit CudnnSigmoidFunctor(const CUDADeviceContext& ctx)
-      : CudnnActivationGradFunctor(ctx, 0.0, CUDNN_ACTIVATION_SIGMOID) {}
+  explicit CudnnSigmoidGradFunctor(const CUDADeviceContext& ctx)
+      : CudnnActivationGradFunctor<T>(ctx, 0.0, CUDNN_ACTIVATION_SIGMOID) {}
 };
 
 template <typename T>
 struct CudnnTanhFunctor : public CudnnActivationFunctor<T> {
   explicit CudnnTanhFunctor(const CUDADeviceContext& ctx)
-      : CudnnActivationFunctor(ctx, 0.0, CUDNN_ACTIVATION_TANH) {}
+      : CudnnActivationFunctor<T>(ctx, 0.0, CUDNN_ACTIVATION_TANH) {}
 };
 template <typename T>
 struct CudnnTanhGradFunctor : public CudnnActivationGradFunctor<T> {
-  explicit CudnnTanhFunctor(const CUDADeviceContext& ctx)
-      : CudnnActivationGradFunctor(ctx, 0.0, CUDNN_ACTIVATION_TANH) {}
+  explicit CudnnTanhGradFunctor(const CUDADeviceContext& ctx)
+      : CudnnActivationGradFunctor<T>(ctx, 0.0, CUDNN_ACTIVATION_TANH) {}
 };
 
 template <typename Functor>
 class CudnnActivationKernel
-    : public framework::OpKernel<Functor::ELEMENT_TYPE> {
+    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& context) const override {
-    const framework::Tensor* X;
-    framework::Tensor* Out;
-    ExtractActivationTensor(context, X, Out);
+    const framework::Tensor* X = nullptr;
+    framework::Tensor* Out = nullptr;
+    ExtractActivationTensor(context, &X, &Out);
     Out->mutable_data<T>(context.GetPlace());
-    bool inplace = InplaceOpSet.count(context.op().Type());
-    auto dev_ctx = context.template device_context<CUDADeviceContext>();
-    Functor functor;
-    functor(dev_ctx, detail::Ref(X), Out);
+    auto& dev_ctx = context.template device_context<CUDADeviceContext>();
+    Functor functor(dev_ctx);
+    functor(detail::Ref(X), Out);
   }
 };
 
 template <typename Functor>
 class CudnnActivationGradKernel
-    : public framework::OpKernel<Functor::ELEMENT_TYPE> {
+    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& context) const override {
     const framework::Tensor *X, *Out, *dOut;
-    framework::Tensor* dX;
-    ExtractActivationGradTensor(context, X, Out, dOut, dX);
+    X = Out = dOut = nullptr;
+    framework::Tensor* dX = nullptr;
+    ExtractActivationGradTensor(context, &X, &Out, &dOut, &dX);
     dX->mutable_data<T>(context.GetPlace());
-    auto dev_ctx = context.template device_context<CUDADeviceContext>();
-    Functor functor;
-    functor(dev_ctx, detail::Ref(X), detail::Ref(Out), detail::Ref(dOut), dX);
+    auto& dev_ctx = context.template device_context<CUDADeviceContext>();
+    Functor functor(dev_ctx);
+    functor(detail::Ref(X), detail::Ref(Out), detail::Ref(dOut), dX);
   }
 };
 
@@ -153,20 +157,19 @@ class CudnnActivationGradKernel
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
-#define FOR_EACH_CUDNN_OP_FUNCTOR(__macro) \
-  __macro(Relu, relu);                     \
-  __macro(Relu6, relu6);                   \
-  __macro(Sigmoid, sigmoid);               \
-  __macro(Tanh, tanh)
+#define FOR_EACH_CUDNN_OP_FUNCTOR(__macro)                  \
+  __macro(relu, CudnnReluFunctor, CudnnReluGradFunctor);    \
+  __macro(relu6, CudnnRelu6Functor, CudnnRelu6GradFunctor); \
+  __macro(sigmoid, CudnnTanhFunctor, CudnnTanhGradFunctor); \
+  __macro(tanh, CudnnTanhFunctor, CudnnTanhGradFunctor)
 
 #define REGISTER_ACTIVATION_CUDNN_KERNEL(act_type, functor, grad_functor) \
   REGISTER_OP_KERNEL(act_type, CUDNN, plat::CUDAPlace,                    \
                      ops::CudnnActivationKernel<ops::functor<float>>,     \
-                     ops::CudnnActivationKernel<ops::functor<double>>,    \
-                     ops::CudnnActivationKernel<ops::functor<float16>>);  \
+                     ops::CudnnActivationKernel<ops::functor<double>>);   \
   REGISTER_OP_KERNEL(                                                     \
-      act_type, CUDNN, plat::CUDAPlace,                                   \
+      act_type##_grad, CUDNN, plat::CUDAPlace,                            \
       ops::CudnnActivationGradKernel<ops::grad_functor<float>>,           \
-      ops::CudnnActivationGradKernel<ops::grad_functor<double>>,          \
-      ops::CudnnActivationGradKernel<ops::grad_functor<float16>>);
-FOR_EACH_INPLACE_OP_FUNCTOR(FOR_EACH_CUDNN_OP_FUNCTOR);
+      ops::CudnnActivationGradKernel<ops::grad_functor<double>>);
+
+FOR_EACH_CUDNN_OP_FUNCTOR(REGISTER_ACTIVATION_CUDNN_KERNEL);

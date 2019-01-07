@@ -601,6 +601,25 @@ class TestSwish(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
+#------------------ Test Cudnn Activation----------------------
+def create_test_act_cudnn_class(parent, atol=1e-3, grad_atol=1e-3):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestActCudnn(parent):
+        def init_kernel_type(self):
+            self.attrs = {"use_cudnn": True}
+
+    cls_name = "{0}_{1}".format(parent.__name__, "cudnn")
+    TestActCudnn.__name__ = cls_name
+    globals()[cls_name] = TestActCudnn
+
+
+create_test_act_cudnn_class(TestRelu)
+create_test_act_cudnn_class(TestRelu6)
+create_test_act_cudnn_class(TestSigmoid)
+create_test_act_cudnn_class(TestTanh)
+
+
 #------------------ Test Fp16 ----------------------
 def create_test_act_fp16_class(parent,
                                atol=1e-3,
