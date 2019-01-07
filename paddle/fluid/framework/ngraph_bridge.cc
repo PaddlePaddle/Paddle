@@ -34,6 +34,7 @@ std::map<std::string,
         {"fill_constant", paddle::operators::ngraphs::BuildFillConstantNode},
         {"mul", paddle::operators::ngraphs::BuildMulNode},
         {"mul_grad", paddle::operators::ngraphs::BuildMulGradNode},
+        {"scale", paddle::operators::ngraphs::BuildScaleNode},
         {"relu", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Relu>},
         {"tanh", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Tanh>},
         {"top_k", paddle::operators::ngraphs::BuildTopKNode}};
