@@ -159,8 +159,8 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
 
 void OperatorBase::PreHook() {
   auto attrName = OpProtoAndCheckerMaker::OpCreationCallstackAttrName();
-  if(HasAttr(attrName)) {
-    auto &callstack = Attr < std::vector < std::string >> (attrName);
+  if (HasAttr(attrName)) {
+    auto& callstack = Attr<std::vector<std::string>>(attrName);
 
     std::ostringstream sout;
     sout << "Invoke operator " << Type() << " error.\n";

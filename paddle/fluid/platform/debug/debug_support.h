@@ -14,39 +14,37 @@ limitations under the License. */
 
 #pragma once
 
-#include <map>
-#include <string>
-#include <vector>
-#include <thread>
-#include <mutex>
-#include <iostream>
 #include <exception>
+#include <iostream>
+#include <map>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
 
 namespace paddle {
-    namespace platform {
+namespace platform {
 
-        enum DebugInfoType {
-            TOperaor = 0
-        };
+enum DebugInfoType { TOperaor = 0 };
 
-        class DebugSupport {
-        public:
-            // Returns the singleton of ThreadPool.
-            static DebugSupport *GetInstance();
+class DebugSupport {
+ public:
+  // Returns the singleton of ThreadPool.
+  static DebugSupport *GetInstance();
 
-            std::string getActiveOperator();
+  std::string getActiveOperator();
 
-            void setActiveOperator(std::string info);
+  void setActiveOperator(std::string info);
 
-            std::string getBacktraceStacks();
+  std::string getBacktraceStacks();
 
-        private:
-            DebugSupport() {
-              infos.insert(std::make_pair<DebugInfoType, std::string>(TOperaor, ""));
-            }
+ private:
+  DebugSupport() {
+    infos.insert(std::make_pair<DebugInfoType, std::string>(TOperaor, ""));
+  }
 
-            static std::once_flag init_flag_;
-            std::map <DebugInfoType, std::string> infos;
-        };
-    }  // namespace platform
+  static std::once_flag init_flag_;
+  std::map<DebugInfoType, std::string> infos;
+};
+}  // namespace platform
 }  // namespace paddle
