@@ -30,7 +30,7 @@ __all__ = [
 ]
 
 
-class Conv2D(layers.PyLayer):
+class Conv2D(layers.Layer):
     def __init__(self,
                  num_channels,
                  num_filters,
@@ -143,7 +143,7 @@ class Conv2D(layers.PyLayer):
         return self._helper.append_activation(pre_act)
 
 
-class Pool2D(layers.PyLayer):
+class Pool2D(layers.Layer):
     def __init__(self,
                  pool_size=-1,
                  pool_type="max",
@@ -205,7 +205,7 @@ class Pool2D(layers.PyLayer):
         return pool_out
 
 
-class FC(layers.PyLayer):
+class FC(layers.Layer):
     def __init__(self,
                  size,
                  param_attr=None,

@@ -170,14 +170,17 @@ PYBIND11_MODULE(core, m) {
           },
           py::return_value_policy::reference);
 
-  py::class_<imperative::Layer, PyLayer /* <--- trampoline*/> layer(m, "Layer");
+  py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
   layer.def(py::init<>())
       .def("forward",
            [](imperative::Layer &self,
               const std::vector<imperative::VarBase> &inputs) {
              return self.Forward(inputs);
            })
-      .def("backward", &imperative::Layer::Backward);
+      .def("backward", [](imperative::Layer &self,
+                          const std::vector<imperative::VarBase> &inputs) {
+        return self.Backward(inputs);
+      });
   BindTracer(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())

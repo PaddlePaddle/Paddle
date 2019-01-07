@@ -22,7 +22,7 @@ from paddle.fluid.imperative.nn import FC
 from test_imperative_base import new_program_scope
 
 
-class MyLayer(fluid.imperative.PyLayer):
+class MyLayer(fluid.imperative.Layer):
     def __init__(self):
         super(MyLayer, self).__init__()
 
@@ -34,7 +34,7 @@ class MyLayer(fluid.imperative.PyLayer):
         return [x]
 
 
-class MLP(fluid.imperative.PyLayer):
+class MLP(fluid.imperative.Layer):
     def __init__(self):
         super(MLP, self).__init__()
         self._fc1 = FC(3,
@@ -56,7 +56,7 @@ class TestImperative(unittest.TestCase):
         with fluid.imperative.guard():
             cl = core.Layer()
             cl.forward([])
-            l = fluid.imperative.PyLayer()
+            l = fluid.imperative.Layer()
             self.assertRaises(NotImplementedError, l.forward, [])
 
     def test_layer_in_out(self):

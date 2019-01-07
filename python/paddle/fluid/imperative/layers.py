@@ -20,10 +20,12 @@ from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.imperative import base
 
-__all__ = ['PyLayer']
+__all__ = ['Layer']
 
 
-class PyLayer(core.Layer):
+class Layer(core.Layer):
+    """Layers composed of operators."""
+
     def __init__(self, dtype=core.VarDesc.VarType.FP32, name=None):
         self._once_built = False
         self._dtype = dtype
@@ -37,8 +39,23 @@ class PyLayer(core.Layer):
             self._once_built = True
 
         outputs = self.forward(*inputs)
-
         return outputs
 
     def forward(self, *inputs):
+        raise NotImplementedError
+
+    def backward(self, *inputs):
+        raise ValueError("Layer shouldn't implement backward")
+
+
+class PyLayer(core.Layer):
+    """Layers composed of user-defined python codes."""
+
+    def __call__(self, *inputs):
+        pass
+
+    def forward(self, *inputs):
+        raise NotImplementedError
+
+    def backward(self, *inputs):
         raise NotImplementedError
