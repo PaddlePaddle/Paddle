@@ -34,26 +34,67 @@ class AnalysisPredictor;
 namespace contrib {
 
 // NOTE WIP, not stable yet.
-struct AnalysisConfig : public NativeConfig {
-  explicit AnalysisConfig(bool use_gpu = false);
+struct AnalysisConfig {
+  AnalysisConfig() = default;
   explicit AnalysisConfig(const AnalysisConfig& other);
-  explicit AnalysisConfig(AnalysisConfig&& other);
+  explicit AnalysisConfig(const std::string& model_dir);
+  explicit AnalysisConfig(const std::string& prog_file,
+                          const std::string& params_file);
+
+  // Model path related.
+  void SetModel(const std::string& model_dir) { model_dir_ = model_dir; }
+  void SetModel(const std::string& prog_file_path,
+                const std::string& params_file_path);
+  void SetProgFile(const std::string& x) { prog_file_ = x; }
+  void SetParamsFile(const std::string& x) { params_file_ = x; }
+  const std::string& model_dir() const { return model_dir_; }
+  const std::string& prog_file() const { return prog_file_; }
+  const std::string& params_file() const { return params_file_; }
+
+  // GPU related.
+  void EnableUseGpu(uint64_t memory_pool_init_size_mb, int device_id = 0);
+  void DisableGpu();
+  bool use_gpu() const { return use_gpu_; }
+  int gpu_device_id() const { return device_id_; }
+  int memory_pool_init_size_mb() const { return memory_pool_init_size_mb_; }
+  float fraction_of_gpu_memory_for_pool() const;
 
   // Determine whether to perform graph optimization.
-  bool enable_ir_optim = true;
+  void SwitchIrOptim(int x = true) { enable_ir_optim_ = x; }
+  bool ir_optim() const { return enable_ir_optim_; }
 
-  // Get a pass builder for customize the passes in IR analysis phase.
-  PassStrategy* pass_builder() const;
+  void SwitchUseFeedFetchOps(int x = true) { use_feed_fetch_ops_ = x; }
+  bool use_feed_fetch_ops_enabled() const { return use_feed_fetch_ops_; }
 
-  // NOT stable yet.
-  bool use_feed_fetch_ops{true};
+  void SwitchSpecifyInputNames(bool x = true) { specify_input_name_ = x; }
+  bool specify_input_name() const { return specify_input_name_; }
 
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1, int min_subgraph_size = 3);
-  bool use_tensorrt() const { return use_tensorrt_; }
+  bool tensorrt_engine_enabled() const { return use_tensorrt_; }
+
+  void SwitchIrDebug(int x = true) { ir_debug_ = x; }
 
   void EnableMKLDNN();
-  bool use_mkldnn() const { return use_mkldnn_; }
+  bool mkldnn_enabled() const { return use_mkldnn_; }
+
+  // Set and get the number of cpu math library threads.
+  void SetCpuMathLibraryNumThreads(int cpu_math_library_num_threads);
+  int cpu_math_library_num_threads() const {
+    return cpu_math_library_num_threads_;
+  }
+
+  NativeConfig ToNativeConfig() const {
+    NativeConfig config;
+    config.model_dir = model_dir_;
+    config.prog_file = prog_file_;
+    config.param_file = params_file_;
+    config.use_gpu = use_gpu_;
+    config.device = device_id_;
+    config.fraction_of_gpu_memory = fraction_of_gpu_memory_for_pool();
+    config.specify_input_name = specify_input_name_;
+    return config;
+  }
   void SetMKLDNNOp(std::unordered_set<std::string> op_list) {
     mkldnn_enabled_op_types_ = op_list;
   }
@@ -65,10 +106,29 @@ struct AnalysisConfig : public NativeConfig {
 
   friend class ::paddle::AnalysisPredictor;
 
+  // NOTE just for developer, not an official API, easily to be broken.
+  // Get a pass builder for customize the passes in IR analysis phase.
+  PassStrategy* pass_builder() const;
+
  protected:
+  // Update the config.
+  void Update();
+
+  std::string SerializeInfoCache();
+
+ protected:
+  // Model pathes.
+  std::string model_dir_;
+  std::string prog_file_;
+  std::string params_file_;
+
+  // GPU releated.
+  bool use_gpu_{false};
+  int device_id_{0};
+  uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
+
+  // TensorRT releated.
   bool use_tensorrt_{false};
-  bool use_mkldnn_{false};
-  std::unordered_set<std::string> mkldnn_enabled_op_types_;
   // For workspace_size, refer it from here:
   // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
   int tensorrt_workspace_size_;
@@ -82,17 +142,24 @@ struct AnalysisConfig : public NativeConfig {
   //  We set this variable to control the minimum number of nodes in the
   //  subgraph, 3 as default value.
   int tensorrt_min_subgraph_size_{3};
-  std::unique_ptr<PassStrategy> pass_builder_;
-  bool model_from_memory_{false};
-};
 
-// Configurations for Anakin engine.
-struct AnakinConfig : public PaddlePredictor::Config {
-  enum TargetType { NVGPU = 0, X86 };
-  int device;
-  std::string model_file;
-  int max_batch_size{-1};
-  TargetType target_type;
+  bool use_mkldnn_{false};
+  std::unordered_set<std::string> mkldnn_enabled_op_types_;
+
+  bool model_from_memory_{false};
+
+  bool enable_ir_optim_{true};
+  bool use_feed_fetch_ops_{true};
+  bool ir_debug_{false};
+
+  bool specify_input_name_{false};
+
+  int cpu_math_library_num_threads_{1};
+
+  // A runtime cache, shouldn't be transferred to others.
+  std::string serialized_info_cache_;
+
+  mutable std::unique_ptr<PassStrategy> pass_builder_;
 };
 
 }  // namespace contrib

@@ -25,9 +25,9 @@ namespace paddle {
 using contrib::AnalysisConfig;
 
 TEST(AnalysisPredictor, analysis_off) {
-  AnalysisConfig config(false);
-  config.model_dir = FLAGS_dirname;
-  config.enable_ir_optim = false;
+  AnalysisConfig config;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchIrOptim(false);
 
   auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
@@ -55,14 +55,14 @@ TEST(AnalysisPredictor, analysis_off) {
 }
 
 TEST(AnalysisPredictor, analysis_on) {
-#ifdef PADDLE_WITH_CUDA
-  AnalysisConfig config(true);
-  config.fraction_of_gpu_memory = 0.15;
-#else
   AnalysisConfig config;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchIrOptim(true);
+#ifdef PADDLE_WITH_CUDA
+  config.EnableUseGpu(100, 0);
+#else
+  config.DisableGpu();
 #endif
-  config.model_dir = FLAGS_dirname;
-  config.enable_ir_optim = true;
 
   auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
@@ -89,7 +89,8 @@ TEST(AnalysisPredictor, analysis_on) {
   }
 
   // compare with NativePredictor
-  auto naive_predictor = CreatePaddlePredictor<NativeConfig>(config);
+  auto naive_predictor =
+      CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
   std::vector<PaddleTensor> naive_outputs;
   ASSERT_TRUE(naive_predictor->Run(inputs, &naive_outputs));
   ASSERT_EQ(naive_outputs.size(), 1UL);
@@ -98,9 +99,8 @@ TEST(AnalysisPredictor, analysis_on) {
 
 TEST(AnalysisPredictor, ZeroCopy) {
   AnalysisConfig config;
-  config.model_dir = FLAGS_dirname;
-  config.use_feed_fetch_ops = false;
-
+  config.SetModel(FLAGS_dirname);
+  config.SwitchUseFeedFetchOps(false);
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
   auto w0 = predictor->GetInputTensor("firstw");
@@ -137,9 +137,9 @@ TEST(AnalysisPredictor, ZeroCopy) {
 
 TEST(AnalysisPredictor, Clone) {
   AnalysisConfig config;
-  config.model_dir = FLAGS_dirname;
-  config.use_feed_fetch_ops = true;
-  config.enable_ir_optim = true;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchUseFeedFetchOps(true);
+  config.SwitchIrOptim(true);
 
   std::vector<std::unique_ptr<PaddlePredictor>> predictors;
   predictors.emplace_back(CreatePaddlePredictor(config));
