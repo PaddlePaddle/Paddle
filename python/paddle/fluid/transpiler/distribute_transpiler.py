@@ -287,14 +287,23 @@ def slice_variable(var_list, slice_count, min_block_size):
 
 class DistributeTranspilerConfig(object):
     """
-    Args:
-        slice_var_up (bool): Do Tensor slice for pservers, default is True.
-        split_method (PSDispatcher): RoundRobin or HashName can be used
-          try to choose the best method to balance loads for pservers.
-        min_block_size (int): Minimum splitted element number in block.
-          According:https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
+    .. py:attribute:: slice_var_up (bool)
+
+          Do Tensor slice for pservers, default is True.
+
+    .. py:attribute:: split_method (PSDispatcher)
+
+          RoundRobin or HashName can be used.
+          Try to choose the best method to balance loads for pservers.
+
+    .. py:attribute:: min_block_size (int)
+
+          Minimum number of splitted elements in block.
+
+          According to : https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
           We can use bandwidth effiently when data size is larger than 2MB.If you
-          want to change it, please be sure you see the slice_variable function.
+          want to change it, please be sure you have read the slice_variable function.
+
     """
 
     slice_var_up = True
@@ -401,11 +410,10 @@ class DistributeTranspiler(object):
 
     def _get_all_remote_sparse_update_op(self, main_program):
         sparse_update_ops = []
-        sparse_update_op_types = ["lookup_table"]
+        sparse_update_op_types = ["lookup_table", "nce", "hierarchical_sigmoid"]
         for op in main_program.global_block().ops:
             if op.type in sparse_update_op_types and op.attr(
-                    'remote_prefetch') is True and not op.attr(
-                        'is_distributed'):
+                    'remote_prefetch') is True:
                 sparse_update_ops.append(op)
         return sparse_update_ops
 
