@@ -90,6 +90,11 @@ set(SEQ_CONV1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_conv1")
 download_model_and_data(${SEQ_CONV1_INSTALL_DIR} "seq_conv1_model.tar.gz" "seq_conv1_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_seq_conv1 ${SEQ_CONV1_INSTALL_DIR} analyzer_seq_conv1_tester.cc)
 
+# seq_pool1
+set(SEQ_POOL1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_pool")
+download_model_and_data(${SEQ_POOL1_INSTALL_DIR} "seq_pool1_model_.tar.gz" "seq_pool1_data.txt.tar.gz")
+inference_analysis_api_test(test_analyzer_seq_pool1 ${SEQ_POOL1_INSTALL_DIR} analyzer_seq_pool1_tester.cc)
+
 # ocr
 set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
 if (NOT EXISTS ${OCR_INSTALL_DIR})
@@ -107,10 +112,6 @@ inference_analysis_api_test_with_refer_result(test_analyzer_mobilenet_transpose 
 # resnet50
 inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
   "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz")
-
-# seq_pool1
-inference_analysis_api_test_with_fake_data(test_analyzer_seq_pool1
-"${INFERENCE_DEMO_INSTALL_DIR}/seq_pool1" analyzer_seq_pool1_tester.cc "seq_pool1.tar.gz")
 
 # mobilenet with depthwise_conv op
 inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_conv
