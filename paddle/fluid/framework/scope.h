@@ -26,6 +26,7 @@ extern "C" {
 #include <vector>
 
 #include "paddle/fluid/framework/rw_lock.h"
+#include "paddle/fluid/framework/temp_variable_pool.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -47,7 +48,7 @@ class Scope;
  */
 class Scope {
  public:
-  Scope() {}
+  Scope() : Scope(nullptr) {}
   ~Scope();
 
   /// Create a sub-scope. Returns a reference other than a pointer so
@@ -60,8 +61,13 @@ class Scope {
   Variable* Var(const std::string& name);
 
   /// Create a variable with a scope-unique name.
+  /// If name is nullptr, TempVar() would be called instead
   /// Caller doesn't own the returned Variable.
   Variable* Var(std::string* name = nullptr);
+
+  /// Create a temp variable without name.
+  /// Caller doesn't own the returned Variable.
+  Variable* TempVar() const;
 
   void EraseVars(const std::vector<std::string>& var_names);
 
@@ -112,7 +118,11 @@ class Scope {
 
  private:
   // Call Scope::NewScope for a sub-scope.
-  explicit Scope(Scope const* parent) : parent_(parent) {}
+  explicit Scope(Scope const* parent) : parent_(parent) {
+    InitTempVariablePool();
+  }
+
+  void InitTempVariablePool();
 
   // Called by Var.
   Variable* VarInternal(const std::string& name);
@@ -132,7 +142,9 @@ class Scope {
 
   // Scope in `kids_` are owned by this class.
   mutable std::list<Scope*> kids_;
-  const Scope* parent_{nullptr};
+  const Scope* parent_;
+
+  mutable std::weak_ptr<TempVariablePool> tmp_pool_;
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 

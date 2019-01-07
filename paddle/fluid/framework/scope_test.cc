@@ -62,10 +62,11 @@ TEST(Scope, GetAllNames) {
   EXPECT_EQ(&s, s.FindScope(v));
 
   std::vector<std::string> ans = s.LocalVarNames();
-  std::string str;
   for (auto& var : ans) {
-    str += var;
+    if (var == "a") {
+      return;
+    }
   }
 
-  EXPECT_STREQ("a", str.c_str());
+  EXPECT_TRUE(false);
 }

@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "glog/logging.h"  // For VLOG
@@ -503,14 +504,10 @@ class OperatorWithKernel : public OperatorBase {
    *
    * * transfered_inplace_vars is a output vector.
    */
-  Scope* PrepareData(const Scope& scope,
-                     const OpKernelType& expected_kernel_key,
-                     std::vector<std::string>* transfered_inplace_vars,
-                     RuntimeContext* ctx) const;
-
-  void TransferInplaceVarsBack(const Scope& scope,
-                               const std::vector<std::string>& inplace_vars,
-                               const Scope& exec_scope) const;
+  Scope* PrepareData(
+      const Scope& scope, const OpKernelType& expected_kernel_key,
+      std::vector<std::pair<Variable*, Variable*>>* transfered_inplace_vars,
+      RuntimeContext* ctx) const;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

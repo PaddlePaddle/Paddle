@@ -875,6 +875,17 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
 }
 
+static inline void TransferInplaceVarsBack(
+    const std::vector<std::pair<Variable*, Variable*>>& vars_pair) {
+  for (auto& pair : vars_pair) {
+    auto* original_tensor =
+        GetMutableLoDTensorOrSelectedRowsValueFromVar(pair.first);
+    auto* transformed_tensor =
+        GetLoDTensorOrSelectedRowsValueFromVar(*pair.second);
+    original_tensor->ShareDataWith(*transformed_tensor);
+  }
+}
+
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   RuntimeContext ctx(Inputs(), Outputs(), scope);
@@ -912,7 +923,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   // do data transformScope &transfer_scope;
-  std::vector<std::string> transfered_inplace_vars;
+  std::vector<std::pair<Variable*, Variable*>> transfered_inplace_vars;
   auto* transfer_scope =
       PrepareData(scope, expected_kernel_key, &transfered_inplace_vars, &ctx);
 
@@ -930,10 +941,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // not Scope. Imperative mode only pass inputs and get outputs.
   kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx, ctx));
 
-  if (!transfered_inplace_vars.empty()) {
-    // there is inplace variable has been transfered.
-    TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
-  }
+  TransferInplaceVarsBack(transfered_inplace_vars);
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
@@ -953,26 +961,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 }
 
-void OperatorWithKernel::TransferInplaceVarsBack(
-    const Scope& scope, const std::vector<std::string>& inplace_vars,
-    const Scope& transfer_scope) const {
-  for (auto& var_name : inplace_vars) {
-    VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
-    auto* original_tensor =
-        GetMutableLoDTensorOrSelectedRowsValueFromVar(scope.FindVar(var_name));
-    auto* var = transfer_scope.FindVar(var_name);
-    PADDLE_ENFORCE(var != nullptr, "The var[%s] should not be nullptr",
-                   var_name);
-    auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
-    original_tensor->ShareDataWith(*transformed_tensor);
-  }
-}
-
 Scope* OperatorWithKernel::PrepareData(
     const Scope& scope, const OpKernelType& expected_kernel_key,
-    std::vector<std::string>* transfered_inplace_vars,
+    std::vector<std::pair<Variable*, Variable*>>* transfered_inplace_vars,
     RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
+  std::unique_ptr<std::unordered_set<std::string>> out_var_name_set;
   for (auto& var_name_item : Inputs()) {
     std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
 
@@ -997,12 +991,6 @@ Scope* OperatorWithKernel::PrepareData(
         continue;
       }
 
-      auto out_var_names = OutputVars(true);
-      if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
-          out_var_names.end()) {
-        transfered_inplace_vars->emplace_back(var_name);
-      }
-
       VLOG(3) << "Transform Variable " << var_name << " from "
               << kernel_type_for_var << " to " << expected_kernel_key;
 
@@ -1018,15 +1006,29 @@ Scope* OperatorWithKernel::PrepareData(
       // If this op is not called by an Executor or ParallelExecutor, it should
       // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
       // variables, that behavior a lot different.
+      Variable* trans_var;
       if (!run_by_executor_) {
         new_scope = TryCreateTransferScope(kernel_type_for_var,
                                            expected_kernel_key, &scope);
-      }
-      if (!new_scope) {
-        new_scope = &scope.NewScope();
+        if (!new_scope) {
+          new_scope = &scope.NewScope();
+        }
+
+        trans_var = new_scope->Var(var_name);
+      } else {
+        trans_var = scope.TempVar();
       }
 
-      auto* trans_var = new_scope->Var(var_name);
+      if (!out_var_name_set) {
+        auto out_var_names = OutputVars(true);
+        out_var_name_set.reset(new std::unordered_set<std::string>(
+            out_var_names.begin(), out_var_names.end()));
+      }
+
+      if (out_var_name_set->count(var_name) > 0) {
+        transfered_inplace_vars->emplace_back(var, trans_var);
+      }
+
       input_vars[i] = trans_var;
 
       Tensor out;

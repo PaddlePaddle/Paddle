@@ -70,6 +70,17 @@ int64_t GetEagerDeletionThreshold() {
 
 bool IsFastEagerDeletionModeEnabled() { return FLAGS_fast_eager_deletion_mode; }
 
+constexpr char kTempVariablePoolName[] = "@TEMP_VARIABLE_POOL@";
+
+void Scope::InitTempVariablePool() {
+  auto* var = new Variable();
+  auto* temp_var_pool = var->GetMutable<std::shared_ptr<TempVariablePool>>();
+  temp_var_pool->reset(new TempVariablePool());
+  tmp_pool_ = *temp_var_pool;
+
+  vars_.emplace(kTempVariablePoolName, std::unique_ptr<Variable>(var));
+}
+
 Scope::~Scope() { DropKids(); }
 
 Scope& Scope::NewScope() const {
@@ -87,12 +98,23 @@ Variable* Scope::Var(const std::string& name) {
 }
 
 Variable* Scope::Var(std::string* name) {
-  auto new_name = string::Sprintf("%p.%d", this, vars_.size());
-  if (name != nullptr) {
-    *name = new_name;
+  if (name == nullptr) {
+    return TempVar();
+  } else {
+    *name = string::Sprintf("%p.%d", this, vars_.size());
+    SCOPE_VARS_WRITER_LOCK
+    return VarInternal(*name);
   }
-  SCOPE_VARS_WRITER_LOCK
-  return VarInternal(new_name);
+}
+
+Variable* Scope::TempVar() const {
+  if (auto tmp_pool = tmp_pool_.lock()) {
+    auto* v = new Variable();
+    tmp_pool->AddVar(std::unique_ptr<Variable>(v));
+    return v;
+  } else {
+    PADDLE_THROW("Temp Variable pool cannot be deleted");
+  }
 }
 
 Variable* Scope::FindVar(const std::string& name) const {
