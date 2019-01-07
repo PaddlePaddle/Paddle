@@ -93,6 +93,8 @@ class OpHandleBase {
 
   ir::Node *Node() { return node_; }
 
+  void Wait();
+
  protected:
   void RunAndRecordEvent(const std::function<void()> &callback);
 

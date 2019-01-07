@@ -168,6 +168,22 @@ size_t OpHandleBase::NotReadyInputSize() const {
   return res.size();
 }
 
+void OpHandleBase::Wait() {
+  for (auto &it : dev_ctxes_) {
+    it.second->Wait();
+  }
+
+  // for test
+  for (auto &it : dev_ctxes_) {
+    int dev_id = boost::get<platform::CUDAPlace>(it.fist).device;
+    auto &nccl_ctx = nccl_ctxs_->at(dev_id);
+    nccl_ctx.Wait();
+    // auto stream = nccl_ctx.stream();
+    // PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+    // PADDLE_ENFORCE(cudaGetLastError());
+  }
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

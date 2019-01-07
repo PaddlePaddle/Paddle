@@ -18,6 +18,8 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DECLARE_bool(benchmark);
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -220,6 +222,12 @@ void ThreadedSSAGraphExecutor::RunOp(
       running_ops_--;
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << "Signal posted";
+
+      if (FLAGS_benchmark) {
+        VLOG(10) << op->Name() << " wait begin";
+        op->Wait();
+        VLOG(10) << op->Name() << " wait end";
+      }
     } catch (...) {
       exception_holder_.Catch(std::current_exception());
     }
