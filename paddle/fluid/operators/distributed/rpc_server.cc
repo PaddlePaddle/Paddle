@@ -97,21 +97,32 @@ void RPCServer::WaitState(const RPCServerState state) {
 // ----------------------------------------------------------------
 // variable scope barriers
 void RPCServer::MarkVarReady(const std::string& varname) {
+  std::unique_lock<std::mutex> lock(var_ready_mutex_);
   if (var_ready_map_.find(varname) != var_ready_map_.end()) {
     var_ready_map_[varname].reset(new Barrier(num_clients_));
   }
 }
 
 void RPCServer::WaitVarReady(const std::string& varname) {
+  std::unique_lock<std::mutex> lock(var_ready_mutex_);
   if (var_ready_map_.find(varname) != var_ready_map_.end()) {
     var_ready_map_[varname]->Wait();
   }
 }
 
 void RPCServer::ResetVarReady() {
+  std::unique_lock<std::mutex> lock(var_ready_mutex_);
   if (!var_ready_map_.empty()) {
     var_ready_map_.clear();
   }
+}
+
+Barrier* RPCServer::VarReadyBarrier(const std::string& varname) {
+  std::unique_lock<std::mutex> lock(var_ready_mutex_);
+  if (var_ready_map_.find(varname) != var_ready_map_.end()) {
+    return var_ready_map_[varname].get();
+  }
+  return nullptr;
 }
 
 // void RPCServer::RegisterVar(const std::string& var_name,

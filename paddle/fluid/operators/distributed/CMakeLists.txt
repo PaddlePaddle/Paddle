@@ -68,7 +68,9 @@ cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler)
 cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_rpc memory)
 
 if(WITH_GPU)
+    cc_library(collective_server SRCS collective_server.cc DEPS sendrecvop_rpc)
+    cc_library(collective_client SRCS collective_client.cc DEPS sendrecvop_rpc)
     cc_test(collective_server_test SRCS collective_server_test.cc 
-        DEPS sendrecvop_rpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf executor
-        selected_rows_functor  scope math_function SERIAL)
+        DEPS collective_server collective_client ${RPC_DEPS}
+        executor selected_rows_functor scope math_function SERIAL)
 endif()

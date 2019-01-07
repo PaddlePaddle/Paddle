@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/collective_client.h"
 #include "paddle/fluid/operators/distributed/collective_server.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace framework = paddle::framework;
@@ -35,11 +34,10 @@ std::unique_ptr<distributed::CollectiveServer> StartServer(
     const std::string& ep, int fan_in, framework::Scope* scope,
     platform::DeviceContext* dev_ctx) {
   distributed::CollectiveServer* server =
-      distributed::CollectiveServer::GetInstance(ep, fan_in);
+      distributed::CollectiveServer::GetInstance(ep, fan_in, scope, dev_ctx);
 
   auto rpc_server = server->GetRPCServer();
-  rpc_server->RegisterVar("var1", distributed::kRequestGetMonomerVariable,
-                          scope, dev_ctx);
+  rpc_server->MarkVarReady("var1");
 
   std::cout << "StartServer return" << std::endl;
   return std::unique_ptr<distributed::CollectiveServer>(server);
@@ -106,8 +104,8 @@ TEST(PREFETCH, GPU) {
   Gather(vars, &ctx);
 
   std::cout << "begin WaitVarBarrier" << std::endl;
-  rpc_server->WaitVarBarrier("var1");
-  rpc_server->ClearRegisteredVars();
+  rpc_server->WaitVarReady("var1");
+  rpc_server->ResetVarReady();
   server->Stop();
 
   scope.release();

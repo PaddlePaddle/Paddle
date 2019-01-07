@@ -30,9 +30,13 @@ namespace distributed {
 std::once_flag CollectiveServer::init_flag_;
 std::shared_ptr<CollectiveServer> CollectiveServer::collective_server_(nullptr);
 
-CollectiveServer::CollectiveServer(const std::string& end_point, int fan_in) {
+CollectiveServer::CollectiveServer(const std::string &end_point, int fan_in,
+                                   framework::Scope *scope,
+                                   platform::DeviceContext *dev_ctx) {
   VLOG(1) << "Create colllective server:" << end_point << ", fan_in:" << fan_in;
   rpc_server_.reset(new RPCSERVER_T(end_point, fan_in));
+  scope_ = scope;
+  dev_ctx_ = dev_ctx;
 }
 
 void CollectiveServer::Stop() {
@@ -44,14 +48,18 @@ void CollectiveServer::Stop() {
 void CollectiveServer::StartServer() {
   get_monomer_handler_.reset(new GetMonomerHandler());
   get_monomer_handler_->SetRPCServer(rpc_server_.get());
+  get_monomer_handler_->SetScope(scope_);
+  get_monomer_handler_->SetDevCtx(dev_ctx_);
 
   get_barrier_handler_.reset(new GetMonomerBarrierHandler());
   get_barrier_handler_->SetRPCServer(rpc_server_.get());
+  get_barrier_handler_->SetScope(scope_);
+  get_barrier_handler_->SetDevCtx(dev_ctx_);
 
-  rpc_server_->RegisterRPC(distributed::kRequestGetMonomerVariable,
+  rpc_server_->RegisterRPC(distributed::RequestType::GET_MONOMER,
                            get_monomer_handler_.get(),
                            FLAGS_collective_get_thread_num);
-  rpc_server_->RegisterRPC(distributed::kRequestGetMonomerBarrier,
+  rpc_server_->RegisterRPC(distributed::RequestType::GET_MONOMER_BARRIER,
                            get_barrier_handler_.get(), 1);
 
   server_thread_.reset(new std::thread([&]() { rpc_server_->StartServer(); }));
