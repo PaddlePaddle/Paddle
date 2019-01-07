@@ -21,6 +21,10 @@ namespace platform {
 TEST(TensorDescriptor, Empty) {
   ActivationDescriptor a;
   TensorDescriptor t;
+  TensorDescriptor t1;
+  TensorDescriptor *t11 = new TensorDescriptor();
+  delete t11;
+  std::unique_ptr<TensorDescriptor> tt(new TensorDescriptor());
 }
 
 TEST(TensorDescriptor, Normal) {

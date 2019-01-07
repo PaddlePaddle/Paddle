@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <iostream>
 #include <iterator>
 #include <memory>
 #include <numeric>
@@ -54,81 +55,51 @@ cudnnDataType_t ToCudnnDataType(const framework::proto::VarType::Type& t) {
 
 class ActivationDescriptor {
  public:
-  using T = cudnnActivationDescriptor_t;
+  using T = cudnnActivationStruct;
   struct Deleter {
     void operator()(T* t) {
       if (t != nullptr) {
-        PADDLE_ENFORCE(dynload::cudnnDestroyActivationDescriptor(*t));
+        PADDLE_ENFORCE(dynload::cudnnDestroyActivationDescriptor(t));
+        t = nullptr;
       }
     }
   };
   ActivationDescriptor() {
-    T raw_ptr;
+    T* raw_ptr;
     PADDLE_ENFORCE(dynload::cudnnCreateActivationDescriptor(&raw_ptr));
-    desc_.reset(&raw_ptr);
+    desc_.reset(raw_ptr);
   }
   template <typename T>
   void set(cudnnActivationMode_t mode, const T& coef) {
-    double relu_ceiling = 0.0;
-    ActivationMode activation_mode = StringToActivationMode(act);
-    cudnnActivationMode_t mode;
-    switch (activation_mode) {
-      case ActivationMode::kRelu6:
-        relu_ceiling = 6.0;
-        mode = CUDNN_ACTIVATION_CLIPPED_RELU;
-        break;
-      case ActivationMode::kReluX:
-        relu_ceiling = value_max;
-        mode = CUDNN_ACTIVATION_CLIPPED_RELU;
-        break;
-      case ActivationMode::kRelu:
-        mode = CUDNN_ACTIVATION_RELU;
-        break;
-      case ActivationMode::kSigmoid:
-        mode = CUDNN_ACTIVATION_SIGMOID;
-        break;
-      case ActivationMode::kTanh:
-        mode = CUDNN_ACTIVATION_TANH;
-        break;
-      default:
-        PADDLE_THROW("unrecognized activation mode: %d .",
-                     static_cast<int>(activation_mode));
-    }
     CUDNN_ENFORCE(dynload::cudnnSetActivationDescriptor(
-        desc_, mode, CUDNN_NOT_PROPAGATE_NAN, relu_ceiling));
+        desc_.get(), mode, CUDNN_NOT_PROPAGATE_NAN, static_cast<double>(coef)));
   }
 
-  T desc() { return *desc_; }
-  T desc() const { return *desc_; }
+  T* desc() { return desc_.get(); }
+  T* desc() const { return desc_.get(); }
 
  private:
   std::unique_ptr<T, Deleter> desc_;
 };
 
-struct CudnnActivationFunctor {
-  void operator()() {}
-};
-
-struct CudnnActivationGradFunctor {};
-
 class TensorDescriptor {
  public:
-  using T = cudnnTensorDescriptor_t;
+  using T = cudnnTensorStruct;
   struct Deleter {
     void operator()(T* t) {
       if (t != nullptr) {
-        PADDLE_ENFORCE(dynload::cudnnDestroyTensorDescriptor(*t));
+        PADDLE_ENFORCE(dynload::cudnnDestroyTensorDescriptor(t));
+        t = nullptr;
       }
     }
   };
   TensorDescriptor() {
-    T raw_ptr;
+    T* raw_ptr;
     PADDLE_ENFORCE(dynload::cudnnCreateTensorDescriptor(&raw_ptr));
-    desc_.reset(&raw_ptr);
+    desc_.reset(raw_ptr);
   }
-
-  T desc() { return *desc_; }
-  T desc() const { return *desc_; }
+  T* desc() { return desc_.get(); }
+  T* desc() const { return desc_.get(); }
   void set(const Tensor& tensor, const int groups = 1) {
     auto dims = framework::vectorize2int(tensor.dims());
     std::vector<int> strides(dims.size());
@@ -136,19 +107,17 @@ class TensorDescriptor {
     for (int i = dims.size() - 2; i >= 0; i--) {
       strides[i] = dims[i + 1] * strides[i + 1];
     }
-    // Update tensor descriptor dims setting if groups > 1
-    // NOTE: Assume using NCHW or NCDHW order
-    std::vector<int> dims_with_group(dims.begin(), dims.end());  // copy
+    std::vector<int> dims_with_group(dims.begin(), dims.end());
     if (groups > 1) {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
     PADDLE_ENFORCE(dynload::cudnnSetTensorNdDescriptor(
-        *desc_, ToCudnnDataType(tensor.type()), dims_with_group.size(),
+        desc_.get(), ToCudnnDataType(tensor.type()), dims_with_group.size(),
         dims_with_group.data(), strides.data()));
   }
 
  private:
-  std::unique_ptr<T> desc_;
+  std::unique_ptr<T, Deleter> desc_;
 };
 
 }  // namespace platform
