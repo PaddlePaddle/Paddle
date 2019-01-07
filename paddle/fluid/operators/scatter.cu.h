@@ -51,7 +51,8 @@ void GPUScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
                       const Tensor& index, Tensor* output) {
   // PADDLE_ENFORCE(platform::is_gpu_place(place));
   // check index of shape 1-D
-  PADDLE_ENFORCE(index.dims().size() == 1);
+  PADDLE_ENFORCE(index.dims().size() == 1 ||
+                 (index.dims().size() == 2 && index.dims()[1] == 1));
   int index_size = index.dims()[0];
 
   auto src_dims = src.dims();

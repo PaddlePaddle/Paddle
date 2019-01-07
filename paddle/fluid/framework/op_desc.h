@@ -65,6 +65,8 @@ class OpDesc {
     return attrs_.find(name) != attrs_.end();
   }
 
+  bool HasProtoAttr(const std::string &name) const;
+
   proto::AttrType GetAttrType(const std::string &name) const;
 
   std::vector<std::string> AttrNames() const;
@@ -120,6 +122,8 @@ class OpDesc {
   void Flush();
 
   BlockDesc *Block() { return this->block_; }
+
+  const BlockDesc *Block() const { return this->block_; }
 
  private:
   template <typename MapType>

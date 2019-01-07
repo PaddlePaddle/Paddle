@@ -21,13 +21,24 @@ from paddle.fluid.op import Operator
 
 
 class ElementwiseMulOp(OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = False
+
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.dtype = np.float32
+        self.axis = -1
+        self.init_dtype()
+        self.init_input_output()
+        self.init_kernel_type()
+        self.init_axis()
+
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [13, 17]).astype("float64"),
-            'Y': np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
-        self.outputs = {'Out': np.multiply(self.inputs['X'], self.inputs['Y'])}
+        self.outputs = {'Out': self.out}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
 
     def test_check_output(self):
         self.check_output()
@@ -40,6 +51,17 @@ class ElementwiseMulOp(OpTest):
 
     def test_check_grad_ingore_y(self):
         self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+    def init_dtype(self):
+        pass
+
+    def init_axis(self):
+        pass
 
 
 class TestElementwiseMulOp_scalar(ElementwiseMulOp):
@@ -63,17 +85,13 @@ class TestElementwiseMulOp_Vector(ElementwiseMulOp):
 
 
 class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp):
-    def setUp(self):
-        self.op_type = "elementwise_mul"
-        self.inputs = {
-            'X': np.random.rand(2, 3, 4).astype(np.float64),
-            'Y': np.random.rand(2).astype(np.float64)
-        }
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(2).astype(self.dtype)
+        self.out = self.x * self.y.reshape(2, 1, 1)
 
-        self.attrs = {'axis': 0}
-        self.outputs = {
-            'Out': self.inputs['X'] * self.inputs['Y'].reshape(2, 1, 1)
-        }
+    def init_axis(self):
+        self.axis = 0
 
 
 class TestElementwiseMulOp_broadcast_1(ElementwiseMulOp):
@@ -117,55 +135,9 @@ class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
         }
 
 
-class TestElementWiseMulSelectedRows(OpTest):
-    def setUp(self):
-        self.rows = [0, 1, 2, 3, 4, 5, 6]
-        self.feature = 12
-        self.height = 100
-        self.input_shape = (len(self.rows), self.feature)
-
-    def prepare_input(self, scope, place):
-        self.input = {
-            "X": np.random.random(self.input_shape).astype("float32"),
-            "Y": np.random.random(self.input_shape).astype("float32")
-        }
-
-        def init_input(in_name):
-            x_selected_rows = scope.var(in_name).get_selected_rows()
-            x_selected_rows.set_height(self.height)
-            x_selected_rows.set_rows(self.rows)
-            x_array = self.input[in_name]
-            x_tensor = x_selected_rows.get_tensor()
-            x_tensor.set(x_array, place)
-
-        init_input("X")
-        init_input("Y")
-
-    def create_out_selected_row(self, scope):
-        return scope.var('Out').get_selected_rows()
-
-    def check_result(self, out_selected_rows):
-        assert out_selected_rows.height() == self.height
-        assert out_selected_rows.rows() == self.rows
-        out_tensor = np.array(out_selected_rows.get_tensor())
-        assert out_tensor.shape == self.input_shape
-
-    def check_with_place(self, place):
-        scope = core.Scope()
-        self.prepare_input(scope, place)
-
-        out_selected_rows = self.create_out_selected_row(scope)
-        out_selected_rows.set_height(0)
-        out_selected_rows.set_rows([])
-
-        elementwise_mul = Operator("elementwise_mul", X='X', Y='Y', Out='Out')
-        elementwise_mul.run(scope, place)
-        self.check_result(out_selected_rows)
-
-    def test_elewisemul_with_selected_rows_input(self):
-        places = [core.CPUPlace()]
-        for place in places:
-            self.check_with_place(place)
+class TestElementwiseMulOpFp16(ElementwiseMulOp):
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 if __name__ == '__main__':

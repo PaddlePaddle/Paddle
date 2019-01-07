@@ -24,25 +24,26 @@ class ScaleKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
     auto* in_var = ctx.InputVar("X");
-    auto* in = ctx.Input<framework::Tensor>("X");
-
-    auto* out_var = ctx.OutputVar("Out");
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(in->place());
-
-    PADDLE_ENFORCE_EQ(in->dims(), out->dims(),
-                      "in and out should have the same dim");
+    auto* in = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in_var);
 
     auto scale = static_cast<T>(ctx.Attr<float>("scale"));
     auto bias = static_cast<T>(ctx.Attr<float>("bias"));
     auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
 
+    auto* out_var = ctx.OutputVar("Out");
     if (in_var->IsType<framework::SelectedRows>() && in_var != out_var) {
       auto& in_slr = in_var->Get<framework::SelectedRows>();
       auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
       out_slr->set_rows(in_slr.rows());
       out_slr->set_height(in_slr.height());
     }
+
+    auto* out =
+        framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
+    out->mutable_data<T>(in->place());
+
+    PADDLE_ENFORCE_EQ(in->dims(), out->dims(),
+                      "in and out should have the same dim");
 
     auto eigen_out = framework::EigenVector<T>::Flatten(*out);
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);

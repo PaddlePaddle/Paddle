@@ -27,6 +27,7 @@ void BindConstValue(pybind11::module* m) {
   m->def("kZeroVarSuffix", [] { return framework::kZeroVarSuffix; });
   m->def("kControlDepVarName",
          [] { return framework::ir::Node::kControlDepVarName; });
+  m->def("kNewGradSuffix", [] { return framework::kNewGradSuffix; });
 
   auto op_proto_and_checker_maker =
       m->def_submodule("op_proto_and_checker_maker");

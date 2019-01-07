@@ -44,6 +44,8 @@ class DataToLoDTensorConverter(object):
             self.dtype = 'int64'
         elif dtype == core.VarDesc.VarType.FP64:
             self.dtype = 'float64'
+        elif dtype == core.VarDesc.VarType.FP16:
+            self.dtype = 'float16'
         elif dtype == core.VarDesc.VarType.INT32:
             self.dtype = 'int32'
         elif dtype == core.VarDesc.VarType.UINT8:
@@ -258,17 +260,19 @@ class DataFeeder(object):
         multiple mini-batches. Each mini-batch will be feed on each device.
 
         Args:
-            reader(fun): the input data.
-            multi_devices(bool): the number of places. Default None.
-            num_places(int): the number of places. Default None.
-            drop_last(bool): the number of places. Default None.
+            reader(function): the reader is the function which can generate data.
+            multi_devices(bool): whether to use multiple devices or not.
+            num_places(int): if the multi_devices is True, you can specify the number
+                of GPU to use, if 'num_places' is None, the function will use all the
+                GPU of the current machine. Default None.
+            drop_last(bool): whether to drop the last batch if the
+                size of the last batch is less than batch_size. Default True.
 
         Returns:
             dict: the result of conversion.
 
         Raises:
-            ValueError: If drop_last is False and the data batch which cannot
-            fit for devices.
+            ValueError: If drop_last is False and the data batch which cannot fit for devices.
         """
 
         def __reader_creator__():

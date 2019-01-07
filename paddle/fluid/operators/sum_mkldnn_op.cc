@@ -245,7 +245,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       }
     } else {
       PADDLE_THROW("Unexpected branch, output variable type is %s",
-                   out_var->Type().name());
+                   framework::ToTypeName(out_var->Type()));
     }
   }
 };

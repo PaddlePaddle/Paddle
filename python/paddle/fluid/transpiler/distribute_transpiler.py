@@ -31,18 +31,17 @@ Steps to transpile pserver:
 """
 
 import math
-import sys
 import numpy as np
 import collections
-import six
 import logging
 
-from .ps_dispatcher import RoundRobin, HashName, PSDispatcher
-from .. import core, framework
+from .ps_dispatcher import RoundRobin, PSDispatcher
+from .. import core, framework, unique_name
 from ..framework import Program, default_main_program, \
     default_startup_program, Block, \
     Parameter, grad_var_name
 from .details import *
+from ..distribute_lookup_table import find_distributed_lookup_table
 from functools import reduce
 
 LOOKUP_TABLE_TYPE = "lookup_table"
@@ -126,21 +125,33 @@ def slice_variable(var_list, slice_count, min_block_size):
 
 class DistributeTranspilerConfig(object):
     """
-    slice_var_up (bool): Do Tensor slice for pservers, default is True.
-    split_method (PSDispatcher): RoundRobin or HashName can be used
-        try to choose the best method to balance loads for pservers.
-    min_block_size (int): Minimum splitted element number in block.
-        According:https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
-        We can use bandwidth effiently when data size is larger than 2MB.If you
-        want to change it, please be sure you see the slice_variable function.
+    .. py:attribute:: slice_var_up (bool)
+
+          Do Tensor slice for pservers, default is True.
+
+    .. py:attribute:: split_method (PSDispatcher)
+
+          RoundRobin or HashName can be used.
+          Try to choose the best method to balance loads for pservers.
+
+    .. py:attribute:: min_block_size (int)
+
+          Minimum number of splitted elements in block.
+
+          According to : https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
+          We can use bandwidth effiently when data size is larger than 2MB.If you
+          want to change it, please be sure you have read the slice_variable function.
+
     """
 
     slice_var_up = True
     split_method = None
     min_block_size = 8192
+    enable_dc_asgd = False
     # supported modes: pserver, nccl2
     mode = "pserver"
     print_log = False
+    wait_port = True
 
 
 class DistributeTranspiler(object):
@@ -163,35 +174,34 @@ class DistributeTranspiler(object):
     Examples:
         .. code-block:: python
 
-           # for pserver mode
-           pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-           trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-           current_endpoint = "192.168.0.1:6174"
-           trainer_id = 0
-           trainers = 4
-           role = os.getenv("PADDLE_TRAINING_ROLE")
-
-           t = fluid.DistributeTranspiler()
-           t.transpile(
-                trainer_id, pservers=pserver_endpoints, trainers=trainers)
-           if role == "PSERVER":
-                pserver_program = t.get_pserver_program(current_endpoint)
-                pserver_startup_program = t.get_startup_program(current_endpoint,
+            # for pserver mode
+            pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+            trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+            current_endpoint = "192.168.0.1:6174"
+            trainer_id = 0
+            trainers = 4
+            role = os.getenv("PADDLE_TRAINING_ROLE")
+            t = fluid.DistributeTranspiler()
+            t.transpile(
+                 trainer_id, pservers=pserver_endpoints, trainers=trainers)
+            if role == "PSERVER":
+                 pserver_program = t.get_pserver_program(current_endpoint)
+                 pserver_startup_program = t.get_startup_program(current_endpoint,
                                                                 pserver_program)
-           elif role == "TRAINER":
-                trainer_program = t.get_trainer_program()
+            elif role == "TRAINER":
+                 trainer_program = t.get_trainer_program()
 
-           # for nccl2 mode
-           config = fluid.DistributeTranspilerConfig()
-           config.mode = "nccl2"
-           t = fluid.DistributeTranspiler(config=config)
-           t.transpile(trainer_id, workers=workers, current_endpoint=curr_ep)
-           exe = fluid.ParallelExecutor(
-               use_cuda,
-               loss_name=loss_var.name,
-               num_trainers=len(trainers.split(",)),
-               trainer_id=trainer_id
-           )
+            # for nccl2 mode
+            config = fluid.DistributeTranspilerConfig()
+            config.mode = "nccl2"
+            t = fluid.DistributeTranspiler(config=config)
+            t.transpile(trainer_id, workers=workers, current_endpoint=curr_ep)
+            exe = fluid.ParallelExecutor(
+                use_cuda,
+                loss_name=loss_var.name,
+                num_trainers=len(trainers.split(",)),
+                trainer_id=trainer_id
+            )
     """
 
     def __init__(self, config=None):
@@ -213,13 +223,16 @@ class DistributeTranspiler(object):
                          trainer_id,
                          trainers,
                          current_endpoint,
-                         startup_program=None):
+                         startup_program=None,
+                         wait_port=True):
         if not startup_program:
             startup_program = default_startup_program()
         if trainer_id >= 0:
             worker_endpoints = trainers.split(",")
             # send NCCL_ID to others or recv from trainer 0
             worker_endpoints.remove(current_endpoint)
+            if trainer_id == 0 and wait_port:
+                wait_server_ready(worker_endpoints)
 
             nccl_id_var = startup_program.global_block().create_var(
                 name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
@@ -235,6 +248,30 @@ class DistributeTranspiler(object):
             return nccl_id_var
         else:
             raise ValueError("must set trainer_id > 0")
+
+    def _get_all_remote_sparse_update_op(self, main_program):
+        sparse_update_ops = []
+        sparse_update_op_types = ["lookup_table", "nce", "hierarchical_sigmoid"]
+        for op in main_program.global_block().ops:
+            if op.type in sparse_update_op_types and op.attr(
+                    'remote_prefetch') is True:
+                sparse_update_ops.append(op)
+        return sparse_update_ops
+
+    def _update_remote_sparse_update_op(self, param_varname, height_sections,
+                                        endpint_map, table_names):
+        for op in self.sparse_update_ops:
+            if param_varname in op.input_arg_names:
+                op._set_attr('epmap', endpint_map)
+                op._set_attr('table_names', table_names)
+                op._set_attr('height_sections', height_sections)
+                op._set_attr('trainer_id', self.trainer_id)
+
+    def _is_input_of_remote_sparse_update_op(self, param_name):
+        for op in self.sparse_update_ops:
+            if param_name in op.input_arg_names:
+                return True
+        return False
 
     def transpile(self,
                   trainer_id,
@@ -252,6 +289,8 @@ class DistributeTranspiler(object):
                 n workers, the id may range from 0 ~ n-1
             program (Program|None): program to transpile,
                 default is fluid.default_main_program().
+            startup_program (Program|None): startup_program to transpile,
+                default is fluid.default_startup_program().
             pservers (str): comma separated ip:port string for the pserver
                 list.
             trainers (int|str): in pserver mode this is the number of
@@ -274,11 +313,13 @@ class DistributeTranspiler(object):
 
         if self.config.mode == "nccl2":
             assert (isinstance(trainers, str))
+            self.origin_program._trainers_endpoints = trainers.split(",")
             self._transpile_nccl2(
                 trainer_id,
                 trainers,
                 current_endpoint,
-                startup_program=startup_program)
+                startup_program=startup_program,
+                wait_port=self.config.wait_port)
             return
 
         self.trainer_num = trainers
@@ -289,12 +330,19 @@ class DistributeTranspiler(object):
         self.optimize_ops, self.params_grads = self._get_optimize_pass()
 
         ps_dispatcher = self.config.split_method(self.pserver_endpoints)
-        self.has_distributed_lookup_table = self._has_distributed_lookup_table()
+        self.table_name = find_distributed_lookup_table(self.origin_program)
+        self.has_distributed_lookup_table = self.table_name != None
         self.param_name_to_grad_name = dict()
         self.grad_name_to_param_name = dict()
         for param_var, grad_var in self.params_grads:
             self.param_name_to_grad_name[param_var.name] = grad_var.name
             self.grad_name_to_param_name[grad_var.name] = param_var.name
+
+        # get all sparse update ops
+        self.sparse_update_ops = self._get_all_remote_sparse_update_op(
+            self.origin_program)
+        # use_sparse_update_param_name -> split_height_section
+        self.sparse_param_to_height_sections = dict()
 
         # add distributed attrs to program
         self.origin_program._is_distributed = True
@@ -333,6 +381,13 @@ class DistributeTranspiler(object):
                 splited_grad_varname = splited_vars[0].name
                 index = find_op_by_output_arg(
                     program.global_block(), splited_grad_varname, reverse=True)
+                if splited_vars[0].type == core.VarDesc.VarType.SELECTED_ROWS:
+                    sparse_param_name = self.grad_name_to_param_name[
+                        grad_varname]
+                    if self._is_input_of_remote_sparse_update_op(
+                            sparse_param_name):
+                        self.sparse_param_to_height_sections[
+                            sparse_param_name] = [splited_vars[0].shape[0]]
             elif len(splited_vars) > 1:
                 orig_var = program.global_block().vars[splited_grad_varname]
                 index = find_op_by_output_arg(
@@ -383,6 +438,8 @@ class DistributeTranspiler(object):
                 outputs={"Out": send_barrier_out},
                 attrs={
                     "endpoints": pserver_endpoints,
+                    "sync_mode": self.sync_mode,
+                    "trainer_id": self.trainer_id,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
@@ -401,16 +458,18 @@ class DistributeTranspiler(object):
         all_recv_outputs = []
         for param_varname, splited_var in six.iteritems(self.param_var_mapping):
             eps = []
+            table_names = []
             for var in splited_var:
                 index = [v.name for v in recv_vars].index(var.name)
                 eps.append(eplist[index])
+                table_names.append(var.name)
             if self.sync_mode:
                 recv_dep_in = send_barrier_out
             else:
                 # connect deps to send op in async mode
                 recv_dep_in = self.grad_name_to_send_dummy_out[
                     self.param_name_to_grad_name[param_varname]]
-            all_recv_outputs.extend(splited_var)
+
             # get recv op_role_var, if not splited, the grad should have .trainer suffix
             # if splited, grad should be the original grad var name. ParallelExecutor
             # will use op_role_var to get expected device place to run this op.
@@ -420,17 +479,25 @@ class DistributeTranspiler(object):
             if len(splited_trainer_grad) == 1:
                 recv_op_role_var_name = splited_trainer_grad[0].name
 
-            program.global_block().append_op(
-                type="recv",
-                inputs={"X": [recv_dep_in]},
-                outputs={"Out": splited_var},
-                attrs={
-                    "epmap": eps,
-                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
-                    OP_ROLE_VAR_ATTR_NAME:
-                    [param_varname, recv_op_role_var_name],
-                    "sync_mode": not self.sync_mode
-                })
+            if param_varname in self.sparse_param_to_height_sections:
+                height_sections = self.sparse_param_to_height_sections[
+                    param_varname]
+                self._update_remote_sparse_update_op(
+                    param_varname, height_sections, eps, table_names)
+            else:
+                all_recv_outputs.extend(splited_var)
+                program.global_block().append_op(
+                    type="recv",
+                    inputs={"X": [recv_dep_in]},
+                    outputs={"Out": splited_var},
+                    attrs={
+                        "epmap": eps,
+                        "trainer_id": self.trainer_id,
+                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                        OP_ROLE_VAR_ATTR_NAME:
+                        [param_varname, recv_op_role_var_name],
+                        "sync_mode": not self.sync_mode
+                    })
 
         if self.sync_mode:
             # form a WAW dependency
@@ -440,6 +507,7 @@ class DistributeTranspiler(object):
                 outputs={"Out": all_recv_outputs},
                 attrs={
                     "endpoints": pserver_endpoints,
+                    "trainer_id": self.trainer_id,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
@@ -447,14 +515,15 @@ class DistributeTranspiler(object):
             if len(splited_var) <= 1:
                 continue
             orig_param = program.global_block().vars[param_varname]
-            program.global_block().append_op(
-                type="concat",
-                inputs={"X": splited_var},
-                outputs={"Out": [orig_param]},
-                attrs={
-                    "axis": 0,
-                    RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
-                })
+            if param_varname not in self.sparse_param_to_height_sections:
+                program.global_block().append_op(
+                    type="concat",
+                    inputs={"X": splited_var},
+                    outputs={"Out": [orig_param]},
+                    attrs={
+                        "axis": 0,
+                        RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
+                    })
 
         self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
 
@@ -596,9 +665,6 @@ class DistributeTranspiler(object):
         # NOTE: assume blocks of the same variable is not distributed
         # on the same pserver, only change param/grad varnames for
         # trainers to fetch.
-        sys.stderr.write("get_pserver_program() is deprecated, call \
-get_pserver_programs() to get pserver main and startup \
-in a single call.")
         # step1
         pserver_program = Program()
         pserver_program.random_seed = self.origin_program.random_seed
@@ -637,6 +703,9 @@ in a single call.")
             else:
                 recv_inputs.append(single_trainer_var)
 
+        self._slice_params_and_optimizes = self._get_slice_vars_and_attrs(
+            endpoint)
+
         # step 3
         # Create a union-find data structure from optimize ops,
         # If two ops are connected, we could add these two ops
@@ -651,6 +720,24 @@ in a single call.")
                     endpoint, op):
                 opt_op_on_pserver.append(op)
         # step 3.3
+        # prepare if dc asgd is enabled
+        if self.config.enable_dc_asgd == True:
+            assert (self.sync_mode == False)
+            self.param_bak_list = []
+            # add param_bak for each trainer
+            for p in self.param_grad_ep_mapping[endpoint]["params"]:
+                # each parameter should have w_bak for each trainer id
+                for i in range(self.trainer_num):
+                    param_bak_name = "%s.trainer_%d_bak" % (p.name, i)
+                    tmpvar = pserver_program.global_block().create_var(
+                        # NOTE: this var name format is used in `request_get_handler`
+                        name=param_bak_name,
+                        type=p.type,
+                        shape=p.shape,
+                        dtype=p.dtype)
+                    self.param_bak_list.append((p, tmpvar))
+
+        # step 3.4
         # Iterate through the ops, and if an op and the optimize ops
         # which located on current pserver are in one set, then
         # append it into the sub program.
@@ -787,6 +874,8 @@ in a single call.")
 
         if self.has_distributed_lookup_table:
             attrs['checkpint_block_id'] = checkpoint_block_id
+        if self.config.enable_dc_asgd:
+            attrs['dc_asgd'] = True
 
         if len(prefetch_var_name_to_block_id) > 0:
             attrs[
@@ -800,8 +889,8 @@ in a single call.")
             attrs=attrs)
 
         # add distributed attrs
-        pserver_program._slice_vars_and_attrs = self._get_slice_vars_and_attrs(
-            endpoint)
+        pserver_program._slice_vars_and_attrs = list(
+            self._slice_params_and_optimizes.values())
 
         pserver_program._sync_with_cpp()
         # save pserver program to generate pserver side startup relatively.
@@ -843,18 +932,6 @@ in a single call.")
         Returns:
             Program: parameter server side startup program.
         """
-        sys.stderr.write("get_startup_program() is deprecated, call \
-get_pserver_programs() to get pserver main and startup \
-in a single call.")
-        if pserver_program != None:
-            sys.stderr.write("passing pserver_program to get_startup_program() \
-is deprecated, you can use new API get_pserver_programs() to \
-get both pserver main program and startup program.")
-        if startup_program != None:
-            sys.stderr.write("passing startup_program to get_startup_program() \
-is deprecated, use fluid.program_guard() or pass this argument \
-to transpile() call.")
-
         s_prog = Program()
         orig_s_prog = self.startup_program
         s_prog.random_seed = orig_s_prog.random_seed
@@ -903,14 +980,23 @@ to transpile() call.")
                     inputs=new_inputs,
                     outputs=new_outputs,
                     attrs=op.all_attrs())
+        if self.config.enable_dc_asgd:
+            for p, p_bak in self.param_bak_list:
+                startup_param_var = s_prog.global_block().vars[p.name]
+                startup_tmpvar = s_prog.global_block().vars[p_bak.name]
+                # copy init random value to param_bak
+                s_prog.global_block().append_op(
+                    type="assign",
+                    inputs={"X": startup_param_var},
+                    outputs={"Out": startup_tmpvar})
 
         # add slice vars
-        s_prog._slice_vars_and_attrs = self._get_slice_vars_and_attrs(endpoint)
+        s_prog._slice_vars_and_attrs = pserver_program._slice_vars_and_attrs
 
         return s_prog
 
     def _get_slice_vars_and_attrs(self, endpoint):
-        slice_vars_and_attrs = []
+        slice_vars_and_attrs = {}
         block_suffix = "block"
         for param in self.param_grad_ep_mapping[endpoint]["params"]:
             orig_var_name, block_name, _ = self._get_varname_parts(param.name)
@@ -924,33 +1010,10 @@ to transpile() call.")
             slice_vars = self.param_var_mapping[orig_var_name]
             for slice_var in slice_vars[:block_idx]:
                 skip_dim0 += slice_var.shape[0]
-            slice_vars_and_attrs.append([orig_var, skip_dim0, param])
-
+            slice_vars_and_attrs[param.name] = [orig_var, skip_dim0, param]
         return slice_vars_and_attrs
 
     # ====================== private transpiler functions =====================
-
-    def _has_distributed_lookup_table(self):
-        # process lookup_table_op
-        # 1. check all lookup_table_op is distributed
-        # 2. check all lookup_table_op share the same table.
-        distributed_lookup_table_ops = []
-        # support only one distributed_lookup_table now
-        self.table_name = None
-        for op in self.origin_program.global_block().ops:
-            if op.type == LOOKUP_TABLE_TYPE:
-                if op.attr('is_distributed') is True:
-                    if self.table_name is None:
-                        self.table_name = op.input("W")[0]
-                    if self.table_name != op.input("W")[0]:
-                        raise RuntimeError("all distributed lookup_table_ops"
-                                           " should have only one table")
-                    distributed_lookup_table_ops.append(op)
-                else:
-                    if self.table_name is not None:
-                        assert op.input("W")[0] != self.table_name
-
-        return len(distributed_lookup_table_ops) > 0
 
     def _update_dist_lookup_table_vars(self, param_list, grad_list,
                                        params_grads):
@@ -1175,6 +1238,7 @@ to transpile() call.")
                     attrs={
                         "sync_mode": not self.sync_mode,
                         "epmap": pserver_endpoints,
+                        "trainer_id": self.trainer_id,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                         OP_ROLE_VAR_ATTR_NAME: [
                             self.grad_name_to_param_name[table_grad_name],
@@ -1304,7 +1368,6 @@ to transpile() call.")
         """
         create a new block to handle save checkpoint.
         """
-        import os
 
         pserver_program.global_block().create_var(
             name="kLookupTablePath",
@@ -1404,6 +1467,10 @@ to transpile() call.")
             height_sections = []
             for v in splited_vars:
                 height_sections.append(v.shape[0])
+            sparse_param_name = self.grad_name_to_param_name[orig_var.name]
+            if self._is_input_of_remote_sparse_update_op(sparse_param_name):
+                self.sparse_param_to_height_sections[
+                    sparse_param_name] = height_sections
             program.global_block()._insert_op(
                 index=index + 1,
                 type="split_selected_rows",
@@ -1531,6 +1598,68 @@ to transpile() call.")
                 attrs={"scale": 1.0 / float(self.trainer_num)})
         return merged_var
 
+    def _append_dc_asgd_ops(self, block, param_var, grad_var):
+        # NOTE: can not use grammar candy here, should put ops in specific block
+        local_param_bak = block.create_var(
+            name="%s.local_bak" % param_var.name,
+            shape=param_var.shape,
+            type=param_var.type,
+            dtype=param_var.dtype,
+            persistable=False)
+        # trainer_id_var is block local
+        trainer_id_var = block.create_var(
+            name="@TRAINER_ID@",
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            dtype=core.VarDesc.VarType.INT64,
+            shape=[1],
+            persistable=False)
+
+        # ref_inputs = [x[1] for x in self.param_bak_list]
+        ref_inputs = []
+        for p, p_bak in self.param_bak_list:
+            if p.name == param_var.name:
+                ref_inputs.append(p_bak)
+        block.append_op(
+            type="ref_by_trainer_id",
+            inputs={"X": ref_inputs,
+                    "TrainerId": trainer_id_var},
+            outputs={"Out": local_param_bak})
+
+        def __create_temp_var__():
+            return block.create_var(
+                name=unique_name.generate("tmp_dc_output"),
+                shape=param_var.shape,
+                type=param_var.type,
+                dtype=param_var.dtype,
+                persistable=False)
+
+        o1 = __create_temp_var__()
+        block.append_op(
+            type="elementwise_sub",
+            inputs={"X": param_var,
+                    "Y": local_param_bak},
+            outputs={"Out": o1})
+        o2 = __create_temp_var__()
+        block.append_op(
+            type="elementwise_mul",
+            inputs={"X": o1,
+                    "Y": grad_var},
+            outputs={"Out": o2})
+        o3 = __create_temp_var__()
+        block.append_op(
+            type="elementwise_mul",
+            inputs={"X": o2,
+                    "Y": grad_var},
+            outputs={"Out": o3})
+        # TODO(typhoonzero): append scale
+        o4 = __create_temp_var__()
+        block.append_op(
+            type="elementwise_add",
+            inputs={"X": grad_var,
+                    "Y": o3},
+            outputs={"Out": o4})
+        return o4
+
     def _append_pserver_ops(self, optimize_block, opt_op, endpoint,
                             grad_to_block_id, origin_program, merged_var):
         program = optimize_block.program
@@ -1546,9 +1675,16 @@ to transpile() call.")
                     break
             return param_block
 
+        if self.config.enable_dc_asgd:
+            param_var = _get_param_block(opt_op)
+            dc = self._append_dc_asgd_ops(optimize_block, param_var, merged_var)
+
         for key in opt_op.input_names:
             if key == "Grad":
-                new_inputs[key] = merged_var
+                if self.config.enable_dc_asgd:
+                    new_inputs[key] = dc
+                else:
+                    new_inputs[key] = merged_var
             elif key == "Param":
                 param_block = _get_param_block(opt_op)
                 if not param_block:
@@ -1579,16 +1715,23 @@ to transpile() call.")
             if key in ["Param", "Grad", "LearningRate"]:
                 continue
             var = self.origin_program.global_block().vars[opt_op.input(key)[0]]
+            param_var = new_inputs["Param"]
             # update accumulator variable shape
-            param_shape = new_inputs["Param"].shape
-            new_shape = self._get_optimizer_input_shape(opt_op.type, key,
-                                                        var.shape, param_shape)
+            new_shape = self._get_optimizer_input_shape(
+                opt_op.type, key, var.shape, param_var.shape)
             tmpvar = pserver_block.create_var(
                 name=var.name,
                 persistable=var.persistable,
                 dtype=var.dtype,
                 shape=new_shape)
             new_inputs[key] = tmpvar
+
+            # var shape been changed
+            if new_shape != var.shape:
+                slice_var_args = self._slice_params_and_optimizes[
+                    param_var.name]
+                self._slice_params_and_optimizes[
+                    var.name] = [var, slice_var_args[1], tmpvar]
 
         # change output's ParamOut variable
         outputs = self._get_output_map_from_op(
@@ -1600,13 +1743,27 @@ to transpile() call.")
             outputs=outputs,
             attrs=opt_op.all_attrs())
 
-    def _is_splited_grad_var(self, var, var_dict):
+    def _get_pserver_grad_param_var(self, var, var_dict):
+        """
+        Return pserver side grad/param variable, return None
+        if the variable is not grad/param, e.g.
+
+            a@GRAD -> a@GRAD.block0
+            a@GRAD -> a@GRAD (a is not splited)
+            fc_0.w_0 -> fc_0.w_0.block_0
+            fc_0.w_0 -> fc_0.w_0 (weight is not splited)
+            _generated_var_123 -> None
+        """
         grad_block = None
         for _, g in six.iteritems(var_dict):
             if self._orig_varname(g.name) == self._orig_varname(var.name):
+                # skip per trainer vars
                 if g.name.find(".trainer_") == -1:
-                    grad_block = g
-                    break
+                    # only param or grads have splited blocks
+                    if self._orig_varname(g.name) in self.grad_name_to_param_name or\
+                        self._orig_varname(g.name) in self.param_name_to_grad_name:
+                        grad_block = g
+                        break
         return grad_block
 
     def _clone_lr_op(self, program, block, op):
@@ -1639,32 +1796,38 @@ to transpile() call.")
         for key, varlist in six.iteritems(inputs):
             if not isinstance(varlist, list):
                 varlist = [varlist]
-            for var in varlist:
-                # for ops like clipping and weight decay, get the splited var
+            for i in range(len(varlist)):
+                var = varlist[i]
+                # for ops like clipping and weight decay, get the splited var (xxx.block0)
                 # for inputs/outputs
-                grad_block = self._is_splited_grad_var(
+                grad_block = self._get_pserver_grad_param_var(
                     var, program.global_block().vars)
                 if grad_block:
-                    inputs[key] = grad_block
+                    varlist[i] = grad_block
                 elif var.name not in program.global_block().vars:
-                    program.global_block().create_var(
-                        name=var.name,
-                        persistable=var.persistable,
-                        dtype=var.dtype,
-                        shape=var.shape)
+                    tmpvar = program.global_block()._clone_variable(var)
+                    varlist[i] = tmpvar
+                else:
+                    varlist[i] = program.global_block().vars[var.name]
+            inputs[key] = varlist
 
         outputs = self._get_output_map_from_op(
             self.origin_program.global_block().vars, opt_op)
         for key, varlist in six.iteritems(outputs):
             if not isinstance(varlist, list):
                 varlist = [varlist]
-            for var in varlist:
-                grad_block = self._is_splited_grad_var(
+            for i in range(len(varlist)):
+                var = varlist[i]
+                grad_block = self._get_pserver_grad_param_var(
                     var, program.global_block().vars)
                 if grad_block:
-                    outputs[key] = grad_block
+                    varlist[i] = grad_block
                 elif var.name not in program.global_block().vars:
-                    program.global_block()._clone_variable(var)
+                    tmpvar = program.global_block()._clone_variable(var)
+                    varlist[i] = tmpvar
+                else:
+                    varlist[i] = program.global_block().vars[var.name]
+            outputs[key] = varlist
 
         return optimize_block.append_op(
             type=opt_op.type,

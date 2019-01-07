@@ -44,7 +44,7 @@ class TestDistSaveLoadDense2x2(TestDistBase):
         required_envs.update(need_envs)
 
         if check_error_log:
-            required_envs["GLOG_v"] = "7"
+            required_envs["GLOG_v"] = "3"
             required_envs["GLOG_logtostderr"] = "1"
 
         model_dir = tempfile.mkdtemp()
@@ -65,14 +65,14 @@ class TestDistSaveLoadDense2x2(TestDistBase):
 
         shutil.rmtree(model_dir)
 
-        local_np = np.array(eval(local_var[0]))
-        train0_np = np.array(eval(tr0_var[0]))
-        train1_np = np.array(eval(tr1_var[0]))
+        local_np = np.array(local_var)
+        train0_np = np.array(tr0_var)
+        train1_np = np.array(tr1_var)
+
         self.assertAlmostEqual(local_np.all(), train0_np.all(), delta=delta)
         self.assertAlmostEqual(local_np.all(), train1_np.all(), delta=delta)
         self.assertAlmostEqual(train0_np.all(), train1_np.all(), delta=delta)
 
-    @unittest.skip(reason="CI fail")
     def test_dist(self):
         need_envs = {
             "IS_DISTRIBUTED": '0',
