@@ -23,7 +23,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
-#include "paddle/fluid/platform/debug/debug_support.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -37,7 +36,6 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag p2p_init_flag;
-std::once_flag tracer_init_flag;
 
 void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
@@ -171,17 +169,6 @@ void InitGLOG(const std::string &prog_name) {
 #ifndef _WIN32
   google::InstallFailureSignalHandler();
 #endif
-}
-
-void terminated() {
-  std::cout << platform::DebugSupport::GetInstance()->getActiveOperator();
-}
-
-void InitTracer() {
-  std::call_once(tracer_init_flag, [&]() {
-    std::set_terminate(terminated);
-    VLOG(1) << "Init tracer! ";
-  });
 }
 
 }  // namespace framework

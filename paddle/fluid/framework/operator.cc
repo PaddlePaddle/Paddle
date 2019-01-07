@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/platform/debug/debug_support.h"
+#include "paddle/fluid/platform/debug_support.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
@@ -161,21 +161,12 @@ void OperatorBase::PreHook() {
   auto attrName = OpProtoAndCheckerMaker::OpCreationCallstackAttrName();
   if (HasAttr(attrName)) {
     auto& callstack = Attr<std::vector<std::string>>(attrName);
-
-    std::ostringstream sout;
-    sout << "Invoke operator " << Type() << " error.\n";
-    sout << "Python Callstacks: \n";
-    for (auto& line : callstack) {
-      sout << line;
-    }
-    sout << "C++ Callstacks: \n";
-
-    platform::DebugSupport::GetInstance()->setActiveOperator(sout.str());
+    platform::PythonDebugSupport::GetInstance()->set(callstack);
   }
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  VLOG(4) << "Call the prehook ... " << DebugStringEx(&scope);
+  VLOG(4) << "Call the prehook ... ";
   PreHook();
 
   VLOG(4) << place << " " << DebugStringEx(&scope);
@@ -200,11 +191,13 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   }
   VLOG(3) << place << " " << DebugStringEx(&scope);
 
-  VLOG(4) << "Call the posthook ... " << DebugStringEx(&scope);
+  VLOG(4) << "Call the posthook ... ";
   PostHook();
 }
 
-void OperatorBase::PostHook() {}
+void OperatorBase::PostHook() {
+  // do nothing here
+}
 
 bool OperatorBase::HasInputs(const std::string& name) const {
   return inputs_.find(name) != inputs_.end();

@@ -152,9 +152,7 @@ static void EnableFusedOp(ExecutorPrepareContext* ctx) {
 #endif
 }
 
-Executor::Executor(const platform::Place& place) : place_(place) {
-  InitTracer();
-}
+Executor::Executor(const platform::Place& place) : place_(place) {}
 
 void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE

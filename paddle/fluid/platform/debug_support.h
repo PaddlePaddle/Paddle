@@ -25,26 +25,27 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-enum DebugInfoType { TOperaor = 0 };
-
+template <typename T>
 class DebugSupport {
  public:
-  // Returns the singleton of ThreadPool.
-  static DebugSupport *GetInstance();
+  // Returns the singleton of DebugSupport.
+  static DebugSupport* GetInstance() {
+    static std::unique_ptr<DebugSupport> debugSupport_(nullptr);
+    static std::once_flag init_flag_;
 
-  std::string getActiveOperator();
-
-  void setActiveOperator(std::string info);
-
-  std::string getBacktraceStacks();
-
- private:
-  DebugSupport() {
-    infos.insert(std::make_pair<DebugInfoType, std::string>(TOperaor, ""));
+    std::call_once(init_flag_,
+                   [&]() { debugSupport_.reset(new DebugSupport<T>()); });
+    return debugSupport_.get();
   }
 
-  static std::once_flag init_flag_;
-  std::map<DebugInfoType, std::string> infos;
+  T get() const { return info; }
+
+  void set(const T& v) { info = v; }
+
+ private:
+  T info;
 };
+
+using PythonDebugSupport = DebugSupport<std::vector<std::string>>;
 }  // namespace platform
 }  // namespace paddle
