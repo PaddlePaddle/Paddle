@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/operators/distributed/request.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
+#include "paddle/fluid/operators/distributed/rpc_server.h"
 
 namespace paddle {
 namespace operators {
@@ -23,18 +24,18 @@ namespace distributed {
 
 using Scope = paddle::framework::Scope;
 
-bool HandleSignal(RPCRequest *request, Scope *scope) {
+bool HandleSignal(RPCRequest *request, Scope *scope, RPCServer *rpc_server) {
   if (request->varname_ == FETCH_BARRIER_MESSAGE) {
     VLOG(4) << "server got FETCH_BARRIER_MESSAGE";
-    rpc_server_->RecvBarrier()->Increase();
+    rpc_server->RecvBarrier()->Increase();
     return true;
   } else if (request->varname_ == BATCH_BARRIER_MESSAGE) {
     VLOG(4) << "server got BATCH_BARRIER_MESSAGE";
-    rpc_server_->SendBarrier()->Increase();
+    rpc_server->SendBarrier()->Increase();
     return true;
   } else if (request->varname_ == COMPLETE_MESSAGE) {
     VLOG(4) << "server got COMPLETE_MESSAGE";
-    rpc_server_->Complete();
+    rpc_server->Complete();
     return true;
   }
   // no signal detected

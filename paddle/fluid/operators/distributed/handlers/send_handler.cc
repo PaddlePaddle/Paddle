@@ -23,7 +23,7 @@ namespace distributed {
 bool SendHandlerSync::Handle(RPCRequest *request, Scope *scope) {
   rpc_server_->WaitState(RPCServerState::STATE_SEND);
   VLOG(3) << "sync: processing received var: " << request->varname_;
-  if (HandleSignal(request, scope)) {
+  if (HandleSignal(request, scope, rpc_server_)) {
     return true;
   }
 
@@ -36,7 +36,7 @@ bool SendHandlerSync::Handle(RPCRequest *request, Scope *scope) {
 
 bool SendHandlerAsync::Handle(RPCRequest *request, Scope *scope) {
   VLOG(3) << "async process var: " << request->varname_;
-  if (HandleSignal(request, scope)) {
+  if (HandleSignal(request, scope, rpc_server_)) {
     return true;
   }
   try {

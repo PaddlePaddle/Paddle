@@ -23,7 +23,7 @@ namespace operators {
 namespace distributed {
 
 bool GetHandlerSync::Handle(RPCRequest *request, Scope *scope) {
-  if (HandleSignal(request, scope)) {
+  if (HandleSignal(request, scope, rpc_server_)) {
     return true;
   }
   rpc_server_->WaitState(RPCServerState::STATE_RECV);
@@ -32,7 +32,7 @@ bool GetHandlerSync::Handle(RPCRequest *request, Scope *scope) {
 }
 
 bool GetHandlerAsync::Handle(RPCRequest *request, Scope *scope) {
-  if (HandleSignal(request, scope)) {
+  if (HandleSignal(request, scope, rpc_server_)) {
     return true;
   }
   *(request->out_var_) = scope->FindVar(request->varname_);
@@ -40,7 +40,7 @@ bool GetHandlerAsync::Handle(RPCRequest *request, Scope *scope) {
 }
 
 bool GetHandlerDCAsync::Handle(RPCRequest *request, Scope *scope) {
-  if (HandleSignal(request, scope)) {
+  if (HandleSignal(request, scope, rpc_server_)) {
     return true;
   }
   // NOTE: the format is determined by distributed_transpiler.py
