@@ -173,13 +173,13 @@ void InitGLOG(const std::string &prog_name) {
 #endif
 }
 
-void unexpected() {
+void terminated() {
   std::cout << platform::DebugSupport::GetInstance()->getActiveOperator();
 }
 
 void InitTracer() {
   std::call_once(tracer_init_flag, [&]() {
-    std::set_unexpected(unexpected);
+    std::set_terminate(terminated);
     VLOG(1) << "Init tracer! ";
   });
 }

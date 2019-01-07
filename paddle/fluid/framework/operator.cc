@@ -158,18 +158,20 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
 }
 
 void OperatorBase::PreHook() {
-  auto& callstack = Attr<std::vector<std::string>>(
-      OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+  auto attrName = OpProtoAndCheckerMaker::OpCreationCallstackAttrName();
+  if(HasAttr(attrName)) {
+    auto &callstack = Attr < std::vector < std::string >> (attrName);
 
-  std::ostringstream sout;
-  sout << "Invoke operator " << Type() << " error.\n";
-  sout << "Python Callstacks: \n";
-  for (auto& line : callstack) {
-    sout << line;
+    std::ostringstream sout;
+    sout << "Invoke operator " << Type() << " error.\n";
+    sout << "Python Callstacks: \n";
+    for (auto& line : callstack) {
+      sout << line;
+    }
+    sout << "C++ Callstacks: \n";
+
+    platform::DebugSupport::GetInstance()->setActiveOperator(sout.str());
   }
-  sout << "C++ Callstacks: \n";
-
-  platform::DebugSupport::GetInstance()->setActiveOperator(sout.str());
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
