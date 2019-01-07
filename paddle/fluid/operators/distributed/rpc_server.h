@@ -48,7 +48,7 @@ class RPCServer {
   virtual ~RPCServer() {}
 
   // ----------------------------------------------------------------
-  // Implementations:
+  // Interfaces that implementations should have:
   virtual void StartServer() = 0;
   virtual void WaitServerReady() = 0;
   // ----------------------------------------------------------------
@@ -82,16 +82,19 @@ class RPCServer {
   void WaitState(const RPCServerState state);
   Barrier* SendBarrier() { return send_barrier_.get(); }
   Barrier* RecvBarrier() { return recv_barrier_.get(); }
+  void ResetAllBarriers();
 
   // TODO(typhoonzero): in here or in handler or in collective server?
   // mark variable ready for workers to fetch, and only for fetch n
   // (num_workers) times then the barrier will be removed.
   // TODO(typhoonzero): Should use var ready barriers for recv
   void MarkVarReady(const std::string& varname);
+  void UnmarkVarReady(const std::string& varname);
   void WaitVarReady(const std::string& varname);
   Barrier* VarReadyBarrier(const std::string& varname);
   void ResetVarReady();
   // ----------------------------------------------------------------
+  bool NeedResetAllVars();
 
  protected:
   virtual void ShutDownImpl() = 0;
@@ -103,7 +106,7 @@ class RPCServer {
 
   std::unique_ptr<Barrier> send_barrier_;
   std::unique_ptr<Barrier> recv_barrier_;
-  // TODO(typhoonzero): support mark each parameter ready for get.
+
   std::mutex var_ready_mutex_;
   std::unordered_map<std::string, std::unique_ptr<Barrier>> var_ready_map_;
 

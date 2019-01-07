@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/distributed/request.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
-#include "paddle/fluid/operators/distributed/rpc_server.h"
 
 namespace paddle {
 namespace operators {
@@ -24,7 +24,15 @@ namespace distributed {
 
 using Scope = paddle::framework::Scope;
 
-bool HandleSignal(RPCRequest *request, Scope *scope, RPCServer *rpc_server);
+class GetMonomerHandler final : public RequestHandler {
+ public:
+  bool Handle(RPCRequest *request, Scope *scope) override;
+};
+
+class GetMonomerBarrierHandler final : public RequestHandler {
+ public:
+  bool Handle(RPCRequest *request, Scope *scope) override;
+};
 
 }  // namespace distributed
 }  // namespace operators

@@ -205,20 +205,15 @@ class GRPCRequestGetMonomer final : public GRPCRequestBase {
   void Process() override {
     std::string varname = request_->Varname();
 
-    // rpc_server_->WaitVarCond(varname);
-    // MonomerHandle h = rpc_server_->GetMonomer(varname);
-    // auto scope = h.scope_;
     auto scope = request_->GetMutableLocalScope();
     auto invar = scope->FindVar(varname);
     framework::Variable* outvar = nullptr;
 
-    // FIXME(typhoonzero): wait var ready in handler
     RPCRequest req(varname, invar, &outvar, request_->GetTrainerId(),
                    RequestType::GET_MONOMER);
     request_handler_->Handle(&req, scope);
 
     if (outvar) {
-      // FIXME(typhoonzero): get dev_ctx
       auto* dev_ctx = request_handler_->dev_ctx();
       SerializeToByteBuffer(varname, outvar, *dev_ctx, &reply_);
     }
@@ -233,15 +228,8 @@ class GRPCRequestGetMonomerBarrier final : public GRPCRequestBase {
     std::string varname = request_->Varname();
     VLOG(4) << "RequestGetMonomerBarrier " << varname;
 
-    // rpc_server_->WaitVarCond(varname);
-    // MonomerHandle h = rpc_server_->GetMonomer(varname);
-
-    // framework::Scope* scope = nullptr;
-    // framework::Variable* invar = nullptr;
-    framework::Variable* outvar = nullptr;
-
     // FIXME(typhoonzero): wait var ready in handler
-    RPCRequest req(varname, nullptr, &outvar, request_->GetTrainerId(),
+    RPCRequest req(varname, nullptr, nullptr, request_->GetTrainerId(),
                    RequestType::GET_MONOMER_BARRIER);
     request_handler_->Handle(&req, nullptr);
 

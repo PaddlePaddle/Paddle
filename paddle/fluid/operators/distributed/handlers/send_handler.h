@@ -34,16 +34,6 @@ class SendHandlerSync final : public RequestHandler {
 class SendHandlerAsync final : public RequestHandler {
  public:
   bool Handle(RPCRequest *request, Scope *scope) override;
-  void SetGradToPreparedCtx(
-      std::unordered_map<
-          std::string, std::shared_ptr<framework::ExecutorPrepareContext>> *g) {
-    grad_to_prepared_ctx_ = g;
-  }
-
- private:
-  std::unordered_map<std::string,
-                     std::shared_ptr<framework::ExecutorPrepareContext>>
-      *grad_to_prepared_ctx_;
 };
 
 }  // namespace distributed

@@ -3,5 +3,6 @@ cc_library(get_handler SRCS get_handler.cc)
 cc_library(prefetch_handler SRCS prefetch_handler.cc)
 cc_library(send_handler SRCS send_handler.cc)
 cc_library(get_monomer_handler SRCS get_monomer_handler.cc)
+cc_library(signal_handler SRCS signal_handler.cc)
 cc_library(handlers DEPS checkpoint_handler get_handler prefetch_handler
-  send_handler get_monomer_handler)
+  send_handler get_monomer_handler signal_handler)

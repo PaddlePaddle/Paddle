@@ -84,13 +84,12 @@ class RequestHandler {
   //   checkpoint_prepared_ctx_ = g;
   // }
 
-  // Used for async.
-  // void SetGradToPreparedCtx(
-  //     std::unordered_map<
-  //         std::string, std::shared_ptr<framework::ExecutorPrepareContext>>*
-  //         g) {
-  //   grad_to_prepared_ctx_ = g;
-  // }
+  // Used for send/get/prefetch handlers
+  void SetGradToPreparedCtx(
+      std::unordered_map<
+          std::string, std::shared_ptr<framework::ExecutorPrepareContext>>* g) {
+    grad_to_prepared_ctx_ = g;
+  }
 
   void SetRPCServer(RPCServer* rpc_server) { rpc_server_ = rpc_server; }
 
@@ -123,6 +122,10 @@ class RequestHandler {
   framework::ProgramDesc* program_;
 
   RPCServer* rpc_server_;
+
+  std::unordered_map<std::string,
+                     std::shared_ptr<framework::ExecutorPrepareContext>>*
+      grad_to_prepared_ctx_;
 };
 
 }  // namespace distributed

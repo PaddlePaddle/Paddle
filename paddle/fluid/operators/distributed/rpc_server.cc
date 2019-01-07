@@ -103,6 +103,13 @@ void RPCServer::MarkVarReady(const std::string& varname) {
   }
 }
 
+void RPCServer::UnmarkVarReady(const std::string& varname) {
+  std::unique_lock<std::mutex> lock(var_ready_mutex_);
+  if (var_ready_map_.find(varname) != var_ready_map_.end()) {
+    var_ready_map_.erase(varname);
+  }
+}
+
 void RPCServer::WaitVarReady(const std::string& varname) {
   std::unique_lock<std::mutex> lock(var_ready_mutex_);
   if (var_ready_map_.find(varname) != var_ready_map_.end()) {
@@ -125,87 +132,19 @@ Barrier* RPCServer::VarReadyBarrier(const std::string& varname) {
   return nullptr;
 }
 
-// void RPCServer::RegisterVar(const std::string& var_name,
-//                             const std::string& rpc_name,
-//                             framework::Scope* scope,
-//                             platform::DeviceContext* dev_ctx) {
-//   MonomerHandle h;
-//   h.var_name_ = var_name;
-//   h.rpc_name_ = rpc_name;
-//   h.scope_ = scope;
-//   h.dev_ctx_ = dev_ctx;
+bool RPCServer::NeedResetAllVars() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  return need_reset_all_vars_;
+}
 
-//   {
-//     std::unique_lock<std::mutex> lock(mutex_);
-//     if (var_map_.find(var_name) != var_map_.end()) {
-//       PADDLE_ENFORCE(false, "%s alreay in var_map", var_name);
-//     }
-//     var_map_[var_name] = h;
-//   }
-
-//   rpc_cond_.notify_all();
-//   VLOG(4) << "RegisterVar context:" << h.String();
-// }
-
-// void RPCServer::IncreaseVarBarrier(const std::string& var_name) {
-//   int b = 0;
-//   MonomerHandle h;
-//   {
-//     std::unique_lock<std::mutex> lock(mutex_);
-//     b = ++var_map_[var_name].barrier_;
-//     h = var_map_[var_name];
-//   }
-
-//   if (b >= num_clients_) {
-//     barrier_cond_.notify_all();
-//   }
-
-//   VLOG(4) << "IncreaseVarBarrier context:" << h.String();
-// }
-
-// void RPCServer::WaitVarBarrier(const std::string& var_name) {
-//   VLOG(4) << "WaitBarrier var_name:" << var_name;
-
-//   std::unique_lock<std::mutex> lock(mutex_);
-//   barrier_cond_.wait(lock, [&]() {
-//     return (
-//         (var_map_[var_name].barrier_ >= num_clients_ && num_clients_ != 0) ||
-//         exit_flag_.load());
-//   });
-
-//   VLOG(4) << "WaitBarrier context: " << var_map_[var_name].String();
-// }
-
-// void RPCServer::SetVarCond(const std::string& var_name) {
-//   VLOG(4) << "SetVarCond var_name:" << var_name;
-//   {
-//     std::unique_lock<std::mutex> lock(mutex_);
-//     if (var_map_.find(var_name) != var_map_.end()) {
-//       rpc_cond_.notify_all();
-//     }
-//   }
-// }
-
-// void RPCServer::WaitVarCond(const std::string& var_name) {
-//   VLOG(4) << "WaitVarCond var_name:" << var_name;
-
-//   std::unique_lock<std::mutex> lock(mutex_);
-//   rpc_cond_.wait(lock, [=] {
-//     return (var_map_.find(var_name) != var_map_.end() || exit_flag_.load());
-//   });
-
-//   VLOG(4) << "WaitVarCond var_name:" << var_name << " end";
-// }
-
-// MonomerHandle RPCServer::GetMonomer(const std::string& var_name) {
-//   MonomerHandle h;
-//   {
-//     std::unique_lock<std::mutex> lock(mutex_);
-//     h = var_map_[var_name];
-//   }
-
-//   return h;
-// }
+void RPCServer::ResetAllBarriers() {
+  send_barrier_->Reset();
+  recv_barrier_->Reset();
+  {
+    std::unique_lock<std::mutex> lock(mutex_);
+    need_reset_all_vars_ = false;
+  }
+}
 
 // void RPCServer::ClearRegisteredVars() {
 //   std::unique_lock<std::mutex> lock(mutex_);

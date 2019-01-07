@@ -12,11 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/fluid/operators/distributed/request.h"
-#include "paddle/fluid/operators/distributed/request_handler.h"
-#include "paddle/fluid/operators/distributed/rpc_server.h"
+#include "paddle/fluid/operators/distributed/handlers/signal_handler.h"
 
 namespace paddle {
 namespace operators {
@@ -24,7 +20,23 @@ namespace distributed {
 
 using Scope = paddle::framework::Scope;
 
-bool HandleSignal(RPCRequest *request, Scope *scope, RPCServer *rpc_server);
+bool HandleSignal(RPCRequest *request, Scope *scope, RPCServer *rpc_server) {
+  if (request->varname_ == FETCH_BARRIER_MESSAGE) {
+    VLOG(4) << "server got FETCH_BARRIER_MESSAGE";
+    rpc_server->RecvBarrier()->Increase();
+    return true;
+  } else if (request->varname_ == BATCH_BARRIER_MESSAGE) {
+    VLOG(4) << "server got BATCH_BARRIER_MESSAGE";
+    rpc_server->SendBarrier()->Increase();
+    return true;
+  } else if (request->varname_ == COMPLETE_MESSAGE) {
+    VLOG(4) << "server got COMPLETE_MESSAGE";
+    rpc_server->Complete();
+    return true;
+  }
+  // no signal detected
+  return false;
+}
 
 }  // namespace distributed
 }  // namespace operators

@@ -39,8 +39,8 @@ if(WITH_GRPC)
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set(RPC_DEPS sendrecvop_rpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
 
-#   cc_test(grpc_serde_test SRCS grpc/grpc_serde_test.cc 
-#     DEPS ${RPC_DEPS} scope profiler math_function SERIAL)
+  cc_test(grpc_serde_test SRCS grpc/grpc_serde_test.cc 
+    DEPS ${RPC_DEPS} scope profiler math_function SERIAL)
 
 else()
   set_source_files_properties(brpc_server.cc parameter_prefetch.cc brpc_client.cc rpc_server_test.cc brpc_serde_test.cc
