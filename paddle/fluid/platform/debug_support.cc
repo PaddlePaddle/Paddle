@@ -17,17 +17,17 @@ limitations under the License. */
 #include "paddle/fluid/platform/debug_support.h"
 
 namespace paddle {
-	namespace platform {
+namespace platform {
 
-		template <>
-		std::string PythonDebugSupport::format() const{
-			std::ostringstream sout;
-			sout << "\nPython Callstacks: \n";
-			for (auto& line : info) {
-				sout << line;
-			}
-			return sout.str();
-		}
+template <>
+std::string PythonDebugSupport::format() const {
+  std::ostringstream sout;
+  sout << "\nPython Callstacks: \n";
+  for (auto& line : info) {
+    sout << line;
+  }
+  return sout.str();
+}
 
-	}  // namespace platform
+}  // namespace platform
 }  // namespace paddle

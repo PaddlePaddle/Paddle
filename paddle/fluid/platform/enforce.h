@@ -69,7 +69,7 @@ struct EnforceNotMet : public std::exception {
     try {
       std::rethrow_exception(e);
     } catch (std::exception& e) {
-			err_str_ = platform::PythonDebugSupport::GetInstance()->format();
+      err_str_ = platform::PythonDebugSupport::GetInstance()->format();
       Init(e.what(), f, l);
     }
   }
