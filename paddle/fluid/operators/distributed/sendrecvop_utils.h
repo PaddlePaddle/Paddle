@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/distributed/send_recv.pb.h"
+#include "paddle/fluid/operators/distributed/distributed_pb.h"
 #include "paddle/fluid/platform/port.h"
 
 namespace paddle {

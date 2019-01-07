@@ -115,7 +115,7 @@ class TestPool2D_Op(OpTest):
         self.op_type = "pool2d"
         self.use_cudnn = False
         self.use_mkldnn = False
-        self.dtype = np.float32
+        self.init_data_type()
         self.init_test_case()
         self.init_global_pool()
         self.init_kernel_type()
@@ -176,6 +176,9 @@ class TestPool2D_Op(OpTest):
 
     def init_kernel_type(self):
         pass
+
+    def init_data_type(self):
+        self.dtype = np.float32
 
     def init_pool_type(self):
         self.pool_type = "avg"

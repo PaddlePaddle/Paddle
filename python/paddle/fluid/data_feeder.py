@@ -44,6 +44,8 @@ class DataToLoDTensorConverter(object):
             self.dtype = 'int64'
         elif dtype == core.VarDesc.VarType.FP64:
             self.dtype = 'float64'
+        elif dtype == core.VarDesc.VarType.FP16:
+            self.dtype = 'float16'
         elif dtype == core.VarDesc.VarType.INT32:
             self.dtype = 'int32'
         elif dtype == core.VarDesc.VarType.UINT8:
@@ -270,8 +272,7 @@ class DataFeeder(object):
             dict: the result of conversion.
 
         Raises:
-            ValueError: If drop_last is False and the data batch which cannot
-            fit for devices.
+            ValueError: If drop_last is False and the data batch which cannot fit for devices.
         """
 
         def __reader_creator__():

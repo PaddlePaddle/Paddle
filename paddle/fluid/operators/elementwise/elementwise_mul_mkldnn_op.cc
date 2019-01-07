@@ -16,11 +16,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
+#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
-#include "paddle/fluid/operators/jit/kernels.h"
+#ifdef PADDLE_WITH_XBYAK
 #include "xbyak/xbyak.h"
 #include "xbyak/xbyak_util.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -81,8 +84,7 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
     UpdateDataFormat(ctx, const_cast<Tensor*>(x), "x_data_format");
     UpdateDataFormat(ctx, const_cast<Tensor*>(y), "y_data_format");
 
-    Xbyak::util::Cpu cpu;
-    const bool is_avx512_enabled = cpu.has(Xbyak::util::Cpu::tAVX512F);
+    const bool is_avx512_enabled = platform::MayIUse(platform::avx512f);
     const bool are_dims_divisable = !(x_int_dims[1] % 16);
     const bool is_x_format_correct = x->format() == memory::format::nChw16c;
     const bool is_y_format_correct = y->format() == memory::format::nc;
