@@ -478,12 +478,12 @@ class AdamOpKernel : public framework::OpKernel<T> {
             }
           }
         } else if (FLAGS_inner_op_parallelism > 1 &&
-                   FLAGS_min_param_size_to_use_multithread > 0 &&
-                   param.numel() > FLAGS_min_param_size_to_use_multithread) {
+                   FLAGS_min_row_size_to_use_multithread > 0 &&
+                   param.dims()[0] > FLAGS_min_row_size_to_use_multithread) {
           VLOG(3) << "use multi thread, inner_op_parallelism="
                   << FLAGS_inner_op_parallelism
-                  << " min_param_size_to_use_multithread="
-                  << FLAGS_min_param_size_to_use_multithread;
+                  << " min_row_size_to_use_multithread="
+                  << FLAGS_min_row_size_to_use_multithread;
           if (FLAGS_inner_op_parallelism > 10) {
             LOG(WARNING) << "FLAGS_inner_op_parallelism "
                          << FLAGS_inner_op_parallelism << " is two large!";
