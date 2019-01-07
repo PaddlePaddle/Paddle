@@ -31,6 +31,7 @@ if(WIN32)
     set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
     set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd")
     set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
+    add_compile_options(/wd4244 /wd4577 /wd4530 /wd4819 /IGNORE:4006,4221)
 endif(WIN32)
 
 if(NOT CMAKE_CROSSCOMPILING)
