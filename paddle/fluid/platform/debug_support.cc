@@ -12,8 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/enforce.h"
+#include <sstream>
+
+#include "paddle/fluid/platform/debug_support.h"
 
 namespace paddle {
-namespace platform {}  // namespace platform
+	namespace platform {
+
+		template <>
+		std::string PythonDebugSupport::format() const{
+			std::ostringstream sout;
+			sout << "\nPython Callstacks: \n";
+			for (auto& line : info) {
+				sout << line;
+			}
+			return sout.str();
+		}
+
+	}  // namespace platform
 }  // namespace paddle

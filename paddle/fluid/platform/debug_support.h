@@ -42,10 +42,15 @@ class DebugSupport {
 
   void set(const T& v) { info = v; }
 
+	std::string format() const;
+
  private:
   T info;
 };
 
 using PythonDebugSupport = DebugSupport<std::vector<std::string>>;
+
+template<> std::string PythonDebugSupport::format() const;
+
 }  // namespace platform
 }  // namespace paddle
