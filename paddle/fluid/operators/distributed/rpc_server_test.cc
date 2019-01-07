@@ -173,6 +173,8 @@ TEST(COMPLETE, CPU) {
   PADDLE_ENFORCE(client != nullptr);
   std::thread server_thread(StartServer, distributed::RequestType::SEND);
   g_rpc_service->WaitServerReady();
+  g_rpc_service->SetState(distributed::RPCServerState::STATE_SEND);
+
   int port = g_rpc_service->GetSelectedPort();
   std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
   client->AsyncSendComplete(ep);

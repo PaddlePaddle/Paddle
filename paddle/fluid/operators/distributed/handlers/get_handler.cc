@@ -15,6 +15,7 @@
 #include "paddle/fluid/operators/distributed/handlers/get_handler.h"
 
 #include <string>
+#include "paddle/fluid/operators/distributed/handlers/signal_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 
 namespace paddle {
@@ -22,17 +23,26 @@ namespace operators {
 namespace distributed {
 
 bool GetHandlerSync::Handle(RPCRequest *request, Scope *scope) {
+  if (HandleSignal(request, scope)) {
+    return true;
+  }
   rpc_server_->WaitState(RPCServerState::STATE_RECV);
   *(request->out_var_) = scope->FindVar(request->varname_);
   return true;
 }
 
 bool GetHandlerAsync::Handle(RPCRequest *request, Scope *scope) {
+  if (HandleSignal(request, scope)) {
+    return true;
+  }
   *(request->out_var_) = scope->FindVar(request->varname_);
   return true;
 }
 
 bool GetHandlerDCAsync::Handle(RPCRequest *request, Scope *scope) {
+  if (HandleSignal(request, scope)) {
+    return true;
+  }
   // NOTE: the format is determined by distributed_transpiler.py
   std::string param_bak_name = string::Sprintf(
       "%s.trainer_%d_bak", request->varname_, request->trainer_id_);

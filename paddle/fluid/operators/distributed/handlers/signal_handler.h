@@ -23,10 +23,23 @@ namespace distributed {
 
 using Scope = paddle::framework::Scope;
 
-class SignalHandler final : public RequestHandler {
- public:
-  bool Handle(RPCRequest *request, Scope *scope) override;
-};
+bool HandleSignal(RPCRequest *request, Scope *scope) {
+  if (request->varname_ == FETCH_BARRIER_MESSAGE) {
+    VLOG(4) << "server got FETCH_BARRIER_MESSAGE";
+    rpc_server_->RecvBarrier()->Increase();
+    return true;
+  } else if (request->varname_ == BATCH_BARRIER_MESSAGE) {
+    VLOG(4) << "server got BATCH_BARRIER_MESSAGE";
+    rpc_server_->SendBarrier()->Increase();
+    return true;
+  } else if (request->varname_ == COMPLETE_MESSAGE) {
+    VLOG(4) << "server got COMPLETE_MESSAGE";
+    rpc_server_->Complete();
+    return true;
+  }
+  // no signal detected
+  return false;
+}
 
 }  // namespace distributed
 }  // namespace operators

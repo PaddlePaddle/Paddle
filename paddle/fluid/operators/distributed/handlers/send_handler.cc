@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/distributed/handlers/send_handler.h"
+#include "paddle/fluid/operators/distributed/handlers/signal_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 
 namespace paddle {
@@ -22,6 +23,9 @@ namespace distributed {
 bool SendHandlerSync::Handle(RPCRequest *request, Scope *scope) {
   rpc_server_->WaitState(RPCServerState::STATE_SEND);
   VLOG(3) << "sync: processing received var: " << request->varname_;
+  if (HandleSignal(request, scope)) {
+    return true;
+  }
 
   if (request->var_ == nullptr) {
     LOG(FATAL) << "sync: Can not find server side var: " << request->varname_;
@@ -32,6 +36,9 @@ bool SendHandlerSync::Handle(RPCRequest *request, Scope *scope) {
 
 bool SendHandlerAsync::Handle(RPCRequest *request, Scope *scope) {
   VLOG(3) << "async process var: " << request->varname_;
+  if (HandleSignal(request, scope)) {
+    return true;
+  }
   try {
     executor_->RunPreparedContext(
         (*grad_to_prepared_ctx_)[request->varname_].get(), scope);

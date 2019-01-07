@@ -55,7 +55,7 @@ class GRPCRequestBase {
         req_id_(req_id) {
     PADDLE_ENFORCE(cq_);
     request_.reset(new GRPCVariableResponse(request_handler->scope(),
-                                            request_handler->dev_ctx(), false));
+                                            request_handler->dev_ctx(), true));
     // FIXME(typhoonzero): fix this
     // !request_handler->sync_mode()));
 

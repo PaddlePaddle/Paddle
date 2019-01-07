@@ -134,7 +134,7 @@ void AsyncGRPCServer::TryToRegisterNewOne(const RequestType rpc_type,
     return;
   }
 
-  VLOG(4) << "TryToRegisterNewOne on RPC type: " << rpc_type
+  VLOG(7) << "TryToRegisterNewOne on RPC type: " << rpc_type
           << " REQ ID: " << req_id;
 
   auto& reqs = rpc_reqs_[rpc_type];
@@ -176,7 +176,7 @@ void AsyncGRPCServer::TryToRegisterNewOne(const RequestType rpc_type,
       break;
   }
   reqs[req_id] = b;
-  VLOG(4) << "TryToRegisterNewOne status:" << b->Status();
+  VLOG(7) << "TryToRegisterNewOne status:" << b->Status();
 }
 
 void AsyncGRPCServer::HandleRequest(
