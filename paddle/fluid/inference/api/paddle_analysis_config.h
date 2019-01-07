@@ -52,7 +52,7 @@ struct AnalysisConfig {
   const std::string& params_file() const { return params_file_; }
 
   // GPU related.
-  void EnableUseGpu(uint64_t memory_pool_init_size_mb, int device_id);
+  void EnableUseGpu(uint64_t memory_pool_init_size_mb, int device_id = 0);
   void DisableGpu();
   bool use_gpu() const { return use_gpu_; }
   int gpu_device_id() const { return device_id_; }
@@ -75,8 +75,6 @@ struct AnalysisConfig {
 
   void SwitchIrDebug(int x = true) { ir_debug_ = x; }
 
-  // NOTE this is just for internal development, please not use it.
-  // NOT stable yet.
   void EnableMKLDNN();
   bool mkldnn_enabled() const { return use_mkldnn_; }
 

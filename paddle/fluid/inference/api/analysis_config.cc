@@ -32,7 +32,7 @@ PassStrategy *contrib::AnalysisConfig::pass_builder() const {
       pass_builder_.reset(new CpuPassStrategy);
     }
   } else if (pass_builder_->use_gpu() ^ use_gpu()) {
-    LOG(WARNING) << "The use_gpu flag not compatible between Config and "
+    LOG(WARNING) << "The use_gpu flag is not compatible between Config and "
                     "PassBuilder, the flags are "
                  << use_gpu() << " " << pass_builder_->use_gpu();
     LOG(WARNING) << "Please make them compatible, still use the existing "
@@ -56,7 +56,7 @@ void contrib::AnalysisConfig::SetModel(const std::string &prog_file_path,
   params_file_ = params_file_path;
 }
 void contrib::AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
-                                           int device_id = 0) {
+                                           int device_id) {
 #ifdef PADDLE_WITH_CUDA
   use_gpu_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
@@ -75,6 +75,8 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   CP_MEMBER(model_dir_);
   CP_MEMBER(prog_file_);
   CP_MEMBER(params_file_);
+  CP_MEMBER(model_from_memory_);  // the memory model reuses prog_file_ and
+                                  // params_file_ fields.
   // Gpu releated.
   CP_MEMBER(use_gpu_);
   CP_MEMBER(device_id_);
@@ -88,7 +90,6 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
 
-  CP_MEMBER(model_from_memory_);
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
   CP_MEMBER(use_feed_fetch_ops_);
