@@ -44,9 +44,9 @@ void TemporaryAllocator::Release(const std::function<void()> &callback) {
     wait_delete_mem_ = 0;
   }
   for (auto tmp : *t_allocations) {
+    delete tmp;
     VLOG(10) << "Delete temporary allocation " << tmp->ptr()
              << " size: " << tmp->size();
-    delete tmp;
   }
 }
 
@@ -71,6 +71,8 @@ void TemporaryAllocator::Free(alloc::Allocation *allocation) {
     return;
   }
   delete temp_allocation;
+  VLOG(10) << "Delete temporary allocation " << temp_allocation->ptr()
+           << " size: " << temp_allocation->size();
 }
 
 size_t TemporaryAllocator::TemporaryAllocationQueueSize() {

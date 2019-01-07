@@ -109,7 +109,12 @@ template <>
 platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
     const platform::CUDADeviceContext& dev_ctx) {
   auto place_stream = std::make_pair(dev_ctx.GetPlace(), dev_ctx.stream());
-  if (device_allocator_.count(place_stream)) {
+  bool has_allocator = false;
+  {
+    std::unique_lock<std::mutex> lock(mtx_);
+    has_allocator = device_allocator_.count(place_stream) > 0;
+  }
+  if (has_allocator) {
     return *device_allocator_.at(place_stream);
   }
   return Get(dev_ctx.GetPlace(), dev_ctx.stream());
@@ -317,7 +322,7 @@ Place CUDADeviceContext::GetPlace() const { return place_; }
 void CUDADeviceContext::Wait() const {
   auto& allocator =
       DeviceTemporaryAllocator::Instance().Get<CUDADeviceContext>(*this);
-  allocator.Release([=]() {
+  allocator.Release([this]() {
     PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
     PADDLE_ENFORCE(cudaGetLastError());
   });
