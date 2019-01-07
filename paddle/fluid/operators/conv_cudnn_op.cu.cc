@@ -179,22 +179,23 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
                 .Var(kCUDNNFwdAlgoCache)
                 ->GetMutable<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>();
       }
-      auto workspace_handle = dev_ctx.cudnn_workspace_handle();
       algo = algo_cache->GetAlgorithm(
           x_dims, f_dims, strides, paddings, dilations, 0, [&]() {
             int returned_algo_count;
             std::array<cudnnConvolutionFwdAlgoPerf_t, kNUM_CUDNN_FWD_ALGS>
                 fwd_perf_stat;
-            auto cudnn_find_func = [&](void* cudnn_workspace) {
-              CUDNN_ENFORCE(
-                  platform::dynload::cudnnFindConvolutionForwardAlgorithmEx(
-                      handle, cudnn_input_desc, input_data, cudnn_filter_desc,
-                      filter_data, cudnn_conv_desc, cudnn_output_desc,
-                      output_data, kNUM_CUDNN_FWD_ALGS, &returned_algo_count,
-                      fwd_perf_stat.data(), cudnn_workspace,
-                      workspace_size_limit));
-            };
-            workspace_handle.RunFunc(cudnn_find_func, workspace_size_limit);
+            void* cudnn_workspace =
+                platform::DeviceTemporaryAllocator::Instance()
+                    .Get(dev_ctx)
+                    .Allocate(workspace_size_limit)
+                    ->ptr();
+            CUDNN_ENFORCE(
+                platform::dynload::cudnnFindConvolutionForwardAlgorithmEx(
+                    handle, cudnn_input_desc, input_data, cudnn_filter_desc,
+                    filter_data, cudnn_conv_desc, cudnn_output_desc,
+                    output_data, kNUM_CUDNN_FWD_ALGS, &returned_algo_count,
+                    fwd_perf_stat.data(), cudnn_workspace,
+                    workspace_size_limit));
 
             VLOG(3) << "Perf result: (algo: stat, time, memory)";
             for (int i = 0; i < returned_algo_count; ++i) {
@@ -343,7 +344,6 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     auto x_dims = framework::vectorize(input->dims());
     auto f_dims = framework::vectorize(filter->dims());
     auto handle = dev_ctx.cudnn_handle();
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       if (exhaustive_search) {
@@ -367,19 +367,20 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
               std::array<cudnnConvolutionBwdDataAlgoPerf_t,
                          kNUM_CUDNN_BWD_DATA_ALGS>
                   data_perf_stat;
-              auto cudnn_find_bd_data_func = [&](void* cudnn_workspace) {
-                CUDNN_ENFORCE(
-                    platform::dynload::
-                        cudnnFindConvolutionBackwardDataAlgorithmEx(
-                            handle, cudnn_filter_desc, filter_data,
-                            cudnn_output_grad_desc, output_grad_data,
-                            cudnn_conv_desc, cudnn_input_desc, input_grad_data,
-                            kNUM_CUDNN_BWD_DATA_ALGS, &returned_algo_count,
-                            data_perf_stat.data(), cudnn_workspace,
-                            workspace_size_limit));
-              };
-              workspace_handle.RunFunc(cudnn_find_bd_data_func,
-                                       workspace_size_limit);
+
+              void* cudnn_workspace =
+                  platform::DeviceTemporaryAllocator::Instance()
+                      .Get(dev_ctx)
+                      .Allocate(workspace_size_limit)
+                      ->ptr();
+              CUDNN_ENFORCE(platform::dynload::
+                                cudnnFindConvolutionBackwardDataAlgorithmEx(
+                                    handle, cudnn_filter_desc, filter_data,
+                                    cudnn_output_grad_desc, output_grad_data,
+                                    cudnn_conv_desc, cudnn_input_desc,
+                                    input_grad_data, kNUM_CUDNN_BWD_DATA_ALGS,
+                                    &returned_algo_count, data_perf_stat.data(),
+                                    cudnn_workspace, workspace_size_limit));
 
               VLOG(3) << "Perf result: (algo: stat, time, memory)";
               for (int i = 0; i < returned_algo_count; ++i) {
@@ -436,19 +437,21 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
               std::array<cudnnConvolutionBwdFilterAlgoPerf_t,
                          kNUM_CUDNN_BWD_FILTER_ALGS>
                   filter_perf_stat;
-              auto cudnn_find_bd_f_func = [&](void* cudnn_workspace) {
-                CUDNN_ENFORCE(
-                    platform::dynload::
-                        cudnnFindConvolutionBackwardFilterAlgorithmEx(
-                            handle, cudnn_input_desc, input_data,
-                            cudnn_output_grad_desc, output_grad_data,
-                            cudnn_conv_desc, cudnn_filter_desc,
-                            filter_grad_data, kNUM_CUDNN_BWD_FILTER_ALGS,
-                            &returned_algo_count, filter_perf_stat.data(),
-                            cudnn_workspace, workspace_size_limit));
-              };
-              workspace_handle.RunFunc(cudnn_find_bd_f_func,
-                                       workspace_size_limit);
+
+              void* cudnn_workspace =
+                  platform::DeviceTemporaryAllocator::Instance()
+                      .Get(dev_ctx)
+                      .Allocate(workspace_size_limit)
+                      ->ptr();
+              CUDNN_ENFORCE(
+                  platform::dynload::
+                      cudnnFindConvolutionBackwardFilterAlgorithmEx(
+                          handle, cudnn_input_desc, input_data,
+                          cudnn_output_grad_desc, output_grad_data,
+                          cudnn_conv_desc, cudnn_filter_desc, filter_grad_data,
+                          kNUM_CUDNN_BWD_FILTER_ALGS, &returned_algo_count,
+                          filter_perf_stat.data(), cudnn_workspace,
+                          workspace_size_limit));
               return filter_perf_stat[0].algo;
             });
         VLOG(3) << "cuDNN backward filter algo " << filter_algo;
