@@ -27,6 +27,8 @@
 namespace paddle {
 namespace imperative {
 
+std::map<int, py::object> py_funcs_;
+
 using framework::Variable;
 
 void AddTo(Variable* src, Variable* dst) {
@@ -181,6 +183,23 @@ void VarBase::RunBackward() {
       grads_ ==
       pre_op_->output_vars_[pre_op_out_name_][pre_op_out_idx_]->grads_);
   Autograd().RunBackward(this);
+}
+
+void PyLayer::RegisterFunc(int func_id, const py::object& py_func) {
+  py_funcs_[func_id] = py_func;
+}
+
+std::vector<VarBase*> PyLayer::Apply(int func_id,
+                                     const std::vector<VarBase>& inputs) {
+  std::vector<framework::LoDTensor> tensor_inputs;
+  std::vector<VarBase*> ret;
+
+  for (const VarBase& in : inputs) {
+    tensor_inputs.push_back(in.var_->Get<framework::LoDTensor>());
+  }
+  PADDLE_ENFORCE(py_funcs_.find(func_id) != py_funcs_.end());
+  CallPythonFunc(py_funcs_[func_id], tensor_inputs, &ret);
+  return ret;
 }
 
 }  // namespace imperative

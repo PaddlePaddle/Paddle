@@ -48,7 +48,6 @@ class Layer(core.Layer):
         raise ValueError("Layer shouldn't implement backward")
 
 
-# TODO(panyx0718): Inherit from C++ base class.
 class PyLayer(core.PyLayer):
     """Layers composed of user-defined python codes."""
 
@@ -65,13 +64,21 @@ class PyLayer(core.PyLayer):
 
     @classmethod
     def __call__(cls, inputs):
+        tracer = framework._imperative_tracer()
+        block = framework.default_main_program().current_block()
         inputs = map(base.to_variable, inputs)
         inputs = [x._ivar for x in inputs]
-        ivars = core.PyLayer.apply(cls.forward, inputs)
+
+        PyLayer.register_func(1, cls.forward)
+
+        iop = core.OpBase()
+        iop.forward_id = 1
+        block.ops.append(iop)
+        ivars = tracer.py_trace(iop, inputs)
+        # ivars = core.PyLayer.apply(cls.forward, inputs)
         ret = []
         for ivar in ivars:
             tensor = ivar.value.get_tensor()
-            block = framework.default_main_program().current_block()
             py_var = framework.Variable(
                 block,
                 type=core.VarDesc.VarType.LOD_TENSOR,
