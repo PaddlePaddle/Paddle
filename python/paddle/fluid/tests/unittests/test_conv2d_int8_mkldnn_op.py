@@ -58,7 +58,7 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.init_test_case()
         self.init_fuse_relu()
         self.init_fuse_residual()
-        self.init_dtype()
+        self.init_data_type()
 
         conv2d_param = {
             'stride': self.stride,
@@ -113,6 +113,7 @@ class TestConv2dInt8Op(TestConv2dOp):
                                                  self.dsttype)
                 else:
                     output = np.round(output1 - output2).astype(self.dsttype)
+
         else:
             filter_int = np.round(filter *
                                   self.scale_weights[0]).astype(np.int32)
@@ -208,7 +209,7 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.scale_weights = [10.0]
         self.scale_in_eltwise = 0.6
 
-    def init_dtype(self):
+    def init_data_type(self):
         self.srctype = np.uint8
         self.dsttype = np.int8
 
@@ -219,7 +220,7 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.fuse_residual = True
 
 
-#--------------------test conv2d u8 in and u8 out with residual--------------------
+#--------------------test conv2d u8 in and u8 out with residual fuse--------------------
 
 
 class TestConv2d(TestConv2dInt8Op):
@@ -296,93 +297,93 @@ class TestWithInput1x1Filter1x1(TestConv2dInt8Op):
     def init_group(self):
         self.groups = 3
 
+def init_data_type_with_fusion(self, input_dt, fuse_relu, fuse_residual):
+    self.srctype = input_dt
+    self.dsttype = np.uint8 if fuse_relu else np.int8
 
-def create_test_int8_class(parent, input_dt, fuse_relu, fuse_residual):
-    class TestInt8Case(parent):
-        def init_dtype(self):
-            if input_dt == np.uint8:
-                self.srctype = np.uint8
-            else:
-                self.srctype = np.int8
-            if fuse_relu:
-                self.dsttype = np.uint8
-            else:
-                self.dsttype = np.int8
-
-        def init_fuse_relu(self):
-            self.fuse_relu = fuse_relu
-
-        def init_fuse_residual(self):
-            self.fuse_residual = fuse_residual
-
-    cls_name = "{0}_input_{1}_relu_{2}_residual_{3}".format(
-        parent.__name__, input_dt, fuse_relu, fuse_residual)
-    TestInt8Case.__name__ = cls_name
-    globals()[cls_name] = TestInt8Case
+    def init_fuse_relu(self):
+        self.fuse_relu = fuse_relu
+        
+    def init_fuse_residual(self):
+        self.fuse_residual = fuse_residual
+        
 
 
-#--------------------test conv2d s8 in and u8 out without residual--------------------
+def create_test_int8_class(parent):
 
-create_test_int8_class(TestConv2dInt8Op, np.int8, True, False)
-create_test_int8_class(TestWithPad, np.int8, True, False)
-create_test_int8_class(TestWithStride, np.int8, True, False)
-create_test_int8_class(TestWithGroup, np.int8, True, False)
-create_test_int8_class(TestWith1x1, np.int8, True, False)
-create_test_int8_class(TestWithInput1x1Filter1x1, np.int8, True, False)
+    #--------------------test conv2d s8 in and u8 out--------------------
 
-#--------------------test conv2d s8 in and s8 out without residual--------------------
+    class TestS8U8Case(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.int8, True, False)
 
-create_test_int8_class(TestConv2dInt8Op, np.int8, False, False)
-create_test_int8_class(TestWithPad, np.int8, False, False)
-create_test_int8_class(TestWithStride, np.int8, False, False)
-create_test_int8_class(TestWithGroup, np.int8, False, False)
-create_test_int8_class(TestWith1x1, np.int8, False, False)
-create_test_int8_class(TestWithInput1x1Filter1x1, np.int8, False, False)
+    #--------------------test conv2d s8 in and s8 out--------------------
 
-#--------------------test conv2d u8 in and s8 out without residual--------------------
+    class TestS8S8Case(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.int8, False, False)
 
-create_test_int8_class(TestConv2dInt8Op, np.uint8, False, False)
-create_test_int8_class(TestWithPad, np.uint8, False, False)
-create_test_int8_class(TestWithStride, np.uint8, False, False)
-create_test_int8_class(TestWithGroup, np.uint8, False, False)
-create_test_int8_class(TestWith1x1, np.uint8, False, False)
-create_test_int8_class(TestWithInput1x1Filter1x1, np.uint8, False, False)
+    #--------------------test conv2d u8 in and s8 out--------------------
 
-#--------------------test conv2d s8 in and u8 out with residual--------------------
+    class TestU8S8Case(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.uint8, False, False)
+    
+    #--------------------test conv2d u8 in and u8 out without residual fuse--------------------
 
-create_test_int8_class(TestConv2dInt8Op, np.int8, True, True)
-create_test_int8_class(TestWithPad, np.int8, True, True)
-create_test_int8_class(TestWithStride, np.int8, True, True)
-create_test_int8_class(TestWithGroup, np.int8, True, True)
-create_test_int8_class(TestWith1x1, np.int8, True, True)
-create_test_int8_class(TestWithInput1x1Filter1x1, np.int8, True, True)
+    class TestU8S8ResCase(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.uint8, True, False)
+            
+    #--------------------test conv2d s8 in and u8 out with residual fuse--------------------
 
-#--------------------test conv2d s8 in and s8 out with residual--------------------
+    class TestS8U8ResCase(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.int8, True, True)
 
-create_test_int8_class(TestConv2dInt8Op, np.int8, False, True)
-create_test_int8_class(TestWithPad, np.int8, False, True)
-create_test_int8_class(TestWithStride, np.int8, False, True)
-create_test_int8_class(TestWithGroup, np.int8, False, True)
-create_test_int8_class(TestWith1x1, np.int8, False, True)
-create_test_int8_class(TestWithInput1x1Filter1x1, np.int8, False, True)
+    #--------------------test conv2d s8 in and s8 out with residual fuse--------------------
 
-#--------------------test conv2d u8 in and s8 out with residual--------------------
+    class TestS8S8ResCase(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.int8, False, True)
 
-create_test_int8_class(TestConv2dInt8Op, np.uint8, False, True)
-create_test_int8_class(TestWithPad, np.uint8, False, True)
-create_test_int8_class(TestWithStride, np.uint8, False, True)
-create_test_int8_class(TestWithGroup, np.uint8, False, True)
-create_test_int8_class(TestWith1x1, np.uint8, False, True)
-create_test_int8_class(TestWithInput1x1Filter1x1, np.uint8, False, True)
+    #--------------------test conv2d u8 in and s8 out with residual fuse--------------------
 
-#--------------------test conv2d u8 in and u8 out without residual--------------------
+    class TestU8S8ResCase(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.uint8, False, True)
+    
+            
+    cls_name_s8u8 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "1")
+    cls_name_s8s8 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "0")
+    cls_name_u8s8 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "0")
+    cls_name_u8u8 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "1")
+    cls_name_s8u8_re_1 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "1","1")
+    cls_name_s8s8_re_1 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "0","1")
+    cls_name_u8s8_re_1 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "0","1")
+    TestS8U8Case.__name__ = cls_name_s8u8
+    TestS8S8Case.__name__ = cls_name_s8s8
+    TestU8S8Case.__name__ = cls_name_u8s8
+    TestU8U8Case.__name__ = cls_name_u8u8
+    TestS8U8ResCase.__name__ = cls_name_s8u8_re_1
+    TestS8S8ResCase.__name__ = cls_name_s8s8_re_1
+    TestU8S8ResCase.__name__ = cls_name_u8s8_re_1
+    globals()[cls_name_s8u8] = TestS8U8Case
+    globals()[cls_name_s8s8] = TestS8S8Case
+    globals()[cls_name_u8s8] = TestU8S8Case
+    globals()[cls_name_u8u8] = TestU8U8Case
+    globals()[cls_name_s8u8_re_1] = TestS8U8ResCase
+    globals()[cls_name_s8s8_re_1] = TestS8S8ResCase
+    globals()[cls_name_u8s8_re_1] = TestU8S8ResCase
 
-create_test_int8_class(TestConv2dInt8Op, np.uint8, True, False)
-create_test_int8_class(TestWithPad, np.uint8, True, False)
-create_test_int8_class(TestWithStride, np.uint8, True, False)
-create_test_int8_class(TestWithGroup, np.uint8, True, False)
-create_test_int8_class(TestWith1x1, np.uint8, True, False)
-create_test_int8_class(TestWithInput1x1Filter1x1, np.uint8, True, False)
+
+create_test_int8_class(TestConv2dInt8Op)
+create_test_int8_class(TestWithPad)
+create_test_int8_class(TestWithStride)
+create_test_int8_class(TestWithGroup)
+create_test_int8_class(TestWith1x1)
+create_test_int8_class(TestWithInput1x1Filter1x1)
+
 
 if __name__ == '__main__':
     unittest.main()
