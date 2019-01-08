@@ -31,7 +31,6 @@ limitations under the License. */
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <vector>
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/debug_support.h"
