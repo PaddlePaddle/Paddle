@@ -1,13 +1,6 @@
 if(WITH_TESTING)
   include(tests/test.cmake) # some generic cmake funtion for inference
 endif()
-# analysis and tensorrt must be added before creating static library,
-# otherwise, there would be undefined reference to them in static library.
-add_subdirectory(analysis)
-add_subdirectory(utils)
-if (TENSORRT_FOUND)
-  add_subdirectory(tensorrt)
-endif()
 
 set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
 
@@ -15,6 +8,14 @@ set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
 cc_library(paddle_fluid_api
     SRCS io.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+
+# analysis and tensorrt must be added before creating static library,
+# otherwise, there would be undefined reference to them in static library.
+add_subdirectory(analysis)
+add_subdirectory(utils)
+if (TENSORRT_FOUND)
+  add_subdirectory(tensorrt)
+endif()
 
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
