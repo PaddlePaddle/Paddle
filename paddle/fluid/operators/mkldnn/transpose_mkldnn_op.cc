@@ -52,7 +52,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                              mkldnn_engine, key);
 
     auto transpose_src_memory_p = handler.AcquireSrcMemory(
-        input->format(), platform::to_void_cast<T>(input_data));
+        input->get_prim_desc(), platform::to_void_cast<T>(input_data));
     auto transpose_dst_memory_p =
         handler.AcquireDstMemory(output, ctx.GetPlace());
     auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
@@ -61,6 +61,15 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<mkldnn::primitive> pipeline;
     pipeline.push_back(*transpose_p);
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+
+    // Transpose did change logical dimensions of Tensor, but reorder does not.
+    // Reorder does change only physical layout eg. format , strides
+    // so we need to create new primitive descriptor with changed logical layout
+    // so
+    // it match output shape
+
+    output->set_layout(DataLayout::kMKLDNN);
+    output->create_prim_desc_from_dims(mkldnn::memory::format::blocked);
   }
 };
 
@@ -103,7 +112,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                                              mkldnn_engine, key);
 
     auto transpose_src_memory_p = handler.AcquireSrcMemory(
-        out_grad->format(), platform::to_void_cast<T>(out_grad_data));
+        out_grad->get_prim_desc(), platform::to_void_cast<T>(out_grad_data));
     auto transpose_dst_memory_p =
         handler.AcquireDstMemory(x_grad, ctx.GetPlace());
     auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
@@ -112,6 +121,15 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<mkldnn::primitive> pipeline;
     pipeline.push_back(*transpose_p);
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+
+    // Transpose did change logical dimensions of Tensor, but reorder does not.
+    // Reorder does change only physical layout eg. format , strides
+    // so we need to create new primitive descriptor with changed logical layout
+    // so
+    // it match output shape
+
+    x_grad->set_layout(DataLayout::kMKLDNN);
+    x_grad->create_prim_desc_from_dims(mkldnn::memory::format::blocked);
   }
 };
 
