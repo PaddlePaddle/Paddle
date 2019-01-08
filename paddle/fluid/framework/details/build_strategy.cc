@@ -139,9 +139,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   BuildStrategy strategy_;
 };
 
-// BuildStrategy::BuildStrategy() :
-// enable_parallel_graph_(FLAGS_enable_parallel_graph) {};
-
 std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy(
     bool finalize_strategy) const {
   if (is_finalized_) {
