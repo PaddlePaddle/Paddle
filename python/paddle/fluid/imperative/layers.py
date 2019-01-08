@@ -20,7 +20,7 @@ from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.imperative import base
 
-__all__ = ['Layer']
+__all__ = ['Layer', 'PyLayer']
 
 
 class Layer(core.Layer):
@@ -48,14 +48,24 @@ class Layer(core.Layer):
         raise ValueError("Layer shouldn't implement backward")
 
 
-class PyLayer(core.Layer):
+# TODO(panyx0718): Inherit from C++ base class.
+class PyLayer(core.PyLayer):
     """Layers composed of user-defined python codes."""
 
-    def __call__(self, *inputs):
-        pass
+    def __init__(self):
+        super(PyLayer, self).__init__()
 
-    def forward(self, *inputs):
+    @staticmethod
+    def forward(inputs):
         raise NotImplementedError
 
-    def backward(self, *inputs):
+    @staticmethod
+    def backward(inputs):
         raise NotImplementedError
+
+    @classmethod
+    def __call__(cls, inputs):
+        inputs = map(base.to_variable, inputs)
+        inputs = [x._ivar for x in inputs]
+        sys.stderr.write('%s\n' % inputs)
+        return core.PyLayer.apply(cls.forward, inputs)

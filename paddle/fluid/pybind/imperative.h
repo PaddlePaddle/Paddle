@@ -31,12 +31,6 @@ class Layer : public imperative::Layer {
     PYBIND11_OVERLOAD(std::vector<imperative::VarBase>, Layer, Forward,
                       inputs);  // NOLINT
   }
-
-  std::vector<imperative::VarBase> Backward(
-      const std::vector<imperative::VarBase>& inputs) override {
-    PYBIND11_OVERLOAD(std::vector<imperative::VarBase>, Layer, Backward,
-                      inputs);  // NOLINT
-  }
 };
 
 class PyOpBase : public imperative::OpBase {
