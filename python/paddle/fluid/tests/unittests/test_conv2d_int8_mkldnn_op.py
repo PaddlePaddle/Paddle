@@ -297,16 +297,16 @@ class TestWithInput1x1Filter1x1(TestConv2dInt8Op):
     def init_group(self):
         self.groups = 3
 
+
 def init_data_type_with_fusion(self, input_dt, fuse_relu, fuse_residual):
     self.srctype = input_dt
     self.dsttype = np.uint8 if fuse_relu else np.int8
 
     def init_fuse_relu(self):
         self.fuse_relu = fuse_relu
-        
+
     def init_fuse_residual(self):
         self.fuse_residual = fuse_residual
-        
 
 
 def create_test_int8_class(parent):
@@ -328,13 +328,13 @@ def create_test_int8_class(parent):
     class TestU8S8Case(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, False, False)
-    
+
     #--------------------test conv2d u8 in and u8 out without residual fuse--------------------
 
     class TestU8S8ResCase(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, True, False)
-            
+
     #--------------------test conv2d s8 in and u8 out with residual fuse--------------------
 
     class TestS8U8ResCase(parent):
@@ -352,15 +352,17 @@ def create_test_int8_class(parent):
     class TestU8S8ResCase(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, False, True)
-    
-            
+
     cls_name_s8u8 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "1")
     cls_name_s8s8 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "0")
     cls_name_u8s8 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "0")
     cls_name_u8u8 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "1")
-    cls_name_s8u8_re_1 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "1","1")
-    cls_name_s8s8_re_1 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "0","1")
-    cls_name_u8s8_re_1 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "0","1")
+    cls_name_s8u8_re_1 = "{0}_relu_{1}_residual_{2}".format(parent.__name__,
+                                                            "1", "1")
+    cls_name_s8s8_re_1 = "{0}_relu_{1}_residual_{2}".format(parent.__name__,
+                                                            "0", "1")
+    cls_name_u8s8_re_1 = "{0}_relu_{1}_residual_{2}".format(parent.__name__,
+                                                            "0", "1")
     TestS8U8Case.__name__ = cls_name_s8u8
     TestS8S8Case.__name__ = cls_name_s8s8
     TestU8S8Case.__name__ = cls_name_u8s8
@@ -383,7 +385,6 @@ create_test_int8_class(TestWithStride)
 create_test_int8_class(TestWithGroup)
 create_test_int8_class(TestWith1x1)
 create_test_int8_class(TestWithInput1x1Filter1x1)
-
 
 if __name__ == '__main__':
     unittest.main()
