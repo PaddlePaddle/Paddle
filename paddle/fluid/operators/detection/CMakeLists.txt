@@ -46,3 +46,5 @@ detection_library(roi_perspective_transform_op SRCS roi_perspective_transform_op
 foreach(src ${LOCAL_DETECTION_LIBS})
     set(OP_LIBRARY ${src} ${OP_LIBRARY} CACHE INTERNAL "op libs")
 endforeach()
+
+cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor memory)
