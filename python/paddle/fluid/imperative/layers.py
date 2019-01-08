@@ -67,5 +67,17 @@ class PyLayer(core.PyLayer):
     def __call__(cls, inputs):
         inputs = map(base.to_variable, inputs)
         inputs = [x._ivar for x in inputs]
-        sys.stderr.write('%s\n' % inputs)
-        return core.PyLayer.apply(cls.forward, inputs)
+        ivars = core.PyLayer.apply(cls.forward, inputs)
+        ret = []
+        for ivar in ivars:
+            tensor = ivar.value.get_tensor()
+            block = framework.default_main_program().current_block()
+            py_var = framework.Variable(
+                block,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                name=None,
+                shape=tensor.shape(),
+                dtype=tensor._dtype(),
+                ivar=ivar)
+            ret.append(py_var)
+        return ret

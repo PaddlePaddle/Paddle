@@ -182,9 +182,10 @@ PYBIND11_MODULE(core, m) {
       .def_static("apply",
                   [](py::object *callable,
                      const std::vector<imperative::VarBase> &inputs)
-                      -> std::vector<imperative::VarBase> {
+                      -> std::vector<imperative::VarBase *> {
                         return imperative::PyLayer::Apply(callable, inputs);
-                      });
+                      },
+                  py::return_value_policy::take_ownership);
 
   BindTracer(&m);
 
