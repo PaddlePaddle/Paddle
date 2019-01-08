@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <mkldnn/include/mkldnn_types.h>
 #include <memory>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/fc_op.h"
@@ -45,6 +46,10 @@ class FCPrimitiveFactory {
                                           const Tensor* bias, Tensor* output,
                                           const ExecutionContext& ctx) {
     if (fc_ && IsOutputSame(output, ctx)) {
+      if (output->format() == memory::format::format_undef) {
+        auto output_format = output_->get_primitive_desc().desc().data.format;
+        output->set_format((memory::format)output_format);
+      }
       return *fc_;
     }
     auto src_desc = CreateMemDescriptor(input, input->format());
@@ -53,15 +58,15 @@ class FCPrimitiveFactory {
     auto weights_dims = GetCorrectedWeightsDims(weights);
     auto weights_desc = CreateMemDescriptor(weights_dims, memory::format::oi);
     weights_ = CreateMemory(weights_desc, weights);
-    if (input->dims().size() == 4) {
+    if (src_desc.data.ndims == 4) {
       weights_ = CreateFourDimWeightsMemory(input, weights);
       weights_desc = weights_.get().get_primitive_desc().desc();
     }
 
     auto dst_desc = CreateMemDescriptor(output, memory::format::any);
 
-    fc_ = CreateFcPrimitive(src_desc, input_.get(), weights_desc,
-                            weights_.get(), dst_desc, bias, output, ctx);
+    fc_ = CreateFcPrimitive(src_desc, *input_, weights_desc, *weights_,
+                            dst_desc, bias, output, ctx);
     return *fc_;
   }
 
@@ -133,14 +138,14 @@ class FCPrimitiveFactory {
       output_ = CreateDstMemory(fc_prim_desc, ctx, output);
 
       return inner_product_forward(fc_prim_desc, src_memory, weights_memory,
-                                   bias_.get(), output_.get());
+                                   *bias_, *output_);
     } else {
       auto fc_prim_desc = CreateFcPrimDesc(src_desc, weights_desc, dst_desc);
 
       output_ = CreateDstMemory(fc_prim_desc, ctx, output);
 
       return inner_product_forward(fc_prim_desc, src_memory, weights_memory,
-                                   output_.get());
+                                   *output_);
     }
   }
 

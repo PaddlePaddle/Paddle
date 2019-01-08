@@ -27,6 +27,7 @@ namespace ir {
 void Transpose(float* data, size_t rows, unsigned cols) {
   std::vector<float> temp(rows * cols);
 
+#pragma omp parallel for collapse(2)
   for (int i = 0; i < rows; i++) {
     for (int j = 0; j < cols; j++) {
       temp[j * rows + i] = data[i * cols + j];
@@ -68,6 +69,12 @@ std::unique_ptr<ir::Graph> FCMKLDNNPass::ApplyImpl(
     }
 
     OpDesc* desc = fc->Op();
+    auto in_size = fc->inputs[0]->Var()->GetShape().size();
+    if (in_size != 2 && in_size != 4) {    // if input dimensions aren't
+      desc->SetAttr("use_mkldnn", false);  // supported don't perform the fuse
+      return;
+    }
+
     auto* weights_var = scope->FindVar(weights->Name());
     auto* weights_tensor = weights_var->GetMutable<LoDTensor>();
     auto dims = weights_tensor->dims();
@@ -75,8 +82,6 @@ std::unique_ptr<ir::Graph> FCMKLDNNPass::ApplyImpl(
     auto cols = dims[1];
     auto data = weights_tensor->mutable_data<float>(platform::CPUPlace());
     Transpose(data, rows, cols);
-
-    desc->SetAttr("use_mkldnn", true);
 
     PADDLE_ENFORCE(subgraph.count(x));
 
