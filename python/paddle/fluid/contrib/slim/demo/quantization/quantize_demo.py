@@ -50,10 +50,9 @@ class LinearModel(object):
         exe.run(startup_program)
         train_metrics = {"loss": avg_cost.name}
         eval_metrics = {"loss": avg_cost.name}
-
         graph = ImitationGraph(train_program)
-        config = './config_dynamic.yaml'
-        # config = './config_static.yaml'
+        #config = './config_dynamic.yaml'
+        config = './config_static.yaml'
         comp_pass = build_compressor(
             place,
             data_reader=train_reader,
@@ -70,4 +69,4 @@ class LinearModel(object):
 
 if __name__ == "__main__":
     model = LinearModel()
-    model.train(use_cuda=False)
+    model.train(use_cuda=True)

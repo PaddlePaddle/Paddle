@@ -14,8 +14,6 @@
 
 import numpy as np
 from ..core.strategy import Strategy
-from ....framework import Program, program_guard
-from .... import layers
 
 __all__ = ['QuantizationStrategy']
 
@@ -25,9 +23,20 @@ class QuantizationStrategy(Strategy):
     The strategy for Quantization.
     """
 
-    def __init__(self, quantizer, start_epoch=0, end_epoch=10):
+    def __init__(self,
+                 quantizer,
+                 start_epoch=0,
+                 end_epoch=10,
+                 dirname=None,
+                 target_device='mobile',
+                 save_as_int8=True):
         super(QuantizationStrategy, self).__init__(start_epoch, end_epoch)
         self.quantizer = quantizer
+        self.start_epoch = start_epoch
+        self.end_epoch = end_epoch
+        self.dirname = dirname
+        self.target_device = target_device
+        self.save_as_int8 = save_as_int8
 
     def on_compress_begin(self, context):
         super(QuantizationStrategy, self).on_compress_begin(context)
@@ -38,4 +47,5 @@ class QuantizationStrategy(Strategy):
         super(QuantizationStrategy, self).on_compress_end(context)
         self.quantizer.convert_model(context.graph, context.place,
                                      context.scope, context.feeds,
-                                     context.fetches)
+                                     context.fetches, self.dirname, context.exe,
+                                     self.target_device, self.save_as_int8)

@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import abc
 from abc import abstractmethod
 from ....framework import Program
 from ..graph import ImitationGraph
-from ..graph import IRGraph
+from ..graph import save_inference_graph_model
 from ....contrib import GraphQuantizeTranspiler
 
 __all__ = ['Quantizer', 'StaticQuantizer', 'DynamicQuantizer']
@@ -48,6 +49,8 @@ class Quantizer(object):
                       scope,
                       feeds,
                       fetches,
+                      dirname=None,
+                      exe=None,
                       target_device='mobile',
                       save_as_int8=True):
         def _convert_for_mobile(_graph):
@@ -73,6 +76,14 @@ class Quantizer(object):
             convert_funcs[target_device](test_graph)
         else:
             raise ValueError("The device is not supported!")
+        if dirname is None:
+            print("The save path is None, so the model is not saved!")
+        else:
+            if not os.path.isdir(dirname):
+                os.makedirs(dirname)
+            save_inference_graph_model(
+                dirname, [feed_var.name for feed_var in feeds],
+                [fetch_var.name for fetch_var in fetches], exe, test_graph)
         return test_graph
 
 
@@ -102,10 +113,13 @@ class StaticQuantizer(Quantizer):
                       scope,
                       feeds,
                       fetches,
+                      dirname=None,
+                      exe=None,
                       target_device='mobile',
                       save_as_int8=True):
         return super(StaticQuantizer, self).convert_model(
-            graph, place, scope, feeds, fetches, target_device, save_as_int8)
+            graph, place, scope, feeds, fetches, dirname, exe, target_device,
+            save_as_int8)
 
 
 class DynamicQuantizer(Quantizer):
@@ -132,7 +146,10 @@ class DynamicQuantizer(Quantizer):
                       scope,
                       feeds,
                       fetches,
+                      dirname=None,
+                      exe=None,
                       target_device='mobile',
                       save_as_int8=True):
         return super(DynamicQuantizer, self).convert_model(
-            graph, place, scope, feeds, fetches, target_device, save_as_int8)
+            graph, place, scope, feeds, fetches, dirname, exe, target_device,
+            save_as_int8)

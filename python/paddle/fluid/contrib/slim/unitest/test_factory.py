@@ -37,6 +37,9 @@ class TestFactory(unittest.TestCase):
         self.assertEquals(pruner.ratios['*'], 0.7)
 
         strategy = factory.instance('strategy_2')
+        self.assertEquals(strategy.dirname, None)
+        self.assertEquals(strategy.target_device, 'mobile')
+        self.assertEquals(strategy.save_as_int8, False)
         quantizer = strategy.quantizer
         self.assertEquals(quantizer.window_size, 10000)
 

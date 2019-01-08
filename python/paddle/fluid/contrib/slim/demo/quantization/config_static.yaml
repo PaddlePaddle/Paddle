@@ -11,7 +11,9 @@ strategies:
         quantizer: 'quantizer_1'
         start_epoch: 0
         end_epoch: 10
-
+        dirname: 'output_static'
+        target_device: 'mobile'
+        save_as_int8: True
 compress_pass:
     class: 'CompressPass'
     epoch: 100

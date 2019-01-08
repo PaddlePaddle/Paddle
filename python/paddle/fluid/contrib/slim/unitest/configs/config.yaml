@@ -26,6 +26,9 @@ strategies:
         quantizer: 'quantizer_2'
         start_epoch: 0
         end_epoch: 10
+        dirname: None
+        target_device: 'mobile'
+        save_as_int8: False
 
 compress_pass:
     class: 'CompressPass'

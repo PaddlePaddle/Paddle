@@ -60,6 +60,8 @@ class ConfigFactory(object):
             args = {}
             for key in keys:
                 value = attrs[key]
+                if isinstance(value, str) and value.lower() == 'none':
+                    value = None
                 if isinstance(value, str) and value in self.instances:
                     value = self.instances[value]
                 args[key] = value
