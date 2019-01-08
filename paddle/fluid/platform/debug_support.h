@@ -30,8 +30,8 @@ class DebugSupport {
  public:
   // Returns the singleton of DebugSupport.
   static DebugSupport* GetInstance() {
-    static std::unique_ptr<DebugSupport> debugSupport_(nullptr);
-    static std::once_flag init_flag_;
+    static thread_local std::unique_ptr<DebugSupport> debugSupport_(nullptr);
+    static thread_local std::once_flag init_flag_;
 
     std::call_once(init_flag_,
                    [&]() { debugSupport_.reset(new DebugSupport<T>()); });
