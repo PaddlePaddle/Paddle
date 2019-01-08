@@ -272,8 +272,7 @@ class DataFeeder(object):
             dict: the result of conversion.
 
         Raises:
-            ValueError: If drop_last is False and the data batch which cannot
-            fit for devices.
+            ValueError: If drop_last is False and the data batch which cannot fit for devices.
         """
 
         def __reader_creator__():

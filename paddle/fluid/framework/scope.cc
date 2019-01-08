@@ -47,9 +47,15 @@ DEFINE_bool(fast_eager_deletion_mode, false,
 // the mutex will cause serious performance issue.
 // So the mutex is disabled when `ON_INFER`.
 #ifdef PADDLE_ON_INFERENCE
-#define SCOPE_LOCK_GUARD
+#define SCOPE_KIDS_READER_LOCK
+#define SCOPE_KIDS_WRITER_LOCK
+#define SCOPE_VARS_READER_LOCK
+#define SCOPE_VARS_WRITER_LOCK
 #else
-#define SCOPE_LOCK_GUARD std::lock_guard<std::mutex> lock(mutex_);
+#define SCOPE_KIDS_READER_LOCK AutoRDLock auto_lock(&kids_lock_);
+#define SCOPE_KIDS_WRITER_LOCK AutoWRLock auto_lock(&kids_lock_);
+#define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
+#define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
 #endif
 
 namespace paddle {
@@ -67,64 +73,69 @@ bool IsFastEagerDeletionModeEnabled() { return FLAGS_fast_eager_deletion_mode; }
 Scope::~Scope() { DropKids(); }
 
 Scope& Scope::NewScope() const {
-  SCOPE_LOCK_GUARD
-  kids_.push_back(new Scope(this));
-  return *kids_.back();
+  Scope* child = new Scope(this);
+  {
+    SCOPE_KIDS_WRITER_LOCK
+    kids_.push_back(child);
+  }
+  return *child;
 }
 
 Variable* Scope::Var(const std::string& name) {
-  SCOPE_LOCK_GUARD
+  SCOPE_VARS_WRITER_LOCK
   return VarInternal(name);
 }
 
 Variable* Scope::Var(std::string* name) {
-  SCOPE_LOCK_GUARD
   auto new_name = string::Sprintf("%p.%d", this, vars_.size());
   if (name != nullptr) {
     *name = new_name;
   }
+  SCOPE_VARS_WRITER_LOCK
   return VarInternal(new_name);
 }
 
 Variable* Scope::FindVar(const std::string& name) const {
-  SCOPE_LOCK_GUARD
+  SCOPE_VARS_READER_LOCK
   return FindVarInternal(name);
 }
 
 Variable* Scope::FindLocalVar(const std::string& name) const {
-  SCOPE_LOCK_GUARD
+  SCOPE_VARS_READER_LOCK
   return FindVarLocally(name);
 }
 
 const Scope* Scope::FindScope(const Variable* var) const {
-  SCOPE_LOCK_GUARD
+  SCOPE_VARS_READER_LOCK
   return FindScopeInternal(var);
 }
 
 void Scope::DropKids() {
-  SCOPE_LOCK_GUARD
+  SCOPE_KIDS_WRITER_LOCK
   for (Scope* s : kids_) delete s;
   kids_.clear();
 }
 
 bool Scope::HasKid(const Scope* scope) const {
-  SCOPE_LOCK_GUARD
+  SCOPE_KIDS_READER_LOCK
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   return it != this->kids_.end();
 }
 
 std::vector<std::string> Scope::LocalVarNames() const {
-  SCOPE_LOCK_GUARD
   std::vector<std::string> known_vars;
-  known_vars.reserve(this->vars_.size());
-  for (auto& p : vars_) {
-    known_vars.emplace_back(p.first);
+  {
+    SCOPE_VARS_READER_LOCK
+    known_vars.reserve(this->vars_.size());
+    for (auto& p : vars_) {
+      known_vars.emplace_back(p.first);
+    }
   }
   return known_vars;
 }
 
 void Scope::DeleteScope(Scope* scope) const {
-  SCOPE_LOCK_GUARD
+  SCOPE_KIDS_WRITER_LOCK
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   PADDLE_ENFORCE(it != this->kids_.end(), "%p Cannot find %p as kid scope",
                  this, scope);
@@ -138,8 +149,8 @@ void Scope::DeleteScope(Scope* scope) const {
 }
 
 void Scope::EraseVars(const std::vector<std::string>& var_names) {
-  SCOPE_LOCK_GUARD
   std::set<std::string> var_set(var_names.begin(), var_names.end());
+  SCOPE_VARS_WRITER_LOCK
   for (auto it = vars_.begin(); it != vars_.end();) {
     if (var_set.find(it->first) != var_set.end()) {
       it = vars_.erase(it);
@@ -151,12 +162,12 @@ void Scope::EraseVars(const std::vector<std::string>& var_names) {
 
 void Scope::Rename(const std::string& origin_name,
                    const std::string& new_name) const {
-  SCOPE_LOCK_GUARD
+  SCOPE_VARS_WRITER_LOCK
   RenameInternal(origin_name, new_name);
 }
 
 std::string Scope::Rename(const std::string& origin_name) const {
-  SCOPE_LOCK_GUARD
+  SCOPE_VARS_WRITER_LOCK
   auto new_name = string::Sprintf("%p.%d", this, vars_.size());
   RenameInternal(origin_name, new_name);
   return new_name;
@@ -165,11 +176,9 @@ std::string Scope::Rename(const std::string& origin_name) const {
 Variable* Scope::VarInternal(const std::string& name) {
   auto* v = FindVarLocally(name);
   if (v != nullptr) return v;
-
   v = new Variable();
-  vars_[name].reset(v);
+  vars_.emplace(name, std::unique_ptr<Variable>(v));
   VLOG(3) << "Create variable " << name;
-  v->name_ = &(vars_.find(name)->first);
   return v;
 }
 

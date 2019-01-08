@@ -2,7 +2,7 @@ if(NOT WITH_GPU)
     return()
 endif()
 
-set(paddle_known_gpu_archs "30 35 50 52 60 61 70")
+set(paddle_known_gpu_archs "30 35 50 52 60 61 70 75")
 set(paddle_known_gpu_archs7 "30 35 50 52")
 set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
 
@@ -59,7 +59,7 @@ endfunction()
 #   select_nvcc_arch_flags(out_variable)
 function(select_nvcc_arch_flags out_variable)
   # List of arch names
-  set(archs_names "Kepler" "Maxwell" "Pascal" "All" "Manual")
+  set(archs_names "Kepler" "Maxwell" "Pascal" "Volta" "Turing" "All" "Manual")
   set(archs_name_default "All")
   if(NOT CMAKE_CROSSCOMPILING)
     list(APPEND archs_names "Auto")
@@ -93,6 +93,8 @@ function(select_nvcc_arch_flags out_variable)
     set(cuda_arch_bin "60 61")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Volta")
     set(cuda_arch_bin "70")
+  elseif(${CUDA_ARCH_NAME} STREQUAL "Turing")
+    set(cuda_arch_bin "75")
   elseif(${CUDA_ARCH_NAME} STREQUAL "All")
     set(cuda_arch_bin ${paddle_known_gpu_archs})
   elseif(${CUDA_ARCH_NAME} STREQUAL "Auto")
@@ -139,10 +141,12 @@ endfunction()
 message(STATUS "CUDA detected: " ${CUDA_VERSION})
 if (${CUDA_VERSION} LESS 7.0)
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs})
+  add_definitions("-DPADDLE_CUDA_BINVER=\"60\"")
 elseif (${CUDA_VERSION} LESS 8.0) # CUDA 7.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs7})
   list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
   list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
+  add_definitions("-DPADDLE_CUDA_BINVER=\"70\"")
 elseif (${CUDA_VERSION} LESS 9.0) # CUDA 8.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs8})
   list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
@@ -150,6 +154,7 @@ elseif (${CUDA_VERSION} LESS 9.0) # CUDA 8.x
   # CUDA 8 may complain that sm_20 is no longer supported. Suppress the
   # warning for now.
   list(APPEND CUDA_NVCC_FLAGS "-Wno-deprecated-gpu-targets")
+  add_definitions("-DPADDLE_CUDA_BINVER=\"80\"")
 endif()
 
 include_directories(${CUDA_INCLUDE_DIRS})
