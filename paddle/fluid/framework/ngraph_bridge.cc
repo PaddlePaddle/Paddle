@@ -32,8 +32,11 @@ std::map<std::string,
                                 std::string, std::shared_ptr<ngraph::Node>>>)>>
     NgraphBridge::NG_NODE_MAP = {
         {"fill_constant", paddle::operators::ngraphs::BuildFillConstantNode},
+        {"mean", paddle::operators::ngraphs::BuildMeanNode},
+        {"mean_grad", paddle::operators::ngraphs::BuildMeanGradNode},
         {"mul", paddle::operators::ngraphs::BuildMulNode},
         {"mul_grad", paddle::operators::ngraphs::BuildMulGradNode},
+        {"scale", paddle::operators::ngraphs::BuildScaleNode},
         {"relu", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Relu>},
         {"tanh", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Tanh>},
         {"top_k", paddle::operators::ngraphs::BuildTopKNode}};
