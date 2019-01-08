@@ -55,12 +55,24 @@ __global__ void SoftCrossEntropyGradientKernel(T* logit_grad,
 
 }  // namespace
 
-static __device__ __forceinline__ float real_exp(float x) { return expf(x); }
-static __device__ __forceinline__ double real_exp(double x) { return exp(x); }
-static __device__ __forceinline__ float real_log(float x) {
+static __device__ __forceinline__ platform::float16 exp_on_device(
+    platform::float16 x) {
+  return ::Eigen::numext::exp(x);
+}
+static __device__ __forceinline__ float exp_on_device(float x) {
+  return expf(x);
+}
+static __device__ __forceinline__ double exp_on_device(double x) {
+  return exp(x);
+}
+static __device__ __forceinline__ platform::float16 log_on_device(
+    platform::float16 x) {
+  return math::TolerableValue<platform::float16>()(::Eigen::numext::log(x));
+}
+static __device__ __forceinline__ float log_on_device(float x) {
   return math::TolerableValue<float>()(logf(x));
 }
-static __device__ __forceinline__ double real_log(double x) {
+static __device__ __forceinline__ double log_on_device(double x) {
   return math::TolerableValue<double>()(log(x));
 }
 
@@ -126,7 +138,8 @@ static __global__ void RowReductionForMax(const T* logits_data, T* max_data,
   cur_max = BlockReduce<T, BlockDim>(temp_storage).Reduce(cur_max, cub::Max());
 
   if (threadIdx.x == 0) {
-    max_data[blockIdx.x] = cur_max < -64 ? -64 : cur_max;
+    max_data[blockIdx.x] =
+        cur_max < static_cast<T>(-64) ? static_cast<T>(-64) : cur_max;
   }
 }
 
@@ -143,17 +156,17 @@ static __global__ void RowReductionForDiffMaxSum(const T* logits_data,
   auto block_max = max_data[blockIdx.x];
 
   softmax[beg_idx] = logits_data[beg_idx] - block_max;
-  T diff_max_sum = real_exp(softmax[beg_idx]);
+  T diff_max_sum = exp_on_device(softmax[beg_idx]);
   auto idx = beg_idx + BlockDim;
   while (idx < end_idx) {
     softmax[idx] = logits_data[idx] - block_max;
-    diff_max_sum += real_exp(softmax[idx]);
+    diff_max_sum += exp_on_device(softmax[idx]);
     idx += BlockDim;
   }
 
   diff_max_sum =
       BlockReduce<T, BlockDim>(temp_storage).Reduce(diff_max_sum, cub::Sum());
-  if (threadIdx.x == 0) max_data[blockIdx.x] = real_log(diff_max_sum);
+  if (threadIdx.x == 0) max_data[blockIdx.x] = log_on_device(diff_max_sum);
 
   if (!CalculateLogSoftmax) return;
   __syncthreads();
@@ -180,12 +193,12 @@ static __global__ void RowReductionForSoftmaxAndCrossEntropy(
   // log_diff_max_sum shares memory with loss
   auto block_log_diff_max_sum = loss_data[blockIdx.x];
   auto tmp = softmax[beg_idx] - block_log_diff_max_sum;
-  softmax[beg_idx] = real_exp(tmp);
+  softmax[beg_idx] = exp_on_device(tmp);
   auto loss = -labels_data[beg_idx] * tmp;
   beg_idx += BlockDim;
   while (beg_idx < end_idx) {
     tmp = softmax[beg_idx] - block_log_diff_max_sum;
-    softmax[beg_idx] = real_exp(tmp);
+    softmax[beg_idx] = exp_on_device(tmp);
     loss -= (labels_data[beg_idx] * tmp);
     beg_idx += BlockDim;
   }
@@ -210,10 +223,10 @@ struct HardLabelSoftmaxWithCrossEntropyFunctor {
     auto row_idx = idx / feature_size_;
     auto col_idx = idx % feature_size_;
     if (col_idx != labels_[row_idx]) {
-      log_softmax_[idx] = real_exp(log_softmax_[idx]);
+      log_softmax_[idx] = exp_on_device(log_softmax_[idx]);
     } else {
       auto softmax = log_softmax_[idx];
-      log_softmax_[idx] = real_exp(softmax);
+      log_softmax_[idx] = exp_on_device(softmax);
       loss_[row_idx] = -softmax;
     }
   }
@@ -245,10 +258,10 @@ struct HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx {
     auto row_idx = idx / feature_size_;
     auto col_idx = idx % feature_size_;
     if (col_idx != labels_[row_idx] || col_idx == ignore_idx_) {
-      log_softmax_[idx] = real_exp(log_softmax_[idx]);
+      log_softmax_[idx] = exp_on_device(log_softmax_[idx]);
     } else {
       auto softmax = log_softmax_[idx];
-      log_softmax_[idx] = real_exp(softmax);
+      log_softmax_[idx] = exp_on_device(softmax);
       loss_[row_idx] = -softmax;
     }
   }
