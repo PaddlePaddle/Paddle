@@ -172,6 +172,21 @@ class Tracer {
     op->block_ = block;
   }
 
+  std::vector<VarBase*> PyTrace(OpBase* op,
+                                const std::vector<VarBase>& inputs) {
+    std::vector<VarBase*> outputs = PyLayer::Apply(op->forward_id_, inputs);
+    /*
+    for (const VarBase& inp : inputs) {
+      if (inp.pre_op_) {
+        op->pre_ops_[it.first].push_back(inp->pre_op_);
+        op->pre_ops_out_idx_[it.first].push_back(inp->pre_op_out_idx_);
+      } else {
+        op->pre_ops_[it.first].push_back(nullptr);
+      }
+    }*/
+    return outputs;
+  }
+
  private:
   framework::BlockDesc* root_block_;
 };

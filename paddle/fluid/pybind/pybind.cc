@@ -168,6 +168,13 @@ PYBIND11_MODULE(core, m) {
               self.op_desc_ = op_desc;
             }
           },
+          py::return_value_policy::reference)
+      .def_property(
+          "forward_id",
+          [](const imperative::OpBase &self) { return self.forward_id_; },
+          [](imperative::OpBase &self, int forward_id) {
+            self.forward_id_ = forward_id;
+          },
           py::return_value_policy::reference);
 
   py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
@@ -179,13 +186,16 @@ PYBIND11_MODULE(core, m) {
 
   py::class_<paddle::imperative::PyLayer>(m, "PyLayer")
       .def(py::init<>())
-      .def_static("apply",
-                  [](py::object *callable,
-                     const std::vector<imperative::VarBase> &inputs)
-                      -> std::vector<imperative::VarBase *> {
-                        return imperative::PyLayer::Apply(callable, inputs);
-                      },
-                  py::return_value_policy::take_ownership);
+      .def_static(
+          "apply",
+          [](int func_id, const std::vector<imperative::VarBase> &inputs)
+              -> std::vector<imperative::VarBase *> {
+                return imperative::PyLayer::Apply(func_id, inputs);
+              },
+          py::return_value_policy::take_ownership)
+      .def_static("register_func", [](int func_id, const py::object &callable) {
+        imperative::PyLayer::RegisterFunc(func_id, callable);
+      });
 
   BindTracer(&m);
 
