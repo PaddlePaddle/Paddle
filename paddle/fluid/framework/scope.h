@@ -18,6 +18,7 @@ extern "C" {
 #include <xxhash.h>
 }
 
+#include <atomic>
 #include <list>
 #include <memory>
 #include <string>
@@ -141,6 +142,9 @@ class Scope {
   const Scope* parent_;
 
   mutable TempVariablePool tmp_pool_;
+
+  // A counter used to generate unique name
+  mutable std::atomic<uint64_t> counter_{0};
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 

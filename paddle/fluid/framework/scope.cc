@@ -90,10 +90,16 @@ Variable* Scope::Var(std::string* name) {
   if (name == nullptr) {
     return TempVar();
   } else {
-    SCOPE_VARS_WRITER_LOCK
     *name = std::to_string(reinterpret_cast<uintptr_t>(this)) + "." +
-            std::to_string(vars_.size());
-    return VarInternal(*name);
+            std::to_string(counter_.fetch_add(1));
+    auto* v = new Variable();
+    {
+      SCOPE_VARS_WRITER_LOCK
+      PADDLE_ENFORCE(vars_.emplace(*name, std::unique_ptr<Variable>(v)).second,
+                     "Var name %s has existed", *name);
+    }
+    VLOG(3) << "Create temp variable " << *name;
+    return v;
   }
 }
 
