@@ -45,7 +45,7 @@ class HashKerel : public framework::OpKernel<T> {
     for (int idx = 0; idx < seq_length; ++idx) {
       for (int ihash = 0; ihash != num_hash; ++ihash) {
         output[idx * num_hash + ihash] =
-            XXH32(input, sizeof(int) * last_dim, ihash) % mod_by;
+            XXH64(input, sizeof(int) * last_dim, ihash) % mod_by;
       }
       input += last_dim;
     }
