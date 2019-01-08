@@ -81,8 +81,8 @@ class TestImperative(unittest.TestCase):
     def test_pylayer(self):
         with fluid.imperative.guard():
             my_py_layer = MyPyLayer()
-            out = my_py_layer([np.ones([2, 2], np.float32)])
-            sys.stderr.write('%s\n' % np.array(out))
+            outs = my_py_layer([np.ones([2, 2], np.float32)])
+            sys.stderr.write('%s\n' % outs[0]._numpy())
             # out.backward()
 
     def test_layer_in_out(self):

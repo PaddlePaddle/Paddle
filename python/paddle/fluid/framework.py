@@ -372,7 +372,10 @@ class Variable(object):
         self.stop_gradient = stop_gradient
         self.is_data = is_data
         if _in_imperative_mode():
-            self._ivar = core.VarBase()
+            if 'ivar' in kwargs:
+                self._ivar = kwargs['ivar']
+            else:
+                self._ivar = core.VarBase()
             self._ivar.desc = self.desc
             self._ivar.stop_gradient = stop_gradient
 
