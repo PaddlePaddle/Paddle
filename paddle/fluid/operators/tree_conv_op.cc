@@ -79,11 +79,8 @@ class TreeConvOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
     return framework::OpKernelType(ctx.Input<Tensor>("NodesVector")->type(),
-                                   ctx.GetPlace(), layout_, library_);
+                                   ctx.device_context());
   }
 };
 
@@ -107,12 +104,8 @@ class TreeConvGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace(), layout_, library_);
+    return framework::OpKernelType(ctx.Input<Tensor>("NodesVector")->type(),
+                                   ctx.device_context());
   }
 };
 }  // namespace operators
