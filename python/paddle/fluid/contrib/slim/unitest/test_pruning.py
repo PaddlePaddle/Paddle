@@ -129,6 +129,17 @@ class TestSensitivePruneStrategy(unittest.TestCase):
         self.assertTrue('conv2d_5.b_0' in strategy.backup.keys())
         self.assertTrue('conv2d_6.w_0' in strategy.backup.keys())
 
+        # pruning conv_6
+        strategy.backup = {}
+        param = graph.get_var('conv2d_6.w_0')
+        ratio = 0.3
+        strategy._prune_parameters(
+            graph, scope, [param], [0.3], place, lazy=True)
+        self.assertTrue(len(strategy.backup.keys()) == 3)
+        self.assertTrue('conv2d_6.w_0' in strategy.backup.keys())
+        self.assertTrue('conv2d_6.b_0' in strategy.backup.keys())
+        self.assertTrue('fc_0.w_0' in strategy.backup.keys())
+
     def test_prune_parameters(self):
         graph, scope, exe, place, loss = self.def_graph()
         pruning_axis = {'*': 0}

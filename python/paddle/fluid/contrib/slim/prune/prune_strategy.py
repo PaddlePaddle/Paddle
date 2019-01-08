@@ -49,7 +49,6 @@ class SensitivePruneStrategy(Strategy):
         for param in context.graph.all_parameters():
             if not re.match('conv2d_.+\.w_.+', param.name):
                 continue
-            print "pruning %s----------------------------" % param.name
             self.sensitivities[param.name] = {
                 'pruned_percent': [],
                 'acc_loss': []
@@ -152,6 +151,8 @@ class SensitivePruneStrategy(Strategy):
             if top_op.type == "conv2d" and param.name not in self._inputs(
                     top_op):
                 next_ops = None
+            elif top_op.type == "mul":
+                next_ops = None
             else:
                 next_ops = self._get_next_unvisited_op(graph, visited, top_op)
             if next_ops == None:
@@ -247,6 +248,29 @@ class SensitivePruneStrategy(Strategy):
                     place,
                     excludes=[last_op.idx],
                     lazy=lazy)
+            elif op.type == "mul":  # pruning fc layer
+                fc_input = None
+                fc_param = None
+                for i in self._inputs(op):
+                    i_var = graph.get_var(i)
+                    if isinstance(i_var, Parameter):
+                        fc_param = i_var
+                    else:
+                        fc_input = i_var
+
+                idx = []
+                feature_map_size = fc_input.shape[2] * fc_input.shape[3]
+                range_idx = np.array(range(feature_map_size))
+                for i in corrected_idxs:
+                    idx += list(range_idx + i * feature_map_size)
+                corrected_idxs = idx
+                self._prune_parameter_by_idx(
+                    scope,
+                    fc_param,
+                    corrected_idxs,
+                    pruned_axis=0,
+                    place=place,
+                    lazy=lazy)
 
             elif op.type == "concat":
                 concat_inputs = self._inputs(op)
@@ -265,28 +289,28 @@ class SensitivePruneStrategy(Strategy):
                 variance = graph.get_var(bn_inputs[3])
                 alpha = graph.get_var(bn_inputs[0])
                 beta = graph.get_var(bn_inputs[1])
-                self._prune_parameter(
+                self._prune_parameter_by_idx(
                     scope,
                     mean,
                     corrected_idxs,
                     pruned_axis=0,
                     place=place,
                     lazy=lazy)
-                self._prune_parameter(
+                self._prune_parameter_by_idx(
                     scope,
                     variance,
                     corrected_idxs,
                     pruned_axis=0,
                     place=place,
                     lazy=lazy)
-                self._prune_parameter(
+                self._prune_parameter_by_idx(
                     scope,
                     alpha,
                     corrected_idxs,
                     pruned_axis=0,
                     place=place,
                     lazy=lazy)
-                self._prune_parameter(
+                self._prune_parameter_by_idx(
                     scope,
                     beta,
                     corrected_idxs,
