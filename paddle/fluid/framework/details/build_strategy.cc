@@ -33,6 +33,7 @@ namespace details {
 static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
   // Should fix the allreduce op order if scheduling
   // them in multiple threads or processes to avoid hang.
+  VLOG(1) << "enable_parallel_graph_" << strategy.enable_parallel_graph_;
   return (!strategy.enable_sequential_execution_ &&
           strategy.num_trainers_ > 1) ||
          strategy.enable_parallel_graph_;

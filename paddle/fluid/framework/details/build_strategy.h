@@ -123,11 +123,10 @@ struct BuildStrategy {
 #endif
 
   // If set true, ParallelExecutor would build the main_program into multiple
-  // graphs,
-  // each of the graphs would run with one device. This approach can achieve
-  // better performance
-  // on some scenarios.
-  mutable bool enable_parallel_graph_ = false;
+  // graphs, each of the graphs would run with one device. This approach can
+  // achieve
+  // better performance on some scenarios.
+  mutable bool enable_parallel_graph_{true};
 
  private:
   mutable bool is_finalized_ = false;

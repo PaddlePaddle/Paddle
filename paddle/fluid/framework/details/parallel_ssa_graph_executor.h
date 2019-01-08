@@ -24,6 +24,16 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+/**
+class StopTheWorld {
+ public:
+  void StopAllWorkers();
+  void Reset();
+ private:
+  std::atomic<bool> stw_{false};
+};
+**/
+
 class ParallelSSAGraphExecutor : public SSAGraphExecutor {
  public:
   ParallelSSAGraphExecutor(const ExecutionStrategy &strategy,

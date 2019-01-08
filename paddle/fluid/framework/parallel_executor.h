@@ -72,9 +72,6 @@ class ParallelExecutor {
 
  private:
   void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;
-  bool EnableParallelGraphExecution(const ProgramDesc &main_program,
-                                    const ExecutionStrategy &exec_strategy,
-                                    const BuildStrategy &build_strategy) const;
 
   ParallelExecutorPrivate *member_;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)

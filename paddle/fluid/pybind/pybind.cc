@@ -1008,6 +1008,10 @@ All parameter, weight, gradient are variables in Paddle.
           "memory_early_delete",
           [](const BuildStrategy &self) { return self.memory_early_delete_; },
           [](BuildStrategy &self, bool b) { self.memory_early_delete_ = b; })
+      .def_property(
+          "enable_parallel_graph",
+          [](const BuildStrategy &self) { return self.enable_parallel_graph_; },
+          [](BuildStrategy &self, bool b) { self.enable_parallel_graph_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);

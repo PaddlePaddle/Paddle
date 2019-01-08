@@ -38,6 +38,28 @@ def _is_pserver_mode(main_program):
     return False
 
 
+def _enable_parallel_graph_mode(use_cuda,
+                                build_strategy,
+                                exec_strategy,
+                                main_program=None):
+    main_prog = main_program if main_program \
+        else framework.default_main_program()
+    if _is_pserver_mode(main_prog):
+        return False
+
+    # TODO(Yancey1989): support sparse update
+    for var in main_prog.global_block().vars.itervalues():
+        if var.type == core.VarDesc.VarType.SELECTED_ROWS:
+            return False
+
+    if not use_cuda or exec_strategy.use_experimental_executor or \
+            build_strategy.enable_sequential_execution or \
+            build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.Reduce:
+        return False
+
+    return True
+
+
 class ParallelExecutor(object):
     """
     ParallelExecutor is designed for data parallelism, which focuses on distributing
@@ -142,6 +164,12 @@ class ParallelExecutor(object):
         # it's distributed model.
         build_strategy.is_distribution = _is_pserver_mode(
             main_program) or num_trainers > 1
+
+        # FIXME(Yancey1989): parallel graph mode get better performance
+        # in GPU allreduce distributed training. Need an elegant way to
+        # select the execution strategy.
+        build_strategy.enable_parallel_graph = _enable_parallel_graph_mode(
+            use_cuda, build_strategy, exec_strategy, main_program)
 
         # step4: get main_program, scope, local_scopes
         main = main_program if main_program \
