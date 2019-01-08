@@ -15,6 +15,7 @@
 import contextlib
 import unittest
 import numpy as np
+import sys
 
 import paddle.fluid as fluid
 from paddle.fluid import core
@@ -32,6 +33,24 @@ class MyLayer(fluid.imperative.Layer):
         x = fluid.layers.elementwise_mul(x, x)
         x = fluid.layers.reduce_sum(x)
         return [x]
+
+
+class MyPyLayer(fluid.imperative.PyLayer):
+    def __init__(self):
+        super(MyPyLayer, self).__init__()
+
+    @staticmethod
+    def forward(inputs):
+        sys.stderr.write('before forward\n')
+        ret = np.tanh(inputs[0])
+        sys.stderr.write('after forward: %s\n' % ret)
+        tensor = core.LoDTensor()
+        tensor.set(ret, core.CPUPlace())
+        return tuple([tensor])
+
+    @staticmethod
+    def backward(douts, outs):
+        return np.array(douts[0]) * (1 - np.square(np.array(outs[0])))
 
 
 class MLP(fluid.imperative.Layer):
@@ -58,6 +77,13 @@ class TestImperative(unittest.TestCase):
             cl.forward([])
             l = fluid.imperative.Layer()
             self.assertRaises(NotImplementedError, l.forward, [])
+
+    def test_pylayer(self):
+        with fluid.imperative.guard():
+            my_py_layer = MyPyLayer()
+            out = my_py_layer([np.ones([2, 2], np.float32)])
+            sys.stderr.write('%s\n' % np.array(out))
+            # out.backward()
 
     def test_layer_in_out(self):
         np_inp = np.array([1.0, 2.0, -1.0], dtype=np.float32)
