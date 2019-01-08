@@ -52,10 +52,12 @@ class SumOp : public framework::OperatorWithKernel {
 
     framework::DDim in_dim({0});
     for (size_t i = 0; i < x_dims.size(); ++i) {
-      if (x_var_types[i] == framework::proto::VarType::SELECTED_ROWS) {
+      auto& x_dim = x_dims[i];
+      // x_dim.size() == 1 means the real dim of selected rows is [0]
+      if (x_var_types[i] == framework::proto::VarType::SELECTED_ROWS &&
+          x_dim.size() == 1) {
         continue;
       }
-      auto& x_dim = x_dims[i];
       if (framework::product(x_dim) == 0) {
         continue;
       }
