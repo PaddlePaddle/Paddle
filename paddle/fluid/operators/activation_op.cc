@@ -75,7 +75,8 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
   framework::LibraryType library{framework::LibraryType::kPlain};
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_CUDA
-  if (platform::CanCUDNNBeUsed(ctx)) {
+  auto it1 = oper.Attrs().find("use_cudnn");
+  if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
     library = framework::LibraryType::kCUDNN;
   }
 #endif

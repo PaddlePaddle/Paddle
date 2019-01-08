@@ -41,15 +41,27 @@ static std::unordered_set<std::string> InplaceOpSet = {
     "floor",   "reciprocal", "relu6", "soft_relu", "hard_sigmoid",
 };
 
+static bool IsInplace(const std::string& op) {
+  bool inplace = InplaceOpSet.count(op);
+  // for op_grad
+  const int kGradSuffixLen = 4;
+  if (op.size() > kGradSuffixLen &&
+      op.compare(op.size() - kGradSuffixLen - 1, kGradSuffixLen, "grad")) {
+    inplace =
+        InplaceOpSet.count(op.substr(0, op.size() - (kGradSuffixLen + 1)));
+  }
+  return inplace;
+}
+
 /* The following operator can be used to process SelectedRows, because the
  * output of those operator for zero is zero too.
  */
 static std::unordered_set<std::string> CanBeUsedBySelectedRows = {
     "abs", "abs_grad", "square", "square_grad", "sqrt", "sqrt_grad"};
 
-void ExtractActivationTensor(const framework::ExecutionContext& context,
-                             const framework::Tensor** X,
-                             framework::Tensor** Out) {
+inline void ExtractActivationTensor(const framework::ExecutionContext& context,
+                                    const framework::Tensor** X,
+                                    framework::Tensor** Out) {
   auto x_var = context.InputVar("X");
   auto out_var = context.OutputVar("Out");
   PADDLE_ENFORCE(x_var != nullptr,
@@ -72,12 +84,10 @@ void ExtractActivationTensor(const framework::ExecutionContext& context,
                  context.op().Output("Out"));
 }
 
-void ExtractActivationGradTensor(const framework::ExecutionContext& context,
-                                 const framework::Tensor** X,
-                                 const framework::Tensor** Out,
-                                 const framework::Tensor** dOut,
-                                 framework::Tensor** dX) {
-  auto x_var = context.InputVar("X");
+inline void ExtractActivationGradTensor(
+    const framework::ExecutionContext& context, const framework::Tensor** X,
+    const framework::Tensor** Out, const framework::Tensor** dOut,
+    framework::Tensor** dX) {
   auto out_var = context.InputVar("Out");
   auto out_grad_var = context.InputVar(framework::GradVarName("Out"));
   auto x_grad_var = context.OutputVar(framework::GradVarName("X"));
@@ -109,8 +119,9 @@ void ExtractActivationGradTensor(const framework::ExecutionContext& context,
                  framework::GradVarName("X"),
                  context.op().Output(framework::GradVarName("X")));
 
-  bool inplace = InplaceOpSet.count(context.op().Type());
+  bool inplace = IsInplace(context.op().Type());
   if (!inplace) {
+    auto x_var = context.InputVar("X");
     PADDLE_ENFORCE(x_var != nullptr,
                    "Cannot get input tensor X, variable name = %s",
                    context.op().Input("X"));

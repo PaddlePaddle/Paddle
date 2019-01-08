@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
@@ -466,7 +467,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       // the sub scopes it created should not be dropped immediately, because
       // while_grad_op will use some variables created during while_op run, so
       // we need to keep the kids and wait for the outer executor to drop them.
-      scope->DropKids();
+      Async([scope] { scope->DropKids(); });
     }
   }
 }

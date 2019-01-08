@@ -153,7 +153,11 @@ function(op_library TARGET)
     # pybind USE_OP_DEVICE_KERNEL for CUDNN
     list(LENGTH cudnn_cu_cc_srcs cudnn_cu_cc_srcs_len)
     if (WITH_GPU AND ${cudnn_cu_cc_srcs_len} GREATER 0)
+      if(${TARGET} STREQUAL "activation")
+        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(relu, CUDNN);\n")
+      else()
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
+      endif()
     endif()
 
     # pybind USE_OP_DEVICE_KERNEL for MIOPEN
@@ -178,7 +182,6 @@ function(op_library TARGET)
       # NOTE(*): activation use macro to regist the kernels, set use_op manually.
       if(${TARGET} STREQUAL "activation")
         file(APPEND ${pybind_file} "USE_OP(relu);\n")
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(relu, CUDNN);\n")
       elseif(${TARGET} STREQUAL "fake_dequantize")
         file(APPEND ${pybind_file} "USE_OP(fake_dequantize_max_abs);\n")
       elseif(${TARGET} STREQUAL "fake_quantize")

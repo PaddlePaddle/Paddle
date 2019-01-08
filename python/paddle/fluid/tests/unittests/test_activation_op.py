@@ -26,6 +26,7 @@ class TestActivation(OpTest):
         self.op_type = "exp"
         self.dtype = np.float32
         self.init_dtype()
+        self.init_kernel_type()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.exp(x)
@@ -43,6 +44,9 @@ class TestActivation(OpTest):
 
     def init_dtype(self):
         self.dtype = np.float32
+
+    def init_kernel_type(self):
+        pass
 
 
 class TestSigmoid(TestActivation):
