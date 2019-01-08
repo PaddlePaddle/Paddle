@@ -19,3 +19,10 @@ find_package_handle_standard_args(jemalloc DEFAULT_MSG JEMALLOC_LIBRARIES JEMALL
 mark_as_advanced(
   JEMALLOC_LIBRARIES
   JEMALLOC_INCLUDE_DIR)
+
+if (JEMALLOC_FOUND)
+  add_library(jemalloc::jemalloc UNKNOWN IMPORTED)
+  set_target_properties(jemalloc::jemalloc PROPERTIES
+    IMPORTED_LOCATION ${JEMALLOC_LIBRARIES}
+    INTERFACE_INCLUDE_DIRECTORIES "${JEMALLOC_INCLUDE_DIR}")
+endif()
