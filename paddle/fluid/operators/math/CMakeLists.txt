@@ -53,7 +53,7 @@ math_library(sequence2batch)
 math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function)
 math_library(sequence_scale)
-math_library(softmax DEPS math_function device_context)
+math_library(softmax DEPS math_function)
 
 math_library(matrix_bit_code)
 
@@ -73,7 +73,3 @@ if(WITH_GPU)
 endif()
 cc_test(concat_test SRCS concat_test.cc DEPS concat_and_split)
 cc_test(cpu_vec_test SRCS cpu_vec_test.cc DEPS blas cpu_info)
-
-if(WITH_GPU)
-    nv_test(reductions_test SRCS reductions_test.cu)
-endif()

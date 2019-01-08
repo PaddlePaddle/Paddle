@@ -1,21 +1,14 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#define EIGEN_USE_GPU
-
 #include <cub/cub.cuh>
-#include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/operators/softmax_with_cross_entropy_op.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -24,7 +17,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using fp16 = platform::float16;
 
 namespace {
 template <typename T>
@@ -63,17 +55,8 @@ __global__ void SoftCrossEntropyGradientKernel(T* logit_grad,
 
 }  // namespace
 
-static __device__ __forceinline__ platform::float16 real_exp(
-    platform::float16 x) {
-  return ::Eigen::numext::exp(x);
-}
 static __device__ __forceinline__ float real_exp(float x) { return expf(x); }
 static __device__ __forceinline__ double real_exp(double x) { return exp(x); }
-
-static __device__ __forceinline__ platform::float16 real_log(
-    platform::float16 x) {
-  return math::TolerableValue<platform::float16>()(::Eigen::numext::log(x));
-}
 static __device__ __forceinline__ float real_log(float x) {
   return math::TolerableValue<float>()(logf(x));
 }
@@ -86,25 +69,20 @@ static __device__ __forceinline__ double real_log(double x) {
 /*
   Supposing the x is `logits` and y is `labels`, the equations are as
 followings:
-
   cross\_entropy_i = \sum_{j}[- y_i_j * log({e^{x_i_j}/\sum_{j}e^{x_i_j}})]
         = \sum_{j}[- y_i_j * log({e^{x_i_j - max_i}/\sum_{j}e^{x_i_j-max_i}})]
         = \sum_{j}[-y_i_j * (x_i_j - max_i - log\sum_{j}e^{x_i_j - max_i})]
         = \sum_{j}[-y_i_j * (x_i_j - max_i - logDiffMaxSum_i)]
         = \sum_{j}(-y_i_j * tmp_i_j)
-
   softmax_i_j = e^{tmp_i_j}
-
 where:
   max_i = \max_{j}{x_i_j}
   logDiffMaxSum_i = log\sum_{j}e^{x_i_j - max_i}
   tmp_i_j = x_i_j - max_i - logDiffMaxSum_i
-
 Therefore, the calculation can be separated into 3 steps:
 Step 1: row-wise operation to calculate max_i
 Step 2: row-wise operation to calculate logDiffMaxSum_i
 Step 3: caculate tmp_i_j, and finally get softmax_i_j and cross\_entropy_i
-
 To save memory, we can share memory among max_i, logDiffMaxSum_i and
 cross\_entropy_i.
 In this way, the 3 steps should be changed to:
@@ -132,7 +110,6 @@ template <typename T, int BlockDim>
 static __global__ void RowReductionForMax(const T* logits_data, T* max_data,
                                           int feature_size) {
   __shared__ BlockReduceTempStorage<T, BlockDim> temp_storage;
-  T clip_value = static_cast<T>(-64.);
 
   auto beg_idx = feature_size * blockIdx.x + threadIdx.x;
   auto end_idx = feature_size * (blockIdx.x + 1);
@@ -149,39 +126,38 @@ static __global__ void RowReductionForMax(const T* logits_data, T* max_data,
   cur_max = BlockReduce<T, BlockDim>(temp_storage).Reduce(cur_max, cub::Max());
 
   if (threadIdx.x == 0) {
-    max_data[blockIdx.x] = cur_max < clip_value ? clip_value : cur_max;
+    max_data[blockIdx.x] = cur_max < -64 ? -64 : cur_max;
   }
 }
 
 // Make sure that BlockDim <= feature_size
-template <typename T, typename AccT, int BlockDim,
-          bool CalculateLogSoftmax = false>
+template <typename T, int BlockDim, bool CalculateLogSoftmax = false>
 static __global__ void RowReductionForDiffMaxSum(const T* logits_data,
-                                                 T* max_data, AccT* softmax,
+                                                 T* max_data, T* softmax,
                                                  int feature_size) {
-  __shared__ BlockReduceTempStorage<AccT, BlockDim> temp_storage;
+  __shared__ BlockReduceTempStorage<T, BlockDim> temp_storage;
 
   auto beg_idx = feature_size * blockIdx.x + threadIdx.x;
   auto end_idx = feature_size * (blockIdx.x + 1);
 
   auto block_max = max_data[blockIdx.x];
 
-  softmax[beg_idx] = static_cast<AccT>(logits_data[beg_idx] - block_max);
-  AccT diff_max_sum = real_exp(softmax[beg_idx]);
+  softmax[beg_idx] = logits_data[beg_idx] - block_max;
+  T diff_max_sum = real_exp(softmax[beg_idx]);
   auto idx = beg_idx + BlockDim;
   while (idx < end_idx) {
-    softmax[idx] = static_cast<AccT>(logits_data[idx] - block_max);
+    softmax[idx] = logits_data[idx] - block_max;
     diff_max_sum += real_exp(softmax[idx]);
     idx += BlockDim;
   }
 
-  diff_max_sum = BlockReduce<AccT, BlockDim>(temp_storage)
-                     .Reduce(diff_max_sum, cub::Sum());
+  diff_max_sum =
+      BlockReduce<T, BlockDim>(temp_storage).Reduce(diff_max_sum, cub::Sum());
   if (threadIdx.x == 0) max_data[blockIdx.x] = real_log(diff_max_sum);
 
   if (!CalculateLogSoftmax) return;
   __syncthreads();
-  diff_max_sum = static_cast<AccT>(max_data[blockIdx.x]);
+  diff_max_sum = max_data[blockIdx.x];
   softmax[beg_idx] -= diff_max_sum;
   beg_idx += BlockDim;
   while (beg_idx < end_idx) {
@@ -218,12 +194,12 @@ static __global__ void RowReductionForSoftmaxAndCrossEntropy(
   if (threadIdx.x == 0) loss_data[blockIdx.x] = loss;
 }
 
-template <typename T, typename AccT>
+template <typename T>
 struct HardLabelSoftmaxWithCrossEntropyFunctor {
  public:
   HardLabelSoftmaxWithCrossEntropyFunctor(const T* logits,
                                           const int64_t* labels, T* loss,
-                                          AccT* log_softmax, int feature_size)
+                                          T* log_softmax, int feature_size)
       : logits_(logits),
         labels_(labels),
         loss_(loss),
@@ -246,16 +222,18 @@ struct HardLabelSoftmaxWithCrossEntropyFunctor {
   const T* logits_;
   const int64_t* labels_;
   T* loss_;
-  AccT* log_softmax_;
+  T* log_softmax_;
   int feature_size_;
 };
 
-template <typename T, typename AccT>
+template <typename T>
 struct HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx {
  public:
-  HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx(
-      const T* logits, const int64_t* labels, T* loss, AccT* log_softmax,
-      int feature_size, int ignore_idx)
+  HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx(const T* logits,
+                                                       const int64_t* labels,
+                                                       T* loss, T* log_softmax,
+                                                       int feature_size,
+                                                       int ignore_idx)
       : logits_(logits),
         labels_(labels),
         loss_(loss),
@@ -279,7 +257,7 @@ struct HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx {
   const T* logits_;
   const int64_t* labels_;
   T* loss_;
-  AccT* log_softmax_;
+  T* log_softmax_;
   int feature_size_;
   int ignore_idx_;
 };
@@ -291,34 +269,34 @@ static __global__ void SetSoftmaxToOneWhenFeatureSizeIsOne(T* out,
   if (idx < batch_size) out[idx] = static_cast<T>(1);
 }
 
-template <typename T, typename AccT>
+template <typename T>
 static void HardLabelSoftmaxWithCrossEntropy(
     const platform::CUDADeviceContext& ctx, const T* logits_data,
-    const int64_t* labels_data, T* loss_data, AccT* softmax_data,
-    int batch_size, int feature_size, int ignore_idx) {
+    const int64_t* labels_data, T* loss_data, T* softmax_data, int batch_size,
+    int feature_size, int ignore_idx) {
   constexpr int kMaxBlockDim = 512;
   int block_dim = feature_size >= kMaxBlockDim
                       ? kMaxBlockDim
                       : (1 << static_cast<int>(std::log2(feature_size)));
   auto stream = ctx.stream();
 
-#define CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(BlockDim)      \
-  case BlockDim: {                                                             \
-    RowReductionForMax<T, BlockDim><<<batch_size, BlockDim, 0, stream>>>(      \
-        logits_data, loss_data, feature_size);                                 \
-    RowReductionForDiffMaxSum<T, AccT, BlockDim,                               \
-                              true><<<batch_size, BlockDim, 0, stream>>>(      \
-        logits_data, loss_data, softmax_data, feature_size);                   \
-    platform::ForRange<platform::CUDADeviceContext> for_range(                 \
-        ctx, batch_size* feature_size);                                        \
-    if (ignore_idx >= 0 && ignore_idx < feature_size) {                        \
-      for_range(HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx<T, AccT>( \
-          logits_data, labels_data, loss_data, softmax_data, feature_size,     \
-          ignore_idx));                                                        \
-    } else {                                                                   \
-      for_range(HardLabelSoftmaxWithCrossEntropyFunctor<T, AccT>(              \
-          logits_data, labels_data, loss_data, softmax_data, feature_size));   \
-    }                                                                          \
+#define CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(BlockDim)    \
+  case BlockDim: {                                                           \
+    RowReductionForMax<T, BlockDim><<<batch_size, BlockDim, 0, stream>>>(    \
+        logits_data, loss_data, feature_size);                               \
+    RowReductionForDiffMaxSum<T, BlockDim,                                   \
+                              true><<<batch_size, BlockDim, 0, stream>>>(    \
+        logits_data, loss_data, softmax_data, feature_size);                 \
+    platform::ForRange<platform::CUDADeviceContext> for_range(               \
+        ctx, batch_size* feature_size);                                      \
+    if (ignore_idx >= 0 && ignore_idx < feature_size) {                      \
+      for_range(HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx<T>(     \
+          logits_data, labels_data, loss_data, softmax_data, feature_size,   \
+          ignore_idx));                                                      \
+    } else {                                                                 \
+      for_range(HardLabelSoftmaxWithCrossEntropyFunctor<T>(                  \
+          logits_data, labels_data, loss_data, softmax_data, feature_size)); \
+    }                                                                        \
   } break
 
   switch (block_dim) {
@@ -360,7 +338,7 @@ static void SoftmaxWithCrossEntropyFusedKernel(const T* logits_data,
   case BlockDim:                                                              \
     RowReductionForMax<T, BlockDim><<<batch_size, BlockDim, 0, stream>>>(     \
         logits_data, loss_data, feature_size);                                \
-    RowReductionForDiffMaxSum<T, T,                                           \
+    RowReductionForDiffMaxSum<T,                                              \
                               BlockDim><<<batch_size, BlockDim, 0, stream>>>( \
         logits_data, loss_data, softmax_data, feature_size);                  \
     RowReductionForSoftmaxAndCrossEntropy<                                    \
@@ -409,11 +387,6 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
 
     auto soft_label = context.Attr<bool>("soft_label");
     auto ignore_index = context.Attr<int>("ignore_index");
-    bool half_to_float = false;
-    if (std::type_index(typeid(T)) == std::type_index(typeid(fp16))) {
-      half_to_float = true;
-    }
-
     if (soft_label) {
       int batch_size = logits->dims()[0];
       int feature_size = logits->dims()[1];
@@ -434,26 +407,9 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
         int feature_size = logits->dims()[1];
         auto* logits_data = logits->data<T>();
         auto* labels_data = labels->data<int64_t>();
-        if (half_to_float) {
-          // Allways output log softmax when input is fp16.
-          Tensor fp32_softmax;
-          fp32_softmax.Resize(softmax->dims());
-          float* fp32_softmax_data =
-              fp32_softmax.mutable_data<float>(context.GetPlace());
-          HardLabelSoftmaxWithCrossEntropy<T, float>(
-              context.cuda_device_context(), logits_data, labels_data,
-              loss_data, fp32_softmax_data, batch_size, feature_size,
-              ignore_index);
-          // Cast back to fp16 for output, may lost precision here.
-          platform::Transform<platform::CUDADeviceContext> trans;
-          trans(context.cuda_device_context(), fp32_softmax_data,
-                fp32_softmax_data + softmax->numel(), softmax_data,
-                CastOpTransformFunctor<float, T>());
-        } else {
-          HardLabelSoftmaxWithCrossEntropy<T, T>(
-              context.cuda_device_context(), logits_data, labels_data,
-              loss_data, softmax_data, batch_size, feature_size, ignore_index);
-        }
+        HardLabelSoftmaxWithCrossEntropy<T>(
+            context.cuda_device_context(), logits_data, labels_data, loss_data,
+            softmax_data, batch_size, feature_size, ignore_index);
       }
     }
   }

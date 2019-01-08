@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/softmax.h"
-#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -45,30 +44,6 @@ class SoftmaxKernel : public framework::OpKernel<T> {
 #endif
   }
 };
-
-// specialized for fp16
-#ifdef PADDLE_WITH_CUDA
-template <>
-class SoftmaxKernel<platform::CUDADeviceContext, platform::float16>
-    : public framework::OpKernel<platform::float16> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* X = context.Input<Tensor>("X");
-    auto* Out = context.Output<Tensor>("Out");
-
-    // allocate memory on device.
-    Out->mutable_data<platform::float16>(context.GetPlace());
-
-    int rank = X->dims().size();
-    Tensor X_2d = framework::ReshapeToMatrix(*X, rank - 1);
-    Tensor Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
-
-    math::SoftmaxCudaAccurateFunctor<platform::float16, float>()(
-        context.template device_context<platform::CUDADeviceContext>(), &X_2d,
-        &Out_2d);
-  }
-};
-#endif
 
 template <typename DeviceContext, typename T>
 class SoftmaxGradKernel : public framework::OpKernel<T> {
