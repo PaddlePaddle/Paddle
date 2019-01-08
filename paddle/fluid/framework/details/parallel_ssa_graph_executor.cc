@@ -45,7 +45,6 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
 
 FeedFetchList ParallelSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
-  VLOG(1) << "Run...";
   std::vector<std::future<FeedFetchList>> run_futures;
 
   std::vector<FeedFetchList> fetch_data;

@@ -223,7 +223,7 @@ void ThreadedSSAGraphExecutor::RunOp(
     details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
     try {
-      if (VLOG_IS_ON(1)) {
+      if (VLOG_IS_ON(10)) {
         VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
       }
       if (LIKELY(!strategy_.dry_run_)) {
