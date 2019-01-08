@@ -46,7 +46,6 @@ class LoDTensor;
 class SelectedRows;
 class LoDRankTable;
 class ReaderHolder;
-class TempVariablePool;
 class Scope;
 }  // namespace framework
 
@@ -141,7 +140,6 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     Tensor, LoDTensor, SelectedRows, std::vector<Scope *>, LoDRankTable,
     LoDTensorArray, platform::PlaceList, ReaderHolder, std::string, Scope *,
     std::map<size_t, Tensor>, operators::reader::LoDTensorBlockingQueueHolder,
-    std::shared_ptr<TempVariablePool>,
 #ifdef PADDLE_WITH_CUDA
 #ifndef _WIN32
     ncclUniqueId, platform::Communicator,

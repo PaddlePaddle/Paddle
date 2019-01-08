@@ -118,11 +118,7 @@ class Scope {
 
  private:
   // Call Scope::NewScope for a sub-scope.
-  explicit Scope(Scope const* parent) : parent_(parent) {
-    InitTempVariablePool();
-  }
-
-  void InitTempVariablePool();
+  explicit Scope(Scope const* parent) : parent_(parent) {}
 
   // Called by Var.
   Variable* VarInternal(const std::string& name);
@@ -144,7 +140,7 @@ class Scope {
   mutable std::list<Scope*> kids_;
   const Scope* parent_;
 
-  mutable std::weak_ptr<TempVariablePool> tmp_pool_;
+  mutable TempVariablePool tmp_pool_;
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 
