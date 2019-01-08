@@ -53,7 +53,7 @@ if (WITH_GPU)
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
     endif()
     # conv_fusion_op needs cudnn 7 above
-    if (NOT ${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+    if (NOT ${CUDNN_VERSION} VERSION_LESS 7100)
         op_library(conv_fusion_op)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(conv2d_fusion);\n")
     endif()
