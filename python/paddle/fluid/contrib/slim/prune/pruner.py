@@ -54,9 +54,9 @@ class StructurePruner(Pruner):
     Pruner used to pruning parameters by groups.
     """
 
-    def __init__(self, ratios, group_dims, criterions):
+    def __init__(self, ratios, pruning_axis, criterions):
         self.ratios = ratios
-        self.group_dims = group_dims
+        self.pruning_axis = pruning_axis
         self.criterions = criterions
 
     def cal_pruned_idx(self, name, param, ratio):
@@ -64,48 +64,28 @@ class StructurePruner(Pruner):
             name] if name in self.pruning_axis else self.pruning_axis['*']
         criterion = self.criterions[
             name] if name in self.criterions else self.criterions['*']
-
-        prune_num = param.shape[pruning_axis] * ratio
-
+        prune_num = int(round(param.shape[pruning_axis] * ratio))
         reduce_dims = [i for i in range(len(param.shape)) if i != pruning_axis]
-
         if criterion == 'l1_norm':
             criterions = np.sum(np.abs(param), axis=tuple(reduce_dims))
-
         pruned_idx = criterions.argsort()[:prune_num]
         return pruned_idx, pruning_axis
 
-    def prune_tensor(self, tensor, pruned_idx, pruned_axis):
-        tmp = tensor
-        for i in range(pruned_axis):
-            tmp = tmp[:]
-        tmp = tmp[pruned_idx]
-        return tmp
+    def prune_tensor(self, tensor, pruned_idx, pruned_axis, lazy=False):
+        mask = np.ones(tensor.shape[pruned_axis], dtype=bool)
+        mask[pruned_idx] = False
 
-    def prune(self, params):
-        params = params if isinstance(params,
-                                      collections.Iterable) else [params]
-        masks = []
-        for param in params:
-            name = param.name
-            ratio = self.ratios[name] if name in self.ratios else self.ratios[
-                '*']
-            group_dim = self.group_dims[
-                name] if name in self.group_dims else self.group_dims['*']
-            criterion = self.criterions[
-                name] if name in self.criterions else self.criterions['*']
-            if criterion == 'l1_norm':
-                l1_norms = fluid.layers.reduce_sum(
-                    fluid.layers.abs(param), dim=group_dim, keep_dim=True)
-                tmp = fluid.layers.reshape(l1_norms, shape=[-1])
-                tmp = fluid.layers.topk(tmp, k=tmp.shape[0] * (1 - ratio))
-                threhold = tmp[-1]
-                zero_mask = l1_norms > threhold
-                masks.append(zero_mask)
-            else:
-                raise NotImplementedError(
-                    "criterion {} is not implemented!".format(criterion))
-        return masks
+        def func(data):
+            return data[mask]
+
+        def lazy_func(data):
+            data[mask] = 0
+            return data
+
+        if lazy:
+            return np.apply_along_axis(lazy_func, pruned_axis, tensor)
+        else:
+            return np.apply_along_axis(func, pruned_axis, tensor)
 
 
 class RatioPruner(Pruner):

@@ -40,6 +40,15 @@ class ImitationGraph(Graph):
     def all_parameters(self):
         return self.program.global_block().all_parameters()
 
+    def get_var(self, var_name):
+        return self.program.global_block().var(var_name)
+
+    def clone(self):
+        return self.program.clone()
+
+    def ops(self):
+        return self.program.global_block().ops
+
 
 class IRGraph(Graph):
     pass

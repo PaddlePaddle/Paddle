@@ -29,7 +29,7 @@ class Context(object):
                      created for modifying the variables in scope.
     """
 
-    def __init__(self, exe, graph, scope, program_exe=None):
+    def __init__(self, exe, graph, scope, place):
         # The total number of epoches to be trained.
         self.epoch = 0
         # Current epoch
@@ -39,7 +39,14 @@ class Context(object):
         self.exe = exe
         self.graph = graph
         self.scope = scope
-        self.program_exe = program_exe
+        self.place = place
+        self.k_v = {}
+
+    def put(self, key, value):
+        self.k_v[key] = value
+
+    def get(self, key):
+        return self.k_v.get(key)
 
 
 class CompressPass(object):
