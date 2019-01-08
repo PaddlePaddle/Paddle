@@ -84,13 +84,12 @@ void SetConfig(contrib::AnalysisConfig *cfg, bool memory_load = false) {
     cfg->SetModelBuffer(&buffer_prog[0], buffer_prog.size(), &buffer_param[0],
                         buffer_param.size());
   } else {
-    cfg->prog_file = FLAGS_infer_model + "/__model__";
-    cfg->param_file = FLAGS_infer_model + "/param";
+    cfg->SetModel(FLAGS_infer_model + "/__model__",
+                  FLAGS_infer_model + "/param");
   }
-  cfg->use_gpu = false;
-  cfg->device = 0;
-  cfg->specify_input_name = true;
-  cfg->enable_ir_optim = true;
+  cfg->DisableGpu();
+  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim();
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {

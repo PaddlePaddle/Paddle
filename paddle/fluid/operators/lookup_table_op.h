@@ -59,7 +59,8 @@ class LookupTableKernel : public framework::OpKernel<T> {
 // server
 #ifdef PADDLE_WITH_DISTRIBUTE
       operators::distributed::prefetch(id_name, out_name, table_names, epmap,
-                                       height_sections, context);
+                                       height_sections, context,
+                                       context.scope());
 #else
       PADDLE_THROW(
           "paddle is not compiled with distribute support, can not do "
