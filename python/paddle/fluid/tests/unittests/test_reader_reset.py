@@ -75,8 +75,6 @@ class TestReaderReset(unittest.TestCase):
         exe.run(startup_prog)
 
         build_strategy = fluid.BuildStrategy()
-        if with_double_buffer:
-            build_strategy.enable_data_balance = True
         exec_strategy = fluid.ExecutionStrategy()
         parallel_exe = fluid.ParallelExecutor(
             use_cuda=self.use_cuda,
