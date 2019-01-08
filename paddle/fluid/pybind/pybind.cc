@@ -1018,7 +1018,9 @@ All parameter, weight, gradient are variables in Paddle.
            },
            R"DOC(Allow user to customized passes. Normally model-specific
                 optimization passes should be defined in this way. BuildStrategy
-                cannot be updated after being finalized.)DOC");
+                cannot be updated after being finalized.)DOC")
+      .def("is_finalized",
+           [](const BuildStrategy &self) { return self.IsFinalized(); });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &, const ProgramDesc &,

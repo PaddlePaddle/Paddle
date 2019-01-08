@@ -48,7 +48,7 @@ def _enable_parallel_graph_mode(use_cuda,
         return False
 
     # TODO(Yancey1989): support sparse update
-    for var in main_prog.global_block().vars.itervalues():
+    for var in main_prog.global_block().vars.values():
         if var.type == core.VarDesc.VarType.SELECTED_ROWS:
             return False
 
@@ -56,7 +56,8 @@ def _enable_parallel_graph_mode(use_cuda,
             build_strategy.enable_sequential_execution or \
             build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.Reduce:
         return False
-
+    if build_strategy.is_finalized():
+        return False
     return True
 
 

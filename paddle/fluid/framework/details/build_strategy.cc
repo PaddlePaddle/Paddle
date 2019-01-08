@@ -26,6 +26,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 
+DEFINE_bool(enable_parallel_graph, true,
+            "Force disable parallel graph execution mode if set false.");
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -33,7 +36,6 @@ namespace details {
 static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
   // Should fix the allreduce op order if scheduling
   // them in multiple threads or processes to avoid hang.
-  VLOG(1) << "enable_parallel_graph_" << strategy.enable_parallel_graph_;
   return (!strategy.enable_sequential_execution_ &&
           strategy.num_trainers_ > 1) ||
          strategy.enable_parallel_graph_;
@@ -136,6 +138,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
  private:
   BuildStrategy strategy_;
 };
+
+// BuildStrategy::BuildStrategy() :
+// enable_parallel_graph_(FLAGS_enable_parallel_graph) {};
 
 std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy(
     bool finalize_strategy) const {
