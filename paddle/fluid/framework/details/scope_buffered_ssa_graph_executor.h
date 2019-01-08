@@ -48,6 +48,30 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
   FeedFetchList Run(const std::vector<std::string>& fetch_tensors) override;
 
  private:
+  inline void WaitComputationalStreams() {
+#ifdef PADDLE_WITH_CUDA
+    const std::string gc_name = "garbage_collector";
+    DeviceGarbageCollectorMap* gc =
+        Graph().Has(gc_name)
+            ? &(Graph().Get<DeviceGarbageCollectorMap>(gc_name))
+            : nullptr;
+#endif
+
+    // Wait All computational streams
+    for (auto p : places_) {
+      platform::DeviceContextPool::Instance().Get(p)->Wait();
+#ifdef PADDLE_WITH_CUDA
+      if (gc != nullptr && platform::is_gpu_place(p)) {
+        auto gpu_place = boost::get<platform::CUDAPlace>(p);
+        auto& gc_at_place = gc->at(gpu_place.device);
+        gc_at_place->Wait();
+        gc_at_place->Reset();
+      }
+#endif
+    }
+  }
+
+ private:
   size_t drop_scope_counter_{0};
 
   ExecutionStrategy strategy_;
