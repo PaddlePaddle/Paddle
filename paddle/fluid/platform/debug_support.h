@@ -38,11 +38,11 @@ class DebugSupport {
     return debugSupport_.get();
   }
 
-  T get() const { return info; }
+  T GetInformation() const { return info; }
 
-  void set(const T& v) { info = v; }
+  void SetInformation(const T& v) { info = v; }
 
-  std::string format() const;
+  std::string Format() const;
 
  private:
   T info;
@@ -51,7 +51,7 @@ class DebugSupport {
 using PythonDebugSupport = DebugSupport<std::vector<std::string>>;
 
 template <>
-std::string PythonDebugSupport::format() const;
+std::string PythonDebugSupport::Format() const;
 
 }  // namespace platform
 }  // namespace paddle

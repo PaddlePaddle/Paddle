@@ -20,7 +20,7 @@ namespace paddle {
 namespace platform {
 
 template <>
-std::string PythonDebugSupport::format() const {
+std::string PythonDebugSupport::Format() const {
   std::ostringstream sout;
   sout << "\nPython Callstacks: \n";
   for (auto& line : info) {

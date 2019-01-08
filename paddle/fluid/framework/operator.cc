@@ -161,7 +161,7 @@ void OperatorBase::PreHook() {
   auto attrName = OpProtoAndCheckerMaker::OpCreationCallstackAttrName();
   if (HasAttr(attrName)) {
     auto& callstack = Attr<std::vector<std::string>>(attrName);
-    platform::PythonDebugSupport::GetInstance()->set(callstack);
+    platform::PythonDebugSupport::GetInstance()->SetInformation(callstack);
   }
 }
 

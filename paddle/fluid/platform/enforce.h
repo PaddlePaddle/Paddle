@@ -69,8 +69,8 @@ struct EnforceNotMet : public std::exception {
     try {
       std::rethrow_exception(e);
     } catch (std::exception& e) {
-      err_str_ = platform::PythonDebugSupport::GetInstance()->format();
       Init(e.what(), f, l);
+      err_str_ += platform::PythonDebugSupport::GetInstance()->Format();
     }
   }
 
@@ -87,8 +87,8 @@ struct EnforceNotMet : public std::exception {
     static constexpr int TRACE_STACK_LIMIT = 100;
     std::ostringstream sout;
 
-    sout << "C++ Callstacks: \n";
     sout << string::Sprintf("%s at [%s:%d]", what, f, l) << std::endl;
+    sout << "PaddlePaddle Call Stacks: " << std::endl;
 #if !defined(_WIN32)
     void* call_stack[TRACE_STACK_LIMIT];
     auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
@@ -111,7 +111,7 @@ struct EnforceNotMet : public std::exception {
 #else
     sout << "Windows not support stack backtrace yet.";
 #endif
-    err_str_ += sout.str();
+    err_str_ = sout.str();
   }
 };
 
