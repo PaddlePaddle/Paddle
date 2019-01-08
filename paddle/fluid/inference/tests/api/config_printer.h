@@ -66,19 +66,23 @@ std::ostream &operator<<(std::ostream &os,
   num_spaces++;
   os << *reinterpret_cast<const NativeConfig *>(&config);
   if (!config.model_from_memory()) {
-    os << GenSpaces(num_spaces) << "prog_file: " << config.prog_file << "\n";
-    os << GenSpaces(num_spaces) << "param_file: " << config.param_file << "\n";
+    os << GenSpaces(num_spaces) << "prog_file: " << config.prog_file() << "\n";
+    os << GenSpaces(num_spaces) << "param_file: " << config.params_file()
+       << "\n";
   } else {
     os << GenSpaces(num_spaces)
        << "prog_file and param_file: load from memory \n";
   }
-  os << GenSpaces(num_spaces) << "enable_ir_optim: " << config.enable_ir_optim
+  os << GenSpaces(num_spaces) << "enable_ir_optim: " << config.ir_optim()
+     << "\n";
+  os << GenSpaces(num_spaces) << "enable_ir_optim: " << config.ir_optim()
      << "\n";
   os << GenSpaces(num_spaces)
-     << "use_feed_fetch_ops: " << config.use_feed_fetch_ops << "\n";
-  os << GenSpaces(num_spaces) << "use_tensorrt: " << config.use_tensorrt()
+     << "use_feed_fetch_ops: " << config.use_feed_fetch_ops_enabled() << "\n";
+  os << GenSpaces(num_spaces)
+     << "use_tensorrt: " << config.tensorrt_engine_enabled() << "\n";
+  os << GenSpaces(num_spaces) << "use_mkldnn: " << config.mkldnn_enabled()
      << "\n";
-  os << GenSpaces(num_spaces) << "use_mkldnn: " << config.use_mkldnn() << "\n";
   num_spaces--;
   os << GenSpaces(num_spaces) << "}\n";
   return os;

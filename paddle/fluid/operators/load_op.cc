@@ -34,7 +34,7 @@ class LoadOp : public framework::OperatorBase {
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
     auto filename = Attr<std::string>("file_path");
-    std::ifstream fin(filename);
+    std::ifstream fin(filename, std::ios::binary);
     PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",
                    filename);
 

@@ -337,7 +337,10 @@ void CompareNativeAndAnalysis(
     const std::vector<std::vector<PaddleTensor>> &inputs) {
   PrintConfig(config, true);
   std::vector<PaddleTensor> native_outputs, analysis_outputs;
-  TestOneThreadPrediction(config, inputs, &native_outputs, false);
+  const auto *analysis_config =
+      reinterpret_cast<const contrib::AnalysisConfig *>(config);
+  auto native_config = analysis_config->ToNativeConfig();
+  TestOneThreadPrediction(&native_config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
   CompareResult(analysis_outputs, native_outputs);
 }

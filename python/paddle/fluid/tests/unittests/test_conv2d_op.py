@@ -60,7 +60,7 @@ def conv2d_forward_naive(input, filter, group, conv_param):
                         np.sum(input_pad_masked * f_sub[k, :, :, :],
                                axis=(1, 2, 3))
 
-    return out
+    return out, in_n, out_h, out_w, out_c
 
 
 class TestConv2dOp(OpTest):
@@ -85,8 +85,9 @@ class TestConv2dOp(OpTest):
 
         input = np.random.random(self.input_size).astype(self.dtype)
         filter = np.random.random(self.filter_size).astype(self.dtype)
-        output = conv2d_forward_naive(input, filter, self.groups,
-                                      conv2d_param).astype(self.dtype)
+        output, _, _, _, _ = conv2d_forward_naive(input, filter, self.groups,
+                                                  conv2d_param)
+        output = output.astype(self.dtype)
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
