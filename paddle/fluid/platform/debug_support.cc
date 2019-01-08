@@ -23,8 +23,10 @@ template <>
 std::string PythonDebugSupport::Format() const {
   std::ostringstream sout;
   sout << "\nPython Callstacks: \n";
-  for (auto& line : info) {
-    sout << line;
+  if (!info.empty()) {
+    for (auto &line : info) {
+      sout << line;
+    }
   }
   return sout.str();
 }
