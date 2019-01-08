@@ -772,11 +772,11 @@ struct TransposeFlattenConcat : public PatternBase {
 
   PDNode* operator()(PDNode* conv_input[], int times);
 
-  std::string GetNodeName(std::string op_type) {
+  std::string GetNodeName(const std::string& op_type) {
     return PDNodeName(name_scope_, repr_, id_, op_type);
   }
 
-  PDNode* GetPDNode(std::string op_type) {
+  PDNode* GetPDNode(const std::string& op_type) {
     return pattern->RetrieveNode(GetNodeName(op_type));
   }
 };

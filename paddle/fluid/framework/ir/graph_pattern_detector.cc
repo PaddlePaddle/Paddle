@@ -1306,24 +1306,36 @@ PDNode *patterns::ConvAffineChannel::operator()(
   return ac_out_var;
 }
 
+// a -> transpose_op(1) -> transpose_out_a -> flatten_op(1) -> flatten_out_a
+// b -> transpose_op(2) -> transpose_out_b -> flatten_op(2) -> flatten_out_b
+// ...
+// z -> transpose_op(n) -> transpose_out_z -> flatten_op(n) -> flatten_out_z
+// flatten_out_a -> concat_op  flatten_out_b -> concat_op ... flatten_out_z ->
+// concat_op
 PDNode *patterns::TransposeFlattenConcat::operator()(PDNode *conv_in[],
                                                      int times) {
-  // {trans, trans_out, flatten, flatten_out} * 4
-  PDNode *nodes[times * 4];
+  // The times represents the repeat times of the
+  // {trans, trans_out, flatten, flatten_out}
+  const int kNumFields = 4;
+  const int kTransOutOffset = 1;
+  const int kFlattenOffset = 2;
+  const int kFlattenOutOffset = 3;
+
+  PDNode *nodes[times * kNumFields];
 
   for (int i = 0; i < times; i++) {
-    nodes[i * 4] =
+    nodes[i * kNumFields] =
         pattern->NewNode(GetNodeName("transpose" + std::to_string(i)))
             ->assert_is_op("transpose2");
-    nodes[i * 4 + 1] =
+    nodes[i * kNumFields + kTransOutOffset] =
         pattern->NewNode(GetNodeName("transpose_out" + std::to_string(i)))
             ->assert_is_op_output("transpose2")
             ->assert_is_op_input("flatten2", "X")
             ->AsIntermediate();
-    nodes[i * 4 + 2] =
+    nodes[i * kNumFields + kFlattenOffset] =
         pattern->NewNode(GetNodeName("flatten" + std::to_string(i)))
             ->assert_is_op("flatten2");
-    nodes[i * 4 + 3] =
+    nodes[i * kNumFields + kFlattenOutOffset] =
         pattern->NewNode(GetNodeName("flatten_out" + std::to_string(i)))
             ->assert_is_op_output("flatten2")
             ->assert_is_op_nth_input("concat", "X", i)
@@ -1341,14 +1353,16 @@ PDNode *patterns::TransposeFlattenConcat::operator()(PDNode *conv_in[],
   for (int i = 0; i < times; i++) {
     conv_in[i]->AsInput();
     // trans
-    nodes[i * 4]->LinksFrom({conv_in[i]});
+    nodes[i * kNumFields]->LinksFrom({conv_in[i]});
     // trans_out
-    nodes[i * 4 + 1]->LinksFrom({nodes[i * 4]});
+    nodes[i * kNumFields + kTransOutOffset]->LinksFrom({nodes[i * kNumFields]});
     // flatten
-    nodes[i * 4 + 2]->LinksFrom({nodes[i * 4 + 1]});
+    nodes[i * kNumFields + kFlattenOffset]->LinksFrom(
+        {nodes[i * kNumFields + kTransOutOffset]});
     // flatten_out
-    nodes[i * 4 + 3]->LinksFrom({nodes[i * 4 + 2]});
-    flatten_outs.push_back(nodes[i * 4 + 3]);
+    nodes[i * kNumFields + kFlattenOutOffset]->LinksFrom(
+        {nodes[i * kNumFields + kFlattenOffset]});
+    flatten_outs.push_back(nodes[i * kNumFields + kFlattenOutOffset]);
   }
 
   concat_op->LinksFrom(flatten_outs).LinksTo({concat_out});

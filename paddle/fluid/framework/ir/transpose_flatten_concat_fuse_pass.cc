@@ -44,7 +44,12 @@ std::unique_ptr<ir::Graph> TransposeFlattenConcatFusePass<times>::ApplyImpl(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
-    Node *nodes[times * 5];
+    const int kNumFields = 5;
+    const int kTransOffset = 1;
+    const int kTransOutOffset = 2;
+    const int kFlattenOffset = 3;
+    const int kFlattenOutOffset = 4;
+    Node *nodes[times * kNumFields];
 
     for (int i = 0; i < times; i++) {
       PADDLE_ENFORCE(
@@ -57,28 +62,29 @@ std::unique_ptr<ir::Graph> TransposeFlattenConcatFusePass<times>::ApplyImpl(
           subgraph.at(pattern.GetPDNode("flatten_out" + std::to_string(i))));
       PADDLE_ENFORCE(subgraph.at(input_nodes[i]));
 
-      nodes[i * 5] = subgraph.at(input_nodes[i]);
-      nodes[i * 5 + 1] =
+      nodes[i * kNumFields] = subgraph.at(input_nodes[i]);
+      nodes[i * kNumFields + kTransOffset] =
           subgraph.at(pattern.GetPDNode("transpose" + std::to_string(i)));
-      nodes[i * 5 + 2] =
+      nodes[i * kNumFields + kTransOutOffset] =
           subgraph.at(pattern.GetPDNode("transpose_out" + std::to_string(i)));
-      nodes[i * 5 + 3] =
+      nodes[i * kNumFields + kFlattenOffset] =
           subgraph.at(pattern.GetPDNode("flatten" + std::to_string(i)));
-      nodes[i * 5 + 4] =
+      nodes[i * kNumFields + kFlattenOutOffset] =
           subgraph.at(pattern.GetPDNode("flatten_out" + std::to_string(i)));
     }
 
     Node *concat_op = subgraph.at(pattern.GetPDNode("concat"));
     Node *concat_out = subgraph.at(pattern.GetPDNode("concat_out"));
     std::vector<std::string> input_names;
-    std::vector<int> trans_axis =
-        boost::get<std::vector<int>>(nodes[1]->Op()->GetAttr("axis"));
-    int flatten_axis = boost::get<int>(nodes[3]->Op()->GetAttr("axis"));
+    std::vector<int> trans_axis = boost::get<std::vector<int>>(
+        nodes[kTransOffset]->Op()->GetAttr("axis"));
+    int flatten_axis =
+        boost::get<int>(nodes[kFlattenOffset]->Op()->GetAttr("axis"));
     int concat_axis = boost::get<int>(concat_op->Op()->GetAttr("axis"));
     std::string output_name = concat_out->Name();
 
     for (int i = 0; i < times; i++) {
-      input_names.push_back(nodes[i * 5]->Name());
+      input_names.push_back(nodes[i * kNumFields]->Name());
     }
 
     framework::OpDesc new_op_desc;
@@ -96,12 +102,12 @@ std::unique_ptr<ir::Graph> TransposeFlattenConcatFusePass<times>::ApplyImpl(
     std::unordered_set<const Node *> delete_nodes;
 
     for (int i = 0; i < times; i++) {
-      nodes[i * 5]->outputs.push_back(new_conv_op);
-      new_conv_op->inputs.push_back(nodes[i * 5]);
-      delete_nodes.insert(nodes[i * 5 + 1]);
-      delete_nodes.insert(nodes[i * 5 + 2]);
-      delete_nodes.insert(nodes[i * 5 + 3]);
-      delete_nodes.insert(nodes[i * 5 + 4]);
+      nodes[i * kNumFields]->outputs.push_back(new_conv_op);
+      new_conv_op->inputs.push_back(nodes[i * kNumFields]);
+      delete_nodes.insert(nodes[i * kNumFields + kTransOffset]);
+      delete_nodes.insert(nodes[i * kNumFields + kTransOutOffset]);
+      delete_nodes.insert(nodes[i * kNumFields + kFlattenOffset]);
+      delete_nodes.insert(nodes[i * kNumFields + kFlattenOutOffset]);
     }
     delete_nodes.insert(concat_op);
 

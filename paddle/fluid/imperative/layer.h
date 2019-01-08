@@ -86,22 +86,29 @@ class VarBase {
         pre_op_out_idx_(-1),
         var_desc_(nullptr),
         var_(new framework::Variable()),
-        grads_(new framework::Variable()) {}
+        grads_(new framework::Variable()),
+        stop_gradient_(false) {}
 
-  virtual ~VarBase() {
-    if (var_) {
-      delete var_;
-      var_ = nullptr;
-    }
-    if (grads_) {
-      delete grads_;
-      grads_ = nullptr;
-    }
-  }
+  explicit VarBase(bool stop_gradient)
+      : pre_op_(nullptr),
+        pre_op_out_idx_(-1),
+        var_desc_(nullptr),
+        var_(new framework::Variable()),
+        grads_(new framework::Variable()),
+        stop_gradient_(stop_gradient) {}
+
+  virtual ~VarBase() {}
 
   void RunBackward();
 
   framework::LoDTensor& Grad();
+
+  inline std::string GradName() const {
+    PADDLE_ENFORCE(
+        var_desc_,
+        "Couldn't get gradient variable's name, please call backward() first");
+    return string::Sprintf("%s@IGrad", var_desc_->Name());
+  }
 
   OpBase* pre_op_;
   std::string pre_op_out_name_;
@@ -110,6 +117,8 @@ class VarBase {
   framework::VarDesc* var_desc_;
   framework::Variable* var_;
   framework::Variable* grads_;
+
+  bool stop_gradient_;
 };
 
 class OpBase {

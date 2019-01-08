@@ -125,11 +125,26 @@ PYBIND11_MODULE(core, m) {
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
-  py::class_<imperative::VarBase, PyVarBase>(m, "VarBase", R"DOC()DOC")
-      .def(py::init<>())
+  py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
+      m, "VarBase", R"DOC()DOC")
+      // .def(py::init<>())
+      .def(py::init<bool>(), py::arg("stop_gradient") = false)
       .def("_run_backward",
            [](imperative::VarBase &self) { self.RunBackward(); })
+      .def("_grad_name", &imperative::VarBase::GradName)
       .def("_grad", &imperative::VarBase::Grad)
+      .def_property("grad_value",
+                    [](const imperative::VarBase &self) { return self.grads_; },
+                    [](imperative::VarBase &self, framework::Variable *grad) {
+                      self.grads_ = grad;
+                    },
+                    py::return_value_policy::reference)
+      .def_property("value",
+                    [](const imperative::VarBase &self) { return self.var_; },
+                    [](imperative::VarBase &self, framework::Variable *var) {
+                      self.var_ = var;
+                    },
+                    py::return_value_policy::reference)
       .def_property(
           "desc",
           [](const imperative::VarBase &self) { return self.var_desc_; },
@@ -137,12 +152,12 @@ PYBIND11_MODULE(core, m) {
             self.var_desc_ = var_desc;
           },
           py::return_value_policy::reference)
-      .def_property("var",
-                    [](const imperative::VarBase &self) { return self.var_; },
-                    [](imperative::VarBase &self, framework::Variable *var) {
-                      self.var_ = var;
-                    },
-                    py::return_value_policy::reference);
+      .def_property(
+          "stop_gradient",
+          [](const imperative::VarBase &self) { return self.stop_gradient_; },
+          [](imperative::VarBase &self, bool stop_gradient) {
+            self.stop_gradient_ = stop_gradient;
+          });
 
   py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
       .def(py::init<>())
@@ -932,13 +947,6 @@ All parameter, weight, gradient are variables in Paddle.
                     writing the SSA Graph to file in the form of graphviz, you.
                     It is useful for debugging. Default "")DOC")
       .def_property(
-          "enable_data_balance",
-          [](const BuildStrategy &self) { return self.enable_data_balance_; },
-          [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
-            self.enable_data_balance_ = b;
-          })  // FIXME(chengudo): enable_data_balance seems not important
-      .def_property(
           "enable_sequential_execution",
           [](const BuildStrategy &self) {
             return self.enable_sequential_execution_;
@@ -992,6 +1000,10 @@ All parameter, weight, gradient are variables in Paddle.
           "memory_optimize",
           [](const BuildStrategy &self) { return self.memory_optimize_; },
           [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; })
+      .def_property(
+          "is_distribution",
+          [](const BuildStrategy &self) { return self.is_distribution_; },
+          [](BuildStrategy &self, bool b) { self.is_distribution_ = b; })
       .def_property(
           "memory_early_delete",
           [](const BuildStrategy &self) { return self.memory_early_delete_; },

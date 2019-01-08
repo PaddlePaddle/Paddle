@@ -185,7 +185,7 @@ class TestHSigmoidOpSparse(OpTest):
         self.inputs = {
             'X': x,
             'W': w,
-            'PTable': path_table,
+            'PathTable': path_table,
             'PathCode': path_code,
             'Label': label,
             'Bias': bias
@@ -287,7 +287,7 @@ class TestHSigmoidOpWithCostumTree(OpTest):
         self.inputs = {
             'X': x,
             'W': w,
-            'PTable': path_table,
+            'PathTable': path_table,
             'PathCode': path_code,
             'Label': label,
             'Bias': bias
@@ -324,7 +324,7 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
         self.inputs = {
             'X': x,
             'W': w,
-            'PTable': path_table,
+            'PathTable': path_table,
             'PathCode': path_code,
             'Label': label,
         }

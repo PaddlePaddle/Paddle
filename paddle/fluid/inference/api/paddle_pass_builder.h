@@ -62,7 +62,12 @@ class PassStrategy : public PaddlePassBuilder {
   // still some CPU kernels running in CPU mode.
   virtual void EnableMKLDNN() = 0;
 
+  bool use_gpu() const { return use_gpu_; }
+
   virtual ~PassStrategy() = default;
+
+ protected:
+  bool use_gpu_{false};
 };
 
 /*
@@ -88,6 +93,7 @@ class CpuPassStrategy : public PassStrategy {
         "conv_eltwiseadd_bn_fuse_pass",  //
         "is_test_pass",                  //
     });
+    use_gpu_ = false;
   }
 
   virtual ~CpuPassStrategy() = default;
@@ -131,10 +137,13 @@ class GpuPassStrategy : public PassStrategy {
       passes_.push_back("transpose_flatten" + std::to_string(i) +
                         "_concat_fuse_pass");
     }
+    use_gpu_ = true;
   }
 
   GpuPassStrategy(const GpuPassStrategy &other)
-      : PassStrategy(other.AllPasses()) {}
+      : PassStrategy(other.AllPasses()) {
+    use_gpu_ = true;
+  }
 
   void EnableMKLDNN() override;
 
