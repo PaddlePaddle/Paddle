@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 DataBalanceOpHandle::DataBalanceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,

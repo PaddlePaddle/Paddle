@@ -121,9 +121,8 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType AttentionLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
-      ctx.device_context());
+  return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                 ctx.device_context());
 }
 
 void AttentionLSTMOpMaker::Make() {
@@ -231,10 +230,10 @@ use lstm_x_t as input and compute as standard LSTM.
 template <typename T>
 inline void bias_relu(const int n, const T* x, const T* bias, T* y) {
   if (bias) {
-    math::vec_add_bias<T, platform::jit::avx>(n, *bias, x, y);
-    math::vec_relu<T, platform::jit::avx>(n, y, y);
+    math::vec_add_bias<T, platform::avx>(n, *bias, x, y);
+    math::vec_relu<T, platform::avx>(n, y, y);
   } else {
-    math::vec_relu<T, platform::jit::avx>(n, x, y);
+    math::vec_relu<T, platform::avx>(n, x, y);
   }
 }
 
@@ -245,8 +244,8 @@ inline void vec_softmax(const int n, const T* x, T* y) {
   for (int i = 1; i < n; ++i) {
     scalar = scalar < x[i] ? x[i] : scalar;
   }
-  math::vec_add_bias<T, platform::jit::avx>(n, -scalar, x, y);  // sub
-  math::vec_exp<T>(n, y, y);                                    // exp
+  math::vec_add_bias<T, platform::avx>(n, -scalar, x, y);  // sub
+  math::vec_exp<T>(n, y, y);                               // exp
   // sum
   scalar = T(0);
   for (int i = 0; i < n; ++i) {
@@ -302,13 +301,13 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     auto& act_gate_str = ctx.Attr<std::string>("gate_activation");
     auto& act_cell_str = ctx.Attr<std::string>("cell_activation");
     auto& act_cand_str = ctx.Attr<std::string>("candidate_activation");
-    if (platform::jit::MayIUse(platform::jit::avx)) {
-      math::VecActivations<T, platform::jit::avx> act_functor;
+    if (platform::MayIUse(platform::avx)) {
+      math::VecActivations<T, platform::avx> act_functor;
       act_gate = act_functor(act_gate_str);
       act_cell = act_functor(act_cell_str);
       act_cand = act_functor(act_cand_str);
     } else {
-      math::VecActivations<T, platform::jit::isa_any> act_functor;
+      math::VecActivations<T, platform::isa_any> act_functor;
       act_gate = act_functor(act_gate_str);
       act_cell = act_functor(act_cell_str);
       act_cand = act_functor(act_cand_str);

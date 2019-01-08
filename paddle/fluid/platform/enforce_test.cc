@@ -37,6 +37,25 @@ TEST(ENFORCE, FAILED) {
         HasPrefix(StringPiece(error.what()), "Enforce is not ok 123 at all"));
   }
   EXPECT_TRUE(caught_exception);
+
+  caught_exception = false;
+  try {
+    PADDLE_ENFORCE(false, "Enforce is not ok at all");
+  } catch (paddle::platform::EnforceNotMet error) {
+    caught_exception = true;
+    EXPECT_TRUE(
+        HasPrefix(StringPiece(error.what()), "Enforce is not ok at all"));
+  }
+  EXPECT_TRUE(caught_exception);
+
+  caught_exception = false;
+  try {
+    PADDLE_ENFORCE(false);
+  } catch (paddle::platform::EnforceNotMet error) {
+    caught_exception = true;
+    EXPECT_NE(std::string(error.what()).find("  at "), 0);
+  }
+  EXPECT_TRUE(caught_exception);
 }
 
 TEST(ENFORCE, NO_ARG_OK) {

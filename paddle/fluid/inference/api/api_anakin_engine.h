@@ -23,7 +23,7 @@ limitations under the License. */
 
 #include "framework/core/net/net.h"
 #include "framework/graph/graph.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_anakin_config.h"
 #include "saber/core/shape.h"
 #include "saber/saber_types.h"
 

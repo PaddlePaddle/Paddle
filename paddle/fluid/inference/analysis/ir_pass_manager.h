@@ -20,27 +20,38 @@
  * for inference.
  */
 
+#pragma once
+
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/inference/analysis/argument.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 using framework::ProgramDesc;
+using framework::ir::Graph;
 
 class IRPassManager final {
  public:
-  IRPassManager(const ProgramDesc &program, framework::Scope *scope);
+  explicit IRPassManager(Argument *argument);
 
-  void Apply(const std::vector<std::string> &passes);
+  std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph);
+
+  framework::proto::ProgramDesc AcquireProgram(
+      std::unique_ptr<Graph> *graph, const ProgramDesc &program) const;
 
   framework::ir::Graph &graph() const { return *graph_; }
 
  private:
-  std::unique_ptr<framework::ir::Graph> graph_;
-  ProgramDesc program_;
+  void CreatePasses(Argument *argument, const std::vector<std::string> &passes);
+
+  std::unique_ptr<Graph> graph_;
+  std::vector<std::unique_ptr<framework::ir::Pass>> passes_;
 };
 
 }  // namespace analysis

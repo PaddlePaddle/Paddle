@@ -175,13 +175,13 @@ __all__ = [
     'log_loss',
     'add_position_encoding',
     'bilinear_tensor_product',
-    'tree_conv',
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
     'lstm',
     'py_func',
     'psroi_pool',
     'huber_loss',
+    'tree_conv',
 ]
 
 kIgnoreIndex = -100
@@ -9389,6 +9389,7 @@ def get_tensor_from_selected_rows(x, name=None):
     """
     ${comment}
 
+    Args:
         x(${x_type}): ${x_comment}
         name(basestring|None): Name of the output.
 

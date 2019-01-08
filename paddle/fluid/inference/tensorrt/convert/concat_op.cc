@@ -19,7 +19,7 @@ namespace inference {
 namespace tensorrt {
 
 /*
- * MulOp, IMatrixMultiplyLayer in TRT. This Layer doesn't has weights.
+ * ConcatOp
  */
 class ConcatOpConverter : public OpConverter {
  public:

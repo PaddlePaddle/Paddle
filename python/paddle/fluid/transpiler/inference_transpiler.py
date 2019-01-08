@@ -57,7 +57,7 @@ class InferenceTranspiler(object):
             raise TypeError("place should be as CPUPlace/CUDAPlace type")
         if scope is None:
             scope = global_scope()
-        if not isinstance(scope, core.Scope):
+        if not isinstance(scope, core._Scope):
             raise TypeError("scope should be as Scope type or None")
         use_mkldnn = bool(os.getenv("FLAGS_use_mkldnn", False))
 
@@ -72,6 +72,38 @@ class InferenceTranspiler(object):
             self._fuse_conv_relu_mkldnn(
                 program)  # ResNet residual block merging
             self._fuse_bn_relu_mkldnn(program)
+
+        self._is_test_pass(program)
+
+    def _is_test_pass(self, program):
+        '''
+        Transpile the program setting is_test = true for all layers and
+        inserts is_test attribute to pooling and activation layers.
+        As a result some operators might run faster
+        :param program: program to transpile
+        :type program: Program
+        '''
+        self.block = program.block(0)
+
+        i = 0
+        while i < len(self.block.ops):
+            current_op = self.block.ops[i]
+            if current_op.has_attr("is_test"):
+                current_op._set_attr("is_test", True)
+            elif current_op.type in [
+                    "pool2d", "sigmoid", "logsigmoid", "softshrink", "exp",
+                    "brelu", "pow", "leaky_relu", "stanh", "relu", "tanh",
+                    "tanh_shrink", "sqrt", "abs", "ceil", "elu", "floor", "cos",
+                    "sin", "round", "reciprocal", "hard_shrink", "hard_sigmoid",
+                    "relu6", "soft_relu", "swish", "thresholded_relu", "log",
+                    "square", "softplus", "softsign"
+            ]:
+                current_op._set_attr("is_test", True)
+            i = i + 1
+        # TODO(luotao): use clone() method to flush the program.desc in force,
+        # since some large program.desc will not be flushed immediately.
+        # And a better solution will be considered later.
+        program = program.clone()
 
     def _depthwise_conv_mkldnn(self, program):
         '''

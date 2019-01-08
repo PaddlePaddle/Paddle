@@ -140,7 +140,6 @@ endmacro()
 set(PROTOBUF_ROOT "" CACHE PATH "Folder contains protobuf")
 IF (WIN32)
     SET(PROTOBUF_ROOT ${THIRD_PARTY_PATH}/install/protobuf)
-    MESSAGE(WARNING, "In windows, protobuf only support msvc build, please build it manually and put it at " ${PROTOBUF_ROOT})
 ENDIF(WIN32)
 
 if (NOT "${PROTOBUF_ROOT}" STREQUAL "")
@@ -188,12 +187,19 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         SET(OPTIONAL_ARGS
             "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
             "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
-            "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
             "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}"
+            "-DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}"
+            "-DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}"
+            "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
+            "-DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}"
+            "-DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}"
             "-Dprotobuf_WITH_ZLIB=ON"
             "-DZLIB_ROOT:FILEPATH=${ZLIB_ROOT}"
             ${EXTERNAL_OPTIONAL_ARGS})
         SET(OPTIONAL_CACHE_ARGS "-DZLIB_ROOT:STRING=${ZLIB_ROOT}")
+    ENDIF()
+    IF(WIN32)
+        SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} "-DCMAKE_GENERATOR_PLATFORM=x64")
     ENDIF()
 
     SET(PROTOBUF_REPO "https://github.com/google/protobuf.git")

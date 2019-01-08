@@ -35,10 +35,11 @@ std::unique_ptr<Graph> GraphToProgramPass::ApplyImpl(
       new proto::ProgramDesc(*program.Proto()));
 
   auto block = program_pb->mutable_blocks(kRootBlockIndex);
+  block->set_idx(kRootBlockIndex);
   block->clear_vars();
   std::unordered_set<std::string> visited_vars;
   for (ir::Node* n : graph->Nodes()) {
-    if (n->NodeType() == ir::Node::Type::kVariable) {
+    if (n->IsVar()) {
       if (n->Var() && visited_vars.count(n->Var()->Name()) == 0) {
         visited_vars.insert(n->Var()->Name());
         block->add_vars()->MergeFrom(*n->Var()->Proto());

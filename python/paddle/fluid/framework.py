@@ -15,7 +15,9 @@
 from __future__ import print_function
 
 import collections
+from collections import defaultdict
 import contextlib
+import os
 import re
 import six
 
@@ -24,13 +26,27 @@ import numpy as np
 from .. import compat as cpt
 from .proto import framework_pb2
 try:
+    if os.name == 'nt':
+        import sys
+        third_lib_path = os.path.abspath(os.path.dirname(
+            __file__)) + os.sep + '..' + os.sep + 'libs'
+        os.environ['path'] += ';' + third_lib_path
+        sys.path.append(third_lib_path)
+
     from . import core
 except ImportError as e:
-    raise ImportError(
-        """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
-    if you encounters \"libmkldnn.so not found\" errors. If you have python
-    installed in other directory, replace \"/usr/local/lib\" with your own
-    directory. The original error is: \n""" + cpt.get_exception_message(e))
+    if os.name == 'nt':
+        raise ImportError(
+            """NOTE: You may need to run \"set PATH=c:\python27\lib:%PATH%\"
+        if you encounters \"mkldnn.dll not found\" errors. If you have python
+        installed in other directory, replace \"c:\python27\lib" with your own
+        directory. The original error is: \n""" + cpt.get_exception_message(e))
+    else:
+        raise ImportError(
+            """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
+        if you encounters \"libmkldnn.so not found\" errors. If you have python
+        installed in other directory, replace \"/usr/local/lib\" with your own
+        directory. The original error is: \n""" + cpt.get_exception_message(e))
 except Exception as e:
     raise e
 from . import unique_name
@@ -48,6 +64,16 @@ TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
+
+_imperative_tracer_ = None
+
+
+def _in_imperative_mode():
+    return _imperative_tracer_ is not None
+
+
+def _imperative_tracer():
+    return _imperative_tracer_
 
 
 class NameScope(object):
@@ -89,12 +115,13 @@ def name_scope(prefix=None):
 
     Examples:
         .. code-block:: python
+
           with name_scope("encoder"):
              ...
           with name_scope("decoder"):
              ...
-             with name_scope("attention"):
-                ...
+          with name_scope("attention"):
+             ...
     """
     # TODO(panyx0718): Only [0-9a-z].
     assert prefix, "namescope prefix cannot be empty."
@@ -344,6 +371,28 @@ class Variable(object):
         self.op = None
         self.stop_gradient = stop_gradient
         self.is_data = is_data
+        if _in_imperative_mode():
+            self._ivar = core.VarBase()
+            self._ivar.desc = self.desc
+            self._ivar.stop_gradient = stop_gradient
+
+    def _numpy(self):
+        tensor = self._ivar.value.get_tensor()
+        return np.array(tensor)
+
+    def _backward(self):
+        self._ivar._run_backward()
+
+    def _gradient(self):
+        return np.array(self._ivar._grad())
+
+    @property
+    def _value(self):
+        return self._ivar.value
+
+    @_value.setter
+    def _value(self, v):
+        self._ivar.value = v
 
     def __str__(self):
         return self.to_string(True)
@@ -387,6 +436,14 @@ class Variable(object):
             None
         """
         self.desc = input
+
+    @property
+    def _stop_gradient(self):
+        return self._ivar.stop_gradient
+
+    @_stop_gradient.setter
+    def _stop_gradient(self, s):
+        self._ivar.stop_gradient = s
 
     @property
     def persistable(self):
@@ -536,8 +593,8 @@ class Operator(object):
     OP_WITHOUT_KERNEL_SET = {
         'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
         'rnn_memory_helper_grad', 'conditional_block', 'while', 'send', 'recv',
-        'listen_and_serv', 'parallel_do', 'save_combine', 'load_combine',
-        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id'
+        'listen_and_serv', 'save_combine', 'load_combine', 'ncclInit', 'select',
+        'checkpoint_notify', 'gen_nccl_id'
     }
 
     def __init__(self,
@@ -613,20 +670,16 @@ class Operator(object):
                     self.desc.set_input(in_proto.name, [])
 
         if outputs is not None:
-            given = set()
-            need = set()
-            for n in outputs:
-                given.add(n)
             for m in proto.outputs:
-                need.add(m.name)
-            if not given == need:
-                raise ValueError(("Incorrect setting for output(s) of "
-                                  "operator \"%s\". Need: [%s] Given: [%s]") %
-                                 (type,
-                                  ", ".join(six.binary_type(e) for e in need),
-                                  ", ".join(six.binary_type(e) for e in given)))
-
+                if (m.name not in outputs) and m.dispensable:
+                    continue
+                if not ((m.name in outputs) or m.dispensable):
+                    raise ValueError(
+                        ("Incorrect setting for output(s) of "
+                         "operator \"%s\", should set: [%s].") % (type, m.name))
             for out_proto in proto.outputs:
+                if out_proto.name not in outputs:
+                    continue
                 out_args = outputs[out_proto.name]
                 if not isinstance(out_args, list):
                     out_args = [out_args]
@@ -651,9 +704,28 @@ class Operator(object):
                 self._update_desc_attr(attr_name, attr_val)
 
         self.desc.check_attrs()
+
         if self._has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
+
+        if _in_imperative_mode():
+            self.iop = core.OpBase()
+            self.iop.desc = self.desc
+            self.inputs = defaultdict(list)
+            if inputs is not None:
+                for k, v in six.iteritems(inputs):
+                    if isinstance(v, Variable):
+                        self.inputs[k].append(v._ivar)
+                    elif isinstance(v, list) or isinstance(v, tuple):
+                        self.inputs[k].extend([var._ivar for var in v])
+            self.outputs = defaultdict(list)
+            if outputs is not None:
+                for k, v in six.iteritems(outputs):
+                    if isinstance(v, Variable):
+                        self.outputs[k].append(v._ivar)
+                    elif isinstance(v, list) or isinstance(v, tuple):
+                        self.outputs[k].extend([var._ivar for var in v])
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
@@ -1040,19 +1112,15 @@ class Block(object):
             raise ValueError("var %s not in this block" % name)
         return v
 
-    def _var_recursive(self, name):
+    def _find_var_recursive(self, name):
         """
         Get a Variable by name from this block recursively.
 
         Args:
             name(str): the Variable's name.
 
-        Raises:
-            ValueError: this block and this parent block doesn't
-                have a Variable with the giving name.
-
         Returns:
-            Variable: the Variable with the giving name.
+            Variable: the Variable with the giving name. Or None if not found.
         """
         frontier = list()
         visited = set()
@@ -1078,8 +1146,27 @@ class Block(object):
                 frontier.append(prog.block(cur.forward_block_idx))
 
             visited.add(id(cur))
+        return None
 
-        raise ValueError("Var {0} is not found recursively".format(name))
+    def _var_recursive(self, name):
+        """
+        Get a Variable by name from this block recursively.
+
+        Args:
+            name(str): the Variable's name.
+
+        Raises:
+            ValueError: this block and this parent block doesn't
+                have a Variable with the giving name.
+
+        Returns:
+            Variable: the Variable with the giving name.
+        """
+        var = self._find_var_recursive(name)
+        if var:
+            return var
+        else:
+            raise ValueError("Var {0} is not found recursively".format(name))
 
     def all_parameters(self):
         return list(self.iter_parameters())
@@ -1204,9 +1291,21 @@ class Block(object):
             Operator: the append Operator.
         """
         op_desc = self.desc.append_op()
-        op = Operator(block=self, desc=op_desc, *args, **kwargs)
+        op = Operator(
+            block=self,
+            desc=op_desc,
+            type=kwargs.get("type", None),
+            inputs=kwargs.get("inputs", None),
+            outputs=kwargs.get("outputs", None),
+            attrs=kwargs.get("attrs", None))
         self.ops.append(op)
+        self._trace_op(op, kwargs.get("stop_gradient", False))
         return op
+
+    def _trace_op(self, op, stop_gradient=False):
+        if _in_imperative_mode():
+            _imperative_tracer().trace(op.iop, op.inputs, op.outputs, self.desc,
+                                       stop_gradient)
 
     def _insert_op(self, index, *args, **kwargs):
         """
@@ -1253,8 +1352,15 @@ class Block(object):
 
     def _prepend_op(self, *args, **kwargs):
         op_desc = self.desc._prepend_op()
-        op = Operator(self, op_desc, *args, **kwargs)
+        op = Operator(
+            self,
+            op_desc,
+            type=kwargs.get("type", None),
+            inputs=kwargs.get("inputs", None),
+            outputs=kwargs.get("outputs", None),
+            attrs=kwargs.get("attrs", None))
         self.ops.insert(0, op)
+        self._trace_op(op, kwargs.get("stop_gradient", False))
         return op
 
     def _sync_with_cpp(self):
@@ -1441,6 +1547,7 @@ class Program(object):
         self._is_chief = False
         self._slice_vars_and_attrs = []
         self._endpoints = []
+        self._trainers_endpoints = []
         self._distributed_lookup_table = None
 
     @property
@@ -1567,8 +1674,8 @@ class Program(object):
                 parameters, e.g., :code:`trainable`, :code:`optimize_attr`, need
                 to print.
 
-        Returns
-            (str): The debug string.
+        Returns:
+            str : The debug string.
 
         Raises:
             ValueError: If any of required fields is not set and throw_on_error is
@@ -1698,6 +1805,7 @@ class Program(object):
 
         p._copy_param_info_from(self)
         p._copy_data_info_from(self)
+        p._copy_dist_param_info_from(self)
         return p
 
     def _prune(self, targets):
@@ -1937,6 +2045,25 @@ class Program(object):
             raise ValueError("_copy_param_info_from should be invoked with two "
                              "program, with represent the same topology")
         self.global_block()._copy_param_info_from(other.global_block())
+
+    def _copy_dist_param_info_from(self, other):
+        """
+        Copy the information of distributed information from other program.
+
+        Args:
+            other(Program): Other program
+
+        Returns:
+            None
+        """
+        if not isinstance(other, Program):
+            raise TypeError("_copy_dist_param_info_from should be invoked with "
+                            "Program")
+        self._is_distributed = other._is_distributed
+        self._is_chief = other._is_chief
+        self._slice_vars_and_attrs = other._slice_vars_and_attrs
+        self._endpoints = other._endpoints
+        self._distributed_lookup_table = other._distributed_lookup_table
 
     def _copy_data_info_from(self, other):
         """
@@ -2188,3 +2315,12 @@ def _get_var(name, program=None):
     assert isinstance(program, Program)
 
     return program.global_block().var(name)
+
+
+@contextlib.contextmanager
+def _imperative_guard(tracer):
+    global _imperative_tracer_
+    tmp_trace = _imperative_tracer_
+    _imperative_tracer_ = tracer
+    yield
+    _imperative_tracer_ = tmp_trace

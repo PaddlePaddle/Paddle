@@ -64,8 +64,6 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
         "Output(BboxOutsideWeights) of RpnTargetAssignOp should not be null");
 
     auto rpn_rois_dims = ctx->GetInputDim("RpnRois");
-    auto gt_classes_dims = ctx->GetInputDim("GtClasses");
-    auto is_crowd_dims = ctx->GetInputDim("IsCrowd");
     auto gt_boxes_dims = ctx->GetInputDim("GtBoxes");
     auto im_info_dims = ctx->GetInputDim("ImInfo");
 

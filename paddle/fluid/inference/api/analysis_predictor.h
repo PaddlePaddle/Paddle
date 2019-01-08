@@ -23,7 +23,10 @@
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/string/printf.h"
-
+#ifdef PADDLE_WITH_TESTING
+#include <gtest/gtest.h>
+#include <gtest/gtest_prod.h>
+#endif
 namespace paddle {
 
 using inference::analysis::Argument;
@@ -32,8 +35,11 @@ using framework::proto::ProgramDesc;
 using framework::NaiveExecutor;
 using contrib::AnalysisConfig;
 
-/* This predictor is based on the original native predictor with IR and Analysis
- * support. It will optimize IR and Parameters in the runtime.
+/** \brief This predictor is based on the original native predictor with IR and
+ * Analysis support.
+ *
+ * It will optimize IR and Parameters in the runtime.
+ *
  * TODO(Superjomn) Replace the Navive predictor?
  */
 class AnalysisPredictor : public PaddlePredictor {
@@ -54,6 +60,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   bool ZeroCopyRun() override;
 
+  void CreateFeedFetchVar(framework::Scope *scope);
   void PrepareFeedFetch();
 
   void OptimizeInferenceProgram();
@@ -62,11 +69,19 @@ class AnalysisPredictor : public PaddlePredictor {
 
   std::unique_ptr<PaddlePredictor> Clone() override;
 
-  framework::Scope *scope() { return executor_->scope(); }
+  framework::Scope *scope() { return scope_.get(); }
   framework::ProgramDesc &program() { return *inference_program_; }
 
+  void SetMkldnnThreadID(int tid);
+
  protected:
+  bool PrepareProgram(const std::shared_ptr<framework::ProgramDesc> &program);
+  bool PrepareScope(const std::shared_ptr<framework::Scope> &parent_scope);
+  bool CreateExecutor();
+  bool PrepareExecutor();
+
   bool LoadProgramDesc();
+  bool LoadParameters();
 
   bool SetFeed(const std::vector<PaddleTensor> &input_datas,
                framework::Scope *scope);
@@ -76,6 +91,14 @@ class AnalysisPredictor : public PaddlePredictor {
   void GetFetchOne(const framework::LoDTensor &fetchs,
                    PaddleTensor *output_data);
   ~AnalysisPredictor();
+
+// Some more detailed tests, they are made the friends of the predictor, so that
+// the all the details can be tested.
+#if PADDLE_WITH_TESTING
+  FRIEND_TEST(AnalysisPredictor, analysis_off);
+  FRIEND_TEST(AnalysisPredictor, analysis_on);
+  FRIEND_TEST(AnalysisPredictor, with_gpu);
+#endif
 
  private:
   contrib::AnalysisConfig config_;
@@ -89,9 +112,16 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<std::string, size_t> feed_names_;
   std::vector<framework::OpDesc *> fetchs_;
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
-  // concurrency problems, so cache them.
+  // concurrency problems, wrong results and memory leak, so cache them.
   std::vector<framework::LoDTensor> feed_tensors_;
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;
+
+ private:
+  // Some status here that help to determine the status inside the predictor.
+  bool status_program_optimized_{false};
+  bool status_is_cloned_{false};
+  bool status_use_gpu_{false};
+  bool status_ir_optim_enabled_{false};
 };
 
 }  // namespace paddle
