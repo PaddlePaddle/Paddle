@@ -331,7 +331,7 @@ def create_test_int8_class(parent):
 
     #--------------------test conv2d u8 in and u8 out without residual fuse--------------------
 
-    class TestU8S8ResCase(parent):
+    class TestU8U8Case(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, True, False)
 
@@ -353,10 +353,10 @@ def create_test_int8_class(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, False, True)
 
-    cls_name_s8u8 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "1")
-    cls_name_s8s8 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "0")
-    cls_name_u8s8 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "0")
-    cls_name_u8u8 = "{0}_relu_{1}_residual_{2}".format(parent.__name__, "1")
+    cls_name_s8u8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "1")
+    cls_name_s8s8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "0")
+    cls_name_u8s8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "0")
+    cls_name_u8u8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "1")
     cls_name_s8u8_re_1 = "{0}_relu_{1}_residual_{2}".format(parent.__name__,
                                                             "1", "1")
     cls_name_s8s8_re_1 = "{0}_relu_{1}_residual_{2}".format(parent.__name__,

@@ -374,7 +374,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         ctx.op().Output("Output"));
     const std::string key_conv_pd = key + "@conv_pd";
 
-    bool need_s8_to_u8 = fuse_residual_conn && fuse_relu;
+    bool need_s8_to_u8 = false;
 
     std::shared_ptr<mkldnn::convolution_forward> conv_p = nullptr;
     std::shared_ptr<mkldnn::memory> src_memory_p = nullptr;
@@ -504,6 +504,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                 ctx, output, residual_param, user_residual_md, handler,
                 &pipeline);
           } else {
+            need_s8_to_u8 = fuse_relu ? true : false;
             dst_memory_p = platform::SetDstMemory<int8_t>(
                 ctx, output, residual_param, user_residual_md, handler,
                 &pipeline);
@@ -514,6 +515,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             dst_memory_p =
                 platform::SetDstMemory<uint8_t>(ctx, output, handler);
           } else {
+            need_s8_to_u8 = fuse_relu ? true : false;
             dst_memory_p = platform::SetDstMemory<int8_t>(ctx, output, handler);
           }
         }
