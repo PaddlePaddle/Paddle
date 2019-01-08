@@ -28,6 +28,7 @@ using Scope = paddle::framework::Scope;
 class PrefetchHandler final : public RequestHandler {
  public:
   bool Handle(RPCRequest* request, Scope* scope) override;
+  bool IsSync() override { return false; }
   void SetPrefetchPreparedCtx(
       std::unordered_map<
           std::string, std::shared_ptr<framework::ExecutorPrepareContext>>* g) {

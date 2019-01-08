@@ -13,7 +13,7 @@ configure_file(send_recv.proto.in ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto @O
 cc_library(barrier SRCS barrier.cc)
 cc_library(rpc_server SRCS rpc_server.cc)
 cc_library(rpc_client SRCS rpc_client.cc)
-cc_library(sendrecvop_utils SRCS sendrecvop_utils.cc)
+cc_library(sendrecvop_utils SRCS sendrecvop_utils.cc DEPS data_type)
 cc_library(variable_response SRCS variable_response.cc)
 
 add_subdirectory(handlers)
@@ -26,14 +26,17 @@ if(WITH_GRPC)
     grpc/grpc_bytebuffer_stream.cc grpc/grpc_variable_response.cc)
   cc_library(grpc_server SRCS grpc/grpc_server.cc)
   cc_library(grpc_client SRCS grpc/grpc_client.cc)
-  cc_library(grpc_serde SRCS grpc/grpc_serde.cc)
+  cc_library(grpc_serde SRCS grpc/grpc_serde.cc DEPS data_type)
   cc_library(grpc_bbs SRCS grpc/grpc_bytebuffer_stream.cc)
   cc_library(grpc_vr SRCS grpc/grpc_variable_response.cc)
+  cc_library(collective_server SRCS collective_server.cc)
+  cc_library(collective_client SRCS collective_client.cc)
 
   # merge all
   cc_library(sendrecvop_rpc DEPS grpc_base_proto grpc_base_grpc
     grpc_server grpc_client grpc_serde grpc_bbs grpc_vr
     handlers barrier rpc_server rpc_client
+    collective_server collective_client
     sendrecvop_utils variable_response)
 
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
@@ -41,7 +44,6 @@ if(WITH_GRPC)
 
   cc_test(grpc_serde_test SRCS grpc/grpc_serde_test.cc 
     DEPS ${RPC_DEPS} scope profiler math_function SERIAL)
-
 else()
   set_source_files_properties(brpc_server.cc parameter_prefetch.cc brpc_client.cc rpc_server_test.cc brpc_serde_test.cc
       brpc_variable_response.cc brpc_sendrecvop_utils.cc brpc_rdma_pool.cc collective_server.cc collective_server_test.cc
@@ -68,8 +70,6 @@ cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler)
 cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_rpc memory)
 
 if(WITH_GPU)
-    cc_library(collective_server SRCS collective_server.cc DEPS sendrecvop_rpc)
-    cc_library(collective_client SRCS collective_client.cc DEPS sendrecvop_rpc)
     cc_test(collective_server_test SRCS collective_server_test.cc 
         DEPS collective_server collective_client ${RPC_DEPS}
         executor selected_rows_functor scope math_function SERIAL)

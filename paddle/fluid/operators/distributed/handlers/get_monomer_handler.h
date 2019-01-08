@@ -27,11 +27,13 @@ using Scope = paddle::framework::Scope;
 class GetMonomerHandler final : public RequestHandler {
  public:
   bool Handle(RPCRequest *request, Scope *scope) override;
+  bool IsSync() override { return true; }
 };
 
 class GetMonomerBarrierHandler final : public RequestHandler {
  public:
   bool Handle(RPCRequest *request, Scope *scope) override;
+  bool IsSync() override { return true; }
 };
 
 }  // namespace distributed

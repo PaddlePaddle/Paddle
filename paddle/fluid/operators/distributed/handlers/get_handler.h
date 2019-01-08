@@ -27,16 +27,19 @@ using Scope = paddle::framework::Scope;
 class GetHandlerSync final : public RequestHandler {
  public:
   bool Handle(RPCRequest *request, Scope *scope) override;
+  bool IsSync() override { return true; }
 };
 
 class GetHandlerAsync final : public RequestHandler {
  public:
   bool Handle(RPCRequest *request, Scope *scope) override;
+  bool IsSync() override { return false; }
 };
 
 class GetHandlerDCAsync final : public RequestHandler {
  public:
   bool Handle(RPCRequest *request, Scope *scope) override;
+  bool IsSync() override { return false; }
 };
 
 }  // namespace distributed

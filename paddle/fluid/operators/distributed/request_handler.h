@@ -71,20 +71,7 @@ class RequestHandler {
   void SetProgram(framework::ProgramDesc* program) { program_ = program; }
   void SetExecutor(framework::Executor* executor) { executor_ = executor; }
 
-  // Used for dist lookup table prefetch
-  // void SetPrefetchPreparedCtx(
-  //     std::unordered_map<
-  //         std::string, std::shared_ptr<framework::ExecutorPrepareContext>>*
-  //         g) {
-  //   prefetch_var_name_to_prepared_ctx_ = g;
-  // }
-
-  // void SetCheckpointNotifyPreparedCtx(
-  //     std::shared_ptr<framework::ExecutorPrepareContext> g) {
-  //   checkpoint_prepared_ctx_ = g;
-  // }
-
-  // Used for send/get/prefetch handlers
+  // Used for send/get/prefetch handlers, so put it here.
   void SetGradToPreparedCtx(
       std::unordered_map<
           std::string, std::shared_ptr<framework::ExecutorPrepareContext>>* g) {
@@ -99,21 +86,10 @@ class RequestHandler {
   framework::ProgramDesc* program() { return program_; }
   framework::Executor* executor() { return executor_; }
 
-  // This function processes user's rpc request.
-  // The implemention is in request_handler_impl.
-  // example:
-  //    std::string varname = request_.varname();
-  //
-  //    auto scope = request_handler_->scope();
-  //    auto invar = scope->FindVar(varname);
-  //    framework::Variable* outvar = nullptr;
-  //
-  //    request_handler_->Handle(varname, scope, invar, &outvar);
-  //    if (outvar) {
-  //        SerializeToByteBuffer(varname, outvar,
-  //           *request_handler_->dev_ctx(), &reply_);
-  //    }
   virtual bool Handle(RPCRequest* request, framework::Scope* scope) = 0;
+  // FIXME(typhoonzero): this will control whether to create new scope in
+  // variableresponse see grpc_request.h
+  virtual bool IsSync() = 0;
 
  protected:
   const platform::DeviceContext* dev_ctx_;

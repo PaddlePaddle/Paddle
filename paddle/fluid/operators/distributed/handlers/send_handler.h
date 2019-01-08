@@ -29,11 +29,13 @@ using Scope = paddle::framework::Scope;
 class SendHandlerSync final : public RequestHandler {
  public:
   bool Handle(RPCRequest *request, Scope *scope) override;
+  bool IsSync() override { return true; }
 };
 
 class SendHandlerAsync final : public RequestHandler {
  public:
   bool Handle(RPCRequest *request, Scope *scope) override;
+  bool IsSync() override { return false; }
 };
 
 }  // namespace distributed

@@ -55,12 +55,7 @@ class GRPCRequestBase {
         req_id_(req_id) {
     PADDLE_ENFORCE(cq_);
     request_.reset(new GRPCVariableResponse(request_handler->scope(),
-                                            request_handler->dev_ctx(), true));
-    // FIXME(typhoonzero): fix this
-    // !request_handler->sync_mode()));
-
-    // FIXME(typhoonzero): better method_id
-    // int method_id = static_cast<int>(distributed::GrpcMethod::kSendVariable);
+                                            request_handler->dev_ctx()));
     // GRPC request is initialized in here:
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
@@ -87,8 +82,8 @@ class GRPCRequestBase {
     return status_;
   }
 
-  template <typename T>
-  void Finish(const T& reply, ServerAsyncResponseWriter<T>* responder) {
+  void Finish(const ::grpc::ByteBuffer& reply,
+              ServerAsyncResponseWriter<T>* responder) {
     std::lock_guard<std::mutex> l(status_mu_);
     status_ = FINISH;
     responder->Finish(reply, ::grpc::Status::OK,
