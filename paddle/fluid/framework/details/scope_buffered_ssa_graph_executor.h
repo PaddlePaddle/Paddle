@@ -24,6 +24,10 @@
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/place.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/details/reference_count_op_handle.h"
+#endif
+
 namespace paddle {
 namespace framework {
 namespace details {

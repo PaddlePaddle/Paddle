@@ -18,9 +18,6 @@
 #include <vector>
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/profiler.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/framework/details/reference_count_op_handle.h"
-#endif
 
 namespace paddle {
 namespace framework {
