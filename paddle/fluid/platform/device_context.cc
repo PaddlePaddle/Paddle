@@ -93,7 +93,8 @@ platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
   PADDLE_ENFORCE(platform::is_gpu_place(place));
   auto place_stream = std::make_pair(place, stream);
   std::unique_lock<std::mutex> lock(mtx_);
-  if (!device_allocator_.count(place_stream)) {
+  auto it = device_allocator_.find(place_stream);
+  if (it == device_allocator_.end()) {
     auto tmp_allocator = new TemporaryAllocator(place);
     tmp_allocator->SetCallback([stream]() {
       PADDLE_ENFORCE(cudaStreamSynchronize(stream));
@@ -101,8 +102,9 @@ platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
     });
     device_allocator_[place_stream].reset(tmp_allocator);
     return *tmp_allocator;
+  } else {
+    return it->second;
   }
-  return *device_allocator_.at(place_stream);
 }
 
 template <>

@@ -159,14 +159,6 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 #endif
     Tensor cudnn_workspace;
     void* cudnn_workspace_ptr = nullptr;
-    if (exhaustive_search && (!half_float)) {
-      cudnn_workspace =
-          ctx.AllocateTmpTensor<int8_t, platform::CUDADeviceContext>(
-              framework::make_ddim(
-                  {static_cast<int64_t>(workspace_size_limit)}),
-              dev_ctx);
-      cudnn_workspace_ptr = static_cast<void*>(cudnn_workspace.data<int8_t>());
-    }
 
     auto x_dims = framework::vectorize(input->dims());
     auto f_dims = framework::vectorize(filter->dims());
@@ -189,6 +181,13 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
                 .Var(kCUDNNFwdAlgoCache)
                 ->GetMutable<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>();
       }
+      cudnn_workspace =
+          ctx.AllocateTmpTensor<int8_t, platform::CUDADeviceContext>(
+              framework::make_ddim(
+                  {static_cast<int64_t>(workspace_size_limit)}),
+              dev_ctx);
+      cudnn_workspace_ptr = static_cast<void*>(cudnn_workspace.data<int8_t>());
+
       algo = algo_cache->GetAlgorithm(
           x_dims, f_dims, strides, paddings, dilations, 0, [&]() {
             int returned_algo_count;
@@ -353,14 +352,6 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 
     Tensor cudnn_workspace;
     void* cudnn_workspace_ptr = nullptr;
-    if (exhaustive_search) {
-      cudnn_workspace =
-          ctx.AllocateTmpTensor<int8_t, platform::CUDADeviceContext>(
-              framework::make_ddim(
-                  {static_cast<int64_t>(workspace_size_limit)}),
-              dev_ctx);
-      cudnn_workspace_ptr = static_cast<void*>(cudnn_workspace.data<int8_t>());
-    }
 
     auto x_dims = framework::vectorize(input->dims());
     auto f_dims = framework::vectorize(filter->dims());
@@ -382,6 +373,15 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                   ->GetMutable<
                       AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>();
         }
+
+        cudnn_workspace =
+            ctx.AllocateTmpTensor<int8_t, platform::CUDADeviceContext>(
+                framework::make_ddim(
+                    {static_cast<int64_t>(workspace_size_limit)}),
+                dev_ctx);
+        cudnn_workspace_ptr =
+            static_cast<void*>(cudnn_workspace.data<int8_t>());
+
         data_algo = data_algo_cache->GetAlgorithm(
             x_dims, f_dims, strides, paddings, dilations, 0, [&]() {
               int returned_algo_count;
