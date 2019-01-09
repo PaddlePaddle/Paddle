@@ -66,8 +66,8 @@ namespace paddle {
 namespace framework {
 
 const char *ToTypeName(int var_id);
-const std::type_index &ToTypeIndex(int var_id);
-int ToTypeId(const std::type_index &type);
+const std::type_index &VarTraitIdToTypeIndex(int var_id);
+int TypeIndexToVarTraitId(const std::type_index &type);
 
 namespace detail {
 
