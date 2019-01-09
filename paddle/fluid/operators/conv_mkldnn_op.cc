@@ -504,7 +504,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                 ctx, output, residual_param, user_residual_md, handler,
                 &pipeline);
           } else {
-            need_s8_to_u8 = fuse_relu ? true : false;
+            need_s8_to_u8 = fuse_relu;
             dst_memory_p = platform::SetDstMemory<int8_t>(
                 ctx, output, residual_param, user_residual_md, handler,
                 &pipeline);
@@ -515,7 +515,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             dst_memory_p =
                 platform::SetDstMemory<uint8_t>(ctx, output, handler);
           } else {
-            need_s8_to_u8 = fuse_relu ? true : false;
+            need_s8_to_u8 = fuse_relu;
             dst_memory_p = platform::SetDstMemory<int8_t>(ctx, output, handler);
           }
         }

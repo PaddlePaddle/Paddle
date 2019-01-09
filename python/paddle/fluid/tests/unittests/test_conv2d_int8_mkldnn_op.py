@@ -89,28 +89,20 @@ class TestConv2dInt8Op(TestConv2dOp):
                 np.round((input_shift) * self.scale_in).astype(np.int32),
                 filter_int, self.groups,
                 conv2d_param).astype(np.float32) * scale_output_shift
-            if self.fuse_relu:
-                if self.fuse_residual:
-                    input_residual = np.random.randint(
-                        -5, 5, self.input_residual_size).astype(self.srctype)
-                    output = np.maximum(
-                        np.round(output1 - output2 + format_reorder(
-                            input_residual, self.input_residual_size).astype(
-                                self.srctype) * (self.scale_out /
-                                                 self.scale_in_eltwise)),
-                        0).astype(self.dsttype)
+            output_tmp = np.round(output1 - output2 + format_reorder(
+                input_residual, self.input_residual_size).astype(self.srctype) *
+                                  (self.scale_out / self.scale_in_eltwise))
+            if self.fuse_residual:
+                input_residual = np.random.randint(
+                    -5, 5, self.input_residual_size).astype(self.srctype)
+                if self.fuse_relu:
+                    output = np.maximum(output_tmp, 0).astype(self.dsttype)
                 else:
+                    output = output_tmp.astype(self.dsttype)
+            else:
+                if self.fuse_relu:
                     output = np.maximum(np.round(output1 - output2),
                                         0).astype(self.dsttype)
-            else:
-                if self.fuse_residual:
-                    input_residual = np.random.randint(
-                        -5, 5, self.input_residual_size).astype(self.srctype)
-                    output = np.round(output1 - output2 + format_reorder(
-                        input_residual, self.input_residual_size).astype(
-                            self.srctype) * (self.scale_out /
-                                             self.scale_in_eltwise)).astype(
-                                                 self.dsttype)
                 else:
                     output = np.round(output1 - output2).astype(self.dsttype)
 
@@ -122,51 +114,33 @@ class TestConv2dInt8Op(TestConv2dOp):
             output1 = conv2d_forward_refer(
                 input.astype(np.int32), filter_int, self.groups,
                 conv2d_param).astype(np.float32)
-            if self.fuse_relu:
-                if self.fuse_residual:
-                    input_residual = np.random.randint(
-                        0, 10, self.input_residual_size).astype(self.srctype)
-                    output = np.maximum(
-                        np.round(output1 * (self.scale_out / (
-                            self.scale_in * self.scale_weights[
-                                0])) + format_reorder(input_residual,
-                                                      self.input_residual_size)
-                                 .astype(np.int32) * (self.scale_out /
-                                                      self.scale_in_eltwise)),
-                        0).astype(self.dsttype)
+            output_tmp = np.round(output1 * (self.scale_out / (
+                self.scale_in * self.scale_weights[0])) + format_reorder(
+                    input_residual, self.input_residual_size).astype(np.int32) *
+                                  (self.scale_out / self.scale_in_eltwise))
+            output_tmp2 = np.round(output1 * (
+                self.scale_out / (self.scale_in * self.scale_weights[0])))
+            if self.fuse_residual:
+                input_residual = np.random.randint(
+                    0, 10, self.input_residual_size).astype(self.srctype)
+                if self.fuse_relu:
+                    output = np.maximum(output_tmp, 0).astype(self.dsttype)
                 else:
-                    output = np.maximum(
-                        np.round(output1 * (self.scale_out / (
-                            self.scale_in * self.scale_weights[0]))),
-                        0).astype(self.dsttype)
+                    output = output_tmp.astype(self.dsttype)
             else:
-                if self.fuse_residual:
-                    input_residual = np.random.randint(
-                        0, 10, self.input_residual_size).astype(self.srctype)
-                    output = np.round(output1 * (
-                        self.scale_out / (self.scale_in * self.scale_weights[0])
-                    ) + format_reorder(
-                        input_residual, self.input_residual_size).astype(
-                            np.int32) * (self.scale_out / self.scale_in_eltwise
-                                         )).astype(self.dsttype)
+                if self.fuse_relu:
+                    output = np.maximum(output_tmp2, 0).astype(self.dsttype)
                 else:
-                    output = np.round(output1 * (self.scale_out / (
-                        self.scale_in *
-                        self.scale_weights[0]))).astype(self.dsttype)
+                    output = output_tmp2.astype(self.dsttype)
 
+        self.inputs = {
+            'Input':
+            OpTest.np_dtype_to_fluid_dtype(input.astype(self.srctype)),
+            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+        }
         if self.fuse_residual:
-            self.inputs = {
-                'Input':
-                OpTest.np_dtype_to_fluid_dtype(input.astype(self.srctype)),
-                'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
-                'ResidualData': OpTest.np_dtype_to_fluid_dtype(input_residual)
-            }
-        else:
-            self.inputs = {
-                'Input':
-                OpTest.np_dtype_to_fluid_dtype(input.astype(self.srctype)),
-                'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
-            }
+            self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
+                input_residual)
 
         self.attrs = {
             'strides': self.stride,
