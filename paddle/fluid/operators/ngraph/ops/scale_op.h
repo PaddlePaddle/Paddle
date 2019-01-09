@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/*Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,32 +16,22 @@ limitations under the License. */
 
 #include <string>
 #include "ngraph/ngraph.hpp"
+#include "paddle/fluid/operators/ngraph/ops/elementwise_scalar_op.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
 
 namespace paddle {
 namespace operators {
 namespace ngraphs {
 
-template <typename T>
-static void BuildBinaryNode(
+void BuildScaleNode(
     const std::shared_ptr<paddle::framework::OperatorBase>& op,
     std::shared_ptr<
         std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
         ngb_node_map) {
+  auto op_attrs = paddle::framework::AttrReader(op->Attrs());
+  float scale = op_attrs.Get<float>("scale");
   auto x = paddle::platform::GetInputNode(op, "X", ngb_node_map);
-  auto y = paddle::platform::GetInputNode(op, "Y", ngb_node_map);
-  auto out = std::make_shared<T>(x, y);
-  paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
-}
-
-template <typename T>
-static void BuildUnaryNode(
-    const std::shared_ptr<paddle::framework::OperatorBase>& op,
-    std::shared_ptr<
-        std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
-        ngb_node_map) {
-  auto input = paddle::platform::GetInputNode(op, "X", ngb_node_map);
-  auto out = std::make_shared<T>(input);
+  auto out = ElementwiseScalar<ngraph::op::Multiply>(scale, x);
   paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
 }
 }  // namespace ngraphs

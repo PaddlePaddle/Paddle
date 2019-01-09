@@ -19,6 +19,8 @@
 #include <unordered_set>
 #include <vector>
 
+/*! \file */
+
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
 #include "paddle_api.h"           // NOLINT
@@ -41,49 +43,125 @@ struct AnalysisConfig {
   explicit AnalysisConfig(const std::string& prog_file,
                           const std::string& params_file);
 
-  // Model path related.
+  /** Set model with a directory.
+   */
   void SetModel(const std::string& model_dir) { model_dir_ = model_dir; }
+  /** Set model with two specific pathes for program and parameters.
+   */
   void SetModel(const std::string& prog_file_path,
                 const std::string& params_file_path);
+  /** Set program file path.
+   */
   void SetProgFile(const std::string& x) { prog_file_ = x; }
+  /** Set parameter composed file path.
+   */
   void SetParamsFile(const std::string& x) { params_file_ = x; }
+  /** Get the model directory path.
+   */
   const std::string& model_dir() const { return model_dir_; }
+  /** Get the program file path.
+   */
   const std::string& prog_file() const { return prog_file_; }
+  /** Get the composed parameters file.
+   */
   const std::string& params_file() const { return params_file_; }
 
   // GPU related.
+
+  /**
+   * \brief Turn on GPU.
+   * @param memory_pool_init_size_mb initial size of the GPU memory pool in MB.
+   * @param device_id the GPU card to use (default is 0).
+   */
   void EnableUseGpu(uint64_t memory_pool_init_size_mb, int device_id = 0);
+  /** Turn off the GPU.
+   */
   void DisableGpu();
+  /** A bool state telling whether the GPU is turned on.
+   */
   bool use_gpu() const { return use_gpu_; }
+  /** Get the GPU device id.
+   */
   int gpu_device_id() const { return device_id_; }
+  /** Get the initial size in MB of the GPU memory pool.
+   */
   int memory_pool_init_size_mb() const { return memory_pool_init_size_mb_; }
+  /** Get the proportion of the initial memory pool size compared to the device.
+   */
   float fraction_of_gpu_memory_for_pool() const;
 
-  // Determine whether to perform graph optimization.
+  /** \brief Control whether to perform IR graph optimization.
+   *
+   * If turned off, the AnalysisConfig will act just like a NativeConfig.
+   */
   void SwitchIrOptim(int x = true) { enable_ir_optim_ = x; }
+  /** A boolean state tell whether the ir graph optimization is actived.
+   */
   bool ir_optim() const { return enable_ir_optim_; }
 
+  /** \brief INTERNAL Determine whether to use the feed and fetch operators.
+   * Just for internal development, not stable yet.
+   * When ZeroCopyTensor is used, this should turned off.
+   */
   void SwitchUseFeedFetchOps(int x = true) { use_feed_fetch_ops_ = x; }
+  /** A boolean state telling whether to use the feed and fetch operators.
+   */
   bool use_feed_fetch_ops_enabled() const { return use_feed_fetch_ops_; }
 
+  /** \brief Control whether to specify the inputs' names.
+   *
+   * The PaddleTensor type has a `name` member, assign it with the corresponding
+   * variable name. This is used only when the input PaddleTensors passed to the
+   * `PaddlePredictor.Run(...)` cannot follow the order in the training phase.
+   */
   void SwitchSpecifyInputNames(bool x = true) { specify_input_name_ = x; }
+
+  /** A boolean state tell whether the input PaddleTensor names specified should
+   * be used to reorder the inputs in `PaddlePredictor.Run(...)`.
+   */
   bool specify_input_name() const { return specify_input_name_; }
 
+  /**
+   * \brief Turn on the TensorRT engine.
+   *
+   * The TensorRT engine will accelerate some subgraphes in the original Fluid
+   * computation graph. In some models such as TensorRT50, GoogleNet and so on,
+   * it gains significant performance acceleration.
+   *
+   * @param workspace_size the memory size(in byte) used for TensorRT workspace.
+   * @param max_batch_size the maximum batch size of this prediction task,
+   * better set as small as possible, or performance loss.
+   * @param min_subgrpah_size the minimum TensorRT subgraph size needed, if a
+   * subgraph is less than this, it will not transfer to TensorRT engine.
+   */
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1, int min_subgraph_size = 3);
+  /** A boolean state telling whether the TensorRT engine is used.
+   */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
 
+  /** Control whther to debug IR graph analysis phase.
+   */
   void SwitchIrDebug(int x = true) { ir_debug_ = x; }
 
+  /** Turn on MKLDNN.
+   */
   void EnableMKLDNN();
+  /** A boolean state telling whether to use the MKLDNN.
+   */
   bool mkldnn_enabled() const { return use_mkldnn_; }
 
-  // Set and get the number of cpu math library threads.
+  /** Set and get the number of cpu math library threads.
+   */
   void SetCpuMathLibraryNumThreads(int cpu_math_library_num_threads);
+  /** An int state telling how many threads are used in the CPU math library.
+   */
   int cpu_math_library_num_threads() const {
     return cpu_math_library_num_threads_;
   }
 
+  /** Transform the AnalysisConfig to NativeConfig.
+   */
   NativeConfig ToNativeConfig() const {
     NativeConfig config;
     config.model_dir = model_dir_;
@@ -95,19 +173,30 @@ struct AnalysisConfig {
     config.specify_input_name = specify_input_name_;
     return config;
   }
+  /** Specify the operator type list to use MKLDNN acceleration.
+   * @param op_list the operator type list.
+   */
   void SetMKLDNNOp(std::unordered_set<std::string> op_list) {
     mkldnn_enabled_op_types_ = op_list;
   }
 
-  // Specify the memory buffer of program and parameter
+  /** Specify the memory buffer of program and parameter
+   * @param prog_buffer the memory buffer of program.
+   * @param prog_buffer_size the size of the data.
+   * @param params_buffer the memory buffer of the composed parameters file.
+   * @param params_buffer_size the size of the commposed parameters data.
+   */
   void SetModelBuffer(const char* prog_buffer, size_t prog_buffer_size,
-                      const char* program_buffer, size_t program_buffer_size);
+                      const char* params_buffer, size_t params_buffer_size);
+  /** A boolean state telling whether the model is set from the CPU memory.
+   */
   bool model_from_memory() const { return model_from_memory_; }
 
   friend class ::paddle::AnalysisPredictor;
 
-  // NOTE just for developer, not an official API, easily to be broken.
-  // Get a pass builder for customize the passes in IR analysis phase.
+  /** NOTE just for developer, not an official API, easily to be broken.
+   * Get a pass builder for customize the passes in IR analysis phase.
+   */
   PassStrategy* pass_builder() const;
 
  protected:

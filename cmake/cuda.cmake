@@ -5,6 +5,8 @@ endif()
 set(paddle_known_gpu_archs "30 35 50 52 60 61 70")
 set(paddle_known_gpu_archs7 "30 35 50 52")
 set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
+set(paddle_known_gpu_archs9 "30 35 50 52 60 61 70")
+set(paddle_known_gpu_archs10 "30 35 50 52 60 61 70 75")
 
 ######################################################################################
 # A function for automatic detection of GPUs installed  (if autodetection is enabled)
@@ -59,7 +61,7 @@ endfunction()
 #   select_nvcc_arch_flags(out_variable)
 function(select_nvcc_arch_flags out_variable)
   # List of arch names
-  set(archs_names "Kepler" "Maxwell" "Pascal" "All" "Manual")
+  set(archs_names "Kepler" "Maxwell" "Pascal" "Volta" "Turing" "All" "Manual")
   set(archs_name_default "All")
   if(NOT CMAKE_CROSSCOMPILING)
     list(APPEND archs_names "Auto")
@@ -93,6 +95,8 @@ function(select_nvcc_arch_flags out_variable)
     set(cuda_arch_bin "60 61")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Volta")
     set(cuda_arch_bin "70")
+  elseif(${CUDA_ARCH_NAME} STREQUAL "Turing")
+    set(cuda_arch_bin "75")
   elseif(${CUDA_ARCH_NAME} STREQUAL "All")
     set(cuda_arch_bin ${paddle_known_gpu_archs})
   elseif(${CUDA_ARCH_NAME} STREQUAL "Auto")
@@ -153,6 +157,16 @@ elseif (${CUDA_VERSION} LESS 9.0) # CUDA 8.x
   # warning for now.
   list(APPEND CUDA_NVCC_FLAGS "-Wno-deprecated-gpu-targets")
   add_definitions("-DPADDLE_CUDA_BINVER=\"80\"")
+elseif (${CUDA_VERSION} LESS 10.0) # CUDA 9.x
+  set(paddle_known_gpu_archs ${paddle_known_gpu_archs9})
+  list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
+  list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
+  add_definitions("-DPADDLE_CUDA_BINVER=\"90\"")
+elseif (${CUDA_VERSION} LESS 11.0) # CUDA 10.x
+  set(paddle_known_gpu_archs ${paddle_known_gpu_archs10})
+  list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
+  list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
+  add_definitions("-DPADDLE_CUDA_BINVER=\"100\"")
 endif()
 
 include_directories(${CUDA_INCLUDE_DIRS})
