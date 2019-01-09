@@ -19,7 +19,7 @@ import numpy as np
 import copy
 import re
 
-__all__ = ['SensitivePruneStrategy', 'PruneStrategy']
+__all__ = ['SensitivePruneStrategy']
 
 
 class SensitivePruneStrategy(Strategy):
@@ -28,24 +28,28 @@ class SensitivePruneStrategy(Strategy):
                  start_epoch=0,
                  end_epoch=10,
                  delta_rate=0.20,
-                 acc_loss_threshold=0.2,
+                 target_ratio=0.5,
+                 metric_name=None,
                  sensitivities={}):
         super(SensitivePruneStrategy, self).__init__(start_epoch, end_epoch)
         self.pruner = pruner
         self.delta_rate = delta_rate
-        self.acc_loss_threshold = acc_loss_threshold
+        self.target_ratio = target_ratio
+        self.metric_name = metric_name
         self.sensitivities = sensitivities
         self.backup = {}
+
+    def _eval_graph(self, context):
+        results, names = context.run_eval_graph()
+        metric = results[names.index(self.metric_name)]
+        return metric
 
     def _compute_sensitivities(self, context):
         """
         Computing the sensitivities of all parameters.
         """
-        param_backup = None
-        accuracy = context.exe.run(
-            context.graph,
-            scope=context.scope,
-            fetches=[context.get('sensitivity_metric').name])[0]
+        metric = self._eval_graph(context)
+
         for param in context.graph.all_parameters():
             if not re.match('conv2d_.+\.w_.+', param.name):
                 continue
@@ -58,22 +62,20 @@ class SensitivePruneStrategy(Strategy):
                 # prune parameter by ratio
                 self._prune_parameters(
                     context.graph,
-                    context.scope, [param], [ratio],
+                    context.graph.scope, [param], [ratio],
                     context.place,
                     lazy=True)
                 # get accuracy after pruning and update self.sensitivities
-                pruned_accuracy = context.exe.run(
-                    context.graph,
-                    scope=context.scope,
-                    fetches=[context.get('sensitivity_metric').name])[0]
-                acc_loss = accuracy - pruned_accuracy
+                pruned_metric = self._eval_graph(context)
+                loss = metric - pruned_metric
                 self.sensitivities[param.name]['pruned_percent'].append(ratio)
-                self.sensitivities[param.name]['acc_loss'].append(acc_loss)
+                self.sensitivities[param.name]['loss'].append(loss)
                 ratio -= self.delta_rate
 
                 # restore pruned parameters
                 for param_name in self.backup.keys():
-                    param_t = context.scope.find_var(param_name).get_tensor()
+                    param_t = context.graph.scope.find_var(
+                        param_name).get_tensor()
                     param_t.set(self.backup[param_name], context.place)
 
     def _get_best_ratios(self):
@@ -330,36 +332,5 @@ class SensitivePruneStrategy(Strategy):
     def on_compression_begin(self, context):
         self._compute_sensitivities(context)
         params, ratios = self._get_best_ratios()
-        self._prune_parameters(context.graph, context.scope, params, ratios,
-                               context.place)
-
-
-class PruneStrategy(Strategy):
-    """
-    The strategy that pruning weights by threshold or ratio iteratively.
-    """
-
-    def __init__(self,
-                 pruner,
-                 mini_batch_pruning_frequency=1,
-                 start_epoch=0,
-                 end_epoch=10):
-        super(PruneStrategy, self).__init__(start_epoch, end_epoch)
-        self.pruner = pruner
-        self.mini_batch_pruning_frequency = mini_batch_pruning_frequency
-
-    def _triger(self, context):
-        return (context.batch_id % self.mini_batch_pruning_frequency == 0 and
-                self.start_epoch <= context.epoch_id < self.end_epoch)
-
-    def on_batch_end(self, context):
-        if self._triger(context):
-            prune_program = Program()
-            with program_guard(prune_program):
-                for param in context.graph.all_parameters():
-                    prune_program.global_block().clone_variable(param)
-                    p = prune_program.global_block().var(param.name)
-                    zeros_mask = self.pruner.prune(p)
-                    pruned_param = p * zeros_mask
-                    layers.assign(input=pruned_param, output=param)
-            context.program_exe.run(prune_program, scope=context.scope)
+        self._prune_parameters(context.graph, context.graph.scope, params,
+                               ratios, context.place)

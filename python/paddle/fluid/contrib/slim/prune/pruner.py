@@ -54,8 +54,7 @@ class StructurePruner(Pruner):
     Pruner used to pruning parameters by groups.
     """
 
-    def __init__(self, ratios, pruning_axis, criterions):
-        self.ratios = ratios
+    def __init__(self, pruning_axis, criterions):
         self.pruning_axis = pruning_axis
         self.criterions = criterions
 

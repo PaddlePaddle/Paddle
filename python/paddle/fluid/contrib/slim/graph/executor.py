@@ -41,15 +41,12 @@ class ImitationGraphExecutor(GraphExecutor):
         super(ImitationGraphExecutor, self).__init__(place)
         self.exe = executor.Executor(place)
 
-    def run(self, graph, scope=None, fetches=None, feed=None):
+    def run(self, graph, feed=None):
         assert isinstance(graph, ImitationGraph)
-        fetch_list = None
-        if fetches:
-            fetch_list = [
-                graph.program.global_block().var(name) for name in fetches
-            ]
+        fetch_list = graph.out_nodes.values()
+        #        print "fetch_list: %s" % (fetch_list, )
         results = self.exe.run(graph.program,
-                               scope=scope,
+                               scope=graph.scope,
                                fetch_list=fetch_list,
                                feed=feed)
         return results

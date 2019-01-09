@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from ....framework import Program
+import copy
 
 __all__ = ['Graph', 'ImitationGraph', 'IRGraph']
 
@@ -33,9 +34,12 @@ class Graph(object):
 
 
 class ImitationGraph(Graph):
-    def __init__(self, program=None):
+    def __init__(self, program=None, scope=None, in_nodes=[], out_nodes=[]):
         super(ImitationGraph, self).__init__()
         self.program = Program() if program is None else program
+        self.scope = scope
+        self.in_nodes = in_nodes
+        self.out_nodes = out_nodes
 
     def all_parameters(self):
         return self.program.global_block().all_parameters()
@@ -44,10 +48,15 @@ class ImitationGraph(Graph):
         return self.program.global_block().var(var_name)
 
     def clone(self):
-        return self.program.clone()
+        return ImitationGraph(self.program.clone(), self.scope,
+                              copy.deepcopy(self.in_nodes),
+                              copy.deepcopy(self.out_nodes))
 
     def ops(self):
         return self.program.global_block().ops
+
+    def program(self):
+        return self.program
 
 
 class IRGraph(Graph):
