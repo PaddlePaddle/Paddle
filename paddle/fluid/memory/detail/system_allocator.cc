@@ -173,7 +173,7 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 
   void* p;
   // PINNED memory is visible to all CUDA contexts.
-  cudaError_t result = cudaMallocHost(&p, size);
+  cudaError_t result = cudaHostAlloc(&p, size, flags_);
 
   if (result == cudaSuccess) {
     *index = 1;  // PINNED memory
@@ -206,6 +206,8 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
 }
 
 bool CUDAPinnedAllocator::UseGpu() const { return false; }
+
+void CUDAPinnedAllocator::SetPinnedFlags(unsigned int f) { flags_ = f; }
 
 #endif
 

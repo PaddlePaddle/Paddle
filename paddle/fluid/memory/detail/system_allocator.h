@@ -62,8 +62,11 @@ class CUDAPinnedAllocator : public SystemAllocator {
   virtual void Free(void* p, size_t size, size_t index);
   virtual bool UseGpu() const;
 
+  void SetPinnedFlags(unsigned int flags);
+
  private:
   size_t cuda_pinnd_alloc_size_ = 0;
+  unsigned int flags_ = 0x2;  // default is cudaHostAllocDefault
 };
 #endif
 
