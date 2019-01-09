@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/string/split.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -82,10 +83,8 @@ void InitDevices(bool init_p2p) {
   std::vector<int> devices;
 #ifdef PADDLE_WITH_CUDA
   try {
-    int count = platform::GetCUDADeviceCount();
-    for (int i = 0; i < count; ++i) {
-      devices.push_back(i);
-    }
+    // use user specified GPUs in single-node multi-process mode.
+    devices = platform::GetSelectedDevices();
   } catch (const std::exception &exp) {
     LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
   }
@@ -95,20 +94,15 @@ void InitDevices(bool init_p2p) {
 
 void InitDevices(bool init_p2p, const std::vector<int> devices) {
   std::vector<platform::Place> places;
-  int count = 0;
-#ifdef PADDLE_WITH_CUDA
-  try {
-    count = platform::GetCUDADeviceCount();
-  } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
-  }
-#endif
 
   for (size_t i = 0; i < devices.size(); ++i) {
-    if (devices[i] >= count || devices[i] < 0) {
+    // In multi process multi gpu mode, we may have gpuid = 7
+    // but count = 1.
+    if (devices[i] < 0) {
       LOG(WARNING) << "Invalid devices id.";
       continue;
     }
+
     places.emplace_back(platform::CUDAPlace(devices[i]));
   }
   if (init_p2p) {
@@ -116,13 +110,13 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   }
   places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
-
+  platform::DeviceTemporaryAllocator::Init();
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
 
 #if !defined(_WIN32) && !defined(__APPLE__) && !defined(__OSX__)
-  if (platform::jit::MayIUse(platform::jit::avx)) {
+  if (platform::MayIUse(platform::avx)) {
 #ifndef __AVX__
     LOG(WARNING) << "AVX is available, Please re-compile on local machine";
 #endif
@@ -137,10 +131,10 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
          " version or compile from source code."
 
 #ifdef __AVX512F__
-  if (!platform::jit::MayIUse(platform::jit::avx512f)) {
-    if (platform::jit::MayIUse(platform::jit::avx2)) {
+  if (!platform::MayIUse(platform::avx512f)) {
+    if (platform::MayIUse(platform::avx2)) {
       AVX_GUIDE(AVX512, AVX2);
-    } else if (platform::jit::MayIUse(platform::jit::avx)) {
+    } else if (platform::MayIUse(platform::avx)) {
       AVX_GUIDE(AVX512, AVX);
     } else {
       AVX_GUIDE(AVX512, NonAVX);
@@ -149,8 +143,8 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #endif
 
 #ifdef __AVX2__
-  if (!platform::jit::MayIUse(platform::jit::avx2)) {
-    if (platform::jit::MayIUse(platform::jit::avx)) {
+  if (!platform::MayIUse(platform::avx2)) {
+    if (platform::MayIUse(platform::avx)) {
       AVX_GUIDE(AVX2, AVX);
     } else {
       AVX_GUIDE(AVX2, NonAVX);
@@ -159,7 +153,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #endif
 
 #ifdef __AVX__
-  if (!platform::jit::MayIUse(platform::jit::avx)) {
+  if (!platform::MayIUse(platform::avx)) {
     AVX_GUIDE(AVX, NonAVX);
   }
 #endif

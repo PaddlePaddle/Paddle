@@ -67,9 +67,8 @@ void FusionSeqExpandConcatFCOp::InferShape(
 
 framework::OpKernelType FusionSeqExpandConcatFCOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.MultiInput<LoDTensor>("X")[0]->type()),
-      ctx.device_context());
+  return framework::OpKernelType(ctx.MultiInput<LoDTensor>("X")[0]->type(),
+                                 ctx.device_context());
 }
 
 void FusionSeqExpandConcatFCOpMaker::Make() {
@@ -151,11 +150,11 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
 
     std::function<void(const int, const T*, T*)> fc_act;
     auto& fc_act_str = ctx.Attr<std::string>("fc_activation");
-    if (platform::jit::MayIUse(platform::jit::avx)) {
-      math::VecActivations<T, platform::jit::avx> act_functor;
+    if (platform::MayIUse(platform::avx)) {
+      math::VecActivations<T, platform::avx> act_functor;
       fc_act = act_functor(fc_act_str);
     } else {
-      math::VecActivations<T, platform::jit::isa_any> act_functor;
+      math::VecActivations<T, platform::isa_any> act_functor;
       fc_act = act_functor(fc_act_str);
     }
 

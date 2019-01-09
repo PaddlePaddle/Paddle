@@ -18,35 +18,22 @@ import unittest
 from test_pool2d_op import TestPool2D_Op, TestCase1, TestCase2, TestCase3, TestCase4, TestCase5
 
 
-class TestMKLDNNCase1(TestPool2D_Op):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
+def create_test_mkldnn_class(parent):
+    class TestMKLDNNCase(parent):
+        def init_kernel_type(self):
+            self.use_mkldnn = True
+
+    cls_name = "{0}_{1}".format(parent.__name__, "MKLDNNOp")
+    TestMKLDNNCase.__name__ = cls_name
+    globals()[cls_name] = TestMKLDNNCase
 
 
-class TestMKLDNNCase2(TestCase1):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase3(TestCase2):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase4(TestCase3):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase5(TestCase4):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase6(TestCase5):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
+create_test_mkldnn_class(TestPool2D_Op)
+create_test_mkldnn_class(TestCase1)
+create_test_mkldnn_class(TestCase2)
+create_test_mkldnn_class(TestCase3)
+create_test_mkldnn_class(TestCase4)
+create_test_mkldnn_class(TestCase5)
 
 if __name__ == '__main__':
     unittest.main()

@@ -184,9 +184,8 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
   // is determined by its input "Emission".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<LoDTensor>("Emission")->type()),
-        platform::CPUPlace());
+    return framework::OpKernelType(ctx.Input<LoDTensor>("Emission")->type(),
+                                   platform::CPUPlace());
   }
 };
 
@@ -231,10 +230,12 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
 
     if (ctx->HasOutput(framework::GradVarName("Emission"))) {
       ctx->SetOutputDim(framework::GradVarName("Emission"), emission_exps_dims);
+      ctx->ShareLoD("Emission", framework::GradVarName("Emission"));
     }
     if (ctx->HasOutput(framework::GradVarName("Transition"))) {
       ctx->SetOutputDim(framework::GradVarName("Transition"),
                         transition_exps_dims);
+      ctx->ShareLoD("Transition", framework::GradVarName("Transition"));
     }
   }
 
@@ -244,9 +245,7 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(
-            ctx.Input<LoDTensor>(framework::GradVarName("LogLikelihood"))
-                ->type()),
+        ctx.Input<LoDTensor>(framework::GradVarName("LogLikelihood"))->type(),
         platform::CPUPlace());
   }
 };

@@ -61,9 +61,7 @@ class MeanGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_data_type =
-        framework::ToDataType(ctx.Input<Tensor>("X")->type());
-
+    auto input_data_type = ctx.Input<Tensor>("X")->type();
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };

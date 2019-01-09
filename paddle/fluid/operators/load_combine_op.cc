@@ -32,16 +32,26 @@ class LoadCombineOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto filename = Attr<std::string>("file_path");
     auto load_as_fp16 = Attr<bool>("load_as_fp16");
-
-    std::ifstream fin(filename);
-    PADDLE_ENFORCE(static_cast<bool>(fin),
-                   "Cannot open file %s for load_combine op", filename);
-
+    auto model_from_memory = Attr<bool>("model_from_memory");
     auto out_var_names = Outputs("Out");
     PADDLE_ENFORCE_GT(
         static_cast<int>(out_var_names.size()), 0,
         "The number of output variables should be greater than 0.");
-
+    if (!model_from_memory) {
+      std::ifstream fin(filename, std::ios::binary);
+      PADDLE_ENFORCE(static_cast<bool>(fin),
+                     "Cannot open file %s for load_combine op", filename);
+      LoadParamsFromBuffer(scope, place, &fin, load_as_fp16, out_var_names);
+    } else {
+      PADDLE_ENFORCE(!filename.empty(), "Cannot load file from memory");
+      std::stringstream fin(filename, std::ios::in | std::ios::binary);
+      LoadParamsFromBuffer(scope, place, &fin, load_as_fp16, out_var_names);
+    }
+  }
+  void LoadParamsFromBuffer(
+      const framework::Scope &scope, const platform::Place &place,
+      std::istream *buffer, bool load_as_fp16,
+      const std::vector<std::string> &out_var_names) const {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
@@ -54,13 +64,12 @@ class LoadCombineOp : public framework::OperatorBase {
       auto *tensor = out_var->GetMutable<framework::LoDTensor>();
 
       // Error checking
-      PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot read more from file %s",
-                     filename);
+      PADDLE_ENFORCE(static_cast<bool>(buffer), "Cannot read more");
 
       // Get data from fin to tensor
-      DeserializeFromStream(fin, tensor, dev_ctx);
+      DeserializeFromStream(*buffer, tensor, dev_ctx);
 
-      auto in_dtype = framework::ToDataType(tensor->type());
+      auto in_dtype = tensor->type();
       auto out_dtype =
           load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 
@@ -103,11 +112,17 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                          "LoDTensors will be loaded from \"file_path\".")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
+    AddAttr<bool>("model_from_memory",
+                  "(boolean, default false)"
+                  "If true, file_path is in memory, and LoDTensors will be "
+                  "loaded directly from memory")
+        .SetDefault(false);
     AddComment(R"DOC(
 LoadCombine Operator.
 
-LoadCombine operator loads LoDTensor variables from a file. The file should 
-contain one or more LoDTensors serialized using the SaveCombine operator. The 
+LoadCombine operator loads LoDTensor variables from a file, which could be 
+loaded in memory already. The file should contain one or more LoDTensors 
+serialized using the SaveCombine operator. The
 LoadCombine operator applies a deserialization strategy to appropriately load 
 the LodTensors, and this strategy complements the serialization strategy used 
 in the SaveCombine operator. Hence, the LoadCombine operator is tightly coupled

@@ -226,156 +226,6 @@ class BlockGuard(object):
         return True
 
 
-class ParallelDo(object):
-    """
-    ParallelDo is used to represent multi-thread data parallel processing.
-
-    Its vanilla implementation can be shown as the following (:math:`|` means
-    single thread and :math:`||||` means multiple threads)
-
-    .. code-block:: text
-
-      In the forward pass
-        |      Split input onto different devices
-        |      Copy parameter onto different devices
-        ||||   Compute forward pass in parallel
-        |      Merge output from different devices
-
-      In the backward pass
-        |      Split output@grad onto different devices
-        ||||   Compute backward pass in parallel
-        |      accumulate param@grad from different devices to the first device
-        |      Merge input@grad from different devices
-        |      Copy param@grad to the place of parallel_do_op
-
-    Examples:
-
-    .. code-block:: python
-
-      images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
-      label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-
-      # ParallelDo version & Single-thread version
-      if thread_num > 1:
-          places = fluid.layers.get_places(thread_num)
-          pd = fluid.layers.control_flow.ParallelDo(places)
-          with pd.do():
-              images = pd.read_input(images)
-              label = pd.read_input(label)
-              predict = cnn_model(images)
-              cost = fluid.layers.cross_entropy(input=predict, label=label)
-
-              avg_cost = fluid.layers.mean(x=cost)
-              pd.write_output(avg_cost)
-
-          avg_cost = pd()
-          avg_cost = fluid.layers.mean(avg_cost)
-      else:
-          predict = cnn_model(images)
-          cost = fluid.layers.cross_entropy(input=predict, label=label)
-          avg_cost = fluid.layers.mean(x=cost)
-
-    .. warning::
-
-       It will be soon deprecated, please use ParallelExecutor instead.
-    """
-
-    def __init__(self, places, use_nccl=False, name=None):
-        warnings.warn(
-            "API ParallelDo is deprecated since 0.15.0. Please use ParallelExecutor instead.",
-            Warning)
-        self.helper = LayerHelper("parallel_do", name=name)
-        self.inputs = []
-        self.places = places
-        self.outputs = []
-        self.status = StaticRNN.BEFORE_RNN_BLOCK
-        self.use_nccl = use_nccl
-
-    def do(self):
-        return BlockGuardWithCompletion(self)
-
-    def parent_block(self):
-        prog = self.helper.main_program
-        parent_idx = prog.current_block().parent_idx
-        assert parent_idx >= 0
-        parent_block = prog.block(parent_idx)
-        return parent_block
-
-    def __call__(self, *args, **kwargs):
-        if self.status != StaticRNN.AFTER_RNN_BLOCK:
-            raise ValueError("RNN output can only be retrieved after rnn block")
-        if len(self.outputs) == 0:
-            raise ValueError("RNN has no output")
-        elif len(self.outputs) == 1:
-            return self.outputs[0]
-        else:
-            return self.outputs
-
-    def read_input(self, var):
-        self.inputs.append(var)
-        return var
-
-    def write_output(self, var):
-        self.outputs.append(var)
-
-    def get_parameters(self):
-        main_program = self.helper.main_program
-        current_block = main_program.current_block()
-        parent_block = self.parent_block()
-
-        local_inputs = set()
-        params = list()
-        for var in self.inputs:
-            local_inputs.add(var.name)
-
-        for op in current_block.ops:
-            for iname in op.input_names:
-                for in_var_name in op.input(iname):
-                    if in_var_name not in local_inputs:
-                        params.append(in_var_name)
-
-            for oname in op.output_names:
-                for out_var_name in op.output(oname):
-                    local_inputs.add(out_var_name)
-
-        params = list(set(params))
-
-        return [parent_block.var(name) for name in params]
-
-    def _complete_op(self):
-        main_program = self.helper.main_program
-        current_block = main_program.current_block()
-        parent_block = self.parent_block()
-
-        step_scope = parent_block.create_var(
-            type=core.VarDesc.VarType.STEP_SCOPES)
-
-        self.outputs = [
-            parent_block.create_var(
-                name=o.name,
-                shape=o.shape,
-                dtype=o.dtype,
-                lod_level=o.lod_level,
-                persistable=o.persistable,
-                stop_gradient=o.stop_gradient) for o in self.outputs
-        ]
-
-        inputs = [parent_block.var(i.name) for i in self.inputs]
-        outputs = [parent_block.var(o.name) for o in self.outputs]
-
-        parent_block.append_op(
-            type='parallel_do',
-            inputs={
-                'inputs': inputs,
-                'parameters': self.get_parameters(),
-                'places': self.places
-            },
-            outputs={'outputs': outputs,
-                     'parallel_scopes': [step_scope]},
-            attrs={'sub_block': current_block,
-                   'use_nccl': self.use_nccl})
-
-
 class BlockGuardWithCompletion(BlockGuard):
     """
     BlockGuardWithCompletion class.
@@ -384,9 +234,8 @@ class BlockGuardWithCompletion(BlockGuard):
     """
 
     def __init__(self, rnn):
-        if not (isinstance(rnn, StaticRNN) or isinstance(rnn, ParallelDo)):
-            raise TypeError(
-                "BlockGuardWithCompletion takes a StaticRNN or ParallelDo")
+        if not isinstance(rnn, StaticRNN):
+            raise TypeError("BlockGuardWithCompletion takes a StaticRNN")
         super(BlockGuardWithCompletion, self).__init__(rnn.helper.main_program)
         self.rnn = rnn
 
@@ -717,8 +566,9 @@ class While(object):
 
         out_vars = []
         for inner_out_name in inner_outputs:
-            if inner_out_name in parent_block.vars:
-                out_vars.append(parent_block.var(inner_out_name))
+            inner_var = parent_block._find_var_recursive(inner_out_name)
+            if inner_var:
+                out_vars.append(inner_var)
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
@@ -1264,10 +1114,11 @@ class ConditionalBlock(object):
             if each_name not in input_set
         ]
 
-        out_list = [
-            parent_block.var(var_name) for var_name in parent_block.vars
-            if var_name in intermediate
-        ]
+        out_list = []
+        for inner_out_name in intermediate:
+            inner_var = parent_block._find_var_recursive(inner_out_name)
+            if inner_var:
+                out_list.append(inner_var)
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
@@ -1601,6 +1452,7 @@ class DynamicRNN(object):
     def step_input(self, x):
         """
         Mark a sequence as a dynamic RNN input.
+
         Args:
             x(Variable): The input sequence.
 
@@ -1654,6 +1506,7 @@ class DynamicRNN(object):
         """
         Mark a variable as a RNN input. The input will not be scattered into
         time steps.
+
         Args:
             x(Variable): The input variable.
 
@@ -1778,13 +1631,11 @@ class DynamicRNN(object):
         Args:
             init(Variable|None): The initialized variable.
 
-            shape(list|tuple): The memory shape. NOTE the shape does not contain
-            batch_size.
+            shape(list|tuple): The memory shape. NOTE the shape does not contain batch_size.
 
             value(float): the initalized value.
 
-            need_reorder(bool): True if the initialized memory depends on the
-            input sample.
+            need_reorder(bool): True if the initialized memory depends on the input sample.
 
             dtype(str|numpy.dtype): The data type of the initialized memory.
 
@@ -1863,6 +1714,7 @@ class DynamicRNN(object):
         """
         Update the memory from ex_mem to new_mem. NOTE that the shape and data
         type of :code:`ex_mem` and :code:`new_mem` must be same.
+        
         Args:
             ex_mem(Variable): the memory variable.
             new_mem(Variable): the plain variable generated in RNN block.

@@ -34,7 +34,7 @@ class LoadOp : public framework::OperatorBase {
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
     auto filename = Attr<std::string>("file_path");
-    std::ifstream fin(filename);
+    std::ifstream fin(filename, std::ios::binary);
     PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",
                    filename);
 
@@ -65,7 +65,7 @@ class LoadOp : public framework::OperatorBase {
     DeserializeFromStream(fin, tensor, dev_ctx);
 
     auto load_as_fp16 = Attr<bool>("load_as_fp16");
-    auto in_dtype = framework::ToDataType(tensor->type());
+    auto in_dtype = tensor->type();
     auto out_dtype = load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 
     if (in_dtype != out_dtype) {

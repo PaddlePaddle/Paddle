@@ -21,18 +21,19 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_dist_simnet_bow)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_batch_merge)
     LIST(REMOVE_ITEM TEST_OPS test_dist_text_classification)
+    LIST(REMOVE_ITEM TEST_OPS test_nce_remote_table_op)
+    LIST(REMOVE_ITEM TEST_OPS test_hsigmoid_remote_table_op)
 endif(NOT WITH_DISTRIBUTE)
 
 if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
-elseif(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_modified_huber_loss_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5184
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
-list(REMOVE_ITEM TEST_OPS test_nce) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/7778
 list(REMOVE_ITEM TEST_OPS test_recurrent_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/6152
 list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
 
@@ -43,7 +44,7 @@ if(APPLE)
         list(REMOVE_ITEM TEST_OPS test_desc_clone)
         list(REMOVE_ITEM TEST_OPS test_program_code)
     endif(NOT WITH_DISTRIBUTE)
-    message(WARNING "These tests has been disabled in OSX before being fixed: \n test_fuse_elewise_add_act_pass \n test_detection_map_op \n test_dist_se_resnext")
+    message(WARNING "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass \n test_detection_map_op \n test_dist_se_resnext")
     # this op is not support on mac
     list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
     # TODO: add the unitest back when it fixed
@@ -63,9 +64,9 @@ function(py_test_modules TARGET_NAME)
     set(multiValueArgs MODULES DEPS ENVS)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
-             COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-             ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+        ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     if (py_test_modules_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
@@ -95,13 +96,12 @@ if(WITH_DISTRIBUTE)
     if(NOT APPLE)
         set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 200)
         set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 200)
+	py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext)
+	set_tests_properties(test_dist_se_resnext PROPERTIES TIMEOUT 1000)
         # FIXME(typhoonzero): add these tests back
-	# py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext)
-	# set_tests_properties(test_dist_se_resnext PROPERTIES TIMEOUT 1000)
 	# py_test_modules(test_dist_transformer MODULES test_dist_transformer)
 	# set_tests_properties(test_dist_transformer PROPERTIES TIMEOUT 1000)
-        # TODO(typhoonzero): make dist test parallel when fix port management issue
-        set_tests_properties(test_dist_mnist test_dist_word2vec test_dist_ctr test_dist_simnet_bow test_dist_save_load test_dist_text_classification test_dist_mnist_batch_merge PROPERTIES RUN_SERIAL TRUE)
+        set_tests_properties(test_dist_ctr test_dist_mnist test_dist_mnist_batch_merge test_dist_save_load test_dist_se_resnext test_dist_simnet_bow test_dist_text_classification test_dist_train test_dist_word2vec PROPERTIES RUN_SERIAL TRUE)
     endif(NOT APPLE)
     py_test_modules(test_dist_transpiler MODULES test_dist_transpiler)
 endif()
@@ -111,4 +111,8 @@ set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 150)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer SERIAL)
 if(NOT APPLE)
     py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)
+endif()
+
+if (WITH_NGRAPH)
+    add_subdirectory(ngraph)
 endif()

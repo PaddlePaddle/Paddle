@@ -33,11 +33,7 @@ void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
   CheckInit();
   for (size_t i = 0; i < use_slots_.size(); ++i) {
     if (name == use_slots_[i]) {
-      if (use_slots_is_dense_[i]) {
-        feed_vec_[i] = MixTensor(var->GetMutable<Tensor>());
-      } else {
-        feed_vec_[i] = MixTensor(var->GetMutable<LoDTensor>());
-      }
+      feed_vec_[i] = var->GetMutable<LoDTensor>();
     }
   }
 }
@@ -68,6 +64,7 @@ bool DataFeed::PickOneFile(std::string* filename) {
     return false;
   }
   *filename = filelist_[file_idx_++];
+  LOG(ERROR) << "pick file:" << *filename;
   return true;
 }
 
@@ -200,22 +197,22 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
     for (size_t i = 0; i < all_slots_.size(); ++i) {
       int num = strtol(endptr, &endptr, 10);
       if (num < 0) {
-        VLOG(1) << "error: the number of ids is a negative number: " << num;
-        VLOG(1) << "please check line<" << instance_cout << "> in file<"
+        VLOG(0) << "error: the number of ids is a negative number: " << num;
+        VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
         return false;
       } else if (num == 0) {
-        VLOG(1)
+        VLOG(0)
             << "error: the number of ids can not be zero, you need "
                "padding it in data generator; or if there is something wrong"
                " with the data, please check if the data contains unresolvable "
                "characters.";
-        VLOG(1) << "please check line<" << instance_cout << "> in file<"
+        VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
         return false;
       } else if (errno == ERANGE || num > INT_MAX) {
-        VLOG(1) << "error: the number of ids greater than INT_MAX";
-        VLOG(1) << "please check line<" << instance_cout << "> in file<"
+        VLOG(0) << "error: the number of ids greater than INT_MAX";
+        VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
         return false;
       }
@@ -223,15 +220,15 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
         for (int i = 0; i < num; ++i) {
           strtof(endptr, &endptr);
           if (errno == ERANGE) {
-            VLOG(1) << "error: the value is out of the range of "
+            VLOG(0) << "error: the value is out of the range of "
                        "representable values for float";
-            VLOG(1) << "please check line<" << instance_cout << "> in file<"
+            VLOG(0) << "please check line<" << instance_cout << "> in file<"
                     << filename << ">";
             return false;
           }
           if (i + 1 != num && endptr - str == len) {
-            VLOG(1) << "error: there is a wrong with the number of ids.";
-            VLOG(1) << "please check line<" << instance_cout << "> in file<"
+            VLOG(0) << "error: there is a wrong with the number of ids.";
+            VLOG(0) << "please check line<" << instance_cout << "> in file<"
                     << filename << ">";
             return false;
           }
@@ -240,30 +237,41 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
         for (int i = 0; i < num; ++i) {
           strtoull(endptr, &endptr, 10);
           if (errno == ERANGE) {
-            VLOG(1) << "error: the value is out of the range of "
+            VLOG(0) << "error: the value is out of the range of "
                        "representable values for uint64_t";
-            VLOG(1) << "please check line<" << instance_cout << "> in file<"
+            VLOG(0) << "please check line<" << instance_cout << "> in file<"
                     << filename << ">";
             return false;
           }
           if (i + 1 != num && endptr - str == len) {
-            VLOG(1) << "error: there is a wrong with the number of ids.";
-            VLOG(1) << "please check line<" << instance_cout << "> in file<"
+            VLOG(0) << "error: there is a wrong with the number of ids.";
+            VLOG(0) << "please check line<" << instance_cout << "> in file<"
                     << filename << ">";
             return false;
           }
         }
       } else {
-        VLOG(1) << "error: this type<" << all_slots_type_[i]
+        VLOG(0) << "error: this type<" << all_slots_type_[i]
                 << "> is not supported";
         return false;
       }
     }
-    if (endptr - str != len) {
-      VLOG(1) << "error: there is some data at the end of the line.";
-      VLOG(1) << "please check line<" << instance_cout << "> in file<"
-              << filename << ">";
-      return false;
+    // It may be added '\t' character to the end of the output of reduce
+    // task when processes data by Hadoop(when the output of the reduce
+    // task of Hadoop has only one field, it will add a '\t' at the end
+    // of the line by default, and you can use this option to avoid it:
+    // `-D mapred.textoutputformat.ignoreseparator=true`), which does
+    // not affect the correctness of the data. Therefore, it should be
+    // judged that the data is not normal when the end of each line of
+    // data contains characters which are not spaces.
+    while (endptr - str != len) {
+      if (!isspace(*(endptr++))) {
+        VLOG(0)
+            << "error: there is some extra characters at the end of the line.";
+        VLOG(0) << "please check line<" << instance_cout << "> in file<"
+                << filename << ">";
+        return false;
+      }
     }
   }
   VLOG(3) << "instances cout: " << instance_cout;
@@ -290,6 +298,7 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
           "the data, please check if the data contains unresolvable "
           "characters.\nplease check this error line: %s",
           str);
+
       if (idx != -1) {
         (*instance)[idx].Init(all_slots_type_[i]);
         if ((*instance)[idx].GetType()[0] == 'f') {  // float
@@ -326,6 +335,7 @@ void MultiSlotDataFeed::AddInstanceToInsVec(
       (*ins_vec)[i].InitOffset();
     }
   }
+
   for (size_t i = 0; i < instance.size(); ++i) {
     (*ins_vec)[i].AddIns(instance[i]);
   }
@@ -337,36 +347,25 @@ void MultiSlotDataFeed::PutToFeedVec(
     const auto& type = ins_vec[i].GetType();
     const auto& offset = ins_vec[i].GetOffset();
     int total_instance = static_cast<int>(offset.back());
+
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec[i].GetFloatData();
-      if (feed_vec_[i].IsDense()) {
-        int size_in_each_batch = total_instance / batch_size_;
-        float* tensor_ptr = feed_vec_[i].GetTensor()->mutable_data<float>(
-            {batch_size_, size_in_each_batch}, platform::CPUPlace());
-        memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(float));
-      } else {
-        float* tensor_ptr = feed_vec_[i].GetLoDTensor()->mutable_data<float>(
-            {total_instance, 1}, platform::CPUPlace());
-        memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(float));
-        LoD data_lod{offset};
-        feed_vec_[i].GetLoDTensor()->set_lod(data_lod);
-      }
+      float* tensor_ptr = feed_vec_[i]->mutable_data<float>(
+          {total_instance, 1}, platform::CPUPlace());
+      memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(float));
     } else if (type[0] == 'u') {  // uint64
       // no uint64_t type in paddlepaddle
       const auto& feasign = ins_vec[i].GetUint64Data();
-      if (feed_vec_[i].IsDense()) {
-        int size_in_each_batch = total_instance / batch_size_;
-        int64_t* tensor_ptr = feed_vec_[i].GetTensor()->mutable_data<int64_t>(
-            {batch_size_, size_in_each_batch}, platform::CPUPlace());
-        memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
-      } else {
-        int64_t* tensor_ptr =
-            feed_vec_[i].GetLoDTensor()->mutable_data<int64_t>(
-                {total_instance, 1}, platform::CPUPlace());
-        memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
-        LoD data_lod{offset};
-        feed_vec_[i].GetLoDTensor()->set_lod(data_lod);
-      }
+      int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
+          {total_instance, 1}, platform::CPUPlace());
+      memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
+    }
+
+    LoD data_lod{offset};
+    feed_vec_[i]->set_lod(data_lod);
+    if (use_slots_is_dense_[i]) {
+      int dim = total_instance / batch_size_;
+      feed_vec_[i]->Resize({batch_size_, dim});
     }
   }
 }

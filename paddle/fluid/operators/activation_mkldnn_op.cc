@@ -100,8 +100,9 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   const T *x_data = x->data<T>();
   T *y_data = y->mutable_data<T>(ctx.GetPlace());
 
-  PADDLE_ENFORCE(x->dims().size() == 2 || x->dims().size() == 4,
-                 "Input dim must be with 2 or 4");
+  PADDLE_ENFORCE(
+      x->dims().size() == 2 || x->dims().size() == 3 || x->dims().size() == 4,
+      "Input dim must be with 2, 3 or 4");
 
   std::vector<int> src_tz = framework::vectorize2int(x->dims());
 
