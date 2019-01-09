@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
 #include <algorithm>
-#include <cassert>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT // for call_once
