@@ -128,26 +128,23 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
     return {};
   }
 
-  std::vector<std::unique_ptr<framework::Variable>> tmp_vars;
   std::map<std::string, std::vector<framework::Variable*>> grad_outputs;
-  for (auto it : grad_output_vars_) {
-    auto& outputs = grad_outputs[it.first];
-    for (size_t i = 0; i < it.second.size(); ++i) {
-      // Allocate a new variable
-      Variable* tmp_var = new framework::Variable();
-      tmp_var->GetMutable<framework::LoDTensor>();
-
-      tmp_vars.emplace_back(tmp_var);
-      outputs.push_back(tmp_var);
-    }
-  }
-
   if (backward_id_ > 0) {
     VLOG(3) << "py_layer_grad";
-    PyLayer::ApplyGrad(backward_id_, grad_input_vars_["X@GRAD"],
-                       &(grad_outputs["Out@GRAD"]));
+    grad_outputs["Out@GRAD"] =
+        PyLayer::ApplyGrad(backward_id_, grad_input_vars_["X@GRAD"]);
   } else {
     VLOG(3) << "op grad " << grad_op_desc_->Type();
+    for (auto it : grad_output_vars_) {
+      auto& outputs = grad_outputs[it.first];
+      for (size_t i = 0; i < it.second.size(); ++i) {
+        // Allocate a new variable
+        Variable* tmp_var = new framework::Variable();
+        tmp_var->GetMutable<framework::LoDTensor>();
+        outputs.push_back(tmp_var);
+      }
+    }
+
     framework::RuntimeContext ctx(grad_input_vars_, grad_outputs);
 
     // No need to do compile time infer shape here.
@@ -170,10 +167,13 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
   for (auto it : grad_output_vars_) {
     auto& outputs = grad_outputs[it.first];
     auto& origin_outputs = it.second;
+    PADDLE_ENFORCE_EQ(outputs.size(), origin_outputs.size());
 
     for (size_t i = 0; i < outputs.size(); ++i) {
+      framework::Variable* grad = outputs[i];
       framework::Variable* orig_grad = origin_outputs[i];
-      AddTo(outputs[i], orig_grad);
+      AddTo(grad, orig_grad);
+      delete grad;
     }
   }
   return input_vars_;
@@ -197,30 +197,60 @@ void PyLayer::RegisterFunc(int func_id, const py::object& py_func) {
   py_funcs_[func_id] = py_func;
 }
 
+int PyLayer::NumFuncs() { return py_funcs_.size(); }
+
 std::vector<VarBase*> PyLayer::Apply(int func_id,
                                      const std::vector<VarBase*>& inputs) {
-  std::vector<framework::LoDTensor> tensor_inputs;
-  std::vector<VarBase*> ret;
-
+  std::vector<framework::Variable*> invars;
   for (const VarBase* in : inputs) {
-    tensor_inputs.push_back(in->var_->Get<framework::LoDTensor>());
+    invars.push_back(in->var_);
   }
   PADDLE_ENFORCE(py_funcs_.find(func_id) != py_funcs_.end());
-  CallPythonFunc(py_funcs_[func_id], tensor_inputs, &ret);
+  std::vector<Variable*> outvars = CallPythonFunc(py_funcs_[func_id], invars);
+  std::vector<VarBase*> ret;
+  for (Variable* v : outvars) {
+    ret.push_back(new VarBase(v, new Variable()));
+  }
   return ret;
 }
 
-void PyLayer::ApplyGrad(int func_id,
-                        const std::vector<framework::Variable*>& inputs,
-                        std::vector<framework::Variable*>* outputs) {
-  std::vector<framework::LoDTensor> tensor_inputs;
-  std::vector<VarBase*> ret;
-
-  for (const Variable* in : inputs) {
-    tensor_inputs.push_back(in->Get<framework::LoDTensor>());
-  }
+std::vector<Variable*> PyLayer::ApplyGrad(
+    int func_id, const std::vector<framework::Variable*>& inputs) {
   PADDLE_ENFORCE(py_funcs_.find(func_id) != py_funcs_.end());
-  CallPythonFunc(py_funcs_[func_id], tensor_inputs, outputs);
+  return CallPythonFunc(py_funcs_[func_id], inputs);
+}
+
+std::vector<framework::Variable*> PyLayer::CallPythonFunc(
+    const py::object& callable, const std::vector<framework::Variable*>& ins) {
+  py::gil_scoped_acquire guard;
+  py::tuple in_args(ins.size());
+  for (size_t i = 0; i < ins.size(); ++i) {
+    const framework::LoDTensor& t = ins[i]->Get<framework::LoDTensor>();
+    in_args[i] = t.IsInitialized() ? py::cast(t) : py::cast(nullptr);
+  }
+  VLOG(3) << "pyfunc in " << py::len(in_args);
+
+  // TODO(panyx0718): Who owns the returned LoDTensor.
+  auto ret = callable(in_args);
+  auto ret_tuple = py::cast<py::tuple>(ret);
+  size_t ret_num = py::len(ret_tuple);
+  std::vector<framework::Variable*> outs;
+  VLOG(3) << "pyfunc out " << ret_num;
+  for (size_t i = 0; i < ret_num; ++i) {
+    try {
+      auto* py_out_tensor = py::cast<framework::LoDTensor*>(ret_tuple[i]);
+      PADDLE_ENFORCE_NOT_NULL(py_out_tensor,
+                              "Output tensor %d should not be nullptr", i);
+      auto* var = new framework::Variable();
+      auto* tensor = var->GetMutable<framework::LoDTensor>();
+      tensor->ShareDataWith(*py_out_tensor);
+      tensor->set_lod(py_out_tensor->lod());
+      outs.push_back(var);
+    } catch (py::cast_error&) {
+      PADDLE_THROW("The %d-th output must be LoDTensor", i);
+    }
+  }
+  return outs;
 }
 
 }  // namespace imperative

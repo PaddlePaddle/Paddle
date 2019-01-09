@@ -81,14 +81,52 @@ class MLP(fluid.imperative.Layer):
 
 
 class TestImperative(unittest.TestCase):
-    """
     def test_layer(self):
         with fluid.imperative.guard():
             cl = core.Layer()
             cl.forward([])
             l = fluid.imperative.Layer()
             self.assertRaises(NotImplementedError, l.forward, [])
-    """
+
+    def test_pylayer_func_id(self):
+
+        with fluid.imperative.guard():
+
+            class PyLayer1(fluid.imperative.PyLayer):
+                def __init__(self):
+                    super(PyLayer1, self).__init__()
+
+                @staticmethod
+                def forward(inputs):
+                    return inputs
+
+                @staticmethod
+                def backward(inputs):
+                    return inputs
+
+            class PyLayer2(fluid.imperative.PyLayer):
+                def __init__(self):
+                    super(PyLayer2, self).__init__()
+
+                @staticmethod
+                def forward(inputs):
+                    return inputs
+
+                @staticmethod
+                def backward(inputs):
+                    return inputs
+
+            py_layer_1 = PyLayer1()
+            py_layer_2 = PyLayer2()
+            py_layer_1([fluid.imperative.base.to_variable(np.ones([2, 2]))])
+            py_layer_2([fluid.imperative.base.to_variable(np.ones([2, 2]))])
+            id = py_layer_1.forward_id
+            self.assertGreater(id, 0)
+            self.assertEqual(py_layer_1.backward_id, id + 1)
+            self.assertEqual(py_layer_2.forward_id, id + 2)
+            self.assertEqual(py_layer_2.backward_id, id + 3)
+            py_layer_1([fluid.imperative.base.to_variable(np.ones([2, 2]))])
+            self.assertEqual(py_layer_1.forward_id, id)
 
     def test_pylayer(self):
         np_inp = np.ones([2, 2], np.float32)
@@ -118,7 +156,6 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.allclose(dy_out, static_out))
         self.assertTrue(np.allclose(dy_grad, static_grad))
 
-    """
     def test_layer_in_out(self):
         np_inp = np.array([1.0, 2.0, -1.0], dtype=np.float32)
         with fluid.imperative.guard():
@@ -172,7 +209,6 @@ class TestImperative(unittest.TestCase):
 
         self.assertTrue(np.allclose(dy_out, static_out))
         self.assertTrue(np.allclose(dy_grad, static_grad))
-    """
 
 
 if __name__ == '__main__':

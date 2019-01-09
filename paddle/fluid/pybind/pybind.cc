@@ -191,7 +191,7 @@ PYBIND11_MODULE(core, m) {
         return self.Forward(inputs);
       });
 
-  py::class_<paddle::imperative::PyLayer>(m, "PyLayer")
+  py::class_<imperative::PyLayer>(m, "PyLayer")
       .def(py::init<>())
       .def_static(
           "apply",
@@ -200,9 +200,11 @@ PYBIND11_MODULE(core, m) {
                 return imperative::PyLayer::Apply(func_id, inputs);
               },
           py::return_value_policy::take_ownership)
-      .def_static("register_func", [](int func_id, const py::object &callable) {
-        imperative::PyLayer::RegisterFunc(func_id, callable);
-      });
+      .def_static("register_func",
+                  [](int func_id, const py::object &callable) {
+                    imperative::PyLayer::RegisterFunc(func_id, callable);
+                  })
+      .def_static("num_funcs", &imperative::PyLayer::NumFuncs);
 
   BindTracer(&m);
 

@@ -132,8 +132,9 @@ class Tracer {
     if (!stop_gradient) {
       framework::OpDesc* grad_op_desc;
       // TODO(panyx): Is this leaked?
-      auto grad_to_var = new std::unordered_map<std::string, std::string>();
-      CreateGradOp(*op_desc, {}, {block}, &grad_op_desc, grad_to_var);
+      std::unique_ptr<std::unordered_map<std::string, std::string>> grad_to_var(
+          new std::unordered_map<std::string, std::string>());
+      CreateGradOp(*op_desc, {}, {block}, &grad_op_desc, grad_to_var.get());
       op->grad_op_desc_ = grad_op_desc;
 
       for (auto it : grad_op_desc->Inputs()) {

@@ -68,12 +68,15 @@ class PyLayer(core.PyLayer):
         block = framework.default_main_program().current_block()
         inputs = [x._ivar for x in inputs]
 
-        PyLayer.register_func(1, cls.forward)
-        PyLayer.register_func(2, cls.backward)
+        if not hasattr(cls, 'forward_id'):
+            cls.forward_id = core.PyLayer.num_funcs() + 1
+            PyLayer.register_func(cls.forward_id, cls.forward)
+            cls.backward_id = core.PyLayer.num_funcs() + 1
+            PyLayer.register_func(cls.backward_id, cls.backward)
 
         iop = core.OpBase()
-        iop.forward_id = 1
-        iop.backward_id = 2
+        iop.forward_id = cls.forward_id
+        iop.backward_id = cls.backward_id
         block.ops.append(iop)
         ivars = tracer.py_trace(iop, inputs, False)
         # ivars = core.PyLayer.apply(cls.forward, inputs)
