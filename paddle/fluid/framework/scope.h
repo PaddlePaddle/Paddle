@@ -18,6 +18,7 @@ extern "C" {
 #include <xxhash.h>
 }
 
+#include <functional>
 #include <list>
 #include <memory>
 #include <string>
@@ -107,7 +108,10 @@ class Scope {
     }
   };
 
-  mutable std::unordered_map<std::string, std::unique_ptr<Variable>, KeyHasher>
+  mutable tsl::robin_map<
+      std::string, std::unique_ptr<Variable>, KeyHasher,
+      std::equal_to<std::string>,
+      std::allocator<std::pair<std::string, std::unique_ptr<Variable>>>, true>
       vars_;
 
  private:
