@@ -49,8 +49,18 @@ class MyPyLayer(fluid.imperative.PyLayer):
         return tuple([tensor])
 
     @staticmethod
-    def backward(douts, outs):
-        return np.array(douts[0]) * (1 - np.square(np.array(outs[0])))
+    def backward(inputs):
+        sys.stderr.write('calling into backward: %s\n' % str(inputs))
+        inp, out, dout = inputs
+        inp = np.array(inp)
+        out = np.array(out)
+        dout = np.array(dout)
+        sys.stderr.write('calling into backward: %s, %s, %s\n' %
+                         (inp, out, dout))
+        ret = np.array(dout) * (1 - np.square(np.array(out)))
+        tensor = core.LoDTensor()
+        tensor.set(ret, core.CPUPlace())
+        return tuple([tensor])
 
 
 class MLP(fluid.imperative.Layer):
@@ -71,20 +81,44 @@ class MLP(fluid.imperative.Layer):
 
 
 class TestImperative(unittest.TestCase):
+    """
     def test_layer(self):
         with fluid.imperative.guard():
             cl = core.Layer()
             cl.forward([])
             l = fluid.imperative.Layer()
             self.assertRaises(NotImplementedError, l.forward, [])
+    """
 
     def test_pylayer(self):
+        np_inp = np.ones([2, 2], np.float32)
         with fluid.imperative.guard():
             my_py_layer = MyPyLayer()
-            outs = my_py_layer([np.ones([2, 2], np.float32)])
-            sys.stderr.write('%s\n' % outs[0]._numpy())
-            # out.backward()
+            var_inp = fluid.imperative.base.to_variable(np_inp)
+            outs = my_py_layer([var_inp])
+            dy_out = np.sum(outs[0]._numpy())
+            outs[0]._backward()
+            dy_grad = var_inp._gradient()
 
+        with new_program_scope():
+            inp = fluid.layers.data(
+                name="inp", shape=[2, 2], append_batch_size=False)
+            # TODO(panyx0718): Paddle doesn't diff against data `inp`.
+            x1 = inp * 1
+            # TODO(panyx0718): If reduce_sum is skipped, the result is wrong.
+            x = fluid.layers.reduce_sum(fluid.layers.tanh(x1))
+            param_grads = fluid.backward.append_backward(
+                x, parameter_list=[x1.name])[0]
+            exe = fluid.Executor(fluid.CPUPlace())
+
+            static_out, static_grad = exe.run(
+                feed={inp.name: np_inp},
+                fetch_list=[x.name, param_grads[1].name])
+
+        self.assertTrue(np.allclose(dy_out, static_out))
+        self.assertTrue(np.allclose(dy_grad, static_grad))
+
+    """
     def test_layer_in_out(self):
         np_inp = np.array([1.0, 2.0, -1.0], dtype=np.float32)
         with fluid.imperative.guard():
@@ -138,6 +172,7 @@ class TestImperative(unittest.TestCase):
 
         self.assertTrue(np.allclose(dy_out, static_out))
         self.assertTrue(np.allclose(dy_grad, static_grad))
+    """
 
 
 if __name__ == '__main__':

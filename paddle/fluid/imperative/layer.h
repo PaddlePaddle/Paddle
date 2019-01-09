@@ -196,6 +196,35 @@ static void CallPythonFunc(const py::object& callable,
   }
 }
 
+static void CallPythonFunc(const py::object& callable,
+                           const std::vector<framework::LoDTensor>& ins,
+                           std::vector<framework::Variable*>* outs) {
+  py::gil_scoped_acquire guard;
+  py::tuple in_args(ins.size());
+  for (size_t i = 0; i < ins.size(); ++i) {
+    in_args[i] = ins[i].IsInitialized() ? py::cast(ins[i]) : py::cast(nullptr);
+  }
+  VLOG(3) << "pyfunc in " << py::len(in_args);
+
+  // TODO(panyx0718): Who owns the returned LoDTensor.
+  auto ret = callable(in_args);
+  auto ret_tuple = py::cast<py::tuple>(ret);
+  size_t ret_num = py::len(ret_tuple);
+  VLOG(3) << "pyfunc out " << ret_num;
+  for (size_t i = 0; i < ret_num; ++i) {
+    try {
+      auto* py_out_tensor = py::cast<framework::LoDTensor*>(ret_tuple[i]);
+      PADDLE_ENFORCE_NOT_NULL(py_out_tensor,
+                              "Output tensor %d should not be nullptr", i);
+      auto* tensor = (*outs)[i]->GetMutable<framework::LoDTensor>();
+      tensor->ShareDataWith(*py_out_tensor);
+      tensor->set_lod(py_out_tensor->lod());
+    } catch (py::cast_error&) {
+      PADDLE_THROW("The %d-th output must be LoDTensor", i);
+    }
+  }
+}
+
 class PyLayer {
  public:
   virtual ~PyLayer() {}
@@ -203,7 +232,11 @@ class PyLayer {
   static void RegisterFunc(int func_id, const py::object& py_func);
 
   static std::vector<VarBase*> Apply(int func_id,
-                                     const std::vector<VarBase>& inputs);
+                                     const std::vector<VarBase*>& inputs);
+
+  static void ApplyGrad(int func_id,
+                        const std::vector<framework::Variable*>& inputs,
+                        std::vector<framework::Variable*>* outputs);
 };
 
 }  // namespace imperative
