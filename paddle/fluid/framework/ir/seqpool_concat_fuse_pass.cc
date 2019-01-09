@@ -112,8 +112,7 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
   return concat_out_var;
 }
 
-int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
-                int num_inputs) {
+int BuildFusion(Graph* graph, const std::string& name_scope, int num_inputs) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
   BuildSeqPoolConcatPattern(pattern, name_scope, num_inputs);
@@ -182,8 +181,8 @@ std::unique_ptr<ir::Graph> SeqPoolConcatFusePass::ApplyImpl(
   FusePassBase::Init(name_scope_, graph.get());
   int fusion_count = 0;
   for (int i = MAX_CONCAT_INPUTS; i > 0; --i) {
-    fusion_count += BuildFusion(
-        graph.get(), name_scope_ + "/" + std::to_string(i), param_scope(), i);
+    fusion_count +=
+        BuildFusion(graph.get(), name_scope_ + "/" + std::to_string(i), i);
   }
   AddStatis(fusion_count);
 
