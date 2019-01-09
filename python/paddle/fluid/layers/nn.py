@@ -9731,12 +9731,12 @@ def huber_loss(input, label, delta):
 def tree_conv(nodes_vector,
               edge_set,
               output_size,
-              name=None,
               num_filters=1,
               max_depth=2,
               act='tanh',
               param_attr=None,
-              bias_attr=None):
+              bias_attr=None,
+              name=None):
     """ 
     Args:
         nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
@@ -9747,6 +9747,7 @@ def tree_conv(nodes_vector,
         act(str): activation function, default tanh
         param_attr(ParamAttr): the parameter attribute for the filters, default None
         bias_attr(ParamAttr): the parameter attribute for the bias of this layer, default None
+        name(str): a name of this layer(optional). If set None, the layer will be named automatically, default None
 
     Returns:
         out(${out_type}): ${out_comment}
