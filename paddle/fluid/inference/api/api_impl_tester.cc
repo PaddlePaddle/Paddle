@@ -295,7 +295,8 @@ TEST(inference_api_native, image_classification_gpu) {
 #endif
 
 TEST(PassBuilder, Delete) {
-  contrib::AnalysisConfig config(false);
+  contrib::AnalysisConfig config;
+  config.DisableGpu();
   config.pass_builder()->DeletePass("attention_lstm_fuse_pass");
   const auto& passes = config.pass_builder()->AllPasses();
   auto it = std::find(passes.begin(), passes.end(), "attention_lstm_fuse_pass");

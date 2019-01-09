@@ -399,7 +399,7 @@ void NgraphEngine::BuildNgFunction() {
   BuildNgNodes();
   ngraph_function_ = nullptr;
   ngraph::NodeVector func_outputs;
-  ngraph::op::ParameterVector func_inputs;
+  ngraph::ParameterVector func_inputs;
 
   for (auto& vo : var_out_) {
     func_outputs.push_back(var_node_map_->at(vo));
@@ -539,7 +539,7 @@ void NgraphEngine::Run(const Scope& scope, const platform::Place& place) const {
     }
   }
 
-  backend_->call(ngraph_function_, t_out, t_in);
+  backend_->call(backend_->compile(ngraph_function_), t_out, t_in);
 }  // NgraphEngine::RunImpl
 }  // namespace framework
 }  // namespace paddle
