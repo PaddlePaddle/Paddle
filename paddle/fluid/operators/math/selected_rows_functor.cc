@@ -195,7 +195,7 @@ struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::SelectedRows& input1,
                   framework::Tensor* input2) {
-    if (input1.rows().size() == 0) {
+    if (UNLIKELY(input1.rows().size() == 0)) {
       LOG(WARNING) << "input selected rows is empty!";
       return;
     }
