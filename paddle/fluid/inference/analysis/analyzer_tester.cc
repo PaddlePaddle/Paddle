@@ -80,8 +80,8 @@ void TestWord2vecPrediction(const std::string& model_path) {
        i++) {
     LOG(INFO) << "data: " << static_cast<float*>(outputs.front().data.data())[i]
               << " result: " << result[i];
-    PADDLE_ENFORCE(static_cast<float*>(outputs.front().data.data())[i],
-                   result[i]);
+    EXPECT_NEAR(static_cast<float*>(outputs.front().data.data())[i], result[i],
+                1e-3);
   }
 }
 
