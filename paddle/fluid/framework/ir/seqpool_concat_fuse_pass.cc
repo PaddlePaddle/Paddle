@@ -39,21 +39,25 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
 
   auto is_seqpool_op_with_pootype_of_nth_input_of_concat = [=](
       Node* x, const std::string& type, int idx) -> bool {
-    bool ok = x && x->IsOp() && x->Op()->Type() == "sequence_pool" &&
-              x->Op()->HasAttr("pooltype") &&
-              boost::get<std::string>(x->Op()->GetAttr("pooltype")) == type &&
-              x->outputs.size() == 2;  // seqpool should only have 2 outputs
-    if (ok) {
-      // only one output of seqpool_op is nth_input_var of concat
-      // the other one should be unused empty var
+    bool this_is_seqpool_op =
+        x && x->IsOp() && x->Op()->Type() == "sequence_pool" &&
+        x->Op()->HasAttr("pooltype") &&
+        boost::get<std::string>(x->Op()->GetAttr("pooltype")) == type &&
+        x->outputs.size() == 2;  // seqpool should only have 2 outputs
+    bool satisfied_all = this_is_seqpool_op;
+    if (this_is_seqpool_op) {
+      // Only one output of seqpool_op is nth_input_var of concat,
+      // the other one should be unused empty var.
       if (is_nth_input_var_of_concat(x->outputs[0], idx)) {
-        ok = ok && x->outputs[1]->IsVar() && x->outputs[1]->outputs.size() == 0;
+        satisfied_all = satisfied_all && x->outputs[1]->IsVar() &&
+                        x->outputs[1]->outputs.size() == 0;
       } else {
-        ok = ok && is_nth_input_var_of_concat(x->outputs[1], idx) &&
-             x->outputs[0]->IsVar() && x->outputs[0]->outputs.size() == 0;
+        satisfied_all =
+            satisfied_all && is_nth_input_var_of_concat(x->outputs[1], idx) &&
+            x->outputs[0]->IsVar() && x->outputs[0]->outputs.size() == 0;
       }
     }
-    return ok;
+    return satisfied_all;
   };
 
   auto* concat_op = pattern->NewNode(
