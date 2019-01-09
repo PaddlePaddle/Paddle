@@ -357,6 +357,8 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
             {static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
 
+    VLOG(10) << "mergeadd out place " << context.GetPlace();
+
     math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), static_cast<T>(0));
 
@@ -365,6 +367,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     const int block_size = 256;
     dim3 threads(block_size, 1);
 
+    int idx = 0;
     for (auto* input : inputs) {
       if (input->rows().size() == 0) {
         continue;
@@ -376,14 +379,38 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
       VLOG(10) << "stream:" << context.stream() << ", input_data:" << input_data
                << ", input_rows.CUDAData(context.GetPlace()):"
                << input_rows.CUDAData(context.GetPlace())
-               << ", context place:" << context.GetPlace();
+               << ", context place:" << context.GetPlace()
+               << ", in place:" << input->value().place()
+               << ", out place:" << out.value().place()
+               << ", in tensor dims:" << input->value().dims()
+               << ", out tensor dims:" << out.value().dims();
 
+      const int64_t* input_rows_data = input_rows.CUDAData(context.GetPlace());
+      VLOG(10) << "before merge kernel copy wait 1:" << idx;
+      context.Wait();
+      VLOG(10) << "after merge kernel copy wait 1:" << idx;
+
+      int64_t* out_rows_data =
+          out.mutable_rows()->CUDAMutableData(context.GetPlace());
+      VLOG(10) << "before merge kernel copy wait:" << idx;
+      context.Wait();
+      VLOG(10) << "after merge kernel copy wait:" << idx;
+
+      /*
       MergeAddKernel<T, 256><<<grid1, threads, 0, context.stream()>>>(
           input_data, input_rows.CUDAData(context.GetPlace()), out_data,
           out.mutable_rows()->CUDAMutableData(context.GetPlace()),
           out.rows().size(), input_width);
+          */
 
+      MergeAddKernel<T, 256><<<grid1, threads, 0, context.stream()>>>(
+          input_data, input_rows_data, out_data, out_rows_data,
+          out.rows().size(), input_width);
+
+      VLOG(10) << "before merge kernel wait:" << idx;
       context.Wait();
+      VLOG(10) << "after merge kernel wait:" << idx;
+      idx += 1;
     }
   }
 };

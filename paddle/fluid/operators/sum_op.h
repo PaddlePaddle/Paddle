@@ -133,8 +133,9 @@ class SumKernel : public framework::OpKernel<T> {
         merge_add(context.template device_context<DeviceContext>(), inputs,
                   out);
 
+        VLOG(10) << "before sum op wait end2";
         dev_ctx.Wait();
-        VLOG(10) << "sum op wait end2";
+        VLOG(10) << "after sum op wait end2";
         // out->SyncIndex();
       } else {
         // no data, just set a empty out tensor.

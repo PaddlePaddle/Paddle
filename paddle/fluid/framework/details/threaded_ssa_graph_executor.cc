@@ -240,7 +240,7 @@ std::string GetReadableData(const void *in_data, int64_t len) {
 
 std::string GetTensorInfo(const framework::Tensor &in_tensor) {
   std::stringstream ss;
-  if (in_tensor.IsInitialized()) {
+  if (!in_tensor.IsInitialized()) {
     ss << " not initialized";
     return ss.str();
   }
@@ -293,11 +293,15 @@ std::string GetSelectedRowsInfo(const framework::SelectedRows &slr) {
   return ss.str();
 }
 
-std::string GetVarInfo(const framework::Scope &scope, const std::string &name) {
-  auto var = scope.FindVar(name);
+std::string GetVarInfo(framework::Scope *scope, const std::string &name) {
+  framework::Scope *local_scope =
+      scope->Var(kLocalExecScopeName)->Get<framework::Scope *>();
+  auto var = local_scope->FindVar(name);
+
   std::stringstream ss;
   if (var == NULL) {
-    ss << "can't find " << name;
+    ss << "can't find " << name
+       << GenScopeTreeDebugInfo(const_cast<framework::Scope *>(scope));
     return ss.str();
   }
 
@@ -313,16 +317,31 @@ std::string GetVarInfo(const framework::Scope &scope, const std::string &name) {
   return ss.str();
 }
 
-void PrintOutputs(const details::OpHandleBase &op,
-                  const std::vector<framework::Scope *> &local_scopes) {
-  auto &vars = op.Outputs();
+void PrintIO(OpHandleBase *op, const std::vector<VarHandleBase *> &vars,
+             const std::vector<framework::Scope *> &local_scopes) {
+  // auto &vars = op.Outputs();
   for (auto it : vars) {
     details::VarHandle *var = dynamic_cast<details::VarHandle *>(it);
-    if (var == nullptr) continue;
+    if (var == nullptr) {
+      VLOG(10) << "VarHandleBase debug string:" << op->DebugString()
+               << " is not a VarHandle";
+      continue;
+    }
 
-    // std::cout<< "VarHandle name:" << var->DebugString();
-    VLOG(10) << " with data name:" << var->name_ << ", var info:"
-             << GetVarInfo(*local_scopes[var->scope_idx_], var->name_);
+    if (platform::is_cpu_place(var->place_)) {
+      VLOG(10) << " with data varhandle_place:" << var->place_
+               << ", name:" << var->name_ << ", var info:"
+               << GetVarInfo(local_scopes[var->scope_idx_], var->name_);
+      continue;
+    }
+
+    const platform::CUDADeviceContext *ctx =
+        dynamic_cast<const platform::CUDADeviceContext *>(
+            op->DeviceContext(var->place_));
+    VLOG(10) << " with data varhandle_place:" << var->place_
+             << ", device_context:" << ctx->stream() << ", name:" << var->name_
+             << ", var info:"
+             << GetVarInfo(local_scopes[var->scope_idx_], var->name_);
   }
 }
 
@@ -333,6 +352,8 @@ void ThreadedSSAGraphExecutor::RunOp(
     try {
       VLOG(10) << "begin " << op << " " << op->Name() << " : "
                << op->DebugString();
+
+      PrintIO(op, op->Inputs(), local_scopes_);
 
       if (LIKELY(!strategy_.dry_run_)) {
         op->Run(strategy_.use_cuda_);
@@ -357,7 +378,8 @@ void ThreadedSSAGraphExecutor::RunOp(
         VLOG(10) << op->Name() << " wait end";
         VLOG(10) << "end " << op << " " << op->Name() << " : "
                  << op->DebugString();
-        PrintOutputs(*op, local_scopes_);
+
+        // PrintIO(op->Outputs(), local_scopes_);
       }
     } catch (...) {
       exception_holder_.Catch(std::current_exception());
