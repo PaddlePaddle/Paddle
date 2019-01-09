@@ -125,8 +125,7 @@ PYBIND11_MODULE(core, m) {
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
-  py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
-      m, "VarBase", R"DOC()DOC")
+  py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
       // .def(py::init<>())
       .def(py::init<bool>(), py::arg("stop_gradient") = false)
       .def("_run_backward",
