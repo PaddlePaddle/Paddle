@@ -31,9 +31,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-const Node* ConvFuseWithGroupPass::IsSameSingleInput(std::vector<Node*>& nodes,
-                                                     std::string type) const {
-  const Node* input_node = nullptr;
+Node* ConvFuseWithGroupPass::IsSameSingleInput(std::vector<Node*>& nodes,
+                                               std::string type) const {
+  Node* input_node = nullptr;
 
   for (auto it = nodes.begin(); it != nodes.end(); ++it) {
     auto node = *it;
@@ -65,9 +65,9 @@ void ConvFuseWithGroupPass::GetSpeicalOpNodes(
   }
 }
 
-const Node* ConvFuseWithGroupPass::GetSpeicalVarNode(std::vector<Node*>& nodes,
-                                                     std::string name) const {
-  const Node* out_node = nullptr;
+Node* ConvFuseWithGroupPass::GetSpeicalVarNode(std::vector<Node*>& nodes,
+                                               std::string name) const {
+  Node* out_node = nullptr;
 
   for (auto it = nodes.begin(); it != nodes.end(); ++it) {
     auto node = *it;
@@ -87,18 +87,18 @@ void ConvFuseWithGroupPass::SortNodes(std::vector<Node*>& nodes) const {
   });
 }
 
-// Obtain the weights and biases nodes from convlution nodes.
-const Node* ConvFuseWithGroupPass::GetConvWeightBiasNodes(
-    const std::vector<Node*>& nodes, std::vector<const Node*>& weights_node,
-    std::vector<const Node*>& biases_node, int block, int group, int layer,
+// Obtain the weights and biases nodes from convolution nodes.
+Node* ConvFuseWithGroupPass::GetConvWeightBiasNodes(
+    const std::vector<Node*>& nodes, std::vector<Node*>& weights_node,
+    std::vector<Node*>& biases_node, int block, int group, int layer,
     std::string type) const {
-  const Node* conv_node = nullptr;
+  Node* conv_node = nullptr;
 
   for (size_t item = 1; item <= GROUP_COUNT; item++) {
     size_t index = item % GROUP_COUNT;
     std::string weight_name, bias_name;
 
-    // Check the convlution type if it is as "conv" or "project" and set the
+    // Check the convolution type if it is as "conv" or "project" and set the
     // weight and bias name with special block, group and layer.
     if (!type.compare("conv")) {
       if (block == 0) {
@@ -122,7 +122,7 @@ const Node* ConvFuseWithGroupPass::GetConvWeightBiasNodes(
     }
 
     for (auto it = nodes.begin(); it != nodes.end(); ++it) {
-      const Node* node = *it;
+      Node* node = *it;
       if (node->IsOp() && (node->inputs.size() == 3)) {
         for (auto input_node : node->inputs) {
           if (!input_node->Name().compare(weight_name)) {
@@ -148,10 +148,10 @@ const Node* ConvFuseWithGroupPass::GetConvWeightBiasNodes(
 }
 
 // Create the variable Node
-const Node* ConvFuseWithGroupPass::CreateVarNode(
+Node* ConvFuseWithGroupPass::CreateVarNode(
     const std::unique_ptr<ir::Graph>& graph, Scope* scope, std::string name,
     DDim dims, bool persistable) const {
-  const Node* node = nullptr;
+  Node* node = nullptr;
   VarDesc desc(patterns::PDNodeName(name_scope_, name));
   if (persistable) {
     desc.SetPersistable(true);
@@ -169,14 +169,14 @@ const Node* ConvFuseWithGroupPass::CreateVarNode(
   return node;
 }
 
-const Node* ConvFuseWithGroupPass::CreateConvVarNode(
+Node* ConvFuseWithGroupPass::CreateConvVarNode(
     const std::unique_ptr<ir::Graph>& graph, Scope* scope,
-    const std::vector<const Node*>& nodes, int block, int group, int layer,
+    const std::vector<Node*>& nodes, int block, int group, int layer,
     bool persistable, std::string type, std::string usage, int64_t axis) const {
-  // To speicalize the variable name of convlution node.
+  // To speicalize the variable name of convolution node.
   std::string name = type + "_" + usage + "_" + std::to_string(block) + "_" +
                      std::to_string(group) + "_" + std::to_string(layer);
-  const Node* node = nullptr;
+  Node* node = nullptr;
 
   if (persistable && !nodes.empty()) {
     // If the persistable attribute is configured, it need update the data by
@@ -200,7 +200,7 @@ const Node* ConvFuseWithGroupPass::CreateConvVarNode(
       paddle::operators::StridedNumelCopyWithAxis<float>(
           paddle::platform::CPUDeviceContext(), axis,
           tensor->data<float>() + out_offset, out_stride,
-          (const float*)(input_tensor->data<float>()), in_stride,
+          reinterpret_cast<float*>(input_tensor->data<float>()), in_stride,
           in_stride[axis]);
       out_offset += in_stride[axis];
     }
@@ -213,15 +213,14 @@ const Node* ConvFuseWithGroupPass::CreateConvVarNode(
   return node;
 }
 
-const Node* ConvFuseWithGroupPass::CreateConvOpWithGroup(
-    const std::unique_ptr<ir::Graph>& graph, Scope* scope,
-    const Node* input_mode, const Node* conv_node,
-    const std::vector<const Node*>& weights_node,
-    const std::vector<const Node*>& biases_node, int block, int group,
-    int layer, std::string type) const {
-  const Node* output_node = nullptr;
+Node* ConvFuseWithGroupPass::CreateConvOpWithGroup(
+    const std::unique_ptr<ir::Graph>& graph, Scope* scope, Node* input_mode,
+    Node* conv_node, const std::vector<Node*>& weights_node,
+    const std::vector<Node*>& biases_node, int block, int group, int layer,
+    std::string type) const {
+  Node* output_node = nullptr;
 
-  // To create weight and bias variable node for convlution node.
+  // To create weight and bias variable node for convolution node.
   auto weight_node = CreateConvVarNode(graph, scope, weights_node, block, group,
                                        layer, true, type, "weight");
   auto bias_node = CreateConvVarNode(graph, scope, biases_node, block, group,
@@ -243,7 +242,7 @@ const Node* ConvFuseWithGroupPass::CreateConvOpWithGroup(
   desc.SetType("conv2d");
 
   // duplicate the original attributes and update the groups attribute for the
-  // new convlution operator.
+  // new convolution operator.
   for (auto& attr : conv_node->Op()->GetAttrMap()) {
     if (attr.first == "groups") {
       desc.SetAttr(attr.first, static_cast<int>(weights_node.size()));
@@ -252,25 +251,21 @@ const Node* ConvFuseWithGroupPass::CreateConvOpWithGroup(
     }
   }
 
-  // To create convlution operator node.
+  // To create convolution operator node.
   auto conv_out_node = graph->CreateOpNode(&desc);
 
   // Link variable and operator nodes.
-  IR_NODE_LINK_TO(const_cast<Node*>(input_mode),
-                  const_cast<Node*>(conv_out_node));
-  IR_NODE_LINK_TO(const_cast<Node*>(weight_node),
-                  const_cast<Node*>(conv_out_node));
-  IR_NODE_LINK_TO(const_cast<Node*>(bias_node),
-                  const_cast<Node*>(conv_out_node));
-  IR_NODE_LINK_TO(const_cast<Node*>(conv_out_node),
-                  const_cast<Node*>(output_node));
+  IR_NODE_LINK_TO(input_mode, conv_out_node);
+  IR_NODE_LINK_TO(weight_node, conv_out_node);
+  IR_NODE_LINK_TO(bias_node, conv_out_node);
+  IR_NODE_LINK_TO(conv_out_node, output_node);
 
   return output_node;
 }
 
-const Node* ConvFuseWithGroupPass::GetKeyEltwiseAddOpNode(
+Node* ConvFuseWithGroupPass::GetKeyEltwiseAddOpNode(
     const std::vector<Node*>& nodes, int block, int group) const {
-  const Node* eltwise_add_node = nullptr;
+  Node* eltwise_add_node = nullptr;
   std::string eltwise_add_name;
 
   // Specialize the eltwise_add operator's match string.
@@ -279,7 +274,7 @@ const Node* ConvFuseWithGroupPass::GetKeyEltwiseAddOpNode(
 
   // Enumerate all nodes and get the eltwise_add operator.
   for (auto it = nodes.begin(); it != nodes.end(); ++it) {
-    const Node* node = *it;
+    Node* node = *it;
     if (node->IsOp() && (node->outputs.size() == 1)) {
       for (auto output_node : node->outputs) {
         if (std::string::npos != output_node->Name().find(eltwise_add_name)) {
@@ -292,15 +287,14 @@ const Node* ConvFuseWithGroupPass::GetKeyEltwiseAddOpNode(
   return eltwise_add_node;
 }
 
-const Node* ConvFuseWithGroupPass::CreateEltwiseAddOp(
-    const std::unique_ptr<ir::Graph>& graph, Scope* scope,
-    const Node* input_x_mode, const Node* input_y_mode,
-    const Node* eltwise_add_node, int block, int group) const {
+Node* ConvFuseWithGroupPass::CreateEltwiseAddOp(
+    const std::unique_ptr<ir::Graph>& graph, Scope* scope, Node* input_x_mode,
+    Node* input_y_mode, Node* eltwise_add_node, int block, int group) const {
   std::string name =
       "eltwise_add_out_" + std::to_string(block) + "_" + std::to_string(group);
 
   // To create the eltwise_add output variable node.
-  const Node* output_node = CreateVarNode(graph, scope, name);
+  Node* output_node = CreateVarNode(graph, scope, name);
 
   // To allocate the eltwise_add operator and link all related nodes.
   OpDesc desc;
@@ -315,31 +309,28 @@ const Node* ConvFuseWithGroupPass::CreateEltwiseAddOp(
   }
   auto eltwise_add_out_node = graph->CreateOpNode(&desc);
 
-  IR_NODE_LINK_TO(const_cast<Node*>(input_x_mode),
-                  const_cast<Node*>(eltwise_add_out_node));
-  IR_NODE_LINK_TO(const_cast<Node*>(input_y_mode),
-                  const_cast<Node*>(eltwise_add_out_node));
-  IR_NODE_LINK_TO(const_cast<Node*>(eltwise_add_out_node),
-                  const_cast<Node*>(output_node));
+  IR_NODE_LINK_TO(input_x_mode, eltwise_add_out_node);
+  IR_NODE_LINK_TO(input_y_mode, eltwise_add_out_node);
+  IR_NODE_LINK_TO(eltwise_add_out_node, output_node);
 
   return output_node;
 }
 
-const Node* ConvFuseWithGroupPass::CreateResiualNetWithGroup(
+Node* ConvFuseWithGroupPass::CreateResiualNetWithGroup(
     const std::unique_ptr<ir::Graph>& graph, Scope* scope,
     const std::vector<Node*>& conv_nodes,
-    const std::vector<Node*>& eltwise_add_nodes, const Node* input_mode,
-    int block, int group, bool is_project) const {
-  const Node* output_node = nullptr;
+    const std::vector<Node*>& eltwise_add_nodes, Node* input_mode, int block,
+    int group, bool is_project) const {
+  Node* output_node = nullptr;
 
   output_node = input_mode;
 
-  // To create two convlution operators and connect them.
+  // To create two convolution operators and connect them.
   for (size_t layer = 1; layer < 3; layer++) {
-    std::vector<const Node*> weights_node;
-    std::vector<const Node*> biases_node;
-    const Node* conv_node = GetConvWeightBiasNodes(
-        conv_nodes, weights_node, biases_node, block, group, layer);
+    std::vector<Node*> weights_node;
+    std::vector<Node*> biases_node;
+    Node* conv_node = GetConvWeightBiasNodes(conv_nodes, weights_node,
+                                             biases_node, block, group, layer);
     PADDLE_ENFORCE_EQ(weights_node.size(), biases_node.size());
     PADDLE_ENFORCE(conv_node != nullptr);
 
@@ -350,12 +341,12 @@ const Node* ConvFuseWithGroupPass::CreateResiualNetWithGroup(
     biases_node.clear();
   }
 
-  // Check if the "project" status is enabled, then new the convlution node for
+  // Check if the "project" status is enabled, then new the convolution node for
   // it.
   if (is_project) {
-    std::vector<const Node*> weights_node;
-    std::vector<const Node*> biases_node;
-    const Node* conv_node = GetConvWeightBiasNodes(
+    std::vector<Node*> weights_node;
+    std::vector<Node*> biases_node;
+    Node* conv_node = GetConvWeightBiasNodes(
         conv_nodes, weights_node, biases_node, block - 1, group, 1, "project");
     PADDLE_ENFORCE_EQ(weights_node.size(), biases_node.size());
     PADDLE_ENFORCE(conv_node != nullptr);
@@ -369,7 +360,7 @@ const Node* ConvFuseWithGroupPass::CreateResiualNetWithGroup(
 
   // To get the typical eltwise_add node for duplicating the attributes usage
   // and create "eltwise_add" operator node.
-  const Node* eltwise_add_node =
+  Node* eltwise_add_node =
       GetKeyEltwiseAddOpNode(eltwise_add_nodes, block, group);
   output_node = CreateEltwiseAddOp(graph, scope, input_mode, output_node,
                                    eltwise_add_node, block, group);
@@ -380,7 +371,7 @@ const Node* ConvFuseWithGroupPass::CreateResiualNetWithGroup(
 int ConvFuseWithGroupPass::GetConvOutputChannelsNum(Scope* scope) const {
   int channels_num = 0;
 
-  // Get the weight channels of last convlution operator node.
+  // Get the weight channels of last convolution operator node.
   auto* tensor =
       scope->FindVar("patch_0_conv4-3_2_weights")->GetMutable<LoDTensor>();
   channels_num = framework::get(tensor->dims(), 0);
@@ -391,7 +382,7 @@ int ConvFuseWithGroupPass::GetConvOutputChannelsNum(Scope* scope) const {
 void ConvFuseWithGroupPass::RedirectSplitPoolOpNodes(
     const std::unique_ptr<ir::Graph>& graph, Scope* scope,
     std::vector<Node*>& split_nodes, std::vector<Node*>& pool_nodes,
-    const Node* conv_mode, int conv_channels_num) const {
+    Node* conv_mode, int conv_channels_num) const {
   // Sort the split and pool nodes to locate the special node easy.
   SortNodes(split_nodes);
   SortNodes(pool_nodes);
@@ -419,12 +410,12 @@ void ConvFuseWithGroupPass::RedirectSplitPoolOpNodes(
       }
     }
 
-    // To break down the link between split and convlution(without group
+    // To break down the link between split and convolution(without group
     // attribute) node and connect split and pool.
     for (auto var_node : split_node->outputs) {
       for (auto op_node : var_node->outputs) {
         if (!op_node->Name().compare("conv2d")) {
-          const std::vector<std::string> x_inputs = pool_node->Op()->Input("X");
+          std::vector<std::string> x_inputs = pool_node->Op()->Input("X");
           if (!x_inputs.empty()) {
             for (auto it_pool = pool_node->inputs.begin();
                  it_pool != pool_node->inputs.end();) {
@@ -458,14 +449,13 @@ void ConvFuseWithGroupPass::RedirectSplitPoolOpNodes(
           var_node->outputs.clear();
           pool_node->Op()->SetInput(
               "X", std::vector<std::string>({var_node->Name()}));
-          IR_NODE_LINK_TO(const_cast<Node*>(var_node),
-                          const_cast<Node*>(pool_node));
+          IR_NODE_LINK_TO(var_node, pool_node);
           break;
         }
       }
     }
 
-    // To connect the split and convlution(with group) operator.
+    // To connect the split and convolution(with group) operator.
     for (auto node : split_node->inputs) {
       for (auto it = node->outputs.begin(); it != node->outputs.end();) {
         if (*it == split_node) {
@@ -479,8 +469,7 @@ void ConvFuseWithGroupPass::RedirectSplitPoolOpNodes(
     split_node->inputs.clear();
     split_node->Op()->SetInput("X",
                                std::vector<std::string>({conv_mode->Name()}));
-    IR_NODE_LINK_TO(const_cast<Node*>(conv_mode),
-                    const_cast<Node*>(split_node));
+    IR_NODE_LINK_TO(conv_mode, split_node);
   }
 }
 
@@ -500,12 +489,12 @@ std::unique_ptr<ir::Graph> ConvFuseWithGroupPass::ApplyImpl(
   GetSpeicalOpNodes(nodes, "split", &split_nodes);
 
   // Check all split nodes' input nodes are same.
-  const Node* input_node = IsSameSingleInput(split_nodes, "split");
+  Node* input_node = IsSameSingleInput(split_nodes, "split");
   if (input_node == nullptr || split_nodes.size() != GROUP_COUNT) {
     return graph;
   }
 
-  // To obtain all convlution nodes.
+  // To obtain all convolution nodes.
   std::vector<Node*> conv_nodes;
   GetSpeicalOpNodes(nodes, "conv2d", &conv_nodes);
 
@@ -516,12 +505,12 @@ std::unique_ptr<ir::Graph> ConvFuseWithGroupPass::ApplyImpl(
   int block_index;
 
   // Block 0
-  std::vector<const Node*> weights_node;
-  std::vector<const Node*> biases_node;
+  std::vector<Node*> weights_node;
+  std::vector<Node*> biases_node;
   block_index = 0;
 
-  const Node* conv_node = GetConvWeightBiasNodes(conv_nodes, weights_node,
-                                                 biases_node, block_index);
+  Node* conv_node = GetConvWeightBiasNodes(conv_nodes, weights_node,
+                                           biases_node, block_index);
 
   PADDLE_ENFORCE_EQ(weights_node.size(), biases_node.size());
   PADDLE_ENFORCE(conv_node != nullptr);

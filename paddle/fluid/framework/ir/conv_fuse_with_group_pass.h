@@ -32,56 +32,51 @@ class ConvFuseWithGroupPass : public FusePassBase {
 
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
-  const std::string name_scope_{"conv_fuse_with_group_pass"};
+  std::string name_scope_{"conv_fuse_with_group_pass"};
 
  private:
-  const Node* IsSameSingleInput(std::vector<Node*>& nodes,  // NOLINT
-                                std::string type) const;
+  Node* IsSameSingleInput(std::vector<Node*>& nodes,  // NOLINT
+                          std::string type) const;
   void GetSpeicalOpNodes(std::vector<Node*>& nodes, std::string type,  // NOLINT
                          std::vector<Node*>* dst_nodes) const;
-  const Node* GetSpeicalVarNode(std::vector<Node*>& nodes,  // NOLINT
-                                std::string name) const;
+  Node* GetSpeicalVarNode(std::vector<Node*>& nodes,  // NOLINT
+                          std::string name) const;
   void SortNodes(std::vector<Node*>& nodes) const;  // NOLINT
-  const Node* GetConvWeightBiasNodes(
-      const std::vector<Node*>& nodes,
-      std::vector<const Node*>& weights_node,  // NOLINT
-      std::vector<const Node*>& biases_node,   // NOLINT
-      int block, int group = 1, int layer = 1, std::string type = "conv") const;
-  const Node* CreateConvOpWithGroup(
-      const std::unique_ptr<ir::Graph>& graph, Scope* scope,
-      const Node* input_mode, const Node* conv_node,
-      const std::vector<const Node*>& weights_node,
-      const std::vector<const Node*>& biases_node, int block = 0, int group = 1,
-      int layer = 1, std::string type = "conv") const;
-  const Node* CreateConvVarNode(const std::unique_ptr<ir::Graph>& graph,
-                                Scope* scope,
-                                const std::vector<const Node*>& nodes,
-                                int block, int group, int layer,
-                                bool persistable, std::string type,
-                                std::string usage, int64_t axis = 0) const;
-  const Node* CreateVarNode(const std::unique_ptr<ir::Graph>& graph,
-                            Scope* scope, std::string name,
-                            DDim dims = make_ddim({1}),
-                            bool persistable = false) const;
-  const Node* CreateResiualNetWithGroup(
-      const std::unique_ptr<ir::Graph>& graph, Scope* scope,
-      const std::vector<Node*>& conv_nodes,
-      const std::vector<Node*>& eltwise_add_nodes, const Node* input_mode,
-      int block, int group, bool is_project = false) const;
-  const Node* GetKeyEltwiseAddOpNode(const std::vector<Node*>& nodes, int block,
-                                     int group) const;
-  const Node* CreateEltwiseAddOp(const std::unique_ptr<ir::Graph>& graph,
-                                 Scope* scope, const Node* input_x_mode,
-                                 const Node* input_y_mode,
-                                 const Node* eltwise_add_node, int block,
-                                 int group) const;
+  Node* GetConvWeightBiasNodes(const std::vector<Node*>& nodes,
+                               std::vector<Node*>& weights_node,  // NOLINT
+                               std::vector<Node*>& biases_node,   // NOLINT
+                               int block, int group = 1, int layer = 1,
+                               std::string type = "conv") const;
+  Node* CreateConvOpWithGroup(const std::unique_ptr<ir::Graph>& graph,
+                              Scope* scope, Node* input_mode, Node* conv_node,
+                              const std::vector<Node*>& weights_node,
+                              const std::vector<Node*>& biases_node,
+                              int block = 0, int group = 1, int layer = 1,
+                              std::string type = "conv") const;
+  Node* CreateConvVarNode(const std::unique_ptr<ir::Graph>& graph, Scope* scope,
+                          const std::vector<Node*>& nodes, int block, int group,
+                          int layer, bool persistable, std::string type,
+                          std::string usage, int64_t axis = 0) const;
+  Node* CreateVarNode(const std::unique_ptr<ir::Graph>& graph, Scope* scope,
+                      std::string name, DDim dims = make_ddim({1}),
+                      bool persistable = false) const;
+  Node* CreateResiualNetWithGroup(const std::unique_ptr<ir::Graph>& graph,
+                                  Scope* scope,
+                                  const std::vector<Node*>& conv_nodes,
+                                  const std::vector<Node*>& eltwise_add_nodes,
+                                  Node* input_mode, int block, int group,
+                                  bool is_project = false) const;
+  Node* GetKeyEltwiseAddOpNode(const std::vector<Node*>& nodes, int block,
+                               int group) const;
+  Node* CreateEltwiseAddOp(const std::unique_ptr<ir::Graph>& graph,
+                           Scope* scope, Node* input_x_mode, Node* input_y_mode,
+                           Node* eltwise_add_node, int block, int group) const;
   int GetConvOutputChannelsNum(Scope* scope) const;
   void RedirectSplitPoolOpNodes(const std::unique_ptr<ir::Graph>& graph,
                                 Scope* scope,
                                 std::vector<Node*>& split_nodes,  // NOLINT
                                 std::vector<Node*>& pool_nodes,   // NOLINT
-                                const Node* conv_mode,
-                                int conv_channels_num) const;
+                                Node* conv_mode, int conv_channels_num) const;
 };
 }  // namespace ir
 }  // namespace framework
