@@ -273,11 +273,20 @@ class Executor(object):
     They has the exactly same arguments, and expected the same results.
     """
 
-    def __init__(self, place):
+    def __init__(self, place, infer_config=None):
         self.place = place
         p = core.Place()
         p.set_place(place)
-        self.executor = core.Executor(p)
+        if not infer_config:
+            self.executor = core.Executor(p)
+        else:
+            self.infer_config = infer_config
+            if isinstance(infer_config, core.NativeConfig):
+                self.executor = core.CreateNativePredictor(infer_config)
+            elif isinstance(infer_config, core.AnalysisConfig):
+                self.executor = core.CreateAnalysisPredictor(infer_config)
+            else:
+                raise "Get invalid inference config ", infer_config
 
         self.program_caches = dict()
         self._closed = False
@@ -372,6 +381,7 @@ class Executor(object):
             self.executor.close()
             self._closed = True
 
+
     def run(self,
             program=None,
             feed=None,
@@ -380,7 +390,8 @@ class Executor(object):
             fetch_var_name='fetch',
             scope=None,
             return_numpy=True,
-            use_program_cache=False):
+            use_program_cache=False
+            infer_inputs=[]):
         """
         Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
         Python executor takes a program, add feed operators and fetch operators to this program according
@@ -424,6 +435,8 @@ class Executor(object):
             >>>     feed={'X': x},
             >>>     fetch_list=[loss.name])
         """
+        if self.infer_config:
+            return self.executor.Run(inputs)
 
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
