@@ -123,7 +123,8 @@ class ZeroCopyTensor {
    */
   template <typename T>
   T* mutable_data(PaddlePlace place);
-  /** Get the memory directly, will return the place and memory size by pointer.
+  /** Get the memory directly, will return the place and element size by
+   * pointer.
    * This is for reading the output tensor.
    */
   template <typename T>
