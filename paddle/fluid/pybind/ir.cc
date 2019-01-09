@@ -32,7 +32,10 @@ using pybind11::return_value_policy;
 namespace paddle {
 namespace pybind {
 void BindGraph(py::module *m) {
-  py::class_<Graph, std::shared_ptr<Graph>>(*m, "Graph", "")
+  py::class_<Graph, std::shared_ptr<Graph>>(
+      *m, "Graph",
+      "The graph is a Directed Acyclic Single Static Assignment Graph, see "
+      "`paddle::ir::Graph` for details.")
       .def(py::init<const ProgramDesc &>())
       .def("has", &Graph::Has)
       .def("get_int", &Graph::Get<int>)
