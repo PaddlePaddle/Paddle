@@ -103,20 +103,13 @@ platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
     device_allocator_[place_stream].reset(tmp_allocator);
     return *tmp_allocator;
   } else {
-    return it->second;
+    return *it->second;
   }
 }
 
 template <>
 platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
     const platform::CUDADeviceContext& dev_ctx) {
-  {
-    auto place_stream = std::make_pair(dev_ctx.GetPlace(), dev_ctx.stream());
-    std::unique_lock<std::mutex> lock(mtx_);
-    if (device_allocator_.count(place_stream) > 0) {
-      return *device_allocator_.at(place_stream);
-    }
-  }
   return Get(dev_ctx.GetPlace(), dev_ctx.stream());
 }
 #endif

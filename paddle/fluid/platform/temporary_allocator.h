@@ -63,10 +63,9 @@ class TemporaryAllocator : public memory::allocation::Allocator {
 
  private:
   platform::Place place_;
-
   // When the allocation is not held by any variable, it should be placed
-  // to temp_mem_queue immediately.
-  std::shared_ptr<std::multimap<size_t, TemporaryAllocation *>> temp_mem_map_{
+  // to temp_mem_map immediately.
+  std::unique_ptr<std::multimap<size_t, TemporaryAllocation *>> temp_mem_map_{
       nullptr};
   std::mutex mtx_;
   size_t wait_delete_mem_{0};
