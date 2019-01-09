@@ -11,7 +11,9 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
+#include <cub/block/block_load.cuh>
+#include <cub/block/block_store.cuh>
+#include <cub/block/block_reduce.cuh>
 #include "paddle/fluid/operators/clip_by_norm_op.h"
 
 namespace paddle {
@@ -27,16 +29,23 @@ __device__ __forceinline__ float sqrt(const float& v) {
   return sqrtf(v);
 }
 
-template <typename T>
+template <typename T,
+          int BLOCK_THREADS,
+          int ITEMS_PER_THREAD,
+          cub::BlockReduceAlgorithm = cub::BLOCK_REDUCE_WARP_REDUCTIONS>
 __global__ void clip_by_norm_kernel(const T* x, T* out, const size_t& numel,
                                     const T& max_norm) {
-  __shared__ T norm;
-  T x_norm(0);
+  typedef cub::BlockReduce<T, BLOCK_THREADS, cub::BLOCK_REDUCE_WARP_REDUCTIONS> BlockReduceT;
+  __shared__ typename BlockReduceT::TempStorage temp_storage;
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < numel;
        i += blockDim.x * gridDim.x) {
-    x_norm += x[i] * x[i];
+    out[i] = x[i] * x[i];
   }
+  T data[ITEMS_PER_THREAD];
+  cub::LoadDirectStriped<BLOCK_THREADS>(threadIdx.x, out, data);
+  T x_norm = BlockReduceT(temp_storage).Sum(data);
 
+  __shared__ T norm;
   if (threadIdx.x == 0) {
     norm = sqrt(x_norm);
   }
@@ -58,9 +67,11 @@ template <typename T>
 void ClipByNormFunctor<CUDADeviceContext, T>::operator()(const T* x, T* out,
                                                          const size_t& numel,
                                                          const T& max_norm) {
+  const int kBlockThreads = 1024;
+  const int kItemsPerThread = 128;
   int block = 1024;
   int grid = (numel + block - 1) / block;
-  clip_by_norm_kernel<T><<<grid, block, 0, ctx_.stream()>>>(x, out, numel,
+  clip_by_norm_kernel<T, kBlockThreads, kItemsPerThread><<<grid, block, 0, ctx_.stream()>>>(x, out, numel,
                                                             max_norm);
 }
 }  // namespace operators
