@@ -28,8 +28,14 @@ std::string PythonDebugSupport::Format() const {
       sout << line;
     }
   } else {
+#ifdef _WIN32
     sout << "please set FLAGS_enable_debug=True to get more details regard to "
             "this failure.\n";
+#else   // _WIN32
+    sout << "please export FLAGS_enable_debug=True to get more details regard "
+            "to "
+            "this failure.\n";
+#endif  // _WIN32
   }
   return sout.str();
 }

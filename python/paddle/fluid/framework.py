@@ -627,13 +627,15 @@ class Operator(object):
         if role_var_name in op_attrs and len(op_attrs[role_var_name]) == 0:
             del op_attrs[role_var_name]
 
-        if os.environ['FLAGS_enable_debug']:
+        if 'FLAGS_enable_debug' in os.environ and os.environ[
+                'FLAGS_enable_debug']:
             callstack_var_name = op_maker.kOpCreationCallstackAttrName()
             op_attrs[callstack_var_name] = list(
                 reversed(traceback.format_stack()))[1:]
             op_attrs[callstack_var_name].insert(
-                0, 'Invoke operator ' +
-                ('' if type is None else type) + ' error.\n')
+                0,
+                'Invoke operator ' + (''
+                                      if type is None else type) + ' error.\n')
 
         if len(self.desc.type()) != 0:
             return
