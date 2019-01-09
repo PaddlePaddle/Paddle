@@ -29,7 +29,14 @@ class Context(object):
                      created for modifying the variables in scope.
     """
 
-    def __init__(self, exe, graph, scope, program_exe=None):
+    def __init__(self,
+                 exe,
+                 graph,
+                 scope,
+                 place,
+                 feeds,
+                 fetches,
+                 program_exe=None):
         # The total number of epoches to be trained.
         self.epoch = 0
         # Current epoch
@@ -39,6 +46,9 @@ class Context(object):
         self.exe = exe
         self.graph = graph
         self.scope = scope
+        self.place = place
+        self.feeds = feeds
+        self.fetches = fetches
         self.program_exe = program_exe
 
 
@@ -60,6 +70,8 @@ class CompressPass(object):
                  place=None,
                  data_reader=None,
                  data_feeder=None,
+                 feed_vars=None,
+                 fetch_vars=None,
                  scope=None,
                  metrics=None,
                  epoch=None,
@@ -68,6 +80,8 @@ class CompressPass(object):
         self.place = CPUPlace() if place is None else place
         self.data_reader = data_reader
         self.data_feeder = data_feeder
+        self.feed_vars = feed_vars
+        self.fetch_vars = fetch_vars
         self.scope = scope
         self.metrics = metrics
         self.epoch = epoch
@@ -90,7 +104,13 @@ class CompressPass(object):
         """
         self.executor = get_executor(graph, self.place)
         context = Context(
-            self.executor, graph, self.scope, program_exe=self.program_exe)
+            self.executor,
+            graph,
+            self.scope,
+            self.place,
+            self.feed_vars,
+            self.fetch_vars,
+            program_exe=self.program_exe)
 
         for strategy in self.strategies:
             strategy.on_compress_begin(context)
@@ -101,7 +121,6 @@ class CompressPass(object):
                 strategy.on_epoch_begin(context)
 
             for data in self.data_reader():
-
                 for strategy in self.strategies:
                     strategy.on_batch_begin(context)
                 fetches = None

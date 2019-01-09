@@ -17,6 +17,7 @@ import funcsigs
 import yaml
 from collections import OrderedDict
 from ..prune import *
+from ..quantization import *
 from .compress_pass import *
 from .strategy import *
 
@@ -59,6 +60,8 @@ class ConfigFactory(object):
             args = {}
             for key in keys:
                 value = attrs[key]
+                if isinstance(value, str) and value.lower() == 'none':
+                    value = None
                 if isinstance(value, str) and value in self.instances:
                     value = self.instances[value]
                 args[key] = value
@@ -76,7 +79,7 @@ class ConfigFactory(object):
                     assert self.version == int(key_values['version'])
 
                 # parse pruners
-                if key == 'pruners' or key == 'strategies':
+                if key == 'pruners' or key == 'quantizers' or key == 'strategies':
                     instances = key_values[key]
                     for name in instances:
                         self._new_instance(name, instances[name])

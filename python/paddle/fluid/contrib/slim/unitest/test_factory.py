@@ -26,9 +26,22 @@ class TestFactory(unittest.TestCase):
         pruner = factory.instance('pruner_2')
         self.assertEquals(pruner.ratios['*'], 0.7)
 
+        quantizer = factory.instance('quantizer_1')
+        self.assertEquals(quantizer.weight_bits, 8)
+
+        quantizer = factory.instance('quantizer_2')
+        self.assertEquals(quantizer.window_size, 10000)
+
         strategy = factory.instance('strategy_1')
         pruner = strategy.pruner
         self.assertEquals(pruner.ratios['*'], 0.7)
+
+        strategy = factory.instance('strategy_2')
+        self.assertEquals(strategy.dirname, None)
+        self.assertEquals(strategy.target_device, 'mobile')
+        self.assertEquals(strategy.save_as_int8, False)
+        quantizer = strategy.quantizer
+        self.assertEquals(quantizer.window_size, 10000)
 
         compress_pass = factory.get_compress_pass()
         self.assertEquals(compress_pass.epoch, 100)
