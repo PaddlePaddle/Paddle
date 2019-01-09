@@ -499,8 +499,8 @@ class Executor(object):
             >>>     fetch_list=[loss.name])
         """
         if program._infer_config:
-            assert program._infer_executor
-            return self.executor.Run(inputs)
+            assert program._infer_predictor
+            return program._infer_predictor.Run(inputs)
 
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
