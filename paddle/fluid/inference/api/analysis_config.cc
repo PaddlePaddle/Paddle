@@ -86,6 +86,7 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   CP_MEMBER(tensorrt_workspace_size_);
   CP_MEMBER(tensorrt_max_batchsize_);
   CP_MEMBER(tensorrt_min_subgraph_size_);
+  CP_MEMBER(tensorrt_precision_mode_);
   // MKLDNN releated.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -123,10 +124,13 @@ void contrib::AnalysisConfig::EnableMKLDNN() {
 
 void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size,
                                                    int max_batch_size,
-                                                   int min_subgraph_size) {
+                                                   int min_subgraph_size,
+                                                   std::string precision_mode) {
   use_tensorrt_ = true;
   tensorrt_workspace_size_ = workspace_size;
   tensorrt_max_batchsize_ = max_batch_size;
+  tensorrt_precision_mode_ = precision_mode;
+  Update();
 }
 
 void contrib::AnalysisConfig::Update() {
@@ -176,6 +180,7 @@ std::string contrib::AnalysisConfig::SerializeInfoCache() {
   ss << use_tensorrt_;
   ss << tensorrt_workspace_size_;
   ss << tensorrt_max_batchsize_;
+  ss << tensorrt_precision_mode_;
 
   ss << use_mkldnn_;
   ss << enable_ir_optim_;

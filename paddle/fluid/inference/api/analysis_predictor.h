@@ -90,6 +90,9 @@ class AnalysisPredictor : public PaddlePredictor {
   template <typename T>
   void GetFetchOne(const framework::LoDTensor &fetchs,
                    PaddleTensor *output_data);
+
+  bool SaveTrtCalibToDisk();
+
   ~AnalysisPredictor();
 
 // Some more detailed tests, they are made the friends of the predictor, so that

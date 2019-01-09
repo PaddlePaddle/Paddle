@@ -156,6 +156,21 @@ static bool PathExists(const std::string &path) {
   return false;
 }
 
+static std::string SplitPath(const std::string path) {
+  char sep = '/';
+
+#ifdef _WIN32
+  sep = '\\';
+#endif
+
+  size_t i = path.rfind(sep, path.length());
+  if (i != std::string::npos) {
+    return (path.substr(0, i));
+  }
+
+  return path;
+}
+
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

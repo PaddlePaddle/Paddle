@@ -72,13 +72,23 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   auto &subgraph = *Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
 
+  framework::ProgramDesc *program_desc =
+      Get<framework::ProgramDesc *>("program");
+  // Add new block for TensorRTEngineOP
+  const framework::BlockDesc &main_block =
+      program_desc->Block(framework::kRootBlockIndex);
+  // const framework::BlockDesc& main_block = program_desc->Block(0);
+  framework::BlockDesc *new_block = program_desc->AppendBlock(main_block);
+
   // An fake block desc.
   framework::proto::BlockDesc block_proto;
   framework::BlockDesc block_desc(nullptr, &block_proto);
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
   for (auto *node : subgraph) {
+    auto *new_block_op = new_block->AppendOp();
     auto *op = block_desc.AppendOp();
+    *new_block_op->Proto() = *node->Op()->Proto();
     *op->Proto() = *node->Op()->Proto();
   }
 
@@ -178,7 +188,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   // to Tensor.
   std::vector<std::string> output_mapping;
   for (auto name : output_names) {
-    // LOG(INFO) << name << " " << output_name_map.size();
     PADDLE_ENFORCE(output_name_map.count(name) != 0);
     output_mapping.push_back(output_name_map[name]);
   }
@@ -189,9 +198,11 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
       *vars->Add() = *node->Var()->Proto();
     }
   }
+
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
                  "the block has no var-desc");
   PADDLE_ENFORCE(!output_mapping.empty());
+  op_desc->SetBlockAttr("sub_block", new_block);
   // Set attrs
   SetAttr(op_desc->Proto(), "subgraph",
           block_desc.Proto()->SerializeAsString());
@@ -199,6 +210,22 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   SetAttr(op_desc->Proto(), "workspace_size", Get<int>("workspace_size"));
   SetAttr(op_desc->Proto(), "parameters", ExtractParameters(graph->Nodes()));
   SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
+
+  std::string engine_key = std::to_string(
+      std::hash<std::string>()(block_desc.Proto()->SerializeAsString()));
+  std::string precision_mode = Get<std::string>("precision_mode");
+  SetAttr(op_desc->Proto(), "calibration_data", std::string(""));
+  std::string trt_calib_file =
+      Get<std::string>("model_dir") + "/trt_calib_" + engine_key;
+  if (precision_mode == "INT8" && FileExists(trt_calib_file)) {
+    std::ifstream infile(trt_calib_file, std::ios::in);
+    std::stringstream buffer;
+    buffer << infile.rdbuf();
+    std::string calibration_data(buffer.str());
+    SetAttr(op_desc->Proto(), "calibration_data", calibration_data);
+  }
+  SetAttr(op_desc->Proto(), "precision_mode", precision_mode);
+  SetAttr(op_desc->Proto(), "engine_key", engine_key);
 }
 
 std::vector<std::string> ExtractParameters(

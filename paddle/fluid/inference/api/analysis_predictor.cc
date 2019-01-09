@@ -15,6 +15,7 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include <glog/logging.h>
 #include <algorithm>
+#include <fstream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -30,6 +31,8 @@
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #endif
+#include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -41,6 +44,10 @@ DECLARE_bool(profile);
 namespace paddle {
 
 using contrib::AnalysisConfig;
+using inference::Singleton;
+using inference::tensorrt::TRTInt8Calibrator;
+using inference::tensorrt::TRTCalibratorRes;
+using inference::tensorrt::TRTCalibratorResManager;
 
 namespace {
 bool IsPersistable(const framework::VarDesc *var) {
@@ -321,11 +328,15 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   // Analyze inference_program
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
+    argument_.SetModelPath(config_.model_dir());
   } else {
     PADDLE_ENFORCE(
         !config_.params_file().empty(),
         "Either model_dir or (param_file, prog_file) should be set.");
     PADDLE_ENFORCE(!config_.prog_file().empty());
+    std::string dir = inference::analysis::SplitPath(config_.prog_file());
+
+    argument_.SetModelPath(dir);
     argument_.SetModelProgramPath(config_.prog_file());
     argument_.SetModelParamsPath(config_.params_file());
   }
@@ -335,6 +346,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
+    argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
   }
 
   if (config_.use_mkldnn_) {
@@ -550,7 +562,52 @@ bool AnalysisPredictor::LoadParameters() {
   return true;
 }
 
+bool AnalysisPredictor::SaveTrtCalibToDisk() {
+  PADDLE_ENFORCE(config_.tensorrt_engine_enabled(),
+                 "This func can be invoked only in trt mode");
+  auto &block = inference_program_->Block(0);
+  for (auto &op_desc : block.AllOps()) {
+    if (op_desc->Type() == "tensorrt_engine") {
+      std::string engine_name =
+          boost::get<std::string>(op_desc->GetAttr("engine_key"));
+      if (!Singleton<TRTCalibratorResManager>::Global().Has(engine_name)) {
+        LOG(ERROR) << "You should run the predictor(with trt) on the real data "
+                      "to generate calibration info";
+        return false;
+      }
+      TRTCalibratorRes *calib_res =
+          Singleton<TRTCalibratorResManager>::Global().Get(engine_name);
+      LOG(INFO) << "Wait for calib threads done.";
+      calib_res->calib_->waitAndSetDone();
+      LOG(INFO) << "Finish wait.";
+      calib_res->thr_->join();
+      std::string calibration_data =
+          calib_res->calib_->getCalibrationTableAsString();
+
+      if (calibration_data.size() == 0) {
+        LOG(ERROR) << "the calibration table is empty.";
+        return false;
+      }
+      std::string calibration_data_path =
+          argument_.model_path() + "/trt_calib_" + engine_name;
+      std::ofstream ofile(calibration_data_path, std::ios::out);
+      LOG(INFO) << "Write Paddle-TRT INT8 calibration data to file "
+                << calibration_data_path;
+      ofile << calibration_data;
+      ofile.close();
+    }
+  }
+  // Free all calibrator resources.
+  Singleton<TRTCalibratorResManager>::Global().DeleteALL();
+  return true;
+}
+
 AnalysisPredictor::~AnalysisPredictor() {
+  if (config_.tensorrt_engine_enabled() &&
+      config_.tensorrt_precision_mode_ == "INT8" &&
+      Singleton<TRTCalibratorResManager>::Global().Has()) {
+    SaveTrtCalibToDisk();
+  }
   if (FLAGS_profile) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
