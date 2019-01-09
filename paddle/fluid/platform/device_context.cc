@@ -92,15 +92,15 @@ platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
     const platform::Place& place, const cudaStream_t& stream) {
   PADDLE_ENFORCE(platform::is_gpu_place(place));
   auto place_stream = std::make_pair(place, stream);
-  {
-    std::unique_lock<std::mutex> lock(mtx_);
-    if (!device_allocator_.count(place_stream)) {
-      device_allocator_[place_stream].reset(new TemporaryAllocator(place));
-      device_allocator_[place_stream]->SetCallback([stream]() {
-        PADDLE_ENFORCE(cudaStreamSynchronize(stream));
-        PADDLE_ENFORCE(cudaGetLastError());
-      });
-    }
+  std::unique_lock<std::mutex> lock(mtx_);
+  if (!device_allocator_.count(place_stream)) {
+    auto tmp_allocator = new TemporaryAllocator(place);
+    tmp_allocator->SetCallback([stream]() {
+      PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+      PADDLE_ENFORCE(cudaGetLastError());
+    });
+    device_allocator_[place_stream].reset(tmp_allocator);
+    return *tmp_allocator;
   }
   return *device_allocator_.at(place_stream);
 }
@@ -108,14 +108,12 @@ platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
 template <>
 platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
     const platform::CUDADeviceContext& dev_ctx) {
-  auto place_stream = std::make_pair(dev_ctx.GetPlace(), dev_ctx.stream());
-  bool has_allocator = false;
   {
+    auto place_stream = std::make_pair(dev_ctx.GetPlace(), dev_ctx.stream());
     std::unique_lock<std::mutex> lock(mtx_);
-    has_allocator = device_allocator_.count(place_stream) > 0;
-  }
-  if (has_allocator) {
-    return *device_allocator_.at(place_stream);
+    if (device_allocator_.count(place_stream) > 0) {
+      return *device_allocator_.at(place_stream);
+    }
   }
   return Get(dev_ctx.GetPlace(), dev_ctx.stream());
 }
