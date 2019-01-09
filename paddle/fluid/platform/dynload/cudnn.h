@@ -30,7 +30,7 @@ extern bool HasCUDNN();
 
 #ifdef PADDLE_USE_DSO
 
-extern void EnforceCUDNNLoaded(const char* fn_name);
+extern void* CudnnLoadSymbol(const char* fn_name);
 #define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                            \
   struct DynLoad__##__name {                                               \
     template <typename... Args>                                            \
@@ -39,8 +39,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
       std::call_once(cudnn_dso_flag, []() {                                \
         cudnn_dso_handle = paddle::platform::dynload::GetCUDNNDsoHandle(); \
       });                                                                  \
-      EnforceCUDNNLoaded(#__name);                                         \
-      static void* p_##__name = dlsym(cudnn_dso_handle, #__name);          \
+      static void* p_##__name = CudnnLoadSymbol(#__name);                  \
       return reinterpret_cast<cudnn_func>(p_##__name)(args...);            \
     }                                                                      \
   };                                                                       \

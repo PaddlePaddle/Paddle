@@ -53,15 +53,15 @@ bool HasCUDNN() {
   return cudnn_dso_handle != nullptr;
 }
 
-void EnforceCUDNNLoaded(const char* fn_name) {
+void* CudnnLoadSymbol(const char* fn_name) {
   PADDLE_ENFORCE(cudnn_dso_handle != nullptr,
-                 "Cannot load cudnn shared library. Cannot invoke method %s",
-                 fn_name);
-  // if the function fn_name can't be found in the so, dlsym returns NULL.
-  PADDLE_ENFORCE(dlsym(cudnn_dso_handle, fn_name),
-                 "cudnn.so don't has the function [%s], this may be a wrong "
-                 "version dynamic library.",
-                 fn_name);
+                 "Cannot load cudnn shared library");
+  void* symbol = dlsym(cudnn_dso_handle, #fn_name);
+  PADDLE_ENFORCE_NOT_NULL(symbol,
+                          "Cannot load symbol [%s] from CuDNN, the version of "
+                          "the CuDNN dynamic library might wrong.",
+                          fn_name);
+  return symbol;
 }
 #else
 bool HasCUDNN() { return true; }
