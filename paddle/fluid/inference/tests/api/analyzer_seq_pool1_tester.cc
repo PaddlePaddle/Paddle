@@ -168,15 +168,13 @@ TEST(Analyzer_seq_pool1, compare) {
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
-// Check the fuse status
-TEST(Analyzer_seq_pool1, fuse_statis) {
+void analysis_fuse_statis(bool use_zerocopy) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg.SwitchUseFeedFetchOps(!use_zerocopy);
   int num_ops;
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-
+  auto fuse_statis = GetFuseStatis(predictor.get(), &num_ops);
   ASSERT_TRUE(fuse_statis.count("fc_fuse"));
   ASSERT_EQ(fuse_statis.at("fc_fuse"), 10);
   ASSERT_TRUE(fuse_statis.count("seqpool_concat_fuse"));
@@ -184,6 +182,9 @@ TEST(Analyzer_seq_pool1, fuse_statis) {
   LOG(INFO) << "num_ops: " << num_ops;
   EXPECT_EQ(num_ops, 195);
 }
+
+// Check the fuse status
+TEST(Analyzer_seq_pool1, fuse_statis) { analysis_fuse_statis(false); }
 
 void PrepareZeroCopyInputs(
     const std::unique_ptr<PaddlePredictor> &predictor,
@@ -202,7 +203,8 @@ void PrepareZeroCopyInputs(
   }
 }
 
-std::unique_ptr<ZeroCopyTensor> zerocopy_profile(int repeat_times) {
+// return the output values
+std::vector<float> zerocopy_profile(int repeat_times) {
   AnalysisConfig config;
   SetConfig(&config);
   config.SwitchUseFeedFetchOps(false);
@@ -225,23 +227,40 @@ std::unique_ptr<ZeroCopyTensor> zerocopy_profile(int repeat_times) {
   }
   PrintTime(FLAGS_batch_size, repeat_times, 1, 0, timer.toc() / repeat_times,
             1);
-  return output_tensor;
+
+  VLOG(3) << "ZeroCopy output: " << DescribeZeroCopyTensor(*output_tensor);
+  PaddlePlace place;
+  int output_size{0};
+  auto *pdata = output_tensor->data<float>(&place, &output_size);
+  std::vector<float> res(output_size);
+  for (int i = 0; i < output_size; ++i) {
+    res[i] = pdata[i];
+  }
+  return res;
 }
 
 TEST(Analyzer_seq_pool1, zerocopy_profile) { zerocopy_profile(FLAGS_repeat); }
 
-TEST(Analyzer_seq_pool1, zerocopy_fuse_statis) {
+TEST(Analyzer_seq_pool1, zerocopy_fuse_statis) { analysis_fuse_statis(true); }
+
+TEST(Analyzer_seq_pool1, zerocopy_compare_native) {
   AnalysisConfig config;
   SetConfig(&config);
-  config.SwitchUseFeedFetchOps(false);
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
-  int num_ops;
-  auto fuse_statis = GetFuseStatis(predictor.get(), &num_ops);
-  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-  ASSERT_EQ(fuse_statis.at("fc_fuse"), 10);
-  ASSERT_TRUE(fuse_statis.count("seqpool_concat_fuse"));
-  EXPECT_EQ(fuse_statis.at("seqpool_concat_fuse"), 2);
-  ASSERT_EQ(num_ops, 195);
+  config.SwitchUseFeedFetchOps(true);
+  auto predictor = CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
+  std::vector<PaddleTensor> native_outputs;
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  ASSERT_TRUE(predictor->Run(input_slots_all[0], &native_outputs));
+  EXPECT_EQ(native_outputs.size(), 1UL);
+
+  auto zerocopy_output = zerocopy_profile(1);
+  EXPECT_EQ(zerocopy_output.size() * sizeof(float),
+            native_outputs.front().data.length());
+  auto *native_data = static_cast<float *>(native_outputs.front().data.data());
+  for (size_t i = 0; i < zerocopy_output.size(); ++i) {
+    EXPECT_NEAR(zerocopy_output[i], native_data[i], 1e-3);
+  }
 }
 
 }  // namespace analysis
