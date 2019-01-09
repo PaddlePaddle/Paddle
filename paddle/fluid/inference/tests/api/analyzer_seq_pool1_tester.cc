@@ -121,14 +121,6 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data) {
   }
 }
 
-void SetConfig(AnalysisConfig *cfg) {
-  cfg->SetModel(FLAGS_infer_model + "/model", FLAGS_infer_model + "/params");
-  cfg->DisableGpu();
-  cfg->SwitchSpecifyInputNames();
-  cfg->pass_builder()->TurnOnDebug();
-  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
-}
-
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
   std::vector<PaddleTensor> input_slots;
@@ -141,15 +133,22 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   }
 }
 
+void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
+  cfg->SetModel(FLAGS_infer_model + "/model", FLAGS_infer_model + "/params");
+  cfg->DisableGpu();
+  cfg->SwitchSpecifyInputNames();
+  cfg->pass_builder()->TurnOnDebug();
+  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
+  if (use_mkldnn) {
+    cfg->EnableMKLDNN();
+  }
+}
+
 void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
-  SetConfig(&cfg);
+  SetConfig(&cfg, use_mkldnn);
 
-  if (use_mkldnn) {
-    cfg.EnableMKLDNN();
-  }
   std::vector<PaddleTensor> outputs;
-
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
@@ -178,11 +177,71 @@ TEST(Analyzer_seq_pool1, fuse_statis) {
   auto fuse_statis = GetFuseStatis(
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
 
+  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+  ASSERT_EQ(fuse_statis.at("fc_fuse"), 10);
   ASSERT_TRUE(fuse_statis.count("seqpool_concat_fuse"));
   EXPECT_EQ(fuse_statis.at("seqpool_concat_fuse"), 2);
-
   LOG(INFO) << "num_ops: " << num_ops;
   EXPECT_EQ(num_ops, 195);
+}
+
+void PrepareZeroCopyInputs(
+    const std::unique_ptr<PaddlePredictor> &predictor,
+    std::vector<std::unique_ptr<ZeroCopyTensor>> *inputs) {
+  DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
+  // only feed one batch
+  const auto &one_batch = data.NextBatch();
+  inputs->clear();
+  for (size_t i = 0; i < one_batch.size(); ++i) {
+    auto &slot = one_batch[i];
+    auto tensor = predictor->GetInputTensor(slot.name + "_embed");
+    tensor->Reshape(slot.shape);
+    tensor->SetLoD({slot.lod});
+    ZeroCopyTensorAssignData<float>(tensor.get(), slot.data);
+    inputs->emplace_back(std::move(tensor));
+  }
+}
+
+std::unique_ptr<ZeroCopyTensor> zerocopy_profile(int repeat_times) {
+  AnalysisConfig config;
+  SetConfig(&config);
+  config.SwitchUseFeedFetchOps(false);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+  std::vector<std::unique_ptr<ZeroCopyTensor>> inputs;
+  PrepareZeroCopyInputs(predictor, &inputs);
+  auto output_tensor = predictor->GetOutputTensor("reduce_sum_0.tmp_0");
+  Timer timer;
+  LOG(INFO) << "Warm up run...";
+  timer.tic();
+  predictor->ZeroCopyRun();
+  PrintTime(FLAGS_batch_size, 1, 1, 0, timer.toc(), 1);
+  if (FLAGS_profile) {
+    paddle::platform::ResetProfiler();
+  }
+  LOG(INFO) << "Run " << repeat_times << " times...";
+  timer.tic();
+  for (int i = 0; i < repeat_times; i++) {
+    predictor->ZeroCopyRun();
+  }
+  PrintTime(FLAGS_batch_size, repeat_times, 1, 0, timer.toc() / repeat_times,
+            1);
+  return output_tensor;
+}
+
+TEST(Analyzer_seq_pool1, zerocopy_profile) { zerocopy_profile(FLAGS_repeat); }
+
+TEST(Analyzer_seq_pool1, zerocopy_fuse_statis) {
+  AnalysisConfig config;
+  SetConfig(&config);
+  config.SwitchUseFeedFetchOps(false);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+  int num_ops;
+  auto fuse_statis = GetFuseStatis(predictor.get(), &num_ops);
+  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+  ASSERT_EQ(fuse_statis.at("fc_fuse"), 10);
+  ASSERT_TRUE(fuse_statis.count("seqpool_concat_fuse"));
+  EXPECT_EQ(fuse_statis.at("seqpool_concat_fuse"), 2);
+  ASSERT_EQ(num_ops, 195);
 }
 
 }  // namespace analysis
