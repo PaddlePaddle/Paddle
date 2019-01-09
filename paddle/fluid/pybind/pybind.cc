@@ -175,6 +175,13 @@ PYBIND11_MODULE(core, m) {
           [](imperative::OpBase &self, int forward_id) {
             self.forward_id_ = forward_id;
           },
+          py::return_value_policy::reference)
+      .def_property(
+          "backward_id",
+          [](const imperative::OpBase &self) { return self.backward_id_; },
+          [](imperative::OpBase &self, int backward_id) {
+            self.backward_id_ = backward_id;
+          },
           py::return_value_policy::reference);
 
   py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
@@ -188,7 +195,7 @@ PYBIND11_MODULE(core, m) {
       .def(py::init<>())
       .def_static(
           "apply",
-          [](int func_id, const std::vector<imperative::VarBase> &inputs)
+          [](int func_id, const std::vector<imperative::VarBase *> &inputs)
               -> std::vector<imperative::VarBase *> {
                 return imperative::PyLayer::Apply(func_id, inputs);
               },

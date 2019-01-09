@@ -57,6 +57,7 @@ class Autograd {
     if (var->stop_gradient_) {
       return;
     }
+    VLOG(3) << "start autograd";
 
     std::deque<OpBase*> ready;
     ready.push_back(var->pre_op_);
@@ -122,11 +123,10 @@ framework::LoDTensor& VarBase::Grad() {
 }
 
 std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
-  if (!grad_op_desc_) {
+  if (!grad_op_desc_ && backward_id_ <= 0) {
     LOG(WARNING) << "op with no grad: " << op_desc_->Type();
     return {};
   }
-  VLOG(3) << "op grad " << grad_op_desc_->Type();
 
   std::vector<std::unique_ptr<framework::Variable>> tmp_vars;
   std::map<std::string, std::vector<framework::Variable*>> grad_outputs;
@@ -142,23 +142,30 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
     }
   }
 
-  framework::RuntimeContext ctx(grad_input_vars_, grad_outputs);
+  if (backward_id_ > 0) {
+    VLOG(3) << "py_layer_grad";
+    PyLayer::ApplyGrad(backward_id_, grad_input_vars_["X@GRAD"],
+                       &(grad_outputs["Out@GRAD"]));
+  } else {
+    VLOG(3) << "op grad " << grad_op_desc_->Type();
+    framework::RuntimeContext ctx(grad_input_vars_, grad_outputs);
 
-  // No need to do compile time infer shape here.
-  // grad_op_desc_->InferShape(*block_);
-  grad_op_desc_->InferVarType(block_);
+    // No need to do compile time infer shape here.
+    // grad_op_desc_->InferShape(*block_);
+    grad_op_desc_->InferVarType(block_);
 
-  std::unique_ptr<framework::OperatorBase> opbase =
-      framework::OpRegistry::CreateOp(*grad_op_desc_);
-  framework::OperatorWithKernel* op_kernel =
-      dynamic_cast<framework::OperatorWithKernel*>(opbase.get());
-  PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
+    std::unique_ptr<framework::OperatorBase> opbase =
+        framework::OpRegistry::CreateOp(*grad_op_desc_);
+    framework::OperatorWithKernel* op_kernel =
+        dynamic_cast<framework::OperatorWithKernel*>(opbase.get());
+    PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
 
-  framework::Scope scope;
-  platform::CPUPlace place;
-  PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place);
-  p.op.RuntimeInferShape(scope, place, ctx);
-  p.func(framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx));
+    framework::Scope scope;
+    platform::CPUPlace place;
+    PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place);
+    p.op.RuntimeInferShape(scope, place, ctx);
+    p.func(framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx));
+  }
 
   for (auto it : grad_output_vars_) {
     auto& outputs = grad_outputs[it.first];
@@ -175,6 +182,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
 void VarBase::RunBackward() {
   if (!pre_op_) return;
 
+  VLOG(3) << "start backward";
   auto grads_t = grads_->GetMutable<framework::LoDTensor>();
   float* data = grads_t->mutable_data<float>(platform::CPUPlace());
   std::fill(data, data + grads_t->numel(), 1.0);
@@ -190,16 +198,29 @@ void PyLayer::RegisterFunc(int func_id, const py::object& py_func) {
 }
 
 std::vector<VarBase*> PyLayer::Apply(int func_id,
-                                     const std::vector<VarBase>& inputs) {
+                                     const std::vector<VarBase*>& inputs) {
   std::vector<framework::LoDTensor> tensor_inputs;
   std::vector<VarBase*> ret;
 
-  for (const VarBase& in : inputs) {
-    tensor_inputs.push_back(in.var_->Get<framework::LoDTensor>());
+  for (const VarBase* in : inputs) {
+    tensor_inputs.push_back(in->var_->Get<framework::LoDTensor>());
   }
   PADDLE_ENFORCE(py_funcs_.find(func_id) != py_funcs_.end());
   CallPythonFunc(py_funcs_[func_id], tensor_inputs, &ret);
   return ret;
+}
+
+void PyLayer::ApplyGrad(int func_id,
+                        const std::vector<framework::Variable*>& inputs,
+                        std::vector<framework::Variable*>* outputs) {
+  std::vector<framework::LoDTensor> tensor_inputs;
+  std::vector<VarBase*> ret;
+
+  for (const Variable* in : inputs) {
+    tensor_inputs.push_back(in->Get<framework::LoDTensor>());
+  }
+  PADDLE_ENFORCE(py_funcs_.find(func_id) != py_funcs_.end());
+  CallPythonFunc(py_funcs_[func_id], tensor_inputs, outputs);
 }
 
 }  // namespace imperative

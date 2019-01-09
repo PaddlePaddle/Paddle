@@ -59,22 +59,23 @@ class PyLayer(core.PyLayer):
         raise NotImplementedError
 
     @staticmethod
-    def backward(inputs):
+    def backward(douts):
         raise NotImplementedError
 
     @classmethod
     def __call__(cls, inputs):
         tracer = framework._imperative_tracer()
         block = framework.default_main_program().current_block()
-        inputs = map(base.to_variable, inputs)
         inputs = [x._ivar for x in inputs]
 
         PyLayer.register_func(1, cls.forward)
+        PyLayer.register_func(2, cls.backward)
 
         iop = core.OpBase()
         iop.forward_id = 1
+        iop.backward_id = 2
         block.ops.append(iop)
-        ivars = tracer.py_trace(iop, inputs)
+        ivars = tracer.py_trace(iop, inputs, False)
         # ivars = core.PyLayer.apply(cls.forward, inputs)
         ret = []
         for ivar in ivars:
