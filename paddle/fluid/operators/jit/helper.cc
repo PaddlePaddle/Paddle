@@ -26,6 +26,7 @@ namespace jit {
 
 const char* to_string(KernelType kt) {
   switch (kt) {
+    ONE_CASE(kNone);
     ONE_CASE(kVMul);
     ONE_CASE(kVAdd);
     ONE_CASE(kVAddRelu);
@@ -45,9 +46,23 @@ const char* to_string(KernelType kt) {
     ONE_CASE(kCRFDecoding);
     ONE_CASE(kLayerNorm);
     ONE_CASE(kNCHW16CMulNC);
+    ONE_CASE(kSeqPool);
     default:
       PADDLE_THROW("Not support type: %d, or forget to add it.", kt);
       return "NOT JITKernel";
+  }
+  return nullptr;
+}
+
+const char* to_string(SeqPoolType tp) {
+  switch (tp) {
+    ONE_CASE(kNonePoolType);
+    ONE_CASE(kSum);
+    ONE_CASE(kAvg);
+    ONE_CASE(kSqrt);
+    default:
+      PADDLE_THROW("Not support type: %d, or forget to add it.", tp);
+      return "NOT PoolType";
   }
   return nullptr;
 }
