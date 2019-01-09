@@ -31,12 +31,12 @@ std::unique_ptr<ir::Graph> TransposeFlattenConcatFusePass<times>::ApplyImpl(
   FusePassBase::Init(pattern_name, graph.get());
 
   GraphPatternDetector gpd;
-  PDNode *input_nodes[times];
+  std::vector<PDNode *> input_nodes;
   for (int i = 0; i < times; i++) {
-    input_nodes[i] = gpd.mutable_pattern()
-                         ->NewNode("x" + std::to_string(i))
-                         ->assert_is_op_input("transpose2", "X")
-                         ->AsInput();
+    input_nodes.push_back(gpd.mutable_pattern()
+                              ->NewNode("x" + std::to_string(i))
+                              ->assert_is_op_input("transpose2", "X")
+                              ->AsInput());
   }
 
   patterns::TransposeFlattenConcat pattern(gpd.mutable_pattern(), pattern_name);
@@ -49,7 +49,7 @@ std::unique_ptr<ir::Graph> TransposeFlattenConcatFusePass<times>::ApplyImpl(
     const int kTransOutOffset = 2;
     const int kFlattenOffset = 3;
     const int kFlattenOutOffset = 4;
-    Node *nodes[times * kNumFields];
+    std::vector<Node *> nodes;
 
     for (int i = 0; i < times; i++) {
       PADDLE_ENFORCE(
@@ -62,15 +62,15 @@ std::unique_ptr<ir::Graph> TransposeFlattenConcatFusePass<times>::ApplyImpl(
           subgraph.at(pattern.GetPDNode("flatten_out" + std::to_string(i))));
       PADDLE_ENFORCE(subgraph.at(input_nodes[i]));
 
-      nodes[i * kNumFields] = subgraph.at(input_nodes[i]);
-      nodes[i * kNumFields + kTransOffset] =
-          subgraph.at(pattern.GetPDNode("transpose" + std::to_string(i)));
-      nodes[i * kNumFields + kTransOutOffset] =
-          subgraph.at(pattern.GetPDNode("transpose_out" + std::to_string(i)));
-      nodes[i * kNumFields + kFlattenOffset] =
-          subgraph.at(pattern.GetPDNode("flatten" + std::to_string(i)));
-      nodes[i * kNumFields + kFlattenOutOffset] =
-          subgraph.at(pattern.GetPDNode("flatten_out" + std::to_string(i)));
+      nodes.push_back(subgraph.at(input_nodes[i]));
+      nodes.push_back(
+          subgraph.at(pattern.GetPDNode("transpose" + std::to_string(i))));
+      nodes.push_back(
+          subgraph.at(pattern.GetPDNode("transpose_out" + std::to_string(i))));
+      nodes.push_back(
+          subgraph.at(pattern.GetPDNode("flatten" + std::to_string(i))));
+      nodes.push_back(
+          subgraph.at(pattern.GetPDNode("flatten_out" + std::to_string(i))));
     }
 
     Node *concat_op = subgraph.at(pattern.GetPDNode("concat"));

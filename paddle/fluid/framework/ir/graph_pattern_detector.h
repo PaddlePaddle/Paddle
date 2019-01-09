@@ -770,7 +770,7 @@ struct TransposeFlattenConcat : public PatternBase {
   TransposeFlattenConcat(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "transpose_flatten_concat") {}
 
-  PDNode* operator()(PDNode* conv_input[], int times);
+  PDNode* operator()(std::vector<PDNode*> conv_inputs, int times);
 
   std::string GetNodeName(const std::string& op_type) {
     return PDNodeName(name_scope_, repr_, id_, op_type);

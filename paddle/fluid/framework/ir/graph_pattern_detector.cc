@@ -1312,8 +1312,8 @@ PDNode *patterns::ConvAffineChannel::operator()(
 // z -> transpose_op(n) -> transpose_out_z -> flatten_op(n) -> flatten_out_z
 // flatten_out_a -> concat_op  flatten_out_b -> concat_op ... flatten_out_z ->
 // concat_op
-PDNode *patterns::TransposeFlattenConcat::operator()(PDNode *conv_in[],
-                                                     int times) {
+PDNode *patterns::TransposeFlattenConcat::operator()(
+    std::vector<PDNode *> conv_in, int times) {
   // The times represents the repeat times of the
   // {trans, trans_out, flatten, flatten_out}
   const int kNumFields = 4;
@@ -1321,25 +1321,25 @@ PDNode *patterns::TransposeFlattenConcat::operator()(PDNode *conv_in[],
   const int kFlattenOffset = 2;
   const int kFlattenOutOffset = 3;
 
-  PDNode *nodes[times * kNumFields];
+  std::vector<PDNode *> nodes;
 
   for (int i = 0; i < times; i++) {
-    nodes[i * kNumFields] =
+    nodes.push_back(
         pattern->NewNode(GetNodeName("transpose" + std::to_string(i)))
-            ->assert_is_op("transpose2");
-    nodes[i * kNumFields + kTransOutOffset] =
+            ->assert_is_op("transpose2"));
+    nodes.push_back(
         pattern->NewNode(GetNodeName("transpose_out" + std::to_string(i)))
             ->assert_is_op_output("transpose2")
             ->assert_is_op_input("flatten2", "X")
-            ->AsIntermediate();
-    nodes[i * kNumFields + kFlattenOffset] =
-        pattern->NewNode(GetNodeName("flatten" + std::to_string(i)))
-            ->assert_is_op("flatten2");
-    nodes[i * kNumFields + kFlattenOutOffset] =
+            ->AsIntermediate());
+    nodes.push_back(pattern->NewNode(GetNodeName("flatten" + std::to_string(i)))
+                        ->assert_is_op("flatten2"));
+
+    nodes.push_back(
         pattern->NewNode(GetNodeName("flatten_out" + std::to_string(i)))
             ->assert_is_op_output("flatten2")
             ->assert_is_op_nth_input("concat", "X", i)
-            ->AsIntermediate();
+            ->AsIntermediate());
   }
 
   auto concat_op = pattern->NewNode(GetNodeName("concat"))
