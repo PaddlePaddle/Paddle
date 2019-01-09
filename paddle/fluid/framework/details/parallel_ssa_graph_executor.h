@@ -44,8 +44,6 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
 
   std::vector<std::unique_ptr<details::ThreadedSSAGraphExecutor>> executors_;
   ExceptionHolder exception_holder_;
-  // stop the world(STW) if any exception in the threads
-  std::shared_ptr<std::atomic<bool>> stw_{nullptr};
 };
 
 }  // namespace details

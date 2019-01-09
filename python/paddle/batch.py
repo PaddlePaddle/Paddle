@@ -15,7 +15,7 @@
 __all__ = ['batch']
 
 
-def batch(reader, batch_size, drop_last=False):
+def batch(reader, batch_size, drop_last=False, num_devices=1):
     """
     Create a batched reader.
 
@@ -25,6 +25,8 @@ def batch(reader, batch_size, drop_last=False):
     :type batch_size: int
     :param drop_last: drop the last batch, if the size of last batch is not equal to batch_size.
     :type drop_last: bool
+    :param num_devices: Align the size of each mini-batch on each devices.
+    :type num_devices: int
     :return: the batched reader.
     :rtype: callable
     """
@@ -46,4 +48,14 @@ def batch(reader, batch_size, drop_last=False):
         raise ValueError("batch_size should be a positive integeral value, "
                          "but got batch_size={}".format(batch_size))
 
-    return batch_reader
+    def multi_devices_batch_reader():
+        r = batch_reader()
+        multi_devices_batch = []
+        for batch in r:
+            multi_devices_batch.append(batch)
+            if len(multi_devices_batch) == num_devices:
+                for b in multi_devices_batch:
+                    yield b
+                multi_devices_batch = []
+
+    return multi_devices_batch_reader if num_devices > 1 else batch_reader

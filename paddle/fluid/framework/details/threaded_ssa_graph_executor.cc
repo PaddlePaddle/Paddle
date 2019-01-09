@@ -24,7 +24,7 @@ namespace details {
 ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
-    std::unique_ptr<ir::Graph> &&graph, std::atomic<bool> *stw)
+    std::unique_ptr<ir::Graph> &&graph)
     : graph_(std::move(graph)),
       pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
                                        : nullptr),
@@ -32,8 +32,7 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
       places_(places),
       fetch_ctxs_(places),
       running_ops_(0),
-      strategy_(strategy),
-      stw_(stw) {}
+      strategy_(strategy) {}
 
 FeedFetchList ThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
@@ -81,7 +80,6 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     for (auto *op : set) {
       running_ops_++;
       RunOp(ready_vars, op);
-      if (stw_ && *stw_ == true) return false;
     }
     set.clear();
     return true;
@@ -235,7 +233,6 @@ void ThreadedSSAGraphExecutor::RunOp(
       VLOG(10) << op << " " << op->Name() << "Signal posted";
     } catch (...) {
       exception_holder_.Catch(std::current_exception());
-      if (stw_) *stw_ = true;
     }
   };
   if (pool_) {
