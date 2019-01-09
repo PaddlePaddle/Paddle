@@ -27,6 +27,9 @@ std::string PythonDebugSupport::Format() const {
     for (auto &line : info) {
       sout << line;
     }
+  } else {
+    sout << "please set FLAGS_enable_debug=True to get more details regard to "
+            "this failure.\n";
   }
   return sout.str();
 }
