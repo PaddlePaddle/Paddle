@@ -32,6 +32,12 @@ DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
 
+DEFINE_bool(
+    enable_debug, false,
+    "The enable_debug indicate whether to give more detail information when, "
+    "use the paddlepaddle. However it may deduce the performance since it has"
+    "to record the information during runtime.");
+
 namespace paddle {
 namespace framework {
 
@@ -157,7 +163,7 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
   }
 }
 
-void OperatorBase::PreHook() {
+void OperatorBase::PreHook(const Scope& scope, const platform::Place& place) {
   auto attrName = OpProtoAndCheckerMaker::OpCreationCallstackAttrName();
   if (HasAttr(attrName)) {
     auto& callstack = Attr<std::vector<std::string>>(attrName);
@@ -166,8 +172,10 @@ void OperatorBase::PreHook() {
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  VLOG(4) << "Call the prehook ... ";
-  PreHook();
+  if (FLAGS_enable_debug) {
+    VLOG(4) << "Call the prehook ... ";
+    PreHook(scope, place);
+  }
 
   VLOG(4) << place << " " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
@@ -191,11 +199,13 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   }
   VLOG(3) << place << " " << DebugStringEx(&scope);
 
-  VLOG(4) << "Call the posthook ... ";
-  PostHook();
+  if (FLAGS_enable_debug) {
+    VLOG(4) << "Call the posthook ... ";
+    PostHook(scope, place);
+  }
 }
 
-void OperatorBase::PostHook() {
+void OperatorBase::PostHook(const Scope& scope, const platform::Place& place) {
   // do nothing here
 }
 
