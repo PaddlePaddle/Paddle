@@ -12,6 +12,7 @@ limitations under the License. */
 
 #include <vector>
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/init.h"

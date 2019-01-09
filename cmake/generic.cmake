@@ -110,6 +110,18 @@ function(find_fluid_modules TARGET_NAME)
   endif()
 endfunction(find_fluid_modules)
 
+
+function(common_link TARGET_NAME)
+  if (WITH_PROFILER)
+    target_link_libraries(${TARGET_NAME} gperftools::profiler)
+  endif()
+
+  if (WITH_JEMALLOC)
+    target_link_libraries(${TARGET_NAME} jemalloc::jemalloc)
+  endif()
+endfunction()
+
+
 # find all third_party modules is used for paddle static library
 # for reduce the dependency when building the inference libs.
 set_property(GLOBAL PROPERTY FLUID_THIRD_PARTY)
@@ -220,7 +232,7 @@ function(merge_static_libs TARGET_NAME)
       # Get the file names of the libraries to be merged
       set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
     endforeach()
-    # msvc will put libarary in directory of "/Release/xxxlib" by default 
+    # msvc will put libarary in directory of "/Release/xxxlib" by default
     #       COMMAND cmake -E remove "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET_NAME}.lib"
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
       COMMAND cmake -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}"
@@ -259,7 +271,11 @@ function(cc_library TARGET_NAME)
           list(APPEND cc_library_DEPS dynload_mklml)
         endif()
         add_dependencies(${TARGET_NAME} mklml)
-        target_link_libraries(${TARGET_NAME} "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
+        if(WIN32)
+          target_link_libraries(${TARGET_NAME} ${MKLML_IOMP_LIB})
+        else(WIN32)
+          target_link_libraries(${TARGET_NAME} "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
+        endif(WIN32)
       endif()
       # remove link to python, see notes at:
       # https://github.com/pybind/pybind11/blob/master/docs/compiling.rst#building-manually
@@ -274,6 +290,7 @@ function(cc_library TARGET_NAME)
       endif()
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
+      common_link(${TARGET_NAME})
     endif()
 
     # cpplint code style
@@ -340,6 +357,7 @@ function(cc_binary TARGET_NAME)
   if(cc_binary_DEPS)
     target_link_libraries(${TARGET_NAME} ${cc_binary_DEPS})
     add_dependencies(${TARGET_NAME} ${cc_binary_DEPS})
+    common_link(${TARGET_NAME})
   endif()
 endfunction(cc_binary)
 
@@ -362,6 +380,7 @@ function(cc_test TARGET_NAME)
       target_link_libraries(${TARGET_NAME} ${win32_deps})
     endif(WIN32)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
+    common_link(${TARGET_NAME})
     add_test(NAME ${TARGET_NAME}
              COMMAND ${TARGET_NAME} ${cc_test_ARGS}
              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -420,6 +439,7 @@ function(nv_binary TARGET_NAME)
     if(nv_binary_DEPS)
       target_link_libraries(${TARGET_NAME} ${nv_binary_DEPS})
       add_dependencies(${TARGET_NAME} ${nv_binary_DEPS})
+      common_link(${TARGET_NAME})
     endif()
   endif()
 endfunction(nv_binary)
@@ -433,6 +453,7 @@ function(nv_test TARGET_NAME)
     cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
+    common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
     if (nv_test_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
@@ -499,6 +520,7 @@ function(hip_binary TARGET_NAME)
     if(hip_binary_DEPS)
       target_link_libraries(${TARGET_NAME} ${hip_binary_DEPS})
       add_dependencies(${TARGET_NAME} ${hip_binary_DEPS})
+      common_link(${TARGET_NAME})
     endif()
   endif()
 endfunction(hip_binary)
@@ -518,6 +540,7 @@ function(hip_test TARGET_NAME)
     set_target_properties(${TARGET_NAME} PROPERTIES LINKER_LANGUAGE HIP)
     target_link_libraries(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main memory gtest gflags)
     add_dependencies(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main memory gtest gflags)
+    common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
   endif()
 endfunction(hip_test)
@@ -560,6 +583,7 @@ function(go_library TARGET_NAME)
   endif()
   if(go_library_DEPS)
     add_dependencies(${TARGET_NAME} ${go_library_DEPS})
+    common_link(${TARGET_NAME})
   endif(go_library_DEPS)
 
   # The "source file" of the library is `${dummyfile}` which never

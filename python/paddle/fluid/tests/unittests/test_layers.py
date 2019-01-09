@@ -170,9 +170,10 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             dat = layers.data(name='data', shape=[10], dtype='float32')
             lbl = layers.data(name='label', shape=[10], dtype='float32')
+            ignore_index = -1
             self.assertIsNotNone(
                 layers.sigmoid_cross_entropy_with_logits(
-                    x=dat, label=lbl))
+                    x=dat, label=lbl, ignore_index=ignore_index))
         print(str(program))
 
     def test_hsigmoid(self):
@@ -231,6 +232,37 @@ class TestBook(unittest.TestCase):
                     pool_size=[5, 3],
                     pool_stride=[1, 2],
                     pool_padding=(2, 1)))
+
+    def test_adaptive_pool2d(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 224, 224], dtype='float32')
+            self.assertIsNotNone(
+                layers.adaptive_pool2d(
+                    x, [3, 3], pool_type='avg'))
+            pool, mask = layers.adaptive_pool2d(x, [3, 3], require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
+            self.assertIsNotNone(layers.adaptive_pool2d(x, 3, pool_type='avg'))
+            pool, mask = layers.adaptive_pool2d(x, 3, require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
+
+    def test_adaptive_pool3d(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 244, 224, 224], dtype='float32')
+            self.assertIsNotNone(
+                layers.adaptive_pool3d(
+                    x, [3, 3, 3], pool_type='avg'))
+            pool, mask = layers.adaptive_pool3d(
+                x, [3, 3, 3], require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
+            self.assertIsNotNone(layers.adaptive_pool3d(x, 3, pool_type='avg'))
+            pool, mask = layers.adaptive_pool3d(x, 3, require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
 
     def test_lstm_unit(self):
         program = Program()
@@ -507,6 +539,16 @@ class TestBook(unittest.TestCase):
             rois = layers.data(
                 name="rois", shape=[4], dtype="float32", lod_level=1)
             output = layers.roi_pool(x, rois, 7, 7, 0.6)
+            self.assertIsNotNone(output)
+        print(str(program))
+
+    def test_psroi_pool(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
+            rois = layers.data(
+                name="rois", shape=[4], dtype="float32", lod_level=1)
+            output = layers.psroi_pool(x, rois, 5, 0.25, 7, 7)
             self.assertIsNotNone(output)
         print(str(program))
 
@@ -844,6 +886,15 @@ class TestBook(unittest.TestCase):
             mode = 'channel'
             out = layers.cross_entropy(x, label, False, 4)
             self.assertIsNotNone(out)
+
+    def test_bpr_loss(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[30, 10], dtype="float32")
+            label = layers.data(name="label", shape=[30, 1], dtype="int32")
+            out = layers.bpr_loss(x, label)
+            self.assertIsNotNone(out)
+        print(str(program))
 
     def test_expand(self):
         program = Program()

@@ -17,9 +17,12 @@ from __future__ import print_function
 import copy
 import itertools
 import six
+import sys
+import numpy as np
 
-from .framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating
+from .framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating, _in_imperative_mode
 from . import unique_name
+from paddle.fluid.imperative import base as imperative_base
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
@@ -46,23 +49,21 @@ class LayerHelper(object):
     def startup_program(self):
         return default_startup_program()
 
+    def to_variable(self, x):
+        return imperative_base.to_variable(x, self.main_program.current_block())
+
     def append_op(self, *args, **kwargs):
         return self.main_program.current_block().append_op(*args, **kwargs)
 
     def multiple_input(self, input_param_name='input'):
         inputs = self.kwargs.get(input_param_name, [])
-        type_error = TypeError(
-            "Input of {0} layer should be Variable or sequence of Variable".
-            format(self.layer_type))
-        if isinstance(inputs, Variable):
-            inputs = [inputs]
-        elif not isinstance(inputs, list) and not isinstance(inputs, tuple):
-            raise type_error
+        ret = []
+        if isinstance(inputs, list) or isinstance(inputs, tuple):
+            for inp in inputs:
+                ret.append(self.to_variable(inp))
         else:
-            for each in inputs:
-                if not isinstance(each, Variable):
-                    raise type_error
-        return inputs
+            ret.append(self.to_variable(inputs))
+        return ret
 
     def input(self, input_param_name='input'):
         inputs = self.multiple_input(input_param_name)
@@ -312,11 +313,20 @@ class LayerHelper(object):
             param = self._create_weight_normalize(attr, shape, dtype)
             WeightNormParamAttr.params_with_weight_norm.append(param)
             return param
-
-        self.startup_program.global_block().create_parameter(
-            dtype=dtype, shape=shape, **attr._to_kwargs(with_initializer=True))
-        return self.main_program.global_block().create_parameter(
-            dtype=dtype, shape=shape, **attr._to_kwargs())
+        if _in_imperative_mode():
+            # In imperative mode, we want the returned parameter to be
+            # initialized so that it can be used imperatively.
+            return self.main_program.global_block().create_parameter(
+                dtype=dtype,
+                shape=shape,
+                **attr._to_kwargs(with_initializer=True))
+        else:
+            self.startup_program.global_block().create_parameter(
+                dtype=dtype,
+                shape=shape,
+                **attr._to_kwargs(with_initializer=True))
+            return self.main_program.global_block().create_parameter(
+                dtype=dtype, shape=shape, **attr._to_kwargs())
 
     def get_parameter(self, name):
         param = self.main_program.global_block().var(name)
@@ -368,13 +378,16 @@ class LayerHelper(object):
 
     def set_variable_initializer(self, var, initializer):
         assert isinstance(var, Variable)
-        self.startup_program.global_block().create_var(
-            name=var.name,
-            type=var.type,
-            dtype=var.dtype,
-            shape=var.shape,
-            persistable=True,
-            initializer=initializer)
+        if imperative_base.enabled():
+            initializer(var, var.block)
+        else:
+            self.startup_program.global_block().create_var(
+                name=var.name,
+                type=var.type,
+                dtype=var.dtype,
+                shape=var.shape,
+                persistable=True,
+                initializer=initializer)
 
     def append_bias_op(self, input_var, dim_start=1, dim_end=None):
         """
