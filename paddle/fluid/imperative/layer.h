@@ -109,7 +109,7 @@ class VarBase {
 
   void RunBackward();
 
-  framework::LoDTensor& Grad();
+  framework::LoDTensor& GradValue();
 
   inline std::string GradName() const {
     PADDLE_ENFORCE(
@@ -123,8 +123,9 @@ class VarBase {
   int pre_op_out_idx_;
 
   framework::VarDesc* var_desc_;
-  framework::Variable* var_;
-  VarBase* grads_;
+
+  std::shared_ptr<framework::Variable> var_;
+  std::shared_ptr<VarBase> grads_;
 
   bool stop_gradient_;
 };

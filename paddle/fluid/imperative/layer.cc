@@ -114,7 +114,7 @@ class Autograd {
   }
 };
 
-framework::LoDTensor& VarBase::Grad() {
+framework::LoDTensor& VarBase::GradValue() {
   VLOG(3) << "get var grad " << var_desc_->Name();
   return *(grads_->var_->GetMutable<framework::LoDTensor>());
 }
