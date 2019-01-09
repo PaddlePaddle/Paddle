@@ -28,6 +28,45 @@ using SelectedRows = framework::SelectedRows;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+using platform::CPUDeviceContext;
+using platform::CUDADeviceContext;
+
+template <typename DeviceContext, typename T>
+class ClipByNormFunctor;
+
+template <typename T>
+class ClipByNormFunctor<CPUDeviceContext, T> {
+ public:
+  explicit ClipByNormFunctor(const CPUDeviceContext& ctx) {}
+  void operator()(const T* x, T* out, const size_t& numel, const T& max_norm) {
+    T x_norm(0);
+    for (size_t i = 0; i < numel; ++i) {
+      x_norm += x[i] * x[i];
+    }
+    x_norm = std::sqrt(x_norm);
+    T scaling(0);
+    if (x_norm > max_norm) {
+      scaling = max_norm / x_norm;
+    } else {
+      scaling = static_cast<T>(1);
+    }
+    for (size_t i = 0; i < numel; ++i) {
+      out[i] = x[i] * scaling;
+    }
+  }
+};
+
+#ifdef PADDLE_WITH_CUDA
+template <typename T>
+class ClipByNormFunctor<CUDADeviceContext, T> {
+ public:
+  explicit ClipByNormFunctor(const CUDADeviceContext& ctx) : ctx_(ctx) {}
+  void operator()(const T* x, T* out, const size_t& numel, const T& max_norm);
+
+ private:
+  const CUDADeviceContext& ctx_;
+};
+#endif
 
 template <typename DeviceContext, typename T>
 class ClipByNormKernel : public framework::OpKernel<T> {
@@ -69,17 +108,10 @@ class ClipByNormKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_NOT_NULL(input);
 
-    auto x = EigenVector<T>::Flatten(*input);
-    auto out = EigenVector<T>::Flatten(*output);
-    auto x_norm = x.square().sum().sqrt();
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
-
-    auto temp = (x_norm <= max_norm).template cast<T>().eval();
-    auto scaling = temp + (static_cast<T>(1) - temp) * max_norm / x_norm;
-    Eigen::array<int, 1> one_dim{{1}};
-    Eigen::DSizes<int, 1> m_dsize(input->numel());
-    out.device(place) = x * scaling.reshape(one_dim).broadcast(m_dsize);
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    ClipByNormFunctor<DeviceContext, T> functor(dev_ctx);
+    functor(input->data<T>(), output->mutable_data<T>(context.GetPlace()),
+            input->numel(), max_norm);
   }
 };
 
