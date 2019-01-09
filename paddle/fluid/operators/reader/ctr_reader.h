@@ -102,15 +102,15 @@ void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
 
 class CTRReader : public framework::FileReader {
  public:
-  explicit CTRReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue,
-                     int batch_size, size_t thread_num,
-                     const std::vector<std::string>& slots,
-                     const std::vector<std::string>& file_list)
-      : batch_size_(batch_size), slots_(slots), file_list_(file_list) {
+  CTRReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue,
+            int thread_num, const DataDesc& data_desc)
+      : data_desc_(data_desc) {
     PADDLE_ENFORCE_GT(thread_num, 0, "thread num should be larger then 0!");
     PADDLE_ENFORCE(queue != nullptr, "LoDTensorBlockingQueue must not be null");
-    PADDLE_ENFORCE_GT(file_list.size(), 0, "file list should not be empty");
-    thread_num_ = std::min<size_t>(file_list_.size(), thread_num);
+    PADDLE_ENFORCE_GT(data_desc_.file_names_.size(), 0,
+                      "file list should not be empty");
+
+    thread_num_ = std::min<size_t>(data_desc_.file_names_.size(), thread_num);
     queue_ = queue;
     SplitFiles();
     for (size_t i = 0; i < thread_num_; ++i) {
