@@ -18,7 +18,7 @@ from abc import abstractmethod
 from ....framework import Program
 from ..graph import ImitationGraph
 from ..graph import save_inference_graph_model
-from ....contrib import GraphQuantizeTranspiler
+from .quantization_performer import QuantizationPerformer
 
 __all__ = ['Quantizer', 'StaticQuantizer', 'DynamicQuantizer']
 
@@ -30,12 +30,12 @@ class Quantizer(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):
-        self._transpiler = None
+        self._performer = None
 
     @abstractmethod
     def quantize(self, graph, program_exe, scope):
-        assert self._transpiler is not None
-        need_inited = self._transpiler.training_transpile(graph)
+        assert self._performer is not None
+        need_inited = self._performer.quantize_transform(graph)
         init_program = Program()
         for var, initializer in need_inited.iteritems():
             init_program.global_block()._clone_variable(var)
@@ -69,9 +69,9 @@ class Quantizer(object):
             'server': _convert_for_server
         }
         test_graph = graph.clone(for_test=True).prune(feeds, fetches)
-        self._transpiler.freeze_graph(test_graph, place, scope)
+        self._performer.freeze_graph(test_graph, place, scope)
         if save_as_int8:
-            self._transpiler.convert_to_int8(test_graph, place, scope)
+            self._performer.convert_to_int8(test_graph, place, scope)
         if target_device in convert_funcs.keys():
             convert_funcs[target_device](test_graph)
         else:
@@ -79,6 +79,10 @@ class Quantizer(object):
         if dirname is None:
             print("The save path is None, so the model is not saved!")
         else:
+            if not isinstance(feeds, list):
+                feeds = [feeds]
+            if not isinstance(fetches, list):
+                fetches = [fetches]
             if not os.path.isdir(dirname):
                 os.makedirs(dirname)
             save_inference_graph_model(
@@ -97,7 +101,7 @@ class StaticQuantizer(Quantizer):
         self.weight_bits = weight_bits
         self.activation_bits = activation_bits
         self.window_size = window_size
-        self._transpiler = GraphQuantizeTranspiler(
+        self._performer = QuantizationPerformer(
             weight_bits=weight_bits,
             activation_bits=activation_bits,
             activation_quantize_type='range_abs_max',
@@ -131,7 +135,7 @@ class DynamicQuantizer(Quantizer):
         super(DynamicQuantizer, self).__init__()
         self.weight_bits = weight_bits
         self.activation_bits = activation_bits
-        self._transpiler = GraphQuantizeTranspiler(
+        self._performer = QuantizationPerformer(
             weight_bits=weight_bits,
             activation_bits=activation_bits,
             activation_quantize_type='abs_max',

@@ -20,7 +20,6 @@ import paddle.fluid as fluid
 from paddle.fluid.contrib.slim.graph.executor import get_executor
 from paddle.fluid.contrib.slim.graph import ImitationGraph
 from paddle.fluid.contrib.slim.graph import load_inference_graph_model
-from paddle.fluid.contrib.slim.graph import save_inference_graph_model
 from paddle.fluid.contrib.slim.quantization import StaticQuantizer
 from paddle.fluid.contrib.slim.quantization import DynamicQuantizer
 
@@ -47,7 +46,7 @@ def conv_net(img, label):
     return avg_loss
 
 
-class TestGraphQuantizeTranspiler(unittest.TestCase):
+class TestQuantizer(unittest.TestCase):
     def graph_quantize(self, use_cuda, seed, is_static=False):
         def build_program(main, startup, is_test):
             main.random_seed = seed
@@ -96,20 +95,20 @@ class TestGraphQuantizeTranspiler(unittest.TestCase):
             _ = exe.run(graph=graph,
                         feed=feeder.feed(data),
                         fetches=[loss.name])
-
+        save_path = 'static_quantize' if is_static else 'dynamic_quantize'
+        save_path = save_path + '_gpu' if use_cuda else save_path + '_cpu'
         test_graph = quantizer.convert_model(
             graph,
             place,
             fluid.global_scope(),
             feeds,
             loss,
+            dirname=save_path,
+            exe=exe,
             target_device='mobile',
             save_as_int8=True)
-        save_inference_graph_model('quantize_model_8bit', ['image', 'label'],
-                                   [loss.name], exe, test_graph)
         # Test whether the 8-bit parameter and model file can be loaded successfully.
-        [infer, feed, fetch] = load_inference_graph_model('quantize_model_8bit',
-                                                          exe)
+        [infer, feed, fetch] = load_inference_graph_model(save_path, exe)
         # Check the loaded 8-bit weight.
         w_8bit = np.array(fluid.global_scope().find_var('conv2d_1.w_0.int8')
                           .get_tensor())

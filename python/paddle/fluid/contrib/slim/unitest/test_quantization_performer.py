@@ -18,14 +18,13 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import six
-from paddle.fluid.contrib.quantize.graph_quantize_transpiler import GraphQuantizeTranspiler
-from paddle.fluid.contrib.quantize.graph_quantize_transpiler import _original_var_name
+from paddle.fluid.framework import Program
+from paddle.fluid.contrib.slim.quantization.quantization_performer import QuantizationPerformer
+from paddle.fluid.contrib.slim.quantization.quantization_performer import _original_var_name
 from paddle.fluid.contrib.slim.graph.executor import get_executor
 from paddle.fluid.contrib.slim.graph import ImitationGraph
 from paddle.fluid.contrib.slim.graph import load_inference_graph_model
 from paddle.fluid.contrib.slim.graph import save_inference_graph_model
-from paddle.fluid.contrib.slim.quantization import StaticQuantizer
-from paddle.fluid.contrib.slim.quantization import DynamicQuantizer
 
 
 def linear_fc(num):
@@ -92,7 +91,7 @@ def conv_net(img, label):
     return avg_loss
 
 
-class TestGraphQuantizeTranspiler(unittest.TestCase):
+class TestQuantizationPerformer(unittest.TestCase):
     def setUp(self):
         # since quant_op and dequant_op is not ready, use cos and sin for test
         self.weight_quant_op_type = 'fake_quantize_abs_max'
@@ -150,8 +149,9 @@ class TestGraphQuantizeTranspiler(unittest.TestCase):
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
             graph = ImitationGraph(main)
-            t = GraphQuantizeTranspiler(activation_quantize_type=quant_type)
-            t.training_transpile(graph)
+            performer = QuantizationPerformer(
+                activation_quantize_type=quant_type)
+            performer.quantize_transform(graph)
             self.check_graph(graph)
 
     def test_linear_fc_quant_abs_max(self):
@@ -170,8 +170,9 @@ class TestGraphQuantizeTranspiler(unittest.TestCase):
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
             graph = ImitationGraph(main)
-            t = GraphQuantizeTranspiler(activation_quantize_type=quant_type)
-            t.training_transpile(graph)
+            performer = QuantizationPerformer(
+                activation_quantize_type=quant_type)
+            performer.quantize_transform(graph)
             self.check_graph(graph)
 
     def test_residual_block_abs_max(self):
@@ -209,9 +210,14 @@ class TestGraphQuantizeTranspiler(unittest.TestCase):
         program_exe.run(startup)
 
         graph = ImitationGraph(main)
-        quantizer = StaticQuantizer()
-        # quantizer = DynamicQuantizer()
-        quantizer.quantize(graph, program_exe, fluid.global_scope())
+        performer = QuantizationPerformer()
+        # performer = QuantizationPerformer(activation_quantize_type='range_abs_max')
+        need_inited = performer.quantize_transform(graph)
+        init_program = Program()
+        for var, initializer in need_inited.iteritems():
+            init_program.global_block()._clone_variable(var)
+            initializer(var, init_program.global_block())
+        program_exe.run(program=init_program, scope=fluid.global_scope())
 
         iters = 5
         batch_size = 8
@@ -241,8 +247,7 @@ class TestGraphQuantizeTranspiler(unittest.TestCase):
                                       fetches=[loss.name, w_var.name])
 
         # Freeze program for inference, but the weight of fc/conv is still float type.
-        quantizer._transpiler.freeze_graph(test_graph, place,
-                                           fluid.global_scope())
+        performer.freeze_graph(test_graph, place, fluid.global_scope())
         test_loss2, = exe.run(graph=test_graph,
                               feed=feeder.feed(test_data),
                               fetches=[loss.name])
@@ -253,13 +258,11 @@ class TestGraphQuantizeTranspiler(unittest.TestCase):
 
         # Convert parameter to 8-bit.
         # Save the 8-bit parameter and model file.
-        quantizer._transpiler.convert_to_int8(test_graph, place,
-                                              fluid.global_scope())
-        save_inference_graph_model('graph_model_8bit', ['image', 'label'],
+        performer.convert_to_int8(test_graph, place, fluid.global_scope())
+        save_inference_graph_model('model_8bit', ['image', 'label'],
                                    [loss.name], exe, test_graph)
         # Test whether the 8-bit parameter and model file can be loaded successfully.
-        [infer, feed, fetch] = load_inference_graph_model('graph_model_8bit',
-                                                          exe)
+        [infer, feed, fetch] = load_inference_graph_model('model_8bit', exe)
         # Check the loaded 8-bit weight.
         w_8bit = np.array(fluid.global_scope().find_var('conv2d_1.w_0.int8')
                           .get_tensor())

@@ -14,13 +14,10 @@
 
 import collections
 import numpy as np
-from ....fluid import core
-from ....fluid.param_attr import ParamAttr
-from ....fluid.initializer import Constant
-from ....fluid import unique_name
-from ....fluid.framework import Variable
-
-__all__ = ['GraphQuantizeTranspiler']
+from .... import core
+from ....initializer import Constant
+from .... import unique_name
+from ....framework import Variable
 
 _QUANTIZABLE_OP_TYPES = ['conv2d', 'depthwise_conv2d', 'mul']
 
@@ -73,7 +70,7 @@ def quant(x, scale, num_bits):
     return y
 
 
-class GraphQuantizeTranspiler(object):
+class QuantizationPerformer(object):
     def __init__(self,
                  weight_bits=8,
                  activation_bits=8,
@@ -110,8 +107,9 @@ class GraphQuantizeTranspiler(object):
             from paddle.fluid.contrib.quantize import *
 
             graph = ImitationGraph(program)
-            t = GraphQuantizeTranspiler()
-            t.transpile(graph)
+            t = QuantizationPerformer()
+
+            t.quantize_transform(graph)
         """
         self.weight_bits = weight_bits
         self.activation_bits = activation_bits
@@ -251,7 +249,7 @@ class GraphQuantizeTranspiler(object):
             outputs={"Out": dequant_var})
         return dequant_var
 
-    def training_transpile(self, graph):
+    def quantize_transform(self, graph):
         _NEED_INITIALIZED_VARS_OR_PARAMS.clear()
         self.is_test = False
         if graph is None:
@@ -261,7 +259,7 @@ class GraphQuantizeTranspiler(object):
         grad_op_types = ['%s_grad' % (type) for type in _QUANTIZABLE_OP_TYPES]
         params = [p.name for p in graph.all_parameters()]
 
-        def _transpile_forward(graph, op):
+        def _transform_forward(graph, op):
             idx = graph.index(op)
             # insert quant op and dequant op
             for name in op.input_arg_names:
@@ -282,7 +280,7 @@ class GraphQuantizeTranspiler(object):
                 # rename the forward op inputs
                 op._rename_input(name, dequant_var.name)
 
-        def _transpile_backward(graph, op):
+        def _transform_backward(graph, op):
             no_dequanted_input_vars = True
             for name in op.input_arg_names:
                 if name in dequanted_vars:
@@ -297,10 +295,10 @@ class GraphQuantizeTranspiler(object):
         for op in list(graph.all_ops()):
             # rewrite the forward graph
             if op.type in _QUANTIZABLE_OP_TYPES:
-                _transpile_forward(graph, op)
+                _transform_forward(graph, op)
             # rename the backward op inputs
             if op.type in grad_op_types:
-                _transpile_backward(graph, op)
+                _transform_backward(graph, op)
         return _NEED_INITIALIZED_VARS_OR_PARAMS
 
     def freeze_graph(self, graph, place, scope, fuse_bn=False):
@@ -308,7 +306,7 @@ class GraphQuantizeTranspiler(object):
         Freeze input graph for inference.
 
         Args:
-            graph (Graph): the input graph to be transpile.
+            graph (Graph): the input graph to be freeze.
         """
         if graph is None:
             raise ValueError("The graph cannot be None!")
@@ -319,7 +317,7 @@ class GraphQuantizeTranspiler(object):
         self.is_test = True
 
         if fuse_bn:
-            # TODO: BNFuseTranspiler
+            # TODO: BNFuseQuantizationPerformer
             pass
 
         persistable_vars = [

@@ -51,7 +51,7 @@ class LinearModel(object):
         train_metrics = {"loss": avg_cost.name}
         eval_metrics = {"loss": avg_cost.name}
         graph = ImitationGraph(train_program)
-        #config = './config_dynamic.yaml'
+        # config = './config_dynamic.yaml'
         config = './config_static.yaml'
         comp_pass = build_compressor(
             place,
