@@ -352,6 +352,14 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 
     Tensor cudnn_workspace;
     void* cudnn_workspace_ptr = nullptr;
+    if ((input_data || filter_data) && exhaustive_search) {
+      cudnn_workspace =
+          ctx.AllocateTmpTensor<int8_t, platform::CUDADeviceContext>(
+              framework::make_ddim(
+                  {static_cast<int64_t>(workspace_size_limit)}),
+              dev_ctx);
+      cudnn_workspace_ptr = static_cast<void*>(cudnn_workspace.data<int8_t>());
+    }
 
     auto x_dims = framework::vectorize(input->dims());
     auto f_dims = framework::vectorize(filter->dims());
@@ -373,14 +381,6 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                   ->GetMutable<
                       AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>();
         }
-
-        cudnn_workspace =
-            ctx.AllocateTmpTensor<int8_t, platform::CUDADeviceContext>(
-                framework::make_ddim(
-                    {static_cast<int64_t>(workspace_size_limit)}),
-                dev_ctx);
-        cudnn_workspace_ptr =
-            static_cast<void*>(cudnn_workspace.data<int8_t>());
 
         data_algo = data_algo_cache->GetAlgorithm(
             x_dims, f_dims, strides, paddings, dilations, 0, [&]() {
@@ -447,6 +447,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                   ->GetMutable<
                       AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>();
         }
+
         filter_algo = f_algo_cache->GetAlgorithm(
             x_dims, f_dims, strides, paddings, dilations, 0, [&]() {
               int returned_algo_count;
