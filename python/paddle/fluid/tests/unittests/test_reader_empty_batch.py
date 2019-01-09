@@ -78,17 +78,10 @@ class TestReaderEmptyBatch(unittest.TestCase):
             startup_exe.run(startup_prog)
 
             exe = fluid.ParallelExecutor(self.use_cuda, loss_name=loss.name)
-            expect_iterations = 0
-            current_iterations = 0
             pyreader.start()
-            while (True):
-                try:
-                    exe.run(fetch_list=[])
-                    current_iterations += 1
-                except fluid.core.EOFException:
-                    pyreader.reset()
-                    break
-            self.assertEquals(current_iterations, expect_iterations)
+            with self.assertRaises(fluid.core.EOFException):
+                exe.run(fetch_list=[])
+            pyreader.reset()
 
 
 if __name__ == "__main__":
