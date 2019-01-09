@@ -40,7 +40,7 @@ class TemporaryAllocation : public memory::allocation::Allocation {
  *
  * There is one opportunity to free the allocations of temp_allocation_queue:
  *   - when the allocation size of opportunities exceeds a certain threshold
- *     (defined by FLAGS_limit_of_temporary_allocation).
+ *     (defined by FLAGS_limit_of_tmp_allocation).
  *
  * */
 class TemporaryAllocator : public memory::allocation::Allocator {

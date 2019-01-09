@@ -15,8 +15,10 @@
 #include "paddle/fluid/platform/temporary_allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 
-DEFINE_double(limit_of_temporary_allocation, -1,
-              "The up limit of temporary_allocation size.");
+DEFINE_int64(limit_of_tmp_allocation, -1,
+             "The up limit of temporary_allocation size.");
+DEFINE_double(reuse_tmp_allocation_excess_fraction, 2,
+              "The excess fraction of the reused tmp_allocation.");
 
 namespace paddle {
 namespace platform {
@@ -69,8 +71,8 @@ void TemporaryAllocator::Free(alloc::Allocation *allocation) {
              << " to delete queue: " << temp_allocation->size() << "; "
              << "wait_delete_mem: " << wait_delete_mem;
 
-    if (FLAGS_limit_of_temporary_allocation > 0 &&
-        wait_delete_mem > FLAGS_limit_of_temporary_allocation) {
+    if (FLAGS_limit_of_tmp_allocation > 0 &&
+        wait_delete_mem > static_cast<size_t>(FLAGS_limit_of_tmp_allocation)) {
       PADDLE_ENFORCE(callback_ != nullptr, "The callback is non-initialized.");
       Release(callback_);
     }
@@ -96,10 +98,13 @@ alloc::Allocation *TemporaryAllocator::AllocateImpl(
     // Find available allocation in temp_mem_map.
     std::unique_lock<std::mutex> lock(mtx_);
     if (temp_mem_map_->size()) {
-      auto it = temp_mem_map_->equal_range(size);
-      if (it.first != it.second) {
-        auto tmp_ptr = it.first->second;
-        temp_mem_map_->erase(it.first);
+      auto it = temp_mem_map_->lower_bound(size);
+      // FIXME(zcd): Not sure the best value of excess fraction.
+      if (it != temp_mem_map_->end() &&
+          it->first < static_cast<size_t>(
+                          size * FLAGS_reuse_tmp_allocation_excess_fraction)) {
+        auto tmp_ptr = it->second;
+        temp_mem_map_->erase(it);
         wait_delete_mem_ -= tmp_ptr->size();
         VLOG(10) << "Reuse temporary allocation: " << tmp_ptr->ptr() << ": "
                  << tmp_ptr->size();
