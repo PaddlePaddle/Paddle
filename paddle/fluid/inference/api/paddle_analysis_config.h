@@ -135,7 +135,8 @@ struct AnalysisConfig {
    * subgraph is less than this, it will not transfer to TensorRT engine.
    */
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
-                            int max_batch_size = 1, int min_subgraph_size = 3);
+                            int max_batch_size = 1, int min_subgraph_size = 3,
+                            std::string precision = "FP32");
   /** A boolean state telling whether the TensorRT engine is used.
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
@@ -231,6 +232,7 @@ struct AnalysisConfig {
   //  We set this variable to control the minimum number of nodes in the
   //  subgraph, 3 as default value.
   int tensorrt_min_subgraph_size_{3};
+  std::string tensorrt_precision_mode_;
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;

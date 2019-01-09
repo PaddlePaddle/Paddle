@@ -67,9 +67,17 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
       pass->Set("min_subgraph_size",
                 new int(argument->tensorrt_min_subgraph_size()));
+      pass->Set(
+          "program",
+          new framework::ProgramDesc *(
+              const_cast<framework::ProgramDesc *>(&argument->main_program())));
+      pass->Set("precision_mode",
+                new std::string(argument->tensorrt_precision_mode()));
+      pass->Set("model_dir", new std::string(argument->model_path()));
     }
 
     // graph_ = pass->Apply(std::move(graph_));
+
     pre_pass = pass_name;
 
     passes_.emplace_back(std::move(pass));
@@ -94,7 +102,8 @@ framework::proto::ProgramDesc IRPassManager::AcquireProgram(
   auto pass =
       framework::ir::PassRegistry::Instance().Get("graph_to_program_pass");
 
-  ProgramDesc desc(program);
+  ProgramDesc desc;
+  desc.CopyFrom(*const_cast<ProgramDesc &>(program).Proto());
   pass->SetNotOwned("program", &desc);
   auto *the_graph = graph->release();
   *graph = pass->Apply(std::unique_ptr<Graph>(the_graph));
