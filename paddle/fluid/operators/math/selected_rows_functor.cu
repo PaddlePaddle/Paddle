@@ -373,10 +373,17 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
       auto& input_rows = input->rows();
       dim3 grid1(input_rows.size(), 1);
 
+      VLOG(10) << "stream:" << context.stream() << ", input_data:" << input_data
+               << ", input_rows.CUDAData(context.GetPlace()):"
+               << input_rows.CUDAData(context.GetPlace())
+               << ", context place:" << context.GetPlace();
+
       MergeAddKernel<T, 256><<<grid1, threads, 0, context.stream()>>>(
           input_data, input_rows.CUDAData(context.GetPlace()), out_data,
           out.mutable_rows()->CUDAMutableData(context.GetPlace()),
           out.rows().size(), input_width);
+
+      context.Wait();
     }
   }
 };

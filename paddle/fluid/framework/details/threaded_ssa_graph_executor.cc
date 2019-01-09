@@ -12,10 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <sstream>  // std::stringstream
+#include <string>
+
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
@@ -206,27 +210,154 @@ void ThreadedSSAGraphExecutor::InsertPendingVar(
     ready_vars->Push(var);
   }
 }
+template <typename T>
+std::string GetReadableData(const void *in_data, int64_t len) {
+  if (len < 0) {
+    return "";
+  }
+
+  T *data = reinterpret_cast<T *>(in_data);
+
+  std::stringstream ss;
+  int64_t r0 = 0;
+  for (r0 = 0; r0 < len && r0 < 20; r0++) {
+    ss << data[r0] << ",";
+  }
+
+  int64_t r1 = len - 20;
+  if (r1 <= r0) {
+    r1 = r0;
+  } else {
+    ss << "...";
+  }
+
+  for (; r1 < len; r1++) {
+    ss << data[r1] << ",";
+  }
+
+  return ss.str();
+}
+
+std::string GetTensorInfo(const framework::Tensor &in_tensor) {
+  std::stringstream ss;
+  if (in_tensor.IsInitialized()) {
+    ss << " not initialized";
+    return ss.str();
+  }
+
+  ss << " place:" << in_tensor.place() << ", dims:[" << in_tensor.dims() << "]";
+
+  auto dtype = framework::ToTypeIndex(in_tensor.type());
+  framework::Tensor tensor;
+  if (platform::is_cpu_place(in_tensor.place())) {
+    tensor.ShareDataWith(in_tensor);
+  } else {
+    // copy data to cpu to print
+    platform::CPUPlace cpu_place;
+    framework::TensorCopy(in_tensor, cpu_place, &tensor);
+  }
+
+  ss << ", data:[";
+  void *data = tensor.data<void>();
+  if (framework::IsType<const float>(dtype)) {
+    ss << GetReadableData<const float>(data, tensor.numel());
+  } else if (framework::IsType<const double>(dtype)) {
+    ss << GetReadableData<const double>(data, tensor.numel());
+  } else if (framework::IsType<const int>(dtype)) {
+    ss << GetReadableData<const int>(data, tensor.numel());
+  } else if (framework::IsType<const int64_t>(dtype)) {
+    ss << GetReadableData<const int64_t>(data, tensor.numel());
+  } else if (framework::IsType<const bool>(dtype)) {
+    ss << GetReadableData<const bool>(data, tensor.numel());
+  } else {
+    // TODO(gongwb): add more data types support.
+    ss << "\tdata: unprintable type: " << dtype.name();
+  }
+  ss << "]";
+
+  return ss.str();
+}
+
+std::string GetSelectedRowsInfo(const framework::SelectedRows &slr) {
+  std::stringstream ss;
+  ss << "height:" << slr.height() << ", rows:[";
+  for (unsigned int i = 0; i < slr.rows().size(); i++) {
+    if (i != slr.rows().size() - 1) {
+      ss << slr.rows()[i] << ",";
+    } else {
+      ss << slr.rows()[i];
+    }
+  }
+  ss << "], tensor:" << GetTensorInfo(slr.value());
+
+  return ss.str();
+}
+
+std::string GetVarInfo(const framework::Scope &scope, const std::string &name) {
+  auto var = scope.FindVar(name);
+  std::stringstream ss;
+  if (var == NULL) {
+    ss << "can't find " << name;
+    return ss.str();
+  }
+
+  if (var->IsType<framework::LoDTensor>()) {
+    return GetTensorInfo(var->Get<LoDTensor>());
+  }
+
+  if (var->IsType<framework::SelectedRows>()) {
+    return GetSelectedRowsInfo(var->Get<SelectedRows>());
+  }
+
+  ss << "can't print " << name;
+  return ss.str();
+}
+
+void PrintOutputs(const details::OpHandleBase &op,
+                  const std::vector<framework::Scope *> &local_scopes) {
+  auto &vars = op.Outputs();
+  for (auto it : vars) {
+    details::VarHandle *var = dynamic_cast<details::VarHandle *>(it);
+    if (var == nullptr) continue;
+
+    // std::cout<< "VarHandle name:" << var->DebugString();
+    VLOG(10) << " with data name:" << var->name_ << ", var info:"
+             << GetVarInfo(*local_scopes[var->scope_idx_], var->name_);
+  }
+}
 
 void ThreadedSSAGraphExecutor::RunOp(
     const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
     details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
     try {
-      if (VLOG_IS_ON(10)) {
-        VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
-      }
+      VLOG(10) << "begin " << op << " " << op->Name() << " : "
+               << op->DebugString();
+
       if (LIKELY(!strategy_.dry_run_)) {
         op->Run(strategy_.use_cuda_);
       }
+
       VLOG(10) << op << " " << op->Name() << " Done ";
       running_ops_--;
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << "Signal posted";
 
       if (FLAGS_benchmark) {
+        for (auto place : places_) {
+          const platform::CUDADeviceContext *dev_ctx =
+              dynamic_cast<const platform::CUDADeviceContext *>(
+                  op->DeviceContext(place));
+          if (dev_ctx == nullptr) continue;
+          VLOG(10) << "place:" << place
+                   << ", dev_ctx place:" << dev_ctx->GetPlace();
+        }
         VLOG(10) << op->Name() << " wait begin";
         op->Wait();
         VLOG(10) << op->Name() << " wait end";
+        VLOG(10) << "end " << op << " " << op->Name() << " : "
+                 << op->DebugString();
+        PrintOutputs(*op, local_scopes_);
       }
     } catch (...) {
       exception_holder_.Catch(std::current_exception());

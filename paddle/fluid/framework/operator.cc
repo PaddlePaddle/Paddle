@@ -177,7 +177,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   } else {
     RunImpl(scope, place);
   }
-  VLOG(3) << place << " " << DebugStringEx(&scope);
+  VLOG(4) << place << " " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {

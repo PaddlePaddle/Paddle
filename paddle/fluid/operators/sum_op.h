@@ -36,6 +36,7 @@ class SumKernel : public framework::OpKernel<T> {
     auto out_var = context.OutputVar("Out");
 
     bool in_place = out_var == in_vars[0];
+    VLOG(10) << "SumKernel in_place: " << in_place;
 
     if (out_var->IsType<framework::LoDTensor>()) {
       auto *out = context.Output<LoDTensor>("Out");
@@ -87,6 +88,8 @@ class SumKernel : public framework::OpKernel<T> {
         return;
       }
 
+      auto &dev_ctx = context.template device_context<DeviceContext>();
+
       std::vector<const paddle::framework::SelectedRows *> inputs;
       SelectedRows temp_in0;
 
@@ -97,6 +100,8 @@ class SumKernel : public framework::OpKernel<T> {
         framework::TensorCopy(in0.value(), in0.place(),
                               context.device_context(),
                               temp_in0.mutable_value());
+        dev_ctx.Wait();
+        VLOG(10) << "sum op wait end1";
         inputs.push_back(&temp_in0);
         for (size_t i = 1; i < in_vars.size(); ++i) {
           auto &in = in_vars[i]->Get<SelectedRows>();
@@ -128,6 +133,8 @@ class SumKernel : public framework::OpKernel<T> {
         merge_add(context.template device_context<DeviceContext>(), inputs,
                   out);
 
+        dev_ctx.Wait();
+        VLOG(10) << "sum op wait end2";
         // out->SyncIndex();
       } else {
         // no data, just set a empty out tensor.

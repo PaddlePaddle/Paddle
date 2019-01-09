@@ -24,7 +24,7 @@ VarHandle::~VarHandle() { VLOG(4) << "deleting var handle " << DebugString(); }
 
 std::string VarHandle::DebugString() const {
   std::stringstream ss;
-  ss << name_ << ":" << place_;
+  ss << name_ << ":" << place_ << ":" << scope_idx_ << ":" << version_;
   return ss.str();
 }
 

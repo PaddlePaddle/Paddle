@@ -32,7 +32,6 @@ void ComputationOpHandle::RunImpl() {
   WaitInputVarGenerated(place_);
 
   auto run_func = [this]() {
-    std::cout << "DebugString:" << op_->DebugString();
     op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
   };
 
