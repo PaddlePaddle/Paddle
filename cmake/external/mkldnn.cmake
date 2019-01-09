@@ -55,7 +55,7 @@ ExternalProject_Add(
     ${MKLDNN_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DEPENDS             ${MKLDNN_DEPENDS}
-    GIT_REPOSITORY      "https://github.com/01org/mkl-dnn.git"
+    GIT_REPOSITORY      "https://github.com/intel/mkl-dnn.git"
     GIT_TAG             "830a10059a018cd2634d94195140cf2d8790a75a"
     PREFIX              ${MKLDNN_SOURCES_DIR}
     UPDATE_COMMAND      ""
@@ -106,10 +106,10 @@ else(WIN32)
     SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/libmkldnn.so.0)
     ADD_CUSTOM_COMMAND(OUTPUT ${MKLDNN_SHARED_LIB}
             COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB}
-            DEPENDS mkldnn)
+            DEPENDS mkldnn shared_mkldnn)
 endif(WIN32)
 ADD_CUSTOM_TARGET(mkldnn_shared_lib ALL DEPENDS ${MKLDNN_SHARED_LIB})
-
+ADD_DEPENDENCIES(mkldnn_shared_lib ${MKLDNN_PROJECT} mkldnn)
 IF(WITH_C_API)
   INSTALL(FILES ${MKLDNN_SHARED_LIB} DESTINATION lib)
 ENDIF()

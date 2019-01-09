@@ -24,26 +24,21 @@ __all__ = ['PyLayer']
 
 
 class PyLayer(core.Layer):
-    def __init__(self):
-        self._built = False
-
-    def __call__(self, inputs):
-        if not isinstance(inputs, list) and not isinstance(inputs, tuple):
-            inputs = [inputs]
-
-        var_inputs = []
-        for x in inputs:
-            py_var = base.to_variable(x)
-            var_inputs.append(py_var)
-        if not self._built:
-            self._build_once(inputs)
-            self._built = True
-
-        outputs = self.forward(var_inputs)
-        return outputs
+    def __init__(self, dtype=core.VarDesc.VarType.FP32, name=None):
+        self._once_built = False
+        self._dtype = dtype
 
     def _build_once(self, inputs):
         pass
 
-    def forward(self, inputs):
-        return []
+    def __call__(self, *inputs):
+        if not self._once_built:
+            self._build_once(*inputs)
+            self._once_built = True
+
+        outputs = self.forward(*inputs)
+
+        return outputs
+
+    def forward(self, *inputs):
+        raise NotImplementedError

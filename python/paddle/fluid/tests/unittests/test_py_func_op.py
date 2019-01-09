@@ -26,7 +26,7 @@ os.environ['CPU_NUM'] = str(dev_cnt)
 
 
 def dummy_func_with_no_input():
-    return float(1.0)
+    return np.array([0], dtype='float32')
 
 
 def dummy_func_with_no_output(x):
@@ -105,7 +105,7 @@ def simple_fc_net(img, label, use_py_func_op):
             name='test_tmp_var', dtype='float32', shape=[1])
         fluid.layers.py_func(
             func=dummy_func_with_no_input, x=None, out=dummy_var)
-
+        loss += dummy_var
         fluid.layers.py_func(func=dummy_func_with_no_output, x=loss, out=None)
 
     loss = fluid.layers.mean(loss)
@@ -174,7 +174,7 @@ class TestPyFuncOpUseExecutor(unittest.TestCase):
             self.assertAlmostEqual(max_diff, 0, delta=1e-3)
 
 
-class TestPyFuncOpUseParallelExecutor(unittest.TestCase):
+class TestPyFuncOpUseParallelExecutor(TestPyFuncOpUseExecutor):
     def setUp(self):
         self.use_parallel_executor = True
 
