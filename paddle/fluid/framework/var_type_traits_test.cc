@@ -45,10 +45,11 @@ struct TypeIndexChecker {
     constexpr auto kId = VarTypeTrait<Type>::kId;
     std::type_index actual_type(typeid(Type));
     EXPECT_EQ(std::string(ToTypeName(kId)), std::string(actual_type.name()));
-    EXPECT_EQ(ToTypeIndex(kId), actual_type);
-    EXPECT_EQ(ToTypeId(actual_type), kId);
-    EXPECT_EQ(ToTypeIndex(ToTypeId(actual_type)), actual_type);
-    EXPECT_EQ(ToTypeId(ToTypeIndex(kId)), kId);
+    EXPECT_EQ(VarTraitIdToTypeIndex(kId), actual_type);
+    EXPECT_EQ(TypeIndexToVarTraitId(actual_type), kId);
+    EXPECT_EQ(VarTraitIdToTypeIndex(TypeIndexToVarTraitId(actual_type)),
+              actual_type);
+    EXPECT_EQ(TypeIndexToVarTraitId(VarTraitIdToTypeIndex(kId)), kId);
 
     EXPECT_TRUE(var_id_set->count(kId) == 0);              // NOLINT
     EXPECT_TRUE(type_index_set->count(actual_type) == 0);  // NOLINT
