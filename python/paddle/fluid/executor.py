@@ -19,6 +19,8 @@ import contextlib
 import six
 from .framework import Program, default_main_program, Variable
 from . import core
+from core import NativeConfig as InferNativeConfig
+from core import AnalysisConfig as InferAnalysisConfig
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
