@@ -310,8 +310,6 @@ void ReadCsvData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
         platform::CPUPlace());
     memcpy(label_tensor_data, batch_label.data(),
            batch_label.size() * sizeof(int64_t));
-    auto dim =
-        framework::make_ddim({static_cast<int64_t>(batch_label.size()), 1});
     lod_datas.push_back(label_tensor);
 
     // insert tensor for each dense_slots
