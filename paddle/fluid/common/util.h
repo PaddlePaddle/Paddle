@@ -12,8 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
+
+#include <sys/time.h>
 #include <functional>
-#include<sys/time.h>
 
 namespace paddle {
 namespace common {
@@ -24,9 +26,9 @@ inline double GetCurrentUS() {
   return 1e+6 * time.tv_sec + time.tv_usec;
 }
 
-inline size_t thread_id() {
+inline size_t GetHashThreadId() {
   return std::hash<std::thread::id>{}(std::this_thread::get_id());
 }
 
-}  // namespace framework
+}  // namespace common
 }  // namespace paddle
