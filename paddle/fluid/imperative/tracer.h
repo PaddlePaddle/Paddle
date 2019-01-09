@@ -146,10 +146,10 @@ class Tracer {
             grad_in_vars.push_back(fwd_var_it->second->var_);
           } else {
             VarBase* var = vars[var_it->second];
-            if (!var->grads_->IsInitialized()) {
-              InitVar(var->var_, var->grads_);
+            if (!var->grads_->var_->IsInitialized()) {
+              InitVar(var->var_, var->grads_->var_);
             }
-            grad_in_vars.push_back(var->grads_);
+            grad_in_vars.push_back(var->grads_->var_);
           }
         }
       }
@@ -161,10 +161,10 @@ class Tracer {
           auto var_it = grad_to_var->find(grad_outvar);
           PADDLE_ENFORCE(var_it != grad_to_var->end());
           VarBase* var = vars[var_it->second];
-          if (!var->grads_->IsInitialized()) {
-            InitVar(var->var_, var->grads_);
+          if (!var->grads_->var_->IsInitialized()) {
+            InitVar(var->var_, var->grads_->var_);
           }
-          grad_out_vars.push_back(var->grads_);
+          grad_out_vars.push_back(var->grads_->var_);
         }
       }
     }

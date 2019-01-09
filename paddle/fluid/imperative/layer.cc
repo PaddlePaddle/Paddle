@@ -42,7 +42,7 @@ void AddTo(Variable* src, Variable* dst) {
                  src_tensor->numel());
   float* dst_data = dst_tensor->mutable_data<float>(platform::CPUPlace());
   const float* src_data = src_tensor->data<float>();
-  for (size_t i = 0; i < src_tensor->numel(); ++i) {
+  for (int64_t i = 0; i < src_tensor->numel(); ++i) {
     dst_data[i] += src_data[i];
   }
 }
@@ -116,7 +116,7 @@ class Autograd {
 
 framework::LoDTensor& VarBase::Grad() {
   VLOG(3) << "get var grad " << var_desc_->Name();
-  return *grads_->GetMutable<framework::LoDTensor>();
+  return *(grads_->var_->GetMutable<framework::LoDTensor>());
 }
 
 std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
@@ -173,7 +173,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
 void VarBase::RunBackward() {
   if (!pre_op_) return;
 
-  auto grads_t = grads_->GetMutable<framework::LoDTensor>();
+  auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
   float* data = grads_t->mutable_data<float>(platform::CPUPlace());
   std::fill(data, data + grads_t->numel(), 1.0);
 
