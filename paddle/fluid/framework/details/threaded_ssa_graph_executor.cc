@@ -76,13 +76,12 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &pending_ops,
                  &pending_vars, ready_vars.get(), &fetch_data);
 
-  auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) -> bool {
+  auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
     for (auto *op : set) {
       running_ops_++;
       RunOp(ready_vars, op);
     }
     set.clear();
-    return true;
   };
 
   auto enforce_exception = [&]() {
@@ -106,22 +105,15 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     //
     // NOTE: DelayedOps have a lower priority. It will be scheduled after all
     // ready_ops have been performed.
-    bool continued = true;
     if (ready_ops.empty() && strategy_.allow_op_delay_ && running_ops_ == 0) {
-      continued = run_all_ops(delayed_ops);
+      run_all_ops(delayed_ops);
     } else {
-      continued = run_all_ops(ready_ops);
+      run_all_ops(ready_ops);
     }
 
     // 2. Find ready variable
     bool timeout;
     auto cur_ready_vars = ready_vars->PopAll(1, &timeout);
-
-    if (!continued) {
-      enforce_exception();
-      ready_ops.clear();
-      break;
-    }
 
     if (timeout) {
       enforce_exception();
