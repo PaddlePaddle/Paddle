@@ -87,12 +87,15 @@ class OpBase;
 
 class VarBase {
  public:
-  VarBase()
+  VarBase() : VarBase(new framework::Variable(), new framework::Variable()) {}
+
+  // Owns `var` and `grad`
+  VarBase(framework::Variable* var, framework::Variable* grad)
       : pre_op_(nullptr),
         pre_op_out_idx_(-1),
         var_desc_(nullptr),
-        var_(new framework::Variable()),
-        grads_(new framework::Variable()),
+        var_(var),
+        grads_(grad),
         stop_gradient_(false) {}
 
   explicit VarBase(bool stop_gradient)
@@ -131,8 +134,8 @@ class OpBase {
  public:
   OpBase()
       : op_desc_(nullptr),
-        grad_op_desc_(nullptr),
         forward_id_(-1),
+        grad_op_desc_(nullptr),
         backward_id_(-1) {}
 
   virtual ~OpBase() {
@@ -141,10 +144,13 @@ class OpBase {
 
   std::map<std::string, std::vector<VarBase*>> ApplyGrad();
 
+  // One of `op_desc_` or `forward_id_` is set, not both.
+  // For pure python PyLayer, use `forward_id_`, otherwise, use op_desc_.
   framework::OpDesc* op_desc_;
-  framework::OpDesc* grad_op_desc_;
-
   int forward_id_;
+  // When has backward, one of `grad_op_desc_` or `backward_id_` is set,
+  // not both.
+  framework::OpDesc* grad_op_desc_;
   int backward_id_;
 
   std::map<std::string, std::vector<VarBase*>> input_vars_;
@@ -167,76 +173,23 @@ class Layer {
   }
 };
 
-static void CallPythonFunc(const py::object& callable,
-                           const std::vector<framework::LoDTensor>& ins,
-                           std::vector<VarBase*>* outs) {
-  py::gil_scoped_acquire guard;
-  py::tuple in_args(ins.size());
-  for (size_t i = 0; i < ins.size(); ++i) {
-    in_args[i] = ins[i].IsInitialized() ? py::cast(ins[i]) : py::cast(nullptr);
-  }
-
-  // TODO(panyx0718): Who owns the returned LoDTensor.
-  auto ret = callable(in_args);
-  auto ret_tuple = py::cast<py::tuple>(ret);
-  size_t ret_num = py::len(ret_tuple);
-  for (size_t i = 0; i < ret_num; ++i) {
-    try {
-      auto* py_out_tensor = py::cast<framework::LoDTensor*>(ret_tuple[i]);
-      PADDLE_ENFORCE_NOT_NULL(py_out_tensor,
-                              "Output tensor %d should not be nullptr", i);
-      VarBase* var = new VarBase();
-      auto* tensor = var->var_->GetMutable<framework::LoDTensor>();
-      tensor->ShareDataWith(*py_out_tensor);
-      tensor->set_lod(py_out_tensor->lod());
-      outs->push_back(var);
-    } catch (py::cast_error&) {
-      PADDLE_THROW("The %d-th output must be LoDTensor", i);
-    }
-  }
-}
-
-static void CallPythonFunc(const py::object& callable,
-                           const std::vector<framework::LoDTensor>& ins,
-                           std::vector<framework::Variable*>* outs) {
-  py::gil_scoped_acquire guard;
-  py::tuple in_args(ins.size());
-  for (size_t i = 0; i < ins.size(); ++i) {
-    in_args[i] = ins[i].IsInitialized() ? py::cast(ins[i]) : py::cast(nullptr);
-  }
-  VLOG(3) << "pyfunc in " << py::len(in_args);
-
-  // TODO(panyx0718): Who owns the returned LoDTensor.
-  auto ret = callable(in_args);
-  auto ret_tuple = py::cast<py::tuple>(ret);
-  size_t ret_num = py::len(ret_tuple);
-  VLOG(3) << "pyfunc out " << ret_num;
-  for (size_t i = 0; i < ret_num; ++i) {
-    try {
-      auto* py_out_tensor = py::cast<framework::LoDTensor*>(ret_tuple[i]);
-      PADDLE_ENFORCE_NOT_NULL(py_out_tensor,
-                              "Output tensor %d should not be nullptr", i);
-      auto* tensor = (*outs)[i]->GetMutable<framework::LoDTensor>();
-      tensor->ShareDataWith(*py_out_tensor);
-      tensor->set_lod(py_out_tensor->lod());
-    } catch (py::cast_error&) {
-      PADDLE_THROW("The %d-th output must be LoDTensor", i);
-    }
-  }
-}
-
 class PyLayer {
  public:
   virtual ~PyLayer() {}
 
   static void RegisterFunc(int func_id, const py::object& py_func);
 
+  static int NumFuncs();
+
   static std::vector<VarBase*> Apply(int func_id,
                                      const std::vector<VarBase*>& inputs);
 
-  static void ApplyGrad(int func_id,
-                        const std::vector<framework::Variable*>& inputs,
-                        std::vector<framework::Variable*>* outputs);
+  static std::vector<framework::Variable*> ApplyGrad(
+      int func_id, const std::vector<framework::Variable*>& inputs);
+
+ private:
+  static std::vector<framework::Variable*> CallPythonFunc(
+      const py::object& callable, const std::vector<framework::Variable*>& ins);
 };
 
 }  // namespace imperative
