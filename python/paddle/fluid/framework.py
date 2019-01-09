@@ -379,7 +379,7 @@ class Variable(object):
         self._ivar._run_backward()
 
     def _gradient(self):
-        return np.array(self._ivar._grad())
+        return np.array(self._ivar._grad_value())
 
     def __str__(self):
         return self.to_string(True)
