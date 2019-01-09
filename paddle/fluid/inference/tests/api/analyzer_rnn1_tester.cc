@@ -204,12 +204,10 @@ void PrepareZeroCopyInputs(ZeroCopyTensor *lod_attention_tensor,
 }
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->prog_file = FLAGS_infer_model + "/__model__";
-  cfg->param_file = FLAGS_infer_model + "/param";
-  cfg->use_gpu = false;
-  cfg->device = 0;
-  cfg->specify_input_name = true;
-  cfg->enable_ir_optim = true;
+  cfg->SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
+  cfg->DisableGpu();
+  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim();
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -225,10 +223,10 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 TEST(Analyzer_rnn1, profile) {
-  contrib::AnalysisConfig cfg(false);
+  contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg.fraction_of_gpu_memory = 0.1;
-  cfg.pass_builder()->TurnOnDebug();
+  cfg.DisableGpu();
+  cfg.SwitchIrDebug();
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -293,16 +291,18 @@ TEST(Analyzer_rnn1, multi_thread) {
 TEST(Analyzer_rnn1, ZeroCopy) {
   AnalysisConfig config;
   SetConfig(&config);
-  config.use_feed_fetch_ops = false;
+  config.SwitchUseFeedFetchOps(false);
 
   PaddlePlace place;
 
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
-  config.use_feed_fetch_ops = true;
-  auto native_predictor = CreatePaddlePredictor<NativeConfig>(config);
+  config.SwitchUseFeedFetchOps(true);
+  auto native_predictor =
+      CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
 
-  config.use_feed_fetch_ops = true;  // the analysis predictor needs feed/fetch.
+  config.SwitchUseFeedFetchOps(
+      true);  // the analysis predictor needs feed/fetch.
   auto analysis_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
 #define NEW_TENSOR(name__) \
@@ -362,7 +362,7 @@ TEST(Analyzer_rnn1, ZeroCopy) {
 TEST(Analyzer_rnn1, ZeroCopyMultiThread) {
   AnalysisConfig config;
   SetConfig(&config);
-  config.use_feed_fetch_ops = false;
+  config.SwitchUseFeedFetchOps(false);
 
 #define NEW_TENSOR(name__) \
   auto name__##_tensor = predictor->GetInputTensor(#name__);
