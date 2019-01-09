@@ -334,7 +334,7 @@ def assign(input, output=None, init_once=False):
             values = [int(v) for v in input.flat]
         else:
             raise ValueError("Unsupported dtype %s", input.dtype)
-        if input.size > 1024 * 1024:
+        if input.size > 1024 * 1024 * 5:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
 
