@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <cuda_runtime_api.h>
 #include <atomic>
 #include <memory>
 #include <mutex>
@@ -23,6 +22,7 @@
 #include <vector>
 
 #include "NvInfer.h"
+#include "cuda_runtime_api.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/platform/place.h"
