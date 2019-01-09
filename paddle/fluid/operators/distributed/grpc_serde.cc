@@ -122,8 +122,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   if (var->IsType<framework::SelectedRows>()) {
     auto* slr = var->GetMutable<framework::SelectedRows>();
     ProtoEncodeHelper e2(static_cast<char*>(buf), 128);
-    size_t rows_memory_size =
-        slr->rows().size() * framework::SizeOfType(typeid(int64_t));
+    size_t rows_memory_size = slr->rows().size() * sizeof(int64_t);
     e2.WriteVarlengthBeginning(VarMsg::kRowsFieldNumber, rows_memory_size);
     slices[2] = ::grpc::Slice(e2.size());
     memcpy(const_cast<uint8_t*>(slices[2].begin()), e2.data(), e2.size());

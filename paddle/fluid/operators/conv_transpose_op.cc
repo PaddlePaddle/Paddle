@@ -95,9 +95,8 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
 
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                 ctx.GetPlace(), layout_, library_);
 }
 
 void Conv2DTransposeOpMaker::Make() {
@@ -314,9 +313,8 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
 
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                 ctx.GetPlace(), layout_, library_);
 }
 
 }  // namespace operators

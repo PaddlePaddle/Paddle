@@ -106,7 +106,7 @@ void ReduceOpHandle::RunImpl() {
         if (!FLAGS_cpu_deterministic) {
           ReduceLoDTensor func(lod_tensors,
                                out_var->GetMutable<framework::LoDTensor>());
-          VisitDataType(ToDataType(lod_tensors[0]->type()), func);
+          VisitDataType(lod_tensors[0]->type(), func);
         } else {
           // We sum lod_tensors to reduce_sum_trg which is in local_scopes_0
           // here, but it doesn't mean reduce_sum_trg must be in local_scopes_0.
@@ -116,7 +116,7 @@ void ReduceOpHandle::RunImpl() {
                                       ->FindVar(out_var_handle->name_)
                                       ->GetMutable<framework::LoDTensor>();
           ReduceLoDTensor func(lod_tensors, &reduce_sum_trg);
-          VisitDataType(ToDataType(lod_tensors[0]->type()), func);
+          VisitDataType(lod_tensors[0]->type(), func);
 
           auto trg = out_var->GetMutable<framework::LoDTensor>();
           if (reduce_sum_trg.data<void>() != trg->data<void>()) {

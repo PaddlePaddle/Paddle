@@ -92,10 +92,8 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   }
 #endif
 
-  auto input_data_type =
-      framework::ToDataType(ctx.Input<Tensor>("Input")->type());
-  auto filter_data_type =
-      framework::ToDataType(ctx.Input<Tensor>("Filter")->type());
+  auto input_data_type = ctx.Input<Tensor>("Input")->type();
+  auto filter_data_type = ctx.Input<Tensor>("Filter")->type();
   PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
                     "input and filter data type should be consistent");
 
@@ -360,9 +358,8 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   }
 #endif
 
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                 ctx.GetPlace(), layout_, library_);
 }
 
 }  // namespace operators
