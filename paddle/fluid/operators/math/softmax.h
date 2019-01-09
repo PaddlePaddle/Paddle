@@ -50,13 +50,6 @@ class SoftmaxGradCUDNNFunctor {
                   framework::Tensor* x_grad);
 };
 
-template <typename T, typename ACCURATE_T>
-class SoftmaxCudaAccurateFunctor {
- public:
-  void operator()(const platform::CUDADeviceContext& ctx,
-                  const framework::Tensor* X, framework::Tensor* Y,
-                  bool log_space = false);
-};
 #endif
 
 }  // namespace math

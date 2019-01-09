@@ -70,7 +70,6 @@ class Optimizer(object):
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
-        self._backward_called = False
 
     def _create_global_learning_rate(self):
         lr = self._global_learning_rate()
