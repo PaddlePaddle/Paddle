@@ -89,6 +89,7 @@ class CpuPassStrategy : public PassStrategy {
     passes_.assign({
         "infer_clean_graph_pass",         //
         "attention_lstm_fuse_pass",       //
+        "seqpool_concat_fuse_pass",       //
         "seqconv_eltadd_relu_fuse_pass",  //
         // "embedding_fc_lstm_fuse_pass", //
         "fc_lstm_fuse_pass",             //

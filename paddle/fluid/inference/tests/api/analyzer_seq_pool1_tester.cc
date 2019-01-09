@@ -177,8 +177,12 @@ TEST(Analyzer_seq_pool1, fuse_statis) {
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
   auto fuse_statis = GetFuseStatis(
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+
+  ASSERT_TRUE(fuse_statis.count("seqpool_concat_fuse"));
+  EXPECT_EQ(fuse_statis.at("seqpool_concat_fuse"), 2);
+
   LOG(INFO) << "num_ops: " << num_ops;
-  EXPECT_EQ(num_ops, 349);
+  EXPECT_EQ(num_ops, 195);
 }
 
 }  // namespace analysis
