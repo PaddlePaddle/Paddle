@@ -83,7 +83,6 @@ void CheckProgram(const ProgramDesc &program) {
 }  // namespace
 
 Graph::Graph(const ProgramDesc &program) : program_(program) {
-  CheckProgram(program_);
   auto var_nodes = InitFromProgram(program_);
   ResolveHazard(var_nodes);
 }
