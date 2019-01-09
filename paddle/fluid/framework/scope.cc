@@ -163,14 +163,9 @@ void Scope::DeleteScope(Scope* scope) const {
 }
 
 void Scope::EraseVars(const std::vector<std::string>& var_names) {
-  std::set<std::string> var_set(var_names.begin(), var_names.end());
   SCOPE_VARS_WRITER_LOCK
-  for (auto it = vars_.begin(); it != vars_.end();) {
-    if (var_set.find(it->first) != var_set.end()) {
-      it = vars_.erase(it);
-    } else {
-      ++it;
-    }
+  for (auto& name : var_names) {
+    vars_.erase(name);
   }
 }
 
@@ -181,9 +176,12 @@ void Scope::Rename(const std::string& origin_name,
 }
 
 std::string Scope::Rename(const std::string& origin_name) const {
-  SCOPE_VARS_WRITER_LOCK
-  auto new_name = string::Sprintf("%p.%d", this, vars_.size());
-  RenameInternal(origin_name, new_name);
+  auto new_name = std::to_string(reinterpret_cast<uintptr_t>(this)) + "." +
+                  std::to_string(counter_.fetch_add(1));
+  {
+    SCOPE_VARS_WRITER_LOCK
+    RenameInternal(origin_name, new_name);
+  }
   return new_name;
 }
 
@@ -213,7 +211,7 @@ void Scope::RenameInternal(const std::string& origin_name,
   auto new_it = vars_.find(new_name);
   PADDLE_ENFORCE(new_it == vars_.end(),
                  "The variable with name %s is already in the scope", new_name);
-  vars_[new_name].reset(origin_it->second.release());
+  vars_.emplace(new_name, std::move(origin_it->second));
   vars_.erase(origin_it);
 }
 

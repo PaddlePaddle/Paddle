@@ -290,8 +290,8 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     }
 
     if (dynload::HasCUDNN()) {
-      auto local_cudnn_version = cudnn_dso_ver / 100;
-      auto compile_cudnn_version = CUDNN_VERSION / 100;
+      size_t local_cudnn_version = cudnn_dso_ver / 100;
+      size_t compile_cudnn_version = CUDNN_VERSION / 100;
       if (local_cudnn_version < compile_cudnn_version) {
         LOG_FIRST_N(WARNING, 1)
             << "WARNING: device: " << place_.device
