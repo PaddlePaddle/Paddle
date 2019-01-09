@@ -83,7 +83,7 @@ class GRPCRequestBase {
   }
 
   void Finish(const ::grpc::ByteBuffer& reply,
-              ServerAsyncResponseWriter<T>* responder) {
+              ServerAsyncResponseWriter<::grpc::ByteBuffer>* responder) {
     std::lock_guard<std::mutex> l(status_mu_);
     status_ = FINISH;
     responder->Finish(reply, ::grpc::Status::OK,
@@ -200,7 +200,7 @@ class GRPCRequestGetMonomer final : public GRPCRequestBase {
   void Process() override {
     std::string varname = request_->Varname();
 
-    auto scope = request_->GetMutableLocalScope();
+    auto scope = request_handler_->scope();
     auto invar = scope->FindVar(varname);
     framework::Variable* outvar = nullptr;
 
