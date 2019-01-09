@@ -161,8 +161,8 @@ class OperatorBase {
                                  const RuntimeContext& ctx) const {}
 
   // Add the hooks
-  virtual void PreHook();
-  virtual void PostHook();
+  virtual void PreHook(const Scope& scope, const platform::Place& place);
+  virtual void PostHook(const Scope& scope, const platform::Place& place);
 
  protected:
   std::string type_;
