@@ -35,7 +35,7 @@ class DummyOp : public framework::OperatorBase {
                const platform::Place& place) const override {}
 };
 
-TEST(temporary_allocator, temporary_allocator) {
+TEST(temporary_allocator, test_base_function) {
   platform::CPUPlace cpu_place;
   TemporaryAllocator alloc(cpu_place);
   alloc.Allocate(100);
@@ -59,7 +59,7 @@ TEST(temporary_allocator, temporary_allocator) {
 #endif
 }
 
-TEST(temporary_allocator, add_callback) {
+TEST(temporary_allocator, test_flags_function) {
 #ifdef PADDLE_WITH_CUDA
   const double limit = FLAGS_limit_of_temporary_allocation;
   FLAGS_limit_of_temporary_allocation = 10;
@@ -79,6 +79,30 @@ TEST(temporary_allocator, add_callback) {
   { gpu_alloc.Allocate(100); }
   PADDLE_ENFORCE(deleted);
   FLAGS_limit_of_temporary_allocation = limit;
+#endif
+}
+
+TEST(temporary_allocator, test_reuse_tmp_allocation) {
+#ifdef PADDLE_WITH_CUDA
+  platform::CUDAPlace gpu_place(0);
+  TemporaryAllocator gpu_alloc(gpu_place);
+  gpu_alloc.SetCallback([]() {});
+
+  void* tmp_allocation_ptr1 = nullptr;
+  {
+    PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
+    auto tmp_allocation1 = gpu_alloc.Allocate(100);
+    tmp_allocation_ptr1 = tmp_allocation1->ptr();
+  }
+  PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 1);
+  auto tmp_allocation2 = gpu_alloc.Allocate(100);
+  void* tmp_allocation_ptr2 = tmp_allocation2->ptr();
+  PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
+  PADDLE_ENFORCE_EQ(tmp_allocation_ptr1, tmp_allocation_ptr2);
+
+  auto tmp_allocation3 = gpu_alloc.Allocate(100);
+  void* tmp_allocation_ptr3 = tmp_allocation2->ptr();
+  PADDLE_ENFORCE_EQ(tmp_allocation_ptr1, tmp_allocation_ptr3);
 #endif
 }
 

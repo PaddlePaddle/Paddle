@@ -15,6 +15,7 @@
 #pragma once
 #include <condition_variable>  // NOLINT
 #include <deque>
+#include <map>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
@@ -65,8 +66,8 @@ class TemporaryAllocator : public memory::allocation::Allocator {
 
   // When the allocation is not held by any variable, it should be placed
   // to temp_mem_queue immediately.
-  std::shared_ptr<std::deque<TemporaryAllocation *>> temp_mem_queue_{nullptr};
-
+  std::shared_ptr<std::multimap<size_t, TemporaryAllocation *>> temp_mem_map_{
+      nullptr};
   std::mutex mtx_;
   size_t wait_delete_mem_{0};
   std::function<void()> callback_;
