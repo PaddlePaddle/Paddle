@@ -37,7 +37,7 @@ INCLUDE(GNUInstallDirs)
 INCLUDE(ExternalProject)
 
 SET(NGRAPH_PROJECT         "extern_ngraph")
-SET(NGRAPH_GIT_TAG         "08851c2c45fcf9fa9c74871dd3dbc3fe38f37cc9")
+SET(NGRAPH_GIT_TAG         "20bd8bbc79ae3a81c57313846a2be7313e5d1dab")
 SET(NGRAPH_SOURCES_DIR     ${THIRD_PARTY_PATH}/ngraph)
 SET(NGRAPH_INSTALL_DIR     ${THIRD_PARTY_PATH}/install/ngraph)
 SET(NGRAPH_INC_DIR         ${NGRAPH_INSTALL_DIR}/include)
