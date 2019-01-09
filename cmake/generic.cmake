@@ -117,7 +117,7 @@ function(common_link TARGET_NAME)
   endif()
 
   if (WITH_JEMALLOC)
-    target_link_libraries(${TARGET_NAME} ${JEMALLOC_LIBRARIES})
+    target_link_libraries(${TARGET_NAME} jemalloc::jemalloc)
   endif()
 endfunction()
 
