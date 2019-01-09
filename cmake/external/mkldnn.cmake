@@ -55,7 +55,7 @@ ExternalProject_Add(
     ${MKLDNN_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DEPENDS             ${MKLDNN_DEPENDS}
-    GIT_REPOSITORY      "https://github.com/01org/mkl-dnn.git"
+    GIT_REPOSITORY      "https://github.com/intel/mkl-dnn.git"
     GIT_TAG             "fa5f6313d6b65e8f6444c6900432fb07ef5661e5"
     PREFIX              ${MKLDNN_SOURCES_DIR}
     UPDATE_COMMAND      ""

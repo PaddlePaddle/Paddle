@@ -72,6 +72,26 @@ void VExp<double>(const double* x, double* y, int n) {
   platform::dynload::vdExp(n, x, y);
 }
 
+template <>
+void VCopy<float>(const float* x, float* y, int n) {
+  platform::dynload::cblas_scopy(n, x, 1, y, 1);
+}
+
+template <>
+void VCopy<double>(const double* x, double* y, int n) {
+  platform::dynload::cblas_dcopy(n, x, 1, y, 1);
+}
+
+template <>
+void VAXPY<float>(float a, const float* x, float* y, int n) {
+  platform::dynload::cblas_saxpy(n, a, x, 1, y, 1);
+}
+
+template <>
+void VAXPY<double>(double a, const double* x, double* y, int n) {
+  platform::dynload::cblas_daxpy(n, a, x, 1, y, 1);
+}
+
 // TODO(TJ): tuning me carefully on AVX, AVX2 and AVX512
 template <>
 bool VMulKernel<float>::UseMe(const int& d) const {
@@ -101,6 +121,16 @@ bool VSigmoidKernel<float>::UseMe(const int& d) const {
 template <>
 bool VTanhKernel<float>::UseMe(const int& d) const {
   return d > 7;
+}
+
+template <>
+bool SeqPoolKernel<float>::UseMe(const seq_pool_attr_t& attr) const {
+  return true;
+}
+
+template <>
+bool SeqPoolKernel<double>::UseMe(const seq_pool_attr_t& attr) const {
+  return true;
 }
 
 #define AWALYS_USE_ME_WITH_DOUBLE(func)                  \
@@ -135,5 +165,6 @@ REGISTER_MKL_KERNEL(kVScal, VScal);
 REGISTER_MKL_KERNEL(kVExp, VExp);
 REGISTER_MKL_KERNEL(kVSigmoid, VSigmoid);
 REGISTER_MKL_KERNEL(kVTanh, VTanh);
+REGISTER_MKL_KERNEL(kSeqPool, SeqPool);
 
 #undef REGISTER_MKL_KERNEL
