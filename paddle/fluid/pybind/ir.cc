@@ -57,13 +57,15 @@ void BindGraph(py::module *m) {
       .def("erase", &Graph::Erase)
       .def("nodes", &Graph::Nodes, return_value_policy::reference)
       .def("create_var_node",
-           [](Graph &self, VarDesc &var_desc) -> std::shared_ptr<Node> {
-             return std::shared_ptr<Node>(self.CreateVarNode(&var_desc));
-           })
+           [](Graph &self, VarDesc &var_desc) {
+             return self.CreateVarNode(&var_desc);
+           },
+           return_value_policy::reference)
       .def("create_op_node",
-           [](Graph &self, OpDesc &op_desc) -> std::shared_ptr<Node> {
-             return std::shared_ptr<Node>(self.CreateOpNode(&op_desc));
-           })
+           [](Graph &self, OpDesc &op_desc) {
+             return self.CreateOpNode(&op_desc);
+           },
+           return_value_policy::reference)
       .def("create_control_dep_var", &Graph::CreateControlDepVar,
            return_value_policy::reference)
       .def("create_empty_node", &Graph::CreateEmptyNode,
@@ -77,11 +79,8 @@ void BindGraph(py::module *m) {
 }
 
 void BindNode(py::module *m) {
-  using paddle::framework::ir::CreateNodeForPybind;
-
-  py::class_<Node>(*m, "Node")
-      .def(py::init(&CreateNodeForPybind))
-      .def("name", &Node::Name)
+  py::class_<Node> node(*m, "Node");
+  node.def("name", &Node::Name)
       .def("node_type", &Node::NodeType)
       .def("var", &Node::Var)
       .def("op", &Node::Op)
@@ -92,9 +91,10 @@ void BindNode(py::module *m) {
       .def_readwrite("inputs", &Node::inputs)
       .def_readwrite("outputs", &Node::outputs);
 
-  py::enum_<Node::Type>(*m, "NodeType")
+  py::enum_<Node::Type>(node, "Type")
       .value("Operation", Node::Type::kOperation)
-      .value("Variable", Node::Type::kVariable);
+      .value("Variable", Node::Type::kVariable)
+      .export_values();
 }
 }  // namespace pybind
 }  // namespace paddle

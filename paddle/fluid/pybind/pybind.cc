@@ -781,7 +781,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("apply", [](ir::Pass &self, std::shared_ptr<ir::Graph> graph) {
         std::unique_ptr<ir::Graph> origin_graph(graph.get());
         auto optim_graph = self.Apply(std::move(origin_graph));
-        assert(optim_graph.release() == graph.get());
+        graph.reset(optim_graph.release());
       });
 
   py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(

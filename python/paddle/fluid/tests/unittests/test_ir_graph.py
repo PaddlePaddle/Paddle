@@ -20,8 +20,7 @@ from paddle import fluid
 
 class TestIRGraph(unittest.TestCase):
     """
-    TODO(fc500110): There is some api unusable because it's using python unsupported types,
-    these api will be tested when it can be used.
+    TODO(fc500110): `resolve_hazard` api will be tested when it can be used.
     """
 
     def test_nodes(self):
@@ -52,10 +51,23 @@ class TestIRGraph(unittest.TestCase):
         self.assertFalse(graph.has("test"))
 
     def test_create_var_node(self):
-        pass
+        prog = fluid.core.ProgramDesc()
+        block = prog.block(0)
+        shape = [10, 20]
+        x1 = block.var(six.b("x1"))
+        x1.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
+        x1.set_shape(shape)
+        graph = fluid.core.Graph(prog)
+        node = graph.create_var_node(x1)
+        self.assertTrue(node.node_type() == fluid.core.Node.Type.Variable)
 
     def test_create_op_node(self):
-        pass
+        prog = fluid.core.ProgramDesc()
+        block = prog.block(0)
+        sum_op_desc = block.append_op()
+        graph = fluid.core.Graph(prog)
+        node = graph.create_op_node(sum_op_desc)
+        self.assertTrue(node.node_type() == fluid.core.Node.Type.Operation)
 
     def test_create_control_dep_var(self):
         graph = build_graph()
@@ -66,9 +78,9 @@ class TestIRGraph(unittest.TestCase):
     def test_create_empty_node(self):
         prog = fluid.core.ProgramDesc()
         graph = fluid.core.Graph(prog)
-        n1 = graph.create_empty_node('x', fluid.core.NodeType.Operation)
+        n1 = graph.create_empty_node('x', fluid.core.Node.Type.Operation)
         self.assertTrue(n1.name() == 'x')
-        n2 = graph.create_empty_node('y', fluid.core.NodeType.Variable)
+        n2 = graph.create_empty_node('y', fluid.core.Node.Type.Variable)
         self.assertTrue(n2.name() == 'y')
 
     def test_release_nodes(self):
