@@ -17,8 +17,13 @@
 
 DEFINE_int64(limit_of_tmp_allocation, -1,
              "The up limit of temporary_allocation size.");
-DEFINE_double(reuse_tmp_allocation_excess_fraction, 2,
-              "The excess fraction of the reused tmp_allocation.");
+DEFINE_double(times_excess_than_required_tmp_allocation, 2,
+              "times_excess_than_required_tmp_allocation indicates the "
+              "max size the TemporaryAllocator can return. For example, "
+              "if the required memory size is N, and "
+              "times_excess_than_required_tmp_allocation is 2.0, "
+              "the TemporaryAllocator will return the available allocation "
+              "that the range of size is N ~ 2*N.");
 
 namespace paddle {
 namespace platform {
@@ -100,8 +105,9 @@ alloc::Allocation *TemporaryAllocator::AllocateImpl(
       auto it = temp_mem_map_->lower_bound(size);
       // FIXME(zcd): Not sure the best value of excess fraction.
       if (it != temp_mem_map_->end() &&
-          it->first < static_cast<size_t>(
-                          size * FLAGS_reuse_tmp_allocation_excess_fraction)) {
+          it->first <
+              static_cast<size_t>(
+                  size * FLAGS_times_excess_than_required_tmp_allocation)) {
         auto tmp_ptr = it->second;
         temp_mem_map_->erase(it);
         wait_delete_mem_ -= tmp_ptr->size();

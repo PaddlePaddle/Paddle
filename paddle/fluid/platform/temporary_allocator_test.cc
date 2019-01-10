@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/tensor_util.h"
 
 DECLARE_int64(limit_of_tmp_allocation);
-DECLARE_double(reuse_tmp_allocation_excess_fraction);
+DECLARE_double(times_excess_than_required_tmp_allocation);
 
 namespace paddle {
 namespace platform {
@@ -107,12 +107,12 @@ TEST(temporary_allocator, test_reuse_tmp_allocation) {
 #endif
 }
 
-TEST(temporary_allocator, test_reuse_tmp_allocation_excess_fraction) {
+TEST(temporary_allocator, test_times_excess_than_required_tmp_allocation) {
 #ifdef PADDLE_WITH_CUDA
   platform::CUDAPlace gpu_place(0);
   TemporaryAllocator gpu_alloc(gpu_place);
   gpu_alloc.SetCallback([]() {});
-  double excess_fraction = FLAGS_reuse_tmp_allocation_excess_fraction;
+  double excess_fraction = FLAGS_times_excess_than_required_tmp_allocation;
   void* tmp_allocation_ptr1 = nullptr;
   {
     PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
