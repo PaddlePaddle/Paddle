@@ -76,7 +76,7 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
     class_num = attrs["class_num"]
     ignore_thresh = attrs['ignore_thresh']
     downsample = attrs['downsample']
-    #use_label_smooth = attrs['use_label_smooth']
+    use_label_smooth = attrs['use_label_smooth']
     input_size = downsample * h
     x = x.reshape((n, mask_num, 5 + class_num, h, w)).transpose((0, 1, 3, 4, 2))
     loss = np.zeros((n)).astype('float32')
