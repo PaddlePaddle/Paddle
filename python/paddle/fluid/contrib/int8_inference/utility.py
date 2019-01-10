@@ -21,6 +21,7 @@ import paddle.fluid as fluid
 class Calibrator(object):
     '''
     The calibrator class transforms the program and updates the calculated scale into it.
+    This is INT8 v1 calibration tool, mainly for the support of ResNet-50 and MobileNet.
     '''
     non_conv_int8_op_type = ("pool2d")
     supported_int8_op_type = ("conv2d", "pool2d")
@@ -359,7 +360,6 @@ class Calibrator(object):
                              for np_data in sampling_data[i.name]]
 
                 self._var_max_range[i.name] = max_range
-
                 self._var_max_value_map[i.name] = max_value
 
     def __check_force_fp32_attr_by_output_var(self, program, var_name):
