@@ -18,6 +18,7 @@ import paddle.fluid as fluid
 import paddle
 import numpy as np
 import unittest
+import six
 
 
 def simple_fc_net():
@@ -44,7 +45,7 @@ def simple_fc_net():
 class TestReaderEmptyBatch(unittest.TestCase):
     def fake_data(self):
         def reader():
-            for n in xrange(self.total_samples):
+            for n in six.moves.xrange(self.total_samples):
                 yield np.ones(shape=[784]) * n, n
 
         return reader
