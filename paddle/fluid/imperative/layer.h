@@ -77,6 +77,7 @@ class PreparedOp {
   framework::OperatorWithKernel::OpKernelFunc func;
   platform::DeviceContext* dev_ctx;
 };
+
 class OpBase;
 
 class VarBase {

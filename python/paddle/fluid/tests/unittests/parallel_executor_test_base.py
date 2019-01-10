@@ -19,6 +19,7 @@ import os
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid import compiler
 import time
 import numpy as np
 import math
@@ -44,15 +45,8 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   optimizer=fluid.optimizer.Adam,
                                   use_fast_executor=False,
                                   enable_sequential_execution=False):
-        def run_executor(exe, feed, fetch_list, program=None):
-            if isinstance(exe, fluid.ParallelExecutor):
-                res = exe.run(fetch_list=fetch_list, feed=feed)
-            elif isinstance(exe, fluid.Executor):
-                if program is None:
-                    program = fluid.default_main_program()
-                res = exe.run(program=program, feed=feed, fetch_list=fetch_list)
-            else:
-                raise ValueError('Unkown type exe')
+        def run_executor(exe, binary, feed, fetch_list):
+            res = exe.run(binary, feed=feed, fetch_list=fetch_list)
             return res
 
         main = fluid.Program()
@@ -72,8 +66,8 @@ class TestParallelExecutorBase(unittest.TestCase):
                 fluid.memory_optimize(main)
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            startup_exe = fluid.Executor(place)
-            startup_exe.run(startup)
+            exe = fluid.Executor(place)
+            exe.run(startup)
             exec_strategy = fluid.ExecutionStrategy()
             exec_strategy.allow_op_delay = allow_op_delay
             if use_fast_executor:
@@ -86,15 +80,13 @@ class TestParallelExecutorBase(unittest.TestCase):
             build_strategy.enable_sequential_execution = enable_sequential_execution
             if use_cuda and core.is_compiled_with_cuda():
                 build_strategy.remove_unnecessary_lock = True
-
             if use_parallel_executor:
-                exe = fluid.ParallelExecutor(
-                    use_cuda,
+                binary = compiler.CompiledProgram(main).with_data_parallel(
                     loss_name=loss.name,
-                    exec_strategy=exec_strategy,
-                    build_strategy=build_strategy)
+                    build_strategy=build_strategy,
+                    exec_strategy=exec_strategy)
             else:
-                exe = fluid.Executor(place=place)
+                binary = compiler.CompiledProgram(main)
 
             if batch_size is not None:
                 batch_size *= fluid.core.get_cuda_device_count(
@@ -102,13 +94,14 @@ class TestParallelExecutorBase(unittest.TestCase):
                     os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
             begin = time.time()
             first_loss, = run_executor(
-                exe=exe, feed=feed_dict, fetch_list=[loss.name])
+                exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss.name])
 
             for i in range(iter):
-                run_executor(exe=exe, feed=feed_dict, fetch_list=[])
+                run_executor(
+                    exe=exe, binary=binary, feed=feed_dict, fetch_list=[])
 
             last_loss, = run_executor(
-                exe=exe, feed=feed_dict, fetch_list=[loss.name])
+                exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss.name])
             end = time.time()
 
             if batch_size is not None:
