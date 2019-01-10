@@ -26,6 +26,8 @@ extern "C" {
 #include <utility>
 #include <vector>
 
+#include <tsl/robin_map.h>  // NOLINT
+
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
