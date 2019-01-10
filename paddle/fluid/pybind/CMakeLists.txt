@@ -1,4 +1,3 @@
-
 set(PYBIND_DEPS pybind python proto_desc memory executor async_executor prune feed_fetch_method pass_builder parallel_executor profiler layer scope_pool)
 if(WITH_PYTHON)
   list(APPEND PYBIND_DEPS py_func_op)
@@ -21,9 +20,8 @@ if(WITH_PYTHON)
     endif(NOT APPLE AND NOT ANDROID AND NOT WIN32)
   endif(WITH_AMD_GPU)
 
-  if(WIN32)
-    target_link_libraries(paddle_pybind shlwapi)
-  endif(WIN32)
+  get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+  target_link_libraries(paddle_pybind ${os_dependency_modules})
 
   cc_test(tensor_py_test SRCS tensor_py_test.cc DEPS python)
 endif(WITH_PYTHON)

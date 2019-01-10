@@ -56,11 +56,12 @@ endif()
 if(WIN32)
   sep_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
           DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array analysis_config paddle_pass_builder)
-  target_link_libraries(paddle_fluid_shared shlwapi)
 else(WIN32)
   cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
       DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array analysis_config paddle_pass_builder)
 endif()
+get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+target_link_libraries(paddle_fluid_shared ${os_dependency_modules})
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 if(NOT APPLE AND NOT WIN32)

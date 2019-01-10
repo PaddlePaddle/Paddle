@@ -205,9 +205,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   }
 }
 
-void OperatorBase::PostRun(const Scope& scope, const platform::Place& place) {
-
-}
+void OperatorBase::PostRun(const Scope& scope, const platform::Place& place) {}
 
 bool OperatorBase::HasInputs(const std::string& name) const {
   return inputs_.find(name) != inputs_.end();
