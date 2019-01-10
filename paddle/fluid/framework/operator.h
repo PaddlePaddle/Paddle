@@ -194,6 +194,10 @@ class ExecutionContext {
 
   const Scope& scope() const { return scope_; }
 
+  const VariableValueMap& AllInputs() const { return ctx_.inputs; }
+
+  const VariableValueMap& AllOutputs() const { return ctx_.outputs; }
+
   template <typename T>
   inline const T& Attr(const std::string& name) const {
     return op_.Attr<T>(name);

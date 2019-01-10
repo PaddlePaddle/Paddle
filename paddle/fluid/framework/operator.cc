@@ -93,7 +93,7 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
     }
     return DataTypeToString(tensor.type());
   } else if (var->IsType<SelectedRows>()) {
-    auto tensor = var->Get<SelectedRows>().value();
+    auto& tensor = var->Get<SelectedRows>().value();
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "uninited";
     } else {
@@ -966,7 +966,8 @@ Scope* OperatorWithKernel::PrepareData(
     std::vector<std::pair<Variable*, Variable*>>* transfered_inplace_vars,
     RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
-  std::unique_ptr<std::unordered_set<std::string>> out_var_name_set;
+  std::unordered_set<std::string> out_var_name_set;
+  bool has_get_out_vars = false;
   for (auto& var_name_item : Inputs()) {
     std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
 
@@ -1019,13 +1020,13 @@ Scope* OperatorWithKernel::PrepareData(
         trans_var = scope.TempVar();
       }
 
-      if (!out_var_name_set) {
+      if (!has_get_out_vars) {
         auto out_var_names = OutputVars(true);
-        out_var_name_set.reset(new std::unordered_set<std::string>(
-            out_var_names.begin(), out_var_names.end()));
+        out_var_name_set.insert(out_var_names.begin(), out_var_names.end());
+        has_get_out_vars = true;
       }
 
-      if (out_var_name_set->count(var_name) > 0) {
+      if (out_var_name_set.count(var_name) > 0) {
         transfered_inplace_vars->emplace_back(var, trans_var);
       }
 
@@ -1043,22 +1044,22 @@ Scope* OperatorWithKernel::PrepareData(
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   int data_type = -1;
-  for (auto& input : this->inputs_) {
-    const std::vector<const Variable*> vars = ctx.MultiInputVar(input.first);
+  for (auto& input_var_pair : ctx.AllInputs()) {
+    auto& vars = input_var_pair.second;
     for (size_t i = 0; i < vars.size(); ++i) {
       const Variable* var = vars[i];
       if (var != nullptr) {
         const Tensor* t = nullptr;
-        if (var->IsType<Tensor>()) {
-          t = &var->Get<Tensor>();
-        } else if (var->IsType<LoDTensor>()) {
-          t = &var->Get<LoDTensor>();
+        if (var->IsType<LoDTensor>()) {
+          t = &(var->Get<LoDTensor>());
         } else if (var->IsType<SelectedRows>()) {
           t = &(var->Get<SelectedRows>().value());
+        } else if (var->IsType<Tensor>()) {
+          t = &(var->Get<Tensor>());
         }
         if (t != nullptr) {
           PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu)is not initialized",
-                         input.first, i);
+                         input_var_pair.first, i);
           int tmp = static_cast<int>(t->type());
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,
