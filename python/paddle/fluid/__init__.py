@@ -102,13 +102,6 @@ def __bootstrap__():
     import sys
     import os
     import platform
-
-    if os.name == 'nt':
-        third_lib_path = os.path.abspath(os.path.dirname(
-            __file__)) + os.sep + '..' + os.sep + 'libs'
-        os.environ['path'] += ';' + third_lib_path
-        sys.path.append(third_lib_path)
-
     from . import core
 
     in_test = 'unittest' in sys.modules
@@ -135,7 +128,8 @@ def __bootstrap__():
         'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
         'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
         'allocator_strategy', 'reader_queue_speed_test_mode',
-        'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir'
+        'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir',
+        'enable_parallel_graph'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -158,14 +152,10 @@ def __bootstrap__():
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
-            'fraction_of_gpu_memory_to_use',
-            'cudnn_deterministic',
-            'enable_cublas_tensor_op_math',
-            'conv_workspace_size_limit',
-            'cudnn_exhaustive_search',
-            'memory_optimize_debug',
-            'selected_gpus',
-            'cudnn_exhaustive_search_times',
+            'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
+            'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
+            'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
+            'sync_nccl_allreduce'
         ]
 
     core.init_gflags([sys.argv[0]] +
