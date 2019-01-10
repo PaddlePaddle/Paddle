@@ -102,13 +102,6 @@ def __bootstrap__():
     import sys
     import os
     import platform
-
-    if os.name == 'nt':
-        third_lib_path = os.path.abspath(os.path.dirname(
-            __file__)) + os.sep + '..' + os.sep + 'libs'
-        os.environ['path'] += ';' + third_lib_path
-        sys.path.append(third_lib_path)
-
     from . import core
 
     in_test = 'unittest' in sys.modules
@@ -162,7 +155,7 @@ def __bootstrap__():
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
             'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
-            'cudnn_exhaustive_search_times', 'sync_nccl_allreduce'
+            'sync_nccl_allreduce'
         ]
 
     core.init_gflags([sys.argv[0]] +

@@ -115,6 +115,10 @@ function(common_link TARGET_NAME)
   if (WITH_PROFILER)
     target_link_libraries(${TARGET_NAME} gperftools::profiler)
   endif()
+
+  if (WITH_JEMALLOC)
+    target_link_libraries(${TARGET_NAME} jemalloc::jemalloc)
+  endif()
 endfunction()
 
 
@@ -228,7 +232,7 @@ function(merge_static_libs TARGET_NAME)
       # Get the file names of the libraries to be merged
       set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
     endforeach()
-    # msvc will put libarary in directory of "/Release/xxxlib" by default 
+    # msvc will put libarary in directory of "/Release/xxxlib" by default
     #       COMMAND cmake -E remove "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET_NAME}.lib"
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
       COMMAND cmake -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}"
