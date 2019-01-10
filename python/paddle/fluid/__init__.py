@@ -127,6 +127,7 @@ def __bootstrap__():
         'use_ngraph', 'initial_cpu_memory_in_mb', 'init_allocated_mem',
         'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
         'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
+        'fraction_of_eager_deletion', 'eager_delete_tensor_only',
         'allocator_strategy', 'reader_queue_speed_test_mode',
         'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir',
         'enable_parallel_graph'
