@@ -193,9 +193,10 @@ def lod_multiclass_nms(boxes, scores, background, score_threshold,
             keep_top_k,
             normalized,
             shared=False)
+        if nmsed_num == 0:
+            lod.append(1)
+            continue
         lod.append(nmsed_num)
-        if nmsed_num == 0: continue
-
         for c, indices in nmsed_outs.items():
             for idx in indices:
                 xmin, ymin, xmax, ymax = box[idx][4 * c:4 * c + 4]
@@ -227,9 +228,11 @@ def batched_multiclass_nms(boxes,
             keep_top_k,
             normalized,
             shared=True)
-        lod.append(nmsed_num)
-        if nmsed_num == 0: continue
+        if nmsed_num == 0:
+            lod.append(1)
+            continue
 
+        lod.append(nmsed_num)
         tmp_det_out = []
         for c, indices in nmsed_outs.items():
             for idx in indices:
