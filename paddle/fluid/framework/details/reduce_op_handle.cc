@@ -88,7 +88,7 @@ void ReduceOpHandle::GatherSelectedRows(
           collective_context.endpoints_.size() - 1);
 
   auto rpc_server = server->GetRPCServer();
-  if (0) {
+  if (1) {
     rpc_server->RegisterVar(merged_var_name,
                             operators::distributed::kRequestGetMonomerVariable,
                             scope, merged_dev_ctx);
@@ -116,8 +116,8 @@ void ReduceOpHandle::GatherSelectedRows(
   merged_dev_ctx->Wait();
   scope->EraseVars(std::vector<std::string>{gathered_var_name});
 
+  PADDLE_ENFORCE(client->Gather(vars, &remote, *merged_dev_ctx, scope));
   if (0) {
-    PADDLE_ENFORCE(client->Gather(vars, &remote, *merged_dev_ctx, scope));
     PADDLE_ENFORCE(remote.size() == vars.size());
 
     // 4. merged local selected rows.
@@ -130,10 +130,9 @@ void ReduceOpHandle::GatherSelectedRows(
     all[collective_context.trainer_id_] = merged_select_rows;
 
     merge_func(*merged_dev_ctx, all, dst_selected_rows);
-
-    rpc_server->WaitVarBarrier(merged_var_name);
-    rpc_server->ClearVar(merged_var_name);
   }
+  rpc_server->WaitVarBarrier(merged_var_name);
+  rpc_server->ClearVar(merged_var_name);
 
   // 5. clear mid vars
   std::vector<std::string> tmp_vars{merged_var_name};
