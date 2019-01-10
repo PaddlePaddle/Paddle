@@ -331,6 +331,10 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
       VLOG(3) << "no input has value! just return" << std::endl;
       return;
     }
+
+    VLOG(10) << "before selected_rows add 1";
+    context.Wait();
+    VLOG(10) << "after selected_rows add 1";
     auto input_width = has_value_input->value().dims()[1];
     auto input_height = has_value_input->height();
     framework::SelectedRows& out = *output;
@@ -357,12 +361,25 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
             {static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
 
-    VLOG(10) << "mergeadd out place " << context.GetPlace();
+    VLOG(10) << "mergeadd out place " << context.GetPlace()
+             << ", egin device:" << context.eigen_device()->stream()
+             << ", cuda device:" << context.stream();
+
+    VLOG(10) << "before selected_rows add 2";
+    context.Wait();
+    VLOG(10) << "after selected_rows add 2";
+
+    auto* out_data = out.mutable_value()->data<T>();
+    cudaMemsetAsync(out_data, 0, out.value().numel(), context.stream());
+    VLOG(10) << "before cudamemsetasync set:";
+    context.Wait();
+    VLOG(10) << "after cudaMemsetAsync set:";
 
     math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), static_cast<T>(0));
-
-    auto* out_data = out.mutable_value()->data<T>();
+    VLOG(10) << "before constant set:";
+    context.Wait();
+    VLOG(10) << "after constant set:";
 
     const int block_size = 256;
     dim3 threads(block_size, 1);
@@ -384,6 +401,10 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
                << ", out place:" << out.value().place()
                << ", in tensor dims:" << input->value().dims()
                << ", out tensor dims:" << out.value().dims();
+      if (out.value().dims() == framework::DDim({733, 512})) {
+        std::cout << "find it" << std::endl;
+        VLOG(10) << "find it";
+      }
 
       const int64_t* input_rows_data = input_rows.CUDAData(context.GetPlace());
       VLOG(10) << "before merge kernel copy wait 1:" << idx;

@@ -46,13 +46,22 @@ void* Tensor::mutable_data(platform::Place place, proto::VarType::Type type,
   if (requested_size) {
     PADDLE_ENFORCE_GE(requested_size, size);
     size = requested_size;
+    VLOG(10) << "in tensor requested_size:" << requested_size
+             << "size:" << size;
   }
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_) {
+    VLOG(10) << "in tensor 2 place:" << place << ", size:" << size
+             << ", offset:" << 0;
     holder_ = memory::AllocShared(place, size, attr);
     offset_ = 0;
   }
+  VLOG(10) << "in tensor 3 place:" << place
+           << ", holder place:" << holder_->place() << ", size:" << size
+           << ", requested_size:" << requested_size << ", offset:" << offset_
+           << ", holder size:" << holder_->size()
+           << ", hodler ptr:" << holder_->ptr();
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  offset_);
 }

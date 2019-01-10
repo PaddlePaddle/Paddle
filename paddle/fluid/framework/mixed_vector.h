@@ -155,6 +155,7 @@ class Vector {
 
     // get cuda ptr. immutable
     const T *CUDAData(platform::Place place) const {
+      std::cout << "enter cudadata" << std::endl;
       PADDLE_ENFORCE(platform::is_gpu_place(place),
                      "CUDA Data must on CUDA place");
       ImmutableCUDA(place);
@@ -239,6 +240,7 @@ class Vector {
         } else {
           // Dirty && DataInCUDA && Device is same
           // Do nothing
+          std::cout << "ImmutableCUDA do nothing 2" << std::endl;
         }
       } else {
         if (!IsInCUDA()) {
@@ -250,6 +252,7 @@ class Vector {
         } else {
           // Not Dirty && DataInCUDA && Device is same
           // Do nothing.
+          std::cout << "ImmutableCUDA do nothing" << std::endl;
         }
       }
     }
@@ -261,6 +264,10 @@ class Vector {
       auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
           platform::DeviceContextPool::Instance().Get(place));
       auto stream = dev_ctx->stream();
+      std::cout << "stream:" << stream << ", ctx place:" << dev_ctx->GetPlace()
+                << ", gpu_ place:" << CUDAPlace().get()
+                << ", size:" << gpu_->size();
+
       paddle::memory::Copy(CUDAPlace().get(), dst, platform::CPUPlace(), src,
                            gpu_->size(), stream);
     }

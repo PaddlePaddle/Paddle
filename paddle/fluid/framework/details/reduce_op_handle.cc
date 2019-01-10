@@ -67,6 +67,8 @@ void ReduceOpHandle::GatherSelectedRows(
       gathered_var_mid->GetMutable<framework::SelectedRows>();
   GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
                           gathered_select_rows);
+  return;
+
   // FIXME(gongwb): remove this Wait.
   Wait(dev_ctxes);
 
