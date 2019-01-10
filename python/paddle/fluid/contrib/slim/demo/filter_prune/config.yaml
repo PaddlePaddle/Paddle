@@ -5,7 +5,7 @@ pruners:
         pruning_axis:
             '*': 0
         criterions:
-            '*': 'l1-norm'
+            '*': 'l1_norm'
 strategies:
     strategy_1:
         class: 'SensitivePruneStrategy'

@@ -48,15 +48,13 @@ class SensitivePruneStrategy(Strategy):
         """
         Computing the sensitivities of all parameters.
         """
+        print("calling _compute_sensitivities.")
         metric = self._eval_graph(context)
 
         for param in context.graph.all_parameters():
             if not re.match('conv2d_.+\.w_.+', param.name):
                 continue
-            self.sensitivities[param.name] = {
-                'pruned_percent': [],
-                'acc_loss': []
-            }
+            self.sensitivities[param.name] = {'pruned_percent': [], 'loss': []}
             ratio = 1
             while ratio > 0:
                 # prune parameter by ratio
@@ -68,6 +66,8 @@ class SensitivePruneStrategy(Strategy):
                 # get accuracy after pruning and update self.sensitivities
                 pruned_metric = self._eval_graph(context)
                 loss = metric - pruned_metric
+                print "pruning param: {}; {}; loss={}".format(param.name, ratio,
+                                                              loss)
                 self.sensitivities[param.name]['pruned_percent'].append(ratio)
                 self.sensitivities[param.name]['loss'].append(loss)
                 ratio -= self.delta_rate
@@ -81,13 +81,13 @@ class SensitivePruneStrategy(Strategy):
     def _get_best_ratios(self):
         no_loss_ratios = {}
         for param in self.sensitivities:
-            for ratio, loss in izip(self.sensitivities[param]['pruned_percent'],
-                                    self.sensitivities[param]['acc_loss']):
+            for ratio, loss in zip(self.sensitivities[param]['pruned_percent'],
+                                   self.sensitivities[param]['loss']):
                 if loss == 0:
                     no_loss_ratios[param] = ratio
         ratio_sum = np.sum(no_loss_ratios.values())
-        return no_loss_ratios.keys(), self.target_ratio * no_loss_ratios.values(
-        ) / ratio_sum
+        return no_loss_ratios.keys(), float(
+            self.target_ratio) * no_loss_ratios.values() / ratio_sum
 
     def _prune_parameter(self, scope, param, ratio, place, lazy=False):
         param_t = scope.find_var(param.name).get_tensor()
@@ -330,7 +330,10 @@ class SensitivePruneStrategy(Strategy):
                 graph, scope, param, ratio, place, lazy=lazy)
 
     def on_compression_begin(self, context):
+        print('SensitivePruneStrategy.on_compression_begin')
         self._compute_sensitivities(context)
         params, ratios = self._get_best_ratios()
+        print("best pruning ratios: {}".format(zip(params, ratios)))
         self._prune_parameters(context.graph, context.graph.scope, params,
                                ratios, context.place)
+        print('SensitivePruneStrategy.on_compression_begin finish.')

@@ -58,6 +58,18 @@ class ImitationGraph(Graph):
     def program(self):
         return self.program
 
+    def pre_ops(self, op):
+        ops = []
+        in_names = []
+        for i in op.input_names:
+            in_names += op.input(i)
+        for p in self.ops():
+            for out in p.output_names:
+                for o in p.output(out):
+                    if o in in_names:
+                        ops.append(p)
+        return ops
+
 
 class IRGraph(Graph):
     pass

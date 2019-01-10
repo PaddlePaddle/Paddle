@@ -16,6 +16,7 @@ from ....core import CPUPlace
 from ....data_feeder import DataFeeder
 from ..graph import get_executor
 from config import ConfigFactory
+import numpy as np
 
 __all__ = ['Context', 'CompressPass']
 
@@ -61,11 +62,13 @@ class Context(object):
         assert self.eval_graph is not None
         assert self.eval_reader is not None
         assert self.eval_feeder is not None
+        executor = get_executor(self.eval_graph, self.place)
         results = []
         for data in self.eval_reader():
             feed = self.eval_feeder.feed(data)
-            result = self.executor.run(self.eval_graph, feed=feed)
+            result = executor.run(self.eval_graph, feed=feed)
             results.append(result)
+            break
         return np.mean(
             np.array(results), axis=0), self.eval_graph.out_nodes.keys()
 
@@ -114,6 +117,7 @@ class CompressPass(object):
         Args:
             strategy: The strategy to be added into current compress pass.
         """
+        print "add strategy: %s" % (type(strategy))
         self.strategies.append(strategy)
         self.epoch = max(strategy.end_epoch, self.epoch)
 
@@ -180,7 +184,7 @@ class CompressPass(object):
             eval_feeder=eval_feeder)
 
         for strategy in self.strategies:
-            strategy.on_compress_begin(context)
+            strategy.on_compression_begin(context)
 
         for epoch in range(self.epoch):
 
@@ -197,6 +201,6 @@ class CompressPass(object):
                 self._eval(context)
 
         for strategy in self.strategies:
-            strategy.on_compress_end(context)
+            strategy.on_compression_end(context)
 
         return context.graph
