@@ -89,12 +89,13 @@ class TestConv2dInt8Op(TestConv2dOp):
                 np.round((input_shift) * self.scale_in).astype(np.int32),
                 filter_int, self.groups,
                 conv2d_param).astype(np.float32) * scale_output_shift
-            output_tmp = np.round(output1 - output2 + format_reorder(
-                input_residual, self.input_residual_size).astype(self.srctype) *
-                                  (self.scale_out / self.scale_in_eltwise))
             if self.fuse_residual:
                 input_residual = np.random.randint(
                     -5, 5, self.input_residual_size).astype(self.srctype)
+                output_tmp = np.round(output1 - output2 + format_reorder(
+                    input_residual, self.input_residual_size).astype(
+                        self.srctype) * (self.scale_out / self.scale_in_eltwise
+                                         ))
                 if self.fuse_relu:
                     output = np.maximum(output_tmp, 0).astype(self.dsttype)
                 else:
@@ -114,15 +115,16 @@ class TestConv2dInt8Op(TestConv2dOp):
             output1 = conv2d_forward_refer(
                 input.astype(np.int32), filter_int, self.groups,
                 conv2d_param).astype(np.float32)
-            output_tmp = np.round(output1 * (self.scale_out / (
-                self.scale_in * self.scale_weights[0])) + format_reorder(
-                    input_residual, self.input_residual_size).astype(np.int32) *
-                                  (self.scale_out / self.scale_in_eltwise))
-            output_tmp2 = np.round(output1 * (
-                self.scale_out / (self.scale_in * self.scale_weights[0])))
             if self.fuse_residual:
                 input_residual = np.random.randint(
                     0, 10, self.input_residual_size).astype(self.srctype)
+                output_tmp = np.round(output1 * (self.scale_out / (
+                    self.scale_in * self.scale_weights[0])) + format_reorder(
+                        input_residual, self.input_residual_size).astype(
+                            np.int32) * (self.scale_out / self.scale_in_eltwise
+                                         ))
+                output_tmp2 = np.round(output1 * (
+                    self.scale_out / (self.scale_in * self.scale_weights[0])))
                 if self.fuse_relu:
                     output = np.maximum(output_tmp, 0).astype(self.dsttype)
                 else:
