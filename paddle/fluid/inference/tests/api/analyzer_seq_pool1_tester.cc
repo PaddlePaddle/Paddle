@@ -168,6 +168,17 @@ TEST(Analyzer_seq_pool1, compare) {
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
+// Compare Deterministic result
+TEST(Analyzer_seq_pool1, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
+}
+
 void analysis_fuse_statis(bool use_zerocopy) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
