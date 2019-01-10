@@ -133,10 +133,9 @@ PYBIND11_MODULE(core, m) {
       .def("_grad_name", &imperative::VarBase::GradName)
       .def("_grad_value", &imperative::VarBase::GradValue)
       .def("_grad_ivar",
-           [](const imperative::VarBase &self) { return self.grads_.get(); },
+           [](const imperative::VarBase &self) { return self.grads_; },
            py::return_value_policy::reference)
-      .def("value",
-           [](const imperative::VarBase &self) { return self.var_.get(); },
+      .def("value", [](const imperative::VarBase &self) { return self.var_; },
            py::return_value_policy::reference)
       .def_property(
           "desc",

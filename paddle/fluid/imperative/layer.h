@@ -105,7 +105,15 @@ class VarBase {
         grads_(stop_gradient ? nullptr : new VarBase(true)),
         stop_gradient_(stop_gradient) {}
 
-  virtual ~VarBase() {}
+  virtual ~VarBase() {
+    if (var_) {
+      delete var_;
+    }
+
+    if (grads_) {
+      delete grads_;
+    }
+  }
 
   void RunBackward();
 
@@ -124,8 +132,8 @@ class VarBase {
 
   framework::VarDesc* var_desc_;
 
-  std::shared_ptr<framework::Variable> var_;
-  std::shared_ptr<VarBase> grads_;
+  framework::Variable* var_;
+  VarBase* grads_;
 
   bool stop_gradient_;
 };
