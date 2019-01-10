@@ -71,29 +71,33 @@ class TestFetchOp(unittest.TestCase):
             pe = fluid.ParallelExecutor(
                 use_cuda=use_cuda, loss_name=loss.name, main_program=main)
 
+            special_var = [
+                'kCUDNNFwdAlgoCache', 'kCUDNNBwdDataAlgoCache',
+                'kCUDNNBwdFilterAlgoCache'
+            ]
             fetch_list = []
             all_vars = main.global_block().vars
             for k, v in all_vars.items():
-                if 'tmp' not in k and k[0] is not '_' or v.persistable:
+                if ('tmp' not in k) and (
+                        k[0] is not '_' or
+                        v.persistable) and k not in special_var:
                     fetch_list.append(k)
+            print("Fetch var:", fetch_list)
 
-            for data in train_inputs:
+            for batch_id, data in enumerate(train_inputs):
                 ret = pe.run(fetch_list,
                              feed=feeder.feed(data),
                              return_numpy=True)
                 for i in range(len(fetch_list)):
                     assert not math.isnan(np.sum(ret[i])) and \
                            not math.isinf(np.sum(ret[i]))
+                print("GPU" if use_cuda else "CPU", batch_id, "Ok")
 
-    @unittest.skip(reason="CI timeout")
     def test_fetch_op(self):
         tst_reader = paddle.batch(flowers.test(use_xmap=False), batch_size=16)
         tst_reader_iter = tst_reader()
 
-        iters = 3
-        train_inputs = []
-        for i in range(iters):
-            train_inputs.append(next(tst_reader_iter))
+        train_inputs = [next(tst_reader_iter) for i in range(3)]
 
         os.environ['CPU_NUM'] = str(4)
         if core.is_compiled_with_cuda():
@@ -116,7 +120,7 @@ class TestFeedParallel(unittest.TestCase):
                 loss = fluid.layers.cross_entropy(input=out, label=label)
                 loss = fluid.layers.mean(loss)
                 opt = fluid.optimizer.Momentum(
-                    learning_rate=0.1,
+                    learning_rate=0.01,
                     momentum=0.9,
                     regularization=fluid.regularizer.L2Decay(1e-4))
 
@@ -140,7 +144,6 @@ class TestFeedParallel(unittest.TestCase):
             if batch_id == 2:
                 break
 
-    @unittest.skip(reason="CI timeout")
     def test_feed_op(self):
         os.environ['CPU_NUM'] = str(4)
         if core.is_compiled_with_cuda():
