@@ -163,7 +163,7 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
   }
 }
 
-void OperatorBase::PreHook(const Scope& scope, const platform::Place& place) {
+void OperatorBase::PreRun(const Scope& scope, const platform::Place& place) {
   auto attrName = OpProtoAndCheckerMaker::OpCreationCallstackAttrName();
   if (HasAttr(attrName)) {
     auto& callstack = Attr<std::vector<std::string>>(attrName);
@@ -173,8 +173,8 @@ void OperatorBase::PreHook(const Scope& scope, const platform::Place& place) {
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   if (FLAGS_enable_debug) {
-    VLOG(4) << "Call the prehook ... ";
-    PreHook(scope, place);
+    VLOG(4) << "Call the PreRun ... ";
+    PreRun(scope, place);
   }
 
   VLOG(4) << place << " " << DebugStringEx(&scope);
@@ -200,13 +200,13 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   VLOG(3) << place << " " << DebugStringEx(&scope);
 
   if (FLAGS_enable_debug) {
-    VLOG(4) << "Call the posthook ... ";
-    PostHook(scope, place);
+    VLOG(4) << "Call the PostRun ... ";
+    PostRun(scope, place);
   }
 }
 
-void OperatorBase::PostHook(const Scope& scope, const platform::Place& place) {
-  // do nothing here
+void OperatorBase::PostRun(const Scope& scope, const platform::Place& place) {
+
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
