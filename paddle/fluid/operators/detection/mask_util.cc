@@ -25,65 +25,74 @@ namespace operators {
 
 uint32_t UMax(uint32_t a, uint32_t b) { return (a > b) ? a : b; }
 
-int Compare(const void* a, const void* b) {
-  uint32_t c = *(reinterpret_cast<uint32_t*>(a));
-  uint32_t d = *(reinterpret_cast<uint32_t*>(b));
+static inline int Compare(const void* a, const void* b) {
+  uint32_t c = *(reinterpret_cast<const uint32_t*>(a));
+  uint32_t d = *(reinterpret_cast<const uint32_t*>(b));
   return c > d ? 1 : c < d ? -1 : 0;
 }
 
 void Decode(const uint32_t* cnts, int m, uint8_t* mask) {
   uint8_t v = 0;
   for (int j = 0; j < m; j++) {
-    for (int k = 0; k < cnts[j]; k++) {
+    for (uint32_t k = 0; k < cnts[j]; k++) {
       *(mask++) = v;
-      v = !v;
     }
+    v = !v;
   }
 }
 
-template <class T>
-void Poly2Mask(const T* poly, int k, int h, int w, uint8_t* mask) {
-  // Upsample and get discrete points densely along entire boundary
-  T scale = static_cast<T>(5.);
-  int bytes = sizeof(int) * (k + 1) * 2;
-  int* x =
-      reinterpret_cast<int*>(memory::Alloc(platform::CPUPlace(), bytes)->ptr());
-  int* y = x + (k + 1);
-  for (int j = 0; j < k; j++)
-    x[j] = static_cast<int>(scale * poly[j * 2 + 0] + .5);
-  for (int j = 0; j < k; j++)
-    y[j] = static_cast<int>(scale * poly[j * 2 + 1] + .5);
+typedef uint32_t uint;
+void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
+  int j, m = 0;
+  double scale = 5;
+  int *x, *y, *u, *v;
+  uint *a, *b;
+  // uint *a;
+  platform::CPUPlace cpu;
+  x = reinterpret_cast<int*>(malloc(sizeof(int) * (k + 1)));
+  y = reinterpret_cast<int*>(malloc(sizeof(int) * (k + 1)));
+  // x = reinterpret_cast<int*>(memory::Alloc(cpu, sizeof(int) * (k +
+  // 1))->ptr());
+  // y = reinterpret_cast<int*>(memory::Alloc(cpu, sizeof(int) * (k +
+  // 1))->ptr());
+  for (j = 0; j < k; j++) x[j] = static_cast<int>(scale * xy[j * 2 + 0] + .5);
   x[k] = x[0];
+  for (j = 0; j < k; j++) y[j] = static_cast<int>(scale * xy[j * 2 + 1] + .5);
   y[k] = y[0];
-
-  int m = 0;
-  for (int j = 0; j < k; j++) {
+  for (j = 0; j < k; j++) {
     m += UMax(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1])) + 1;
   }
-  int* u = reinterpret_cast<int*>(
-      memory::Alloc(platform::CPUPlace(), 2 * m * sizeof(int))->ptr());
-  int* v = u + m;
+  // u = reinterpret_cast<int*>(memory::Alloc(cpu, sizeof(int) * m)->ptr());
+  // v = reinterpret_cast<int*>(memory::Alloc(cpu, sizeof(int) * m)->ptr());
+  u = reinterpret_cast<int*>(malloc(sizeof(int) * m));
+  v = reinterpret_cast<int*>(malloc(sizeof(int) * m));
   m = 0;
-  for (int j = 0; j < k; ++j) {
-    int xs = x[j], xe = x[j + 1], ys = y[j], ye = y[j + 1], t, d;
-    int dx = abs(xe - xs);
-    int dy = abs(ys - ye);
-    int flip = (dx >= dy && xs > xe) || (dx < dy && ys > ye);
+  for (j = 0; j < k; j++) {
+    int xs = x[j], xe = x[j + 1], ys = y[j], ye = y[j + 1], dx, dy, t, d;
+    int flip;
+    double s;
+    dx = abs(xe - xs);
+    dy = abs(ys - ye);
+    flip = (dx >= dy && xs > xe) || (dx < dy && ys > ye);
     if (flip) {
-      std::swap(xs, xe);
-      std::swap(ys, ye);
+      t = xs;
+      xs = xe;
+      xe = t;
+      t = ys;
+      ys = ye;
+      ye = t;
     }
-    double s = dx >= dy ? (static_cast<double>(ye - ys)) / dx
-                        : (static_cast<double>(xe - xs)) / dy;
+    s = dx >= dy ? static_cast<double>(ye - ys) / dx
+                 : static_cast<double>(xe - xs) / dy;
     if (dx >= dy) {
-      for (int d = 0; d <= dx; d++) {
+      for (d = 0; d <= dx; d++) {
         t = flip ? dx - d : d;
         u[m] = t + xs;
         v[m] = static_cast<int>(ys + s * t + .5);
         m++;
       }
     } else {
-      for (int d = 0; d <= dy; d++) {
+      for (d = 0; d <= dy; d++) {
         t = flip ? dy - d : d;
         v[m] = t + ys;
         u[m] = static_cast<int>(xs + s * t + .5);
@@ -91,135 +100,149 @@ void Poly2Mask(const T* poly, int k, int h, int w, uint8_t* mask) {
       }
     }
   }
-
-  // get points along y-boundary and downsample
+  /* get points along y-boundary and downsample */
+  free(x);
+  free(y);
   k = m;
   m = 0;
-  x = reinterpret_cast<int*>(
-      memory::Alloc(platform::CPUPlace(), sizeof(int) * k * 2)->ptr());
-  y = x + k;
-
   double xd, yd;
-  for (int j = 1; j < k; j++) {
+  // x = reinterpret_cast<int*>(memory::Alloc(cpu, sizeof(int) * k)->ptr());
+  // y = reinterpret_cast<int*>(memory::Alloc(cpu, sizeof(int) * k)->ptr());
+  x = reinterpret_cast<int*>(malloc(sizeof(int) * k));
+  y = reinterpret_cast<int*>(malloc(sizeof(int) * k));
+  for (j = 1; j < k; j++) {
     if (u[j] != u[j - 1]) {
       xd = static_cast<double>(u[j] < u[j - 1] ? u[j] : u[j] - 1);
       xd = (xd + .5) / scale - .5;
-    }
-    if (floor(xd) != xd || xd < 0 || xd > (w - 1)) continue;
-    yd = static_cast<double>(v[j] < v[j - 1] ? v[j] : v[j - 1]);
-    yd = (yd + .5) / scale - .5;
-    if (yd < 0) {
-      yd = 0;
-    } else if (yd > h) {
-      yd = h;
+      if (floor(xd) != xd || xd < 0 || xd > w - 1) continue;
+      yd = static_cast<double>(v[j] < v[j - 1] ? v[j] : v[j - 1]);
+      yd = (yd + .5) / scale - .5;
+      if (yd < 0)
+        yd = 0;
+      else if (yd > h)
+        yd = h;
       yd = ceil(yd);
+      x[m] = static_cast<int>(xd);
+      y[m] = static_cast<int>(yd);
+      m++;
     }
-    x[m] = static_cast<int>(xd);
-    y[m] = static_cast<int>(yd);
-    m++;
   }
-
-  // compute rle encoding given y-boundary points
+  /* compute rle encoding given y-boundary points */
   k = m;
-  uint32_t* a = reinterpret_cast<uint32_t*>(
-      memory::Alloc(platform::CPUPlace(), sizeof(uint32_t) * (k + 1))->ptr());
-  for (int j = 0; j < k; j++) {
-    a[j] = static_cast<uint32_t>(x[j] * h + y[j]);
-  }
-  a[k++] = static_cast<uint32_t>(h * w);
-  qsort(a, k, sizeof(uint32_t), Compare);
+  a = reinterpret_cast<uint*>(malloc(sizeof(uint) * (k + 1)));
+  // a = reinterpret_cast<uint*>(memory::Alloc(cpu, sizeof(uint) * (k +
+  // 1))->ptr());
+  for (j = 0; j < k; j++) a[j] = static_cast<uint>(x[j] * h + y[j]);
+  a[k++] = static_cast<uint>(h * w);
 
-  uint32_t p = 0;
-  for (int j = 0; j < k; j++) {
-    uint32_t t = a[j];
+  free(u);
+  free(v);
+  free(x);
+  free(y);
+  qsort(a, k, sizeof(uint), Compare);
+  uint p = 0;
+  for (j = 0; j < k; j++) {
+    uint t = a[j];
     a[j] -= p;
     p = t;
   }
-
-  uint32_t* b = reinterpret_cast<uint32_t*>(
-      memory::Alloc(platform::CPUPlace(), sizeof(uint32_t) * k)->ptr());
-  int j = 0;
-  m = 0;
-  b[j++] = a[m++];
+  b = reinterpret_cast<uint*>(malloc(sizeof(uint) * k));
+  // uint32_t* b = reinterpret_cast<uint32_t*>(memory::Alloc(cpu,
+  //    sizeof(uint32_t) * k)->ptr());
+  j = m = 0;
+  b[m++] = a[j++];
   while (j < k) {
     if (a[j] > 0) {
       b[m++] = a[j++];
     } else {
       j++;
-      if (j < k) {
-        b[m - 1] += a[j++];
-      }
+      if (j < k) b[m - 1] += a[j++];
     }
   }
+
   // convert to mask
-  Decode(b, m, mask);
+  // uint8_t* msk = reinterpret_cast<uint8_t*>(malloc(sizeof(uint8_t) * h * w));
+  uint8_t* msk = reinterpret_cast<uint8_t*>(
+      memory::Alloc(cpu, sizeof(uint8_t) * h * w)->ptr());
+  Decode(b, m, msk);
+
+  for (int ii = 0; ii < h; ++ii) {
+    for (int jj = 0; jj < w; ++jj) {
+      mask[ii * w + jj] = msk[jj * h + ii];
+    }
+  }
+  free(a);
+  free(b);
 }
 
-template <class T>
-void Poly2Boxes(const std::vector<std::vector<std::vector<T>>>& polys,
-                T* boxes) {
+void Poly2Boxes(const std::vector<std::vector<std::vector<float>>>& polys,
+                float* boxes) {
   // lists
   for (size_t i = 0; i < polys.size(); ++i) {
-    T x0 = std::numeric_limits<T>::max();
-    T x1 = std::numeric_limits<T>::min();
-    T y0 = std::numeric_limits<T>::max();
-    T y1 = std::numeric_limits<T>::min();
+    float x0 = std::numeric_limits<float>::max();
+    float x1 = std::numeric_limits<float>::min();
+    float y0 = std::numeric_limits<float>::max();
+    float y1 = std::numeric_limits<float>::min();
     // each list may have more than one polys
     for (size_t j = 0; j < polys[i].size(); ++j) {
-      for (size_t k = 0; k < polys[j].size() / 2; ++k) {
+      for (size_t k = 0; k < polys[i][j].size() / 2; ++k) {
         x0 = std::min(x0, polys[i][j][2 * k]);
         x1 = std::max(x1, polys[i][j][2 * k]);
         y0 = std::min(y0, polys[i][j][2 * k + 1]);
-        y1 = std::min(y0, polys[i][j][2 * k + 1]);
+        y1 = std::max(y1, polys[i][j][2 * k + 1]);
       }
     }
     boxes[i * 4] = x0;
-    boxes[i * 4 + 1] = x1;
-    boxes[i * 4 + 2] = y0;
+    boxes[i * 4 + 1] = y0;
+    boxes[i * 4 + 2] = x1;
     boxes[i * 4 + 3] = y1;
   }
 }
 
-template <class T>
-void Polys2MaskWrtBox(const std::vector<std::vector<T>>& polygons, const T* box,
-                      int M, uint8_t* mask) {
-  T w = box[2] - box[0];
-  T h = box[3] - box[1];
-  w = std::max(w, 1.);
-  h = std::max(h, 1.);
+void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
+                      const float* box, int M, uint8_t* mask) {
+  float w = box[2] - box[0];
+  float h = box[3] - box[1];
+  w = std::max(w, static_cast<float>(1.));
+  h = std::max(h, static_cast<float>(1.));
 
   uint8_t* msk = nullptr;
   if (polygons.size() == 1UL) {
     msk = mask;
   } else {
     msk = reinterpret_cast<uint8_t*>(
-        memory::Alloc(platform::CPUPlace(),
-                      M * M * polygons.size() * sizeof(uint8_t))
-            ->ptr());
+        malloc(M * M * polygons.size() * sizeof(uint8_t)));
+    // memory::Alloc(platform::CPUPlace(),
+    //               M * M * polygons.size() * sizeof(uint8_t))
+    //     ->ptr());
   }
   for (size_t i = 0; i < polygons.size(); ++i) {
-    std::vector<T> p;
-    p.reverse(polygons[i].size());
-    for (size_t j = 0; j < polygons[i].size() / 2; ++j) {
-      T pw = (polygons[i][2 * j] = box[0]) * M / w;
-      T ph = (polygons[i][2 * j + 1] = box[0]) * M / h;
+    int k = polygons[i].size() / 2;
+    std::vector<float> p;
+    for (int j = 0; j < k; ++j) {
+      float pw = (polygons[i][2 * j] - box[0]) * M / w;
+      float ph = (polygons[i][2 * j + 1] - box[1]) * M / h;
       p.push_back(pw);
       p.push_back(ph);
     }
-    Poly2Mask(p.data(), M, M, msk + i * M * M);
+    uint8_t* msk_i = msk + i * M * M;
+    Poly2Mask(p.data(), k, M, M, msk_i);
   }
 
-  if (polygons.size() > 1) {
+  if (polygons.size() != 1UL) {
     for (size_t i = 0; i < polygons.size(); ++i) {
+      uint8_t* msk_i = msk + i * M * M;
       for (int j = 0; j < M * M; ++j) {
         if (i == 0) {
-          mask[j] = msk[j];
+          mask[j] = msk_i[j];
         } else {
-          mask[j] = mask[j] | msk[j];
+          // mask[j] = mask[j] | msk_i[j];
+          mask[j] = (mask[j] + msk_i[j]) > 0 ? 1 : 0;
         }
       }
     }
   }
+  free(msk);
 }
 
 }  // namespace operators

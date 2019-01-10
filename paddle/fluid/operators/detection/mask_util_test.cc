@@ -13,61 +13,100 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detection/mask_util.h"
+#include <gtest/gtest.h>
+#include "paddle/fluid/memory/memory.h"
 
 namespace paddle {
 namespace operators {
 
-TEST(Poly2Mask) {
-  // clang-format off
-  int src[] = {
-      0, 1, 2, 0, 0,
-      0, 3, 4, 0, 0,
-      0, 0, 0, 0, 0,
-  };
-  // clang-format on
-
-  framework::DDim src_stride({5, 1});
-
-  int dst[4];
-  framework::DDim dst_dim({2, 2});
-  framework::DDim dst_stride({2, 1});
-
-  platform::CPUDeviceContext ctx;
-  StridedMemcpy<int>(ctx, src + 1, src_stride, dst_dim, dst_stride, dst);
-
-  ASSERT_EQ(1, dst[0]);
-  ASSERT_EQ(2, dst[1]);
-  ASSERT_EQ(3, dst[2]);
-  ASSERT_EQ(4, dst[3]);
+template <typename T>
+void Compare(const T* a, const T* b, const int n) {
+  for (int i = 0; i < n; i++) {
+    EXPECT_EQ(a[i], b[i]);
+  }
 }
 
-TEST(StridedMemcpy, CPUConcat) {
+TEST(MaskUtil, Poly2MaskTest) {
+  float polys[] = {1.97, 1.88, 5.81, 1.88, 1.69, 6.53, 5.94, 6.38, 1.97, 1.88};
+  int h = 8, w = 8;
+  int k = 5;  // length(polys) / 2
   // clang-format off
-  int src[] = {
-      1, 2,
-      3, 4
+  uint8_t expect_mask[] = {
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 1, 1, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 1, 0, 0, 0, 0,
+      0, 0, 1, 1, 1, 0, 0, 0,
+      0, 0, 1, 1, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0
   };
   // clang-format on
 
-  int dst[8];
+  // the groud-truth mask is computed by coco API:
+  //
+  // import pycocotools.mask as mask_util
+  // import numpy as np
+  // segm = [1.97, 1.88, 5.81, 1.88, 1.69, 6.53, 5.94, 6.38, 1.97, 1.88]
+  // rles = mask_util.frPyObjects([segm], im_h, im_w)
+  // mask = mask_util.decode(rles)
+  // print mask
+  platform::CPUPlace cpu;
+  auto allocation = memory::Alloc(cpu, sizeof(expect_mask));
+  uint8_t* mask = reinterpret_cast<uint8_t*>(allocation->ptr());
+  Poly2Mask(polys, k, h, w, mask);
+  Compare<uint8_t>(expect_mask, mask, h * w);
+}
 
-  framework::DDim src_stride({2, 1});
-  framework::DDim dst_dim({2, 2});
-  framework::DDim dst_stride({4, 1});
-  platform::CPUDeviceContext ctx;
-
-  StridedMemcpy<int>(ctx, src, src_stride, dst_dim, dst_stride, dst);
-  StridedMemcpy<int>(ctx, src, src_stride, dst_dim, dst_stride, dst + 2);
-
+TEST(MaskUtil, Poly2BoxesTest) {
   // clang-format off
-  int expect_dst[] = {
-      1, 2, 1, 2,
-      3, 4, 3, 4
+  std::vector<std::vector<std::vector<float>>> polys =
+      {{{1.97, 1.88, 5.81, 1.88, 1.69, 6.53, 5.94, 6.38, 1.97, 1.88}},
+       {{2.97, 1.88, 3.81, 1.68, 1.69, 6.63, 6.94, 6.58, 2.97, 0.88}}};
+  float expect_boxes[] = {
+      1.69, 1.88, 5.94, 6.53,
+      1.69, 0.88, 6.94, 6.63
   };
   // clang-format on
-  for (size_t i = 0; i < sizeof(expect_dst) / sizeof(int); ++i) {
-    ASSERT_EQ(expect_dst[i], dst[i]);
-  }
+
+  platform::CPUPlace cpu;
+  auto allocation = memory::Alloc(cpu, sizeof(expect_boxes));
+  float* boxes = reinterpret_cast<float*>(allocation->ptr());
+  Poly2Boxes(polys, boxes);
+  Compare<float>(expect_boxes, boxes, 8);
+}
+
+TEST(MaskUtil, Polys2MaskWrtBoxTest) {
+  // clang-format off
+  std::vector<std::vector<std::vector<float>>> polys =
+      {{{1.97, 1.88, 5.81, 1.88, 1.69, 6.53, 5.94, 6.38, 1.97, 1.88},
+        {2.97, 1.88, 3.81, 1.68, 1.69, 6.63, 6.94, 6.58, 2.97, 0.88}}};
+  float expect_boxes[] = {
+      1.69, 0.88, 6.94, 6.63
+  };
+  uint8_t expect_mask[] = {
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 1, 1, 1, 1, 1, 0, 0,
+      0, 0, 1, 1, 1, 0, 0, 0,
+      0, 0, 1, 1, 1, 0, 0, 0,
+      0, 0, 1, 1, 1, 0, 0, 0,
+      0, 1, 1, 1, 1, 1, 0, 0,
+      0, 1, 1, 1, 1, 1, 1, 0,
+      1, 1, 1, 1, 1, 1, 1, 1
+  };
+  // clang-format on
+
+  platform::CPUPlace cpu;
+  auto allocation = memory::Alloc(cpu, sizeof(expect_boxes));
+  float* boxes = reinterpret_cast<float*>(allocation->ptr());
+  Poly2Boxes(polys, boxes);
+  Compare<float>(expect_boxes, boxes, 4);
+
+  auto allocat_mask = memory::Alloc(cpu, sizeof(expect_mask));
+  uint8_t* mask = reinterpret_cast<uint8_t*>(allocat_mask->ptr());
+  int M = 8;
+  Polys2MaskWrtBox(polys[0], expect_boxes, M, mask);
+  Compare<uint8_t>(expect_mask, mask, M * M);
 }
 
 }  // namespace operators

@@ -31,7 +31,6 @@ detection_library(polygon_box_transform_op SRCS polygon_box_transform_op.cc
 polygon_box_transform_op.cu)
 detection_library(rpn_target_assign_op SRCS rpn_target_assign_op.cc)
 detection_library(generate_proposal_labels_op SRCS generate_proposal_labels_op.cc)
-detection_library(generate_mask_labels_op SRCS generate_mask_labels_op.cc)
 
 if(WITH_GPU)
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc generate_proposals_op.cu DEPS memory cub)
@@ -47,4 +46,7 @@ foreach(src ${LOCAL_DETECTION_LIBS})
     set(OP_LIBRARY ${src} ${OP_LIBRARY} CACHE INTERNAL "op libs")
 endforeach()
 
-cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor memory)
+cc_library(mask_util SRCS mask_util.cc DEPS memory)
+cc_test(mask_util_test SRCS mask_util_test.cc DEPS memory mask_util)
+#cc_test(mask_util_test SRCS mask_util.cc mask_util_test.cc DEPS memory)
+detection_library(generate_mask_labels_op SRCS generate_mask_labels_op.cc DEPS mask_util)

@@ -13,20 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <stdint.h>
 #include <vector>
 
 namespace paddle {
 namespace operators {
 
-template <class T>
-void Poly2Mask(const T* ploy, int k, int h, int w, uint8_t* mask);
+void Poly2Mask(const float* ploy, int k, int h, int w, uint8_t* mask);
 
-template <class T>
-void Poly2Boxes(const std::vector<std::vector<std::vector<T>>>& polys,
-                T* boxes);
+void Poly2Boxes(const std::vector<std::vector<std::vector<float>>>& polys,
+                float* boxes);
 
-template <class T>
-void Polys2MaskWrtBox(const std::vector<std::vector<T>>& polygons, const T* box,
-                      int M, uint8_t* mask);
+void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
+                      const float* box, int M, uint8_t* mask);
 }  // namespace operators
 }  // namespace paddle

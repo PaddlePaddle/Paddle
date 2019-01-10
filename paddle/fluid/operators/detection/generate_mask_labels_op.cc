@@ -13,8 +13,10 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
+#include "paddle/fluid/operators/detection/mask_util.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -148,10 +150,13 @@ static inline void ExpandMaskTarget(const platform::CPUDeviceContext& ctx,
 }
 
 template <typename T>
-std::vector<Tensor> SampleMaskForOneImage(
-    const platform::CPUDeviceContext& ctx, Tensor* im_info, Tensor* gt_classes,
-    Tensor* is_crowd, Tensor* gt_segms, Tensor* rois, Tensor* label_int32,
-    const int num_classes, const int resolution, const LoD& segm_length) {
+std::vector<Tensor> SampleMaskForOneImage(const platform::CPUDeviceContext& ctx,
+                                          Tensor* im_info, Tensor* gt_classes,
+                                          Tensor* is_crowd, Tensor* gt_segms,
+                                          Tensor* rois, Tensor* label_int32,
+                                          const int num_classes,
+                                          const int resolution,
+                                          const framework::LoD& segm_length) {
   auto im_scale = im_info->data<T>()[2];
 
   // auto rois_et = framework::EigenTensor<T, 2>::From(*rois);
@@ -171,7 +176,7 @@ std::vector<Tensor> SampleMaskForOneImage(
   auto segm_lod_offset = framework::ConvertToOffsetBasedLoD(segm_length);
   auto lod1 = segm_lod_offset[1];
   auto lod2 = segm_lod_offset[2];
-  T* polys_data = gt_segms.data<T>();
+  T* polys_data = gt_segms->data<T>();
   for (int64_t i = 0; i < gt_size; ++i) {
     if ((gt_classes_data[i] > 0) && (is_crowd_data[i] == 0)) {
       mask_gt_inds.emplace_back(i);
@@ -184,7 +189,7 @@ std::vector<Tensor> SampleMaskForOneImage(
       for (int j = 0; j < poly_num; ++j) {
         int s = lod2[s_idx + j];
         int e = lod2[s_idx + j + 1];
-        vector<T> plts(polys_data, polys_data + (e - s) * 2);
+        std::vector<T> plts(polys_data, polys_data + (e - s) * 2);
         polys.push_back(plts);
       }
       gt_polys.push_back(polys);
@@ -199,8 +204,8 @@ std::vector<Tensor> SampleMaskForOneImage(
   int fg_num = fg_inds.size();
 
   Tensor boxes_from_polys;
-  boxes_from_polys.mutable_data<T>({gt_polys.size(), 4}, platform::CPUPlace());
-  Poly2Boxes<T>(gt_polys, boxes_from_polys.data<T>());
+  boxes_from_polys.mutable_data<T>({gt_num, 4}, platform::CPUPlace());
+  Poly2Boxes(gt_polys, boxes_from_polys.data<T>());
 
   std::vector<int> roi_has_mask =
       std::vector<int>(fg_inds.begin(), fg_inds.end());
@@ -247,7 +252,7 @@ std::vector<Tensor> SampleMaskForOneImage(
     for (int64_t i = 0; i < fg_num; ++i) {
       int fg_polys_ind = fg_masks_inds[i];
       T* roi_fg = rois_fg_data + i * 4;
-      uint8_t mask = masks_data + i * resolution * resolution;
+      uint8_t* mask = masks_data + i * resolution * resolution;
       Polys2MaskWrtBox(gt_polys[fg_polys_ind], roi_fg, resolution, mask);
     }
   } else {
@@ -456,5 +461,4 @@ REGISTER_OPERATOR(generate_mask_labels, ops::GenerateMaskLabelsOp,
                   ops::GenerateMaskLabelsOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(generate_mask_labels,
-                       ops::GenerateMaskLabelsKernel<float>,
-                       ops::GenerateMaskLabelsKernel<double>);
+                       ops::GenerateMaskLabelsKernel<float>);
