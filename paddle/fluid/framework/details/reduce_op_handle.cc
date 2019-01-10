@@ -67,7 +67,7 @@ void ReduceOpHandle::GatherSelectedRows(
       gathered_var_mid->GetMutable<framework::SelectedRows>();
   GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
                           gathered_select_rows);
-  return;
+  // return;
 
   // FIXME(gongwb): remove this Wait.
   Wait(dev_ctxes);
@@ -88,9 +88,11 @@ void ReduceOpHandle::GatherSelectedRows(
           collective_context.endpoints_.size() - 1);
 
   auto rpc_server = server->GetRPCServer();
-  rpc_server->RegisterVar(merged_var_name,
-                          operators::distributed::kRequestGetMonomerVariable,
-                          scope, merged_dev_ctx);
+  if (0) {
+    rpc_server->RegisterVar(merged_var_name,
+                            operators::distributed::kRequestGetMonomerVariable,
+                            scope, merged_dev_ctx);
+  }
 
   // 3. gather them from all remote nodes.
   std::vector<const SelectedRows *> remote;
@@ -114,22 +116,24 @@ void ReduceOpHandle::GatherSelectedRows(
   merged_dev_ctx->Wait();
   scope->EraseVars(std::vector<std::string>{gathered_var_name});
 
-  PADDLE_ENFORCE(client->Gather(vars, &remote, *merged_dev_ctx, scope));
-  PADDLE_ENFORCE(remote.size() == vars.size());
+  if (0) {
+    PADDLE_ENFORCE(client->Gather(vars, &remote, *merged_dev_ctx, scope));
+    PADDLE_ENFORCE(remote.size() == vars.size());
 
-  // 4. merged local selected rows.
-  std::vector<const SelectedRows *> all;
-  all.resize(collective_context.endpoints_.size());
-  for (auto v : vars) {
-    all[v.trainer_id_] =
-        scope->FindVar(v.var_name_)->GetMutable<SelectedRows>();
+    // 4. merged local selected rows.
+    std::vector<const SelectedRows *> all;
+    all.resize(collective_context.endpoints_.size());
+    for (auto v : vars) {
+      all[v.trainer_id_] =
+          scope->FindVar(v.var_name_)->GetMutable<SelectedRows>();
+    }
+    all[collective_context.trainer_id_] = merged_select_rows;
+
+    merge_func(*merged_dev_ctx, all, dst_selected_rows);
+
+    rpc_server->WaitVarBarrier(merged_var_name);
+    rpc_server->ClearVar(merged_var_name);
   }
-  all[collective_context.trainer_id_] = merged_select_rows;
-
-  merge_func(*merged_dev_ctx, all, dst_selected_rows);
-
-  rpc_server->WaitVarBarrier(merged_var_name);
-  rpc_server->ClearVar(merged_var_name);
 
   // 5. clear mid vars
   std::vector<std::string> tmp_vars{merged_var_name};
@@ -137,6 +141,17 @@ void ReduceOpHandle::GatherSelectedRows(
     tmp_vars.push_back(r.var_name_);
   }
   scope->EraseVars(tmp_vars);
+
+  for (auto input : src_selected_rows) {
+    VLOG(10) << "in reduce: input place:" << input->value().place();
+  }
+
+  for (auto it : dev_ctxes) {
+    VLOG(10) << "in reduce: ctx place:" << it.first
+             << ", dev_ctx place:" << it.second->GetPlace();
+  }
+
+  VLOG(10) << "in reduce: out place:" << dst_selected_rows->value().place();
 }
 #endif
 

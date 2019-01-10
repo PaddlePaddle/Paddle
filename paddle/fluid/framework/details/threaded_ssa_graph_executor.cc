@@ -380,6 +380,7 @@ void ThreadedSSAGraphExecutor::RunOp(
                  << op->DebugString();
 
         // PrintIO(op->Outputs(), local_scopes_);
+        PrintIO(op, op->Inputs(), local_scopes_);
       }
     } catch (...) {
       exception_holder_.Catch(std::current_exception());

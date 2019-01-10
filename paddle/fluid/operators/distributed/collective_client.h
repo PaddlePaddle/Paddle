@@ -41,7 +41,7 @@ inline std::string GetSelectedRowsInfo(const framework::SelectedRows& slr) {
       ss << slr.rows()[i];
     }
   }
-  ss << "], dims:" << slr.value().dims();
+  ss << "], dims:" << slr.value().dims() << ", place:" << slr.value().place();
   return ss.str();
 }
 

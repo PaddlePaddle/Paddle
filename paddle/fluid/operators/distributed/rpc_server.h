@@ -40,7 +40,8 @@ struct MonomerHandle {
     std::stringstream ss;
     ss << "var_name:" << var_name_ << ", rpc_name:" << rpc_name_
        << ", scope:" << scope_ << ", dev_ctx:" << dev_ctx_
-       << ", barrier_:" << barrier_;
+       << ", barrier_:" << barrier_
+       << ", dev_ctx place:" << dev_ctx_->GetPlace();
     return ss.str();
   }
 };
