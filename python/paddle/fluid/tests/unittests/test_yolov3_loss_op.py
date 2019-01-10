@@ -76,6 +76,7 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
     class_num = attrs["class_num"]
     ignore_thresh = attrs['ignore_thresh']
     downsample = attrs['downsample']
+    #use_label_smooth = attrs['use_label_smooth']
     input_size = downsample * h
     x = x.reshape((n, mask_num, 5 + class_num, h, w)).transpose((0, 1, 3, 4, 2))
     loss = np.zeros((n)).astype('float32')
@@ -176,6 +177,7 @@ class TestYolov3LossOp(OpTest):
             "class_num": self.class_num,
             "ignore_thresh": self.ignore_thresh,
             "downsample": self.downsample,
+            "use_label_smooth": self.use_label_smooth,
         }
 
         self.inputs = {
@@ -215,6 +217,12 @@ class TestYolov3LossOp(OpTest):
         self.downsample = 32
         self.x_shape = (3, len(self.anchor_mask) * (5 + self.class_num), 5, 5)
         self.gtbox_shape = (3, 10, 4)
+        self.use_label_smooth = True
+
+
+class TestYolov3LossWithLabelSmooth(TestYolov3LossOp):
+    def set_label_smooth(self):
+        self.use_label_smooth = True
 
 
 if __name__ == "__main__":

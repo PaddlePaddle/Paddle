@@ -157,11 +157,19 @@ static void CalcBoxLocationLossGrad(T* input_grad, const T loss, const T* input,
 template <typename T>
 static inline void CalcLabelLoss(T* loss, const T* input, const int index,
                                  const int label, const T score,
-                                 const int class_num, const int stride) {
-  for (int i = 0; i < class_num; i++) {
-    T pred = input[index + i * stride] < -0.5 ? input[index + i * stride]
-                                              : 1.0 / class_num;
-    loss[0] += SCE<T>(pred, (i == label) ? score : 0.0);
+                                 const int class_num, const int stride,
+                                 const bool use_label_smooth) {
+  if (use_label_smooth) {
+    for (int i = 0; i < class_num; i++) {
+      T pred = input[index + i * stride] < -0.5 ? input[index + i * stride]
+                                                : 1.0 / class_num;
+      loss[0] += SCE<T>(pred, (i == label) ? score : 0.0);
+    }
+  } else {
+    for (int i = 0; i < class_num; i++) {
+      T pred = input[index + i * stride];
+      loss[0] += SCE<T>(pred, (i == label) ? score : 0.0);
+    }
   }
 }
 
@@ -169,12 +177,21 @@ template <typename T>
 static inline void CalcLabelLossGrad(T* input_grad, const T loss,
                                      const T* input, const int index,
                                      const int label, const T score,
-                                     const int class_num, const int stride) {
-  for (int i = 0; i < class_num; i++) {
-    T pred = input[index + i * stride] < -0.5 ? input[index + i * stride]
-                                              : 1.0 / class_num;
-    input_grad[index + i * stride] =
-        SCEGrad<T>(pred, (i == label) ? score : 0.0) * loss;
+                                     const int class_num, const int stride,
+                                     const bool use_label_smooth) {
+  if (use_label_smooth) {
+    for (int i = 0; i < class_num; i++) {
+      T pred = input[index + i * stride] < -0.5 ? input[index + i * stride]
+                                                : 1.0 / class_num;
+      input_grad[index + i * stride] =
+          SCEGrad<T>(pred, (i == label) ? score : 0.0) * loss;
+    }
+  } else {
+    for (int i = 0; i < class_num; i++) {
+      T pred = input[index + i * stride];
+      input_grad[index + i * stride] =
+          SCEGrad<T>(pred, (i == label) ? score : 0.0) * loss;
+    }
   }
 }
 
@@ -255,6 +272,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     int class_num = ctx.Attr<int>("class_num");
     float ignore_thresh = ctx.Attr<float>("ignore_thresh");
     int downsample = ctx.Attr<int>("downsample");
+    bool use_label_smooth = ctx.Attr<bool>("use_label_smooth");
 
     const int n = input->dims()[0];
     const int h = input->dims()[2];
@@ -364,7 +382,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
           int label_idx = GetEntryIndex(i, mask_idx, gj * w + gi, mask_num,
                                         an_stride, stride, 5);
           CalcLabelLoss<T>(loss_data + i, input_data, label_idx, label, score,
-                           class_num, stride);
+                           class_num, stride, use_label_smooth);
         }
       }
     }
@@ -390,6 +408,7 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     auto anchor_mask = ctx.Attr<std::vector<int>>("anchor_mask");
     int class_num = ctx.Attr<int>("class_num");
     int downsample = ctx.Attr<int>("downsample");
+    bool use_label_smooth = ctx.Attr<bool>("use_label_smooth");
 
     const int n = input_grad->dims()[0];
     const int c = input_grad->dims()[1];
@@ -432,7 +451,8 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
           int label_idx = GetEntryIndex(i, mask_idx, gj * w + gi, mask_num,
                                         an_stride, stride, 5);
           CalcLabelLossGrad<T>(input_grad_data, loss_grad_data[i], input_data,
-                               label_idx, label, score, class_num, stride);
+                               label_idx, label, score, class_num, stride,
+                               use_label_smooth);
         }
       }
     }
