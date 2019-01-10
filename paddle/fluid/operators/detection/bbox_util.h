@@ -9,8 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
-#include <algorithm>
 #include <math.h>
+#include <algorithm>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 
@@ -105,17 +105,13 @@ void ClipTiledBoxes(const platform::DeviceContext& ctx,
   T im_h = round(im_info_data[0] / im_info_data[2]);
   for (int64_t i = 0; i < boxes->numel(); ++i) {
     if (i % 4 == 0) {
-      boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_w - 1), zero);
+      boxes_data[i] = std::max(std::min(boxes_data[i], im_w - 1), zero);
     } else if (i % 4 == 1) {
-      boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_h - 1), zero);
+      boxes_data[i] = std::max(std::min(boxes_data[i], im_h - 1), zero);
     } else if (i % 4 == 2) {
-      boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_w - 1), zero);
+      boxes_data[i] = std::max(std::min(boxes_data[i], im_w - 1), zero);
     } else {
-      boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_h - 1), zero);
+      boxes_data[i] = std::max(std::min(boxes_data[i], im_h - 1), zero);
     }
   }
 }
