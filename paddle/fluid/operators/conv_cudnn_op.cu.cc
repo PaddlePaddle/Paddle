@@ -297,6 +297,21 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
         layout, framework::vectorize2int(filter->dims()), groups);
 
+#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+    // Enable Tensor Core for cudnn backward
+    if (dev_ctx.GetComputeCapability() >= 70 &&
+        std::type_index(typeid(T)) ==
+            std::type_index(typeid(platform::float16))) {
+      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          cudnn_conv_desc, CUDNN_TENSOR_OP_MATH));
+      VLOG(5) << "use cudnn_tensor_op_math for backward";
+    } else {
+      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          cudnn_conv_desc, CUDNN_DEFAULT_MATH));
+      VLOG(5) << "NOT use cudnn_tensor_op_math for backward";
+    }
+#endif
+
     int input_channels = input->dims()[1];
     int input_height, input_width, input_depth;
     if (input->dims().size() == 5) {
