@@ -76,6 +76,7 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
 
   std::vector<PDNode*> seqpool_ops_input_var(num_inputs);
   std::vector<PDNode*> seqpool_ops_output_var(num_inputs);
+  std::vector<PDNode*> seqpool_ops_output_unused_var(num_inputs);
   std::vector<PDNode*> seqpool_ops(num_inputs);
 
   for (int i = 0; i < num_inputs; ++i) {
@@ -88,6 +89,15 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
         },
         name_scope + "/sequence_pool_out_" + std::to_string(i));
 
+    seqpool_ops_output_unused_var[i] = pattern->NewNode(
+        [=](Node* x) {
+          return x && x->IsVar() && x->inputs.size() == 1 &&
+                 x->outputs.size() == 0 &&
+                 is_seqpool_op_with_pootype_of_nth_input_of_concat(x->inputs[0],
+                                                                   "SUM", i);
+        },
+        name_scope + "/sequence_pool_unused_out_" + std::to_string(i));
+
     seqpool_ops[i] = pattern->NewNode(
         [=](Node* x) {
           return x && x->IsOp() &&
@@ -97,16 +107,23 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
 
     seqpool_ops_input_var[i] = pattern->NewNode(
         [=](Node* x) {
-          return x && x->IsVar() && x->outputs.size() >= 1 &&
-                 is_seqpool_op_with_pootype_of_nth_input_of_concat(
-                     x->outputs[0], "SUM", i);
+          bool basic = x && x->IsVar() && x->outputs.size() >= 1;
+          bool next_is_fine = false;
+          for (auto* o : x->outputs) {
+            if (is_seqpool_op_with_pootype_of_nth_input_of_concat(o, "SUM",
+                                                                  i)) {
+              next_is_fine = true;
+              break;
+            }
+          }
+          return basic && next_is_fine;
         },
         name_scope + "/sequence_pool_in_" + std::to_string(i));
 
     // Links
     seqpool_ops[i]
         ->LinksFrom({seqpool_ops_input_var[i]})
-        .LinksTo({seqpool_ops_output_var[i]});
+        .LinksTo({seqpool_ops_output_var[i], seqpool_ops_output_unused_var[i]});
   }
   concat_op->LinksFrom(seqpool_ops_output_var).LinksTo({concat_out_var});
   return concat_out_var;
