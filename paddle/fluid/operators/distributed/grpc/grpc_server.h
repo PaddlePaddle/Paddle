@@ -22,13 +22,6 @@ limitations under the License. */
 #include <vector>
 
 #include "grpc++/grpc++.h"
-#include "paddle/fluid/framework/blocking_queue.h"
-#include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/rw_lock.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/distributed/distributed_pb.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_service.h"
@@ -70,9 +63,6 @@ class AsyncGRPCServer final : public RPCServer {
 
   GrpcService::AsyncService service_;
   std::unique_ptr<::grpc::Server> server_;
-
-  // FIXME(typhoonzero): not used
-  std::condition_variable barrier_condition_;
 
   std::mutex mutex_ready_;
   std::condition_variable condition_ready_;

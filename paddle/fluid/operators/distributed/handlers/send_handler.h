@@ -28,14 +28,14 @@ using Scope = paddle::framework::Scope;
 
 class SendHandlerSync final : public RequestHandler {
  public:
-  bool Handle(RPCRequest *request, Scope *scope) override;
-  bool IsSync() override { return true; }
+  bool Handle(std::function<void(framework::Scope*)> start,
+              std::function<void()> finish) override;
 };
 
 class SendHandlerAsync final : public RequestHandler {
  public:
-  bool Handle(RPCRequest *request, Scope *scope) override;
-  bool IsSync() override { return false; }
+  bool Handle(std::function<void(framework::Scope*)> start,
+              std::function<void()> finish) override;
 };
 
 }  // namespace distributed

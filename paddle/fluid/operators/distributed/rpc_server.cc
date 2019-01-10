@@ -18,7 +18,6 @@
 #include <iostream>
 #include <limits>
 #include <string>
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {

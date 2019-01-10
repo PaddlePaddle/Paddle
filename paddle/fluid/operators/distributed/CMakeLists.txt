@@ -12,9 +12,8 @@ configure_file(send_recv.proto.in ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto @O
 
 cc_library(barrier SRCS barrier.cc)
 cc_library(rpc_server SRCS rpc_server.cc)
-cc_library(rpc_client SRCS rpc_client.cc)
-cc_library(sendrecvop_utils SRCS sendrecvop_utils.cc DEPS data_type)
-cc_library(variable_response SRCS variable_response.cc)
+cc_library(rpc_client SRCS rpc_client.cc DEPS scope device_context)
+cc_library(sendrecvop_utils SRCS sendrecvop_utils.cc DEPS data_type lod_tensor selected_rows tensor_util)
 
 add_subdirectory(handlers)
 
@@ -22,8 +21,8 @@ add_subdirectory(handlers)
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 if(WITH_GRPC)
   grpc_library(grpc_base PROTO ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto)
-  set(GRPC_SRCS grpc/grpc_client.cc grpc/grpc_server.cc grpc/grpc_serde.cc
-    grpc/grpc_bytebuffer_stream.cc grpc/grpc_variable_response.cc)
+  cc_library(variable_response SRCS variable_response.cc DEPS data_type lod_tensor scope grpc_base_proto)
+
   cc_library(grpc_server SRCS grpc/grpc_server.cc)
   cc_library(grpc_client SRCS grpc/grpc_client.cc)
   cc_library(grpc_serde SRCS grpc/grpc_serde.cc DEPS data_type)

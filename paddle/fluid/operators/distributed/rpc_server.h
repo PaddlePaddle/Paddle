@@ -21,11 +21,9 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/distributed/barrier.h"
 #include "paddle/fluid/operators/distributed/request.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
-#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {

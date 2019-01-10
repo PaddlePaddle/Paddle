@@ -86,10 +86,13 @@ class RequestHandler {
   framework::ProgramDesc* program() { return program_; }
   framework::Executor* executor() { return executor_; }
 
-  virtual bool Handle(RPCRequest* request, framework::Scope* scope) = 0;
-  // FIXME(typhoonzero): this will control whether to create new scope in
-  // variableresponse see grpc_request.h
-  virtual bool IsSync() = 0;
+  // Handle should call start/finish as following order
+  // 1. prepare scope you use
+  // 2. call start(scope)
+  // 3. do your process
+  // 4. call finish to return response
+  virtual bool Handle(std::function<void(framework::Scope*)> start,
+                      std::function<void()> finish) = 0;
 
  protected:
   const platform::DeviceContext* dev_ctx_;

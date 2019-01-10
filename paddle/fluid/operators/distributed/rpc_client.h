@@ -18,10 +18,9 @@
 #include <string>
 #include "gflags/gflags.h"
 
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/distributed/var_handle.h"
+#include "paddle/fluid/platform/device_context.h"
 
 DECLARE_int32(rpc_deadline);
 

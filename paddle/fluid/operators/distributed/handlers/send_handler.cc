@@ -20,32 +20,43 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-bool SendHandlerSync::Handle(RPCRequest *request, Scope *scope) {
-  rpc_server_->WaitState(RPCServerState::STATE_SEND);
-  VLOG(3) << "sync: processing received var: " << request->varname_;
+bool Handle(std::function<void(framework::Scope *)> start,
+            std::function<void()> finish) {
+  auto request = start(scope_);
   if (HandleSignal(request, scope, rpc_server_)) {
+    finish();
     return true;
   }
+  rpc_server_->WaitState(RPCServerState::STATE_SEND);
+  VLOG(3) << "sync: processing received var: " << request->varname_;
 
   if (request->var_ == nullptr) {
     LOG(FATAL) << "sync: Can not find server side var: " << request->varname_;
+    finish();
     return false;
   }
+  finish();
   return true;
 }
 
-bool SendHandlerAsync::Handle(RPCRequest *request, Scope *scope) {
+bool Handle(std::function<void(framework::Scope *)> start,
+            std::function<void()> finish) {
+  auto *local_scope = scope_->NewScope();
+  auto request = start(local_scope);
   VLOG(3) << "async process var: " << request->varname_;
-  if (HandleSignal(request, scope, rpc_server_)) {
+  if (HandleSignal(request, local_scope, rpc_server_)) {
+    finish();
     return true;
   }
   try {
     executor_->RunPreparedContext(
-        (*grad_to_prepared_ctx_)[request->varname_].get(), scope);
+        (*grad_to_prepared_ctx_)[request->varname_].get(), local_scope);
   } catch (std::exception &e) {
     LOG(ERROR) << "async: run sub program error " << e.what();
+    finish();
     return false;
   }
+  finish();
   return true;
 }
 
