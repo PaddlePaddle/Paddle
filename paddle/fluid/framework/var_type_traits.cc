@@ -105,13 +105,15 @@ struct VarIdToTypeIndexMapHolder {
 
 }  // namespace detail
 
-const std::type_index &ToTypeIndex(int var_id) {
+const std::type_index &VarTraitIdToTypeIndex(int var_id) {
   return detail::VarIdToTypeIndexMapHolder::ToTypeIndex(var_id);
 }
 
-const char *ToTypeName(int var_id) { return ToTypeIndex(var_id).name(); }
+const char *ToTypeName(int var_id) {
+  return VarTraitIdToTypeIndex(var_id).name();
+}
 
-int ToTypeId(const std::type_index &type) {
+int TypeIndexToVarTraitId(const std::type_index &type) {
   return detail::VarIdToTypeIndexMapHolder::ToTypeId(type);
 }
 
