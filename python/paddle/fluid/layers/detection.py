@@ -418,6 +418,7 @@ def yolov3_loss(x,
                 class_num,
                 ignore_thresh,
                 downsample,
+                use_label_smooth=True,
                 name=None):
     """
     ${comment}
@@ -438,6 +439,7 @@ def yolov3_loss(x,
         class_num (int): ${class_num_comment}
         ignore_thresh (float): ${ignore_thresh_comment}
         downsample (int): ${downsample_comment}
+        use_label_smooth(bool): ${use_label_smooth_comment}
         name (string): the name of yolov3 loss
 
     Returns:
@@ -451,6 +453,7 @@ def yolov3_loss(x,
         TypeError: Attr anchors of yolov3_loss must be list or tuple
         TypeError: Attr class_num of yolov3_loss must be an integer
         TypeError: Attr ignore_thresh of yolov3_loss must be a float number
+        TypeError: Attr use_label_smooth of yolov3_loss must be a bool value
 
     Examples:
     .. code-block:: python
@@ -479,6 +482,8 @@ def yolov3_loss(x,
         raise TypeError("Attr anchor_mask of yolov3_loss must be list or tuple")
     if not isinstance(class_num, int):
         raise TypeError("Attr class_num of yolov3_loss must be an integer")
+    if not isinstance(class_num, int):
+        raise TypeError("Attr ues_label_smooth of yolov3 must be a bool value")
     if not isinstance(ignore_thresh, float):
         raise TypeError(
             "Attr ignore_thresh of yolov3_loss must be a float number")
@@ -498,6 +503,7 @@ def yolov3_loss(x,
         "class_num": class_num,
         "ignore_thresh": ignore_thresh,
         "downsample": downsample,
+        "use_label_smooth": use_label_smooth
     }
 
     helper.append_op(
