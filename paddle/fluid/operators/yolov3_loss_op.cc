@@ -46,6 +46,7 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
     auto anchor_mask = ctx->Attrs().Get<std::vector<int>>("anchor_mask");
     int mask_num = anchor_mask.size();
     auto class_num = ctx->Attrs().Get<int>("class_num");
+
     PADDLE_ENFORCE_EQ(dim_x.size(), 4, "Input(X) should be a 4-D tensor.");
     PADDLE_ENFORCE_EQ(dim_x[2], dim_x[3],
                       "Input(X) dim[3] and dim[4] should be euqal.");
@@ -156,6 +157,8 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("ignore_thresh",
                    "The ignore threshold to ignore confidence loss.")
         .SetDefault(0.7);
+    AddAttr<bool>("use_label_smooth", "bool,default True", "use label smooth")
+        .SetDefault(true);
     AddComment(R"DOC(
          This operator generate yolov3 loss by given predict result and ground
          truth boxes.
