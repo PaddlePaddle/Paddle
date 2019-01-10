@@ -47,7 +47,8 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.init_group()
         self.init_dilation()
         self.init_test_case()
-        self.init_dtype()
+        self.init_fuse_relu()
+        self.init_data_type()
 
         conv2d_param = {
             'stride': self.stride,
@@ -78,7 +79,11 @@ class TestConv2dInt8Op(TestConv2dOp):
                 np.round((input_shift) * self.scale_in).astype(np.int32),
                 filter_int, self.groups,
                 conv2d_param).astype(np.float32) * scale_output_shift
-            output = np.round(output1 - output2).astype(self.dsttype)
+            if self.fuse_relu:
+                output = np.maximum(np.round(output1 - output2),
+                                    0).astype(self.dsttype)
+            else:
+                output = np.round(output1 - output2).astype(self.dsttype)
         else:
             filter_int = np.round(filter *
                                   self.scale_weights[0]).astype(np.int32)
@@ -87,7 +92,15 @@ class TestConv2dInt8Op(TestConv2dOp):
             output1 = conv2d_forward_refer(
                 input.astype(np.int32), filter_int, self.groups,
                 conv2d_param).astype(np.float32)
-            output = np.round(output1 * scale_output_shift).astype(self.dsttype)
+            if self.fuse_relu:
+                output = np.maximum(
+                    np.round(output1 * (self.scale_out / (
+                        self.scale_in * self.scale_weights[0]))),
+                    0).astype(self.dsttype)
+            else:
+                output = np.round(output1 * (self.scale_out / (
+                    self.scale_in *
+                    self.scale_weights[0]))).astype(self.dsttype)
 
         self.inputs = {
             'Input':
@@ -106,6 +119,7 @@ class TestConv2dInt8Op(TestConv2dOp):
             'Scale_in': self.scale_in,
             'Scale_out': self.scale_out,
             'Scale_weights': self.scale_weights,
+            'fuse_relu': self.fuse_relu
         }
         self.outputs = {'Output': output}
 
@@ -129,12 +143,15 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.scale_out = 0.5
         self.scale_weights = [10.0]
 
-    def init_dtype(self):
+    def init_data_type(self):
         self.srctype = np.uint8
         self.dsttype = np.int8
 
+    def init_fuse_relu(self):
+        self.fuse_relu = True
 
-#--------------------test conv2d u8 in and s8 out--------------------
+
+#--------------------test conv2d u8 in and u8 out--------------------
 
 
 class TestConv2d(TestConv2dInt8Op):
@@ -203,18 +220,43 @@ class TestWithInput1x1Filter1x1(TestConv2dInt8Op):
         self.groups = 3
 
 
-#--------------------test conv2d s8 in and s8 out--------------------
+def init_data_type_with_fusion(self, input_dt, fuse_relu):
+    self.srctype = input_dt
+    self.dsttype = np.uint8 if fuse_relu else np.int8
+
+    def init_fuse_relu(self):
+        self.fuse_relu = fuse_relu
 
 
 def create_test_int8_class(parent):
-    class TestInt8Case(parent):
-        def init_dtype(self):
-            self.srctype = np.int8
-            self.dsttype = np.int8
 
-    cls_name = "{0}_{1}".format(parent.__name__, "s8s8")
-    TestInt8Case.__name__ = cls_name
-    globals()[cls_name] = TestInt8Case
+    #--------------------test conv2d s8 in and u8 out--------------------
+
+    class TestS8U8Case(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.int8, True)
+
+    #--------------------test conv2d s8 in and s8 out--------------------
+
+    class TestS8S8Case(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.int8, False)
+
+    #--------------------test conv2d u8 in and s8 out--------------------
+
+    class TestU8S8Case(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.uint8, False)
+
+    cls_name_s8u8 = "{0}_relu_{1}".format(parent.__name__, "1")
+    cls_name_s8s8 = "{0}_relu_{1}".format(parent.__name__, "0")
+    cls_name_u8s8 = "{0}_relu_{1}".format(parent.__name__, "0")
+    TestS8U8Case.__name__ = cls_name_s8u8
+    TestS8S8Case.__name__ = cls_name_s8s8
+    TestU8S8Case.__name__ = cls_name_u8s8
+    globals()[cls_name_s8u8] = TestS8U8Case
+    globals()[cls_name_s8s8] = TestS8S8Case
+    globals()[cls_name_u8s8] = TestU8S8Case
 
 
 create_test_int8_class(TestConv2dInt8Op)
