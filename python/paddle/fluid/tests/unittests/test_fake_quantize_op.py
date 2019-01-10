@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid.core as core
 
 
 class TestFakeQuantizeOp(OpTest):
@@ -35,7 +36,7 @@ class TestFakeQuantizeOp(OpTest):
         self.check_output()
 
 
-class TestFakeQuantizeOp(OpTest):
+class TestFakeQuantizeRangeOp(OpTest):
     def setUp(self):
         self.op_type = "fake_quantize_range_abs_max"
         self.attrs = {
@@ -56,6 +57,46 @@ class TestFakeQuantizeOp(OpTest):
                 (1 << (self.attrs['bit_length'] - 1)) - 1)),
             'OutScale': scale,
             'OutScales': out_scales,
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestFakeQuantizeMovingOp(OpTest):
+    def setUp(self):
+        self.op_type = "fake_quantize_moving_average_abs_max"
+        self.attrs = {
+            'bit_length': int(5),
+            'moving_rate': float(0.9),
+            'is_test': False
+        }
+        accum = np.zeros(1).astype("float32")
+        accum[0] = 1
+        state = np.zeros(1).astype("float32")
+        state[0] = 1
+        scale = np.zeros(1).astype("float32")
+        scale[0] = 0.001
+        self.inputs = {
+            'X': np.random.random((8, 16, 7, 7)).astype("float32"),
+            'InScale': scale,
+            'InAccum': accum,
+            'InState': state,
+        }
+
+        out_accum = np.zeros(1).astype("float32")
+        out_state = np.zeros(1).astype("float32")
+        out_scale = np.zeros(1).astype("float32")
+        out_accum[0] = self.attrs['moving_rate'] * accum[0] + np.max(
+            np.abs(self.inputs['X'])).astype("float32")
+        out_state[0] = self.attrs['moving_rate'] * state[0] + 1
+        out_scale = out_accum / out_state
+        self.outputs = {
+            'Out': np.round(self.inputs['X'] / out_scale * (
+                (1 << (self.attrs['bit_length'] - 1)) - 1)),
+            'OutAccum': out_accum,
+            'OutState': out_state,
+            'OutScale': out_scale,
         }
 
     def test_check_output(self):

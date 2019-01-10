@@ -95,16 +95,15 @@ template <typename T>
 struct FindMovingAverageAbsMaxFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
                   const framework::Tensor& in_accum,
-                  const framework::Tensor& in_state,
-                  const framework::Tensor& cur_scale,
-                  framework::Tensor* out_state, framework::Tensor* out_accum,
-                  framework::Tensor* out_scale) {
+                  const framework::Tensor& in_state, const T* cur_scale,
+                  const float rate, framework::Tensor* out_state,
+                  framework::Tensor* out_accum, framework::Tensor* out_scale) {
     T accum = in_accum.data<T>()[0];
     T state = in_state.data<T>()[0];
-    T scale = cur_scale.data<T>()[0];
+    T scale = cur_scale[0];
 
-    state = 0.9 * state + 1;
-    accum = 0.9 * accum + scale;
+    state = rate * state + 1;
+    accum = rate * accum + scale;
     scale = accum / state;
 
     out_state->mutable_data<T>(ctx.GetPlace())[0] = state;
@@ -279,12 +278,14 @@ class FakeQuantizeMovingAverageAbsMaxOpMaker
   void Make() override {
     AddInput("X", "(Tensor) Input is float data type.");
     AddInput("InScale", "Last scale.");
+    AddInput("InAccum", "Last accum.");
+    AddInput("InState", "Last state.");
     AddOutput("Out", "(Tensor) Output of quantized low level tensor.");
     AddOutput("OutScale", " Current scale");
     AddOutput("OutState", "(Tensor) state buffer.").AsDispensable();
     AddOutput("OutAccum", "(Tensor) accum buffer.").AsDispensable();
-    AddAttr<int>("window_size", "(int, default 10000) window range size.")
-        .SetDefault(10000);
+    AddAttr<float>("moving_rate", "(float, default 0.9) moving rate.")
+        .SetDefault(0.9);
     AddAttr<int>("bit_length", "(int, default 8), quantization bit number.")
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {

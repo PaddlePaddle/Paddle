@@ -137,9 +137,15 @@ class FakeQuantizeMovingAverageAbsMaxKernel : public framework::OpKernel<T> {
     }
 
     // training
+    auto* in_accum = context.Input<framework::Tensor>("InAccum");
+    auto* in_state = context.Input<framework::Tensor>("InState");
+    auto& allocator =
+        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
+    auto cur_scale = allocator.Allocate(1 * sizeof(T));
+    T* cur_scale_data = static_cast<T*>(cur_scale->ptr());
 
-    framework::Tensor cur_scale;
-    T* cur_scale_data = cur_scale.mutable_data<T>({1}, context.GetPlace());
+    // framework::Tensor cur_scale;
+    // T* cur_scale_data = cur_scale.mutable_data<T>({1}, context.GetPlace());
     FindAbsMaxFunctor<DeviceContext, T>()(dev_ctx, in->data<T>(), in->numel(),
                                           cur_scale_data);
 
@@ -149,10 +155,11 @@ class FakeQuantizeMovingAverageAbsMaxKernel : public framework::OpKernel<T> {
     out_state->mutable_data<T>(context.GetPlace());
     out_accum->mutable_data<T>(context.GetPlace());
     out_scale->mutable_data<T>(context.GetPlace());
+    float moving_rate = context.Attr<float>("moving_rate");
 
     FindMovingAverageAbsMaxFunctor<DeviceContext, T>()(
-        dev_ctx, *out_accum, *out_state, cur_scale, out_state, out_accum,
-        out_scale);
+        dev_ctx, *in_accum, *in_state, cur_scale_data, moving_rate, out_state,
+        out_accum, out_scale);
 
     ClipAndFakeQuantFunctor<DeviceContext, T>()(dev_ctx, *in, *out_scale,
                                                 bin_cnt, out);

@@ -151,10 +151,9 @@ template <typename T>
 struct FindMovingAverageAbsMaxFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& ctx,
                   const framework::Tensor& in_accum,
-                  const framework::Tensor& in_state,
-                  const framework::Tensor& cur_scale,
-                  framework::Tensor* out_state, framework::Tensor* out_accum,
-                  framework::Tensor* out_scale) {
+                  const framework::Tensor& in_state, const T* cur_scale,
+                  const float rate, framework::Tensor* out_state,
+                  framework::Tensor* out_accum, framework::Tensor* out_scale) {
     const auto gpu_place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
 
     T accum;
@@ -164,11 +163,11 @@ struct FindMovingAverageAbsMaxFunctor<platform::CUDADeviceContext, T> {
     memory::Copy(platform::CPUPlace(), &state, gpu_place, in_state.data<T>(),
                  sizeof(T), 0);
     T scale;
-    memory::Copy(platform::CPUPlace(), &scale, gpu_place, cur_scale.data<T>(),
-                 sizeof(T), 0);
+    memory::Copy(platform::CPUPlace(), &scale, gpu_place, cur_scale, sizeof(T),
+                 0);
 
-    state = 0.9 * state + 1;
-    accum = 0.9 * accum + scale;
+    state = rate * state + 1;
+    accum = rate * accum + scale;
     scale = accum / state;
 
     memory::Copy(gpu_place, out_accum->mutable_data<T>(gpu_place),

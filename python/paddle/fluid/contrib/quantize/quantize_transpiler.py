@@ -84,7 +84,8 @@ class QuantizeTranspiler(object):
                  activation_bits=8,
                  activation_quantize_type='abs_max',
                  weight_quantize_type='abs_max',
-                 window_size=10000):
+                 window_size=10000,
+                 moving_rate=0.9):
         """
         Convert and rewrite the fluid Program according to weight and
         activation quantization type.
@@ -133,6 +134,7 @@ class QuantizeTranspiler(object):
         self.activation_quantize_type = activation_quantize_type
 
         self.window_size = window_size
+        self.moving_rate = moving_rate
         self.helper = LayerHelper(self.__class__.__name__)
         self.fake_quant_op_types = [
             'fake_quantize_abs_max', 'fake_quantize_range_abs_max',
@@ -484,6 +486,20 @@ class QuantizeTranspiler(object):
             type=var.type,
             shape=var.shape,
             dtype=var.dtype)
+        state = self.helper.create_global_variable(
+            name=unique_name.generate('state'),
+            persistable=True,
+            dtype=var.dtype,
+            shape=[1])
+        self.helper.set_variable_initializer(
+            state, initializer=Constant(value=1))
+        accum = self.helper.create_global_variable(
+            name=unique_name.generate('accum'),
+            persistable=True,
+            dtype=var.dtype,
+            shape=[1])
+        self.helper.set_variable_initializer(
+            accum, initializer=Constant(value=1))
         scale = self.helper.create_parameter(
             attr=ParamAttr(
                 name=_quantized_scale_name(var.name),
@@ -496,25 +512,16 @@ class QuantizeTranspiler(object):
         ins = {'X': var, 'InScale': scale}
         outs = {'Out': quant_var, 'OutScale': scale}
         if not self.is_test:
-            state = self.helper.create_global_variable(
-                name=unique_name.generate('state'),
-                persistable=True,
-                dtype=var.dtype,
-                shape=[1])
-            self.helper.set_variable_initializer(
-                state, initializer=Constant(value=1))
-            accum = self.helper.create_global_variable(
-                name=unique_name.generate('accum'),
-                persistable=True,
-                dtype=var.dtype,
-                shape=[1])
-            self.helper.set_variable_initializer(
-                accum, initializer=Constant(value=1))
-
+            ins['InState'] = state
+            ins['InAccum'] = accum
             outs['OutState'] = state
             outs['OutAccum'] = accum
 
-        attrs = {'bit_length': quant_bits, 'is_test': self.is_test}
+        attrs = {
+            'bit_length': quant_bits,
+            'moving_rate': self.moving_rate,
+            'is_test': self.is_test
+        }
 
         quant_op = block._insert_op(
             idx,
