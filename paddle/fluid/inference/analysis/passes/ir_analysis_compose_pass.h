@@ -33,8 +33,6 @@ class IrAnalysisComposePass : public AnalysisPass {
   std::string repr() const override;
 
  private:
-  void InitTensorRTAttrs(Argument* argument);
-
   void ApplyIrPasses(Argument* argument);
 
   void CollectFusionStatis(Argument* argument);

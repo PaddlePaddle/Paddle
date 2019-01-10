@@ -26,7 +26,7 @@ from ..initializer import Normal, Constant
 from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat
+from .tensor import concat, assign
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -340,9 +340,7 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
-    remote_prefetch = False
-    if os.environ.get('PADDLE_ENABLE_REMOTE_PREFETCH'):
-        remote_prefetch = True
+    remote_prefetch = is_sparse and (not is_distributed)
     if remote_prefetch:
         assert is_sparse is True and is_distributed is False
     w = helper.create_parameter(
@@ -5032,12 +5030,18 @@ def nce(input,
     else:
         num_neg_samples = int(num_neg_samples)
 
+    remote_prefetch = is_sparse
+    print(
+        "With sparse mode, if your models has only small parameter prefetch may cause speed down"
+    )
+
     attrs = {
         'num_total_classes': int(num_total_classes),
         'num_neg_samples': num_neg_samples,
         'seed': seed,
         'sampler': sampler,
-        'is_sparse': is_sparse
+        'is_sparse': is_sparse,
+        'remote_prefetch': remote_prefetch
     }
 
     helper.append_op(
@@ -5147,7 +5151,10 @@ def hsigmoid(input,
         pass
 
     weights = None
-
+    remote_prefetch = is_sparse
+    print(
+        "With sparse mode, if your models has only small parameter prefetch may cause speed down"
+    )
     if not is_custom:
         weights = helper.create_parameter(
             attr=helper.param_attr,
@@ -5163,7 +5170,7 @@ def hsigmoid(input,
     inputs = {
         "X": input,
         "W": weights,
-        "PTable": path_table,
+        "PathTable": path_table,
         "PathCode": path_code,
         "Label": label
     }
@@ -5186,9 +5193,13 @@ def hsigmoid(input,
         type="hierarchical_sigmoid",
         inputs=inputs,
         outputs={"Out": out,
-                 "PreOut": pre_out},
-        attrs={"num_classes": num_classes,
-               "is_sparse": is_sparse})
+                 "PreOut": pre_out,
+                 "W_Out": weights},
+        attrs={
+            "num_classes": num_classes,
+            "is_sparse": is_sparse,
+            "remote_prefetch": remote_prefetch
+        })
     return out
 
 
@@ -7684,7 +7695,7 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
 
     Examples:
 
-        .. code-block:: python
+    .. code-block:: python
 
             x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
             y = fluid.layers.brelu(x, t_min=1.0, t_max=20.0)
