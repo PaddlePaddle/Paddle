@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/platform/profiler.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -45,6 +46,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
     }
   }
 #endif
+  PADDLE_ENFORCE(!var_names_.empty(), "Var names cannot be empty");
 }
 
 EagerDeletionOpHandle::~EagerDeletionOpHandle() {
@@ -60,13 +62,23 @@ EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
 
 void EagerDeletionOpHandle::RunImpl() {
-  auto *exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
+#ifdef PADDLE_WITH_CUDA
+  platform::RecordEvent record_event(Name(), dev_ctx_);
+#else
+  platform::RecordEvent record_event(Name(), nullptr);
+#endif
+
+  Scope *exec_scope = nullptr;
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (auto &name : var_names_) {
     auto it = ref_cnts_->find(name);
     // Var not found, not reference count has not decreased to 0
     if (it == ref_cnts_->end() || it->second.fetch_sub(1) != 1) {
       continue;
+    }
+
+    if (!exec_scope) {
+      exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
     }
 
     auto *var = exec_scope->FindVar(name);

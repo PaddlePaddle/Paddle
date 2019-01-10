@@ -189,15 +189,6 @@ ExtractComputationOpFromLastLivedVar(VarHandle *var, size_t scope_idx,
   return shrink_func(computation_op);
 }
 
-static VarDesc *TryGetLatestVarDesc(const std::vector<VarHandle *> &vars) {
-  VarDesc *var_desc = nullptr;
-  std::find_if(vars.rbegin(), vars.rend(), [&](VarHandle *var_handle) -> bool {
-    var_desc = var_handle->Node()->Var();
-    return var_desc != nullptr;
-  });
-  return var_desc;
-}
-
 std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   auto &ref_cnts = Get<std::vector<ReferenceCountMap>>(kGlobalReferenceCount);
