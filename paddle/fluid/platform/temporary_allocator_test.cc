@@ -14,11 +14,26 @@
 
 #include "paddle/fluid/platform/temporary_allocator.h"
 #include <gtest/gtest.h>
+#include <string>
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
+
 DECLARE_double(limit_of_temporary_allocation);
 
 namespace paddle {
 namespace platform {
+
+class DummyOp : public framework::OperatorBase {
+ public:
+  DummyOp(const std::string& type, const framework::VariableNameMap& inputs,
+          const framework::VariableNameMap& outputs,
+          const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+ protected:
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& place) const override {}
+};
 
 TEST(temporary_allocator, temporary_allocator) {
   platform::CPUPlace cpu_place;
@@ -68,96 +83,92 @@ TEST(temporary_allocator, add_callback) {
 }
 
 TEST(temporary_allocator, create_tensor_with_allocationptr) {
-  platform::CPUPlace cpu_place;
-  TemporaryAllocator cpu_alloc(cpu_place);
+  framework::VariableNameMap dummy_vars;
+  framework::AttributeMap dummy_attrs;
+  DummyOp op("dummy", dummy_vars, dummy_vars, dummy_attrs);
+  framework::Scope scope;
+  framework::VariableValueMap vars;
+  framework::RuntimeContext run_ctx(vars, vars);
+  size_t memory_size = 300;
   {
-    size_t memory_size = 200;
-    auto allocation = cpu_alloc.Allocate(memory_size);
-    void* address = allocation->ptr();
+    platform::CPUPlace cpu_place;
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx =
+        static_cast<platform::CPUDeviceContext*>(pool.Get(cpu_place));
+    framework::ExecutionContext ctx(op, scope, *dev_ctx, run_ctx);
+
     int numel = memory_size / sizeof(float);
-    framework::Tensor tensor = framework::GetTensor<float>(
-        std::move(allocation), framework::make_ddim({numel}));
-    PADDLE_ENFORCE_EQ(address, tensor.data<float>());
+    framework::Tensor tensor =
+        ctx.AllocateTmpTensor<float, platform::CPUDeviceContext>(
+            framework::make_ddim({numel}), *dev_ctx);
     PADDLE_ENFORCE_EQ(tensor.numel(), numel);
   }
 
 #ifdef PADDLE_WITH_CUDA
-  platform::CUDAPlace gpu_place(0);
-  TemporaryAllocator gpu_alloc(gpu_place);
-
   {
-    size_t memory_size = 300;
-    auto allocation = gpu_alloc.Allocate(memory_size);
-    void* address = allocation->ptr();
+    platform::CUDAPlace gpu_place(0);
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx =
+        static_cast<platform::CUDADeviceContext*>(pool.Get(gpu_place));
+    framework::ExecutionContext ctx(op, scope, *dev_ctx, run_ctx);
     int numel = memory_size / sizeof(float);
-    framework::Tensor tensor = framework::GetTensor<float>(
-        std::move(allocation), framework::make_ddim({numel}));
-    PADDLE_ENFORCE_EQ(address, tensor.data<float>());
+    framework::Tensor tensor =
+        ctx.AllocateTmpTensor<float, platform::CUDADeviceContext>(
+            framework::make_ddim({numel}), *dev_ctx);
     PADDLE_ENFORCE_EQ(tensor.numel(), numel);
   }
-
-  // The allocation is not holded now, it should be placed to
-  // TemporaryAllocationQueue.
-  PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 1);
-  gpu_alloc.Release([]() {});
-  PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
 #endif
 }
 
 TEST(temporary_allocator, create_tensor_with_allocationptr2) {
-  platform::CPUPlace cpu_place;
-  TemporaryAllocator cpu_alloc(cpu_place);
+  framework::VariableNameMap dummy_vars;
+  framework::AttributeMap dummy_attrs;
+  DummyOp op("dummy", dummy_vars, dummy_vars, dummy_attrs);
+  framework::Scope scope;
+  framework::VariableValueMap vars;
+  framework::RuntimeContext run_ctx(vars, vars);
+  size_t memory_size = 400;
   {
-    size_t memory_size = 400;
+    platform::CPUPlace cpu_place;
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx =
+        static_cast<platform::CPUDeviceContext*>(pool.Get(cpu_place));
+    framework::ExecutionContext ctx(op, scope, *dev_ctx, run_ctx);
     int numel = memory_size / sizeof(float);
 
     framework::Tensor out_side_tensor;
-    void* address;
     {
-      auto allocation = cpu_alloc.Allocate(memory_size);
-      address = allocation->ptr();
-      framework::Tensor tensor = framework::GetTensor<float>(
-          std::move(allocation), framework::make_ddim({numel}));
-      PADDLE_ENFORCE_EQ(address, tensor.data<float>());
+      framework::Tensor tensor =
+          ctx.AllocateTmpTensor<float, platform::CPUDeviceContext>(
+              framework::make_ddim({numel}), *dev_ctx);
       PADDLE_ENFORCE_EQ(tensor.numel(), numel);
 
       out_side_tensor.ShareDataWith(tensor);
     }
-    PADDLE_ENFORCE_EQ(address, out_side_tensor.data<float>());
     PADDLE_ENFORCE_EQ(out_side_tensor.numel(), numel);
   }
 
 #ifdef PADDLE_WITH_CUDA
-  platform::CUDAPlace gpu_place(0);
-  TemporaryAllocator gpu_alloc(gpu_place);
   {
-    void* address;
+    platform::CUDAPlace gpu_place(0);
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx =
+        static_cast<platform::CUDADeviceContext*>(pool.Get(gpu_place));
+    framework::ExecutionContext ctx(op, scope, *dev_ctx, run_ctx);
+
     size_t memory_size = 500;
     int numel = memory_size / sizeof(float);
     framework::Tensor out_side_tensor;
     {
-      auto allocation = gpu_alloc.Allocate(memory_size);
-      address = allocation->ptr();
-      framework::Tensor tensor = framework::GetTensor<float>(
-          std::move(allocation), framework::make_ddim({numel}));
-      PADDLE_ENFORCE_EQ(address, tensor.data<float>());
+      framework::Tensor tensor =
+          ctx.AllocateTmpTensor<float, platform::CUDADeviceContext>(
+              framework::make_ddim({numel}), *dev_ctx);
       PADDLE_ENFORCE_EQ(tensor.numel(), numel);
 
       out_side_tensor.ShareDataWith(tensor);
     }
-    PADDLE_ENFORCE_EQ(address, out_side_tensor.data<float>());
     PADDLE_ENFORCE_EQ(out_side_tensor.numel(), numel);
-    // The allocation is holded by out_side_tensor.
-    PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
-    gpu_alloc.Release([]() {});
-    PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
   }
-
-  // The allocation is not holded now, it should be placed to
-  // TemporaryAllocationQueue.
-  PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 1);
-  gpu_alloc.Release([]() {});
-  PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
 #endif
 }
 
