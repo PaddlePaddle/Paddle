@@ -54,6 +54,25 @@ class PyLayer(core.PyLayer):
     def __init__(self):
         super(PyLayer, self).__init__()
 
+    @classmethod
+    def _do_forward(cls, inputs):
+        return cls._to_tuple(cls.forward(inputs))
+
+    @classmethod
+    def _do_backward(cls, inputs):
+        return cls._to_tuple(cls.backward(inputs))
+
+    @staticmethod
+    def _to_tuple(inputs):
+        if not isinstance(inputs, list) and not isinstance(inputs, tuple):
+            inputs = [inputs]
+        ret = []
+        for inp in inputs:
+            tensor = core.LoDTensor()
+            tensor.set(inp, core.CPUPlace())
+            ret.append(tensor)
+        return tuple(ret)
+
     @staticmethod
     def forward(*inputs):
         raise NotImplementedError
@@ -70,16 +89,15 @@ class PyLayer(core.PyLayer):
 
         if not hasattr(cls, 'forward_id'):
             cls.forward_id = core.PyLayer.num_funcs() + 1
-            PyLayer.register_func(cls.forward_id, cls.forward)
+            PyLayer.register_func(cls.forward_id, cls._do_forward)
             cls.backward_id = core.PyLayer.num_funcs() + 1
-            PyLayer.register_func(cls.backward_id, cls.backward)
+            PyLayer.register_func(cls.backward_id, cls._do_backward)
 
         iop = core.OpBase()
         iop.forward_id = cls.forward_id
         iop.backward_id = cls.backward_id
         block.ops.append(iop)
         ivars = tracer.py_trace(iop, ivar_inputs, False)
-        # ivars = core.PyLayer.apply(cls.forward, inputs)
         ret = []
         for ivar in ivars:
             tensor = ivar.value().get_tensor()
