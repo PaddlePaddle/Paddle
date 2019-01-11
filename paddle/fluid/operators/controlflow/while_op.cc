@@ -97,9 +97,6 @@ class WhileOp : public framework::OperatorBase {
         auto &current_scope = scope.NewScope();
         step_scopes->push_back(&current_scope);
         executor.RunPreparedContext(ctx_ptr, &current_scope, false, true, true);
-        if (is_test) {
-          scope.DeleteScope(&current_scope);
-        }
       }
     } else {
       auto &current_scope = scope.NewScope();
