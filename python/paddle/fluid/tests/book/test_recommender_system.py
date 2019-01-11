@@ -293,7 +293,7 @@ def infer(use_cuda, save_dirname=None):
         assert feed_target_names[6] == "movie_title"
         movie_title = fluid.create_lod_tensor(
             [np.array(
-                [1069, 4140, 2923, 710, 988L], dtype='int64')], [[5]],
+                [1069, 4140, 2923, 710, 988], dtype='int64')], [[5]],
             place)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
