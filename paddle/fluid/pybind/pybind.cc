@@ -126,26 +126,18 @@ PYBIND11_MODULE(core, m) {
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
-  py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
-      m, "VarBase", R"DOC()DOC")
+  py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
       // .def(py::init<>())
       .def(py::init<bool>(), py::arg("stop_gradient") = false)
       .def("_run_backward",
            [](imperative::VarBase &self) { self.RunBackward(); })
       .def("_grad_name", &imperative::VarBase::GradName)
-      .def("_grad", &imperative::VarBase::Grad)
-      .def_property("grad_value",
-                    [](const imperative::VarBase &self) { return self.grads_; },
-                    [](imperative::VarBase &self, framework::Variable *grad) {
-                      self.grads_ = grad;
-                    },
-                    py::return_value_policy::reference)
-      .def_property("value",
-                    [](const imperative::VarBase &self) { return self.var_; },
-                    [](imperative::VarBase &self, framework::Variable *var) {
-                      self.var_ = var;
-                    },
-                    py::return_value_policy::reference)
+      .def("_grad_value", &imperative::VarBase::GradValue)
+      .def("_grad_ivar",
+           [](const imperative::VarBase &self) { return self.grads_; },
+           py::return_value_policy::reference)
+      .def("value", [](const imperative::VarBase &self) { return self.var_; },
+           py::return_value_policy::reference)
       .def_property(
           "desc",
           [](const imperative::VarBase &self) { return self.var_desc_; },
