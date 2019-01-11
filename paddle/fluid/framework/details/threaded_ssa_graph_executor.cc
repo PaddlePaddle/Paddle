@@ -18,8 +18,10 @@
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/details/print_help.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
@@ -210,112 +212,6 @@ void ThreadedSSAGraphExecutor::InsertPendingVar(
     ready_vars->Push(var);
   }
 }
-template <typename T>
-std::string GetReadableData(const void *in_data, int64_t len) {
-  if (len < 0) {
-    return "";
-  }
-
-  T *data = reinterpret_cast<T *>(in_data);
-
-  std::stringstream ss;
-  int64_t r0 = 0;
-  for (r0 = 0; r0 < len && r0 < 20; r0++) {
-    ss << data[r0] << ",";
-  }
-
-  int64_t r1 = len - 20;
-  if (r1 <= r0) {
-    r1 = r0;
-  } else {
-    ss << "...";
-  }
-
-  for (; r1 < len; r1++) {
-    ss << data[r1] << ",";
-  }
-
-  return ss.str();
-}
-
-std::string GetTensorInfo(const framework::Tensor &in_tensor) {
-  std::stringstream ss;
-  if (!in_tensor.IsInitialized()) {
-    ss << " not initialized";
-    return ss.str();
-  }
-
-  ss << " place:" << in_tensor.place() << ", dims:[" << in_tensor.dims() << "]";
-
-  auto dtype = framework::ToTypeIndex(in_tensor.type());
-  framework::Tensor tensor;
-  if (platform::is_cpu_place(in_tensor.place())) {
-    tensor.ShareDataWith(in_tensor);
-  } else {
-    // copy data to cpu to print
-    platform::CPUPlace cpu_place;
-    framework::TensorCopy(in_tensor, cpu_place, &tensor);
-  }
-
-  ss << ", data:[";
-  void *data = tensor.data<void>();
-  if (framework::IsType<const float>(dtype)) {
-    ss << GetReadableData<const float>(data, tensor.numel());
-  } else if (framework::IsType<const double>(dtype)) {
-    ss << GetReadableData<const double>(data, tensor.numel());
-  } else if (framework::IsType<const int>(dtype)) {
-    ss << GetReadableData<const int>(data, tensor.numel());
-  } else if (framework::IsType<const int64_t>(dtype)) {
-    ss << GetReadableData<const int64_t>(data, tensor.numel());
-  } else if (framework::IsType<const bool>(dtype)) {
-    ss << GetReadableData<const bool>(data, tensor.numel());
-  } else {
-    // TODO(gongwb): add more data types support.
-    ss << "\tdata: unprintable type: " << dtype.name();
-  }
-  ss << "]";
-
-  return ss.str();
-}
-
-std::string GetSelectedRowsInfo(const framework::SelectedRows &slr) {
-  std::stringstream ss;
-  ss << "height:" << slr.height() << ", rows:[";
-  for (unsigned int i = 0; i < slr.rows().size(); i++) {
-    if (i != slr.rows().size() - 1) {
-      ss << slr.rows()[i] << ",";
-    } else {
-      ss << slr.rows()[i];
-    }
-  }
-  ss << "], tensor:" << GetTensorInfo(slr.value());
-
-  return ss.str();
-}
-
-std::string GetVarInfo(framework::Scope *scope, const std::string &name) {
-  framework::Scope *local_scope =
-      scope->Var(kLocalExecScopeName)->Get<framework::Scope *>();
-  auto var = local_scope->FindVar(name);
-
-  std::stringstream ss;
-  if (var == NULL) {
-    ss << "can't find " << name
-       << GenScopeTreeDebugInfo(const_cast<framework::Scope *>(scope));
-    return ss.str();
-  }
-
-  if (var->IsType<framework::LoDTensor>()) {
-    return GetTensorInfo(var->Get<LoDTensor>());
-  }
-
-  if (var->IsType<framework::SelectedRows>()) {
-    return GetSelectedRowsInfo(var->Get<SelectedRows>());
-  }
-
-  ss << "can't print " << name;
-  return ss.str();
-}
 
 void PrintIO(OpHandleBase *op, const std::vector<VarHandleBase *> &vars,
              const std::vector<framework::Scope *> &local_scopes) {
@@ -342,6 +238,56 @@ void PrintIO(OpHandleBase *op, const std::vector<VarHandleBase *> &vars,
              << ", device_context:" << ctx->stream() << ", name:" << var->name_
              << ", var info:"
              << GetVarInfo(local_scopes[var->scope_idx_], var->name_);
+  }
+}
+
+void TestSetConstant(const std::vector<framework::Scope *> &local_scopes) {
+  VLOG(10) << "in threadedssa local_scopes size:" << local_scopes.size();
+  for (unsigned int i = 0; i < local_scopes.size(); i++) {
+    VLOG(10) << "in threadedssa 1";
+    auto scope = local_scopes[i];
+    framework::Scope *local_scope =
+        scope->Var(kLocalExecScopeName)->Get<framework::Scope *>();
+    auto var = local_scope->FindVar("embedding_para@GRAD");
+    if (var == nullptr) {
+      VLOG(10) << "in threadedssa can't find var:";
+      continue;
+    }
+
+    VLOG(10) << "in threadedssa 2";
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    VLOG(10) << "in threadedssa 2.1";
+    auto slr = var->GetMutable<framework::SelectedRows>();
+    VLOG(10) << "in threadedssa 2.2";
+    auto ctx = dynamic_cast<platform::CUDADeviceContext *>(
+        pool.Get(slr->value().place()));
+    VLOG(10) << "in threadedssa 2.3";
+    if (ctx == nullptr) {
+      VLOG(10) << "in threadedssa not cuda:";
+      continue;
+    }
+
+    VLOG(10) << "in threadedssa 3";
+    if (!slr->mutable_value()->IsInitialized()) {
+      VLOG(10) << "in threadedssa not IsInitialized:";
+      continue;
+    }
+
+    VLOG(10) << "in threadedssa 4";
+    auto *data = slr->mutable_value()->data<float>();
+    VLOG(10) << "in threadedssa prepare cudamemsetasync set:"
+             << slr->value().place() << ", idx:" << i << ", data:" << data
+             << ", numel:" << slr->value().numel();
+
+    // cudaMemsetAsync(data, 0, slr->value().numel(), ctx->stream());
+    operators::math::SetConstant<platform::CUDADeviceContext, float>
+        constant_functor;
+    constant_functor(*ctx, slr->mutable_value(), static_cast<float>(0));
+    VLOG(10) << "in threadedssa before cudamemsetasync set:"
+             << slr->value().place() << ", idx:" << i;
+    ctx->Wait();
+    VLOG(10) << "in threadedssa after cudaMemsetAsync set:"
+             << slr->value().place() << ", idx:" << i;
   }
 }
 
@@ -381,6 +327,7 @@ void ThreadedSSAGraphExecutor::RunOp(
 
         // PrintIO(op->Outputs(), local_scopes_);
         PrintIO(op, op->Inputs(), local_scopes_);
+        // TestSetConstant(local_scopes_);
       }
     } catch (...) {
       exception_holder_.Catch(std::current_exception());

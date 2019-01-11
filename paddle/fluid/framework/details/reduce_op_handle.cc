@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/container_cast.h"
+#include "paddle/fluid/framework/details/print_help.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #if defined PADDLE_WITH_CUDA && defined PADDLE_WITH_DISTRIBUTE
@@ -21,6 +22,7 @@
 #include "paddle/fluid/operators/distributed/collective_server.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #endif
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -48,6 +50,53 @@ void ReduceOpHandle::Wait(
   }
 }
 
+inline void GatherLocalSelectedRows2(
+    const std::vector<const SelectedRows *> &src_selecte_rows_,
+    const std::vector<platform::Place> &in_places,
+    const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
+    const platform::Place &out_place, SelectedRows *dst_selecte_rows) {
+  PADDLE_ENFORCE(!src_selecte_rows_.empty());
+
+  std::vector<Tensor> in_tensors;
+  std::vector<int64_t> out_rows;
+
+  for (auto in_sr_ptr : src_selecte_rows_) {
+    auto &in_sr = *in_sr_ptr;
+    in_tensors.emplace_back(in_sr.value());
+    out_rows.insert(out_rows.end(), in_sr.rows().begin(), in_sr.rows().end());
+  }
+
+  auto &pre_in = src_selecte_rows_[0];
+
+  auto &dst_tensor = *dst_selecte_rows;
+  dst_tensor.set_height(pre_in->height());
+  dst_tensor.set_rows(out_rows);
+  size_t rows = out_rows.size();
+  DDim out_dim = pre_in->GetCompleteDims();
+  out_dim[0] = static_cast<int64_t>(rows);
+  dst_tensor.mutable_value()->Resize(out_dim);
+  dst_tensor.mutable_value()->mutable_data(out_place, pre_in->value().type());
+  Tensor *out_tensor = dst_tensor.mutable_value();
+
+  // copy
+  /*
+  int s = 0, e = 0;
+  for (size_t j = 0; j < in_tensors.size(); ++j) {
+    e += in_tensors[j].dims()[0];
+    auto sub_out = out_tensor->Slice(s, e);
+    paddle::framework::TensorCopy(in_tensors[j], out_place,
+                                  *(dev_ctxes.at(in_places[j])), &sub_out);
+    s = e;
+  }
+  */
+
+  auto merged_dev_ctx2 =
+      dynamic_cast<platform::CUDADeviceContext *>(dev_ctxes.at(out_place));
+  operators::math::SetConstant<platform::CUDADeviceContext, float>
+      constant_functor;
+  constant_functor(*merged_dev_ctx2, out_tensor, static_cast<float>(0));
+}
+
 #if defined PADDLE_WITH_CUDA && defined PADDLE_WITH_DISTRIBUTE
 template <typename DevCtx, typename DataType>
 void ReduceOpHandle::GatherSelectedRows(
@@ -56,6 +105,24 @@ void ReduceOpHandle::GatherSelectedRows(
     const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
     VarHandle *out_var_handle, const platform::Place &out_place,
     SelectedRows *dst_selected_rows) {
+  /*
+  auto merged_dev_ctx2 = dynamic_cast<DevCtx *>(dev_ctxes.at(out_place));
+  auto input_width = src_selected_rows[0]->value().dims()[1];
+  auto input_height = src_selected_rows[0]->height();
+
+  auto rows = src_selected_rows[0]->rows();
+  dst_selected_rows->set_rows(rows);
+  dst_selected_rows->set_height(input_height);
+  dst_selected_rows->mutable_value()->mutable_data<float>(
+      framework::make_ddim({static_cast<int64_t>(rows.size()), input_width}),
+  merged_dev_ctx2->GetPlace());
+  operators::math::SetConstant<platform::CUDADeviceContext, float>
+  constant_functor;
+  constant_functor(*merged_dev_ctx2, dst_selected_rows->mutable_value(),
+  static_cast<float>(0));
+  return;
+  */
+
   const CollectiveContext &collective_context =
       *CollectiveContext::GetInstance();
 
@@ -67,10 +134,16 @@ void ReduceOpHandle::GatherSelectedRows(
       gathered_var_mid->GetMutable<framework::SelectedRows>();
   GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
                           gathered_select_rows);
+  // GatherLocalSelectedRows2(src_selected_rows, in_places, dev_ctxes,
+  // out_place,
+  // dst_selected_rows);
   // return;
 
   // FIXME(gongwb): remove this Wait.
   Wait(dev_ctxes);
+
+  VLOG(10) << "in reduce gathered_select_rows:"
+           << GetVarInfo(scope, gathered_var_name);
 
   // merge them
   auto merged_dev_ctx = dynamic_cast<DevCtx *>(dev_ctxes.at(out_place));
@@ -80,6 +153,10 @@ void ReduceOpHandle::GatherSelectedRows(
       scope->Var(merged_var_name)->GetMutable<SelectedRows>();
   operators::math::scatter::MergeAdd<DevCtx, DataType> merge_func;
   merge_func(*merged_dev_ctx, *gathered_select_rows, merged_select_rows);
+  merged_dev_ctx->Wait();
+
+  VLOG(10) << "in reduce merged_select_rows:"
+           << GetVarInfo(scope, merged_var_name);
 
   // 2. start collective server if it doesn't exist
   operators::distributed::CollectiveServer *server =
@@ -113,11 +190,11 @@ void ReduceOpHandle::GatherSelectedRows(
   }
 
   // erase gathered vars
-  merged_dev_ctx->Wait();
-  scope->EraseVars(std::vector<std::string>{gathered_var_name});
+  // merged_dev_ctx->Wait();
+  // scope->EraseVars(std::vector<std::string>{gathered_var_name});
 
   PADDLE_ENFORCE(client->Gather(vars, &remote, *merged_dev_ctx, scope));
-  merged_dev_ctx->Wait();
+  // merged_dev_ctx->Wait();
   if (1) {
     PADDLE_ENFORCE(remote.size() == vars.size());
 
@@ -137,8 +214,25 @@ void ReduceOpHandle::GatherSelectedRows(
     all[collective_context.trainer_id_] = merged_select_rows;
     PADDLE_ENFORCE(all[collective_context.trainer_id_]);
 
-    // merge_func(*merged_dev_ctx, all, dst_selected_rows);
-    // merged_dev_ctx->Wait();
+    /*
+    std::vector<const SelectedRows *> all2;
+    all2.push_back(gathered_select_rows);
+    merge_func(*merged_dev_ctx, gathered_select_rows, dst_selected_rows);
+    */
+
+    operators::math::scatter::MergeAdd<DevCtx, DataType> merge_func;
+    merge_func(*merged_dev_ctx, all, dst_selected_rows);
+    merged_dev_ctx->Wait();
+    VLOG(10) << "in reduce dst_selecte_rows:"
+             << GetVarInfo(scope, out_var_handle->name_);
+    /*
+    dst_selected_rows->mutable_value()->mutable_data<float>(
+        framework::make_ddim({767,512}), merged_dev_ctx->GetPlace());
+    operators::math::SetConstant<platform::CUDADeviceContext, float>
+    constant_functor;
+    constant_functor(*merged_dev_ctx, dst_selected_rows->mutable_value(),
+    static_cast<float>(0));
+    */
   }
   rpc_server->WaitVarBarrier(merged_var_name);
   rpc_server->ClearVar(merged_var_name);
@@ -247,11 +341,13 @@ void ReduceOpHandle::RunImpl() {
 #if defined PADDLE_WITH_CUDA && defined PADDLE_WITH_DISTRIBUTE
       if (in_selected_rows[0]->value().type() ==
           framework::proto::VarType::FP32) {
+        VLOG(10) << "selected_rows tensor use float32";
         GatherSelectedRows<platform::CUDADeviceContext, float>(
             in_selected_rows, in_places, dev_ctxes_, out_var_handle, t_out_p,
             out_var->GetMutable<framework::SelectedRows>());
       } else if (in_selected_rows[0]->value().type() ==
                  framework::proto::VarType::FP64) {
+        VLOG(10) << "selected_rows tensor use float64";
         GatherSelectedRows<platform::CUDADeviceContext, double>(
             in_selected_rows, in_places, dev_ctxes_, out_var_handle, t_out_p,
             out_var->GetMutable<framework::SelectedRows>());
