@@ -27,9 +27,12 @@ __all__ = [
     "convert_dist_to_sparse_program"
 ]
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
+_formatter = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(message)s')
+_handler = logging.StreamHandler(stream=sys.stderr)
+_handler.setFormatter(_formatter)
 _logger = logging.getLogger("lookup_table_utils")
 _logger.setLevel(logging.INFO)
+_logger.addHandler(_handler)
 
 model_filename = "__model__"
 lookup_table_dir = "__lookup_table__"

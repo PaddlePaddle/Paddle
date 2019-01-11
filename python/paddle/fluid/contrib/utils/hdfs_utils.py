@@ -27,9 +27,12 @@ import logging
 
 __all__ = ["HDFSClient", "multi_download", "multi_upload"]
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
+_formatter = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(message)s')
+_handler = logging.StreamHandler(stream=sys.stderr)
+_handler.setFormatter(_formatter)
 _logger = logging.getLogger("hdfs_utils")
 _logger.setLevel(logging.INFO)
+_logger.addHandler(_handler)
 
 
 class HDFSClient(object):
