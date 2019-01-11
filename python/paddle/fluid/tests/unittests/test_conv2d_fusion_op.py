@@ -51,8 +51,9 @@ class TestConv2dFusionOp(OpTest):
         input = np.random.random(self.input_size).astype(self.dtype)
         filter = np.random.random(self.filter_size).astype(self.dtype)
 
-        self.output = conv2d_forward_naive(input, filter, self.groups,
-                                           conv2d_param).astype(self.dtype)
+        self.output, _, _, _, _ = conv2d_forward_naive(
+            input, filter, self.groups, conv2d_param)
+        self.output = self.output.astype(self.dtype)
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),

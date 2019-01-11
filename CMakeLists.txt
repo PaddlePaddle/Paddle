@@ -55,6 +55,7 @@ option(WITH_DOUBLE      "Compile PaddlePaddle with double precision"    OFF)
 option(WITH_RDMA        "Compile PaddlePaddle with RDMA support"        OFF)
 option(WITH_TIMER       "Compile PaddlePaddle with stats timer"         OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
+option(WITH_JEMALLOC    "Compile PaddlePaddle with jemalloc"            OFF)
 option(WITH_DOC         "Compile PaddlePaddle with documentation"       OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
@@ -261,6 +262,12 @@ if (WITH_PROFILER)
     add_definitions(-DWITH_GPERFTOOLS)
 endif()
 
+if (WITH_JEMALLOC)
+    find_package(JeMalloc REQUIRED)
+    include_directories(${JEMALLOC_INCLUDE_DIR})
+    add_definitions(-DWITH_JEMALLOC)
+endif()
+
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation
@@ -290,7 +297,7 @@ if(WITH_PSLIB)
     list(APPEND EXTERNAL_LIBS pslib_brpc)
     list(APPEND EXTERNAL_LIBS libmct)
 endif(WITH_PSLIB)
-    
+
 if(WITH_AMD_GPU)
     find_package(HIP)
     include(hip)
