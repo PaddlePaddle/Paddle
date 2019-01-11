@@ -97,35 +97,35 @@ class TestImperative(unittest.TestCase):
                     super(PyLayer1, self).__init__()
 
                 @staticmethod
-                def forward(inputs):
-                    return inputs
+                def forward(input):
+                    return input
 
                 @staticmethod
-                def backward(inputs):
-                    return inputs
+                def backward(input):
+                    return input
 
             class PyLayer2(fluid.imperative.PyLayer):
                 def __init__(self):
                     super(PyLayer2, self).__init__()
 
                 @staticmethod
-                def forward(inputs):
-                    return inputs
+                def forward(input):
+                    return input
 
                 @staticmethod
-                def backward(inputs):
-                    return inputs
+                def backward(input):
+                    return input
 
             py_layer_1 = PyLayer1()
             py_layer_2 = PyLayer2()
-            py_layer_1([fluid.imperative.base.to_variable(np.ones([2, 2]))])
-            py_layer_2([fluid.imperative.base.to_variable(np.ones([2, 2]))])
+            py_layer_1(fluid.imperative.base.to_variable(np.ones([2, 2])))
+            py_layer_2(fluid.imperative.base.to_variable(np.ones([2, 2])))
             id = py_layer_1.forward_id
             self.assertGreater(id, 0)
             self.assertEqual(py_layer_1.backward_id, id + 1)
             self.assertEqual(py_layer_2.forward_id, id + 2)
             self.assertEqual(py_layer_2.backward_id, id + 3)
-            py_layer_1([fluid.imperative.base.to_variable(np.ones([2, 2]))])
+            py_layer_1(fluid.imperative.base.to_variable(np.ones([2, 2])))
             self.assertEqual(py_layer_1.forward_id, id)
 
     def test_pylayer(self):
@@ -133,7 +133,7 @@ class TestImperative(unittest.TestCase):
         with fluid.imperative.guard():
             my_py_layer = MyPyLayer()
             var_inp = fluid.imperative.base.to_variable(np_inp)
-            outs = my_py_layer([var_inp])
+            outs = my_py_layer(var_inp)
             dy_out = np.sum(outs[0]._numpy())
             outs[0]._backward()
             dy_grad = var_inp._gradient()

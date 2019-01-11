@@ -55,18 +55,18 @@ class PyLayer(core.PyLayer):
         super(PyLayer, self).__init__()
 
     @staticmethod
-    def forward(inputs):
+    def forward(*inputs):
         raise NotImplementedError
 
     @staticmethod
-    def backward(douts):
+    def backward(*douts):
         raise NotImplementedError
 
     @classmethod
-    def __call__(cls, inputs):
+    def __call__(cls, *inputs):
         tracer = framework._imperative_tracer()
         block = framework.default_main_program().current_block()
-        inputs = [x._ivar for x in inputs]
+        ivar_inputs = [x._ivar for x in inputs]
 
         if not hasattr(cls, 'forward_id'):
             cls.forward_id = core.PyLayer.num_funcs() + 1
@@ -78,11 +78,11 @@ class PyLayer(core.PyLayer):
         iop.forward_id = cls.forward_id
         iop.backward_id = cls.backward_id
         block.ops.append(iop)
-        ivars = tracer.py_trace(iop, inputs, False)
+        ivars = tracer.py_trace(iop, ivar_inputs, False)
         # ivars = core.PyLayer.apply(cls.forward, inputs)
         ret = []
         for ivar in ivars:
-            tensor = ivar.value.get_tensor()
+            tensor = ivar.value().get_tensor()
             py_var = framework.Variable(
                 block,
                 type=core.VarDesc.VarType.LOD_TENSOR,
