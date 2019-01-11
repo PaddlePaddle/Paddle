@@ -25,6 +25,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+static const std::string kEagerDeletionOpName{"eager_deletion"};  // NOLINT
+
 EagerDeletionOpHandle::EagerDeletionOpHandle(
     ir::Node *node, const Scope *scope, const platform::Place &place,
     const std::unordered_set<std::string> &var_names, GarbageCollector *gc,
@@ -59,20 +61,15 @@ EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 #endif
 }
 
-std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
+std::string EagerDeletionOpHandle::Name() const { return kEagerDeletionOpName; }
 
 void EagerDeletionOpHandle::RunImpl() {
-#ifdef PADDLE_WITH_CUDA
-  platform::RecordEvent record_event(Name(), dev_ctx_);
-#else
-  platform::RecordEvent record_event(Name(), nullptr);
-#endif
-
+  platform::RecordEvent event(kEagerDeletionOpName, nullptr);
   Scope *exec_scope = nullptr;
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (auto &name : var_names_) {
     auto it = ref_cnts_->find(name);
-    // Var not found, not reference count has not decreased to 0
+    // Reference count has not decreased to 0
     if (it == ref_cnts_->end() || it->second.fetch_sub(1) != 1) {
       continue;
     }
@@ -81,6 +78,7 @@ void EagerDeletionOpHandle::RunImpl() {
       exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
     }
 
+    // Var not found
     auto *var = exec_scope->FindVar(name);
     if (var == nullptr) {
       continue;
