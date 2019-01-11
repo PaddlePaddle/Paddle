@@ -49,6 +49,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/imperative.h"
+#include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/recordio.h"
@@ -775,7 +776,12 @@ All parameter, weight, gradient are variables in Paddle.
           })
       .def("set_int", [](ir::Pass &self, const std::string &name,
                          int val) { self.Set<const int>(name, new int(val)); })
-      .def("type", &ir::Pass::Type);
+      .def("type", &ir::Pass::Type)
+      .def("apply", [](ir::Pass &self, std::shared_ptr<ir::Graph> graph) {
+        std::unique_ptr<ir::Graph> origin_graph(graph.get());
+        auto optim_graph = self.Apply(std::move(origin_graph));
+        graph.reset(optim_graph.release());
+      });
 
   py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(
       m, "PassBuilder");
@@ -1019,8 +1025,7 @@ All parameter, weight, gradient are variables in Paddle.
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &, const ProgramDesc &,
                   const std::string &, Scope *, std::vector<Scope *> &,
-                  const ExecutionStrategy &, const BuildStrategy &, size_t,
-                  size_t>())
+                  const ExecutionStrategy &, const BuildStrategy &>())
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
       // We still cannot get local_scope from this vector, since the element
       // of vec<Scope*> will be freed by Python GC. We can only return Scope*
@@ -1043,6 +1048,9 @@ All parameter, weight, gradient are variables in Paddle.
 
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);
+
+  BindGraph(&m);
+  BindNode(&m);
 }
 }  // namespace pybind
 }  // namespace paddle
