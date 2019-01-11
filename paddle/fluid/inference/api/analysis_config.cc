@@ -44,18 +44,21 @@ PassStrategy *contrib::AnalysisConfig::pass_builder() const {
 
 contrib::AnalysisConfig::AnalysisConfig(const std::string &model_dir) {
   model_dir_ = model_dir;
+
   Update();
 }
 contrib::AnalysisConfig::AnalysisConfig(const std::string &prog_file,
                                         const std::string &params_file) {
   prog_file_ = prog_file;
   params_file_ = params_file;
+
   Update();
 }
 void contrib::AnalysisConfig::SetModel(const std::string &prog_file_path,
                                        const std::string &params_file_path) {
   prog_file_ = prog_file_path;
   params_file_ = params_file_path;
+
   Update();
 }
 void contrib::AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
@@ -68,10 +71,12 @@ void contrib::AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
   LOG(ERROR) << "Please compile with gpu to EnableGpu";
   use_gpu_ = false;
 #endif
+
   Update();
 }
 void contrib::AnalysisConfig::DisableGpu() {
   use_gpu_ = false;
+
   Update();
 }
 
