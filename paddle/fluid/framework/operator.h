@@ -391,7 +391,7 @@ class ExecutionContext {
     PADDLE_ENFORCE(
         dynamic_cast<platform::TemporaryAllocation*>(allocation_ptr) != nullptr,
         "The AllocationPtr must be TemporaryAllocation.");
-    PADDLE_ENFORCE_GE(allocation_ptr->size(),
+    PADDLE_ENFORCE_EQ(allocation_ptr->size(),
                       framework::product(dim) * sizeof(T));
 
     paddle::framework::Tensor temp_tensor(
