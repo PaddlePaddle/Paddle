@@ -87,12 +87,10 @@ class RequestHandler {
   framework::Executor* executor() { return executor_; }
 
   // Handle should call start/finish as following order
-  // 1. prepare scope you use
-  // 2. call start(scope)
-  // 3. do your process
-  // 4. call finish to return response
-  virtual bool Handle(std::function<void(framework::Scope*)> start,
-                      std::function<void()> finish) = 0;
+  // 1. in Start, run "start" callback to fetch request var into your scope
+  // 2. in Handle, process the request
+  virtual bool Handle(RPCRequest* request) = 0;
+  virtual void Start(std::function<RPCRequest*(framework::Scope*)> start) = 0;
 
  protected:
   const platform::DeviceContext* dev_ctx_;

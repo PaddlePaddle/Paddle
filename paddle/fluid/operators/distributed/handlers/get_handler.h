@@ -26,20 +26,26 @@ using Scope = paddle::framework::Scope;
 
 class GetHandlerSync final : public RequestHandler {
  public:
-  bool Handle(RPCRequest *request, Scope *scope) override;
-  bool IsSync() override { return true; }
+  void Start(std::function<RPCRequest*(framework::Scope*)> start) override;
+  bool Handle(RPCRequest* request) override;
 };
 
 class GetHandlerAsync final : public RequestHandler {
  public:
-  bool Handle(RPCRequest *request, Scope *scope) override;
-  bool IsSync() override { return false; }
+  void Start(std::function<RPCRequest*(framework::Scope*)> start) override;
+  bool Handle(RPCRequest* request) override;
+
+ private:
+  framework::Scope* local_scope_;
 };
 
 class GetHandlerDCAsync final : public RequestHandler {
  public:
-  bool Handle(RPCRequest *request, Scope *scope) override;
-  bool IsSync() override { return false; }
+  void Start(std::function<RPCRequest*(framework::Scope*)> start) override;
+  bool Handle(RPCRequest* request) override;
+
+ private:
+  framework::Scope* local_scope_;
 };
 
 }  // namespace distributed

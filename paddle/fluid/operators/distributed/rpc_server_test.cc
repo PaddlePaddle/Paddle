@@ -108,9 +108,11 @@ void StartServer(distributed::RequestType req_type) {
       prefetch_var_name_to_prepared;
   prefetch_var_name_to_prepared[in_var_name] = prepared[0];
 
+  if (req_type == distributed::RequestType::PREFETCH) {
+    (static_cast<distributed::PrefetchHandler*>(g_req_handler.get()))
+        ->SetPrefetchPreparedCtx(&prefetch_var_name_to_prepared);
+  }
   g_req_handler->SetProgram(&program);
-  (static_cast<distributed::PrefetchHandler*>(g_req_handler.get()))
-      ->SetPrefetchPreparedCtx(&prefetch_var_name_to_prepared);
   g_req_handler->SetDevCtx(&ctx);
   g_req_handler->SetScope(&scope);
   g_req_handler->SetExecutor(&exe);

@@ -134,11 +134,12 @@ static void MergeMultipleVarsIntoOneBySection(
       auto& dims = prefetch_out_var.dims();
 
       PADDLE_ENFORCE_EQ(dims.size(), 2, "");
-      PADDLE_ENFORCE_EQ(ids_in_this_section.size(), dims[0]);
+      PADDLE_ENFORCE_EQ(ids_in_this_section.size(),
+                        static_cast<size_t>(dims[0]));
 
       auto row_numel = dims[1];
 
-      for (size_t i = 0; i < dims[0]; ++i) {
+      for (int64_t i = 0; i < dims[0]; ++i) {
         auto id = ids_in_this_section[i];
         auto origin_id = id + abs_sections[section_idx];
         auto& offsets = id_to_offset[origin_id];
@@ -194,7 +195,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
   std::vector<int64_t> ids_vector;
   if (platform::is_cpu_place(id_tensor.place())) {
     auto* id_data = id_tensor.data<int64_t>();
-    for (size_t i = 0; i < id_tensor.numel(); ++i) {
+    for (int64_t i = 0; i < id_tensor.numel(); ++i) {
       ids_vector.push_back(id_data[i]);
     }
   } else {
@@ -211,7 +212,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
                  boost::get<platform::CUDAPlace>(id_tensor.place()),
                  id_tensor.data<int64_t>(), sizeof(int64_t) * id_tensor.numel(),
                  stream);
-    for (size_t i = 0; i < cpu_tensor.numel(); ++i) {
+    for (int64_t i = 0; i < cpu_tensor.numel(); ++i) {
       ids_vector.push_back(cpu_tensor_data[i]);
     }
 #endif

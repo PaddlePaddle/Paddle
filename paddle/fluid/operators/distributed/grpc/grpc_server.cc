@@ -142,7 +142,7 @@ void AsyncGRPCServer::TryToRegisterNewOne(const RequestType rpc_type,
   auto& cq = rpc_cq_[rpc_type];
 
   reqs[req_id] =
-      new GRPCRequest(&service_, cq.get(), handler, req_id, req_type);
+      new GRPCRequest(&service_, cq.get(), handler, req_id, rpc_type);
   VLOG(7) << "TryToRegisterNewOne status:" << reqs[req_id]->Status();
 }
 
@@ -164,7 +164,7 @@ void AsyncGRPCServer::HandleRequest(
             << " get next";
 
     auto& reqs = rpc_reqs_[rpc_type];
-    GRPCRequestBase* base = nullptr;
+    GRPCRequest* base = nullptr;
     {
       PADDLE_ENFORCE(req_id >= 0 && req_id < kRequestBufSize);
       std::unique_lock<std::mutex> lock(cq_mutex_);

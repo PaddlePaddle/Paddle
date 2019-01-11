@@ -27,8 +27,9 @@ using Scope = paddle::framework::Scope;
 
 class PrefetchHandler final : public RequestHandler {
  public:
-  bool Handle(RPCRequest* request, Scope* scope) override;
-  bool IsSync() override { return false; }
+  bool Handle(RPCRequest* request) override;
+  void Start(std::function<RPCRequest*(framework::Scope*)> start) override;
+
   void SetPrefetchPreparedCtx(
       std::unordered_map<
           std::string, std::shared_ptr<framework::ExecutorPrepareContext>>* g) {
@@ -44,6 +45,7 @@ class PrefetchHandler final : public RequestHandler {
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>*
       prefetch_var_name_to_prepared_ctx_;
+  framework::Scope* local_scope_;
 };
 
 }  // namespace distributed

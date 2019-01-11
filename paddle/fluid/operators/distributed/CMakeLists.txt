@@ -13,7 +13,7 @@ configure_file(send_recv.proto.in ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto @O
 cc_library(barrier SRCS barrier.cc)
 cc_library(rpc_server SRCS rpc_server.cc)
 cc_library(rpc_client SRCS rpc_client.cc DEPS scope device_context)
-cc_library(sendrecvop_utils SRCS sendrecvop_utils.cc DEPS data_type lod_tensor selected_rows tensor_util)
+cc_library(sendrecvop_utils SRCS sendrecvop_utils.cc DEPS data_type lod_tensor selected_rows)
 
 add_subdirectory(handlers)
 

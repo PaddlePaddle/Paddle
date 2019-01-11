@@ -22,23 +22,35 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-bool GetMonomerHandler::Handle(RPCRequest *request, Scope *scope) {
-  if (HandleSignal(request, scope, rpc_server_)) {
+void GetMonomerHandler::Start(
+    std::function<RPCRequest*(framework::Scope*)> start) {
+  start(scope_);
+}
+
+bool GetMonomerHandler::Handle(RPCRequest* request) {
+  if (HandleSignal(request, scope_, rpc_server_)) {
     return true;
   }
   // NOTE: get monomer do not depend on server state (barriers).
   rpc_server_->WaitVarReady(request->varname_);
-  *(request->out_var_) = scope->FindVar(request->varname_);
+  auto outvar = scope_->FindVar(request->varname_);
+  request->out_var_ = &outvar;
+  request->out_var_name_ = request->varname_;
   return true;
 }
 
-bool GetMonomerBarrierHandler::Handle(RPCRequest *request, Scope *scope) {
-  if (HandleSignal(request, scope, rpc_server_)) {
+void GetMonomerBarrierHandler::Start(
+    std::function<RPCRequest*(framework::Scope*)> start) {
+  start(scope_);
+}
+
+bool GetMonomerBarrierHandler::Handle(RPCRequest* request) {
+  if (HandleSignal(request, scope_, rpc_server_)) {
     return true;
   }
   // FIXME(typhoonzero): need wait?
   rpc_server_->WaitVarReady(request->varname_);
-  auto *bar = rpc_server_->VarReadyBarrier(request->varname_);
+  auto* bar = rpc_server_->VarReadyBarrier(request->varname_);
   if (bar) bar->Increase();
   return true;
 }

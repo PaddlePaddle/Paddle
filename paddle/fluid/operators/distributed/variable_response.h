@@ -71,10 +71,6 @@ class VariableResponse {
   // other: number of error field.
   virtual int Parse(Source* source) = 0;
 
-  // inline const framework::Scope& GetLocalScope() const { return
-  // *local_scope_; }
-  // inline framework::Scope* GetMutableLocalScope() const { return
-  // local_scope_; }
   inline std::string Varname() const { return meta_.varname(); }
   inline std::string OutVarname() const { return meta_.out_varname(); }
   inline std::string TableName() const { return meta_.table_name(); }

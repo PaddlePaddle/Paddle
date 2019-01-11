@@ -43,46 +43,58 @@ enum CallStatus { PROCESS = 0, FINISH };
 
 class GRPCRequest {
  public:
-  explicit GRPCRequestBase(GrpcService::AsyncService* service,
-                           ::grpc::ServerCompletionQueue* cq,
-                           RequestHandler* request_handler, int req_id,
-                           RequestType req_type)
+  explicit GRPCRequest(GrpcService::AsyncService* service,
+                       ::grpc::ServerCompletionQueue* cq,
+                       RequestHandler* request_handler, int req_id,
+                       RequestType req_type)
       : responder_(&ctx_),
+        req_type_(req_type),
         service_(service),
         cq_(cq),
         status_(PROCESS),
         request_handler_(request_handler),
         req_id_(req_id) {
     PADDLE_ENFORCE(cq_);
+    // NOTE: must start process to call handler so the request can be started.
+    auto start_callback =
+        std::bind(&GRPCRequest::ParseIncommingVar, this, std::placeholders::_1);
+    request_handler_->Start(start_callback);
   }
-  virtual ~GRPCRequestBase() {}
+  virtual ~GRPCRequest() {}
 
-  RPCRequest ParseIncommingVar(framework::Scope* scope) {
-    request_.reset(new GRPCVariableResponse(scope, request_handler->dev_ctx()));
+  RPCRequest* ParseIncommingVar(framework::Scope* scope) {
+    request_.reset(
+        new GRPCVariableResponse(scope, request_handler_->dev_ctx()));
     service_->RequestAsyncUnary(
-        static_cast<int>(req_type), &ctx_, request_.get(), &responder_, cq_,
-        cq_, reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
-    return RPCRequest(request_->Varname(), request_->GetVar(), &out_var_.get(),
-                      request_->GetTrainerId(), req_type);
+        static_cast<int>(req_type_), &ctx_, request_.get(), &responder_, cq_,
+        cq_, reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
+    return rpc_request_.get();
   }
 
-  virtual void Process() {
-    auto start = std::bind(&GRPCRequestSend::ParseIncommingVar, this, _1);
-    auto finish = std::bind(&GRPCRequestSend::Finish);
-    request_handler_->Handle(start, finish);
+  void Process() {
+    rpc_request_.reset(new RPCRequest(
+        request_->Varname(), request_->GetVar(), request_->OutVarname(),
+        request_->TableName(), request_->GetTrainerId(), req_type_));
+    request_handler_->Handle(rpc_request_.get());
+    Finish();
   }
 
   void Finish() {
     ::grpc::ByteBuffer reply;
-    if (out_var_.get() != nullptr) {
-      SerializeToByteBuffer(request_->Varname(), out_var_.get(),
+    // NOTE: response is in out_var_ and out_var_name_
+    if (rpc_request_->out_var_ != nullptr &&
+        *(rpc_request_->out_var_) != nullptr) {
+      SerializeToByteBuffer(rpc_request_->out_var_name_,
+                            *(rpc_request_->out_var_),
                             *request_handler_->dev_ctx(), &reply);
     }
-
-    std::lock_guard<std::mutex> l(status_mu_);
-    status_ = FINISH;
-    responder_->Finish(reply, ::grpc::Status::OK,
-                       reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
+    {
+      std::lock_guard<std::mutex> l(status_mu_);
+      status_ = FINISH;
+      responder_.Finish(
+          reply, ::grpc::Status::OK,
+          reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
+    }
   }
 
   std::string Status2String(RequestType req_type) {
@@ -106,9 +118,10 @@ class GRPCRequest {
  protected:
   // FIXME(typhoonzero): to unique_ptr
   std::shared_ptr<GRPCVariableResponse> request_;
-  // out_var_ could be nullptr if need to return empty response.
-  std::unique_ptr<framework::Variable> out_var_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
+
+  std::unique_ptr<RPCRequest> rpc_request_;
+  RequestType req_type_;
 
   mutable std::mutex status_mu_;
   ::grpc::ServerContext ctx_;

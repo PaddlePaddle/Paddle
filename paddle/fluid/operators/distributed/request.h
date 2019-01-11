@@ -36,24 +36,25 @@ class RPCRequest {
  public:
   RPCRequest() {}
   explicit RPCRequest(const std::string &varname, framework::Variable *invar,
-                      framework::Variable **outvar, int trainer_id,
+                      const std::string &out_var_name,
+                      const std::string &table_name, int trainer_id,
                       RequestType req_type)
       : trainer_id_(trainer_id),
         varname_(varname),
         var_(invar),
-        out_var_(outvar),
+        out_var_name_(out_var_name),
+        out_var_(nullptr),
+        table_name_(table_name),
         type_(req_type) {}
 
  public:
   int trainer_id_;
   std::string varname_;
   framework::Variable *var_;
-  framework::Variable **out_var_;
-
-  RequestType type_;
-  // prefetch table name and out_var_name.
   std::string out_var_name_;
+  framework::Variable **out_var_;
   std::string table_name_;
+  RequestType type_;
 
   DISABLE_COPY_AND_ASSIGN(RPCRequest);
 };

@@ -26,14 +26,14 @@ using Scope = paddle::framework::Scope;
 
 class GetMonomerHandler final : public RequestHandler {
  public:
-  bool Handle(RPCRequest *request, Scope *scope) override;
-  bool IsSync() override { return true; }
+  void Start(std::function<RPCRequest*(framework::Scope*)> start) override;
+  bool Handle(RPCRequest* request) override;
 };
 
 class GetMonomerBarrierHandler final : public RequestHandler {
  public:
-  bool Handle(RPCRequest *request, Scope *scope) override;
-  bool IsSync() override { return true; }
+  void Start(std::function<RPCRequest*(framework::Scope*)> start) override;
+  bool Handle(RPCRequest* request) override;
 };
 
 }  // namespace distributed

@@ -22,7 +22,12 @@ namespace distributed {
 
 constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
 
-bool CheckpointHandler::Handle(RPCRequest *request, Scope *scope) {
+void CheckpointHandler::Start(
+    std::function<RPCRequest*(framework::Scope*)> start) {
+  start(scope_);
+}
+
+bool CheckpointHandler::Handle(RPCRequest* request) {
   if (checkpoint_block_id_ == -1) {
     LOG(WARNING) << "when checkpoint_block_id_ = -1, there should be no RPC "
                     "invoke.";
@@ -30,12 +35,12 @@ bool CheckpointHandler::Handle(RPCRequest *request, Scope *scope) {
   }
 
   // TODO(tangwei12): find out why scope will be error.
-  auto *lt_var = scope->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
+  auto* lt_var = scope_->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
   lt_var->clear();
   lt_var->append(request->out_var_name_);
   VLOG(4) << "RequestCheckpointHandler update var kLookupTablePath to: "
           << request->out_var_name_;
-  executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope);
+  executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope_);
   return true;
 }
 

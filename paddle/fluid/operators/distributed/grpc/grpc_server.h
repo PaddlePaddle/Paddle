@@ -35,7 +35,7 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-class GRPCRequestBase;
+class GRPCRequest;
 
 class AsyncGRPCServer final : public RPCServer {
  public:
@@ -76,7 +76,7 @@ class AsyncGRPCServer final : public RPCServer {
   std::unordered_map<RequestType, std::vector<std::unique_ptr<std::thread>>,
                      EnumClassHash>
       rpc_threads_;
-  std::unordered_map<RequestType, std::vector<GRPCRequestBase*>, EnumClassHash>
+  std::unordered_map<RequestType, std::vector<GRPCRequest*>, EnumClassHash>
       rpc_reqs_;
 };
 

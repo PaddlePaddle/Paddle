@@ -107,7 +107,7 @@ class GrpcService final {
     AsyncService() {
       for (int i = 0; i < kGrpcNumMethods; ++i) {
         AddMethod(new ::grpc::internal::RpcServiceMethod(
-            GrpcMethodName(static_cast<GrpcMethod>(i)),
+            GrpcMethodName(static_cast<RequestType>(i)),
             ::grpc::internal::RpcMethod::NORMAL_RPC, nullptr));
         ::grpc::Service::MarkMethodAsync(i);
       }

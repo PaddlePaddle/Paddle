@@ -26,9 +26,11 @@ using Scope = paddle::framework::Scope;
 
 class CheckpointHandler final : public RequestHandler {
  public:
-  bool Handle(RPCRequest *request, Scope *scope) override;
+  void Start(std::function<RPCRequest*(framework::Scope*)> start) override;
+  bool Handle(RPCRequest* request) override;
+
   void SetId(int id) { checkpoint_block_id_ = id; }
-  bool IsSync() override { return true; }
+
   void SetCheckpointNotifyPreparedCtx(
       std::shared_ptr<framework::ExecutorPrepareContext> g) {
     checkpoint_prepared_ctx_ = g;
