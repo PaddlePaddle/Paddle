@@ -124,14 +124,8 @@ def sampled_softmax_with_cross_entropy(logits,
     if remove_accidental_hits:
         compute_remove_accidental_hits(sampled_logits, samples, num_true)
     sampled_logits -= np.log(probabilities)
-    sampled_softmax = np.apply_along_axis(
-        func1d=stable_softmax, axis=1, arr=sampled_logits)
-    shifted_true_labels = np.tile(np.arange(num_true), (batch_size, 1))
-    loss = -np.sum(
-        np.log(take_along_axis1(sampled_softmax, shifted_true_labels)),
-        axis=1,
-        keepdims=True) / num_true
-    return (loss, samples, sampled_softmax)
+    sampled_label = np.tile(np.arange(num_true), (batch_size, 1))
+    return (sampled_logits, samples, sampled_label)
 
 
 class TestSampledSoftmaxWithCrossEntropyOp(OpTest):
@@ -182,9 +176,9 @@ class TestSampledSoftmaxWithCrossEntropyOp(OpTest):
             self.inputs["CustomProbabilities"])
 
         self.outputs = {
-            'Loss': out[0],
+            'SampledLogits': out[0],
             'Samples': out[1],
-            'SampledSoftmax': out[2]
+            'SampledLabel': out[2]
         }
 
     def setUp(self):
@@ -205,7 +199,7 @@ class TestSampledSoftmaxWithCrossEntropyOp(OpTest):
     def test_check_grad(self):
         pass
         self.check_grad(
-            ["Logits", "SampledSoftmax"], "Loss", max_relative_error=0.02)
+            ["Logits"], ["SampledLogits", "Samples"], max_relative_error=0.02)
 
 
 class TestSampledSoftmaxWithCrossEntropyOp2(
@@ -339,9 +333,9 @@ class TestSampledSoftmaxWithCrossEntropyOpV2(OpTest):
             self.attrs["remove_accidental_hits"], True, fetched_samples,
             fetched_probabilities)
         self.outputs = {
-            'Loss': out[0],
+            'SampledLogits': out[0],
             'Samples': out[1],
-            'SampledSoftmax': out[2]
+            'SampledLabel': out[2]
         }
 
     def setUp(self):
@@ -358,7 +352,7 @@ class TestSampledSoftmaxWithCrossEntropyOpV2(OpTest):
     def test_check_grad(self):
         pass
         self.check_grad(
-            ["Logits", "SampledSoftmax"], "Loss", max_relative_error=0.02)
+            ["Logits"], ["SampledLogits", "Samples"], max_relative_error=0.02)
 
 
 if __name__ == '__main__':

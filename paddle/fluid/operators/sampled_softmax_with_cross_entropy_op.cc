@@ -54,14 +54,14 @@ class SampledSoftmaxWithCrossEntropyOpMaker
         "labels and S negative labels for each example. This will be used in"
         "backward calculation.")
         .AsIntermediate();
-    AddOutput("SampledSoftmax",
+    AddOutput("SampledLogits",
               "(Tensor, default: Tensor<float>), A 2-D tensor with shape"
               "[N x S+NT]. The outputs value of sampled softmax, which will be"
               "used in backward calculation.")
         .AsIntermediate();
-    AddOutput("Loss",
-              "(Tensor, default: Tensor<float>), A 2-D tensor. The cross "
-              "entropy loss with shape [N x 1].");
+    AddOutput("SampledLabel",
+              "(Tensor, default: Tensor<int64>), A 2-D tensor. The cross "
+              "entropy loss with shape [N x NT].");
 
     AddAttr<bool>(
         "use_custom_samples",
@@ -124,9 +124,9 @@ class SampledSoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE(ctx->HasOutput("Samples"),
                    "Output(Samples) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("SampledSoftmax"),
-                   "Output(SampledSoftmax) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Loss"), "Output(Loss) should be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput("SampledLogits"),
+                   "Output(SampledLogits) should be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput("SampledLabel"), "Output(SampledLabel) should be not null.");
 
     auto logits_dims = ctx->GetInputDim("Logits");
     auto labels_dims = ctx->GetInputDim("Label");
@@ -140,15 +140,17 @@ class SampledSoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     const int num_samples = ctx->Attrs().Get<int>("num_samples");
     const int num_sampled_classes = labels_dims[1] + num_samples;
     ctx->SetOutputDim("Samples", {logits_dims[0], num_sampled_classes});
-    ctx->SetOutputDim("SampledSoftmax", {logits_dims[0], num_sampled_classes});
-    ctx->SetOutputDim("Loss", {logits_dims[0], 1});
+    ctx->SetOutputDim("SampledLogits", {logits_dims[0], num_sampled_classes});
+    ctx->SetOutputDim("SampledLabel", {logits_dims[0], labels_dims[1]});
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Logits"));
-    return framework::OpKernelType(data_type, ctx.device_context());
+    framework::OpKernelType kt = framework::OpKernelType(data_type, ctx.device_context());
+    kt.place_ = platform::CPUPlace();
+    return kt;
   }
 };
 
@@ -164,10 +166,10 @@ class SampledSoftmaxWithCrossEntropyOpGrad
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Samples"),
                    "Input(Samples) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("SampledSoftmax"),
-                   "Input(SampledSoftmax) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
-                   "Input(Loss@Grad) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("SampledLogits"),
+                   "Input(SampledLogits) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("SampledLogits")),
+                   "Input(SampledLogits@Grad) should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Logits")),
                    "Output(Logits@Grad) should be not null.");
 
@@ -186,8 +188,10 @@ class SampledSoftmaxWithCrossEntropyOpGrad
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::GetDataTypeOfVar(
-        ctx.InputVar(framework::GradVarName("Loss")));
-    return framework::OpKernelType(data_type, ctx.device_context());
+        ctx.InputVar(framework::GradVarName("SampledLogits")));
+    framework::OpKernelType kt = framework::OpKernelType(data_type, ctx.device_context());
+    kt.place_ = platform::CPUPlace();
+    return kt;
   }
 };
 
@@ -203,8 +207,8 @@ class SampledSoftmaxGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetInput("Logits", Input("Logits"));
     grad_op->SetInput("Label", Input("Label"));
     grad_op->SetInput("Samples", Output("Samples"));
-    grad_op->SetInput("SampledSoftmax", Output("SampledSoftmax"));
-    grad_op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+    grad_op->SetInput("SampledLogits", Output("SampledLogits"));
+    grad_op->SetInput(framework::GradVarName("SampledLogits"), OutputGrad("SampledLogits"));
     grad_op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
     grad_op->SetAttrMap(Attrs());
     return std::unique_ptr<framework::OpDesc>(grad_op);

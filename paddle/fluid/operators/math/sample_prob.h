@@ -30,7 +30,7 @@ using Tensor = framework::Tensor;
 /* UNDERSTAND: utility function to adjust probability for unique sampling,
 return whatever as it is if not using unique samping */
 template <typename T>
-static T adjust_prob(const T prob, const int num_samples, const int num_tries) {
+static __device__ T adjust_prob(const T prob, const int num_samples, const int num_tries) {
   if (num_samples == num_tries) {
     return prob * num_samples;
   } else {

@@ -5643,9 +5643,9 @@ def sampled_softmax_with_cross_entropy(logits,
     """
     helper = LayerHelper('sampled_softmax_with_cross_entropy', **locals())
     samples = helper.create_variable_for_type_inference(dtype='int64')
-    sampled_softmax \
+    sampled_logits \
         = helper.create_variable_for_type_inference(dtype=logits.dtype)
-    loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    sampled_label = helper.create_variable_for_type_inference(dtype='int64')
 
     helper.append_op(
         type='sampled_softmax_with_cross_entropy',
@@ -5653,15 +5653,15 @@ def sampled_softmax_with_cross_entropy(logits,
                 'Label': label},
         outputs={
             'Samples': samples,
-            'SampledSoftmax': sampled_softmax,
-            'Loss': loss
+            'SampledLabel': sampled_label,
+            'SampledLogits': sampled_logits
         },
         attrs={
             'remove_accidental_hits': remove_accidental_hits,
             'num_samples': num_samples,
             'seed': seed
         })
-    return loss
+    return sampled_logits, sampled_label
 
 
 def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):

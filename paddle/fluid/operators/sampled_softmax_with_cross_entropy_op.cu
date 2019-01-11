@@ -33,26 +33,14 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 // UNDERSTAND: something like take_along_axis in numpy.
 template <typename T>
-static void CPUTakeAlongD1(const platform::DeviceContext& ctx,
-                           const framework::Tensor& array,
-                           const framework::Tensor& index,
-                           framework::Tensor* value) {
-  PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
-  // UNDERSTAND: check shape src(B, C), index(B, K), out should also be (B, K)
-  PADDLE_ENFORCE(index.dims().size() == 2 && array.dims().size() == 2 &&
-                 index.dims()[0] == array.dims()[0] &&
-                 index.dims() == value->dims());
-
-  const auto batch_size = index.dims()[0];
-  const auto num_take = index.dims()[1];
-  const auto array_dims = array.dims();
-  const auto idx_dims = index.dims();
-
-  // UNDERSTAND: no allocations here
-  const T* p_array = array.data<T>();
-  const int64_t* p_index = index.data<int64_t>();
-  T* p_value = value->data<T>();
-
+__global__ static void GPUTakeAlongD1(const int size,
+                           const int batch_size,
+                           const int num_tale,
+                           const int array_dims,
+                           const int idx_dims,
+                           const T* p_array,
+                           const int64_t* p_index,
+                           T* p_value) {
   // src slice size
   const auto array_slice_size = array_dims[1];
 
@@ -185,13 +173,32 @@ class SampledSoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
       // UNDERSTAND: sampling
       const auto seed = context.Attr<int>("seed");
       auto sampler_with_prob =
-          math::SampleWithProb<platform::CPUDeviceContext, T>();
-      sampler_with_prob(dev_ctx, math::LogUniformSampler(num_classes, seed),
+          math::GPUSampleWithProb<platform::GPUDeviceContext, T>();
+      sampler_with_prob(dev_ctx, seed, num_classes,
                         num_samples, label, samples, probabilities);
     }
 
     // UNDERSTAND: gather sampled logits and remove accidental hits if needed
-    CPUTakeAlongD1<T>(dev_ctx, *logits, *samples, sampled_logits);
+    int threads = 512;
+    const size_t size = batch_size * num_sampled_classes; 
+    int grid = (batch_size * num_sampled_classes + threads - 1) / threads;
+    const auto batch_size = index.dims()[0];
+    const auto num_take = index.dims()[1];
+    const auto array_dims = array.dims();
+    const auto idx_dims = index.dims();
+
+    const T* p_array = array.data<T>();
+    const int64_t* p_index = index.data<int64_t>();
+    T* p_value = value->data<T>();
+
+    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
+    // UNDERSTAND: check shape src(B, C), index(B, K), out should also be (B, K)
+    PADDLE_ENFORCE(index.dims().size() == 2 && array.dims().size() == 2 &&
+                 index.dims()[0] == array.dims()[0] &&
+                 index.dims() == value->dims());
+
+    GPUTakeAlongD1<T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
+        size, batch_size, num_take, array_dims, idx_dims, p_array, p_index, p_value);
     if (remove_accidental_hits) {
       compute_remove_accidental_hits<T>(dev_ctx, sampled_logits, *samples,
                                         num_true);
