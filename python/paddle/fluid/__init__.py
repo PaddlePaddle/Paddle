@@ -155,8 +155,7 @@ def __bootstrap__():
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
             'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
-            'sync_nccl_allreduce', 'limit_of_tmp_allocation',
-            'times_excess_than_required_tmp_allocation'
+            'sync_nccl_allreduce'
         ]
 
     core.init_gflags([sys.argv[0]] +
