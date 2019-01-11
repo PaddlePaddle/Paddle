@@ -71,18 +71,14 @@ class TestFetchOp(unittest.TestCase):
             pe = fluid.ParallelExecutor(
                 use_cuda=use_cuda, loss_name=loss.name, main_program=main)
 
-            special_var = [
-                'kCUDNNFwdAlgoCache', 'kCUDNNBwdDataAlgoCache',
-                'kCUDNNBwdFilterAlgoCache'
-            ]
             fetch_list = []
             all_vars = main.global_block().vars
+
             for k, v in all_vars.items():
                 if ('tmp' not in k) and (
-                        k[0] is not '_' or
-                        v.persistable) and k not in special_var:
+                        k[0] is not '_' or v.persistable
+                ) and v.type == core.VarDesc.VarType.LOD_TENSOR:
                     fetch_list.append(k)
-            print("Fetch var:", fetch_list)
 
             for batch_id, data in enumerate(train_inputs):
                 ret = pe.run(fetch_list,
@@ -91,7 +87,6 @@ class TestFetchOp(unittest.TestCase):
                 for i in range(len(fetch_list)):
                     assert not math.isnan(np.sum(ret[i])) and \
                            not math.isinf(np.sum(ret[i]))
-                print("GPU" if use_cuda else "CPU", batch_id, "Ok")
 
     def test_fetch_op(self):
         tst_reader = paddle.batch(flowers.test(use_xmap=False), batch_size=16)
@@ -120,7 +115,7 @@ class TestFeedParallel(unittest.TestCase):
                 loss = fluid.layers.cross_entropy(input=out, label=label)
                 loss = fluid.layers.mean(loss)
                 opt = fluid.optimizer.Momentum(
-                    learning_rate=0.01,
+                    learning_rate=0.1,
                     momentum=0.9,
                     regularization=fluid.regularizer.L2Decay(1e-4))
 
