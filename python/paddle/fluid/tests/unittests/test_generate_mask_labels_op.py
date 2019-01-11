@@ -343,8 +343,9 @@ class TestGenerateMaskLabels(OpTest):
         self.gt_polys = []
         self.gt_polys_list = []
         max_gt = 4
-        max_poly_num = 3
-        max_poly_size = 4
+        max_poly_num = 5
+        min_poly_size = 4
+        max_poly_size = 16
         lod0 = []
         lod1 = []
         lod2 = []
@@ -357,7 +358,8 @@ class TestGenerateMaskLabels(OpTest):
                 lod1.append(poly_num)
                 pts = []
                 for j in range(poly_num):
-                    poly_size = np.random.randint(1, max_poly_size, size=1)[0]
+                    poly_size = np.random.randint(
+                        min_poly_size, max_poly_size, size=1)[0]
                     x = np.random.rand(poly_size, 1) * w
                     y = np.random.rand(poly_size, 1) * h
                     xy = np.concatenate((x, y), axis=1)

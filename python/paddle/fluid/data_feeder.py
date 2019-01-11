@@ -88,8 +88,8 @@ class DataToLoDTensorConverter(object):
                     raise ValueError(
                         "Reshape error. What is defined in data layer is {}, but receive {}"
                         .format(self.shape, arr.shape))
-            else:
-                self._check_shape(arr.shape)
+            #else:
+            #    self._check_shape(arr.shape)
         t = core.LoDTensor()
         t.set(arr, self.place)
         if self.lod_level > 0:
