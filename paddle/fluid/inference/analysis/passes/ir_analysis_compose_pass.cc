@@ -27,35 +27,12 @@ namespace analysis {
 
 void IrAnalysisComposePass::RunImpl(Argument *argument) {
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
-  if (argument->use_tensorrt_valid() && argument->use_tensorrt()) {
-    InitTensorRTAttrs(argument);
-  }
   ApplyIrPasses(argument);
   CollectFusionStatis(argument);
 }
 
 std::string IrAnalysisComposePass::repr() const {
   return "ir-analysis-compose-pass";
-}
-
-void IrAnalysisComposePass::InitTensorRTAttrs(Argument *argument) {
-  if (argument->use_tensorrt_valid() && argument->use_tensorrt()) {
-    LOG(INFO) << "Initing TensorRT pass";
-    argument->SetTensorRtNodeTeller([](const framework::ir::Node *node) {
-      std::unordered_set<std::string> teller_set(
-          {"mul", "conv2d", "pool2d", "relu", "softmax", "sigmoid",
-           "depthwise_conv2d", "batch_norm", "concat", "tanh", "pad",
-           "elementwise_add", "elementwise_mul", "dropout", "split", "prelu",
-           "conv2d_transpose", "leaky_relu"});
-      if (!node->IsOp()) return false;
-
-      if (teller_set.count(node->Op()->Type())) {
-        return true;
-      } else {
-        return false;
-      }
-    });
-  }
 }
 
 void IrAnalysisComposePass::ApplyIrPasses(Argument *argument) {

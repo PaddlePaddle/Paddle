@@ -16,4 +16,5 @@ cc_library(analysis_passes SRCS passes.cc DEPS
 
 set(analysis_deps ${analysis_deps}
         analysis_passes
+        subgraph_detector
         CACHE INTERNAL "")

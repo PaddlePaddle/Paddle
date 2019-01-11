@@ -18,7 +18,7 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/fluid/framework/details/memory_reuse_types.h"
-#include "paddle/fluid/framework/details/multi_devices_graph_check_pass.h"
+#include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/sequential_execution_pass.h"
@@ -86,10 +86,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (strategy.memory_optimize_) {
       auto analysis_var_pass = AppendPass("analysis_var_pass");
     }
-    // Convert graph to run on multi-devices.
-    auto multi_devices_pass = AppendPass("multi_devices_pass");
-    multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
-                                                         &strategy_);
+
+    AppendMultiDevPass(strategy);
 
     // Add a graph print pass to record a graph with device info.
     if (!strategy_.debug_graphviz_path_.empty()) {
@@ -115,6 +113,25 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
   }
 
+  // Convert graph to run on multi-devices.
+  void AppendMultiDevPass(const BuildStrategy &strategy) {
+    ir::Pass *multi_devices_pass;
+    if (strategy_.is_distribution_) {
+      multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
+    } else {
+      if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
+        multi_devices_pass =
+            AppendPass("allreduce_mode_multi_devices_pass").get();
+      } else if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
+        multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
+      } else {
+        PADDLE_THROW("Unknown reduce strategy.");
+      }
+    }
+    multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
+                                                         &strategy_);
+  }
+
  private:
   BuildStrategy strategy_;
 };
@@ -131,6 +148,10 @@ std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy(
   return pass_builder_;
 }
 
+bool BuildStrategy::IsMultiDevPass(const std::string &pass_name) const {
+  return framework::details::MultiDevSSAGraphBuilder().count(pass_name) > 0;
+}
+
 std::unique_ptr<ir::Graph> BuildStrategy::Apply(
     const ProgramDesc &main_program, const std::vector<platform::Place> &places,
     const std::string &loss_var_name, const std::vector<Scope *> &local_scopes,
@@ -145,22 +166,23 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
-    if (pass->Type() == "multi_devices_pass") {
-      pass->Erase("places");
-      pass->SetNotOwned<const std::vector<platform::Place>>("places", &places);
-      pass->Erase("loss_var_name");
-      pass->SetNotOwned<const std::string>("loss_var_name", &loss_var_name);
-      pass->Erase("local_scopes");
-      pass->SetNotOwned<const std::vector<Scope *>>("local_scopes",
+    if (IsMultiDevPass(pass->Type())) {
+      pass->Erase(kPlaces);
+      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
+      pass->Erase(kLossVarName);
+      pass->SetNotOwned<const std::string>(kLossVarName, &loss_var_name);
+      pass->Erase(kLocalScopes);
+      pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
-      pass->Erase("nranks");
-      pass->Set<size_t>("nranks", new size_t(nranks));
+      pass->Erase(kNRanks);
+      pass->Set<size_t>(kNRanks, new size_t(nranks));
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase("nccl_ctxs");
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
+
     } else if (pass->Type() == "analysis_var_pass") {
       const std::vector<OpDesc *> *all_op_descs =
           new std::vector<OpDesc *>(main_program.Block(0).AllOps());
@@ -201,10 +223,13 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 USE_PASS(fuse_elewise_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
-USE_PASS(multi_devices_pass);
+USE_PASS(reduce_mode_multi_devices_pass);
+USE_PASS(allreduce_mode_multi_devices_pass);
+USE_PASS(dist_multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);
 USE_PASS(analysis_var_pass);
 USE_PASS(sequential_execution_pass);
 USE_PASS(all_reduce_deps_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
+USE_PASS(lock_free_optimize_pass);

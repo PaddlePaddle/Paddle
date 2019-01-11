@@ -35,8 +35,11 @@ using framework::proto::ProgramDesc;
 using framework::NaiveExecutor;
 using contrib::AnalysisConfig;
 
-/* This predictor is based on the original native predictor with IR and Analysis
- * support. It will optimize IR and Parameters in the runtime.
+/** \brief This predictor is based on the original native predictor with IR and
+ * Analysis support.
+ *
+ * It will optimize IR and Parameters in the runtime.
+ *
  * TODO(Superjomn) Replace the Navive predictor?
  */
 class AnalysisPredictor : public PaddlePredictor {

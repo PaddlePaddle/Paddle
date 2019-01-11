@@ -18,30 +18,42 @@
 #include <string>
 #include <vector>
 
+/*! \file */
+
+/*! \namespace paddle */
 namespace paddle {
-/*
- * This is a pass builder based on string. It is part of inference API.
+
+/** This is a pass builder based on string. It is part of inference API.
  */
 class PaddlePassBuilder {
  public:
+  explicit PaddlePassBuilder(const std::vector<std::string> &passes)
+      : passes_(passes) {}
+
+  /** Append a pass to the end of the passes. */
   void AppendPass(const std::string &pass_type);
 
+  /** Insert a pass to a specific position.
+   * @param idx the position to insert.
+   * @param pass_type the pass key.
+   */
   void InsertPass(size_t idx, const std::string &pass_type);
 
-  // Delete the `idx`-th pass.
+  /** Delete the `idx`-th pass. */
   void DeletePass(size_t idx);
 
-  // Delete all the passes that has type `pass_type`.
+  /** Delete all the passes that has type `pass_type`. */
   void DeletePass(const std::string &pass_type);
 
-  // Append an analysis pass.
+  /** Append an analysis pass. */
   void AppendAnalysisPass(const std::string &pass);
 
-  // Visualize the computation graph after each pass by generating a DOT
-  // language file, one can draw them with the Graphviz toolkit.
+  /** Visualize the computation graph after each pass by generating a DOT
+   * language file, one can draw them with the Graphviz toolkit.
+   */
   void TurnOnDebug();
 
-  // Human-readible information.
+  /** Human-readible information. */
   std::string DebugString();
 
   const std::vector<std::string> &AllPasses() const { return passes_; }
@@ -58,20 +70,27 @@ class PaddlePassBuilder {
   std::vector<std::string> passes_;
 };
 
-/*
- * Pass strategy to help control the IR passes.
+/**Pass strategy to help control the IR passes.
  */
 class PassStrategy : public PaddlePassBuilder {
  public:
-  // The MKLDNN control exists in both CPU and GPU mode, because there can be
-  // still some CPU kernels running in CPU mode.
-  virtual void EnableMKLDNN() {}
+  explicit PassStrategy(const std::vector<std::string> &passes)
+      : PaddlePassBuilder(passes) {}
+
+  /** The MKLDNN control exists in both CPU and GPU mode, because there can be
+   * still some CPU kernels running in CPU mode.
+   */
+  virtual void EnableMKLDNN(){};
+
+  bool use_gpu() const { return use_gpu_; }
 
   virtual ~PassStrategy() = default;
+
+ protected:
+  bool use_gpu_{false};
 };
 
-/*
- * The CPU passes controller, it is used in AnalysisPredictor with CPU mode.
+/** The CPU passes controller, it is used in AnalysisPredictor with CPU mode.
  */
 class CpuPassStrategy : public PassStrategy {
  public:
@@ -81,6 +100,7 @@ class CpuPassStrategy : public PassStrategy {
     passes_.assign({
         "infer_clean_graph_pass",         //
         "attention_lstm_fuse_pass",       //
+        "seqpool_concat_fuse_pass",       //
         "seqconv_eltadd_relu_fuse_pass",  //
         // "embedding_fc_lstm_fuse_pass", //
         "fc_lstm_fuse_pass",             //
@@ -93,6 +113,7 @@ class CpuPassStrategy : public PassStrategy {
         "conv_eltwiseadd_bn_fuse_pass",  //
         "is_test_pass",                  //
     });
+    use_gpu_ = false;
   }
 
   virtual ~CpuPassStrategy() = default;
@@ -114,8 +135,7 @@ class CpuPassStrategy : public PassStrategy {
   }
 };
 
-/*
- * The GPU passes strategy, it is used in
+/** The GPU passes strategy, it is used in AnalysisPredictor with GPU mode.
  */
 class GpuPassStrategy : public PassStrategy {
  public:
@@ -129,6 +149,13 @@ class GpuPassStrategy : public PassStrategy {
         "conv_elementwise_add2_act_fuse_pass",       //
         "conv_elementwise_add_fuse_pass",            //
     });
+
+    use_gpu_ = true;
+  }
+
+  GpuPassStrategy(const GpuPassStrategy &other)
+      : PassStrategy(other.AllPasses()) {
+    use_gpu_ = true;
   }
 
   void EnableMKLDNN() override;

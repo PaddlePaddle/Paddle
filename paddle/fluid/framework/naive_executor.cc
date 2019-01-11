@@ -40,12 +40,12 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
 
 void NaiveExecutor::Run() {
 #ifndef PADDLE_ON_INFERENCE
-  LOG_FIRST_N(WARNING, 6) << "The NaiveExecutor can not work properly if the "
+  LOG_FIRST_N(WARNING, 5) << "The NaiveExecutor can not work properly if the "
                              "cmake flag ON_INFER is not set.";
-  LOG_FIRST_N(WARNING, 6) << "Unlike the training phase, all the scopes and "
+  LOG_FIRST_N(WARNING, 5) << "Unlike the training phase, all the scopes and "
                              "variables will be reused to save the allocation "
                              "overhead.";
-  LOG_FIRST_N(WARNING, 6) << "Please re-compile the inference library by "
+  LOG_FIRST_N(WARNING, 5) << "Please re-compile the inference library by "
                              "setting the cmake flag ON_INFER=ON if you are "
                              "running Paddle Inference";
 #endif  // PADDLE_ON_INFERENCE
