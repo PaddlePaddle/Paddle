@@ -15,7 +15,6 @@
 #pragma once
 #include <condition_variable>  // NOLINT
 #include <deque>
-#include <map>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
@@ -40,7 +39,7 @@ class TemporaryAllocation : public memory::allocation::Allocation {
  *
  * There is one opportunity to free the allocations of temp_allocation_queue:
  *   - when the allocation size of opportunities exceeds a certain threshold
- *     (defined by FLAGS_limit_of_tmp_allocation).
+ *     (defined by FLAGS_limit_of_temporary_allocation).
  *
  * */
 class TemporaryAllocator : public memory::allocation::Allocator {
@@ -63,10 +62,11 @@ class TemporaryAllocator : public memory::allocation::Allocator {
 
  private:
   platform::Place place_;
+
   // When the allocation is not held by any variable, it should be placed
-  // to temp_mem_map immediately.
-  std::unique_ptr<std::multimap<size_t, TemporaryAllocation *>> temp_mem_map_{
-      nullptr};
+  // to temp_mem_queue immediately.
+  std::shared_ptr<std::deque<TemporaryAllocation *>> temp_mem_queue_{nullptr};
+
   std::mutex mtx_;
   size_t wait_delete_mem_{0};
   std::function<void()> callback_;
