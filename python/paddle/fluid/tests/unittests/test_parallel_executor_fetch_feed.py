@@ -14,14 +14,19 @@
 
 from __future__ import print_function
 
-import paddle.dataset.flowers as flowers
 import math
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import unittest
 import numpy as np
-import paddle
 import os
+
+
+def get_data(batch_size=8):
+    np.random.seed(5)
+    img = np.random.random(size=[batch_size, 3, 224, 224]).astype(np.float32)
+    label = (np.random.random(size=[batch_size, 1]) * 10).astype(np.int64)
+    return img, label
 
 
 def Lenet(data, class_dim):
@@ -39,7 +44,7 @@ def Lenet(data, class_dim):
 
 
 class TestFetchOp(unittest.TestCase):
-    def parallel_exe(self, train_inputs, seed, use_cuda):
+    def parallel_exe(self, seed, use_cuda):
         main = fluid.Program()
         startup = fluid.Program()
         startup.random_seed = seed
@@ -50,7 +55,6 @@ class TestFetchOp(unittest.TestCase):
             out = Lenet(data, class_dim=102)
             loss = fluid.layers.cross_entropy(input=out, label=label)
             loss = fluid.layers.mean(loss)
-
             opt = fluid.optimizer.Momentum(
                 learning_rate=0.1,
                 momentum=0.9,
@@ -67,7 +71,6 @@ class TestFetchOp(unittest.TestCase):
             exe = fluid.Executor(place)
             exe.run(startup)
 
-            feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
             pe = fluid.ParallelExecutor(
                 use_cuda=use_cuda, loss_name=loss.name, main_program=main)
 
@@ -80,24 +83,19 @@ class TestFetchOp(unittest.TestCase):
                 ) and v.type == core.VarDesc.VarType.LOD_TENSOR:
                     fetch_list.append(k)
 
-            for batch_id, data in enumerate(train_inputs):
-                ret = pe.run(fetch_list,
-                             feed=feeder.feed(data),
-                             return_numpy=True)
+            for _ in range(2):
+                img, label = get_data()
+                train_inputs = {"image": img, "label": label}
+                ret = pe.run(fetch_list, feed=train_inputs, return_numpy=True)
                 for i in range(len(fetch_list)):
                     assert not math.isnan(np.sum(ret[i])) and \
                            not math.isinf(np.sum(ret[i]))
 
     def test_fetch_op(self):
-        tst_reader = paddle.batch(flowers.test(use_xmap=False), batch_size=16)
-        tst_reader_iter = tst_reader()
-
-        train_inputs = [next(tst_reader_iter) for i in range(3)]
-
         os.environ['CPU_NUM'] = str(4)
         if core.is_compiled_with_cuda():
-            self.parallel_exe(train_inputs, seed=1, use_cuda=True)
-        self.parallel_exe(train_inputs, seed=1, use_cuda=False)
+            self.parallel_exe(seed=1, use_cuda=True)
+        self.parallel_exe(seed=1, use_cuda=False)
 
 
 class TestFeedParallel(unittest.TestCase):
@@ -122,19 +120,16 @@ class TestFeedParallel(unittest.TestCase):
                 opt.minimize(loss)
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-        feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
-        reader = feeder.decorate_reader(
-            paddle.batch(
-                flowers.train(), batch_size=16), multi_devices=True)
-
         exe = fluid.Executor(place)
         exe.run(startup)
 
         pe = fluid.ParallelExecutor(
             use_cuda=use_cuda, loss_name=loss.name, main_program=main)
 
-        for batch_id, data in enumerate(reader()):
-            loss_np = pe.run(feed=data, fetch_list=[loss.name])[0]
+        for batch_id in range(3):
+            img, label = get_data()
+            feed_dict = {"image": img, "label": label}
+            loss_np = pe.run(feed=feed_dict, fetch_list=[loss.name])[0]
             print(batch_id, loss_np)
             if batch_id == 2:
                 break
