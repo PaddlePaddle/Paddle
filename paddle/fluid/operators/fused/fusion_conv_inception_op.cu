@@ -21,7 +21,7 @@ DECLARE_uint64(conv_workspace_size_limit);
 namespace paddle {
 namespace operators {
 
-#if CUDNN_VERSION >= 7001
+#if CUDNN_VERSION >= 7100
 using Tensor = framework::Tensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
@@ -264,7 +264,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-#if CUDNN_VERSION >= 7001
+#if CUDNN_VERSION >= 7100
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(conv2d_inception_fusion,
                         ops::CUDNNConvInceptionFusionOpKernel<float>,
