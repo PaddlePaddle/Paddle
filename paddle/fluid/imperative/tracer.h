@@ -131,8 +131,10 @@ class Tracer {
 
     if (!stop_gradient) {
       framework::OpDesc* grad_op_desc;
-      auto grad_to_var = new std::unordered_map<std::string, std::string>();
-      CreateGradOp(*op_desc, {}, {block}, &grad_op_desc, grad_to_var);
+      // TODO(panyx): Is this leaked?
+      std::unique_ptr<std::unordered_map<std::string, std::string>> grad_to_var(
+          new std::unordered_map<std::string, std::string>());
+      CreateGradOp(*op_desc, {}, {block}, &grad_op_desc, grad_to_var.get());
       op->grad_op_desc_ = grad_op_desc;
 
       for (auto it : grad_op_desc->Inputs()) {
@@ -143,12 +145,14 @@ class Tracer {
           if (var_it == grad_to_var->end()) {
             auto fwd_var_it = vars.find(grad_invar);
             PADDLE_ENFORCE(fwd_var_it != vars.end());
+            // Forward inputs or outputs.
             grad_in_vars.push_back(fwd_var_it->second->var_);
           } else {
             VarBase* var = vars[var_it->second];
             if (!var->grads_->IsInitialized()) {
               InitVar(var->var_, var->grads_);
             }
+            // Douts.
             grad_in_vars.push_back(var->grads_);
           }
         }
@@ -170,6 +174,54 @@ class Tracer {
     }
 
     op->block_ = block;
+  }
+
+  std::vector<VarBase*> PyTrace(OpBase* op, const std::vector<VarBase*>& inputs,
+                                bool stop_gradient = false) {
+    VLOG(3) << "py_trace";
+    op->input_vars_["X"] = inputs;
+    op->output_vars_["Out"] = PyLayer::Apply(op->forward_id_, inputs);
+    for (VarBase* inp : inputs) {
+      if (inp->pre_op_) {
+        op->pre_ops_["X"].push_back(inp->pre_op_);
+        op->pre_ops_out_idx_["X"].push_back(inp->pre_op_out_idx_);
+      } else {
+        op->pre_ops_["X"].push_back(nullptr);
+      }
+    }
+
+    auto& outputs = op->output_vars_["Out"];
+    for (size_t i = 0; i < outputs.size(); ++i) {
+      VarBase* out = outputs[i];
+      out->stop_gradient_ = stop_gradient;
+      out->pre_op_ = op;
+      out->pre_op_out_name_ = "Out";
+      out->pre_op_out_idx_ = i;
+    }
+    if (!stop_gradient) {
+      auto& grad_input_vars = op->grad_input_vars_["X@GRAD"];
+      auto& grad_output_vars = op->grad_output_vars_["Out@GRAD"];
+
+      for (const VarBase* inp : inputs) {
+        grad_input_vars.push_back(inp->var_);
+      }
+      for (VarBase* out : outputs) {
+        grad_input_vars.push_back(out->var_);
+      }
+      for (VarBase* out : outputs) {
+        grad_input_vars.push_back(out->grads_);
+        if (!grad_input_vars.back()->IsInitialized()) {
+          InitVar(out->var_, grad_input_vars.back());
+        }
+      }
+      for (const VarBase* inp : inputs) {
+        grad_output_vars.push_back(inp->grads_);
+        if (!grad_output_vars.back()->IsInitialized()) {
+          InitVar(inp->var_, grad_output_vars.back());
+        }
+      }
+    }
+    return outputs;
   }
 
  private:

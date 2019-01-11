@@ -17,6 +17,9 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "pybind11/pybind11.h"
+
+#include "Python.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_desc.h"
@@ -24,6 +27,8 @@
 
 namespace paddle {
 namespace imperative {
+
+namespace py = ::pybind11;
 
 class PreparedOp {
  public:
@@ -82,12 +87,15 @@ class OpBase;
 
 class VarBase {
  public:
-  VarBase()
+  VarBase() : VarBase(new framework::Variable(), new framework::Variable()) {}
+
+  // Owns `var` and `grad`
+  VarBase(framework::Variable* var, framework::Variable* grad)
       : pre_op_(nullptr),
         pre_op_out_idx_(-1),
         var_desc_(nullptr),
-        var_(new framework::Variable()),
-        grads_(new framework::Variable()),
+        var_(var),
+        grads_(grad),
         stop_gradient_(false) {}
 
   explicit VarBase(bool stop_gradient)
@@ -124,7 +132,11 @@ class VarBase {
 
 class OpBase {
  public:
-  OpBase() : op_desc_(nullptr), grad_op_desc_(nullptr) {}
+  OpBase()
+      : op_desc_(nullptr),
+        forward_id_(-1),
+        grad_op_desc_(nullptr),
+        backward_id_(-1) {}
 
   virtual ~OpBase() {
     if (grad_op_desc_) delete grad_op_desc_;
@@ -132,8 +144,14 @@ class OpBase {
 
   std::map<std::string, std::vector<VarBase*>> ApplyGrad();
 
+  // One of `op_desc_` or `forward_id_` is set, not both.
+  // For pure python PyLayer, use `forward_id_`, otherwise, use op_desc_.
   framework::OpDesc* op_desc_;
+  int forward_id_;
+  // When has backward, one of `grad_op_desc_` or `backward_id_` is set,
+  // not both.
   framework::OpDesc* grad_op_desc_;
+  int backward_id_;
 
   std::map<std::string, std::vector<VarBase*>> input_vars_;
   std::map<std::string, std::vector<VarBase*>> output_vars_;
@@ -153,8 +171,25 @@ class Layer {
     std::vector<VarBase> vars;
     return vars;
   }
+};
 
-  virtual void Backward() { LOG(ERROR) << "To support customize"; }
+class PyLayer {
+ public:
+  virtual ~PyLayer() {}
+
+  static void RegisterFunc(int func_id, const py::object& py_func);
+
+  static int NumFuncs();
+
+  static std::vector<VarBase*> Apply(int func_id,
+                                     const std::vector<VarBase*>& inputs);
+
+  static std::vector<framework::Variable*> ApplyGrad(
+      int func_id, const std::vector<framework::Variable*>& inputs);
+
+ private:
+  static std::vector<framework::Variable*> CallPythonFunc(
+      const py::object& callable, const std::vector<framework::Variable*>& ins);
 };
 
 }  // namespace imperative
