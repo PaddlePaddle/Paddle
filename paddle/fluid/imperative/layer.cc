@@ -27,8 +27,8 @@
 namespace paddle {
 namespace imperative {
 
-const char* PyLayer::kFwdInp = PyLayer::kFwdInp;
-const char* PyLayer::kFwdOut = PyLayer::kFwdOut;
+const char* PyLayer::kFwdInp = "X";
+const char* PyLayer::kFwdOut = "Out";
 
 std::map<int, py::object> py_funcs_;
 
