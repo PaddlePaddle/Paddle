@@ -49,7 +49,7 @@ void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
 class CTRReader : public framework::FileReader {
  public:
   explicit CTRReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue,
-                     int batch_size, int thread_num,
+                     int batch_size, size_t thread_num,
                      const std::vector<std::string>& slots,
                      const std::vector<std::string>& file_list)
       : batch_size_(batch_size), slots_(slots), file_list_(file_list) {

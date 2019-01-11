@@ -80,6 +80,7 @@ class PreparedOp {
   framework::OperatorWithKernel::OpKernelFunc func;
   platform::DeviceContext* dev_ctx;
 };
+
 class OpBase;
 
 /* The wrapper for Variable which holds a Variable and a VarBase of its
