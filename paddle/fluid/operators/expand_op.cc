@@ -48,7 +48,7 @@ class ExpandOp : public framework::OperatorWithKernel {
     }
 
     // set the first dim to -1 in compile time
-    if (!ctx->IsRuntime()) {
+    if (!ctx->IsRuntime() && x_dims[0] < 0) {
       out_shape[0] = x_dims[0];
     }
 
