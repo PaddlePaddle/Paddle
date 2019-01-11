@@ -23,11 +23,8 @@ set(BOOST_PROJECT       "extern_boost")
 # checked that the devtools package of CentOS 6 installs boost 1.41.0.
 # So we use 1.41.0 here.
 set(BOOST_VER           "1.41.0")
-if((NOT DEFINED BOOST_TAR) OR (NOT DEFINED BOOST_URL))
-    message(STATUS "use pre defined download url")
-    set(BOOST_TAR "boost_1_41_0" CACHE STRING "" FORCE)
-    set(BOOST_URL "http://paddlepaddledeps.cdn.bcebos.com/${BOOST_TAR}.tar.gz" CACHE STRING "" FORCE)
-endif()
+set(BOOST_TAR "boost_1_41_0" CACHE STRING "" FORCE)
+set(BOOST_URL "http://paddlepaddledeps.cdn.bcebos.com/${BOOST_TAR}.tar.gz" CACHE STRING "" FORCE)
 
 MESSAGE(STATUS "BOOST_TAR: ${BOOST_TAR}, BOOST_URL: ${BOOST_URL}")
 
