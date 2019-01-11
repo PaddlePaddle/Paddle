@@ -241,8 +241,8 @@ void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
         }
       }
     }
+    free(msk);
   }
-  free(msk);
 }
 
 }  // namespace operators

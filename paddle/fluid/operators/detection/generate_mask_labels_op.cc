@@ -173,6 +173,7 @@ std::vector<Tensor> SampleMaskForOneImage(const platform::CPUDeviceContext& ctx,
   std::vector<int> mask_gt_inds, fg_inds;
   std::vector<std::vector<std::vector<T>>> gt_polys;
 
+  auto polys_num = segm_length[1];
   auto segm_lod_offset = framework::ConvertToOffsetBasedLoD(segm_length);
   auto lod1 = segm_lod_offset[1];
   auto lod2 = segm_lod_offset[2];
@@ -182,14 +183,13 @@ std::vector<Tensor> SampleMaskForOneImage(const platform::CPUDeviceContext& ctx,
       mask_gt_inds.emplace_back(i);
 
       // slice fg segmentation polys
-      int poly_num = segm_length[1][i];
+      int poly_num = polys_num[i];
       std::vector<std::vector<T>> polys;
-      polys.reserve(poly_num);
       int s_idx = lod1[i];
       for (int j = 0; j < poly_num; ++j) {
         int s = lod2[s_idx + j];
         int e = lod2[s_idx + j + 1];
-        std::vector<T> plts(polys_data, polys_data + (e - s) * 2);
+        std::vector<T> plts(polys_data + s * 2, polys_data + e * 2);
         polys.push_back(plts);
       }
       gt_polys.push_back(polys);
@@ -253,7 +253,28 @@ std::vector<Tensor> SampleMaskForOneImage(const platform::CPUDeviceContext& ctx,
       int fg_polys_ind = fg_masks_inds[i];
       T* roi_fg = rois_fg_data + i * 4;
       uint8_t* mask = masks_data + i * resolution * resolution;
+      // for (int ii = 0; ii < gt_polys[fg_polys_ind].size(); ++ii) {
+      //   for (int jj = 0; jj < gt_polys[fg_polys_ind][ii].size(); ++jj) {
+      //     std::cout << gt_polys[fg_polys_ind][ii][jj] << " ";
+      //   }
+      //   std::cout << std::endl;
+      // }
+      // std::cout << std::endl;
+      // for (int ii = 0; ii < 4; ++ii) {
+      //   std::cout << roi_fg[ii] << " ";
+      // }
+      // std::cout << std::endl;
+      // std::cout << std::endl;
       Polys2MaskWrtBox(gt_polys[fg_polys_ind], roi_fg, resolution, mask);
+
+      // for (int ii = 0; ii < resolution; ++ii) {
+      //   for (int jj = 0; jj < resolution; ++jj) {
+      //     std::cout << int(mask[ii * resolution + jj]) << " ";
+      //   }
+      //   std::cout << std::endl;
+      // }
+      // std::cout << std::endl;
+      // std::cout << std::endl;
     }
   } else {
     // The network cannot handle empty blobs, so we must provide a mask
