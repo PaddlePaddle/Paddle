@@ -752,12 +752,6 @@ class DistributeTranspiler(object):
             elif op not in lr_ops:
                 self._append_pserver_non_opt_ops(block, op)
 
-        def __op_have_grad_input__(op):
-            for varname in op.input_arg_names:
-                if varname.find("@GRAD") >= 0:
-                    return varname
-            return ""
-
         def __clone_lr_op_sub_block__(op, program, lr_block):
             if not op.has_attr('sub_block'):
                 return
@@ -808,7 +802,7 @@ class DistributeTranspiler(object):
             merged_var = None
             for _, op in enumerate(self.optimize_ops):
                 # find the origin grad var before clipping/L2Decay,
-                # merged_var should be the input var name of L2Decaybuil
+                # merged_var should be the input var name of L2Decay
                 grad_varname_for_block = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]
                 if op.attr(OP_ROLE_VAR_ATTR_NAME)[
                         0] == optimize_target_param_name:
@@ -1684,7 +1678,16 @@ class DistributeTranspiler(object):
                 if self.config.enable_dc_asgd:
                     new_inputs[key] = dc
                 else:
-                    new_inputs[key] = merged_var
+                    # Note!! This is for l2decay on sparse gradient, because it will create a new tensor for
+                    # decayed gradient but not inplace modify the origin one
+                    origin_grad_name = opt_op.input(key)[0]
+                    if core.kNewGradSuffix(
+                    ) in origin_grad_name and pserver_block.has_var(
+                            origin_grad_name):
+                        new_grad = pserver_block.var(origin_grad_name)
+                        new_inputs[key] = new_grad
+                    else:
+                        new_inputs[key] = merged_var
             elif key == "Param":
                 param_block = _get_param_block(opt_op)
                 if not param_block:
