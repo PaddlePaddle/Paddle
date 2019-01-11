@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import math
 import paddle.fluid as fluid
+from paddle.fluid import compiler
 import paddle.fluid.core as core
 import unittest
 import numpy as np
@@ -114,7 +115,7 @@ class TestFetchAndFeed(unittest.TestCase):
         reader = feeder.decorate_reader(get_data, multi_devices=True)
 
         for batch_id, data in enumerate(reader()):
-            loss_np = pe.run(feed=data, fetch_list=[loss.name])[0]
+            loss_np = exe.run(train_cp, feed=data, fetch_list=[loss.name])[0]
             print(batch_id, loss_np)
             if batch_id == 2:
                 break
