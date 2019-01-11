@@ -236,9 +236,12 @@ def infer(use_cuda, inference_program, params_dirname):
     age_id = fluid.create_lod_tensor([[np.int64(0)]], [[1]], place)
     job_id = fluid.create_lod_tensor([[np.int64(10)]], [[1]], place)
     movie_id = fluid.create_lod_tensor([[np.int64(783)]], [[1]], place)
-    category_id = fluid.create_lod_tensor([np.array([10, 8, 9], dtype='int64')], [[3]], place)
-    movie_title = fluid.create_lod_tensor([np.array([1069, 4140, 2923, 710, 988], dtype='int64')],
-                                          [[5]], place)
+    category_id = fluid.create_lod_tensor(
+        [np.array(
+            [10, 8, 9], dtype='int64')], [[3]], place)
+    movie_title = fluid.create_lod_tensor(
+        [np.array(
+            [1069, 4140, 2923, 710, 988], dtype='int64')], [[5]], place)
 
     results = inferencer.infer(
         {

@@ -286,11 +286,15 @@ def infer(use_cuda, save_dirname=None):
         movie_id = fluid.create_lod_tensor([[np.int64(783)]], [[1]], place)
 
         assert feed_target_names[5] == "category_id"
-        category_id = fluid.create_lod_tensor([np.array([10, 8, 9], dtype='int64')], [[3]], place)
+        category_id = fluid.create_lod_tensor(
+            [np.array(
+                [10, 8, 9], dtype='int64')], [[3]], place)
 
         assert feed_target_names[6] == "movie_title"
         movie_title = fluid.create_lod_tensor(
-            [np.array([1069, 4140, 2923, 710, 988L], dtype='int64')], [[5]], place)
+            [np.array(
+                [1069, 4140, 2923, 710, 988L], dtype='int64')], [[5]],
+            place)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
