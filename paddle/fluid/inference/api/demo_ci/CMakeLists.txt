@@ -128,8 +128,8 @@ else()
       ${CMAKE_STATIC_LIBRARY_PREFIX}glog  ${CMAKE_STATIC_LIBRARY_PREFIX}gflags  ${CMAKE_STATIC_LIBRARY_PREFIX}protobuf
       ${CMAKE_STATIC_LIBRARY_PREFIX}snappy ${CMAKE_STATIC_LIBRARY_PREFIX}z ${CMAKE_STATIC_LIBRARY_PREFIX}xxhash
       snappystream ${EXTERNAL_LIB})
-  # NOTE(dzhwinter) shlwapi is deprecated.
-  set(DEPS ${DEPS} libcmt shlwapi)
+  get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+  set(DEPS ${DEPS} libcmt ${os_dependency_modules})
 endif(NOT WIN32)
 
 if(WITH_GPU)

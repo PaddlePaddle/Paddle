@@ -58,6 +58,7 @@ __all__ = [
     'adaptive_pool2d',
     'adaptive_pool3d',
     'batch_norm',
+    'data_norm',
     'beam_search_decode',
     'conv2d_transpose',
     'conv3d_transpose',
@@ -180,6 +181,7 @@ __all__ = [
     'lstm',
     'py_func',
     'psroi_pool',
+    'teacher_student_sigmoid_loss',
     'huber_loss',
 ]
 
@@ -2896,6 +2898,133 @@ def batch_norm(input,
     return helper.append_activation(batch_norm_out)
 
 
+def data_norm(input,
+              act=None,
+              epsilon=1e-05,
+              param_attr=None,
+              data_layout='NCHW',
+              in_place=False,
+              use_mkldnn=False,
+              name=None,
+              moving_mean_name=None,
+              moving_variance_name=None,
+              do_model_average_for_mean_and_var=False):
+    """
+    **Data Normalization Layer**
+
+    Can be used as a normalizer function for conv2d and fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    1. NHWC `[batch, in_height, in_width, in_channels]`
+
+    2. NCHW `[batch, in_channels, in_height, in_width]`
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
+        \ mini-batch\ mean \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+    Args:
+        input(variable): The input variable which is a LoDTensor.
+        act(string, Default None): Activation type, linear|relu|prelu|...
+        epsilon(float, Default 1e-05):
+        param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
+        data_layout(string, default NCHW): NCHW|NHWC
+        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
+        use_mkldnn(bool, Default false): ${use_mkldnn_comment}
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
+        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+
+    Returns:
+        Variable: A tensor variable which is the result after applying data normalization on the input.
+
+    Examples:
+
+        .. code-block:: python
+
+            data = fluid.layers.data(input=x, size=200, param_attr='fc1.w')
+            hidden2 = fluid.layers.data_norm(input=hidden1)
+    """
+    helper = LayerHelper('data_norm', **locals())
+    dtype = helper.input_dtype()
+
+    input_shape = input.shape
+    if data_layout == 'NCHW':
+        channel_num = input_shape[1]
+    else:
+        if data_layout == 'NHWC':
+            channel_num = input_shape[-1]
+        else:
+            raise ValueError("unsupported data layout:" + data_layout)
+
+    param_shape = [channel_num]
+
+    batch_size_default = 1e4
+    batch_sum_default = 0.0
+    batch_square_sum_default = 1e4
+
+    if param_attr and isinstance(param_attr, dict):
+        batch_size_default = param_attr.get("batch_size", 1e4)
+        batch_sum_default = param_attr.get("batch_sum", 0.0)
+        batch_square_sum_default = param_attr.get("batch_square", 1e4)
+
+    # create parameter
+    batch_size = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.batch_size',
+            initializer=Constant(value=float(batch_size_default)),
+            trainable=True),
+        shape=param_shape,
+        dtype=input.dtype)
+
+    batch_sum = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.batch_sum',
+            initializer=Constant(value=float(batch_sum_default)),
+            trainable=True),
+        shape=param_shape,
+        dtype=input.dtype)
+
+    batch_square_sum = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.batch_square_sum',
+            initializer=Constant(value=float(batch_square_sum_default)),
+            trainable=True),
+        shape=param_shape,
+        dtype=input.dtype)
+
+    means = helper.create_variable(dtype=dtype, stop_gradient=True)
+    scales = helper.create_variable(dtype=dtype, stop_gradient=True)
+
+    data_norm_out = input if in_place else helper.create_variable(dtype=dtype)
+
+    helper.append_op(
+        type="data_norm",
+        inputs={
+            "X": input,
+            "BatchSize": batch_size,
+            "BatchSum": batch_sum,
+            "BatchSquareSum": batch_square_sum
+        },
+        outputs={"Y": data_norm_out,
+                 "Means": means,
+                 "Scales": scales},
+        attrs={"epsilon": epsilon,
+               "use_mkldnn": use_mkldnn})
+
+    return helper.append_activation(data_norm_out)
+
+
 @templatedoc()
 def layer_norm(input,
                scale=True,
@@ -3064,9 +3193,9 @@ def group_norm(input,
         inputs['Bias'] = bias
 
     # create output
-    mean_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
-    variance_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
-    group_norm_out = helper.create_tmp_variable(dtype)
+    mean_out = helper.create_variable(dtype=dtype, stop_gradient=True)
+    variance_out = helper.create_variable(dtype=dtype, stop_gradient=True)
+    group_norm_out = helper.create_variable(dtype)
 
     helper.append_op(
         type="group_norm",
@@ -9262,6 +9391,47 @@ def log_loss(input, label, epsilon=1e-4, name=None):
         outputs={'Loss': [loss]},
         attrs={'epsilon': epsilon})
     return loss
+
+
+def teacher_student_sigmoid_loss(input,
+                                 label,
+                                 soft_max_up_bound=15.0,
+                                 soft_max_lower_bound=-15.0):
+    """
+    **Teacher Student Log Loss Layer**
+
+    This layer accepts input predictions and target label and returns the
+    teacher_student loss.
+
+    .. math::
+        loss = max(x, 0) - x * z + log(1 + exp(-abs(x))) + max(x, 0) - x * z' + log(1 + exp(-abs(x)))
+
+    Args:
+        input (Variable|list):  a 2-D tensor with shape [N x 1], where N is the
+                                batch size. This input is a probability computed
+                                by the previous operator.
+        label (Variable|list):  the ground truth which is a 2-D tensor with
+                                shape [N x 1], where N is the batch size.
+        soft_max_up_bound  (float):  if input > soft_max_up_bound, will be bound 
+        soft_max_lower_bound (float): if input < soft_max_lower_bound, will be bound
+
+    Returns:
+        Variable: A 2-D tensor with shape [N x 1], the teacher_student_sigmoid_loss.
+
+    Examples:
+        .. code-block:: python
+          cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
+    """
+    helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
+    out = helper.create_variable(dtype=input.dtype)
+    helper.append_op(
+        type='teacher_student_sigmoid_loss',
+        inputs={'X': [input],
+                'Label': [label]},
+        outputs={'Y': [out]},
+        attrs={"soft_max_lower_bound": float(soft_max_lower_bound), \
+                "soft_max_up_bound": float(soft_max_up_bound)})
+    return out
 
 
 def add_position_encoding(input, alpha, beta, name=None):

@@ -141,6 +141,10 @@ class GpuPassStrategy : public PassStrategy {
         "conv_elementwise_add_fuse_pass",            //
     });
 
+    for (int i = 6; i >= 3; i--) {
+      passes_.push_back("transpose_flatten" + std::to_string(i) +
+                        "_concat_fuse_pass");
+    }
     use_gpu_ = true;
   }
 

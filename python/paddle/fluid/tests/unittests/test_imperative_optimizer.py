@@ -26,7 +26,7 @@ from paddle.fluid.imperative.base import to_variable
 from test_imperative_base import new_program_scope
 
 
-class SimpleImgConvPool(fluid.imperative.PyLayer):
+class SimpleImgConvPool(fluid.imperative.Layer):
     def __init__(self,
                  num_channels,
                  num_filters,
@@ -72,7 +72,7 @@ class SimpleImgConvPool(fluid.imperative.PyLayer):
         return x
 
 
-class MNIST(fluid.imperative.PyLayer):
+class MNIST(fluid.imperative.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
         super(MNIST, self).__init__()
 
