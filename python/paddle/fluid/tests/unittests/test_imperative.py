@@ -15,6 +15,7 @@
 import contextlib
 import unittest
 import numpy as np
+import sys
 
 import paddle.fluid as fluid
 from paddle.fluid import core
@@ -22,7 +23,7 @@ from paddle.fluid.imperative.nn import FC
 from test_imperative_base import new_program_scope
 
 
-class MyLayer(fluid.imperative.PyLayer):
+class MyLayer(fluid.imperative.Layer):
     def __init__(self):
         super(MyLayer, self).__init__()
 
@@ -34,7 +35,35 @@ class MyLayer(fluid.imperative.PyLayer):
         return [x]
 
 
-class MLP(fluid.imperative.PyLayer):
+class MyPyLayer(fluid.imperative.PyLayer):
+    def __init__(self):
+        super(MyPyLayer, self).__init__()
+
+    @staticmethod
+    def forward(inputs):
+        sys.stderr.write('before forward\n')
+        ret = np.tanh(inputs[0])
+        sys.stderr.write('after forward: %s\n' % ret)
+        tensor = core.LoDTensor()
+        tensor.set(ret, core.CPUPlace())
+        return tuple([tensor])
+
+    @staticmethod
+    def backward(inputs):
+        sys.stderr.write('calling into backward: %s\n' % str(inputs))
+        inp, out, dout = inputs
+        inp = np.array(inp)
+        out = np.array(out)
+        dout = np.array(dout)
+        sys.stderr.write('calling into backward: %s, %s, %s\n' %
+                         (inp, out, dout))
+        ret = np.array(dout) * (1 - np.square(np.array(out)))
+        tensor = core.LoDTensor()
+        tensor.set(ret, core.CPUPlace())
+        return tuple([tensor])
+
+
+class MLP(fluid.imperative.Layer):
     def __init__(self):
         super(MLP, self).__init__()
         self._fc1 = FC(3,
@@ -56,8 +85,76 @@ class TestImperative(unittest.TestCase):
         with fluid.imperative.guard():
             cl = core.Layer()
             cl.forward([])
-            l = fluid.imperative.PyLayer()
+            l = fluid.imperative.Layer()
             self.assertRaises(NotImplementedError, l.forward, [])
+
+    def test_pylayer_func_id(self):
+
+        with fluid.imperative.guard():
+
+            class PyLayer1(fluid.imperative.PyLayer):
+                def __init__(self):
+                    super(PyLayer1, self).__init__()
+
+                @staticmethod
+                def forward(inputs):
+                    return inputs
+
+                @staticmethod
+                def backward(inputs):
+                    return inputs
+
+            class PyLayer2(fluid.imperative.PyLayer):
+                def __init__(self):
+                    super(PyLayer2, self).__init__()
+
+                @staticmethod
+                def forward(inputs):
+                    return inputs
+
+                @staticmethod
+                def backward(inputs):
+                    return inputs
+
+            py_layer_1 = PyLayer1()
+            py_layer_2 = PyLayer2()
+            py_layer_1([fluid.imperative.base.to_variable(np.ones([2, 2]))])
+            py_layer_2([fluid.imperative.base.to_variable(np.ones([2, 2]))])
+            id = py_layer_1.forward_id
+            self.assertGreater(id, 0)
+            self.assertEqual(py_layer_1.backward_id, id + 1)
+            self.assertEqual(py_layer_2.forward_id, id + 2)
+            self.assertEqual(py_layer_2.backward_id, id + 3)
+            py_layer_1([fluid.imperative.base.to_variable(np.ones([2, 2]))])
+            self.assertEqual(py_layer_1.forward_id, id)
+
+    def test_pylayer(self):
+        np_inp = np.ones([2, 2], np.float32)
+        with fluid.imperative.guard():
+            my_py_layer = MyPyLayer()
+            var_inp = fluid.imperative.base.to_variable(np_inp)
+            outs = my_py_layer([var_inp])
+            dy_out = np.sum(outs[0]._numpy())
+            outs[0]._backward()
+            dy_grad = var_inp._gradient()
+
+        with new_program_scope():
+            inp = fluid.layers.data(
+                name="inp", shape=[2, 2], append_batch_size=False)
+            # TODO(panyx0718): Paddle doesn't diff against data `inp`.
+            x1 = inp * 1
+            # TODO(panyx0718): If reduce_sum is skipped, the result is wrong.
+            x = fluid.layers.reduce_sum(fluid.layers.tanh(x1))
+            param_grads = fluid.backward.append_backward(
+                x, parameter_list=[x1.name])[0]
+            exe = fluid.Executor(fluid.CPUPlace())
+
+            static_out, static_grad = exe.run(
+                feed={inp.name: np_inp},
+                fetch_list=[x.name, param_grads[1].name])
+
+        self.assertTrue(np.allclose(dy_out, static_out))
+        self.assertTrue(np.allclose(dy_grad, static_grad))
 
     def test_layer_in_out(self):
         np_inp = np.array([1.0, 2.0, -1.0], dtype=np.float32)

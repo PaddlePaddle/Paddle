@@ -169,16 +169,44 @@ PYBIND11_MODULE(core, m) {
               self.op_desc_ = op_desc;
             }
           },
+          py::return_value_policy::reference)
+      .def_property(
+          "forward_id",
+          [](const imperative::OpBase &self) { return self.forward_id_; },
+          [](imperative::OpBase &self, int forward_id) {
+            self.forward_id_ = forward_id;
+          },
+          py::return_value_policy::reference)
+      .def_property(
+          "backward_id",
+          [](const imperative::OpBase &self) { return self.backward_id_; },
+          [](imperative::OpBase &self, int backward_id) {
+            self.backward_id_ = backward_id;
+          },
           py::return_value_policy::reference);
 
-  py::class_<imperative::Layer, PyLayer /* <--- trampoline*/> layer(m, "Layer");
+  py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
   layer.def(py::init<>())
-      .def("forward",
-           [](imperative::Layer &self,
-              const std::vector<imperative::VarBase> &inputs) {
-             return self.Forward(inputs);
-           })
-      .def("backward", &imperative::Layer::Backward);
+      .def("forward", [](imperative::Layer &self,
+                         const std::vector<imperative::VarBase> &inputs) {
+        return self.Forward(inputs);
+      });
+
+  py::class_<imperative::PyLayer>(m, "PyLayer")
+      .def(py::init<>())
+      .def_static(
+          "apply",
+          [](int func_id, const std::vector<imperative::VarBase *> &inputs)
+              -> std::vector<imperative::VarBase *> {
+                return imperative::PyLayer::Apply(func_id, inputs);
+              },
+          py::return_value_policy::take_ownership)
+      .def_static("register_func",
+                  [](int func_id, const py::object &callable) {
+                    imperative::PyLayer::RegisterFunc(func_id, callable);
+                  })
+      .def_static("num_funcs", &imperative::PyLayer::NumFuncs);
+
   BindTracer(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
