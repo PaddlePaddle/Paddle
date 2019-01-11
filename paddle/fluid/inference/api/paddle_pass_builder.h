@@ -94,7 +94,7 @@ class PassStrategy : public PaddlePassBuilder {
  */
 class CpuPassStrategy : public PassStrategy {
  public:
-  CpuPassStrategy() {
+  explicit CpuPassStrategy() : PassStrategy({}) {
     // NOTE the large fusions should be located in the front, so that they will
     // not be damaged by smaller ones.
     passes_.assign({

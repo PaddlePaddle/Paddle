@@ -190,7 +190,6 @@ void profile(bool use_mkldnn = false) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
   cfg.EnableMemoryOptim();
-  cfg.Build();
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
@@ -260,7 +259,6 @@ TEST(Analyzer_dam, compare_with_memory_optim) {
   // Run the first time to force to update memory cache
   SetConfig(&cfg);
   cfg.EnableMemoryOptim(true);
-  cfg.Build();
 
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
@@ -268,7 +266,6 @@ TEST(Analyzer_dam, compare_with_memory_optim) {
   // Run second time to use the memory cache and perform memory optimization.
   SetConfig(&cfg1);
   cfg1.EnableMemoryOptim();
-  cfg1.Build();
 
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg1),

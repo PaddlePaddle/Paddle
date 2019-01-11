@@ -324,15 +324,10 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 void AnalysisPredictor::OptimizeInferenceProgram() {
   status_program_optimized_ = true;
 
-<<<<<<< HEAD
-  argument_.SetUseGPU(config_.use_gpu);
-  argument_.SetGPUDeviceId(config_.device);
-  argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
-  argument_.SetMemoryOptimForceUpdate(config_.memory_optim_force_update_);
-=======
   argument_.SetUseGPU(config_.use_gpu());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
->>>>>>> 5d9edb4124bd634e9dfe24f851c562f9ff8cd44d
+  argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
+  argument_.SetMemoryOptimForceUpdate(config_.memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   if (!config_.model_dir().empty()) {
@@ -578,7 +573,7 @@ AnalysisPredictor::~AnalysisPredictor() {
 
   // TODO(Superjomn) deduce the directory path.
   std::string out_path = inference::analysis::GetMemoryCachePath(
-      config_.model_dir, config_.prog_file);
+      config_.model_dir(), config_.prog_file());
   if (need_collect_var_shapes_for_memory_optim()) {
     SerializeBatchVarShapes(out_path);
   }
@@ -637,7 +632,7 @@ bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
     need = false;
   } else if (config_.enable_memory_optim() &&
              !inference::IsFileExists(inference::analysis::GetMemoryCachePath(
-                 config_.model_dir, config_.prog_file))) {
+                 config_.model_dir(), config_.prog_file()))) {
     need = true;
   } else if (config_.enable_memory_optim() &&
              config_.memory_optim_force_update_) {
