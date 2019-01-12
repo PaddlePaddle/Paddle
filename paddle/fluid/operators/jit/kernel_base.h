@@ -42,6 +42,7 @@ typedef enum {
   kLayerNorm,
   kNCHW16CMulNC,
   kSeqPool,
+  kMatMul,
 } KernelType;
 
 typedef enum {
@@ -133,6 +134,13 @@ struct SeqPoolTuples {
   typedef T data_type;
   typedef seq_pool_attr_t attr_type;
   typedef void (*func_type)(const T*, T*, const seq_pool_attr_t*);
+};
+
+template <typename T>
+struct MatMulTuples {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const T*, const T*, T*, int, int, int);
 };
 
 template <typename T>
