@@ -55,8 +55,8 @@ using BuddyAllocator = detail::BuddyAllocator;
 BuddyAllocator *GetCPUBuddyAllocator() {
   // We tried thread_local for inference::RNN1 model, but that not works much
   // for multi-thread test.
-  static std::once_flag init_flag;
-  static detail::BuddyAllocator *a = nullptr;
+  static thread_local std::once_flag init_flag;
+  static thread_local detail::BuddyAllocator *a = nullptr;
 
   std::call_once(init_flag, []() {
     a = new detail::BuddyAllocator(
@@ -88,7 +88,7 @@ struct NaiveAllocator {
 
 template <>
 void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
-  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  //LOG(INFO) << "Allocate " << size << " bytes on " << platform::Place(place);
   void *p = GetCPUBuddyAllocator()->Alloc(size);
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
