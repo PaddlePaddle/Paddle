@@ -22,7 +22,6 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "pybind11/pybind11.h"
 
 #include "paddle/fluid/imperative/type_defs.h"
 
