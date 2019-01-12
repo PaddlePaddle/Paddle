@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/platform/port.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -28,6 +27,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/platform/device_tracer.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
 
 DEFINE_bool(enable_rpc_profiler, false, "Enable rpc profiler or not.");
@@ -102,7 +102,9 @@ Event::Event(EventType type, std::string name, uint32_t thread_id,
              const DeviceContext* dev_ctx)
     : type_(type), name_(name), thread_id_(thread_id), has_cuda_(false) {
 #ifdef PADDLE_WITH_CUDA
-  has_cuda_ = dev_ctx ? platform::is_gpu_place(dev_ctx->GetPlace()) : false;
+  has_cuda_ = (dev_ctx && g_state != ProfilerState::kCPU)
+                  ? platform::is_gpu_place(dev_ctx->GetPlace())
+                  : false;
   if (has_cuda_) {
     auto* cuda_dev_ctx = static_cast<const CUDADeviceContext*>(dev_ctx);
     PADDLE_ENFORCE(cudaSetDevice(
@@ -173,18 +175,22 @@ void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
 
 RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
-  std::lock_guard<std::mutex> l(profiler_mu);
+  // lock is not needed
+  // std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled) return;
   is_enabled_ = true;
   dev_ctx_ = dev_ctx;
   name_ = name;
   PushEvent(name_, dev_ctx_);
+  // call GetEventList to generate thread id
+  GetEventList();
   // Maybe need the same push/pop behavior.
   SetCurAnnotation(name_);
 }
 
 RecordEvent::~RecordEvent() {
-  std::lock_guard<std::mutex> l(profiler_mu);
+  // lock is not needed
+  // std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
@@ -204,7 +210,7 @@ RecordRPCEvent::RecordRPCEvent(const std::string& name,
 
 RecordBlock::RecordBlock(int block_id)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
-  std::lock_guard<std::mutex> l(profiler_mu);
+  // std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled) return;
   is_enabled_ = true;
   SetCurBlock(block_id);
@@ -212,7 +218,7 @@ RecordBlock::RecordBlock(int block_id)
 }
 
 RecordBlock::~RecordBlock() {
-  std::lock_guard<std::mutex> l(profiler_mu);
+  // std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
