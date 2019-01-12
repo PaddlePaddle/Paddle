@@ -25,6 +25,9 @@ namespace more {
 namespace mkl {
 
 template <typename T>
+void MatMul(const T* a, const T* b, T* c, int m, int n, int k);
+
+template <typename T>
 void VMul(const T* x, const T* y, T* z, int n);
 
 template <typename T>
@@ -92,6 +95,9 @@ void SeqPool(const T* x, T* y, const seq_pool_attr_t* attr) {
     bool UseMe(const typename tuples<T>::attr_type&) const override; \
     const char* ImplType() const override { return "MKL"; }          \
   }
+
+// ABCMNK
+DECLARE_MKL_KERNEL(MatMul, MatMulTuples);
 
 // XYZN
 DECLARE_MKL_KERNEL(VMul, XYZNTuples);
