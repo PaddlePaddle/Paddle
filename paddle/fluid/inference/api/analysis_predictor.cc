@@ -67,7 +67,6 @@ bool AnalysisPredictor::Init(
   }
 
   // Extra configs.
-  PADDLE_ENFORCE(config_.HasExtraConfig(kSwitchNoTensorCleaner));
   if (config_.HasExtraConfig(kSwitchNoTensorCleaner)) {
     switch_notensor_cleaner_ =
         config_.extra_config<bool>(kSwitchNoTensorCleaner);
