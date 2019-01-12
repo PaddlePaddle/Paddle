@@ -107,7 +107,9 @@ class BuddyAllocator {
  private:
   /*! Allocate CPU/GPU memory from system */
   std::unique_ptr<SystemAllocator> system_allocator_;
+#ifndef PADDLE_ON_INFERENCE
   std::mutex mutex_;
+#endif
 };
 
 }  // namespace detail
