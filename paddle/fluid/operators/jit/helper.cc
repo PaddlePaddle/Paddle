@@ -47,6 +47,7 @@ const char* to_string(KernelType kt) {
     ONE_CASE(kLayerNorm);
     ONE_CASE(kNCHW16CMulNC);
     ONE_CASE(kSeqPool);
+    ONE_CASE(kMatMul);
     default:
       PADDLE_THROW("Not support type: %d, or forget to add it.", kt);
       return "NOT JITKernel";

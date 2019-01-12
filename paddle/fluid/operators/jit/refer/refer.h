@@ -354,6 +354,10 @@ void SeqPool(const T* x, T* y, const seq_pool_attr_t* attr) {
   }
 }
 
+// A(M,K) * B(K,N) = C(M,N)
+template <typename T>
+void MatMul(const T* A, const T* B, T* C, int M, int N, int K) {}
+
 #define DECLARE_REFER_KERNEL(name, tuples)             \
   template <typename T>                                \
   class name##Kernel : public ReferKernel<tuples<T>> { \
@@ -393,6 +397,8 @@ DECLARE_REFER_KERNEL(LayerNorm, LayerNormTuples);
 DECLARE_REFER_KERNEL(NCHW16CMulNC, NCHW16CMulNCTuples);
 
 DECLARE_REFER_KERNEL(SeqPool, SeqPoolTuples);
+
+DECLARE_REFER_KERNEL(MatMul, MatMulTuples);
 
 #undef DECLARE_REFER_KERNEL
 
