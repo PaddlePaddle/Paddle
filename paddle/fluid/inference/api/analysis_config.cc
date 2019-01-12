@@ -20,7 +20,6 @@
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
-#include "paddle_analysis_config.h"
 
 namespace paddle {
 
