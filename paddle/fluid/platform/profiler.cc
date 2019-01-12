@@ -24,6 +24,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/platform/device_tracer.h"
@@ -175,9 +176,10 @@ void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
 
 RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
+  if (g_state == ProfilerState::kDisabled) return;
   // lock is not needed
   // std::lock_guard<std::mutex> l(profiler_mu);
-  if (g_state == ProfilerState::kDisabled) return;
+
   is_enabled_ = true;
   dev_ctx_ = dev_ctx;
   name_ = name;
@@ -187,9 +189,9 @@ RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
 }
 
 RecordEvent::~RecordEvent() {
+  if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   // lock is not needed
   // std::lock_guard<std::mutex> l(profiler_mu);
-  if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
     tracer->AddCPURecords(CurAnnotation(), start_ns_, PosixInNsec(),
