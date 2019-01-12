@@ -230,7 +230,8 @@ struct TestFuncWithRefer<jit::SeqPoolTuples<T>, std::vector<T>,
 };
 
 template <typename T>
-struct TestFuncWithRefer<jit::MatMulTuples<T>, std::vector<T>, std::vector<T>> {
+struct TestFuncWithRefer<jit::MatMulTuples<T>, std::vector<T>, std::vector<T>,
+                         std::vector<T>, int, int, int> {
   void operator()(const typename jit::MatMulTuples<T>::func_type tgt,
                   const std::vector<T>& a, const std::vector<T>& b,
                   const std::vector<T>& cref, int m, int n, int k) {
@@ -486,8 +487,8 @@ void TestMatMulKernel() {
         auto ref = jit::GetRefer<KT, jit::MatMulTuples<T>>();
         EXPECT_TRUE(ref != nullptr);
         std::vector<T> a(m * k), b(k * n), c(m * n);
-        RandomVec<T>(m * k, a.data(), -2.f, 2.f);
-        RandomVec<T>(k * n, b.data(), -2.f, 2.f);
+        RandomVec<T>(m * k, a.data(), -0.2f, 0.2f);
+        RandomVec<T>(k * n, b.data(), -0.2f, 0.2f);
         const T* a_data = a.data();
         const T* b_data = b.data();
         T* c_data = c.data();

@@ -213,7 +213,7 @@ void BenchSeqPoolKernel() {
 template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
 void BenchMatMulKernel() {
   for (int m : {1, 2, 3, 4}) {
-    for (int n : {1, 2, 3, 4}) {
+    for (int n : TestSizes()) {
       for (int k : TestSizes()) {
         std::vector<T> a(m * k), b(k * n), c(m * n);
         RandomVec<T>(m * k, a.data(), -2.f, 2.f);
