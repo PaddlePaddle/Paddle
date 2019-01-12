@@ -182,8 +182,6 @@ RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
   dev_ctx_ = dev_ctx;
   name_ = name;
   PushEvent(name_, dev_ctx_);
-  // call GetEventList to generate thread id
-  GetEventList();
   // Maybe need the same push/pop behavior.
   SetCurAnnotation(name_);
 }
