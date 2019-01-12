@@ -14,15 +14,18 @@
 
 #pragma once
 
-#include <map>
-#include <string>
-#include <vector>
+// clang-format off
+#include "paddle/fluid/framework/python_headers.h"
+// clang-format on
+
+#include <map>     // NOLINT
+#include <string>  // NOLINT
+#include <vector>  // NOLINT
 
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "pybind11/pybind11.h"
 
 #include "paddle/fluid/imperative/type_defs.h"
 
