@@ -16,6 +16,7 @@ limitations under the License. */
 #include <fstream>
 #include <iostream>
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "paddle/fluid/inference/api/extra_configs.h"
 
 namespace paddle {
 namespace inference {
@@ -259,6 +260,7 @@ TEST(Analyzer_seq_pool1, zerocopy_profile_threads) {
   AnalysisConfig config;
   SetConfig(&config);
   config.SwitchUseFeedFetchOps(false);
+  config.SetExtraConfig(kSwitchNoTensorCleaner, false);
 
   auto base_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   double total_time_of_threads{0};
