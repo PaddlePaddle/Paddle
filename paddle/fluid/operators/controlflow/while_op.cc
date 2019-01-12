@@ -85,6 +85,11 @@ class WhileOp : public framework::OperatorBase {
         scope.DeleteScope(&current_scope);
       }
     }
+#ifdef ON_INFER
+    // TODO(Superjomn) quite low performace in concurrency scenerio.
+    // Use a fake vector instead.
+    step_scopes.clear();
+#endif
   }
 };
 
