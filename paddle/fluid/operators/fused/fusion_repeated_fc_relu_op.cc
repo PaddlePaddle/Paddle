@@ -120,7 +120,7 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
       int m = i_dims[0];
       int n = w_dims[1];
       int k = w_dims[0];
-      relus[i - 1]->Resize({m, n});
+      relus[i]->Resize({m, n});
       fc_relu(relus[i - 1]->data<T>(), weights[i]->data<T>(),
               biases[i]->data<T>(), relus[i]->mutable_data<T>(place), m, n, k);
     }
