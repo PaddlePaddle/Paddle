@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/inference/api/extra_configs.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
@@ -65,6 +66,15 @@ bool AnalysisPredictor::Init(
     platform::EnableProfiler(tracking_device);
   }
 
+  // Extra configs.
+  PADDLE_ENFORCE(config_.HasExtraConfig(kSwitchNoTensorCleaner));
+  if (config_.HasExtraConfig(kSwitchNoTensorCleaner)) {
+    switch_notensor_cleaner_ =
+        config_.extra_config<bool>(kSwitchNoTensorCleaner);
+    LOG(INFO) << "Set extra config " << kSwitchNoTensorCleaner << " "
+              << switch_notensor_cleaner_;
+  }
+
   // no matter with or without MKLDNN
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
@@ -80,7 +90,7 @@ bool AnalysisPredictor::Init(
 
   // Prepare executor, create local variables.
   if (!PrepareExecutor()) {
-    return true;
+    return false;
   }
 
   // Get the feed_target_names and fetch_target_names
@@ -196,8 +206,11 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Here is a bugfix, collect all the container variables, and reset then to a
   // bool; the next time, the operator will call MutableData and construct a new
   // container again, so that the container will be empty for each batch.
-  tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
-  tensor_array_batch_cleaner_.ResetNoTensorVars();
+  if (switch_notensor_cleaner_) {
+    VLOG(3) << "clean notensors";
+    tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+    tensor_array_batch_cleaner_.ResetNoTensorVars();
+  }
   return true;
 }
 
@@ -443,9 +456,16 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 
 bool AnalysisPredictor::ZeroCopyRun() {
   executor_->Run();
-  // Fix TensorArray reuse not cleaned bug.
-  tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
-  tensor_array_batch_cleaner_.ResetTensorArray();
+
+  // All the containers in the scope will be hold in inference, but the
+  // operators assume that the container will be reset after each batch.
+  // Here is a bugfix, collect all the container variables, and reset then to a
+  // bool; the next time, the operator will call MutableData and construct a new
+  // container again, so that the container will be empty for each batch.
+  if (switch_notensor_cleaner_) {
+    tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+    tensor_array_batch_cleaner_.ResetNoTensorVars();
+  }
   return true;
 }
 

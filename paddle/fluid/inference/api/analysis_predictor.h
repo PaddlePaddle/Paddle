@@ -122,6 +122,8 @@ class AnalysisPredictor : public PaddlePredictor {
   bool status_is_cloned_{false};
   bool status_use_gpu_{false};
   bool status_ir_optim_enabled_{false};
+
+  bool switch_notensor_cleaner_{true};
 };
 
 }  // namespace paddle

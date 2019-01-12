@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/api/extra_configs.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 DEFINE_bool(with_precision_check, true, "turn on test");
@@ -227,6 +228,7 @@ TEST(Analyzer_rnn1, profile) {
   SetConfig(&cfg);
   cfg.DisableGpu();
   cfg.SwitchIrDebug();
+  cfg.SetExtraConfig<bool>(kSwitchNoTensorCleaner, false);
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -256,6 +258,7 @@ TEST(Analyzer_rnn1, fuse_statis) {
 TEST(Analyzer_rnn1, compare) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg.SetExtraConfig<bool>(kSwitchNoTensorCleaner, false);
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);

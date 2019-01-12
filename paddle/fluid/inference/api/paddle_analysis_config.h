@@ -35,13 +35,22 @@ class AnalysisPredictor;
 // NOTE: The following APIs are not mature yet, we are still working on them.
 namespace contrib {
 
-// NOTE WIP, not stable yet.
+/**
+ * Configure for AnalysisPredictor.
+ *
+ * Extra configs:
+ * - bool switch_notensor_cleaner (default true) INTERNAL
+ *   Don't clean the temporary variables those are not Tensor or LoDTensor.
+ *   Some result difference might occur if turned off, especially the
+ *   beamsearch.
+ */
 struct AnalysisConfig {
   AnalysisConfig() = default;
   explicit AnalysisConfig(const AnalysisConfig& other);
   explicit AnalysisConfig(const std::string& model_dir);
   explicit AnalysisConfig(const std::string& prog_file,
                           const std::string& params_file);
+  ~AnalysisConfig();
 
   /** Set model with a directory.
    */
@@ -194,13 +203,34 @@ struct AnalysisConfig {
 
   friend class ::paddle::AnalysisPredictor;
 
+  /** \brief Set extra configs.
+   * To avoid keep adding more methods to add more extra configs, we make this
+   * design. The existing methods will not be changed, and more extra configs
+   * will add by this method.
+   *
+   * TODO(Superjomn) make extra config support Update.
+   */
+  template <typename T>
+  void SetExtraConfig(const std::string& key, const T& value);
+
+  template <typename T>
+  T extra_config(const std::string& key);
+
+  /**
+   * Tell whether has this extra config.
+   * @param key the key of the config.
+   * @return exists or not.
+   */
+  bool HasExtraConfig(const std::string& key);
+
   /** NOTE just for developer, not an official API, easily to be broken.
    * Get a pass builder for customize the passes in IR analysis phase.
    */
   PassStrategy* pass_builder() const;
 
  protected:
-  // Update the config.
+  /** Update the config.
+   */
   void Update();
 
   std::string SerializeInfoCache();
@@ -249,6 +279,9 @@ struct AnalysisConfig {
   std::string serialized_info_cache_;
 
   mutable std::unique_ptr<PassStrategy> pass_builder_;
+
+  // A map<string, variant> type.
+  void* extra_configs_{nullptr};
 };
 
 }  // namespace contrib
