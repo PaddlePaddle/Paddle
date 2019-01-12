@@ -54,10 +54,12 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
   size_t size =
       align(unaligned_size + sizeof(MemoryBlock::Desc), min_chunk_size_);
 
-  // acquire the allocator lock
+// acquire the allocator lock
 #ifndef PADDLE_ON_INFERENCE
-  #warning ("Warning: on inference, remove the allocator mutex in Free")
   std::lock_guard<std::mutex> lock(mutex_);
+#else
+  LOG_FIRST_N(WARNING, 1)
+      << "On inference mode, remove the mutex in BuddyAllocator.Alloc";
 #endif
 
   VLOG(10) << "Allocate " << unaligned_size << " bytes from chunk size "
@@ -97,9 +99,11 @@ void BuddyAllocator::Free(void* p) {
   auto block = static_cast<MemoryBlock*>(p)->metadata();
 
 #ifndef PADDLE_ON_INFERENCE
-#warning ("Warning: on inference, remove the allocator mutex in Alloc")
   // Acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
+#else
+  LOG_FIRST_N(WARNING, 1)
+      << "On inference mode, remove the mutex in BuddyAllocator.Free";
 #endif
 
   VLOG(10) << "Free from address " << block;
