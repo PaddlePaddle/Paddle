@@ -20,7 +20,6 @@ limitations under the License. */
 #undef _XOPEN_SOURCE
 #undef _POSIX_C_SOURCE
 
-#include <Python.h>
 #include "pybind11/pybind11.h"
 
 #pragma pop_macro("_XOPEN_SOURCE")
