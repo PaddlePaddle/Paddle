@@ -267,17 +267,19 @@ TEST(Analyzer_seq_pool1, zerocopy_profile_threads) {
   for (int tid = 0; tid < FLAGS_num_threads; tid++) {
     predictors.emplace_back(base_predictor->Clone());
     // predictors.emplace_back(CreatePaddlePredictor<AnalysisConfig>(config));
+
+    std::vector<std::unique_ptr<ZeroCopyTensor>> inputs;
+    PrepareZeroCopyInputs(predictors.back(), &inputs);
   }
 
   for (int tid = 0; tid < FLAGS_num_threads; tid++) {
     threads.emplace_back([config, &total_time_of_threads, &predictors, tid] {
       auto &predictor = predictors[tid];
-      std::vector<std::unique_ptr<ZeroCopyTensor>> inputs;
-      PrepareZeroCopyInputs(predictor, &inputs);
       auto output_tensor = predictor->GetOutputTensor(out_var_name);
       Timer timer;
       double total_time{0};
 
+      /*
       LOG(INFO) << "Warm up run...";
       timer.tic();
       predictor->ZeroCopyRun();
@@ -285,6 +287,7 @@ TEST(Analyzer_seq_pool1, zerocopy_profile_threads) {
       if (FLAGS_profile) {
         paddle::platform::ResetProfiler();
       }
+       */
       int repeat_times = FLAGS_repeat;
       LOG(INFO) << "Run " << repeat_times << " times...";
       timer.tic();
