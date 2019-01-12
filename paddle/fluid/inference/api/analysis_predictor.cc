@@ -71,8 +71,6 @@ bool AnalysisPredictor::Init(
   if (config_.HasExtraConfig(kSwitchNoTensorCleaner)) {
     switch_notensor_cleaner_ =
         config_.extra_config<bool>(kSwitchNoTensorCleaner);
-    LOG(INFO) << "Set extra config " << kSwitchNoTensorCleaner << " "
-              << switch_notensor_cleaner_;
   }
 
   // no matter with or without MKLDNN
