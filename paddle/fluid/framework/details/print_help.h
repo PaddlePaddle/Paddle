@@ -15,12 +15,16 @@
 #pragma once
 #include <sstream>  // std::stringstream
 #include <string>
+#include <vector>
 
 // #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 // #include "paddle/fluid/framework/details/multi_devices_helper.h"
 // #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 // #include "paddle/fluid/platform/profiler.h"
 // #include "paddle/fluid/operators/math/math_function.h"
 
@@ -139,6 +143,110 @@ inline std::string GetVarInfo(framework::Scope *scope,
   framework::Scope *local_scope =
       scope->FindVar(kLocalExecScopeName)->Get<framework::Scope *>();
   return GetVarInfo_(local_scope, name);
+}
+
+inline bool TestSetValue(const platform::CUDADeviceContext &context) {
+  cudaError_t e_sync = cudaStreamSynchronize(context.stream());
+  if (e_sync != 0) {
+    VLOG(10) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
+  }
+
+  cudaError_t e_get = cudaGetLastError();
+  if (e_get != 0) {
+    VLOG(10) << "cudaGetLastError  " << cudaGetErrorString(e_get)
+             << " errno:" << e_get;
+    return false;
+  }
+
+  return true;
+}
+
+inline bool TestStream(const platform::CUDADeviceContext &context, int size) {
+  // for(int i=0;i<=1;i++){
+  auto dev_id =
+      boost::get<platform::CUDAPlace>(context.GetPlace()).GetDeviceId();
+  platform::CUDADeviceGuard guard(dev_id);
+  void *ptr;
+  auto status = cudaMalloc(&ptr, size);
+  if (UNLIKELY(status != cudaSuccess)) {
+    auto err_string =
+        string::Sprintf("Cannot allocate %d on GPU %d, cuda status %d, %s",
+                        size, dev_id, status, cudaGetErrorString(status));
+    VLOG(10) << err_string;
+  }
+
+  cudaMemsetAsync(ptr, 0, size, context.stream());
+  if (!TestSetValue(context)) {
+    VLOG(10) << "cudamemsetaync at TestStream:" << context.stream() << " error"
+             << ", ptr:" << ptr << ", dev_id:" << dev_id;
+    exit(0);
+  } else {
+    VLOG(10) << "cudamemsetaync at TestStream:" << context.stream() << " ok"
+             << ", ptr:" << ptr << ", dev_id:" << dev_id;
+  }
+  //}
+}
+
+inline void TestSetConstant(
+    const std::vector<const framework::Scope *> &local_scopes,
+    const std::string message = "") {
+  VLOG(10) << "in threadedssa local_scopes size:" << local_scopes.size()
+           << ", message:" << message;
+  for (unsigned int i = 0; i < local_scopes.size(); i++) {
+    // VLOG(10) << "in threadedssa 1";
+    // auto scope = local_scopes[i];
+    // framework::Scope *local_scope =
+    // scope->FindVar(kLocalExecScopeName)->Get<framework::Scope *>();
+    auto local_scope = local_scopes[i];
+    auto var = local_scope->FindVar("embedding_para@GRAD");
+    if (var == nullptr) {
+      VLOG(10) << "in threadedssa can't find var:"
+               << ", message:" << message;
+      continue;
+    }
+
+    // VLOG(10) << "in threadedssa 2";
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+
+    // VLOG(10) << "in threadedssa 2.1";
+    auto slr = var->GetMutable<framework::SelectedRows>();
+
+    // VLOG(10) << "in threadedssa 2.2";
+    if (!slr->value().IsInitialized()) {
+      VLOG(10) << "in threadedssa not IsInitialized:"
+               << ", message:" << message;
+      continue;
+    }
+
+    // VLOG(10) << "in threadedssa 3";
+    auto ctx = dynamic_cast<platform::CUDADeviceContext *>(
+        pool.Get(slr->value().place()));
+
+    // VLOG(10) << "in threadedssa 3.1";
+    if (ctx == nullptr) {
+      VLOG(10) << "in threadedssa not cuda:"
+               << ", message:" << message;
+      continue;
+    }
+
+    // VLOG(10) << "in threadedssa 4";
+    auto *data = slr->mutable_value()->data<float>();
+    VLOG(10) << "in threadedssa prepare cudamemsetasync set:"
+             << slr->value().place() << ", idx:" << i << ", data:" << data
+             << ", numel:" << slr->value().numel() << ", message:" << message;
+
+    // cudaMemsetAsync(data, 0, slr->value().numel(), ctx->stream());
+    operators::math::SetConstant<platform::CUDADeviceContext, float>
+        constant_functor;
+    constant_functor(*ctx, slr->mutable_value(), static_cast<float>(0));
+    VLOG(10) << "in threadedssa before cudamemsetasync set:"
+             << slr->value().place() << ", idx:" << i
+             << ", message:" << message;
+    ctx->Wait();
+    VLOG(10) << "in threadedssa after cudaMemsetAsync set:"
+             << slr->value().place() << ", idx:" << i
+             << ", message:" << message;
+  }
 }
 
 }  // namespace details

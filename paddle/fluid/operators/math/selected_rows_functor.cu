@@ -315,49 +315,6 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
         out.rows().size(), input_width);
   }
 
-  bool TestSetValue(const platform::CUDADeviceContext& context) {
-    cudaError_t e_sync = cudaStreamSynchronize(context.stream());
-    if (e_sync != 0) {
-      VLOG(10) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
-    }
-
-    cudaError_t e_get = cudaGetLastError();
-    if (e_get != 0) {
-      VLOG(10) << "cudaGetLastError  " << cudaGetErrorString(e_get)
-               << " errno:" << e_get;
-      return false;
-    }
-
-    return true;
-  }
-
-  bool TestStream(const platform::CUDADeviceContext& context, int size) {
-    // for(int i=0;i<=1;i++){
-    auto dev_id =
-        boost::get<platform::CUDAPlace>(context.GetPlace()).GetDeviceId();
-    platform::CUDADeviceGuard guard(dev_id);
-    void* ptr;
-    auto status = cudaMalloc(&ptr, size);
-    if (UNLIKELY(status != cudaSuccess)) {
-      auto err_string =
-          string::Sprintf("Cannot allocate %d on GPU %d, cuda status %d, %s",
-                          size, dev_id, status, cudaGetErrorString(status));
-      VLOG(10) << err_string;
-    }
-
-    cudaMemsetAsync(ptr, 0, size, context.stream());
-    if (!TestSetValue(context)) {
-      VLOG(10) << "cudamemsetaync at TestStream:" << context.stream()
-               << " error"
-               << ", ptr:" << ptr << ", dev_id:" << dev_id;
-      exit(0);
-    } else {
-      VLOG(10) << "cudamemsetaync at TestStream:" << context.stream() << " ok"
-               << ", ptr:" << ptr << ", dev_id:" << dev_id;
-    }
-    //}
-  }
-
   void operator()(const platform::CUDADeviceContext& context,
                   const std::vector<const framework::SelectedRows*>& inputs,
                   framework::SelectedRows* output,
@@ -418,8 +375,8 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     auto* out_data = out.mutable_value()->data<T>();
     cudaMemsetAsync(out_data, 0, out.value().numel(), context.stream());
     VLOG(10) << "before cudamemsetasync set:";
-    if (!TestSetValue(context)) {
-      TestStream(context, out.value().numel());
+    if (!framework::details::TestSetValue(context)) {
+      framework::details::TestStream(context, out.value().numel());
       VLOG(10) << "cudamemsetaync get var info "
                << framework::details::GetTensorInfo(out.value());
       auto dev_id =
@@ -439,13 +396,13 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
           dynamic_cast<platform::CUDADeviceContext*>(pool.Get(other_place));
       cudaMemsetAsync(out_data, 0, out.value().numel(),
                       other_context->stream());
-      if (!TestSetValue(*other_context)) {
+      if (!framework::details::TestSetValue(*other_context)) {
         VLOG(10) << "cudamemsetaync at other devid:" << other_dev_id << " error"
                  << ", out_data:" << out_data;
-        TestStream(*other_context, out.value().numel());
+        framework::details::TestStream(*other_context, out.value().numel());
         for (int i = 1; i < out.value().numel(); i += 1) {
           cudaMemsetAsync(out_data, 0, i, other_context->stream());
-          if (TestSetValue(*other_context)) {
+          if (framework::details::TestSetValue(*other_context)) {
             VLOG(10) << "cudamemsetaync set at:" << i << " ok";
             continue;
           }

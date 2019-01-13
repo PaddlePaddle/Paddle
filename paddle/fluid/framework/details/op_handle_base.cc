@@ -45,6 +45,7 @@ void OpHandleBase::Run(bool use_cuda) {
     for (auto &p : dev_ctxes_) {
       int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
       PADDLE_ENFORCE(cudaSetDevice(dev_id));
+      VLOG(10) << "in ophanadle base run dev_id:" << dev_id;
       PADDLE_ENFORCE(
           cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
     }

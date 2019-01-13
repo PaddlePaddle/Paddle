@@ -241,59 +241,6 @@ void PrintIO(OpHandleBase *op, const std::vector<VarHandleBase *> &vars,
   }
 }
 
-void TestSetConstant(const std::vector<framework::Scope *> &local_scopes) {
-  VLOG(10) << "in threadedssa local_scopes size:" << local_scopes.size();
-  for (unsigned int i = 0; i < local_scopes.size(); i++) {
-    VLOG(10) << "in threadedssa 1";
-    auto scope = local_scopes[i];
-    framework::Scope *local_scope =
-        scope->Var(kLocalExecScopeName)->Get<framework::Scope *>();
-    auto var = local_scope->FindVar("embedding_para@GRAD");
-    if (var == nullptr) {
-      VLOG(10) << "in threadedssa can't find var:";
-      continue;
-    }
-
-    VLOG(10) << "in threadedssa 2";
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-
-    VLOG(10) << "in threadedssa 2.1";
-    auto slr = var->GetMutable<framework::SelectedRows>();
-
-    VLOG(10) << "in threadedssa 2.2";
-    if (!slr->value().IsInitialized()) {
-      VLOG(10) << "in threadedssa not IsInitialized:";
-      continue;
-    }
-
-    VLOG(10) << "in threadedssa 3";
-    auto ctx = dynamic_cast<platform::CUDADeviceContext *>(
-        pool.Get(slr->value().place()));
-
-    VLOG(10) << "in threadedssa 3.1";
-    if (ctx == nullptr) {
-      VLOG(10) << "in threadedssa not cuda:";
-      continue;
-    }
-
-    VLOG(10) << "in threadedssa 4";
-    auto *data = slr->mutable_value()->data<float>();
-    VLOG(10) << "in threadedssa prepare cudamemsetasync set:"
-             << slr->value().place() << ", idx:" << i << ", data:" << data
-             << ", numel:" << slr->value().numel();
-
-    // cudaMemsetAsync(data, 0, slr->value().numel(), ctx->stream());
-    operators::math::SetConstant<platform::CUDADeviceContext, float>
-        constant_functor;
-    constant_functor(*ctx, slr->mutable_value(), static_cast<float>(0));
-    VLOG(10) << "in threadedssa before cudamemsetasync set:"
-             << slr->value().place() << ", idx:" << i;
-    ctx->Wait();
-    VLOG(10) << "in threadedssa after cudaMemsetAsync set:"
-             << slr->value().place() << ", idx:" << i;
-  }
-}
-
 void ThreadedSSAGraphExecutor::RunOp(
     const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
     details::OpHandleBase *op) {
@@ -303,7 +250,13 @@ void ThreadedSSAGraphExecutor::RunOp(
              << op->DebugString();
 
     PrintIO(op, op->Inputs(), local_scopes_);
-    TestSetConstant(local_scopes_);
+    std::vector<const framework::Scope *> scopes;
+    for (auto s : local_scopes_) {
+      framework::Scope *local_scope =
+          s->FindVar(kLocalExecScopeName)->Get<framework::Scope *>();
+      scopes.push_back(local_scope);
+    }
+    TestSetConstant(scopes, " in ThreadedSSAGraphExecutor 1 " + op->Name());
 
     if (LIKELY(!strategy_.dry_run_)) {
       op->Run(strategy_.use_cuda_);
@@ -330,7 +283,7 @@ void ThreadedSSAGraphExecutor::RunOp(
                << op->DebugString();
 
       PrintIO(op, op->Outputs(), local_scopes_);
-      TestSetConstant(local_scopes_);
+      TestSetConstant(scopes, " in ThreadedSSAGraphExecutor 2 " + op->Name());
     }
     // } catch (...) {
     // exception_holder_.Catch(std::current_exception());

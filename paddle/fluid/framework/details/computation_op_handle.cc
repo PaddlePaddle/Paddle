@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/computation_op_handle.h"
-
 #include <string>
+
+#include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/print_help.h"
 
 namespace paddle {
 namespace framework {
@@ -34,6 +35,11 @@ void ComputationOpHandle::RunImpl() {
   auto run_func = [this]() {
     op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
   };
+
+  auto scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  std::vector<const framework::Scope *> scopes{scope};
+  framework::details::TestSetConstant(scopes,
+                                      "computationophandle 0 " + Name());
 
   if (is_lock_and_record_event_free_) {
     run_func();

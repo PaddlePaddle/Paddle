@@ -18,6 +18,7 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/fluid/framework/data_transform.h"
+#include "paddle/fluid/framework/details/print_help.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
@@ -879,6 +880,11 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   RuntimeContext ctx(Inputs(), Outputs(), scope);
+
+  std::vector<const framework::Scope*> scopes2;
+  scopes2.push_back(&scope);
+  framework::details::TestSetConstant(scopes2, "0 " + type_);
+
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
@@ -921,6 +927,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   const Scope& exec_scope =
       (transfer_scope == nullptr ? scope : *transfer_scope);
 
+  std::vector<const framework::Scope*> scopes;
+  scopes.push_back(&exec_scope);
+  framework::details::TestSetConstant(scopes, "1 " + type_);
+
   if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
@@ -942,6 +952,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx->Wait();
   }
   VLOG(10) << "after ctx wait";
+
+  framework::details::TestSetConstant(scopes, "2 " + type_);
 
   if (FLAGS_check_nan_inf) {
     for (auto& vname : OutputVars(true)) {
