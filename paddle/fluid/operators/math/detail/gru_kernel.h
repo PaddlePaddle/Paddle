@@ -163,8 +163,7 @@ class gru_resetGrad {
   HOSTDEVICE void operator()(T *value_update_gate, T *grad_update_gate,
                              T *value_reset_gate, T *grad_reset_gate,
                              T *value_prev_out, T *grad_prev_out,
-                             T *grad_reset_output, ActivationType act_gate,
-                             bool origin_mode) {
+                             T *grad_reset_output, ActivationType act_gate) {
     *grad_reset_gate = (*grad_reset_output * (*value_prev_out));
     *grad_prev_out += (*grad_reset_output * (*value_reset_gate));
     *grad_update_gate =
@@ -181,7 +180,7 @@ class gru_resetGrad {
                              __m256 *grad_update_gate, __m256 *value_reset_gate,
                              __m256 *grad_reset_gate, __m256 *value_prev_out,
                              __m256 *grad_prev_out, __m256 *grad_reset_output,
-                             ActivationType act_gate, bool origin_mode) {
+                             ActivationType act_gate) {
     *grad_reset_gate = _mm256_mul_ps(*grad_reset_output, *value_prev_out);
     *grad_prev_out = _mm256_add_ps(
         *grad_prev_out, _mm256_mul_ps(*grad_reset_output, *value_reset_gate));
