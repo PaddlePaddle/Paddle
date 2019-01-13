@@ -885,8 +885,9 @@ def dynamic_gru(input,
 
         h_t & = (1-u_t) \odot h_{t-1} + u_t \odot \\tilde{h_t}
 
-    if origin_mode is True, then the equation is from paper
-    `Learning Phrase Representations using RNN Encoder–Decoder for Statistical
+
+    if origin_mode is True then the equation is from paper
+    Learning Phrase Representations using RNN Encoder-Decoder for Statistical
     Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
 
     .. math::
@@ -1014,7 +1015,7 @@ def gru_unit(input,
     **GRU unit layer**
 
     if origin_mode is True, then the equation of a gru step is from paper
-    `Learning Phrase Representations using RNN Encoder–Decoder for Statistical
+    `Learning Phrase Representations using RNN Encoder-Decoder for Statistical
     Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
 
         .. math::

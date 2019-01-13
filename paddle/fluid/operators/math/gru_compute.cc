@@ -78,8 +78,7 @@ struct GRUUnitGradFunctor<platform::CPUDeviceContext, T> {
     }
 
     detail::backward_reset_grad(detail::backward::gru_resetGrad<T>(), value,
-                                grad, frame_size, batch_size, active_gate,
-                                origin_mode);
+                                grad, frame_size, batch_size, active_gate);
     if (grad.prev_out_grad && value.prev_out_value) {
       blas.GEMM(false, true, batch_size, frame_size, frame_size * 2, 1,
                 grad.gate_grad, frame_size * 3, value.gate_weight,
