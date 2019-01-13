@@ -199,6 +199,7 @@ function cmake_gen() {
         -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
+        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -232,7 +233,8 @@ EOF
         -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}\
         -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}\
         -DPY_VERSION=${PY_VERSION:-2.7} \
-        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
+        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
+        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF}
 
 }
 
@@ -447,7 +449,7 @@ EOF
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
-      
+
         if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
             paddle version
         fi
@@ -488,7 +490,8 @@ function assert_api_spec_approvals() {
         BRANCH="develop"
     fi
 
-    API_FILES=("paddle/fluid/API.spec"
+    API_FILES=("cmake/external"
+               "paddle/fluid/API.spec"
                "paddle/fluid/framework/operator.h"
                "paddle/fluid/framework/tensor.h"
                "paddle/fluid/framework/lod_tensor.h"
