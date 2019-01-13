@@ -36,6 +36,7 @@ const char* to_string(KernelType kt) {
     ONE_CASE(kVRelu);
     ONE_CASE(kVIdentity);
     ONE_CASE(kVExp);
+    ONE_CASE(kVSquare);
     ONE_CASE(kVSigmoid);
     ONE_CASE(kVTanh);
     ONE_CASE(kLSTMCtHt);

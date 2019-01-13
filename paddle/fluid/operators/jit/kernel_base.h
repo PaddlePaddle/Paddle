@@ -30,6 +30,7 @@ typedef enum {
   kVAddBias,
   kVRelu,
   kVIdentity,
+  kVSquare,
   kVExp,
   kVSigmoid,
   kVTanh,
