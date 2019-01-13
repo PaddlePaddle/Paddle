@@ -68,7 +68,7 @@ void FusionSquaredMatSubOpMaker::Make() {
   AddComment(R"DOC(
     Fusion Squared Matrix and substrct operator.
     
-    ( (A.^2 * B.^2) - (A * B).^2 ) .* scalar
+    ( (X * Y).^2 - (X.^2 * Y.^2) ) .* scalar
 )DOC");
 }
 
@@ -112,14 +112,14 @@ class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
     T* squared_xy_data = squared_xy->mutable_data<T>(place);
     T* o_data = out->mutable_data<T>(place);
 
+    matmul(x_data, y_data, squared_xy_data, m, n, k);
+    vsquare_xy(squared_xy_data, squared_xy_data, o_numel);
+
     vsquare_x(x_data, squared_x_data, m * k);
     vsquare_y(y_data, squared_y_data, k * n);
-
-    matmul(x_data, y_data, o_data, m, n, k);
-    vsquare_xy(o_data, squared_xy_data, o_numel);
-
     matmul(squared_x_data, squared_y_data, o_data, m, n, k);
-    vsub(o_data, squared_xy_data, o_data, o_numel);
+
+    vsub(squared_xy_data, o_data, o_data, o_numel);
     vscal(&scalar, o_data, o_data, o_numel);
   }
 };

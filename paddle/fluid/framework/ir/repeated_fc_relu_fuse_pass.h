@@ -33,7 +33,7 @@ class RepeatedFCReluFusePass : public FusePassBase {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
 
-  const std::string name_scope_{"repeated_fc_relu"};
+  const std::string name_scope_{"repeated_fc_relu_fuse"};
 };
 
 }  // namespace ir

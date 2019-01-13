@@ -33,7 +33,7 @@ class TestFusionSquaredMatSubOp(OpTest):
         self.inputs = {'X': matx, 'Y': maty}
         self.outputs = {
             'Out':
-            (np.dot(matx**2, maty**2) - np.dot(matx, maty)**2) * self.scalar
+            (np.dot(matx, maty)**2 - np.dot(matx**2, maty**2)) * self.scalar
         }
         self.attrs = {'scalar': self.scalar, }
 
