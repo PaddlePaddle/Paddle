@@ -33,7 +33,7 @@ class SquaredMatSubFusePass : public FusePassBase {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
 
-  const std::string name_scope_{"squared_mat_sub"};
+  const std::string name_scope_{"squared_mat_sub_fuse"};
 };
 
 }  // namespace ir
