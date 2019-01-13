@@ -132,16 +132,26 @@ class gru_stateGrad {
                              __m256 *grad_frame_state, __m256 *value_prev_out,
                              __m256 *grad_prev_out, __m256 *grad_output,
                              ActivationType act_input, bool origin_mode) {
-    *grad_update_gate = _mm256_mul_ps(*grad_output, *value_frame_state);
-    *grad_update_gate = _mm256_sub_ps(
-        *grad_update_gate, _mm256_mul_ps(*grad_output, *value_prev_out));
-    *grad_prev_out = _mm256_add_ps(
-        _mm256_sub_ps(*grad_prev_out,
-                      _mm256_mul_ps(*grad_output, *value_update_gate)),
-        *grad_output);
-    *grad_frame_state =
-        activation(_mm256_mul_ps(*grad_output, *value_update_gate),
-                   *value_frame_state, act_input);
+    if (origin_mode) {
+      *grad_update_gate = _mm256_mul_ps(
+          *grad_output, _mm256_sub_ps(*value_prev_out, *value_frame_state));
+      *grad_prev_out = _mm256_add_ps(
+          *grad_prev_out, _mm256_mul_ps(*grad_output, *value_update_gate));
+      *grad_frame_state = activation(
+          _mm256_mul_ps(*grad_output, _mm256_sub_ps(_mm256_set1_ps(1.0f),
+                                                    *value_update_gate)),
+          *value_frame_state, act_input);
+    } else {
+      *grad_update_gate = _mm256_mul_ps(
+          *grad_output, _mm256_sub_ps(*value_frame_state, *value_prev_out));
+      *grad_prev_out = _mm256_add_ps(
+          *grad_prev_out,
+          _mm256_mul_ps(*grad_output, _mm256_sub_ps(_mm256_set1_ps(1.0f),
+                                                    *value_update_gate)));
+      *grad_frame_state =
+          activation(_mm256_mul_ps(*grad_output, *value_update_gate),
+                     *value_frame_state, act_input);
+    }
   }
 #endif
 #endif
