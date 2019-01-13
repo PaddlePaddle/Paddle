@@ -604,6 +604,12 @@ TEST(JITKernel, kVIdentity) {
   TestXYNKernel<jit::kVIdentity, double, paddle::platform::CPUPlace>();
 }
 
+TEST(JITKernel, kVSquare) {
+  namespace jit = paddle::operators::jit;
+  TestXYNKernel<jit::kVSquare, float, paddle::platform::CPUPlace>();
+  TestXYNKernel<jit::kVSquare, double, paddle::platform::CPUPlace>();
+}
+
 TEST(JITKernel, kVExp) {
   namespace jit = paddle::operators::jit;
   TestXYNKernel<jit::kVExp, float, paddle::platform::CPUPlace>();

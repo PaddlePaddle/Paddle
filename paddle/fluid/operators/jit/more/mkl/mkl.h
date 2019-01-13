@@ -40,6 +40,9 @@ template <typename T>
 void VExp(const T* x, T* y, int n);
 
 template <typename T>
+void VSquare(const T* x, T* y, int n);
+
+template <typename T>
 void VCopy(const T* x, T* y, int n);
 
 template <typename T>
@@ -110,6 +113,7 @@ DECLARE_MKL_KERNEL(VScal, AXYNTuples);
 DECLARE_MKL_KERNEL(VExp, XYNTuples);
 DECLARE_MKL_KERNEL(VSigmoid, XYNTuples);
 DECLARE_MKL_KERNEL(VTanh, XYNTuples);
+DECLARE_MKL_KERNEL(VSquare, XYNTuples);
 
 DECLARE_MKL_KERNEL(SeqPool, SeqPoolTuples);
 

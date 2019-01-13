@@ -87,6 +87,16 @@ void VExp<double>(const double* x, double* y, int n) {
 }
 
 template <>
+void VSquare<float>(const float* x, float* y, int n) {
+  platform::dynload::vsSqr(n, x, y);
+}
+
+template <>
+void VSquare<double>(const double* x, double* y, int n) {
+  platform::dynload::vdSqr(n, x, y);
+}
+
+template <>
 void VCopy<float>(const float* x, float* y, int n) {
   platform::dynload::cblas_scopy(n, x, 1, y, 1);
 }
@@ -133,6 +143,11 @@ bool VExpKernel<float>::UseMe(const int& d) const {
 }
 
 template <>
+bool VSquareKernel<float>::UseMe(const int& d) const {
+  return d > 7;
+}
+
+template <>
 bool VSigmoidKernel<float>::UseMe(const int& d) const {
   return d > 7;
 }
@@ -165,6 +180,7 @@ AWALYS_USE_ME_WITH_DOUBLE(VScal);
 AWALYS_USE_ME_WITH_DOUBLE(VExp);
 AWALYS_USE_ME_WITH_DOUBLE(VSigmoid);
 AWALYS_USE_ME_WITH_DOUBLE(VTanh);
+AWALYS_USE_ME_WITH_DOUBLE(VSquare);
 
 #undef AWALYS_USE_ME_WITH_DOUBLE
 }  // namespace mkl
@@ -184,6 +200,7 @@ REGISTER_MKL_KERNEL(kVMul, VMul);
 REGISTER_MKL_KERNEL(kVAdd, VAdd);
 REGISTER_MKL_KERNEL(kVScal, VScal);
 REGISTER_MKL_KERNEL(kVExp, VExp);
+REGISTER_MKL_KERNEL(kVSquare, VSquare);
 REGISTER_MKL_KERNEL(kVSigmoid, VSigmoid);
 REGISTER_MKL_KERNEL(kVTanh, VTanh);
 REGISTER_MKL_KERNEL(kSeqPool, SeqPool);

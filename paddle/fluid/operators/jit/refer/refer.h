@@ -84,6 +84,13 @@ inline void VIdentity(const T* x, T* y, int n) {
 }
 
 template <typename T>
+inline void VSquare(const T* x, T* y, int n) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = x[i] * x[i];
+  }
+}
+
+template <typename T>
 void VExp(const T* x, T* y, int n) {
   for (int i = 0; i < n; ++i) {
     y[i] = std::exp(x[i]);
@@ -394,6 +401,7 @@ DECLARE_REFER_KERNEL(VIdentity, XYNTuples);
 DECLARE_REFER_KERNEL(VExp, XYNTuples);
 DECLARE_REFER_KERNEL(VSigmoid, XYNTuples);
 DECLARE_REFER_KERNEL(VTanh, XYNTuples);
+DECLARE_REFER_KERNEL(VSquare, XYNTuples);
 
 // lstm_t*, const lstm_attr_t*
 DECLARE_REFER_KERNEL(LSTMCtHt, LSTMTuples);

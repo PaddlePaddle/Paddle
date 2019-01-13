@@ -254,6 +254,7 @@ int main(int argc, char* argv[]) {
   // xyn
   BenchXYNKernel<jit::kVRelu, T, PlaceType>();
   BenchXYNKernel<jit::kVIdentity, T, PlaceType>();
+  BenchXYNKernel<jit::kVSquare, T, PlaceType>();
   BenchXYNKernel<jit::kVExp, T, PlaceType>();
   BenchXYNKernel<jit::kVSigmoid, T, PlaceType>();
   BenchXYNKernel<jit::kVTanh, T, PlaceType>();
