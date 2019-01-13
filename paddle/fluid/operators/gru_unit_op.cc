@@ -113,7 +113,10 @@ class GRUUnitOpMaker : public framework::OpProtoAndCheckerMaker {
         .InEnum({identity, sigmoid, tanh, relu});
     AddAttr<bool>("origin_mode",
                   "bool"
-                  "use origin mode in article https://arxiv.org/abs/1412.3555")
+                  "use origin mode in article <Learning Phrase Representations "
+                  "using RNN Encoder–Decoder\n"
+                  "for Statistical Machine "
+                  "Translation>(https://arxiv.org/pdf/1406.1078.pdf)")
         .SetDefault(false);
     AddComment(R"DOC(
 GRUUnit Operator implements partial calculations of the GRU unit as following:
