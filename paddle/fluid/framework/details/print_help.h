@@ -19,6 +19,7 @@
 // #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 // #include "paddle/fluid/framework/details/multi_devices_helper.h"
 // #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/var_type.h"
 // #include "paddle/fluid/platform/profiler.h"
 // #include "paddle/fluid/operators/math/math_function.h"
@@ -110,16 +111,14 @@ inline std::string GetSelectedRowsInfo(const framework::SelectedRows &slr) {
   return ss.str();
 }
 
-inline std::string GetVarInfo(framework::Scope *scope,
-                              const std::string &name) {
-  framework::Scope *local_scope =
-      scope->Var(kLocalExecScopeName)->Get<framework::Scope *>();
+inline std::string GetVarInfo_(framework::Scope *local_scope,
+                               const std::string &name) {
   auto var = local_scope->FindVar(name);
 
   std::stringstream ss;
   if (var == NULL) {
     ss << "can't find " << name
-       << GenScopeTreeDebugInfo(const_cast<framework::Scope *>(scope));
+       << GenScopeTreeDebugInfo(const_cast<framework::Scope *>(local_scope));
     return ss.str();
   }
 
@@ -133,6 +132,13 @@ inline std::string GetVarInfo(framework::Scope *scope,
 
   ss << "can't print " << name;
   return ss.str();
+}
+
+inline std::string GetVarInfo(framework::Scope *scope,
+                              const std::string &name) {
+  framework::Scope *local_scope =
+      scope->FindVar(kLocalExecScopeName)->Get<framework::Scope *>();
+  return GetVarInfo_(local_scope, name);
 }
 
 }  // namespace details

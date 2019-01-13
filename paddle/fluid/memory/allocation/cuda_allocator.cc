@@ -29,6 +29,7 @@ void CUDAAllocator::Free(Allocation* allocation) {
   PADDLE_ENFORCE_NOT_NULL(cuda_allocation);
   PADDLE_ENFORCE_EQ(boost::get<platform::CUDAPlace>(cuda_allocation->place()),
                     place_);
+  VLOG(10) << "CUDAAllocator free:" << allocation->ptr();
   PADDLE_ENFORCE(cudaFree(allocation->ptr()));
   delete allocation;
 }
@@ -41,6 +42,8 @@ Allocation* CUDAAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
         "Cannot allocate %d on GPU %d, cuda status %d, %s", size, place_.device,
         status, cudaGetErrorString(status)));
   }
+  VLOG(10) << "CUDAAllocator alloc:" << ptr << ", place:" << place_
+           << ", size:" << size;
   return new CUDAAllocation(ptr, size, platform::Place(place_));
 }
 }  // namespace allocation

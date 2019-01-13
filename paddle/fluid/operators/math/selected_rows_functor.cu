@@ -13,10 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <set>
+#include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/details/print_help.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -312,6 +315,49 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
         out.rows().size(), input_width);
   }
 
+  bool TestSetValue(const platform::CUDADeviceContext& context) {
+    cudaError_t e_sync = cudaStreamSynchronize(context.stream());
+    if (e_sync != 0) {
+      VLOG(10) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
+    }
+
+    cudaError_t e_get = cudaGetLastError();
+    if (e_get != 0) {
+      VLOG(10) << "cudaGetLastError  " << cudaGetErrorString(e_get)
+               << " errno:" << e_get;
+      return false;
+    }
+
+    return true;
+  }
+
+  bool TestStream(const platform::CUDADeviceContext& context, int size) {
+    // for(int i=0;i<=1;i++){
+    auto dev_id =
+        boost::get<platform::CUDAPlace>(context.GetPlace()).GetDeviceId();
+    platform::CUDADeviceGuard guard(dev_id);
+    void* ptr;
+    auto status = cudaMalloc(&ptr, size);
+    if (UNLIKELY(status != cudaSuccess)) {
+      auto err_string =
+          string::Sprintf("Cannot allocate %d on GPU %d, cuda status %d, %s",
+                          size, dev_id, status, cudaGetErrorString(status));
+      VLOG(10) << err_string;
+    }
+
+    cudaMemsetAsync(ptr, 0, size, context.stream());
+    if (!TestSetValue(context)) {
+      VLOG(10) << "cudamemsetaync at TestStream:" << context.stream()
+               << " error"
+               << ", ptr:" << ptr << ", dev_id:" << dev_id;
+      exit(0);
+    } else {
+      VLOG(10) << "cudamemsetaync at TestStream:" << context.stream() << " ok"
+               << ", ptr:" << ptr << ", dev_id:" << dev_id;
+    }
+    //}
+  }
+
   void operator()(const platform::CUDADeviceContext& context,
                   const std::vector<const framework::SelectedRows*>& inputs,
                   framework::SelectedRows* output,
@@ -372,7 +418,57 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     auto* out_data = out.mutable_value()->data<T>();
     cudaMemsetAsync(out_data, 0, out.value().numel(), context.stream());
     VLOG(10) << "before cudamemsetasync set:";
-    context.Wait();
+    if (!TestSetValue(context)) {
+      TestStream(context, out.value().numel());
+      VLOG(10) << "cudamemsetaync get var info "
+               << framework::details::GetTensorInfo(out.value());
+      auto dev_id =
+          boost::get<platform::CUDAPlace>(context.GetPlace()).GetDeviceId();
+      // auto dev_id = context.GetPlace().GetDeviceId();
+      VLOG(10) << "cudamemsetaync at devid:" << dev_id << " error"
+               << ", numel:" << out.value().numel();
+      int other_dev_id = 0;
+      if (dev_id == 0) {
+        other_dev_id = 1;
+      }
+
+      platform::CUDAPlace other_place(other_dev_id);
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      auto other_context =
+          dynamic_cast<platform::CUDADeviceContext*>(pool.Get(other_place));
+      cudaMemsetAsync(out_data, 0, out.value().numel(),
+                      other_context->stream());
+      if (!TestSetValue(*other_context)) {
+        VLOG(10) << "cudamemsetaync at other devid:" << other_dev_id << " error"
+                 << ", out_data:" << out_data;
+        TestStream(*other_context, out.value().numel());
+        for (int i = 1; i < out.value().numel(); i += 1) {
+          cudaMemsetAsync(out_data, 0, i, other_context->stream());
+          if (TestSetValue(*other_context)) {
+            VLOG(10) << "cudamemsetaync set at:" << i << " ok";
+            continue;
+          }
+
+          VLOG(10) << "cudamemsetaync set at:" << i << " error";
+          break;
+        }
+        /*
+        if(NULL == memset(out_data, 0, out.value().numel())){
+            VLOG(10) << "cudamemsetaync at cpu error";
+        }else{
+            for(int i=0;i<out.value().numel();i++){
+                printf("%f,", out_data[i]);
+            }
+            printf("\n");
+        }
+        */
+      } else {
+        VLOG(10) << "cudamemsetaync at other devid:" << other_dev_id << " ok ";
+      }
+      exit(-1);
+    }
+    // context.Wait();
     VLOG(10) << "after cudaMemsetAsync set:";
 
     math::SetConstant<platform::CUDADeviceContext, T> constant_functor;

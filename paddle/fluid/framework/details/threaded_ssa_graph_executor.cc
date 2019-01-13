@@ -256,20 +256,23 @@ void TestSetConstant(const std::vector<framework::Scope *> &local_scopes) {
 
     VLOG(10) << "in threadedssa 2";
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+
     VLOG(10) << "in threadedssa 2.1";
     auto slr = var->GetMutable<framework::SelectedRows>();
+
     VLOG(10) << "in threadedssa 2.2";
-    auto ctx = dynamic_cast<platform::CUDADeviceContext *>(
-        pool.Get(slr->value().place()));
-    VLOG(10) << "in threadedssa 2.3";
-    if (ctx == nullptr) {
-      VLOG(10) << "in threadedssa not cuda:";
+    if (!slr->value().IsInitialized()) {
+      VLOG(10) << "in threadedssa not IsInitialized:";
       continue;
     }
 
     VLOG(10) << "in threadedssa 3";
-    if (!slr->mutable_value()->IsInitialized()) {
-      VLOG(10) << "in threadedssa not IsInitialized:";
+    auto ctx = dynamic_cast<platform::CUDADeviceContext *>(
+        pool.Get(slr->value().place()));
+
+    VLOG(10) << "in threadedssa 3.1";
+    if (ctx == nullptr) {
+      VLOG(10) << "in threadedssa not cuda:";
       continue;
     }
 
@@ -295,43 +298,43 @@ void ThreadedSSAGraphExecutor::RunOp(
     const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
     details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
-    try {
-      VLOG(10) << "begin " << op << " " << op->Name() << " : "
+    // try {
+    VLOG(10) << "begin " << op << " " << op->Name() << " : "
+             << op->DebugString();
+
+    PrintIO(op, op->Inputs(), local_scopes_);
+    TestSetConstant(local_scopes_);
+
+    if (LIKELY(!strategy_.dry_run_)) {
+      op->Run(strategy_.use_cuda_);
+    }
+
+    VLOG(10) << op << " " << op->Name() << " Done ";
+    running_ops_--;
+    ready_var_q->Extend(op->Outputs());
+    VLOG(10) << op << " " << op->Name() << "Signal posted";
+
+    if (FLAGS_benchmark) {
+      for (auto place : places_) {
+        const platform::CUDADeviceContext *dev_ctx =
+            dynamic_cast<const platform::CUDADeviceContext *>(
+                op->DeviceContext(place));
+        if (dev_ctx == nullptr) continue;
+        VLOG(10) << "place:" << place
+                 << ", dev_ctx place:" << dev_ctx->GetPlace();
+      }
+      VLOG(10) << op->Name() << " wait begin";
+      op->Wait();
+      VLOG(10) << op->Name() << " wait end";
+      VLOG(10) << "end " << op << " " << op->Name() << " : "
                << op->DebugString();
 
-      PrintIO(op, op->Inputs(), local_scopes_);
-
-      if (LIKELY(!strategy_.dry_run_)) {
-        op->Run(strategy_.use_cuda_);
-      }
-
-      VLOG(10) << op << " " << op->Name() << " Done ";
-      running_ops_--;
-      ready_var_q->Extend(op->Outputs());
-      VLOG(10) << op << " " << op->Name() << "Signal posted";
-
-      if (FLAGS_benchmark) {
-        for (auto place : places_) {
-          const platform::CUDADeviceContext *dev_ctx =
-              dynamic_cast<const platform::CUDADeviceContext *>(
-                  op->DeviceContext(place));
-          if (dev_ctx == nullptr) continue;
-          VLOG(10) << "place:" << place
-                   << ", dev_ctx place:" << dev_ctx->GetPlace();
-        }
-        VLOG(10) << op->Name() << " wait begin";
-        op->Wait();
-        VLOG(10) << op->Name() << " wait end";
-        VLOG(10) << "end " << op << " " << op->Name() << " : "
-                 << op->DebugString();
-
-        // PrintIO(op->Outputs(), local_scopes_);
-        PrintIO(op, op->Inputs(), local_scopes_);
-        // TestSetConstant(local_scopes_);
-      }
-    } catch (...) {
-      exception_holder_.Catch(std::current_exception());
+      PrintIO(op, op->Outputs(), local_scopes_);
+      TestSetConstant(local_scopes_);
     }
+    // } catch (...) {
+    // exception_holder_.Catch(std::current_exception());
+    // }
   };
   if (pool_) {
     run_op_futures_.emplace_back(pool_->enqueue(op_run));

@@ -128,7 +128,10 @@ void ReduceOpHandle::GatherSelectedRows(
 
   // 1. gather local selected rows, merge them
   std::string gathered_var_name = out_var_handle->name_ + "_gathered_tmp";
-  auto scope = local_scopes_.at(out_var_handle->scope_idx_);
+  auto scope = local_scopes_.at(out_var_handle->scope_idx_)
+                   ->FindVar(kLocalExecScopeName)
+                   ->Get<Scope *>();
+  // auto scope = var_scopes.at(out_var_handle->scope_idx_);
   auto gathered_var_mid = scope->Var(gathered_var_name);
   auto gathered_select_rows =
       gathered_var_mid->GetMutable<framework::SelectedRows>();
@@ -143,7 +146,7 @@ void ReduceOpHandle::GatherSelectedRows(
   Wait(dev_ctxes);
 
   VLOG(10) << "in reduce gathered_select_rows:"
-           << GetVarInfo(scope, gathered_var_name);
+           << GetVarInfo_(scope, gathered_var_name);
 
   // merge them
   auto merged_dev_ctx = dynamic_cast<DevCtx *>(dev_ctxes.at(out_place));
@@ -156,7 +159,7 @@ void ReduceOpHandle::GatherSelectedRows(
   merged_dev_ctx->Wait();
 
   VLOG(10) << "in reduce merged_select_rows:"
-           << GetVarInfo(scope, merged_var_name);
+           << GetVarInfo_(scope, merged_var_name);
 
   // 2. start collective server if it doesn't exist
   operators::distributed::CollectiveServer *server =
@@ -224,7 +227,7 @@ void ReduceOpHandle::GatherSelectedRows(
     merge_func(*merged_dev_ctx, all, dst_selected_rows);
     merged_dev_ctx->Wait();
     VLOG(10) << "in reduce dst_selecte_rows:"
-             << GetVarInfo(scope, out_var_handle->name_);
+             << GetVarInfo_(scope, out_var_handle->name_);
     /*
     dst_selected_rows->mutable_value()->mutable_data<float>(
         framework::make_ddim({767,512}), merged_dev_ctx->GetPlace());

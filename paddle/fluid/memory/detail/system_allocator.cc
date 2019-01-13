@@ -109,6 +109,8 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
   }
 
   cudaError_t result = cudaMalloc(&p, size);
+  VLOG(10) << "GPUAllocator alloc " << size << ", device_id:" << gpu_id_
+           << ", pointer:" << p;
 
   if (prev_id != gpu_id_) {
     cudaSetDevice(prev_id);
@@ -135,6 +137,8 @@ void GPUAllocator::Free(void* p, size_t size, size_t index) {
     PADDLE_ASSERT(gpu_alloc_size_ >= size);
     gpu_alloc_size_ -= size;
     err = cudaFree(p);
+
+    VLOG(10) << "GPUAllocator free " << size << ", pointer:" << p;
   } else {
     PADDLE_ASSERT(fallback_alloc_size_ >= size);
     fallback_alloc_size_ -= size;

@@ -98,6 +98,9 @@ void BroadcastOpHandle::BroadcastOneVar(
           boost::get<platform::CUDAPlace>(out_var_handle->place_).device;
 
       auto &nccl_ctx = nccl_ctxs_->at(dst_id);
+      VLOG(10) << "broad cast dev_id:" << dst_id
+               << ", name:" << out_var_handle->name_
+               << ", scope_idx:" << out_var_handle->scope_idx_;
 
       void *send_recv_buffer = nullptr;
       if (root_id == dst_id) {

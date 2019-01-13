@@ -64,7 +64,12 @@ int64_t GetEagerDeletionThreshold() {
 
 bool IsFastEagerDeletionModeEnabled() { return FLAGS_fast_eager_deletion_mode; }
 
-Scope::~Scope() { DropKids(); }
+Scope::~Scope() {
+  for (auto& it : vars_) {
+    VLOG(10) << "deleting variable " << it.first;
+  }
+  DropKids();
+}
 
 Scope& Scope::NewScope() const {
   SCOPE_LOCK_GUARD
