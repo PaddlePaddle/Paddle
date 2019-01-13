@@ -333,6 +333,7 @@ class DeviceTracerImpl : public DeviceTracer {
   }
 
   void GenEventKernelCudaElapsedMs() {
+#ifdef PADDLE_WITH_CUPTI
     if (correlations_.empty())
       for (auto &tmp : correlations_pairs)
         for (auto &pair : tmp) correlations_[pair.first] = pair.second;
@@ -342,6 +343,7 @@ class DeviceTracerImpl : public DeviceTracer {
         e->AddCudaElapsedTime(r.start_ns, r.end_ns);
       }
     }
+#endif
   }
 
   proto::Profile GenProfile(const std::string &profile_path) {
