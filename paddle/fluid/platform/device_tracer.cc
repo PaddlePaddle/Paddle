@@ -28,6 +28,7 @@ limitations under the License. */
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/platform/cupti_cbid_str.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 
 namespace paddle {
@@ -36,7 +37,7 @@ namespace {
 // Tracking the nested block stacks of each thread.
 thread_local std::deque<int> block_id_stack;
 // Tracking the nested event stacks.
-thread_local std::deque<std::string> annotation_stack;
+thread_local std::deque<Event *> annotation_stack;
 
 std::once_flag tracer_once_flag;
 DeviceTracer *tracer = nullptr;
@@ -231,15 +232,15 @@ class DeviceTracerImpl : public DeviceTracer {
  public:
   DeviceTracerImpl() : enabled_(false) {}
 
-  void AddAnnotation(uint64_t id, const std::string &anno) {
-    static thread_local std::list<std::pair<uint64_t, std::string>>
+  void AddAnnotation(uint64_t id, Event *event) {
+    static thread_local std::list<std::pair<uint64_t, Event *>>
         *local_correlations_pairs = nullptr;
     if (local_correlations_pairs == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
       correlations_pairs.emplace_back();
       local_correlations_pairs = &correlations_pairs.back();
     }
-    local_correlations_pairs->push_back(std::make_pair(id, anno));
+    local_correlations_pairs->push_back(std::make_pair(id, event));
   }
 
   void AddCPURecords(const std::string &anno, uint64_t start_ns,
@@ -266,7 +267,7 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(3) << name << " cannot be traced";
       return;
     }
-    // NOTE(liangdun): lock is not needed, only one thread all this function.
+    // NOTE(liangdun): lock is not needed, only one thread call this function.
     // std::lock_guard<std::mutex> l(trace_mu_);
     mem_records_.push_back(MemRecord{name, start_ns, end_ns, device_id,
                                      stream_id, correlation_id, bytes});
@@ -280,7 +281,7 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(3) << correlation_id << " cannot be traced";
       return;
     }
-    // NOTE(liangdun): lock is not needed, only one thread all this function.
+    // NOTE(liangdun): lock is not needed, only one thread call this function.
     // std::lock_guard<std::mutex> l(trace_mu_);
     kernel_records_.push_back(
         KernelRecord{name, start, end, device_id, stream_id, correlation_id});
@@ -323,18 +324,39 @@ class DeviceTracerImpl : public DeviceTracer {
     enabled_ = true;
   }
 
+  void Reset() {
+    kernel_records_.clear();
+    mem_records_.clear();
+    cpu_records_.clear();
+    correlations_.clear();
+    for (auto &tmp : correlations_pairs) tmp.clear();
+  }
+
+  void GenEventKernelCudaElapsedMs() {
+    if (correlations_.empty())
+      for (auto &tmp : correlations_pairs)
+        for (auto &pair : tmp) correlations_[pair.first] = pair.second;
+    for (const KernelRecord &r : kernel_records_) {
+      if (correlations_.find(r.correlation_id) != correlations_.end()) {
+        Event *e = correlations_.at(r.correlation_id);
+        e->AddCudaElapsedTime(r.start_ns, r.end_ns);
+      }
+    }
+  }
+
   proto::Profile GenProfile(const std::string &profile_path) {
     std::lock_guard<std::mutex> l(trace_mu_);
     proto::Profile profile_pb;
     profile_pb.set_start_ns(start_ns_);
     profile_pb.set_end_ns(end_ns_);
-    for (auto &tmp : correlations_pairs)
-      for (auto &pair : tmp) correlations_[pair.first] = pair.second;
+    if (correlations_pairs.empty())
+      for (auto &tmp : correlations_pairs)
+        for (auto &pair : tmp) correlations_[pair.first] = pair.second;
     for (const KernelRecord &r : kernel_records_) {
       auto *event = profile_pb.add_events();
       event->set_type(proto::Event::GPUKernel);
       if (correlations_.find(r.correlation_id) != correlations_.end()) {
-        event->set_name(correlations_.at(r.correlation_id));
+        event->set_name(correlations_.at(r.correlation_id)->name());
       } else {
         event->set_name(r.name);
       }
@@ -398,10 +420,8 @@ class DeviceTracerImpl : public DeviceTracer {
     if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) &&
         (cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel)) {
       if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-        const std::string anno = !annotation_stack.empty()
-                                     ? annotation_stack.back()
-                                     : cbInfo->symbolName;
-        tracer->AddAnnotation(cbInfo->correlationId, anno);
+        Event *event = CurAnnotation();
+        tracer->AddAnnotation(cbInfo->correlationId, event);
       }
     } else {
       VLOG(1) << "Unhandled API Callback for " << domain << " " << cbid;
@@ -417,8 +437,8 @@ class DeviceTracerImpl : public DeviceTracer {
   std::list<KernelRecord> kernel_records_;
   std::list<MemRecord> mem_records_;
   std::list<std::list<CPURecord>> cpu_records_;
-  std::list<std::list<std::pair<uint64_t, std::string>>> correlations_pairs;
-  std::unordered_map<uint64_t, std::string> correlations_;
+  std::list<std::list<std::pair<uint64_t, Event *>>> correlations_pairs;
+  std::unordered_map<uint64_t, Event *> correlations_;
 };
 
 void CreateTracer(DeviceTracer **t) { *t = new DeviceTracerImpl(); }
@@ -428,15 +448,17 @@ DeviceTracer *GetDeviceTracer() {
   return tracer;
 }
 
-void SetCurAnnotation(const std::string &anno) {
-  annotation_stack.push_back(anno);
-}
+void SetCurAnnotation(Event *event) { annotation_stack.push_back(event); }
 
 void ClearCurAnnotation() { annotation_stack.pop_back(); }
 
-std::string CurAnnotation() {
-  if (annotation_stack.empty()) return "";
+Event *CurAnnotation() {
+  if (annotation_stack.empty()) return nullptr;
   return annotation_stack.back();
+}
+std::string CurAnnotationName() {
+  if (annotation_stack.empty()) return "";
+  return annotation_stack.back()->name();
 }
 
 void SetCurBlock(int block_id) { block_id_stack.push_back(block_id); }

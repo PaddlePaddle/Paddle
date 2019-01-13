@@ -37,8 +37,10 @@ class Event {
   bool has_cuda() const { return has_cuda_; }
 
 #ifdef PADDLE_WITH_CUDA
+#ifndef PADDLE_WITH_CUPTI
   cudaEvent_t event() const { return event_; }
   int device() const { return device_; }
+#endif
 #endif
 
   double CpuElapsedMs(const Event& e) const;
@@ -51,8 +53,19 @@ class Event {
   int64_t cpu_ns_;
   bool has_cuda_;
 #ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUPTI
+  int64_t gpu_ns_ = 0;
+
+ public:
+  void AddCudaElapsedTime(int64_t start_ns, int64_t end_ns) {
+    gpu_ns_ += end_ns - start_ns;
+  }
+
+ private:
+#else
   cudaEvent_t event_ = nullptr;
   int device_ = -1;
+#endif
 #endif
 };
 
@@ -65,7 +78,7 @@ enum ProfilerState {
 
 void Mark(const std::string& name, const DeviceContext* dev_ctx);
 
-void PushEvent(const std::string& name, const DeviceContext* dev_ctx);
+Event* PushEvent(const std::string& name, const DeviceContext* dev_ctx);
 
 void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
 
