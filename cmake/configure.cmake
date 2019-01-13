@@ -134,6 +134,7 @@ if(WITH_GPU)
             message(WARNING "Anakin needs CUDNN >= 7.0 to compile. Force WITH_ANAKIN=OFF")
             set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when CUDNN >= 7.0." FORCE)
         endif()
+        add_definitions(-DWITH_ANAKIN)
     endif()
     if(WITH_ANAKIN)
         # NOTICE(minqiyang): the end slash is important because $CUDNN_INCLUDE_DIR

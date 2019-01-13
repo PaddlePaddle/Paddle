@@ -193,15 +193,14 @@ ParallelExecutor::ParallelExecutor(
     const std::unordered_set<std::string> &bcast_vars,
     const ProgramDesc &main_program, const std::string &loss_var_name,
     Scope *scope, const std::vector<Scope *> &local_scopes,
-    const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
-    size_t num_trainers, size_t trainer_id)
+    const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ =
       build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
-  member_->nranks_ = num_trainers * places.size();
+  member_->nranks_ = build_strategy.num_trainers_ * places.size();
 
   if (!member_->use_all_reduce_) {
     PADDLE_ENFORCE(places.size() > 1,
@@ -253,7 +252,8 @@ ParallelExecutor::ParallelExecutor(
     }
 
     member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
-        member_->places_, nccl_id, num_trainers, trainer_id));
+        member_->places_, nccl_id, build_strategy.num_trainers_,
+        build_strategy.trainer_id_));
 #else
     PADDLE_THROW("Not compiled with CUDA");
 #endif
