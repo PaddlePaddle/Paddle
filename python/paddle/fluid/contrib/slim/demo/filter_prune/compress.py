@@ -80,7 +80,7 @@ class Model(object):
 
         eval_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=1)
 
-        place = fluid.CPUPlace()
+        place = fluid.CUDAPlace(0)
         train_feed_list = ['img', 'label']
         eval_feed_list = ['img', 'label']
         exe = fluid.Executor(place)

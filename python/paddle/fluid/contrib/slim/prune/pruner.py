@@ -71,11 +71,11 @@ class StructurePruner(Pruner):
         return pruned_idx, pruning_axis
 
     def prune_tensor(self, tensor, pruned_idx, pruned_axis, lazy=False):
-        mask = np.ones(tensor.shape[pruned_axis], dtype=bool)
-        mask[pruned_idx] = False
+        mask = np.zeros(tensor.shape[pruned_axis], dtype=bool)
+        mask[pruned_idx] = True
 
         def func(data):
-            return data[mask]
+            return data[~mask]
 
         def lazy_func(data):
             data[mask] = 0

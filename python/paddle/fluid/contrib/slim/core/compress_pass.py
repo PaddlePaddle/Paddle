@@ -17,6 +17,7 @@ from ....data_feeder import DataFeeder
 from ..graph import get_executor
 from config import ConfigFactory
 import numpy as np
+import time
 
 __all__ = ['Context', 'CompressPass']
 
@@ -57,20 +58,31 @@ class Context(object):
         self.eval_graph = eval_graph
         self.eval_reader = eval_reader
         self.eval_feeder = eval_feeder
+        self.executor = None
 
     def run_eval_graph(self):
         assert self.eval_graph is not None
         assert self.eval_reader is not None
         assert self.eval_feeder is not None
-        executor = get_executor(self.eval_graph, self.place)
+        self.executor = get_executor(self.eval_graph, self.place, parallel=True)
         results = []
+        batch_id = 0
+        s_time = time.time()
         for data in self.eval_reader():
             feed = self.eval_feeder.feed(data)
-            result = executor.run(self.eval_graph, feed=feed)
+            result = self.executor.run(self.eval_graph, feed=feed)
+            if batch_id % 20 == 0:
+                e_time = time.time()
+                print("time: {}s; batch[{}] eval: {}={}".format(
+                    e_time - s_time, batch_id,
+                    self.eval_graph.out_nodes.keys(), list(result)))
+                s_time = time.time()
+            batch_id += 1
             results.append(result)
-            break
-        return np.mean(
-            np.array(results), axis=0), self.eval_graph.out_nodes.keys()
+        result = np.mean(np.array(results), axis=0)
+        print("final eval result: {}={}".format(
+            self.eval_graph.out_nodes.keys(), list(result)))
+        return result, self.eval_graph.out_nodes.keys()
 
     def put(self, key, value):
         self.k_v[key] = value
@@ -138,8 +150,11 @@ class CompressPass(object):
             if context.train_feeder:
                 feed = context.train_feeder.feed(data)
             results = self.executor.run(context.train_graph, feed=feed)
-            print("epoch:{}; batch_id:{}; train results: {}".format(
-                context.epoch, context.batch_id, results))
+            results = [float(result) for result in results]
+            if context.batch_id % 20 == 0:
+                print("epoch:{}; batch_id:{}; {} = {}".format(
+                    context.epoch, context.batch_id,
+                    context.train_graph.out_nodes.keys(), results))
             for strategy in self.strategies:
                 strategy.on_batch_end(context)
             context.batch_id += 1
@@ -182,6 +197,9 @@ class CompressPass(object):
             eval_graph=eval_graph,
             eval_reader=self.eval_reader,
             eval_feeder=eval_feeder)
+
+        context.put('train_graph_pass', self.train_graph_pass)
+        context.put('eval_graph_pass', self.eval_graph_pass)
 
         for strategy in self.strategies:
             strategy.on_compression_begin(context)

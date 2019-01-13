@@ -15,6 +15,7 @@
 import abc
 from abc import abstractmethod
 from .... import executor
+from .... import parallel_executor
 from .graph import IRGraph, ImitationGraph
 
 __all__ = ['get_executor']
@@ -23,7 +24,7 @@ __all__ = ['get_executor']
 class GraphExecutor(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, place):
+    def __init__(self, place, parallel=True):
         self.place = place
 
     @abstractmethod
@@ -37,23 +38,35 @@ class IRGraphExecutor(GraphExecutor):
 
 
 class ImitationGraphExecutor(GraphExecutor):
-    def __init__(self, place):
-        super(ImitationGraphExecutor, self).__init__(place)
-        self.exe = executor.Executor(place)
+    def __init__(self, place, parallel=True):
+        super(ImitationGraphExecutor, self).__init__(place, parallel=parallel)
+        self.parallel = parallel
+        self.exe = None
+        if not parallel:
+            self.exe = executor.Executor(place)
 
     def run(self, graph, feed=None):
         assert isinstance(graph, ImitationGraph)
         fetch_list = graph.out_nodes.values()
         #        print "fetch_list: %s" % (fetch_list, )
-        results = self.exe.run(graph.program,
-                               scope=graph.scope,
-                               fetch_list=fetch_list,
-                               feed=feed)
+        if self.exe is None:
+            self.exe = parallel_executor.ParallelExecutor(
+                use_cuda=True,
+                loss_name=graph.out_nodes['cost'],
+                main_program=graph.program,
+                scope=graph.scope)
+        if self.parallel:
+            results = self.exe.run(feed=feed, fetch_list=fetch_list)
+        else:
+            results = self.exe.run(graph.program,
+                                   scope=graph.scope,
+                                   fetch_list=fetch_list,
+                                   feed=feed)
         return results
 
 
-def get_executor(graph, place):
+def get_executor(graph, place, parallel=True):
     if isinstance(graph, ImitationGraph):
-        return ImitationGraphExecutor(place)
+        return ImitationGraphExecutor(place, parallel=parallel)
     if isinstance(graph, IRGraph):
-        return IRGraphExecutor(place)
+        return IRGraphExecutor(place, parallel=parallel)

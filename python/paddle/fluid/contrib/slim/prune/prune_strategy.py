@@ -18,6 +18,8 @@ from .... import layers
 import numpy as np
 import copy
 import re
+import os
+import pickle
 
 __all__ = ['SensitivePruneStrategy']
 
@@ -30,47 +32,76 @@ class SensitivePruneStrategy(Strategy):
                  delta_rate=0.20,
                  target_ratio=0.5,
                  metric_name=None,
+                 pruned_params='conv.*_weights',
+                 sensitivities_file='./vgg11_sensitivities.data',
                  sensitivities={}):
         super(SensitivePruneStrategy, self).__init__(start_epoch, end_epoch)
         self.pruner = pruner
         self.delta_rate = delta_rate
         self.target_ratio = target_ratio
         self.metric_name = metric_name
+        self.pruned_params = pruned_params
         self.sensitivities = sensitivities
+        self.sensitivities_file = sensitivities_file
         self.backup = {}
 
     def _eval_graph(self, context):
         results, names = context.run_eval_graph()
-        metric = results[names.index(self.metric_name)]
+        metric = np.mean(results[names.index(self.metric_name)])
         return metric
+
+    def _save_sensitivities(self):
+        with open(self.sensitivities_file, 'wb') as f:
+            pickle.dump(self.sensitivities, f)
+
+    def _load_sensitivities(self):
+        if self.sensitivities_file and os.path.exists(self.sensitivities_file):
+            with open(self.sensitivities_file, 'rb') as f:
+                self.sensitivities = pickle.load(f)
+        else:
+            self.sensitivities = {}
+        print "load sensitivities: %s" % self.sensitivities
 
     def _compute_sensitivities(self, context):
         """
         Computing the sensitivities of all parameters.
         """
         print("calling _compute_sensitivities.")
-        metric = self._eval_graph(context)
+
+        self._load_sensitivities()
+        #        metric = self._eval_graph(context)
+        metric = 1.0
 
         for param in context.graph.all_parameters():
-            if not re.match('conv2d_.+\.w_.+', param.name):
+            if not re.match(self.pruned_params, param.name):
                 continue
-            self.sensitivities[param.name] = {'pruned_percent': [], 'loss': []}
-            ratio = 1
-            while ratio > 0:
+            if param.name not in self.sensitivities:
+                self.sensitivities[param.name] = {
+                    'pruned_percent': [],
+                    'loss': []
+                }
+            self.sensitivities[param.name]['size'] = param.shape[0]
+            ratio = self.delta_rate
+            while ratio < 1:
+                if ratio in self.sensitivities[param.name]['pruned_percent']:
+                    print "pruned param: {}; {};".format(param.name, ratio)
+                    ratio += self.delta_rate
+                    continue
                 # prune parameter by ratio
                 self._prune_parameters(
                     context.graph,
-                    context.graph.scope, [param], [ratio],
+                    context.graph.scope, [param.name], [ratio],
                     context.place,
                     lazy=True)
+                print "pruning param: {}; {};".format(param.name, ratio)
                 # get accuracy after pruning and update self.sensitivities
                 pruned_metric = self._eval_graph(context)
                 loss = metric - pruned_metric
-                print "pruning param: {}; {}; loss={}".format(param.name, ratio,
-                                                              loss)
+                print "pruned param: {}; {}; loss={}".format(param.name, ratio,
+                                                             loss)
                 self.sensitivities[param.name]['pruned_percent'].append(ratio)
                 self.sensitivities[param.name]['loss'].append(loss)
-                ratio -= self.delta_rate
+                self._save_sensitivities()
 
                 # restore pruned parameters
                 for param_name in self.backup.keys():
@@ -78,7 +109,28 @@ class SensitivePruneStrategy(Strategy):
                         param_name).get_tensor()
                     param_t.set(self.backup[param_name], context.place)
 
+                ratio += self.delta_rate
+                if pruned_metric <= 0:
+                    break
+
     def _get_best_ratios(self):
+        losses = []
+        sizes = []
+        for param in self.sensitivities:
+            losses.append(self.sensitivities[param]['loss'][self.sensitivities[
+                param]['pruned_percent'].index(self.target_ratio)])
+            sizes.append(self.sensitivities[param]['size'])
+        losses = np.array(losses) / np.max(np.array(losses))
+        sensitivities = (1.0 / losses) * np.array(sizes)
+        print "sensitivities: %s" % (sensitivities, )
+        ratios = sensitivities / np.sum(sensitivities)
+        size_ratios = np.array(sizes, dtype='float32') / np.sum(np.array(sizes))
+        ratios = (ratios / size_ratios) * self.target_ratio
+
+        ratios = [0.1] * len(ratios)
+        return self.sensitivities.keys(), ratios
+
+    def _get_best_ratios_1(self):
         no_loss_ratios = {}
         for param in self.sensitivities:
             for ratio, loss in zip(self.sensitivities[param]['pruned_percent'],
@@ -86,6 +138,7 @@ class SensitivePruneStrategy(Strategy):
                 if loss == 0:
                     no_loss_ratios[param] = ratio
         ratio_sum = np.sum(no_loss_ratios.values())
+        print "no_loss_ratios: %s" % no_loss_ratios
         return no_loss_ratios.keys(), float(
             self.target_ratio) * no_loss_ratios.values() / ratio_sum
 
@@ -326,6 +379,7 @@ class SensitivePruneStrategy(Strategy):
         Pruning parameters.
         """
         for param, ratio in zip(params, ratios):
+            param = graph.get_var(param)
             self._pruning_ralated_op(
                 graph, scope, param, ratio, place, lazy=lazy)
 
@@ -337,3 +391,10 @@ class SensitivePruneStrategy(Strategy):
         self._prune_parameters(context.graph, context.graph.scope, params,
                                ratios, context.place)
         print('SensitivePruneStrategy.on_compression_begin finish.')
+
+        if context.get('train_graph_pass'):
+            context.train_graph = context.get('train_graph_pass').apply(
+                context.graph)
+        if context.get('eval_graph_pass'):
+            context.eval_graph = context.get('eval_graph_pass').apply(
+                context.graph)
