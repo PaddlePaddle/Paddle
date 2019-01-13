@@ -1761,6 +1761,7 @@ def conv2d(input,
            bias_attr=None,
            use_cudnn=True,
            act=None,
+           fuse_relu_before_depthwise_conv=False,
            name=None):
     """
     The convolution2D layer calculates the output based on the input, filter
@@ -1847,6 +1848,7 @@ def conv2d(input,
             library is installed. Default: True
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None
+        fuse_relu_before_depthwise_conv (bool): relu is apply before depthwise conv. This api is temporary and will be remove in the future. Default: False 
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None
 
@@ -1871,6 +1873,10 @@ def conv2d(input,
     if (num_channels == groups and num_filters % num_channels == 0 and
             not use_cudnn):
         l_type = 'depthwise_conv2d'
+    elif fuse_relu_before_depthwise_conv:
+        raise ValueError(
+            "fuse_relu_before_depthwise_conv is only supported in depthwise conv."
+        )
 
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
@@ -1934,6 +1940,7 @@ def conv2d(input,
             'groups': groups,
             'use_cudnn': use_cudnn,
             'use_mkldnn': False,
+            'fuse_relu_before_depthwise_conv': fuse_relu_before_depthwise_conv
         })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)

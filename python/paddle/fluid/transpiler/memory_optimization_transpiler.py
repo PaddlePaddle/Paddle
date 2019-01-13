@@ -347,7 +347,8 @@ class ControlFlowGraph(object):
                             continue
                         if x == cache_var:
                             if PRINT_LOG:
-                                print("x : ", cpt.to_text(x), " cache : ",
+                                print("x : ",
+                                      cpt.to_text(x), " cache : ",
                                       cpt.to_text(cache_var), " is same var!")
                             break
 
@@ -488,11 +489,47 @@ def _is_opt_role_op(op):
         return True
 
 
+def _inplace_normalize(program, skip_opt_set):
+    if not skip_opt_set: skip_opt_set = set()
+    block = program.block(0)
+
+    in_use = defaultdict(list)
+    for i in range(len(block.ops) - 1, -1, -1):
+        current_op = block.ops[i]
+        # currently, only group_norm supports inplace.
+        if current_op.type in ['group_norm']:
+            x = current_op.input('X')[0]
+            y = current_op.output('Y')[0]
+            # if x is not in use after, we can inplace it.
+            if x not in in_use and x not in skip_opt_set and x != y:
+                if PRINT_LOG:
+                    print("Inplace %s: X(%s) -> Y(%s)" %
+                          (current_op.type, x, y))
+                # inplace y into x
+                rename_list = [i]
+                if y in in_use: rename_list += in_use[y]
+                for rename_idx in rename_list:
+                    _rename_arg_(
+                        block.ops,
+                        y,
+                        x,
+                        begin_idx=rename_idx,
+                        end_idx=rename_idx + 1)
+                block.var(cpt.to_text(y)).desc = block.desc.find_var(
+                    cpt.to_bytes(x))
+                block.vars[cpt.to_text(y)] = Variable(
+                    block, name=cpt.to_text(x))
+        for input_name in current_op.input_arg_names:
+            in_use[input_name].append(i)
+    program = program.clone()
+
+
 def memory_optimize(input_program,
                     skip_opt_set=None,
                     print_log=False,
                     level=0,
-                    skip_grads=False):
+                    skip_grads=False,
+                    inplace_normalize=False):
     """Optimize memory by reusing var memory.
 
       Note: it doesn't not support subblock nested in subblock.
@@ -502,6 +539,7 @@ def memory_optimize(input_program,
         skip_opt_set(set): vars wil be skipped in memory optimze
         print_log(bool): whether to print debug log.
         level(int): If level=0, reuse if the shape is completely equal, o
+        inplace_normalize(bool): inplace normalize layer to save memory. Currently only group norm are supported .
     Returns:
         None
     """
@@ -539,6 +577,8 @@ def memory_optimize(input_program,
             skip_opt_set.update(grad_set)
     if skip_opt_set is not None:
         skip_opt_set = set(map(to_name_str, skip_opt_set))
+    if inplace_normalize:
+        _inplace_normalize(input_program, skip_opt_set)
     cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
         cfg.memory_optimize(skip_opt_set=skip_opt_set, level=level)

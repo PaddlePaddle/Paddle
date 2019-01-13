@@ -108,5 +108,34 @@ __device__ T reduceSum(T val, int tid, int len) {
   return val;
 }
 
+template <typename T>
+__inline__ __device__ T warpReduceSum(T val) {
+  for (int offset = 16; offset > 0; offset /= 2)
+    val += CudaShuffleDownSync(0xffffffff, val, offset);
+  return val;
+}
+
+__forceinline__ __device__ unsigned lane_id() {
+  unsigned ret;
+  asm volatile("mov.u32 %0, %laneid;" : "=r"(ret));
+  return ret;
+}
+
+__forceinline__ __device__ unsigned warp_id() {
+  unsigned ret;
+  asm volatile("mov.u32 %0, %warpid;" : "=r"(ret));
+  return ret;
+}
+
+template <typename T>
+__inline__ __device__ void CudaAtomicAddWithWarp(T *address, T val) {
+#if __CUDA_ARCH__ >= 530
+  val = warpReduceSum<T>(val);
+  if (lane_id() == 0) atomicAdd(address, val);
+#else
+  atomicAdd(address, val);
+#endif
+}
+
 }  // namespace platform
 }  // namespace paddle

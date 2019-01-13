@@ -186,6 +186,42 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
   }
 };
 
+// CheckInputGradOpDescMaker allowed user to override the CheckInput virtual
+// functions. user can customize the input grad he need to save memory.
+template <bool DropEmptyIG = true>
+class CheckInputGradOpDescMaker : public SingleGradOpDescMaker {
+ public:
+  using SingleGradOpDescMaker::SingleGradOpDescMaker;
+  virtual bool CheckInput(const std::string& input_name) const { return true; }
+
+ protected:
+  virtual std::unique_ptr<OpDesc> Apply() const {
+    auto* grad = new OpDesc();
+    grad->SetType(this->GradOpType());
+
+    for (auto& input_param : this->InputNames()) {
+      if (CheckInput(input_param))
+        grad->SetInput(input_param, this->Input(input_param));
+      grad->SetOutput(GradVarName(input_param),
+                      this->InputGrad(input_param, DropEmptyIG));
+    }
+
+    for (auto& output_param : this->OutputNames()) {
+      if (CheckInput(output_param))
+        grad->SetInput(output_param, this->Output(output_param));
+      grad->SetInput(GradVarName(output_param), this->OutputGrad(output_param));
+    }
+
+    grad->SetAttrMap(this->Attrs());
+
+    return std::unique_ptr<OpDesc>(grad);
+  }
+
+  virtual std::string GradOpType() const {
+    return this->ForwardOpType() + "_grad";
+  }
+};
+
 class EmptyGradOpMaker : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;

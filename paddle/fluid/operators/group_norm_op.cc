@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/group_norm_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -102,7 +103,7 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     // check input
-    PADDLE_ENFORCE(ctx->HasInput("X"),
+    PADDLE_ENFORCE(ctx->HasInput("Y"),
                    "Input(X) of GroupNormOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Mean"),
                    "Input(Mean) of GroupNormOp should not be null.");
@@ -113,7 +114,7 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
 
     // check output
     if (ctx->HasOutput(framework::GradVarName("X"))) {
-      ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+      ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Y"));
     }
     if (ctx->HasOutput(framework::GradVarName("Scale"))) {
       ctx->SetOutputDim(framework::GradVarName("Scale"),
@@ -145,12 +146,23 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class NoInputGradOpDescMaker
+    : public paddle::framework::CheckInputGradOpDescMaker<true> {
+ public:
+  using CheckInputGradOpDescMaker::CheckInputGradOpDescMaker;
+
+  bool CheckInput(const std::string &input_name) const {
+    if (input_name == "X") return false;
+    return true;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(group_norm, ops::GroupNormOp, ops::GroupNormOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::NoInputGradOpDescMaker);
 REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp);
 REGISTER_OP_CPU_KERNEL(
     group_norm, ops::GroupNormKernel<paddle::platform::CPUDeviceContext, float>,
