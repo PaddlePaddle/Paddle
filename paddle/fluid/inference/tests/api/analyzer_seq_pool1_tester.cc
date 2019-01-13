@@ -190,8 +190,10 @@ void analysis_fuse_statis(bool use_zerocopy) {
   ASSERT_EQ(fuse_statis.at("fc_fuse"), 10);
   ASSERT_TRUE(fuse_statis.count("seqpool_concat_fuse"));
   EXPECT_EQ(fuse_statis.at("seqpool_concat_fuse"), 2);
+  ASSERT_TRUE(fuse_statis.count("repeated_fc_relu"));
+  EXPECT_EQ(fuse_statis.at("repeated_fc_relu"), 2);
   LOG(INFO) << "num_ops: " << num_ops;
-  EXPECT_EQ(num_ops, 195);
+  EXPECT_EQ(num_ops, 185);
 }
 
 // Check the fuse status
