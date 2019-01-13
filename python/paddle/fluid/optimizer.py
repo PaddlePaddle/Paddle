@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -195,22 +195,18 @@ class Optimizer(object):
                             format(name, param.name))
         return self._accumulators[name][param.name]
 
-    def _create_optimization_pass(self,
-                                  parameters_and_grads,
-                                  loss,
-                                  startup_program=None):
+    def _create_optimization_pass(self, parameters_and_grads):
         """Add optimization operators to update gradients to variables.
 
         Args:
-          loss(Variable): the target that this optimization is for.
           parameters_and_grads(list(tuple(Variable, Variable))):
-          a list of (variable, gradient) pair to update.
+            a list of (variable, gradient) pair to update.
 
         Returns:
           return_op_list: a list of operators that will complete one step of
-          optimization. This will include parameter update ops, global step
-          update ops and any other custom ops required by subclasses to manage
-          their internal state.
+            optimization. This will include parameter update ops, global step
+            update ops and any other custom ops required by subclasses to manage
+            their internal state.
         """
         # This is a default implementation of create_optimization_pass that
         # can be shared by most optimizers. This implementation assumes that
@@ -219,37 +215,33 @@ class Optimizer(object):
         # _create_accumulators method if it needs to create accumulators
         # for parameters and extend _finish_update method to add custom ops.
 
-        # Create any accumulators
-        program = loss.block.program
-        self._dtype = loss.dtype
-        with program_guard(program, startup_program):
-            global_block = framework.default_main_program().global_block()
-            start = len(global_block.ops)
-            self.helper = LayerHelper(self.__class__.__name__)
-            self._create_accumulators(loss.block,
-                                      [p[0] for p in parameters_and_grads])
-            self._create_global_learning_rate()
+        # Allways called under program_guard use global block as loss block
+        global_block = framework.default_main_program().global_block()
+        start = len(global_block.ops)
+        self.helper = LayerHelper(self.__class__.__name__)
+        self._create_accumulators(global_block,
+                                  [p[0] for p in parameters_and_grads])
+        self._create_global_learning_rate()
 
-            optimize_ops = []
-            for param_and_grad in parameters_and_grads:
-                if param_and_grad[1] is None:
-                    continue
-                with param_and_grad[0].block.program._optimized_guard(
-                        param_and_grad), name_scope("optimizer"):
-                    if param_and_grad[0].trainable is True:
-                        optimize_op = self._append_optimize_op(loss.block,
-                                                               param_and_grad)
-                        optimize_ops.append(optimize_op)
+        optimize_ops = []
+        for param_and_grad in parameters_and_grads:
+            if param_and_grad[1] is None:
+                continue
+            with param_and_grad[0].block.program._optimized_guard(
+                    param_and_grad), name_scope("optimizer"):
+                if param_and_grad[0].trainable is True:
+                    optimize_op = self._append_optimize_op(global_block,
+                                                           param_and_grad)
+                    optimize_ops.append(optimize_op)
 
-            # Get custom finish ops for subclasses
-            # FIXME: Need to fix this once we figure out how to handle dependencies
-            self._finish_update(loss.block, parameters_and_grads)
+        # Get custom finish ops for subclasses
+        # FIXME: Need to fix this once we figure out how to handle dependencies
+        self._finish_update(global_block, parameters_and_grads)
 
-            end = len(global_block.ops)
-            return global_block._slice_ops(start, end)
+        end = len(global_block.ops)
+        return global_block._slice_ops(start, end)
 
-    def _process_distribute_lookuptable(self, param_grads, loss,
-                                        startup_program):
+    def _process_distribute_lookuptable(self, param_grads):
         """
         Because distribute lookup table only support SGD optimizer for now, not support
         other optimizer and regularization, so we should find the table parameter out,
@@ -259,7 +251,8 @@ class Optimizer(object):
         :param loss: the loss variable.
         :param startup_program: the startup program
         """
-        program = loss.block.program
+        program = framework.default_main_program()
+        global_block = framework.default_main_program().global_block()
         table_name = find_distributed_lookup_table(program)
         table_param = None
         table_grad = None
@@ -275,38 +268,121 @@ class Optimizer(object):
                 new_param_grads.append((p, g))
         sgd_op = None
         if table_param is not None:
-            with program_guard(program, startup_program):
-                param_and_grad = [table_param, table_grad]
-                with table_param.block.program._optimized_guard(param_and_grad), \
-                     framework.name_scope("optimizer"):
-                    self._create_global_learning_rate()
-                    # create the optimize op
-                    sgd_op = loss.block.append_op(
-                        type='sgd',
-                        inputs={
-                            "Param": table_param,
-                            "Grad": table_grad,
-                            "LearningRate":
-                            self._create_param_lr(param_and_grad)
-                        },
-                        outputs={"ParamOut": param_and_grad[0]})
+            param_and_grad = [table_param, table_grad]
+            with table_param.block.program._optimized_guard(param_and_grad), \
+                    framework.name_scope("optimizer"):
+                self._create_global_learning_rate()
+                # create the optimize op
+                sgd_op = global_block.append_op(
+                    type='sgd',
+                    inputs={
+                        "Param": table_param,
+                        "Grad": table_grad,
+                        "LearningRate": self._create_param_lr(param_and_grad)
+                    },
+                    outputs={"ParamOut": param_and_grad[0]})
         return new_param_grads, (table_param, table_grad), sgd_op
+
+    def backward(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 callbacks=None):
+        """
+        First part of `minimize`, do auto-diff to append backward ops for
+        the current program.
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+            callbacks (list|None): list of callables to run when appending backward
+                operator for one parameter.
+        
+        Return:
+            list: list of (param, grad) pair, grad is the output of backward.
+        
+        Examples:
+            See examples in `apply_gradients`.
+        """
+        if callbacks is None:
+            callbacks = [error_clip_callback]
+        else:
+            assert (isinstance(callbacks, list))
+            callbacks.append(error_clip_callback)
+        return append_backward(loss, parameter_list, no_grad_set, callbacks)
+
+    def apply_gradients(self, params_grads):
+        """
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
+
+        Args:
+            params_grads (list): list of (param, grad) pair to do optimization.
+        
+        Returns:
+            list: A list of operators appended to the current program.
+        
+        Examples:
+            .. code-block:: python
+
+                loss = network()
+                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+                params_grads = optimizer.backward(loss)
+                # you may append operations for params_grads here
+                # ...
+                optimizer.apply_gradients(params_grads)
+        """
+        params_grads = sorted(params_grads, key=lambda x: x[0].name)
+
+        params_grads, table_param_and_grad, table_optimize_op = \
+            self._process_distribute_lookuptable(params_grads)
+
+        params_grads = append_gradient_clip_ops(params_grads)
+
+        # Add regularization if any
+        params_grads = append_regularization_ops(params_grads,
+                                                 self.regularization)
+
+        optimize_ops = self._create_optimization_pass(params_grads)
+        if table_optimize_op is not None:
+            optimize_ops.append(table_optimize_op)
+            params_grads.append(table_param_and_grad)
+
+        return optimize_ops
 
     def minimize(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        """Add operations to minimize `loss` by updating `parameter_list`.
-
-        This method combines interface `append_backward()` and
-        `create_optimization_pass()` into one.
         """
+        Add operations to minimize `loss` by updating `parameter_list`.
+
+        This method combines interface `backward()` and
+        `apply_gradients()` into one.
+        
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+
+        Returns:
+            tuple: (optimize_ops, params_grads) which are, list of operators appended;
+            and list of (param, grad) Variables pair for optimization.
+        """
+        self._dtype = loss.dtype
+        program = loss.block.program
+        optimize_ops = []
         if imperative_base.enabled():
             if parameter_list is not None:
                 params_grads = parameter_list
             else:
-                program = loss.block.program
                 parameters = program.global_block().all_parameters()
                 params_grads = []
                 for param in parameters:
@@ -314,32 +390,16 @@ class Optimizer(object):
                     grad_var = Variable(
                         block=loss.block,
                         name=param._ivar._grad_name(),
-                        stop_gradient=True)
-                    grad_var._value = param._ivar.grad_value
+                        stop_gradient=True,
+                        ivar=param._ivar._grad_ivar())
                     params_grads.append((param, grad_var))
-
-            optimize_ops = self._create_optimization_pass(params_grads, loss,
-                                                          startup_program)
+            with program_guard(program, startup_program):
+                optimize_ops = self._create_optimization_pass(params_grads)
         else:
-            params_grads = append_backward(loss, parameter_list, no_grad_set,
-                                           [error_clip_callback])
-
-            params_grads = sorted(params_grads, key=lambda x: x[0].name)
-
-            params_grads, table_param_and_grad, table_optimize_op = \
-                self._process_distribute_lookuptable(params_grads, loss, startup_program)
-
-            params_grads = append_gradient_clip_ops(params_grads)
-
-            # Add regularization if any
-            params_grads = append_regularization_ops(params_grads,
-                                                     self.regularization)
-
-            optimize_ops = self._create_optimization_pass(params_grads, loss,
-                                                          startup_program)
-            if table_optimize_op is not None:
-                optimize_ops.append(table_optimize_op)
-                params_grads.append(table_param_and_grad)
+            with program_guard(program, startup_program):
+                params_grads = self.backward(loss, startup_program,
+                                             parameter_list, no_grad_set)
+                optimize_ops = self.apply_gradients(params_grads)
 
         return optimize_ops, params_grads
 
