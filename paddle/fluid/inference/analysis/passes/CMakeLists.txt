@@ -7,4 +7,5 @@ set(analysis_deps ${analysis_deps}
         ir_graph_build_pass
         ir_analysis_pass
         analysis_passes
+        subgraph_detector
         CACHE INTERNAL "")

@@ -26,7 +26,7 @@ from paddle.fluid.imperative.base import to_variable
 from test_imperative_base import new_program_scope
 
 
-class SimpleImgConvPool(fluid.imperative.PyLayer):
+class SimpleImgConvPool(fluid.imperative.Layer):
     def __init__(self,
                  num_channels,
                  num_filters,
@@ -72,7 +72,7 @@ class SimpleImgConvPool(fluid.imperative.PyLayer):
         return x
 
 
-class MNIST(fluid.imperative.PyLayer):
+class MNIST(fluid.imperative.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
         super(MNIST, self).__init__()
 
@@ -105,7 +105,6 @@ class TestImperativeMnist(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            #  mnist = Conv2D(1, 20, 5)
             mnist = MNIST()
             sgd = SGDOptimizer(learning_rate=1e-3)
             train_reader = paddle.batch(
@@ -126,16 +125,17 @@ class TestImperativeMnist(unittest.TestCase):
                 label._stop_gradient = True
 
                 cost = mnist(img)
-                loss = fluid.layers.reduce_mean(cost)
-                dy_out = loss._numpy()
+                loss = fluid.layers.cross_entropy(cost, label)
+                avg_loss = fluid.layers.mean(loss)
+                dy_out = avg_loss._numpy()
 
                 if batch_id == 0:
                     for param in fluid.default_main_program().global_block(
                     ).all_parameters():
                         dy_param_init_value[param.name] = param._numpy()
 
-                loss._backward()
-                sgd.minimize(loss)
+                avg_loss._backward()
+                sgd.minimize(avg_loss)
                 dy_param_value = {}
                 for param in fluid.default_main_program().global_block(
                 ).all_parameters():
@@ -147,7 +147,6 @@ class TestImperativeMnist(unittest.TestCase):
 
             exe = fluid.Executor(fluid.CPUPlace())
 
-            #  mnist = Conv2D(1, 20, 5)
             mnist = MNIST()
             sgd = SGDOptimizer(learning_rate=1e-3)
             train_reader = paddle.batch(
@@ -157,8 +156,9 @@ class TestImperativeMnist(unittest.TestCase):
                 name='pixel', shape=[1, 28, 28], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             cost = mnist(img)
-            loss = fluid.layers.reduce_mean(cost)
-            sgd.minimize(loss)
+            loss = fluid.layers.cross_entropy(cost, label)
+            avg_loss = fluid.layers.mean(loss)
+            sgd.minimize(avg_loss)
 
             # initialize params and fetch them
             static_param_init_value = {}
@@ -182,7 +182,7 @@ class TestImperativeMnist(unittest.TestCase):
                 y_data = np.array([x[1] for x in data]).astype('int64').reshape(
                     [128, 1])
 
-                fetch_list = [loss.name]
+                fetch_list = [avg_loss.name]
                 fetch_list.extend(static_param_name_list)
                 out = exe.run(fluid.default_main_program(),
                               feed={"pixel": x_data,

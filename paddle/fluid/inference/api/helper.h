@@ -204,11 +204,14 @@ static std::string DescribeTensor(const PaddleTensor &tensor) {
     os << to_string(l) << "; ";
   }
   os << "\n";
-  os << " - data: ";
+  os << " - memory length: " << tensor.data.length();
+  os << "\n";
 
+  os << " - data: ";
   int dim = VecReduceToInt(tensor.shape);
+  float *pdata = static_cast<float *>(tensor.data.data());
   for (int i = 0; i < dim; i++) {
-    os << static_cast<float *>(tensor.data.data())[i] << " ";
+    os << pdata[i] << " ";
   }
   os << '\n';
   return os.str();
@@ -224,10 +227,12 @@ static std::string DescribeZeroCopyTensor(const ZeroCopyTensor &tensor) {
     os << to_string(l) << "; ";
   }
   os << "\n";
-  os << " - data: ";
   PaddlePlace place;
   int size;
   const auto *data = tensor.data<float>(&place, &size);
+  os << " - numel: " << size;
+  os << "\n";
+  os << " - data: ";
   for (int i = 0; i < size; i++) {
     os << data[i] << " ";
   }

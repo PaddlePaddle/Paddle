@@ -75,8 +75,6 @@ class TestReaderReset(unittest.TestCase):
         exe.run(startup_prog)
 
         build_strategy = fluid.BuildStrategy()
-        if with_double_buffer:
-            build_strategy.enable_data_balance = True
         exec_strategy = fluid.ExecutionStrategy()
         parallel_exe = fluid.ParallelExecutor(
             use_cuda=self.use_cuda,
@@ -94,19 +92,10 @@ class TestReaderReset(unittest.TestCase):
                 broadcasted_label = np.ones((ins_num, ) + tuple(
                     self.ins_shape)) * label_val.reshape((ins_num, 1))
                 self.assertEqual(data_val.all(), broadcasted_label.all())
-                for l in label_val:
-                    self.assertFalse(data_appeared[l[0]])
-                    data_appeared[l[0]] = True
 
             except fluid.core.EOFException:
                 pass_count += 1
-                if with_double_buffer:
-                    data_appeared = data_appeared[:-parallel_exe.device_count *
-                                                  self.batch_size]
-                for i in data_appeared:
-                    self.assertTrue(i)
                 if pass_count < self.test_pass_num:
-                    data_appeared = [False] * self.total_ins_num
                     data_reader_handle.reset()
                 else:
                     break

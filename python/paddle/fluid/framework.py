@@ -26,6 +26,13 @@ import numpy as np
 from .. import compat as cpt
 from .proto import framework_pb2
 try:
+    if os.name == 'nt':
+        import sys
+        third_lib_path = os.path.abspath(os.path.dirname(
+            __file__)) + os.sep + '..' + os.sep + 'libs'
+        os.environ['path'] += ';' + third_lib_path
+        sys.path.append(third_lib_path)
+
     from . import core
 except ImportError as e:
     if os.name == 'nt':
@@ -365,27 +372,21 @@ class Variable(object):
         self.stop_gradient = stop_gradient
         self.is_data = is_data
         if _in_imperative_mode():
-            self._ivar = core.VarBase()
+            self._ivar = kwargs.get("ivar", None)
+            if not self._ivar:
+                self._ivar = core.VarBase()
             self._ivar.desc = self.desc
             self._ivar.stop_gradient = stop_gradient
 
     def _numpy(self):
-        tensor = self._ivar.value.get_tensor()
+        tensor = self._ivar.value().get_tensor()
         return np.array(tensor)
 
     def _backward(self):
         self._ivar._run_backward()
 
     def _gradient(self):
-        return np.array(self._ivar._grad())
-
-    @property
-    def _value(self):
-        return self._ivar.value
-
-    @_value.setter
-    def _value(self, v):
-        self._ivar.value = v
+        return np.array(self._ivar._grad_value())
 
     def __str__(self):
         return self.to_string(True)
