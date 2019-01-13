@@ -327,7 +327,9 @@ TEST(Analyzer_seq_pool1, zerocopy_compare_native) {
             native_outputs.front().data.length());
   auto *native_data = static_cast<float *>(native_outputs.front().data.data());
   for (size_t i = 0; i < zerocopy_output.size(); ++i) {
-    EXPECT_NEAR(zerocopy_output[i], native_data[i], 1e-3);
+    EXPECT_LT(
+        std::fabs((zerocopy_output[i] - native_data[i]) / zerocopy_output[i]),
+        1e-3);
   }
 }
 
