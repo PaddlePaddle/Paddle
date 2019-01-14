@@ -87,6 +87,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
     for (auto *op : set) {
       running_ops_++;
+      VLOG(10) << "runing_ops:" << running_ops_;
       RunOp(ready_vars, op);
     }
     set.clear();
@@ -140,6 +141,14 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
         }
       }
     }
+
+    std::vector<const framework::Scope *> scopes;
+    for (auto s : local_scopes_) {
+      framework::Scope *local_scope =
+          s->FindVar(kLocalExecScopeName)->Get<framework::Scope *>();
+      scopes.push_back(local_scope);
+    }
+    TestSetConstant(scopes, " in ThreadedSSAGraphExecutor::Run ");
   }
   PADDLE_ENFORCE(ready_ops.empty());
   // Wait FetchOps.
@@ -289,11 +298,14 @@ void ThreadedSSAGraphExecutor::RunOp(
     // exception_holder_.Catch(std::current_exception());
     // }
   };
+  /*
   if (pool_) {
     run_op_futures_.emplace_back(pool_->enqueue(op_run));
   } else {
     op_run();
   }
+  */
+  op_run();
 }
 }  // namespace details
 }  // namespace framework
