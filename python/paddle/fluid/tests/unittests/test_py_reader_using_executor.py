@@ -209,6 +209,7 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
             else:
                 thread = threading.Thread(
                     target=feed_data, args=(feed_queue, reader))
+                thread.daemon = True
                 thread.start()
 
             self.outputs = []
@@ -219,6 +220,11 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
 
             feed_queue.close()
             self.validate()
+            if use_decorate_paddle_reader:
+                py_reader.exited = True
+                py_reader.thread.join()
+            else:
+                thread.join()
 
     def validate(self):
         self.assertEqual(len(self.inputs), len(self.outputs))

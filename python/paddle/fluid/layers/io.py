@@ -949,12 +949,11 @@ def shuffle(reader, buffer_size):
     is determined by argument buf_size.
 
     Args:
-        param reader: the original reader whose output will be shuffled.
-        type reader: callable
-        param buf_size: shuffle buffer size.
-        type buf_size: int
-        return: the new reader whose output is shuffled.
-        rtype: callable
+        reader(callable): the original reader whose output will be shuffled.
+        buf_size(int): shuffle buffer size.
+
+    Returns:
+        callable: the new reader whose output is shuffled.
     """
     return __create_unshared_decorated_reader__(
         'create_shuffle_reader', reader, {'buffer_size': int(buffer_size)})

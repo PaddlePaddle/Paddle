@@ -49,6 +49,8 @@ constexpr char kTempVarName[] = "@TEMP@";
 /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
 constexpr char kGradVarSuffix[] = "@GRAD";
 
+constexpr size_t kGradVarSuffixSize = 5U;
+
 /// Variables with this suffix are supposed to be filled up with zeros.
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
@@ -60,7 +62,20 @@ constexpr char kNewGradSuffix[] = "@NEWGRAD@";
 extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
 
 inline std::string GradVarName(const std::string& var_name) {
-  return var_name + kGradVarSuffix;
+  std::string result;
+  result.reserve(var_name.size() + kGradVarSuffixSize);
+  result += var_name;
+  result += kGradVarSuffix;
+  return result;
+}
+
+inline std::string GradOriginalVarName(const std::string& grad_var_name) {
+  std::size_t pos = grad_var_name.rfind(kGradVarSuffix);
+  if (pos == std::string::npos) {
+    return grad_var_name;
+  } else {
+    return grad_var_name.substr(0, pos);
+  }
 }
 
 proto::VarType::Type GetDataTypeOfVar(const Variable* var);
@@ -74,6 +89,10 @@ class RuntimeContext {
  public:
   RuntimeContext(const VariableNameMap& innames,
                  const VariableNameMap& outnames, const Scope& scope);
+
+  RuntimeContext(const VariableValueMap& invars,
+                 const VariableValueMap& outvars)
+      : inputs(invars), outputs(outvars) {}
 
   VariableValueMap inputs;
   VariableValueMap outputs;
@@ -110,8 +129,8 @@ class OperatorBase {
   bool HasAttr(const std::string& name) const { return attrs_.count(name); }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
-                   name);
+    PADDLE_ENFORCE(attrs_.find(name) != attrs_.end(),
+                   "%s should be in AttributeMap", name);
     return boost::get<T>(attrs_.at(name));
   }
   const AttributeMap& Attrs() const { return attrs_; }
@@ -358,6 +377,30 @@ class ExecutionContext {
     return op_.Outputs(name);
   }
 
+  template <typename T, typename DevContext>
+  Tensor AllocateTmpTensor(const framework::DDim& dim,
+                           const DevContext& dev_ctx) const {
+    auto tmp_allocation_ptr = platform::DeviceTemporaryAllocator::Instance()
+                                  .Get<DevContext>(dev_ctx)
+                                  .Allocate(product(dim) * sizeof(T));
+    auto& deleter = tmp_allocation_ptr.get_deleter();
+    auto* allocation_ptr = tmp_allocation_ptr.release();
+    auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
+        allocation_ptr, deleter);
+
+    PADDLE_ENFORCE(
+        dynamic_cast<platform::TemporaryAllocation*>(allocation_ptr) != nullptr,
+        "The AllocationPtr must be TemporaryAllocation.");
+    PADDLE_ENFORCE_GE(allocation_ptr->size(),
+                      framework::product(dim) * sizeof(T));
+
+    paddle::framework::Tensor temp_tensor(
+        framework::ToDataType(std::type_index(typeid(T))));
+    temp_tensor.Resize(dim);
+    temp_tensor.ResetHolder(std::move(shared_allocation));
+    return temp_tensor;
+  }
+
  private:
   const OperatorBase& op_;
   const Scope& scope_;
@@ -441,8 +484,9 @@ class OperatorWithKernel : public OperatorBase {
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,
                          const RuntimeContext& ctx) const override;
 
- protected:
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
+
+ protected:
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;

@@ -123,10 +123,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
   DECL_ARGUMENT_FIELD(use_tensorrt, UseTensorRT, bool);
-  DECL_ARGUMENT_FIELD(tensorrt_node_teller, TensorRtNodeTeller,
-                      std::function<bool(const framework::ir::Node*)>);
   DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int);
+  DECL_ARGUMENT_FIELD(tensorrt_min_subgraph_size, TensorRtMinSubgraphSize, int);
 
   // The program transformed by IR analysis phase.
   DECL_ARGUMENT_UNIQUE_FIELD(ir_analyzed_program, IrAnalyzedProgram,
