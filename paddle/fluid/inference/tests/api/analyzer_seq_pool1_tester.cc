@@ -169,12 +169,6 @@ TEST(Analyzer_seq_pool1, compare) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-#if defined(__APPLE__) || defined(__OSX__)
-  // case1 in mac: the output is -338405.2812, refer is -338405.21875
-  // case2  in mac py35: the output is -338405.4375, refer is -338405.1875
-  // TODO(TJ): so acc should be adjust, check me later
-  FLAGS_accuracy = 1.0;
-#endif
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
