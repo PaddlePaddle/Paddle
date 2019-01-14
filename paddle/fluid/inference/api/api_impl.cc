@@ -136,6 +136,13 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   timer.tic();
   // set feed variable
   framework::Scope *scope = sub_scope_ != nullptr ? sub_scope_ : scope_.get();
+  LOG(INFO) << "scope, local_scope, parent_scope " << scope << " " << sub_scope_ << " " << scope_;
+
+  if (sub_scope_) {
+    for (auto& v : sub_scope_->LocalVarNames()) {
+      LOG(INFO) << "local v\t" << v;
+    }
+  }
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
     return false;

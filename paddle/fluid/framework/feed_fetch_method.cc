@@ -52,6 +52,7 @@ LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
   VLOG(3) << "Fetch " << var_name << " with index " << index
           << " shape= " << tensor.dims();
   PADDLE_ENFORCE_LT(index, fetch_outputs.size());
+  LOG(INFO) << "scope " << &scope << " var " << &tensor << " named " << var_name;
   return tensor;
 }
 

@@ -206,6 +206,11 @@ void Scope::RenameInternal(const std::string& origin_name,
 
 Variable* Scope::FindVarInternal(const std::string& name) const {
   auto var = FindVarLocally(name);
+  if (name == "fetch") {
+    if (var != nullptr) {
+      LOG(INFO) << "find in parent with " << name;
+    }
+  }
   if (var != nullptr) {
     return var;
   }

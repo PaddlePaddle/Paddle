@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 
 #ifdef __clang__
@@ -301,6 +302,63 @@ TEST(PassBuilder, Delete) {
   const auto& passes = config.pass_builder()->AllPasses();
   auto it = std::find(passes.begin(), passes.end(), "attention_lstm_fuse_pass");
   ASSERT_EQ(it, passes.end());
+}
+
+// Test the clone API.
+// Assert the different inputs to different cloned predictor will generate
+// different outputs.
+TEST(NativePredictor, Clone) {
+  const int num_threads = 3;
+
+  auto config = GetConfig();
+  //contrib::AnalysisConfig c;
+  //c.SetModel(config.model_dir);
+  auto predictor = CreatePaddlePredictor(config);
+  //auto predictor = CreatePaddlePredictor(c);
+
+  std::vector<std::thread> threads;
+
+  // prepare inputs.
+  std::vector<PaddleTensor> inputs(4);
+  std::array<int64_t, 4> wordids{{32, 12, 46, 89}};
+  for (int i = 0; i < inputs.size(); i++) {
+    inputs[i].shape = std::vector<int>({1, 1});
+    inputs[i].lod = std::vector<std::vector<size_t>>({{0, 1}});
+    inputs[i].dtype = PaddleDType::INT64;
+    inputs[i].data.Resize(1 * sizeof(int64_t));
+    memcpy(inputs[i].data.data(), &wordids[i], inputs[i].data.length());
+  }
+
+  // clone predictors.
+  std::vector<decltype(predictor)> cloned_predictors;
+  std::vector<PaddleTensor> all_outputs(num_threads);
+  for (int i = 0; i < num_threads; i++) {
+    cloned_predictors.emplace_back(predictor->Clone());
+    //cloned_predictors.emplace_back(CreatePaddlePredictor(c));
+  }
+
+  std::mutex mut;
+  for (int tid = 0; tid < num_threads; tid++) {
+    threads.emplace_back([inputs, tid, &cloned_predictors, &all_outputs, &mut] {
+      std::lock_guard<std::mutex> l(mut);
+      std::vector<PaddleTensor> outputs;
+      static_cast<int64_t*>(inputs[0].data.data())[0] = tid;
+      ASSERT_TRUE(cloned_predictors[tid]->Run(inputs, &outputs));
+
+      all_outputs[tid] = std::move(outputs.front());
+    });
+  }
+
+  for (auto& t: threads) t.join();
+
+  for (int i = 1; i < 3; i++) {
+    float* pre_output = static_cast<float*>(all_outputs[i - 1].data.data());
+    float* cur_output = static_cast<float*>(all_outputs[i].data.data());
+
+    for (size_t i = 0; i < all_outputs[i].data.length() / sizeof(float); i++) {
+      EXPECT_NE(pre_output[i], cur_output[i]);
+    }
+  }
 }
 
 }  // namespace paddle
