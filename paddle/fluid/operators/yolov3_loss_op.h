@@ -156,47 +156,29 @@ static void CalcBoxLocationLossGrad(T* input_grad, const T loss, const T* input,
 
 template <typename T>
 static inline void CalcLabelLoss(T* loss, const T* input, const int index,
-                                 const int label, const T score,
-                                 const int class_num, const int stride,
-                                 const bool use_label_smooth) {
-  if (use_label_smooth) {
-    for (int i = 0; i < class_num; i++) {
-      T pred = input[index + i * stride] < -0.5 ? input[index + i * stride]
-                                                : 1.0 / class_num;
-      loss[0] += SCE<T>(pred, (i == label) ? score : 0.0);
-    }
-  } else {
-    for (int i = 0; i < class_num; i++) {
-      T pred = input[index + i * stride];
-      loss[0] += SCE<T>(pred, (i == label) ? score : 0.0);
-    }
+                                 const int label, const int class_num,
+                                 const int stride, const T pos, const T neg) {
+  for (int i = 0; i < class_num; i++) {
+    T pred = input[index + i * stride];
+    loss[0] += SCE<T>(pred, (i == label) ? pos : neg);
   }
 }
 
 template <typename T>
 static inline void CalcLabelLossGrad(T* input_grad, const T loss,
                                      const T* input, const int index,
-                                     const int label, const T score,
-                                     const int class_num, const int stride,
-                                     const bool use_label_smooth) {
-  if (use_label_smooth) {
-    for (int i = 0; i < class_num; i++) {
-      T pred = input[index + i * stride] < -0.5 ? input[index + i * stride]
-                                                : 1.0 / class_num;
-      input_grad[index + i * stride] =
-          SCEGrad<T>(pred, (i == label) ? score : 0.0) * loss;
-    }
-  } else {
-    for (int i = 0; i < class_num; i++) {
-      T pred = input[index + i * stride];
-      input_grad[index + i * stride] =
-          SCEGrad<T>(pred, (i == label) ? score : 0.0) * loss;
-    }
+                                     const int label, const int class_num,
+                                     const int stride, const T pos,
+                                     const T neg) {
+  for (int i = 0; i < class_num; i++) {
+    T pred = input[index + i * stride];
+    input_grad[index + i * stride] =
+        SCEGrad<T>(pred, (i == label) ? pos : neg) * loss;
   }
 }
 
 template <typename T>
-static inline void CalcObjnessLoss(T* loss, const T* input, const int* objness,
+static inline void CalcObjnessLoss(T* loss, const T* input, const T* objness,
                                    const int n, const int an_num, const int h,
                                    const int w, const int stride,
                                    const int an_stride) {
@@ -204,9 +186,9 @@ static inline void CalcObjnessLoss(T* loss, const T* input, const int* objness,
     for (int j = 0; j < an_num; j++) {
       for (int k = 0; k < h; k++) {
         for (int l = 0; l < w; l++) {
-          int obj = objness[k * w + l];
-          if (obj >= 0) {
-            loss[i] += SCE<T>(input[k * w + l], static_cast<T>(obj));
+          T obj = objness[k * w + l];
+          if (obj > -0.5) {
+            loss[i] += SCE<T>(input[k * w + l], obj);
           }
         }
       }
@@ -218,7 +200,7 @@ static inline void CalcObjnessLoss(T* loss, const T* input, const int* objness,
 
 template <typename T>
 static inline void CalcObjnessLossGrad(T* input_grad, const T* loss,
-                                       const T* input, const int* objness,
+                                       const T* input, const T* objness,
                                        const int n, const int an_num,
                                        const int h, const int w,
                                        const int stride, const int an_stride) {
@@ -226,10 +208,9 @@ static inline void CalcObjnessLossGrad(T* input_grad, const T* loss,
     for (int j = 0; j < an_num; j++) {
       for (int k = 0; k < h; k++) {
         for (int l = 0; l < w; l++) {
-          int obj = objness[k * w + l];
-          if (obj >= 0) {
-            input_grad[k * w + l] =
-                SCEGrad<T>(input[k * w + l], static_cast<T>(obj)) * loss[i];
+          T obj = objness[k * w + l];
+          if (obj > -0.5) {
+            input_grad[k * w + l] = SCEGrad<T>(input[k * w + l], obj) * loss[i];
           }
         }
       }
@@ -285,15 +266,22 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     const int stride = h * w;
     const int an_stride = (class_num + 5) * stride;
 
+    T label_pos = 1.0;
+    T label_neg = 0.0;
+    if (use_label_smooth) {
+      label_pos = 1.0 - 1.0 / static_cast<T>(class_num);
+      label_neg = 1.0 / static_cast<T>(class_num);
+    }
+
     const T* input_data = input->data<T>();
     const T* gt_box_data = gt_box->data<T>();
     const int* gt_label_data = gt_label->data<int>();
     const T* gt_score_data = gt_score->data<T>();
     T* loss_data = loss->mutable_data<T>({n}, ctx.GetPlace());
     memset(loss_data, 0, loss->numel() * sizeof(T));
-    int* obj_mask_data =
-        objness_mask->mutable_data<int>({n, mask_num, h, w}, ctx.GetPlace());
-    memset(obj_mask_data, 0, objness_mask->numel() * sizeof(int));
+    T* obj_mask_data =
+        objness_mask->mutable_data<T>({n, mask_num, h, w}, ctx.GetPlace());
+    memset(obj_mask_data, 0, objness_mask->numel() * sizeof(T));
     int* gt_match_mask_data =
         gt_match_mask->mutable_data<int>({n, b}, ctx.GetPlace());
 
@@ -327,7 +315,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
 
             if (best_iou > ignore_thresh) {
               int obj_idx = (i * mask_num + j) * stride + k * w + l;
-              obj_mask_data[obj_idx] = -1;
+              obj_mask_data[obj_idx] = static_cast<T>(-1.0);
             }
             // TODO(dengkaipeng): all losses should be calculated if best IoU
             // is bigger then truth thresh should be calculated here, but
@@ -374,15 +362,15 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
           CalcBoxLocationLoss<T>(loss_data + i, input_data, gt, anchors, best_n,
                                  box_idx, gi, gj, h, input_size, stride);
 
+          T score = gt_score_data[i * b + t];
           int obj_idx = (i * mask_num + mask_idx) * stride + gj * w + gi;
-          obj_mask_data[obj_idx] = 1;
+          obj_mask_data[obj_idx] = score;
 
           int label = gt_label_data[i * b + t];
-          T score = gt_score_data[i * b + t];
           int label_idx = GetEntryIndex(i, mask_idx, gj * w + gi, mask_num,
                                         an_stride, stride, 5);
-          CalcLabelLoss<T>(loss_data + i, input_data, label_idx, label, score,
-                           class_num, stride, use_label_smooth);
+          CalcLabelLoss<T>(loss_data + i, input_data, label_idx, label,
+                           class_num, stride, label_pos, label_neg);
         }
       }
     }
@@ -399,7 +387,6 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("X");
     auto* gt_box = ctx.Input<Tensor>("GTBox");
     auto* gt_label = ctx.Input<Tensor>("GTLabel");
-    auto* gt_score = ctx.Input<Tensor>("GTScore");
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
     auto* objness_mask = ctx.Input<Tensor>("ObjectnessMask");
@@ -421,12 +408,18 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     const int stride = h * w;
     const int an_stride = (class_num + 5) * stride;
 
+    T label_pos = 1.0;
+    T label_neg = 0.0;
+    if (use_label_smooth) {
+      label_pos = 1.0 - 1.0 / static_cast<T>(class_num);
+      label_neg = 1.0 / static_cast<T>(class_num);
+    }
+
     const T* input_data = input->data<T>();
     const T* gt_box_data = gt_box->data<T>();
     const int* gt_label_data = gt_label->data<int>();
-    const T* gt_score_data = gt_score->data<T>();
     const T* loss_grad_data = loss_grad->data<T>();
-    const int* obj_mask_data = objness_mask->data<int>();
+    const T* obj_mask_data = objness_mask->data<T>();
     const int* gt_match_mask_data = gt_match_mask->data<int>();
     T* input_grad_data =
         input_grad->mutable_data<T>({n, c, h, w}, ctx.GetPlace());
@@ -447,12 +440,11 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
               anchor_mask[mask_idx], box_idx, gi, gj, h, input_size, stride);
 
           int label = gt_label_data[i * b + t];
-          T score = gt_score_data[i * b + t];
           int label_idx = GetEntryIndex(i, mask_idx, gj * w + gi, mask_num,
                                         an_stride, stride, 5);
           CalcLabelLossGrad<T>(input_grad_data, loss_grad_data[i], input_data,
-                               label_idx, label, score, class_num, stride,
-                               use_label_smooth);
+                               label_idx, label, class_num, stride, label_pos,
+                               label_neg);
         }
       }
     }

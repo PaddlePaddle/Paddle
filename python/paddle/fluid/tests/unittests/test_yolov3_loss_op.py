@@ -81,6 +81,9 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
     x = x.reshape((n, mask_num, 5 + class_num, h, w)).transpose((0, 1, 3, 4, 2))
     loss = np.zeros((n)).astype('float32')
 
+    label_pos = 1.0 - 1.0 / class_num if use_label_smooth else 1.0
+    label_neg = 1.0 / class_num if use_label_smooth else 0.0
+
     pred_box = x[:, :, :, :, :4].copy()
     grid_x = np.tile(np.arange(w).reshape((1, w)), (h, 1))
     grid_y = np.tile(np.arange(h).reshape((h, 1)), (1, w))
@@ -103,7 +106,7 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
 
     pred_box = pred_box.reshape((n, -1, 4))
     pred_obj = x[:, :, :, :, 4].reshape((n, -1))
-    objness = np.zeros(pred_box.shape[:2])
+    objness = np.zeros(pred_box.shape[:2]).astype('float32')
     ious = batch_xywh_box_iou(pred_box, gtbox)
     ious_max = np.max(ious, axis=-1)
     objness = np.where(ious_max > ignore_thresh, -np.ones_like(objness),
@@ -145,17 +148,17 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
             loss[i] += l1loss(x[i, an_idx, gj, gi, 2], tw) * scale
             loss[i] += l1loss(x[i, an_idx, gj, gi, 3], th) * scale
 
-            objness[i, an_idx * h * w + gj * w + gi] = 1
+            objness[i, an_idx * h * w + gj * w + gi] = gtscore[i, j]
 
             for label_idx in range(class_num):
-                loss[i] += sce(x[i, an_idx, gj, gi, 5 + label_idx],
-                               int(label_idx == gtlabel[i, j]) * gtscore[i, j])
+                loss[i] += sce(x[i, an_idx, gj, gi, 5 + label_idx], label_pos
+                               if label_idx == gtlabel[i, j] else label_neg)
 
         for j in range(mask_num * h * w):
             if objness[i, j] >= 0:
                 loss[i] += sce(pred_obj[i, j], objness[i, j])
 
-    return (loss, objness.reshape((n, mask_num, h, w)).astype('int32'), \
+    return (loss, objness.reshape((n, mask_num, h, w)).astype('float32'), \
             gt_matches.astype('int32'))
 
 
@@ -220,9 +223,9 @@ class TestYolov3LossOp(OpTest):
         self.use_label_smooth = True
 
 
-class TestYolov3LossWithLabelSmooth(TestYolov3LossOp):
+class TestYolov3LossWithoutLabelSmooth(TestYolov3LossOp):
     def set_label_smooth(self):
-        self.use_label_smooth = True
+        self.use_label_smooth = False
 
 
 if __name__ == "__main__":
