@@ -29,7 +29,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/platform/debug_support.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
