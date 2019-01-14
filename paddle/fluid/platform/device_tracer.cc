@@ -325,11 +325,12 @@ class DeviceTracerImpl : public DeviceTracer {
   }
 
   void Reset() {
+    std::lock_guard<std::mutex> l(trace_mu_);
     kernel_records_.clear();
     mem_records_.clear();
-    cpu_records_.clear();
     correlations_.clear();
     for (auto &tmp : correlations_pairs) tmp.clear();
+    for (auto &tmp : cpu_records_) tmp.clear();
   }
 
   void GenEventKernelCudaElapsedMs() {
