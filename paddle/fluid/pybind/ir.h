@@ -14,25 +14,12 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/details/multi_devices_helper.h"
-
-#include <string>
+#include <pybind11/pybind11.h>
+#include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
-namespace framework {
-namespace details {
-
-class SSAGraghBuilderWithChecker : public ir::Pass {
- protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override {
-    PADDLE_ENFORCE(IsValidGraph(graph.get()));
-    return graph;
-  }
-
-  bool IsValidGraph(const ir::Graph* graph) const;
-};
-
-}  // namespace details
-}  // namespace framework
+namespace pybind {
+void BindGraph(pybind11::module *m);
+void BindNode(pybind11::module *m);
+}  // namespace pybind
 }  // namespace paddle

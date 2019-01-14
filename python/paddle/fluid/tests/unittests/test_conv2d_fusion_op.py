@@ -32,6 +32,8 @@ class TestConv2dFusionOp(OpTest):
         self.activation = 'relu'
         self.add_bias = True
         self.add_residual_data = True
+        self.channels = None
+        self.outputs = None
 
         self.init_group()
         self.init_dilation()
@@ -49,8 +51,9 @@ class TestConv2dFusionOp(OpTest):
         input = np.random.random(self.input_size).astype(self.dtype)
         filter = np.random.random(self.filter_size).astype(self.dtype)
 
-        output = conv2d_forward_naive(input, filter, self.groups,
-                                      conv2d_param).astype(self.dtype)
+        self.output, _, _, _, _ = conv2d_forward_naive(
+            input, filter, self.groups, conv2d_param)
+        self.output = self.output.astype(self.dtype)
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
@@ -58,19 +61,20 @@ class TestConv2dFusionOp(OpTest):
         }
 
         if self.add_residual_data:
-            residual_data = np.random.random(output.shape).astype(self.dtype)
+            residual_data = np.random.random(self.output.shape).astype(
+                self.dtype)
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
                 residual_data)
-            output += residual_data
+            self.output += residual_data
 
         if self.add_bias:
             bias = np.random.random(self.filter_size[0]).astype(self.dtype)
             self.inputs['Bias'] = OpTest.np_dtype_to_fluid_dtype(bias)
-            output = output + bias.reshape((1, bias.size, 1, 1))
+            self.output = self.output + bias.reshape((1, bias.size, 1, 1))
 
         assert self.activation in ['relu', 'identity']
         if self.activation == 'relu':
-            output = np.maximum(output, 0)
+            self.output = np.maximum(self.output, 0)
 
         self.attrs = {
             'strides': self.stride,
@@ -79,9 +83,12 @@ class TestConv2dFusionOp(OpTest):
             'dilations': self.dilations,
             'data_format': self.data_format,
             'exhaustive_search': self.exhaustive_search,
-            'activation': self.activation
+            'activation': self.activation,
+            'split_channels': self.channels
         }
-        self.outputs = {'Output': output}
+        self.outputs = {'Output': self.output}
+
+        self.set_outputs()
 
     def testcuda(self):
         return core.is_compiled_with_cuda()
@@ -116,6 +123,9 @@ class TestConv2dFusionOp(OpTest):
 
     def set_search_method(self):
         self.exhaustive_search = False
+
+    def set_outputs(self):
+        pass
 
 
 class TestWithoutResidual(TestConv2dFusionOp):
@@ -158,6 +168,22 @@ class TestWithDilation(TestConv2dFusionOp):
 class TestCUDNNExhaustiveSearch(TestConv2dFusionOp):
     def set_search_method(self):
         self.exhaustive_search = True
+
+
+class TestMultipleOutputs(TestConv2dFusionOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [1, 32, 17, 17]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [126, f_c, 3, 3]
+        self.channels = [84, 42]
+
+    def set_outputs(self):
+        out1 = self.output[:, 0:84, :, :]
+        out2 = self.output[:, 84:126, :, :]
+        self.outputs['Outputs'] = [('out1', out1), ('out2', out2)]
 
 
 if __name__ == '__main__':
