@@ -21,32 +21,34 @@ class TreeConvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("NodesVector",
-             "(Tensor) The feature vector of every node on the tree"
+             "(Tensor) The feature vector of every node on the tree. "
              "The shape of the feature vector must be "
-             "[max_tree_node_size, feature_size]");
+             "[max_tree_node_size, feature_size].");
     AddInput("EdgeSet",
-             "(Tensor) The Edges of Tree. the edge must be directional"
-             "The shape of the edge set must be [max_tree_node_size, 2]");
+             "(Tensor) The Edges of Tree. The edge must be directional. "
+             "The shape of the edge set must be [max_tree_node_size, 2].");
     AddInput("Filter",
-             "(Tensor) The feature detector"
+             "(Tensor) The feature detector. "
              "The shape of the filter is "
-             "[feature_size, 3, output_size, num_filters]");
+             "[feature_size, 3, output_size, num_filters].");
     AddOutput("Out",
-              "(Tensor) The feature vector of subtrees"
+              "(Tensor) The feature vector of subtrees. "
               "The shape of the output tensor is [max_tree_node_size, "
-              "output_size, num_filters]"
+              "output_size, num_filters]. "
               "The output tensor could be a new feature "
-              "vector for next tree convolution layers");
-    AddAttr<int>("max_depth", "(int, default: 2) The depth of feature detector")
+              "vector for next tree convolution layers.");
+    AddAttr<int>("max_depth",
+                 "(int, default: 2) The depth of feature detector.")
         .SetDefault(2)
         .GreaterThan(1);
     AddComment(R"DOC(
-Tree-Based Convolution Operator.
+**Tree-Based Convolution Operator**
+
 Tree-Based Convolution is a kind of convolution based on tree structure.
 Tree-Based Convolution is a part of Tree-Based Convolution Neural Network(TBCNN),
 which is used to classify tree structures, such as Abstract Syntax Tree.
 Tree-Based Convolution proposed a kind of data structure called continuous binary tree,
-which regard multiway tree as binary tree.
+which regards multiway tree as binary tree.
 The paper of Tree-Based Convolution Operator is here:
 https://arxiv.org/abs/1409.5718v1
 )DOC");
