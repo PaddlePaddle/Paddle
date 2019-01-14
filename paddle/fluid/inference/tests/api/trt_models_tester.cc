@@ -99,24 +99,12 @@ void compare(std::string model_dir, bool use_tensorrt) {
     SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
   }
 
-  std::vector<PaddleTensor> native_outputs;
-  NativeConfig native_config;
-  SetConfig<NativeConfig>(&native_config, model_dir, true, false,
-                          FLAGS_batch_size);
-  TestOneThreadPrediction(
-      reinterpret_cast<PaddlePredictor::Config*>(&native_config), inputs_all,
-      &native_outputs, false);
-
-  std::vector<PaddleTensor> analysis_outputs;
   contrib::AnalysisConfig analysis_config;
-  analysis_config.EnableUseGpu(50, 0);
   SetConfig<contrib::AnalysisConfig>(&analysis_config, model_dir, true,
                                      use_tensorrt, FLAGS_batch_size);
-  TestOneThreadPrediction(
-      reinterpret_cast<PaddlePredictor::Config*>(&analysis_config), inputs_all,
-      &analysis_outputs, true);
-
-  CompareResult(native_outputs, analysis_outputs);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config*>(&analysis_config),
+      inputs_all);
 }
 
 TEST(TensorRT_mobilenet, compare) {
