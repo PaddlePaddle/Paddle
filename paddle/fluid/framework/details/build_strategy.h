@@ -74,8 +74,6 @@ struct BuildStrategy {
 
   bool fuse_elewise_add_act_ops_{false};
 
-  bool enable_data_balance_{false};
-
   bool memory_optimize_{false};
 
   bool memory_early_delete_{false};
@@ -84,6 +82,10 @@ struct BuildStrategy {
 
   bool fuse_broadcast_op_{false};
 
+  // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
+  // num_trainers is 1, so the current fields of build_strategy doesn't tell if
+  // it's distributed model.
+  bool is_distribution_{false};
   int num_trainers_{1};
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;
@@ -103,6 +105,8 @@ struct BuildStrategy {
       bool finalize_strategy) const;
 
   bool IsFinalized() const { return is_finalized_; }
+
+  bool IsMultiDevPass(const std::string &pass_name) const;
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
