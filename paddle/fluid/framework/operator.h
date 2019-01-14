@@ -459,6 +459,15 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
 
+  struct KernelContext {
+    // RuntimeInferShapeContext
+    void* infer_shape_ctx{nullptr};
+    // ExecutionContext
+    void* exe_ctx{nullptr};
+    OpKernelFunc* kernel_func{nullptr};
+    ~KernelContext();
+  };
+
   OperatorWithKernel(const std::string& type, const VariableNameMap& inputs,
                      const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -496,6 +505,9 @@ class OperatorWithKernel : public OperatorBase {
   // same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
+
+  mutable KernelContext kernel_context_;
+  mutable std::once_flag once_flag_;
 
   /**
    * Transfer data from scope to a transfered scope. If there is no data need to

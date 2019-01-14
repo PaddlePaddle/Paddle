@@ -16,6 +16,7 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include <algorithm>
+#include "operator.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -875,61 +876,85 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
 }
 
+OperatorWithKernel::KernelContext::~KernelContext() {}
+
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
-  RuntimeContext ctx(Inputs(), Outputs(), scope);
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(place);
+  auto func = [&] {
+    RuntimeContext ctx(Inputs(), Outputs(), scope);
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx = pool.Get(place);
 
-  // check if op[type] has kernel registered.
-  auto& all_op_kernels = AllOpKernels();
-  auto kernels_iter = all_op_kernels.find(type_);
-  if (kernels_iter == all_op_kernels.end()) {
-    PADDLE_THROW(
-        "There are no kernels which are registered in the %s operator.", type_);
-  }
+    // check if op[type] has kernel registered.
+    auto& all_op_kernels = AllOpKernels();
+    auto kernels_iter = all_op_kernels.find(type_);
+    if (kernels_iter == all_op_kernels.end()) {
+      PADDLE_THROW(
+          "There are no kernels which are registered in the %s operator.",
+          type_);
+    }
 
-  OpKernelMap& kernels = kernels_iter->second;
+    OpKernelMap& kernels = kernels_iter->second;
 
-  auto expected_kernel_key = this->GetExpectedKernelType(
-      ExecutionContext(*this, scope, *dev_ctx, ctx));
-  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+    auto expected_kernel_key = this->GetExpectedKernelType(
+        ExecutionContext(*this, scope, *dev_ctx, ctx));
+    VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
-  auto kernel_iter = kernels.find(expected_kernel_key);
+    auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN
-  // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
-  if (kernel_iter == kernels.end() &&
-      expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
-    VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
-    expected_kernel_key.library_type_ = LibraryType::kPlain;
-    expected_kernel_key.data_layout_ = DataLayout::kAnyLayout;
-    kernel_iter = kernels.find(expected_kernel_key);
-  }
+    // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
+    if (kernel_iter == kernels.end() &&
+        expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
+      VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
+      expected_kernel_key.library_type_ = LibraryType::kPlain;
+      expected_kernel_key.data_layout_ = DataLayout::kAnyLayout;
+      kernel_iter = kernels.find(expected_kernel_key);
+    }
 #endif
-  if (kernel_iter == kernels.end()) {
-    PADDLE_THROW("op %s does not have kernel for %s", type_,
-                 KernelTypeToString(expected_kernel_key));
-  }
+    if (kernel_iter == kernels.end()) {
+      PADDLE_THROW("op %s does not have kernel for %s", type_,
+                   KernelTypeToString(expected_kernel_key));
+    }
 
-  // do data transformScope &transfer_scope;
-  std::vector<std::string> transfered_inplace_vars;
-  auto* transfer_scope =
-      PrepareData(scope, expected_kernel_key, &transfered_inplace_vars, &ctx);
+    Scope* transfer_scope{nullptr};
+#ifdef PADDLE_WITH_CUDA
+    // do data transformScope &transfer_scope;
+    std::vector<std::string> transfered_inplace_vars;
+    transfer_scope =
+        PrepareData(scope, expected_kernel_key, &transfered_inplace_vars, &ctx);
+#endif
 
-  // exec scope is the scope that kernel actually executed on.
-  const Scope& exec_scope =
-      (transfer_scope == nullptr ? scope : *transfer_scope);
+    // exec scope is the scope that kernel actually executed on.
+    const Scope& exec_scope =
+        (transfer_scope == nullptr ? scope : *transfer_scope);
 
-  if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
-    dev_ctx = pool.Get(expected_kernel_key.place_);
-  }
+    if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
+      dev_ctx = pool.Get(expected_kernel_key.place_);
+    }
 
-  RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
-  this->InferShape(&infer_shape_ctx);
+    // RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
+    // ExecutionContext exe_ctx(*this, exec_scope, *dev_ctx, ctx);
+    kernel_context_.infer_shape_ctx =
+        new RuntimeInferShapeContext(*this, exec_scope, ctx);
+    kernel_context_.exe_ctx =
+        new ExecutionContext(*this, exec_scope, *dev_ctx, ctx);
+    kernel_context_.kernel_func = &kernel_iter->second;
+
+  };
+
+  //std::call_once(once_flag_, func);
+  func();
+
+  PADDLE_ENFORCE_NOT_NULL(kernel_context_.infer_shape_ctx);
+  PADDLE_ENFORCE_NOT_NULL(kernel_context_.kernel_func);
+
+  this->InferShape(static_cast<RuntimeInferShapeContext*>(kernel_context_.infer_shape_ctx));
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
-  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx, ctx));
+  //kernel_iter->second();
+  (*static_cast<OpKernelFunc *>(kernel_context_.kernel_func))(*static_cast<ExecutionContext*>(kernel_context_.exe_ctx));
 
+#ifdef PADDLE_WITH_CUDA
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
     TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
@@ -939,7 +964,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
   }
+#endif
 
+#ifndef PADDLE_ON_INFERENCE
   if (FLAGS_check_nan_inf) {
     for (auto& vname : OutputVars(true)) {
       auto* var = exec_scope.FindVar(vname);
@@ -951,6 +978,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
     }
   }
+#endif
 }
 
 void OperatorWithKernel::TransferInplaceVarsBack(
