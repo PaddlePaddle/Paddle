@@ -87,37 +87,6 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename T>
-static inline Tensor CropAndResize(const platform::CPUDeviceContext& ctx,
-                                   const Tensor& masks_gt, const int mask_idx,
-                                   const Tensor& rois_fg, const int roi_idx,
-                                   const int resolution) {
-  const uint8_t* masks_gt_data = masks_gt.data<uint8_t>();
-  // int height = masks_gt.dims()[1];
-  int width = masks_gt.dims()[2];
-  const T* rois_fg_data = rois_fg.data<T>();
-
-  Tensor result;
-  uint8_t* result_data =
-      result.mutable_data<uint8_t>({resolution, resolution}, ctx.GetPlace());
-
-  T w = rois_fg_data[roi_idx + 2] - rois_fg_data[roi_idx + 0] + 1;
-  T h = rois_fg_data[roi_idx + 3] - rois_fg_data[roi_idx + 1] + 1;
-  w = std::max<T>(w, (T)1.);
-  h = std::max<T>(h, (T)1.);
-  for (int i = 0; i < resolution; ++i) {
-    for (int j = 0; j < resolution; ++j) {
-      int x = static_cast<int>(i / static_cast<T>(resolution) * w +
-                               rois_fg_data[roi_idx + 0]);
-      int y = static_cast<int>(j / static_cast<T>(resolution) * h +
-                               rois_fg_data[roi_idx + 1]);
-      result_data[j * resolution + i] =
-          masks_gt_data[mask_idx + y * width + x] > 0;
-    }
-  }
-  return result;
-}
-
 /*
  * Expand masks from shape (#masks, M ** 2) to (#masks, #classes * M ** 2)
  * to encode class specific mask targets.
@@ -150,25 +119,18 @@ static inline void ExpandMaskTarget(const platform::CPUDeviceContext& ctx,
 }
 
 template <typename T>
-std::vector<Tensor> SampleMaskForOneImage(const platform::CPUDeviceContext& ctx,
-                                          Tensor* im_info, Tensor* gt_classes,
-                                          Tensor* is_crowd, Tensor* gt_segms,
-                                          Tensor* rois, Tensor* label_int32,
-                                          const int num_classes,
-                                          const int resolution,
-                                          const framework::LoD& segm_length) {
-  auto im_scale = im_info->data<T>()[2];
-
-  // auto rois_et = framework::EigenTensor<T, 2>::From(*rois);
-  // rois_et = rois_et / im_scale;
-
+std::vector<Tensor> SampleMaskForOneImage(
+    const platform::CPUDeviceContext& ctx, const Tensor& im_info,
+    const Tensor& gt_classes, const Tensor& is_crowd, const Tensor& gt_segms,
+    const Tensor& rois, const Tensor& label_int32, const int num_classes,
+    const int resolution, const framework::LoD& segm_length) {
   // Prepare the mask targets by associating one gt mask to each training roi
   // that has a fg (non-bg) class label.
-  const int64_t gt_size = static_cast<int64_t>(gt_classes->dims()[0]);
-  const int64_t roi_size = static_cast<int64_t>(rois->dims()[0]);
-  const int* gt_classes_data = gt_classes->data<int>();
-  const int* is_crowd_data = is_crowd->data<int>();
-  const int* label_int32_data = label_int32->data<int>();
+  const int64_t gt_size = static_cast<int64_t>(gt_classes.dims()[0]);
+  const int64_t roi_size = static_cast<int64_t>(rois.dims()[0]);
+  const int* gt_classes_data = gt_classes.data<int>();
+  const int* is_crowd_data = is_crowd.data<int>();
+  const int* label_int32_data = label_int32.data<int>();
 
   std::vector<int> mask_gt_inds, fg_inds;
   std::vector<std::vector<std::vector<T>>> gt_polys;
@@ -177,7 +139,7 @@ std::vector<Tensor> SampleMaskForOneImage(const platform::CPUDeviceContext& ctx,
   auto segm_lod_offset = framework::ConvertToOffsetBasedLoD(segm_length);
   auto lod1 = segm_lod_offset[1];
   auto lod2 = segm_lod_offset[2];
-  T* polys_data = gt_segms->data<T>();
+  const T* polys_data = gt_segms.data<T>();
   for (int64_t i = 0; i < gt_size; ++i) {
     if ((gt_classes_data[i] > 0) && (is_crowd_data[i] == 0)) {
       mask_gt_inds.emplace_back(i);
@@ -213,6 +175,7 @@ std::vector<Tensor> SampleMaskForOneImage(const platform::CPUDeviceContext& ctx,
   Tensor masks;
   Tensor rois_fg;
 
+  auto im_scale = im_info.data<T>()[2];
   if (fg_num > 0) {
     // Class labels for the foreground rois
     mask_class_labels.mutable_data<int>({fg_num, 1}, ctx.GetPlace());
@@ -225,8 +188,12 @@ std::vector<Tensor> SampleMaskForOneImage(const platform::CPUDeviceContext& ctx,
     // Find overlap between all foreground rois and the bounding boxes
     // enclosing each segmentation
     T* rois_fg_data = rois_fg.mutable_data<T>({fg_num, 4}, ctx.GetPlace());
-    Gather<T>(rois->data<T>(), 4, fg_inds.data(), fg_inds.size(),
+    Gather<T>(rois.data<T>(), 4, fg_inds.data(), fg_inds.size(),
               rois_fg.data<T>());
+
+    auto rois_et = framework::EigenTensor<T, 2>::From(rois_fg);
+    rois_et = rois_et / im_scale;
+
     Tensor overlaps_bbfg_bbpolys;
     overlaps_bbfg_bbpolys.mutable_data<T>({fg_num, gt_num}, ctx.GetPlace());
     BboxOverlaps<T>(rois_fg, boxes_from_polys, &overlaps_bbfg_bbpolys);
@@ -275,6 +242,14 @@ std::vector<Tensor> SampleMaskForOneImage(const platform::CPUDeviceContext& ctx,
       // }
       // std::cout << std::endl;
       // std::cout << std::endl;
+
+      // int ssm = 0;
+      // for (int ii = 0; ii < resolution; ++ii) {
+      //   for (int jj = 0; jj < resolution; ++jj) {
+      //     ssm += mask[ii * resolution + jj];
+      //   }
+      // }
+      // std::cout << "maks " << i << " sum = " << ssm << std::endl;
     }
   } else {
     // The network cannot handle empty blobs, so we must provide a mask
@@ -282,15 +257,15 @@ std::vector<Tensor> SampleMaskForOneImage(const platform::CPUDeviceContext& ctx,
     // label), and label it with class zero (bg).
     int bg_num = 1;
     T* rois_fg_data = rois_fg.mutable_data<T>({bg_num, 4}, ctx.GetPlace());
-    T* rois_data = rois->data<T>();
+    const T* rois_data = rois.data<T>();
     std::vector<int> bg_inds;
     for (int64_t i = 0; i < roi_size; ++i) {
       if (label_int32_data[i] == 0) {
         bg_inds.emplace_back(i);
-        rois_fg_data[0] = rois_data[0];
-        rois_fg_data[1] = rois_data[1];
-        rois_fg_data[2] = rois_data[2];
-        rois_fg_data[3] = rois_data[3];
+        rois_fg_data[0] = rois_data[0] / im_scale;
+        rois_fg_data[1] = rois_data[1] / im_scale;
+        rois_fg_data[2] = rois_data[2] / im_scale;
+        rois_fg_data[3] = rois_data[3] / im_scale;
         break;
       }
     }
@@ -391,8 +366,8 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
       Tensor gt_segms_slice = gt_segms->Slice(s, e);
 
       std::vector<Tensor> tensor_output = SampleMaskForOneImage<T>(
-          dev_ctx, &im_info_slice, &gt_classes_slice, &is_crowd_slice,
-          &gt_segms_slice, &rois_slice, &label_int32_slice, num_classes,
+          dev_ctx, im_info_slice, gt_classes_slice, is_crowd_slice,
+          gt_segms_slice, rois_slice, label_int32_slice, num_classes,
           resolution, lod_length);
 
       Tensor sampled_mask_rois = tensor_output[0];

@@ -82,9 +82,10 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
       ys = ye;
       ye = t;
     }
-    s = dx >= dy ? static_cast<double>(ye - ys) / dx
-                 : static_cast<double>(xe - xs) / dy;
+    // s = dx >= dy ? static_cast<double>(ye - ys) / dx
+    //              : static_cast<double>(xe - xs) / dy;
     if (dx >= dy) {
+      s = dx == 0 ? 0 : static_cast<double>(ye - ys) / dx;
       for (d = 0; d <= dx; d++) {
         t = flip ? dx - d : d;
         u[m] = t + xs;
@@ -92,6 +93,7 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
         m++;
       }
     } else {
+      s = dy == 0 ? 0 : static_cast<double>(xe - xs) / dy;
       for (d = 0; d <= dy; d++) {
         t = flip ? dy - d : d;
         v[m] = t + ys;
