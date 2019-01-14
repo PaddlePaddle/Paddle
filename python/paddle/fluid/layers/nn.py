@@ -9738,16 +9738,18 @@ def tree_conv(nodes_vector,
               bias_attr=None,
               name=None):
     """ 
+    ${comment}
+    		
     Args:
         nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
         edge_set(${edge_set_type}): ${edge_set_comment}
         output_size(int): output feature width
-        num_filters(int): number of filters, default 1
-        max_depth(int): max depth of filters, default 2
-        act(str): activation function, default tanh
-        param_attr(ParamAttr): the parameter attribute for the filters, default None
-        bias_attr(ParamAttr): the parameter attribute for the bias of this layer, default None
-        name(str): a name of this layer(optional). If set None, the layer will be named automatically, default None
+        num_filters(int): number of filters, Default 1
+        max_depth(int): max depth of filters, Default 2
+        act(str): activation function, Default tanh
+        param_attr(ParamAttr): the parameter attribute for the filters, Default None
+        bias_attr(ParamAttr): the parameter attribute for the bias of this layer, Default None
+        name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default None
 
     Returns:
         out(${out_type}): ${out_comment}
