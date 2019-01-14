@@ -482,7 +482,7 @@ def yolov3_loss(x,
         raise TypeError("Attr anchor_mask of yolov3_loss must be list or tuple")
     if not isinstance(class_num, int):
         raise TypeError("Attr class_num of yolov3_loss must be an integer")
-    if not isinstance(use_label_smooth, int):
+    if not isinstance(use_label_smooth, bool):
         raise TypeError("Attr ues_label_smooth of yolov3 must be a bool value")
     if not isinstance(ignore_thresh, float):
         raise TypeError(
