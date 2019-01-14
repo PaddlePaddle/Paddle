@@ -1,8 +1,10 @@
-set(PYBIND_DEPS pybind python proto_desc memory executor async_executor prune feed_fetch_method pass_builder parallel_executor profiler layer scope_pool)
+set(PYBIND_DEPS pybind python proto_desc memory executor async_executor prune
+  feed_fetch_method pass_builder parallel_executor profiler layer scope_pool
+  tracer)
 if(WITH_PYTHON)
   list(APPEND PYBIND_DEPS py_func_op)
 endif()
-set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc async_executor_py.cc imperative.cc)
+set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc async_executor_py.cc imperative.cc ir.cc)
 
 if(WITH_PYTHON)
   if(WITH_AMD_GPU)

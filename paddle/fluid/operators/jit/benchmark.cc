@@ -52,11 +52,11 @@ struct BenchFunc {
     for (int i = 0; i < FLAGS_burning; ++i) {
       tgt(args...);
     }
-    auto start = paddle::platform::PosixInNsec() / 1e-3;
+    auto start = paddle::platform::PosixInNsec() * 1e-3;
     for (int i = 0; i < FLAGS_repeat; ++i) {
       tgt(args...);
     }
-    auto end = paddle::platform::PosixInNsec() / 1e-3;
+    auto end = paddle::platform::PosixInNsec() * 1e-3;
     return static_cast<double>(end - start) / FLAGS_repeat;
   }
 };

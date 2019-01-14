@@ -283,7 +283,7 @@ TEST(Analyzer_rnn1, multi_thread) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, 4 /* multi_thread */);
+                 input_slots_all, &outputs, 2 /* multi_thread */);
 }
 
 // Validate that the AnalysisPredictor + ZeroCopyTensor really works by testing
@@ -351,10 +351,10 @@ TEST(Analyzer_rnn1, ZeroCopy) {
   ASSERT_TRUE(native_predictor->Run(native_inputs.front(), &native_outputs));
   LOG(INFO) << "native output " << DescribeTensor(native_outputs.front());
 
-  int output_size{0};
+  int output_size{0};  // this is the number of elements not memory size
   auto *zero_copy_data = output_tensor->data<float>(&place, &output_size);
   auto *native_data = static_cast<float *>(native_outputs.front().data.data());
-  for (size_t i = 0; i < output_size / sizeof(float); i++) {
+  for (int i = 0; i < output_size; i++) {
     EXPECT_NEAR(zero_copy_data[i], native_data[i], 1e-3);
   }
 }
