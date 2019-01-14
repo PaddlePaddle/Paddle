@@ -8480,7 +8480,7 @@ def shape(input):
 
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('input'))
+        dtype='int32')
     helper.append_op(
         type='shape', inputs={'Input': input}, outputs={'Out': out})
 
