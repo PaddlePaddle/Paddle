@@ -226,30 +226,38 @@ void GatherBoxesLabels(const platform::CPUDeviceContext& context,
 
 template <typename T>
 std::vector<Tensor> SampleRoisForOneImage(
-    const platform::CPUDeviceContext& context, Tensor* rpn_rois,
-    Tensor* gt_classes, Tensor* is_crowd, Tensor* gt_boxes, Tensor* im_info,
-    const int batch_size_per_im, const float fg_fraction, const float fg_thresh,
-    const float bg_thresh_hi, const float bg_thresh_lo,
+    const platform::CPUDeviceContext& context, const Tensor& rpn_rois_in,
+    const Tensor& gt_classes, const Tensor& is_crowd, const Tensor& gt_boxes,
+    const Tensor& im_info, const int batch_size_per_im, const float fg_fraction,
+    const float fg_thresh, const float bg_thresh_hi, const float bg_thresh_lo,
     const std::vector<float>& bbox_reg_weights, const int class_nums,
     std::minstd_rand engine, bool use_random) {
-  auto rpn_rois_et = framework::EigenTensor<T, 2>::From(*rpn_rois);
-  auto im_scale = im_info->data<T>()[2];
-  rpn_rois_et = rpn_rois_et / im_scale;
+  // auto rpn_rois_et = framework::EigenTensor<T, 2>::From(*rpn_rois);
+  auto im_scale = im_info.data<T>()[2];
+
+  Tensor rpn_rois;
+  rpn_rois.mutable_data<T>(rpn_rois_in.dims(), context.GetPlace());
+  T* rpn_rois_dt = rpn_rois.data<T>();
+  const T* rpn_rois_in_dt = rpn_rois_in.data<T>();
+  for (int i = 0; i < rpn_rois.numel(); ++i) {
+    rpn_rois_dt[i] = rpn_rois_in_dt[i] / im_scale;
+  }
+  // rpn_rois_et = rpn_rois_et / im_scale;
 
   Tensor boxes;
-  int proposals_num = gt_boxes->dims()[0] + rpn_rois->dims()[0];
+  int proposals_num = gt_boxes.dims()[0] + rpn_rois.dims()[0];
   boxes.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
-  Concat<T>(context, *gt_boxes, *rpn_rois, &boxes);
+  Concat<T>(context, gt_boxes, rpn_rois, &boxes);
 
   // Overlaps
   Tensor proposal_to_gt_overlaps;
-  proposal_to_gt_overlaps.mutable_data<T>({proposals_num, gt_boxes->dims()[0]},
+  proposal_to_gt_overlaps.mutable_data<T>({proposals_num, gt_boxes.dims()[0]},
                                           context.GetPlace());
-  BboxOverlaps<T>(boxes, *gt_boxes, &proposal_to_gt_overlaps);
+  BboxOverlaps<T>(boxes, gt_boxes, &proposal_to_gt_overlaps);
 
   // Generate proposal index
   std::vector<std::vector<int>> fg_bg_gt = SampleFgBgGt<T>(
-      context, &proposal_to_gt_overlaps, *is_crowd, batch_size_per_im,
+      context, &proposal_to_gt_overlaps, is_crowd, batch_size_per_im,
       fg_fraction, fg_thresh, bg_thresh_hi, bg_thresh_lo, engine, use_random);
   std::vector<int> fg_inds = fg_bg_gt[0];
   std::vector<int> bg_inds = fg_bg_gt[1];
@@ -264,7 +272,7 @@ std::vector<Tensor> SampleRoisForOneImage(
   sampled_boxes.mutable_data<T>(bbox_dim, context.GetPlace());
   sampled_labels.mutable_data<int>({boxes_num}, context.GetPlace());
   sampled_gts.mutable_data<T>({fg_num, kBoxDim}, context.GetPlace());
-  GatherBoxesLabels<T>(context, boxes, *gt_boxes, *gt_classes, fg_inds, bg_inds,
+  GatherBoxesLabels<T>(context, boxes, gt_boxes, gt_classes, fg_inds, bg_inds,
                        gt_inds, &sampled_boxes, &sampled_labels, &sampled_gts);
 
   // Compute targets
@@ -398,8 +406,8 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
           gt_boxes->Slice(gt_boxes_lod[i], gt_boxes_lod[i + 1]);
       Tensor im_info_slice = im_info->Slice(i, i + 1);
       std::vector<Tensor> tensor_output = SampleRoisForOneImage<T>(
-          dev_ctx, &rpn_rois_slice, &gt_classes_slice, &is_crowd_slice,
-          &gt_boxes_slice, &im_info_slice, batch_size_per_im, fg_fraction,
+          dev_ctx, rpn_rois_slice, gt_classes_slice, is_crowd_slice,
+          gt_boxes_slice, im_info_slice, batch_size_per_im, fg_fraction,
           fg_thresh, bg_thresh_hi, bg_thresh_lo, bbox_reg_weights, class_nums,
           engine, use_random);
       Tensor sampled_rois = tensor_output[0];

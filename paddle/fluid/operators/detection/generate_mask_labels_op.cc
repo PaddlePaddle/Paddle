@@ -131,6 +131,7 @@ std::vector<Tensor> SampleMaskForOneImage(
   const int* gt_classes_data = gt_classes.data<int>();
   const int* is_crowd_data = is_crowd.data<int>();
   const int* label_int32_data = label_int32.data<int>();
+  PADDLE_ENFORCE_EQ(roi_size, label_int32.dims()[0]);
 
   std::vector<int> mask_gt_inds, fg_inds;
   std::vector<std::vector<std::vector<T>>> gt_polys;
@@ -151,6 +152,7 @@ std::vector<Tensor> SampleMaskForOneImage(
       for (int j = 0; j < poly_num; ++j) {
         int s = lod2[s_idx + j];
         int e = lod2[s_idx + j + 1];
+        PADDLE_ENFORCE_NE(s, e);
         std::vector<T> plts(polys_data + s * 2, polys_data + e * 2);
         polys.push_back(plts);
       }
@@ -191,8 +193,11 @@ std::vector<Tensor> SampleMaskForOneImage(
     Gather<T>(rois.data<T>(), 4, fg_inds.data(), fg_inds.size(),
               rois_fg.data<T>());
 
-    auto rois_et = framework::EigenTensor<T, 2>::From(rois_fg);
-    rois_et = rois_et / im_scale;
+    // auto rois_et = framework::EigenTensor<T, 2>::From(rois_fg);
+    // rois_et = rois_et / im_scale;
+    for (int k = 0; k < rois_fg.numel(); ++k) {
+      rois_fg_data[k] = rois_fg_data[k] / im_scale;
+    }
 
     Tensor overlaps_bbfg_bbpolys;
     overlaps_bbfg_bbpolys.mutable_data<T>({fg_num, gt_num}, ctx.GetPlace());
@@ -282,8 +287,12 @@ std::vector<Tensor> SampleMaskForOneImage(
   ExpandMaskTarget<T>(ctx, masks, mask_class_labels, resolution, num_classes,
                       &masks_expand);
 
-  auto rois_fg_et = framework::EigenTensor<T, 2>::From(rois_fg);
-  rois_fg_et = rois_fg_et * im_scale;
+  // auto rois_fg_et = framework::EigenTensor<T, 2>::From(rois_fg);
+  // rois_fg_et = rois_fg_et * im_scale;
+  T* rois_fg_data = rois_fg.data<T>();
+  for (int k = 0; k < rois_fg.numel(); ++k) {
+    rois_fg_data[k] = rois_fg_data[k] * im_scale;
+  }
 
   Tensor roi_has_mask_t;
   int roi_has_mask_size = roi_has_mask.size();

@@ -113,19 +113,26 @@ class GPUSigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
     auto out_data = Out->mutable_data<T>(context.GetPlace());
 
     auto &dev_ctx = context.cuda_device_context();
-    // Temporary memory
-    auto &allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
-    T *counts = static_cast<T *>(
-        allocator.Allocate(Labels->numel() * sizeof(T))->ptr());
+    bool normalize = context.Attr<bool>("normalize");
+
+    // // Temporary memory
+    // auto &allocator =
+    //     platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
+    // T *counts = static_cast<T *>(
+    //     allocator.Allocate(Labels->numel() * sizeof(T))->ptr());
+    Tensor counts_t;
+    T *counts = counts_t.mutable_data<T>({Labels->numel()}, context.GetPlace());
+
     int limit = Out->numel();
     int blocks = NumBlocks(limit);
     int threads = kNumCUDAThreads;
     GPUSigmoidForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
         X->data<T>(), Labels->data<T>(), ignore_index, limit, out_data, counts);
-    bool normalize = context.Attr<bool>("normalize");
     if (normalize) {
-      T *norm = static_cast<T *>(allocator.Allocate(sizeof(T))->ptr());
+      // T *norm = static_cast<T *>(allocator.Allocate(sizeof(T))->ptr());
+      Tensor norm_t;
+      T *norm = norm_t.mutable_data<T>({1}, context.GetPlace());
+
       Sum<T, kNumCUDAThreads><<<1, kNumCUDAThreads, 0, dev_ctx.stream()>>>(
           counts, limit, static_cast<T>(1e-5), norm);
       // Tensor tt;
@@ -138,6 +145,7 @@ class GPUSigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
       // LOG(ERROR) << tt.data<T>()[0];
       Div<T><<<blocks, threads, 0, dev_ctx.stream()>>>(out_data, limit, norm);
     }
+    dev_ctx.Wait();
   }
 };
 
@@ -156,25 +164,39 @@ class GPUSigmoidCrossEntropyWithLogitsGradKernel
     int ignore_index = context.Attr<int>("ignore_index");
 
     auto &dev_ctx = context.cuda_device_context();
-    // Temporary memory
-    auto &allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
-    T *counts =
-        static_cast<T *>(allocator.Allocate(X->numel() * sizeof(T))->ptr());
+    // // Temporary memory
+    // auto &allocator =
+    //     platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
+    // T *counts =
+    //     static_cast<T *>(allocator.Allocate(X->numel() * sizeof(T))->ptr());
+
+    Tensor counts_t;
+    T *counts = counts_t.mutable_data<T>({X->numel()}, context.GetPlace());
+
     int limit = dX->numel();
     int blocks = NumBlocks(limit);
     int threads = kNumCUDAThreads;
-    GPUSigmoidBackward<
-        T><<<blocks, threads, 0, context.cuda_device_context().stream()>>>(
+    GPUSigmoidBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
         X->data<T>(), Labels->data<T>(), ignore_index, dOut->data<T>(), limit,
         dx_data, counts);
     bool normalize = context.Attr<bool>("normalize");
     if (normalize) {
-      T *norm = static_cast<T *>(allocator.Allocate(sizeof(T))->ptr());
+      // T *norm = static_cast<T *>(allocator.Allocate(sizeof(T))->ptr());
+      Tensor norm_t;
+      T *norm = norm_t.mutable_data<T>({1}, context.GetPlace());
+
       Sum<T, kNumCUDAThreads><<<1, kNumCUDAThreads, 0, dev_ctx.stream()>>>(
           counts, limit, static_cast<T>(1e-5), norm);
       Div<T><<<blocks, threads, 0, dev_ctx.stream()>>>(dx_data, limit, norm);
     }
+    dev_ctx.Wait();
+    // Tensor o_c;
+    // TensorCopySync(*dX, platform::CPUPlace(), &o_c);
+    // T sm = 0;
+    // for (int ii = 0; ii < o_c.numel(); ++ii) {
+    //   sm += dx_data[ii];
+    // }
+    // std::cout << "dx_sum = " << sm << std::endl;
   }
 };
 
