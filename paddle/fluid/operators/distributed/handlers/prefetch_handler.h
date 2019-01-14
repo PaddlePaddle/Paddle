@@ -45,7 +45,7 @@ class PrefetchHandler final : public RequestHandler {
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>*
       prefetch_var_name_to_prepared_ctx_;
-  framework::Scope* local_scope_;
+  framework::Scope* local_scope_ = nullptr;
 };
 
 }  // namespace distributed

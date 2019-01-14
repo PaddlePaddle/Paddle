@@ -77,7 +77,7 @@ class VariableResponse {
 
   // should call parse first.
   framework::Variable* GetVar() {
-    if (LIKELY(var_cache_)) {
+    if (LIKELY(var_cache_ != nullptr)) {
       return var_cache_;
     }
     var_cache_ = scope_->FindVar(meta_.varname());

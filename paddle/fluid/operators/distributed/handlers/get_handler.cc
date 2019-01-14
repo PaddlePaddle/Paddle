@@ -34,26 +34,33 @@ bool GetHandlerSync::Handle(RPCRequest* request) {
   auto outvar = scope_->FindVar(request->varname_);
   // FIXME(typhoonzero): should fix this bad usage of pointer.
   request->out_var_ = &outvar;
+  request->out_var_name_ = request->varname_;
   return true;
 }
 
 void GetHandlerAsync::Start(
     std::function<RPCRequest*(framework::Scope*)> start) {
-  local_scope_ = &scope_->NewScope();
+  if (UNLIKELY(local_scope_ == nullptr)) {
+    local_scope_ = &scope_->NewScope();
+  }
   start(local_scope_);
 }
+
 bool GetHandlerAsync::Handle(RPCRequest* request) {
   if (HandleSignal(request, local_scope_, rpc_server_)) {
     return true;
   }
   auto outvar = local_scope_->FindVar(request->varname_);
   request->out_var_ = &outvar;
+  request->out_var_name_ = request->varname_;
   return true;
 }
 
 void GetHandlerDCAsync::Start(
     std::function<RPCRequest*(framework::Scope*)> start) {
-  local_scope_ = &scope_->NewScope();
+  if (UNLIKELY(local_scope_ == nullptr)) {
+    local_scope_ = &scope_->NewScope();
+  }
   start(local_scope_);
 }
 bool GetHandlerDCAsync::Handle(RPCRequest* request) {
@@ -74,6 +81,7 @@ bool GetHandlerDCAsync::Handle(RPCRequest* request) {
   framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
   auto outvar = local_scope_->FindVar(request->varname_);
   request->out_var_ = &outvar;
+  request->out_var_name_ = request->varname_;
   return true;
 }
 

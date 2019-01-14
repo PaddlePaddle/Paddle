@@ -32,7 +32,9 @@ static inline void BuildVar(const std::string& param_name,
 
 void PrefetchHandler::Start(
     std::function<RPCRequest*(framework::Scope*)> start) {
-  local_scope_ = &scope_->NewScope();
+  if (UNLIKELY(local_scope_ == nullptr)) {
+    local_scope_ = &scope_->NewScope();
+  }
   start(local_scope_);
 }
 
