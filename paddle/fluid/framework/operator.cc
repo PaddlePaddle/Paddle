@@ -37,12 +37,6 @@ DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
 
-DEFINE_bool(
-    enable_debug, false,
-    "The enable_debug indicate whether to give more detail information when, "
-    "use the paddlepaddle. However it may deduce the performance since it has"
-    "to record the information during runtime.");
-
 namespace paddle {
 namespace framework {
 
@@ -170,9 +164,7 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   try {
-    if (VLOG_IS_ON(4)) {
-      VLOG(4) << place << " " << DebugStringEx(&scope);
-    }
+    VLOG(4) << place << " " << DebugStringEx(&scope);
     if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
       PADDLE_THROW("Cannot run operator on place %s", place);
@@ -195,9 +187,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       RunImpl(scope, place);
     }
 
-    if (VLOG_IS_ON(3)) {
-      VLOG(3) << place << " " << DebugStringEx(&scope);
-    }
+    VLOG(3) << place << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet exception) {
     if (Attrs().count("sub_block") != 0) {
       throw exception;
