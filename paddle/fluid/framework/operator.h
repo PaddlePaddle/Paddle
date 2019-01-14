@@ -160,10 +160,6 @@ class OperatorBase {
                                  const platform::Place& place,
                                  const RuntimeContext& ctx) const {}
 
-  // Add the hooks
-  virtual void PreHook(const Scope& scope, const platform::Place& place);
-  virtual void PostHook(const Scope& scope, const platform::Place& place);
-
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:

@@ -33,7 +33,6 @@ limitations under the License. */
 #include <string>
 
 #include "glog/logging.h"
-#include "paddle/fluid/platform/debug_support.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
@@ -69,7 +68,6 @@ struct EnforceNotMet : public std::exception {
       std::rethrow_exception(e);
     } catch (std::exception& e) {
       Init(e.what(), f, l);
-      err_str_ += platform::PythonDebugSupport::GetInstance()->Format();
     }
   }
 
