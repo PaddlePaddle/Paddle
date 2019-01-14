@@ -48,7 +48,6 @@ class Tracer {
   std::vector<VarBase*> PyTrace(OpBase* op, const std::vector<VarBase*>& inputs,
                                 bool stop_gradient = false);
 
-
  private:
   framework::BlockDesc* root_block_;
 };
