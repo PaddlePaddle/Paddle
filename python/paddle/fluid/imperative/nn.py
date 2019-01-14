@@ -27,6 +27,7 @@ __all__ = [
     'Conv2D',
     'Pool2D',
     'FC',
+    'BatchNorm',
 ]
 
 
@@ -209,14 +210,24 @@ class FC(layers.Layer):
     def __init__(self,
                  size,
                  param_attr=None,
+                 bias_attr=None,
+                 dtype=core.VarDesc.VarType.FP32,
                  num_flatten_dims=1,
-                 dtype=core.VarDesc.VarType.FP32):
+                 act=None,
+                 is_test=False,
+                 name=None):
         super(FC, self).__init__()
+
         self._size = size
         self._num_flatten_dims = num_flatten_dims
         self._dtype = dtype
         from ..layer_helper import LayerHelper
-        self._helper = LayerHelper('FC', param_attr=param_attr)
+        self._helper = LayerHelper(
+            'FC',
+            param_attr=param_attr,
+            bias_attr=bias_attr,
+            act=act,
+            name=name)
 
     def _build_once(self, input):
         input_shape = input.shape
@@ -247,4 +258,132 @@ class FC(layers.Layer):
             inputs={"X": [tmp]},
             outputs={"Out": out},
             attrs={"use_mkldnn": False})
-        return out
+
+        pre_activation = self._helper.append_bias_op(
+            pre_bias, dim_start=num_flatten_dims)
+        return self._helper.append_activation(pre_activation)
+
+
+class BatchNorm(layers.Layer):
+    def __init__(self,
+                 num_channels,
+                 act=None,
+                 is_test=False,
+                 momentum=0.9,
+                 epsilon=1e-05,
+                 param_attr=None,
+                 bias_attr=None,
+                 dtype=core.VarDesc.VarType.FP32,
+                 data_layout='NCHW',
+                 in_place=False,
+                 name=None,
+                 moving_mean_name=None,
+                 moving_variance_name=None,
+                 do_model_average_for_mean_and_var=False,
+                 fuse_with_relu=False,
+                 use_global_stats=False):
+        super(BatchNorm, self).__init__()
+
+        assert bias_attr is not False, "bias_attr should not be False in batch_norm."
+
+        from ..layer_helper import LayerHelper
+        self._helper = LayerHelper(
+            'batch_norm', param_attr=param_attr, bias_attr=bias_attr, name=name)
+
+        if dtype == core.VarDesc.VarType.FP16:
+            self._dtype = core.VarDesc.VarType.FP32
+        else:
+            self._dtype = dtype
+
+        param_shape = [num_channels]
+
+        # create parameter
+        self._scale = self._helper.create_parameter(
+            attr=self._helper.param_attr,
+            shape=param_shape,
+            dtype=self._dtype,
+            default_initializer=Constant(1.0))
+
+        # setting stop_gradient=True to reduce computation
+        if use_global_stats and self._helper.param_attr.learning_rate == 0.:
+            self._scale.stop_gradient = True
+
+        self._bias = self._helper.create_parameter(
+            attr=self._helper.bias_attr,
+            shape=param_shape,
+            dtype=self._dtype,
+            is_bias=True)
+        # setting stop_gradient=True to reduce computation
+        if use_global_stats and self._helper.bias_attr.learning_rate == 0.:
+            self._bias.stop_gradient = True
+
+        self._mean = self._helper.create_parameter(
+            attr=ParamAttr(
+                name=moving_mean_name,
+                initializer=Constant(0.0),
+                trainable=False,
+                do_model_average=do_model_average_for_mean_and_var),
+            shape=param_shape,
+            dtype=self._dtype)
+        self._mean.stop_gradient = True
+
+        self._variance = self._helper.create_parameter(
+            attr=ParamAttr(
+                name=moving_variance_name,
+                initializer=Constant(1.0),
+                trainable=False,
+                do_model_average=do_model_average_for_mean_and_var),
+            shape=param_shape,
+            dtype=self._dtype)
+        self._variance.stop_gradient = True
+
+        self._in_place = in_place
+        self._momentum = momentum
+        self._epsilon = epsilon
+        self._is_test = is_test
+        self._fuse_with_relu = fuse_with_relu
+        self._use_global_stats = use_global_stats
+
+    def _build_once(self, input):
+        pass
+
+    def forward(self, input):
+        # create output
+        # mean and mean_out share the same memory
+        mean_out = self._mean
+        # variance and variance out share the same memory
+        variance_out = self._variance
+
+        saved_mean = self._helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True)
+        saved_variance = self._helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True)
+        batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
+            dtype)
+
+        self._helper.append_op(
+            type="batch_norm",
+            inputs={
+                "X": input,
+                "Scale": self._scale,
+                "Bias": self._bias,
+                "Mean": self._mean,
+                "Variance": self._variance
+            },
+            outputs={
+                "Y": batch_norm_out,
+                "MeanOut": mean_out,
+                "VarianceOut": variance_out,
+                "SavedMean": saved_mean,
+                "SavedVariance": saved_variance
+            },
+            attrs={
+                "momentum": self._momentum,
+                "epsilon": self._epsilon,
+                "is_test": self._is_test,
+                "use_mkldnn": False,
+                "fuse_with_relu": self._fuse_with_relu,
+                "use_global_stats": self._use_global_stats
+            })
+
+        return self._helper.append_activation(batch_norm_out)
