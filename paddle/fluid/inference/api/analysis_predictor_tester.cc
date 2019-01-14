@@ -193,14 +193,14 @@ TEST(AnalysisPredictor, Clone) {
 }
 
 TEST(AnalysisPredictor, memory_optim) {
-  AnalysisConfig config(false);
-  config.fraction_of_gpu_memory = 0.1;
+  AnalysisConfig config(FLAGS_dirname);
+  config.DisableGpu();
   config.EnableMemoryOptim();
   config.pass_builder()->TurnOnDebug();
-  config.model_dir = FLAGS_dirname;
 
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
-  auto native_predictor = CreatePaddlePredictor<NativeConfig>(config);
+  auto native_predictor =
+      CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
 
   // 2. Dummy Input Data
   int64_t data[4] = {1, 2, 3, 4};
