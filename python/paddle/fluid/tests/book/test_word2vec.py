@@ -195,9 +195,34 @@ def infer(use_cuda, save_dirname=None):
                           },
                           fetch_list=fetch_targets,
                           return_numpy=False)
+
+        def to_infer_tensor(lod_tensor):
+            infer_tensor = fluid.core.PaddleTensor()
+            infer_tensor.lod = lod_tensor.lod()
+            infer_tensor.data = fluid.core.PaddleBuf(np.array(lod_tensor))
+            infer_tensor.shape = lod_tensor.shape()
+            infer_tensor.dtype = fluid.core.PaddleDType.INT64
+            return infer_tensor
+
+        infer_inputs = [first_word, second_word, third_word, fourth_word]
+        infer_inputs = [to_infer_tensor(t) for t in infer_inputs]
+
+        infer_config = fluid.core.NativeConfig()
+        infer_config.model_dir = 'word2vec.inference.model'
+        compiled_program = fluid.compiler.CompiledProgram(inference_program)
+        compiled_program.with_inference_optimize(infer_config)
+        infer_attrs = {'batch_size': 1}
+        infer_outputs = exe.run(compiled_program,
+                                infer_inputs=infer_inputs,
+                                infer_attrs=infer_attrs)
         print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
         print("Inference Shape: ", np_data.shape)
+        infer_out = infer_outputs[0].data.float_data()
+        for a, b in zip(np_data[0], infer_out):
+            g_a = float("{:.6g}".format(a))
+            g_b = float("{:.6g}".format(b))
+            assert g_a == g_b
 
 
 def main(use_cuda, is_sparse, is_parallel):

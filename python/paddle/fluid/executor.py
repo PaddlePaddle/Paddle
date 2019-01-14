@@ -27,6 +27,8 @@ from .. import compat as cpt
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
 g_scope = core.Scope()
+InferNativeConfig = core.NativeConfig
+InferAnalysisConfig = core.AnalysisConfig
 
 
 def global_scope():
@@ -452,7 +454,9 @@ class Executor(object):
             fetch_var_name='fetch',
             scope=None,
             return_numpy=True,
-            use_program_cache=False):
+            use_program_cache=False,
+            infer_inputs=None,
+            infer_attrs=None):
         """
         Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
         Python executor takes a program, add feed operators and fetch operators to this program according
@@ -472,6 +476,8 @@ class Executor(object):
             scope(Scope): the scope used to run this program, you can switch it to different scope. default is global_scope
             return_numpy(bool): if convert the fetched tensor to numpy
             use_program_cache(bool): set use_program_cache to true if program not changed compare to the last step.
+            infer_inputs(list): inference input tensors
+            infer_attrs(dict): inference attributes, default inference batch size is 1
 
         Returns:
 
@@ -507,6 +513,16 @@ class Executor(object):
             fetch_list = []
 
         compiled = isinstance(program, compiler.CompiledProgram)
+
+        if infer_attrs is not None:
+            assert isinstance(program, compiler.CompiledProgram)
+            program._compile(scope, self.place)
+            assert isinstance(infer_attrs, dict)
+            assert program._infer_predictor
+            assert infer_inputs is not None
+            infer_batch_size = infer_attrs.get('batch_size', 1)
+            return program._infer_predictor.run(infer_inputs, infer_batch_size)
+
         # For backward compatibility, run directly.
         if not compiled:
             if not self.executor:
@@ -522,6 +538,7 @@ class Executor(object):
                 scope=scope,
                 return_numpy=return_numpy,
                 use_program_cache=use_program_cache)
+
 
         program._compile(scope, self.place)
         self.executor = program._executor

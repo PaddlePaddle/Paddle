@@ -24,6 +24,8 @@ __all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
+InferNativeConfig = core.NativeConfig
+InferAnalysisConfig = core.AnalysisConfig
 
 
 def _place_obj(place):
@@ -109,11 +111,18 @@ class CompiledProgram(object):
             self._build_strategy = BuildStrategy()
         return self
 
+    def with_inference_optimize(self, config):
+        assert any([
+            isinstance(config, InferNativeConfig),
+            isinstance(config, InferAnalysisConfig)
+        ])
+        self._infer_config = config
+
     def _with_distributed(self):
         raise NotImplementedError()
 
     def _with_inference_optimize(self):
-        raise NotImplementedError()
+        self._infer_predictor = core.create_paddle_predictor(self._infer_config)
 
     def _compile_data_parallel(self):
         if self._share_vars_from:
@@ -195,6 +204,9 @@ class CompiledProgram(object):
                 raise ValueError("Cannot compile with different place")
             return self
         self._compiled = True
+
+        if hasattr(self, '_infer_config'):
+            self._with_inference_optimize()
 
         self._scope = scope
         self._place = place

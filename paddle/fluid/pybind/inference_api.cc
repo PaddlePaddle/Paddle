@@ -132,8 +132,9 @@ void BindPaddlePredictor(py::module *m) {
       .def("zero_copy_run", &PaddlePredictor::ZeroCopyRun)
       .def("clone", &PaddlePredictor::Clone);
 
-  auto config = py::class_<PaddlePredictor::Config>(*m, "PredictConfig");
-  config.def_readwrite("model_dir", &PaddlePredictor::Config::model_dir);
+  auto config = py::class_<PaddlePredictor::Config>(paddle_predictor, "Config");
+  config.def(py::init<>())
+      .def_readwrite("model_dir", &PaddlePredictor::Config::model_dir);
 }
 
 void BindNativeConfig(py::module *m) {
