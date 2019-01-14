@@ -303,7 +303,8 @@ def embedding(input,
               is_distributed=False,
               padding_idx=None,
               param_attr=None,
-              dtype='float32'):
+              dtype='float32',
+              remote_prefetch=False):
     """
     **Embedding Layer**
 
@@ -342,9 +343,10 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
-    remote_prefetch = is_sparse and (not is_distributed)
     if remote_prefetch:
-        assert is_sparse is True and is_distributed is False
+        assert is_sparse is True and is_distributed is False, (
+            "remote_prefetch must work with is_sparse=True and is_distributed=False"
+        )
     w = helper.create_parameter(
         attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
     tmp = helper.create_variable_for_type_inference(dtype)
@@ -4992,7 +4994,8 @@ def nce(input,
         sampler="uniform",
         custom_dist=None,
         seed=0,
-        is_sparse=False):
+        is_sparse=False,
+        remote_prefetch=False):
     """
     ${comment}
 
@@ -5159,7 +5162,8 @@ def nce(input,
     else:
         num_neg_samples = int(num_neg_samples)
 
-    remote_prefetch = is_sparse
+    if remote_prefetch:
+        assert is_sparse is True
     print(
         "With sparse mode, if your models has only small parameter prefetch may cause speed down"
     )
@@ -5194,7 +5198,8 @@ def hsigmoid(input,
              path_table=None,
              path_code=None,
              is_custom=False,
-             is_sparse=False):
+             is_sparse=False,
+             remote_prefetch=False):
     """
     The hierarchical sigmoid operator is used to accelerate the training
     process of language model. This operator organizes the classes into a
@@ -5280,7 +5285,9 @@ def hsigmoid(input,
         pass
 
     weights = None
-    remote_prefetch = is_sparse
+    if remote_prefetch:
+        assert is_sparse is True, (
+            "remote_prefetch must work with is_sparse=True")
     print(
         "With sparse mode, if your models has only small parameter prefetch may cause speed down"
     )
