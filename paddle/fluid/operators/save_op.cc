@@ -80,7 +80,7 @@ class SaveOp : public framework::OperatorBase {
 
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
-    std::ofstream fout(filename);
+    std::ofstream fout(filename, std::ios::binary);
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
                    filename);
 
@@ -122,7 +122,7 @@ class SaveOp : public framework::OperatorBase {
 
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
-    std::ofstream fout(filename);
+    std::ofstream fout(filename, std::ios::binary);
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
                    filename);
     framework::SerializeToStream(fout, selectedRows, dev_ctx);

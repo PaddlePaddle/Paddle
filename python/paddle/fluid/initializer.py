@@ -162,7 +162,8 @@ class ConstantInitializer(Initializer):
                 "dtype": int(var.dtype),
                 "value": float(self._value),
                 'force_cpu': self._force_cpu or force_init_on_cpu()
-            })
+            },
+            stop_gradient=True)
         var.op = op
         return op
 
@@ -231,7 +232,8 @@ class UniformInitializer(Initializer):
                 "min": self._low,
                 "max": self._high,
                 "seed": self._seed
-            })
+            },
+            stop_gradient=True)
 
         if var.dtype == VarDesc.VarType.FP16:
             block.append_op(
@@ -309,7 +311,8 @@ class NormalInitializer(Initializer):
                 "std": self._std_dev,
                 "seed": self._seed,
                 "use_mkldnn": False
-            })
+            },
+            stop_gradient=True)
 
         if var.dtype == VarDesc.VarType.FP16:
             block.append_op(
@@ -371,7 +374,8 @@ class TruncatedNormalInitializer(Initializer):
                 "mean": self._mean,
                 "std": self._std_dev,
                 "seed": self._seed
-            })
+            },
+            stop_gradient=True)
         var.op = op
         return op
 
@@ -461,7 +465,8 @@ class XavierInitializer(Initializer):
                     "min": -limit,
                     "max": limit,
                     "seed": self._seed
-                })
+                },
+                stop_gradient=True)
 
         else:
             std = np.sqrt(2.0 / float(fan_in + fan_out))
@@ -474,7 +479,8 @@ class XavierInitializer(Initializer):
                     "mean": 0.0,
                     "std": std,
                     "seed": self._seed
-                })
+                },
+                stop_gradient=True)
         var.op = op
         return op
 
@@ -559,7 +565,8 @@ class MSRAInitializer(Initializer):
                     "min": -limit,
                     "max": limit,
                     "seed": self._seed
-                })
+                },
+                stop_gradient=True)
 
         else:
             std = np.sqrt(2.0 / float(fan_in))
@@ -572,7 +579,8 @@ class MSRAInitializer(Initializer):
                     "mean": 0.0,
                     "std": std,
                     "seed": self._seed
-                })
+                },
+                stop_gradient=True)
         var.op = op
         return op
 
