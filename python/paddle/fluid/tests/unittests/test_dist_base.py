@@ -26,6 +26,7 @@ import pickle
 import numpy as np
 
 import paddle.fluid as fluid
+from paddle.fluid import compiler
 
 RUN_STEP = 10
 DEFAULT_BATCH_SIZE = 2
@@ -104,8 +105,8 @@ class TestDistRunnerBase(object):
         else:
             place = fluid.CPUPlace()
 
-        startup_exe = fluid.Executor(place)
-        startup_exe.run(fluid.default_startup_program())
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
 
         strategy = fluid.ExecutionStrategy()
         strategy.num_threads = 1
@@ -125,19 +126,16 @@ class TestDistRunnerBase(object):
             mypass.set_int("num_repeats", args.batch_merge_repeat)
 
         if args.update_method == "nccl2":
-            num_trainers = len(args.endpoints.split(","))
-            trainer_id = args.trainer_id
+            build_stra.num_trainers = len(args.endpoints.split(","))
+            build_stra.trainer_id = args.trainer_id
         else:
-            num_trainers = 1
-            trainer_id = 0
+            build_stra.num_trainers = 1
+            build_stra.trainer_id = 0
 
-        exe = fluid.ParallelExecutor(
-            args.use_cuda,
+        binary = compiler.CompiledProgram(trainer_prog).with_data_parallel(
             loss_name=avg_cost.name,
-            exec_strategy=strategy,
             build_strategy=build_stra,
-            num_trainers=num_trainers,
-            trainer_id=trainer_id)
+            exec_strategy=strategy)
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
@@ -160,7 +158,8 @@ class TestDistRunnerBase(object):
 
         out_losses = []
         for _ in six.moves.xrange(RUN_STEP):
-            loss, = exe.run(fetch_list=[avg_cost.name],
+            loss, = exe.run(binary,
+                            fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
             out_losses.append(loss[0])
         if six.PY2:
