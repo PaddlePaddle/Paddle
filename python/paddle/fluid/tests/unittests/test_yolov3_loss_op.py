@@ -142,7 +142,7 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
             ty = gtbox[i, j, 1] * w - gj
             tw = np.log(gtbox[i, j, 2] * input_size / mask_anchors[an_idx][0])
             th = np.log(gtbox[i, j, 3] * input_size / mask_anchors[an_idx][1])
-            scale = 2.0 - gtbox[i, j, 2] * gtbox[i, j, 3]
+            scale = (2.0 - gtbox[i, j, 2] * gtbox[i, j, 3]) * gtscore[i, j]
             loss[i] += sce(x[i, an_idx, gj, gi, 0], tx) * scale
             loss[i] += sce(x[i, an_idx, gj, gi, 1], ty) * scale
             loss[i] += l1loss(x[i, an_idx, gj, gi, 2], tw) * scale
@@ -152,11 +152,14 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
 
             for label_idx in range(class_num):
                 loss[i] += sce(x[i, an_idx, gj, gi, 5 + label_idx], label_pos
-                               if label_idx == gtlabel[i, j] else label_neg)
+                               if label_idx == gtlabel[i, j] else
+                               label_neg) * gtscore[i, j]
 
         for j in range(mask_num * h * w):
-            if objness[i, j] >= 0:
-                loss[i] += sce(pred_obj[i, j], objness[i, j])
+            if objness[i, j] > 0:
+                loss[i] += sce(pred_obj[i, j], 1.0) * objness[i, j]
+            elif objness[i, j] == 0:
+                loss[i] += sce(pred_obj[i, j], 0.0)
 
     return (loss, objness.reshape((n, mask_num, h, w)).astype('float32'), \
             gt_matches.astype('int32'))
