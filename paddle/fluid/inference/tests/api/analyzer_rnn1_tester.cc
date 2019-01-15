@@ -370,15 +370,12 @@ TEST(Analyzer_rnn1, ZeroCopyMultiThread) {
   auto base_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   double total_time_of_threads{0};
   std::vector<std::thread> threads;
-  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
-  for (int tid = 0; tid < FLAGS_num_threads; tid++) {
-    predictors.emplace_back(CreatePaddlePredictor<AnalysisConfig>(config));
-  }
 
   for (int tid = 0; tid < FLAGS_num_threads; tid++) {
-    threads.emplace_back([config, &total_time_of_threads, &predictors, tid] {
-      // auto predictor = base_predictor->Clone();
-      auto &predictor = predictors[tid];
+    threads.emplace_back([&, tid] {
+      // To ensure the thread binding correctly,
+      // please clone inside the threadpool.
+      auto predictor = base_predictor->Clone();
       NEW_TENSOR(data_lod_attention);
       NEW_TENSOR(cell_init);
       NEW_TENSOR(data);
