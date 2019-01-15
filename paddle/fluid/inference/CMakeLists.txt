@@ -41,10 +41,10 @@ set(SHARED_INFERENCE_SRCS
 
 if(WIN32)
   sep_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array
-              prepare_executor analysis_config paddle_pass_builder)
+              analysis_config paddle_pass_builder)
 else(WIN32)
   cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS}
-             zero_copy_tensor reset_tensor_array prepare_executor analysis_config paddle_pass_builder)
+             zero_copy_tensor reset_tensor_array analysis_config paddle_pass_builder)
 endif(WIN32)
 
 if(NOT APPLE)
@@ -57,12 +57,12 @@ endif()
 if(WIN32)
   sep_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
               DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array
-                   prepare_executor analysis_config paddle_pass_builder)
+                   analysis_config paddle_pass_builder)
   target_link_libraries(paddle_fluid_shared shlwapi)
 else(WIN32)
   cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
              DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array
-                  prepare_executor analysis_config paddle_pass_builder)
+                  analysis_config paddle_pass_builder)
 endif()
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)

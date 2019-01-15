@@ -63,7 +63,7 @@ class NativePaddlePredictor : public PaddlePredictor {
   platform::Place place_;
   std::unique_ptr<framework::Executor> executor_;
   std::shared_ptr<framework::Scope> scope_;
-  std::vector<std::unique_ptr<framework::ExecutorPrepareContext>> ctx_;
+  std::unique_ptr<framework::ExecutorPrepareContext> ctx_;
   std::unique_ptr<framework::ProgramDesc> inference_program_;
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;

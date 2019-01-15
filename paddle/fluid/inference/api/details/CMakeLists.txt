@@ -16,4 +16,3 @@
 cc_library(reset_tensor_array SRCS reset_tensor_array.cc DEPS lod_tensor scope)
 cc_library(zero_copy_tensor SRCS zero_copy_tensor.cc DEPS scope lod_tensor enforce)
 cc_library(zero_copy_tensor_dummy SRCS zero_copy_tensor_dummy.cc)
-cc_library(prepare_executor SRCS prepare_executor.cc DEPS executor)
