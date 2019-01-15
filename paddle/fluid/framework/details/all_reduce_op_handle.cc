@@ -32,17 +32,16 @@ namespace framework {
 namespace details {
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-AllReduceOpHandle::AllReduceOpHandle(
-    ir::Node *node, const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
-    const platform::NCCLContextMap *ctxs, bool enable_dgc,
-    const std::vector<Scope *> &local_dgc_scopes)
+AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
+                                     const std::vector<Scope *> &local_scopes,
+                                     const std::vector<platform::Place> &places,
+                                     const platform::NCCLContextMap *ctxs,
+                                     bool enable_dgc)
     : OpHandleBase(node),
       local_scopes_(local_scopes),
       places_(places),
       nccl_ctxs_(ctxs),
-      enable_dgc_(enable_dgc),
-      local_dgc_scopes_(local_dgc_scopes) {
+      enable_dgc_(enable_dgc) {
   if (nccl_ctxs_) {
     for (auto &p : places_) {
       this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
@@ -64,12 +63,15 @@ void InitialDGCVars(Scope *scope, DeviceContext *dev_ctx,
   set_zero(dev_ctx, tensor, static_cast<T>(0.0));
 }
 
-void AllReduceOpHandle::DGC(unsigned int idx, const std::string &name,
+void AllReduceOpHandle::DGC(framework::Scope *scope, const std::string &name,
                             DeviceContext *dev_ctx, proto::VarType::Type type) {
   auto U_name = name + "_dgc_u_";
   auto V_name = name + "_dgc_v_";
   auto G_name = name + "_dgc_g_";
-  if (local_dgc_scopes_[idx]->FindVar() == nullptr) {
+  // auto scope = local_scopes_[idx];
+
+  // Create in global scope and so won't deleted when batch finished.
+  if (scope->FindVar() == nullptr) {
     // FIXME(gongwb): use variant template arguments.
     if (type == framework::proto::VarType::FP32) {
       InitialDGCVars<platform::CUDADeviceContext, float>(scope, dev_ctx,
@@ -78,21 +80,14 @@ void AllReduceOpHandle::DGC(unsigned int idx, const std::string &name,
                                                          V_name);
       InitialDGCVars<platform::CUDADeviceContext, float>(scope, dev_ctx,
                                                          G_name);
-    } else if (type == framework::proto::VarType::FP64) {
-      InitialDGCVars<platform::CUDADeviceContext, double>(scope, dev_ctx,
-                                                          U_name);
-      InitialDGCVars<platform::CUDADeviceContext, double>(scope, dev_ctx,
-                                                          V_name);
-      InitialDGCVars<platform::CUDADeviceContext, double>(scope, dev_ctx,
-                                                          G_name);
+    } else {
+      PADDLE_ENFORCE(false, "dgc only support float type");
     }
   }
 
-  auto U = local_dgc_scopes_[idx]->Var(U_name);
-  auto V = local_dgc_scopes_[idx]->Var(V_name);
-  auto G = local_dgc_scopes_[idx]->Var(G_name);
-
-  auto o_G = local_scopes_[idx]->Var(name);
+  auto U = scope->Var(U_name);
+  auto V = scope->Var(V_name);
+  auto G = scope->Var(G_name);
 }
 
 void AllReduceOpHandle::RunImpl() {

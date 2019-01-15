@@ -12,8 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/dgc_op.h"
+#include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/dgc_op.h"
 
 namespace paddle {
 namespace operators {
@@ -23,56 +25,50 @@ class DGCOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("U"), "Input(U) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("V"), "Input(V) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Grad"),
+                   "Input(Grad) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("GradLocal"),
+                   "Input(GradLocal) of DGCop should not be null.");
+
+    PADDLE_ENFORCE(ctx->HasOutput("U"),
+                   "Output(U) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("V"),
+                   "Output(V) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("GradLocal"),
+                   "Output(GradLocal) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("EncodeGrad"),
+                   "Output(EncodeGrad) of DGCop should not be null.");
+
+    float ratio = ctx->Attrs().Get<float>("ratio");
+    PADDLE_ENFORCE(ratio > 0.0001 && ratio < 1.0,
+                   "ratio of dgc must in range [0.0001, 1.0]");
+
     /*
-  PADDLE_ENFORCE(ctx->HasInput("Param"),
-                 "Input(Param) of SGDOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                 "Input(Grad) of SGDOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
-                 "Input(LearningRate) of SGDOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
-                 "Output(ParamOut) of SGDOp should not be null.");
+    auto dim = ctx->GetInputDim("U");
+    ctx->SetOutputDim("U", dim);
 
-  auto lr_dims = ctx->GetInputDim("LearningRate");
-  PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
-                    "Learning rate should have 1 element");
-  auto param_dim = ctx->GetInputDim("Param");
-  // TODO(qijun): check dimensions of Param and Grad at compile
-  // and runtime.
-  ctx->SetOutputDim("ParamOut", param_dim);
-  */
-  }
+    dim = ctx->GetInputDim("V");
+    ctx->SetOutputDim("V", dim);
+    */
 
- protected:
-  /*
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Param"));
-    return framework::OpKernelType(data_type, ctx.device_context());
+    auto dim = ctx->GetInputDim("Grad");
+    ctx->SetOutputDim("EncodeGrad", dim);
+
+    /*
+    auto param_dim = ctx->GetInputDim("GradLocal");
+    ctx->SetOutputDim("GradLocal", param_dim);
+    */
   }
-  */
 };
 
-class DGCOpInferVarType : public framework::VarTypeInference {
+class DGCOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  public:
   void operator()(const framework::OpDesc &op_desc,
                   framework::BlockDesc *block) const override {
-    /*
-   auto input_var_n = op_desc.Input("Param")[0];
-   auto in_var_type = block->FindRecursiveOrCreateVar(input_var_n).GetType();
-   PADDLE_ENFORCE(in_var_type == framework::proto::VarType::SELECTED_ROWS ||
-                      in_var_type == framework::proto::VarType::LOD_TENSOR,
-                  "The input Var's type should be LoDtensor or SelectedRows,"
-                  " but the received var(%s)'s type is %s",
-                  input_var_n, in_var_type);
-
-   for (auto &out_var_n : op_desc.Output("ParamOut")) {
-     auto &out_var = block->FindRecursiveOrCreateVar(out_var_n);
-     if (out_var.GetType() != in_var_type) {
-       out_var.SetType(in_var_type);
-     }
-   }
- */
+    return std::unordered_map<std::string, std::string>{
+        {"Grad", /*->*/ "EncodeGrad"}};
   }
 };
 
@@ -81,14 +77,22 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("U", "(Tensor) Middle tensor of DGC");
     AddInput("V", "(Tensor) Middle tensor of DGC");
-    AddInput("m", "(Scalar) Momentum correction parameter.");
+    AddAttr("m", "(Scalar) Momentum correction parameter.");
+    AddAttr("m", "(Scalar) Momentum correction parameter.");
     AddInput("Grad", "(Tensor) Input gradient");
     AddInput("GradLocal", "(Tensor) Local gradient for accumulation.");
-    AddOutput("EncodeGradient",
+    AddOutput("EncodeGrad",
               "(Tensor) "
               "Output encoded gradient");
+    AddAttr<float>("m",
+                   "(float) "
+                   "The momentum of learning rate.");
+    AddAttr<float>("ratio",
+                   "(float, default 1000) "
+                   "Reserve topk from tensor.")
+        .SetDefault(0.001);
     AddComment(R"DOC(
-    Please see appendix D of https://arxiv.org/abs/1712.01887.
+    Please see appendix D of https://arxiv.org/abs/1712.01887.pdf
 )DOC");
   }
 };
@@ -97,4 +101,5 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(dgc, ops::DGCOp, ops::DGCOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(dgc, ops::DGCOp, ops::DGCOpMaker,
+                             ops::MulOpInferVarType);

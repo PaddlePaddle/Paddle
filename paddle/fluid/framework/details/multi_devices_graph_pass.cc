@@ -419,6 +419,30 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
   }
 }
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+void MultiDevSSAGraphBuilderBase::CreateDGCOp(ir::Graph *g,
+                                              const std::string &p_name,
+                                              const std::string &grad_name,
+                                              float m) const {
+  fraemwork::OpDesc desc;
+  desc.SetInput("U", std::vector<std::string>({p_name + "_dgc_u_"}));
+  desc.SetInput("V", std::vector<std::string>({p_name + "_dgc_v_"}));
+  desc.SetInput("Grad", std::vector<std::string>({g_name}));
+  desc.SetInput("GradLocal", std::vector<std::string>({g_name + "_dgc_g_"}));
+  desc.SetOutput("EncodeGradient", std::vector<std::string>({g_name}));
+  desc.SetAttr("m", Attribute(m));
+  desc.SetType("dgc");
+
+  // auto dgc_node = g->CreateOpNode(&desc);
+  for (size_t scope_idx = 0; scope_idx < num_places; ++scope_idx) {
+    auto p = places_[scope_idx];
+    auto s = local_scopes_[scope_idx];
+    g->Get<GraphOps>(kGraphOps).emplace_back(
+        new ComputationOpHandle(g->CreateOpNode(&desc), s, p, scope_idx));
+  }
+}
+#endif
+
 void MultiDevSSAGraphBuilderBase::CreateScaleLossGradOp(
     ir::Graph *result, const std::string &loss_grad_name,
     ir::Node *out_var_node, size_t loss_scale,
@@ -915,7 +939,13 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
         CreateReduceOp(result, g_name, 0);
         CreateBroadcastOp(result, g_name, 0);
       } else {
-        CreateAllReduceOp(result, g_name);
+        if (strategy_.enable_dgc_ && var_size > 4096) {
+          // FIXME(gongwb): 0.9?
+          CreateDGCOp(result, p_name, g_name, 0.9);
+          CreateAllReduceOp(result, g_name);
+        } else {
+          CreateAllReduceOp(result, g_name);
+        }
       }
       break;
     default:

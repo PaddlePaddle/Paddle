@@ -30,26 +30,42 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto g = ctx.Input<framework::Tensor>("Grad");
     auto local_g = ctx.Input<framework::Tensor>("GradLocal");
     auto m = static_cast<T>(ctx.Attr<float>("m"));
+    auto ratio = static_cast<T>(ctx.Attr<int>("ratio"));
+    int k = g.numel() * ratio;
 
     auto u_out = ctx.Output<framework::Tensor>("U");
     auto v_out = ctx.Output<framework::Tensor>("V");
-    auto g_out = ctx.Output<framework::Tensor>("Grad");
+    // auto g_out = ctx.Output<framework::Tensor>("Grad");
+    auto local_g_out = ctx.Input<framework::Tensor>("GradLocal");
+    auto g_out = ctx.Output<framework::Tensor>("EncodeGradient");
 
     // local_g = local_g + g
-    elementwise_add<DeviceContext, T>(ctx, local_g, g, g_out);
+    elementwise_add<DeviceContext, T>(ctx, local_g, g, local_g_out);
 
     // FIXME(gognwb): use cublas.
     // u = m * u + g
     auto u_out_e = framework::EigenVector<T>::Flatten(*u_out);
     auto u_e = framework::EigenVector<T>::Flatten(*u);
     auto g_e = framework::EigenVector<T>::Flatten(*g);
-    auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    u_out_e.device(dev) = m * u_e + g_e;
+    auto& dev_ctx =
+        *ctx.template device_context<DeviceContext>().eigen_device();
+    u_out_e.device(dev_ctx) = m * u_e + g_e;
 
-    // v = u + e
+    // v = u + v
     elementwise_add<DeviceContext, T>(ctx, u, v, v_out);
 
-    // k_select();
+    // getNumBlocksAndThreads(int n, int maxBlocks, int maxThreads, int &blocks,
+    // int &threads);
+    int buffbytes = 2 * MAX_BLOCKS * MAX_THREADS * sizeof(int);
+
+    // Temporary memory
+    auto& allocator =
+        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
+    auto tmp_ious_data = allocator.Allocate(buffbytes);
+    void* buf = tmp_ious_data->ptr();
+
+    k_select(v_out.mutable_data<T>(), v_out.numel(), g_out.mutable_data<T>(),
+             buf, k, dev_ctx.stream(), u_out.mutable_data<T>());
   }
 };
 }  // namespace operators

@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,4 +22,25 @@ void RandomizeFloat(void* dest, const int count, const int seed) {
   CURAND_CHECK(curandGenerateUniform(gen, ptr, count));
   CURAND_CHECK(curandDestroyGenerator(gen));
   CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+__global__ void KeFeedInputFloat(float* dest, const int count, float* src,
+                                 const int size) {
+  int offset = (threadIdx.x + blockDim.x * blockIdx.x) % size;
+
+  for (int i = threadIdx.x + blockDim.x * blockIdx.x; i < count;
+       i += gridDim.x * blockDim.x) {
+    dest[i] = src[offset];
+    offset = (offset + 1) % size;
+  }
+}
+
+void FeedInputFloat(float* dest, const int count, const float* src,
+                    const int size) {
+  float* g_src;
+  CUDA_CHECK(cudaMalloc(static_cast<void**>(&g_src), size * sizeof(float)));
+  CUDA_CHECK(
+      cudaMemcpy(g_src, src, size * sizeof(float), cudaMemcpyHostToDevice));
+  KeFeedInputFloat<<<GET_BLOCKS(count), CUDA_NUM_THREADS>>>(dest, count, g_src,
+                                                            size);
 }
