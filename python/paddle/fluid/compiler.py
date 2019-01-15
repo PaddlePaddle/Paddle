@@ -20,6 +20,8 @@ from .. import compat as cpt
 
 from . import core
 
+__all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
+
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
 
