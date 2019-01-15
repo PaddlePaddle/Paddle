@@ -21,8 +21,7 @@ class Layer(object):
     # ...
     return self.apply(inputs):
 
-
-  def apply(inputs):
+  def forward(inputs):
     # forward logic with paddle operators. backward auto-generated.
 
 
@@ -35,7 +34,8 @@ class PyLayer(core.PyLayer):
   def forward(inputs):
     # any forward logic implemented with numpy io.
 
-  @static method
+  @staticmethod
+  def backward(inputs):
     # any backward logic implemented with numpy io.
 ```
 
@@ -66,7 +66,6 @@ class Tracer {
 
 Lots of research already.
 https://autodiff-workshop.github.io/
-
 
 ## Tests
 
@@ -131,6 +130,7 @@ class MLP(fluid.imperative.Layer):
      out._backward()
 ```
 
+
 # Plan
 
 2.1，3 fulltime, Can run a few simple models. (Currently, 2 20% engs)
@@ -142,6 +142,7 @@ class MLP(fluid.imperative.Layer):
 8.1, 5 fulltime, Works in general. Covert current models to use imperative mode.
 
 12.1, 5 fulltime, Can compile to static graph, support more optimizations.
+
 
 # Discussion
 
