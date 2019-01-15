@@ -220,11 +220,14 @@ class FC(layers.Layer):
         self._dtype = dtype
         from ..layer_helper import LayerHelper
         self._helper = LayerHelper(
-            'FC',
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            act=act,
-            name=name)
+            'FC', param_attr=param_attr, act=act, name=name)
+        self._bias_attr = bias_attr
+
+    def parameters(self):
+        if self._bias_attr:
+            return [self._w, self._b]
+        else:
+            return [self._w]
 
     def _build_once(self, input):
         input_shape = input.shape
@@ -255,8 +258,20 @@ class FC(layers.Layer):
             inputs={"X": [tmp]},
             outputs={"Out": out},
             attrs={"use_mkldnn": False})
+        if not self._bias_attr:
+            return out
+
         # add bias
-        pre_activation = self._helper.append_bias_op(
-            out, dim_start=self._num_flatten_dims)
+        size = list(out.shape[1:])
+        if not self._built:
+            self._b = self._layer.create_parameter(
+                attr=self._bias_attr, shape=size, dtype=out.dtype, is_bias=True)
+        bias_out = self.create_variable_for_type_inference(dtype=out.dtype)
+        self.append_op(
+            type='elementwise_add',
+            inputs={'X': [out],
+                    'Y': [self._b]},
+            outputs={'Out': [bias_out]},
+            attrs={'axis': 1})
         # add activation
-        return self._helper.append_activation(pre_activation)
+        return self._helper.append_activation(bias_out)
