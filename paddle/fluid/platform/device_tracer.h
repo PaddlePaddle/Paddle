@@ -97,7 +97,7 @@ class DeviceTracer {
   virtual proto::Profile GenProfile(const std::string& profile_path) = 0;
 
   // generate kernel elapsed time into Event
-  virtual void GenEventKernelCudaElapsedMs() = 0;
+  virtual void GenEventKernelCudaElapsedTime() = 0;
 
   virtual bool IsEnabled() = 0;
 };

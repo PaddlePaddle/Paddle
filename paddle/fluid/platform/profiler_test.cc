@@ -34,6 +34,7 @@ TEST(Event, CpuElapsedTime) {
 }
 
 #ifdef PADDLE_WITH_CUDA
+#ifndef PADDLE_WITH_CUPTI
 TEST(Event, CudaElapsedTime) {
   using paddle::platform::DeviceContext;
   using paddle::platform::CUDADeviceContext;
@@ -51,6 +52,7 @@ TEST(Event, CudaElapsedTime) {
   Event stop_event(EventType::kPopRange, "test", 0, dev_ctx);
   EXPECT_GT(start_event.CudaElapsedMs(stop_event), 0);
 }
+#endif
 #endif
 
 TEST(RecordEvent, RecordEvent) {

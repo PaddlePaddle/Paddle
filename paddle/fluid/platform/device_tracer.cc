@@ -155,6 +155,11 @@ void CUPTIAPI bufferRequested(uint8_t **buffer, size_t *size,
 
 void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
                               size_t size, size_t validSize) {
+  static std::thread::id cupti_thread_id(0);
+  if (cupti_thread_id == std::thread::id(0))
+    cupti_thread_id = std::this_thread::get_id();
+  PADDLE_ENFORCE_EQ(std::this_thread::get_id(), cupti_thread_id,
+                    "Only one thread is allowed to call bufferCompleted()");
   CUptiResult status;
   CUpti_Activity *record = NULL;
   if (validSize > 0) {
@@ -233,7 +238,7 @@ class DeviceTracerImpl : public DeviceTracer {
   DeviceTracerImpl() : enabled_(false) {}
 
   void AddAnnotation(uint64_t id, Event *event) {
-    static thread_local std::list<std::pair<uint64_t, Event *>>
+    thread_local std::list<std::pair<uint64_t, Event *>>
         *local_correlations_pairs = nullptr;
     if (local_correlations_pairs == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
@@ -249,7 +254,7 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(1) << "Empty timeline annotation.";
       return;
     }
-    static thread_local std::list<CPURecord> *local_cpu_records_ = nullptr;
+    thread_local std::list<CPURecord> *local_cpu_records_ = nullptr;
     if (local_cpu_records_ == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
       cpu_records_.emplace_back();
@@ -299,27 +304,24 @@ class DeviceTracerImpl : public DeviceTracer {
     }
 
 #ifdef PADDLE_WITH_CUPTI
-    auto cupti_call = [&]() {
-      EnableActivity();
+    EnableActivity();
 
-      // Register callbacks for buffer requests and completed by CUPTI.
-      CUPTI_CALL(dynload::cuptiActivityRegisterCallbacks(bufferRequested,
-                                                         bufferCompleted));
+    // Register callbacks for buffer requests and completed by CUPTI.
+    CUPTI_CALL(dynload::cuptiActivityRegisterCallbacks(bufferRequested,
+                                                       bufferCompleted));
 
-      CUptiResult ret;
-      ret = dynload::cuptiSubscribe(
-          &subscriber_, static_cast<CUpti_CallbackFunc>(ApiCallback), this);
-      if (ret == CUPTI_ERROR_MAX_LIMIT_REACHED) {
-        fprintf(stderr, "CUPTI subcriber limit reached.\n");
-      } else if (ret != CUPTI_SUCCESS) {
-        fprintf(stderr, "Failed to create CUPTI subscriber.\n");
-      }
-      CUPTI_CALL(dynload::cuptiEnableCallback(
-          1, subscriber_, CUPTI_CB_DOMAIN_DRIVER_API,
-          CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel));
-      CUPTI_CALL(dynload::cuptiGetTimestamp(&start_ns_));
-    };
-    cupti_thread.reset(new std::thread(cupti_call));
+    CUptiResult ret;
+    ret = dynload::cuptiSubscribe(
+        &subscriber_, static_cast<CUpti_CallbackFunc>(ApiCallback), this);
+    if (ret == CUPTI_ERROR_MAX_LIMIT_REACHED) {
+      fprintf(stderr, "CUPTI subcriber limit reached.\n");
+    } else if (ret != CUPTI_SUCCESS) {
+      fprintf(stderr, "Failed to create CUPTI subscriber.\n");
+    }
+    CUPTI_CALL(
+        dynload::cuptiEnableCallback(1, subscriber_, CUPTI_CB_DOMAIN_DRIVER_API,
+                                     CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel));
+    CUPTI_CALL(dynload::cuptiGetTimestamp(&start_ns_));
 #endif  // PADDLE_WITH_CUPTI
     enabled_ = true;
   }
@@ -333,7 +335,7 @@ class DeviceTracerImpl : public DeviceTracer {
     for (auto &tmp : cpu_records_) tmp.clear();
   }
 
-  void GenEventKernelCudaElapsedMs() {
+  void GenEventKernelCudaElapsedTime() {
 #ifdef PADDLE_WITH_CUPTI
     if (correlations_.empty())
       for (auto &tmp : correlations_pairs)
@@ -407,8 +409,6 @@ class DeviceTracerImpl : public DeviceTracer {
     DisableActivity();
     dynload::cuptiUnsubscribe(subscriber_);
     CUPTI_CALL(dynload::cuptiGetTimestamp(&end_ns_));
-    cupti_thread->join();
-    cupti_thread.reset(nullptr);
 #endif  // PADDLE_WITH_CUPTI
     enabled_ = false;
   }
@@ -431,7 +431,6 @@ class DeviceTracerImpl : public DeviceTracer {
     }
   }
   CUpti_SubscriberHandle subscriber_;
-  std::unique_ptr<std::thread> cupti_thread;
 #endif  // PADDLE_WITH_CUPTI
   std::mutex trace_mu_;
   bool enabled_;
