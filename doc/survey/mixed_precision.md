@@ -90,19 +90,27 @@ Example code
   >>> data = fluid.layers.data(name="data", shape=[32, 32], dtype="float16") # set the type to float16
   >>> labels = fluid.layers.data(name="label", shape=[1], dtype="float16") # set the type to float16
   >>> fc = fluid.layers.fc(input=data, size=1000, act="tanh")
+  
+  # 2. use batch norm (auto insert cast op when enter/exit)
+  >>> with fluid.dtype("float32"):
+  >>>   fc = layers.batch_norm(fc)
+  
   >>> out = layers.assign(hidden, fc)
   >>> loss = layers.mean(out)
 
-  # 2. use float16 optimizer(a wrapper to parameters)
+  # 3. use float16 optimizer(a wrapper to parameters)
   >>> adam = fluid.optimizer.MixedOptimizer(fluid.optimizer.Adam())
   >>> adam.minimize(loss)
-
+	
+  # 4. save/convert fp16 model to fp32
+  >>> def tofp16(program):
+  			pass
 ```
 
 ### ToDo & Plan
 
 1. op对fp16类型完整支持，特别是norm类型和reduction等会数据溢出的op特殊处理 （2人一周）
-2. 实现动态scale loss策略，兼容现有接口，提供debug功能(和fp32对比度量是否有损) （1人1周）
+2. 实现动态scale loss策略，兼容现有接口，提供debug功能(和fp32对比度量是否有损) （1人2周）
 3. 在简单Demo上验证效果(loss对齐、速度性能提升)，例如图像的Resnet, NLP模型seq2seq （2人2周、验证CE模型上常见3、4个模型）
 4. 推广到多卡、分布式场景 (2人1周时间)
 5. 做性能对标和优化(repeat 3,4,5) (2、3人，1到2周时间)
