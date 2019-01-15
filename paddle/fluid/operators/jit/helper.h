@@ -130,14 +130,21 @@ inline std::ostream& operator<<(std::ostream& os, const lstm_attr_t& attr) {
      << (attr.use_peephole ? "True" : "False") << "]";
   return os;
 }
+
 inline std::ostream& operator<<(std::ostream& os, const gru_attr_t& attr) {
   os << "dim_size[" << attr.d << "],act_gate[" << to_string(attr.act_gate)
      << "],act_cand[" << to_string(attr.act_cand) << "]";
   return os;
 }
+
 inline std::ostream& operator<<(std::ostream& os, const seq_pool_attr_t& attr) {
   os << "height_size[" << attr.h << "],width_size[" << attr.w << "],pool_type["
      << to_string(attr.type) << "]";
+  return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const matmul_attr_t& attr) {
+  os << "M[" << attr.m << "],N[" << attr.n << "],K[" << attr.k << "]";
   return os;
 }
 
