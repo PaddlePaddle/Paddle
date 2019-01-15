@@ -49,11 +49,45 @@ void NaiveExecutor::Run() {
                              "setting the cmake flag ON_INFER=ON if you are "
                              "running Paddle Inference";
 #endif  // PADDLE_ON_INFERENCE
-  for (auto &op : ops_) {
-    VLOG(3) << std::this_thread::get_id() << " run " << op->Type()
-            << " on scope " << scope_;
-    op->SetIsCalledByExecutor(false);
-    op->Run(*scope_, place_);
+
+  if (op_prepared_) {
+    LOG(INFO) << "prepared run...";
+    for (auto &op : prepared_ops_) {
+      op.Run(scope_, place_);
+    }
+  } else {
+    LOG(INFO) << "parepared run...";
+    for (auto &op : ops_) {
+      op->SetIsCalledByExecutor(false);
+      op->Run(*scope_, place_);
+
+      if (dynamic_cast<OperatorWithKernel *>(op.get())) {
+        LOG(INFO) << "get op kernel";
+        // prepare ops
+        framework::OperatorWithKernel *op_kernel =
+            dynamic_cast<framework::OperatorWithKernel *>(op.get());
+        op->SetIsCalledByExecutor(false);
+        framework::RuntimeContext ctx(op->Inputs(), op->Outputs(), *scope_);
+        PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
+        prepared_ops_.emplace_back();
+        auto &latest = prepared_ops_.back();
+        latest.is_kernel = true;
+        latest.kernel = PreparedKernel::Prepare(ctx, *op_kernel, place_);
+      } else {
+        LOG(INFO) << "get op";
+        prepared_ops_.emplace_back();
+        auto &latest = prepared_ops_.back();
+        latest.is_kernel = false;
+        framework::RuntimeContext ctx(op->Inputs(), op->Outputs(), *scope_);
+
+        platform::DeviceContextPool &pool =
+            platform::DeviceContextPool::Instance();
+        auto *dev_ctx = pool.Get(place_);
+        latest.op.reset(new PreparedOp({*op, ctx, dev_ctx}));
+      }
+    }
+
+    op_prepared_ = true;
   }
 }
 
