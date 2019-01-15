@@ -120,7 +120,7 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
                      "min_row_size_to_use_multithread and "
                      "inner_op_parallelism is larger then 0, sparse update "
                      "will run in multithread mode")
-        .SetDefault(0);
+        .SetDefault(1000);
 
     AddComment(R"DOC(
 Adam Optimizer.
