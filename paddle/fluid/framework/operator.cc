@@ -939,20 +939,21 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     kernel_context_.exe_ctx =
         new ExecutionContext(*this, exec_scope, *dev_ctx, ctx);
     kernel_context_.kernel_func = &kernel_iter->second;
-
   };
 
-  //std::call_once(once_flag_, func);
+  // std::call_once(once_flag_, func);
   func();
 
   PADDLE_ENFORCE_NOT_NULL(kernel_context_.infer_shape_ctx);
   PADDLE_ENFORCE_NOT_NULL(kernel_context_.kernel_func);
 
-  this->InferShape(static_cast<RuntimeInferShapeContext*>(kernel_context_.infer_shape_ctx));
+  this->InferShape(
+      static_cast<RuntimeInferShapeContext*>(kernel_context_.infer_shape_ctx));
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
-  //kernel_iter->second();
-  (*static_cast<OpKernelFunc *>(kernel_context_.kernel_func))(*static_cast<ExecutionContext*>(kernel_context_.exe_ctx));
+  // kernel_iter->second();
+  (*static_cast<OpKernelFunc*>(kernel_context_.kernel_func))(
+      *static_cast<ExecutionContext*>(kernel_context_.exe_ctx));
 
 #ifdef PADDLE_WITH_CUDA
   if (!transfered_inplace_vars.empty()) {
