@@ -85,6 +85,8 @@ class TestConv2dOp(OpTest):
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
+        if not self.testcuda():
+            self.fuse_relu_before_depthwise_conv = False
         if self.fuse_relu_before_depthwise_conv:
             input = input - 0.5
             input -= (input < 0) * 0.1
