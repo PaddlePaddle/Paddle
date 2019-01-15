@@ -494,16 +494,16 @@ class AdamOpKernel : public framework::OpKernel<T> {
                   << " min_row_size_to_use_multithread="
                   << min_row_size_to_use_multithread;
           if (FLAGS_inner_op_parallelism > 10) {
-            LOG(WARNING) << "FLAGS_inner_op_parallelism "
-                         << FLAGS_inner_op_parallelism << " is two large!";
+            VLOG(1) << "FLAGS_inner_op_parallelism "
+                    << FLAGS_inner_op_parallelism << " is two large!";
           }
           auto& grad_rows = grad_merge.rows();
           std::unordered_map<size_t, int> row_id_to_grad_row_offset;
           size_t param_row_count = param.numel() / row_numel;
           if (param_row_count < 1000) {
-            LOG(WARNING) << "param_row_count should be larger then 1000 to use "
-                            "multi thread, currently "
-                         << param_row_count;
+            VLOG(1) << "param_row_count should be larger then 1000 to use "
+                       "multi thread, currently "
+                    << param_row_count;
           }
           for (size_t i = 0; i < grad_rows.size(); ++i) {
             row_id_to_grad_row_offset[grad_rows[i]] = i;
