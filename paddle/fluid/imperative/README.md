@@ -91,7 +91,7 @@ class Tracer {
 ```
 
 * Trace forward operations
-* Perform simple python level infer and return to user.
+* Perform quick shape/type infer, push kernel execution engine and return to user.
 * Perform autograd to generate gradients.
 * Clear trace.
 * Apply gradients with optimizers
@@ -112,6 +112,20 @@ when needed.
 ## Execution Engine
 
 Lazy execution of pushed C++ operations.
+
+## Device Placement
+
+* Operator executes on the inputs' device.
+* All inputs should live on the same device.
+* use `Var.to()` to explicitly move var to a device.
+
+## Save/Load Models
+
+TODO
+
+## I/O
+
+TODO
 
 ## Refactor
 
@@ -180,15 +194,6 @@ class MLP(fluid.imperative.Layer):
      dy_out = out._numpy()
      out._backward()
 ```
-
-
-## Save/Load Models
-
-TODO
-
-## I/O
-
-TODO
 
 # Plan
 
