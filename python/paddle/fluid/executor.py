@@ -455,7 +455,6 @@ class Executor(object):
             scope=None,
             return_numpy=True,
             use_program_cache=False,
-            infer_inputs=None,
             infer_attrs=None):
         """
         Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
@@ -476,7 +475,6 @@ class Executor(object):
             scope(Scope): the scope used to run this program, you can switch it to different scope. default is global_scope
             return_numpy(bool): if convert the fetched tensor to numpy
             use_program_cache(bool): set use_program_cache to true if program not changed compare to the last step.
-            infer_inputs(list): inference input tensors
             infer_attrs(dict): inference attributes, default inference batch size is 1
 
         Returns:
@@ -528,17 +526,14 @@ class Executor(object):
                 scope=scope,
                 return_numpy=return_numpy,
                 use_program_cache=use_program_cache)
-        else:
-            if infer_attrs is not None:
-                assert isinstance(infer_attrs, dict)
-                program._compile(scope, self.place)
-                assert program._infer_predictor
-                assert infer_inputs is not None
-                infer_batch_size = infer_attrs.get("batch_size", 1)
-                return program._infer_predictor.run(infer_inputs,
-                                                    infer_batch_size)
 
         program._compile(scope, self.place)
+        if infer_attrs is not None:
+            assert isinstance(infer_attrs, dict)
+            assert program._infer_predictor
+            infer_batch_size = infer_attrs.get("batch_size", 1)
+            return program._infer_predictor.run(feed, infer_batch_size)
+
         self.executor = program._executor
         if program._is_data_parallel:
             return self._run_parallel(

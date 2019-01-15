@@ -122,7 +122,7 @@ class CompiledProgram(object):
         raise NotImplementedError()
 
     def _with_inference_optimize(self):
-        self._infer_predictor = core.create_paddle_predictor(self._infer_config)
+        raise NotImplementedError()
 
     def _compile_data_parallel(self):
         if self._share_vars_from:
@@ -206,7 +206,8 @@ class CompiledProgram(object):
         self._compiled = True
 
         if hasattr(self, '_infer_config'):
-            self._with_inference_optimize()
+            self._infer_predictor = core.create_paddle_predictor(
+                self._infer_config)
 
         self._scope = scope
         self._place = place
