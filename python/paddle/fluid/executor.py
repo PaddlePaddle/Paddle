@@ -513,16 +513,6 @@ class Executor(object):
             fetch_list = []
 
         compiled = isinstance(program, compiler.CompiledProgram)
-
-        if infer_attrs is not None:
-            assert isinstance(program, compiler.CompiledProgram)
-            program._compile(scope, self.place)
-            assert isinstance(infer_attrs, dict)
-            assert program._infer_predictor
-            assert infer_inputs is not None
-            infer_batch_size = infer_attrs.get('batch_size', 1)
-            return program._infer_predictor.run(infer_inputs, infer_batch_size)
-
         # For backward compatibility, run directly.
         if not compiled:
             if not self.executor:
@@ -538,7 +528,15 @@ class Executor(object):
                 scope=scope,
                 return_numpy=return_numpy,
                 use_program_cache=use_program_cache)
-
+        else:
+            if infer_attrs is not None:
+                assert isinstance(infer_attrs, dict)
+                program._compile(scope, self.place)
+                assert program._infer_predictor
+                assert infer_inputs is not None
+                infer_batch_size = infer_attrs.get("batch_size", 1)
+                return program._infer_predictor.run(infer_inputs,
+                                                    infer_batch_size)
 
         program._compile(scope, self.place)
         self.executor = program._executor

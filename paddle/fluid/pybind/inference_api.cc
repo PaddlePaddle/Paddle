@@ -162,7 +162,7 @@ void BindNativePredictor(py::module *m) {
            [](NativePaddlePredictor &self,
               const std::vector<PaddleTensor> &inputs, int batch_size) {
              std::vector<PaddleTensor> outputs;
-             auto ret = self.Run(inputs, &outputs, batch_size);
+             self.Run(inputs, &outputs, batch_size);
              return outputs;
            })
       .def("get_input_tensor", &NativePaddlePredictor::GetInputTensor)
@@ -235,7 +235,7 @@ void BindAnalysisPredictor(py::module *m) {
            [](AnalysisPredictor &self, const std::vector<PaddleTensor> &inputs,
               int batch_size) {
              std::vector<PaddleTensor> outputs;
-             auto ret = self.Run(inputs, &outputs, batch_size);
+             self.Run(inputs, &outputs, batch_size);
              return outputs;
            })
       .def("get_input_tensor", &AnalysisPredictor::GetInputTensor)
