@@ -13,7 +13,9 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/operators/requantize_op.h"
+#ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
