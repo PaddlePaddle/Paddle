@@ -1,6 +1,6 @@
 # Overview
 
-Imperative Programming
+Imperative Programming is easier to learn, debug and try new ideas.
 
 # Related Works
 
@@ -37,12 +37,38 @@ class PyLayer(core.PyLayer):
   @staticmethod
   def backward(inputs):
     # any backward logic implemented with numpy io.
+
+
+
 ```
 
 
 ## Tracer
 
-Python Variable -> C++ VarBase -> C++ Variable -> C++ Tensor
+Current: Python Variable -> C++ VarBase -> C++ Variable -> C++ Tensor
+
+Longer term.
+```python
+
+# Parent class.
+class PyVarBase(object):
+  pass
+
+# Current python variable.
+class Variable(PyVarBase):
+  pass
+
+class IVariable(PyVarBase):
+  def __init__(self):
+    self._ivar = core.VarBase()
+
+  def to(device): pass
+  def value(): pass
+  def backward(): pass
+  def gradient_value(): pass
+  # operators to override.
+```
+
 
 
 ```cpp
@@ -62,10 +88,21 @@ class Tracer {
 };
 ```
 
+* Trace forward operations
+* Perform simple python level infer and return to user.
+* Perform autograd to generate gradients.
+* Clear trace.
+* Apply gradients with optimizers
+
 ## Autodiff
 
 Lots of research already.
 https://autodiff-workshop.github.io/
+https://en.wikipedia.org/wiki/Automatic_differentiation
+
+## Execution Engine
+
+Lazy execution of pushed C++ operations.
 
 ## Tests
 
@@ -75,7 +112,6 @@ https://autodiff-workshop.github.io/
 
 * All function layers with parameters converted to class Layers.
 * Models converted to imperative mode.
-
 
 # Examples
 
@@ -131,6 +167,10 @@ class MLP(fluid.imperative.Layer):
 ```
 
 
+## Save/Load Models
+
+TODO
+
 # Plan
 
 2.1，3 fulltime, Can run a few simple models. (Currently, 2 20% engs)
@@ -139,10 +179,9 @@ class MLP(fluid.imperative.Layer):
 
 6.1, 5 fulltime, Performance close to Pytorch, can run multi-devices. Release Beta.
 
-8.1, 5 fulltime, Works in general. Covert current models to use imperative mode.
+8.1, 5 fulltime, Works in general. Update existing models. Can compile to static graph, support more optimizations.
 
-12.1, 5 fulltime, Can compile to static graph, support more optimizations.
-
+12.1 Done.
 
 # Discussion
 
