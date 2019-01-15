@@ -62,13 +62,12 @@ class GRPCRequest {
   }
   virtual ~GRPCRequest() {}
 
-  RPCRequest* ParseIncommingVar(framework::Scope* scope) {
+  void ParseIncommingVar(framework::Scope* scope) {
     request_.reset(
         new GRPCVariableResponse(scope, request_handler_->dev_ctx()));
     service_->RequestAsyncUnary(
         static_cast<int>(req_type_), &ctx_, request_.get(), &responder_, cq_,
         cq_, reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
-    return rpc_request_.get();
   }
 
   void Process() {

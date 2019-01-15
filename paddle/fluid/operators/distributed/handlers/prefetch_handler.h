@@ -29,6 +29,7 @@ class PrefetchHandler final : public RequestHandler {
  public:
   bool Handle(RPCRequest* request) override;
   void Start(std::function<RPCRequest*(framework::Scope*)> start) override;
+  framework::Variable* GetVar(const std::string& varname) override;
 
   void SetPrefetchPreparedCtx(
       std::unordered_map<

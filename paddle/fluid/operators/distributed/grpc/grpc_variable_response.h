@@ -35,10 +35,7 @@ namespace distributed {
 
 class GRPCVariableResponse : public VariableResponse {
  public:
-  GRPCVariableResponse(const framework::Scope* scope,
-                       const platform::DeviceContext* dev_ctx)
-      : VariableResponse(scope, dev_ctx) {}
-
+  using VariableResponse::VariableResponse;
   virtual ~GRPCVariableResponse() {}
 
   int Parse(Source* source) override;

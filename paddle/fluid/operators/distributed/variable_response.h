@@ -52,11 +52,18 @@ class Source {
   virtual ::google::protobuf::io::ZeroCopyInputStream* contents() = 0;
 };
 
+typedef std::function<framework::Variable*(const std::string& varname)>
+    GetVarCallback;
+
 class VariableResponse {
  public:
-  VariableResponse(const framework::Scope* scope,
+  VariableResponse(framework::Variable* var,
                    const platform::DeviceContext* dev_ctx)
-      : scope_(scope), dev_ctx_(dev_ctx) {}
+      : dev_ctx_(dev_ctx), var_cache_(var) {}
+  // for cases that can not determin varname before head, use a callback
+  VariableResponse(GetVarCallback get_var_callback,
+                   const platform::DeviceContext* dev_ctx)
+      : dev_ctx_(dev_ctx), get_var_callback_(get_var_callback) {}
 
   virtual ~VariableResponse() {}
 
@@ -77,10 +84,12 @@ class VariableResponse {
 
   // should call parse first.
   framework::Variable* GetVar() {
-    if (LIKELY(var_cache_ != nullptr)) {
+    if (LIKELY(var_cache_)) {
       return var_cache_;
     }
-    var_cache_ = scope_->FindVar(meta_.varname());
+    PADDLE_ENFORCE_NOT_NULL(get_var_callback_);
+    var_cache_ = get_var_callback_(meta_.varname());
+    PADDLE_ENFORCE_NOT_NULL(var_cache_);
     return var_cache_;
   }
 
@@ -113,6 +122,7 @@ class VariableResponse {
   // framework::Scope* local_scope_ = nullptr;
 
   framework::Variable* var_cache_ = nullptr;
+  GetVarCallback get_var_callback_;
 
   sendrecv::VariableMessage meta_;
 };

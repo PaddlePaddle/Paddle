@@ -38,6 +38,11 @@ void PrefetchHandler::Start(
   start(local_scope_);
 }
 
+framework::Variable* PrefetchHandler::GetVar(const std::string& varname) {
+  // need create incomming var if not exist
+  return local_scope_->Var(varname);
+}
+
 bool PrefetchHandler::Handle(RPCRequest* request) {
   VLOG(4) << "RequestPrefetchHandler " << request->varname_
           << " outname: " << request->out_var_name_;

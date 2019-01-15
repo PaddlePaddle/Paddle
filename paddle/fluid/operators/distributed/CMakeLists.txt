@@ -36,7 +36,8 @@ if(WITH_GRPC)
     grpc_server grpc_client grpc_serde grpc_bbs grpc_vr
     handlers barrier rpc_server rpc_client
     collective_server collective_client
-    sendrecvop_utils variable_response)
+    sendrecvop_utils variable_response
+    grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
 
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set(RPC_DEPS sendrecvop_rpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
