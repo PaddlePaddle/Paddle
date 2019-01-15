@@ -137,7 +137,13 @@ struct SeqPoolTuples {
   typedef void (*func_type)(const T*, T*, const seq_pool_attr_t*);
 };
 
-typedef struct matmul_attr_s { int m, n, k; } matmul_attr_t;
+typedef struct matmul_attr_s {
+  int m, n, k;
+  void* packed_weight{nullptr};
+  matmul_attr_s() = default;
+  explicit matmul_attr_s(int m_, int n_, int k_, void* packed_weight_ = nullptr)
+      : m(m_), n(n_), k(k_), packed_weight(packed_weight_) {}
+} matmul_attr_t;
 
 template <typename T>
 struct MatMulTuples {

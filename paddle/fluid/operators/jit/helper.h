@@ -148,6 +148,10 @@ inline std::ostream& operator<<(std::ostream& os, const matmul_attr_t& attr) {
   return os;
 }
 
+// expose the method to pack matmul weight
+template <typename T>
+void pack_weights(const T* src, T* dst, int n, int k);
+
 }  // namespace jit
 }  // namespace operators
 }  // namespace paddle
