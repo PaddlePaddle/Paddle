@@ -38,8 +38,6 @@ class PyLayer(core.PyLayer):
   def backward(inputs):
     # any backward logic implemented with numpy io.
 
-
-
 ```
 
 
@@ -62,9 +60,13 @@ class IVariable(PyVarBase):
   def __init__(self):
     self._ivar = core.VarBase()
 
+  # Move var to a device.
   def to(device): pass
+  # Get var value.
   def value(): pass
+  # Trigger backward.
   def backward(): pass
+  # Get var's gradient value.
   def gradient_value(): pass
   # operators to override.
 ```
@@ -100,18 +102,22 @@ Lots of research already.
 https://autodiff-workshop.github.io/
 https://en.wikipedia.org/wiki/Automatic_differentiation
 
+Basically, trace the forward execution, and perform autodiff
+when needed.
+
+* Can be triggered by `backward()`.
+* Can select a block of code to trace and autodiff.
+* Use `require_grad` to drop some forward subgraph that doesn't need autodiff.
+
 ## Execution Engine
 
 Lazy execution of pushed C++ operations.
 
-## Tests
-
-* All op tests run once in static graph, once in imperative mode.
-
 ## Refactor
 
 * All function layers with parameters converted to class Layers.
-* Models converted to imperative mode.
+* Existing models converted to imperative mode.
+* All op tests run once in static graph, once in imperative mode.
 
 # Examples
 
@@ -138,6 +144,15 @@ class MyPyLayer(fluid.imperative.PyLayer):
     @staticmethod
     def backward(inputs):
         return np.array(dout) * (1 - np.square(np.array(out)))
+
+
+np_inp = np.ones([2, 2], np.float32)
+with fluid.imperative.guard():
+    my_py_layer = MyPyLayer()
+    outs = my_py_layer(np_inp)
+    dy_out = np.sum(outs[0]._numpy())
+    outs[0]._backward()
+    dy_grad = var_inp._gradient()
 
 
 class MLP(fluid.imperative.Layer):
@@ -168,6 +183,10 @@ class MLP(fluid.imperative.Layer):
 
 
 ## Save/Load Models
+
+TODO
+
+## I/O
 
 TODO
 
