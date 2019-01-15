@@ -209,14 +209,22 @@ class FC(layers.Layer):
     def __init__(self,
                  size,
                  param_attr=None,
+                 bias_attr=None,
                  num_flatten_dims=1,
-                 dtype=core.VarDesc.VarType.FP32):
+                 dtype=core.VarDesc.VarType.FP32,
+                 act=None,
+                 name=None):
         super(FC, self).__init__()
         self._size = size
         self._num_flatten_dims = num_flatten_dims
         self._dtype = dtype
         from ..layer_helper import LayerHelper
-        self._helper = LayerHelper('FC', param_attr=param_attr)
+        self._helper = LayerHelper(
+            'FC',
+            param_attr=param_attr,
+            bias_attr=bias_attr,
+            act=act,
+            name=name)
 
     def _build_once(self, input):
         input_shape = input.shape
@@ -247,4 +255,8 @@ class FC(layers.Layer):
             inputs={"X": [tmp]},
             outputs={"Out": out},
             attrs={"use_mkldnn": False})
-        return out
+        # add bias
+        pre_activation = self._helper.append_bias_op(
+            out, dim_start=self._num_flatten_dims)
+        # add activation
+        return self._helper.append_activation(pre_activation)
