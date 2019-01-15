@@ -32,8 +32,6 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
                    "Input(BBoxes) of MultiClassNMS should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Scores"),
                    "Input(Scores) of MultiClassNMS should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("ImInfo"),
-                   "Input(ImInfo) of MultiClassNMS should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of MultiClassNMS should not be null.");
 
@@ -42,9 +40,12 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     auto score_size = score_dims.size();
 
     if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE(score_size == 2 || score_size == 3,
+                     "The rank of Input(Scores) must be 2 or 3");
       if (score_size == 3) {
         PADDLE_ENFORCE_EQ(box_dims.size(), 3,
-                          "The rank of Input(BBoxes) must be 3.");
+                          "The rank of Input(BBoxes) must be 3 "
+                          "when the rank of Input(Scores) is 3");
         PADDLE_ENFORCE_EQ(score_dims.size(), 3,
                           "The rank of Input(Scores) must be 3.");
         PADDLE_ENFORCE(box_dims[2] == 4 || box_dims[2] == 8 ||
@@ -63,9 +64,15 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
             "3rd dimension of Input(Scores), which represents the "
             "predicted bboxes.");
       } else {
+        PADDLE_ENFORCE_EQ(box_dims.size(), 2,
+                          "The rank of Input(BBoxes) must be 2 "
+                          "when the rank of Input(Scores) is 2");
         PADDLE_ENFORCE(box_dims[1] % 4 == 0,
-                       "Then 1st dimension of Input(BBoxes)"
+                       "The 1st dimension of Input(BBoxes)"
                        "must be divisible by 4");
+        PADDLE_ENFORCE_EQ(box_dims[1] / 4, score_dims[1],
+                          "The 1st dimension of Input(BBoxes)"
+                          "must be 4 times of Input(Scores)");
       }
     }
     // Here the box_dims[0] is not the real dimension of output.
@@ -159,7 +166,7 @@ T PolyIoU(const T* box1, const T* box2, const size_t box_size,
   T bbox2_area = PolyArea<T>(box2, box_size, normalized);
   T inter_area = PolyOverlapArea<T>(box1, box2, box_size, normalized);
   if (bbox1_area == 0 || bbox2_area == 0 || inter_area == 0) {
-    // If coordinate values are is invalid
+    // If coordinate values are invalid
     // if area size <= 0,  return 0.
     return T(0.);
   } else {
@@ -305,12 +312,6 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         new_indices[label].push_back(idx);
       }
       if (scores_size == 2) {
-        /*for (size_t j = 0; j < score_index_pairs.size(); ++j) {
-          int label = score_index_pairs[j].second.first;
-          std::stable_sort(new_indices[label].begin(),
-                           new_indices[label].end());
-        }
-        */
         for (const auto& it : new_indices) {
           int label = it.first;
           std::stable_sort(new_indices[label].begin(),
@@ -371,7 +372,6 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* boxes = ctx.Input<LoDTensor>("BBoxes");
     auto* scores = ctx.Input<LoDTensor>("Scores");
-    auto* im_info = ctx.Input<LoDTensor>("ImInfo");
     auto* outs = ctx.Output<LoDTensor>("Out");
     bool use_clip = ctx.Attr<bool>("use_clip");
 
@@ -407,12 +407,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
       auto boxes_lod = boxes->lod().back();
       int64_t n = static_cast<int64_t>(boxes_lod.size() - 1);
       for (int i = 0; i < n; ++i) {
-        Tensor im_info_slice = im_info->Slice(i, i + 1);
         Tensor boxes_slice = boxes->Slice(boxes_lod[i], boxes_lod[i + 1]);
         Tensor scores_slice = scores->Slice(boxes_lod[i], boxes_lod[i + 1]);
-        if (use_clip) {
-          ClipTiledBoxes<T>(dev_ctx, im_info_slice, &boxes_slice);
-        }
         std::map<int, std::vector<int>> indices;
         int num_nmsed_out = 0;
         MultiClassNMS(ctx, scores_slice, boxes_slice, score_dims.size(),
@@ -473,20 +469,27 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("BBoxes",
-             "(Tensor) A 3-D Tensor with shape "
+             "Two types of bboxes are supported:"
+             "1. (Tensor) A 3-D Tensor with shape "
              "[N, M, 4 or 8 16 24 32] represents the "
              "predicted locations of M bounding bboxes, N is the batch size. "
              "Each bounding box has four coordinate values and the layout is "
-             "[xmin, ymin, xmax, ymax], when box size equals to 4.");
+             "[xmin, ymin, xmax, ymax], when box size equals to 4."
+             "2. (LoDTensor) A 2-D LoDTensor with shape"
+             "[N, 4 * num_class]. N is the number of bbox and "
+             "M represents the locations of bboxes in each class."
+             "The locations are represented by "
+             "[x1min, y1min, x1max, y1max, x2min, y2min, x2max, y2max ...]");
     AddInput("Scores",
-             "(Tensor) A 3-D Tensor with shape [N, C, M] represents the "
+             "Two types of scores are supported:"
+             "1. (Tensor) A 3-D Tensor with shape [N, C, M] represents the "
              "predicted confidence predictions. N is the batch size, C is the "
              "class number, M is number of bounding boxes. For each category "
              "there are total M scores which corresponding M bounding boxes. "
-             " Please note, M is equal to the 1st dimension of BBoxes. ");
-    AddInput("ImInfo",
-             "(Tensor) Information for image reshape is in shape (N, 3), "
-             "in format (height, width, scale)");
+             " Please note, M is equal to the 1st dimension of BBoxes. "
+             "2. (LoDTensor) A 2-D LoDTensor with shape"
+             "[N, num_class]. N is the number of bbox and"
+             "M represents the scores of bboxes in each class.");
     AddAttr<int>(
         "background_label",
         "(int, defalut: 0) "

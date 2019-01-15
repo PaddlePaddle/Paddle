@@ -37,11 +37,25 @@ class BoxCoderOp : public framework::OperatorWithKernel {
                         "The shape of PriorBox is [N, 4]");
       if (ctx->HasInput("PriorBoxVar")) {
         auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");
-        // PADDLE_ENFORCE_EQ(prior_box_dims, prior_box_var_dims);
+        PADDLE_ENFORCE(
+            prior_box_var_dims.size() == 1 || prior_box_var_dims.size() == 2,
+            "Input(PriorBoxVar) of BoxCoderOp should be 1 or 2.");
+        if (prior_box_var_dims.size() == 1) {
+          PADDLE_ENFORCE_EQ(
+              prior_box_var_dims[0], 4,
+              "The 1st dimension of Input(PriorBoxVar) should be 1"
+              "when the rank is 1.");
+        } else {
+          PADDLE_ENFORCE_EQ(
+              prior_box_dims, prior_box_var_dims,
+              "The dimension of Input(PriorBoxVar) should be equal to"
+              "the dimension of Input(PriorBox when the rank is 2.)");
+        }
       }
 
       auto code_type =
           GetBoxCodeType(ctx->Attrs().Get<std::string>("code_type"));
+      auto axis = ctx->Attrs<int>("axis");
       if (code_type == BoxCodeType::kEncodeCenterSize) {
         PADDLE_ENFORCE_EQ(target_box_dims.size(), 2,
                           "The rank of Input of TargetBox must be 2");
@@ -100,6 +114,11 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default true) "
                   "whether treat the priorbox as a noramlized box")
         .SetDefault(true);
+    AddAttr<int>("axis",
+                 "(int, default 1)"
+                 "which axis to broadcast for box decode")
+        .SetDefault(1)
+        .InEnum({0, 1});
     AddOutput("OutputBox",
               "(LoDTensor or Tensor) "
               "When code_type is 'encode_center_size', the output tensor of "
