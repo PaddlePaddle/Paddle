@@ -239,6 +239,17 @@ class FC(layers.Layer):
             shape=param_shape,
             dtype=self._dtype,
             is_bias=False)
+        print("create param: ", self._w.name, self._w.stop_gradient)
+
+        if self._helper.bias_attr:
+            size = list([self._size])
+            self._b = self._helper.create_parameter(
+                attr=self._helper.bias_attr,
+                shape=size,
+                dtype=self._dtype,
+                is_bias=True)
+        else:
+            self._b = None
 
     def forward(self, input):
         tmp = self._helper.create_variable_for_type_inference(self._dtype)
@@ -259,8 +270,17 @@ class FC(layers.Layer):
             outputs={"Out": pre_bias},
             attrs={"use_mkldnn": False})
 
-        pre_activation = self._helper.append_bias_op(
-            pre_bias, dim_start=self._num_flatten_dims)
+        if self._b:
+            pre_activation = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
+            self._helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [pre_bias],
+                        'Y': [self._b]},
+                outputs={'Out': [pre_activation]},
+                attrs={'axis': self._num_flatten_dims})
+        else:
+            pre_activation = pre_bias
         return self._helper.append_activation(pre_activation)
 
 
