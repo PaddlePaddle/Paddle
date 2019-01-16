@@ -313,13 +313,12 @@ void CompareDeterministic(
   int num_times = FLAGS_repeat;
   auto predictor = CreateTestPredictor(config, FLAGS_use_analysis);
 
-  // warmup run
   std::vector<PaddleTensor> warmup_outputs, outputs;
-  predictor->Run(inputs[0], &warmup_outputs, batch_size);
-
   // run num_times to Compare Deterministic Result.
-  for (int i = 0; i < num_times; i++) {
-    for (size_t j = 0; j < inputs.size(); j++) {
+  for (size_t j = 0; j < inputs.size(); j++) {
+    // warmup run
+    predictor->Run(inputs[j], &warmup_outputs, batch_size);
+    for (int i = 0; i < num_times; i++) {
       predictor->Run(inputs[j], &outputs, batch_size);
       CompareResult(outputs, warmup_outputs);
     }
