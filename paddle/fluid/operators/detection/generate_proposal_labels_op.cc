@@ -232,7 +232,6 @@ std::vector<Tensor> SampleRoisForOneImage(
     const float fg_thresh, const float bg_thresh_hi, const float bg_thresh_lo,
     const std::vector<float>& bbox_reg_weights, const int class_nums,
     std::minstd_rand engine, bool use_random) {
-  // auto rpn_rois_et = framework::EigenTensor<T, 2>::From(*rpn_rois);
   auto im_scale = im_info.data<T>()[2];
 
   Tensor rpn_rois;
@@ -242,7 +241,6 @@ std::vector<Tensor> SampleRoisForOneImage(
   for (int i = 0; i < rpn_rois.numel(); ++i) {
     rpn_rois_dt[i] = rpn_rois_in_dt[i] / im_scale;
   }
-  // rpn_rois_et = rpn_rois_et / im_scale;
 
   Tensor boxes;
   int proposals_num = gt_boxes.dims()[0] + rpn_rois.dims()[0];
