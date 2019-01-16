@@ -347,9 +347,8 @@ class ControlFlowGraph(object):
                             continue
                         if x == cache_var:
                             if PRINT_LOG:
-                                print("x : ",
-                                      cpt.to_text(x), " cache : ",
-                                      cpt.to_text(cache_var), " is same var!")
+                                print("x : ", cpt.to_text(x), " cache : ",
+                                       cpt.to_text(cache_var), " is same var!")
                             break
 
                         x_dtype = self._find_var(block_desc, x,
