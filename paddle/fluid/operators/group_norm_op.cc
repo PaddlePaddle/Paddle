@@ -104,7 +104,7 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     // check input
     PADDLE_ENFORCE(ctx->HasInput("Y"),
-                   "Input(X) of GroupNormOp should not be null.");
+                   "Input(Y) of GroupNormOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Mean"),
                    "Input(Mean) of GroupNormOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Variance"),
@@ -146,14 +146,30 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class NoInputGradOpDescMaker
-    : public paddle::framework::CheckInputGradOpDescMaker<true> {
+class GroupNormGradMaker : public framework::SingleGradOpDescMaker {
  public:
-  using CheckInputGradOpDescMaker::CheckInputGradOpDescMaker;
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
-  bool CheckInput(const std::string &input_name) const {
-    if (input_name == "X") return false;
-    return true;
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad = new framework::OpDesc();
+    grad->SetType("group_norm_grad");
+
+    for (auto &input_param : this->InputNames()) {
+      if (input_param != "X")
+        grad->SetInput(input_param, this->Input(input_param));
+      grad->SetOutput(framework::GradVarName(input_param),
+                      this->InputGrad(input_param, true));
+    }
+
+    for (auto &output_param : this->OutputNames()) {
+      grad->SetInput(output_param, this->Output(output_param));
+      grad->SetInput(framework::GradVarName(output_param),
+                     this->OutputGrad(output_param));
+    }
+
+    grad->SetAttrMap(this->Attrs());
+
+    return std::unique_ptr<framework::OpDesc>(grad);
   }
 };
 
@@ -162,7 +178,7 @@ class NoInputGradOpDescMaker
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(group_norm, ops::GroupNormOp, ops::GroupNormOpMaker,
-                  ops::NoInputGradOpDescMaker);
+                  ops::GroupNormGradMaker);
 REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp);
 REGISTER_OP_CPU_KERNEL(
     group_norm, ops::GroupNormKernel<paddle::platform::CPUDeviceContext, float>,

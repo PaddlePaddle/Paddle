@@ -415,14 +415,34 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
                                  customized_type_value);
 }
 
-class NoOutputGradOpDescMaker
-    : public paddle::framework::CheckInputGradOpDescMaker<true> {
+class Conv2dGradMaker : public framework::SingleGradOpDescMaker {
  public:
-  using CheckInputGradOpDescMaker::CheckInputGradOpDescMaker;
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
-  bool CheckInput(const std::string& input_name) const {
-    if (input_name == "Output") return false;
-    return true;
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* grad = new framework::OpDesc();
+    grad->SetType(this->GradOpType());
+
+    for (auto& input_param : this->InputNames()) {
+      if (input_param != "Output")
+        grad->SetInput(input_param, this->Input(input_param));
+      grad->SetOutput(framework::GradVarName(input_param),
+                      this->InputGrad(input_param, true));
+    }
+
+    for (auto& output_param : this->OutputNames()) {
+      grad->SetInput(output_param, this->Output(output_param));
+      grad->SetInput(framework::GradVarName(output_param),
+                     this->OutputGrad(output_param));
+    }
+
+    grad->SetAttrMap(this->Attrs());
+
+    return std::unique_ptr<framework::OpDesc>(grad);
+  }
+
+  virtual std::string GradOpType() const {
+    return this->ForwardOpType() + "_grad";
   }
 };
 
@@ -431,12 +451,12 @@ class NoOutputGradOpDescMaker
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  ops::ConvOpInferVarType, ops::NoOutputGradOpDescMaker);
+                  ops::ConvOpInferVarType, ops::Conv2dGradMaker);
 REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad);
 
 // depthwise convolution op
 REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  ops::ConvOpInferVarType, ops::NoOutputGradOpDescMaker);
+                  ops::ConvOpInferVarType, ops::Conv2dGradMaker);
 REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
 
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
