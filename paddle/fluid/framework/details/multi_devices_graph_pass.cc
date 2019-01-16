@@ -30,6 +30,7 @@
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace framework {
@@ -420,7 +421,6 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
 }
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-
 template <typename DeviceContext, typename T>
 void InitialDGCVar(Scope *scope, DeviceContext *dev_ctx,
                    const std::string &var_name) {
@@ -429,67 +429,84 @@ void InitialDGCVar(Scope *scope, DeviceContext *dev_ctx,
   set_zero(dev_ctx, tensor, static_cast<T>(0.0));
 }
 
-std::unique_ptr<VarHandle> CreateDGCVarNode(ir::Graph *graph,
-                                            const framework::VarDesc &desc,
-                                            const std::string &name) {
-  std::unqiue_ptr<VarHandle> tmp(graph->CreateVarNode(&desc));
-  return tmp;
+std::unique_ptr<framework::OpDesc> CreateDGCOpDesc(
+    const std::stirng &u_name, const std::stirng &v_name,
+    const std::stirng &grad_name, const std::stirng &grad_local_name,
+    float m = 0.9, float ratio = 0.001) {
+  std::unique_ptr<framework::OpDesc> desc(new framework::OpDesc);
+  desc->SetType("dgc");
+
+  desc->SetAttr("m", Attribute(m));
+  desc->SetAttr("ratio", Attribute(ratio));
+
+  desc->SetInput("U", std::vector<std::string>({u_name}));
+  desc->SetInput("V", std::vector<std::string>({v_name}));
+  desc->SetInput("Grad", std::vector<std::string>({grad_name}));
+  desc->SetInput("GradLocal", std::vector<std::string>({grad_local_name}));
+
+  desc->SetOutput("U", std::vector<std::string>({u_name}));
+  desc->SetOutput("V", std::vector<std::string>({v_name}));
+  desc->SetOutput("EncodeGradient", std::vector<std::string>({grad_name}));
+  desc->SetOutput("GradLocal", std::vector<std::string>({grad_local_name}));
+
+  return desc;
 }
 
-void MultiDevSSAGraphBuilderBase::CreateDGCOp(ir::Graph *graph,
-                                              size_t num_places,
-                                              const std::string &p_name,
-                                              const std::string &grad_name,
-                                              float m, float ratio) const {
+void DistSSAGraphBuilder::CreateDGCOpOrNot(ir::Graph *graph, size_t num_places,
+                                           const std::string &p_name,
+                                           const std::string &grad_name,
+                                           float m, float ratio) {
+  if (!strategy_.enable_dgc_) {
+    return;
+  }
+
+  auto grad_desc = all_vars_.at(grad_name);
+  PADDLE_ENFORCE_NOT_NULL(grad_desc);
+  auto dim = framework::make_ddim(grad_desc->GetShape());
+  int64_t numel = framework::product(dim);
+
+  if (numel < 4096 || grad_desc->GetDataType() != proto::VarType::FP32) {
+    LOG(INFO) << "skip DGCOP because numel:" << numel
+              << ", datatype:" << grad_desc->GetDataType();
+    return;
+  }
+
+  LOG(INFO) << "Enter DGCOP mode numel:" << numel
+            << ", datatype:" << grad_desc->GetDataType();
+
   auto u_name = p_name + "_dgc_u_";
   auto v_name = p_name + "_dgc_v_";
   auto grad_local_name = p_name + "_dgc_grad_local_";
   std::vector<std::string> names{u_name, v_name, grad_local_name};
 
-  framework::OpDesc desc;
-  desc.SetType("dgc");
-
-  desc.SetAttr("m", Attribute(m));
-  desc.SetAttr("ratio", Attribute(ratio));
-
-  desc.SetInput("U", std::vector<std::string>({u_name}));
-  desc.SetInput("V", std::vector<std::string>({v_name}));
-  desc.SetInput("Grad", std::vector<std::string>({grad_name}));
-  desc.SetInput("GradLocal", std::vector<std::string>({grad_local_name}));
-
-  desc.SetOutput("U", std::vector<std::string>({u_name}));
-  desc.SetOutput("V", std::vector<std::string>({v_name}));
-  desc.SetOutput("EncodeGradient", std::vector<std::string>({grad_name}));
-  desc.SetOutput("GradLocal", std::vector<std::string>({grad_local_name}));
-
+  auto dgc_op_desc =
+      CreateDGCOpDesc(u_name, v_name, grad_name, grad_local_name);
   for (size_t i = 0; i < num_places; ++i) {
     // insert DGCop.
     auto place = places_[i];
     auto scope = local_scopes_[i];
-    graph->Get<GraphOps>(kGraphOps).emplace_back(
-        new ComputationOpHandle(graph->CreateOpNode(&desc), s, p, i));
+    graph->Get<GraphOps>(kGraphOps).emplace_back(new ComputationOpHandle(
+        graph->CreateOpNode(&dgc_op_desc), sope, place, i));
 
-    // Add inputs and outputs.
     auto *op_handle = graph->Get<GraphOps>(kGraphOps).back();
     auto &vars = graph->Get<GraphVars>(kGraphVars)[i][grad_name];
-    PADDLE_ENFORCE(!vars.empty());
-    auto &prev_grad = vars.back();
-    op_handle->AddInput(prev_grad);
-    for (auto name : names) {
-      PADDLE_ENFORCE(s->FindVar(name) == nullptr, "%s shouled not created",
-                     name);
-      InitialDGCVar(s, dev_ctx, name);
-
-      framework::VarDesc var_desc(all_vars_.at(p_name));
-      var_desc.SetName(name);
-      op_handle->AddInput(graph->CreateVarNode(&desc));
-    }
+    op_handle->AddInput(vars.back());
 
     auto var = new VarHandle(
         graph->CreateEmptyNode(grad_name, ir::Node::Type::kVariable),
         vars.size(), i, grad_name, p);
     vars.emplace_back(var);
     op_handle->AddOutput(var);
+
+    for (auto name : names) {
+      PADDLE_ENFORCE(scope->FindVar(name) == nullptr,
+                     "%s shouled not be created", name);
+      InitialDGCVar<float>(scope, dev_ctx, name);
+
+      framework::VarDesc var_desc(grad_desc);
+      var_desc.SetName(name);
+      op_handle->AddInput(graph->CreateVarNode(&desc));
+    }
   }
 }
 #endif
@@ -990,10 +1007,7 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
         CreateReduceOp(result, g_name, 0);
         CreateBroadcastOp(result, g_name, 0);
       } else {
-        // VLOG(10) << "enable_dgc:" << strategy_.enable_dgc_
-        // << ", numel:" << var_size;
-        // FIXME(gongwb): 0.9?
-        CreateDGCOp(result, places_.size(), p_name, g_name);
+        CreateDGCOpOrNot(result, places_.size(), p_name, g_name);
         CreateAllReduceOp(result, g_name);
       }
       break;

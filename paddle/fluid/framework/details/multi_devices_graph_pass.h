@@ -183,6 +183,10 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
 
   mutable std::vector<std::unordered_set<std::string>> bcast_var_name_set_;
   mutable bool need_broadcast_var_{false};
+
+  void CreateDGCOpOrNot(ir::Graph *graph, size_t num_places,
+                        const std::string &p_name, const std::string &grad_name,
+                        float m = 0.9, float ratio = 0.001);
 };
 
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder();
