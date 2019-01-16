@@ -36,7 +36,7 @@ class BoxClipOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
                         "The rank of Input(InputBox) in BoxClipOp must be 2");
       PADDLE_ENFORCE_EQ(im_info_dims[1], 2,
-                        "The last dimension of ImInfo must be 2");
+                        "The last dimension of ImInfo must be 3");
     }
     ctx->ShareDim("InputBox", /*->*/ "OutputBox");
     ctx->ShareLoD("InputBox", /*->*/ "OutputBox");
@@ -51,8 +51,8 @@ class BoxClipOpMaker : public framework::OpProtoAndCheckerMaker {
              "InputBox is a LoDTensor with shape [..., 4] holds 4 points"
              "in last dimension in format [xmin, ymin, xmax, ymax]");
     AddInput("ImInfo",
-             "(Tensor) Information for image reshape is in shape (N, 2), "
-             "in format (height, width)");
+             "(Tensor) Information for image reshape is in shape (N, 3), "
+             "in format (height, width, im_scale)");
     AddOutput("OutputBox",
               "(LoDTensor) "
               "OutputBox is a LoDTensor with the same shape as InputBox"
