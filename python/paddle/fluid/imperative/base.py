@@ -45,7 +45,7 @@ def to_variable(value, block=None):
             name=None,
             shape=value.shape,
             dtype=value.dtype)
-        var = py_var._ivar.value
+        var = py_var._ivar.value()
         tensor = var.get_tensor()
         tensor.set(value, core.CPUPlace())
         return py_var

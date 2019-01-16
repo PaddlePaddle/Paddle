@@ -390,8 +390,8 @@ class Optimizer(object):
                     grad_var = Variable(
                         block=loss.block,
                         name=param._ivar._grad_name(),
-                        stop_gradient=True)
-                    grad_var._value = param._ivar.grad_value
+                        stop_gradient=True,
+                        ivar=param._ivar._grad_ivar())
                     params_grads.append((param, grad_var))
             with program_guard(program, startup_program):
                 optimize_ops = self._create_optimization_pass(params_grads)
@@ -822,7 +822,8 @@ class AdamOptimizer(Optimizer):
                 "beta1": self._beta1,
                 "beta2": self._beta2,
                 "epsilon": self._epsilon,
-                "lazy_mode": self._lazy_mode
+                "lazy_mode": self._lazy_mode,
+                "min_row_size_to_use_multithread": 1000
             },
             stop_gradient=True)
 
