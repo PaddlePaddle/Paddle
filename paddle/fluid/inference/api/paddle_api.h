@@ -180,11 +180,11 @@ class PaddlePredictor {
     return nullptr;
   }
   /**
-   * \brief Get an unmutable tensor without copy.
+   * \brief Get an inmutable tensor without copy.
    *
    * NOTE Only works in AnalysisPredictor.
-   * One can use this API to get any temporary tensors in the predictor, read
-   * it.
+   * One can use this API to get any temporary tensors in the predictor, and
+   * read it.
    */
   virtual std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
       const std::string& name) {
