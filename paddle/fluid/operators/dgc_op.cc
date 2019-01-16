@@ -63,22 +63,22 @@ class DGCOp : public framework::OperatorWithKernel {
   }
 };
 
+/*
 class DGCOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  public:
   void operator()(const framework::OpDesc &op_desc,
                   framework::BlockDesc *block) const override {
     return std::unordered_map<std::string, std::string>{
-        {"Grad", /*->*/ "EncodeGrad"}};
+        {"Grad", "EncodeGrad"}};
   }
 };
+*/
 
 class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("U", "(Tensor) Middle tensor of DGC");
     AddInput("V", "(Tensor) Middle tensor of DGC");
-    AddAttr("m", "(Scalar) Momentum correction parameter.");
-    AddAttr("m", "(Scalar) Momentum correction parameter.");
     AddInput("Grad", "(Tensor) Input gradient");
     AddInput("GradLocal", "(Tensor) Local gradient for accumulation.");
     AddOutput("EncodeGrad",
@@ -101,5 +101,4 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(dgc, ops::DGCOp, ops::DGCOpMaker,
-                             ops::MulOpInferVarType);
+REGISTER_OP_WITHOUT_GRADIENT(dgc, ops::DGCOp, ops::DGCOpMaker);

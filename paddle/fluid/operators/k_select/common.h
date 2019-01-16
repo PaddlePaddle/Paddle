@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -73,3 +73,5 @@ inline int GET_BLOCKS(const int N) {
 }
 
 void RandomizeFloat(void* dest, const int count, const int seed);
+void FeedInputFloat(float* dest, const int count, const float* src,
+                    const int size);

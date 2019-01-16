@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-#include "paddle/fluid/operators/k_select/k_select.h"
+#include "k_select.h"
 
 #define FABS(a) ((a != -INFINITY) ? fabs(a) : a)
+
+__device__ int blockSyncCnt = 0;
+__device__ int blockSyncCnt2 = 0;
 
 unsigned int nextPow2(unsigned int x) {
   --x;
@@ -32,17 +34,22 @@ static unsigned int iDivUp(unsigned int dividend, unsigned int divisor) {
                                      : (dividend / divisor + 1);
 }
 
-void getNumBlocksAndThreads(int n, int maxBlocks, int maxThreads,
-                            int& blocks,     // NOLINT
-                            int& threads) {  // NOLINT
+void getNumBlocksAndThreads(int n, int& blocks, int& threads) {
   if (n == 1) {
     threads = 1;
     blocks = 1;
   } else {
-    threads = (n < maxThreads) ? nextPow2(n / 2) : maxThreads;
+    threads = (n < MAX_THREADS) ? nextPow2(n / 2) : MAX_THREADS;
     blocks = max(1, n / (threads * 2));
   }
-  blocks = min(maxBlocks, blocks);
+  blocks = min(MAX_BLOCKS, blocks);
+}
+
+int get_buffer_size(int count) {
+  int blocks;
+  int threads;
+  getNumBlocksAndThreads(count, blocks, threads);
+  return 2 * blocks * threads;
 }
 
 template <typename T>
@@ -150,9 +157,10 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
 
 template <typename T, int MaxLength, int BlockSize>
 __device__ __forceinline__ T BlockReduce(Pair<T>* sh_topk, int* maxid,
-                                         Pair<T> topk[],  // T** kth,
-                                         int* beam, int* k, const int tid,
-                                         const int warp) {
+                                         Pair<T> topk[], int* beam, int* k,
+                                         const int tid, const int warp,
+                                         T** topVal = nullptr,
+                                         int** topIds = nullptr) {
   T ret = -INFINITY;
   while (true) {
     __syncthreads();
@@ -174,6 +182,12 @@ __device__ __forceinline__ T BlockReduce(Pair<T>* sh_topk, int* maxid,
     }
     __syncthreads();
 
+    if (tid == 0 && topVal != nullptr && topIds != nullptr) {
+      **topVal = sh_topk[maxid[0]].v;
+      **topIds = sh_topk[maxid[0]].id;
+      (*topVal)++;
+      (*topIds)++;
+    }
     if (tid == maxid[0]) (*beam)++;
     if (--(*k) == 0) {
       if (tid == 0) {
@@ -188,7 +202,7 @@ __device__ __forceinline__ T BlockReduce(Pair<T>* sh_topk, int* maxid,
         sh_topk[tid] = topk[*beam];
       }
     }
-    // NOTE(zcd): temporary solution
+
     unsigned mask = 0u;
     CREATE_SHFL_MASK(mask, true);
 
@@ -197,6 +211,40 @@ __device__ __forceinline__ T BlockReduce(Pair<T>* sh_topk, int* maxid,
     }
   }
   return ret;
+}
+
+template <typename T, int MaxLength, int BlockSize>
+__global__ void KeGetTopKShort(T* output, const T* src, int lds, int dim, int k,
+                               T* value, int* index) {
+  __shared__ Pair<T> sh_topk[BlockSize];
+  __shared__ int maxid[BlockSize / 2];
+  const int warp = threadIdx.x / 32;
+  T kth = -INFINITY;
+
+  Pair<T> topk[MaxLength];
+  int beam = MaxLength;
+  Pair<T> max;
+  bool is_empty = false;
+  bool firststep = true;
+
+  for (int k = 0; k < MaxLength; k++) {
+    topk[k].set(-INFINITY, -1);
+  }
+  while (k) {
+    ThreadGetTopK<T, MaxLength, BlockSize>(topk, &beam, k,
+                                           src + blockIdx.x * lds, &firststep,
+                                           &is_empty, &max, dim, threadIdx.x);
+
+    sh_topk[threadIdx.x] = topk[0];
+    T temp = BlockReduce<T, MaxLength, BlockSize>(
+        sh_topk, maxid, topk, &beam, &k, threadIdx.x, warp, &value, &index);
+    if (temp != -INFINITY) {
+      kth = temp;
+    }
+  }
+  if (kth != -INFINITY) {
+    output[blockIdx.x] = kth;
+  }
 }
 
 template <typename T, int MaxLength, int BlockSize>
@@ -248,6 +296,242 @@ __global__ void KeGetTotalTopk(volatile T* data, int n) {
   if (bid == 0 && tid == 0) {
     data[0] = res / n;
   }
+}
+
+template <typename T>
+__device__ void findMinMaxCrossBlock(T thr_min, T thr_max, T* sh_min, T* sh_max,
+                                     int bid, int blocksize, T* minmax) {
+  int warp_id = threadIdx.x / warpSize;
+  int lane_id = threadIdx.x % warpSize;
+  int warp_nb = (blocksize % warpSize == 0) ? (blocksize / warpSize)
+                                            : (blocksize / warpSize + 1);
+
+#pragma unroll
+  for (int i = 1; i <= warpSize; i *= 2) {
+    uint32_t m = 0xffffffff;
+    T min_val = CudaShuffleUpSync(m, thr_min, i, warpSize);
+    T max_val = CudaShuffleUpSync(m, thr_max, i, warpSize);
+    if (lane_id >= i) {
+      if (min_val < thr_min) thr_min = min_val;
+      if (max_val > thr_max) thr_max = max_val;
+    }
+  }
+  if (lane_id == warpSize - 1) {
+    sh_min[warp_id] = thr_min;
+    sh_max[warp_id] = thr_max;
+  }
+  __syncthreads();
+
+  if (warp_id == 0 && lane_id < warp_nb) {
+    T warp_min = sh_min[lane_id];
+    T warp_max = sh_max[lane_id];
+    int m = (1 << warp_nb) - 1;
+    for (int i = 1; i <= warp_nb; i *= 2) {
+      T min_val = CudaShuffleUpSync(m, warp_min, i, warp_nb);
+      T max_val = CudaShuffleUpSync(m, warp_max, i, warp_nb);
+      if (lane_id >= i) {
+        if (min_val < warp_min) warp_min = min_val;
+        if (max_val > warp_max) warp_max = max_val;
+      }
+    }
+    sh_min[lane_id] = warp_min;
+    sh_max[lane_id] = warp_max;
+  }
+  __syncthreads();
+
+  if (lane_id == warpSize - 1 && minmax != NULL) {
+    thr_min = sh_min[warp_nb - 1];
+    thr_max = sh_max[warp_nb - 1];
+    minmax[bid * 2] = thr_max;
+    minmax[bid * 2 + 1] = thr_min;
+    __threadfence();
+  }
+}
+
+template <typename T>
+__device__ void findMinMaxCrossBlock(T thr_min, T thr_max, T* sh_min, T* sh_max,
+                                     T* minmax = NULL) {
+  findMinMaxCrossBlock(thr_min, thr_max, sh_min, sh_max, blockIdx.x, blockDim.x,
+                       minmax);
+}
+
+template <typename T>
+__global__ void KeMinMax(const T* input, int count, T* minmax, int chunks) {
+  extern __shared__ T shared_memory[];
+  __shared__ int islast;
+  T* sh_max = shared_memory;
+  T* sh_min = shared_memory + blockDim.x;
+  int id = threadIdx.x + blockIdx.x * blockDim.x;
+  T thr_min = FABS(input[id]);
+  T thr_max = thr_min;
+  id += blockDim.x * gridDim.x;
+  for (int i = id; i < count; i += blockDim.x * gridDim.x) {
+    float val = FABS(input[i]);
+    if (val < thr_min) {
+      thr_min = val;
+    } else if (val > thr_max) {
+      thr_max = val;
+    }
+  }
+
+  findMinMaxCrossBlock<T>(thr_min, thr_max, sh_min, sh_max, minmax + 2);
+  __syncthreads();
+
+  if (threadIdx.x == 0) {
+    int value = atomicAdd(&blockSyncCnt, 1);
+    islast = (value == gridDim.x - 1);
+  }
+  __syncthreads();
+
+  if (islast) {
+    blockSyncCnt = 0;
+    T min_val = INFINITY;
+    T max_val = -INFINITY;
+    if (threadIdx.x < gridDim.x) {
+      max_val = minmax[2 * threadIdx.x + 2];
+      min_val = minmax[2 * threadIdx.x + 3];
+    }
+    findMinMaxCrossBlock<T>(min_val, max_val, sh_min, sh_max, 0, gridDim.x,
+                            minmax);
+    __syncthreads();
+    if (threadIdx.x == 0) {
+      max_val = minmax[0];
+      min_val = minmax[1];
+      minmax[1] = (max_val - min_val) / chunks;
+    }
+  }
+}
+
+template <typename T, int MAX_LENGTH>
+__device__ void bucketCountCrossBlock(int* cnt, int* sh_cnt, int* block_count) {
+  int warp_id = threadIdx.x / warpSize;
+  int lane_id = threadIdx.x % warpSize;
+  int warp_nb = blockDim.x / warpSize;
+  for (int j = 0; j < MAX_LENGTH; j++) {
+#pragma unroll
+    for (int i = 1; i <= warpSize; i *= 2) {
+      uint32_t m = 0xffffffff;
+      int n = CudaShuffleUpSync(m, cnt[j], i, warpSize);
+      if (lane_id >= i) cnt[j] += n;
+    }
+    if (lane_id == warpSize - 1) {
+      sh_cnt[warp_id * MAX_LENGTH + j] = cnt[j];
+    }
+  }
+  __syncthreads();
+
+  for (int j = 0; j < MAX_LENGTH; j++) {
+    if (warp_id == 0 && lane_id < warp_nb) {
+      int warp_sum = sh_cnt[j + lane_id * MAX_LENGTH];
+      int m = (1 << warp_nb) - 1;
+      for (int i = 1; i <= warp_nb; i *= 2) {
+        int n = CudaShuffleUpSync(m, warp_sum, i, warp_nb);
+        if (lane_id >= i) warp_sum += n;
+      }
+      sh_cnt[j + lane_id * MAX_LENGTH] = warp_sum;
+    }
+  }
+  __syncthreads();
+
+  if (lane_id == warpSize - 1) {
+    for (int j = 0; j < MAX_LENGTH; j++) {
+      block_count[blockIdx.x * MAX_LENGTH + j] =
+          sh_cnt[(warp_nb - 1) * MAX_LENGTH + j];
+    }
+    __threadfence();
+  }
+}
+
+template <typename T, int MAX_LENGTH>
+__device__ void bucketCount(const T* input, int count, int* block_count,
+                            T* pmax, T* pdel, int* pk, int* pkmin) {
+  extern __shared__ int shm[];
+  __shared__ int islast;
+  int* sh_cnt = shm;
+  T max = *pmax;
+  T del = *pdel;
+  if (del <= 0) return;
+  int cnt[MAX_LENGTH];
+
+  for (int i = 0; i < MAX_LENGTH; i++) cnt[i] = 0;
+
+  for (int i = threadIdx.x + blockDim.x * blockIdx.x; i < count;
+       i += gridDim.x * blockDim.x) {
+    T val = FABS(input[i]);
+    if (val > max) continue;
+    int index = (max - val) / del;
+    if (index < MAX_LENGTH) {
+      cnt[index]++;
+    }
+  }
+
+  bucketCountCrossBlock<T, MAX_LENGTH>(cnt, sh_cnt, block_count);
+
+  if (threadIdx.x == 0) {
+    int value = atomicAdd(&blockSyncCnt, 1);
+    islast = (value == gridDim.x - 1);
+  }
+  __syncthreads();
+
+  if (islast && threadIdx.x == 0) {
+    blockSyncCnt = 0;
+    for (int i = 1; i < gridDim.x; i++) {
+      for (int j = 0; j < MAX_LENGTH; j++) {
+        block_count[j] += block_count[j + i * MAX_LENGTH];
+      }
+    }
+    for (int j = 1; j < MAX_LENGTH; j++) {
+      block_count[j] += block_count[j - 1];
+    }
+    int k = *pk;
+    int kmin = *pkmin;
+    int prev_cnt = 0;
+    int j = 0;
+    for (; j < MAX_LENGTH; j++) {
+      if (block_count[j] > k) {
+        if (j == 0) {
+          *pdel = del / 4;
+          break;
+        }
+        prev_cnt = block_count[j - 1];
+        if (prev_cnt < kmin) {
+          *pdel = del / 4;
+          *pmax = max - j * del;
+          *pk -= prev_cnt;
+          *pkmin -= prev_cnt;
+          break;
+        }
+        *pmax = max - j * del;
+        *pdel = 0;
+        break;
+      } else if (block_count[j] == k) {
+        *pdel = 0;
+        *pmax = max - (j + 1) * del;
+        *pdel = 0;
+        break;
+      }
+    }
+    if (j == MAX_LENGTH) {
+      prev_cnt = block_count[MAX_LENGTH - 1];
+      *pmax = max - MAX_LENGTH * del;
+      *pk -= prev_cnt;
+      *pkmin -= prev_cnt;
+    }
+    __threadfence();
+    return;
+  }
+}
+
+template <typename T, int MAX_LENGTH>
+__global__ void KeFindKth(const T* input, int count, int* block_count, T* pmax,
+                          T* pdel, int* pk, int* pkmin, int first, int k = -1) {
+  if (first == 1) {
+    *pk = k;
+    *pkmin = (int)((float)k * 0.8);
+  } else {
+    if (*pdel == 0) return;
+  }
+  bucketCount<T, MAX_LENGTH>(input, count, block_count, pmax, pdel, pk, pkmin);
 }
 
 template <typename T>
@@ -347,13 +631,38 @@ __global__ void KeEncode(const T* data, int count, int* scan, T* value,
   }
 }
 
-void k_select(const float* input, int count, void* encode, int* scan, int k,
-              cudaStream_t stream) {
-  const float sr = static_cast<float>(k) / count;
-  if (sr > 0.1) {
-    return;
+template <typename T>
+__global__ void KeMask(int* index, int k, T* data) {
+  int id = blockDim.x * blockIdx.x + threadIdx.x;
+  for (int i = id; i < k; i += gridDim.x * blockDim.x) {
+    int idx = index[i];
+    data[idx] = 0;
   }
-  float* value = reinterpret_cast<float*>(scan) + MAX_BLOCKS * MAX_THREADS;
+}
+
+bool k_select(float* input, int count, void* encode, void* buff, int k,
+              cudaStream_t stream, float* moment) {
+  if (count < MIN_COUNT_FOR_SHORT_TOPK) {
+    return false;
+  }
+  if (count < MIN_COUNT_FOR_LARGE_TOPK) {
+    const int MaxLength = 60;
+    const int BlockSize = 512;
+    int blocks = 1;
+    int threads = BlockSize;
+    float* value = static_cast<float*>(encode) + k;
+    int* index = static_cast<int*>(encode);
+    float* threshold = static_cast<float*>(buff);
+    KeGetTopKShort<float, MaxLength, BlockSize><<<blocks, threads, 0, stream>>>(
+        threshold, input, count, count, k, value, index);
+    KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
+                                                                  input);
+    if (moment != nullptr) {
+      KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
+                                                                    moment);
+    }
+  }
+  float* threshold = static_cast<float*>(buff);
   const int max_length = 5;
   int sampk = min(32, k / 2);
   const float sample_prop = static_cast<float>(k) / sampk;
@@ -363,27 +672,78 @@ void k_select(const float* input, int count, void* encode, int* scan, int k,
   int threads = BlockSize;
   int blocks = min(16, static_cast<int>(sample_prop / 2));
   int lds = count / blocks;
+  int* thr_cnt = static_cast<int*>(buff) + blocks;
 
   KeGetSampleTopK<float, max_length, BlockSize><<<blocks, threads, 0, stream>>>(
-      value, input, lds, sampdim, sampk);
-  KeGetTotalTopk<float, BlockSize><<<blocks, threads, 0, stream>>>(value,
+      threshold, input, lds, sampdim, sampk);
+  KeGetTotalTopk<float, BlockSize><<<blocks, threads, 0, stream>>>(threshold,
                                                                    blocks);
 
-  getNumBlocksAndThreads(count, MAX_BLOCKS, MAX_THREADS, blocks, threads);
-
+  getNumBlocksAndThreads(count, blocks, threads);
   int smemSize = sizeof(float) * threads;
   int p_threads = min(blocks, threads);
   int p_blocks = iDivUp(blocks, p_threads);
 
-  int* part = scan + threads * blocks + 1;
-  float* threshold = reinterpret_cast<float*>(value);
   KeGetThreadCountByThreshold<float><<<blocks, threads, smemSize, 0>>>(
-      input, scan, count, threshold);
-  KePrefixSum<<<blocks, threads, smemSize, 0>>>(scan, 32, part);
+      input, thr_cnt, count, threshold);
+  int* part = thr_cnt + threads * blocks;
+  KePrefixSum<<<blocks, threads, smemSize, 0>>>(thr_cnt, 32, part);
   KePrefixSum<<<p_blocks, p_threads, smemSize, 0>>>(part, 32);
-  KeGlobalPrefixSum<<<blocks - 1, threads>>>(scan + threads, part, count, k);
-  int* index = reinterpret_cast<int*>(encode);
-  value = reinterpret_cast<float*>(encode) + k;
-  KeEncode<float><<<blocks, threads, 0, stream>>>(input, count, scan, value,
+  KeGlobalPrefixSum<<<blocks - 1, threads>>>(thr_cnt + threads, part, count, k);
+  int* index = static_cast<int*>(encode);
+  float* value = static_cast<float*>(encode) + k;
+  KeEncode<float><<<blocks, threads, 0, stream>>>(input, count, thr_cnt, value,
                                                   index, threshold, k);
+  KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
+                                                                input);
+  if (moment != nullptr) {
+    KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
+                                                                  moment);
+  }
+  return true;
+}
+
+bool k_select_bucket(float* input, int count, void* encode, void* buff, int k,
+                     cudaStream_t stream, float* moment) {
+  int blocks;
+  int threads;
+  getNumBlocksAndThreads(count, blocks, threads);
+
+  int smemSize = sizeof(float) * threads * 2;
+  int chunks = ((float)count / k) * (BUCKETS / 4);
+  KeMinMax<float><<<blocks, threads, smemSize, stream>>>(input, count,
+                                                         (float*)buff, chunks);
+  smemSize = sizeof(int) * BUCKETS * threads * 2;
+  float* threshold = (float*)buff;
+  float* pdel = (float*)buff + 1;
+  int* pk = (int*)buff + 2;
+  int* pkmin = (int*)buff + 3;
+  int* block_count = (int*)buff + 4;
+
+  KeFindKth<float, BUCKETS><<<blocks, threads, smemSize, stream>>>(
+      input, count, block_count, threshold, pdel, pk, pkmin, 1, k);
+  KeFindKth<float, BUCKETS><<<blocks, threads, smemSize, stream>>>(
+      input, count, block_count, threshold, pdel, pk, pkmin, 0);
+
+  int* thr_cnt = (int*)buff + 4;
+  smemSize = sizeof(float) * threads;
+  int p_threads = min(blocks, threads);
+  int p_blocks = iDivUp(blocks, p_threads);
+  KeGetThreadCountByThreshold<float><<<blocks, threads, smemSize, 0>>>(
+      input, thr_cnt, count, threshold);
+  int* part = thr_cnt + threads * blocks;
+  KePrefixSum<<<blocks, threads, smemSize, 0>>>(thr_cnt, 32, part);
+  KePrefixSum<<<p_blocks, p_threads, smemSize, 0>>>(part, 32);
+  KeGlobalPrefixSum<<<blocks - 1, threads>>>(thr_cnt + threads, part, count, k);
+  int* index = static_cast<int*>(encode);
+  float* value = static_cast<float*>(encode) + k;
+  KeEncode<float><<<blocks, threads, 0, stream>>>(input, count, thr_cnt, value,
+                                                  index, threshold, k);
+  KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
+                                                                input);
+  if (moment != nullptr) {
+    KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
+                                                                  moment);
+  }
+  return true;
 }

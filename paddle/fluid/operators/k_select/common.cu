@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/k_select/common.h"
+#include "common.h"
 
 void RandomizeFloat(void* dest, const int count, const int seed) {
-  float* ptr = reinterpret_cast<float*>(dest);
+  float* ptr = (float*)dest;
   curandGenerator_t gen;
   CURAND_CHECK(curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_MTGP32));
   CURAND_CHECK(curandSetPseudoRandomGeneratorSeed(gen, seed));
@@ -38,8 +38,7 @@ __global__ void KeFeedInputFloat(float* dest, const int count, float* src,
 void FeedInputFloat(float* dest, const int count, const float* src,
                     const int size) {
   float* g_src;
-  CUDA_CHECK(
-      cudaMalloc(reinterpret_cast<void**>(&g_src), size * sizeof(float)));
+  CUDA_CHECK(cudaMalloc((void**)&g_src, size * sizeof(float)));
   CUDA_CHECK(
       cudaMemcpy(g_src, src, size * sizeof(float), cudaMemcpyHostToDevice));
   KeFeedInputFloat<<<GET_BLOCKS(count), CUDA_NUM_THREADS>>>(dest, count, g_src,

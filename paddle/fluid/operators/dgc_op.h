@@ -29,14 +29,14 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto v = ctx.Input<framework::Tensor>("V");
     auto g = ctx.Input<framework::Tensor>("Grad");
     auto local_g = ctx.Input<framework::Tensor>("GradLocal");
-    float m = static_cast<T>(ctx.Attr<float>("m"));
-    float ratio = static_cast<T>(ctx.Attr<float>("ratio"));
-    int k = static_cast<int>(g.numel() * ratio);
+    float m = ctx.Attr<float>("m");
+    float ratio = ctx.Attr<float>("ratio");
+    int k = static_cast<int>(g->numel() * ratio);
 
     auto u_out = ctx.Output<framework::Tensor>("U");
     auto v_out = ctx.Output<framework::Tensor>("V");
     // auto g_out = ctx.Output<framework::Tensor>("Grad");
-    auto local_g_out = ctx.Input<framework::Tensor>("GradLocal");
+    auto local_g_out = ctx.Output<framework::Tensor>("GradLocal");
     auto g_out = ctx.Output<framework::Tensor>("EncodeGradient");
 
     // local_g = local_g + g
@@ -62,10 +62,12 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto& allocator =
         platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
     auto tmp_ious_data = allocator.Allocate(buffbytes);
-    void* buf = tmp_ious_data->ptr();
+    void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
-    k_select(v_out.mutable_data<T>(), v_out.numel(), g_out.mutable_data<T>(),
-             buf, k, dev_ctx.stream(), u_out.mutable_data<T>());
+    k_select(v_out->mutable_data<T>(ctx.GetPlace()),
+             static_cast<int>(v_out->numel()),
+             static_cast<void*>(g_out->mutable_data<T>(ctx.GetPlace())), buf, k,
+             dev_ctx.stream(), u_out->mutable_data<T>(ctx.GetPlace()));
   }
 };
 }  // namespace operators

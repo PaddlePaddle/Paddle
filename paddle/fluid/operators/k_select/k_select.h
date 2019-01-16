@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,15 +14,19 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/k_select/common.h"
+#include "common.h"
 
 #define MAX_THREADS 256
 #define MAX_BLOCKS 128
+#define MIN_COUNT_FOR_SHORT_TOPK 0
+#define MIN_COUNT_FOR_LARGE_TOPK 16384
 
-void k_select(const float *input, int count, void *encode, int *buffer,
-              int k,  // NOLINT
-              cudaStream_t stream);
+#define BUCKETS 10
 
-void getNumBlocksAndThreads(int n, int maxBlocks, int maxThreads,
-                            int &blocks,    // NOLINT
-                            int &threads);  // NOLINT
+bool k_select(float* input, int count, void* encode, void* buffer, int k,
+              cudaStream_t stream, float* moment = nullptr);
+
+bool k_select_bucket(float* input, int count, void* encode, void* buffer, int k,
+                     cudaStream_t stream, float* moment = nullptr);
+
+int get_buffer_size(int count);

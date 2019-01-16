@@ -420,7 +420,8 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
 }
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-void MultiDevSSAGraphBuilderBase::CreateDGCOp(ir::Graph *graph, int num_places,
+void MultiDevSSAGraphBuilderBase::CreateDGCOp(ir::Graph *graph,
+                                              size_t num_places,
                                               const std::string &p_name,
                                               const std::string &grad_name,
                                               float m, float ratio) const {
@@ -440,15 +441,15 @@ void MultiDevSSAGraphBuilderBase::CreateDGCOp(ir::Graph *graph, int num_places,
     graph->Get<GraphOps>(kGraphOps).emplace_back(
         new ComputationOpHandle(graph->CreateOpNode(&desc), s, p, i));
 
-    auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
-    auto &vars = result->Get<GraphVars>(kGraphVars)[i][grad_name];
+    auto *op_handle = graph->Get<GraphOps>(kGraphOps).back();
+    auto &vars = graph->Get<GraphVars>(kGraphVars)[i][grad_name];
     PADDLE_ENFORCE(!vars.empty());
     auto &prev_grad = vars.back();
     op_handle->AddInput(prev_grad);
 
-    auto var =
-        new VarHandle(result->CreateEmptyNode(og, ir::Node::Type::kVariable),
-                      vars.size(), i, og, p);
+    auto var = new VarHandle(
+        graph->CreateEmptyNode(grad_name, ir::Node::Type::kVariable),
+        vars.size(), i, grad_name, p);
     vars.emplace_back(var);
     op_handle->AddOutput(var);
   }
@@ -951,15 +952,11 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
         CreateReduceOp(result, g_name, 0);
         CreateBroadcastOp(result, g_name, 0);
       } else {
-        if (strategy_.enable_dgc_ && var_size > 4096) {
-          VLOG(10) << "enable_dgc:" << strategy_.enable_dgc_
-                   << ", numel:" << var_size;
-          // FIXME(gongwb): 0.9?
-          CreateDGCOp(result, p_name, g_name, 0.9);
-          CreateAllReduceOp(result, g_name);
-        } else {
-          CreateAllReduceOp(result, g_name);
-        }
+        // VLOG(10) << "enable_dgc:" << strategy_.enable_dgc_
+        // << ", numel:" << var_size;
+        // FIXME(gongwb): 0.9?
+        CreateDGCOp(result, places_.size(), p_name, g_name);
+        CreateAllReduceOp(result, g_name);
       }
       break;
     default:
