@@ -414,7 +414,7 @@ class Calibrator(object):
         quantize_op_index = []
         dequantize_op_index = []
         minimal_conv_count = 2  # there must be two conv ops if not enable the first conv int8.
-        if len(self._conv_op_index) < minimal_conv_count :
+        if len(self._conv_op_index) < minimal_conv_count:
             return [], []
 
         for index, value in enumerate(self._conv_op_index):
@@ -507,7 +507,7 @@ class Calibrator(object):
         '''
         Collect the variable names for sampling.
         '''
-        start_index = 1
+        start_index = 1  #analysis the conv op detail from second conv op.
 
         for i in self._conv_op_index[start_index:]:
             self._weights_var_name.append(self.program.current_block().ops[i]
