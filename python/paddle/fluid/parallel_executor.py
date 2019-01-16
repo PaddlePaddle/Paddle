@@ -162,6 +162,9 @@ class ParallelExecutor(object):
                 trainers_endpoints), "num_trainers == len(end_points)"
             build_strategy.trainers_endpoints = trainers_endpoints
 
+        if main._enable_dgc:
+            build_strategy.enable_dgc = True
+
         # step6: get persistable_vars, places. persistable_vars
         # need be broadcast to other local_scope.
         persistable_vars = set([

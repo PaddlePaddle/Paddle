@@ -1543,6 +1543,7 @@ class Program(object):
         self._endpoints = []
         self._trainers_endpoints = []
         self._distributed_lookup_table = None
+        self._enable_dgc = False
 
     @property
     def op_role(self):

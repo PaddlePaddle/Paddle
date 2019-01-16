@@ -421,17 +421,9 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
 }
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-template <typename DeviceContext, typename T>
-void InitialDGCVar(Scope *scope, DeviceContext *dev_ctx,
-                   const std::string &var_name) {
-  auto tensor = scope->Var(var_name)->GetMutable<framework::LoDTensor>();
-  operators::math::SetConstant<DeviceContext, T> set_zero;
-  set_zero(dev_ctx, tensor, static_cast<T>(0.0));
-}
-
 std::unique_ptr<framework::OpDesc> CreateDGCOpDesc(
-    const std::stirng &u_name, const std::stirng &v_name,
-    const std::stirng &grad_name, const std::stirng &grad_local_name,
+    const std::string &u_name, const std::string &v_name,
+    const std::string &grad_name, const std::string &grad_local_name,
     float m = 0.9, float ratio = 0.001) {
   std::unique_ptr<framework::OpDesc> desc(new framework::OpDesc);
   desc->SetType("dgc");
@@ -455,7 +447,7 @@ std::unique_ptr<framework::OpDesc> CreateDGCOpDesc(
 void DistSSAGraphBuilder::CreateDGCOpOrNot(ir::Graph *graph, size_t num_places,
                                            const std::string &p_name,
                                            const std::string &grad_name,
-                                           float m, float ratio) {
+                                           float m, float ratio) const {
   if (!strategy_.enable_dgc_) {
     return;
   }
@@ -474,9 +466,9 @@ void DistSSAGraphBuilder::CreateDGCOpOrNot(ir::Graph *graph, size_t num_places,
   LOG(INFO) << "Enter DGCOP mode numel:" << numel
             << ", datatype:" << grad_desc->GetDataType();
 
-  auto u_name = p_name + "_dgc_u_";
-  auto v_name = p_name + "_dgc_v_";
-  auto grad_local_name = p_name + "_dgc_grad_local_";
+  auto u_name = p_name + "__dgc_u__";
+  auto v_name = p_name + "__dgc_v__";
+  auto grad_local_name = p_name + "__dgc_grad_local__";
   std::vector<std::string> names{u_name, v_name, grad_local_name};
 
   auto dgc_op_desc =
@@ -486,7 +478,7 @@ void DistSSAGraphBuilder::CreateDGCOpOrNot(ir::Graph *graph, size_t num_places,
     auto place = places_[i];
     auto scope = local_scopes_[i];
     graph->Get<GraphOps>(kGraphOps).emplace_back(new ComputationOpHandle(
-        graph->CreateOpNode(&dgc_op_desc), sope, place, i));
+        graph->CreateOpNode(dgc_op_desc.get()), scope, place, i));
 
     auto *op_handle = graph->Get<GraphOps>(kGraphOps).back();
     auto &vars = graph->Get<GraphVars>(kGraphVars)[i][grad_name];
@@ -494,18 +486,16 @@ void DistSSAGraphBuilder::CreateDGCOpOrNot(ir::Graph *graph, size_t num_places,
 
     auto var = new VarHandle(
         graph->CreateEmptyNode(grad_name, ir::Node::Type::kVariable),
-        vars.size(), i, grad_name, p);
+        vars.size(), i, grad_name, place);
     vars.emplace_back(var);
     op_handle->AddOutput(var);
 
     for (auto name : names) {
-      PADDLE_ENFORCE(scope->FindVar(name) == nullptr,
-                     "%s shouled not be created", name);
-      InitialDGCVar<float>(scope, dev_ctx, name);
+      auto var_desc = all_vars_.at(name);
+      PADDLE_ENFORCE_NOT_NULL(var_desc);
 
-      framework::VarDesc var_desc(grad_desc);
-      var_desc.SetName(name);
-      op_handle->AddInput(graph->CreateVarNode(&desc));
+      auto var_node = graph->CreateVarNode(var_desc);
+      op_handle->AddInput(new VarHandle(var_node));
     }
   }
 }

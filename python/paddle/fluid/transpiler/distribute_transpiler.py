@@ -221,6 +221,8 @@ class DistributeTranspiler(object):
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
 
     def _add_dgc_vars(start_program, main_program):
+        startup_program._enable_dgc = True
+
         _, params_grads = self._get_optimize_pass()
         for param_var, grad_var in self.params_grads:
             var_numel = reduce(lambda x, y: x * y, param_var.shape)

@@ -184,9 +184,11 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
   mutable std::vector<std::unordered_set<std::string>> bcast_var_name_set_;
   mutable bool need_broadcast_var_{false};
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   void CreateDGCOpOrNot(ir::Graph *graph, size_t num_places,
                         const std::string &p_name, const std::string &grad_name,
-                        float m = 0.9, float ratio = 0.001);
+                        float m = 0.9, float ratio = 0.001) const;
+#endif
 };
 
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder();
