@@ -40,7 +40,7 @@ if(WITH_GRPC)
     grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
 
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  set(RPC_DEPS sendrecvop_rpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
+  set(RPC_DEPS sendrecvop_rpc ${GRPC_DEPS})
 
   cc_test(grpc_serde_test SRCS grpc/grpc_serde_test.cc 
     DEPS ${RPC_DEPS} scope profiler math_function SERIAL)
