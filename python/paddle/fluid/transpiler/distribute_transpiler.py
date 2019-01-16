@@ -125,14 +125,23 @@ def slice_variable(var_list, slice_count, min_block_size):
 
 class DistributeTranspilerConfig(object):
     """
-    Args:
-        slice_var_up (bool): Do Tensor slice for pservers, default is True.
-        split_method (PSDispatcher): RoundRobin or HashName can be used
-          try to choose the best method to balance loads for pservers.
-        min_block_size (int): Minimum splitted element number in block.
-          According:https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
+    .. py:attribute:: slice_var_up (bool)
+
+          Do Tensor slice for pservers, default is True.
+
+    .. py:attribute:: split_method (PSDispatcher)
+
+          RoundRobin or HashName can be used.
+          Try to choose the best method to balance loads for pservers.
+
+    .. py:attribute:: min_block_size (int)
+
+          Minimum number of splitted elements in block.
+
+          According to : https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
           We can use bandwidth effiently when data size is larger than 2MB.If you
-          want to change it, please be sure you see the slice_variable function.
+          want to change it, please be sure you have read the slice_variable function.
+
     """
 
     slice_var_up = True
@@ -242,11 +251,10 @@ class DistributeTranspiler(object):
 
     def _get_all_remote_sparse_update_op(self, main_program):
         sparse_update_ops = []
-        sparse_update_op_types = ["lookup_table"]
+        sparse_update_op_types = ["lookup_table", "nce", "hierarchical_sigmoid"]
         for op in main_program.global_block().ops:
             if op.type in sparse_update_op_types and op.attr(
-                    'remote_prefetch') is True and not op.attr(
-                        'is_distributed'):
+                    'remote_prefetch') is True:
                 sparse_update_ops.append(op)
         return sparse_update_ops
 
@@ -744,12 +752,6 @@ class DistributeTranspiler(object):
             elif op not in lr_ops:
                 self._append_pserver_non_opt_ops(block, op)
 
-        def __op_have_grad_input__(op):
-            for varname in op.input_arg_names:
-                if varname.find("@GRAD") >= 0:
-                    return varname
-            return ""
-
         def __clone_lr_op_sub_block__(op, program, lr_block):
             if not op.has_attr('sub_block'):
                 return
@@ -800,7 +802,7 @@ class DistributeTranspiler(object):
             merged_var = None
             for _, op in enumerate(self.optimize_ops):
                 # find the origin grad var before clipping/L2Decay,
-                # merged_var should be the input var name of L2Decaybuil
+                # merged_var should be the input var name of L2Decay
                 grad_varname_for_block = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]
                 if op.attr(OP_ROLE_VAR_ATTR_NAME)[
                         0] == optimize_target_param_name:
@@ -1676,7 +1678,16 @@ class DistributeTranspiler(object):
                 if self.config.enable_dc_asgd:
                     new_inputs[key] = dc
                 else:
-                    new_inputs[key] = merged_var
+                    # Note!! This is for l2decay on sparse gradient, because it will create a new tensor for
+                    # decayed gradient but not inplace modify the origin one
+                    origin_grad_name = opt_op.input(key)[0]
+                    if core.kNewGradSuffix(
+                    ) in origin_grad_name and pserver_block.has_var(
+                            origin_grad_name):
+                        new_grad = pserver_block.var(origin_grad_name)
+                        new_inputs[key] = new_grad
+                    else:
+                        new_inputs[key] = merged_var
             elif key == "Param":
                 param_block = _get_param_block(opt_op)
                 if not param_block:

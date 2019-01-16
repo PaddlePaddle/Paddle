@@ -18,7 +18,6 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/operators/distributed/brpc_rdma_pool.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
 #include "paddle/fluid/platform/port.h"

@@ -114,6 +114,13 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool, default false) "
         "only update the parameter that has gradient in sparse update")
         .SetDefault(false);
+    AddAttr<int64_t>("min_row_size_to_use_multithread",
+                     "(int64_t, default 0) "
+                     "when not zero, if param row size is larger then "
+                     "min_row_size_to_use_multithread and "
+                     "inner_op_parallelism is larger then 0, sparse update "
+                     "will run in multithread mode")
+        .SetDefault(1000);
 
     AddComment(R"DOC(
 Adam Optimizer.
