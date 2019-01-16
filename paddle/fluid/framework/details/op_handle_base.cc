@@ -123,38 +123,29 @@ bool OpHandleBase::NeedWait(VarHandleBase *in_var) {
 }
 
 void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
+  callback();
 #ifdef PADDLE_WITH_CUDA
   if (!events_.empty()) {  // Use event
-    std::function<void()> method = callback;
     for (auto &p : dev_ctxes_) {
-      method = [method, p, this]() {
-        static_cast<platform::CUDADeviceContext *>(p.second)->RecordEvent(
-            events_.at(boost::get<platform::CUDAPlace>(p.first).device),
-            method);
-      };
+      auto &event = events_.at(boost::get<platform::CUDAPlace>(p.first).device);
+      auto stream =
+          static_cast<platform::CUDADeviceContext *>(p.second)->stream();
+      PADDLE_ENFORCE(cudaEventRecord(event, stream));
     }
-    method();
-  } else {
-#endif
-    callback();
-#ifdef PADDLE_WITH_CUDA
   }
 #endif
 }
 
 void OpHandleBase::RunAndRecordEvent(platform::Place p,
                                      const std::function<void()> &callback) {
-#ifdef PADDLE_WITH_CUDA
-  if (platform::is_cpu_place(p) || events_.empty()) {
-    callback();
-  } else {
-    auto *ctx = dev_ctxes_.at(p);
-    auto *cuda_ctx = static_cast<platform::CUDADeviceContext *>(ctx);
-    cuda_ctx->RecordEvent(events_.at(boost::get<platform::CUDAPlace>(p).device),
-                          callback);
-  }
-#else
   callback();
+#ifdef PADDLE_WITH_CUDA
+  if (platform::is_gpu_place(p) && events_.empty()) {
+    auto *ctx = dev_ctxes_.at(p);
+    auto &event = events_.at(boost::get<platform::CUDAPlace>(p).device);
+    auto stream = static_cast<platform::CUDADeviceContext *>(ctx)->stream();
+    PADDLE_ENFORCE(cudaEventRecord(event, stream));
+  }
 #endif
 }
 

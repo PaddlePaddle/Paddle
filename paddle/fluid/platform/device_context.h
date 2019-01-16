@@ -266,12 +266,6 @@ class CUDADeviceContext : public DeviceContext {
   cudaStream_t stream() const;
 
   template <typename Callback>
-  void RecordEvent(cudaEvent_t ev, Callback callback) {
-    callback();
-    PADDLE_ENFORCE(cudaEventRecord(ev, stream_));
-  }
-
-  template <typename Callback>
   void AddStreamCallback(Callback&& callback) const {
     callback_manager_->AddCallback(callback);
   }
