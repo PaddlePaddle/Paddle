@@ -1831,10 +1831,9 @@ def box_clip(input_box, im_info, inplace=False, name=None):
                 input_box=boxes, im_info=im_info, inplace=True)
     """
 
-    inputs = {"InputBox": input_box, "ImInfo": im_info}
-
     helper = LayerHelper("box_clip", **locals())
     output = helper.create_variable_for_type_inference(dtype=input_box.dtype)
+    inputs = {"InputBox": input_box, "ImInfo": im_info}
     helper.append_op(
         type="box_clip",
         inputs=inputs,
