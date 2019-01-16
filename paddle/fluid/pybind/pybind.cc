@@ -1023,6 +1023,20 @@ All parameter, weight, gradient are variables in Paddle.
                      to fuse elementwise_add_op and activation_op,
                      it may make the execution faster. Default False)DOC")
       .def_property(
+          "fuse_relu_depthwise_conv",
+          [](const BuildStrategy &self) {
+            return self.fuse_relu_depthwise_conv_;
+          },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.fuse_relu_depthwise_conv_ = b;
+          },
+          R"DOC(The type is BOOL, fuse_relu_depthwise_conv indicate whether
+                      to fuse relu and depthwise_conv2d,
+                      it will save GPU memory and may make the execution faster.
+                      This options is only available in GPU devices.
+                      Default False)DOC")
+      .def_property(
           "memory_optimize",
           [](const BuildStrategy &self) { return self.memory_optimize_; },
           [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; })
