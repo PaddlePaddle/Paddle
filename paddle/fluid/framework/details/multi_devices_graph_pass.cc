@@ -420,32 +420,70 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
 }
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+
+template <typename DeviceContext, typename T>
+void InitialDGCVar(Scope *scope, DeviceContext *dev_ctx,
+                   const std::string &var_name) {
+  auto tensor = scope->Var(var_name)->GetMutable<framework::LoDTensor>();
+  operators::math::SetConstant<DeviceContext, T> set_zero;
+  set_zero(dev_ctx, tensor, static_cast<T>(0.0));
+}
+
+std::unique_ptr<VarHandle> CreateDGCVarNode(ir::Graph *graph,
+                                            const framework::VarDesc &desc,
+                                            const std::string &name) {
+  std::unqiue_ptr<VarHandle> tmp(graph->CreateVarNode(&desc));
+  return tmp;
+}
+
 void MultiDevSSAGraphBuilderBase::CreateDGCOp(ir::Graph *graph,
                                               size_t num_places,
                                               const std::string &p_name,
                                               const std::string &grad_name,
                                               float m, float ratio) const {
+  auto u_name = p_name + "_dgc_u_";
+  auto v_name = p_name + "_dgc_v_";
+  auto grad_local_name = p_name + "_dgc_grad_local_";
+  std::vector<std::string> names{u_name, v_name, grad_local_name};
+
   framework::OpDesc desc;
-  desc.SetInput("U", std::vector<std::string>({p_name + "_dgc_u_"}));
-  desc.SetInput("V", std::vector<std::string>({p_name + "_dgc_v_"}));
-  desc.SetInput("Grad", std::vector<std::string>({grad_name}));
-  desc.SetInput("GradLocal", std::vector<std::string>({grad_name + "_dgc_g_"}));
-  desc.SetOutput("EncodeGradient", std::vector<std::string>({grad_name}));
-  desc.SetAttr("m", Attribute(m));
-  desc.SetAttr("ratio", Attribute(ratio));
   desc.SetType("dgc");
 
+  desc.SetAttr("m", Attribute(m));
+  desc.SetAttr("ratio", Attribute(ratio));
+
+  desc.SetInput("U", std::vector<std::string>({u_name}));
+  desc.SetInput("V", std::vector<std::string>({v_name}));
+  desc.SetInput("Grad", std::vector<std::string>({grad_name}));
+  desc.SetInput("GradLocal", std::vector<std::string>({grad_local_name}));
+
+  desc.SetOutput("U", std::vector<std::string>({u_name}));
+  desc.SetOutput("V", std::vector<std::string>({v_name}));
+  desc.SetOutput("EncodeGradient", std::vector<std::string>({grad_name}));
+  desc.SetOutput("GradLocal", std::vector<std::string>({grad_local_name}));
+
   for (size_t i = 0; i < num_places; ++i) {
-    auto p = places_[i];
-    auto s = local_scopes_[i];
+    // insert DGCop.
+    auto place = places_[i];
+    auto scope = local_scopes_[i];
     graph->Get<GraphOps>(kGraphOps).emplace_back(
         new ComputationOpHandle(graph->CreateOpNode(&desc), s, p, i));
 
+    // Add inputs and outputs.
     auto *op_handle = graph->Get<GraphOps>(kGraphOps).back();
     auto &vars = graph->Get<GraphVars>(kGraphVars)[i][grad_name];
     PADDLE_ENFORCE(!vars.empty());
     auto &prev_grad = vars.back();
     op_handle->AddInput(prev_grad);
+    for (auto name : names) {
+      PADDLE_ENFORCE(s->FindVar(name) == nullptr, "%s shouled not created",
+                     name);
+      InitialDGCVar(s, dev_ctx, name);
+
+      framework::VarDesc var_desc(all_vars_.at(p_name));
+      var_desc.SetName(name);
+      op_handle->AddInput(graph->CreateVarNode(&desc));
+    }
 
     auto var = new VarHandle(
         graph->CreateEmptyNode(grad_name, ir::Node::Type::kVariable),

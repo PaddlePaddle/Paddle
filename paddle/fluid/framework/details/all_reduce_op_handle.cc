@@ -55,44 +55,6 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
     : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 #endif
 
-/*
-template <typename DeviceContext, typename T>
-void InitialDGCVars(Scope *scope, DeviceContext *dev_ctx,
-                    const std::string &var_name) {
-  auto tensor = scope->Var(var_name)->GetMutable<framework::LoDTensor>();
-  operators::math::SetConstant<DeviceContext, T> set_zero;
-  set_zero(dev_ctx, tensor, static_cast<T>(0.0));
-}
-
-void AllReduceOpHandle::DGC(framework::Scope *scope, const std::string &name,
-                            platform::DeviceContext *dev_ctx,
-                            proto::VarType::Type type) {
-  auto U_name = name + "_dgc_u_";
-  auto V_name = name + "_dgc_v_";
-  auto G_name = name + "_dgc_g_";
-  // auto scope = local_scopes_[idx];
-
-  // Create in global scope and so won't deleted when batch finished.
-  if (scope->FindVar() == nullptr) {
-    // FIXME(gongwb): use variant template arguments.
-    if (type == framework::proto::VarType::FP32) {
-      InitialDGCVars<platform::CUDADeviceContext, float>(scope, dev_ctx,
-                                                         U_name);
-      InitialDGCVars<platform::CUDADeviceContext, float>(scope, dev_ctx,
-                                                         V_name);
-      InitialDGCVars<platform::CUDADeviceContext, float>(scope, dev_ctx,
-                                                         G_name);
-    } else {
-      PADDLE_ENFORCE(false, "dgc only support float type");
-    }
-  }
-
-  auto U = scope->Var(U_name);
-  auto V = scope->Var(V_name);
-  auto G = scope->Var(G_name);
-}
-*/
-
 void AllReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
 
