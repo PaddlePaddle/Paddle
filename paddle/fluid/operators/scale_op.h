@@ -48,7 +48,14 @@ class ScaleKernel : public framework::OpKernel<T> {
     auto eigen_out = framework::EigenVector<T>::Flatten(*out);
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);
     auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    if (bias_after_scale) {
+
+    if (scale == static_cast<T>(1) && bias == static_cast<T>(0)) {
+      paddle::framework::TensorCopy(*in, ctx.GetPlace(), out);
+    } else if (scale == static_cast<T>(1)) {
+      eigen_out.device(dev) = eigen_in + bias;
+    } else if (bias == static_cast<T>(0)) {
+      eigen_out.device(dev) = scale * eigen_in;
+    } else if (bias_after_scale) {
       eigen_out.device(dev) = scale * eigen_in + bias;
     } else {
       eigen_out.device(dev) = scale * (eigen_in + bias);
