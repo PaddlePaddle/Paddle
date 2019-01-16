@@ -354,8 +354,7 @@ class TestGenerateProposals(unittest.TestCase):
         data_shape = [20, 64, 64]
         images = fluid.layers.data(
             name='images', shape=data_shape, dtype='float32')
-        im_info = fluid.layers.data(
-            name='im_info', shape=[1, 3], dtype='float32')
+        im_info = fluid.layers.data(name='im_info', shape=[3], dtype='float32')
         anchors, variances = fluid.layers.anchor_generator(
             name='anchor_generator',
             input=images,
@@ -399,6 +398,17 @@ class TestYoloDetection(unittest.TestCase):
                                       0.5)
 
             self.assertIsNotNone(loss)
+
+
+class TestBoxClip(unittest.TestCase):
+    def test_box_clip(self):
+        program = Program()
+        with program_guard(program):
+            input_box = layers.data(
+                name='input_box', shape=[7, 4], dtype='float32', lod_level=1)
+            im_info = layers.data(name='im_info', shape=[3], dtype='float32')
+            out = layers.box_clip(input_box, im_info)
+            self.assertIsNotNone(out)
 
 
 if __name__ == '__main__':
