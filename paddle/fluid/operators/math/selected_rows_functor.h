@@ -81,13 +81,16 @@ struct MergeAdd {
   // unary functor, merge by adding duplicated rows in
   // the input SelectedRows object.
   framework::SelectedRows operator()(const DeviceContext& context,
-                                     const framework::SelectedRows& input);
+                                     const framework::SelectedRows& input,
+                                     const bool sorted_result = false);
   void operator()(const DeviceContext& context,
                   const framework::SelectedRows& input,
-                  framework::SelectedRows* output);
+                  framework::SelectedRows* output,
+                  const bool sorted_result = false);
   void operator()(const DeviceContext& context,
                   const std::vector<const framework::SelectedRows*>& inputs,
-                  framework::SelectedRows* output);
+                  framework::SelectedRows* output,
+                  const bool sorted_result = false);
 };
 
 enum class ScatterOps { ASSIGN, ADD, SUB, SUBBY, MUL, DIV, DIVBY };

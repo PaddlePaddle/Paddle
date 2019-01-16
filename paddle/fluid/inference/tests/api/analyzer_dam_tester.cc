@@ -165,12 +165,9 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
 }
 
 void SetConfig(contrib::AnalysisConfig *cfg) {
-  cfg->prog_file = FLAGS_infer_model + "/__model__";
-  cfg->param_file = FLAGS_infer_model + "/param";
-  cfg->use_gpu = false;
-  cfg->device = 0;
-  cfg->specify_input_name = true;
-  cfg->enable_ir_optim = true;
+  cfg->SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
+  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim(true);
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -194,7 +191,9 @@ void profile(bool use_mkldnn = false) {
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-    std::unordered_set<std::string> op_list = {"conv3d"};
+    // Enable all the mkldnn supported ops except conv3d in dam
+    std::unordered_set<std::string> op_list = {"softmax", "elementwise_add",
+                                               "relu"};
     cfg.SetMKLDNNOp(op_list);
   }
 
@@ -238,7 +237,9 @@ void compare(bool use_mkldnn = false) {
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-    std::unordered_set<std::string> op_list = {"conv3d"};
+    // Enable all the mkldnn supported ops except conv3d in dam
+    std::unordered_set<std::string> op_list = {"softmax", "elementwise_add",
+                                               "relu"};
     cfg.SetMKLDNNOp(op_list);
   }
 

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
@@ -34,6 +35,7 @@ static std::string gethash(const memory::dims& input_dims,
                            const std::vector<int>& ksize,
                            const std::vector<int>& strides,
                            const std::vector<int>& paddings,
+                           const memory::data_type& dt,
                            const std::string& suffix) {
   auto dims2str = [](const memory::dims& operand_dims) {
     std::string dstr = "";
@@ -43,7 +45,7 @@ static std::string gethash(const memory::dims& input_dims,
     return dstr;
   };
   return dims2str(input_dims) + dims2str(ksize) + dims2str(strides) +
-         dims2str(paddings) + pooling_type + suffix;
+         dims2str(paddings) + std::to_string(dt) + pooling_type + suffix;
 }
 
 static inline int ComputeCeiledOutput(int input_size, int kernel_size,
@@ -71,7 +73,6 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
-
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
@@ -111,8 +112,10 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto input_format = input->format();
     memory::format output_format{memory::format::format_undef};
 
+    mkldnn::memory::data_type dt =
+        paddle::framework::ToMKLDNNDataType(input->type());
     const std::string key = gethash(src_tz, pooling_type, ksize, strides,
-                                    paddings, ctx.op().Output("Out"));
+                                    paddings, dt, ctx.op().Output("Out"));
     const std::string key_pool_p = key + "@pool_p";
     const std::string key_pool_pd = key + "@pool_pd";
     const std::string key_pool_src_mem_p = key + "@pool_src_mem_p";
@@ -130,20 +133,22 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         CorrectOutputSize(src_tz, dst_tz, ksize, paddings, strides,
                           padding_right_bottom);
       }
-      auto src_md = platform::MKLDNNMemDesc(
-          src_tz, platform::MKLDNNGetDataType<T>(), input_format);
+
+      auto src_md = platform::MKLDNNMemDesc(src_tz, dt, input_format);
 
       /* create memory descriptor for pooling without specified format
        * ('any') which lets a primitive (pooling in this case) choose
        * the memory format preferred for best performance
        */
-      auto dst_md = platform::MKLDNNMemDesc(dst_tz, mkldnn::memory::f32,
-                                            mkldnn::memory::format::any);
-
+      auto dst_md =
+          platform::MKLDNNMemDesc(dst_tz, dt, mkldnn::memory::format::any);
+      auto propagation = src_md.data.data_type == mkldnn_f32
+                             ? mkldnn::prop_kind::forward_training
+                             : mkldnn::prop_kind::forward_scoring;
       std::shared_ptr<mkldnn::pooling_forward::primitive_desc> pool_pd =
-          CreatePrimitiveDesc(src_md, dst_md, strides, padding_left_top,
-                              padding_right_bottom, ksize, pooling_type,
-                              mkldnn_engine, ceil_mode, is_test);
+          CreatePrimitiveDesc(src_md, dst_md, propagation, strides,
+                              padding_left_top, padding_right_bottom, ksize,
+                              pooling_type, mkldnn_engine, ceil_mode, is_test);
 
       // save pool_pd into global device context to be referred in backward path
       if (!is_test) dev_ctx.SetBlob(key_pool_pd, pool_pd);
@@ -203,7 +208,8 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  private:
   std::unique_ptr<mkldnn::pooling_forward::primitive_desc> CreatePrimitiveDesc(
       const mkldnn::memory::desc& src, const mkldnn::memory::desc& dst,
-      const std::vector<int>& stride, const std::vector<int>& padding_left_top,
+      const mkldnn::prop_kind& propagation, const std::vector<int>& stride,
+      const std::vector<int>& padding_left_top,
       const std::vector<int>& padding_right_bot, const std::vector<int>& kernel,
       const std::string& pooling_type, const mkldnn::engine& engine,
       bool ceil_mode, bool is_test) const {
@@ -287,8 +293,9 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     // Get an unique name from "argument" name of "Out" variable
     // This name will be used as key when referring info from device context
-    const std::string key = gethash(diff_src_tz, pooling_type, ksize, strides,
-                                    paddings, ctx.op().Input("Out"));
+    const std::string key =
+        gethash(diff_src_tz, pooling_type, ksize, strides, paddings,
+                memory::data_type::f32, ctx.op().Input("Out"));
     const std::string key_pool_bwd_p = key + "@pool_bwd_p";
     const std::string key_pool_diff_src_mem_p = key + "@pool_diff_src_mem_p";
     const std::string key_pool_diff_dst_mem_p = key + "@pool_diff_dst_mem_p";
@@ -411,6 +418,9 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(pool2d, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::PoolMKLDNNOpKernel<float>);
+                   ops::PoolMKLDNNOpKernel<float>,
+                   ops::PoolMKLDNNOpKernel<int8_t>,
+                   ops::PoolMKLDNNOpKernel<uint8_t>);
+
 REGISTER_OP_KERNEL(pool2d_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::PoolMKLDNNGradOpKernel<float>);

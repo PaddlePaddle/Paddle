@@ -58,6 +58,7 @@ class WhileOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kCondition)));
+
     auto &cond = scope.FindVar(Input(kCondition))->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(cond.dims(), paddle::framework::make_ddim({1}));
 
@@ -72,18 +73,27 @@ class WhileOp : public framework::OperatorBase {
     PADDLE_ENFORCE(platform::is_cpu_place(cond.place()),
                    "Condition of while op must in CPU memory.");
 
-    bool is_test = Attr<bool>("is_test");
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
 
+    bool is_test = Attr<bool>("is_test");
     auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
-    while (cond.data<bool>()[0]) {
-      auto &current_scope = scope.NewScope();
-      step_scopes->push_back(&current_scope);
-      executor.RunPreparedContext(ctx.get(), &current_scope, false, true, true);
-      if (is_test) {
-        scope.DeleteScope(&current_scope);
+
+    if (!is_test) {
+      while (cond.data<bool>()[0]) {
+        auto &current_scope = scope.NewScope();
+        step_scopes->push_back(&current_scope);
+        executor.RunPreparedContext(ctx.get(), &current_scope, false, true,
+                                    true);
       }
+    } else {
+      auto &current_scope = scope.NewScope();
+      executor.CreateVariables(*program, &current_scope, block->ID());
+      while (cond.data<bool>()[0]) {
+        executor.RunPreparedContext(ctx.get(), &current_scope, false, false,
+                                    false);
+      }
+      scope.DeleteScope(&current_scope);
     }
   }
 };
@@ -175,14 +185,13 @@ class WhileGradOp : public framework::OperatorBase {
         auto &og_inside =
             detail::Ref(cur_scope.Var(inside_og_name),
                         "Cannot find inside gradient %s", inside_og_name);
-        if (framework::IsType<framework::LoDTensor>(og_outside.Type())) {
+        if (og_outside.IsType<framework::LoDTensor>()) {
           auto &outside_tensor = og_outside.Get<framework::LoDTensor>();
           auto &inside_tensor =
               detail::Ref(og_inside.GetMutable<framework::LoDTensor>());
           inside_tensor.set_lod(outside_tensor.lod());
           inside_tensor.ShareDataWith(outside_tensor);
-        } else if (framework::IsType<framework::LoDTensorArray>(
-                       og_outside.Type())) {
+        } else if (og_outside.IsType<framework::LoDTensorArray>()) {
           auto &outside_array = og_outside.Get<framework::LoDTensorArray>();
           auto &inside_array =
               detail::Ref(og_inside.GetMutable<framework::LoDTensorArray>());
@@ -256,7 +265,7 @@ class WhileGradOp : public framework::OperatorBase {
                   var->IsType<LoDTensor>(),
               "Currently the type of var only can be LoDTensorArray, "
               "or LoDTensor, but the received var[%s] is %s.",
-              inside_grad_name, var->Type().name());
+              inside_grad_name, framework::ToTypeName(var->Type()));
 
           if (var->IsType<LoDTensor>()) {
             auto &inside_tensor = var->Get<framework::LoDTensor>();

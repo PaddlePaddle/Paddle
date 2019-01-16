@@ -22,11 +22,18 @@ import unittest
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+from paddle.fluid import compiler
 
 
 def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
     if use_cuda and not core.is_compiled_with_cuda():
         print('Skip use_cuda=True because Paddle is not compiled with cuda')
+        return
+
+    if use_parallel_executor and os.name == 'nt':
+        print(
+            'Skip use_parallel_executor=True because Paddle comes without parallel support on windows'
+        )
         return
 
     word_dict = paddle.dataset.imdb.word_dict()
@@ -51,19 +58,19 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
     exe = fluid.Executor(place)
     exe.run(fluid.default_startup_program())
 
+    train_cp = compiler.CompiledProgram(fluid.default_main_program())
     if use_parallel_executor:
-        train_exe = fluid.ParallelExecutor(
-            use_cuda=use_cuda, loss_name=cost.name)
+        train_cp = train_cp.with_data_parallel(loss_name=cost.name)
         fetch_list = [cost.name]
     else:
-        train_exe = exe
         fetch_list = [cost]
 
     for pass_id in six.moves.xrange(pass_num):
         batch_id = 0
         for data in reader():
-            train_exe.run(feed=data,
-                          fetch_list=fetch_list if batch_id % 4 == 0 else [])
+            exe.run(train_cp,
+                    feed=data,
+                    fetch_list=fetch_list if batch_id % 4 == 0 else [])
             batch_id += 1
             if batch_id > 16:
                 break
