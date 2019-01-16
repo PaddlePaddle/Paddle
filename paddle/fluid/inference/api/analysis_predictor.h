@@ -91,7 +91,20 @@ class AnalysisPredictor : public PaddlePredictor {
   void GetFetchOne(const framework::LoDTensor &fetchs,
                    PaddleTensor *output_data);
 
+#if PADDLE_WITH_TENSORRT
+  // When we use Paddle-TRT INT8 engine, we need to generate calibration table
+  // data first,
+  // the calibration table contains the range for each op's input and output,
+  // this whole process can be divided into several steps:
+  //
+  // 1. Builds a 32-bit engine, runs it on the calibration set, and records a
+  // histogram for each
+  // tensor of the distribution of activation values.
+  // 2. Builds a calibration table from the histograms.
+  //
+  // After step 2, we need to store the calibration table on disk
   bool SaveTrtCalibToDisk();
+#endif
 
   ~AnalysisPredictor();
 

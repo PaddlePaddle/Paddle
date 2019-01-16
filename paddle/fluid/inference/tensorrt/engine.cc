@@ -70,7 +70,7 @@ void TensorRTEngine::FreezeNetwork() {
   // build engine.
   infer_builder_->setMaxBatchSize(max_batch_);
   infer_builder_->setMaxWorkspaceSize(max_workspace_);
-  if (precision_mode_ == "INT8") {
+  if (enable_int8_) {
     infer_builder_->setInt8Mode(true);
     PADDLE_ENFORCE(
         calibrator_ != nullptr,

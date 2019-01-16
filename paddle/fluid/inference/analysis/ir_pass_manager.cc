@@ -71,13 +71,17 @@ void IRPassManager::CreatePasses(Argument *argument,
           "program",
           new framework::ProgramDesc *(
               const_cast<framework::ProgramDesc *>(&argument->main_program())));
-      pass->Set("precision_mode",
-                new std::string(argument->tensorrt_precision_mode()));
+
+      bool enable_int8 = false;
+      if (argument->tensorrt_precision_mode() ==
+          contrib::AnalysisConfig::Precision::kInt8)
+        enable_int8 = true;
+
+      pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("model_dir", new std::string(argument->model_path()));
     }
 
     // graph_ = pass->Apply(std::move(graph_));
-
     pre_pass = pass_name;
 
     passes_.emplace_back(std::move(pass));

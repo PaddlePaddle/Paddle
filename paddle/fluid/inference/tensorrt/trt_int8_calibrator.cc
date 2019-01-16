@@ -25,11 +25,7 @@ int TRTInt8Calibrator::getBatchSize() const { return batch_size_; }
 TRTInt8Calibrator::TRTInt8Calibrator(
     const std::unordered_map<std::string, size_t>& buffers, int batch_size,
     std::string engine_name, const platform::Place place)
-    : batch_size_(batch_size),
-      calib_running_(true),
-      data_is_set_(false),
-      done_(false),
-      engine_name_(engine_name) {
+    : batch_size_(batch_size), engine_name_(engine_name) {
   int i = 0;
   VLOG(4) << "Init a new calibrator: " << engine_name_;
   for (const auto it : buffers) {
@@ -62,28 +58,32 @@ void TRTInt8Calibrator::waitAndSetDone() {
   }
 }
 
+// There might be more than one input for trt subgraph,
+// So, we use a map to store input information.
 bool TRTInt8Calibrator::setBatch(
     const std::unordered_map<std::string, void*>& data) {
   VLOG(3) << "set batch: " << engine_name_;
   std::unique_lock<std::mutex> lk(mut_);
+  //  There is a producer and a consumer. The producer set the batch data and
+  //  the consumer get the batch data. The size of the data pool is one.
+  //  So, the producer has to wait for the consumer to finish processing before
+  //  they can set the data.
   while ((calib_running_ || data_is_set_) && (!done_)) cond_.wait(lk);
+  // The done_ is set to true using waitAndSetDone, When all calibration data
+  // are processed.
   if (done_) return false;
 
   // Sets the batch.
-  for (const auto it : data) {
+  for (const auto& it : data) {
     auto dataptr = data_buffers_.find(it.first);
     if (dataptr == data_buffers_.end()) {
       LOG(FATAL) << "FATAL " << engine_name_ << " input name '" << it.first
                  << "' does not match with the buffer names";
     }
-
     const auto& d = dataptr->second;
-    auto status =
-        cudaMemcpy(d.first, it.second, d.second, cudaMemcpyDeviceToDevice);
-    if (status != cudaSuccess) {
-      LOG(FATAL) << "cudaMemcpy " << engine_name_ << " for '" << it.first
-                 << "' failed with " << status;
-    }
+    PADDLE_ENFORCE(
+        cudaMemcpy(d.first, it.second, d.second, cudaMemcpyDeviceToDevice),
+        "Fail to cudaMemcpy %s for %s", engine_name_, it.first);
   }
 
   data_is_set_ = true;
@@ -95,9 +95,12 @@ bool TRTInt8Calibrator::getBatch(void** bindings, const char** names,
                                  int num_bindings) {
   VLOG(4) << "get batch: " << engine_name_;
   std::unique_lock<std::mutex> lk(mut_);
+  // The consumer has just finished processing a data.
+  // The producer can set the data again.
   calib_running_ = false;
   cond_.notify_all();
 
+  // As long as there is data in the pool, the consumer can get it.
   while (!data_is_set_ && !done_) cond_.wait(lk);
   if (done_) return false;
 
@@ -123,7 +126,7 @@ void TRTInt8Calibrator::setDone() {
   cond_.notify_all();
 }
 
-const void* TRTInt8Calibrator::readCalibrationCache(std::size_t& length) {
+const void* TRTInt8Calibrator::readCalibrationCache(size_t& length) {
   if (calibration_table_.empty()) return nullptr;
   length = calibration_table_.size();
   return calibration_table_.data();

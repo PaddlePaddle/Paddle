@@ -122,13 +122,13 @@ void contrib::AnalysisConfig::EnableMKLDNN() {
 #endif
 }
 
-void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size,
-                                                   int max_batch_size,
-                                                   int min_subgraph_size,
-                                                   std::string precision_mode) {
+void contrib::AnalysisConfig::EnableTensorRtEngine(
+    int workspace_size, int max_batch_size, int min_subgraph_size,
+    contrib::AnalysisConfig::Precision precision_mode) {
   use_tensorrt_ = true;
   tensorrt_workspace_size_ = workspace_size;
   tensorrt_max_batchsize_ = max_batch_size;
+  tensorrt_min_subgraph_size_ = min_subgraph_size;
   tensorrt_precision_mode_ = precision_mode;
   Update();
 }
@@ -149,7 +149,7 @@ void contrib::AnalysisConfig::Update() {
           << "TensorRT engine is not available when EnableGpu() not actived.";
     } else {
       // Append after the infer_clean pass.
-      pass_builder()->InsertPass(1, "tensorrt_subgraph_pass");
+      pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
     }
   }
 
@@ -180,7 +180,7 @@ std::string contrib::AnalysisConfig::SerializeInfoCache() {
   ss << use_tensorrt_;
   ss << tensorrt_workspace_size_;
   ss << tensorrt_max_batchsize_;
-  ss << tensorrt_precision_mode_;
+  ss << tensorrt_min_subgraph_size_;
 
   ss << use_mkldnn_;
   ss << enable_ir_optim_;

@@ -156,7 +156,7 @@ static bool PathExists(const std::string &path) {
   return false;
 }
 
-static std::string SplitPath(const std::string path) {
+static std::string GetDirRoot(const std::string path) {
   char sep = '/';
 
 #ifdef _WIN32
@@ -167,8 +167,12 @@ static std::string SplitPath(const std::string path) {
   if (i != std::string::npos) {
     return (path.substr(0, i));
   }
-
   return path;
+}
+
+static std::string GetTrtCalibPath(const std::string &model_root,
+                                   const std::string &engine_key) {
+  return model_root + "/trt_calib_" + engine_key;
 }
 
 }  // namespace analysis
