@@ -248,3 +248,35 @@ class FC(layers.Layer):
             outputs={"Out": out},
             attrs={"use_mkldnn": False})
         return out
+
+
+class SimpleRNNCell(layers.Layer):
+    def __init__(self, step_input_size, hidden_size, output_size, param_attr):
+        self.input_size = step_input_size
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        from ..layer_helper import LayerHelper
+        self._helper = LayerHelper('SimpleRNNCell', param_attr=param_attr)
+
+    def _build_once(self, inputs):
+        i2h_param_shape = [self.step_input_size, self.hidden_size]
+        h2h_param_shape = [self.hidden_size, self.hidden_size]
+        h2o_param_shape = [self.output_size, self.hidden_size]
+        self._i2h_w = self._helper.create_parameter(
+            attr=self._helper.param_attr,
+            shape=i2h_param_shape,
+            dtype=self._dtype,
+            is_bias=False)
+        self._h2h_w = self._helper.create_parameter(
+            attr=self._helper.param_attr,
+            shape=h2h_param_shape,
+            dtype=self._dtype,
+            is_bias=False)
+        self._h2o_w = self._helper.create_parameter(
+            attr=self._helper.param_attr,
+            shape=h2o_param_shape,
+            dtype=self._dtype,
+            is_bias=False)
+
+    def forward(self, inputs):
+        return 1

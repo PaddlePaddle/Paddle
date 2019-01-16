@@ -80,6 +80,19 @@ class MLP(fluid.imperative.Layer):
         return x
 
 
+class SimpleRNN(fluid.imperative.Layer):
+    def __init__(self, inputs):
+        super(SimpleRNN, self).__init__()
+        self.seq_len = input.shape[0]
+        self._fc1 = FC(3,
+                       fluid.ParamAttr(
+                           initializer=fluid.initializer.Constant(value=0.1)))
+
+    def forward(self, inputs):
+        for i in range(self.seq_len):
+            x = self._fc1(inputs[i])
+
+
 class TestImperative(unittest.TestCase):
     def test_layer(self):
         with fluid.imperative.guard():
@@ -209,6 +222,9 @@ class TestImperative(unittest.TestCase):
 
         self.assertTrue(np.allclose(dy_out, static_out))
         self.assertTrue(np.allclose(dy_grad, static_grad))
+
+    def test_rnn_ptb(self):
+        np_inp = np.arrary([])
 
 
 if __name__ == '__main__':
