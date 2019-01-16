@@ -31,23 +31,11 @@ import numpy
 from functools import reduce
 
 __all__ = [
-    'prior_box',
-    'density_prior_box',
-    'multi_box_head',
-    'bipartite_match',
-    'target_assign',
-    'detection_output',
-    'ssd_loss',
-    'detection_map',
-    'rpn_target_assign',
-    'anchor_generator',
-    'roi_perspective_transform',
-    'generate_proposal_labels',
-    'generate_proposals',
-    'iou_similarity',
-    'box_coder',
-    'polygon_box_transform',
-    'yolov3_loss',
+    'prior_box', 'density_prior_box', 'multi_box_head', 'bipartite_match',
+    'target_assign', 'detection_output', 'ssd_loss', 'detection_map',
+    'rpn_target_assign', 'anchor_generator', 'roi_perspective_transform',
+    'generate_proposal_labels', 'generate_proposals', 'iou_similarity',
+    'box_coder', 'polygon_box_transform', 'yolov3_loss', 'box_clip'
 ]
 
 
@@ -1810,3 +1798,47 @@ def generate_proposals(scores,
     rpn_roi_probs.stop_gradient = True
 
     return rpn_rois, rpn_roi_probs
+
+
+def box_clip(input_box, im_info, inplace=False, name=None):
+    """
+    Clip the box into the size given by im_info
+
+    Args:
+        input_box(variable): The input box, the last dimension is 4.
+        im_info(variable): The information of image with shape [N, 3].
+        inplace(bool): Must use :attr:`False` if :attr:`input_box` is used in 
+                       multiple operators. If this flag is set :attr:`True`, 
+                       reuse input :attr:`input_box` to clip, which will 
+                       change the value of tensor variable :attr:`input_box` 
+                       and might cause errors when :attr:`input_box` is used 
+                       in multiple operators. If :attr:`False`, preserve the 
+                       value pf :attr:`input_box` and create a new output 
+                       tensor variable whose data is copied from input x but 
+                       cliped.
+        name (str): The name of this layer. It is optional.
+    
+    Returns:
+        Variable: The cliped tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+            boxes = fluid.layers.data(
+                name='data', shape=[8, 4], dtype='float32', lod_level=1)
+            im_info = fluid.layers.data(name='im_info', shape=[3])
+            out = fluid.layers.box_clip(
+                input_box=boxes, im_info=im_info, inplace=True)
+    """
+
+    inputs = {"InputBox": input_box, "ImInfo": im_info}
+
+    helper = LayerHelper("box_clip", **locals())
+    output = helper.create_variable_for_type_inference(dtype=input_box.dtype)
+    helper.append_op(
+        type="box_clip",
+        inputs=inputs,
+        attrs={"inplace:": inplace},
+        outputs={"OutputBox": output})
+
+    return output
