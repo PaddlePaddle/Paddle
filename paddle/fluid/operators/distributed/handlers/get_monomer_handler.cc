@@ -22,9 +22,9 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-void GetMonomerHandler::Start(
-    std::function<RPCRequest*(framework::Scope*)> start) {
-  start(scope_);
+framework::Variable* GetMonomerHandler::GetOrCreateRequestVar(
+    const std::string& varname, RPCRequest* request) {
+  return scope_->FindVar(varname);
 }
 
 bool GetMonomerHandler::Handle(RPCRequest* request) {
@@ -33,15 +33,9 @@ bool GetMonomerHandler::Handle(RPCRequest* request) {
   }
   // NOTE: get monomer do not depend on server state (barriers).
   rpc_server_->WaitVarReady(request->varname_);
-  auto outvar = scope_->FindVar(request->varname_);
-  request->out_var_ = &outvar;
+  request->out_var_ = scope_->FindVar(request->varname_);
   request->out_var_name_ = request->varname_;
   return true;
-}
-
-void GetMonomerBarrierHandler::Start(
-    std::function<RPCRequest*(framework::Scope*)> start) {
-  start(scope_);
 }
 
 bool GetMonomerBarrierHandler::Handle(RPCRequest* request) {

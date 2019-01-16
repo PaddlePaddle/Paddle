@@ -89,7 +89,6 @@ class VariableResponse {
     }
     PADDLE_ENFORCE_NOT_NULL(get_var_callback_);
     var_cache_ = get_var_callback_(meta_.varname());
-    PADDLE_ENFORCE_NOT_NULL(var_cache_);
     return var_cache_;
   }
 

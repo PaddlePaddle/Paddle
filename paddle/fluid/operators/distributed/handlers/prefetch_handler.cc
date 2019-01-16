@@ -30,37 +30,30 @@ static inline void BuildVar(const std::string& param_name,
   }
 }
 
-void PrefetchHandler::Start(
-    std::function<RPCRequest*(framework::Scope*)> start) {
-  if (UNLIKELY(local_scope_ == nullptr)) {
-    local_scope_ = &scope_->NewScope();
-  }
-  start(local_scope_);
-}
-
-framework::Variable* PrefetchHandler::GetVar(const std::string& varname) {
-  // need create incomming var if not exist
-  return local_scope_->Var(varname);
+framework::Variable* PrefetchHandler::GetOrCreateRequestVar(
+    const std::string& varname, RPCRequest* request) {
+  request->scope_ = &scope_->NewScope();
+  return request->scope_->Var(varname);
 }
 
 bool PrefetchHandler::Handle(RPCRequest* request) {
   VLOG(4) << "RequestPrefetchHandler " << request->varname_
-          << " outname: " << request->out_var_name_;
-  framework::Variable* outvar = local_scope_->Var(request->out_var_name_);
-  request->out_var_ = &outvar;
+          << " outname: " << request->out_var_name_
+          << " tablename: " << request->table_name_;
+  request->out_var_ = request->scope_->Var(request->out_var_name_);
 
   if (request->table_name_.empty()) {
     auto var_desc = program_->Block(0).FindVar(request->out_var_name_);
-    InitializeVariable(outvar, var_desc->GetType());
+    InitializeVariable(request->out_var_, var_desc->GetType());
     executor_->RunPreparedContext(
         (*prefetch_var_name_to_prepared_ctx_)[request->varname_].get(),
-        local_scope_);
+        request->scope_);
   } else {
-    outvar->GetMutable<framework::LoDTensor>();
+    request->out_var_->GetMutable<framework::LoDTensor>();
     auto lookup_table_op = BuildLookupTableOp(
         request->table_name_, request->varname_, request->out_var_name_);
     paddle::platform::CPUPlace cpu_place;
-    lookup_table_op->Run(*local_scope_, cpu_place);
+    lookup_table_op->Run(*(request->scope_), cpu_place);
   }
   return true;
 }

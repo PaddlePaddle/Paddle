@@ -85,8 +85,8 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   // framework::Variable var2;
   // operators::distributed::DeserializeFromByteBuffer(msg, ctx, &var2);
   framework::Scope scope;
-  scope.Var("myvar");
-  operators::distributed::GRPCVariableResponse resp(&scope, &ctx);
+  auto* tmp_var = scope.Var("myvar");
+  operators::distributed::GRPCVariableResponse resp(tmp_var, &ctx);
   EXPECT_EQ(resp.Parse(msg), 0);
 
   framework::Variable* var2 = resp.GetVar();
@@ -173,8 +173,8 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
 
   // deserialize zero-copy
   framework::Scope scope;
-  scope.Var("myvar");
-  operators::distributed::GRPCVariableResponse resp(&scope, &ctx);
+  auto* tmp_var = scope.Var("myvar");
+  operators::distributed::GRPCVariableResponse resp(tmp_var, &ctx);
   if (from_type == 0) {
     EXPECT_EQ(resp.Parse(msg), 0);
   } else {

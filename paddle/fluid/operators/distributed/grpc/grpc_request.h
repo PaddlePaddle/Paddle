@@ -56,24 +56,30 @@ class GRPCRequest {
         req_id_(req_id) {
     PADDLE_ENFORCE(cq_);
     // NOTE: must start process to call handler so the request can be started.
-    auto start_callback =
-        std::bind(&GRPCRequest::ParseIncommingVar, this, std::placeholders::_1);
-    request_handler_->Start(start_callback);
+    // auto start_callback =
+    //     std::bind(&GRPCRequest::ParseIncommingVar, this,
+    //     std::placeholders::_1);
+    // request_handler_->Start(start_callback);
+    ParseIncommingVar();
   }
   virtual ~GRPCRequest() {}
 
-  void ParseIncommingVar(framework::Scope* scope) {
-    request_.reset(
-        new GRPCVariableResponse(scope, request_handler_->dev_ctx()));
+  void ParseIncommingVar() {
+    rpc_request_.reset(new RPCRequest());
+    auto get_var_callback =
+        std::bind(&RequestHandler::GetOrCreateRequestVar, request_handler_,
+                  std::placeholders::_1, rpc_request_.get());
+    request_.reset(new GRPCVariableResponse(get_var_callback,
+                                            request_handler_->dev_ctx()));
     service_->RequestAsyncUnary(
         static_cast<int>(req_type_), &ctx_, request_.get(), &responder_, cq_,
         cq_, reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
   }
 
   void Process() {
-    rpc_request_.reset(new RPCRequest(
-        request_->Varname(), request_->GetVar(), request_->OutVarname(),
-        request_->TableName(), request_->GetTrainerId(), req_type_));
+    rpc_request_->Prepare(request_->Varname(), request_->GetVar(),
+                          request_->OutVarname(), request_->TableName(),
+                          request_->GetTrainerId(), req_type_);
     request_handler_->Handle(rpc_request_.get());
     Finish();
   }
@@ -81,19 +87,19 @@ class GRPCRequest {
   void Finish() {
     ::grpc::ByteBuffer reply;
     // NOTE: response is in out_var_ and out_var_name_
-    if (rpc_request_->out_var_ != nullptr &&
-        *(rpc_request_->out_var_) != nullptr) {
-      SerializeToByteBuffer(rpc_request_->out_var_name_,
-                            *(rpc_request_->out_var_),
+    if (rpc_request_->out_var_ != nullptr) {
+      SerializeToByteBuffer(rpc_request_->out_var_name_, rpc_request_->out_var_,
                             *request_handler_->dev_ctx(), &reply);
+    }
+    if (rpc_request_->scope_) {
+      request_handler_->scope()->DeleteScope(rpc_request_->scope_);
     }
     {
       std::lock_guard<std::mutex> l(status_mu_);
       status_ = FINISH;
-      responder_.Finish(
-          reply, ::grpc::Status::OK,
-          reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
     }
+    responder_.Finish(reply, ::grpc::Status::OK,
+                      reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
   }
 
   std::string Status2String(RequestType req_type) {
@@ -130,132 +136,6 @@ class GRPCRequest {
   RequestHandler* request_handler_;
   int req_id_;
 };
-
-// class GRPCRequestSend final : public GRPCRequestBase {
-//  public:
-//   using GRPCRequestBase::GRPCRequestBase;
-//   void Process() override {
-//     std::string varname = request_->Varname();
-//     VLOG(4) << "RequestSend var_name:" << varname;
-
-//     auto scope = request_->GetMutableLocalScope();
-//     auto invar = request_->GetVar();
-//     int trainer_id = request_->GetTrainerId();
-//     framework::Variable* outvar = nullptr;
-
-//     RPCRequest req(varname, invar, &outvar, trainer_id, RequestType::SEND);
-//     request_handler_->Handle(&req, scope);
-//     Finish(reply_, &responder_);
-//   }
-// };
-
-// class GRPCRequestGet final : public GRPCRequestBase {
-//  public:
-//   using GRPCRequestBase::GRPCRequestBase;
-//   void Process() override {
-//     std::string varname = request_->Varname();
-//     int trainer_id = request_->GetTrainerId();
-//     VLOG(4) << "RequestGet " << varname;
-
-//     auto scope = request_handler_->scope();
-//     auto invar = scope->FindVar(varname);
-//     framework::Variable* outvar = nullptr;
-
-//     RPCRequest req(varname, invar, &outvar, trainer_id, RequestType::RECV);
-//     request_handler_->Handle(&req, scope);
-
-//     if (outvar) {
-//       SerializeToByteBuffer(varname, outvar, *request_handler_->dev_ctx(),
-//                             &reply_);
-//     }
-//     Finish(reply_, &responder_);
-//   }
-// };
-
-// class GRPCRequestPrefetch final : public GRPCRequestBase {
-//  public:
-//   using GRPCRequestBase::GRPCRequestBase;
-//   void Process() override {
-//     std::string in_var_name = request_->Varname();
-//     std::string out_var_name = request_->OutVarname();
-//     int trainer_id = request_->GetTrainerId();
-//     VLOG(4) << "RequestPrefetch, in_var_name: " << in_var_name
-//             << " out_var_name: " << out_var_name;
-
-//     auto scope = request_->GetMutableLocalScope();
-//     auto invar = scope->FindVar(in_var_name);
-//     framework::Variable* outvar = scope->Var(out_var_name);
-
-//     RPCRequest req(in_var_name, invar, &outvar, trainer_id,
-//                    RequestType::PREFETCH);
-//     req.out_var_name_ = out_var_name;  // FIXME(typhoonzero): copy
-//     req.table_name_ = request_->TableName();
-//     request_handler_->Handle(&req, scope);
-
-//     SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
-//                           &reply_);
-//     Finish(reply_, &responder_);
-//   }
-// };
-
-// class GRPCRequestCheckpointNotify final : public GRPCRequestBase {
-//  public:
-//   using GRPCRequestBase::GRPCRequestBase;
-//   void Process() override {
-//     auto scope = request_->GetMutableLocalScope();
-
-//     std::string checkpoint_notify = request_->Varname();
-//     std::string checkpoint_dir = request_->OutVarname();
-//     int trainer_id = request_->GetTrainerId();
-
-//     VLOG(4) << "RequestCheckpointNotify notify: " << checkpoint_notify
-//             << ", dir: " << checkpoint_dir;
-
-//     RPCRequest req(request_->Varname(), nullptr, nullptr, trainer_id,
-//                    RequestType::CHECKPOINT);
-//     req.out_var_name_ = checkpoint_notify;
-//     request_handler_->Handle(&req, scope);
-//     Finish(reply_, &responder_);
-//   }
-// };
-
-// class GRPCRequestGetMonomer final : public GRPCRequestBase {
-//  public:
-//   using GRPCRequestBase::GRPCRequestBase;
-//   void Process() override {
-//     std::string varname = request_->Varname();
-
-//     auto scope = request_handler_->scope();
-//     auto invar = scope->FindVar(varname);
-//     framework::Variable* outvar = nullptr;
-
-//     RPCRequest req(varname, invar, &outvar, request_->GetTrainerId(),
-//                    RequestType::GET_MONOMER);
-//     request_handler_->Handle(&req, scope);
-
-//     if (outvar) {
-//       auto* dev_ctx = request_handler_->dev_ctx();
-//       SerializeToByteBuffer(varname, outvar, *dev_ctx, &reply_);
-//     }
-//     Finish(reply_, &responder_);
-//   }
-// };
-
-// class GRPCRequestGetMonomerBarrier final : public GRPCRequestBase {
-//  public:
-//   using GRPCRequestBase::GRPCRequestBase;
-//   void Process() override {
-//     std::string varname = request_->Varname();
-//     VLOG(4) << "RequestGetMonomerBarrier " << varname;
-
-//     // FIXME(typhoonzero): wait var ready in handler
-//     RPCRequest req(varname, nullptr, nullptr, request_->GetTrainerId(),
-//                    RequestType::GET_MONOMER_BARRIER);
-//     request_handler_->Handle(&req, nullptr);
-
-//     Finish(reply_, &responder_);
-//   }
-// };
 
 }  // namespace distributed
 }  // namespace operators

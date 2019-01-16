@@ -22,9 +22,9 @@ namespace distributed {
 
 constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
 
-void CheckpointHandler::Start(
-    std::function<RPCRequest*(framework::Scope*)> start) {
-  start(scope_);
+framework::Variable* CheckpointHandler::GetOrCreateRequestVar(
+    const std::string& varname, RPCRequest* request) {
+  return scope_->FindVar(varname);
 }
 
 bool CheckpointHandler::Handle(RPCRequest* request) {

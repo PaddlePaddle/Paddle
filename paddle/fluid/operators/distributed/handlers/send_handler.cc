@@ -20,9 +20,9 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-void SendHandlerSync::Start(
-    std::function<RPCRequest*(framework::Scope*)> start) {
-  start(scope_);
+framework::Variable* SendHandlerSync::GetOrCreateRequestVar(
+    const std::string& varname, RPCRequest* request) {
+  return scope_->FindVar(varname);
 }
 
 bool SendHandlerSync::Handle(RPCRequest* request) {
@@ -39,25 +39,28 @@ bool SendHandlerSync::Handle(RPCRequest* request) {
   return true;
 }
 
-void SendHandlerAsync::Start(
-    std::function<RPCRequest*(framework::Scope*)> start) {
-  local_scope_ = &scope_->NewScope();
-  start(local_scope_);
+framework::Variable* SendHandlerAsync::GetOrCreateRequestVar(
+    const std::string& varname, RPCRequest* request) {
+  request->scope_ = &scope_->NewScope();
+  // create new var for each async request because the var name from
+  // every worker is the same.
+  return request->scope_->Var(varname);
 }
 
 bool SendHandlerAsync::Handle(RPCRequest* request) {
   VLOG(3) << "async process var: " << request->varname_;
-  if (HandleSignal(request, local_scope_, rpc_server_)) {
+  if (HandleSignal(request, scope_, rpc_server_)) {
     return true;
   }
+  bool ret = true;
   try {
     executor_->RunPreparedContext(
-        (*grad_to_prepared_ctx_)[request->varname_].get(), local_scope_);
+        (*grad_to_prepared_ctx_)[request->varname_].get(), request->scope_);
   } catch (std::exception& e) {
     LOG(ERROR) << "async: run sub program error " << e.what();
-    return false;
+    ret = false;
   }
-  return true;
+  return ret;
 }
 
 }  // namespace distributed

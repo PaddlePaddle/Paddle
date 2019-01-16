@@ -22,49 +22,38 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-void GetHandlerSync::Start(
-    std::function<RPCRequest*(framework::Scope*)> start) {
-  start(scope_);
+framework::Variable* GetHandlerSync::GetOrCreateRequestVar(
+    const std::string& varname, RPCRequest* request) {
+  // FIXME(typhoonzero): should not create var when client is sending.
+  return scope_->FindVar(varname);
 }
+
 bool GetHandlerSync::Handle(RPCRequest* request) {
   if (HandleSignal(request, scope_, rpc_server_)) {
     return true;
   }
   rpc_server_->WaitState(RPCServerState::STATE_RECV);
-  auto outvar = scope_->FindVar(request->varname_);
-  // FIXME(typhoonzero): should fix this bad usage of pointer.
-  request->out_var_ = &outvar;
+  request->out_var_ = scope_->FindVar(request->varname_);
   request->out_var_name_ = request->varname_;
   return true;
 }
 
-void GetHandlerAsync::Start(
-    std::function<RPCRequest*(framework::Scope*)> start) {
-  if (UNLIKELY(local_scope_ == nullptr)) {
-    local_scope_ = &scope_->NewScope();
-  }
-  start(local_scope_);
+framework::Variable* GetHandlerAsync::GetOrCreateRequestVar(
+    const std::string& varname, RPCRequest* request) {
+  return scope_->FindVar(varname);
 }
 
 bool GetHandlerAsync::Handle(RPCRequest* request) {
-  if (HandleSignal(request, local_scope_, rpc_server_)) {
+  if (HandleSignal(request, scope_, rpc_server_)) {
     return true;
   }
-  auto outvar = local_scope_->FindVar(request->varname_);
-  request->out_var_ = &outvar;
+  request->out_var_ = scope_->FindVar(request->varname_);
   request->out_var_name_ = request->varname_;
   return true;
 }
 
-void GetHandlerDCAsync::Start(
-    std::function<RPCRequest*(framework::Scope*)> start) {
-  if (UNLIKELY(local_scope_ == nullptr)) {
-    local_scope_ = &scope_->NewScope();
-  }
-  start(local_scope_);
-}
 bool GetHandlerDCAsync::Handle(RPCRequest* request) {
-  if (HandleSignal(request, local_scope_, rpc_server_)) {
+  if (HandleSignal(request, scope_, rpc_server_)) {
     return true;
   }
   // NOTE: the format is determined by distributed_transpiler.py
@@ -72,15 +61,14 @@ bool GetHandlerDCAsync::Handle(RPCRequest* request) {
       "%s.trainer_%d_bak", request->varname_, request->trainer_id_);
   VLOG(3) << "getting " << param_bak_name << " trainer_id "
           << request->trainer_id_;
-  auto var = local_scope_->FindVar(request->varname_);
+  auto var = scope_->FindVar(request->varname_);
   auto t_orig = var->Get<framework::LoDTensor>();
   auto param_bak = scope_->Var(param_bak_name);
   auto t = param_bak->GetMutable<framework::LoDTensor>();
   t->mutable_data(dev_ctx_->GetPlace(), t_orig.type());
   VLOG(3) << "copying " << request->varname_ << " to " << param_bak_name;
   framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
-  auto outvar = local_scope_->FindVar(request->varname_);
-  request->out_var_ = &outvar;
+  request->out_var_ = scope_->FindVar(request->varname_);
   request->out_var_name_ = request->varname_;
   return true;
 }

@@ -34,27 +34,29 @@ enum RequestType {
 
 class RPCRequest {
  public:
-  RPCRequest() {}
-  explicit RPCRequest(const std::string &varname, framework::Variable *invar,
-                      const std::string &out_var_name,
-                      const std::string &table_name, int trainer_id,
-                      RequestType req_type)
-      : trainer_id_(trainer_id),
-        varname_(varname),
-        var_(invar),
-        out_var_name_(out_var_name),
-        out_var_(nullptr),
-        table_name_(table_name),
-        type_(req_type) {}
+  RPCRequest() : out_var_(nullptr), scope_(nullptr) {}
+  void Prepare(const std::string &varname, framework::Variable *invar,
+               const std::string &out_var_name, const std::string &table_name,
+               int trainer_id, RequestType req_type) {
+    varname_ = varname;
+    var_ = invar;
+    out_var_name_ = out_var_name;
+    table_name_ = table_name;
+    trainer_id_ = trainer_id;
+    type_ = req_type;
+  }
 
  public:
   int trainer_id_;
   std::string varname_;
   framework::Variable *var_;
   std::string out_var_name_;
-  framework::Variable **out_var_;
+  framework::Variable *out_var_;
   std::string table_name_;
   RequestType type_;
+
+  // scope for current request
+  framework::Scope *scope_;
 
   DISABLE_COPY_AND_ASSIGN(RPCRequest);
 };

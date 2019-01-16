@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <string>
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/distributed/request.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
@@ -24,15 +25,15 @@ namespace distributed {
 
 using Scope = paddle::framework::Scope;
 
-class GetMonomerHandler final : public RequestHandler {
+class GetMonomerHandler : public RequestHandler {
  public:
-  void Start(std::function<RPCRequest*(framework::Scope*)> start) override;
   bool Handle(RPCRequest* request) override;
+  framework::Variable* GetOrCreateRequestVar(const std::string& varname,
+                                             RPCRequest* request) override;
 };
 
-class GetMonomerBarrierHandler final : public RequestHandler {
+class GetMonomerBarrierHandler : public GetMonomerHandler {
  public:
-  void Start(std::function<RPCRequest*(framework::Scope*)> start) override;
   bool Handle(RPCRequest* request) override;
 };
 

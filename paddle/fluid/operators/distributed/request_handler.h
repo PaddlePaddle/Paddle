@@ -87,12 +87,12 @@ class RequestHandler {
   framework::Executor* executor() { return executor_; }
 
   // Handle should call start/finish as following order
-  // 1. in Start, run "start" callback to fetch request var into your scope
-  // 2. GetVar should return the variable of incomming var.
-  // 3. in Handle, process the request, set out_var in request as response.
+  // GetOrCreateRequestVar should return the variable pointer to store
+  // incomming.
+  // In Handle, process the request, set out_var as response.
   virtual bool Handle(RPCRequest* request) = 0;
-  virtual void Start(std::function<void(framework::Scope*)> start) = 0;
-  virtual framework::Variable* GetVar(const std::string& varname) = 0;
+  virtual framework::Variable* GetOrCreateRequestVar(const std::string& varname,
+                                                     RPCRequest* request) = 0;
 
  protected:
   const platform::DeviceContext* dev_ctx_;
