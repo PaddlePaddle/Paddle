@@ -55,16 +55,6 @@ class GRPCRequest {
         request_handler_(request_handler),
         req_id_(req_id) {
     PADDLE_ENFORCE(cq_);
-    // NOTE: must start process to call handler so the request can be started.
-    // auto start_callback =
-    //     std::bind(&GRPCRequest::ParseIncommingVar, this,
-    //     std::placeholders::_1);
-    // request_handler_->Start(start_callback);
-    ParseIncommingVar();
-  }
-  virtual ~GRPCRequest() {}
-
-  void ParseIncommingVar() {
     rpc_request_.reset(new RPCRequest());
     auto get_var_callback =
         std::bind(&RequestHandler::GetOrCreateRequestVar, request_handler_,
@@ -75,6 +65,7 @@ class GRPCRequest {
         static_cast<int>(req_type_), &ctx_, request_.get(), &responder_, cq_,
         cq_, reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
   }
+  virtual ~GRPCRequest() {}
 
   void Process() {
     rpc_request_->Prepare(request_->Varname(), request_->GetVar(),
