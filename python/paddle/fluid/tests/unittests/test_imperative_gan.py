@@ -133,9 +133,6 @@ class TestImperativeMnist(unittest.TestCase):
             for param in generate_p.global_block().all_parameters():
                 static_params[param.name] = np.array(
                     scope.find_var(param.name).get_tensor())
-                sys.stderr.write(
-                    'static_param_loss: %s: %s\n' %
-                    (param.name, np.sum(static_params[param.name])))
 
         dy_params = dict()
         with fluid.imperative.guard():
@@ -160,10 +157,8 @@ class TestImperativeMnist(unittest.TestCase):
             d_loss = d_loss_real + d_loss_fake
             d_loss._backward()
             sgd.minimize(d_loss)
-            for p in discriminator.parameters():
-                p._clear()
-            for p in generator.parameters():
-                p._clear()
+            discriminator.clear_gradients()
+            generator.clear_gradients()
 
             d_fake = discriminator(
                 generator(to_variable(np.ones([2, 2], np.float32))))

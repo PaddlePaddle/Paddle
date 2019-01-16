@@ -33,6 +33,10 @@ class Layer(core.Layer):
     def parameters(self):
         return []
 
+    def clear_gradients(self):
+        for p in self.parameters():
+            p._clear()
+
     def _build_once(self, inputs):
         pass
 
