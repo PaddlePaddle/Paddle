@@ -999,7 +999,7 @@ All parameter, weight, gradient are variables in Paddle.
             self.num_trainers_ = num_trainers;
           })
       .def_property("enable_dgc",
-                    [](const BuildStrategy &self) { return self.enable_dgc; },
+                    [](const BuildStrategy &self) { return self.enable_dgc_; },
                     [](BuildStrategy &self, bool enable_dgc) {
                       self.enable_dgc_ = enable_dgc;
                     })

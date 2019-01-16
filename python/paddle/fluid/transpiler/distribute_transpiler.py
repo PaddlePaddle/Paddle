@@ -226,7 +226,10 @@ class DistributeTranspiler(object):
         _, params_grads = self._get_optimize_pass()
         for param_var, grad_var in self.params_grads:
             var_numel = reduce(lambda x, y: x * y, param_var.shape)
-            if var_numel.shape < 4096:
+            if var_numel.shape < 4096 or \
+                param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
+                grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
+                    param_var.dtype != core.VarDesc.VarType.FP32 :
                 continue
 
             u_name = param_var.name + "__dgc_u__"
@@ -234,14 +237,26 @@ class DistributeTranspiler(object):
             grad_local_name = param_var.name + "__dgc_grad_local__"
 
             names = [u_name, v_name, grad_local_name]
-            for n in names:
+            for var_name in names:
                 startup_program.global_block().create_var(
-                    name=u_name,
+                    name=var_name,
                     shape=param_var.shape,
                     dtype=param_var.dtype,
                     type=param_var.type,
                     stop_gradient=True,
                     persistable=True)
+
+                startup_program.global_block().append_op(
+                    type="fill_constant",
+                    inputs=var_name,
+                    outputs={"Out": var_name},
+                    attrs={
+                        "shape": param_var.shape,
+                        "dtype": param_var.dtype,
+                        "value": 0.0,
+                        'force_cpu': False
+                    },
+                    stop_gradient=True)
 
                 main_program.global_block().create_var(
                     name=u_name,

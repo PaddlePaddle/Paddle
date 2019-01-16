@@ -35,13 +35,11 @@ namespace details {
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
-                                     const platform::NCCLContextMap *ctxs,
-                                     bool enable_dgc)
+                                     const platform::NCCLContextMap *ctxs)
     : OpHandleBase(node),
       local_scopes_(local_scopes),
       places_(places),
-      nccl_ctxs_(ctxs),
-      enable_dgc_(enable_dgc) {
+      nccl_ctxs_(ctxs) {
   if (nccl_ctxs_) {
     for (auto &p : places_) {
       this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
