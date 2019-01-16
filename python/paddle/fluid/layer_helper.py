@@ -405,8 +405,7 @@ class LayerHelper(object):
         """
         size = list(input_var.shape[dim_start:dim_end])
         bias_attr = self.bias_attr
-        if not bias_attr:
-            return input_var
+        assert bias_attr is not None
 
         b = self.create_parameter(
             attr=bias_attr, shape=size, dtype=input_var.dtype, is_bias=True)

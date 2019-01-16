@@ -121,21 +121,21 @@ class TestImperativeMnist(unittest.TestCase):
             img = np.ones([2, 1], np.float32)
             noise = np.ones([2, 2], np.float32)
             exe.run(startup)
-            d_loss_val = exe.run(discriminate_p,
-                                 feed={'img': img,
-                                       'noise': noise},
-                                 fetch_list=[d_loss])[0]
-            g_loss_val = exe.run(generate_p,
-                                 feed={'noise': noise},
-                                 fetch_list=[g_loss])[0]
+            static_d_loss = exe.run(discriminate_p,
+                                    feed={'img': img,
+                                          'noise': noise},
+                                    fetch_list=[d_loss])[0]
+            static_g_loss = exe.run(generate_p,
+                                    feed={'noise': noise},
+                                    fetch_list=[g_loss])[0]
+
+            # generate_p contains all parameters needed.
             for param in generate_p.global_block().all_parameters():
                 static_params[param.name] = np.array(
                     scope.find_var(param.name).get_tensor())
                 sys.stderr.write(
                     'static_param_loss: %s: %s\n' %
                     (param.name, np.sum(static_params[param.name])))
-            sys.stderr.write('d_loss %s, g_loss: %s\n' %
-                             (d_loss_val, g_loss_val))
 
         dy_params = dict()
         with fluid.imperative.guard():
@@ -181,8 +181,14 @@ class TestImperativeMnist(unittest.TestCase):
                 dy_params[p.name] = p._numpy()
                 sys.stderr.write('dy_param_loss: %s: %s\n' %
                                  (p.name, np.sum(dy_params[p.name])))
-            sys.stderr.write('dy_d_loss: %s, dy_g_loss: %s\n' %
-                             (d_loss._numpy(), g_loss._numpy()))
+
+            dy_g_loss = g_loss._numpy()
+            dy_d_loss = d_loss._numpy()
+
+        self.assertEqual(dy_g_loss, static_g_loss)
+        self.assertEqual(dy_d_loss, static_d_loss)
+        for k, v in six.iteritems(dy_params):
+            self.assertTrue(np.allclose(v, static_params[k]))
 
 
 if __name__ == '__main__':
