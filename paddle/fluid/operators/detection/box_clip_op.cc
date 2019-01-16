@@ -35,7 +35,7 @@ class BoxClipOp : public framework::OperatorWithKernel {
                         "The last dimension of InputBox must be 4");
       PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
                         "The rank of Input(InputBox) in BoxClipOp must be 2");
-      PADDLE_ENFORCE_EQ(im_info_dims[1], 2,
+      PADDLE_ENFORCE_EQ(im_info_dims[1], 3,
                         "The last dimension of ImInfo must be 3");
     }
     ctx->ShareDim("InputBox", /*->*/ "OutputBox");
