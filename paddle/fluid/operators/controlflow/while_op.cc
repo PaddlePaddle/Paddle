@@ -58,7 +58,6 @@ class WhileOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kCondition)));
-
     auto &cond = scope.FindVar(Input(kCondition))->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(cond.dims(), paddle::framework::make_ddim({1}));
 
@@ -73,27 +72,18 @@ class WhileOp : public framework::OperatorBase {
     PADDLE_ENFORCE(platform::is_cpu_place(cond.place()),
                    "Condition of while op must in CPU memory.");
 
+    bool is_test = Attr<bool>("is_test");
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
 
-    bool is_test = Attr<bool>("is_test");
     auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
-
-    if (!is_test) {
-      while (cond.data<bool>()[0]) {
-        auto &current_scope = scope.NewScope();
-        step_scopes->push_back(&current_scope);
-        executor.RunPreparedContext(ctx.get(), &current_scope, false, true,
-                                    true);
-      }
-    } else {
+    while (cond.data<bool>()[0]) {
       auto &current_scope = scope.NewScope();
-      executor.CreateVariables(*program, &current_scope, block->ID());
-      while (cond.data<bool>()[0]) {
-        executor.RunPreparedContext(ctx.get(), &current_scope, false, false,
-                                    false);
+      step_scopes->push_back(&current_scope);
+      executor.RunPreparedContext(ctx.get(), &current_scope, false, true, true);
+      if (is_test) {
+        scope.DeleteScope(&current_scope);
       }
-      scope.DeleteScope(&current_scope);
     }
   }
 };
