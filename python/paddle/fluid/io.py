@@ -20,6 +20,7 @@ import time
 import shutil
 import six
 
+import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable
@@ -640,6 +641,15 @@ def save_inference_model(dirname,
         if not (bool(target_vars) and
                 all(isinstance(var, Variable) for var in target_vars)):
             raise ValueError("'target_vars' should be a list of Variable.")
+
+    # fix the bug that the activation op's output as target will be pruned.
+    # will affect the inference performance.
+    # TODO(Superjomn) add an IR pass to remove 1-scale op.
+    uniq_target_vars = []
+    for var in target_vars:
+        var = fluid.layers.scale(var, 1.)
+        uniq_target_vars.append(var)
+    target_vars = uniq_target_vars
 
     if main_program is None:
         main_program = default_main_program()
