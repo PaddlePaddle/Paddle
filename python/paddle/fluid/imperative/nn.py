@@ -221,13 +221,10 @@ class FC(layers.Layer):
         from ..layer_helper import LayerHelper
         self._helper = LayerHelper(
             'FC', param_attr=param_attr, act=act, name=name)
-        self._bias_attr = bias_attr
+        self._bias_attr = bias_attr if bias_attr else ParamAttr()
 
     def parameters(self):
-        if self._bias_attr:
-            return [self._w, self._b]
-        else:
-            return [self._w]
+        return [self._w, self._b]
 
     def _build_once(self, input):
         input_shape = input.shape
@@ -264,10 +261,11 @@ class FC(layers.Layer):
         # add bias
         size = list(out.shape[1:])
         if not self._built:
-            self._b = self._layer.create_parameter(
+            self._b = self._helper.create_parameter(
                 attr=self._bias_attr, shape=size, dtype=out.dtype, is_bias=True)
-        bias_out = self.create_variable_for_type_inference(dtype=out.dtype)
-        self.append_op(
+        bias_out = self._helper.create_variable_for_type_inference(
+            dtype=out.dtype)
+        self._helper.append_op(
             type='elementwise_add',
             inputs={'X': [out],
                     'Y': [self._b]},
