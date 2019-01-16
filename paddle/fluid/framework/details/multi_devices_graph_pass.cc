@@ -203,10 +203,10 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
 
           for (size_t i = 0; i < backward_vars.size(); i += 2) {
             auto &p_name = backward_vars[i];
-            auto &g_name = backward_vars[i + 1];
-            VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
+            auto &grad_name = backward_vars[i + 1];
+            VLOG(10) << "Bcast " << grad_name << " for parameter " << p_name;
 
-            InsertCollectiveOp(&result, p_name, g_name);
+            InsertCollectiveOp(&result, p_name, grad_name);
           }
         } catch (boost::bad_get e) {
         }
@@ -420,25 +420,37 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
 }
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-void MultiDevSSAGraphBuilderBase::CreateDGCOp(ir::Graph *g,
+void MultiDevSSAGraphBuilderBase::CreateDGCOp(ir::Graph *graph, int num_places,
                                               const std::string &p_name,
                                               const std::string &grad_name,
-                                              float m) const {
-  fraemwork::OpDesc desc;
+                                              float m, float ratio) const {
+  framework::OpDesc desc;
   desc.SetInput("U", std::vector<std::string>({p_name + "_dgc_u_"}));
   desc.SetInput("V", std::vector<std::string>({p_name + "_dgc_v_"}));
-  desc.SetInput("Grad", std::vector<std::string>({g_name}));
-  desc.SetInput("GradLocal", std::vector<std::string>({g_name + "_dgc_g_"}));
-  desc.SetOutput("EncodeGradient", std::vector<std::string>({g_name}));
+  desc.SetInput("Grad", std::vector<std::string>({grad_name}));
+  desc.SetInput("GradLocal", std::vector<std::string>({grad_name + "_dgc_g_"}));
+  desc.SetOutput("EncodeGradient", std::vector<std::string>({grad_name}));
   desc.SetAttr("m", Attribute(m));
+  desc.SetAttr("ratio", Attribute(ratio));
   desc.SetType("dgc");
 
-  // auto dgc_node = g->CreateOpNode(&desc);
-  for (size_t scope_idx = 0; scope_idx < num_places; ++scope_idx) {
-    auto p = places_[scope_idx];
-    auto s = local_scopes_[scope_idx];
-    g->Get<GraphOps>(kGraphOps).emplace_back(
-        new ComputationOpHandle(g->CreateOpNode(&desc), s, p, scope_idx));
+  for (size_t i = 0; i < num_places; ++i) {
+    auto p = places_[i];
+    auto s = local_scopes_[i];
+    graph->Get<GraphOps>(kGraphOps).emplace_back(
+        new ComputationOpHandle(graph->CreateOpNode(&desc), s, p, i));
+
+    auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
+    auto &vars = result->Get<GraphVars>(kGraphVars)[i][grad_name];
+    PADDLE_ENFORCE(!vars.empty());
+    auto &prev_grad = vars.back();
+    op_handle->AddInput(prev_grad);
+
+    auto var =
+        new VarHandle(result->CreateEmptyNode(og, ir::Node::Type::kVariable),
+                      vars.size(), i, og, p);
+    vars.emplace_back(var);
+    op_handle->AddOutput(var);
   }
 }
 #endif
@@ -940,6 +952,8 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
         CreateBroadcastOp(result, g_name, 0);
       } else {
         if (strategy_.enable_dgc_ && var_size > 4096) {
+          VLOG(10) << "enable_dgc:" << strategy_.enable_dgc_
+                   << ", numel:" << var_size;
           // FIXME(gongwb): 0.9?
           CreateDGCOp(result, p_name, g_name, 0.9);
           CreateAllReduceOp(result, g_name);

@@ -77,6 +77,12 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   void CreateAllReduceOp(ir::Graph *result, const std::string &og) const;
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  void CreateDGCOp(ir::Graph *graph, int num_places, const std::string &p_name,
+                   const std::string &grad_name, float m,
+                   float ratio = 0.001) const;
+#endif
+
   void CreateBroadcastOp(ir::Graph *result, const std::string &p_name,
                          size_t src_dev_id) const;
 

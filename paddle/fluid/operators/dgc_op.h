@@ -29,9 +29,9 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto v = ctx.Input<framework::Tensor>("V");
     auto g = ctx.Input<framework::Tensor>("Grad");
     auto local_g = ctx.Input<framework::Tensor>("GradLocal");
-    auto m = static_cast<T>(ctx.Attr<float>("m"));
-    auto ratio = static_cast<T>(ctx.Attr<int>("ratio"));
-    int k = g.numel() * ratio;
+    float m = static_cast<T>(ctx.Attr<float>("m"));
+    float ratio = static_cast<T>(ctx.Attr<float>("ratio"));
+    int k = static_cast<int>(g.numel() * ratio);
 
     auto u_out = ctx.Output<framework::Tensor>("U");
     auto v_out = ctx.Output<framework::Tensor>("V");

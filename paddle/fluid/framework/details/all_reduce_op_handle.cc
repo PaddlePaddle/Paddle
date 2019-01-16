@@ -55,6 +55,7 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
     : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 #endif
 
+/*
 template <typename DeviceContext, typename T>
 void InitialDGCVars(Scope *scope, DeviceContext *dev_ctx,
                     const std::string &var_name) {
@@ -64,7 +65,8 @@ void InitialDGCVars(Scope *scope, DeviceContext *dev_ctx,
 }
 
 void AllReduceOpHandle::DGC(framework::Scope *scope, const std::string &name,
-                            DeviceContext *dev_ctx, proto::VarType::Type type) {
+                            platform::DeviceContext *dev_ctx,
+                            proto::VarType::Type type) {
   auto U_name = name + "_dgc_u_";
   auto V_name = name + "_dgc_v_";
   auto G_name = name + "_dgc_g_";
@@ -89,6 +91,7 @@ void AllReduceOpHandle::DGC(framework::Scope *scope, const std::string &name,
   auto V = scope->Var(V_name);
   auto G = scope->Var(G_name);
 }
+*/
 
 void AllReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
@@ -133,20 +136,15 @@ void AllReduceOpHandle::RunImpl() {
         numel = static_cast<size_t>(lod_tensor.numel());
       }
 
-      if (enable_dgc_ && numel > 1000) {
-        VLOG(10) << "enable_dgc:" << enable_dgc_ << ", numel:" << numel;
-        DGC(i, in_var_handles[i]->name_);
-      } else {
-        int dev_id = boost::get<platform::CUDAPlace>(p).device;
-        auto &nccl_ctx = nccl_ctxs_->at(dev_id);
-        auto stream = nccl_ctx.stream();
-        auto comm = nccl_ctx.comm_;
-        all_reduce_calls.emplace_back([=] {
-          PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-              buffer, buffer, numel, static_cast<ncclDataType_t>(dtype),
-              ncclSum, comm, stream));
-        });
-      }
+      int dev_id = boost::get<platform::CUDAPlace>(p).device;
+      auto &nccl_ctx = nccl_ctxs_->at(dev_id);
+      auto stream = nccl_ctx.stream();
+      auto comm = nccl_ctx.comm_;
+      all_reduce_calls.emplace_back([=] {
+        PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+            buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
+            comm, stream));
+      });
     }
 
     this->RunAndRecordEvent([&] {
