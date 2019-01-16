@@ -384,6 +384,7 @@ class Variable(object):
             self._ivar.stop_gradient = stop_gradient
 
     def _numpy(self):
+        self._ivar.wait_device()
         tensor = self._ivar.value().get_tensor()
         return np.array(tensor)
 

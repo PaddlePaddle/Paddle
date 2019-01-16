@@ -45,9 +45,9 @@ def guard(device=0):
 
 
 def to_variable(value, block=None):
-    assert enabled(), "to_variable could only be called in imperative mode"
-
     if isinstance(value, np.ndarray):
+        assert enabled(), "to_variable could only be called in imperative mode"
+
         if not block:
             block = framework.default_main_program().current_block()
         py_var = framework.Variable(

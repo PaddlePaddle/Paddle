@@ -138,6 +138,13 @@ PYBIND11_MODULE(core, m) {
            py::return_value_policy::reference)
       .def("value", [](const imperative::VarBase &self) { return self.var_; },
            py::return_value_policy::reference)
+      .def("wait_device",
+           [](const imperative::VarBase &self) {
+             platform::DeviceContext *dev_ctx =
+                 platform::DeviceContextPool::Instance().Get(
+                     self.var_->Get<framework::LoDTensor>().place());
+             dev_ctx->Wait();
+           })
       .def_property(
           "desc",
           [](const imperative::VarBase &self) { return self.var_desc_; },
