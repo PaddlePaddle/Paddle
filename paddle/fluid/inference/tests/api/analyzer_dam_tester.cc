@@ -189,9 +189,6 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 void profile(bool use_mkldnn = false) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
-  if (!use_mkldnn) {
-    cfg.EnableMemoryOptim();
-  }
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
