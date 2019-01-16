@@ -80,7 +80,7 @@ class PassStrategy : public PaddlePassBuilder {
   /** The MKLDNN control exists in both CPU and GPU mode, because there can be
    * still some CPU kernels running in CPU mode.
    */
-  virtual void EnableMKLDNN(){};
+  virtual void EnableMKLDNN() {}
 
   bool use_gpu() const { return use_gpu_; }
 
@@ -95,7 +95,7 @@ class PassStrategy : public PaddlePassBuilder {
  */
 class CpuPassStrategy : public PassStrategy {
  public:
-  explicit CpuPassStrategy() : PassStrategy({}) {
+  CpuPassStrategy() : PassStrategy({}) {
     // NOTE the large fusions should be located in the front, so that they will
     // not be damaged by smaller ones.
     passes_.assign({
@@ -142,8 +142,6 @@ class CpuPassStrategy : public PassStrategy {
     }
     use_mkldnn_ = true;
 #else
-    LOG(ERROR) << "Cannot EnableMKLDNN, please compile the inference lib with "
-                  "MKLDNN first";
     use_mkldnn_ = false;
 #endif
   }
