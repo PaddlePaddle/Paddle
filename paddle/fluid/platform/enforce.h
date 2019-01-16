@@ -263,6 +263,10 @@ inline void throw_on_error(T e) {
 #define __THROW_ON_ERROR_ONE_ARG(COND, ARG) \
   ::paddle::platform::throw_on_error(COND, ::paddle::string::Sprintf(ARG));
 
+#ifdef _WIN32
+#define __PADDLE_THROW_ON_ERROR(COND, ...) \
+  __THROW_ON_ERROR_ONE_ARG(COND, __VA_ARGS__)
+#else  // _WIN32
 #define __PADDLE_THROW_ON_ERROR(COND, ...)                                \
   __PADDLE_THROW_ERROR_I(                                                 \
       __VA_ARGS__, ::paddle::platform::throw_on_error(COND, __VA_ARGS__), \
@@ -274,6 +278,7 @@ inline void throw_on_error(T e) {
       ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
       ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
       __THROW_ON_ERROR_ONE_ARG(COND, __VA_ARGS__))
+#endif  // _WIN32
 
 #define __PADDLE_UNARY_COMPARE(COND, ...)                 \
   do {                                                    \

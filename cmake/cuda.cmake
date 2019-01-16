@@ -2,9 +2,11 @@ if(NOT WITH_GPU)
     return()
 endif()
 
-set(paddle_known_gpu_archs "30 35 50 52 60 61 70 75")
+set(paddle_known_gpu_archs "30 35 50 52 60 61 70")
 set(paddle_known_gpu_archs7 "30 35 50 52")
 set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
+set(paddle_known_gpu_archs9 "30 35 50 52 60 61 70")
+set(paddle_known_gpu_archs10 "30 35 50 52 60 61 70 75")
 
 ######################################################################################
 # A function for automatic detection of GPUs installed  (if autodetection is enabled)
@@ -155,6 +157,16 @@ elseif (${CUDA_VERSION} LESS 9.0) # CUDA 8.x
   # warning for now.
   list(APPEND CUDA_NVCC_FLAGS "-Wno-deprecated-gpu-targets")
   add_definitions("-DPADDLE_CUDA_BINVER=\"80\"")
+elseif (${CUDA_VERSION} LESS 10.0) # CUDA 9.x
+  set(paddle_known_gpu_archs ${paddle_known_gpu_archs9})
+  list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
+  list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
+  add_definitions("-DPADDLE_CUDA_BINVER=\"90\"")
+elseif (${CUDA_VERSION} LESS 11.0) # CUDA 10.x
+  set(paddle_known_gpu_archs ${paddle_known_gpu_archs10})
+  list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
+  list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
+  add_definitions("-DPADDLE_CUDA_BINVER=\"100\"")
 endif()
 
 include_directories(${CUDA_INCLUDE_DIRS})
