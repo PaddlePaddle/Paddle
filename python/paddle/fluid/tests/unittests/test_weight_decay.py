@@ -22,6 +22,7 @@ import paddle
 import paddle.fluid.core as core
 
 import paddle.fluid as fluid
+from paddle.fluid import compiler
 
 
 def get_places():
@@ -111,17 +112,17 @@ class TestWeightDecay(unittest.TestCase):
                 if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
         build_strategy.memory_optimize = use_ir_memory_optimize
 
-        parallel_exe = fluid.ParallelExecutor(
-            use_cuda,
+        train_cp = compiler.CompiledProgram(fluid.default_main_program(
+        )).with_data_parallel(
             loss_name=loss.name,
             exec_strategy=exec_strategy,
             build_strategy=build_strategy)
 
         loss_set = []
         for data in self.train_data:
-            out = parallel_exe.run(feed=feeder.feed(data),
-                                   fetch_list=[loss.name])
-            print("loss              %s" % (np.average(out)))
+            out = exe.run(train_cp,
+                          feed=feeder.feed(data),
+                          fetch_list=[loss.name])
             loss_set.append(np.average(out))
 
         return loss_set
