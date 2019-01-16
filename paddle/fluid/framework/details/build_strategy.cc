@@ -215,8 +215,8 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
       if (!use_cuda) {
-        LOG(WARNING)
-            << "fuse_relu_depthwise_conv_pass only support on GPU, skipped.";
+        LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
+                        "GPU, skipped.";
         continue;
       }
     }
