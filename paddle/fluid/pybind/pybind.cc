@@ -133,6 +133,7 @@ PYBIND11_MODULE(core, m) {
            [](imperative::VarBase &self) { self.RunBackward(); })
       .def("_grad_name", &imperative::VarBase::GradName)
       .def("_grad_value", &imperative::VarBase::GradValue)
+      .def("_clear", &imperative::VarBase::Clear)
       .def("_grad_ivar",
            [](const imperative::VarBase &self) { return self.grads_; },
            py::return_value_policy::reference)

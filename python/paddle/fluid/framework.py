@@ -388,6 +388,9 @@ class Variable(object):
     def _gradient(self):
         return np.array(self._ivar._grad_value())
 
+    def _clear(self):
+        self._ivar._clear()
+
     def __str__(self):
         return self.to_string(True)
 
