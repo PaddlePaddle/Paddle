@@ -45,9 +45,11 @@ namespace paddle {
 
 using contrib::AnalysisConfig;
 using inference::Singleton;
+#if PADDLE_WITH_TENSORRT
 using inference::tensorrt::TRTInt8Calibrator;
 using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
+#endif
 
 namespace {
 bool IsPersistable(const framework::VarDesc *var) {
