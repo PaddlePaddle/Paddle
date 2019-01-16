@@ -92,7 +92,9 @@ void BboxOverlaps(const framework::Tensor& r_boxes,
       inter_w = std::max(x_max - x_min + 1, zero);
       inter_h = std::max(y_max - y_min + 1, zero);
       inter_area = inter_w * inter_h;
-      overlaps_et(i, j) = inter_area / (r_box_area + c_box_area - inter_area);
+      overlaps_et(i, j) =
+          (inter_area == 0.) ? 0 : inter_area /
+                                       (r_box_area + c_box_area - inter_area);
     }
   }
 }

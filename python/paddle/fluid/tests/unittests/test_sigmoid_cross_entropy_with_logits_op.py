@@ -138,18 +138,15 @@ class TestSigmoidCrossEntropyWithNorm(OpTest):
         out = -term1 - term2
         out[np.where(self.inputs['Label'] == ignore_index)] = 0
         if self.attrs['normalize']:
-            print(np.where(self.inputs['Label'] != ignore_index)[0].shape)
             out = out / float(
                 np.where(self.inputs['Label'] != ignore_index)[0].size)
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place=place, atol=1e-5)
+        self.check_output()
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad(['X'], 'Out')
 
 
 if __name__ == '__main__':

@@ -23,42 +23,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T>
-void SigmoidCrossEntropyWithLogitsForward(const T *x_data, const T *label_data,
-                                          const int ignore_index,
-                                          const int limit, T *out_data) {
-  for (int idx = 0; idx < limit; ++idx) {
-    T x = x_data[idx];
-    T label = label_data[idx];
-    if (static_cast<int>(label) == ignore_index) {
-      out_data[idx] = static_cast<T>(0.);
-    } else {
-      T term1 = (x > 0) ? x : 0;
-      T term2 = x * label;
-      T term3 = std::log(static_cast<T>(1) + std::exp(-std::abs(x)));
-      out_data[idx] = term1 - term2 + term3;
-    }
-  }
-}
-
-template <typename T>
-void SigmoidCrossEntropyWithLogitsBackward(const T *x_data, const T *label_data,
-                                           int ignore_index, const T *dout_data,
-                                           const int limit, T *dx_data) {
-  for (int idx = 0; idx < limit; ++idx) {
-    T x = x_data[idx];
-    T label = label_data[idx];
-    T dout = dout_data[idx];
-    if (static_cast<int>(label) == ignore_index) {
-      dx_data[idx] = static_cast<T>(0.);
-    } else {
-      T simoid_x = static_cast<T>(1) / (static_cast<T>(1) + std::exp(-x));
-      T diff = simoid_x - label;
-      dx_data[idx] = dout * diff;
-    }
-  }
-}
-
 // Out = max(X, 0) - X * Labels + log(1 + exp(-abs(X)))
 template <typename DeviceContext, typename T>
 class SigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
@@ -83,6 +47,20 @@ class SigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
         T term3 = std::log(static_cast<T>(1) + std::exp(-std::abs(x)));
         out_data[idx] = term1 - term2 + term3;
       }
+    }
+    bool normalize = context.Attr<bool>("normalize");
+    if (normalize) {
+      int norm = 0;
+      T eps = static_cast<T>(1e-6);
+      for (int idx = 0; idx < limit; ++idx) {
+        T diff = label_data[idx] - static_cast<T>(ignore_index);
+        if ((diff < -eps) || (diff > eps)) {
+          norm += 1;
+        }
+      }
+      eps = static_cast<T>(1e-5);
+      norm = norm > eps ? norm : eps;
+      std::for_each(out_data, out_data + limit, [norm](T &v) { v = v / norm; });
     }
   }
 };
@@ -114,6 +92,20 @@ class SigmoidCrossEntropyWithLogitsGradKernel : public framework::OpKernel<T> {
         T diff = simoid_x - label;
         dx_data[idx] = dout * diff;
       }
+    }
+    bool normalize = context.Attr<bool>("normalize");
+    if (normalize) {
+      int norm = 0;
+      T eps = static_cast<T>(1e-6);
+      for (int idx = 0; idx < limit; ++idx) {
+        T diff = label_data[idx] - static_cast<T>(ignore_index);
+        if ((diff < -eps) || (diff > eps)) {
+          norm += 1;
+        }
+      }
+      eps = static_cast<T>(1e-5);
+      norm = norm > eps ? norm : eps;
+      std::for_each(dx_data, dx_data + limit, [norm](T &v) { v = v / norm; });
     }
   }
 };

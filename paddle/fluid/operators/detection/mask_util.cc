@@ -49,12 +49,12 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
   uint *a, *b;
   // uint *a;
   platform::CPUPlace cpu;
-  x = reinterpret_cast<int*>(malloc(sizeof(int) * (k + 1)));
-  y = reinterpret_cast<int*>(malloc(sizeof(int) * (k + 1)));
-  // x = reinterpret_cast<int*>(memory::Alloc(cpu, sizeof(int) * (k +
-  // 1))->ptr());
-  // y = reinterpret_cast<int*>(memory::Alloc(cpu, sizeof(int) * (k +
-  // 1))->ptr());
+  // x = reinterpret_cast<int*>(malloc(sizeof(int) * (k + 1)));
+  // y = reinterpret_cast<int*>(malloc(sizeof(int) * (k + 1)));
+  auto xptr = memory::Alloc(cpu, sizeof(int) * (k + 1) * 2);
+  x = reinterpret_cast<int*>(xptr->ptr());
+  y = x + (k + 1);
+
   for (j = 0; j < k; j++) x[j] = static_cast<int>(scale * xy[j * 2 + 0] + .5);
   x[k] = x[0];
   for (j = 0; j < k; j++) y[j] = static_cast<int>(scale * xy[j * 2 + 1] + .5);
@@ -64,8 +64,11 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
   }
   // u = reinterpret_cast<int*>(memory::Alloc(cpu, sizeof(int) * m)->ptr());
   // v = reinterpret_cast<int*>(memory::Alloc(cpu, sizeof(int) * m)->ptr());
-  u = reinterpret_cast<int*>(malloc(sizeof(int) * m));
-  v = reinterpret_cast<int*>(malloc(sizeof(int) * m));
+  auto vptr = memory::Alloc(cpu, sizeof(int) * m * 2);
+  u = reinterpret_cast<int*>(vptr->ptr());
+  v = u + m;
+  // u = reinterpret_cast<int*>(malloc(sizeof(int) * m));
+  // v = reinterpret_cast<int*>(malloc(sizeof(int) * m));
   m = 0;
   for (j = 0; j < k; j++) {
     int xs = x[j], xe = x[j + 1], ys = y[j], ye = y[j + 1], dx, dy, t, d;
@@ -103,15 +106,18 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
     }
   }
   /* get points along y-boundary and downsample */
-  free(x);
-  free(y);
+  // free(x);
+  // free(y);
   k = m;
   m = 0;
   double xd, yd;
   // x = reinterpret_cast<int*>(memory::Alloc(cpu, sizeof(int) * k)->ptr());
   // y = reinterpret_cast<int*>(memory::Alloc(cpu, sizeof(int) * k)->ptr());
-  x = reinterpret_cast<int*>(malloc(sizeof(int) * k));
-  y = reinterpret_cast<int*>(malloc(sizeof(int) * k));
+  auto xyptr = memory::Alloc(cpu, sizeof(int) * k * 2);
+  x = reinterpret_cast<int*>(xyptr->ptr());
+  y = x + k;
+  // x = reinterpret_cast<int*>(malloc(sizeof(int) * k));
+  // y = reinterpret_cast<int*>(malloc(sizeof(int) * k));
   for (j = 1; j < k; j++) {
     if (u[j] != u[j - 1]) {
       xd = static_cast<double>(u[j] < u[j - 1] ? u[j] : u[j] - 1);
@@ -131,16 +137,18 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
   }
   /* compute rle encoding given y-boundary points */
   k = m;
-  a = reinterpret_cast<uint*>(malloc(sizeof(uint) * (k + 1)));
+  // a = reinterpret_cast<uint*>(malloc(sizeof(uint) * (k + 1)));
   // a = reinterpret_cast<uint*>(memory::Alloc(cpu, sizeof(uint) * (k +
   // 1))->ptr());
+  auto aptr = memory::Alloc(cpu, sizeof(uint) * (k + 1));
+  a = reinterpret_cast<uint*>(aptr->ptr());
   for (j = 0; j < k; j++) a[j] = static_cast<uint>(x[j] * h + y[j]);
   a[k++] = static_cast<uint>(h * w);
 
-  free(u);
-  free(v);
-  free(x);
-  free(y);
+  // free(u);
+  // free(v);
+  // free(x);
+  // free(y);
   qsort(a, k, sizeof(uint), Compare);
   uint p = 0;
   for (j = 0; j < k; j++) {
@@ -148,7 +156,9 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
     a[j] -= p;
     p = t;
   }
-  b = reinterpret_cast<uint*>(malloc(sizeof(uint) * k));
+  // b = reinterpret_cast<uint*>(malloc(sizeof(uint) * k));
+  auto bptr = memory::Alloc(cpu, sizeof(uint32_t) * k);
+  b = reinterpret_cast<uint32_t*>(bptr->ptr());
   // uint32_t* b = reinterpret_cast<uint32_t*>(memory::Alloc(cpu,
   //    sizeof(uint32_t) * k)->ptr());
   j = m = 0;
@@ -164,8 +174,10 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
 
   // convert to mask
   // uint8_t* msk = reinterpret_cast<uint8_t*>(malloc(sizeof(uint8_t) * h * w));
-  uint8_t* msk = reinterpret_cast<uint8_t*>(
-      memory::Alloc(cpu, sizeof(uint8_t) * h * w)->ptr());
+  // uint8_t* msk = reinterpret_cast<uint8_t*>(
+  //     memory::Alloc(cpu, sizeof(uint8_t) * h * w)->ptr());
+  auto mskptr = memory::Alloc(cpu, sizeof(uint8_t) * h * w);
+  uint8_t* msk = reinterpret_cast<uint8_t*>(mskptr->ptr());
   Decode(b, m, msk);
 
   for (int ii = 0; ii < h; ++ii) {
@@ -173,8 +185,9 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
       mask[ii * w + jj] = msk[jj * h + ii];
     }
   }
-  free(a);
-  free(b);
+  // free(a);
+  // free(b);
+  // free(msk);
 }
 
 void Poly2Boxes(const std::vector<std::vector<std::vector<float>>>& polys,
@@ -231,14 +244,13 @@ void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
     Poly2Mask(p.data(), k, M, M, msk_i);
   }
 
-  if (polygons.size() != 1UL) {
+  if (polygons.size() > 1UL) {
     for (size_t i = 0; i < polygons.size(); ++i) {
       uint8_t* msk_i = msk + i * M * M;
       for (int j = 0; j < M * M; ++j) {
         if (i == 0) {
           mask[j] = msk_i[j];
         } else {
-          // mask[j] = mask[j] | msk_i[j];
           mask[j] = (mask[j] + msk_i[j]) > 0 ? 1 : 0;
         }
       }
