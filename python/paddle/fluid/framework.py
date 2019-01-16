@@ -1542,13 +1542,20 @@ class Program(object):
         self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
         self._op_role_var = []
 
-        # for distribute
+        # for distribute training
+        # _is_distributed = True if under distributed training
         self._is_distributed = False
+        # _is_chief = True if the trainer is the first one, usually No.0
         self._is_chief = False
+        # _slice_vars_overview records all the parameters distributed on parameter servers.
         self._slice_vars_overview = None
+        # _endpoints is a list about parameter servers ip:port, such as ["ip:port","ip:port"]
         self._endpoints = []
+        # if current role is parameter server, the _ps_endpoint is its "ip:port"
         self._ps_endpoint = None
+        # trainers_endpoints, it is used for distribution.
         self._trainers_endpoints = []
+        # the distributed lookup table names
         self._distributed_lookup_table = None
 
     @property

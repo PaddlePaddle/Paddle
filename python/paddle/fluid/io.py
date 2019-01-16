@@ -257,10 +257,34 @@ def save_params(executor, dirname, main_program=None, filename=None):
 
 
 def _save_distributed_persistables(executor, dirname, main_program):
+    """
+    customized save_persistables for distributed training.
+
+    Args:
+        executor(Executor): The executor to run for saving parameters.
+        dirname(str): The saving directory path.
+        main_program(Program): The program whose parameters will be
+                            saved. the main_program must be the trainer_program
+                            get after transpiler.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            param_path = "./my_paddle_model"
+            t = distribute_transpiler.DistributeTranspiler()
+            t.transpile(...)
+            train_program = t.get_trainer_program()
+            _save_distributed_persistables(executor=exe, dirname=param_path, main_program=train_program)
+    """
+
     def __save_remote_params(executor, dirname, remote_params_map):
         """
-        get optimizer vars on pserver through rpc.
-        :return:
+        recive params on pserver through rpc.
+        if the params are be sliced, will concat them to one, then save it.
         """
         if not remote_params_map:
             return
@@ -340,6 +364,13 @@ def _save_distributed_persistables(executor, dirname, main_program):
 
     def __save_distributed_lookup_tables(executor, dirname,
                                          distributed_lookup_table, endpoints):
+        """
+        because the distributed lookup table may too huge to merge and save at one place,
+        it will be saved at parameter server independent respectively.
+
+        the save directory is dirname/"__lookup_table__".
+
+        """
         prog = Program()
         block = prog.global_block()
 
@@ -664,6 +695,31 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
 
 
 def _load_distributed_persistables(executor, dirname, main_program=None):
+    """
+    customized load_persistables for distributed training.
+    it should be used on parameter server,
+
+    Args:
+        executor(Executor): The executor to run for saving parameters.
+        dirname(str): The load directory path.
+        main_program(Program): The program whose parameters will be
+                            loaded. the main_program must be the pserver_program
+                            get after transpiler.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            param_path = "./my_paddle_model"
+            t = distribute_transpiler.DistributeTranspiler()
+            t.transpile(...)
+            pserver_prog = t.get_pserver_program(...)
+            _load_distributed_persistables(executor=exe, dirname=param_path, main_program=pserver_prog)
+    """
+
     def __is_distributed_part_var(varname):
         trainer_idx = varname.find(".trainer_")
         block_idx = varname.find(".block")

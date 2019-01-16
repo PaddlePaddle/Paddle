@@ -63,6 +63,10 @@ def log(*args):
 
 
 class VarStruct(object):
+    """
+    the properties of the Variable.
+    """
+
     def __init__(self, name, shape, dtype, type, lod_level, persistable):
         self.name = name
         self.shape = shape
@@ -75,6 +79,7 @@ class VarStruct(object):
 class VarDistributed(object):
     """
     a class to record the var distributed on parameter servers.
+    such as the origin var, slice or not, offset/block and so on.
     """
 
     def __init__(self,
@@ -147,6 +152,11 @@ class VarDistributed(object):
 
 
 class VarsDistributed(object):
+    """
+    a gather about VarDistributed, and many find methods are supplied.
+    this may be invoked sample and record centralized.
+    """
+
     def __init__(self):
         self.distributed_vars = []
 
@@ -163,6 +173,14 @@ class VarsDistributed(object):
                            vtype, endpoint))
 
     def get_distributed_var_by_slice(self, var_name):
+        """
+        get distributed var by conditions.
+
+        Args:
+            var_name(str): slice var name, such as "w.traier0.block1"
+        Returns:
+            VarDistributed: distributed var.
+        """
         for dist_var in self.distributed_vars:
             if dist_var.slice.name == var_name:
                 return dist_var
@@ -170,6 +188,9 @@ class VarsDistributed(object):
 
     @staticmethod
     def equal(var1, var2):
+        """
+        the two var is equal.
+        """
         return var1.name == var2.name and \
                var1.type == var2.type and \
                var1.shape == var2.shape and \
@@ -178,12 +199,32 @@ class VarsDistributed(object):
                var1.persistable == var2.persistable
 
     def get_distributed_var_by_origin_and_ep(self, origin_var_name, endpoint):
+        """
+        get distributed var by conditions.
+
+        Args:
+            origin_var_name(str):
+            endpoint(str): the parameter endpoint, such as "127.0.0.1:1001"
+        Returns:
+            VarDistributed: distributed var.
+        """
         for dist_var in self.distributed_vars:
             if dist_var.origin.name == origin_var_name and dist_var.endpoint == endpoint:
                 return dist_var
         return None
 
     def get_distributed_vars_by_vtypes(self, vtypes, groupby=False):
+        """
+        get distributed vars by conditions.
+
+        Args:
+            vtype(str|None): distributed var's vtype, such as "Optimizer", "RemotePrefetch"
+            groupby(bool|False): group by origin var or not.
+
+        Returns:
+            list: distributed var list.
+            dict: distributed var map when groupby=True
+        """
         vtype_vars = []
         for var in self.distributed_vars:
             if var.vtype in vtypes:
@@ -204,6 +245,16 @@ class VarsDistributed(object):
         return params_map
 
     def get_distributed_vars_by_ep(self, endpoint, vtype=None):
+        """
+        get distributed vars by conditions.
+
+        Args:
+            endpoint(str): the parameter server endpoint, such as "127.0.0.1:2001"
+            vtype(str|None): distributed var's vtype, such as "Optimizer", "RemotePrefetch"
+
+        Returns:
+            list: distributed var list.
+        """
         endpoint_vars = []
         for var in self.distributed_vars:
             if var.endpoint == endpoint:
@@ -218,6 +269,13 @@ class VarsDistributed(object):
         return vtype_vars
 
     def overview(self):
+        """
+        get the overview string about all params on all parameter servers.
+
+        Returns:
+            Str: overview string.
+
+        """
         vars_str = []
         for var in self.distributed_vars:
             vars_str.append(str(var))
