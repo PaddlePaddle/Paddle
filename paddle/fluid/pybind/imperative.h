@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
-class PyLayer : public imperative::Layer {
+class Layer : public imperative::Layer {
  public:
   using imperative::Layer::Layer;  // Inherit constructors
 
@@ -30,10 +30,6 @@ class PyLayer : public imperative::Layer {
       const std::vector<imperative::VarBase>& inputs) override {
     PYBIND11_OVERLOAD(std::vector<imperative::VarBase>, Layer, Forward,
                       inputs);  // NOLINT
-  }
-
-  void Backward() override {
-    PYBIND11_OVERLOAD(void, Layer, Backward, );  // NOLINT
   }
 };
 
