@@ -161,10 +161,21 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
 }
 
 std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
-  VLOG(3) << "Predictor::clone";
-  // Hot fix the bug that result diff in multi-thread.
+	std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
+	// Hot fix the bug that result diff in multi-thread.
   // TODO(Superjomn) re-implement a real clone here.
-  return CreatePaddlePredictor(config_);
+	if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init(nullptr)) {
+		LOG(ERROR) << "fail to call Init";	
+		return nullptr;	
+  }
+
+#ifdef __clang__	
+  // fix clang compile error	
+  return cls;	
+#else	
+  // fix manylinux compile error.	
+  return std::move(cls);	
+#endif
 }
 
 bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
