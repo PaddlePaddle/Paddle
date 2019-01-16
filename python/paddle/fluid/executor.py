@@ -454,8 +454,7 @@ class Executor(object):
             fetch_var_name='fetch',
             scope=None,
             return_numpy=True,
-            use_program_cache=False,
-            infer_attrs=None):
+            use_program_cache=False):
         """
         Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
         Python executor takes a program, add feed operators and fetch operators to this program according
@@ -475,7 +474,6 @@ class Executor(object):
             scope(Scope): the scope used to run this program, you can switch it to different scope. default is global_scope
             return_numpy(bool): if convert the fetched tensor to numpy
             use_program_cache(bool): set use_program_cache to true if program not changed compare to the last step.
-            infer_attrs(dict): inference attributes, default inference batch size is 1
 
         Returns:
 
@@ -528,12 +526,6 @@ class Executor(object):
                 use_program_cache=use_program_cache)
 
         program._compile(scope, self.place)
-        if infer_attrs is not None:
-            assert isinstance(infer_attrs, dict)
-            assert program._infer_predictor
-            infer_batch_size = infer_attrs.get("batch_size", 1)
-            return program._infer_predictor.run(feed, infer_batch_size)
-
         self.executor = program._executor
         if program._is_data_parallel:
             return self._run_parallel(
@@ -543,6 +535,8 @@ class Executor(object):
                 fetch_list=fetch_list,
                 fetch_var_name=fetch_var_name,
                 return_numpy=return_numpy)
+        elif program._is_inference:
+            return self._run_inference(program, feed)
         else:
             # TODO(panyx0718): Can compile program to optimize executor
             # performance.
@@ -600,3 +594,8 @@ class Executor(object):
         if return_numpy:
             outs = as_numpy(outs)
         return outs
+
+    def _run_inference(self, program, feed):
+        infer_batch_size = program._infer_attrs.get("batch_size", 1)
+        return self.executor.run(feed, infer_batch_size)
+
