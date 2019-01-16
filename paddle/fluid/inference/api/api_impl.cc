@@ -161,6 +161,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
 }
 
 std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
+  std::lock_guard<std::mutex> lk(clone_mutex_);
   VLOG(3) << "Predictor::clone";
   std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
 
