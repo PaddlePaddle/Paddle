@@ -66,6 +66,7 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _imperative_tracer_ = None
+_current_expected_place_ = None
 
 
 def _in_imperative_mode():
@@ -74,6 +75,10 @@ def _in_imperative_mode():
 
 def _imperative_tracer():
     return _imperative_tracer_
+
+
+def _current_expected_place():
+    return _current_expected_place_
 
 
 class NameScope(object):
@@ -1299,7 +1304,7 @@ class Block(object):
     def _trace_op(self, op, stop_gradient=False):
         if _in_imperative_mode():
             _imperative_tracer().trace(op.iop, op.inputs, op.outputs, self.desc,
-                                       stop_gradient)
+                                       _current_expected_place_, stop_gradient)
 
     def _insert_op(self, index, *args, **kwargs):
         """
@@ -2312,9 +2317,16 @@ def _get_var(name, program=None):
 
 
 @contextlib.contextmanager
-def _imperative_guard(tracer):
+def _imperative_guard(tracer, place):
     global _imperative_tracer_
     tmp_trace = _imperative_tracer_
     _imperative_tracer_ = tracer
+
+    global _current_expected_place_
+    tmp_place = _current_expected_place_
+    _current_expected_place_ = place
+
     yield
+
     _imperative_tracer_ = tmp_trace
+    _current_expected_place_ = tmp_place

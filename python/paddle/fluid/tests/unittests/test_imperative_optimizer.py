@@ -101,7 +101,7 @@ class TestImperativeMnist(unittest.TestCase):
     def test_mnist_cpu_float32(self):
         seed = 90
 
-        with fluid.imperative.guard():
+        with fluid.imperative.guard(device=None):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 

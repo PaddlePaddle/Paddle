@@ -5810,7 +5810,8 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
             type='increment',
             inputs={'X': [counter]},
             outputs={'Out': [counter]},
-            attrs={'step': float(step)})
+            attrs={'step': float(step)},
+            stop_gradient=True)
         counter.stop_gradient = True
 
     return counter
