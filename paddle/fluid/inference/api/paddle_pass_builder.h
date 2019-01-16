@@ -88,6 +88,7 @@ class PassStrategy : public PaddlePassBuilder {
 
  protected:
   bool use_gpu_{false};
+  bool use_mkldnn_{false};
 };
 
 /** The CPU passes controller, it is used in AnalysisPredictor with CPU mode.
@@ -127,16 +128,23 @@ class CpuPassStrategy : public PassStrategy {
   void EnableMKLDNN() override {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
 #ifdef PADDLE_WITH_MKLDNN
-    passes_.insert(passes_.begin(), "mkldnn_placement_pass");
+    if (!use_mkldnn_) {
+      passes_.insert(passes_.begin(), "mkldnn_placement_pass");
 
-    for (auto &pass :
-         std::vector<std::string>({"depthwise_conv_mkldnn_pass",    //
-                                   "conv_bias_mkldnn_fuse_pass",    //
-                                   "conv3d_bias_mkldnn_fuse_pass",  //
-                                   "conv_relu_mkldnn_fuse_pass",    //
-                                   "conv_elementwise_add_mkldnn_fuse_pass"})) {
-      passes_.push_back(pass);
+      for (auto &pass : std::vector<std::string>(
+               {"depthwise_conv_mkldnn_pass",    //
+                "conv_bias_mkldnn_fuse_pass",    //
+                "conv3d_bias_mkldnn_fuse_pass",  //
+                "conv_relu_mkldnn_fuse_pass",    //
+                "conv_elementwise_add_mkldnn_fuse_pass"})) {
+        passes_.push_back(pass);
+      }
     }
+    use_mkldnn_ = true;
+#else
+    LOG(ERROR) << "Cannot EnableMKLDNN, please compile the inference lib with "
+                  "MKLDNN first";
+    use_mkldnn_ = false;
 #endif
   }
 };
