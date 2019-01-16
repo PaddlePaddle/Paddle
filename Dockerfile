@@ -149,6 +149,14 @@ RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
            -DCMAKE_BUILD_TYPE=Release . \
      make)
 
+# ar mishandles 4GB files
+# https://sourceware.org/bugzilla/show_bug.cgi?id=14625
+# remove them when apt-get support 2.27 and higher version
+RUN wget -q https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/binutils/2.27-9ubuntu1/binutils_2.27.orig.tar.gz && \
+    tar -xzf binutils_2.27.orig.tar.gz && \
+    cd binutils-2.27 && \
+    ./configure && make -j && make install && cd .. && rm -rf binutils-2.27 binutils_2.27.orig.tar.gz
+
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd
 RUN echo 'root:root' | chpasswd

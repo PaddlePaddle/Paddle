@@ -87,7 +87,6 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
                    "Input(Out@Grad) must not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
-    auto y_dims = ctx->GetInputDim("Y");
     auto intermediate_dims = ctx->GetInputDim("IntermediateVal");
     auto out_grad_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 

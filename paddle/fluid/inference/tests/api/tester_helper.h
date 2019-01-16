@@ -19,6 +19,9 @@
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+#ifdef WITH_GPERFTOOLS
+#include <gperftools/profiler.h>
+#endif
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/scope.h"
@@ -54,11 +57,13 @@ namespace paddle {
 namespace inference {
 
 void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
+  const auto *analysis_config =
+      reinterpret_cast<const contrib::AnalysisConfig *>(config);
   if (use_analysis) {
-    LOG(INFO) << *reinterpret_cast<const contrib::AnalysisConfig *>(config);
+    LOG(INFO) << *analysis_config;
     return;
   }
-  LOG(INFO) << *reinterpret_cast<const NativeConfig *>(config);
+  LOG(INFO) << analysis_config->ToNativeConfig();
 }
 
 void CompareResult(const std::vector<PaddleTensor> &outputs,
@@ -96,12 +101,13 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
 
 std::unique_ptr<PaddlePredictor> CreateTestPredictor(
     const PaddlePredictor::Config *config, bool use_analysis = true) {
+  const auto *analysis_config =
+      reinterpret_cast<const contrib::AnalysisConfig *>(config);
   if (use_analysis) {
-    return CreatePaddlePredictor<contrib::AnalysisConfig>(
-        *(reinterpret_cast<const contrib::AnalysisConfig *>(config)));
+    return CreatePaddlePredictor<contrib::AnalysisConfig>(*analysis_config);
   }
-  return CreatePaddlePredictor<NativeConfig>(
-      *(reinterpret_cast<const NativeConfig *>(config)));
+  auto native_config = analysis_config->ToNativeConfig();
+  return CreatePaddlePredictor<NativeConfig>(native_config);
 }
 
 size_t GetSize(const PaddleTensor &out) { return VecReduceToInt(out.shape); }
@@ -212,13 +218,19 @@ void TestOneThreadPrediction(
   {
     Timer run_timer;
     run_timer.tic();
+#ifdef WITH_GPERFTOOLS
+    ProfilerStart("paddle_inference.prof");
+#endif
     for (int i = 0; i < num_times; i++) {
       for (size_t j = 0; j < inputs.size(); j++) {
         predictor->Run(inputs[j], outputs, batch_size);
       }
     }
+#ifdef WITH_GPERFTOOLS
+    ProfilerStop();
+#endif
 
-    double latency = run_timer.toc() / num_times;
+    double latency = run_timer.toc() / (num_times > 1 ? num_times : 1);
     PrintTime(batch_size, num_times, 1, 0, latency, inputs.size());
     if (FLAGS_record_benchmark) {
       Benchmark benchmark;
@@ -310,13 +322,12 @@ void CompareDeterministic(
   int num_times = FLAGS_repeat;
   auto predictor = CreateTestPredictor(config, FLAGS_use_analysis);
 
-  // warmup run
   std::vector<PaddleTensor> warmup_outputs, outputs;
-  predictor->Run(inputs[0], &warmup_outputs, batch_size);
-
   // run num_times to Compare Deterministic Result.
-  for (int i = 0; i < num_times; i++) {
-    for (size_t j = 0; j < inputs.size(); j++) {
+  for (size_t j = 0; j < inputs.size(); j++) {
+    // warmup run
+    predictor->Run(inputs[j], &warmup_outputs, batch_size);
+    for (int i = 0; i < num_times; i++) {
       predictor->Run(inputs[j], &outputs, batch_size);
       CompareResult(outputs, warmup_outputs);
     }

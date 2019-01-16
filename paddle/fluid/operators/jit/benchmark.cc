@@ -52,11 +52,11 @@ struct BenchFunc {
     for (int i = 0; i < FLAGS_burning; ++i) {
       tgt(args...);
     }
-    auto start = paddle::platform::PosixInNsec() / 1e-3;
+    auto start = paddle::platform::PosixInNsec() * 1e-3;
     for (int i = 0; i < FLAGS_repeat; ++i) {
       tgt(args...);
     }
-    auto end = paddle::platform::PosixInNsec() / 1e-3;
+    auto end = paddle::platform::PosixInNsec() * 1e-3;
     return static_cast<double>(end - start) / FLAGS_repeat;
   }
 };
@@ -190,6 +190,44 @@ void BenchGRUKernel() {
   }
 }
 
+template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+void BenchSeqPoolKernel() {
+  std::vector<jit::SeqPoolType> pool_types = {
+      jit::SeqPoolType::kSum, jit::SeqPoolType::kAvg, jit::SeqPoolType::kSqrt};
+  for (auto type : pool_types) {
+    for (int w : TestSizes()) {
+      jit::seq_pool_attr_t attr(w, type);
+      for (int h : TestSizes()) {
+        attr.h = h;
+        std::vector<T> x(h * w), y(w);
+        RandomVec<T>(h * w, x.data(), -2.f, 2.f);
+        const T* x_data = x.data();
+        T* y_data = y.data();
+        BenchAllImpls<KT, jit::SeqPoolTuples<T>, PlaceType>(attr, x_data,
+                                                            y_data, &attr);
+      }
+    }
+  }
+}
+
+template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+void BenchMatMulKernel() {
+  for (int m : {1, 2, 3, 4}) {
+    for (int n : TestSizes()) {
+      for (int k : TestSizes()) {
+        std::vector<T> a(m * k), b(k * n), c(m * n);
+        RandomVec<T>(m * k, a.data(), -2.f, 2.f);
+        RandomVec<T>(k * n, b.data(), -2.f, 2.f);
+        const T* a_data = a.data();
+        const T* b_data = b.data();
+        T* c_data = c.data();
+        BenchAllImpls<KT, jit::MatMulTuples<T>, PlaceType>(k, a_data, b_data,
+                                                           c_data, m, n, k);
+      }
+    }
+  }
+}
+
 // Benchmark all jit kernels including jitcode, mkl and refer.
 // To use this tool, run command: ./benchmark [options...]
 // Options:
@@ -216,6 +254,7 @@ int main(int argc, char* argv[]) {
   // xyn
   BenchXYNKernel<jit::kVRelu, T, PlaceType>();
   BenchXYNKernel<jit::kVIdentity, T, PlaceType>();
+  BenchXYNKernel<jit::kVSquare, T, PlaceType>();
   BenchXYNKernel<jit::kVExp, T, PlaceType>();
   BenchXYNKernel<jit::kVSigmoid, T, PlaceType>();
   BenchXYNKernel<jit::kVTanh, T, PlaceType>();
@@ -228,4 +267,10 @@ int main(int argc, char* argv[]) {
   BenchGRUKernel<jit::kGRUH1, T, PlaceType>();
   BenchGRUKernel<jit::kGRUHtPart1, T, PlaceType>();
   BenchGRUKernel<jit::kGRUHtPart2, T, PlaceType>();
+
+  // seq pool function
+  BenchSeqPoolKernel<jit::kSeqPool, T, PlaceType>();
+
+  // matmul
+  BenchMatMulKernel<jit::kMatMul, T, PlaceType>();
 }

@@ -119,6 +119,7 @@ typename KernelTuples::func_type Get(
 }
 
 const char* to_string(KernelType kt);
+const char* to_string(SeqPoolType kt);
 
 KernelType to_kerneltype(const std::string& act);
 
@@ -132,6 +133,11 @@ inline std::ostream& operator<<(std::ostream& os, const lstm_attr_t& attr) {
 inline std::ostream& operator<<(std::ostream& os, const gru_attr_t& attr) {
   os << "dim_size[" << attr.d << "],act_gate[" << to_string(attr.act_gate)
      << "],act_cand[" << to_string(attr.act_cand) << "]";
+  return os;
+}
+inline std::ostream& operator<<(std::ostream& os, const seq_pool_attr_t& attr) {
+  os << "height_size[" << attr.h << "],width_size[" << attr.w << "],pool_type["
+     << to_string(attr.type) << "]";
   return os;
 }
 

@@ -92,10 +92,10 @@ if(WITH_MKL)
   if(NOT WIN32)
     set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml_intel${CMAKE_SHARED_LIBRARY_SUFFIX}
                  ${PADDLE_LIB}/third_party/install/mklml/lib/libiomp5${CMAKE_SHARED_LIBRARY_SUFFIX})
-  else(WIN32)
+  else()
     set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml${CMAKE_SHARED_LIBRARY_SUFFIX}
             ${PADDLE_LIB}/third_party/install/mklml/lib/libiomp5md${CMAKE_SHARED_LIBRARY_SUFFIX})
-  endif(WIN32)
+  endif()
   set(MKLDNN_PATH "${PADDLE_LIB}/third_party/install/mkldnn")
   if(EXISTS ${MKLDNN_PATH})
     include_directories("${MKLDNN_PATH}/include")
@@ -128,8 +128,8 @@ else()
       ${CMAKE_STATIC_LIBRARY_PREFIX}glog  ${CMAKE_STATIC_LIBRARY_PREFIX}gflags  ${CMAKE_STATIC_LIBRARY_PREFIX}protobuf
       ${CMAKE_STATIC_LIBRARY_PREFIX}snappy ${CMAKE_STATIC_LIBRARY_PREFIX}z ${CMAKE_STATIC_LIBRARY_PREFIX}xxhash
       snappystream ${EXTERNAL_LIB})
-  # NOTE(dzhwinter) shlwapi is deprecated.
-  set(DEPS ${DEPS} libcmt shlwapi)
+  get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+  set(DEPS ${DEPS} libcmt ${os_dependency_modules})
 endif(NOT WIN32)
 
 if(WITH_GPU)
