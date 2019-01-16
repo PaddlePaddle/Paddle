@@ -48,6 +48,7 @@ class Conv2D(layers.Layer):
         assert param_attr is not False, "param_attr should not be False here."
         super(Conv2D, self).__init__(name=name, dtype=dtype)
 
+        # TODO(minqiyang): Move this to the top.
         from ..layer_helper import LayerHelper
         self._helper = LayerHelper(
             type(self).__name__,
