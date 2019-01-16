@@ -93,7 +93,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
       PADDLE_THROW("unsupported activation type");
   }
 
-  void Print(Tensor & t, std::string name) {
+  void Print(Tensor & t, std::string name) const {
       VLOG(1) << "qxz print "<< name;
       VLOG(1) << name << "size = " << t.numel();
       size_t size = t.numel();
@@ -242,7 +242,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
       lstmp_value.prev_state_value = lstmp_value.state_value;
       blas.MatMul(hidden_t, false, *proj_weight, false, static_cast<T>(1.0),
                   &proj_t, static_cast<T>(0.0));
-      //Print(proj_t, "proj_t");    
+      Print(proj_t, "proj_t");    
       if (proj_act != math::detail::ActivationType::kIdentity) {
         auto proj_t_dev = EigenMatrix<T>::From(proj_t);
         ActCompute(cell_act, place, proj_t_dev, proj_t_dev);

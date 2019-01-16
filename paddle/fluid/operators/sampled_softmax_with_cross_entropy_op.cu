@@ -22,112 +22,112 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sample_prob.h"
 #include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/fluid/operators/sampled_softmax_with_cross_entropy_op.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
 // UNDERSTAND: something like take_along_axis in numpy.
 template <typename T>
-__global__ static void GPUTakeAlongD1(const int size,
+__global__ void GPUTakeAlongD1(const int size,
                            const int batch_size,
-                           const int num_tale,
-                           const int array_dims,
-                           const int idx_dims,
+                           const int num_take,
+                           const int array_slice_size,
+                           const int idx_slice_size,
                            const T* p_array,
                            const int64_t* p_index,
                            T* p_value) {
-  // src slice size
-  const auto array_slice_size = array_dims[1];
-
-  // index slice size
-  const auto idx_slice_size = idx_dims[1];
   const auto value_slice_size = idx_slice_size;
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int step_size = blockDim.x * gridDim.x;
 
-  for (int i = 0; i < batch_size; ++i) {
-    for (int j = 0; j < num_take; ++j) {
-      auto array_index = p_index[i * idx_slice_size + j];
-      p_value[i * value_slice_size + j] =
-          p_array[i * array_slice_size + array_index];
-    }
+  for (; idx < size; idx += step_size) {
+    int i = idx / idx_slice_size;
+    auto array_index = p_index[idx];
+    p_value[idx] =
+        p_array[i * array_slice_size + array_index];
   }
 }
 
 // UNDERSTAND: something like put_along_axis in numpy but if there is duplicate
 // indices, scatter is done in += way.
 template <typename T>
-static void CPUPutAlongD1(const platform::DeviceContext& ctx,
-                          framework::Tensor* array,
-                          const framework::Tensor& index,
-                          const framework::Tensor& value) {
-  PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
-  // UNDERSTAND: check shape src(B, C), index(B, K), out should also be (B, K)
-  PADDLE_ENFORCE(index.dims().size() == 2 && array->dims().size() == 2 &&
-                 index.dims()[0] == array->dims()[0] &&
-                 index.dims() == value.dims());
-  const auto batch_size = index.dims()[0];
-  const auto num_put = index.dims()[1];
-  auto array_dims = array->dims();
-  auto idx_dims = index.dims();
-
-  // UNDERSTAND: no allocations here
-  T* p_array = array->data<T>();
-  const int64_t* p_index = index.data<int64_t>();
-  const T* p_value = value.data<T>();
-
-  // slice sizes
-  const auto array_slice_size = array_dims[1];
-  const auto idx_slice_size = idx_dims[1];
+__global__ void GPUPutAlongD1(const int size,
+                           const int batch_size,
+                           const int num_take,
+                           const int array_slice_size,
+                           const int idx_slice_size,
+                           T* p_array,
+                           const int64_t* p_index,
+                           const T* p_value) {
   const auto value_slice_size = idx_slice_size;
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int step_size = blockDim.x * gridDim.x;
 
-  for (int i = 0; i < batch_size; ++i) {
-    for (int j = 0; j < num_put; ++j) {
-      auto array_index = p_index[i * idx_slice_size + j];
-      p_array[i * array_slice_size + array_index] +=
-          p_value[i * value_slice_size + j];
-    }
+  for (; idx < size; idx += step_size) {
+    int i = idx / idx_slice_size;
+    auto array_index = p_index[idx];
+    p_array[i * array_slice_size + array_index] = 
+        p_value[idx];
   }
 }
+
 
 // UNDERSTAND: compute accidentdal hits from samples and minus corresponding
 // logits by a float max, here 1e20
 template <typename T>
-static void compute_remove_accidental_hits(const platform::DeviceContext& ctx,
-                                           framework::Tensor* sampled_logits,
-                                           const framework::Tensor& samples,
-                                           const int num_true) {
-  const auto batch_size = sampled_logits->dims()[0];
-  const auto num_sampled_classes = sampled_logits->dims()[1];
-  T* sampled_logits_data = sampled_logits->data<T>();
-  const auto samples_data = samples.data<int64_t>();
+__global__ void gpu_compute_remove_accidental_hits(const int size,
+                           const int num_true,
+                           const int idx_slice_size,
+                           const int64_t* p_index,
+                           T* p_value) {
 
-  std::unordered_set<int64_t> tmp_true_labels;
-  for (int i = 0; i < batch_size; ++i) {
-    tmp_true_labels.clear();
-    tmp_true_labels.insert(samples_data + i * num_sampled_classes,
-                           samples_data + i * num_sampled_classes + num_true);
-    for (int j = num_true; j < num_sampled_classes; ++j) {
-      const auto idx = i * num_sampled_classes + j;
-      if (tmp_true_labels.find(samples_data[idx]) != tmp_true_labels.end())
-        sampled_logits_data[idx] -= 1e20;
+  const auto value_slice_size = idx_slice_size;
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int step_size = blockDim.x * gridDim.x;
+
+  for (; idx < size; idx += step_size) {
+    int i = idx / idx_slice_size;
+    for (int j = 0; j < num_true; ++j) {
+      const auto true_idx = i * idx_slice_size + j;
+      if (p_index[true_idx] == p_index[idx]) {
+        p_value[idx] -= 1e20;
+        break;
+      }
     }
   }
 }
 
 template <typename T>
-class SampledSoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
+class SampledSoftmaxWithCrossEntropyCUDAKernel : 
+      public framework::OpKernel<T> {
  public:
   using Tensor = framework::Tensor;
+    void Print(Tensor & t, std::string name) const {
+      VLOG(1) << "qxz print "<< name;
+      VLOG(1) << name << "size = " << t.numel();
+      size_t size = t.numel();
+      T *d = t.data<T>();
+    #ifdef PADDLE_WITH_CUDA
+	std::vector<T> vec;
+	platform::DeviceContextPool::Instance().Get(t.place())->Wait();
+	if (platform::is_gpu_place(t.place())) {
+	  vec.resize(size);
+	  cudaMemcpy(vec.data(), d, sizeof(T) * size, cudaMemcpyDeviceToHost);
+	  d = vec.data();
+	}
+    #endif
+      VLOG(1) << name << " data_ptr = " << static_cast<void*>(d);
+      for (size_t i = 0; i < size; i++) {
+	   VLOG(1)<< d[i] << ",";
+      }
+    }
+
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(platform::is_cpu_place(context.GetPlace()),
-                   "This kernel only runs on CPU.");
     // get necessary inputs
     const Tensor* logits = context.Input<Tensor>("Logits");
     const Tensor* label = context.Input<Tensor>("Label");
+    VLOG(3) << "Enter SampledSoftmaxWithCrossEntropyCUDAKernel";
 
     // get necessary outputs
     Tensor* samples = context.Output<Tensor>("Samples");
@@ -173,35 +173,39 @@ class SampledSoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
       // UNDERSTAND: sampling
       const auto seed = context.Attr<int>("seed");
       auto sampler_with_prob =
-          math::GPUSampleWithProb<platform::GPUDeviceContext, T>();
-      sampler_with_prob(dev_ctx, seed, num_classes,
-                        num_samples, label, samples, probabilities);
+          math::GPUSampleWithProb<T>();
+      Print(*samples, std::string("samples"));
+      sampler_with_prob(context.cuda_device_context(), seed, num_classes,
+          num_samples, label, samples, probabilities);
     }
+    Print(*samples, std::string("samples"));
+    Print(*probabilities, std::string("probabilities"));
 
     // UNDERSTAND: gather sampled logits and remove accidental hits if needed
+    const auto num_take = samples->dims()[1];
+    const auto array_dims = logits->dims();
+    const auto idx_dims = samples->dims();
+
+    const T* p_array = logits->data<T>();
+    const int64_t* p_index = samples->data<int64_t>();
+    T* p_value = sampled_logits->data<T>();
+  
+    // src slice size
+    const auto array_slice_size = array_dims[1];
+    // index slice size
+    const auto idx_slice_size = idx_dims[1];
+
     int threads = 512;
-    const size_t size = batch_size * num_sampled_classes; 
-    int grid = (batch_size * num_sampled_classes + threads - 1) / threads;
-    const auto batch_size = index.dims()[0];
-    const auto num_take = index.dims()[1];
-    const auto array_dims = array.dims();
-    const auto idx_dims = index.dims();
-
-    const T* p_array = array.data<T>();
-    const int64_t* p_index = index.data<int64_t>();
-    T* p_value = value->data<T>();
-
-    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
-    // UNDERSTAND: check shape src(B, C), index(B, K), out should also be (B, K)
-    PADDLE_ENFORCE(index.dims().size() == 2 && array.dims().size() == 2 &&
-                 index.dims()[0] == array.dims()[0] &&
-                 index.dims() == value->dims());
+    const size_t size = batch_size * num_take; 
+    int grid = (size + threads - 1) / threads;
 
     GPUTakeAlongD1<T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
-        size, batch_size, num_take, array_dims, idx_dims, p_array, p_index, p_value);
+        size, batch_size, num_take, array_slice_size, idx_slice_size, p_array, p_index, p_value);
     if (remove_accidental_hits) {
-      compute_remove_accidental_hits<T>(dev_ctx, sampled_logits, *samples,
-                                        num_true);
+      int threads = 512;
+      const size_t size = batch_size * (num_true + num_samples); 
+      int grid = (size + threads - 1) / threads;
+      gpu_compute_remove_accidental_hits<T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(size, num_true, idx_slice_size, p_index, p_value);
     }
 
     /* Debug
@@ -246,7 +250,7 @@ class SampledSoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class SampledSoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
+class SampledSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
  public:
   using Tensor = framework::Tensor;
   void Compute(const framework::ExecutionContext& context) const override {
@@ -261,9 +265,35 @@ class SampledSoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     set_zero(dev_ctx, logits_grad, static_cast<T>(0));
 
     // UNDERSTAND: scatter it back to logit_grad
-    CPUPutAlongD1<T>(dev_ctx, logits_grad, *samples, *sampled_logits_grad);
+    const auto batch_size = samples->dims()[0];
+    const auto num_put = samples->dims()[1];
+    const auto array_dims = logits_grad->dims();
+    const auto idx_dims = samples->dims();
+
+    T* p_array = logits_grad->data<T>();
+    const int64_t* p_index = samples->data<int64_t>();
+    const T* p_value = sampled_logits_grad->data<T>();
+  
+    // src slice size
+    const auto array_slice_size = array_dims[1];
+    // index slice size
+    const auto idx_slice_size = idx_dims[1];
+
+    int threads = 512;
+    const size_t size = batch_size * num_put; 
+    int grid = (size + threads - 1) / threads;
+
+    GPUPutAlongD1<T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(size, batch_size, num_put, array_slice_size, idx_slice_size, p_array, p_index, p_value);
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
+namespace ops = paddle::operators;
+
+REGISTER_OP_CUDA_KERNEL(sampled_softmax_with_cross_entropy,
+                       ops::SampledSoftmaxWithCrossEntropyCUDAKernel<float>,
+                       ops::SampledSoftmaxWithCrossEntropyCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(sampled_softmax_with_cross_entropy_grad,
+                       ops::SampledSoftmaxWithCrossEntropyGradCUDAKernel<float>,
+                       ops::SampledSoftmaxWithCrossEntropyGradCUDAKernel<double>);

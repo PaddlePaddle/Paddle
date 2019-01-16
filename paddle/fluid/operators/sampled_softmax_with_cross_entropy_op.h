@@ -137,6 +137,7 @@ class SampledSoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(context.GetPlace()),
                    "This kernel only runs on CPU.");
+    VLOG(3) << "Enter SampledSoftmaxWithCrossEntropyKernel";
     // get necessary inputs
     const Tensor* logits = context.Input<Tensor>("Logits");
     const Tensor* label = context.Input<Tensor>("Label");

@@ -30,7 +30,7 @@ using Tensor = framework::Tensor;
 /* UNDERSTAND: utility function to adjust probability for unique sampling,
 return whatever as it is if not using unique samping */
 template <typename T>
-static __device__ T adjust_prob(const T prob, const int num_samples, const int num_tries) {
+static T adjust_prob(const T prob, const int num_samples, const int num_tries) {
   if (num_samples == num_tries) {
     return prob * num_samples;
   } else {
@@ -95,6 +95,16 @@ class SampleWithProb {
     }
   }
 };
+
+#ifdef PADDLE_WITH_CUDA
+template <typename T>
+class GPUSampleWithProb {
+ public:
+  void operator()(const platform::CUDADeviceContext& context, const int seed, const int dict_size,
+                  const std::size_t num_samples, const Tensor* L, Tensor* S,
+                  Tensor* P);
+};
+#endif
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

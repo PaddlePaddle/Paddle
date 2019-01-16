@@ -149,7 +149,7 @@ class SampledSoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Logits"));
     framework::OpKernelType kt = framework::OpKernelType(data_type, ctx.device_context());
-    kt.place_ = platform::CPUPlace();
+    // kt.place_ = platform::CPUPlace();
     return kt;
   }
 };
@@ -190,7 +190,7 @@ class SampledSoftmaxWithCrossEntropyOpGrad
     auto data_type = framework::GetDataTypeOfVar(
         ctx.InputVar(framework::GradVarName("SampledLogits")));
     framework::OpKernelType kt = framework::OpKernelType(data_type, ctx.device_context());
-    kt.place_ = platform::CPUPlace();
+    //kt.place_ = platform::CPUPlace();
     return kt;
   }
 };
