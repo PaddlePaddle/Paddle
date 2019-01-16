@@ -154,10 +154,21 @@ void contrib::AnalysisConfig::Update() {
   auto info = SerializeInfoCache();
   if (info == serialized_info_cache_) return;
 
-  if (use_gpu_) {
-    pass_builder_.reset(new GpuPassStrategy);
+  // Transfer pass_builder and copy the existing compatible passes.
+  if (!pass_builder_ || (use_gpu() ^ pass_builder_->use_gpu())) {
+    if (use_gpu()) {
+      pass_builder_.reset(new GpuPassStrategy);
+    } else {
+      pass_builder_.reset(new CpuPassStrategy);
+    }
   } else {
-    pass_builder_.reset(new CpuPassStrategy);
+    if (use_gpu()) {
+      pass_builder_.reset(new GpuPassStrategy(
+          *static_cast<GpuPassStrategy *>(pass_builder_.get())));
+    } else {
+      pass_builder_.reset(new CpuPassStrategy(
+          *static_cast<CpuPassStrategy *>(pass_builder_.get())));
+    }
   }
 
   if (use_tensorrt_) {

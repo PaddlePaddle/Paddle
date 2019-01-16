@@ -106,7 +106,7 @@ class CpuPassStrategy : public PassStrategy {
         "fc_lstm_fuse_pass",   //
         "mul_lstm_fuse_pass",  //
         // This pass has accurrancy diff on OCR
-        // "fc_gru_fuse_pass",              //
+        "fc_gru_fuse_pass",              //
         "mul_gru_fuse_pass",             //
         "seq_concat_fc_fuse_pass",       //
         "fc_fuse_pass",                  //
@@ -118,6 +118,9 @@ class CpuPassStrategy : public PassStrategy {
     });
     use_gpu_ = false;
   }
+
+  explicit CpuPassStrategy(const CpuPassStrategy &other)
+      : PassStrategy(other.AllPasses()) {}
 
   virtual ~CpuPassStrategy() = default;
 
@@ -160,7 +163,7 @@ class GpuPassStrategy : public PassStrategy {
     use_gpu_ = true;
   }
 
-  GpuPassStrategy(const GpuPassStrategy &other)
+  explicit GpuPassStrategy(const GpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_gpu_ = true;
   }

@@ -56,7 +56,7 @@ void SetConfig(AnalysisConfig *cfg) {
                 FLAGS_infer_model + "/__params__");
   cfg->DisableGpu();
   cfg->SwitchIrDebug();
-  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchSpecifyInputNames(false);
   // TODO(TJ): fix fusion gru
   cfg->pass_builder()->DeletePass("fc_gru_fuse_pass");
 }
