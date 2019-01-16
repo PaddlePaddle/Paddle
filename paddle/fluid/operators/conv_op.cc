@@ -431,14 +431,12 @@ class NoOutputGradOpDescMaker
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  // ops::ConvOpInferVarType,
-                  ops::NoOutputGradOpDescMaker);
+                  ops::ConvOpInferVarType, ops::NoOutputGradOpDescMaker);
 REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad);
 
 // depthwise convolution op
 REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  // ops::ConvOpInferVarType,
-                  ops::NoOutputGradOpDescMaker);
+                  ops::ConvOpInferVarType, ops::NoOutputGradOpDescMaker);
 REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
 
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
