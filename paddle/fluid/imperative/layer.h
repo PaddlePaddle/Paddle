@@ -101,7 +101,6 @@ class VarBase {
   // Owns `var` and `grad`
   VarBase(framework::Variable* var, VarBase* grad)
       : pre_op_(nullptr),
-        pre_op_out_name_(),
         pre_op_out_idx_(-1),
         var_desc_(nullptr),
         var_(var),
@@ -110,7 +109,6 @@ class VarBase {
 
   explicit VarBase(bool stop_gradient)
       : pre_op_(nullptr),
-        pre_op_out_name_(),
         pre_op_out_idx_(-1),
         var_desc_(nullptr),
         var_(new framework::Variable()),
@@ -125,6 +123,13 @@ class VarBase {
     if (grads_) {
       delete grads_;
     }
+  }
+
+  void Clear() {
+    delete grads_;
+    grads_ = new VarBase(true);
+    pre_op_ = nullptr;
+    pre_op_out_name_ = "";
   }
 
   void RunBackward();

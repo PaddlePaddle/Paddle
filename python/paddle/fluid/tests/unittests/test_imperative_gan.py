@@ -69,8 +69,6 @@ class TestImperativeMnist(unittest.TestCase):
         generate_p.random_seed = seed
 
         scope = fluid.core.Scope()
-        exe = fluid.Executor(fluid.CPUPlace())
-        sys.stderr.write('1111\n')
         with new_program_scope(
                 main=discriminate_p, startup=startup, scope=scope):
             discriminator = Discriminator()
@@ -117,6 +115,8 @@ class TestImperativeMnist(unittest.TestCase):
             sgd = SGDOptimizer(learning_rate=1e-3)
             sgd.minimize(g_loss)
 
+        exe = fluid.Executor(fluid.CPUPlace())
+        static_params = dict()
         with fluid.scope_guard(scope):
             img = np.ones([2, 1], np.float32)
             noise = np.ones([2, 2], np.float32)
@@ -128,14 +128,14 @@ class TestImperativeMnist(unittest.TestCase):
             g_loss_val = exe.run(generate_p,
                                  feed={'noise': noise},
                                  fetch_list=[g_loss])[0]
-            sys.stderr.write('d_loss %s, g_loss: %s\n' %
-                             (d_loss_val, g_loss_val))
-
-            static_params = dict()
-            for param in discriminate_p.global_block().all_parameters():
-                sys.stderr.write('%s\n' % param.name)
+            for param in generate_p.global_block().all_parameters():
                 static_params[param.name] = np.array(
                     scope.find_var(param.name).get_tensor())
+                sys.stderr.write(
+                    'static_param_loss: %s: %s\n' %
+                    (param.name, np.sum(static_params[param.name])))
+            sys.stderr.write('d_loss %s, g_loss: %s\n' %
+                             (d_loss_val, g_loss_val))
 
         dy_params = dict()
         with fluid.imperative.guard():
@@ -158,15 +158,31 @@ class TestImperativeMnist(unittest.TestCase):
                     x=d_fake, label=to_variable(np.zeros([2, 1], np.float32))))
 
             d_loss = d_loss_real + d_loss_fake
-            sys.stderr.write('dy_d_loss: %s\n' % d_loss._numpy())
             d_loss._backward()
             sgd.minimize(d_loss)
             for p in discriminator.parameters():
-                dy_params[p.name] = p._numpy()
+                p._clear()
+            for p in generator.parameters():
+                p._clear()
 
-        for k, v in six.iteritems(dy_params):
-            sys.stderr.write('dy_param_loss: %s: %s\n' % (k, np.sum(v)))
-            sys.stderr.write('static_param_loss: %s: %s\n' % (k, np.sum(v)))
+            d_fake = discriminator(
+                generator(to_variable(np.ones([2, 2], np.float32))))
+            g_loss = fluid.layers.reduce_mean(
+                fluid.layers.sigmoid_cross_entropy_with_logits(
+                    x=d_fake, label=to_variable(np.ones([2, 1], np.float32))))
+            g_loss._backward()
+            sgd = SGDOptimizer(learning_rate=1e-3)
+            sgd.minimize(g_loss)
+            for p in discriminator.parameters():
+                dy_params[p.name] = p._numpy()
+                sys.stderr.write('dy_param_loss: %s: %s\n' %
+                                 (p.name, np.sum(dy_params[p.name])))
+            for p in generator.parameters():
+                dy_params[p.name] = p._numpy()
+                sys.stderr.write('dy_param_loss: %s: %s\n' %
+                                 (p.name, np.sum(dy_params[p.name])))
+            sys.stderr.write('dy_d_loss: %s, dy_g_loss: %s\n' %
+                             (d_loss._numpy(), g_loss._numpy()))
 
 
 if __name__ == '__main__':
