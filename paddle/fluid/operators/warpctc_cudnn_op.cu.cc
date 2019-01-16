@@ -145,16 +145,16 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
 
     T* loss_data = loss->mutable_data<T>(loss_dims, ctx.GetPlace());
 
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
-    auto cudnn_func = [&](void* cudnn_workspace) {
-      CUDNN_ENFORCE(platform::dynload::cudnnCTCLoss(
-          handle, cu_logits_desc, warpctc_logits_data, warpctc_label_data,
-          warpctc_label_lengths.data(), warpctc_logits_lengths.data(),
-          loss_data, cu_grad_desc, warpctc_grad_data,
-          CUDNN_CTC_LOSS_ALGO_DETERMINISTIC, cu_ctcloss_desc, cudnn_workspace,
-          workspace_size));
-    };
-    workspace_handle.RunFunc(cudnn_func, workspace_size);
+    auto temp_allocation =
+        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
+            workspace_size);
+    void* cudnn_workspace = temp_allocation->ptr();
+
+    CUDNN_ENFORCE(platform::dynload::cudnnCTCLoss(
+        handle, cu_logits_desc, warpctc_logits_data, warpctc_label_data,
+        warpctc_label_lengths.data(), warpctc_logits_lengths.data(), loss_data,
+        cu_grad_desc, warpctc_grad_data, CUDNN_CTC_LOSS_ALGO_DETERMINISTIC,
+        cu_ctcloss_desc, cudnn_workspace, workspace_size));
   }
 };
 
