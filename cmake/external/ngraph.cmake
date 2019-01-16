@@ -37,15 +37,18 @@ INCLUDE(GNUInstallDirs)
 INCLUDE(ExternalProject)
 
 SET(NGRAPH_PROJECT         "extern_ngraph")
-SET(NGRAPH_VERSION         "0.9")
-SET(NGRAPH_GIT_TAG         "f9fd9d4cc318dc59dd4b68448e7fbb5f67a28bd0")
+SET(NGRAPH_GIT_TAG         "20bd8bbc79ae3a81c57313846a2be7313e5d1dab")
 SET(NGRAPH_SOURCES_DIR     ${THIRD_PARTY_PATH}/ngraph)
 SET(NGRAPH_INSTALL_DIR     ${THIRD_PARTY_PATH}/install/ngraph)
 SET(NGRAPH_INC_DIR         ${NGRAPH_INSTALL_DIR}/include)
 SET(NGRAPH_LIB_DIR         ${NGRAPH_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR})
-SET(NGRAPH_SHARED_LIB_NAME libngraph.so.${NGRAPH_VERSION})
+SET(NGRAPH_SHARED_LIB_NAME libngraph.so)
 SET(NGRAPH_CPU_LIB_NAME    libcpu_backend.so)
-SET(NGRAPH_TBB_LIB_NAME    libtbb.so.2)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    SET(NGRAPH_TBB_LIB_NAME    libtbb_debug.so.2)
+else()
+    SET(NGRAPH_TBB_LIB_NAME    libtbb.so.2)
+endif()
 SET(NGRAPH_GIT_REPO        "https://github.com/NervanaSystems/ngraph.git")
 SET(NGRAPH_SHARED_LIB      ${NGRAPH_LIB_DIR}/${NGRAPH_SHARED_LIB_NAME})
 SET(NGRAPH_CPU_LIB         ${NGRAPH_LIB_DIR}/${NGRAPH_CPU_LIB_NAME})
@@ -67,16 +70,7 @@ ExternalProject_Add(
     CMAKE_ARGS          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
     CMAKE_ARGS          -DMKLDNN_INCLUDE_DIR=${MKLDNN_INC_DIR}
     CMAKE_ARGS          -DMKLDNN_LIB_DIR=${MKLDNN_INSTALL_DIR}/lib
-)
-
-# Workaround for nGraph expecting mklml to be in mkldnn install directory.
-ExternalProject_Add_Step(
-    ${NGRAPH_PROJECT}
-    PrepareMKL
-    COMMAND ${CMAKE_COMMAND} -E create_symlink ${MKLML_LIB} ${MKLDNN_INSTALL_DIR}/lib/libmklml_intel.so
-    COMMAND ${CMAKE_COMMAND} -E create_symlink ${MKLML_IOMP_LIB} ${MKLDNN_INSTALL_DIR}/lib/libiomp5.so
-    DEPENDEES download
-    DEPENDERS configure
+    CMAKE_ARGS          -DMKLML_LIB_DIR=${MKLML_INSTALL_DIR}/lib
 )
 
 add_dependencies(ngraph ${NGRAPH_PROJECT})

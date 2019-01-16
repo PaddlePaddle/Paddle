@@ -35,6 +35,7 @@ DECLARE_bool(benchmark);
 DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
+DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
 
 namespace paddle {
 namespace framework {
@@ -163,9 +164,7 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   try {
-    if (VLOG_IS_ON(4)) {
-      VLOG(4) << place << " " << DebugStringEx(&scope);
-    }
+    VLOG(4) << place << " " << DebugStringEx(&scope);
     if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
       PADDLE_THROW("Cannot run operator on place %s", place);
@@ -188,9 +187,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       RunImpl(scope, place);
     }
 
-    if (VLOG_IS_ON(3)) {
-      VLOG(3) << place << " " << DebugStringEx(&scope);
-    }
+    VLOG(3) << place << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet exception) {
     if (Attrs().count("sub_block") != 0) {
       throw exception;
@@ -218,11 +215,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
-  if (inputs_.find(name) != inputs_.end()) {
-    return true;
-  } else {
-    return false;
-  }
+  return inputs_.find(name) != inputs_.end();
 }
 
 std::string OperatorBase::Input(const std::string& name) const {
@@ -421,7 +414,7 @@ const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var) {
     return &(var.Get<SelectedRows>().value());
   } else {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
-                 var.Type().name());
+                 ToTypeName(var.Type()));
   }
 }
 
@@ -432,7 +425,7 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
     return var->GetMutable<SelectedRows>()->mutable_value();
   } else {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
-                 var->Type().name());
+                 ToTypeName(var->Type()));
   }
 }
 
@@ -526,7 +519,7 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
                    PADDLE_ENFORCE(
                        var->IsType<LoDTensor>(),
                        "should be LoDTensor, but the received type is %s",
-                       var->Type().name());
+                       ToTypeName(var->Type()));
                    return &(var->Get<LoDTensor>());
                  });
   return res;
@@ -545,7 +538,7 @@ const std::vector<const Tensor*> ExecutionContext::LegacyMultiInput<Tensor>(
                    PADDLE_ENFORCE(
                        var->IsType<LoDTensor>(),
                        "%s should be LoDTensor, but the received type is %s",
-                       sub_name, var->Type().name());
+                       sub_name, ToTypeName(var->Type()));
                    return &(var->Get<LoDTensor>());
                  });
   return res;
@@ -574,7 +567,7 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
                    PADDLE_ENFORCE(
                        var->IsType<LoDTensor>(),
                        "%s should be LoDTensor, but the received type is %s",
-                       sub_name, var->Type().name());
+                       sub_name, ToTypeName(var->Type()));
                    return var->GetMutable<LoDTensor>();
                  });
   return res;
@@ -816,7 +809,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       PADDLE_THROW(
           "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
           "type_id is %s.",
-          var->Type().name());
+          ToTypeName(var->Type()));
     }
   }
 
@@ -839,7 +832,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       var->GetMutable<SelectedRows>()->set_height(dim[0]);
     } else {
       PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
-                   var->Type().name());
+                   ToTypeName(var->Type()));
     }
   }
 
@@ -1082,12 +1075,11 @@ Scope* OperatorWithKernel::PrepareData(
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
-  auto& scope = ctx.scope();
   int data_type = -1;
-  std::string last_input_name;
   for (auto& input : this->inputs_) {
-    for (auto& ipt_name : input.second) {
-      auto* var = scope.FindVar(ipt_name);
+    const std::vector<const Variable*> vars = ctx.MultiInputVar(input.first);
+    for (size_t i = 0; i < vars.size(); ++i) {
+      const Variable* var = vars[i];
       if (var != nullptr) {
         const Tensor* t = nullptr;
         if (var->IsType<Tensor>()) {
@@ -1098,15 +1090,14 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &(var->Get<SelectedRows>().value());
         }
         if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s is not initialized: %s",
-                         ipt_name, DebugString());
+          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu)is not initialized",
+                         input.first, i);
           int tmp = static_cast<int>(t->type());
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,
-              "DataType of Paddle Op %s must be the same. Get %s(%d) != %s(%d)",
-              Type(), last_input_name, data_type, ipt_name, tmp);
+              "DataType of Paddle Op %s must be the same. Get (%d) != (%d)",
+              Type(), data_type, tmp);
           data_type = tmp;
-          last_input_name = ipt_name;
         }
       }
     }

@@ -84,6 +84,13 @@ inline void VIdentity(const T* x, T* y, int n) {
 }
 
 template <typename T>
+inline void VSquare(const T* x, T* y, int n) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = x[i] * x[i];
+  }
+}
+
+template <typename T>
 void VExp(const T* x, T* y, int n) {
   for (int i = 0; i < n; ++i) {
     y[i] = std::exp(x[i]);
@@ -332,6 +339,45 @@ void NCHW16CMulNC(const T* x, const T* y, T* z, int height, int width) {
   }
 }
 
+template <typename T>
+void SeqPool(const T* x, T* y, const seq_pool_attr_t* attr) {
+  for (int w = 0; w < attr->w; ++w) {
+    const T* src = x + w;
+    T* dst = y + w;
+    *dst = static_cast<T>(0);
+    for (int h = 0; h < attr->h; ++h) {
+      *dst = *dst + *src;
+      src += attr->w;
+    }
+  }
+  if (attr->type == SeqPoolType::kAvg || attr->type == SeqPoolType::kSqrt) {
+    T scalar = static_cast<T>(1);
+    if (attr->type == SeqPoolType::kAvg) {
+      scalar = scalar / static_cast<T>(attr->h);
+    } else {
+      scalar = scalar / std::sqrt(static_cast<T>(attr->h));
+    }
+    VScal<T>(&scalar, y, y, attr->w);
+  }
+}
+
+// A(M,K) * B(K,N) = C(M,N)
+template <typename T>
+void MatMul(const T* A, const T* B, T* C, int M, int N, int K) {
+  for (int m = 0; m < M; ++m) {
+    const T* pa = A + m * K;
+    T* pc = C + m * N;
+    for (int n = 0; n < N; ++n) {
+      const T* pb = B + n;
+      T sum = static_cast<T>(0);
+      for (int k = 0; k < K; ++k) {
+        sum += (pa[k] * pb[k * N]);
+      }
+      *(pc + n) = sum;
+    }
+  }
+}
+
 #define DECLARE_REFER_KERNEL(name, tuples)             \
   template <typename T>                                \
   class name##Kernel : public ReferKernel<tuples<T>> { \
@@ -355,6 +401,7 @@ DECLARE_REFER_KERNEL(VIdentity, XYNTuples);
 DECLARE_REFER_KERNEL(VExp, XYNTuples);
 DECLARE_REFER_KERNEL(VSigmoid, XYNTuples);
 DECLARE_REFER_KERNEL(VTanh, XYNTuples);
+DECLARE_REFER_KERNEL(VSquare, XYNTuples);
 
 // lstm_t*, const lstm_attr_t*
 DECLARE_REFER_KERNEL(LSTMCtHt, LSTMTuples);
@@ -369,6 +416,10 @@ DECLARE_REFER_KERNEL(CRFDecoding, CRFDecodingTuples);
 DECLARE_REFER_KERNEL(LayerNorm, LayerNormTuples);
 
 DECLARE_REFER_KERNEL(NCHW16CMulNC, NCHW16CMulNCTuples);
+
+DECLARE_REFER_KERNEL(SeqPool, SeqPoolTuples);
+
+DECLARE_REFER_KERNEL(MatMul, MatMulTuples);
 
 #undef DECLARE_REFER_KERNEL
 

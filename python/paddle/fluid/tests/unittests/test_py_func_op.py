@@ -14,6 +14,7 @@
 
 import os
 import paddle.fluid as fluid
+from paddle.fluid import compiler
 import paddle
 import unittest
 import six
@@ -26,7 +27,7 @@ os.environ['CPU_NUM'] = str(dev_cnt)
 
 
 def dummy_func_with_no_input():
-    return float(1.0)
+    return np.array([0], dtype='float32')
 
 
 def dummy_func_with_no_output(x):
@@ -105,7 +106,7 @@ def simple_fc_net(img, label, use_py_func_op):
             name='test_tmp_var', dtype='float32', shape=[1])
         fluid.layers.py_func(
             func=dummy_func_with_no_input, x=None, out=dummy_var)
-
+        loss += dummy_var
         fluid.layers.py_func(func=dummy_func_with_no_output, x=loss, out=None)
 
     loss = fluid.layers.mean(loss)
@@ -140,9 +141,10 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
+
+            train_cp = compiler.CompiledProgram(fluid.default_main_program())
             if use_parallel_executor:
-                exe = fluid.ParallelExecutor(
-                    use_cuda=use_cuda, loss_name=loss.name)
+                train_cp = train_cp.with_data_parallel(loss_name=loss.name)
                 fetch_list = [loss.name]
             else:
                 fetch_list = [loss]
@@ -150,9 +152,10 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
             ret = []
             for epoch_id in six.moves.range(2):
                 for d in r():
-                    L, = exe.run(feed=feeder.feed(d), fetch_list=fetch_list)
+                    L, = exe.run(train_cp,
+                                 feed=feeder.feed(d),
+                                 fetch_list=fetch_list)
                     ret.append(L)
-
             return np.array(ret)
 
 
@@ -174,7 +177,7 @@ class TestPyFuncOpUseExecutor(unittest.TestCase):
             self.assertAlmostEqual(max_diff, 0, delta=1e-3)
 
 
-class TestPyFuncOpUseParallelExecutor(unittest.TestCase):
+class TestPyFuncOpUseParallelExecutor(TestPyFuncOpUseExecutor):
     def setUp(self):
         self.use_parallel_executor = True
 

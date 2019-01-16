@@ -65,7 +65,7 @@ def rpn_target_assign(bbox_pred,
                       rpn_negative_overlap=0.3,
                       use_random=True):
     """
-    ** Target Assign Layer for region proposal network (RPN) in Faster-RCNN detection. **
+    **Target Assign Layer for region proposal network (RPN) in Faster-RCNN detection.**
 
     This layer can be, for given the  Intersection-over-Union (IoU) overlap
     between anchors and ground truth boxes, to assign classification and
@@ -135,19 +135,20 @@ def rpn_target_assign(bbox_pred,
     Examples:
         .. code-block:: python
 
-        bbox_pred = layers.data(name='bbox_pred', shape=[100, 4],
-                          append_batch_size=False, dtype='float32')
-        cls_logits = layers.data(name='cls_logits', shape=[100, 1],
-                          append_batch_size=False, dtype='float32')
-        anchor_box = layers.data(name='anchor_box', shape=[20, 4],
-                          append_batch_size=False, dtype='float32')
-        gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
-                         append_batch_size=False, dtype='float32')
-        loc_pred, score_pred, loc_target, score_target, bbox_inside_weight =
-            fluid.layers.rpn_target_assign(bbox_pred=bbox_pred,
-                                          cls_logits=cls_logits,
-                                          anchor_box=anchor_box,
-                                          gt_boxes=gt_boxes)
+            bbox_pred = layers.data(name='bbox_pred', shape=[100, 4],
+                              append_batch_size=False, dtype='float32')
+            cls_logits = layers.data(name='cls_logits', shape=[100, 1],
+                              append_batch_size=False, dtype='float32')
+            anchor_box = layers.data(name='anchor_box', shape=[20, 4],
+                              append_batch_size=False, dtype='float32')
+            gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
+                             append_batch_size=False, dtype='float32')
+            loc_pred, score_pred, loc_target, score_target, bbox_inside_weight =
+                fluid.layers.rpn_target_assign(bbox_pred=bbox_pred,
+                                              cls_logits=cls_logits,
+                                              anchor_box=anchor_box,
+                                              gt_boxes=gt_boxes)
+
     """
 
     helper = LayerHelper('rpn_target_assign', **locals())
@@ -1519,27 +1520,30 @@ def anchor_generator(input,
     Args:
        input(Variable): The input feature map, the format is NCHW.
        anchor_sizes(list|tuple|float): The anchor sizes of generated anchors,
-       given in absolute pixels e.g. [64., 128., 256., 512.].
-       For instance, the anchor size of 64 means the area of this anchor equals to 64**2.
+                                       given in absolute pixels e.g. [64., 128., 256., 512.].
+                                       For instance, the anchor size of 64 means the area of this anchor equals to 64**2.
        aspect_ratios(list|tuple|float): The height / width ratios of generated
-            anchors, e.g. [0.5, 1.0, 2.0].
+                                        anchors, e.g. [0.5, 1.0, 2.0].
        variance(list|tuple): The variances to be used in box regression deltas.
-            Default:[0.1, 0.1, 0.2, 0.2].
-       stride(list|turple): The anchors stride across width and height,
-            e.g. [16.0, 16.0]
+                             Default:[0.1, 0.1, 0.2, 0.2].
+       stride(list|turple): The anchors stride across width and height,e.g. [16.0, 16.0]
        offset(float): Prior boxes center offset. Default: 0.5
        name(str): Name of the prior box op. Default: None.
 
     Returns:
-        Anchors(Variable):  The output anchors with a layout of [H, W, num_anchors, 4].
-              H is the height of input, W is the width of input,
-              num_anchors is the box count of each position.
-              Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
-        Variances(Variable): The expanded variances of anchors
-              with a layout of [H, W, num_priors, 4].
-              H is the height of input, W is the width of input
-              num_anchors is the box count of each position.
-              Each variance is in (xcenter, ycenter, w, h) format.
+        Anchors(Variable),Variances(Variable):  
+        
+              two variables:
+        
+              - Anchors(Variable): The output anchors with a layout of [H, W, num_anchors, 4]. \
+                H is the height of input, W is the width of input, \
+                num_anchors is the box count of each position.  \
+                Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized. 
+              - Variances(Variable): The expanded variances of anchors \
+                with a layout of [H, W, num_priors, 4]. \
+                H is the height of input, W is the width of input \
+                num_anchors is the box count of each position. \
+                Each variance is in (xcenter, ycenter, w, h) format.
 
 
     Examples:
@@ -1748,35 +1752,35 @@ def generate_proposals(scores,
                        eta=1.0,
                        name=None):
     """
-    ** Generate proposal Faster-RCNN **
-	
-	This operation proposes RoIs according to each box with their probability to be a foreground object and 
-	the box can be calculated by anchors. Bbox_deltais and scores to be an object are the output of RPN. Final proposals
-	could be used to train detection net.
+    **Generate proposal Faster-RCNN**
 
-	For generating proposals, this operation performs following steps:
+    This operation proposes RoIs according to each box with their probability to be a foreground object and 
+    the box can be calculated by anchors. Bbox_deltais and scores to be an object are the output of RPN. Final proposals
+    could be used to train detection net.
 
-	1. Transposes and resizes scores and bbox_deltas in size of (H*W*A, 1) and (H*W*A, 4)
- 	2. Calculate box locations as proposals candidates. 
-	3. Clip boxes to image
-	4. Remove predicted boxes with small area. 
-	5. Apply NMS to get final proposals as output.
-	
-      
-	Args:
-		scores(Variable): A 4-D Tensor with shape [N, A, H, W] represents the probability for each box to be an object.
-			N is batch size, A is number of anchors, H and W are height and width of the feature map.
-		bbox_deltas(Variable): A 4-D Tensor with shape [N, 4*A, H, W] represents the differece between predicted box locatoin and anchor location. 
-		im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin image information for N batch. Info contains height, width and scale
-			between origin image size and the size of feature map.
-		anchors(Variable):   A 4-D Tensor represents the anchors with a layout of [H, W, A, 4]. H and W are height and width of the feature map,
-              		num_anchors is the box count of each position. Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
-		variances(Variable): The expanded variances of anchors with a layout of [H, W, num_priors, 4]. Each variance is in (xcenter, ycenter, w, h) format.
-		pre_nms_top_n(float): Number of total bboxes to be kept per image before NMS. 6000 by default.
-		post_nms_top_n(float): Number of total bboxes to be kept per image after NMS. 1000 by default.
-		nms_thresh(float): Threshold in NMS, 0.5 by default.
-		min_size(float): Remove predicted boxes with either height or width < min_size. 0.1 by default.
-		eta(float): Apply in adaptive NMS, if adaptive threshold > 0.5, adaptive_threshold = adaptive_threshold * eta in each iteration.
+    For generating proposals, this operation performs following steps:
+
+    1. Transposes and resizes scores and bbox_deltas in size of (H*W*A, 1) and (H*W*A, 4)
+    2. Calculate box locations as proposals candidates. 
+    3. Clip boxes to image
+    4. Remove predicted boxes with small area. 
+    5. Apply NMS to get final proposals as output.
+
+    Args:
+        scores(Variable): A 4-D Tensor with shape [N, A, H, W] represents the probability for each box to be an object.
+            N is batch size, A is number of anchors, H and W are height and width of the feature map.
+        bbox_deltas(Variable): A 4-D Tensor with shape [N, 4*A, H, W] represents the differece between predicted box locatoin and anchor location. 
+        im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin image information for N batch. Info contains height, width and scale
+            between origin image size and the size of feature map.
+        anchors(Variable):   A 4-D Tensor represents the anchors with a layout of [H, W, A, 4]. H and W are height and width of the feature map,
+                    num_anchors is the box count of each position. Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
+        variances(Variable): The expanded variances of anchors with a layout of [H, W, num_priors, 4]. Each variance is in (xcenter, ycenter, w, h) format.
+        pre_nms_top_n(float): Number of total bboxes to be kept per image before NMS. 6000 by default.
+        post_nms_top_n(float): Number of total bboxes to be kept per image after NMS. 1000 by default.
+        nms_thresh(float): Threshold in NMS, 0.5 by default.
+        min_size(float): Remove predicted boxes with either height or width < min_size. 0.1 by default.
+        eta(float): Apply in adaptive NMS, if adaptive threshold > 0.5, adaptive_threshold = adaptive_threshold * eta in each iteration.
+
     """
     helper = LayerHelper('generate_proposals', **locals())
 

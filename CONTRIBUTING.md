@@ -128,7 +128,7 @@ Please install pre-commit, which automatically reformat the changes to C/C++ and
 
 Please remember to add related unit tests.
 
-- For C/C++ code, please follow [`google-test` Primer](https://github.com/google/googletest/blob/master/googletest/docs/Primer.md).
+- For C/C++ code, please follow [`google-test` Primer](https://github.com/google/googletest/blob/master/googletest/docs/primer.md) .
 
 - For Python code, please use [Python's standard `unittest` package](http://pythontesting.net/framework/unittest/unittest-introduction/).
 
