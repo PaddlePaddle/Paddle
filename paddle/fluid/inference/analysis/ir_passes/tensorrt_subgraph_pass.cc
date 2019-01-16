@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -93,8 +94,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   }
 
   // collect inputs
-  std::unordered_set<std::string> input_names;
-  std::unordered_set<std::string> input_names_with_id;
+  std::set<std::string> input_names;
+  std::set<std::string> input_names_with_id;
   for (auto *x : node->inputs) {
     input_names.insert(x->Name());
     input_names_with_id.insert(x->Name() + std::to_string(x->id()));
@@ -102,8 +103,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   op_desc->SetInput(
       "Xs", std::vector<std::string>(input_names.begin(), input_names.end()));
 
-  std::unordered_set<std::string> output_names;
-  std::unordered_set<std::string> output_names_with_id;
+  std::set<std::string> output_names;
+  std::set<std::string> output_names_with_id;
   for (auto *x : node->outputs) {
     output_names.insert(x->Name());
     output_names_with_id.insert(x->Name() + std::to_string(x->id()));
@@ -203,28 +204,40 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
                  "the block has no var-desc");
   PADDLE_ENFORCE(!output_mapping.empty());
   op_desc->SetBlockAttr("sub_block", new_block);
-  // Set attrs
   SetAttr(op_desc->Proto(), "subgraph",
           block_desc.Proto()->SerializeAsString());
+  // Set attrs
   SetAttr(op_desc->Proto(), "max_batch_size", Get<int>("max_batch_size"));
   SetAttr(op_desc->Proto(), "workspace_size", Get<int>("workspace_size"));
   SetAttr(op_desc->Proto(), "parameters", ExtractParameters(graph->Nodes()));
   SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
 
-  std::string engine_key = std::to_string(
-      std::hash<std::string>()(block_desc.Proto()->SerializeAsString()));
-  std::string precision_mode = Get<std::string>("precision_mode");
+  auto enable_int8 = Get<bool>("enable_int8");
   SetAttr(op_desc->Proto(), "calibration_data", std::string(""));
-  std::string trt_calib_file =
-      Get<std::string>("model_dir") + "/trt_calib_" + engine_key;
-  if (precision_mode == "INT8" && FileExists(trt_calib_file)) {
+
+  // we use the subgraph's inputs and outputs to generate the engine key.
+  std::string engine_hash_key = "";
+  for (auto name : input_names_with_id) {
+    engine_hash_key += name;
+  }
+  for (auto name : output_names_with_id) {
+    engine_hash_key += name;
+  }
+
+  auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
+
+  auto trt_calib_file =
+      GetTrtCalibPath(Get<std::string>("model_dir"), engine_key);
+  VLOG(3) << "engine key: " << engine_key;
+  if (enable_int8 && FileExists(trt_calib_file)) {
+    VLOG(3) << "Calibration table file: " << trt_calib_file << "is found here";
     std::ifstream infile(trt_calib_file, std::ios::in);
     std::stringstream buffer;
     buffer << infile.rdbuf();
     std::string calibration_data(buffer.str());
     SetAttr(op_desc->Proto(), "calibration_data", calibration_data);
   }
-  SetAttr(op_desc->Proto(), "precision_mode", precision_mode);
+  SetAttr(op_desc->Proto(), "enable_int8", enable_int8);
   SetAttr(op_desc->Proto(), "engine_key", engine_key);
 }
 

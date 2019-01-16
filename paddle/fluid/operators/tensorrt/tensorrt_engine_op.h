@@ -65,8 +65,8 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t> &shape) {
 using inference::Singleton;
 using inference::tensorrt::TensorRTEngine;
 using inference::tensorrt::TRTInt8Calibrator;
-using inference::tensorrt::TRTCalibratorRes;
-using inference::tensorrt::TRTCalibratorResManager;
+using inference::tensorrt::TRTCalibratorEngine;
+using inference::tensorrt::TRTCalibratorEngineManager;
 
 class TensorRTEngineOp : public framework::OperatorBase {
  private:
@@ -76,7 +76,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   int max_batch_size_;
   int workspace_size_;
   std::unique_ptr<TRTInt8Calibrator> calibrator_;
-  std::string precision_mode_;
+  bool enable_int8_;
   std::string calibration_data_;
   std::string engine_key_;
   bool calibration_mode_;
@@ -90,7 +90,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     input_names_ = Inputs("Xs");
     max_batch_size_ = Attr<int>("max_batch_size");
     workspace_size_ = Attr<int>("workspace_size");
-    precision_mode_ = Attr<std::string>("precision_mode");
+    enable_int8_ = Attr<bool>("enable_int8");
     calibration_data_ = Attr<std::string>("calibration_data");
     engine_key_ = Attr<std::string>("engine_key");
 
@@ -98,17 +98,19 @@ class TensorRTEngineOp : public framework::OperatorBase {
     for (const auto &param : params) {
       param_names_.insert(param);
     }
-    calibration_mode_ =
-        (precision_mode_ == "INT8" && calibration_data_.size() == 0);
+    // calibration_mode is ture represents we need to
+    // generate the calibration table data.
+    calibration_mode_ = (enable_int8_ && calibration_data_.size() == 0);
 
-    if (precision_mode_ == "INT8" && calibration_data_.size()) {
+    VLOG(4) << "calibration_mode: " << calibration_mode_;
+    if (enable_int8_ && calibration_data_.size()) {
       calibrator_.reset(new TRTInt8Calibrator(calibration_data_));
     }
   }
 
  protected:
-  void RunNative(const framework::Scope &scope,
-                 const platform::Place &dev_place) const {
+  void RunNativeImpl(const framework::Scope &scope,
+                     const platform::Place &dev_place) const {
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>("sub_block");
     auto *program = block->Program();
@@ -128,12 +130,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
   void RunCalibration(const framework::Scope &scope,
                       const platform::Place &dev_place) const {
-    // Create calibrator here.
+    // This process will builds a 32-bit trt engine, runs it on the calibration
+    // set, and records a histogram for each
+    // tensor of the distribution of activation values.
     LOG(INFO) << "Running calibration trt int8 ...";
     int runtime_batch = 1;
-    if (!Singleton<TRTCalibratorResManager>::Global().Has(engine_key_)) {
-      TRTCalibratorRes *calib_res =
-          Singleton<TRTCalibratorResManager>::Global().Create(engine_key_);
+    if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_key_)) {
+      TRTCalibratorEngine *calib_res =
+          Singleton<TRTCalibratorEngineManager>::Global().Create(engine_key_);
       std::unordered_map<std::string, size_t> calib_buffers;
       for (auto &x : input_names_) {
         if (param_names_.count(x)) continue;
@@ -148,7 +152,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       calib_res->thr_.reset(new std::thread([&]() {
         calib_res->engine_.reset(new TensorRTEngine(
             max_batch_size_, workspace_size_, nullptr,
-            boost::get<platform::CUDAPlace>(dev_place).device, precision_mode_,
+            boost::get<platform::CUDAPlace>(dev_place).device, enable_int8_,
             calib_res->calib_.get()));
         VLOG(3) << "start the calib trt engine thread";
         Prepare(scope, dev_place, calib_res->engine_.get());
@@ -156,7 +160,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     }
 
     TRTInt8Calibrator *temp_calibrator =
-        Singleton<TRTCalibratorResManager>::Global()
+        Singleton<TRTCalibratorEngineManager>::Global()
             .Get(engine_key_)
             ->calib_.get();
     std::unordered_map<std::string, void *> calib_data;
@@ -168,7 +172,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       calib_data.emplace(x, t.data<void>());
     }
     temp_calibrator->setBatch(calib_data);
-    RunNative(scope, dev_place);
+    RunNativeImpl(scope, dev_place);
   }
 
   void RunTrt(const framework::Scope &scope,
@@ -178,7 +182,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       trt_engine_.reset(
           new TensorRTEngine(max_batch_size_, workspace_size_, nullptr,
                              boost::get<platform::CUDAPlace>(dev_place).device,
-                             precision_mode_, calibrator_.get()));
+                             enable_int8_, calibrator_.get()));
       Prepare(scope, dev_place, trt_engine_.get());
     }
 

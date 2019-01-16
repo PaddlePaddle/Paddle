@@ -36,8 +36,7 @@ class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("max_batch_size", "the maximum batch size.");
     AddAttr<int>("workspace_size", "the workspace size.");
     AddAttr<framework::BlockDesc *>("sub_block", "the trt block");
-    AddAttr<std::string>("precision_mode",
-                         "the precision mode: 'FP32', 'INT8' ");
+    AddAttr<bool>("enable_int8", "whether swith to int8 mode");
     AddComment("TensorRT engine operator.");
   }
 };

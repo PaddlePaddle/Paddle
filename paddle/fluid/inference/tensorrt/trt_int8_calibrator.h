@@ -21,8 +21,8 @@
 #include <utility>
 #include <vector>
 
-#include "NvInfer.h"
-#include "cuda_runtime_api.h"
+#include <NvInfer.h>
+#include <cuda_runtime_api.h>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/platform/place.h"
@@ -60,9 +60,9 @@ struct TRTInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator {
  private:
   const int batch_size_;
 
-  bool calib_running_;
-  bool data_is_set_;
-  bool done_;
+  bool calib_running_{true};
+  bool data_is_set_{false};
+  bool done_{false};
 
   std::mutex mut_;
   std::condition_variable cond_;
@@ -74,9 +74,9 @@ struct TRTInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator {
   std::string calibration_table_;
 };
 
-class TRTCalibratorRes {
+class TRTCalibratorEngine {
  public:
-  TRTCalibratorRes() {}
+  TRTCalibratorEngine() {}
   std::unique_ptr<TRTInt8Calibrator> calib_;
   std::unique_ptr<std::thread> thr_;
   std::unique_ptr<TensorRTEngine> engine_;
@@ -84,7 +84,7 @@ class TRTCalibratorRes {
 /*
  * Manager to control the TensorRT Int8 calibration creation and deltetion.
  */
-class TRTCalibratorResManager {
+class TRTCalibratorEngineManager {
  public:
   bool Has() const { return res_.size() > 0; }
   bool Has(const std::string& name) const {
@@ -93,22 +93,22 @@ class TRTCalibratorResManager {
   }
 
   // Get Int8Calibrator via name
-  TRTCalibratorRes* Get(const std::string& name) const {
+  TRTCalibratorEngine* Get(const std::string& name) const {
     return res_.at(name).get();
   }
 
   // Look up or create a calibrator.
-  TRTCalibratorRes* LookupOrCreate(const std::string& engine_name) {
+  TRTCalibratorEngine* LookupOrCreate(const std::string& engine_name) {
     if (res_.count(engine_name) == 0) {
-      auto* p = new TRTCalibratorRes();
+      auto* p = new TRTCalibratorEngine;
       res_[engine_name].reset(p);
     }
     return res_.at(engine_name).get();
   }
 
   // Create an Int8Calibrator
-  TRTCalibratorRes* Create(const std::string& engine_name) {
-    auto* p = new TRTCalibratorRes();
+  TRTCalibratorEngine* Create(const std::string& engine_name) {
+    auto* p = new TRTCalibratorEngine;
     res_[engine_name].reset(p);
     return p;
   }
@@ -120,7 +120,7 @@ class TRTCalibratorResManager {
   }
 
  private:
-  std::unordered_map<std::string, std::unique_ptr<TRTCalibratorRes>> res_;
+  std::unordered_map<std::string, std::unique_ptr<TRTCalibratorEngine>> res_;
 };
 
 }  // namespace tensorrt

@@ -30,9 +30,9 @@
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #endif
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -46,8 +46,8 @@ namespace paddle {
 using contrib::AnalysisConfig;
 using inference::Singleton;
 using inference::tensorrt::TRTInt8Calibrator;
-using inference::tensorrt::TRTCalibratorRes;
-using inference::tensorrt::TRTCalibratorResManager;
+using inference::tensorrt::TRTCalibratorEngine;
+using inference::tensorrt::TRTCalibratorEngineManager;
 
 namespace {
 bool IsPersistable(const framework::VarDesc *var) {
@@ -334,7 +334,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
         !config_.params_file().empty(),
         "Either model_dir or (param_file, prog_file) should be set.");
     PADDLE_ENFORCE(!config_.prog_file().empty());
-    std::string dir = inference::analysis::SplitPath(config_.prog_file());
+    std::string dir = inference::analysis::GetDirRoot(config_.prog_file());
 
     argument_.SetModelPath(dir);
     argument_.SetModelProgramPath(config_.prog_file());
@@ -562,6 +562,7 @@ bool AnalysisPredictor::LoadParameters() {
   return true;
 }
 
+#if PADDLE_WITH_TENSORRT
 bool AnalysisPredictor::SaveTrtCalibToDisk() {
   PADDLE_ENFORCE(config_.tensorrt_engine_enabled(),
                  "This func can be invoked only in trt mode");
@@ -570,44 +571,50 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
     if (op_desc->Type() == "tensorrt_engine") {
       std::string engine_name =
           boost::get<std::string>(op_desc->GetAttr("engine_key"));
-      if (!Singleton<TRTCalibratorResManager>::Global().Has(engine_name)) {
+      if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_name)) {
         LOG(ERROR) << "You should run the predictor(with trt) on the real data "
                       "to generate calibration info";
         return false;
       }
-      TRTCalibratorRes *calib_res =
-          Singleton<TRTCalibratorResManager>::Global().Get(engine_name);
+      TRTCalibratorEngine *calib_engine =
+          Singleton<TRTCalibratorEngineManager>::Global().Get(engine_name);
       LOG(INFO) << "Wait for calib threads done.";
-      calib_res->calib_->waitAndSetDone();
+      calib_engine->calib_->waitAndSetDone();
       LOG(INFO) << "Finish wait.";
-      calib_res->thr_->join();
-      std::string calibration_data =
-          calib_res->calib_->getCalibrationTableAsString();
+      calib_engine->thr_->join();
+      std::string calibration_table_data =
+          calib_engine->calib_->getCalibrationTableAsString();
 
-      if (calibration_data.size() == 0) {
+      if (calibration_table_data.empty()) {
         LOG(ERROR) << "the calibration table is empty.";
         return false;
       }
-      std::string calibration_data_path =
-          argument_.model_path() + "/trt_calib_" + engine_name;
-      std::ofstream ofile(calibration_data_path, std::ios::out);
-      LOG(INFO) << "Write Paddle-TRT INT8 calibration data to file "
-                << calibration_data_path;
-      ofile << calibration_data;
+
+      std::string calibration_table_data_path =
+          inference::analysis::GetTrtCalibPath(argument_.model_path(),
+                                               engine_name);
+
+      std::ofstream ofile(calibration_table_data_path, std::ios::out);
+      LOG(INFO) << "Write Paddle-TRT INT8 calibration table data to file "
+                << calibration_table_data_path;
+      ofile << calibration_table_data;
       ofile.close();
     }
   }
   // Free all calibrator resources.
-  Singleton<TRTCalibratorResManager>::Global().DeleteALL();
+  Singleton<TRTCalibratorEngineManager>::Global().DeleteALL();
   return true;
 }
+#endif
 
 AnalysisPredictor::~AnalysisPredictor() {
+#if PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled() &&
-      config_.tensorrt_precision_mode_ == "INT8" &&
-      Singleton<TRTCalibratorResManager>::Global().Has()) {
+      config_.tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
+      Singleton<TRTCalibratorEngineManager>::Global().Has()) {
     SaveTrtCalibToDisk();
   }
+#endif
   if (FLAGS_profile) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
