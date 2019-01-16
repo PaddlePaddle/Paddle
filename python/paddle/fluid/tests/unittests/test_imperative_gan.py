@@ -171,16 +171,11 @@ class TestImperativeMnist(unittest.TestCase):
                 fluid.layers.sigmoid_cross_entropy_with_logits(
                     x=d_fake, label=to_variable(np.ones([2, 1], np.float32))))
             g_loss._backward()
-            sgd = SGDOptimizer(learning_rate=1e-3)
             sgd.minimize(g_loss)
             for p in discriminator.parameters():
                 dy_params[p.name] = p._numpy()
-                sys.stderr.write('dy_param_loss: %s: %s\n' %
-                                 (p.name, np.sum(dy_params[p.name])))
             for p in generator.parameters():
                 dy_params[p.name] = p._numpy()
-                sys.stderr.write('dy_param_loss: %s: %s\n' %
-                                 (p.name, np.sum(dy_params[p.name])))
 
             dy_g_loss = g_loss._numpy()
             dy_d_loss = d_loss._numpy()
