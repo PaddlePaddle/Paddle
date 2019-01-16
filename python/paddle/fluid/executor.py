@@ -598,4 +598,3 @@ class Executor(object):
     def _run_inference(self, program, feed):
         infer_batch_size = program._infer_attrs.get("batch_size", 1)
         return self.executor.run(feed, infer_batch_size)
-

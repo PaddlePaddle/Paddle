@@ -72,6 +72,7 @@ class CompiledProgram(object):
         self._executor = None
         self._compiled = False
         self._is_data_parallel = False
+        self._is_inference = False
 
     def with_data_parallel(self,
                            loss_name=None,

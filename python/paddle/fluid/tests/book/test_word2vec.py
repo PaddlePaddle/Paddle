@@ -213,8 +213,7 @@ def infer(use_cuda, save_dirname=None):
         infer_attrs = {'batch_size': 1}
         compiled_program.with_inference_optimize(infer_config, infer_attrs)
         print(compiled_program._is_inference)
-        infer_outputs = exe.run(compiled_program,
-                                feed=infer_inputs)
+        infer_outputs = exe.run(compiled_program, feed=infer_inputs)
         print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
         print("Inference Shape: ", np_data.shape)
