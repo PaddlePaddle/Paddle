@@ -12,6 +12,7 @@ configure_file(send_recv.proto.in ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto @O
 # FIXME(typhoonzero): use add_subdirectory once we clean the dependency of these files
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 if(WITH_GRPC)
+  set(GRPC_DEPS grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
   set(GRPC_SRCS grpc/grpc_client.cc grpc/grpc_server.cc grpc/grpc_serde.cc grpc/grpc_bytebuffer_stream.cc grpc/grpc_variable_response.cc)
   grpc_library(sendrecvop_rpc SRCS sendrecvop_utils.cc
         request_handler_impl.cc rpc_client.cc rpc_server.cc
@@ -19,10 +20,10 @@ if(WITH_GRPC)
         collective_client.cc collective_server.cc
         ${GRPC_SRCS}
       PROTO ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto 
-      DEPS lod_tensor selected_rows_functor memory)
+      DEPS lod_tensor selected_rows_functor memory ${GRPC_DEPS})
 
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  set(RPC_DEPS sendrecvop_rpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
+  set(RPC_DEPS sendrecvop_rpc ${GRPC_DEPS})
 
   cc_test(grpc_serde_test SRCS grpc/grpc_serde_test.cc 
     DEPS ${RPC_DEPS} scope profiler math_function SERIAL)

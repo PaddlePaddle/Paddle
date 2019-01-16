@@ -89,6 +89,7 @@ class CpuPassStrategy : public PassStrategy {
     passes_.assign({
         "infer_clean_graph_pass",         //
         "attention_lstm_fuse_pass",       //
+        "seqpool_concat_fuse_pass",       //
         "seqconv_eltadd_relu_fuse_pass",  //
         // "embedding_fc_lstm_fuse_pass", //
         "fc_lstm_fuse_pass",             //
@@ -97,6 +98,8 @@ class CpuPassStrategy : public PassStrategy {
         "mul_gru_fuse_pass",             //
         "seq_concat_fc_fuse_pass",       //
         "fc_fuse_pass",                  //
+        "repeated_fc_relu_fuse_pass",    //
+        "squared_mat_sub_fuse_pass",     //
         "conv_bn_fuse_pass",             //
         "conv_eltwiseadd_bn_fuse_pass",  //
         "is_test_pass",                  //
@@ -140,6 +143,10 @@ class GpuPassStrategy : public PassStrategy {
         "conv_elementwise_add_fuse_pass",            //
     });
 
+    for (int i = 6; i >= 3; i--) {
+      passes_.push_back("transpose_flatten" + std::to_string(i) +
+                        "_concat_fuse_pass");
+    }
     use_gpu_ = true;
   }
 

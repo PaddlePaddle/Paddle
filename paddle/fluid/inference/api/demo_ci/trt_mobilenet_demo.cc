@@ -38,8 +38,8 @@ void Main() {
   std::unique_ptr<PaddlePredictor> predictor;
   paddle::contrib::AnalysisConfig config;
   config.EnableUseGpu(100, 0);
-  config.SetModel(FLAGS_modeldir + "/__params__",
-                  FLAGS_modeldir + "/__model__");
+  config.SetModel(FLAGS_modeldir + "/__model__",
+                  FLAGS_modeldir + "/__params__");
   config.EnableTensorRtEngine();
   predictor = CreatePaddlePredictor(config);
 

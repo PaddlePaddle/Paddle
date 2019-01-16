@@ -109,7 +109,6 @@ class Graph {
     attr_dels_[attr_name] = []() {};
   }
 
-  template <typename AttrType>
   void Erase(const std::string &attr_name) {
     PADDLE_ENFORCE(attrs_.count(attr_name) != 0, "%s not set in the graph",
                    attr_name);
