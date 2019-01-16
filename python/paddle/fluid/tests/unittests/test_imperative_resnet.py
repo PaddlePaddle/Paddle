@@ -34,7 +34,10 @@ train_parameters = {
         "batch_size": 256,
         "epochs": [30, 60, 90],
         "steps": [0.1, 0.01, 0.001, 0.0001]
-    }
+    },
+    "batch_size": 256,
+    "lr": 0.1,
+    "total_images": 1281164,
 }
 
 
@@ -52,24 +55,33 @@ def optimizer_setting(params):
         base_lr = params["lr"]
         lr = []
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        optimizer = fluid.optimizer.Momentum(
-            learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr),
-            momentum=0.9,
-            regularization=fluid.regularizer.L2Decay(1e-4))
+        optimizer = fluid.optimizer.SGD(learning_rate=params["lr"])
+        #  optimizer = fluid.optimizer.Momentum(
+    #  learning_rate=params["lr"],
+    #  learning_rate=fluid.layers.piecewise_decay(
+    #  boundaries=bd, values=lr),
+    #  momentum=0.9,
+    #  regularization=fluid.regularizer.L2Decay(1e-4))
 
     return optimizer
 
 
 class ConvBNLayer(fluid.imperative.Layer):
-    def __init__(self, num_filters, filter_size, stride=1, groups=1, act=None):
+    def __init__(self,
+                 num_channels,
+                 num_filters,
+                 filter_size,
+                 stride=1,
+                 groups=1,
+                 act=None):
         super(ConvBNLayer, self).__init__()
 
         self._conv = Conv2D(
-            3,
-            num_filters,
-            filter_size,
-            stride, (filter_size - 1) // 2,
+            num_channels=num_channels,
+            num_filters=num_filters,
+            filter_size=filter_size,
+            stride=stride,
+            padding=(filter_size - 1) // 2,
             groups=groups,
             act=None,
             bias_attr=None)
@@ -84,36 +96,54 @@ class ConvBNLayer(fluid.imperative.Layer):
 
 
 class BottleneckBlock(fluid.imperative.Layer):
-    def __init__(self, num_filters, stride, shortcut=False):
+    def __init__(self, num_channels, num_filters, stride, shortcut=True):
         super(BottleneckBlock, self).__init__()
 
         self.conv0 = ConvBNLayer(
-            num_filters=num_filters, filter_size=1, act='relu')
+            num_channels=num_channels,
+            num_filters=num_filters,
+            filter_size=1,
+            act='relu')
         self.conv1 = ConvBNLayer(
-            num_filters=num_filters, filter_size=3, stride=stride, act='relu')
+            num_channels=num_filters,
+            num_filters=num_filters,
+            filter_size=3,
+            stride=stride,
+            act='relu')
         self.conv2 = ConvBNLayer(
-            num_filters=num_filters * 4, filter_size=1, act=None)
+            num_channels=num_filters,
+            num_filters=num_filters * 4,
+            filter_size=1,
+            act=None)
 
-        if shortcut:
+        if not shortcut:
             self.short = ConvBNLayer(
-                num_filters=num_filters * 4, filter_size=1, stride=stride)
+                num_channels=num_channels,
+                num_filters=num_filters * 4,
+                filter_size=1,
+                stride=stride)
 
         self.shortcut = shortcut
 
+        self._num_channels_out = num_filters * 4
+
     def forward(self, inputs):
-        self.conv0()
-        self.conv1()
-        self.conv2()
+        y = self.conv0(inputs)
+        conv1 = self.conv1(y)
+        conv2 = self.conv2(conv1)
 
         if self.shortcut:
-            self.short()
+            short = inputs
+        else:
+            short = self.short(inputs)
 
-        return fluid.layers.elementwise_add(
-            x=self.short, y=self.conv2, act='relu')
+        return fluid.layers.elementwise_add(x=short, y=conv2, act='relu')
 
 
 class ResNet(fluid.imperative.Layer):
     def __init__(self, layers=50, class_dim=1000):
+        super(ResNet, self).__init__()
+
         self.layers = layers
         supported_layers = [50, 101, 152]
         assert layers in supported_layers, \
@@ -128,20 +158,23 @@ class ResNet(fluid.imperative.Layer):
         num_filters = [64, 128, 256, 512]
 
         self.conv = ConvBNLayer(
-            num_filters=64, filter_size=7, stride=2, act='relu')
+            num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu')
         self.pool2d_max = Pool2D(
             pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
 
         self.bottleneck_block_list = []
+        num_channels = 64
         for block in range(len(depth)):
-            shortcut = True
+            shortcut = False
             for i in range(depth[block]):
                 bottleneck_block = BottleneckBlock(
+                    num_channels=num_channels,
                     num_filters=num_filters[block],
                     stride=2 if i == 0 and block != 0 else 1,
                     shortcut=shortcut)
+                num_channels = bottleneck_block._num_channels_out
                 self.bottleneck_block_list.append(bottleneck_block)
-                shortcut = False
+                shortcut = True
 
         self.pool2d_avg = Pool2D(
             pool_size=7, pool_type='avg', global_pooling=True)
@@ -160,12 +193,12 @@ class ResNet(fluid.imperative.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = self.out()
+        y = self.out(y)
         return y
 
 
 class TestImperativeResnet(unittest.TestCase):
-    def test_resnet_cpu_float32(self):
+    def test_resnet_gpu_float32(self):
         seed = 90
 
         with fluid.imperative.guard():
@@ -183,17 +216,17 @@ class TestImperativeResnet(unittest.TestCase):
                     break
 
                 x_data = np.array(
-                    [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
+                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
                 y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                    128, 1)
+                    256, 1)
 
                 img = to_variable(x_data)
                 label = to_variable(y_data)
                 label._stop_gradient = True
 
-                cost = resnet(img)
+                out = resnet(img)
                 loss = fluid.layers.cross_entropy(input=out, label=label)
-                avg_loss = fluid.layers.mean(x=cost)
+                avg_loss = fluid.layers.mean(x=loss)
                 dy_out = avg_loss._numpy()
 
                 if batch_id == 0:

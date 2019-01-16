@@ -25,17 +25,28 @@ def enabled():
 
 
 @contextlib.contextmanager
-def guard():
+def guard(device=0):
     train = framework.Program()
     startup = framework.Program()
     tracer = core.Tracer(train.current_block().desc)
+
+    if device is None:
+        place = core.CPUPlace()
+    else:
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(device)
+        else:
+            place = core.CPUPlace()
+
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
-            with framework._imperative_guard(tracer):
+            with framework._imperative_guard(tracer, place):
                 yield
 
 
 def to_variable(value, block=None):
+    assert enabled(), "to_variable could only be called in imperative mode"
+
     if isinstance(value, np.ndarray):
         if not block:
             block = framework.default_main_program().current_block()
@@ -47,9 +58,7 @@ def to_variable(value, block=None):
             dtype=value.dtype)
         var = py_var._ivar.value()
         tensor = var.get_tensor()
-        tensor.set(value, core.CPUPlace())
+        tensor.set(value, framework._current_expected_place())
         return py_var
     elif isinstance(value, framework.Variable):
         return value
-    else:
-        raise ValueError("Unsupported type %s" % type(value))

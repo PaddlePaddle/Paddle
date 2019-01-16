@@ -252,15 +252,15 @@ class FC(layers.Layer):
                 "y_num_col_dims": 1
             })
 
-        out = self._helper.create_variable_for_type_inference(self._dtype)
+        pre_bias = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
             type="sum",
             inputs={"X": [tmp]},
-            outputs={"Out": out},
+            outputs={"Out": pre_bias},
             attrs={"use_mkldnn": False})
 
         pre_activation = self._helper.append_bias_op(
-            pre_bias, dim_start=num_flatten_dims)
+            pre_bias, dim_start=self._num_flatten_dims)
         return self._helper.append_activation(pre_activation)
 
 
@@ -355,11 +355,11 @@ class BatchNorm(layers.Layer):
         variance_out = self._variance
 
         saved_mean = self._helper.create_variable_for_type_inference(
-            dtype=dtype, stop_gradient=True)
+            dtype=self._dtype, stop_gradient=True)
         saved_variance = self._helper.create_variable_for_type_inference(
-            dtype=dtype, stop_gradient=True)
+            dtype=self._dtype, stop_gradient=True)
         batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
-            dtype)
+            self._dtype)
 
         self._helper.append_op(
             type="batch_norm",

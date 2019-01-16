@@ -82,7 +82,7 @@ class MLP(fluid.imperative.Layer):
 
 class TestImperative(unittest.TestCase):
     def test_layer(self):
-        with fluid.imperative.guard():
+        with fluid.imperative.guard(device=None):
             cl = core.Layer()
             cl.forward([])
             l = fluid.imperative.Layer()
@@ -90,7 +90,7 @@ class TestImperative(unittest.TestCase):
 
     def test_pylayer_func_id(self):
 
-        with fluid.imperative.guard():
+        with fluid.imperative.guard(device=None):
 
             class PyLayer1(fluid.imperative.PyLayer):
                 def __init__(self):
@@ -130,7 +130,7 @@ class TestImperative(unittest.TestCase):
 
     def test_pylayer(self):
         np_inp = np.ones([2, 2], np.float32)
-        with fluid.imperative.guard():
+        with fluid.imperative.guard(device=None):
             my_py_layer = MyPyLayer()
             var_inp = fluid.imperative.base.to_variable(np_inp)
             outs = my_py_layer(var_inp)
@@ -158,7 +158,7 @@ class TestImperative(unittest.TestCase):
 
     def test_layer_in_out(self):
         np_inp = np.array([1.0, 2.0, -1.0], dtype=np.float32)
-        with fluid.imperative.guard():
+        with fluid.imperative.guard(device=None):
             var_inp = fluid.imperative.base.to_variable(np_inp)
             l = MyLayer()
             x = l(var_inp)[0]
@@ -185,7 +185,7 @@ class TestImperative(unittest.TestCase):
 
     def test_mlp(self):
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-        with fluid.imperative.guard():
+        with fluid.imperative.guard(device=None):
             var_inp = fluid.imperative.base.to_variable(np_inp)
             mlp = MLP()
             out = mlp(var_inp)
