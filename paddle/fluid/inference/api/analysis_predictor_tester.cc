@@ -195,10 +195,9 @@ TEST(AnalysisPredictor, Clone) {
 TEST(AnalysisPredictor, memory_optim) {
   AnalysisConfig config(FLAGS_dirname);
   config.DisableGpu();
-  config.EnableMemoryOptim();
+  config.EnableMemoryOptim(true);
   config.pass_builder()->TurnOnDebug();
 
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   auto native_predictor =
       CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
 
@@ -211,14 +210,34 @@ TEST(AnalysisPredictor, memory_optim) {
 
   std::vector<PaddleTensor> inputs(4, tensor);
   std::vector<PaddleTensor> output, output1;
-  // Run several times to check the parameters are not reused by mistake.
-  for (int i = 0; i < 5; i++) {
+
+  {
+    // The first predictor help to cache the memory optimize strategy.
+    auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+
+    // Run several times to check the parameters are not reused by mistake.
+    for (int i = 0; i < 5; i++) {
+      ASSERT_TRUE(predictor->Run(inputs, &output));
+    }
+  }
+
+  {
+    output.clear();
+    // The second predictor to perform memory optimization.
+    config.EnableMemoryOptim(false);
+    auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+
+    // Run with memory optimization
     ASSERT_TRUE(predictor->Run(inputs, &output));
   }
+
+  // Run native
   ASSERT_TRUE(native_predictor->Run(inputs, &output1));
+
   LOG(INFO) << "the output " << inference::DescribeTensor(output.front());
   LOG(INFO) << "the native output "
             << inference::DescribeTensor(output1.front());
+
   inference::CompareResult(output, output1);
 }
 

@@ -612,8 +612,11 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
         best_strategy = &strategy;
       }
     }
-    PADDLE_ENFORCE_NOT_NULL(best_strategy,
-                            "At least one strategy should be executed");
+    if (!best_strategy) {
+      LOG(ERROR)
+          << "This model makes poor memory optimize, skip memory optimize";
+      return;
+    }
     auto memory_allocation = (*best_strategy)();
 
     string::PrettyLogH2(
