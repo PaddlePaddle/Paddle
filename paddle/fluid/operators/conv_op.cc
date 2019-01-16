@@ -420,25 +420,22 @@ class Conv2dGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
   std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* grad = new framework::OpDesc();
-    grad->SetType(this->GradOpType());
+    auto* op = new framework::OpDesc();
+    op->SetType(GradOpType());
+    op->SetInput("Input", Input("Input"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetInput("Bias", Input("Bias"));
+    // ResidualData is not used in conv2d_grad ops, we comment this temporialy
+    // op->SetInput("ResidualData", Input("ResidualData"));
+    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
 
-    for (auto& input_param : this->InputNames()) {
-      if (input_param != "Output")
-        grad->SetInput(input_param, this->Input(input_param));
-      grad->SetOutput(framework::GradVarName(input_param),
-                      this->InputGrad(input_param, true));
-    }
+    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
 
-    for (auto& output_param : this->OutputNames()) {
-      grad->SetInput(output_param, this->Output(output_param));
-      grad->SetInput(framework::GradVarName(output_param),
-                     this->OutputGrad(output_param));
-    }
+    op->SetAttrMap(Attrs());
 
-    grad->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<framework::OpDesc>(grad);
+    return std::unique_ptr<framework::OpDesc>(op);
   }
 
   virtual std::string GradOpType() const {
