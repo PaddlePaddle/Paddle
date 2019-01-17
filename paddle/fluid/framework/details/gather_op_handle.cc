@@ -65,7 +65,7 @@ void GatherOpHandle::RunImpl() {
   // Gather the inputs
   for (auto *in_handle : in_var_handles) {
     auto *in_var =
-        var_scopes.at(in_handle->scope_idx_)->FindVar(in_handle->name());
+        var_scopes.at(in_handle->scope_idx())->FindVar(in_handle->name());
     PADDLE_ENFORCE_NOT_NULL(in_var);
     VariableVisitor::EnforceShapeAndDTypeEQ(*in_var, *pre_in_var);
 
@@ -85,8 +85,8 @@ void GatherOpHandle::RunImpl() {
     t_out_p = platform::CPUPlace();
   }
 
-  auto out_var =
-      var_scopes.at(out_var_handle->scope_idx())->FindVar(out_var_handle->name());
+  auto out_var = var_scopes.at(out_var_handle->scope_idx())
+                     ->FindVar(out_var_handle->name());
   PADDLE_ENFORCE_NOT_NULL(out_var);
   auto out_value = out_var->GetMutable<framework::SelectedRows>();
   out_value->set_height(pre_in_value.height());
@@ -101,7 +101,7 @@ void GatherOpHandle::RunImpl() {
   // copy
   auto dev_ctx = dev_ctxes_.at(out_var_handle->place());
   RunAndRecordEvent(out_var_handle->place(), [in_tensors, out_tensor, &dev_ctx,
-                                             t_out_p] {
+                                              t_out_p] {
     int s = 0, e = 0;
     for (size_t j = 0; j < in_tensors.size(); ++j) {
       e += in_tensors[j].dims()[0];

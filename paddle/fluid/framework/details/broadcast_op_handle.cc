@@ -106,7 +106,7 @@ void BroadcastOpHandle::BroadcastOneVar(
       } else {
         send_recv_buffer = VariableVisitor::GetMutableTensor(out_var)
                                .Resize(in_tensor.dims())
-                               .mutable_data(out_var_handle->place_);
+                               .mutable_data(out_var_handle->place());
       }
 
       broadcast_calls.emplace_back(
@@ -148,7 +148,7 @@ void BroadcastOpHandle::InitOutputValue(
     var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
   }
   auto *in_var =
-      var_scopes.at(in_var_handle.scope_idx_)->FindVar(in_var_handle.name_);
+      var_scopes.at(in_var_handle.scope_idx())->FindVar(in_var_handle.name());
 
   Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
 
@@ -158,9 +158,9 @@ void BroadcastOpHandle::InitOutputValue(
     if (out_var_handle->IsTheSameVar(in_var_handle)) {
       continue;
     }
-    auto t_out_p = out_var_handle->place_;
-    auto *out_var = var_scopes.at(out_var_handle->scope_idx_)
-                        ->FindVar(out_var_handle->name_);
+    auto t_out_p = out_var_handle->place();
+    auto *out_var = var_scopes.at(out_var_handle->scope_idx())
+                        ->FindVar(out_var_handle->name());
     PADDLE_ENFORCE_NOT_NULL(out_var);
     if (is_gpu_place(in_tensor.place())) {
       PADDLE_ENFORCE(platform::is_gpu_place(t_out_p),

@@ -70,7 +70,7 @@ void AllReduceOpHandle::RunImpl() {
     auto *s = local_scopes_[i];
     auto &local_scope = *s->FindVar(kLocalExecScopeName)->Get<Scope *>();
     auto &lod_tensor =
-        local_scope.FindVar(in_var_handles[i]->name_)->Get<LoDTensor>();
+        local_scope.FindVar(in_var_handles[i]->name())->Get<LoDTensor>();
     lod_tensors.emplace_back(&lod_tensor);
     PADDLE_ENFORCE_EQ(in_var_handles[i]->name(), out_var_handles[i]->name(),
                       "The name of input and output should be equal.");
