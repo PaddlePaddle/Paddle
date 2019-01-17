@@ -1,7 +1,7 @@
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-if(NOT WITH_MKLDNN)
+if(APPLE OR WIN32)
     list(REMOVE_ITEM TEST_OPS test_calibration)
 endif()
 
