@@ -564,8 +564,8 @@ class Calibrator(object):
                 tmp_sum2 += 0
             else:
                 if q_idx == 0:
-                    print "Fatal error!, idx = " + str(
-                        idx) + " qindex = 0! p_idx = " + str(p_idx)
+                    print("Fatal error!, idx = " + str(idx) +
+                          " qindex = 0! p_idx = " + str(p_idx))
                 tmp_sum1 += p_idx * (math.log(Q_sum * p_idx))
                 tmp_sum2 += p_idx * (math.log(P_sum * q_idx))
         return (tmp_sum1 - tmp_sum2) / P_sum
