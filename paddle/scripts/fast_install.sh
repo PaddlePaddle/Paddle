@@ -6,9 +6,8 @@ release_version='1.2.0'
 function use_cpu(){
    while true
     do
-     echo "是否安装CPU版本的PaddlePaddle？(yes/no)， 或使用ctrl + c退出"
+     read -p "是否安装CPU版本的PaddlePaddle？(yes/no)， 或使用ctrl + c退出:" cpu_option
      typeset -l cpu_option
-     read -p "" cpu_option
      # TODO user wrong input process
      if [ "$cpu_option" == "" || "$cpu_option" == "no" ];then
         echo "退出安装中...."
@@ -283,6 +282,7 @@ gpu_list=("GeForce 410M"
                     read -p "请提供cuda version.txt的路径:" cuda_version
                     if [ "$cuda_version" == "" || ! -f "$cuda_version" ];then
                         read -p "未找到CUDA,只能安装cpu版本的PaddlePaddle，是否安装（yes/no）,  或使用ctrl + c退出" cpu_option
+                        typeset -l cpu_option
                         if [ "$cpu_option" == "yes" ];then
                             GPU='cpu'
                             break
@@ -329,6 +329,7 @@ gpu_list=("GeForce 410M"
                       read -p "请提供cudnn.h的路径:" cudnn_version
                       if [ "$cudnn_version" == "" ] || [ ! -f "$cudnn_version" ];then
                             read -p "未找到cuDNN,只能安装cpu版本的PaddlePaddle，是否安装（yes/no）, 或使用ctrl + c退出:" cpu_option
+                            typeset -l cpu_option
                             if [ "$cpu_option" == "yes" ];then
                                 GPU='cpu'
                                 break
