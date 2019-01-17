@@ -62,15 +62,13 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
         "Output(MaskInt32) of GenerateMaskLabelsOp should not be null");
 
     auto im_info_dims = ctx->GetInputDim("ImInfo");
-    //  auto gt_classes_dims = ctx->GetInputDim("GtClasses");
-    //  auto is_crowd_dims = ctx->GetInputDim("IsCrowd");
-    //  auto gt_segms_dims = ctx->GetInputDim("GtSegms");
-    //  auto rois_dims = ctx->GetInputDim("Rois");
-    //  auto labels_int32_dims = ctx->GetInputDim("LabelsInt32");
-
+    auto gt_segms_dims = ctx->GetInputDim("GtSegms");
     PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
                       "The rank of Input(ImInfo) must be 2.");
-
+    PADDLE_ENFORCE_EQ(gt_segms_dims.size(), 2,
+                      "The rank of Input(GtSegms) must be 2.");
+    PADDLE_ENFORCE_EQ(gt_segms_dims[1], 2,
+                      "The second dim of Input(GtSegms) must be 2.");
     int num_classes = ctx->Attrs().Get<int>("num_classes");
     int resolution = ctx->Attrs().Get<int>("resolution");
 
@@ -193,8 +191,6 @@ std::vector<Tensor> SampleMaskForOneImage(
     Gather<T>(rois.data<T>(), 4, fg_inds.data(), fg_inds.size(),
               rois_fg.data<T>());
 
-    // auto rois_et = framework::EigenTensor<T, 2>::From(rois_fg);
-    // rois_et = rois_et / im_scale;
     for (int k = 0; k < rois_fg.numel(); ++k) {
       rois_fg_data[k] = rois_fg_data[k] / im_scale;
     }
@@ -225,36 +221,7 @@ std::vector<Tensor> SampleMaskForOneImage(
       int fg_polys_ind = fg_masks_inds[i];
       T* roi_fg = rois_fg_data + i * 4;
       uint8_t* mask = masks_data + i * resolution * resolution;
-      // for (int ii = 0; ii < gt_polys[fg_polys_ind].size(); ++ii) {
-      //   for (int jj = 0; jj < gt_polys[fg_polys_ind][ii].size(); ++jj) {
-      //     std::cout << gt_polys[fg_polys_ind][ii][jj] << " ";
-      //   }
-      //   std::cout << std::endl;
-      // }
-      // std::cout << std::endl;
-      // for (int ii = 0; ii < 4; ++ii) {
-      //   std::cout << roi_fg[ii] << " ";
-      // }
-      // std::cout << std::endl;
-      // std::cout << std::endl;
       Polys2MaskWrtBox(gt_polys[fg_polys_ind], roi_fg, resolution, mask);
-
-      // for (int ii = 0; ii < resolution; ++ii) {
-      //   for (int jj = 0; jj < resolution; ++jj) {
-      //     std::cout << int(mask[ii * resolution + jj]) << " ";
-      //   }
-      //   std::cout << std::endl;
-      // }
-      // std::cout << std::endl;
-      // std::cout << std::endl;
-
-      // int ssm = 0;
-      // for (int ii = 0; ii < resolution; ++ii) {
-      //   for (int jj = 0; jj < resolution; ++jj) {
-      //     ssm += mask[ii * resolution + jj];
-      //   }
-      // }
-      // std::cout << "maks " << i << " sum = " << ssm << std::endl;
     }
   } else {
     // The network cannot handle empty blobs, so we must provide a mask
@@ -287,8 +254,6 @@ std::vector<Tensor> SampleMaskForOneImage(
   ExpandMaskTarget<T>(ctx, masks, mask_class_labels, resolution, num_classes,
                       &masks_expand);
 
-  // auto rois_fg_et = framework::EigenTensor<T, 2>::From(rois_fg);
-  // rois_fg_et = rois_fg_et * im_scale;
   T* rois_fg_data = rois_fg.data<T>();
   for (int k = 0; k < rois_fg.numel(); ++k) {
     rois_fg_data[k] = rois_fg_data[k] * im_scale;
@@ -418,16 +383,20 @@ class GenerateMaskLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
         "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
         "M is the number of groundtruth, "
         "each element is a flag indicates whether a groundtruth is crowd.");
-    AddInput("GtSegms",
-             "(LoDTensor), This input is a 4D LoDTensor with shape [M, H, W]. "
-             "M is the number of groundtruth, "
-             "H and W is height and width of image, respectively.");
+    AddInput(
+        "GtSegms",
+        "(LoDTensor), This input is a 2D LoDTensor with shape [S, 2], it's LoD "
+        "level is 3. The LoD[0] represents the gt objects number of each "
+        "instance. LoD[1] represents the segmentation counts of each objects. "
+        "LoD[2] represents the polygons number of each segmentation. S the "
+        "total number of polygons coordinate points. Each element is (x, y) "
+        "coordinate points.");
     AddInput(
         "Rois",
         "(LoDTensor), This input is a 2D LoDTensor with shape [R, 4]. "
         "R is the number of rois which is the output of "
         "generate_proposal_labels, "
-        "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
+        "each element is a bounding box with (xmin, ymin, xmax, ymax) format.");
     AddInput("LabelsInt32",
              "(LoDTensor), This intput is a 2D LoDTensor with shape [R, 1], "
              "each element repersents a class label of a roi");
@@ -448,12 +417,11 @@ class GenerateMaskLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("resolution", "Resolution of mask.");
 
     AddComment(R"DOC(
-GenerateMaskLabelsOp
-This operator can be, for given the GenerateProposalLabelsOp output rois and labels_int32,
-to sample foreground rois, and compute mask label.
-Rois are the output boxes of generate_proposal_labels. These boxes with its class label, i.e. labels_int32,
-are used to crop groundtruth mask, i.e. gt_segms, if gt_segms is not crowded.
-Finally the cropped masks are resized to resolution * resolution, and expanded to num_classes * resolution * resolution.
+This operator can be, for given the RoIs and corresponding labels,
+to sample foreground RoIs. This mask branch also has
+a :math: `K \\times M^{2}` dimensional output targets for each foreground
+RoI, which encodes K binary masks of resolution M x M, one for each of the
+K classes. This mask targets are used to compute loss of mask branch.
     )DOC");
   }
 };

@@ -196,10 +196,6 @@ void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
   } else {
     msk = reinterpret_cast<uint8_t*>(
         malloc(M * M * polygons.size() * sizeof(uint8_t)));
-    platform::CPUPlace cpu;
-    auto msk_ptr =
-        memory::Alloc(cpu, sizeof(uint8_t) * M * M * polygons.size());
-    msk = reinterpret_cast<uint8_t*>(msk_ptr->ptr());
   }
   for (size_t i = 0; i < polygons.size(); ++i) {
     int k = polygons[i].size() / 2;
@@ -225,6 +221,7 @@ void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
         }
       }
     }
+    free(msk);
   }
 }
 

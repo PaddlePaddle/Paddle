@@ -1744,23 +1744,102 @@ def generate_proposal_labels(rpn_rois,
 def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
                          labels_int32, num_classes, resolution):
     """
-    ** Generate Mask Labels of Mask-RCNN **
-    This operator can be, for given the GenerateProposalLabelsOp output rois and labels_int32,
-    to sample foreground rois, and compute mask label.
-    Rois are the output boxes of generate_proposal_labels. These boxes with its class label, i.e. labels_int32,
-    are used to crop groundtruth mask, i.e. gt_segms, if gt_segms is not crowded.
-    Finally the cropped masks are resized to resolution * resolution, and expanded to num_classes * resolution * resolution.
+    ** Generate Mask Labels for Mask-RCNN **
+
+    This operator can be, for given the RoIs and corresponding labels,
+    to sample foreground RoIs. This mask branch also has
+    a :math: `K \\times M^{2}` dimensional output targets for each foreground
+    RoI, which encodes K binary masks of resolution M x M, one for each of the
+    K classes. This mask targets are used to compute loss of mask branch.
+
+    Please note, the data format of groud-truth segmentation, assumed the
+    segmentations are as follows. The first instance has two gt objects.
+    The second instance has one gt object, this object has two gt segmentations.
+
+        .. code-block:: python
+
+            #[
+            #  [[[229.14, 370.9, 229.14, 370.9, ...]],
+            #   [[343.7, 139.85, 349.01, 138.46, ...]]], # 0-th instance
+            #  [[[500.0, 390.62, ...],[115.48, 187.86, ...]]] # 1-th instance
+            #]
+
+            batch_masks = []
+            for semgs in batch_semgs:
+                gt_masks = []
+                for semg in semgs:
+                    gt_segm = []
+                    for polys in semg:
+                        gt_segm.append(np.array(polys).reshape(-1, 2))
+                    gt_masks.append(gt_segm)
+                batch_masks.append(gt_masks)
+            
+            
+            place = fluid.CPUPlace()
+            feeder = fluid.DataFeeder(place=place, feed_list=feeds)
+            feeder.feed(batch_masks)
 
     Args:
-        im_info(Variable): A 2-D LoDTensor with shape [B, 3]. B is the number of input images, each element consists of im_height, im_width, im_scale.
-        gt_classes(Variable): A 2-D LoDTensor with shape [M, 1]. M is the number of groundtruth, each element is a class label of groundtruth.
-        is_crowd(Variable): A 2-D LoDTensor with shape [M, 1]. M is the number of groundtruth, each element is a flag indicates whether a groundtruth is crowd.
-        gt_segms(Variable): A 2-D LoDTensor with shape [M, H, W]. M is the number of groundtruth, each element is a mask label map.
-        rois(Variable): A 2-D LoDTensor with shape [R, 4]. R is the number of the GenerateProposalLabelsOp's output, each element is a bounding box with [xmin, ymin, xmax, ymax] format.
-        labels_int32(Variable): A 2-D LoDTensor with shape [R, 1]. R is the number of the GenerateProposalLabelsOp's output, each element repersents a class label of a roi.
+        im_info(Variable): A 2-D Tensor with shape [N, 3]. N is the batch size,
+            each element is [height, width, scale] of image. Image scale is
+            target_size) / original_size.
+        gt_classes(Variable): A 2-D LoDTensor with shape [M, 1]. M is the total
+            number of ground-truth, each element is a class label.
+        is_crowd(Variable): A 2-D LoDTensor with shape as gt_classes,
+            each element is a flag indicating whether a groundtruth is crowd.
+        gt_segms(Variable): This input is a 2D LoDTensor with shape [S, 2],
+            it's LoD level is 3. Usually users do not needs to understand LoD,
+            The users should return correct data format in reader.
 
+
+
+            The LoD[0] represents the gt objects number of
+            each instance. LoD[1] represents the segmentation counts of each
+            objects. LoD[2] represents the polygons number of each segmentation.
+            S the total number of polygons coordinate points. Each element is
+            (x, y) coordinate points.
+        rois(Variable): A 2-D LoDTensor with shape [R, 4]. R is the total
+            number of RoIs, each element is a bounding box with
+            (xmin, ymin, xmax, ymax) format in the range of original image.
+        labels_int32(Variable): A 2-D LoDTensor in shape of [R, 1] with type
+            of int32. R is the same as it in `rois`. Each element repersents
+            a class label of a RoI.
         num_classes(int): Class number.
-        resolution(int): Resolution of mask.
+        resolution(int): Resolution of mask predictions.
+
+    Returns:
+        mask_rois (Variable):  A 2D LoDTensor with shape [P, 4]. P is the total
+            number of sampled RoIs. Each element is a bounding box with
+            [xmin, ymin, xmax, ymax] format in range of orignal image size.
+        mask_rois_has_mask_int32 (Variable): A 2D LoDTensor with shape [P, 1],
+            each element repersents the output mask RoI index with regard to
+            to input RoIs.
+        mask_int32 (Variable): A 2D LoDTensor with shape [P, K * M * M],
+            K is the classes number and M is the resolution of mask predictions.
+            Each element repersents the binary mask targets.
+
+    Examples:
+        .. code-block:: python
+
+          im_info = fluid.layers.data(name="im_info", shape=[3],
+              dtype="float32")
+          gt_classes = fluid.layers.data(name="gt_classes", shape=[1],
+              dtype="float32", lod_level=1)
+          is_crowd = fluid.layers.data(name="is_crowd", shape=[1],
+              dtype="float32", lod_level=1)
+          gt_masks = fluid.layers.data(name="gt_masks", shape=[2],
+              dtype="float32", lod_level=3)
+          # rois, labels_int32 can be the output of
+          # fluid.layers.generate_proposal_labels.
+          mask_rois, mask_index, mask_int32 = fluid.layers.generate_mask_labels(
+              im_info=im_info,
+              gt_classes=gt_classes,
+              is_crowd=is_crowd,
+              gt_segms=gt_masks,
+              rois=rois,
+              labels_int32=labels_int32,
+              num_classes=81,
+              resolution=14)
     """
 
     helper = LayerHelper('generate_mask_labels', **locals())
@@ -1810,33 +1889,48 @@ def generate_proposals(scores,
     """
     **Generate proposal Faster-RCNN**
 
-    This operation proposes RoIs according to each box with their probability to be a foreground object and 
-    the box can be calculated by anchors. Bbox_deltais and scores to be an object are the output of RPN. Final proposals
+    This operation proposes RoIs according to each box with their
+    probability to be a foreground object and 
+    the box can be calculated by anchors. Bbox_deltais and scores
+    to be an object are the output of RPN. Final proposals
     could be used to train detection net.
 
     For generating proposals, this operation performs following steps:
 
-    1. Transposes and resizes scores and bbox_deltas in size of (H*W*A, 1) and (H*W*A, 4)
+    1. Transposes and resizes scores and bbox_deltas in size of
+       (H*W*A, 1) and (H*W*A, 4)
     2. Calculate box locations as proposals candidates. 
     3. Clip boxes to image
     4. Remove predicted boxes with small area. 
     5. Apply NMS to get final proposals as output.
 
     Args:
-        scores(Variable): A 4-D Tensor with shape [N, A, H, W] represents the probability for each box to be an object.
-            N is batch size, A is number of anchors, H and W are height and width of the feature map.
-        bbox_deltas(Variable): A 4-D Tensor with shape [N, 4*A, H, W] represents the differece between predicted box locatoin and anchor location. 
-        im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin image information for N batch. Info contains height, width and scale
+        scores(Variable): A 4-D Tensor with shape [N, A, H, W] represents
+            the probability for each box to be an object.
+            N is batch size, A is number of anchors, H and W are height and
+            width of the feature map.
+        bbox_deltas(Variable): A 4-D Tensor with shape [N, 4*A, H, W]
+            represents the differece between predicted box locatoin and
+            anchor location.
+        im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin
+            image information for N batch. Info contains height, width and scale
             between origin image size and the size of feature map.
-        anchors(Variable):   A 4-D Tensor represents the anchors with a layout of [H, W, A, 4]. H and W are height and width of the feature map,
-                    num_anchors is the box count of each position. Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
-        variances(Variable): The expanded variances of anchors with a layout of [H, W, num_priors, 4]. Each variance is in (xcenter, ycenter, w, h) format.
-        pre_nms_top_n(float): Number of total bboxes to be kept per image before NMS. 6000 by default.
-        post_nms_top_n(float): Number of total bboxes to be kept per image after NMS. 1000 by default.
+        anchors(Variable):   A 4-D Tensor represents the anchors with a layout
+            of [H, W, A, 4]. H and W are height and width of the feature map,
+            num_anchors is the box count of each position. Each anchor is
+            in (xmin, ymin, xmax, ymax) format an unnormalized.
+        variances(Variable): The expanded variances of anchors with a layout of
+            [H, W, num_priors, 4]. Each variance is in
+            (xcenter, ycenter, w, h) format.
+        pre_nms_top_n(float): Number of total bboxes to be kept per
+            image before NMS. 6000 by default.
+        post_nms_top_n(float): Number of total bboxes to be kept per
+            image after NMS. 1000 by default.
         nms_thresh(float): Threshold in NMS, 0.5 by default.
-        min_size(float): Remove predicted boxes with either height or width < min_size. 0.1 by default.
-        eta(float): Apply in adaptive NMS, if adaptive threshold > 0.5, adaptive_threshold = adaptive_threshold * eta in each iteration.
-
+        min_size(float): Remove predicted boxes with either height or
+            width < min_size. 0.1 by default.
+        eta(float): Apply in adaptive NMS, if adaptive threshold > 0.5,
+            adaptive_threshold = adaptive_threshold * eta in each iteration.
     """
     helper = LayerHelper('generate_proposals', **locals())
 

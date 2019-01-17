@@ -368,7 +368,7 @@ class TestRpnTargetAssign(unittest.TestCase):
                 name='gt_boxes', shape=[4], lod_level=1, dtype='float32')
             is_crowd = layers.data(
                 name='is_crowd',
-                shape=[10],
+                shape=[1, 10],
                 dtype='int32',
                 lod_level=1,
                 append_batch_size=False)
@@ -378,7 +378,7 @@ class TestRpnTargetAssign(unittest.TestCase):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            pred_scores, pred_loc, tgt_lbl, tgt_bbox, bbox_inside_weight = layers.rpn_target_assign(
+            outs = layers.rpn_target_assign(
                 bbox_pred=bbox_pred,
                 cls_logits=cls_logits,
                 anchor_box=anchor_box,
@@ -392,6 +392,11 @@ class TestRpnTargetAssign(unittest.TestCase):
                 rpn_positive_overlap=0.7,
                 rpn_negative_overlap=0.3,
                 use_random=False)
+            pred_scores = outs[0]
+            pred_loc = outs[1]
+            tgt_lbl = outs[2]
+            tgt_bbox = outs[3]
+            bbox_inside_weight = outs[4]
 
             self.assertIsNotNone(pred_scores)
             self.assertIsNotNone(pred_loc)
@@ -412,7 +417,7 @@ class TestGenerateProposals(unittest.TestCase):
             images = fluid.layers.data(
                 name='images', shape=data_shape, dtype='float32')
             im_info = fluid.layers.data(
-                name='im_info', shape=[1, 3], dtype='float32')
+                name='im_info', shape=[3], dtype='float32')
             anchors, variances = fluid.layers.anchor_generator(
                 name='anchor_generator',
                 input=images,
@@ -423,10 +428,10 @@ class TestGenerateProposals(unittest.TestCase):
                 offset=0.5)
             num_anchors = anchors.shape[2]
             scores = fluid.layers.data(
-                name='scores', shape=[1, num_anchors, 8, 8], dtype='float32')
+                name='scores', shape=[num_anchors, 8, 8], dtype='float32')
             bbox_deltas = fluid.layers.data(
                 name='bbox_deltas',
-                shape=[1, num_anchors * 4, 8, 8],
+                shape=[num_anchors * 4, 8, 8],
                 dtype='float32')
             rpn_rois, rpn_roi_probs = fluid.layers.generate_proposals(
                 name='generate_proposals',
