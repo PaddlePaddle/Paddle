@@ -146,6 +146,9 @@ class ZeroCopyTensor {
   bool input_or_output_;
   friend class AnalysisPredictor;
   void* scope_{nullptr};
+  // The corresponding tensor pointer inside Paddle workspace is cached for
+  // performance.
+  mutable void* tensor_{nullptr};
 };
 
 /** A simple Inference API for Paddle.
