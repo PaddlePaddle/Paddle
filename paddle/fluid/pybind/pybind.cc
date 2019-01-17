@@ -892,6 +892,17 @@ All parameter, weight, gradient are variables in Paddle.
                     2. In some NLP model, it may cause the GPU memory is insufficient,
                        in this case, you should reduce `num_iteration_per_drop_scope`.
               )DOC")
+      .def_property(
+          "num_iteration_per_run",
+          [](const ExecutionStrategy &self) {
+            return self.num_iteration_per_run_;
+          },
+          [](ExecutionStrategy &self, size_t num_iteration_per_run) {
+            self.num_iteration_per_run_ = num_iteration_per_run;
+          },
+          R"DOC(This config that how many iteration the executor will run when
+                user call pe.run() in python
+              )DOC")
       .def_property("_dry_run",
                     [](const ExecutionStrategy &self) { return self.dry_run_; },
                     [](ExecutionStrategy &self, bool dry_run) {
