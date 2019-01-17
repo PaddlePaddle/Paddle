@@ -342,6 +342,7 @@ def box_coder(prior_box,
               target_box,
               code_type="encode_center_size",
               box_normalized=True,
+              axis=0,
               name=None):
     """
     ${comment}
@@ -352,6 +353,7 @@ def box_coder(prior_box,
         target_box(${target_box_type}): ${target_box_comment}
         code_type(${code_type_type}): ${code_type_comment}
         box_normalized(${box_normalized_type}): ${box_normalized_comment}
+        axis(${axis_type}): ${axis_comment}
 
     Returns:
         output_box(${output_box_type}): ${output_box_comment}
@@ -372,8 +374,11 @@ def box_coder(prior_box,
             "PriorBoxVar": prior_box_var,
             "TargetBox": target_box
         },
-        attrs={"code_type": code_type,
-               "box_normalized": box_normalized},
+        attrs={
+            "code_type": code_type,
+            "box_normalized": box_normalized,
+            "axis": axis
+        },
         outputs={"OutputBox": output_box})
     return output_box
 
