@@ -116,7 +116,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   // Convert graph to run on multi-devices.
   void AppendMultiDevPass(const BuildStrategy &strategy) {
     ir::Pass *multi_devices_pass;
-    if (strategy_.is_distribution_) {
+
+    if (strategy_.async_mode_) {
+      multi_devices_pass = AppendPass("async_multi_devices_pass").get();
+    } else if (strategy_.is_distribution_) {
       multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
     } else {
       if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
