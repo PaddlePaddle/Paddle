@@ -17,7 +17,6 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/profiler.h"
 
 // asynchronous nccl allreduce or synchronous issue:

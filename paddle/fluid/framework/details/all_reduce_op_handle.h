@@ -45,7 +45,6 @@ struct AllReduceOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
-  void DGC(unsigned int idx, const std::string &name);
 
  private:
   std::vector<Scope *> local_scopes_;
