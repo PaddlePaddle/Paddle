@@ -173,7 +173,8 @@ class TestCalibration(unittest.TestCase):
         test_info = []
         cnt = 0
         for batch_id, data in enumerate(val_reader()):
-            image = np.array([x[0].reshape(image_shape) for x in data]).astype("float32")
+            image = np.array(
+                [x[0].reshape(image_shape) for x in data]).astype("float32")
             label = np.array([x[1] for x in data]).astype("int64")
             label = label.reshape([-1, 1])
             _, acc1, _ = exe.run(
