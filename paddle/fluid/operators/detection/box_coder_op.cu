@@ -20,7 +20,8 @@ __global__ void EncodeCenterSizeKernel(const T* prior_box_data,
                                        const T* prior_box_var_data,
                                        const T* target_box_data, const int row,
                                        const int col, const int len,
-                                       const bool normalized, T* output) {
+                                       const bool normalized,
+                                       const T prior_box_var_size, T* output) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < row * col) {
     const int row_idx = idx / col;
@@ -30,11 +31,9 @@ __global__ void EncodeCenterSizeKernel(const T* prior_box_data,
     T prior_box_height = prior_box_data[col_idx * len + 3] -
                          prior_box_data[col_idx * len + 1] +
                          (normalized == false);
-    T prior_box_center_x =
-        (prior_box_data[col_idx * len + 2] + prior_box_data[col_idx * len]) / 2;
-    T prior_box_center_y = (prior_box_data[col_idx * len + 3] +
-                            prior_box_data[col_idx * len + 1]) /
-                           2;
+    T prior_box_center_x = prior_box_data[col_idx * len] + prior_box_width / 2;
+    T prior_box_center_y =
+        prior_box_data[col_idx * len + 1] + prior_box_height / 2;
 
     T target_box_center_x =
         (target_box_data[row_idx * len + 2] + target_box_data[row_idx * len]) /
@@ -55,10 +54,14 @@ __global__ void EncodeCenterSizeKernel(const T* prior_box_data,
     output[idx * len + 2] = log(fabs(target_box_width / prior_box_width));
     output[idx * len + 3] = log(fabs(target_box_height / prior_box_height));
     if (prior_box_var_data) {
-      output[idx * len] /= prior_box_var_data[col_idx * len];
-      output[idx * len + 1] /= prior_box_var_data[col_idx * len + 1];
-      output[idx * len + 2] /= prior_box_var_data[col_idx * len + 2];
-      output[idx * len + 3] /= prior_box_var_data[col_idx * len + 3];
+      int prior_var_offset = 0;
+      if (prior_box_var_size == 2) {
+        prior_var_offset = col_idx * len;
+      }
+      output[idx * len] /= prior_box_var_data[prior_var_offset];
+      output[idx * len + 1] /= prior_box_var_data[prior_var_offset + 1];
+      output[idx * len + 2] /= prior_box_var_data[prior_var_offset + 2];
+      output[idx * len + 3] /= prior_box_var_data[prior_var_offset + 3];
     }
   }
 }
@@ -68,33 +71,48 @@ __global__ void DecodeCenterSizeKernel(const T* prior_box_data,
                                        const T* prior_box_var_data,
                                        const T* target_box_data, const int row,
                                        const int col, const int len,
-                                       const bool normalized, T* output) {
+                                       const bool normalized,
+                                       const T prior_box_var_size,
+                                       const int axis, T* output) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int prior_box_offset = 0;
   if (idx < row * col) {
     const int col_idx = idx % col;
-    T prior_box_width = prior_box_data[col_idx * len + 2] -
-                        prior_box_data[col_idx * len] + (normalized == false);
-    T prior_box_height = prior_box_data[col_idx * len + 3] -
-                         prior_box_data[col_idx * len + 1] +
+    const int row_idx = idx / col;
+    if (axis == 0)
+      prior_box_offset = col_idx * len;
+    else if (axis == 1)
+      prior_box_offset = row_idx * len;
+    T prior_box_width = prior_box_data[prior_box_offset + 2] -
+                        prior_box_data[prior_box_offset] +
+                        (normalized == false);
+    T prior_box_height = prior_box_data[prior_box_offset + 3] -
+                         prior_box_data[prior_box_offset + 1] +
                          (normalized == false);
     T prior_box_center_x =
-        (prior_box_data[col_idx * len + 2] + prior_box_data[col_idx * len]) / 2;
-    T prior_box_center_y = (prior_box_data[col_idx * len + 3] +
-                            prior_box_data[col_idx * len + 1]) /
-                           2;
+        prior_box_data[prior_box_offset] + prior_box_width / 2;
+    T prior_box_center_y =
+        prior_box_data[prior_box_offset + 1] + prior_box_height / 2;
     T target_box_width, target_box_height;
     T target_box_center_x, target_box_center_y;
     if (prior_box_var_data) {
-      target_box_width = exp(prior_box_var_data[col_idx * len + 2] *
+      int prior_var_offset = 0;
+      if (prior_box_var_size == 2) {
+        if (axis == 0)
+          prior_var_offset = col_idx * len;
+        else if (axis == 1)
+          prior_var_offset = row_idx * len;
+      }
+      target_box_width = exp(prior_box_var_data[prior_var_offset + 2] *
                              target_box_data[idx * len + 2]) *
                          prior_box_width;
-      target_box_height = exp(prior_box_var_data[col_idx * len + 3] *
+      target_box_height = exp(prior_box_var_data[prior_var_offset + 3] *
                               target_box_data[idx * len + 3]) *
                           prior_box_height;
-      target_box_center_x = prior_box_var_data[col_idx * len] *
+      target_box_center_x = prior_box_var_data[prior_var_offset] *
                                 target_box_data[idx * len] * prior_box_width +
                             prior_box_center_x;
-      target_box_center_y = prior_box_var_data[col_idx * len + 1] *
+      target_box_center_y = prior_box_var_data[prior_var_offset + 1] *
                                 target_box_data[idx * len + 1] *
                                 prior_box_height +
                             prior_box_center_y;
@@ -131,14 +149,25 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     const T* prior_box_data = prior_box->data<T>();
     const T* target_box_data = target_box->data<T>();
     const T* prior_box_var_data = nullptr;
-    if (prior_box_var) prior_box_var_data = prior_box_var->data<T>();
+    auto prior_box_var_size = 0;
+    if (prior_box_var) {
+      prior_box_var_data = prior_box_var->data<T>();
+      prior_box_var_size = prior_box_var->dims().size();
+    }
 
     if (target_box->lod().size()) {
       PADDLE_ENFORCE_EQ(target_box->lod().size(), 1,
                         "Only support 1 level of LoD.");
     }
+    auto code_type = GetBoxCodeType(context.Attr<std::string>("code_type"));
+    bool normalized = context.Attr<bool>("box_normalized");
+    int axis = context.Attr<int>("axis");
+
     auto row = target_box->dims()[0];
     auto col = prior_box->dims()[0];
+    if (code_type == BoxCodeType::kDecodeCenterSize) {
+      col = target_box->dims()[1];
+    }
     auto len = prior_box->dims()[1];
     int block = 512;
     int grid = (row * col + block - 1) / block;
@@ -147,16 +176,14 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     output_box->mutable_data<T>({row, col, len}, context.GetPlace());
     T* output = output_box->data<T>();
 
-    auto code_type = GetBoxCodeType(context.Attr<std::string>("code_type"));
-    bool normalized = context.Attr<bool>("box_normalized");
     if (code_type == BoxCodeType::kEncodeCenterSize) {
       EncodeCenterSizeKernel<T><<<grid, block, 0, device_ctx.stream()>>>(
           prior_box_data, prior_box_var_data, target_box_data, row, col, len,
-          normalized, output);
+          normalized, prior_box_var_size, output);
     } else if (code_type == BoxCodeType::kDecodeCenterSize) {
       DecodeCenterSizeKernel<T><<<grid, block, 0, device_ctx.stream()>>>(
           prior_box_data, prior_box_var_data, target_box_data, row, col, len,
-          normalized, output);
+          normalized, prior_box_var_size, axis, output);
     }
   }
 };

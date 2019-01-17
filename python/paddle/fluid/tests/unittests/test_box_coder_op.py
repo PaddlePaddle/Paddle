@@ -21,22 +21,32 @@ import math
 from op_test import OpTest
 
 
-def box_coder(target_box, prior_box, prior_box_var, output_box, code_type,
-              box_normalized):
-    prior_box_x = (
-        (prior_box[:, 2] + prior_box[:, 0]) / 2).reshape(1, prior_box.shape[0])
-    prior_box_y = (
-        (prior_box[:, 3] + prior_box[:, 1]) / 2).reshape(1, prior_box.shape[0])
-    prior_box_width = (
-        (prior_box[:, 2] - prior_box[:, 0])).reshape(1, prior_box.shape[0])
-    prior_box_height = (
-        (prior_box[:, 3] - prior_box[:, 1])).reshape(1, prior_box.shape[0])
-    prior_box_var = prior_box_var.reshape(1, prior_box_var.shape[0],
-                                          prior_box_var.shape[1])
-    if not box_normalized:
-        prior_box_height = prior_box_height + 1
-        prior_box_width = prior_box_width + 1
-
+def box_coder(target_box,
+              prior_box,
+              prior_box_var,
+              output_box,
+              code_type,
+              box_normalized,
+              axis=0):
+    prior_box_width = prior_box[:, 2] - prior_box[:, 0] + \
+                      (box_normalized==False)
+    prior_box_height = prior_box[:, 3] - prior_box[:, 1] + \
+                      (box_normalized==False)
+    prior_box_x = prior_box_width * 0.5 + prior_box[:, 0]
+    prior_box_y = prior_box_height * 0.5 + prior_box[:, 1]
+    if axis == 0:
+        prior_box_width = prior_box_width.reshape(1, prior_box.shape[0])
+        prior_box_height = prior_box_height.reshape(1, prior_box.shape[0])
+        prior_box_x = prior_box_x.reshape(1, prior_box.shape[0])
+        prior_box_y = prior_box_y.reshape(1, prior_box.shape[0])
+    else:
+        prior_box_width = prior_box_width.reshape(prior_box.shape[0], 1)
+        prior_box_height = prior_box_height.reshape(prior_box.shape[0], 1)
+        prior_box_x = prior_box_x.reshape(prior_box.shape[0], 1)
+        prior_box_y = prior_box_y.reshape(prior_box.shape[0], 1)
+    if prior_box_var.ndim == 2:
+        prior_box_var = prior_box_var.reshape(1, prior_box_var.shape[0],
+                                              prior_box_var.shape[1])
     if (code_type == "EncodeCenterSize"):
         target_box_x = ((target_box[:, 2] + target_box[:, 0]) / 2).reshape(
             target_box.shape[0], 1)
@@ -49,26 +59,52 @@ def box_coder(target_box, prior_box, prior_box_var, output_box, code_type,
         if not box_normalized:
             target_box_height = target_box_height + 1
             target_box_width = target_box_width + 1
-
-        output_box[:,:,0] = (target_box_x - prior_box_x) / prior_box_width / \
-                prior_box_var[:,:,0]
-        output_box[:,:,1] = (target_box_y - prior_box_y) / prior_box_height / \
-                prior_box_var[:,:,1]
-        output_box[:,:,2] = np.log(np.fabs(target_box_width / prior_box_width)) / \
-                prior_box_var[:,:,2]
-        output_box[:,:,3] = np.log(np.fabs(target_box_height / prior_box_height)) / \
-                prior_box_var[:,:,3]
+        if prior_box_var.ndim == 1:
+            output_box[:,:,0] = (target_box_x - prior_box_x) / \
+                                prior_box_width / \
+                                prior_box_var[0]
+            output_box[:,:,1] = (target_box_y - prior_box_y) / \
+                                prior_box_height / \
+                                prior_box_var[1]
+            output_box[:,:,2] = np.log(np.fabs(target_box_width / \
+                                prior_box_width)) / \
+                                prior_box_var[2]
+            output_box[:,:,3] = np.log(np.fabs(target_box_height / \
+                                prior_box_height)) / \
+                                prior_box_var[3]
+        else:
+            output_box[:,:,0] = (target_box_x - prior_box_x) / \
+                                prior_box_width / \
+                                prior_box_var[:,:,0]
+            output_box[:,:,1] = (target_box_y - prior_box_y) / \
+                                prior_box_height / \
+                                prior_box_var[:,:,1]
+            output_box[:,:,2] = np.log(np.fabs(target_box_width / \
+                                prior_box_width)) / \
+                                prior_box_var[:,:,2]
+            output_box[:,:,3] = np.log(np.fabs(target_box_height / \
+                                prior_box_height)) / \
+                                prior_box_var[:,:,3]
 
     elif (code_type == "DecodeCenterSize"):
-        target_box_x = prior_box_var[:,:,0] * target_box[:,:,0] * \
-                       prior_box_width + prior_box_x
-        target_box_y = prior_box_var[:,:,1] * target_box[:,:,1] * \
-                       prior_box_height + prior_box_y
-        target_box_width = np.exp(prior_box_var[:,:,2] * target_box[:,:,2]) * \
-                           prior_box_width
-        target_box_height = np.exp(prior_box_var[:,:,3] * target_box[:,:,3]) * \
-                            prior_box_height
-
+        if prior_box_var.ndim == 1:
+            target_box_x = prior_box_var[0] * target_box[:,:,0] * \
+                           prior_box_width + prior_box_x
+            target_box_y = prior_box_var[1] * target_box[:,:,1] * \
+                           prior_box_height + prior_box_y
+            target_box_width = np.exp(prior_box_var[2] * target_box[:,:,2]) * \
+                               prior_box_width
+            target_box_height = np.exp(prior_box_var[3] * target_box[:,:,3]) * \
+                                prior_box_height
+        else:
+            target_box_x = prior_box_var[:,:,0] * target_box[:,:,0] * \
+                           prior_box_width + prior_box_x
+            target_box_y = prior_box_var[:,:,1] * target_box[:,:,1] * \
+                           prior_box_height + prior_box_y
+            target_box_width = np.exp(prior_box_var[:,:,2] * \
+                               target_box[:,:,2]) * prior_box_width
+            target_box_height = np.exp(prior_box_var[:,:,3] * \
+                               target_box[:,:,3]) * prior_box_height
         output_box[:, :, 0] = target_box_x - target_box_width / 2
         output_box[:, :, 1] = target_box_y - target_box_height / 2
         output_box[:, :, 2] = target_box_x + target_box_width / 2
@@ -78,10 +114,17 @@ def box_coder(target_box, prior_box, prior_box_var, output_box, code_type,
             output_box[:, :, 3] = output_box[:, :, 3] - 1
 
 
-def batch_box_coder(prior_box, prior_box_var, target_box, lod, code_type,
-                    box_normalized):
+def batch_box_coder(prior_box,
+                    prior_box_var,
+                    target_box,
+                    lod,
+                    code_type,
+                    box_normalized,
+                    axis=0):
     n = target_box.shape[0]
     m = prior_box.shape[0]
+    if code_type == "DecodeCenterSize":
+        m = target_box.shape[1]
     output_box = np.zeros((n, m, 4), dtype=np.float32)
     cur_offset = 0
     for i in range(len(lod)):
@@ -91,10 +134,8 @@ def batch_box_coder(prior_box, prior_box_var, target_box, lod, code_type,
                       output_box[cur_offset:(cur_offset + lod[i]), :, :],
                       code_type, box_normalized)
         elif (code_type == "DecodeCenterSize"):
-            box_coder(target_box[cur_offset:(cur_offset + lod[i]), :, :],
-                      prior_box, prior_box_var,
-                      output_box[cur_offset:(cur_offset + lod[i]), :, :],
-                      code_type, box_normalized)
+            box_coder(target_box, prior_box, prior_box_var, output_box,
+                      code_type, box_normalized, axis)
         cur_offset += lod[i]
     return output_box
 
@@ -109,6 +150,32 @@ class TestBoxCoderOp(OpTest):
         prior_box = np.random.random((10, 4)).astype('float32')
         prior_box_var = np.random.random((10, 4)).astype('float32')
         target_box = np.random.random((5, 10, 4)).astype('float32')
+        code_type = "DecodeCenterSize"
+        box_normalized = False
+        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
+                                     lod[0], code_type, box_normalized)
+        self.inputs = {
+            'PriorBox': prior_box,
+            'PriorBoxVar': prior_box_var,
+            'TargetBox': target_box,
+        }
+        self.attrs = {
+            'code_type': 'decode_center_size',
+            'box_normalized': False
+        }
+        self.outputs = {'OutputBox': output_box}
+
+
+class TestBoxCoderOpWithOneRankVar(OpTest):
+    def test_check_output(self):
+        self.check_output()
+
+    def setUp(self):
+        self.op_type = "box_coder"
+        lod = [[1, 1, 1, 1, 1]]
+        prior_box = np.random.random((6, 4)).astype('float32')
+        prior_box_var = np.random.random((4)).astype('float32')
+        target_box = np.random.random((3, 6, 4)).astype('float32')
         code_type = "DecodeCenterSize"
         box_normalized = False
         output_box = batch_box_coder(prior_box, prior_box_var, target_box,
@@ -173,6 +240,35 @@ class TestBoxCoderOpWithLoD(OpTest):
             'TargetBox': (target_box, lod),
         }
         self.attrs = {'code_type': 'encode_center_size', 'box_normalized': True}
+        self.outputs = {'OutputBox': output_box}
+
+
+class TestBoxCoderOpWithAxis(OpTest):
+    def test_check_output(self):
+        self.check_output()
+
+    def setUp(self):
+        self.op_type = "box_coder"
+        lod = [[1, 1, 1, 1, 1]]
+        prior_box = np.random.random((5, 4)).astype('float32')
+        prior_box_var = np.random.random((4)).astype('float32')
+        target_box = np.random.random((5, 6, 4)).astype('float32')
+        code_type = "DecodeCenterSize"
+        box_normalized = False
+        axis = 1
+        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
+                                     lod[0], code_type, box_normalized, axis)
+
+        self.inputs = {
+            'PriorBox': prior_box,
+            'PriorBoxVar': prior_box_var,
+            'TargetBox': target_box,
+        }
+        self.attrs = {
+            'code_type': 'decode_center_size',
+            'box_normalized': False,
+            'axis': axis
+        }
         self.outputs = {'OutputBox': output_box}
 
 
