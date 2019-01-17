@@ -68,7 +68,7 @@ void contrib::AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
   device_id_ = device_id;
 #else
-  LOG(ERROR) << "Please compile with gpu to EnableGpu";
+  LOG(ERROR) << "Please compile with gpu to EnableGpu()";
   use_gpu_ = false;
 #endif
 
@@ -143,11 +143,22 @@ void contrib::AnalysisConfig::EnableMKLDNN() {
 void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size,
                                                    int max_batch_size,
                                                    int min_subgraph_size) {
+#ifdef PADDLE_WITH_CUDA
+  if (!use_gpu()) {
+    LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
+    return;
+  }
+
   use_tensorrt_ = true;
   tensorrt_workspace_size_ = workspace_size;
   tensorrt_max_batchsize_ = max_batch_size;
+  tensorrt_min_subgraph_size_ = min_subgraph_size;
 
   Update();
+#else
+  LOG(ERROR)
+      << "To use TensorRT engine, please compile inference lib with GPU first.";
+#endif
 }
 
 // TODO(Superjomn) refactor this, buggy.
@@ -159,13 +170,20 @@ void contrib::AnalysisConfig::Update() {
   if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu()))) {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy);
+
+      if (use_tensorrt_) {
+        // Append after the Affine_channel_conv_fuse pass.
+        pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
+      }
     } else {
       pass_builder_.reset(new CpuPassStrategy);
     }
+
   } else {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy(
           *static_cast<GpuPassStrategy *>(pass_builder_.get())));
+
     } else {
       pass_builder_.reset(new CpuPassStrategy(
           *static_cast<CpuPassStrategy *>(pass_builder_.get())));
@@ -173,12 +191,11 @@ void contrib::AnalysisConfig::Update() {
   }
 
   if (use_tensorrt_) {
-    if (!use_gpu_) {
-      LOG(ERROR)
-          << "TensorRT engine is not available when EnableGpu() not actived.";
-    } else {
-      // Append after the infer_clean pass.
-      pass_builder()->InsertPass(1, "tensorrt_subgraph_pass");
+    const auto &passes = pass_builder_->AllPasses();
+    if (std::find(passes.begin(), passes.end(), "tensorrt_subgraph_pass") ==
+        std::end(passes)) {
+      // Append after the Affine_channel_conv_fuse pass.
+      pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
     }
   }
 

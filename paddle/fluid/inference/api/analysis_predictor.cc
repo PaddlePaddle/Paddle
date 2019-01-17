@@ -355,8 +355,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
 
   auto passes = config_.pass_builder()->AllPasses();
-  if (!config_.ir_optim()) passes.clear();
-  LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";
+  if (!config_.ir_optim()) {
+    passes.clear();
+    LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";
+  }
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(const_cast<framework::Scope *>(scope_.get()));
