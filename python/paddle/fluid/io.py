@@ -20,7 +20,7 @@ import time
 import shutil
 import six
 
-import paddle.fluid as fluid
+from paddle.fluid import layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable
@@ -647,7 +647,7 @@ def save_inference_model(dirname,
     # TODO(Superjomn) add an IR pass to remove 1-scale op.
     uniq_target_vars = []
     for var in target_vars:
-        var = fluid.layers.scale(var, 1.)
+        var = layers.scale(var, 1.)
         uniq_target_vars.append(var)
     target_vars = uniq_target_vars
 
