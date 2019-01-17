@@ -12,11 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <boost/preprocessor/repetition/repeat.hpp>
+#include "cub/cub.cuh"
 #include "paddle/fluid/operators/group_norm_op.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 
 namespace paddle {
 namespace operators {
+
+enum Flags { kHasScale = 1, kHasBias = 2, kHasDx = 4 };
+
+template <typename T>
+__device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
+  typedef cub::WarpReduce<T> WarpReduce;
+  typename WarpReduce::TempStorage temp_storage;
+  value = WarpReduce(temp_storage).Sum(value);
+  if (cub::LaneId() == 0) platform::CudaAtomicAdd(sum, value);
+}
 
 template <typename T>
 __global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C,
@@ -36,11 +48,11 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C,
   }
   x_mean /= number * imsize;
   x_var /= number * imsize;
-  paddle::platform::CudaAtomicAddWithWarp(&mean[bid * groups + gid], x_mean);
-  paddle::platform::CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
+  CudaAtomicAddWithWarp(&mean[bid * groups + gid], x_mean);
+  CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
 }
 
-template <typename T>
+template <typename T, int flags>
 __global__ void GroupNormForward(const T* x, const T* mean, const T* var,
                                  const T* scale, const T* bias, int N, int C,
                                  int imsize, int groups, int group_size,
@@ -58,8 +70,8 @@ __global__ void GroupNormForward(const T* x, const T* mean, const T* var,
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
     T val = x[(bid * C + ccid) * imsize + imid];
     val = (val - x_mean) * var_inv;
-    if (scale) val *= scale[gid * group_size + cid];
-    if (bias) val += bias[gid * group_size + cid];
+    if (flags & kHasScale) val *= scale[gid * group_size + cid];
+    if (flags & kHasBias) val += bias[gid * group_size + cid];
     y[(bid * C + ccid) * imsize + imid] = val;
   }
 }
@@ -111,13 +123,25 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
         x_data, x_dims[0], x_dims[1], imsize, groups, group_size, mean_data,
         temp_var_data);
-    GroupNormForward<T><<<grid, threads, 0, dev_ctx.stream()>>>(
-        x_data, mean_data, temp_var_data, scale_data, bias_data, x_dims[0],
-        x_dims[1], imsize, groups, group_size, epsilon, y_data, var_data);
+    int flags =
+        (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
+#define CALL(z, i, _)                                                       \
+  if (i == flags) {                                                         \
+    GroupNormForward<T, i><<<grid, threads, 0, dev_ctx.stream()>>>(         \
+        x_data, mean_data, temp_var_data, scale_data, bias_data, x_dims[0], \
+        x_dims[1], imsize, groups, group_size, epsilon, y_data, var_data);  \
+  }
+    // NOTE(liangdun): Using boost macro to unroll all cases:
+    // 0 for no scale, no bias
+    // 1 for has scale, no bias
+    // 2 for no scale, has bias
+    // 3 for has scale, has bias
+    BOOST_PP_REPEAT(4, CALL, _);
+#undef CALL
   }
 };
 
-template <typename T>
+template <typename T, int flags>
 __global__ void GroupNormBackwardGetMeanAndVar(const T* x, const T* scale,
                                                const T* bias, const T* d_y,
                                                int N, int C, int imsize,
@@ -130,8 +154,8 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x, const T* scale,
   int number = min(group_size, static_cast<int>(C - gid * group_size));
   int ccid = gid * group_size + cid;
   if (ccid >= C) return;
-  T x_scale = scale[ccid];
-  T x_bias = bias[ccid];
+  T x_scale = (flags & kHasScale) ? scale[ccid] : 1;
+  T x_bias = (flags & kHasBias) ? bias[ccid] : 0;
   T x_scale_inv = 0;
   if (x_scale != 0) x_scale_inv = 1.0 / x_scale;
   T d_mean_data = 0, d_var_data = 0, d_scale_data = 0, d_bias_data = 0;
@@ -147,15 +171,13 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x, const T* scale,
     d_bias_data += dval;
     d_scale_data += val * dval;
   }
-  paddle::platform::CudaAtomicAddWithWarp(&d_mean[bid * groups + gid],
-                                          d_mean_data);
-  paddle::platform::CudaAtomicAddWithWarp(&d_var[bid * groups + gid],
-                                          d_var_data);
-  paddle::platform::CudaAtomicAddWithWarp(&d_scale[ccid], d_scale_data);
-  paddle::platform::CudaAtomicAddWithWarp(&d_bias[ccid], d_bias_data);
+  CudaAtomicAddWithWarp(&d_mean[bid * groups + gid], d_mean_data);
+  CudaAtomicAddWithWarp(&d_var[bid * groups + gid], d_var_data);
+  if (flags & kHasScale) CudaAtomicAddWithWarp(&d_scale[ccid], d_scale_data);
+  if (flags & kHasBias) CudaAtomicAddWithWarp(&d_bias[ccid], d_bias_data);
 }
 
-template <typename T>
+template <typename T, int flags>
 __global__ void GroupNormBackward(const T* x, const T* d_y, const T* scale,
                                   const T* bias, const T* var, const T* d_mean,
                                   const T* d_var, int N, int C, int imsize,
@@ -174,8 +196,8 @@ __global__ void GroupNormBackward(const T* x, const T* d_y, const T* scale,
   T x_var_inv = 1.0 / sqrt(x_var + epsilon);
   T number_inv = 1.0 / (number * imsize);
 
-  T x_scale = scale[ccid];
-  T x_bias = bias[ccid];
+  T x_scale = (flags & kHasScale) ? scale[ccid] : 1;
+  T x_bias = (flags & kHasBias) ? bias[ccid] : 0;
   T x_scale_inv = 0;
   if (x_scale != 0) x_scale_inv = 1.0 / x_scale;
 
@@ -225,9 +247,9 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     T* temp_mean_data = temp_mean.data<T>();
 
     auto* x_data = x->data<T>();
-    auto* d_x_data = d_x->data<T>();
+    T* d_x_data = nullptr;
+    if (d_x) d_x_data = d_x->data<T>();
     auto* y_data = d_y->data<T>();
-    auto* bias_data = bias->data<T>();
     auto* var_data = var->data<T>();
     T* d_scale_data = nullptr;
     if (d_scale) {
@@ -244,19 +266,50 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
 
     const T* scale_data = nullptr;
     if (scale) scale_data = scale->data<T>();
+    const T* bias_data = nullptr;
+    if (bias) bias_data = bias->data<T>();
 
     int imsize = x_dims[2] * x_dims[3];
     int block_size = std::min(1024, imsize);
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
-    GroupNormBackwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
+    int flags =
+        (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
+
+#define CALL(z, i, _)                                                          \
+  if (i == flags) {                                                            \
+    GroupNormBackwardGetMeanAndVar<T,                                          \
+                                   i><<<grid, threads, 0, dev_ctx.stream()>>>( \
+        x_data, scale_data, bias_data, y_data, x_dims[0], x_dims[1], imsize,   \
+        groups, group_size, epsilon, temp_mean_data, temp_var_data,            \
+        d_scale_data, d_bias_data);                                            \
+  }
+    BOOST_PP_REPEAT(4, CALL, _);
+#undef CALL
+
+    if (d_x_data != nullptr) {
+#define CALL(z, i, _)                                                    \
+  if (i == flags) {                                                      \
+    GroupNormBackward<T, 3><<<grid, threads, 0, dev_ctx.stream()>>>(     \
+        x_data, y_data, scale_data, bias_data, var_data, temp_mean_data, \
+        temp_var_data, x_dims[0], x_dims[1], imsize, groups, group_size, \
+        epsilon, d_x_data);                                              \
+  }
+      BOOST_PP_REPEAT(4, CALL, _);
+#undef CALL
+    }
+    /*
+
+    GroupNormBackwardGetMeanAndVar<T, 3><<<grid, threads, 0,
+    dev_ctx.stream()>>>(
         x_data, scale_data, bias_data, y_data, x_dims[0], x_dims[1], imsize,
         groups, group_size, epsilon, temp_mean_data, temp_var_data,
         d_scale_data, d_bias_data);
-    GroupNormBackward<T><<<grid, threads, 0, dev_ctx.stream()>>>(
+    GroupNormBackward<T, 3><<<grid, threads, 0, dev_ctx.stream()>>>(
         x_data, y_data, scale_data, bias_data, var_data, temp_mean_data,
         temp_var_data, x_dims[0], x_dims[1], imsize, groups, group_size,
         epsilon, d_x_data);
+    */
   }
 };
 
