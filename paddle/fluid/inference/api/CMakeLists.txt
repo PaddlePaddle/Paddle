@@ -18,21 +18,22 @@ if(APPLE)
 endif(APPLE)
 
 
-set(inference_deps paddle_inference_api paddle_fluid_api analysis pass ir_pass_manager naive_executor analysis_predictor ${GLOB_PASS_LIB})
+set(inference_deps paddle_inference_api paddle_fluid_api analysis pass
+    ir_pass_manager naive_executor analysis_predictor ${GLOB_PASS_LIB})
 
 if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
 endif()
 
-cc_library(reset_tensor_array SRCS details/reset_tensor_array.cc DEPS lod_tensor scope)
+add_subdirectory(details)
+
 cc_library(analysis_config SRCS analysis_config.cc DEPS lod_tensor paddle_pass_builder)
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api analysis naive_executor zero_copy_tensor reset_tensor_array analysis_config paddle_pass_builder ir_pass_manager)
-cc_library(zero_copy_tensor SRCS details/zero_copy_tensor.cc DEPS scope lod_tensor enforce)
-cc_library(zero_copy_tensor_dummy SRCS details/zero_copy_tensor_dummy.cc)
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS
            lod_tensor scope paddle_pass_builder reset_tensor_array analysis_config
-           analysis_config paddle_pass_builder zero_copy_tensor reset_tensor_array)
+           analysis_config paddle_pass_builder zero_copy_tensor
+           reset_tensor_array)
 
 cc_test(test_paddle_inference_api
         SRCS api_tester.cc

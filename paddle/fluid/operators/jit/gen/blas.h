@@ -34,7 +34,8 @@ class VXXJitCode : public JitCode {
         type_(type),
         scalar_index_(scalar_index),
         with_relu_(with_relu) {
-    if (!(type_ == operand_type::MUL || type_ == operand_type::ADD)) {
+    if (!(type_ == operand_type::MUL || type_ == operand_type::ADD ||
+          type_ == operand_type::SUB)) {
       LOG(FATAL) << "Do not support this operand type: " << type_;
     }
     this->genCode();
@@ -51,6 +52,8 @@ class VXXJitCode : public JitCode {
       base += "_Mul";
     } else if (type_ == operand_type::ADD) {
       base += "_Add";
+    } else if (type_ == operand_type::SUB) {
+      base += "_SUB";
     }
     if (scalar_index_ == 2) {
       base += "_Scalar";

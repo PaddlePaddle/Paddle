@@ -200,6 +200,9 @@ class PyLayer {
  public:
   virtual ~PyLayer() {}
 
+  static const char* kFwdInp;
+  static const char* kFwdOut;
+
   static void RegisterFunc(int func_id, const py::object& py_func);
 
   static int NumFuncs();
