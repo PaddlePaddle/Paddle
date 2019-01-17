@@ -127,6 +127,7 @@ void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size,
   use_tensorrt_ = true;
   tensorrt_workspace_size_ = workspace_size;
   tensorrt_max_batchsize_ = max_batch_size;
+  tensorrt_min_subgraph_size_ = min_subgraph_size;
   Update();
 }
 
@@ -145,8 +146,8 @@ void contrib::AnalysisConfig::Update() {
       LOG(ERROR)
           << "TensorRT engine is not available when EnableGpu() not actived.";
     } else {
-      // Append after the infer_clean pass.
-      pass_builder()->InsertPass(1, "tensorrt_subgraph_pass");
+      // Append after the Affine_channel_conv_fuse pass.
+      pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
     }
   }
 

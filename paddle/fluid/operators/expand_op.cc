@@ -48,7 +48,7 @@ class ExpandOp : public framework::OperatorWithKernel {
     }
 
     // set the first dim to -1 in compile time
-    if (!ctx->IsRuntime()) {
+    if (!ctx->IsRuntime() && x_dims[0] < 0) {
       out_shape[0] = x_dims[0];
     }
 
@@ -115,7 +115,7 @@ class ExpandGradOp : public framework::OperatorWithKernel {
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     size_t start_pos = 0u;
-    if (!ctx->IsRuntime()) {
+    if (!ctx->IsRuntime() && x_dims[0] < 0) {
       PADDLE_ENFORCE_EQ(
           x_dims[0], out_dims[0],
           "The first dimension size of Input(Out@GRAD) should be "
