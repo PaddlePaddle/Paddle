@@ -117,7 +117,7 @@ class CompiledProgram(object):
 
         Args:
             config: instance of `NativeConfig` or `AnalysisConfig` to create predictor
-            infer_attrs(dict): attributes to run inference, only `batch_size` is currently supported.
+            infer_attrs(dict): attributes to run inference, no attribute is currently supported.
         Returns:
             self
         """

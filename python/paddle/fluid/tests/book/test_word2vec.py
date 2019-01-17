@@ -210,13 +210,11 @@ def infer(use_cuda, save_dirname=None):
         infer_config = fluid.core.NativeConfig()
         infer_config.model_dir = 'word2vec.inference.model'
         compiled_program = fluid.compiler.CompiledProgram(inference_program)
-        infer_attrs = {'batch_size': 1}
+        infer_attrs = {}
         compiled_program.with_inference_optimize(infer_config, infer_attrs)
-        print(compiled_program._is_inference)
+        assert compiled_program._is_inference is True
         infer_outputs = exe.run(compiled_program, feed=infer_inputs)
-        print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
-        print("Inference Shape: ", np_data.shape)
         infer_out = infer_outputs[0].data.float_data()
         for a, b in zip(np_data[0], infer_out):
             g_a = float("{:.6g}".format(a))

@@ -126,7 +126,13 @@ void BindPaddlePlace(py::module *m) {
 
 void BindPaddlePredictor(py::module *m) {
   auto paddle_predictor = py::class_<PaddlePredictor>(*m, "PaddlePredictor");
-  paddle_predictor.def("run", &PaddlePredictor::Run)
+  paddle_predictor
+      .def("run",
+           [](PaddlePredictor &self, const std::vector<PaddleTensor> &inputs) {
+             std::vector<PaddleTensor> outputs;
+             self.Run(inputs, &outputs);
+             return outputs;
+           })
       .def("get_input_tensor", &PaddlePredictor::GetInputTensor)
       .def("get_output_tensor", &PaddlePredictor::GetOutputTensor)
       .def("zero_copy_run", &PaddlePredictor::ZeroCopyRun)
@@ -160,9 +166,9 @@ void BindNativePredictor(py::module *m) {
       .def("init", &NativePaddlePredictor::Init)
       .def("run",
            [](NativePaddlePredictor &self,
-              const std::vector<PaddleTensor> &inputs, int batch_size) {
+              const std::vector<PaddleTensor> &inputs) {
              std::vector<PaddleTensor> outputs;
-             self.Run(inputs, &outputs, batch_size);
+             self.Run(inputs, &outputs);
              return outputs;
            })
       .def("get_input_tensor", &NativePaddlePredictor::GetInputTensor)
@@ -232,10 +238,10 @@ void BindAnalysisPredictor(py::module *m) {
       .def(py::init<const AnalysisConfig &>())
       .def("init", &AnalysisPredictor::Init)
       .def("run",
-           [](AnalysisPredictor &self, const std::vector<PaddleTensor> &inputs,
-              int batch_size) {
+           [](AnalysisPredictor &self,
+              const std::vector<PaddleTensor> &inputs) {
              std::vector<PaddleTensor> outputs;
-             self.Run(inputs, &outputs, batch_size);
+             self.Run(inputs, &outputs);
              return outputs;
            })
       .def("get_input_tensor", &AnalysisPredictor::GetInputTensor)
