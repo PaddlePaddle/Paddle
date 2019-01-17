@@ -51,6 +51,7 @@ typedef enum {
   SUB,
   RELU,
   EXP,
+  SQUARE,
   SIGMOID,
   TANH,
   IDENTITY
