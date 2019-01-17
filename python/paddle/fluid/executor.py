@@ -538,6 +538,7 @@ class Executor(object):
         else:
             # TODO(panyx0718): Can compile program to optimize executor
             # performance.
+            assert program._program, "CompiledProgram is compiled from graph, can only run with_data_parallel."
             return self._run(
                 program._program,
                 self._default_executor,

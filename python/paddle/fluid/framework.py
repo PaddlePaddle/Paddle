@@ -2322,7 +2322,7 @@ class Program(object):
     @staticmethod
     def _construct_from_desc(desc):
         """
-        Construct a program from program desc.
+        Construct a program from program desc. (Experiment)
 
         Args:
             desc(core.ProgramDesc): The program desc for constructing.
@@ -2332,6 +2332,7 @@ class Program(object):
         """
         p = Program()
         p.desc = desc
+        # TODO(wangzhen): Block.vars/ops are not filled, should fix it.
         p.blocks = [Block(p, i) for i in six.moves.range(p.desc.num_blocks())]
         p._sync_with_cpp()
         return p
