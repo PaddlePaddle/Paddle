@@ -1030,6 +1030,9 @@ All parameter, weight, gradient are variables in Paddle.
           "is_distribution",
           [](const BuildStrategy &self) { return self.is_distribution_; },
           [](BuildStrategy &self, bool b) { self.is_distribution_ = b; })
+      .def_property("async_mode",
+                    [](const BuildStrategy &self) { return self.async_mode_; },
+                    [](BuildStrategy &self, bool b) { self.async_mode_ = b; })
       .def_property(
           "memory_early_delete",
           [](const BuildStrategy &self) { return self.memory_early_delete_; },

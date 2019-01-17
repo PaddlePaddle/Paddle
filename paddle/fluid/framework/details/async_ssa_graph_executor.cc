@@ -27,6 +27,7 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
       pool_(places.size() >= 2 ? new ::ThreadPool(places.size()) : nullptr),
       places_(std::move(places)),
       graphs_(std::move(graphs)) {
+  VLOG(3) << "build AsyncSSAGraphExecutor";
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 
   // set the correct size of thread pool to each device.
