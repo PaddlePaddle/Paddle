@@ -150,12 +150,13 @@ void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size,
   Update();
 }
 
+// TODO(Superjomn) refactor this, buggy.
 void contrib::AnalysisConfig::Update() {
   auto info = SerializeInfoCache();
   if (info == serialized_info_cache_) return;
 
   // Transfer pass_builder and copy the existing compatible passes.
-  if (!pass_builder_ || (use_gpu() ^ pass_builder_->use_gpu())) {
+  if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu()))) {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy);
     } else {
@@ -224,6 +225,7 @@ std::string contrib::AnalysisConfig::SerializeInfoCache() {
 
   ss << use_mkldnn_;
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
+  ss << ";";
 
   ss << model_from_memory_;
 

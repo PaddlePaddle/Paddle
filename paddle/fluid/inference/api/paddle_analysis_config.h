@@ -225,7 +225,6 @@ struct AnalysisConfig {
 
   // TensorRT releated.
   bool use_tensorrt_{false};
-
   // For workspace_size, refer it from here:
   // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
   int tensorrt_workspace_size_;

@@ -342,6 +342,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
 
   if (config_.use_gpu() && config_.tensorrt_engine_enabled()) {
+    LOG(INFO) << "TensorRT subgraph engine is enabled";
     argument_.SetUseTensorRT(true);
     argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
@@ -349,11 +350,13 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
 
   if (config_.use_mkldnn_) {
+    LOG(INFO) << "MKLDNN is enabled";
     argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
   }
 
   auto passes = config_.pass_builder()->AllPasses();
   if (!config_.ir_optim()) passes.clear();
+  LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(const_cast<framework::Scope *>(scope_.get()));
