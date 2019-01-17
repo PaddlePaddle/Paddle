@@ -167,7 +167,7 @@ class PaddlePredictor {
                    std::vector<PaddleTensor>* output_data,
                    int batch_size = -1) = 0;
 
-  /** \brief Get an mutable tensor directly.
+  /** \brief Get a mutable tensor directly.
    *
    * NOTE Only works in AnalysisPredictor.
    *
@@ -180,10 +180,10 @@ class PaddlePredictor {
     return nullptr;
   }
   /**
-   * \brief Get an inmutable tensor without copy.
+   * \brief Get an immutable tensor without copy.
    *
    * NOTE Only works in AnalysisPredictor.
-   * One can use this API to get any temporary tensors in the predictor, and
+   * One can use this API to get any temporary tensors in the predictor and
    * read it.
    */
   virtual std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
