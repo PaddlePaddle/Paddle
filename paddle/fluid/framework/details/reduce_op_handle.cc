@@ -182,8 +182,8 @@ void ReduceOpHandle::RunImpl() {
     VariableVisitor::EnforceShapeAndDTypeEQ(*pre_in_var, *in_var);
   }
 
-  auto out_var =
-      var_scopes.at(out_var_handle->scope_idx())->FindVar(out_var_handle->name());
+  auto out_var = var_scopes.at(out_var_handle->scope_idx())
+                     ->FindVar(out_var_handle->name());
   PADDLE_ENFORCE_NOT_NULL(out_var);
 
   // NOTE: The tensors' Place of input and output must be all on GPU or all on
