@@ -113,6 +113,14 @@ class CompiledProgram(object):
         return self
 
     def with_inference_optimize(self, config, infer_attrs):
+        """ Add inference optimize
+
+        Args:
+            config: instance of `NativeConfig` or `AnalysisConfig` to create predictor
+            infer_attrs(dict): attributes to run inference, only `batch_size` is currently supported.
+        Returns:
+            self
+        """
         assert any([
             isinstance(config, InferNativeConfig),
             isinstance(config, InferAnalysisConfig)
@@ -121,6 +129,7 @@ class CompiledProgram(object):
         self._is_inference = True
         self._infer_config = config
         self._infer_attrs = infer_attrs
+        return self
 
     def _with_distributed(self):
         raise NotImplementedError()
