@@ -25,6 +25,9 @@ namespace more {
 namespace mkl {
 
 template <typename T>
+void MatMul(const T* a, const T* b, T* c, int m, int n, int k);
+
+template <typename T>
 void VMul(const T* x, const T* y, T* z, int n);
 
 template <typename T>
@@ -35,6 +38,9 @@ void VScal(const T* a, const T* x, T* y, int n);
 
 template <typename T>
 void VExp(const T* x, T* y, int n);
+
+template <typename T>
+void VSquare(const T* x, T* y, int n);
 
 template <typename T>
 void VCopy(const T* x, T* y, int n);
@@ -93,6 +99,9 @@ void SeqPool(const T* x, T* y, const seq_pool_attr_t* attr) {
     const char* ImplType() const override { return "MKL"; }          \
   }
 
+// ABCMNK
+DECLARE_MKL_KERNEL(MatMul, MatMulTuples);
+
 // XYZN
 DECLARE_MKL_KERNEL(VMul, XYZNTuples);
 DECLARE_MKL_KERNEL(VAdd, XYZNTuples);
@@ -104,6 +113,7 @@ DECLARE_MKL_KERNEL(VScal, AXYNTuples);
 DECLARE_MKL_KERNEL(VExp, XYNTuples);
 DECLARE_MKL_KERNEL(VSigmoid, XYNTuples);
 DECLARE_MKL_KERNEL(VTanh, XYNTuples);
+DECLARE_MKL_KERNEL(VSquare, XYNTuples);
 
 DECLARE_MKL_KERNEL(SeqPool, SeqPoolTuples);
 

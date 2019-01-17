@@ -21,6 +21,12 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+// diff: similarity_norm.tmp_0, for speed: fc_4.tmp_1
+static const char out_var_name[] = "reduce_sum_0.tmp_0";
+
+// for diff: 154, for speed 111
+constexpr int num_slots = 154;
+
 struct OneSlotInBatch {
   std::string name;
   std::vector<std::vector<float>> data;
@@ -41,7 +47,6 @@ struct DataRecord {
 
   void Load(const std::string &path) {
     std::ifstream file(path);
-    constexpr int num_slots = 154;
     std::string line;
     int num_lines = 0;
     while (std::getline(file, line)) {
@@ -187,11 +192,15 @@ void analysis_fuse_statis(bool use_zerocopy) {
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
   auto fuse_statis = GetFuseStatis(predictor.get(), &num_ops);
   ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-  ASSERT_EQ(fuse_statis.at("fc_fuse"), 10);
   ASSERT_TRUE(fuse_statis.count("seqpool_concat_fuse"));
+  ASSERT_TRUE(fuse_statis.count("squared_mat_sub_fuse"));
+  ASSERT_TRUE(fuse_statis.count("repeated_fc_relu_fuse"));
+  ASSERT_EQ(fuse_statis.at("fc_fuse"), 10);
   EXPECT_EQ(fuse_statis.at("seqpool_concat_fuse"), 2);
+  EXPECT_EQ(fuse_statis.at("squared_mat_sub_fuse"), 2);
+  EXPECT_EQ(fuse_statis.at("repeated_fc_relu_fuse"), 2);
   LOG(INFO) << "num_ops: " << num_ops;
-  EXPECT_EQ(num_ops, 195);
+  EXPECT_EQ(num_ops, 171);
 }
 
 // Check the fuse status
@@ -213,9 +222,6 @@ void PrepareZeroCopyInputs(
     inputs->emplace_back(std::move(tensor));
   }
 }
-
-// diff: similarity_norm.tmp_0, // speed: fc_4.tmp_1
-static const char out_var_name[] = "reduce_sum_0.tmp_0";
 
 // return the output values
 std::vector<float> zerocopy_profile(int repeat_times) {
@@ -263,15 +269,12 @@ TEST(Analyzer_seq_pool1, zerocopy_profile_threads) {
   auto base_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   double total_time_of_threads{0};
   std::vector<std::thread> threads;
-  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
-  for (int tid = 0; tid < FLAGS_num_threads; tid++) {
-    predictors.emplace_back(base_predictor->Clone());
-    // predictors.emplace_back(CreatePaddlePredictor<AnalysisConfig>(config));
-  }
 
   for (int tid = 0; tid < FLAGS_num_threads; tid++) {
-    threads.emplace_back([config, &total_time_of_threads, &predictors, tid] {
-      auto &predictor = predictors[tid];
+    threads.emplace_back([&, tid] {
+      // To ensure the thread binding correctly,
+      // please clone inside the threadpool.
+      auto predictor = base_predictor->Clone();
       std::vector<std::unique_ptr<ZeroCopyTensor>> inputs;
       PrepareZeroCopyInputs(predictor, &inputs);
       auto output_tensor = predictor->GetOutputTensor(out_var_name);
@@ -325,7 +328,9 @@ TEST(Analyzer_seq_pool1, zerocopy_compare_native) {
             native_outputs.front().data.length());
   auto *native_data = static_cast<float *>(native_outputs.front().data.data());
   for (size_t i = 0; i < zerocopy_output.size(); ++i) {
-    EXPECT_NEAR(zerocopy_output[i], native_data[i], 1e-3);
+    EXPECT_LT(
+        std::fabs((zerocopy_output[i] - native_data[i]) / zerocopy_output[i]),
+        1e-3);
   }
 }
 
