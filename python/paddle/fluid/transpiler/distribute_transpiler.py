@@ -64,7 +64,7 @@ def log(*args):
 
 class VarStruct(object):
     """
-    the properties of the Variable.
+    record part properties of a Variable in python.
     """
 
     def __init__(self, name, shape, dtype, type, lod_level, persistable):
@@ -79,7 +79,8 @@ class VarStruct(object):
 class VarDistributed(object):
     """
     a class to record the var distributed on parameter servers.
-    such as the origin var, slice or not, offset/block and so on.
+    the class will record the relationship between origin var and slice var.
+    the slice var's properties, such as type/shape/offset/endpoint.
     """
 
     def __init__(self,
@@ -90,14 +91,24 @@ class VarDistributed(object):
                  offset=None,
                  vtype=None,
                  endpoint=None):
+        """
+        Args:
+            origin_var(Variable|VarStruct): origin var properties
+            slice_var(Variable|VarStruct): slice var properties
+            is_slice(bool|None): slice or not, slice_var=True/False and its block size > 8192 are the judgement standard.
+            block_id(int|None): the number about the slice var.
+            offset(int|None): if the slice var is sliced, offset is the numel before the var.
+            vtype(str|None): a tag, such as Optimizer/Param/RemoteProfetch.
+            endpoint(str|None): which parameter the slice var on, such as "127.0.0.1:1001"
+        """
 
         if isinstance(origin_var, Variable):
-            self.origin = self.create_var_struct(origin_var)
+            self.origin = self.__create_var_struct(origin_var)
         else:
             self.origin = origin_var
 
         if isinstance(slice_var, Variable):
-            self.slice = self.create_var_struct(slice_var)
+            self.slice = self.__create_var_struct(slice_var)
         else:
             self.slice = slice_var
 
@@ -121,12 +132,17 @@ class VarDistributed(object):
         self.endpoint = endpoint
 
     @staticmethod
-    def create_var_struct(var):
+    def __create_var_struct(var):
         return VarStruct(var.name, var.shape, var.dtype, var.type,
                          var.lod_level, var.persistable)
 
     @staticmethod
     def equal(var1, var2):
+        """
+        the two var is equal or not.
+        Returns:
+            bool: equal will return True else False
+        """
         assert isinstance(var1, VarStruct) and isinstance(var2, VarStruct)
 
         return var1.name == var2.name and \
@@ -153,8 +169,10 @@ class VarDistributed(object):
 
 class VarsDistributed(object):
     """
-    a gather about VarDistributed, and many find methods are supplied.
-    this may be invoked sample and record centralized.
+    a gather about VarDistributed with many methods to find distributed vars.
+    through the class, we can get overview about the distributed parameters on parameter servers.
+    this class may centralized and convenient for developer to manage and get variable's distribute.
+    other module can also use this to find variables such io.py.
     """
 
     def __init__(self):
@@ -168,6 +186,20 @@ class VarsDistributed(object):
                             offset=None,
                             vtype=None,
                             endpoint=None):
+        """
+        add distributed var in this.
+
+        Args:
+            origin_var(Variable|VarStruct): origin var properties
+            slice_var(Variable|VarStruct): slice var properties
+            is_slice(bool|None): slice or not, slice_var=True/False and its block size > 8192 are the judgement standard.
+            block_id(int|None): the number about the slice var.
+            offset(int|None): if the slice var is sliced, offset is the numel before the var.
+            vtype(str|None): a tag, such as Optimizer/Param/RemoteProfetch.
+            endpoint(str|None): which parameter the slice var on, such as "127.0.0.1:1001"
+        Returns:
+            None
+        """
         self.distributed_vars.append(
             VarDistributed(origin_var, slice_var, is_slice, block_id, offset,
                            vtype, endpoint))
@@ -189,7 +221,9 @@ class VarsDistributed(object):
     @staticmethod
     def equal(var1, var2):
         """
-        the two var is equal.
+        the two var is equal or not.
+        Returns:
+            bool: equal will return True else False
         """
         return var1.name == var2.name and \
                var1.type == var2.type and \
