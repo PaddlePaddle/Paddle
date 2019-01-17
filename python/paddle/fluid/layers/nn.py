@@ -865,7 +865,7 @@ def dynamic_gru(input,
                 gate_activation='sigmoid',
                 candidate_activation='tanh',
                 h_0=None,
-                origin_mode=False):
+                origin_mode=True):
     """
     **Gated Recurrent Unit (GRU) Layer**
 
@@ -1010,7 +1010,7 @@ def gru_unit(input,
              bias_attr=None,
              activation='tanh',
              gate_activation='sigmoid',
-             origin_mode=False):
+             origin_mode=True):
     """
     **GRU unit layer**
 
