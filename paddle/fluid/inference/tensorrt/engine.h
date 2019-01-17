@@ -58,7 +58,7 @@ class TensorRTEngine : public EngineBase {
 
   TensorRTEngine(int max_batch, int max_workspace,
                  cudaStream_t* stream = nullptr, int device = 0,
-                 bool enable_int8 = "false",
+                 bool enable_int8 = false,
                  TRTInt8Calibrator* calibrator = nullptr,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
