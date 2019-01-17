@@ -185,8 +185,11 @@ class ParallelExecutor(object):
         places = list(map(place_obj, self._places))
 
         # step7: init ParallelExecutor
+        # ParallelExecutor API will be deprecated, don't support parallel graph.
+        self._graphs = [core.Graph(main.desc)]
+
         self.executor = core.ParallelExecutor(
-            places, persistable_vars, main.desc,
+            places, persistable_vars, self._graphs,
             cpt.to_text(loss_name) if loss_name else six.u(''), scope,
             local_scopes, exec_strategy, build_strategy)
 
