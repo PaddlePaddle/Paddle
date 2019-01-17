@@ -41,26 +41,12 @@ class MyPyLayer(fluid.imperative.PyLayer):
 
     @staticmethod
     def forward(inputs):
-        sys.stderr.write('before forward\n')
-        ret = np.tanh(inputs[0])
-        sys.stderr.write('after forward: %s\n' % ret)
-        tensor = core.LoDTensor()
-        tensor.set(ret, core.CPUPlace())
-        return tuple([tensor])
+        return np.tanh(inputs[0])
 
     @staticmethod
     def backward(inputs):
-        sys.stderr.write('calling into backward: %s\n' % str(inputs))
         inp, out, dout = inputs
-        inp = np.array(inp)
-        out = np.array(out)
-        dout = np.array(dout)
-        sys.stderr.write('calling into backward: %s, %s, %s\n' %
-                         (inp, out, dout))
-        ret = np.array(dout) * (1 - np.square(np.array(out)))
-        tensor = core.LoDTensor()
-        tensor.set(ret, core.CPUPlace())
-        return tuple([tensor])
+        return np.array(dout) * (1 - np.square(np.array(out)))
 
 
 class MLP(fluid.imperative.Layer):
