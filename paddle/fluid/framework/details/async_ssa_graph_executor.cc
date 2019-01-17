@@ -56,6 +56,9 @@ FeedFetchList AsyncSSAGraphExecutor::Run(
   for (size_t i = 0; i < places_.size(); ++i) {
     auto call = [this, i, &fetch_tensors]() -> FeedFetchList {
       try {
+        for (size_t j = 0; j < strategy_.num_iteration_per_run_ - 1; ++j) {
+          executors_[i]->Run(fetch_tensors);
+        }
         return executors_[i]->Run(fetch_tensors);
       } catch (...) {
         exception_holder_.Catch(std::current_exception());
