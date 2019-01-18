@@ -7,7 +7,7 @@ if(WITH_GRPC)
 else()
     set(cc_generic_services "true")
 endif()
-configure_file(send_recv.proto.in ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto @ONLY)
+configure_file(send_recv.proto.in ${CMAKE_CURRENT_SOURCE_DIR}/send_recv.proto @ONLY)
 
 # FIXME(typhoonzero): use add_subdirectory once we clean the dependency of these files
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
@@ -19,7 +19,7 @@ if(WITH_GRPC)
         variable_response.cc
         collective_client.cc collective_server.cc
         ${GRPC_SRCS}
-      PROTO ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto 
+      PROTO send_recv.proto 
       DEPS lod_tensor selected_rows_functor memory)
 
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
