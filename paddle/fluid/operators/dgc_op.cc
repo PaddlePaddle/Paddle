@@ -44,20 +44,20 @@ class DGCOp : public framework::OperatorWithKernel {
     float ratio = ctx->Attrs().Get<float>("ratio");
     PADDLE_ENFORCE(ratio > 0.0001 && ratio < 1.0,
                    "ratio of dgc must in range [0.0001, 1.0]");
+    auto dim = ctx->GetInputDim("Grad");
+    int k = static_cast<int>(framework::product(dim) * ratio);
 
+    ctx->SetOutputDim("EncodeGrad", framework::DDim{2 * k + 1});
+    // ctx->ShareLoD("Grad", /*->*/ "EncodeGrad");
+
+    // auto dim = ctx->GetInputDim("Grad");
     /*
     auto dim = ctx->GetInputDim("U");
     ctx->SetOutputDim("U", dim);
 
     dim = ctx->GetInputDim("V");
     ctx->SetOutputDim("V", dim);
-    */
 
-    auto dim = ctx->GetInputDim("Grad");
-    ctx->SetOutputDim("EncodeGrad", dim);
-    ctx->ShareLoD("Grad", /*->*/ "EncodeGrad");
-
-    /*
     auto param_dim = ctx->GetInputDim("GradLocal");
     ctx->SetOutputDim("GradLocal", param_dim);
     */
@@ -97,7 +97,7 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
               "Output encoded gradient");
 
     AddAttr<float>("m",
-                   "(float) "
+                   "(float, m) "
                    "The momentum of learning rate.");
     AddAttr<float>("ratio",
                    "(float, default 0.001) "

@@ -40,7 +40,8 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto g_out = ctx.Output<framework::Tensor>("EncodeGrad");
 
     // local_g = local_g + g
-    elementwise_add<DeviceContext, T>(ctx, local_g, g, local_g_out);
+    ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
+        ctx, local_g, g, 0, AddFunctor<T>(), local_g_out);
 
     // FIXME(gognwb): use cublas.
     // u = m * u + g
@@ -52,10 +53,9 @@ class DGCOpKernel : public framework::OpKernel<T> {
     u_out_e.device(dev_ctx) = m * u_e + g_e;
 
     // v = u + v
-    elementwise_add<DeviceContext, T>(ctx, u, v, v_out);
+    ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
+        ctx, u, v, 0, AddFunctor<T>(), v_out);
 
-    // getNumBlocksAndThreads(int n, int maxBlocks, int maxThreads, int &blocks,
-    // int &threads);
     int buffbytes = 2 * MAX_BLOCKS * MAX_THREADS * sizeof(int);
 
     // Temporary memory
