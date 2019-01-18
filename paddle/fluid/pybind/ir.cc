@@ -42,6 +42,7 @@ void BindGraph(py::module *m) {
       .def("get_float", &Graph::Get<float>)
       .def("get_double", &Graph::Get<double>)
       .def("get_string", &Graph::Get<std::string>)
+      .def("get_program", &Graph::Get<ProgramDesc>)
       .def("set", [](Graph &self, const std::string &attr_name,
                      int attr) { return self.Set(attr_name, new int(attr)); })
       .def("set",
@@ -56,6 +57,11 @@ void BindGraph(py::module *m) {
       .def("set",
            [](Graph &self, const std::string &attr_name, double attr) {
              return self.Set(attr_name, new double(attr));
+           })
+      .def("set",
+           [](Graph &self, const std::string &attr_name,
+              const ProgramDesc &attr) {
+             return self.Set(attr_name, new ProgramDesc(attr));
            })
       .def("erase", &Graph::Erase)
       .def("nodes", &Graph::Nodes, return_value_policy::reference)

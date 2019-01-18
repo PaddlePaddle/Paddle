@@ -233,3 +233,4 @@ USE_PASS(sequential_execution_pass);
 USE_PASS(all_reduce_deps_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
 USE_PASS(lock_free_optimize_pass);
+USE_PASS(graph_to_program_pass);
