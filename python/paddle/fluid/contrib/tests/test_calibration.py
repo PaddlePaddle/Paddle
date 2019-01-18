@@ -139,6 +139,8 @@ class TestCalibration(unittest.TestCase):
 
     def run_program(self, model_path, generate_int8=False, algo='direct'):
         image_shape = [3, 224, 224]
+        os.environ['FLAGS_use_mkldnn'] = 'True'
+
         fluid.memory_optimize(fluid.default_main_program())
 
         exe = fluid.Executor(fluid.CPUPlace())
@@ -177,8 +179,14 @@ class TestCalibration(unittest.TestCase):
                 [x[0].reshape(image_shape) for x in data]).astype("float32")
             label = np.array([x[1] for x in data]).astype("int64")
             label = label.reshape([-1, 1])
+            running_program = calibrator.sampling_program.clone(
+            ) if generate_int8 else infer_program.clone()
+            for op in running_program.current_block().ops:
+                if op.has_attr("use_mkldnn"):
+                    op._set_attr("use_mkldnn", True)
+
             _, acc1, _ = exe.run(
-                calibrator.sampling_program if generate_int8 else infer_program,
+                running_program,
                 feed={feed_dict[0]: image,
                       feed_dict[1]: label},
                 fetch_list=fetch_targets)
