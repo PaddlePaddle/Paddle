@@ -57,10 +57,11 @@ enum PaddleDType {
  */
 class PaddleBuf {
  public:
+  using byte_t = char;
   /** PaddleBuf allocate memory internally, and manage it.
    */
   explicit PaddleBuf(size_t length)
-      : data_(new char[length]), length_(length), memory_owned_(true) {}
+      : data_(new byte_t[length]), length_(length), memory_owned_(true) {}
   /** Set external memory, the PaddleBuf won't manage it.
    */
   PaddleBuf(void* data, size_t length)

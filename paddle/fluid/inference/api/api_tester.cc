@@ -61,4 +61,51 @@ TEST(paddle_inference_api, demo) {
   predictor->Run({}, &outputs);
 }
 
+TEST(PaddleBuf, zero_length) { PaddleBuf buf(0); }
+
+TEST(PaddleBuf, Resize) {
+  PaddleBuf buf;
+  ASSERT_TRUE(buf.empty());
+
+  buf.Resize(100);
+  ASSERT_EQ(buf.length(), 100UL);
+  ASSERT_TRUE(buf.data());
+}
+
+TEST(PaddleBuf, Copy_owned) {
+  const int num_elem = 100;
+  PaddleBuf buf;
+  buf.Resize(num_elem * sizeof(int));
+  auto *data = static_cast<int *>(buf.data());
+  for (int i = 0; i < num_elem; ++i) {
+    data[i] = i;
+  }
+
+  PaddleBuf buf1 = std::move(buf);
+  ASSERT_EQ(buf1.data(), data);
+  ASSERT_EQ(buf1.length(), buf.length());
+  auto *data1 = static_cast<int *>(buf1.data());
+  for (int i = 0; i < num_elem; ++i) {
+    EXPECT_EQ(data1[i], i);
+  }
+}
+
+TEST(PaddleBuf, Copy_owned) {
+  const int num_elem = 100;
+  PaddleBuf buf;
+  buf.Resize(num_elem * sizeof(int));
+  auto *data = static_cast<int *>(buf.data());
+  for (int i = 0; i < num_elem; ++i) {
+    data[i] = i;
+  }
+
+  PaddleBuf buf1(buf);
+  ASSERT_NE(buf1.data(), data);
+  ASSERT_EQ(buf1.length(), buf.length());
+  auto *data1 = static_cast<int *>(buf1.data());
+  for (int i = 0; i < num_elem; ++i) {
+    EXPECT_EQ(data1[i], i);
+  }
+}
+
 }  // namespace paddle

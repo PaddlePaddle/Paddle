@@ -77,7 +77,7 @@ void PaddleBuf::Resize(size_t length) {
     length_ = length;
     memory_owned_ = true;
   } else {
-    PADDLE_THROW("The memory is allocated externally, can not Resized");
+    PADDLE_THROW("The memory is allocated externally, can not Resize.");
   }
 }
 
@@ -90,8 +90,7 @@ void PaddleBuf::Reset(void *data, size_t length) {
 
 void PaddleBuf::Free() {
   if (memory_owned_ && data_) {
-    PADDLE_ENFORCE_GT(length_, 0);
-    free(static_cast<char *>(data_));
+    delete[] static_cast<byte_t *>(data_);
     data_ = nullptr;
     length_ = 0;
   }
