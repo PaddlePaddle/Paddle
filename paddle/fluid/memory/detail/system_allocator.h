@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <stddef.h>  // for size_t
+#include <unordered_map>
 
 namespace paddle {
 namespace memory {
@@ -44,6 +45,8 @@ class CPUAllocator : public SystemAllocator {
 #ifdef PADDLE_WITH_CUDA
 class GPUAllocator : public SystemAllocator {
  public:
+  std::unordered_map<int, uint64_t> s_memoryMap;
+
   explicit GPUAllocator(int gpu_id) : gpu_id_(gpu_id) {}
 
   virtual void* Alloc(size_t* index, size_t size);
