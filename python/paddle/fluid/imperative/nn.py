@@ -261,21 +261,20 @@ class FC(layers.Layer):
             attrs={"use_mkldnn": False})
 
         bias_attr = self._helper.bias_attr
-        if not bias_attr:
-            return
-
-        # add bias
-        size = list(out.shape[1:])
-        if not self._built:
-            self._b = self._helper.create_parameter(
-                attr=bias_attr, shape=size, dtype=out.dtype, is_bias=True)
-        bias_out = self._helper.create_variable_for_type_inference(
-            dtype=out.dtype)
-        self._helper.append_op(
-            type='elementwise_add',
-            inputs={'X': [out],
-                    'Y': [self._b]},
-            outputs={'Out': [bias_out]},
-            attrs={'axis': 1})
+        if bias_attr:
+            # add bias
+            size = list(out.shape[1:])
+            if not self._built:
+                self._b = self._helper.create_parameter(
+                    attr=bias_attr, shape=size, dtype=out.dtype, is_bias=True)
+            bias_out = self._helper.create_variable_for_type_inference(
+                dtype=out.dtype)
+            self._helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [out],
+                        'Y': [self._b]},
+                outputs={'Out': [bias_out]},
+                attrs={'axis': 1})
+            out = bias_out
         # add activation
-        return self._helper.append_activation(bias_out)
+        return self._helper.append_activation(out)
