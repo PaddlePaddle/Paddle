@@ -22,6 +22,7 @@
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/port.h"
+#include "paddle/fluid/platform/variant.h"  // for UNUSED
 
 DEFINE_int32(burning, 10, "Burning times.");
 DEFINE_int32(repeat, 3000, "Repeat times.");
@@ -53,7 +54,7 @@ BenchJITKernel* InsertBenchmark(BenchJITKernel* b) {
     const char* Place() override { return #place; }                            \
     void Run() override;                                                       \
   };                                                                           \
-  static auto inserted_##name##_##dtype##_##place##_ =                         \
+  static auto inserted_##name##_##dtype##_##place##_ UNUSED =                  \
       InsertBenchmark(new BenchJITKernel_##name##_##dtype##_##place##_());     \
   void BenchJITKernel_##name##_##dtype##_##place##_::Run()
 
