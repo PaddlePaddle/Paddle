@@ -913,7 +913,7 @@ def dynamic_gru(input,
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRUNote that the bias with :math:`(1 \\times 3D)` concatenates
+            of GRU.Note that the bias with :math:`(1 \\times 3D)` concatenates
             the bias in the update gate, reset gate and candidate calculations.
             If it is set to False, no bias will be applied to the update gate,
             reset gate and candidate calculations. If it is set to None or one
@@ -1034,7 +1034,7 @@ def gru_unit(input,
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRUNote that the bias with :math:`(1 \\times 3D)` concatenates
+            of GRU.Note that the bias with :math:`(1 \\times 3D)` concatenates
             the bias in the update gate, reset gate and candidate calculations.
             If it is set to False, no bias will be applied to the update gate,
             reset gate and candidate calculations. If it is set to None or one
@@ -5350,7 +5350,7 @@ def transpose(x, perm, name=None):
     Examples:
         .. code-block:: python
 
-            # use append_batch_size=False to avoid prepening extra
+            # use append_batch_size=False to avoid prepending extra
             # batch size in shape
             x = fluid.layers.data(name='x', shape=[5, 10, 15],
                             dtype='float32', append_batch_size=False)
@@ -5866,7 +5866,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                                 than :attr:`shape`.
         act (str): The non-linear activation to be applied to the reshaped tensor
                    variable.
-        inplace(bool):Must use :attr:`False` if :attr:`x` is used in multiple
+        inplace(bool): Must use :attr:`False` if :attr:`x` is used in multiple
                        operators. If this flag is set :attr:`True`, reuse input
                        :attr:`x` to reshape, which will change the shape of
                        tensor variable :attr:`x` and might cause errors when
