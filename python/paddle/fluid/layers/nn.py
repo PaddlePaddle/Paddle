@@ -864,12 +864,14 @@ def dynamic_gru(input,
                 is_reverse=False,
                 gate_activation='sigmoid',
                 candidate_activation='tanh',
-                h_0=None):
+                h_0=None,
+                origin_mode=False):
     """
     **Gated Recurrent Unit (GRU) Layer**
 
-    Refer to `Empirical Evaluation of Gated Recurrent Neural Networks on
-    Sequence Modeling <https://arxiv.org/abs/1412.3555>`_ .
+    if origin_mode is False, then the equation of a gru step is from paper
+    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
+    Modeling <https://arxiv.org/pdf/1412.3555.pdf>`_ .
 
     The formula is as follows:
 
@@ -882,6 +884,21 @@ def dynamic_gru(input,
         \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
 
         h_t & = (1-u_t) \odot h_{t-1} + u_t \odot \\tilde{h_t}
+
+
+    if origin_mode is True then the equation is from paper
+    Learning Phrase Representations using RNN Encoder-Decoder for Statistical
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
+
+    .. math::
+
+        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
+
+        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
+
+        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
+
+        h_t & = u_t \odot h_{t-1} + (1-u_t) \odot \\tilde{h_t}
 
     The :math:`\odot` is the element-wise product of the vectors. :math:`act_g`
     is the update gate and reset gate activation function and :math:`sigmoid`
@@ -980,7 +997,8 @@ def dynamic_gru(input,
         attrs={
             'is_reverse': is_reverse,
             'gate_activation': gate_activation,
-            'activation': candidate_activation
+            'activation': candidate_activation,
+            'origin_mode': origin_mode
         })
     return hidden
 
@@ -991,9 +1009,14 @@ def gru_unit(input,
              param_attr=None,
              bias_attr=None,
              activation='tanh',
-             gate_activation='sigmoid'):
+             gate_activation='sigmoid',
+             origin_mode=False):
     """
-    GRU unit layer. The equation of a gru step is:
+    **GRU unit layer**
+
+    if origin_mode is True, then the equation of a gru step is from paper
+    `Learning Phrase Representations using RNN Encoder-Decoder for Statistical
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
 
         .. math::
             u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
@@ -1002,7 +1025,21 @@ def gru_unit(input,
 
             m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
 
-            h_t & = dot((1-u_t), m_t) + dot(u_t, h_{t-1})
+            h_t & = dot(u_t, h_{t-1}) + dot((1-u_t), m_t)
+
+    if origin_mode is False, then the equation of a gru step is from paper
+    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
+    Modeling <https://arxiv.org/pdf/1412.3555.pdf>`_
+
+        .. math::
+            u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
+
+            r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
+
+            m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
+
+            h_t & = dot((1-u_t), h_{t-1}) + dot(u_t, m_t)
+
 
     The inputs of gru unit includes :math:`z_t`, :math:`h_{t-1}`. In terms
     of the equation above, the :math:`z_t` is split into 3 parts -

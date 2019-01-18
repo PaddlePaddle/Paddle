@@ -210,6 +210,24 @@ void BenchSeqPoolKernel() {
   }
 }
 
+template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+void BenchMatMulKernel() {
+  for (int m : {1, 2, 3, 4}) {
+    for (int n : TestSizes()) {
+      for (int k : TestSizes()) {
+        std::vector<T> a(m * k), b(k * n), c(m * n);
+        RandomVec<T>(m * k, a.data(), -2.f, 2.f);
+        RandomVec<T>(k * n, b.data(), -2.f, 2.f);
+        const T* a_data = a.data();
+        const T* b_data = b.data();
+        T* c_data = c.data();
+        BenchAllImpls<KT, jit::MatMulTuples<T>, PlaceType>(k, a_data, b_data,
+                                                           c_data, m, n, k);
+      }
+    }
+  }
+}
+
 // Benchmark all jit kernels including jitcode, mkl and refer.
 // To use this tool, run command: ./benchmark [options...]
 // Options:
@@ -236,6 +254,7 @@ int main(int argc, char* argv[]) {
   // xyn
   BenchXYNKernel<jit::kVRelu, T, PlaceType>();
   BenchXYNKernel<jit::kVIdentity, T, PlaceType>();
+  BenchXYNKernel<jit::kVSquare, T, PlaceType>();
   BenchXYNKernel<jit::kVExp, T, PlaceType>();
   BenchXYNKernel<jit::kVSigmoid, T, PlaceType>();
   BenchXYNKernel<jit::kVTanh, T, PlaceType>();
@@ -251,4 +270,7 @@ int main(int argc, char* argv[]) {
 
   // seq pool function
   BenchSeqPoolKernel<jit::kSeqPool, T, PlaceType>();
+
+  // matmul
+  BenchMatMulKernel<jit::kMatMul, T, PlaceType>();
 }
