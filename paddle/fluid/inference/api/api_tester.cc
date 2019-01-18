@@ -72,6 +72,22 @@ TEST(PaddleBuf, Resize) {
   ASSERT_TRUE(buf.data());
 }
 
+TEST(PaddleBuf, memory_not_owned) {
+  const int num_elems = 10;
+  std::array<int, num_elems> data;
+  for (int i = 0; i < num_elems; ++i) {
+    data[i] = i;
+  }
+
+  PaddleBuf buf;
+  const int num_bytes = sizeof(int) * num_elems;
+  buf.Reset(data.data(), num_bytes);
+
+  EXPECT_FALSE(buf.memory_owned());
+  EXPECT_EQ(buf.length(), num_bytes);
+  EXPECT_EQ(buf.data(), data.data());
+}
+
 TEST(PaddleBuf, Copy_owned) {
   const int num_elem = 100;
   PaddleBuf buf;
@@ -80,17 +96,19 @@ TEST(PaddleBuf, Copy_owned) {
   for (int i = 0; i < num_elem; ++i) {
     data[i] = i;
   }
+  EXPECT_TRUE(buf.memory_owned());
 
   PaddleBuf buf1 = std::move(buf);
   ASSERT_EQ(buf1.data(), data);
-  ASSERT_EQ(buf1.length(), buf.length());
+  ASSERT_EQ(buf1.length(), 100 * sizeof(int));
   auto *data1 = static_cast<int *>(buf1.data());
   for (int i = 0; i < num_elem; ++i) {
     EXPECT_EQ(data1[i], i);
   }
+  EXPECT_TRUE(buf1.memory_owned());
 }
 
-TEST(PaddleBuf, Copy_owned) {
+TEST(PaddleBuf, Copy_owned1) {
   const int num_elem = 100;
   PaddleBuf buf;
   buf.Resize(num_elem * sizeof(int));

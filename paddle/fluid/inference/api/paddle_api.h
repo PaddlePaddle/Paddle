@@ -86,6 +86,11 @@ class PaddleBuf {
    */
   size_t length() const { return length_; }
 
+  /** \brief Tell whether the buffer is owned by itself.
+   * NOTE Just for debug or test.
+   */
+  bool memory_owned() const { return memory_owned_; }
+
   ~PaddleBuf() { Free(); }
   PaddleBuf& operator=(const PaddleBuf&);
   PaddleBuf& operator=(PaddleBuf&&);
