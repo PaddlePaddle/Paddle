@@ -23,7 +23,7 @@ import sys
 import six
 import os
 
-__all__ = ['ParallelExecutor', 'ExecutionStrategy', 'BuildStrategy']
+__all__ = ['ParallelExecutor']
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
@@ -210,9 +210,8 @@ class ParallelExecutor(object):
         # step7: init ParallelExecutor
         self.executor = core.ParallelExecutor(
             places, persistable_vars, main.desc,
-            cpt.to_text(loss_name)
-            if loss_name else six.u(''), scope, local_scopes, exec_strategy,
-            build_strategy, num_trainers, trainer_id)
+            cpt.to_text(loss_name) if loss_name else six.u(''), scope,
+            local_scopes, exec_strategy, build_strategy)
 
         self.scope = scope
 
@@ -323,7 +322,7 @@ class ParallelExecutor(object):
                 res.append(res_dict)
             self.executor.feed_tensors_into_local_scopes(res)
 
-        fetch_var_name = '@FETCHED_VAR_NAME@'
+        fetch_var_name = 'fetch'
         self.executor.run(fetch_list, fetch_var_name)
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
 

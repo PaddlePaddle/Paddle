@@ -179,8 +179,9 @@ TEST(AnalysisPredictor, Clone) {
     threads.emplace_back([&predictors, &inputs, i] {
       LOG(INFO) << "thread #" << i << " running";
       std::vector<PaddleTensor> outputs;
+      auto predictor = predictors.front()->Clone();
       for (int j = 0; j < 10; j++) {
-        ASSERT_TRUE(predictors[i]->Run(inputs, &outputs));
+        ASSERT_TRUE(predictor->Run(inputs, &outputs));
       }
     });
   }
