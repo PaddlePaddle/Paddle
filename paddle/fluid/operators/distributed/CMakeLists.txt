@@ -50,7 +50,7 @@ endif()
 
 cc_test(rpc_server_test SRCS rpc_server_test.cc
     DEPS ${RPC_DEPS} executor proto_desc lookup_sparse_table_op SERIAL)
-cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler)
+cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler scope)
 cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_rpc memory)
 if(WITH_GPU)
     cc_test(collective_server_test SRCS collective_server_test.cc 
