@@ -405,7 +405,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     if (num_kept == 0) {
       T* od = outs->mutable_data<T>({1, 1}, ctx.GetPlace());
       od[0] = -1;
-      batch_starts.back() = 1;
+      batch_starts = {0, 1};
     } else {
       outs->mutable_data<T>({num_kept, out_dim}, ctx.GetPlace());
       if (score_dims.size() == 3) {
@@ -443,7 +443,6 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
 
     framework::LoD lod;
     lod.emplace_back(batch_starts);
-    LOG(ERROR) << "c++ lod: " << lod;
 
     outs->set_lod(lod);
   }
