@@ -81,6 +81,8 @@ Scope& Scope::NewScope() const {
   return *child;
 }
 
+Scope* Scope::NewTmpScope() const { return new Scope(this); }
+
 Variable* Scope::Var(const std::string& name) {
   SCOPE_VARS_WRITER_LOCK
   return VarInternal(name);
