@@ -237,13 +237,13 @@ void BindAnalysisPredictor(py::module *m) {
   py::class_<AnalysisPredictor, PaddlePredictor>(*m, "AnalysisPredictor")
       .def(py::init<const AnalysisConfig &>())
       .def("init", &AnalysisPredictor::Init)
-      .def("run",
-           [](AnalysisPredictor &self,
-              const std::vector<PaddleTensor> &inputs) {
-             std::vector<PaddleTensor> outputs;
-             self.Run(inputs, &outputs);
-             return outputs;
-           })
+      .def(
+          "run",
+          [](AnalysisPredictor &self, const std::vector<PaddleTensor> &inputs) {
+            std::vector<PaddleTensor> outputs;
+            self.Run(inputs, &outputs);
+            return outputs;
+          })
       .def("get_input_tensor", &AnalysisPredictor::GetInputTensor)
       .def("get_output_tensor", &AnalysisPredictor::GetOutputTensor)
       .def("zero_copy_run", &AnalysisPredictor::ZeroCopyRun)
