@@ -6575,7 +6575,8 @@ def image_resize(input,
                                input and output tensors are aligned, preserving the values at the 
                                corner pixels.
                                Default: True
-        align_mode(bool)  :  An optional input to specify align_corners mode. If 0,[todo:yxt]
+        align_mode(int)  :  An optional input to specify align_corners mode. can be \'0\' 
+                             for pytorch calculation method, can be \'1'\ for tensorflow calculation method.
 
     Returns:
         Variable: The output is a 4-D tensor of the shape
