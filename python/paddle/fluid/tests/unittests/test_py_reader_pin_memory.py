@@ -65,7 +65,8 @@ class TestPyReader(unittest.TestCase):
                 capacity=self.capacity,
                 dtypes=self.dtypes,
                 lod_levels=self.lod_levels,
-                shapes=self.shapes)
+                shapes=self.shapes,
+                num_places=1)
             # feed_queue = data_file.queue
             read_out_data = fluid.layers.read_file(data_file)
 
