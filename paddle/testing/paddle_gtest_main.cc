@@ -31,9 +31,6 @@ int main(int argc, char** argv) {
 
   std::vector<std::string> envs;
   std::vector<std::string> undefok;
-#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_GRPC)
-  envs.push_back("max_body_size");
-#endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   envs.push_back("fraction_of_gpu_memory_to_use");
