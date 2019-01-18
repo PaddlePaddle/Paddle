@@ -82,6 +82,18 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
                          "bilinear interpolation and \"nearest\" for nearest "
                          "neighbor interpolation.")
         .SetDefault("bilinear");
+    AddAttr<bool>(
+        "align_corners",
+        "an optinal bool. Defaults to True. "
+        "If True, the centers of 4 corner pixels of the input and output "
+        "tensors are aligned, preserving the values at the corner pixels, "
+        "if Flase, are not aligned")
+        .SetDefault(true);
+    AddAttr<int>("align_mode",
+                 "(int, default \'0\'), align_corners mode , can be \'0\' for "
+                 " $ src_idx = scale*(dst_index + 0.5)-0.5 $, and \'1\' for "
+                 "$ src_idx = scale*dst_index $")
+        .SetDefault(0);
     AddComment(R"DOC(
           This operator samples input X to given output shape by using specified
           interpolation method, the interpolation methods can be \"nearest\"
@@ -97,6 +109,65 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           W-direction in this op) on a rectilinear 2D grid. The key idea is 
           to perform linear interpolation first in one direction, and then 
           again in the other direction.
+
+          Align_corners and align_mode are optinal parameters,The calculation method 
+          of interpolation can be selected by them.
+          
+          Example:
+          
+          Nearest neighbor interpolation:
+          
+          case 1:
+              align_mode = 0 , align_corners = True
+              or 
+              align_mode = 1 , align_corners = False
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
+              W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
+
+          case 2:
+              align_mode = 0 , align_corners = False
+              or 
+              align_mode = 1 , align_corners = True
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = \left \lceil {H_{in} * scale_{factor}} \right \rceil
+              W_out = \left \lceil {W_{in} * scale_{factor}} \right \rceil
+
+          Bilinear interpolation:
+
+          case 1:
+              align_mode = 0 , align_corners = True
+              or 
+              align_mode = 1 , align_corners = True
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
+
+          case 2:
+              align_mode = 0 , align_corners = False
+           
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+          for scale:
+          
+          if align_corners = True and out_{size}>1 :
+
+          	scale_{factor} = (in_{size}-1.0)/(out_{size}-1.0)
+          else:
+                scale_{factor} = float(in_{size}/out_{size})
 
           For details of nearest neighbor interpolation, please refer to Wikipedia: 
           https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
