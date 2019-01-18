@@ -19,7 +19,7 @@ import sys
 
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.imperative.nn import FC
+from paddle.fluid.imperative.nn import FC, SimpleRNNCell
 from test_imperative_base import new_program_scope
 
 
@@ -70,9 +70,7 @@ class SimpleRNN(fluid.imperative.Layer):
     def __init__(self, inputs):
         super(SimpleRNN, self).__init__()
         self.seq_len = input.shape[0]
-        self._fc1 = FC(3,
-                       fluid.ParamAttr(
-                           initializer=fluid.initializer.Constant(value=0.1)))
+        self.cell = SimpleRNNCell(input.shape[1], out)
 
     def forward(self, inputs):
         for i in range(self.seq_len):

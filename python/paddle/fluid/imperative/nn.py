@@ -257,12 +257,14 @@ class SimpleRNNCell(layers.Layer):
                  output_size,
                  param_attr,
                  dtype=core.VarDesc.VarType.FP32):
+        super(SimpleRNNCell, self).__init__()
         self.input_size = step_input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
         self._dype = core.VarDesc.VarType.FP32
         from ..layer_helper import LayerHelper
-        self._helper = LayerHelper('SimpleRNNCell', param_attr=param_attr)
+        self._helper = LayerHelper(
+            'SimpleRNNCell', act="tanh", param_attr=param_attr)
 
     def _build_once(self, inputs):
         i2h_param_shape = [self.step_input_size, self.hidden_size]
@@ -284,20 +286,50 @@ class SimpleRNNCell(layers.Layer):
             dtype=self._dtype,
             is_bias=False)
 
-    def forward(self, inputs):
-        input = inputs[0]
-        pre_hidden = inputs[1]
-        out = self._helper.create_variable_for_type_inference(self._dtype)
-        hidden = self._helper.create_variable_for_type_inference(self._dype)
+    def forward(self, input, pre_hidden):
 
+        tmp_i2h = self._helper.create_variable_for_type_inference(self._dtype)
+        tmp_h2h = self._helper.create_variable_for_type_inference(self._dtype)
+        hidden = self._helper.create_variable_for_type_inference(self._dype)
+        out = self._helper.create_variable_for_type_inference(self._dype)
+        softmax_out = self._helper.create_variable_for_type_inference(
+            self._dtype)
         self._helper.append_op(
             type="mul",
             inputs={"X": input,
-                    "Y": self._w},
-            outputs={"Out": out},
-            attrs={
-                "x_num_col_dims": self._num_flatten_dims,
-                "y_num_col_dims": 1
-            })
+                    "Y": self._i2h_w},
+            outputs={"Out": tmp_i2h},
+            attrs={"x_num_col_dims": 1,
+                   "y_num_col_dims": 1})
 
-        return 1
+        self._helper.append_op(
+            type="mul",
+            inputs={"X": pre_hidden,
+                    "Y": self._h2h_w},
+            outputs={"Out": tmp_h2h},
+            attrs={"x_num_col_dims": 1,
+                   "y_num_col_dims": 1})
+
+        self._helper.append_op(
+            type='sum',
+            inputs={'X': [tmp_i2h, tmp_h2h]},
+            outputs={'Out': hidden},
+            attrs={'use_mkldnn': False})
+
+        hidden = self._helper.append_activation(hidden)
+
+        self._helper.append_op(
+            type="mul",
+            inputs={"X": hidden,
+                    "Y": self._h2o_w},
+            outputs={"Out": out},
+            attrs={"x_num_col_dims": 1,
+                   "y_num_col_dims": 1})
+
+        self._helper.append_op(
+            type="softmax",
+            inputs={"X": out},
+            outputs={"Out": softmax_out},
+            attrs={"use_cudnn": False})
+
+        return softmax_out, hidden
