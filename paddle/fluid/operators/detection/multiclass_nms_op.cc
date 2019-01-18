@@ -458,7 +458,8 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
              "predicted locations of M bounding bboxes, N is the batch size. "
              "Each bounding box has four coordinate values and the layout is "
              "[xmin, ymin, xmax, ymax], when box size equals to 4."
-             "2. (LoDTensor) A 3-D Tensor with shape [N, M, 4]");
+             "2. (LoDTensor) A 3-D Tensor with shape [N, M, 4]"
+             "N is the number of boxes, M is the class number");
     AddInput("Scores",
              "Two types of scores are supported:"
              "1. (Tensor) A 3-D Tensor with shape [N, C, M] represents the "
@@ -467,8 +468,7 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
              "there are total M scores which corresponding M bounding boxes. "
              " Please note, M is equal to the 1st dimension of BBoxes. "
              "2. (LoDTensor) A 2-D LoDTensor with shape"
-             "[N, num_class]. N is the number of bbox and"
-             "M represents the scores of bboxes in each class.");
+             "[N, num_class]. N is the number of bbox");
     AddAttr<int>(
         "background_label",
         "(int, defalut: 0) "
@@ -497,7 +497,7 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Number of total bboxes to be kept per image after NMS "
                  "step. -1 means keeping all bboxes after NMS step.");
     AddAttr<bool>("normalized",
-                  "(bool, default false) "
+                  "(bool, default true) "
                   "Whether detections are normalized.")
         .SetDefault(true);
     AddOutput("Out",
