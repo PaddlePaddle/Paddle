@@ -8498,12 +8498,13 @@ def slice(input, axes, starts, ends):
 
 
 @templatedoc()
-def shape(input):
+def shape(input, dtype='int32'):
     """
     ${comment}
 
     Args:
         input (Variable): ${input_comment}
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of output data : float32, float_16, int etc
 
     Returns:
         out (Variable): ${out_comment}
@@ -8517,7 +8518,7 @@ def shape(input):
     """
 
     helper = LayerHelper('shape', **locals())
-    out = helper.create_variable_for_type_inference(dtype='int32')
+    out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='shape', inputs={'Input': input}, outputs={'Out': out})
 
