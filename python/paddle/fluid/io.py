@@ -649,12 +649,12 @@ def save_inference_model(dirname,
     # will affect the inference performance.
     # TODO(Superjomn) add an IR pass to remove 1-scale op.
     with program_guard(main_program):
-      uniq_target_vars = []
-      for var in target_vars:
-          if isinstance(var, Variable):
-            var1 = layers.scale(var, 1.)
-          uniq_target_vars.append(var1)
-      target_vars = uniq_target_vars
+        uniq_target_vars = []
+        for var in target_vars:
+            if isinstance(var, Variable):
+                var1 = layers.scale(var, 1.)
+            uniq_target_vars.append(var1)
+        target_vars = uniq_target_vars
 
     # when a pserver and a trainer running on the same machine, mkdir may conflict
     try:
