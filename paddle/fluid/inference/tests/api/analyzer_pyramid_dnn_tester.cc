@@ -19,8 +19,9 @@ namespace inference {
 using contrib::AnalysisConfig;
 
 struct DataRecord {
-  std::vector<std::vector<int64_t>> query, title;
-  std::vector<size_t> lod1, lod2;
+  std::vector<std::vector<int64_t>> query_basic, query_phrase, title_basic,
+      title_phrase;
+  std::vector<size_t> lod1, lod2, lod3, lod4;
   size_t batch_iter{0}, batch_size{1}, num_samples;  // total number of samples
   DataRecord() = default;
   explicit DataRecord(const std::string &path, int batch_size = 1)
@@ -31,9 +32,15 @@ struct DataRecord {
     DataRecord data;
     size_t batch_end = batch_iter + batch_size;
     // NOTE skip the final batch, if no enough data is provided.
-    if (batch_end <= query.size()) {
-      GetInputPerBatch(query, &data.query, &data.lod1, batch_iter, batch_end);
-      GetInputPerBatch(title, &data.title, &data.lod2, batch_iter, batch_end);
+    if (batch_end <= query_basic.size()) {
+      GetInputPerBatch(query_basic, &data.query_basic, &data.lod1, batch_iter,
+                       batch_end);
+      GetInputPerBatch(query_phrase, &data.query_phrase, &data.lod2, batch_iter,
+                       batch_end);
+      GetInputPerBatch(title_basic, &data.title_basic, &data.lod3, batch_iter,
+                       batch_end);
+      GetInputPerBatch(title_phrase, &data.title_phrase, &data.lod4, batch_iter,
+                       batch_end);
     }
     batch_iter += batch_size;
     return data;
@@ -43,17 +50,28 @@ struct DataRecord {
     std::string line;
     int num_lines = 0;
     while (std::getline(file, line)) {
-      num_lines++;
       std::vector<std::string> data;
-      split(line, '\t', &data);
+      split(line, ';', &data);
       // load query data
-      std::vector<int64_t> query_data;
-      split_to_int64(data[0], ' ', &query_data);
+      std::vector<int64_t> query_basic_data;
+      split_to_int64(data[1], ' ', &query_basic_data);
+      std::vector<int64_t> query_phrase_data;
+      split_to_int64(data[2], ' ', &query_phrase_data);
       // load title data
-      std::vector<int64_t> title_data;
-      split_to_int64(data[1], ' ', &title_data);
-      query.push_back(std::move(query_data));
-      title.push_back(std::move(title_data));
+      std::vector<int64_t> title_basic_data;
+      split_to_int64(data[3], ' ', &title_basic_data);
+      std::vector<int64_t> title_phrase_data;
+      split_to_int64(data[4], ' ', &title_phrase_data);
+      // filter the empty data
+      bool flag =
+          data[1].size() && data[2].size() && data[3].size() && data[4].size();
+      if (flag) {
+        query_basic.push_back(std::move(query_basic_data));
+        query_phrase.push_back(std::move(query_phrase_data));
+        title_basic.push_back(std::move(title_basic_data));
+        title_phrase.push_back(std::move(title_phrase_data));
+        num_lines++;
+      }
     }
     num_samples = num_lines;
   }
@@ -61,15 +79,25 @@ struct DataRecord {
 
 void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
                    int batch_size) {
-  PaddleTensor lod_query_tensor, lod_title_tensor;
-  lod_query_tensor.name = "left";
-  lod_title_tensor.name = "right";
+  PaddleTensor query_basic_tensor, query_phrase_tensor, title_basic_tensor,
+      title_phrase_tensor;
+  query_basic_tensor.name = "query_basic";
+  query_phrase_tensor.name = "query_phrase";
+  title_basic_tensor.name = "pos_title_basic";
+  title_phrase_tensor.name = "pos_title_phrase";
   auto one_batch = data->NextBatch();
   // assign data
-  TensorAssignData<int64_t>(&lod_query_tensor, one_batch.query, one_batch.lod1);
-  TensorAssignData<int64_t>(&lod_title_tensor, one_batch.title, one_batch.lod2);
+  TensorAssignData<int64_t>(&query_basic_tensor, one_batch.query_basic,
+                            one_batch.lod1);
+  TensorAssignData<int64_t>(&query_phrase_tensor, one_batch.query_phrase,
+                            one_batch.lod2);
+  TensorAssignData<int64_t>(&title_basic_tensor, one_batch.title_basic,
+                            one_batch.lod3);
+  TensorAssignData<int64_t>(&title_phrase_tensor, one_batch.title_phrase,
+                            one_batch.lod4);
   // Set inputs.
-  input_slots->assign({lod_query_tensor, lod_title_tensor});
+  input_slots->assign({query_basic_tensor, query_phrase_tensor,
+                       title_basic_tensor, title_phrase_tensor});
   for (auto &tensor : *input_slots) {
     tensor.dtype = PaddleDType::INT64;
   }
@@ -94,14 +122,10 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 // Easy for profiling independently.
-void profile(bool use_mkldnn = false) {
+TEST(Analyzer_Pyramid_DNN, profile) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
   std::vector<PaddleTensor> outputs;
-
-  if (use_mkldnn) {
-    cfg.EnableMKLDNN();
-  }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -109,27 +133,20 @@ void profile(bool use_mkldnn = false) {
                  input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
-    PADDLE_ENFORCE_EQ(outputs.size(), 2UL);
-    for (auto &output : outputs) {
-      size_t size = GetSize(output);
-      PADDLE_ENFORCE_GT(size, 0);
-      float *result = static_cast<float *>(output.data.data());
-      // output is probability, which is in (-1, 1).
-      for (size_t i = 0; i < size; i++) {
-        EXPECT_GT(result[i], -1);
-        EXPECT_LT(result[i], 1);
-      }
+    PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
+    size_t size = GetSize(outputs[0]);
+    PADDLE_ENFORCE_GT(size, 0);
+    float *result = static_cast<float *>(outputs[0].data.data());
+    // output is probability, which is in (0, 1).
+    for (size_t i = 0; i < size; i++) {
+      EXPECT_GT(result[i], 0);
+      EXPECT_LT(result[i], 1);
     }
   }
 }
 
-TEST(Analyzer_MM_DNN, profile) { profile(); }
-#ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_MM_DNN, profile_mkldnn) { profile(true /* use_mkldnn */); }
-#endif
-
 // Check the fuse status
-TEST(Analyzer_MM_DNN, fuse_statis) {
+TEST(Analyzer_Pyramid_DNN, fuse_statis) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
 
@@ -140,13 +157,9 @@ TEST(Analyzer_MM_DNN, fuse_statis) {
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false) {
+TEST(Analyzer_Pyramid_DNN, compare) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
-
-  if (use_mkldnn) {
-    cfg.EnableMKLDNN();
-  }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -154,13 +167,8 @@ void compare(bool use_mkldnn = false) {
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
-TEST(Analyzer_MM_DNN, compare) { compare(); }
-#ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_MM_DNN, compare_mkldnn) { compare(true /* use_mkldnn */); }
-#endif
-
 // Compare Deterministic result
-TEST(Analyzer_MM_DNN, compare_determine) {
+TEST(Analyzer_Pyramid_DNN, compare_determine) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 

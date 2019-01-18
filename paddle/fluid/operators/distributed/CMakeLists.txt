@@ -20,7 +20,7 @@ if(WITH_GRPC)
         collective_client.cc collective_server.cc
         ${GRPC_SRCS}
       PROTO ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto 
-      DEPS lod_tensor selected_rows_functor memory ${GRPC_DEPS})
+      DEPS lod_tensor selected_rows_functor memory)
 
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set(RPC_DEPS sendrecvop_rpc ${GRPC_DEPS})
