@@ -15,7 +15,9 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include "paddle/fluid/platform/place.h"
+#include <utility>
 
 namespace paddle {
 namespace memory {
@@ -45,9 +47,31 @@ class Allocator;
 //       allocation object.
 // NOTE: the `Allocation::ptr()` could be nullptr, if the allocation size is 0
 class Allocation {
+  static std::mutex s_mutex_global;
+  // <device_id, pair<mutex, pair<current, maximum>>>
+  static std::unordered_map<int, std::pair<uint64_t, uint64_t>>
+      s_memory_allocated;
+  static std::unordered_map<int, std::unique_ptr<std::mutex>> s_mutex_map;
+
+  static void CheckMutex(const int& device_id);
+
  public:
   Allocation(void* ptr, size_t size, platform::Place place)
-      : allocator_(nullptr), ptr_(ptr), size_(size), place_(place) {}
+      : allocator_(nullptr), ptr_(ptr), size_(size), place_(place) {
+    if (0 == place.which()) {
+      platform::CUDAPlace* place_ptr = boost::get<platform::CUDAPlace>(&place_);
+      CheckMutex(place_ptr->device);
+      s_mutex_map[place_ptr->device]->lock();
+      auto& node = s_memory_allocated[place_ptr->device];
+      node.first += size_;
+      if (node.first > node.second) {
+        node.second = node.first;
+        VLOG(3) << "device: " << place_ptr->device
+                << " maximum memory size : " << (node.second >> 20) << " MiB";
+      }
+      s_mutex_map[place_ptr->device]->unlock();
+    }
+  }
 
   Allocation(const Allocation& o) = delete;
   Allocation& operator=(const Allocation& o) = delete;
@@ -76,7 +100,15 @@ class Allocation {
 
   void set_allocator(Allocator* allocator) { allocator_ = allocator; }
 
-  virtual ~Allocation();
+  virtual ~Allocation() {
+    if (0 == place_.which()) {
+      platform::CUDAPlace* place_ptr = boost::get<platform::CUDAPlace>(&place_);
+      CheckMutex(place_ptr->device);
+      s_mutex_map[place_ptr->device]->lock();
+      s_memory_allocated[place_ptr->device].first -= size_;
+      s_mutex_map[place_ptr->device]->unlock();
+    }
+  }
 
  private:
   Allocator* allocator_;

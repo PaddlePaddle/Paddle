@@ -19,7 +19,22 @@
 namespace paddle {
 namespace memory {
 namespace allocation {
-Allocation::~Allocation() {}
+
+std::mutex Allocation::s_mutex_global;
+
+std::unordered_map<int, std::pair<uint64_t, uint64_t>>
+    Allocation::s_memory_allocated;
+std::unordered_map<int, std::unique_ptr<std::mutex>> Allocation::s_mutex_map;
+
+void Allocation::CheckMutex(const int& device_id) {
+  if (s_mutex_map.find(device_id) == s_mutex_map.end()) {
+    s_mutex_global.lock();
+    if (s_mutex_map.find(device_id) == s_mutex_map.end())
+      s_mutex_map[device_id] =
+          std::move(std::unique_ptr<std::mutex>(new std::mutex()));
+    s_mutex_global.unlock();
+  }
+}
 
 Allocator::~Allocator() {}
 
