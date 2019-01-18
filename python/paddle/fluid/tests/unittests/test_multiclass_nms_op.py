@@ -173,13 +173,15 @@ def lod_multiclass_nms(boxes, scores, background, score_threshold,
             normalized,
             shared=False)
         if nmsed_num == 0:
-            lod.append(1)
+            #lod.append(1)
             continue
         lod.append(nmsed_num)
         for c, indices in nmsed_outs.items():
             for idx in indices:
                 xmin, ymin, xmax, ymax = box[idx, c, :]
                 det_outs.append([c, score[idx][c], xmin, ymin, xmax, ymax])
+    if len(lod) == 0:
+        lod.append(1)
 
     return det_outs, lod
 
@@ -208,7 +210,7 @@ def batched_multiclass_nms(boxes,
             normalized,
             shared=True)
         if nmsed_num == 0:
-            lod.append(1)
+            #    lod.append(1)
             continue
 
         lod.append(nmsed_num)
@@ -221,7 +223,8 @@ def batched_multiclass_nms(boxes,
         sorted_det_out = sorted(
             tmp_det_out, key=lambda tup: tup[0], reverse=False)
         det_outs.extend(sorted_det_out)
-
+    if len(lod) == 0:
+        lod += [1]
     return det_outs, lod
 
 
@@ -259,7 +262,6 @@ class TestMulticlassNMSOp(OpTest):
         nmsed_outs, lod = batched_multiclass_nms(boxes, scores, background,
                                                  score_threshold, nms_threshold,
                                                  nms_top_k, keep_top_k)
-        print('python lod: ', lod)
         nmsed_outs = [-1] if not nmsed_outs else nmsed_outs
         nmsed_outs = np.array(nmsed_outs).astype('float32')
 
