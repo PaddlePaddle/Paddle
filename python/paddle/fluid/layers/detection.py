@@ -48,6 +48,7 @@ __all__ = [
     'box_coder',
     'polygon_box_transform',
     'yolov3_loss',
+    'multiclass_nms',
 ]
 
 
@@ -1810,3 +1811,37 @@ def generate_proposals(scores,
     rpn_roi_probs.stop_gradient = True
 
     return rpn_rois, rpn_roi_probs
+
+
+def multiclass_nms(bboxes,
+                   scores,
+                   score_threshold,
+                   nms_top_k,
+                   nms_threshold,
+                   keep_top_k,
+                   normalized=True,
+                   nms_eta=1.,
+                   background_label=0):
+    """
+    """
+    helper = LayerHelper('multiclass_nms', **locals())
+
+    output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
+    helper.append_op(
+        type="multiclass_nms",
+        inputs={'BBoxes': bboxes,
+                'Scores': scores},
+        attrs={
+            'background_label': background_label,
+            'score_threshold': score_threshold,
+            'nms_top_k': nms_top_k,
+            'nms_threshold': nms_threshold,
+            'nms_eta': nms_eta,
+            'keep_top_k': keep_top_k,
+            'nms_eta': nms_eta,
+            'normalized': normalized
+        },
+        outputs={'Out': output})
+    output.stop_gradient = True
+
+    return output
