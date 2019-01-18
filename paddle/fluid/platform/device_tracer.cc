@@ -321,6 +321,12 @@ class DeviceTracerImpl : public DeviceTracer {
     CUPTI_CALL(
         dynload::cuptiEnableCallback(1, subscriber_, CUPTI_CB_DOMAIN_DRIVER_API,
                                      CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel));
+    CUPTI_CALL(dynload::cuptiEnableCallback(
+        1, subscriber_, CUPTI_CB_DOMAIN_RUNTIME_API,
+        CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020));
+    CUPTI_CALL(dynload::cuptiEnableCallback(
+        1, subscriber_, CUPTI_CB_DOMAIN_RUNTIME_API,
+        CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020));
     CUPTI_CALL(dynload::cuptiGetTimestamp(&start_ns_));
 #endif  // PADDLE_WITH_CUPTI
     enabled_ = true;
@@ -346,6 +352,13 @@ class DeviceTracerImpl : public DeviceTracer {
         e->AddCudaElapsedTime(r.start_ns, r.end_ns);
       }
     }
+    for (const auto &r : mem_records_) {
+      auto c = correlations_.find(r.correlation_id);
+      if (c != correlations_.end() && c->second != nullptr) {
+        Event *e = c->second;
+        e->AddCudaElapsedTime(r.start_ns, r.end_ns);
+      }
+    }
 #endif
   }
 
@@ -354,7 +367,7 @@ class DeviceTracerImpl : public DeviceTracer {
     proto::Profile profile_pb;
     profile_pb.set_start_ns(start_ns_);
     profile_pb.set_end_ns(end_ns_);
-    if (correlations_pairs.empty())
+    if (correlations_.empty())
       for (auto &tmp : correlations_pairs)
         for (auto &pair : tmp) correlations_[pair.first] = pair.second;
     for (const KernelRecord &r : kernel_records_) {
@@ -363,6 +376,7 @@ class DeviceTracerImpl : public DeviceTracer {
       if (correlations_.find(r.correlation_id) != correlations_.end()) {
         event->set_name(correlations_.at(r.correlation_id)->name());
       } else {
+        PADDLE_ENFORCE(false, "Missing Kernel Event: " + r.name);
         event->set_name(r.name);
       }
       event->set_start_ns(r.start_ns);
@@ -380,9 +394,18 @@ class DeviceTracerImpl : public DeviceTracer {
         event->set_sub_device_id(r.thread_id);
         event->set_device_id(r.device_id);
       }
+    int miss = 0, find = 0;
     for (const MemRecord &r : mem_records_) {
       auto *event = profile_pb.add_events();
       event->set_type(proto::Event::GPUKernel);
+      auto c = correlations_.find(r.correlation_id);
+      if (c != correlations_.end() && c->second != nullptr) {
+        event->set_name(c->second->name());
+        find++;
+      } else {
+        miss++;
+        event->set_name(r.name);
+      }
       event->set_name(r.name);
       event->set_start_ns(r.start_ns);
       event->set_end_ns(r.end_ns);
@@ -390,6 +413,7 @@ class DeviceTracerImpl : public DeviceTracer {
       event->set_device_id(r.device_id);
       event->mutable_memcopy()->set_bytes(r.bytes);
     }
+    VLOG(1) << "MemRecord event miss: " << miss << " find:" << find;
     std::ofstream profile_f;
     profile_f.open(profile_path, std::ios::out | std::ios::trunc);
     std::string profile_str;
@@ -420,8 +444,11 @@ class DeviceTracerImpl : public DeviceTracer {
     auto *cbInfo = reinterpret_cast<const CUpti_CallbackData *>(cbdata);
     DeviceTracerImpl *tracer = reinterpret_cast<DeviceTracerImpl *>(userdata);
 
-    if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) &&
-        (cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel)) {
+    if (((domain == CUPTI_CB_DOMAIN_DRIVER_API) &&
+         (cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel)) ||
+        ((domain == CUPTI_CB_DOMAIN_RUNTIME_API) &&
+         (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020 ||
+          cbid == CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020))) {
       if (cbInfo->callbackSite == CUPTI_API_ENTER) {
         Event *event = CurAnnotation();
         tracer->AddAnnotation(cbInfo->correlationId, event);

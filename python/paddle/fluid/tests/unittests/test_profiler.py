@@ -24,7 +24,10 @@ import paddle.fluid.core as core
 
 
 class TestProfiler(unittest.TestCase):
-    def net_profiler(self, state, profile_path='/tmp/profile'):
+    def net_profiler(self,
+                     state,
+                     profile_path='/tmp/profile',
+                     use_parallel_executor=False):
         startup_program = fluid.Program()
         main_program = fluid.Program()
 
@@ -60,6 +63,11 @@ class TestProfiler(unittest.TestCase):
         place = fluid.CPUPlace() if state == 'CPU' else fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
         exe.run(startup_program)
+        if use_parallel_executor:
+            pe = fluid.ParallelExecutor(
+                state != 'CPU',
+                loss_name=avg_cost.name,
+                main_program=main_program)
 
         pass_acc_calculator = fluid.average.WeightedAverage()
         with profiler.profiler(state, 'total', profile_path) as prof:
@@ -69,6 +77,9 @@ class TestProfiler(unittest.TestCase):
                 x = np.random.random((32, 784)).astype("float32")
                 y = np.random.randint(0, 10, (32, 1)).astype("int64")
 
+                if use_parallel_executor:
+                    pe.run(feed={'x': x, 'y': y}, fetch_list=[avg_cost.name])
+                    continue
                 outs = exe.run(main_program,
                                feed={'x': x,
                                      'y': y},
@@ -80,16 +91,19 @@ class TestProfiler(unittest.TestCase):
 
     def test_cpu_profiler(self):
         self.net_profiler('CPU')
+        self.net_profiler('CPU', use_parallel_executor=True)
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
     def test_cuda_profiler(self):
         self.net_profiler('GPU')
+        self.net_profiler('GPU', use_parallel_executor=True)
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
     def test_all_profiler(self):
         self.net_profiler('All', '/tmp/profile_out')
+        self.net_profiler('All', '/tmp/profile_out', use_parallel_executor=True)
         with open('/tmp/profile_out', 'rb') as f:
             self.assertGreater(len(f.read()), 0)
 
