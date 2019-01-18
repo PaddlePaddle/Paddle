@@ -19,6 +19,9 @@
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+#ifdef WITH_GPERFTOOLS
+#include <gperftools/profiler.h>
+#endif
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/scope.h"
@@ -215,13 +218,19 @@ void TestOneThreadPrediction(
   {
     Timer run_timer;
     run_timer.tic();
+#ifdef WITH_GPERFTOOLS
+    ProfilerStart("paddle_inference.prof");
+#endif
     for (int i = 0; i < num_times; i++) {
       for (size_t j = 0; j < inputs.size(); j++) {
         predictor->Run(inputs[j], outputs, batch_size);
       }
     }
+#ifdef WITH_GPERFTOOLS
+    ProfilerStop();
+#endif
 
-    double latency = run_timer.toc() / num_times;
+    double latency = run_timer.toc() / (num_times > 1 ? num_times : 1);
     PrintTime(batch_size, num_times, 1, 0, latency, inputs.size());
     if (FLAGS_record_benchmark) {
       Benchmark benchmark;

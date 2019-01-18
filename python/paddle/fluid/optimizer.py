@@ -822,7 +822,8 @@ class AdamOptimizer(Optimizer):
                 "beta1": self._beta1,
                 "beta2": self._beta2,
                 "epsilon": self._epsilon,
-                "lazy_mode": self._lazy_mode
+                "lazy_mode": self._lazy_mode,
+                "min_row_size_to_use_multithread": 1000
             },
             stop_gradient=True)
 
