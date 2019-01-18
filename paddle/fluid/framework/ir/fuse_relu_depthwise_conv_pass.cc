@@ -25,9 +25,18 @@ namespace ir {
 
 std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  VLOG(4) << "FuseReluDepthwiseConvPass::ApplyImpl";
+  graph = FuseReluDepthwiseConv(std::move(graph), true);
+  graph = FuseReluDepthwiseConv(std::move(graph), false);
+  return graph;
+}
+
+std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
+    std::unique_ptr<ir::Graph> graph, bool only_forward) const {
   PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init("relu_depthwise_conv", graph.get());
+  if (only_forward)
+    FusePassBase::Init("relu_depthwise_conv_only_forward", graph.get());
+  else
+    FusePassBase::Init("relu_depthwise_conv", graph.get());
   /*
            x ---act--> y ---layer-> z
             +----------+
@@ -50,20 +59,30 @@ std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::ApplyImpl(
   auto *x = pattern->NewNode("x")->AsInput();
   auto *y = pattern->NewNode("y")->AsIntermediate();
   auto *z = pattern->NewNode("z")->AsOutput();
-  auto *xg = pattern->NewNode("xg")->AsOutput();
-  auto *yg = pattern->NewNode("yg")->AsIntermediate();
-  auto *zg = pattern->NewNode("zg")->AsInput();
+  PDNode *xg;
+  PDNode *yg;
+  PDNode *zg;
+  if (!only_forward) {
+    xg = pattern->NewNode("xg")->AsOutput();
+    yg = pattern->NewNode("yg")->AsIntermediate();
+    zg = pattern->NewNode("zg")->AsInput();
+  }
 
+  PDNode *act_g;
+  PDNode *layer_g;
   auto *act = pattern->NewNode("act")->assert_is_op(act_type);
   auto *layer = pattern->NewNode("layer")->assert_is_op(layer_type);
-  auto *act_g = pattern->NewNode("act_g")->assert_is_op(act_type + "_grad");
-  auto *layer_g =
-      pattern->NewNode("layer_g")->assert_is_op(layer_type + "_grad");
+  if (!only_forward) {
+    act_g = pattern->NewNode("act_g")->assert_is_op(act_type + "_grad");
+    layer_g = pattern->NewNode("layer_g")->assert_is_op(layer_type + "_grad");
+  }
 
   act->LinksFrom({x}).LinksTo({y});
   layer->LinksFrom({y}).LinksTo({z});
-  layer_g->LinksFrom({y, zg}).LinksTo({yg});
-  act_g->LinksFrom({y, yg}).LinksTo({xg});
+  if (!only_forward) {
+    layer_g->LinksFrom({y, zg}).LinksTo({yg});
+    act_g->LinksFrom({y, yg}).LinksTo({xg});
+  }
 
   int count = 0;
   std::unordered_set<const Node *> need_removed_nodes;
@@ -76,14 +95,21 @@ std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::ApplyImpl(
     layer_op->SetAttr("use_cudnn", false);
     layer_op->SetAttr("fuse_relu_before_depthwise_conv", true);
 
-    auto *layer_g_op = subgraph.at(layer_g)->Op();
-    layer_g_op->SetAttr("use_cudnn", false);
-    layer_g_op->SetAttr("fuse_relu_before_depthwise_conv", true);
+    OpDesc *layer_g_op;
+    if (!only_forward) {
+      layer_g_op = subgraph.at(layer_g)->Op();
+      layer_g_op->SetAttr("use_cudnn", false);
+      layer_g_op->SetAttr("fuse_relu_before_depthwise_conv", true);
+    }
     // 2. connect x to layer and layer_g, layer_g to xg
     auto *y_var = subgraph.at(y)->Var();
     auto *x_var = subgraph.at(x)->Var();
-    auto *yg_var = subgraph.at(yg)->Var();
-    auto *xg_var = subgraph.at(xg)->Var();
+    VarDesc *yg_var;
+    VarDesc *xg_var;
+    if (!only_forward) {
+      yg_var = subgraph.at(yg)->Var();
+      xg_var = subgraph.at(xg)->Var();
+    }
 
     PADDLE_ENFORCE_EQ(layer_op->Input("Input").size(), 1);
     PADDLE_ENFORCE_EQ(layer_op->Input("Input")[0], y_var->Name());
@@ -92,27 +118,32 @@ std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::ApplyImpl(
     subgraph.at(x)->outputs.push_back(subgraph.at(layer));
     VLOG(4) << "replace " << y_var->Name() << " -> " << x_var->Name();
 
-    PADDLE_ENFORCE_EQ(layer_g_op->Input("Input").size(), 1);
-    PADDLE_ENFORCE_EQ(layer_g_op->Input("Input")[0], y_var->Name());
-    layer_g_op->SetInput("Input", {x_var->Name()});
-    subgraph.at(layer_g)->inputs.push_back(subgraph.at(x));
-    subgraph.at(x)->outputs.push_back(subgraph.at(layer_g));
+    if (!only_forward) {
+      PADDLE_ENFORCE_EQ(layer_g_op->Input("Input").size(), 1);
+      PADDLE_ENFORCE_EQ(layer_g_op->Input("Input")[0], y_var->Name());
+      layer_g_op->SetInput("Input", {x_var->Name()});
+      subgraph.at(layer_g)->inputs.push_back(subgraph.at(x));
+      subgraph.at(x)->outputs.push_back(subgraph.at(layer_g));
 
-    PADDLE_ENFORCE_EQ(layer_g_op->Output(GradVarName("Input")).size(), 1);
-    PADDLE_ENFORCE_EQ(layer_g_op->Output(GradVarName("Input"))[0],
-                      yg_var->Name());
-    layer_g_op->SetOutput(GradVarName("Input"), {xg_var->Name()});
-    subgraph.at(layer_g)->outputs.push_back(subgraph.at(xg));
-    subgraph.at(xg)->inputs.push_back(subgraph.at(layer_g));
-    VLOG(4) << "replace " << yg_var->Name() << " -> " << xg_var->Name();
+      PADDLE_ENFORCE_EQ(layer_g_op->Output(GradVarName("Input")).size(), 1);
+      PADDLE_ENFORCE_EQ(layer_g_op->Output(GradVarName("Input"))[0],
+                        yg_var->Name());
+      layer_g_op->SetOutput(GradVarName("Input"), {xg_var->Name()});
+      subgraph.at(layer_g)->outputs.push_back(subgraph.at(xg));
+      subgraph.at(xg)->inputs.push_back(subgraph.at(layer_g));
+      VLOG(4) << "replace " << yg_var->Name() << " -> " << xg_var->Name();
+    }
 
     // 3. delete y, yg, act, act_g
-    need_removed_nodes.insert({subgraph.at(y), subgraph.at(yg),
-                               subgraph.at(act), subgraph.at(act_g)});
+
+    if (only_forward) {
+      need_removed_nodes.insert({subgraph.at(y), subgraph.at(act)});
+    } else {
+      need_removed_nodes.insert({subgraph.at(y), subgraph.at(yg),
+                                 subgraph.at(act), subgraph.at(act_g)});
+    }
     count++;
   };
-  // for (auto *node : graph->Nodes())
-  //  VLOG(4) << node->Name();
   gpd(graph.get(), handler);
   GraphSafeRemoveNodes(graph.get(), need_removed_nodes);
   AddStatis(count);
