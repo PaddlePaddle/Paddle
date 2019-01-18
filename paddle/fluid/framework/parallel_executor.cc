@@ -419,13 +419,13 @@ void ParallelExecutor::BCastParamsToDevices(
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
 
-        auto share_memory = [&] {
+        auto copy_memory = [&] {
           t->Resize(dims);
           t->mutable_data(cpu, main_tensor.type());
           paddle::framework::TensorCopy(main_tensor, cpu, t);
         };
 
-        auto copy_memory = [&] { t->ShareDataWith(main_tensor); };
+        auto share_memory = [&] { t->ShareDataWith(main_tensor); };
 
         // FIXME(zcd): LR_DECAY_COUNTER should not be shared. This is a hot fix.
         if (member_->build_strategy_.async_mode_) {
