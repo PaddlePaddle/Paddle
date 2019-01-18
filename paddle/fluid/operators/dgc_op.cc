@@ -114,4 +114,6 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+// REGISTER_OPERATOR(dgc, ops::DGCOp,
+// paddle::framework::EmptyGradOpMaker, ops::DGCOpMaker)
 REGISTER_OP_WITHOUT_GRADIENT(dgc, ops::DGCOp, ops::DGCOpMaker);

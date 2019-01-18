@@ -67,6 +67,7 @@ endif()
 
 if (WITH_GPU)
     op_library(dgc_op DEPS k_select)
+    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(dgc);\n")
 endif()
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})

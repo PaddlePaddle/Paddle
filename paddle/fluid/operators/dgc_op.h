@@ -59,8 +59,8 @@ class DGCOpKernel : public framework::OpKernel<T> {
     int buffbytes = 2 * MAX_BLOCKS * MAX_THREADS * sizeof(int);
 
     // Temporary memory
-    auto& allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
+    auto& allocator = platform::DeviceTemporaryAllocator::Instance().Get(
+        ctx.GetPlace(), dev_ctx.stream());
     auto tmp_ious_data = allocator.Allocate(buffbytes);
     void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
