@@ -298,18 +298,6 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
       BOOST_PP_REPEAT(4, CALL, _);
 #undef CALL
     }
-    /*
-
-    GroupNormBackwardGetMeanAndVar<T, 3><<<grid, threads, 0,
-    dev_ctx.stream()>>>(
-        x_data, scale_data, bias_data, y_data, x_dims[0], x_dims[1], imsize,
-        groups, group_size, epsilon, temp_mean_data, temp_var_data,
-        d_scale_data, d_bias_data);
-    GroupNormBackward<T, 3><<<grid, threads, 0, dev_ctx.stream()>>>(
-        x_data, y_data, scale_data, bias_data, var_data, temp_mean_data,
-        temp_var_data, x_dims[0], x_dims[1], imsize, groups, group_size,
-        epsilon, d_x_data);
-    */
   }
 };
 

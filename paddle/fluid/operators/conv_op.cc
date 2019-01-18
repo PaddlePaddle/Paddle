@@ -425,8 +425,6 @@ class Conv2dGradMaker : public framework::SingleGradOpDescMaker {
     op->SetInput("Input", Input("Input"));
     op->SetInput("Filter", Input("Filter"));
     op->SetInput("Bias", Input("Bias"));
-    // ResidualData is not used in conv2d_grad ops, we comment this temporarily
-    // op->SetInput("ResidualData", Input("ResidualData"));
     op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
 
     op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
