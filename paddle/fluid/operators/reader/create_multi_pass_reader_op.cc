@@ -24,12 +24,13 @@ class MultiPassReader : public framework::DecoratedReader {
   MultiPassReader(const std::shared_ptr<ReaderBase>& reader, int pass_num)
       : DecoratedReader(reader), pass_num_(pass_num), pass_count_(0) {}
 
-  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out,
+                    int dev_id = 0) override {
     reader_->ReadNext(out);
     if (out->empty() && pass_count_ < pass_num_ - 1) {
       reader_->Shutdown();
       reader_->Start();
-      reader_->ReadNext(out);
+      reader_->ReadNext(out, dev_id);
       ++pass_count_;
     }
   }

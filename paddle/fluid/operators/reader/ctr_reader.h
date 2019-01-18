@@ -66,7 +66,8 @@ class CTRReader : public framework::FileReader {
 
   ~CTRReader() {}
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
+  void ReadNext(std::vector<framework::LoDTensor>* out,
+                int dev_id = 0) override {
     bool success;
     *out = queue_->Pop(&success);
     if (!success) out->clear();

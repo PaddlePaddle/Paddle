@@ -67,9 +67,7 @@ class TestReaderEmptyBatch(unittest.TestCase):
 
             pyreader.decorate_paddle_reader(
                 paddle.batch(
-                    self.fake_data(),
-                    batch_size=self.batch_size,
-                    num_devices=fluid.core.get_cuda_device_count()))
+                    self.fake_data(), batch_size=self.batch_size))
 
             optimizer = fluid.optimizer.Adam()
             optimizer.minimize(loss)

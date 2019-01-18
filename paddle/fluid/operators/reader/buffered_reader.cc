@@ -48,7 +48,11 @@ void BufferedReader::ReadTillBufferFullAsync() {
 void BufferedReader::ReadAsync(size_t i) {
   position_.emplace(thread_pool_.enqueue([this, i]() -> size_t {
     TensorVec &cpu = cpu_buffer_[i];
-    reader_->ReadNext(&cpu);
+    int dev_id = 0;
+    if (paddle::platform::is_gpu_place(place_)) {
+      dev_id = boost::get<platform::CUDAPlace>(place_).device;
+    }
+    reader_->ReadNext(&cpu, dev_id);
 
     if (cpu.empty()) {
       return -1UL;
@@ -79,7 +83,8 @@ void BufferedReader::StartImpl() {
   ReadTillBufferFullAsync();
 }
 
-void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
+void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out,
+                                  int dev_id) {
   if (position_.empty()) {
     out->clear();
     return;
@@ -88,7 +93,7 @@ void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
   position_.pop();
 
   if (i == -1UL) {
-    ReadNextImpl(out);
+    ReadNextImpl(out, dev_id);
     return;
   }
 

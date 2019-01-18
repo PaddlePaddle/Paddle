@@ -84,8 +84,10 @@ class ReadOp : public framework::OperatorBase {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(dev_place);
     platform::RecordEvent record_event(Type(), &ctx);
-
-    reader->ReadNext(&ins);
+    int dev_id = 0;
+    if (platform::is_gpu_place(dev_place))
+      dev_id = boost::get<platform::CUDAPlace>(dev_place).device;
+    reader->ReadNext(&ins, dev_id);
     if (ins.empty()) {
       if (Attr<bool>("throw_eof_exp")) {
         PADDLE_THROW_EOF();

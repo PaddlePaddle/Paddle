@@ -32,7 +32,8 @@ class RandomDataGenerator : public framework::FileReader {
     dist_ = std::uniform_real_distribution<float>(low_, high_);
   }
 
-  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out,
+                    int dev_id = 0) override {
     out->clear();
     out->reserve(shapes_.size());
     for (const framework::DDim& shape : shapes_) {

@@ -14,10 +14,32 @@
 
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
+#include "paddle/fluid/string/split.h"
+
+DECLARE_string(selected_gpus);
 
 namespace paddle {
 namespace operators {
 namespace reader {
+
+static int GetNumPlaces(const platform::Place& place) {
+  size_t num_places = 0;
+  if (platform::is_cpu_place(place)) {
+    num_places = getenv("CPU_NUM") == NULL ? std::thread::hardware_concurrency()
+                                           : atoi(getenv("CPU_NUM"));
+  } else if (platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_CUDA
+    num_places = FLAGS_selected_gpus.empty() == true
+                     ? platform::GetCUDADeviceCount()
+                     : paddle::string::Split(FLAGS_selected_gpus, ',').size();
+#else
+    PADDLE_THROW("PADDLE should been compiled with WITH_CUDA=1.");
+#endif
+  } else {
+    PADDLE_ENFORCE("The place of pyreader should be CPU or GPU.");
+  }
+  return num_places;
+}
 
 class PyReader : public framework::FileReader {
  public:
@@ -27,9 +49,10 @@ class PyReader : public framework::FileReader {
     queue_ = queue;
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
+  void ReadNext(std::vector<framework::LoDTensor>* out,
+                int dev_id = 0) override {
     bool success;
-    *out = queue_->Pop(&success);
+    *out = queue_->Pop(&success, dev_id);
     if (!success) out->clear();
   }
 
@@ -62,7 +85,13 @@ class CreatePyReaderOp : public framework::OperatorBase {
         queue_name);
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
-
+    size_t num_places = static_cast<size_t>(Attr<int>("num_places"));
+    // TODO(Yancey1989): Need more benchmark to enable multiple queue for CPU
+    // training
+    if (platform::is_gpu_place(dev_place)) {
+      if (num_places == 0) num_places = GetNumPlaces(dev_place);
+      queue_holder->GetQueue()->ReInitWithMultiDev(num_places);
+    }
     out->Reset(std::make_shared<PyReader>(queue_holder->GetQueue()));
   }
 };
@@ -72,7 +101,10 @@ class CreatePyReaderOpMaker : public FileReaderMakerBase {
   void Apply() override {
     AddInput("blocking_queue",
              "Name of the `LoDTensorBlockingQueueHolder` variable");
-
+    AddAttr<int>(
+        "num_places",
+        "The number of places which used in Executor or ParallelExecutor.")
+        .SetDefault(1);
     AddComment(R"DOC(
       Create PyReader to support LoDTensor data feeding in Python side.
       )DOC");

@@ -28,7 +28,8 @@ class BatchReader : public framework::DecoratedReader {
     buffer_.reserve(batch_size_);
   }
 
-  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out,
+                    int dev_id = 0) override;
 
  private:
   size_t batch_size_;
@@ -75,12 +76,13 @@ class CreateBatchReaderOpMaker : public DecoratedReaderMakerBase {
   }
 };
 
-void BatchReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
+void BatchReader::ReadNextImpl(std::vector<framework::LoDTensor>* out,
+                               int dev_id) {
   buffer_.clear();
   buffer_.reserve(batch_size_);
   for (size_t i = 0; i < batch_size_; ++i) {
     buffer_.push_back(std::vector<framework::LoDTensor>());
-    reader_->ReadNext(&buffer_.back());
+    reader_->ReadNext(&buffer_.back(), dev_id);
     if (buffer_.back().empty()) {
       buffer_.pop_back();
       break;

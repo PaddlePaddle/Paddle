@@ -42,7 +42,8 @@ class BufferedReader : public framework::DecoratedReader {
  protected:
   void ShutdownImpl() override;
   void StartImpl() override;
-  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out,
+                    int dev_id = 0) override;
 
  private:
   ThreadPool thread_pool_;

@@ -33,7 +33,8 @@ class CustomReader : public framework::DecoratedReader {
         source_var_names_(source_var_names),
         sink_var_names_(sink_var_names) {}
 
-  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out,
+                    int dev_id = 0) override;
 
  private:
   const framework::ProgramDesc program_;
@@ -143,10 +144,11 @@ class CustomReaderInferVarType : public framework::VarTypeInference {
   }
 };
 
-void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
+void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out,
+                                int dev_id) {
   out->clear();
   std::vector<framework::LoDTensor> underlying_outs;
-  reader_->ReadNext(&underlying_outs);
+  reader_->ReadNext(&underlying_outs, dev_id);
   if (underlying_outs.empty()) {
     // There is not next data.
     return;

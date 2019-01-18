@@ -54,21 +54,26 @@ def simple_fc_net(in_size,
                   batch_size,
                   queue_capacity,
                   use_double_buffer=False,
-                  use_feed_list=True):
+                  use_feed_list=True,
+                  use_parallel_executor=True):
+    # Get num_places from env if using ParallelExecutor
+    num_places = 1 if not use_parallel_executor else 0
     if use_feed_list:
         data = fluid.layers.data(name="data", dtype='float32', shape=[in_size])
         label = fluid.layers.data(name='label', dtype='int64', shape=[1])
         py_reader = fluid.layers.create_py_reader_by_data(
             capacity=queue_capacity,
             use_double_buffer=False,
-            feed_list=[data, label])
+            feed_list=[data, label],
+            num_places=num_places)
     else:
         py_reader = fluid.layers.py_reader(
             capacity=queue_capacity,
             shapes=[[-1, in_size], [-1, 1]],
             lod_levels=[0, 0],
             dtypes=['float32', 'int64'],
-            use_double_buffer=False)
+            use_double_buffer=False,
+            num_places=num_places)
     feed_queue = py_reader.queue
     reader = fluid.layers.batch(py_reader, batch_size=batch_size)
     if use_double_buffer:
@@ -105,9 +110,8 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
         self.queue_capacity = 50
 
     def test(self):
-        for use_cuda in ([False, True]
-                         if core.is_compiled_with_cuda() else [False]):
-            for use_parallel_executor in [False, True]:
+        for use_cuda in ([True] if core.is_compiled_with_cuda() else [False]):
+            for use_parallel_executor in [True]:
                 for use_double_buffer in [False, True]:
                     for use_feed_list in [False, True]:
                         for use_decorate_paddle_reader in [False, True]:
@@ -184,7 +188,8 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
                 batch_size=self.batch_size,
                 queue_capacity=self.queue_capacity,
                 use_double_buffer=self.use_double_buffer,
-                use_feed_list=self.use_feed_list)
+                use_feed_list=self.use_feed_list,
+                use_parallel_executor=use_parallel_executor)
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 

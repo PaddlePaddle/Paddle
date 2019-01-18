@@ -21,12 +21,14 @@ class StubDecoratedReader : public paddle::framework::DecoratedReader {
   explicit StubDecoratedReader(const std::shared_ptr<ReaderBase> &reader)
       : DecoratedReader(reader) {}
 
-  void ReadNextImpl(std::vector<paddle::framework::LoDTensor> *out) override {}
+  void ReadNextImpl(std::vector<paddle::framework::LoDTensor> *out,
+                    int dev_id = 0) override {}
 };
 
 class StubRootReader : public paddle::framework::ReaderBase {
  public:
-  void ReadNextImpl(std::vector<paddle::framework::LoDTensor> *out) override {}
+  void ReadNextImpl(std::vector<paddle::framework::LoDTensor> *out,
+                    int dev_id = 0) override {}
 };
 
 TEST(READER, decorate_chain) {

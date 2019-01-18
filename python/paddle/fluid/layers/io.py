@@ -483,7 +483,8 @@ def _py_reader(capacity,
                lod_levels=None,
                name=None,
                use_double_buffer=True,
-               feed_list=None):
+               feed_list=None,
+               num_places=0):
 
     if feed_list is not None:
         if not isinstance(feed_list, list):
@@ -534,7 +535,8 @@ def _py_reader(capacity,
         attrs={
             'shape_concat': shape_concat,
             'lod_levels': lod_levels,
-            'ranks': ranks
+            'ranks': ranks,
+            'num_places': num_places
         })
 
     startup_var.desc.set_dtypes(dtypes)
@@ -635,7 +637,8 @@ def py_reader(capacity,
               dtypes,
               lod_levels=None,
               name=None,
-              use_double_buffer=True):
+              use_double_buffer=True,
+              num_places=0):
     """
     Create a Python reader for data feeding in Python
 
@@ -659,6 +662,7 @@ def py_reader(capacity,
        name(basestring): The prefix Python queue name and Reader name. None will
             be generated automatically.
        use_double_buffer(bool): Whether use double buffer or not.
+       num_places(int): The number of the places which passed into Executor or ParallelExecutor.
 
     Returns:
        Variable: A Reader from which we can get feeding data.
@@ -760,13 +764,15 @@ def py_reader(capacity,
         dtypes=dtypes,
         lod_levels=lod_levels,
         name=name,
-        use_double_buffer=use_double_buffer)
+        use_double_buffer=use_double_buffer,
+        num_places=num_places)
 
 
 def create_py_reader_by_data(capacity,
                              feed_list,
                              name=None,
-                             use_double_buffer=True):
+                             use_double_buffer=True,
+                             num_places=0):
     """
     Create a Python reader for data feeding in Python
 
@@ -819,7 +825,8 @@ def create_py_reader_by_data(capacity,
         lod_levels=None,
         name=name,
         use_double_buffer=use_double_buffer,
-        feed_list=feed_list)
+        feed_list=feed_list,
+        num_places=num_places)
 
 
 def open_files(filenames,

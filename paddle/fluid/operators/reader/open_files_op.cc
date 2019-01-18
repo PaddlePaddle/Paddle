@@ -32,7 +32,8 @@ class IReaderContainer {
       std::unique_ptr<framework::ReaderBase>&& readers) = 0;
   virtual void Stop() = 0;
   virtual void Start() = 0;
-  virtual void ReadNext(std::vector<framework::LoDTensor>* out) = 0;
+  virtual void ReadNext(std::vector<framework::LoDTensor>* out,
+                        int dev_id = 0) = 0;
 };
 
 class OrderedReaderContainer : public IReaderContainer {
@@ -49,12 +50,13 @@ class OrderedReaderContainer : public IReaderContainer {
 
   void Start() override { std::swap(done_, pending_); }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
+  void ReadNext(std::vector<framework::LoDTensor>* out,
+                int dev_id = 0) override {
     if (!pending_.empty()) {
-      pending_.front()->ReadNext(out);
+      pending_.front()->ReadNext(out, dev_id);
       if (out->empty()) {
         MoveFrontPendingToDone();
-        ReadNext(out);
+        ReadNext(out, dev_id);
       }
     } else {
       out->clear();
@@ -114,7 +116,8 @@ class PreemptiveReaderContainer : public IReaderContainer {
     done_.clear();
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
+  void ReadNext(std::vector<framework::LoDTensor>* out,
+                int dev_id = 0) override {
     if (!pending_.empty()) {
       auto future_it = complete_queue_.Pop();
       FutureItem item = future_it->get();
@@ -130,7 +133,7 @@ class PreemptiveReaderContainer : public IReaderContainer {
         done_.emplace_back(std::move(*item.reader_it_));
         pending_.erase(item.reader_it_);
         futures_.erase(future_it);
-        ReadNext(out);
+        ReadNext(out, dev_id);
       } else {
         *out = item.data_;
         // continue read async
@@ -197,8 +200,9 @@ class MultiFileReader : public framework::ReaderBase {
   ~MultiFileReader() { container_->Stop(); }
 
  protected:
-  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
-    container_->ReadNext(out);
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out,
+                    int dev_id = 0) override {
+    container_->ReadNext(out, dev_id);
   }
   void ShutdownImpl() override { container_->Stop(); }
   void StartImpl() override { container_->Start(); }

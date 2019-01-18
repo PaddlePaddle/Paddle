@@ -27,7 +27,7 @@ namespace framework {
 
 class ReaderBase {
  public:
-  virtual void ReadNext(std::vector<LoDTensor>* out);
+  virtual void ReadNext(std::vector<LoDTensor>* out, int dev_id = 0);
 
   virtual void Shutdown();
 
@@ -40,7 +40,7 @@ class ReaderBase {
   virtual ~ReaderBase();
 
  protected:
-  virtual void ReadNextImpl(std::vector<LoDTensor>* out) {}
+  virtual void ReadNextImpl(std::vector<LoDTensor>* out, int dev_id = 0) {}
 
   virtual void ShutdownImpl() {}
 
@@ -100,9 +100,9 @@ class ReaderHolder {
 
   const std::shared_ptr<ReaderBase>& Get() const { return reader_; }
 
-  void ReadNext(std::vector<LoDTensor>* out) {
+  void ReadNext(std::vector<LoDTensor>* out, int dev_id = 0) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
-    reader_->ReadNext(out);
+    reader_->ReadNext(out, dev_id);
   }
 
   void ResetAll() {
