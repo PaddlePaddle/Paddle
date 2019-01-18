@@ -59,17 +59,17 @@ std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
   auto *x = pattern->NewNode("x")->AsInput();
   auto *y = pattern->NewNode("y")->AsIntermediate();
   auto *z = pattern->NewNode("z")->AsOutput();
-  PDNode *xg;
-  PDNode *yg;
-  PDNode *zg;
+  PDNode *xg = nullptr;
+  PDNode *yg = nullptr;
+  PDNode *zg = nullptr;
   if (!only_forward) {
     xg = pattern->NewNode("xg")->AsOutput();
     yg = pattern->NewNode("yg")->AsIntermediate();
     zg = pattern->NewNode("zg")->AsInput();
   }
 
-  PDNode *act_g;
-  PDNode *layer_g;
+  PDNode *act_g = nullptr;
+  PDNode *layer_g = nullptr;
   auto *act = pattern->NewNode("act")->assert_is_op(act_type);
   auto *layer = pattern->NewNode("layer")->assert_is_op(layer_type);
   if (!only_forward) {
@@ -95,7 +95,7 @@ std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
     layer_op->SetAttr("use_cudnn", false);
     layer_op->SetAttr("fuse_relu_before_depthwise_conv", true);
 
-    OpDesc *layer_g_op;
+    OpDesc *layer_g_op = nullptr;
     if (!only_forward) {
       layer_g_op = subgraph.at(layer_g)->Op();
       layer_g_op->SetAttr("use_cudnn", false);
@@ -104,8 +104,8 @@ std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
     // 2. connect x to layer and layer_g, layer_g to xg
     auto *y_var = subgraph.at(y)->Var();
     auto *x_var = subgraph.at(x)->Var();
-    VarDesc *yg_var;
-    VarDesc *xg_var;
+    VarDesc *yg_var = nullptr;
+    VarDesc *xg_var = nullptr;
     if (!only_forward) {
       yg_var = subgraph.at(yg)->Var();
       xg_var = subgraph.at(xg)->Var();

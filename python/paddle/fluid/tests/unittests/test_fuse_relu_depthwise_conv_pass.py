@@ -99,7 +99,7 @@ class TestMNIST(TestParallelExecutorBase):
         label = np.ones(shape=[32, 1], dtype='int64')
         return img, label
 
-    def _compare(self, model, use_cuda, random_data=True):
+    def _compare(self, model, use_cuda, random_data=True, only_forward=False):
         if use_cuda and not core.is_compiled_with_cuda():
             return
         img, label = self._init_data(random_data)
@@ -110,12 +110,16 @@ class TestMNIST(TestParallelExecutorBase):
                 regularization=fluid.regularizer.L2Decay(1e-6))
             return optimizer
 
+        if only_forward:
+            _optimizer = None
+
         fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
             fuse_relu_depthwise_conv=True,
+            use_ir_memory_optimize=True,
             memory_opt=False,
             optimizer=_optimizer)
         not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
@@ -135,6 +139,10 @@ class TestMNIST(TestParallelExecutorBase):
     def test_simple_depthwise_with_fuse_op(self):
         self._compare(simple_depthwise_net, True)
         self._compare(simple_depthwise_net, False)
+
+    def test_simple_depthwise_with_fuse_op_only_forward(self):
+        self._compare(simple_depthwise_net, True, only_forward=True)
+        self._compare(simple_depthwise_net, False, only_forward=True)
 
 
 if __name__ == '__main__':
