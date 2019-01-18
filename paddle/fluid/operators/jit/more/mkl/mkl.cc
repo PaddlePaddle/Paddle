@@ -25,6 +25,20 @@ namespace more {
 namespace mkl {
 
 template <>
+void MatMul<float>(const float* a, const float* b, float* c, int m, int n,
+                   int k) {
+  platform::dynload::cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m,
+                                 n, k, 1.f, a, k, b, n, 0.f, c, n);
+}
+
+template <>
+void MatMul<double>(const double* a, const double* b, double* c, int m, int n,
+                    int k) {
+  platform::dynload::cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m,
+                                 n, k, 1.0, a, k, b, n, 0.0, c, n);
+}
+
+template <>
 void VMul<float>(const float* x, const float* y, float* z, int n) {
   platform::dynload::vsMul(n, x, y, z);
 }
@@ -73,6 +87,16 @@ void VExp<double>(const double* x, double* y, int n) {
 }
 
 template <>
+void VSquare<float>(const float* x, float* y, int n) {
+  platform::dynload::vsSqr(n, x, y);
+}
+
+template <>
+void VSquare<double>(const double* x, double* y, int n) {
+  platform::dynload::vdSqr(n, x, y);
+}
+
+template <>
 void VCopy<float>(const float* x, float* y, int n) {
   platform::dynload::cblas_scopy(n, x, 1, y, 1);
 }
@@ -94,6 +118,11 @@ void VAXPY<double>(double a, const double* x, double* y, int n) {
 
 // TODO(TJ): tuning me carefully on AVX, AVX2 and AVX512
 template <>
+bool MatMulKernel<float>::UseMe(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
+template <>
 bool VMulKernel<float>::UseMe(const int& d) const {
   return platform::MayIUse(platform::avx512f) && d > 512;
 }
@@ -110,6 +139,11 @@ bool VScalKernel<float>::UseMe(const int& d) const {
 
 template <>
 bool VExpKernel<float>::UseMe(const int& d) const {
+  return d > 7;
+}
+
+template <>
+bool VSquareKernel<float>::UseMe(const int& d) const {
   return d > 7;
 }
 
@@ -139,12 +173,14 @@ bool SeqPoolKernel<double>::UseMe(const seq_pool_attr_t& attr) const {
     return true;                                         \
   }
 
+AWALYS_USE_ME_WITH_DOUBLE(MatMul);
 AWALYS_USE_ME_WITH_DOUBLE(VMul);
 AWALYS_USE_ME_WITH_DOUBLE(VAdd);
 AWALYS_USE_ME_WITH_DOUBLE(VScal);
 AWALYS_USE_ME_WITH_DOUBLE(VExp);
 AWALYS_USE_ME_WITH_DOUBLE(VSigmoid);
 AWALYS_USE_ME_WITH_DOUBLE(VTanh);
+AWALYS_USE_ME_WITH_DOUBLE(VSquare);
 
 #undef AWALYS_USE_ME_WITH_DOUBLE
 }  // namespace mkl
@@ -159,10 +195,12 @@ namespace mkl = paddle::operators::jit::more::mkl;
   REGISTER_JITKERNEL_MORE(key, mkl, mkl::func##Kernel<float>, \
                           mkl::func##Kernel<double>)
 
+REGISTER_MKL_KERNEL(kMatMul, MatMul);
 REGISTER_MKL_KERNEL(kVMul, VMul);
 REGISTER_MKL_KERNEL(kVAdd, VAdd);
 REGISTER_MKL_KERNEL(kVScal, VScal);
 REGISTER_MKL_KERNEL(kVExp, VExp);
+REGISTER_MKL_KERNEL(kVSquare, VSquare);
 REGISTER_MKL_KERNEL(kVSigmoid, VSigmoid);
 REGISTER_MKL_KERNEL(kVTanh, VTanh);
 REGISTER_MKL_KERNEL(kSeqPool, SeqPool);
