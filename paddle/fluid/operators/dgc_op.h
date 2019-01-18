@@ -33,11 +33,11 @@ class DGCOpKernel : public framework::OpKernel<T> {
     float ratio = ctx.Attr<float>("ratio");
     int k = static_cast<int>(g->numel() * ratio);
 
-    auto u_out = ctx.Output<framework::Tensor>("U");
-    auto v_out = ctx.Output<framework::Tensor>("V");
+    auto u_out = ctx.Output<framework::Tensor>("U_out");
+    auto v_out = ctx.Output<framework::Tensor>("V_out");
     // auto g_out = ctx.Output<framework::Tensor>("Grad");
-    auto local_g_out = ctx.Output<framework::Tensor>("GradLocal");
-    auto g_out = ctx.Output<framework::Tensor>("EncodeGradient");
+    auto local_g_out = ctx.Output<framework::Tensor>("GradLocal_out");
+    auto g_out = ctx.Output<framework::Tensor>("EncodeGrad");
 
     // local_g = local_g + g
     elementwise_add<DeviceContext, T>(ctx, local_g, g, local_g_out);

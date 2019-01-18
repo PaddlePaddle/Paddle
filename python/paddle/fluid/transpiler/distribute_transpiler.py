@@ -226,7 +226,7 @@ class DistributeTranspiler(object):
         _, params_grads = self._get_optimize_pass()
         for param_var, grad_var in self.params_grads:
             var_numel = reduce(lambda x, y: x * y, param_var.shape)
-            if var_numel.shape < 4096 or \
+            if var_numel < 4096 or \
                 param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
                 grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
                     param_var.dtype != core.VarDesc.VarType.FP32 :

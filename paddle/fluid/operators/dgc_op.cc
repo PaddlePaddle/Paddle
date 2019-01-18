@@ -32,12 +32,12 @@ class DGCOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("GradLocal"),
                    "Input(GradLocal) of DGCop should not be null.");
 
-    PADDLE_ENFORCE(ctx->HasOutput("U"),
-                   "Output(U) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("V"),
-                   "Output(V) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("GradLocal"),
-                   "Output(GradLocal) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("U_out"),
+                   "Output(U_out) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("V_out"),
+                   "Output(V_out) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("GradLocal_out"),
+                   "Output(GradLocal_out) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("EncodeGrad"),
                    "Output(EncodeGrad) of DGCop should not be null.");
 
@@ -55,6 +55,7 @@ class DGCOp : public framework::OperatorWithKernel {
 
     auto dim = ctx->GetInputDim("Grad");
     ctx->SetOutputDim("EncodeGrad", dim);
+    ctx->ShareLoD("Grad", /*->*/ "EncodeGrad");
 
     /*
     auto param_dim = ctx->GetInputDim("GradLocal");
@@ -81,16 +82,28 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("V", "(Tensor) Middle tensor of DGC");
     AddInput("Grad", "(Tensor) Input gradient");
     AddInput("GradLocal", "(Tensor) Local gradient for accumulation.");
+
+    AddOutput("U_out",
+              "(Tensor) "
+              "Output encoded gradient");
+    AddOutput("V_out",
+              "(Tensor) "
+              "Output encoded gradient");
     AddOutput("EncodeGrad",
               "(Tensor) "
               "Output encoded gradient");
+    AddOutput("GradLocal_out",
+              "(Tensor) "
+              "Output encoded gradient");
+
     AddAttr<float>("m",
                    "(float) "
                    "The momentum of learning rate.");
     AddAttr<float>("ratio",
-                   "(float, default 1000) "
+                   "(float, default 0.001) "
                    "Reserve topk from tensor.")
         .SetDefault(0.001);
+
     AddComment(R"DOC(
     Please see appendix D of https://arxiv.org/abs/1712.01887.pdf
 )DOC");
