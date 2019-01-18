@@ -42,14 +42,14 @@ def start_procs(gpus, cmd, log_dir):
     log_fns = []
     os.system("mkdir -p %s" % log_dir)
     # ======== update parent envs =======
-    for k, v in os.environ:
-        if k.starts_with("FLAGS_") or k.starts_with("NCCL_") or \
-            k.starts_with("GLOG_"):
+    for k, v in os.environ.items():
+        if k.startswith("FLAGS_") or k.startswith("NCCL_") or \
+            k.startswith("GLOG_"):
             default_envs[k] = v
 
     # ======== for dist training =======
     node_trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
-    current_ip = os.getenv("POD_IP")
+    current_ip = os.getenv("POD_IP", "127.0.0.1")
     trainer_ips = os.getenv("PADDLE_TRAINERS", current_ip).split(",")
     num_nodes = len(trainer_ips)
     all_nodes_devices_endpoints = ""
@@ -74,7 +74,7 @@ def start_procs(gpus, cmd, log_dir):
         })
 
         print("starting process ", i, cmd, curr_env)
-        fn = open("%s/workerlog.%d" % log_dir, "w")
+        fn = open("%s/workerlog.%d" % (log_dir, i), "w")
         log_fns.append(fn)
         procs.append(
             subprocess.Popen(
@@ -94,16 +94,14 @@ def main():
         description='''start paddle training using multi-process mode.
 NOTE: your train program ***must*** run as distributed nccl2 mode,
 see: http://www.paddlepaddle.org/documentation/docs/zh/1.2/user_guides/howto/training/cluster_howto.html#permalink-8--nccl2-
-
 And your train program must read environment variables below in order to let different
 process init properly:
-
 FLAGS_selected_gpus
 PADDLE_TRAINER_ID
 PADDLE_CURRENT_ENDPOINT
 PADDLE_TRAINERS_NUM
 PADDLE_TRAINER_ENDPOINTS
-POD_IP ()
+POD_IP (current node ip address, not needed for local training)
 ''')
     parser.add_argument(
         '--gpus',
@@ -121,6 +119,9 @@ POD_IP ()
         default="mylog",
         help='directory to put logs per process.')
     args = parser.parse_args()
+    if args.cmd == "":
+        parser.print_help()
+        exit(0)
     start_procs(args.gpus, args.cmd, args.log_dir)
 
 
