@@ -279,9 +279,6 @@ include(inference_lib)      # add paddle fluid inference libraries
 
 
 include_directories("${PADDLE_SOURCE_DIR}")
-include_directories("${PADDLE_SOURCE_DIR}/paddle/legacy/cuda/include")
-include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
-include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
 
 set(EXTERNAL_LIBS
     gflags
@@ -319,21 +316,6 @@ if(USE_NNPACK)
     include(external/nnpack)
     list(APPEND EXTERNAL_LIBS ${NNPACK_LIBS})
 endif(USE_NNPACK)
-
-add_subdirectory(proto)
-
-if(NOT MOBILE_INFERENCE AND NOT WITH_FLUID_ONLY)
-    # "add_subdirectory(go)" should be placed after the following loine,
-    # because it depends on paddle/optimizer.
-    add_subdirectory(paddle/legacy/optimizer)
-endif()
-
-# "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
-# placed after this block, because they depends on it.
-if(WITH_GOLANG)
-    enable_language(Go)
-    add_subdirectory(go)
-endif(WITH_GOLANG)
 
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 
