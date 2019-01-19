@@ -726,6 +726,7 @@ EOF
         pip3 install opencv-python && pip3 install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
+        which paddle && \
         ${PADDLE_VERSION} && \
         ldconfig
     ${DOCKERFILE_CUDNN_DSO}
