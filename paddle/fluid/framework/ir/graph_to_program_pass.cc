@@ -60,7 +60,8 @@ std::unique_ptr<Graph> GraphToProgramPass::ApplyImpl(
   if (Has(kGraphToProgramSortKind)) {
     // Inference Memory Optimize relays on this branch.
     int sort_kind = Get<int>(kGraphToProgramSortKind);
-    nodes = TopologyVarientSort(*graph, static_cast<framework::ir::SortKind >(sort_kind));
+    nodes = TopologyVarientSort(
+        *graph, static_cast<framework::ir::SortKind>(sort_kind));
   } else {
     nodes = TopologySortOperations(*graph);
   }
