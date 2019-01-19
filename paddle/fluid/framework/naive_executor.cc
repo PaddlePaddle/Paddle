@@ -92,7 +92,7 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
       }
     }
   }
-  LOG(INFO) << "naive executor create " << num_vars << " vars";
+  VLOG(4) << "naive executor create " << num_vars << " vars";
 }
 
 void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,

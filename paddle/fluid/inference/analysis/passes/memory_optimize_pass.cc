@@ -45,7 +45,8 @@ void MemoryOptimizePass::CollectLifeCycle(
     std::unordered_map<std::string, lifecycle_t>* lifecycles,
     int sort_kind) const {
   max_lifecycle_ = 0;
-  for (auto* op_node : framework::ir::TopologyVarientSort(*graph_, sort_kind)) {
+  for (auto* op_node : framework::ir::TopologyVarientSort(
+           *graph_, static_cast<framework::ir::SortKind>(sort_kind))) {
     if (!op_node->IsOp()) continue;
     auto reads = op_node->inputs;
     auto writes = op_node->outputs;
@@ -354,7 +355,8 @@ void UpdateOpDescsByReuse(
     const std::unordered_map<std::string, std::string>& reuse_table,
     int sort_kind) {
   // TODO(Superjomn) change here to be compatible with the runtime order.
-  for (auto* node : TopologyVarientSort(*graph, sort_kind)) {
+  for (auto* node : TopologyVarientSort(
+           *graph, static_cast<framework::ir::SortKind>(sort_kind))) {
     if (node->IsOp()) {
       // Replace the original inputs/outputs with the reused tensors.
       std::unordered_map<std::string, std::vector<std::string>> in_args,

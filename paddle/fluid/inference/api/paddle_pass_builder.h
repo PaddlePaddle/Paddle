@@ -66,7 +66,9 @@ class PaddlePassBuilder {
   }
 
  protected:
-  std::vector<std::string> analysis_passes_{{"ir_analysis_compose_pass"}};
+  std::vector<std::string> analysis_passes_{
+      {"ir_graph_build_pass", "ir_analysis_pass",
+       "ir_params_sync_among_devices_pass"}};
   std::vector<std::string> passes_;
 };
 

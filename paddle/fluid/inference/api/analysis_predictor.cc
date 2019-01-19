@@ -591,7 +591,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
 }
 
 void AnalysisPredictor::CollectVarShapes() {
-  LOG(INFO) << "Collecting var shapes";
+  VLOG(4) << "Collecting var shapes";
   if (batch_var_shapes_.size() >= max_shape_collect_count_) return;
   std::map<std::string, std::vector<int>> var_shapes;
   for (auto var_name : inference_program_->Block(0).LocalVarNames()) {

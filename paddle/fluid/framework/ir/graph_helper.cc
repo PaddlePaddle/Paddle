@@ -150,10 +150,21 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationOutAdjList(
 std::vector<ir::Node *> OpDFSSort(const Graph &graph) {
   auto edge_table = BuildOperationOutAdjList(graph);
   std::stack<Node *> stack;
-  // find the feed ops
   for (auto &ele : edge_table) {
-    if (ele.first->Name() == "feed") {
+    if (ele.first->inputs.empty()) {
+      // find the input ops (those without input vars)
       stack.push(ele.first);
+    } else {
+      // find the ops with only persistable vars as inputs.
+      bool all_persistable = true;
+      for (auto *input : ele.first->inputs) {
+        if (!(input->IsVar() && input->Var() && input->Var()->Persistable())) {
+          all_persistable = false;
+        }
+      }
+      if (all_persistable) {
+        stack.push(ele.first);
+      }
     }
   }
 
@@ -321,9 +332,10 @@ void CleanIndividualNodes(Graph *graph) {
   }
 }
 
-std::vector<Node *> TopologyVarientSort(const Graph &graph, int sort_kind) {
+std::vector<Node *> TopologyVarientSort(const Graph &graph,
+                                        SortKind sort_kind) {
   switch (sort_kind) {
-    case 0:
+    case SortKind::TS:
       return framework::ir::TopologySortOperations(graph);
     default:
       return framework::ir::TopologyDfsSortOperations(graph);
