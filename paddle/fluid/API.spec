@@ -249,6 +249,7 @@ paddle.fluid.layers.reverse ArgSpec(args=['x', 'axis'], varargs=None, keywords=N
 paddle.fluid.layers.has_inf ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.layers.has_nan ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.layers.isfinite ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None)
+paddle.fluid.layers.range ArgSpec(args=['start', 'end', 'step', 'dtype'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.layers.While.__init__ ArgSpec(args=['self', 'cond', 'is_test', 'name'], varargs=None, keywords=None, defaults=(False, None))
 paddle.fluid.layers.While.block ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.layers.Switch.__init__ ArgSpec(args=['self', 'name'], varargs=None, keywords=None, defaults=(None,))
