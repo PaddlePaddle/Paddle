@@ -203,7 +203,7 @@ class TestGenerateProposalLabels(unittest.TestCase):
                 lod_level=1,
                 append_batch_size=False)
             class_nums = 5
-            rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights = fluid.layers.generate_proposal_labels(
+            outs = fluid.layers.generate_proposal_labels(
                 rpn_rois=rpn_rois,
                 gt_classes=gt_classes,
                 is_crowd=is_crowd,
@@ -216,6 +216,11 @@ class TestGenerateProposalLabels(unittest.TestCase):
                 bg_thresh_lo=0.0,
                 bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
                 class_nums=class_nums)
+            rois = outs[0]
+            labels_int32 = outs[1]
+            bbox_targets = outs[2]
+            bbox_inside_weights = outs[3]
+            bbox_outside_weights = outs[4]
             assert rois.shape[1] == 4
             assert rois.shape[0] == labels_int32.shape[0]
             assert rois.shape[0] == bbox_targets.shape[0]
@@ -250,7 +255,7 @@ class TestGenerateMaskLabels(unittest.TestCase):
                 append_batch_size=False)
             gt_segms = layers.data(
                 name='gt_segms',
-                shape=[2, 100, 200],
+                shape=[20, 2],
                 dtype='uint8',
                 lod_level=1,
                 append_batch_size=False)
@@ -268,7 +273,7 @@ class TestGenerateMaskLabels(unittest.TestCase):
                 append_batch_size=False)
             num_classes = 5
             resolution = 14
-            mask_rois, roi_has_mask_int32, mask_int32 = fluid.layers.generate_mask_labels(
+            outs = fluid.layers.generate_mask_labels(
                 im_info=im_info,
                 gt_classes=gt_classes,
                 is_crowd=is_crowd,
@@ -277,6 +282,7 @@ class TestGenerateMaskLabels(unittest.TestCase):
                 labels_int32=labels_int32,
                 num_classes=num_classes,
                 resolution=resolution)
+            mask_rois, roi_has_mask_int32, mask_int32 = outs
             assert mask_rois.shape[1] == 4
             assert mask_int32.shape[1] == num_classes * resolution * resolution
 

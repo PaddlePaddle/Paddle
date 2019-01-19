@@ -27,7 +27,8 @@ void Compare(const T* a, const T* b, const int n) {
 }
 
 TEST(MaskUtil, Poly2MaskTest) {
-  float polys[] = {1.97, 1.88, 5.81, 1.88, 1.69, 6.53, 5.94, 6.38, 1.97, 1.88};
+  float polys[] = {1.97f, 1.88f, 5.81f, 1.88f, 1.69f,
+                   6.53f, 5.94f, 6.38f, 1.97f, 1.88f};
   int h = 8, w = 8;
   int k = 5;  // length(polys) / 2
   // clang-format off
@@ -60,12 +61,13 @@ TEST(MaskUtil, Poly2MaskTest) {
 
 TEST(MaskUtil, Poly2BoxesTest) {
   // clang-format off
-  std::vector<std::vector<std::vector<float>>> polys =
-      {{{1.97, 1.88, 5.81, 1.88, 1.69, 6.53, 5.94, 6.38, 1.97, 1.88}},
-       {{2.97, 1.88, 3.81, 1.68, 1.69, 6.63, 6.94, 6.58, 2.97, 0.88}}};
+  std::vector<std::vector<std::vector<float>>> polys = {
+      {{1.97f, 1.88f, 5.81f, 1.88f, 1.69f, 6.53f, 5.94f, 6.38f, 1.97f, 1.88f}},
+      {{2.97f, 1.88f, 3.81f, 1.68f, 1.69f, 6.63f, 6.94f, 6.58f, 2.97f, 0.88f}}
+  };
   float expect_boxes[] = {
-      1.69, 1.88, 5.94, 6.53,
-      1.69, 0.88, 6.94, 6.63
+      1.69f, 1.88f, 5.94f, 6.53f,
+      1.69f, 0.88f, 6.94f, 6.63f
   };
   // clang-format on
 
@@ -78,11 +80,11 @@ TEST(MaskUtil, Poly2BoxesTest) {
 
 TEST(MaskUtil, Polys2MaskWrtBoxTest) {
   // clang-format off
-  std::vector<std::vector<std::vector<float>>> polys =
-      {{{1.97, 1.88, 5.81, 1.88, 1.69, 6.53, 5.94, 6.38, 1.97, 1.88},
-        {2.97, 1.88, 3.81, 1.68, 1.69, 6.63, 6.94, 6.58, 2.97, 0.88}}};
+  std::vector<std::vector<std::vector<float>>> polys = {{
+      {1.97f, 1.88f, 5.81f, 1.88f, 1.69f, 6.53f, 5.94f, 6.38f, 1.97f, 1.88f},
+      {2.97f, 1.88f, 3.81f, 1.68f, 1.69f, 6.63f, 6.94f, 6.58f, 2.97f, 0.88f}}};
   float expect_boxes[] = {
-      1.69, 0.88, 6.94, 6.63
+      1.69f, 0.88f, 6.94f, 6.63f
   };
   uint8_t expect_mask[] = {
       0, 0, 0, 0, 0, 0, 0, 0,
