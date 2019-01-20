@@ -35,8 +35,11 @@ using framework::proto::ProgramDesc;
 using framework::NaiveExecutor;
 using contrib::AnalysisConfig;
 
-/* This predictor is based on the original native predictor with IR and Analysis
- * support. It will optimize IR and Parameters in the runtime.
+/** \brief This predictor is based on the original native predictor with IR and
+ * Analysis support.
+ *
+ * It will optimize IR and Parameters in the runtime.
+ *
  * TODO(Superjomn) Replace the Navive predictor?
  */
 class AnalysisPredictor : public PaddlePredictor {
@@ -112,6 +115,8 @@ class AnalysisPredictor : public PaddlePredictor {
   // concurrency problems, wrong results and memory leak, so cache them.
   std::vector<framework::LoDTensor> feed_tensors_;
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;
+  // A mutex help to make Clone thread safe.
+  std::mutex clone_mutex_;
 
  private:
   // Some status here that help to determine the status inside the predictor.

@@ -26,14 +26,22 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+namespace NG_OPS = paddle::operators::ngraphs;
 std::map<std::string,
          std::function<void(const std::shared_ptr<OperatorBase>&,
                             std::shared_ptr<std::unordered_map<
                                 std::string, std::shared_ptr<ngraph::Node>>>)>>
     NgraphBridge::NG_NODE_MAP = {
+        {"elementwise_add", NG_OPS::BuildElementwiseAddNode},
+        {"elementwise_add_grad", NG_OPS::BuildElementwiseAddGradNode},
         {"fill_constant", paddle::operators::ngraphs::BuildFillConstantNode},
+        {"mean", paddle::operators::ngraphs::BuildMeanNode},
+        {"mean_grad", paddle::operators::ngraphs::BuildMeanGradNode},
         {"mul", paddle::operators::ngraphs::BuildMulNode},
         {"mul_grad", paddle::operators::ngraphs::BuildMulGradNode},
+        {"softmax", paddle::operators::ngraphs::BuildSoftmaxNode},
+        {"softmax_grad", paddle::operators::ngraphs::BuildSoftmaxGradNode},
+        {"scale", paddle::operators::ngraphs::BuildScaleNode},
         {"relu", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Relu>},
         {"tanh", paddle::operators::ngraphs::BuildUnaryNode<ngraph::op::Tanh>},
         {"top_k", paddle::operators::ngraphs::BuildTopKNode}};

@@ -26,7 +26,7 @@ from ..initializer import Normal, Constant
 from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat
+from .tensor import concat, assign
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -58,6 +58,7 @@ __all__ = [
     'adaptive_pool2d',
     'adaptive_pool3d',
     'batch_norm',
+    'data_norm',
     'beam_search_decode',
     'conv2d_transpose',
     'conv3d_transpose',
@@ -180,7 +181,9 @@ __all__ = [
     'lstm',
     'py_func',
     'psroi_pool',
+    'teacher_student_sigmoid_loss',
     'huber_loss',
+    'tree_conv',
 ]
 
 kIgnoreIndex = -100
@@ -340,9 +343,7 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
-    remote_prefetch = False
-    if os.environ.get('PADDLE_ENABLE_REMOTE_PREFETCH'):
-        remote_prefetch = True
+    remote_prefetch = is_sparse and (not is_distributed)
     if remote_prefetch:
         assert is_sparse is True and is_distributed is False
     w = helper.create_parameter(
@@ -864,12 +865,14 @@ def dynamic_gru(input,
                 is_reverse=False,
                 gate_activation='sigmoid',
                 candidate_activation='tanh',
-                h_0=None):
+                h_0=None,
+                origin_mode=False):
     """
     **Gated Recurrent Unit (GRU) Layer**
 
-    Refer to `Empirical Evaluation of Gated Recurrent Neural Networks on
-    Sequence Modeling <https://arxiv.org/abs/1412.3555>`_ .
+    if origin_mode is False, then the equation of a gru step is from paper
+    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
+    Modeling <https://arxiv.org/pdf/1412.3555.pdf>`_ .
 
     The formula is as follows:
 
@@ -882,6 +885,21 @@ def dynamic_gru(input,
         \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
 
         h_t & = (1-u_t) \odot h_{t-1} + u_t \odot \\tilde{h_t}
+
+
+    if origin_mode is True then the equation is from paper
+    Learning Phrase Representations using RNN Encoder-Decoder for Statistical
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
+
+    .. math::
+
+        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
+
+        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
+
+        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
+
+        h_t & = u_t \odot h_{t-1} + (1-u_t) \odot \\tilde{h_t}
 
     The :math:`\odot` is the element-wise product of the vectors. :math:`act_g`
     is the update gate and reset gate activation function and :math:`sigmoid`
@@ -980,7 +998,8 @@ def dynamic_gru(input,
         attrs={
             'is_reverse': is_reverse,
             'gate_activation': gate_activation,
-            'activation': candidate_activation
+            'activation': candidate_activation,
+            'origin_mode': origin_mode
         })
     return hidden
 
@@ -991,9 +1010,14 @@ def gru_unit(input,
              param_attr=None,
              bias_attr=None,
              activation='tanh',
-             gate_activation='sigmoid'):
+             gate_activation='sigmoid',
+             origin_mode=False):
     """
-    GRU unit layer. The equation of a gru step is:
+    **GRU unit layer**
+
+    if origin_mode is True, then the equation of a gru step is from paper
+    `Learning Phrase Representations using RNN Encoder-Decoder for Statistical
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
 
         .. math::
             u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
@@ -1002,7 +1026,21 @@ def gru_unit(input,
 
             m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
 
-            h_t & = dot((1-u_t), m_t) + dot(u_t, h_{t-1})
+            h_t & = dot(u_t, h_{t-1}) + dot((1-u_t), m_t)
+
+    if origin_mode is False, then the equation of a gru step is from paper
+    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
+    Modeling <https://arxiv.org/pdf/1412.3555.pdf>`_
+
+        .. math::
+            u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
+
+            r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
+
+            m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
+
+            h_t & = dot((1-u_t), h_{t-1}) + dot(u_t, m_t)
+
 
     The inputs of gru unit includes :math:`z_t`, :math:`h_{t-1}`. In terms
     of the equation above, the :math:`z_t` is split into 3 parts -
@@ -2898,6 +2936,133 @@ def batch_norm(input,
     return helper.append_activation(batch_norm_out)
 
 
+def data_norm(input,
+              act=None,
+              epsilon=1e-05,
+              param_attr=None,
+              data_layout='NCHW',
+              in_place=False,
+              use_mkldnn=False,
+              name=None,
+              moving_mean_name=None,
+              moving_variance_name=None,
+              do_model_average_for_mean_and_var=False):
+    """
+    **Data Normalization Layer**
+
+    Can be used as a normalizer function for conv2d and fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    1. NHWC `[batch, in_height, in_width, in_channels]`
+
+    2. NCHW `[batch, in_channels, in_height, in_width]`
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
+        \ mini-batch\ mean \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+    Args:
+        input(variable): The input variable which is a LoDTensor.
+        act(string, Default None): Activation type, linear|relu|prelu|...
+        epsilon(float, Default 1e-05):
+        param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
+        data_layout(string, default NCHW): NCHW|NHWC
+        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
+        use_mkldnn(bool, Default false): ${use_mkldnn_comment}
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
+        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+
+    Returns:
+        Variable: A tensor variable which is the result after applying data normalization on the input.
+
+    Examples:
+
+        .. code-block:: python
+
+            data = fluid.layers.data(input=x, size=200, param_attr='fc1.w')
+            hidden2 = fluid.layers.data_norm(input=hidden1)
+    """
+    helper = LayerHelper('data_norm', **locals())
+    dtype = helper.input_dtype()
+
+    input_shape = input.shape
+    if data_layout == 'NCHW':
+        channel_num = input_shape[1]
+    else:
+        if data_layout == 'NHWC':
+            channel_num = input_shape[-1]
+        else:
+            raise ValueError("unsupported data layout:" + data_layout)
+
+    param_shape = [channel_num]
+
+    batch_size_default = 1e4
+    batch_sum_default = 0.0
+    batch_square_sum_default = 1e4
+
+    if param_attr and isinstance(param_attr, dict):
+        batch_size_default = param_attr.get("batch_size", 1e4)
+        batch_sum_default = param_attr.get("batch_sum", 0.0)
+        batch_square_sum_default = param_attr.get("batch_square", 1e4)
+
+    # create parameter
+    batch_size = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.batch_size',
+            initializer=Constant(value=float(batch_size_default)),
+            trainable=True),
+        shape=param_shape,
+        dtype=input.dtype)
+
+    batch_sum = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.batch_sum',
+            initializer=Constant(value=float(batch_sum_default)),
+            trainable=True),
+        shape=param_shape,
+        dtype=input.dtype)
+
+    batch_square_sum = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.batch_square_sum',
+            initializer=Constant(value=float(batch_square_sum_default)),
+            trainable=True),
+        shape=param_shape,
+        dtype=input.dtype)
+
+    means = helper.create_variable(dtype=dtype, stop_gradient=True)
+    scales = helper.create_variable(dtype=dtype, stop_gradient=True)
+
+    data_norm_out = input if in_place else helper.create_variable(dtype=dtype)
+
+    helper.append_op(
+        type="data_norm",
+        inputs={
+            "X": input,
+            "BatchSize": batch_size,
+            "BatchSum": batch_sum,
+            "BatchSquareSum": batch_square_sum
+        },
+        outputs={"Y": data_norm_out,
+                 "Means": means,
+                 "Scales": scales},
+        attrs={"epsilon": epsilon,
+               "use_mkldnn": use_mkldnn})
+
+    return helper.append_activation(data_norm_out)
+
+
 @templatedoc()
 def layer_norm(input,
                scale=True,
@@ -3066,9 +3231,9 @@ def group_norm(input,
         inputs['Bias'] = bias
 
     # create output
-    mean_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
-    variance_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
-    group_norm_out = helper.create_tmp_variable(dtype)
+    mean_out = helper.create_variable(dtype=dtype, stop_gradient=True)
+    variance_out = helper.create_variable(dtype=dtype, stop_gradient=True)
+    group_norm_out = helper.create_variable(dtype)
 
     helper.append_op(
         type="group_norm",
@@ -5032,12 +5197,18 @@ def nce(input,
     else:
         num_neg_samples = int(num_neg_samples)
 
+    remote_prefetch = is_sparse
+    print(
+        "With sparse mode, if your models has only small parameter prefetch may cause speed down"
+    )
+
     attrs = {
         'num_total_classes': int(num_total_classes),
         'num_neg_samples': num_neg_samples,
         'seed': seed,
         'sampler': sampler,
-        'is_sparse': is_sparse
+        'is_sparse': is_sparse,
+        'remote_prefetch': remote_prefetch
     }
 
     helper.append_op(
@@ -5147,7 +5318,10 @@ def hsigmoid(input,
         pass
 
     weights = None
-
+    remote_prefetch = is_sparse
+    print(
+        "With sparse mode, if your models has only small parameter prefetch may cause speed down"
+    )
     if not is_custom:
         weights = helper.create_parameter(
             attr=helper.param_attr,
@@ -5163,7 +5337,7 @@ def hsigmoid(input,
     inputs = {
         "X": input,
         "W": weights,
-        "PTable": path_table,
+        "PathTable": path_table,
         "PathCode": path_code,
         "Label": label
     }
@@ -5186,9 +5360,13 @@ def hsigmoid(input,
         type="hierarchical_sigmoid",
         inputs=inputs,
         outputs={"Out": out,
-                 "PreOut": pre_out},
-        attrs={"num_classes": num_classes,
-               "is_sparse": is_sparse})
+                 "PreOut": pre_out,
+                 "W_Out": weights},
+        attrs={
+            "num_classes": num_classes,
+            "is_sparse": is_sparse,
+            "remote_prefetch": remote_prefetch
+        })
     return out
 
 
@@ -7684,7 +7862,7 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
 
     Examples:
 
-        .. code-block:: python
+    .. code-block:: python
 
             x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
             y = fluid.layers.brelu(x, t_min=1.0, t_max=20.0)
@@ -8339,8 +8517,7 @@ def shape(input):
     """
 
     helper = LayerHelper('shape', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('input'))
+    out = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(
         type='shape', inputs={'Input': input}, outputs={'Out': out})
 
@@ -9253,6 +9430,47 @@ def log_loss(input, label, epsilon=1e-4, name=None):
     return loss
 
 
+def teacher_student_sigmoid_loss(input,
+                                 label,
+                                 soft_max_up_bound=15.0,
+                                 soft_max_lower_bound=-15.0):
+    """
+    **Teacher Student Log Loss Layer**
+
+    This layer accepts input predictions and target label and returns the
+    teacher_student loss.
+
+    .. math::
+        loss = max(x, 0) - x * z + log(1 + exp(-abs(x))) + max(x, 0) - x * z' + log(1 + exp(-abs(x)))
+
+    Args:
+        input (Variable|list):  a 2-D tensor with shape [N x 1], where N is the
+                                batch size. This input is a probability computed
+                                by the previous operator.
+        label (Variable|list):  the ground truth which is a 2-D tensor with
+                                shape [N x 1], where N is the batch size.
+        soft_max_up_bound  (float):  if input > soft_max_up_bound, will be bound 
+        soft_max_lower_bound (float): if input < soft_max_lower_bound, will be bound
+
+    Returns:
+        Variable: A 2-D tensor with shape [N x 1], the teacher_student_sigmoid_loss.
+
+    Examples:
+        .. code-block:: python
+          cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
+    """
+    helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
+    out = helper.create_variable(dtype=input.dtype)
+    helper.append_op(
+        type='teacher_student_sigmoid_loss',
+        inputs={'X': [input],
+                'Label': [label]},
+        outputs={'Y': [out]},
+        attrs={"soft_max_lower_bound": float(soft_max_lower_bound), \
+                "soft_max_up_bound": float(soft_max_up_bound)})
+    return out
+
+
 def add_position_encoding(input, alpha, beta, name=None):
     """
     **Add Position Encoding Layer**
@@ -9713,3 +9931,73 @@ def huber_loss(input, label, delta):
                  'Residual': residual},
         attrs={'delta': delta})
     return out
+
+
+@templatedoc()
+def tree_conv(nodes_vector,
+              edge_set,
+              output_size,
+              num_filters=1,
+              max_depth=2,
+              act='tanh',
+              param_attr=None,
+              bias_attr=None,
+              name=None):
+    """ 
+    ${comment}
+    		
+    Args:
+        nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
+        edge_set(${edge_set_type}): ${edge_set_comment}
+        output_size(int): output feature width
+        num_filters(int): number of filters, Default 1
+        max_depth(int): max depth of filters, Default 2
+        act(str): activation function, Default tanh
+        param_attr(ParamAttr): the parameter attribute for the filters, Default None
+        bias_attr(ParamAttr): the parameter attribute for the bias of this layer, Default None
+        name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default None
+
+    Returns:
+        out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+          nodes_vector = layers.data(name='vectors', shape=[None, 10, 5], dtype='float32)
+          # None for batch size, 10 for max_node_size of dataset, 5 for vector width
+          edge_set = layers.data(name='edge_set', shape=[None, 10, 2], dtype='float32')
+          # None for batch size, 10 for max_node_size of dataset, 2 for every edge has two nodes
+          # edges must be directional
+          out_vector = layers.tree_conv(nodes_vector, edge_set, 6, 1, 2, 'tanh',
+              ParamAttr(initializer=Constant(1.0), ParamAttr(initializer=Constant(1.0))
+          # the shape of output will be [None, 10, 6, 1],
+          # None for batch size, 10 for max_node_size of dataset, 6 for output size, 1 for 1 filter
+          out_vector = layers.reshape(out_vector, shape=[None, 10, 6])
+          # After reshape, output tensor could be nodes_vector for next tree convolution
+          out_vector_2 = layers.tree_conv(out_vector, edge_set, 3, 4, 2, 'tanh',
+              ParamAttr(initializer=Constant(1.0), ParamAttr(initializer=Constant(1.0))
+          # also output tensor could be pooling(the pooling in paper called global pooling)
+          pooled = layers.reduce_max(out_vector, dims=2) # global pooling
+    """
+    helper = LayerHelper("tree_conv", **locals())
+    dtype = helper.input_dtype('nodes_vector')
+    feature_size = nodes_vector.shape[2]
+    W_shape = [feature_size, 3, output_size, num_filters]
+    W = helper.create_parameter(
+        attr=param_attr, shape=W_shape, dtype=dtype, is_bias=False)
+    if name == None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+    helper.append_op(
+        type='tree_conv',
+        inputs={'NodesVector': nodes_vector,
+                'EdgeSet': edge_set,
+                'Filter': W},
+        outputs={'Out': out, },
+        attrs={'max_depth': max_depth})
+    if helper.bias_attr:
+        pre_activation = helper.append_bias_op(out)
+    else:
+        pre_activation = out
+    return helper.append_activation(pre_activation)
