@@ -85,6 +85,10 @@ void BufferedReader::ReadAsync(size_t i) {
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
                        boost::get<platform::CUDAPinnedPlace>(cpu_place),
                        cpu_ptr, size, stream);
+        else if ((platform::is_gpu_place(cpu_place)))
+          memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
+                       boost::get<platform::CUDAPlace>(cpu_place), cpu_ptr,
+                       size, stream);
         else
           // if cpu place is not pinned, async copy is slower than sync copy,
           // so we use sync copy instead.
