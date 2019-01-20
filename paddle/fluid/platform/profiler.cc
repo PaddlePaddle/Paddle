@@ -165,6 +165,7 @@ inline EventList& GetEventList() {
     g_event_list = std::make_shared<EventList>();
     g_thread_id = g_next_thread_id++;
     g_all_event_lists.emplace_front(g_event_list);
+    SetCurThreadId(g_thread_id);
   }
   return *g_event_list;
 }

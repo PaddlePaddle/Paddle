@@ -131,8 +131,12 @@ class Timeline(object):
                     if (k, event.device_id, "CPU") not in self._devices:
                         pid = self._allocate_pid()
                         self._devices[(k, event.device_id, "CPU")] = pid
-                        self._chrome_trace.emit_pid("%s:cpu:block:%d" %
-                                                    (k, event.device_id), pid)
+                        # -1 device id represents CUDA api call
+                        if event.device_id == -1:
+                            self._chrome_trace.emit_pid("%s:cuda_api" % k, pid)
+                        else:
+                            self._chrome_trace.emit_pid(
+                                "%s:cpu:block:%d" % (k, event.device_id), pid)
                 elif event.type == profiler_pb2.Event.GPUKernel:
                     if (k, event.device_id, "GPUKernel") not in self._devices:
                         pid = self._allocate_pid()

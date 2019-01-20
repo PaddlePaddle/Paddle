@@ -19,6 +19,7 @@ limitations under the License. */
 #include <map>
 #include <mutex>  // NOLINT
 #include <numeric>
+#include <sstream>
 #include <string>
 #include <thread>  // NOLINT
 #include <utility>
@@ -30,6 +31,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/cupti_cbid_str.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
+#ifdef __linux__
+#include <pthread.h>
+#endif
 
 namespace paddle {
 namespace platform {
@@ -38,6 +42,8 @@ namespace {
 thread_local std::deque<int> block_id_stack;
 // Tracking the nested event stacks.
 thread_local std::deque<Event *> annotation_stack;
+
+std::map<uint32_t, int32_t> system_thread_id_map;
 
 std::once_flag tracer_once_flag;
 DeviceTracer *tracer = nullptr;
@@ -199,15 +205,18 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
           case CUPTI_ACTIVITY_KIND_DRIVER: {
             auto *api = reinterpret_cast<const CUpti_ActivityAPI *>(record);
             if (api->start != 0 && api->end != 0)
-              tracer->AddCPURecords(DriverKind(api->cbid), api->start, api->end,
-                                    api->threadId, api->threadId);
+              // -1 device id represents CUDA api call
+              tracer->AddCPURecords(
+                  DriverKind(api->cbid), api->start, api->end, -1,
+                  GetThreadIdFromSystemThreadId(api->threadId));
             break;
           }
           case CUPTI_ACTIVITY_KIND_RUNTIME: {
             auto *api = reinterpret_cast<const CUpti_ActivityAPI *>(record);
             if (api->start != 0 && api->end != 0)
-              tracer->AddCPURecords(RuntimeKind(api->cbid), api->start,
-                                    api->end, api->threadId, api->threadId);
+              tracer->AddCPURecords(
+                  RuntimeKind(api->cbid), api->start, api->end, -1,
+                  GetThreadIdFromSystemThreadId(api->threadId));
             break;
           }
           default: { break; }
@@ -374,7 +383,8 @@ class DeviceTracerImpl : public DeviceTracer {
       auto *event = profile_pb.add_events();
       event->set_type(proto::Event::GPUKernel);
       if (correlations_.find(r.correlation_id) != correlations_.end()) {
-        event->set_name(correlations_.at(r.correlation_id)->name());
+        event->set_name(correlations_.at(r.correlation_id)->name() + "::" +
+                        r.name);
       } else {
         PADDLE_ENFORCE(false, "Missing Kernel Event: " + r.name);
         event->set_name(r.name);
@@ -400,7 +410,7 @@ class DeviceTracerImpl : public DeviceTracer {
       event->set_type(proto::Event::GPUKernel);
       auto c = correlations_.find(r.correlation_id);
       if (c != correlations_.end() && c->second != nullptr) {
-        event->set_name(c->second->name());
+        event->set_name(c->second->name() + "::" + r.name);
         find++;
       } else {
         miss++;
@@ -413,7 +423,7 @@ class DeviceTracerImpl : public DeviceTracer {
       event->set_device_id(r.device_id);
       event->mutable_memcopy()->set_bytes(r.bytes);
     }
-    VLOG(1) << "MemRecord event miss: " << miss << " find:" << find;
+    VLOG(1) << "MemRecord event miss: " << miss << " find: " << find;
     std::ofstream profile_f;
     profile_f.open(profile_path, std::ios::out | std::ios::trunc);
     std::string profile_str;
@@ -495,5 +505,43 @@ void SetCurBlock(int block_id) { block_id_stack.push_back(block_id); }
 void ClearCurBlock() { block_id_stack.pop_back(); }
 
 int BlockDepth() { return block_id_stack.size(); }
+
+uint32_t GetCurSystemThreadId() {
+  std::stringstream ss;
+  ss << std::this_thread::get_id();
+  uint32_t id = static_cast<uint32_t>(std::stoull(ss.str()));
+  return id;
+}
+
+int64_t GetCurSystemThreadIdFromPthread() {
+#ifdef __linux__
+  return static_cast<int64_t>(pthread_self());
+#endif
+  return 0;
+}
+
+void SetCurThreadId(int32_t id) {
+  /*
+    NOTE(liangdun): In order to map CUDA API thread id into paddle's thread id,
+    we have to get current thread id. However, I can not find other elegant and
+    portable way to get integer thread id. One way is get thread id from
+    pthread. But this method only works on Linux. Another way is using
+    stringstream, this method is more portable. These two methods are
+    equivalent In Linux.
+  */
+  auto gid = GetCurSystemThreadId();
+  auto gid_p = GetCurSystemThreadIdFromPthread();
+  VLOG(1) << "SetCurThreadId: " << gid << " -> " << id
+          << " pthread_id:" << gid_p;
+  system_thread_id_map[gid] = id;
+}
+
+int32_t GetThreadIdFromSystemThreadId(uint32_t id) {
+  auto it = system_thread_id_map.find(id);
+  if (it != system_thread_id_map.end()) return it->second;
+  // return origin id if no event is recorded in this thread.
+  return static_cast<int32_t>(id);
+}
+
 }  // namespace platform
 }  // namespace paddle

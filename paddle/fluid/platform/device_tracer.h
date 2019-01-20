@@ -116,5 +116,9 @@ Event* CurAnnotation();
 void SetCurBlock(int block_id);
 void ClearCurBlock();
 int BlockDepth();
+
+// Set current thread id, so we can map the system thread id to thread id.
+void SetCurThreadId(int32_t id);
+int32_t GetThreadIdFromSystemThreadId(uint32_t id);
 }  // namespace platform
 }  // namespace paddle
