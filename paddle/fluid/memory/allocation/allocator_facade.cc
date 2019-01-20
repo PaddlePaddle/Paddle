@@ -145,7 +145,8 @@ class CUDAChunkedAllocator : public ChunkedAllocator {
       : ChunkedAllocator(std::unique_ptr<Allocator>(
                              new CUDAAllocator(platform::CUDAPlace(dev_id))),
                          GetMaxChunkSize(dev_id), GetCapcity(dev_id),
-                         GetRetryTime()) {}
+                         GetRetryTime()),
+        dev_id_(dev_id) {}
 
  private:
   static size_t GetMaxChunkSize(int dev_id) {
@@ -162,6 +163,27 @@ class CUDAChunkedAllocator : public ChunkedAllocator {
   }
 
   static int64_t GetRetryTime() { return FLAGS_gpu_allocator_retry_time; }
+
+ protected:
+  int dev_id_;
+  int total_allocated_ = 0;
+  int peak_allocated_ = 0;
+
+  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override {
+    auto allocation = ChunkedAllocator::AllocateImpl(size, attr);
+    total_allocated_ += allocation->size();
+    if (total_allocated_ > peak_allocated_) {
+      peak_allocated_ = total_allocated_;
+      VLOG(3) << "device: " << dev_id_
+              << " peak memory usage : " << (peak_allocated_ >> 20) << " MiB";
+    }
+    return allocation;
+  }
+
+  void Free(Allocation* allocation) override {
+    total_allocated_ -= allocation->size();
+    ChunkedAllocator::Free(allocation);
+  }
 };
 
 class CUDAPinnedChunkedAllocator : public ChunkedAllocator {
