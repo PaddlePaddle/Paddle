@@ -1,0 +1,21 @@
+version: 1.0
+quantizers:
+    quantizer_1:
+        class: 'DynamicQuantizer'
+        weight_bits: 8
+        activation_bits: 8
+strategies:
+    strategy_1:
+        class: 'QuantizationStrategy'
+        quantizer: 'quantizer_1'
+        start_epoch: 0
+        end_epoch: 10
+        dirname: 'output_dynamic'
+        target_device: 'mobile'
+        save_as_int8: True
+
+compress_pass:
+    class: 'CompressPass'
+    epoch: 0
+    strategies:
+        - strategy_1

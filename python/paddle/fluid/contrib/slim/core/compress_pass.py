@@ -46,6 +46,7 @@ class Context(object):
         self.epoch_id = 0
         # Current batch
         self.batch_id = 0
+
         self.k_v = {}
 
         self.place = place

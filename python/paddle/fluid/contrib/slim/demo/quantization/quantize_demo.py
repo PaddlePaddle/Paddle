@@ -25,7 +25,7 @@ class LinearModel(object):
     def __init__(slef):
         pass
 
-    def train(self):
+    def train(self, use_cuda=False):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         startup_program.random_seed = 10
@@ -35,7 +35,7 @@ class LinearModel(object):
             predict = fluid.layers.fc(input=x, size=1, act=None)
             cost = fluid.layers.square_error_cost(input=predict, label=y)
             avg_cost = fluid.layers.mean(cost)
-            eval_program = train_program.clone()
+            eval_program = train_program.clone(for_test=True)
             sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost)
 
@@ -43,16 +43,16 @@ class LinearModel(object):
             paddle.dataset.uci_housing.train(), batch_size=1)
         eval_reader = paddle.batch(
             paddle.dataset.uci_housing.test(), batch_size=1)
-        place = fluid.CPUPlace()
+        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         train_feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
         eval_feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
         exe = fluid.Executor(place)
         exe.run(startup_program)
         train_metrics = {"loss": avg_cost.name}
         eval_metrics = {"loss": avg_cost.name}
-
         graph = ImitationGraph(train_program)
-        config = './config.yaml'
+        # config = './config_dynamic.yaml'
+        config = './config_static.yaml'
         comp_pass = build_compressor(
             place,
             data_reader=train_reader,
@@ -69,4 +69,4 @@ class LinearModel(object):
 
 if __name__ == "__main__":
     model = LinearModel()
-    model.train()
+    model.train(use_cuda=True)

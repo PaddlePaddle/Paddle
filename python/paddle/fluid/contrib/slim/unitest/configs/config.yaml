@@ -1,5 +1,5 @@
 version: 1.0
-include: ["./unitest/configs/pruners.yaml", "./unitest/configs/pruners_0.yaml"]
+include: ["./unitest/configs/pruners.yaml", "./unitest/configs/pruners_0.yaml", "./unitest/configs/quantizers.yaml"]
 pruners:
     pruner_1:
         class: 'RatioPruner'
@@ -21,9 +21,18 @@ strategies:
         acc_loss_threshold: 0.2
         sensitivities:
             'conv1_1.w': 0.4
+    strategy_2:
+        class: 'QuantizationStrategy'
+        quantizer: 'quantizer_2'
+        start_epoch: 0
+        end_epoch: 10
+        dirname: None
+        target_device: 'mobile'
+        save_as_int8: False
 
 compress_pass:
     class: 'CompressPass'
     epoch: 100
     strategies:
         - strategy_1
+        - strategy_2
