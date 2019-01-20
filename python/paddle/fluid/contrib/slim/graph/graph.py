@@ -11,12 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from __future__ import print_function
+import os
+import subprocess
 from ....framework import Program
 from ....framework import Block
 from .... import core
 
-__all__ = ['Graph', 'ImitationGraph', 'PyGraph']
+__all__ = ['Graph', 'ImitationGraph', 'IRGraph', 'PyGraph']
 
 
 class PyGraph(object):
@@ -30,17 +32,18 @@ class PyGraph(object):
         self.graph = graph
 
     def all_parameters(self):
-        params = []
+        param_nodes = set()
         for node in self.graph.nodes():
-            if node.is_var() and node.var().persistable():
-                params.append(node)
-        return params
+            if node.is_var() and node.var() is not None and node.var(
+            ).persistable():
+                param_nodes.add(node)
+        return param_nodes
 
     def all_vars(self):
-        return [node for node in self.graph.nodes() if node.is_var()]
+        return {node for node in self.graph.nodes() if node.is_var()}
 
     def all_ops(self):
-        return [node for node in self.graph.nodes() if node.is_op()]
+        return {node for node in self.graph.nodes() if node.is_op()}
 
     def create_param_node(self, name, var_type, shape, var_dtype):
         var_desc = core.VarDesc(name)
@@ -65,10 +68,16 @@ class PyGraph(object):
         op_desc.set_type(op_type)
         for attr, value in attrs.iteritems():
             self._update_desc_attr(op_desc, attr, value)
-        for input_name, var_node in inputs.iteritems():
-            op_desc.set_input(input_name, [var_node.name()])
-        for output_name, var_node in outputs.iteritems():
-            op_desc.set_output(output_name, [var_node.name()])
+        for input_name, var_nodes in inputs.iteritems():
+            if not isinstance(var_nodes, list):
+                var_nodes = [var_nodes]
+            op_desc.set_input(input_name,
+                              [var_node.name() for var_node in var_nodes])
+        for output_name, var_nodes in outputs.iteritems():
+            if not isinstance(var_nodes, list):
+                var_nodes = [var_nodes]
+            op_desc.set_output(output_name,
+                               [var_node.name() for var_node in var_nodes])
         return self.graph.create_op_node(op_desc)
 
     def create_op_node_from_desc(self, op_desc):
@@ -88,6 +97,49 @@ class PyGraph(object):
             desc.set_serialized_attr(name, val.serialize_to_string())
         else:
             desc._set_attr(name, val)
+
+    def safe_remove_nodes(self, remove_nodes):
+        if not isinstance(remove_nodes, set):
+            remove_nodes = set(remove_nodes)
+        core.graph_safe_remove_nodes(self.graph, remove_nodes)
+
+    def draw_graph(self, save_path, name, marked_nodes=None):
+        def _convert_to_pdf(dot_file_path):
+            pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
+            exited_code = subprocess.call('dot -Tpdf ' + dot_file_path \
+                            + ' -o ' + pdf_save_path, shell=True)
+            if exited_code != 0:
+                print('The dot command is needed for creating pdf files.')
+                print('The {} is saved as the dot filetype.'.format(
+                    dot_file_path))
+
+        remove_ctr_vars = set()
+        ops_num = 0
+        for node in self.graph.nodes():
+            if node.is_ctrl_var():
+                remove_ctr_vars.add(node)
+            elif node.is_op():
+                ops_num += 1
+        print('Total ops num = {}.'.format(ops_num))
+        self.safe_remove_nodes(remove_ctr_vars)
+        if marked_nodes is not None:
+            if not isinstance(marked_nodes, set):
+                marked_nodes = set(marked_nodes)
+            marked_nodes = marked_nodes - remove_ctr_vars
+            self.graph.set('__graphviz__marked_node__', marked_nodes)
+        viz_dot_path = os.path.join(save_path, name) + '.dot'
+        viz_pass = core.get_pass('graph_viz_pass')
+        viz_pass.set_str('graph_viz_path', viz_dot_path)
+        viz_pass.apply(self.graph)
+        _convert_to_pdf(viz_dot_path)
+
+    def to_program(self):
+        convert_pass = core.get_pass('graph_to_program_pass')
+        convert_pass.set_program('program', Program().desc)
+        convert_pass.apply(self.graph)
+        program = Program()
+        program.desc = convert_pass.get_program('program')
+        return program
 
 
 class Graph(object):
@@ -112,3 +164,7 @@ class ImitationGraph(Graph):
 
     def all_parameters(self):
         return self.program.global_block().all_parameters()
+
+
+class IRGraph(Graph):
+    pass
