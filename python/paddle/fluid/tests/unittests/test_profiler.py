@@ -103,8 +103,7 @@ class TestProfiler(unittest.TestCase):
                      "profiler is enabled only with GPU")
     def test_all_profiler(self):
         self.net_profiler('All', '/tmp/profile_out')
-        self.net_profiler(
-            'All', '/paddle2/build/profile_file2', use_parallel_executor=True)
+        self.net_profiler('All', '/tmp/profile_out', use_parallel_executor=True)
         with open('/tmp/profile_out', 'rb') as f:
             self.assertGreater(len(f.read()), 0)
 
