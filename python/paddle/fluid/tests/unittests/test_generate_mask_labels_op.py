@@ -44,7 +44,8 @@ def poly2mask(xy, k, h, w):
     y = [int(scale * p + 0.5) for p in xy[1::2]]
     y = y + [y[0]]
     m = sum([
-        max(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1])) + 1 for j in range(k)
+        int(max(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1]))) + int(1)
+        for j in range(k)
     ])
 
     u, v = [], []
