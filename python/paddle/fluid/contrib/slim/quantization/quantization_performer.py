@@ -19,6 +19,8 @@ from ....initializer import Constant
 from .... import unique_name
 from ..graph import PyGraph
 
+__all__ = ['QuantizationPerformer']
+
 
 class QuantizationPerformer(object):
     def __init__(self,
@@ -108,18 +110,61 @@ class QuantizationPerformer(object):
                         graph, quant_var_node, scale_var_node, quant_bits)
                     dequantized_vars[var_node.name()] = dequant_var_node
                 self._update_input(var_node, dequant_var_node, op)
+                op.op()._rename_input(var_node.name(), dequant_var_node.name())
+
+        def _transform_backward(graph, op):
+            no_dequanted_input_vars = True
+            for var_node in op.inputs:
+                if var_node.name() in dequantized_vars:
+                    dequant_var_node = dequantized_vars[var_node.name()]
+                    self._update_input(var_node, dequant_var_node, op)
+                    op.op()._rename_input(var_node.name(),
+                                          dequant_var_node.name())
+                    no_dequanted_input_vars = False
+            if no_dequanted_input_vars:
+                raise ValueError("There is no dequanted inputs for op %s." %
+                                 (op.name()))
 
         if not self.is_test:
             self._create_global_step(graph)
         ops = graph.all_ops()
+        # The process of _transform_forward and _transform_backward is needed in two for loops.
+        # The loop for transforming the forward graph:
         for op in ops:
-            # transform the forward graph
             if op.name() in self.quantizable_ops:
                 _transform_forward(graph, op)
-            # rename the inputs of backward op
+        # The loop for renaming the inputs of backward op.
+        for op in ops:
             if op.name() in self.quantizable_grad_ops:
                 _transform_backward(graph, op)
+
         return self.need_inited_outer
+
+    def _create_global_step(self, graph):
+        if self.weight_quantize_type == 'range_abs_max' or \
+                self.activation_quantize_type == 'range_abs_max':
+            counter_name = '@STEP_COUNTER@'
+            for node in graph.all_vars():
+                if node.name() == counter_name:
+                    self.global_step = node
+            if self.global_step is None:
+                global_step_in = graph.create_param_node(
+                    name=counter_name,
+                    var_type=core.VarDesc.VarType.LOD_TENSOR,
+                    shape=[1],
+                    var_dtype=core.VarDesc.VarType.INT64)
+                self.need_inited_outer[global_step_in.var()] = \
+                    Constant(value=0, force_cpu=True)
+                global_step_out = graph.create_var_node_from_desc(
+                    global_step_in.var())
+                increment_op = graph.create_op_node(
+                    op_type='increment',
+                    attrs={'step': 1.0},
+                    inputs={'X': global_step_in},
+                    outputs={'Out': global_step_out})
+                self._link_to(global_step_in, increment_op)
+                self._link_to(increment_op, global_step_out)
+                self.global_step = global_step_out
 
     def _insert_quant_op(self, graph, var_node, quant_bits, quant_type):
         """
@@ -128,8 +173,8 @@ class QuantizationPerformer(object):
         if quant_type == 'abs_max':
             return self._insert_quant_abs_max_op(graph, var_node, quant_bits)
         elif quant_type == 'range_abs_max':
-            return self._inser_quant_range_abs_max_op(graph, var_node,
-                                                      quant_bits)
+            return self._insert_quant_range_abs_max_op(graph, var_node,
+                                                       quant_bits)
 
     def _insert_quant_abs_max_op(self, graph, var_node, quant_bits):
         """
@@ -237,14 +282,14 @@ class QuantizationPerformer(object):
         return dequant_var_node
 
     def _update_input(self, old_input_node, new_input_node, op_node):
-        old_input_node.outputs.remove(op_node)
-        op_node.inputs.remove(old_input_node)
-        new_input_node.outputs.append(op_node)
-        op_node.inputs.append(new_input_node)
+        old_input_node.outputs_remove(op_node)
+        op_node.inputs_remove(old_input_node)
+        new_input_node.outputs_append(op_node)
+        op_node.inputs_append(new_input_node)
 
-    def _link_to(node_in, node_out):
-        node_in.outputs.append(node_out)
-        node_out.inputs.append(node_in)
+    def _link_to(self, node_in, node_out):
+        node_in.outputs_append(node_out)
+        node_out.inputs_append(node_in)
 
     def _quantized_var_name(self, var_name):
         """
