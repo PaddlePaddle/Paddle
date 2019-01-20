@@ -617,6 +617,8 @@ void AnalysisPredictor::SerializeBatchVarShapes(const std::string &path) {
     return;
   }
 
+  // The sirialized data format:
+  // <tensor_name>:dim0,dim1,dim2,;
   for (auto &batch : batch_var_shapes_) {
     for (auto &ele : batch) {
       file << ele.first << ":";
