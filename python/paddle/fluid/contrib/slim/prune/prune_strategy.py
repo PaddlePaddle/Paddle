@@ -15,6 +15,7 @@
 from ..core.strategy import Strategy
 from ....framework import Program, program_guard, Parameter
 from .... import layers
+from ..graph import get_executor
 import numpy as np
 import copy
 import re
@@ -41,6 +42,7 @@ class SensitivePruneStrategy(Strategy):
         self.target_ratio = target_ratio
         self.metric_name = metric_name
         self.pruned_params = pruned_params
+        self.pruned_list = []
         self.sensitivities = sensitivities
         self.sensitivities_file = sensitivities_file
         self.backup = {}
@@ -60,6 +62,10 @@ class SensitivePruneStrategy(Strategy):
                 self.sensitivities = pickle.load(f)
         else:
             self.sensitivities = {}
+        for param in self.sensitivities:
+            self.sensitivities[param]['pruned_percent'] = [
+                round(p, 2) for p in self.sensitivities[param]['pruned_percent']
+            ]
         print "load sensitivities: %s" % self.sensitivities
 
     def _compute_sensitivities(self, context):
@@ -69,10 +75,9 @@ class SensitivePruneStrategy(Strategy):
         print("calling _compute_sensitivities.")
 
         self._load_sensitivities()
-        #        metric = self._eval_graph(context)
-        metric = 1.0
+        metric = self._eval_graph(context)
 
-        for param in context.graph.all_parameters():
+        for param in context.eval_graph.all_parameters():
             if not re.match(self.pruned_params, param.name):
                 continue
             if param.name not in self.sensitivities:
@@ -83,17 +88,20 @@ class SensitivePruneStrategy(Strategy):
             self.sensitivities[param.name]['size'] = param.shape[0]
             ratio = self.delta_rate
             while ratio < 1:
+                ratio = round(ratio, 2)
                 if ratio in self.sensitivities[param.name]['pruned_percent']:
-                    print "pruned param: {}; {};".format(param.name, ratio)
                     ratio += self.delta_rate
                     continue
+                else:
+                    print('{} not in {}'.format(
+                        ratio,
+                        self.sensitivities[param.name]['pruned_percent']))
                 # prune parameter by ratio
                 self._prune_parameters(
-                    context.graph,
-                    context.graph.scope, [param.name], [ratio],
+                    context.eval_graph,
+                    context.eval_graph.scope, [param.name], [ratio],
                     context.place,
                     lazy=True)
-                print "pruning param: {}; {};".format(param.name, ratio)
                 # get accuracy after pruning and update self.sensitivities
                 pruned_metric = self._eval_graph(context)
                 loss = metric - pruned_metric
@@ -105,7 +113,7 @@ class SensitivePruneStrategy(Strategy):
 
                 # restore pruned parameters
                 for param_name in self.backup.keys():
-                    param_t = context.graph.scope.find_var(
+                    param_t = context.eval_graph.scope.find_var(
                         param_name).get_tensor()
                     param_t.set(self.backup[param_name], context.place)
 
@@ -127,20 +135,7 @@ class SensitivePruneStrategy(Strategy):
         size_ratios = np.array(sizes, dtype='float32') / np.sum(np.array(sizes))
         ratios = (ratios / size_ratios) * self.target_ratio
 
-        ratios = [0.1] * len(ratios)
         return self.sensitivities.keys(), ratios
-
-    def _get_best_ratios_1(self):
-        no_loss_ratios = {}
-        for param in self.sensitivities:
-            for ratio, loss in zip(self.sensitivities[param]['pruned_percent'],
-                                   self.sensitivities[param]['loss']):
-                if loss == 0:
-                    no_loss_ratios[param] = ratio
-        ratio_sum = np.sum(no_loss_ratios.values())
-        print "no_loss_ratios: %s" % no_loss_ratios
-        return no_loss_ratios.keys(), float(
-            self.target_ratio) * no_loss_ratios.values() / ratio_sum
 
     def _prune_parameter(self, scope, param, ratio, place, lazy=False):
         param_t = scope.find_var(param.name).get_tensor()
@@ -259,6 +254,7 @@ class SensitivePruneStrategy(Strategy):
                             pruned_axis=0,
                             place=place,
                             lazy=lazy)
+                        self.pruned_list.append(param.name)
             if pre_op.type == 'elementwise_add':
                 self._prune_add_op(
                     graph,
@@ -272,6 +268,7 @@ class SensitivePruneStrategy(Strategy):
     def _pruning_ralated_op(self, graph, scope, param, ratio, place,
                             lazy=False):
         related_ops = self._forward_search_related_op(graph, param)
+
         pruned_idxs = None
         corrected_idxs = None
 
@@ -380,14 +377,16 @@ class SensitivePruneStrategy(Strategy):
         """
         for param, ratio in zip(params, ratios):
             param = graph.get_var(param)
-            self._pruning_ralated_op(
-                graph, scope, param, ratio, place, lazy=lazy)
+            if param.name not in self.pruned_list:
+                self._pruning_ralated_op(
+                    graph, scope, param, ratio, place, lazy=lazy)
+                self.pruned_list.append(param.name)
 
     def on_compression_begin(self, context):
-        print('SensitivePruneStrategy.on_compression_begin')
         self._compute_sensitivities(context)
         params, ratios = self._get_best_ratios()
         print("best pruning ratios: {}".format(zip(params, ratios)))
+        return
         self._prune_parameters(context.graph, context.graph.scope, params,
                                ratios, context.place)
         print('SensitivePruneStrategy.on_compression_begin finish.')
@@ -398,3 +397,5 @@ class SensitivePruneStrategy(Strategy):
         if context.get('eval_graph_pass'):
             context.eval_graph = context.get('eval_graph_pass').apply(
                 context.graph)
+        executor = get_executor(context.train_graph, context.place)
+        context.put('executor', executor)

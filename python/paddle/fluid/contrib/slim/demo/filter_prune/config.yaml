@@ -12,9 +12,9 @@ strategies:
         pruner: 'pruner_1'
         start_epoch: 0
         end_epoch: 1
-        delta_rate: 0.05
+        delta_rate: 0.2
         target_ratio: 0.2
-        pruned_params: 'conv.*_weights'
+        pruned_params: 'conv2d_.*.w_.*'
         sensitivities_file: 'sensitivities.data'
         metric_name: 'acc'
 compress_pass:
