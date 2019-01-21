@@ -20,7 +20,7 @@ IF(NOT WITH_LIBXSMM)
 ENDIF()
 
 IF(WIN32 OR APPLE)
-    MESSAGE(WARNING "Windows, Mac or Mobile are not supported with libxsmm in Paddle yet.")
+    MESSAGE(WARNING "Windows, Mac are not supported with libxsmm in Paddle yet.")
     SET(WITH_LIBXSMM OFF CACHE STRING "Disable LIBXSMM" FORCE)
     return()
 ENDIF()
