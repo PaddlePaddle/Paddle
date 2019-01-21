@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/memory_reuse_types.h"
+#include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -83,7 +83,7 @@ struct NodeComparator {
   }
 };
 
-void OrderedNodePairPool::Insert(ir::Node* var, ir::Node* op) {
+void OrderedNodeList::Insert(ir::Node* var, ir::Node* op) {
   PADDLE_ENFORCE(var->IsVar() && !var->IsCtrlVar());
   PADDLE_ENFORCE(op->IsOp());
   if (mark_table_.count(var->Name()) != 0) {
@@ -119,11 +119,11 @@ void OrderedNodePairPool::Insert(ir::Node* var, ir::Node* op) {
   mark_table_[var->Name()] = it;
 }
 
-int OrderedNodePairPool::GetIndex(ir::Node* var) {
+int OrderedNodeList::GetIndex(ir::Node* var) {
   return std::distance(nodes_.begin(), mark_table_[var->Name()]);
 }
 
-ir::Node* OrderedNodePairPool::NodeMatch(ir::Node* var) const {
+ir::Node* OrderedNodeList::NodeMatch(ir::Node* var) const {
   ir::Node* found_node = nullptr;
   NodeComparator compare_node;
 
@@ -136,18 +136,52 @@ ir::Node* OrderedNodePairPool::NodeMatch(ir::Node* var) const {
   return found_node;
 }
 
-void OrderedNodePairPool::Erase(ir::Node* var) {
-  PADDLE_ENFORCE(mark_table_.count(var->Name()));
-  nodes_.erase(mark_table_[var->Name()]);
-  mark_table_.erase(var->Name());
+void OrderedNodeList::Erase(ir::Node* var) { Erase(var->Name()); }
+
+void OrderedNodeList::Erase(const std::string& var) {
+  PADDLE_ENFORCE(mark_table_.count(var));
+  nodes_.erase(mark_table_[var]);
+  mark_table_.erase(var);
 }
 
-std::string OrderedNodePairPool::ToString() const {
+std::string OrderedNodeList::ToString() const {
   std::stringstream ss;
   for (auto it = nodes_.begin(); it != nodes_.end(); ++it) {
     ss << DebugString(it->first) << " ";
   }
   return ss.str();
+}
+
+bool NodeCanReused(ir::Node* node) {
+  if (node == nullptr || !node->IsVar() || node->IsCtrlVar()) return false;
+  auto* desc = node->Var();
+  auto type = desc->GetType();
+  if (desc->Persistable() || type != proto::VarType::LOD_TENSOR ||
+      desc->GetShape().empty()) {
+    return false;
+  }
+  // vars can be @EMPTY@, @LR_DECAY_REUSE_ID@. For example, while_grad
+  std::string name = node->Name();
+  if (!name.empty() && name[0] == '@' && name[name.size() - 1] == '@')
+    return false;
+  for (auto* op : node->inputs) {
+    if (op->Op()->HasAttr("force_cpu")) {
+      // op output force generated in cpu, can not be reused.
+      return framework::AttrReader(op->Op()->GetAttrMap())
+                 .Get<bool>("force_cpu") == 0;
+    }
+  }
+  return true;
+}
+
+bool OpHasSubBlock(OpDesc* desc) {
+  const AttributeMap& attrs = desc->GetAttrMap();
+  for (auto& attr : attrs) {
+    if (attr.second.type() == typeid(BlockDesc*) ||             // NOLINT
+        attr.second.type() == typeid(std::vector<BlockDesc*>))  // NOLINT
+      return true;
+  }
+  return false;
 }
 
 }  // namespace details
