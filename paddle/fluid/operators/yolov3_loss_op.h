@@ -42,6 +42,11 @@ static T L1Loss(T x, T y) {
 }
 
 template <typename T>
+static T L2Loss(T x, T y) {
+  return 0.5 * (y - x) * (y - x);
+}
+
+template <typename T>
 static T SCEGrad(T x, T label) {
   return 1.0 / (1.0 + std::exp(-x)) - label;
 }
@@ -49,6 +54,11 @@ static T SCEGrad(T x, T label) {
 template <typename T>
 static T L1LossGrad(T x, T y) {
   return x > y ? 1.0 : -1.0;
+}
+
+template <typename T>
+static T L2LossGrad(T x, T y) {
+  return x - y;
 }
 
 static int GetMaskIndex(std::vector<int> mask, int val) {
@@ -130,8 +140,8 @@ static void CalcBoxLocationLoss(T* loss, const T* input, Box<T> gt,
   T scale = (2.0 - gt.w * gt.h) * score;
   loss[0] += SCE<T>(input[box_idx], tx) * scale;
   loss[0] += SCE<T>(input[box_idx + stride], ty) * scale;
-  loss[0] += L1Loss<T>(input[box_idx + 2 * stride], tw) * scale;
-  loss[0] += L1Loss<T>(input[box_idx + 3 * stride], th) * scale;
+  loss[0] += L2Loss<T>(input[box_idx + 2 * stride], tw) * scale;
+  loss[0] += L2Loss<T>(input[box_idx + 3 * stride], th) * scale;
 }
 
 template <typename T>
@@ -150,9 +160,9 @@ static void CalcBoxLocationLossGrad(T* input_grad, const T loss, const T* input,
   input_grad[box_idx + stride] =
       SCEGrad<T>(input[box_idx + stride], ty) * scale * loss;
   input_grad[box_idx + 2 * stride] =
-      L1LossGrad<T>(input[box_idx + 2 * stride], tw) * scale * loss;
+      L2LossGrad<T>(input[box_idx + 2 * stride], tw) * scale * loss;
   input_grad[box_idx + 3 * stride] =
-      L1LossGrad<T>(input[box_idx + 3 * stride], th) * scale * loss;
+      L2LossGrad<T>(input[box_idx + 3 * stride], th) * scale * loss;
 }
 
 template <typename T>
