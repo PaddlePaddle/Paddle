@@ -77,9 +77,13 @@ class BoxCoderOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(target_box_dims[2], prior_box_dims[1]);
         ctx->ShareDim("TargetBox", /*->*/ "OutputBox");
       }
-    }
 
-    ctx->ShareLoD("TargetBox", /*->*/ "OutputBox");
+      if (code_type == BoxCodeType::kDecodeCenterSize && axis == 1) {
+        ctx->ShareLoD("PriorBox", /*->*/ "OutputBox");
+      } else {
+        ctx->ShareLoD("TargetBox", /*->*/ "OutputBox");
+      }
+    }
   }
 };
 
