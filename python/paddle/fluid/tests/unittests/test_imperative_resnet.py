@@ -228,7 +228,6 @@ class TestImperativeResnet(unittest.TestCase):
 
                 dy_x_data = np.array(
                     [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
-                print('dy input shape', dy_x_data.shape)
                 y_data = np.array([x[1] for x in data]).astype('int64').reshape(
                     batch_size, 1)
 
@@ -239,8 +238,6 @@ class TestImperativeResnet(unittest.TestCase):
                 out = resnet(img)
                 loss = fluid.layers.cross_entropy(input=out, label=label)
                 avg_loss = fluid.layers.mean(x=loss)
-
-                print('shapex ', avg_loss.shape)
 
                 dy_out = avg_loss._numpy()
 
@@ -290,9 +287,6 @@ class TestImperativeResnet(unittest.TestCase):
             loss = fluid.layers.cross_entropy(input=out, label=label)
             avg_loss = fluid.layers.mean(x=loss)
             optimizer.minimize(avg_loss)
-
-            print('avg_loss shape', avg_loss.shape)
-            print(fluid.default_main_program())
 
             # initialize params and fetch them
             static_param_init_value = {}
