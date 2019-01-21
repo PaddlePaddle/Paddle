@@ -49,6 +49,7 @@ class Conv2D(layers.Layer):
         assert param_attr is not False, "param_attr should not be False here."
         super(Conv2D, self).__init__(name=name, dtype=dtype)
 
+        # TODO(minqiyang): Move this to the top.
         from ..layer_helper import LayerHelper
         self._helper = LayerHelper(
             type(self).__name__,
@@ -213,10 +214,9 @@ class FC(layers.Layer):
                  size,
                  param_attr=None,
                  bias_attr=None,
-                 dtype=core.VarDesc.VarType.FP32,
                  num_flatten_dims=1,
+                 dtype=core.VarDesc.VarType.FP32,
                  act=None,
-                 is_test=False,
                  name=None):
         super(FC, self).__init__()
 
@@ -230,6 +230,9 @@ class FC(layers.Layer):
             bias_attr=bias_attr,
             act=act,
             name=name)
+
+    def parameters(self):
+        return [self._w, self._b]
 
     def _build_once(self, input):
         input_shape = input.shape

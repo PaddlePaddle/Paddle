@@ -19,6 +19,7 @@ from collections import defaultdict
 import contextlib
 import os
 import re
+import traceback
 import six
 
 import numpy as np
@@ -394,6 +395,9 @@ class Variable(object):
     def _gradient(self):
         return np.array(self._ivar._grad_value())
 
+    def _clear_gradient(self):
+        self._ivar._clear_gradient()
+
     def __str__(self):
         return self.to_string(True)
 
@@ -631,6 +635,11 @@ class Operator(object):
         if type is None:
             raise ValueError(
                 "`type` to initilized an Operator can not be None.")
+        else:
+            callstack_var_name = op_maker.kOpCreationCallstackAttrName()
+            op_attrs[callstack_var_name] = list(
+                reversed(traceback.format_stack()))[1:]
+
         self.desc.set_type(type)
         proto = OpProtoHolder.instance().get_op_proto(type)
 

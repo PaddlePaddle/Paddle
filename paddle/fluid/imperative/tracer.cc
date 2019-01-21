@@ -89,9 +89,9 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
 
       invars.push_back(inp->var_);
       vars[inp->var_desc_->Name()] = inp;
-      if (inp->pre_op_) {
-        op->pre_ops_[it.first].push_back(inp->pre_op_);
-        op->pre_ops_out_idx_[it.first].push_back(inp->pre_op_out_idx_);
+      if (inp->PreOp()) {
+        op->pre_ops_[it.first].push_back(inp->PreOp());
+        op->pre_ops_out_idx_[it.first].push_back(inp->PreOpOutIdx());
       } else {
         op->pre_ops_[it.first].push_back(nullptr);
       }
@@ -115,10 +115,7 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
       } else {
         LOG(ERROR) << "tracer doesn't support yet";
       }
-      out->stop_gradient_ = stop_gradient;
-      out->pre_op_ = op;
-      out->pre_op_out_name_ = it.first;
-      out->pre_op_out_idx_ = i;
+      out->TrackPreOp(op, it.first, i, stop_gradient);
 
       VLOG(3) << "output vname " << out->var_desc_->Name() << " "
               << out->var_->IsInitialized();
@@ -200,28 +197,27 @@ std::vector<VarBase*> Tracer::PyTrace(OpBase* op,
                                       const std::vector<VarBase*>& inputs,
                                       bool stop_gradient) {
   VLOG(3) << "py_trace";
-  op->input_vars_["X"] = inputs;
-  op->output_vars_["Out"] = PyLayer::Apply(op->forward_id_, inputs);
+  op->input_vars_[PyLayer::kFwdInp] = inputs;
+  op->output_vars_[PyLayer::kFwdOut] = PyLayer::Apply(op->forward_id_, inputs);
   for (VarBase* inp : inputs) {
-    if (inp->pre_op_) {
-      op->pre_ops_["X"].push_back(inp->pre_op_);
-      op->pre_ops_out_idx_["X"].push_back(inp->pre_op_out_idx_);
+    if (inp->PreOp()) {
+      op->pre_ops_[PyLayer::kFwdInp].push_back(inp->PreOp());
+      op->pre_ops_out_idx_[PyLayer::kFwdInp].push_back(inp->PreOpOutIdx());
     } else {
-      op->pre_ops_["X"].push_back(nullptr);
+      op->pre_ops_[PyLayer::kFwdInp].push_back(nullptr);
     }
   }
 
-  auto& outputs = op->output_vars_["Out"];
+  auto& outputs = op->output_vars_[PyLayer::kFwdOut];
   for (size_t i = 0; i < outputs.size(); ++i) {
     VarBase* out = outputs[i];
-    out->stop_gradient_ = stop_gradient;
-    out->pre_op_ = op;
-    out->pre_op_out_name_ = "Out";
-    out->pre_op_out_idx_ = i;
+    out->TrackPreOp(op, PyLayer::kFwdOut, i, stop_gradient);
   }
   if (!stop_gradient) {
-    auto& grad_input_vars = op->grad_input_vars_["X@GRAD"];
-    auto& grad_output_vars = op->grad_output_vars_["Out@GRAD"];
+    auto& grad_input_vars =
+        op->grad_input_vars_[framework::GradVarName(PyLayer::kFwdInp)];
+    auto& grad_output_vars =
+        op->grad_output_vars_[framework::GradVarName(PyLayer::kFwdOut)];
 
     for (const VarBase* inp : inputs) {
       grad_input_vars.push_back(inp->var_);
