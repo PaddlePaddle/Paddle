@@ -28,6 +28,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/port.h"
 
+#ifdef _WIN32
+#define GCC_ATTRIBUTE(attr__) ;
+#else
+#define GCC_ATTRIBUTE(attr__) __attribute__((attr__));
+#endif
+#define __SHOULD_USE_RESULT__ GCC_ATTRIBUTE(warn_unused_result)
+
 namespace paddle {
 namespace inference {
 namespace analysis {
