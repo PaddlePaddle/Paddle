@@ -566,7 +566,128 @@ gpu_list=("GeForce 410M"
     fi
   fi
 }
+function checkMacPaddleVersion(){
+  while true
+    do
+      read -p "请选择Paddle版本(默认是release)：
+               输入 1 来使用develop版本
+               输入 2 来使用release ${release_version}
+               请输入，或者按ctrl + c退出： " paddle_version
+      if [ "$paddle_version" == "1" ]||[ "$paddle_version" == "2" ];then
+          break
+      else
+          paddle_version="2"
+          echo "将会下载release版本PaddlePaddle"
+          break
+      fi
+    done
+}
 
+function checkMacPythonVersion(){
+  while true
+    do
+       read -p "请您选择希望使用的python版本
+                输入 2 使用python2.x
+                输入 3 使用python3.x
+                请选择(默认为2)，或者按ctrl + c退出：" python_V
+       if [ "$python_V" == "" ];then
+            python_V="2"
+       fi
+       if [ "$python_V" == "2" ];then
+           python_root=`which python2.7`
+           if [ "$python_root" == "" ];then
+                python_root=`which python`
+           fi
+           python_version=`$python_root --version 2>&1 1>&1`
+           if [ $? == "0" ];then
+               :
+           else
+               python_version=""
+           fi
+           if [ "$python_root" == "" ]||[ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ]||[ "$python_root" == "/usr/bin/python2.7" -a "$python_version" == "Python 2.7.10" ];then
+               check_python2
+           fi
+           while true
+             do
+               read -p "找到：$python_version, 是否使用：(y/n)，输入n来输入自定义使用的python路径，或者按ctrl + c退出：  " use_python
+               use_python=`echo $use_python | tr 'A-Z' 'a-z'`
+               if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
+                    break
+               elif [ "$use_python" == "n" ];then
+                    python_root=""
+                    check_python2
+                    break
+               else
+                    echo "输入错误，请重新输入"
+               fi
+            done
+
+       elif [ "$python_V" == "3" ];then
+           python_root=`which python3`
+           python_version=`$python_root --version 2>&1 1>&1`
+           if [ $? == "0" ];then
+               :
+           else
+               python_version=""
+           fi
+           if [ "$python_root" == "" ]||[ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ];then
+               check_python3
+           fi
+           while true
+             do
+               read -p "找到：$python_version, 是否使用：(y/n), 输入n来输入自定义使用的python路径，或者按ctrl + c退出：" use_python
+               use_python=`echo $use_python | tr 'A-Z' 'a-z'`
+               if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
+                   break
+               elif [ "$use_python" == "n" ];then
+                    check_python3
+                    break
+               else
+                    echo "输入错误，请重新输入"
+               fi
+           done
+       else
+           :
+       fi
+
+
+       if [ "$python_V" == "2" ]||[ "$python_V" == "3" ];then
+           python_brief_version=`$python_root -m pip -V |awk -F "[ |)]" '{print $6}'|sed 's#\.##g'`
+           if [[ $python_brief_version == "27" ]];then
+              uncode=`python -c "import pip._internal;print(pip._internal.pep425tags.get_supported())"|grep "cp27"`
+              if [[ $uncode == "" ]];then
+                 uncode=mu
+              else
+                 uncode=m
+              fi
+           fi
+           if [[ "$python_brief_version" == "27" || "$python_brief_version" == "35" || "$python_brief_version" == "36" || "$python_brief_version" == "37" ]];then
+                break
+           else
+                echo "未发现可用的pip或pip3/pip3.x, 我们只支持Python2.7/3.5/3.6/3.7及其对应的pip, 请重新输入， 或使用ctrl + c退出"
+           fi
+        else
+            echo "输入错误，请重新输入"
+        fi
+  done
+}
+
+function checkMacAVX(){
+    if [[ $AVX != "" ]];then
+        AVX=avx
+    else
+        echo "您的Mac不支持AVX指令集，目前不能安装PaddlePaddle"
+    fi
+}
+
+function checkMacGPU(){
+    if [[ $GPU != "" ]];then
+        echo "MacOS上暂不支持GPU版本的PaddlePaddle, 将为您安装CPU版本的PaddlePaddle"
+    else
+        echo "MacOS上暂不支持GPU版本的PaddlePaddle, 将为您安装CPU版本的PaddlePaddle"
+        GPU=cpu
+    fi
+}
 
 function macos() {
   path='http://paddlepaddle.org/download?url='
@@ -574,130 +695,17 @@ function macos() {
 
   while true
       do
-      while true
-        do
-          read -p "请选择Paddle版本(默认是release)：
-                   输入 1 来使用develop版本
-                   输入 2 来使用release ${release_version}
-                   请输入，或者按ctrl + c退出： " paddle_version
-          if [ "$paddle_version" == "1" ]||[ "$paddle_version" == "2" ];then
-              break
-          else
-              paddle_version="2"
-              echo "将会下载release版本PaddlePaddle"
-              break
-          fi
-        done
+        checkMacPaddleVersion
+        checkMacPythonVersion
+        checkMacAVX
+        checkMacGPU
 
-      while true
-        do
-           read -p "请您选择希望使用的python版本
-                    输入 2 使用python2.x
-                    输入 3 使用python3.x
-                    请选择(默认为2)，或者按ctrl + c退出：" python_V
-           if [ "$python_V" == "" ];then
-                python_V="2"
-           fi
-           if [ "$python_V" == "2" ];then
-               python_root=`which python2.7`
-               if [ "$python_root" == "" ];then
-                    python_root=`which python`
-               fi
-               python_version=`$python_root --version 2>&1 1>&1`
-               if [ $? == "0" ];then
-                   :
-               else
-                   python_version=""
-               fi
-               if [ "$python_root" == "" ]||[ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ]||[ "$python_root" == "/usr/bin/python2.7" -a "$python_version" == "Python 2.7.10" ];then
-                   check_python2
-               fi
-               while true
-                 do
-                   read -p "找到：$python_version, 是否使用：(y/n)，输入n来输入自定义使用的python路径，或者按ctrl + c退出：  " use_python
-                   use_python=`echo $use_python | tr 'A-Z' 'a-z'`
-                   if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
-                        break
-                   elif [ "$use_python" == "n" ];then
-                        python_root=""
-                        check_python2
-                        break
-                   else
-                        echo "输入错误，请重新输入"
-                   fi
-                done
+        wheel_cpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-${GPU}-mac/paddlepaddle-1.2.0-cp${python_brief_version}-cp${python_brief_version}m-macosx_10_6_intel.whl"
+        whl_cpu_release="paddlepaddle-1.2.0-cp${python_brief_version}-cp${python_brief_version}m-macosx_10_6_intel.whl"
+        wheel_cpu_develop="http://paddle-wheel.bj.bcebos.com/latest-cpu-mac/paddlepaddle-latest-cp${python_brief_version}-cp${python_brief_version}m-macosx_10_6_intel.whl"
+        whl_cpu_develop="paddlepaddle-latest-cp${python_brief_version}-cp${python_brief_version}m-macosx_10_6_intel.whl"
 
-           elif [ "$python_V" == "3" ];then
-               python_root=`which python3`
-               python_version=`$python_root --version 2>&1 1>&1`
-               if [ $? == "0" ];then
-                   :
-               else
-                   python_version=""
-               fi
-               if [ "$python_root" == "" ]||[ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ];then
-                   check_python3
-               fi
-               while true
-                 do
-                   read -p "找到：$python_version, 是否使用：(y/n), 输入n来输入自定义使用的python路径，或者按ctrl + c退出：" use_python
-                   use_python=`echo $use_python | tr 'A-Z' 'a-z'`
-                   if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
-                       break
-                   elif [ "$use_python" == "n" ];then
-                        check_python3
-                        break
-                   else
-                        echo "输入错误，请重新输入"
-                   fi
-               done
-           else
-               :
-           fi
-
-
-           if [ "$python_V" == "2" ]||[ "$python_V" == "3" ];then
-               python_brief_version=`$python_root -m pip -V |awk -F "[ |)]" '{print $6}'|sed 's#\.##g'`
-               if [[ $python_brief_version == "27" ]];then
-                  uncode=`python -c "import pip._internal;print(pip._internal.pep425tags.get_supported())"|grep "cp27"`
-                  if [[ $uncode == "" ]];then
-                     uncode=mu
-                  else
-                     uncode=m
-                  fi
-               fi
-               if [[ "$python_brief_version" == "27" || "$python_brief_version" == "35" || "$python_brief_version" == "36" || "$python_brief_version" == "37" ]];then
-                    break
-               else
-                    echo "未发现可用的pip或pip3/pip3.x, 我们只支持Python2.7/3.5/3.6/3.7及其对应的pip, 请重新输入， 或使用ctrl + c退出"
-               fi
-            else
-                echo "输入错误，请重新输入"
-            fi
-         done
-
-
-      if [[ $AVX != "" ]];then
-        AVX=avx
-      else
-        echo "您的Mac不支持AVX指令集，目前不能安装PaddlePaddle"
-      fi
-
-
-      if [[ $GPU != "" ]];then
-        echo "MacOS上暂不支持GPU版本的PaddlePaddle, 将为您安装CPU版本的PaddlePaddle"
-      else
-        echo "MacOS上暂不支持GPU版本的PaddlePaddle, 将为您安装CPU版本的PaddlePaddle"
-        GPU=cpu
-      fi
-
-
-      wheel_cpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-${GPU}-mac/paddlepaddle-1.2.0-cp${python_brief_version}-cp${python_brief_version}m-macosx_10_6_intel.whl"
-      whl_cpu_release="paddlepaddle-1.2.0-cp${python_brief_version}-cp${python_brief_version}m-macosx_10_6_intel.whl"
-      wheel_cpu_develop="http://paddle-wheel.bj.bcebos.com/latest-cpu-mac/paddlepaddle-latest-cp${python_brief_version}-cp${python_brief_version}m-macosx_10_6_intel.whl"
-      whl_cpu_develop="paddlepaddle-latest-cp${python_brief_version}-cp${python_brief_version}m-macosx_10_6_intel.whl"
-
-      if [[ $paddle_version == "2" ]];then
+        if [[ $paddle_version == "2" ]];then
             if [ -f $whl_cpu_release ];then
                 $python_root -m pip install $whl_cpu_release
                 if [ $? == "0" ];then
@@ -715,25 +723,25 @@ function macos() {
                 if [ $? == "0" ];then
                     $python_root -m pip install $whl_cpu_release
                     if [ $? == "0" ];then
-                       rm -rf $whl_cpu_release
+                       rm  $whl_cpu_release
                        echo "安装成功，可以使用: ${python_root} 来启动安装了PaddlePaddle的Python解释器"
                        break
                     else
-                       rm -rf $whl_cpu_release
+                       rm  $whl_cpu_release
                        echo "未能正常安装PaddlePaddle，请尝试更换您输入的python路径，或者ctrl + c退出后请检查您使用的python3对应的pip或pip源是否可用"
                        echo""
                        echo "=========================================================================================="
                        echo""
                     fi
                 else
-                      rm -rf $whl_cpu_release
+                      rm  $whl_cpu_release
                       echo "未能正常安装PaddlePaddle，请检查您的网络，或者ctrl + c退出后反馈至https://github.com/PaddlePaddle/Paddle/issues"
                       echo""
                       echo "=========================================================================================="
                       echo""
                 fi
             fi
-      else
+        else
             if [ -f $whl_cpu_develop ];then
                 $python_root -m pip install $whl_cpu_develop
                 if [ $? == "0" ];then
@@ -751,25 +759,25 @@ function macos() {
                 if [ $? == "0" ];then
                     $python_root -m pip install $whl_cpu_develop
                     if [ $? == "0" ];then
-                       rm -rf $wheel_cpu_develop
+                       rm  $wheel_cpu_develop
                        echo "安装成功，可以使用: ${python_root} 来启动安装了PaddlePaddle的Python解释器"
                        break
                     else
-                       rm -rf $whl_cpu_release
+                       rm  $whl_cpu_release
                        echo "未能正常安装PaddlePaddle，请尝试更换您输入的python路径，或者ctrl + c退出后请检查您使用的python3对应的pip或pip源是否可用"
                        echo""
                        echo "=========================================================================================="
                        echo""
                     fi
                 else
-                      rm -rf $whl_cpu_develop
+                      rm  $whl_cpu_develop
                       echo "未能正常安装PaddlePaddle，请检查您的网络，或者ctrl + c退出后反馈至https://github.com/PaddlePaddle/Paddle/issues"
                       echo""
                       echo "=========================================================================================="
                       echo""
                 fi
             fi
-      fi
+        fi
   done
 }
 
