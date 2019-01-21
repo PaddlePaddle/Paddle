@@ -20,7 +20,7 @@ class BoxClipOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("InputBox"),
                    "Input(InputBox) of BoxClipOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("ImInfo"),
@@ -40,6 +40,13 @@ class BoxClipOp : public framework::OperatorWithKernel {
     }
     ctx->ShareDim("InputBox", /*->*/ "OutputBox");
     ctx->ShareLoD("InputBox", /*->*/ "OutputBox");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("RpnRois"));
+    return framework::OpKernelType(data_type, platform::CPUPlace());
   }
 };
 
