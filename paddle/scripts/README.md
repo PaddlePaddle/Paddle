@@ -40,7 +40,6 @@ The lastest pre-built build environment images are:
 | Image | Tag |
 | ----- | --- |
 | paddlepaddle/paddle | latest-dev |
-| paddlepaddle/paddle | latest-dev-android |
 
 ### Start Build
 

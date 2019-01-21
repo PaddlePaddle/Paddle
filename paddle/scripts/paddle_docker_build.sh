@@ -66,9 +66,6 @@ function main() {
     DOCKER_REPO="paddlepaddle/paddle"
     VERSION="latest-dev"
     PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
-    if [ "$1" == "build_android" ]; then
-        VERSION="latest-dev-android"
-    fi
     IMG=${DOCKER_REPO}:${VERSION}
     start_build_docker $@
 }
