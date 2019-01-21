@@ -437,10 +437,8 @@ class LayerHelper(object):
         # NOTE(dzhwinter): some activation support inplace compution.
         # NOTE(minqiyang): currently, we don't support inplace in imperative mode
         if not force_no_inplace and core.IsInplace(act_type):
-            print("inplace")
             tmp = input_var
         else:
-            print("not inplace")
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
         self.append_op(
             type=act_type,
