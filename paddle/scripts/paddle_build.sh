@@ -180,7 +180,6 @@ function cmake_gen() {
         -DWITH_GOLANG=${WITH_GOLANG:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
-        -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
@@ -214,7 +213,6 @@ EOF
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
-        -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
