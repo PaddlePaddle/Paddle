@@ -16,57 +16,62 @@ import paddle.fluid as fluid
 import paddle
 import os
 import sys
+from vgg import *
 from paddle.fluid.contrib.slim import CompressPass
 from paddle.fluid.contrib.slim import build_compressor
 from paddle.fluid.contrib.slim import ImitationGraph
 
 
-class LinearModel(object):
+class Model(object):
     def __init__(slef):
         pass
 
-    def train(self):
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        startup_program.random_seed = 10
-        with fluid.program_guard(train_program, startup_program):
-            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            predict = fluid.layers.fc(input=x, size=1, act=None)
-            cost = fluid.layers.square_error_cost(input=predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
-            eval_program = train_program.clone()
-            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
-            sgd_optimizer.minimize(avg_cost)
+    def compress(self):
+
+        img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        vgg = VGG11()
+        predict = vgg.net(img, class_dim=10)
+        eval_program = fluid.default_main_program().clone(for_test=True)
+        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        avg_cost = fluid.layers.mean(cost)
+
+        with fluid.program_guard(main_program=eval_program):
+            acc = fluid.layers.accuracy(input=predict, label=label)
+
+        optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+        optimizer.minimize(avg_cost)
+
+        place = fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
 
         train_reader = paddle.batch(
-            paddle.dataset.uci_housing.train(), batch_size=1)
-        eval_reader = paddle.batch(
-            paddle.dataset.uci_housing.test(), batch_size=1)
-        place = fluid.CPUPlace()
-        train_feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-        eval_feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-        exe = fluid.Executor(place)
-        exe.run(startup_program)
-        train_metrics = {"loss": avg_cost.name}
-        eval_metrics = {"loss": avg_cost.name}
+            paddle.reader.shuffle(
+                paddle.dataset.mnist.train(), buf_size=500),
+            batch_size=128)
+        eval_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=1)
 
-        graph = ImitationGraph(train_program)
-        config = './config.yaml'
-        comp_pass = build_compressor(
+        train_feed_list = {'img': img.name, 'label': label.name}
+        train_fetch_list = {'cost': avg_cost.name}
+        eval_feed_list = {'img': img.name, 'label': label.name}
+        eval_fetch_list = {'acc': acc.name}
+
+        com_pass = CompressPass(
             place,
-            data_reader=train_reader,
-            data_feeder=train_feeder,
-            feed_vars=[x, y],
-            fetch_vars=[avg_cost],
-            scope=fluid.global_scope(),
-            metrics=train_metrics,
-            epoch=1,
-            program_exe=exe,
-            config=config)
-        comp_pass.apply(graph)
+            fluid.global_scope(),
+            fluid.default_main_program(),
+            train_reader=train_reader,
+            train_feed_list=train_feed_list,
+            train_fetch_list=train_fetch_list,
+            eval_program=eval_program,
+            eval_reader=eval_reader,
+            eval_feed_list=eval_feed_list,
+            eval_fetch_list=eval_fetch_list)
+        com_pass.config('./config.yaml')
+        com_pass.run()
 
 
 if __name__ == "__main__":
-    model = LinearModel()
-    model.train()
+    model = Model()
+    model.compress()
