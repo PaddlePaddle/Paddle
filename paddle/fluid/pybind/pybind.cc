@@ -133,6 +133,7 @@ PYBIND11_MODULE(core, m) {
            [](imperative::VarBase &self) { self.RunBackward(); })
       .def("_grad_name", &imperative::VarBase::GradName)
       .def("_grad_value", &imperative::VarBase::GradValue)
+      .def("_clear_gradient", &imperative::VarBase::ClearGradient)
       .def("_grad_ivar",
            [](const imperative::VarBase &self) { return self.grads_; },
            py::return_value_policy::reference)
@@ -147,9 +148,9 @@ PYBIND11_MODULE(core, m) {
           py::return_value_policy::reference)
       .def_property(
           "stop_gradient",
-          [](const imperative::VarBase &self) { return self.stop_gradient_; },
+          [](const imperative::VarBase &self) { return self.IsStopGradient(); },
           [](imperative::VarBase &self, bool stop_gradient) {
-            self.stop_gradient_ = stop_gradient;
+            self.SetStopGradient(stop_gradient);
           });
 
   py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
