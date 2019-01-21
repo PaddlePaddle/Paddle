@@ -16,7 +16,6 @@ limitations under the License. */
 #include <algorithm>
 #include <limits>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
