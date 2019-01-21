@@ -18,7 +18,7 @@ import yaml
 from collections import OrderedDict
 from ..prune import *
 from ..quantization import *
-from .compress_pass import *
+#from .compress_pass import *
 from .strategy import *
 
 __all__ = ['ConfigFactory']
@@ -30,14 +30,9 @@ class ConfigFactory(object):
     def __init__(self, config):
         """Init a factory from configure file."""
         self.instances = {}
+        self.compress_pass = {}
         self.version = None
         self._parse_config(config)
-
-    def get_compress_pass(self):
-        """
-        Get compress pass from factory.
-        """
-        return self.instance('compress_pass')
 
     def instance(self, name):
         """
@@ -85,10 +80,11 @@ class ConfigFactory(object):
                         self._new_instance(name, instances[name])
 
                 if key == 'compress_pass':
-                    compress_pass = self._new_instance(key, key_values[key])
+                    self.compress_pass['strategies'] = []
+                    self.compress_pass['epoch'] = key_values[key]['epoch']
                     for name in key_values[key]['strategies']:
                         strategy = self.instance(name)
-                        compress_pass.add_strategy(strategy)
+                        self.compress_pass['strategies'].append(strategy)
 
                 if key == 'include':
                     for config_file in key_values[key]:

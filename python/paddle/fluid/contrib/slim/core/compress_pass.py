@@ -13,7 +13,13 @@
 # limitations under the License.
 
 from ....core import CPUPlace
-from ..graph import get_executor
+from ....data_feeder import DataFeeder
+from ..graph import get_executor, ImitationGraph
+from config import ConfigFactory
+import numpy as np
+from collections import Iterable
+import time
+import os
 
 __all__ = ['Context', 'CompressPass']
 
@@ -30,26 +36,57 @@ class Context(object):
     """
 
     def __init__(self,
-                 exe,
-                 graph,
-                 scope,
                  place,
-                 feeds,
-                 fetches,
-                 program_exe=None):
+                 train_graph=None,
+                 train_reader=None,
+                 eval_graph=None,
+                 eval_reader=None):
         # The total number of epoches to be trained.
         self.epoch = 0
         # Current epoch
         self.epoch_id = 0
         # Current batch
         self.batch_id = 0
-        self.exe = exe
-        self.graph = graph
-        self.scope = scope
+
+        self.k_v = {}
+
         self.place = place
-        self.feeds = feeds
-        self.fetches = fetches
-        self.program_exe = program_exe
+        self.train_graph = train_graph
+        self.train_reader = train_reader
+        self.eval_graph = eval_graph
+        self.eval_reader = eval_reader
+        self.executor = None
+
+    def run_eval_graph(self):
+        assert self.eval_graph is not None
+        assert self.eval_reader is not None
+        self.executor = get_executor(self.eval_graph, self.place, parallel=True)
+        results = []
+        batch_id = 0
+        s_time = time.time()
+        for data in self.eval_reader():
+            result = self.executor.run(self.eval_graph, data=data)
+            if batch_id % 20 == 0:
+                e_time = time.time()
+                print("time: {}s; batch[{}] eval: {}={}".format(
+                    e_time - s_time, batch_id,
+                    self.eval_graph.out_nodes.keys(), list(result)))
+                s_time = time.time()
+                break
+            batch_id += 1
+            results.append(result)
+        result = np.mean(np.array(results), axis=0)
+        print("final eval result: {}={}".format(
+            self.eval_graph.out_nodes.keys(), result))
+        if not isinstance(result, Iterable):
+            result = [result]
+        return result, self.eval_graph.out_nodes.keys()
+
+    def put(self, key, value):
+        self.k_v[key] = value
+
+    def get(self, key):
+        return self.k_v.get(key)
 
 
 class CompressPass(object):
@@ -67,25 +104,39 @@ class CompressPass(object):
     """
 
     def __init__(self,
-                 place=None,
-                 data_reader=None,
-                 data_feeder=None,
-                 feed_vars=None,
-                 fetch_vars=None,
-                 scope=None,
-                 metrics=None,
-                 epoch=None,
-                 program_exe=None):
+                 place,
+                 scope,
+                 train_program,
+                 train_reader=None,
+                 train_feed_list=None,
+                 train_fetch_list=None,
+                 eval_program=None,
+                 eval_reader=None,
+                 eval_feed_list=None,
+                 eval_fetch_list=None,
+                 teacher_programs=[]):
         self.strategies = []
+        self.epoch = 0
         self.place = CPUPlace() if place is None else place
-        self.data_reader = data_reader
-        self.data_feeder = data_feeder
-        self.feed_vars = feed_vars
-        self.fetch_vars = fetch_vars
-        self.scope = scope
-        self.metrics = metrics
-        self.epoch = epoch
-        self.program_exe = program_exe
+        self.train_graph = ImitationGraph(
+            train_program,
+            scope=scope,
+            in_nodes=train_feed_list,
+            out_nodes=train_fetch_list)
+        self.eval_graph = ImitationGraph(
+            eval_program,
+            scope=scope,
+            in_nodes=eval_feed_list,
+            out_nodes=eval_fetch_list)
+        self.train_reader = train_reader
+        self.eval_reader = eval_reader
+        self.teacher_graphs = []
+        for teacher in teacher_programs:
+            self.teacher_graphs.append(ImitationGraph(teacher, scope=scope))
+
+        self.checkpoint = None
+        self.model_save_dir = None
+        self.eval_epoch = 1
 
     def add_strategy(self, strategy):
         """
@@ -93,56 +144,95 @@ class CompressPass(object):
         Args:
             strategy: The strategy to be added into current compress pass.
         """
+        print "add strategy: %s" % (type(strategy))
         self.strategies.append(strategy)
         self.epoch = max(strategy.end_epoch, self.epoch)
 
-    def apply(self, graph):
-        """
-        Compress a model.
-        Args:
-            graph: The target graph to be compressed.
-        """
-        self.executor = get_executor(graph, self.place)
+    def config(self, config_file):
+        factory = ConfigFactory(config_file)
+        self.epoch = factory.compress_pass['epoch']
+        for strategy in factory.compress_pass['strategies']:
+            self.add_strategy(strategy)
+
+    def _load_checkpoint(self, context):
+        if self.checkpoint:
+            exe = get_executor(context.train_graph, parallel=False)
+            fluid.io.load_persistables(
+                exe.exe,
+                self.checkpoint,
+                main_program=context.train_graph.program)
+            print("Loaded checkpoint from: {}".format(self.checkpoint))
+
+    def _save_checkpoint(self, context):
+        if context.epoch_id % 5 == 0 and self.model_save_dir:
+            model_path = os.path.join(self.model_save_dir,
+                                      str(context.epoch_id))
+            if not os.path.isdir(model_path):
+                os.makedirs(model_path)
+            exe = get_executor(context.train_graph, parallel=False)
+            fluid.io.save_persistables(
+                exe.exe, model_path, main_program=context.train_graph.program)
+            print('Saved checkpoint to: {}'.format(model_path))
+
+    def _train_one_epoch(self, context):
+        if context.train_graph is None:
+            print("train_graph is None; Please config train_graph_pass.")
+            return
+        for data in context.train_reader():
+            for strategy in self.strategies:
+                strategy.on_batch_begin(context)
+            feed = None
+            results = self.executor.run(context.train_graph, data=data)
+            results = [float(result) for result in results]
+            if context.batch_id % 20 == 0:
+                print("epoch:{}; batch_id:{}; {} = {}".format(
+                    context.epoch, context.batch_id,
+                    context.train_graph.out_nodes.keys(), results))
+            for strategy in self.strategies:
+                strategy.on_batch_end(context)
+            context.batch_id += 1
+        self._save_checkpoint(context)
+
+    def _eval(self, context):
+        results, names = context.run_eval_graph()
+        print("epoch:{}; batch_id:{}; eval results: {}={}".format(
+            context.epoch, context.batch_id, names, results))
+
+    def run(self):
+
         context = Context(
-            self.executor,
-            graph,
-            self.scope,
-            self.place,
-            self.feed_vars,
-            self.fetch_vars,
-            program_exe=self.program_exe)
+            place=self.place,
+            train_graph=self.train_graph,
+            train_reader=self.train_reader,
+            eval_graph=self.eval_graph,
+            eval_reader=self.eval_reader)
+
+        self._load_checkpoint(context)
+
+        self.executor = get_executor(self.train_graph, self.place)
+        context.put('executor', self.executor)
+
+        if self.teacher_graphs:
+            context.put('teachers', self.teacher_graphs)
 
         for strategy in self.strategies:
-            strategy.on_compress_begin(context)
+            strategy.on_compression_begin(context)
 
         for epoch in range(self.epoch):
 
             for strategy in self.strategies:
                 strategy.on_epoch_begin(context)
 
-            for data in self.data_reader():
-                for strategy in self.strategies:
-                    strategy.on_batch_begin(context)
-                fetches = None
-                if self.metrics:
-                    fetches = self.metrics.values()
-                feed = None
-                if self.data_feeder:
-                    feed = self.data_feeder.feed(data)
-                results = self.executor.run(graph,
-                                            fetches=fetches,
-                                            scope=self.scope,
-                                            feed=feed)
-                if results:
-                    print("results: {}".format(
-                        zip(self.metrics.keys(), results)))
-                for strategy in self.strategies:
-                    strategy.on_batch_end(context)
-                context.batch_id += 1
+            self._train_one_epoch(context)
 
             for strategy in self.strategies:
                 strategy.on_epoch_end(context)
             context.epoch_id += 1
 
+            if self.eval_epoch and epoch % self.eval_epoch == 0:
+                self._eval(context)
+
         for strategy in self.strategies:
-            strategy.on_compress_end(context)
+            strategy.on_compression_end(context)
+
+        return context.eval_graph

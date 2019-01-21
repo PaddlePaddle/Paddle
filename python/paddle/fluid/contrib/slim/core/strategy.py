@@ -29,7 +29,7 @@ class Strategy(object):
         self.start_epoch = start_epoch
         self.end_epoch = end_epoch
 
-    def on_compress_begin(self, context):
+    def on_compression_begin(self, context):
         pass
 
     def on_epoch_begin(self, context):
@@ -44,5 +44,5 @@ class Strategy(object):
     def on_batch_end(self, context):
         pass
 
-    def on_compress_end(self, context):
+    def on_compression_end(self, context):
         pass

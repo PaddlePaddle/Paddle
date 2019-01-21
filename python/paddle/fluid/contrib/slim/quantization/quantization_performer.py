@@ -249,7 +249,7 @@ class QuantizationPerformer(object):
             outputs={"Out": dequant_var})
         return dequant_var
 
-    def quantize_transform(self, graph):
+    def quantize_transform(self, graph, place):
         _NEED_INITIALIZED_VARS_OR_PARAMS.clear()
         self.is_test = False
         if graph is None:
@@ -299,9 +299,9 @@ class QuantizationPerformer(object):
             # rename the backward op inputs
             if op.type in grad_op_types:
                 _transform_backward(graph, op)
-        return _NEED_INITIALIZED_VARS_OR_PARAMS
+        graph.init_vars(_NEED_INITIALIZED_VARS_OR_PARAMS, place)
 
-    def freeze_graph(self, graph, place, scope, fuse_bn=False):
+    def freeze_graph(self, graph, place, fuse_bn=False):
         """
         Freeze input graph for inference.
 
@@ -310,9 +310,6 @@ class QuantizationPerformer(object):
         """
         if graph is None:
             raise ValueError("The graph cannot be None!")
-
-        if scope is None:
-            raise ValueError("The scope cannot be None!")
 
         self.is_test = True
 
@@ -377,10 +374,10 @@ class QuantizationPerformer(object):
             return dequant_var
 
         def _load_var(name):
-            return np.array(scope.find_var(name).get_tensor())
+            return np.array(graph.scope.find_var(name).get_tensor())
 
         def _restore_var(name, arr):
-            t = scope.find_var(name).get_tensor()
+            t = graph.scope.find_var(name).get_tensor()
             t.set(arr, place)
 
         for op in list(graph.all_ops()):
@@ -436,18 +433,15 @@ class QuantizationPerformer(object):
         for v in remove_vars:
             graph.remove_var(v)
 
-    def convert_to_int8(self, graph, place, scope):
+    def convert_to_int8(self, graph, place):
         """
         Covert input graph into quantized int8 graph.
         """
         if graph is None:
             raise ValueError("The graph cannot be None!")
 
-        if scope is None:
-            raise ValueError("The scope cannot be None!")
-
         def _load_var(name):
-            return np.array(scope.find_var(name).get_tensor())
+            return np.array(graph.scope.find_var(name).get_tensor())
 
         def _convert_to_int8(var):
             int8_var_name = var.name + ".int8"
@@ -459,9 +453,9 @@ class QuantizationPerformer(object):
 
             tensor = _load_var(var.name)
 
-            scope.var(int8_var_name)
+            graph.scope.var(int8_var_name)
 
-            int8_tensor = scope.find_var(int8_var_name).get_tensor()
+            int8_tensor = graph.scope.find_var(int8_var_name).get_tensor()
             int8_tensor.set(tensor.astype(np.int8), place)
             return int8_var
 
