@@ -6147,8 +6147,11 @@ def lod_reset(x, y=None, target_lod=None, append=False):
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     if y is not None:
         helper.append_op(
-            type="lod_reset", inputs={'X': x,
-                                      'Y': y}, outputs={'Out': out})
+            type="lod_reset",
+            inputs={'X': x,
+                    'Y': y},
+            attrs={'append': append},
+            outputs={'Out': out})
     elif target_lod is not None:
         helper.append_op(
             type="lod_reset",
