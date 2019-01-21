@@ -15,22 +15,26 @@
 import collections
 import numpy as np
 from .... import core
+from ....framework import Program
+from ....framework import Variable
 from ....initializer import Constant
 from .... import unique_name
 from ..graph import PyGraph
 
-__all__ = ['QuantizationPerformer']
+__all__ = ['QuantizationTransformPass']
 
 
-class QuantizationPerformer(object):
+class QuantizationTransformPass(object):
     def __init__(self,
+                 scope=None,
+                 program_exe=None,
                  weight_bits=8,
                  activation_bits=8,
                  activation_quantize_type='abs_max',
                  weight_quantize_type='abs_max',
                  window_size=10000):
         """
-        Convert and rewrite the IRGraph according to weight and
+        Convert and rewrite the PyGraph according to weight and
         activation quantization type.
         Args:
             weight_bits (int): quantization bit number for weights,
@@ -48,15 +52,21 @@ class QuantizationPerformer(object):
             window_size (int): the window size for 'range_abs_max' quantization.
         Examples:
         .. code-block:: python
-            # the original graph will be rewrite, if you don't want to
-            # change it, please clone at first.
-            # graph = graph.clone()
-            from paddle.fluid.contrib.slim import *
-            from paddle.fluid.contrib.quantize import *
-            graph = IRGraph(program)
-            performer = QuantizationPerformer()
-            performer.quantize_transform(graph)
+            # The original graph will be rewrite.
+            import paddle.fluid as fluid
+            from paddle.fluid.contrib.slim.quantization \
+                import QuantizationTransformPass
+            from paddle.fluid.contrib.slim.graph import PyGraph
+            from paddle.fluid import core
+
+            graph = PyGraph(core.Graph(program.desc), for_test=False)
+            exe = fluid.Executor(fluid.CPUPlace())
+            transform_pass = QuantizationTransformPass(fluid.global_scope(),
+            exe)
+            transform_pass.apply(graph)
         """
+        self.scope = scope
+        self.program_exe = program_exe
         self.weight_bits = weight_bits
         self.activation_bits = activation_bits
 
@@ -74,7 +84,7 @@ class QuantizationPerformer(object):
         self.weight_quantize_type = weight_quantize_type
         self.window_size = window_size
 
-        self.need_inited_outer = collections.OrderedDict()
+        self.need_initialized = collections.OrderedDict()
         self.quantizable_ops = ['conv2d', 'depthwise_conv2d', 'mul']
         self.quantizable_grad_ops = [
             '%s_grad' % (op) for op in self.quantizable_ops
@@ -86,11 +96,11 @@ class QuantizationPerformer(object):
         self.is_test = None
         self.global_step = None
 
-    def quantize_transform(self, graph, is_test):
-        self.need_inited_outer.clear()
-        self.is_test = is_test
+    def apply(self, graph):
         assert isinstance(graph,
                           PyGraph), 'graph must be the instance of PyGraph.'
+        self.need_initialized.clear()
+        self.is_test = graph.is_test()
         # marked the variable which has been dequantized.
         dequantized_vars = collections.OrderedDict()
         params = [p.name() for p in graph.all_parameters()]
@@ -138,7 +148,19 @@ class QuantizationPerformer(object):
             if op.name() in self.quantizable_grad_ops:
                 _transform_backward(graph, op)
 
-        return self.need_inited_outer
+        if len(self.need_initialized) > 0:
+            assert self.scope is not None, \
+            'The scope cannot be set None when activation_quantize_type equals to range_abs_max.'
+            assert self.program_exe is not None, \
+            'The program_exe cannot be set None when activation_quantize_type equals to range_abs_max.'
+            init_program = Program()
+            for var_desc, initializer in self.need_initialized.iteritems():
+                var = Variable.construct_from_desc(init_program.global_block(),
+                                                   var_desc)
+                initializer(var, init_program.global_block())
+            self.program_exe.run(program=init_program, scope=self.scope)
+
+        return graph
 
     def _create_global_step(self, graph):
         if self.weight_quantize_type == 'range_abs_max' or \
@@ -153,7 +175,7 @@ class QuantizationPerformer(object):
                     var_type=core.VarDesc.VarType.LOD_TENSOR,
                     shape=[1],
                     var_dtype=core.VarDesc.VarType.INT64)
-                self.need_inited_outer[global_step_in.var()] = \
+                self.need_initialized[global_step_in.var()] = \
                     Constant(value=0, force_cpu=True)
                 global_step_out = graph.create_var_node_from_desc(
                     global_step_in.var())
@@ -220,7 +242,7 @@ class QuantizationPerformer(object):
             var_type=core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
             var_dtype=var_node.var().dtype())
-        self.need_inited_outer[scale_in_node.var()] = Constant(value=0.001)
+        self.need_initialized[scale_in_node.var()] = Constant(value=0.001)
 
         scale_out_node = graph.create_var_node_from_desc(scale_in_node.var())
         inputs = {'X': var_node, 'InScale': scale_in_node}
@@ -233,7 +255,7 @@ class QuantizationPerformer(object):
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
                 shape=[self.window_size],
                 var_dtype=var_node.var().dtype())
-            self.need_inited_outer[scales_node.var()] = Constant(value=0)
+            self.need_initialized[scales_node.var()] = Constant(value=0)
             inputs['Iter'] = self.global_step
             outputs['OutScales'] = scales_node
         attrs = {

@@ -15,11 +15,10 @@
 import unittest
 import random
 import numpy as np
-import paddle
 import paddle.fluid as fluid
 import six
 from paddle.fluid.framework import Program
-from paddle.fluid.contrib.slim.quantization import QuantizationPerformer
+from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.contrib.slim.graph import PyGraph
 from paddle.fluid import core
 
@@ -66,21 +65,38 @@ def residual_block(num):
     return loss
 
 
-class TestQuantizationPerformer(unittest.TestCase):
+class TestQuantizationTransformPass(unittest.TestCase):
     def setUp(self):
-        # since quant_op and dequant_op is not ready, use cos and sin for test
-        self.weight_quant_op_type = 'fake_quantize_abs_max'
-        self.dequant_op_type = 'fake_dequantize_max_abs'
         self.quantizable_op_and_inputs = {
             'conv2d': ['Input', 'Filter'],
             'depthwise_conv2d': ['Input', 'Filter'],
             'mul': ['X', 'Y']
         }
-        self.quantizable_op_grad_and_inputs = {
+        self.quantizable_grad_op_inputs = {
             'conv2d_grad': ['Input', 'Filter'],
             'depthwise_conv2d_grad': ['Input', 'Filter'],
             'mul_grad': ['X', 'Y']
         }
+
+    def check_program(self, transform_pass, program):
+        quantized_ops = set()
+        for block in program.blocks:
+            for op in block.ops:
+                # check forward
+                if op.type in self.quantizable_op_and_inputs:
+                    for arg_name in op.input_arg_names:
+                        self.assertTrue(
+                            arg_name.endswith('.quantized.dequantized'))
+                        quantized_ops.add(arg_name)
+
+            for op in block.ops:
+                # check backward
+                if op.type in self.quantizable_grad_op_inputs:
+                    for pname in self.quantizable_grad_op_inputs[op.type]:
+                        arg_name = op.input(pname)[0]
+                        self.assertTrue(
+                            arg_name.endswith('.quantized.dequantized'))
+                        self.assertTrue(arg_name in quantized_ops)
 
     def linear_fc_quant(self, quant_type):
         main = fluid.Program()
@@ -89,14 +105,26 @@ class TestQuantizationPerformer(unittest.TestCase):
             loss = linear_fc(3)
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
-        graph = PyGraph(core.Graph(main.desc))
-        performer = QuantizationPerformer(activation_quantize_type=quant_type)
-        performer.quantize_transform(graph, False)
+        exe = fluid.Executor(fluid.CPUPlace())
+        graph = PyGraph(core.Graph(main.desc), for_test=False)
+        transform_pass = QuantizationTransformPass(
+            scope=fluid.global_scope(),
+            program_exe=exe,
+            activation_quantize_type=quant_type)
+        transform_pass.apply(graph)
         marked_nodes = set()
         for op in graph.all_ops():
             if op.name().find('quantize') > -1:
                 marked_nodes.add(op)
-        graph.draw_graph('.', 'quantize_fc_' + quant_type, marked_nodes)
+        graph.draw('.', 'quantize_fc_' + quant_type, marked_nodes)
+        program = graph.to_program()
+        self.check_program(transform_pass, program)
+        val_graph = PyGraph(core.Graph(program.desc), for_test=False)
+        val_marked_nodes = set()
+        for op in val_graph.all_ops():
+            if op.name().find('quantize') > -1:
+                val_marked_nodes.add(op)
+        val_graph.draw('.', 'val_fc_' + quant_type, val_marked_nodes)
 
     def test_linear_fc_quant_abs_max(self):
         self.act_quant_op_type = 'fake_quantize_abs_max'
@@ -113,14 +141,26 @@ class TestQuantizationPerformer(unittest.TestCase):
             loss = residual_block(2)
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
-        graph = PyGraph(core.Graph(main.desc))
-        performer = QuantizationPerformer(activation_quantize_type=quant_type)
-        performer.quantize_transform(graph, False)
+        exe = fluid.Executor(fluid.CPUPlace())
+        graph = PyGraph(core.Graph(main.desc), for_test=False)
+        transform_pass = QuantizationTransformPass(
+            scope=fluid.global_scope(),
+            program_exe=exe,
+            activation_quantize_type=quant_type)
+        transform_pass.apply(graph)
         marked_nodes = set()
         for op in graph.all_ops():
             if op.name().find('quantize') > -1:
                 marked_nodes.add(op)
-        graph.draw_graph('.', 'quantize_residual_' + quant_type, marked_nodes)
+        graph.draw('.', 'quantize_residual_' + quant_type, marked_nodes)
+        program = graph.to_program()
+        self.check_program(transform_pass, program)
+        val_graph = PyGraph(core.Graph(program.desc), for_test=False)
+        val_marked_nodes = set()
+        for op in val_graph.all_ops():
+            if op.name().find('quantize') > -1:
+                val_marked_nodes.add(op)
+        val_graph.draw('.', 'val_residual_' + quant_type, val_marked_nodes)
 
     def test_residual_block_abs_max(self):
         self.act_quant_op_type = 'fake_quantize_abs_max'

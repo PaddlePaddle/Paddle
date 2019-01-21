@@ -148,8 +148,8 @@ void BindNode(py::module *m) {
            })
       .def("outputs_append",
            [](Node &self, Node &node) { self.outputs.push_back(&node); })
-      .def_readwrite("inputs", &Node::inputs)
-      .def_readwrite("outputs", &Node::outputs);
+      .def_readonly("inputs", &Node::inputs)
+      .def_readonly("outputs", &Node::outputs);
 
   py::enum_<Node::Type>(node, "Type")
       .value("Operation", Node::Type::kOperation)
