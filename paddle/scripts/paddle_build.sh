@@ -709,10 +709,9 @@ function gen_fluid_lib() {
     Generating fluid library for train and inference ...
     ========================================
 EOF
-        cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
-        make -j `nproc` fluid_lib_dist
-        make -j `nproc` inference_lib_dist
-      fi
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
+    make -j `nproc` fluid_lib_dist
+    make -j `nproc` inference_lib_dist
 }
 
 function tar_fluid_lib() {
@@ -721,12 +720,11 @@ function tar_fluid_lib() {
     Taring fluid library for train and inference ...
     ========================================
 EOF
-        cd ${PADDLE_ROOT}/build
-        cp -r fluid_install_dir fluid
-        tar -czf fluid.tgz fluid
-        cp -r fluid_inference_install_dir fluid_inference
-        tar -czf fluid_inference.tgz fluid_inference
-      fi
+    cd ${PADDLE_ROOT}/build
+    cp -r fluid_install_dir fluid
+    tar -czf fluid.tgz fluid
+    cp -r fluid_inference_install_dir fluid_inference
+    tar -czf fluid_inference.tgz fluid_inference
 }
 
 function test_fluid_lib() {
@@ -735,12 +733,11 @@ function test_fluid_lib() {
     Testing fluid library for inference ...
     ========================================
 EOF
-        cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
-        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
-                 ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
-                 ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
-        ./clean.sh
-      fi
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
+             ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
+             ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
+    ./clean.sh
 }
 
 function main() {
