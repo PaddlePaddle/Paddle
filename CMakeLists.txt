@@ -91,29 +91,6 @@ if(NOT CMAKE_BUILD_TYPE)
       FORCE)
 endif()
 
-if(ANDROID OR IOS)
-    if(ANDROID)
-        if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
-            message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 16")
-        endif()
-    endif()
-
-    set(WITH_GPU OFF CACHE STRING
-        "Disable GPU when cross-compiling for Android and iOS" FORCE)
-    set(WITH_AVX OFF CACHE STRING
-        "Disable AVX when cross-compiling for Android and iOS" FORCE)
-    set(WITH_PYTHON OFF CACHE STRING
-        "Disable PYTHON when cross-compiling for Android and iOS" FORCE)
-    set(WITH_RDMA OFF CACHE STRING
-        "Disable RDMA when cross-compiling for Android and iOS" FORCE)
-    set(WITH_MKL OFF CACHE STRING
-        "Disable MKL when cross-compiling for Android and iOS" FORCE)
-    set(WITH_NGRAPH OFF CACHE STRING
-        "Disable nGraph when cross-compiling for Android and iOS" FORCE)
-    set(WITH_GOLANG OFF CACHE STRING
-        "Disable golang when cross-compiling for Android and iOS" FORCE)
-endif()
-
 if (APPLE)
     set(WITH_MKL OFF CACHE STRING
         "Disable MKL for building on mac" FORCE)
