@@ -15,6 +15,7 @@
 #pragma once
 
 #include <gtest/gtest.h>
+
 #include <algorithm>
 #include <string>
 #include <thread>  // NOLINT
@@ -28,9 +29,8 @@
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
-
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/tests/api/config_printer.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 #include "paddle/fluid/inference/utils/benchmark.h"
@@ -91,7 +91,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         float *pdata = static_cast<float *>(out.data.data());
         float *pdata_ref = static_cast<float *>(ref_out.data.data());
         for (size_t j = 0; j < size; ++j) {
-          EXPECT_NEAR(pdata_ref[j], pdata[j], FLAGS_accuracy);
+          CHECK_LE(std::abs(pdata_ref[j] - pdata[j]), FLAGS_accuracy);
         }
         break;
       }

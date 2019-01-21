@@ -57,15 +57,15 @@ class Autograd {
   Autograd() {}
 
   void RunBackward(VarBase* var) {
-    if (var->stop_gradient_) {
+    if (var->IsStopGradient()) {
       return;
     }
     VLOG(3) << "start autograd";
 
     std::deque<OpBase*> ready;
-    ready.push_back(var->pre_op_);
+    ready.push_back(var->PreOp());
 
-    std::map<OpBase*, int> dep_counts = ComputeDepCounts(var->pre_op_);
+    std::map<OpBase*, int> dep_counts = ComputeDepCounts(var->PreOp());
 
     while (!ready.empty()) {
       OpBase* ready_op = ready.front();
@@ -77,7 +77,7 @@ class Autograd {
         const std::vector<VarBase*>& ingrads = it.second;
         for (size_t i = 0; i < ingrads.size(); ++i) {
           if (!ingrads[i]) continue;
-          if (ready_op->input_vars_[it.first][i]->stop_gradient_) {
+          if (ready_op->input_vars_[it.first][i]->IsStopGradient()) {
             continue;
           }
           OpBase* pre_op = ready_op->pre_ops_[it.first][i];

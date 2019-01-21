@@ -14,25 +14,17 @@
 
 #pragma once
 
-#include <string>
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-/*
- * Perform IR analysis passes.
- *
- * It is used to fuse some
- */
-class IrAnalysisPass : public AnalysisPass {
+class IrGraphToProgramPass : public AnalysisPass {
  public:
-  void RunImpl(Argument* argument) override;
+  void RunImpl(Argument *argument) override;
 
-  void CollectFusionStatis(Argument* argument);
-
-  std::string repr() const override;
+  std::string repr() const override { return "ir-graph-to-param-pass"; }
 };
 
 }  // namespace analysis

@@ -27,18 +27,25 @@ class Layer(core.Layer):
     """Layers composed of operators."""
 
     def __init__(self, dtype=core.VarDesc.VarType.FP32, name=None):
-        self._once_built = False
+        self._built = False
         self._dtype = dtype
+
+    def parameters(self):
+        return []
+
+    def clear_gradients(self):
+        for p in self.parameters():
+            p._clear_gradient()
 
     def _build_once(self, inputs):
         pass
 
     def __call__(self, *inputs):
-        if not self._once_built:
+        if not self._built:
             self._build_once(*inputs)
-            self._once_built = True
 
         outputs = self.forward(*inputs)
+        self._built = True
         return outputs
 
     def forward(self, *inputs):

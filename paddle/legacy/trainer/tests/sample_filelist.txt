@@ -1,1 +1,0 @@
-legacy/trainer/tests/sample_data.txt
