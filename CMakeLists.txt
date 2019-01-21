@@ -115,10 +115,6 @@ if(ANDROID OR IOS)
         "Disable nGraph when cross-compiling for Android and iOS" FORCE)
     set(WITH_GOLANG OFF CACHE STRING
         "Disable golang when cross-compiling for Android and iOS" FORCE)
-
-    # Compile PaddlePaddle mobile inference library
-    set(MOBILE_INFERENCE ON)
-    add_definitions(-DPADDLE_MOBILE_INFERENCE)
 endif()
 
 if (APPLE)
@@ -142,11 +138,7 @@ set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
 set(FLUID_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_install_dir" CACHE STRING
   "A path setting fluid inference shared and static libraries")
 
-if(MOBILE_INFERENCE)
-    set(THIRD_PARTY_BUILD_TYPE MinSizeRel)
-else()
-    set(THIRD_PARTY_BUILD_TYPE Release)
-endif()
+set(THIRD_PARTY_BUILD_TYPE Release)
 
 set(WITH_MKLML ${WITH_MKL})
 if (NOT DEFINED WITH_MKLDNN)

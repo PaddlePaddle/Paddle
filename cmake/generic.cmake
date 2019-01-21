@@ -655,12 +655,6 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
   set(${SRCS})
   set(${HDRS})
 
-  if (MOBILE_INFERENCE)
-      set(EXTRA_FLAG "lite:")
-  else()
-      set(EXTRA_FLAG "")
-  endif()
-
   foreach(FIL ${ARGN})
     get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
     get_filename_component(FIL_WE ${FIL} NAME_WE)
@@ -677,7 +671,7 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
       COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}"
       COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
       -I${CMAKE_CURRENT_SOURCE_DIR}
-      --cpp_out "${EXTRA_FLAG}${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
+      --cpp_out "${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
       DEPENDS ${ABS_FIL} protoc
       COMMENT "Running C++ protocol buffer compiler on ${FIL}"
       VERBATIM )
