@@ -48,6 +48,7 @@ class Conv2D(layers.Layer):
         assert param_attr is not False, "param_attr should not be False here."
         super(Conv2D, self).__init__(name=name, dtype=dtype)
 
+        # TODO(minqiyang): Move this to the top.
         from ..layer_helper import LayerHelper
         self._helper = LayerHelper(
             type(self).__name__,
@@ -209,14 +210,25 @@ class FC(layers.Layer):
     def __init__(self,
                  size,
                  param_attr=None,
+                 bias_attr=None,
                  num_flatten_dims=1,
-                 dtype=core.VarDesc.VarType.FP32):
+                 dtype=core.VarDesc.VarType.FP32,
+                 act=None,
+                 name=None):
         super(FC, self).__init__()
         self._size = size
         self._num_flatten_dims = num_flatten_dims
         self._dtype = dtype
         from ..layer_helper import LayerHelper
-        self._helper = LayerHelper('FC', param_attr=param_attr)
+        self._helper = LayerHelper(
+            'FC',
+            param_attr=param_attr,
+            bias_attr=bias_attr,
+            act=act,
+            name=name)
+
+    def parameters(self):
+        return [self._w, self._b]
 
     def _build_once(self, input):
         input_shape = input.shape
@@ -247,4 +259,22 @@ class FC(layers.Layer):
             inputs={"X": [tmp]},
             outputs={"Out": out},
             attrs={"use_mkldnn": False})
-        return out
+
+        bias_attr = self._helper.bias_attr
+        if bias_attr:
+            # add bias
+            size = list(out.shape[1:])
+            if not self._built:
+                self._b = self._helper.create_parameter(
+                    attr=bias_attr, shape=size, dtype=out.dtype, is_bias=True)
+            bias_out = self._helper.create_variable_for_type_inference(
+                dtype=out.dtype)
+            self._helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [out],
+                        'Y': [self._b]},
+                outputs={'Out': [bias_out]},
+                attrs={'axis': 1})
+            out = bias_out
+        # add activation
+        return self._helper.append_activation(out)
