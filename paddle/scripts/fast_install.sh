@@ -20,7 +20,7 @@ function use_cpu(){
     done
 }
 
-function check_python2(){
+function checkMacPython2(){
     while true
        do
           read -p "未发现除MacOS自带的python外的可用python，
@@ -57,7 +57,7 @@ function check_python2(){
        done
 }
 
-function check_python3(){
+function checkMacPython3(){
     while true
        do
           read -p "未发现可用的python3，
@@ -94,7 +94,7 @@ function check_python3(){
        done
 }
 
-function check_cudnn(){
+function checkLinuxCUDNN(){
    while true
    do
        version_file='/usr/local/cuda/include/cudnn.h'
@@ -151,7 +151,7 @@ function check_cudnn(){
    done
 }
 
-function check_cuda(){
+function checkLinuxCUDA(){
    while true
    do
        CUDA=`echo ${CUDA_VERSION}|awk -F "[ .]" '{print $1}'`
@@ -222,7 +222,7 @@ function check_cuda(){
    done
 }
 
-function math_library(){
+function checkLinuxMathLibrary(){
   while true
     do
       if [ "$AVX" ==  "" ];then
@@ -255,7 +255,7 @@ function math_library(){
     done
 }
 
-function paddle_develop(){
+function checkLinuxPaddleVersion(){
   while true
     do
       read -p "请选择Paddle版本：
@@ -278,7 +278,7 @@ function paddle_develop(){
     done
 }
 
-function pip_check(){
+function checkLinuxPip(){
   while true
     do
        echo "请输入您要使用的pip目录（您可以使用which pip来查看）："
@@ -306,7 +306,7 @@ function pip_check(){
     done
 }
 
-function avx_check(){
+function checkLinuxAVX(){
   while true
   do
     if [[ "$AVX" != "" ]];then
@@ -324,7 +324,7 @@ function avx_check(){
   done
 }
 
-function pip_install(){
+function PipLinuxInstall(){
   wheel_cpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-${GPU}-${AVX}-${math}/paddlepaddle-${release_version}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
   wheel_gpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-${release_version}.post${CUDA}${CUDNN}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
   wheel_gpu_release_navx="http://paddle-wheel.bj.bcebos.com/${release_version}-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-${release_version}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
@@ -362,7 +362,7 @@ function pip_install(){
 }
 
 
-function check_gpu(){
+function checkLinuxGPU(){
   AVX=`cat /proc/cpuinfo |grep avx|tail -1|grep avx`
   which_gpu=`lspci |grep -i nvidia`
   if [ "$which_gpu" == "" ];then
@@ -373,8 +373,8 @@ function check_gpu(){
     echo "您使用的是包含我们支持的GPU机器"
   fi
   if [ "$GPU" == 'gpu' ];then
-    check_cuda
-    check_cudnn
+    checkLinuxCUDA
+    checkLinuxCUDNN
   fi
 }
 
@@ -575,14 +575,14 @@ gpu_list=("GeForce 410M"
 "Tesla P4"
 "Tesla P40"
 "Tesla V100")
-  check_gpu
-  math_library
-  paddle_develop
-  pip_check
-  avx_check
-  pip_install
-
+  checkLinuxGPU
+  checkLinuxMathLibrary
+  checkLinuxPaddleVersion
+  checkLinuxPip
+  checkLinuxAVX
+  PipLinuxInstall
 }
+
 function checkMacPaddleVersion(){
   while true
     do
@@ -622,7 +622,7 @@ function checkMacPythonVersion(){
                python_version=""
            fi
            if [ "$python_root" == "" ]||[ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ]||[ "$python_root" == "/usr/bin/python2.7" -a "$python_version" == "Python 2.7.10" ];then
-               check_python2
+               checkMacPython2
            fi
            while true
              do
@@ -632,7 +632,7 @@ function checkMacPythonVersion(){
                     break
                elif [ "$use_python" == "n" ];then
                     python_root=""
-                    check_python2
+                    checkMacPython2
                     break
                else
                     echo "输入错误，请重新输入"
@@ -648,7 +648,7 @@ function checkMacPythonVersion(){
                python_version=""
            fi
            if [ "$python_root" == "" ]||[ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ];then
-               check_python3
+               checkMacPython3
            fi
            while true
              do
@@ -657,7 +657,7 @@ function checkMacPythonVersion(){
                if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
                    break
                elif [ "$use_python" == "n" ];then
-                    check_python3
+                    checkMacPython3
                     break
                else
                     echo "输入错误，请重新输入"
