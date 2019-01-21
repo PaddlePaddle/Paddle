@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/tensor_util.h"
 
 #include "paddle/fluid/operators/distributed/collective_client.h"
 #include "paddle/fluid/operators/distributed/collective_server.h"
@@ -80,6 +81,20 @@ void Gather(const std::vector<distributed::RemoteVar>& vars,
   std::vector<const framework::SelectedRows*> dst;
   client->Gather(vars, &dst, *dev_ctx, scope);
   std::cout << "dst:" << distributed::GetSelectedRowsInfo(*dst[0]);
+  dev_ctx->Wait();
+
+  ASSERT_EQ(dst[0]->value().dims(), framework::make_ddim({20000, 1024}));
+  ASSERT_EQ(dst[0]->height(), 20000);
+  ASSERT_EQ(dst[0]->rows().size(), 3);
+  for (int i = 0; i < 3; i++) {
+    ASSERT_EQ(dst[0]->rows()[i], i);
+  }
+
+  std::vector<float> vec;
+  TensorToVector(dst[0]->value(), *dev_ctx, &vec);
+  for (size_t i = 0; i < 20000 * 1024; i++) {
+    ASSERT_TRUE(vec[i] - 32.7 < 0.000001);
+  }
 }
 
 TEST(CollectiveServer, GPU) {
