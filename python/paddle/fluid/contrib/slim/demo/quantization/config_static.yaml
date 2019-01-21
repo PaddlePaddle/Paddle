@@ -16,6 +16,6 @@ strategies:
         save_as_int8: True
 compress_pass:
     class: 'CompressPass'
-    epoch: 100
+    epoch: 2
     strategies:
         - strategy_1

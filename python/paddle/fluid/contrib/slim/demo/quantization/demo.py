@@ -16,6 +16,7 @@ import paddle.fluid as fluid
 import paddle
 import os
 import sys
+from collections import OrderedDict
 from paddle.fluid.contrib.slim import CompressPass
 from paddle.fluid.contrib.slim import build_compressor
 from paddle.fluid.contrib.slim import ImitationGraph
@@ -48,23 +49,25 @@ class LinearModel(object):
         eval_feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
         exe = fluid.Executor(place)
         exe.run(startup_program)
-        train_metrics = {"loss": avg_cost.name}
-        eval_metrics = {"loss": avg_cost.name}
-        graph = ImitationGraph(train_program)
-        # config = './config_dynamic.yaml'
-        config = './config_static.yaml'
-        comp_pass = build_compressor(
+
+        train_feed_list = OrderedDict([('x', x.name), ('y', y.name)])
+        train_fetch_list = OrderedDict([('cost', avg_cost.name)])
+        eval_feed_list = OrderedDict([('x', x.name), ('y', y.name)])
+        eval_fetch_list = OrderedDict([('cost', avg_cost.name)])
+
+        comp = CompressPass(
             place,
-            data_reader=train_reader,
-            data_feeder=train_feeder,
-            feed_vars=[x, y],
-            fetch_vars=[avg_cost],
-            scope=fluid.global_scope(),
-            metrics=train_metrics,
-            epoch=1,
-            program_exe=exe,
-            config=config)
-        comp_pass.apply(graph)
+            fluid.global_scope(),
+            train_program,
+            train_reader=train_reader,
+            train_feed_list=train_feed_list,
+            train_fetch_list=train_fetch_list,
+            eval_program=eval_program,
+            eval_reader=eval_reader,
+            eval_feed_list=eval_feed_list,
+            eval_fetch_list=eval_fetch_list)
+        comp.config('./config_static.yaml')
+        comp.run()
 
 
 if __name__ == "__main__":
