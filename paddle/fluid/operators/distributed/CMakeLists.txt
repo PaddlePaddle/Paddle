@@ -7,7 +7,7 @@ if(WITH_GRPC)
 else()
     set(cc_generic_services "true")
 endif()
-configure_file(send_recv.proto.in ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto @ONLY)
+configure_file(send_recv.proto.in ${CMAKE_CURRENT_SOURCE_DIR}/send_recv.proto @ONLY)
 
 
 cc_library(barrier SRCS barrier.cc)
@@ -45,11 +45,9 @@ if(WITH_GRPC)
   cc_test(grpc_serde_test SRCS grpc/grpc_serde_test.cc 
     DEPS ${RPC_DEPS} scope profiler math_function SERIAL)
 else()
-  set_source_files_properties(brpc_server.cc parameter_prefetch.cc brpc_client.cc rpc_server_test.cc brpc_serde_test.cc
-      brpc_variable_response.cc brpc_sendrecvop_utils.cc brpc_rdma_pool.cc collective_server.cc collective_server_test.cc
-      collective_client.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set(BRPC_SRCS brpc/brpc_client.cc brpc/brpc_server.cc brpc/brpc_sendrecvop_utils.cc brpc/brpc_variable_response.cc brpc/brpc_rdma_pool.cc)
+  set_source_files_properties(${BRPC_SRCS} parameter_prefetch.cc rpc_server_test.cc brpc/brpc_serde_test.cc collective_server.cc collective_server_test.cc collective_client.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
-  set(BRPC_SRCS brpc/brpc_client.cc brpc/brpc/server.cc brpc/brpc_sendrecvop_utils.cc brpc/brpc_variable_response.cc brpc/brpc_rdma_pool.cc)
   brpc_library(sendrecvop_rpc SRCS sendrecvop_utils.cc
       request_handler_impl.cc rpc_client.cc rpc_server.cc
       variable_response.cc

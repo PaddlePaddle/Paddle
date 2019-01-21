@@ -19,7 +19,7 @@ endfunction()
 
 function(inference_analysis_api_test target install_dir filename)
     inference_analysis_test(${target} SRCS ${filename}
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
         ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt)
 endfunction()
 
@@ -62,7 +62,7 @@ inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR} analyzer_rnn2
 # normal DAM
 set(DAM_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/dam")
 download_model_and_data(${DAM_INSTALL_DIR} "DAM_model.tar.gz" "DAM_data.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_dam ${DAM_INSTALL_DIR} analyzer_dam_tester.cc SERIAL)
+inference_analysis_api_test(test_analyzer_dam ${DAM_INSTALL_DIR} analyzer_dam_tester.cc EXTRA_DEPS legacy_allocator SERIAL)
 
 # small DAM
 set(DAM_SMALL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_dam")
@@ -84,7 +84,12 @@ inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR} analyzer_lac_te
 # MM DNN
 set(MM_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mm_dnn")
 download_model_and_data(${MM_DNN_INSTALL_DIR} "MM_DNN_model.tar.gz" "MM_DNN_data.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_mm_dnn ${MM_DNN_INSTALL_DIR} analyzer_mm_dnn_tester.cc)
+inference_analysis_api_test(test_analyzer_mm_dnn ${MM_DNN_INSTALL_DIR} analyzer_mm_dnn_tester.cc SERIAL)
+
+# Pyramid DNN
+set(PYRAMID_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/pyramid_dnn")
+download_model_and_data(${PYRAMID_DNN_INSTALL_DIR} "PyramidDNN_model.tar.gz" "PyramidDNN_data.txt.tar.gz")
+inference_analysis_api_test(test_analyzer_pyramid_dnn ${PYRAMID_DNN_INSTALL_DIR} analyzer_pyramid_dnn_tester.cc)
 
 # text_classification
 set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")

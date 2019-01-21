@@ -26,8 +26,6 @@ function print_usage() {
 
     echo -e "\n${RED}Options${NONE}:
     ${BLUE}build${NONE}: run build for x86 platform
-    ${BLUE}build_android${NONE}: run build for android platform
-    ${BLUE}build_ios${NONE}: run build for ios platform
     ${BLUE}test${NONE}: run all unit tests
     ${BLUE}single_test${NONE}: run a single unit test
     ${BLUE}bind_test${NONE}: parallel tests bind to different GPU
@@ -301,110 +299,6 @@ EOF
     make install -j 8
 }
 
-function build_android() {
-    if [ $ANDROID_ABI == "arm64-v8a" ]; then
-      ANDROID_ARCH=arm64
-      if [ $ANDROID_API -lt 21 ]; then
-        echo "Warning: arm64-v8a requires ANDROID_API >= 21."
-        ANDROID_API=21
-      fi
-    else # armeabi, armeabi-v7a
-      ANDROID_ARCH=arm
-    fi
-
-    ANDROID_STANDALONE_TOOLCHAIN=$ANDROID_TOOLCHAINS_DIR/$ANDROID_ARCH-android-$ANDROID_API
-
-    cat <<EOF
-    ============================================
-    Generating the standalone toolchain ...
-    ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh
-          --arch=$ANDROID_ARCH
-          --platform=android-$ANDROID_API
-          --install-dir=${ANDROID_STANDALONE_TOOLCHAIN}
-    ============================================
-EOF
-    ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh \
-          --arch=$ANDROID_ARCH \
-          --platform=android-$ANDROID_API \
-          --install-dir=$ANDROID_STANDALONE_TOOLCHAIN
-
-    BUILD_ROOT=${PADDLE_ROOT}/build_android
-    DEST_ROOT=${PADDLE_ROOT}/install_android
-
-    mkdir -p $BUILD_ROOT
-    cd $BUILD_ROOT
-
-    if [ $ANDROID_ABI == "armeabi-v7a" ]; then
-      cmake -DCMAKE_SYSTEM_NAME=Android \
-            -DANDROID_STANDALONE_TOOLCHAIN=$ANDROID_STANDALONE_TOOLCHAIN \
-            -DANDROID_ABI=$ANDROID_ABI \
-            -DANDROID_ARM_NEON=ON \
-            -DANDROID_ARM_MODE=ON \
-            -DHOST_C_COMPILER=/usr/bin/gcc \
-            -DHOST_CXX_COMPILER=/usr/bin/g++ \
-            -DCMAKE_INSTALL_PREFIX=$DEST_ROOT \
-            -DCMAKE_BUILD_TYPE=MinSizeRel \
-            -DUSE_EIGEN_FOR_BLAS=ON \
-            -DWITH_C_API=ON \
-            -DWITH_SWIG_PY=OFF \
-            ..
-    elif [ $ANDROID_ABI == "arm64-v8a" ]; then
-      cmake -DCMAKE_SYSTEM_NAME=Android \
-            -DANDROID_STANDALONE_TOOLCHAIN=$ANDROID_STANDALONE_TOOLCHAIN \
-            -DANDROID_ABI=$ANDROID_ABI \
-            -DANDROID_ARM_MODE=ON \
-            -DHOST_C_COMPILER=/usr/bin/gcc \
-            -DHOST_CXX_COMPILER=/usr/bin/g++ \
-            -DCMAKE_INSTALL_PREFIX=$DEST_ROOT \
-            -DCMAKE_BUILD_TYPE=MinSizeRel \
-            -DUSE_EIGEN_FOR_BLAS=OFF \
-            -DWITH_C_API=ON \
-            -DWITH_SWIG_PY=OFF \
-            ..
-    elif [ $ANDROID_ABI == "armeabi" ]; then
-      cmake -DCMAKE_SYSTEM_NAME=Android \
-            -DANDROID_STANDALONE_TOOLCHAIN=$ANDROID_STANDALONE_TOOLCHAIN \
-            -DANDROID_ABI=$ANDROID_ABI \
-            -DANDROID_ARM_MODE=ON \
-            -DHOST_C_COMPILER=/usr/bin/gcc \
-            -DHOST_CXX_COMPILER=/usr/bin/g++ \
-            -DCMAKE_INSTALL_PREFIX=$DEST_ROOT \
-            -DCMAKE_BUILD_TYPE=MinSizeRel \
-            -DWITH_C_API=ON \
-            -DWITH_SWIG_PY=OFF \
-            ..
-    else
-      echo "Invalid ANDROID_ABI: $ANDROID_ABI"
-    fi
-
-    cat <<EOF
-    ============================================
-    Building in $BUILD_ROOT ...
-    ============================================
-EOF
-    make -j `nproc`
-    make install -j `nproc`
-}
-
-function build_ios() {
-    # Create the build directory for CMake.
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-
-    # Compile paddle binaries
-    cmake .. \
-          -DCMAKE_SYSTEM_NAME=iOS \
-          -DIOS_PLATFORM=OS \
-          -DCMAKE_OSX_ARCHITECTURES="arm64" \
-          -DWITH_C_API=ON \
-          -DUSE_EIGEN_FOR_BLAS=ON \
-          -DWITH_TESTING=OFF \
-          -DWITH_SWIG_PY=OFF \
-          -DCMAKE_BUILD_TYPE=Release
-
-    make -j 2
-}
-
 function run_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -639,7 +533,7 @@ EOF
     case $LIB_TYPE in
       full)
         # Build full Paddle Python module. Will timeout without caching 'copy_paddle_pybind' first
-        make -j `nproc` gen_proto_py framework_py_proto copy_paddle_pybind paddle_python
+        make -j `nproc` framework_py_proto copy_paddle_pybind paddle_python
         ;;
       pybind)
         # Build paddle pybind library. Takes 49 minutes to build. Might timeout
@@ -875,12 +769,6 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build
         gen_dockerfile ${PYTHON_ABI:-""}
-        ;;
-      build_android)
-        build_android
-        ;;
-      build_ios)
-        build_ios
         ;;
       test)
         run_test

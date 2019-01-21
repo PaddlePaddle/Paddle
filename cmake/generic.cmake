@@ -748,7 +748,7 @@ function(grpc_library TARGET_NAME)
   #FIXME(putcn): the follwoing line is supposed to generate *.pb.h and cc, but
   # somehow it didn't. line 602 to 604 is to patching this. Leaving this here
   # for now to enable dist CI.
-  protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")
+  paddle_protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")
   set(grpc_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.cc")
   set(grpc_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.h")
   cc_library("${TARGET_NAME}_proto" SRCS "${grpc_proto_srcs}")
@@ -791,7 +791,7 @@ function(brpc_library TARGET_NAME)
   get_filename_component(PROTO_WE ${brpc_library_PROTO} NAME_WE)
   get_filename_component(PROTO_PATH ${ABS_PROTO} PATH)
 
-  protobuf_generate_cpp(brpc_proto_srcs brpc_proto_hdrs "${ABS_PROTO}")
+  paddle_protobuf_generate_cpp(brpc_proto_srcs brpc_proto_hdrs "${ABS_PROTO}")
   cc_library("${TARGET_NAME}_proto" SRCS "${brpc_proto_srcs}")
   cc_library("${TARGET_NAME}" SRCS "${brpc_library_SRCS}" DEPS "${TARGET_NAME}_proto" "${brpc_library_DEPS}")
 endfunction()
