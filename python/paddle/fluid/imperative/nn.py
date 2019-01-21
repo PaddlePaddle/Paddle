@@ -55,7 +55,8 @@ class Conv2D(layers.Layer):
             param_attr=param_attr,
             bias_attr=bias_attr,
             dtype=dtype,
-            name=name)
+            name=name,
+            act=act)
 
         self._groups = groups
         self._stride = utils.convert_to_list(stride, 2, 'stride')
@@ -141,6 +142,7 @@ class Conv2D(layers.Layer):
             outputs={'Out': [pre_act]},
             attrs={'axis': 1})
 
+        # Currently, we don't support inplace in imperative mode
         return self._helper.append_activation(pre_act)
 
 
@@ -239,7 +241,6 @@ class FC(layers.Layer):
             shape=param_shape,
             dtype=self._dtype,
             is_bias=False)
-        print("create param: ", self._w.name, self._w.stop_gradient)
 
         if self._helper.bias_attr:
             size = list([self._size])
@@ -281,6 +282,7 @@ class FC(layers.Layer):
                 attrs={'axis': self._num_flatten_dims})
         else:
             pre_activation = pre_bias
+        # Currently, we don't support inplace in imperative mode
         return self._helper.append_activation(pre_activation)
 
 
@@ -308,7 +310,11 @@ class BatchNorm(layers.Layer):
 
         from ..layer_helper import LayerHelper
         self._helper = LayerHelper(
-            'batch_norm', param_attr=param_attr, bias_attr=bias_attr, name=name)
+            'batch_norm',
+            param_attr=param_attr,
+            bias_attr=bias_attr,
+            name=name,
+            act=act)
 
         if dtype == core.VarDesc.VarType.FP16:
             self._dtype = core.VarDesc.VarType.FP32
@@ -324,18 +330,20 @@ class BatchNorm(layers.Layer):
             dtype=self._dtype,
             default_initializer=Constant(1.0))
 
-        # setting stop_gradient=True to reduce computation
-        if use_global_stats and self._helper.param_attr.learning_rate == 0.:
-            self._scale.stop_gradient = True
+        # TODO(minqiyang): change stop_gradient sign to trainable to align with static graph
+        #  # setting stop_gradient=True to reduce computation
+        #  if use_global_stats and self._helper.param_attr.learning_rate == 0.:
+        #  self._scale.stop_gradient = True
 
         self._bias = self._helper.create_parameter(
             attr=self._helper.bias_attr,
             shape=param_shape,
             dtype=self._dtype,
             is_bias=True)
-        # setting stop_gradient=True to reduce computation
-        if use_global_stats and self._helper.bias_attr.learning_rate == 0.:
-            self._bias.stop_gradient = True
+        # TODO(minqiyang): change stop_gradient sign to trainable to align with static graph
+        #  # setting stop_gradient=True to reduce computation
+        #  if use_global_stats and self._helper.bias_attr.learning_rate == 0.:
+        #  self._bias.stop_gradient = True
 
         self._mean = self._helper.create_parameter(
             attr=ParamAttr(
@@ -406,4 +414,5 @@ class BatchNorm(layers.Layer):
                 "use_global_stats": self._use_global_stats
             })
 
+        # Currently, we don't support inplace in imperative mode
         return self._helper.append_activation(batch_norm_out)

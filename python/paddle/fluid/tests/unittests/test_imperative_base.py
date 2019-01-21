@@ -24,7 +24,8 @@ from paddle.fluid import core
 def new_program_scope():
     prog = fluid.Program()
     startup_prog = fluid.Program()
-    scope = fluid.core.Scope()
+    scope = core.Scope()
     with fluid.scope_guard(scope):
         with fluid.program_guard(prog, startup_prog):
-            yield
+            with fluid.unique_name.guard():
+                yield
