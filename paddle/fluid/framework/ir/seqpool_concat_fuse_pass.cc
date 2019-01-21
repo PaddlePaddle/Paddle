@@ -129,7 +129,8 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
   return concat_out_var;
 }
 
-int BuildFusion(Graph* graph, const std::string& name_scope, int num_inputs) {
+static int BuildFusion(Graph* graph, const std::string& name_scope,
+                       int num_inputs) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
   BuildSeqPoolConcatPattern(pattern, name_scope, num_inputs);
