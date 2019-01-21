@@ -384,8 +384,8 @@ class Variable(object):
             self._ivar.stop_gradient = stop_gradient
 
     def _numpy(self):
-        self._ivar.wait_device()
-        tensor = self._ivar.value().get_tensor()
+        tensor = self._ivar._cpu_tensor()
+        print('shapex', self.name, tensor.shape())
         return np.array(tensor)
 
     def _backward(self):

@@ -167,12 +167,42 @@ class Autograd {
   }
 };
 
+framework::LoDTensor* VarBase::CopiedTensor() const {
+  PADDLE_ENFORCE(var_->IsInitialized(),
+                 "Variable must be initialized when getting numpy tensor");
+  platform::Place place = var_->Get<framework::LoDTensor>().place();
+  framework::LoDTensor* result = new framework::LoDTensor();
+  result->Resize(var_->Get<framework::LoDTensor>().dims());
+  result->set_lod(var_->Get<framework::LoDTensor>().lod());
+  if (platform::is_gpu_place(place)) {
+    VLOG(3) << "fetch tensor " << var_desc_->Name() << " from gpu";
+
+    framework::TensorCopy(var_->Get<framework::LoDTensor>(),
+                          platform::CPUPlace(), result);
+
+    platform::DeviceContext* dev_ctx =
+        platform::DeviceContextPool::Instance().Get(place);
+    dev_ctx->Wait();
+  } else {
+    TensorCopy(var_->Get<framework::LoDTensor>(), platform::CPUPlace(), result);
+  }
+
+  return result;
+}
+
 framework::LoDTensor& VarBase::GradValue() {
   VLOG(3) << "get var grad " << var_desc_->Name();
   return *(grads_->var_->GetMutable<framework::LoDTensor>());
 }
 
 std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
+  VLOG(3) << "ApplyGrad to Op: " << op_desc_->Type();
+  for (auto it : input_vars_) {
+    for (VarBase* var : it.second) {
+      VLOG(3) << "Op Input: " << it.first << " : " << var->var_desc_->Name();
+    }
+  }
+
   if (!grad_op_desc_ && backward_id_ <= 0) {
     LOG(WARNING) << "op with no grad: " << op_desc_->Type();
     return {};
@@ -222,6 +252,9 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
     for (size_t i = 0; i < outputs.size(); ++i) {
       framework::Variable* grad = outputs[i];
       framework::Variable* orig_grad = origin_outputs[i];
+      LOG(ERROR) << "Add grad of " << it.first << " " << i << " "
+                 << orig_grad->GetMutable<framework::LoDTensor>()->mutable_data(
+                        expected_place_);
       AddGradTo(grad, orig_grad, expected_place_);
       delete grad;
     }

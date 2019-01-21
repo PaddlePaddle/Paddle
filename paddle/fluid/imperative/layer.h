@@ -136,6 +136,8 @@ class VarBase {
 
   framework::LoDTensor& GradValue();
 
+  framework::LoDTensor* CopiedTensor() const;
+
   inline std::string GradName() const {
     PADDLE_ENFORCE(
         var_desc_,
