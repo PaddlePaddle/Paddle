@@ -49,7 +49,6 @@ option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FO
 option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
-option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
 option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
 option(WITH_DOUBLE      "Compile PaddlePaddle with double precision"    OFF)
 option(WITH_RDMA        "Compile PaddlePaddle with RDMA support"        OFF)
@@ -176,7 +175,6 @@ include(external/python)    # download, build, install python
 include(external/openblas)  # download, build, install openblas
 include(external/mkldnn)    # download, build, install mkldnn
 include(external/ngraph)    # download, build, install nGraph
-include(external/swig)      # download, build, install swig
 include(external/boost)     # download boost
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
