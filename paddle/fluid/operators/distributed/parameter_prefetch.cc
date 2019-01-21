@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
 
-#include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
@@ -32,7 +32,7 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
@@ -117,6 +117,12 @@ static void MergeMultipleVarsIntoOneBySection(
   auto& id_tensor = scope->FindVar(id_name)->Get<framework::LoDTensor>();
   auto* out_tensor =
       scope->FindVar(out_name)->GetMutable<framework::LoDTensor>();
+
+  PADDLE_ENFORCE_GT(
+      out_tensor->numel(), 0,
+      "When calling this method, the LoDTensor's numel must larger than zero. "
+      "Please check LoDTensor::Resize has been called first.");
+
   auto* out_tensor_data = out_tensor->mutable_data<float>(id_tensor.place());
 
   bool is_on_cpu_place = true;
@@ -138,7 +144,7 @@ static void MergeMultipleVarsIntoOneBySection(
 
       auto row_numel = dims[1];
 
-      for (size_t i = 0; i < dims[0]; ++i) {
+      for (int64_t i = 0; i < dims[0]; ++i) {
         auto id = ids_in_this_section[i];
         auto origin_id = id + abs_sections[section_idx];
         auto& offsets = id_to_offset[origin_id];
@@ -172,8 +178,9 @@ void prefetch(const std::string& id_name, const std::string& out_name,
               const std::vector<std::string>& table_names,
               const std::vector<std::string>& epmap,
               const std::vector<int>& height_sections,
-              const framework::ExecutionContext& context) {
-  auto& local_scope = context.scope().NewScope();
+              const framework::ExecutionContext& context,
+              const framework::Scope& scope) {
+  auto& local_scope = scope.NewScope();
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& cpu_ctx = *pool.Get(platform::CPUPlace());
@@ -190,11 +197,11 @@ void prefetch(const std::string& id_name, const std::string& out_name,
     out_var_names.push_back(out_name + "@" + epmap[i]);
   }
 
-  auto& id_tensor = local_scope.FindVar(id_name)->Get<framework::LoDTensor>();
+  auto& id_tensor = scope.FindVar(id_name)->Get<framework::LoDTensor>();
   std::vector<int64_t> ids_vector;
   if (platform::is_cpu_place(id_tensor.place())) {
     auto* id_data = id_tensor.data<int64_t>();
-    for (size_t i = 0; i < id_tensor.numel(); ++i) {
+    for (int64_t i = 0; i < id_tensor.numel(); ++i) {
       ids_vector.push_back(id_data[i]);
     }
   } else {
@@ -202,7 +209,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
     PADDLE_THROW("paddle is not compiled with CUDA!");
 #else
     auto cpu_place = platform::CPUPlace();
-    framework::Tensor cpu_tensor;
+    framework::LoDTensor cpu_tensor;
     auto* cpu_tensor_data =
         cpu_tensor.mutable_data<int64_t>(id_tensor.dims(), cpu_place);
     auto stream =
@@ -246,8 +253,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
   MergeMultipleVarsIntoOneBySection(id_name, ids_vector, out_name,
                                     out_var_names, height_sections, splited_ids,
                                     context, &local_scope, &actual_ctx);
-
-  context.scope().DeleteScope(&local_scope);
+  scope.DeleteScope(&local_scope);
 }
 
 };  // namespace distributed

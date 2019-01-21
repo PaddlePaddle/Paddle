@@ -56,6 +56,8 @@ from . import unique_name
 from . import recordio_writer
 from . import parallel_executor
 from .parallel_executor import *
+from . import compiler
+from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 
 Tensor = LoDTensor
@@ -63,7 +65,7 @@ Tensor = LoDTensor
 __all__ = framework.__all__ + executor.__all__ + \
     trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-    data_feed_desc.__all__ + async_executor.__all__ + [
+    data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__ + [
         'io',
         'initializer',
         'layers',
@@ -102,13 +104,6 @@ def __bootstrap__():
     import sys
     import os
     import platform
-
-    if os.name == 'nt':
-        third_lib_path = os.path.abspath(os.path.dirname(
-            __file__)) + os.sep + '..' + os.sep + 'libs'
-        os.environ['path'] += ';' + third_lib_path
-        sys.path.append(third_lib_path)
-
     from . import core
 
     in_test = 'unittest' in sys.modules
@@ -135,7 +130,8 @@ def __bootstrap__():
         'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
         'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
         'allocator_strategy', 'reader_queue_speed_test_mode',
-        'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir'
+        'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir',
+        'inner_op_parallelism', 'enable_parallel_graph'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -151,12 +147,18 @@ def __bootstrap__():
         read_env_flags.append('rpc_get_thread_num')
         read_env_flags.append('rpc_prefetch_thread_num')
         read_env_flags.append('rpc_disable_reuse_port')
+        if core.is_compiled_with_brpc():
+            read_env_flags.append('max_body_size')
+            #set brpc max body size
+            os.environ['FLAGS_max_body_size'] = "2147483647"
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
-            'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus'
+            'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
+            'sync_nccl_allreduce', 'limit_of_tmp_allocation',
+            'times_excess_than_required_tmp_allocation'
         ]
 
     core.init_gflags([sys.argv[0]] +
