@@ -6064,7 +6064,7 @@ def unsqueeze(input, axes, name=None):
     return out
 
 
-def lod_reset(x, y=None, target_lod=None):
+def lod_reset(x, y=None, target_lod=None, append=False):
     """
     Set LoD of :attr:`x` to a new one specified by :attr:`y` or
     :attr:`target_lod`. When :attr:`y` provided, :attr:`y.lod` would be
@@ -6128,6 +6128,7 @@ def lod_reset(x, y=None, target_lod=None):
                            from :attr:`y`.
         target_lod (list|tuple|None): One level LoD which should be considered
                                       as target LoD when :attr:`y` not provided.
+        append (bool): A flag indicating whether to append lod level instead of reseting.
 
     Returns:
         Variable: Output variable with LoD specified by this layer.
@@ -6152,7 +6153,8 @@ def lod_reset(x, y=None, target_lod=None):
         helper.append_op(
             type="lod_reset",
             inputs={'X': x},
-            attrs={'target_lod': target_lod},
+            attrs={'target_lod': target_lod,
+                   'append': append},
             outputs={'Out': out})
     else:
         raise ValueError("y and target_lod should not be both None.")
