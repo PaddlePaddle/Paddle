@@ -1,4 +1,3 @@
-
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve. Licensed under
 the Apache License, Version 2.0 (the "License"); you may not use this file
 except in compliance with the License.
@@ -34,16 +33,14 @@ service SendRecvService {
   rpc GetMonomerBarrier(VariableMessage) returns (VoidMessage) {}
 }
 
-// VariableMessage is serialized paddle variable message.
-// It can be:
-// LoDTensor
-// SelectedRows
+// It can be: LoDTensor、SelectedRows or NCCL_ID
 enum VarType {
   LOD_TENSOR = 0;
   SELECTED_ROWS = 1;
   NCCL_ID = 2;
 }
 
+// VariableMessage is serialized paddle variable message.
 // NOTICE(gongwb):don't modify this proto if you are not
 //   not familar with how we serialize in sendrecvop_utils.h
 //   and deserilize it in  variable_response.h.
