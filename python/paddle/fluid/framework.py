@@ -378,6 +378,27 @@ class Variable(object):
             self._ivar.desc = self.desc
             self._ivar.stop_gradient = stop_gradient
 
+    @staticmethod
+    def construct_from_desc(block, desc):
+        """
+        Construct a Variable from variable desc.
+        Args:
+            desc(core.VarDesc): The  variable desc for constructing.
+
+        Returns:
+            Variable: A variable.
+        """
+        v = Variable(
+            block=block,
+            type=desc.type(),
+            name=desc.name(),
+            shape=desc.shape(),
+            dtype=desc.dtype(),
+            lod_level=desc.lod_level(),
+            persistable=desc.persistable())
+        v.desc = desc
+        return v
+
     def _numpy(self):
         tensor = self._ivar.value().get_tensor()
         return np.array(tensor)
@@ -1921,6 +1942,25 @@ class Program(object):
         """
         p = Program()
         p.desc = core.ProgramDesc(binary_str)
+        p.blocks = [Block(p, i) for i in six.moves.range(p.desc.num_blocks())]
+        p._sync_with_cpp()
+        return p
+
+    @staticmethod
+    def construct_from_desc(desc):
+        """
+        Construct a program from program desc.
+
+        Notes: All information about parameters will be lost.
+
+        Args:
+            desc(core.ProgramDesc): The program desc for constructing.
+
+        Returns:
+            Program: A program.
+        """
+        p = Program()
+        p.desc = desc
         p.blocks = [Block(p, i) for i in six.moves.range(p.desc.num_blocks())]
         p._sync_with_cpp()
         return p

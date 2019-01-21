@@ -26,10 +26,20 @@ class PyGraph(object):
     PyGraph uses core.Graph as the delegation to accomplish the manipulation.
     """
 
-    def __init__(self, graph):
+    def __init__(self, graph, for_test=False):
+        """
+        Construct the PyGraph using core.Graph.
+        Args:
+            graph(core.Graph): C++ Graph.
+            for_test(bool): True for the test graph and false for the train graph.
+        """
         assert isinstance(
             graph, core.Graph), 'graph must be the instance of core.Graph.'
         self.graph = graph
+        self.for_test = for_test
+
+    def is_test(self):
+        return self.for_test
 
     def all_parameters(self):
         param_nodes = set()
@@ -103,7 +113,7 @@ class PyGraph(object):
             remove_nodes = set(remove_nodes)
         core.graph_safe_remove_nodes(self.graph, remove_nodes)
 
-    def draw_graph(self, save_path, name, marked_nodes=None):
+    def draw(self, save_path, name, marked_nodes=None):
         def _convert_to_pdf(dot_file_path):
             pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
             exited_code = subprocess.call('dot -Tpdf ' + dot_file_path \
@@ -126,6 +136,8 @@ class PyGraph(object):
             if not isinstance(marked_nodes, set):
                 marked_nodes = set(marked_nodes)
             marked_nodes = marked_nodes - remove_ctr_vars
+            if self.graph.has('__graphviz__marked_node__'):
+                self.graph.erase('__graphviz__marked_node__')
             self.graph.set('__graphviz__marked_node__', marked_nodes)
         viz_dot_path = os.path.join(save_path, name) + '.dot'
         viz_pass = core.get_pass('graph_viz_pass')
@@ -137,8 +149,8 @@ class PyGraph(object):
         convert_pass = core.get_pass('graph_to_program_pass')
         convert_pass.set_program('program', Program().desc)
         convert_pass.apply(self.graph)
-        program = Program()
-        program.desc = convert_pass.get_program('program')
+        desc = convert_pass.get_program('program')
+        program = Program.construct_from_desc(desc)
         return program
 
 

@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from . import quantization_performer
-from .quantization_performer import *
+from . import quantization_pass
+from .quantization_pass import *
 
-__all__ = quantization_performer.__all__
+__all__ = quantization_pass.__all__
