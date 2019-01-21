@@ -199,13 +199,6 @@ framework::LoDTensor& VarBase::GradValue() {
 }
 
 std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
-  VLOG(3) << "ApplyGrad to Op: " << op_desc_->Type();
-  for (auto it : input_vars_) {
-    for (VarBase* var : it.second) {
-      VLOG(3) << "Op Input: " << it.first << " : " << var->var_desc_->Name();
-    }
-  }
-
   if (!grad_op_desc_ && backward_id_ <= 0) {
     LOG(WARNING) << "op with no grad: " << op_desc_->Type();
     return {};
@@ -256,9 +249,6 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
     for (size_t i = 0; i < outputs.size(); ++i) {
       framework::Variable* grad = outputs[i];
       framework::Variable* orig_grad = origin_outputs[i];
-      LOG(ERROR) << "Add grad of " << it.first << " " << i << " "
-                 << orig_grad->GetMutable<framework::LoDTensor>()->mutable_data(
-                        expected_place_);
       AddGradTo(grad, orig_grad, expected_place_);
       delete grad;
     }

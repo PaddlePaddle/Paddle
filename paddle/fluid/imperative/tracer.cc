@@ -159,7 +159,6 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
         } else {
           VarBase* var = vars[var_it->second];
           if (!var->grads_->var_->IsInitialized()) {
-            LOG(ERROR) << "Init grad input " << it.first << " " << grad_invar;
             InitVar(var->var_, var->grads_->var_,
                     prepared_op.GetDeviceContext());
           }
@@ -181,9 +180,6 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
         VarBase* var = vars[var_it->second];
         if (!var->grads_->var_->IsInitialized()) {
           InitVar(var->var_, var->grads_->var_, prepared_op.GetDeviceContext());
-          LOG(ERROR) << "Init grad output " << it.first << " " << grad_outvar
-                     << var->grads_->var_->GetMutable<framework::LoDTensor>()
-                            ->mutable_data(platform::CPUPlace());
         }
         grad_out_vars.push_back(var->grads_->var_);
       }

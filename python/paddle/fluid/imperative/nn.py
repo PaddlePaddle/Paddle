@@ -144,7 +144,7 @@ class Conv2D(layers.Layer):
             attrs={'axis': 1})
 
         # Currently, we don't support inplace in imperative mode
-        return self._helper.append_activation(pre_act)
+        return self._helper.append_activation(pre_act, force_no_inplace=True)
 
 
 class Pool2D(layers.Layer):
@@ -286,7 +286,8 @@ class FC(layers.Layer):
         else:
             pre_activation = pre_bias
         # Currently, we don't support inplace in imperative mode
-        return self._helper.append_activation(pre_activation)
+        return self._helper.append_activation(
+            pre_activation, force_no_inplace=True)
 
 
 class BatchNorm(layers.Layer):
@@ -418,4 +419,5 @@ class BatchNorm(layers.Layer):
             })
 
         # Currently, we don't support inplace in imperative mode
-        return self._helper.append_activation(batch_norm_out)
+        return self._helper.append_activation(
+            batch_norm_out, force_no_inplace=True)

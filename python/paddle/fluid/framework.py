@@ -386,7 +386,6 @@ class Variable(object):
 
     def _numpy(self):
         tensor = self._ivar._cpu_tensor()
-        print('shapex', self.name, tensor.shape())
         return np.array(tensor)
 
     def _backward(self):
