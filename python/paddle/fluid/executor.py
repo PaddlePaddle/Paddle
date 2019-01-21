@@ -534,7 +534,7 @@ class Executor(object):
                 fetch_var_name=fetch_var_name,
                 return_numpy=return_numpy)
         elif program._is_inference:
-            return self._run_inference(program, feed)
+            return self._run_inference(program._executor, feed)
         else:
             # TODO(panyx0718): Can compile program to optimize executor
             # performance.
@@ -594,5 +594,5 @@ class Executor(object):
             outs = as_numpy(outs)
         return outs
 
-    def _run_inference(self, program, feed):
-        return self.executor.run(feed)
+    def _run_inference(self, exe, feed):
+        return exe.run(feed)
