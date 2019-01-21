@@ -45,7 +45,7 @@ class BoxClipOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("RpnRois"));
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("InputBox"));
     return framework::OpKernelType(data_type, platform::CPUPlace());
   }
 };
