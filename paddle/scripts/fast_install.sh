@@ -9,7 +9,7 @@ function use_cpu(){
     do
      read -p "是否安装CPU版本的PaddlePaddle？(y/n)， 或使用ctrl + c退出: " cpu_option
      cpu_option=`echo $cpu_option | tr 'A-Z' 'a-z'`
-     if [ "$cpu_option" == "" || "$cpu_option" == "n" ];then
+     if [[ "$cpu_option" == "" || "$cpu_option" == "n" ]];then
         echo "退出安装中...."
         exit
      else
@@ -92,6 +92,290 @@ function check_python3(){
               fi
           fi
        done
+}
+
+function check_cudnn(){
+   while true
+   do
+       version_file='/usr/local/cuda/include/cudnn.h'
+       if [ -f "$version_file" ];then
+          CUDNN=`cat $version_file | grep CUDNN_MAJOR |awk 'NR==1{print $NF}'`
+       fi
+       if [ "$CUDNN" == "" ];then
+           version_file=`sudo find /usr -name "cudnn.h"|head -1`
+           if [ "$version_file" != "" ];then
+               CUDNN=`cat ${version_file} | grep CUDNN_MAJOR -A 2|awk 'NR==1{print $NF}'`
+           else
+               echo "未找到cuda/include/cudnn.h文件"
+               while true
+               do
+                  read -p "请提供cudnn.h的路径:" cudnn_version
+                  if [ "$cudnn_version" == "" ] || [ ! -f "$cudnn_version" ];then
+                        read -p "未找到cuDNN,只能安装cpu版本的PaddlePaddle，是否安装（y/n）, 或使用ctrl + c退出:" cpu_option
+                        cpu_option=`echo $cpu_option | tr 'A-Z' 'a-z'`
+                        if [ "$cpu_option" == "y" -o "$cpu_option" == "" ];then
+                            GPU='cpu'
+                            break
+                        else
+                            echo "重新输入..."
+                        fi
+                  else
+                     CUDNN=`cat $cudnn_version | grep CUDNN_MAJOR |awk 'NR==1{print $NF}'`
+                     echo "您的CUDNN版本是${CUDNN}"
+                     break
+                  fi
+                 done
+             if [ "$GPU" == "cpu" ];then
+                break
+             fi
+           fi
+       fi
+       if [ "$CUDA" == "9" -a "$CUDNN" != "7" ];then
+           echo CUDA9目前只支持CUDNN7
+          use_cpu()
+          if [ "$GPU"=="cpu" ];then
+             break
+          fi
+       fi
+
+       if [ "$CUDNN" == 5 ] || [ "$CUDNN" == 7 ];then
+          echo "您的CUDNN版本是CUDNN$CUDNN"
+          break
+       else
+          echo "你的CUDNN${CUDNN}版本不支持,目前支持CUDNN5/7"
+          use_cpu
+          if [ "$GPU"=="cpu" ];then
+             break
+          fi
+       fi
+   done
+}
+
+function check_cuda(){
+   while true
+   do
+       CUDA=`echo ${CUDA_VERSION}|awk -F "[ .]" '{print $1}'`
+       if [ "$CUDA" == "" ];then
+         if [ -f "/usr/local/cuda/version.txt" ];then
+           CUDA=`cat /usr/local/cuda/version.txt | grep 'CUDA Version'|awk -F '[ .]' '{print $3}'`
+           tmp_cuda=$CUDA
+         fi
+         if [ -f "/usr/local/cuda8/version.txt" ];then
+           CUDA=`cat /usr/local/cuda8/version.txt | grep 'CUDA Version'|awk -F '[ .]' '{print $3}'`
+           tmp_cuda8=$CUDA
+         fi
+         if [ -f "/usr/local/cuda9/version.txt" ];then
+           CUDA=`cat /usr/local/cuda9/version.txt | grep 'CUDA Version'|awk -F '[ .]' '{print $3}'`
+           tmp_cuda9=$CUDA
+         fi
+       fi
+
+       if [ "$tmp_cuda" != "" ];then
+         echo "找到CUDA $tmp_cuda"
+       fi
+       if [ "$tmp_cudai8" != "" ];then
+         echo "找到CUDA $tmp_cuda8"
+       fi
+       if [ "$tmp_cuda9" != "" ];then
+         echo "找到CUDA $tmp_cuda9"
+       fi
+
+       if [ "$CUDA" == "" ];then
+            echo "没有找到cuda/version.txt文件"
+            while true
+            do
+                read -p "请提供cuda version.txt的路径:" cuda_version
+                if [ "$cuda_version" == "" || ! -f "$cuda_version" ];then
+                    read -p "未找到CUDA,只能安装cpu版本的PaddlePaddle，是否安装（y/n）,  或使用ctrl + c退出" cpu_option
+                    cpu_option=`echo $cpu_option | tr 'A-Z' 'a-z'`
+                    if [ "$cpu_option" == "y" || "$cpu_option" == "" ];then
+                        GPU='cpu'
+                        break
+                    else
+                        echo "重新输入..."
+                    fi
+                else
+                    CUDA=`cat $cuda_version | grep 'CUDA Version'|awk -F '[ .]' '{print $3}'`
+                    if [ "$CUDA" == "" ];then
+                        echo "未找到CUDA，重新输入..."
+                    else
+                        break
+                    fi
+                fi
+            done
+            if [ "$GPU" == "cpu" ];then
+                break
+            fi
+       fi
+
+       if [ "$CUDA" == "8" ] || [ "$CUDA" == "9" ];then
+          echo "您的CUDA版本是${CUDA}"
+          break
+       else
+          echo "你的CUDA${CUDA}版本不支持,目前支持CUDA8/9"
+          use_cpu
+       fi
+
+       if [ "$GPU" == "cpu" ];then
+          break
+       fi
+   done
+}
+
+function math_library(){
+  while true
+    do
+      if [ "$AVX" ==  "" ];then
+        math='mkl'
+        break
+      elif [ "$GPU" == "gpu" ];then
+        math='mkl'
+        break
+      else
+        read -p "请输入您想使用哪个数学库？OpenBlas或MKL？：
+            输入1：openblas
+            输入2：mkl
+            请选择：" math
+          if [ "$math" == "" ];then
+            math="mkl"
+            echo "为您安装mkl"
+            break
+          fi
+          if [ "$math" == "1" ];then
+            math=openblas
+            echo "为您安装openblas"
+            break
+          elif [ "$math" == "2" ];then
+            math=mkl
+            echo "为您安装mkl"
+            break
+          fi
+          echo "输入错误，请再次输入"
+      fi
+    done
+}
+
+function paddle_develop(){
+  while true
+    do
+      read -p "请选择Paddle版本：
+          输入1：develop
+          输入2：release-${release_version}
+          请选择：" paddle_version
+        if [ "$paddle_version" == "" ];then
+          paddle_version="release-${release_version}"
+          echo "为您安装release-${release_version}"
+          break
+        fi
+        if [ "$paddle_version" == "1" ];then
+          echo "为您安装develop"
+          break
+        elif [ "$paddle_version" == "2" ];then
+          echo "为您安装release-${release_version}"
+          break
+        fi
+        echo "输入错误，请再次输入"
+    done
+}
+
+function pip_check(){
+  while true
+    do
+       echo "请输入您要使用的pip目录（您可以使用which pip来查看）："
+       read -p "" pip_path
+       if [ "$pip_path" == "" -o ! -f "$pip_path" ];then
+         echo "pip不存在,请重新输入"
+         continue
+       fi
+       python_version=`$pip_path --version|awk -F "[ |)]" '{print $6}'|sed 's#\.##g'`
+       if [ "$python_version" == "27" ];then
+         uncode=`python -c "import pip._internal;print(pip._internal.pep425tags.get_supported())"|grep "cp27mu"`
+         if [[ "$uncode" == "" ]];then
+            uncode=
+         else
+            uncode=u
+         fi
+       fi
+       echo $python_version
+       if [ "$python_version" == "27" -o "$python_version" == "35" -o "$python_version" == "36" -o "$python_version" == "37" ];then
+         echo "找到python${python_version}版本"
+         break
+       else
+         echo "找不到可用的 pip, 我们只支持Python27/35/36/37及其对应的pip, 请重新输入， 或使用ctrl + c退出 "
+       fi
+    done
+}
+
+function avx_check(){
+  while true
+  do
+    if [[ "$AVX" != "" ]];then
+      AVX=avx
+      break
+    else
+      if [ "$CUDA" == "8" -a "$CUDNN" == "7" ] || [ "$GPU" == "cpu" ];then
+        AVX=navx
+        break
+      else
+        echo "我们仅支持纯CPU或GPU with CUDA 8 cuDNN 7 下navx版本的安装，请使用cat /proc/cpuinfo | grep avx检查您计算机的avx指令集支持情况"
+        break
+      fi
+    fi
+  done
+}
+
+function pip_install(){
+  wheel_cpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-${GPU}-${AVX}-${math}/paddlepaddle-${release_version}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
+  wheel_gpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-${release_version}.post${CUDA}${CUDNN}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
+  wheel_gpu_release_navx="http://paddle-wheel.bj.bcebos.com/${release_version}-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-${release_version}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
+  wheel_cpu_develop="http://paddle-wheel.bj.bcebos.com/latest-cpu-${AVX}-${math}/paddlepaddle-latest-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
+  wheel_gpu_develop="http://paddle-wheel.bj.bcebos.com/latest-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-latest-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
+
+
+  if [[ "$paddle_version" == "2" ]];then
+    if [[ "$GPU" == "gpu" ]];then
+        if [[ ${AVX} == "avx" ]];then
+          rm -rf `echo $wheel_cpu_develop|awk -F '/' '{print $NF}'`
+          wget $wheel_cpu_develop
+          $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release
+        else
+          rm -rf `echo $wheel_cpu_release_nvax|awk -F '/' '{print $NF}'`
+          wget $wheel_cpu_release_nvax
+          $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release_navx
+        fi
+    else
+        rm -rf `echo $wheel_cpu_develop|awk -F '/' '{print $NF}'`
+        wget $wheel_cpu_develop
+        $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_release
+    fi
+  else
+    if [[ "$GPU" == "gpu" ]];then
+        rm -rf `echo $wheel_gpu_develop|awk -F '/' '{print $NF}'`
+        wget $wheel_gpu_develop
+        $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_develop
+    else
+        rm -rf `echo $wheel_cpu_develop|awk -F '/' '{print $NF}'`
+        wget $wheel_cpu_develop
+        $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_develop
+    fi
+  fi
+}
+
+
+function check_gpu(){
+  AVX=`cat /proc/cpuinfo |grep avx|tail -1|grep avx`
+  which_gpu=`lspci |grep -i nvidia`
+  if [ "$which_gpu" == "" ];then
+    GPU='cpu'
+    echo "您使用的是不包含支持的GPU的机器"
+  else
+    GPU='gpu'
+    echo "您使用的是包含我们支持的GPU机器"
+  fi
+  if [ "$GPU" == 'gpu' ];then
+    check_cuda
+    check_cudnn
+  fi
 }
 
 function linux(){
@@ -291,280 +575,13 @@ gpu_list=("GeForce 410M"
 "Tesla P4"
 "Tesla P40"
 "Tesla V100")
+  check_gpu
+  math_library
+  paddle_develop
+  pip_check
+  avx_check
+  pip_install
 
-  AVX=`cat /proc/cpuinfo |grep avx|tail -1|grep avx`
-  which_gpu=`lspci |grep -i nvidia`
-  if [ "$which_gpu" == "" ];then
-    GPU='cpu'
-    echo "您使用的是不包含支持的GPU的机器"
-  else
-    GPU='gpu'
-    echo "您使用的是包含我们支持的GPU机器"
-  fi
-  if [ "$GPU" == 'gpu' ];then
-       while true
-       do
-           gpu_model=`nvidia-smi |awk 'NR==8{print $3,$4}'|sed 's#m$##g'`
-           Flag=False
-           for i in "${gpu_list[@]}"
-             do
-               if [ "$gpu_model" == "$i" ];then
-                 Flag=True
-               fi
-             done
-  
-           if [ "$Flag" != "True" ];then
-             echo "目前我们还不支持您使用的GPU型号"
-             use_cpu
-             if [ "$GPU" == "cpu" ];then
-                break
-             fi
-           fi
-
-           CUDA=`echo ${CUDA_VERSION}|awk -F "[ .]" '{print $1}'`
-       
-           if [ "$CUDA" == "" ];then
-             if [ -f "/usr/local/cuda/version.txt" ];then
-               CUDA=`cat /usr/local/cuda/version.txt | grep 'CUDA Version'|awk -F '[ .]' '{print $3}'`
-               tmp_cuda=$CUDA
-             fi
-             if [ -f "/usr/local/cuda8/version.txt" ];then
-               CUDA=`cat /usr/local/cuda8/version.txt | grep 'CUDA Version'|awk -F '[ .]' '{print $3}'`
-               tmp_cuda8=$CUDA
-             fi
-             if [ -f "/usr/local/cuda9/version.txt" ];then
-               CUDA=`cat /usr/local/cuda9/version.txt | grep 'CUDA Version'|awk -F '[ .]' '{print $3}'`
-               tmp_cuda9=$CUDA
-             fi
-           fi
-
-           if [ "$tmp_cuda" != "" ];then
-             echo "找到CUDA $tmp_cuda"
-           fi
-           if [ "$tmp_cudai8" != "" ];then
-             echo "找到CUDA $tmp_cuda8"
-           fi
-           if [ "$tmp_cuda9" != "" ];then
-             echo "找到CUDA $tmp_cuda9"
-           fi
-
-
-           if [ "$CUDA" == "" ];then
-                echo "没有找到cuda/version.txt文件"
-                while true
-                do
-                    read -p "请提供cuda version.txt的路径:" cuda_version
-                    if [ "$cuda_version" == "" || ! -f "$cuda_version" ];then
-                        read -p "未找到CUDA,只能安装cpu版本的PaddlePaddle，是否安装（y/n）,  或使用ctrl + c退出" cpu_option
-                        cpu_option=`echo $cpu_option | tr 'A-Z' 'a-z'`
-                        if [ "$cpu_option" == "y" || "$cpu_option" == "" ];then
-                            GPU='cpu'
-                            break
-                        else
-                            echo "重新输入..."
-                        fi
-                    else
-                        CUDA=`cat $cuda_version | grep 'CUDA Version'|awk -F '[ .]' '{print $3}'`
-                        if [ "$CUDA" == "" ];then
-                            echo "未找到CUDA，重新输入..."
-                        else
-                            break
-                        fi
-                    fi
-                done
-                if [ "$GPU" == "cpu" ];then
-                    break
-                fi
-           fi
-
-           if [ "$CUDA" == "8" ] || [ "$CUDA" == "9" ];then
-              echo "您的CUDA版本是${CUDA}"
-           else
-              echo "你的CUDA${CUDA}版本不支持,目前支持CUDA8/9"
-              use_cpu
-           fi
-
-           if [ "$GPU" == "cpu" ];then
-              break
-           fi
-
-           version_file='/usr/local/cuda/include/cudnn.h'
-           if [ -f "$version_file" ];then
-              CUDNN=`cat $version_file | grep CUDNN_MAJOR |awk 'NR==1{print $NF}'`
-           fi
-           if [ "$CUDNN" == "" ];then
-               version_file=`sudo find /usr -name "cudnn.h"|head -1`
-               if [ "$version_file" != "" ];then
-                  CUDNN=`cat ${version_file} | grep CUDNN_MAJOR -A 2|awk 'NR==1{print $NF}'`
-               else
-                  echo "未找到cuda/include/cudnn.h文件"
-                  while true
-                    do
-                      read -p "请提供cudnn.h的路径:" cudnn_version
-                      if [ "$cudnn_version" == "" ] || [ ! -f "$cudnn_version" ];then
-                            read -p "未找到cuDNN,只能安装cpu版本的PaddlePaddle，是否安装（y/n）, 或使用ctrl + c退出:" cpu_option
-                            cpu_option=`echo $cpu_option | tr 'A-Z' 'a-z'`
-                            if [ "$cpu_option" == "y" -o "$cpu_option" == "" ];then
-                                GPU='cpu'
-                                break
-                            else
-                                echo "重新输入..."
-                            fi
-                      else
-                         CUDNN=`cat $cudnn_version | grep CUDNN_MAJOR |awk 'NR==1{print $NF}'`
-                         echo "您的CUDNN版本是${CUDNN}"
-                         break
-                      fi
-                     done
-                 if [ "$GPU" == "cpu" ];then
-                    break
-                 fi
-               fi
-           fi
-           if [ "$CUDA" == "9" -a "$CUDNN" != "7" ];then
-              echo CUDA9目前只支持CUDNN7
-              use_cpu()
-              if [ "$GPU"=="cpu" ];then
-                 break
-              fi
-           fi
-           if [ "$CUDNN" == 5 ] || [ "$CUDNN" == 7 ];then
-              echo "您的CUDNN版本是CUDNN$CUDNN"
-              break
-           else
-              echo "你的CUDNN${CUDNN}版本不支持,目前支持CUDNN5/7"
-              use_cpu
-              if [ "$GPU"=="cpu" ];then
-                 break
-              fi
-           fi
-       done
-  fi
-
-  while true
-    do
-      if [ "$AVX" ==  "" ];then
-        math='mkl'
-        break
-      elif [ "$GPU" == "gpu" ];then
-        math='mkl'
-        break
-      else
-        read -p "请输入您想使用哪个数学库？OpenBlas或MKL？：
-            输入1：openblas
-            输入2：mkl
-            请选择：" math
-          if [ "$math" == "" ];then
-            math="mkl"
-            echo "为您安装mkl"
-            break
-          fi
-          if [ "$math" == "1" ];then
-            math=openblas
-            echo "为您安装openblas"
-            break
-          elif [ "$math" == "2" ];then
-            math=mkl
-            echo "为您安装mkl"
-            break
-          fi
-          echo "输入错误，请再次输入"
-      fi
-    done 
- 
-
-  while true
-    do
-      read -p "请选择Paddle版本：
-          输入1：develop
-          输入2：release-${release_version}
-          请选择：" paddle_version
-        if [ "$paddle_version" == "" ];then
-          paddle_version="release-${release_version}"
-          echo "为您安装release-${release_version}"
-          break
-        fi
-        if [ "$paddle_version" == "1" ];then
-          echo "为您安装develop"
-          break
-        elif [ "$paddle_version" == "2" ];then
-          echo "为您安装release-${release_version}"
-          break
-        fi
-        echo "输入错误，请再次输入"
-    done
-  while true
-    do
-       echo "请输入您要使用的pip目录（您可以使用which pip来查看）："
-       read -p "" pip_path
-       if [ "$pip_path" == "" -o ! -f "$pip_path" ];then
-         echo "pip不存在,请重新输入"
-         continue
-       fi
-       python_version=`$pip_path --version|awk -F "[ |)]" '{print $6}'|sed 's#\.##g'`
-       if [ "$python_version" == "27" ];then
-         uncode=`python -c "import pip._internal;print(pip._internal.pep425tags.get_supported())"|grep "cp27mu"`
-         if [[ "$uncode" == "" ]];then
-            uncode=
-         else
-            uncode=u
-         fi
-       fi
-       echo $python_version
-       if [ "$python_version" == "27" -o "$python_version" == "35" -o "$python_version" == "36" -o "$python_version" == "37" ];then
-         echo "找到python${python_version}版本"
-         break
-       else
-         echo "找不到可用的 pip, 我们只支持Python27/35/36/37及其对应的pip, 请重新输入， 或使用ctrl + c退出 "
-       fi
-    done
-
-  if [[ "$AVX" != "" ]];then
-    AVX=avx
-  else
-    if [ "$CUDA" == "8" -a "$CUDNN" == "7" ] || [ "$GPU" == "cpu" ];then
-        AVX=navx
-    else
-        echo "我们仅支持纯CPU或GPU with CUDA 8 cuDNN 7 下navx版本的安装，请使用cat /proc/cpuinfo | grep avx检查您计算机的avx指令集支持情况"
-        exit
-    fi
-  fi
-
-
-  wheel_cpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-${GPU}-${AVX}-${math}/paddlepaddle-${release_version}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
-  wheel_gpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-${release_version}.post${CUDA}${CUDNN}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
-  wheel_gpu_release_navx="http://paddle-wheel.bj.bcebos.com/${release_version}-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-${release_version}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
-  wheel_cpu_develop="http://paddle-wheel.bj.bcebos.com/latest-cpu-${AVX}-${math}/paddlepaddle-latest-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
-  wheel_gpu_develop="http://paddle-wheel.bj.bcebos.com/latest-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-latest-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
-
-
-  if [[ "$paddle_version" == "2" ]];then
-    if [[ "$GPU" == "gpu" ]];then
-        if [[ ${AVX} == "avx" ]];then
-          rm -rf `echo $wheel_cpu_develop|awk -F '/' '{print $NF}'`
-          wget $wheel_cpu_develop
-          $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release
-        else
-          rm -rf `echo $wheel_cpu_release_nvax|awk -F '/' '{print $NF}'`
-          wget $wheel_cpu_release_nvax
-          $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release_navx
-        fi
-    else
-        rm -rf `echo $wheel_cpu_develop|awk -F '/' '{print $NF}'`
-        wget $wheel_cpu_develop
-        $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_release
-    fi
-  else 
-    if [[ "$GPU" == "gpu" ]];then
-        rm -rf `echo $wheel_gpu_develop|awk -F '/' '{print $NF}'`
-        wget $wheel_gpu_develop
-        $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_develop
-    else
-        rm -rf `echo $wheel_cpu_develop|awk -F '/' '{print $NF}'`
-        wget $wheel_cpu_develop
-        $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_develop
-    fi
-  fi
 }
 function checkMacPaddleVersion(){
   while true
