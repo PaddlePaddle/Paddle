@@ -41,6 +41,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   use_parallel_executor=True,
                                   use_reduce=False,
                                   use_ir_memory_optimize=False,
+                                  enable_inplace=True,
                                   fuse_elewise_add_act_ops=False,
                                   fuse_relu_depthwise_conv=False,
                                   optimizer=fluid.optimizer.Adam,
@@ -80,6 +81,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
             build_strategy.fuse_relu_depthwise_conv = fuse_relu_depthwise_conv
             build_strategy.memory_optimize = use_ir_memory_optimize
+            build_strategy.enable_inplace = enable_inplace
             build_strategy.enable_sequential_execution = enable_sequential_execution
             if use_cuda and core.is_compiled_with_cuda():
                 build_strategy.remove_unnecessary_lock = True

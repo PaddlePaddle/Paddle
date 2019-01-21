@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/analysis_var_pass.h"
+#include "paddle/fluid/framework/details/memory_optimize_pass.h"
 #include <algorithm>
 #include <iostream>
 #include <iterator>

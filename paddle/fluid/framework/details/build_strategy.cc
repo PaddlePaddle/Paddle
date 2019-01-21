@@ -17,7 +17,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <memory>
 
-#include "paddle/fluid/framework/details/memory_reuse_types.h"
+#include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
@@ -42,6 +42,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
  public:
   explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy)
       : ir::PassBuilder(), strategy_(strategy) {
+    if (strategy_.enable_inplace_) {
+      AppendPass("inplace_pass");
+    }
     if (strategy_.enable_sequential_execution_) {
       AppendPass("sequential_execution_pass");
     }
@@ -87,7 +90,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // A side-effect of that, memory optimize cannot forsee the fetched vars
     // , so fetchlist should be set persistable before call the Run interface.
     if (strategy.memory_optimize_) {
-      auto analysis_var_pass = AppendPass("analysis_var_pass");
+      auto memory_optimize_pass = AppendPass("memory_optimize_pass");
     }
 
     AppendMultiDevPass(strategy);
@@ -185,8 +188,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Erase("nccl_ctxs");
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
-
-    } else if (pass->Type() == "analysis_var_pass") {
+    } else if (pass->Type() == "memory_optimize_pass") {
       const std::vector<OpDesc *> *all_op_descs =
           new std::vector<OpDesc *>(main_program.Block(0).AllOps());
       graph->Set<const std::vector<OpDesc *>>(kAllOpDescs,
@@ -211,6 +213,13 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 
       pass->Erase(kAllOpDescs);
       pass->Set<const std::vector<OpDesc *>>(
+          kAllOpDescs,
+          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
+    } else if (pass->Type() == "inplace_pass") {
+      if (graph->Has(kAllOpDescs)) {
+        graph->Erase(kAllOpDescs);
+      }
+      graph->Set<const std::vector<OpDesc *>>(
           kAllOpDescs,
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
@@ -238,8 +247,9 @@ USE_PASS(allreduce_mode_multi_devices_pass);
 USE_PASS(dist_multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);
-USE_PASS(analysis_var_pass);
+USE_PASS(memory_optimize_pass);
 USE_PASS(sequential_execution_pass);
 USE_PASS(all_reduce_deps_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
+USE_PASS(inplace_pass);
 USE_PASS(lock_free_optimize_pass);

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/memory_reuse_types.h"
+#include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include <algorithm>
 #include <iostream>
 #include <memory>
@@ -27,8 +27,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-TEST(OrderedNodePairPool, Normal) {
-  OrderedNodePairPool pool;
+TEST(OrderedNodeList, Normal) {
+  OrderedNodeList pool;
   std::vector<std::unique_ptr<ir::Node>> nodes;
 
   // clang-format off

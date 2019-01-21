@@ -602,13 +602,48 @@ class BatchNormGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+class BatchNormInplaceInToOut : public framework::InplaceInToOut {
+ public:
+  using InplaceInToOut::InplaceInToOut;
+
+ protected:
+  std::unordered_map<std::string, std::string> Apply(
+      const framework::OpDesc &op_desc,
+      framework::BlockDesc *block) const override {
+    std::unordered_map<std::string, std::string> inplace_in_to_out = {
+        {"Mean", "MeanOut"}, {"Variance", "VarianceOut"}, {"X", "Y"},
+    };
+    return inplace_in_to_out;
+  }
+};
+
+class BatchNormGradInplaceInToOut : public framework::InplaceInToOut {
+ public:
+  using InplaceInToOut::InplaceInToOut;
+
+ protected:
+  std::unordered_map<std::string, std::string> Apply(
+      const framework::OpDesc &op_desc,
+      framework::BlockDesc *block) const override {
+    std::unordered_map<std::string, std::string> inplace_in_to_out = {
+        // Scale, Bias, SavedMean, SavedVariance shape is [batch_size, C]
+        {framework::GradVarName("Y"), framework::GradVarName("X")},
+        {"SavedMean", framework::GradVarName("Scale")},
+        {"SavedVariance", framework::GradVarName("Bias")},
+    };
+    return inplace_in_to_out;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
-                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker);
-REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
+                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker,
+                  ops::BatchNormInplaceInToOut);
+REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp,
+                  ops::BatchNormGradInplaceInToOut);
 
 REGISTER_OP_CPU_KERNEL(
     batch_norm, ops::BatchNormKernel<paddle::platform::CPUDeviceContext, float>,

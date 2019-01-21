@@ -43,7 +43,7 @@ using GraphNodePool = std::vector<
 // For example,
 // node0[-1, 1] node1[-1, 1, 1], node2[1,1], node3[1,1024], ..
 // O(1) insert, delete
-class OrderedNodePairPool {
+class OrderedNodeList {
  public:
   using NodePair = std::pair<ir::Node*, std::unordered_set<ir::Node*>>;
   using Iter = typename std::list<NodePair>::iterator;
@@ -53,7 +53,11 @@ class OrderedNodePairPool {
 
   void Erase(ir::Node* var);
 
+  void Erase(const std::string& var);
+
   bool Has(ir::Node* var) { return mark_table_.count(var->Name()); }
+
+  bool Has(const std::string& var) { return mark_table_.count(var); }
 
   ir::Node* NodeMatch(ir::Node* var) const;
   // map store non-const iterator, can not promise const
@@ -67,6 +71,11 @@ class OrderedNodePairPool {
   ConstIter end() const { return nodes_.end(); }
   size_t size() const { return nodes_.size(); }
 
+  void Clear() {
+    mark_table_.clear();
+    nodes_.clear();
+  }
+
  private:
   // for searching.
   std::unordered_map<std::string, Iter> mark_table_;
@@ -74,13 +83,46 @@ class OrderedNodePairPool {
   std::list<NodePair> nodes_;
 };
 
+// valid a tensor can be reuse or not
+bool NodeCanReused(ir::Node* node);
+
+// check op has subblock or not
+bool OpHasSubBlock(OpDesc* desc);
+
 // node memory size in bytes
 size_t NodeSizeInBytes(ir::Node* n);
 
 std::string DebugString(ir::Node* var);
 
-// std::string DebugString(VarDesc* var);
 VarDesc* FindVarDescInBlock(ir::Node* n);
+
+template <typename Container, typename Callback>
+class FilterVariableImpl {
+ public:
+  void operator()(const Container& nodes, Callback callback) {
+    for (auto* node : nodes) {
+      callback(node);
+    }
+  }
+};
+
+// filter var node for op->inputs/outputs
+template <typename Callback>
+class FilterVariableImpl<std::vector<ir::Node*>, Callback> {
+ public:
+  void operator()(const std::vector<ir::Node*>& nodes, Callback callback) {
+    for (auto* var : nodes) {
+      if (var->IsVar() && !var->IsCtrlVar()) {
+        callback(var);
+      }
+    }
+  }
+};
+
+template <typename Container, typename Callback>
+void FilterVariables(const Container& nodes, Callback callback) {
+  FilterVariableImpl<Container, Callback>()(nodes, callback);
+}
 
 }  // namespace details
 }  // namespace framework

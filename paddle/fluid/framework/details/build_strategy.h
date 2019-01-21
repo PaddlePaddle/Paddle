@@ -80,6 +80,8 @@ struct BuildStrategy {
 
   bool memory_early_delete_{false};
 
+  bool enable_inplace_{false};
+
   bool enable_sequential_execution_{false};
 
   bool fuse_broadcast_op_{false};
