@@ -44,6 +44,16 @@ constexpr char kRequestCheckpoint[] = "RequestCheckpoint";
 constexpr char kRequestPassBarrier[] = "RequestPassBarrier";
 constexpr char kRequestGetNoBarrier[] = "GetVariableNoBarrier";
 
+constexpr char kGetRPC[] = "GetRPC";
+constexpr char kGetNoBarrierRPC[] = "GetNoBarrierRPC";
+constexpr char kGetMonomerRPC[] = "GetMonomerRPC";
+constexpr char kPrefetchRPC[] = "PrefetchRPC";
+constexpr char kBatchBarrierRPC[] = "BatchBarrierRPC";
+constexpr char kFetchBarrierRPC[] = "FetchBarrierRPC";
+constexpr char kSendMonomerFetchBarrierRPC[] = "SendMonomerFetchBarrierRPC";
+constexpr char kSendCompleteRPC[] = "SendCompleteRPC";
+constexpr char kCheckPointNotifyRPC[] = "CheckPointNotifyRPC";
+
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
 #define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"
 #define FETCH_BARRIER_MESSAGE "FETCH_BARRIER@RECV"
