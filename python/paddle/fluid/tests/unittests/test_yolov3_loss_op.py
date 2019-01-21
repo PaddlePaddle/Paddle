@@ -27,6 +27,10 @@ def l1loss(x, y):
     return abs(x - y)
 
 
+def l2loss(x, y):
+    return 0.5 * (y - x) * (y - x)
+
+
 def sce(x, label):
     sigmoid_x = expit(x)
     term1 = label * np.log(sigmoid_x)
@@ -145,8 +149,8 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
             scale = (2.0 - gtbox[i, j, 2] * gtbox[i, j, 3]) * gtscore[i, j]
             loss[i] += sce(x[i, an_idx, gj, gi, 0], tx) * scale
             loss[i] += sce(x[i, an_idx, gj, gi, 1], ty) * scale
-            loss[i] += l1loss(x[i, an_idx, gj, gi, 2], tw) * scale
-            loss[i] += l1loss(x[i, an_idx, gj, gi, 3], th) * scale
+            loss[i] += l2loss(x[i, an_idx, gj, gi, 2], tw) * scale
+            loss[i] += l2loss(x[i, an_idx, gj, gi, 3], th) * scale
 
             objness[i, an_idx * h * w + gj * w + gi] = gtscore[i, j]
 
@@ -202,7 +206,7 @@ class TestYolov3LossOp(OpTest):
 
     def test_check_output(self):
         place = core.CPUPlace()
-        self.check_output_with_place(place, atol=2e-3)
+        self.check_output_with_place(place, atol=1e-3)
 
     def test_check_grad_ignore_gtbox(self):
         place = core.CPUPlace()
@@ -210,19 +214,16 @@ class TestYolov3LossOp(OpTest):
             place, ['X'],
             'Loss',
             no_grad_set=set(["GTBox", "GTLabel", "GTScore"]),
-            max_relative_error=0.2)
+            max_relative_error=0.3)
 
     def initTestCase(self):
-        self.anchors = [
-            10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198,
-            373, 326
-        ]
-        self.anchor_mask = [0, 1, 2]
-        self.class_num = 10
-        self.ignore_thresh = 0.7
+        self.anchors = [10, 13, 16, 30, 33, 23]
+        self.anchor_mask = [1, 2]
+        self.class_num = 5
+        self.ignore_thresh = 0.5
         self.downsample = 32
         self.x_shape = (3, len(self.anchor_mask) * (5 + self.class_num), 5, 5)
-        self.gtbox_shape = (3, 10, 4)
+        self.gtbox_shape = (3, 5, 4)
         self.use_label_smooth = True
 
 
