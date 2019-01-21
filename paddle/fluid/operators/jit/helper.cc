@@ -36,6 +36,7 @@ const char* to_string(KernelType kt) {
     ONE_CASE(kVRelu);
     ONE_CASE(kVIdentity);
     ONE_CASE(kVExp);
+    ONE_CASE(kVSquare);
     ONE_CASE(kVSigmoid);
     ONE_CASE(kVTanh);
     ONE_CASE(kLSTMCtHt);
@@ -47,6 +48,7 @@ const char* to_string(KernelType kt) {
     ONE_CASE(kLayerNorm);
     ONE_CASE(kNCHW16CMulNC);
     ONE_CASE(kSeqPool);
+    ONE_CASE(kMatMul);
     default:
       PADDLE_THROW("Not support type: %d, or forget to add it.", kt);
       return "NOT JITKernel";

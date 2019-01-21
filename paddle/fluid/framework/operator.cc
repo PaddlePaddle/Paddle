@@ -16,9 +16,13 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include <algorithm>
+#include <sstream>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
@@ -29,6 +33,7 @@ DECLARE_bool(benchmark);
 DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
+DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
 
 namespace paddle {
 namespace framework {
@@ -156,27 +161,55 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  VLOG(4) << place << " " << DebugStringEx(&scope);
-  if (platform::is_gpu_place(place)) {
+  try {
+    VLOG(4) << place << " " << DebugStringEx(&scope);
+    if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
-    PADDLE_THROW("Cannot run operator on place %s", place);
+      PADDLE_THROW("Cannot run operator on place %s", place);
 #else
-    auto dev_id = boost::get<platform::CUDAPlace>(place).device;
-    platform::SetDeviceId(dev_id);
+      auto dev_id = boost::get<platform::CUDAPlace>(place).device;
+      platform::SetDeviceId(dev_id);
 #endif
-  }
+    }
 
-  // The profile has a process-wide mutex, results in serious performance issue
-  // in concurrency scenerio. Here use an `if` to fix this issue.
-  // Please not remove the `if`, ask @Superjomn if there are any concern.
-  if (platform::IsProfileEnabled()) {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::RecordEvent record_event(Type(), pool.Get(place));
-    RunImpl(scope, place);
-  } else {
-    RunImpl(scope, place);
+    // The profile has a process-wide mutex, results in serious performance
+    // issue
+    // in concurrency scenerio. Here use an `if` to fix this issue.
+    // Please not remove the `if`, ask @Superjomn if there are any concern.
+    if (platform::IsProfileEnabled()) {
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      platform::RecordEvent record_event(Type(), pool.Get(place));
+      RunImpl(scope, place);
+    } else {
+      RunImpl(scope, place);
+    }
+
+    VLOG(3) << place << " " << DebugStringEx(&scope);
+  } catch (platform::EnforceNotMet exception) {
+    if (Attrs().count("sub_block") != 0) {
+      throw exception;
+    }
+
+    auto& callstack = Attr<std::vector<std::string>>(
+        OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+
+    if (callstack.empty()) {
+      throw exception;
+    }
+    std::ostringstream sout;
+    sout << "Invoke operator " << Type() << " error.\n";
+    sout << "Python Callstacks: \n";
+    for (auto& line : callstack) {
+      sout << line;
+    }
+    sout << "C++ Callstacks: \n";
+    sout << exception.err_str_;
+    exception.err_str_ = sout.str();
+    throw exception;
+  } catch (...) {
+    std::rethrow_exception(std::current_exception());
   }
-  VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
