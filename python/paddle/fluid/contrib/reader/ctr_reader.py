@@ -54,8 +54,8 @@ def ctr_reader(
         feed_dict,
         file_type,  # gzip or plain
         file_format,  # csv or svm
-        dense_slot_indexs,
-        sparse_slot_indexs,
+        dense_slot_index,
+        sparse_slot_index,
         capacity,
         thread_num,
         batch_size,
@@ -78,11 +78,20 @@ def ctr_reader(
     Note that :code:`Program.clone()` method cannot clone :code:`py_reader`.
 
     Args:
+       feed_dict(list(variable)): a list of data variable.
+       file_type('gzip'|'plain'): the type of the data file
+       file_format('csv'|'svm'): csv data or svm data format.
+        cvs data format is :
+            label dense_fea,dense_fea sparse_fea,sparse_fea
+        the svm data format is :
+            label slot1:fea_sign slot2:fea_sign slot1:fea_sign
+       dense_slot_index(list(int)): the index of dense slots
+       sparse_slot_index(list(int)): the index of sparse slots
        capacity(int): The buffer capacity maintained by :code:`py_reader`.
        thread_num(list|tuple): List of tuples which declaring data shapes.
        batch_size(list|tuple): List of strs which declaring data type.
        file_list(list|tuple): List of ints which declaring data lod_level.
-       slots(bool): Whether use double buffer or not.
+       slots(bool): slot id of all sparse feature
        name(basestring): The prefix Python queue name and Reader name. None will
             be generated automatically.
 
@@ -116,8 +125,8 @@ def ctr_reader(
             'file_list': file_list,
             'file_type': file_type,
             'file_format': file_format,
-            'dense_slot_index': dense_slot_indexs,
-            'sparse_slot_index': sparse_slot_indexs,
+            'dense_slot_index': dense_slot_index,
+            'sparse_slot_index': sparse_slot_index,
             'sparse_slots': slots,
             'ranks': [],
             'lod_levels': [],
