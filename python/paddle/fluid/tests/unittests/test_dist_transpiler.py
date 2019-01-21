@@ -741,9 +741,9 @@ class TestLoadSliceVar(TranspilerTest):
         pserver, _ = self.get_pserver(self.pserver1_ep)
         pserver2, _ = self.get_pserver(self.pserver2_ep)
 
-        vars_ps1 = pserver._slice_vars_overview.get_distributed_vars_by_ep(
+        vars_ps1 = pserver._parameters_on_pservers.get_distributed_vars_by_ep(
             self.pserver1_ep)
-        vars_ps2 = pserver._slice_vars_overview.get_distributed_vars_by_ep(
+        vars_ps2 = pserver._parameters_on_pservers.get_distributed_vars_by_ep(
             self.pserver2_ep)
 
         self.assertTrue(vars_ps1)

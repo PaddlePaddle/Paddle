@@ -258,7 +258,12 @@ def save_params(executor, dirname, main_program=None, filename=None):
 
 def _save_distributed_persistables(executor, dirname, main_program):
     """
-    customized save_persistables for distributed training.
+    save_persistables for distributed training.
+    the method will do things listed below:
+    1.save part of persistable variables on trainer.
+    2.receive "remote prefetch variables" from parameter servers and merge them.
+    3.save "distributed lookup table" on parameter servers.
+    4.receive "optimizer variables" from parameter servers and merge them.
 
     Args:
         executor(Executor): The executor to run for saving parameters.
@@ -404,7 +409,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
             "'_save_distributed_persistables' just be designed for distributed training."
         )
 
-    remote_params_map = main_program._slice_vars_overview.get_distributed_vars_by_vtypes(
+    remote_params_map = main_program._parameters_on_pservers.get_distributed_vars_by_vtypes(
         ["Optimizer", "RemotePrefetch"], groupby=True)
 
     exclude_var_names = []
@@ -806,7 +811,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
             "'_load_distributed_persistables' need current_endpoint set in DistributeTranspiler.transpile"
         )
 
-    need_load_vars = main_program._slice_vars_overview.get_distributed_vars_by_ep(
+    need_load_vars = main_program._parameters_on_pservers.get_distributed_vars_by_ep(
         main_program._ps_endpoint)
     __load_persistable_vars(executor, dirname, need_load_vars)
 

@@ -794,7 +794,7 @@ class DistributeTranspiler(object):
             self._split_table_grad_and_add_send_vars(program, pserver_endpoints)
 
         self._get_distributed_optimizer_vars()
-        self.origin_program._slice_vars_overview = self.vars_overview
+        self.origin_program._parameters_on_pservers = self.vars_overview
 
     def get_trainer_program(self, wait_port=True):
         """

@@ -1550,8 +1550,8 @@ class Program(object):
         self._is_distributed = False
         # _is_chief = True if the trainer is the first one, usually No.0
         self._is_chief = False
-        # _slice_vars_overview records all the parameters distributed on parameter servers.
-        self._slice_vars_overview = None
+        # _parameters_on_pservers records all the parameters distributed on parameter servers.
+        self._parameters_on_pservers = None
         # _endpoints is a list about parameter servers ip:port, such as ["ip:port","ip:port"]
         self._endpoints = []
         # if current role is parameter server, the _ps_endpoint is its "ip:port"
@@ -2072,7 +2072,7 @@ class Program(object):
                             "Program")
         self._is_distributed = other._is_distributed
         self._is_chief = other._is_chief
-        self._slice_vars_overview = other._slice_vars_overview
+        self._parameters_on_pservers = other._parameters_on_pservers
         self._endpoints = other._endpoints
         self._ps_endpoint = other._ps_endpoint
         self._distributed_lookup_table = other._distributed_lookup_table

@@ -100,8 +100,8 @@ This operator can get variables from server side.
                  "sync recv or async recv.")
         .SetDefault(0);
     AddAttr<bool>("with_barrier",
-                  "(bool, default True) if without_barrier=False, will use "
-                  "GetVariable get variable from pserver immediately")
+                  "(bool, default True) if with_barrier=False, will use "
+                  "AsyncGetVarNoBarrier get variable from pserver immediately")
         .SetDefault(true);
     AddAttr<std::vector<std::string>>(
         "varnames",
