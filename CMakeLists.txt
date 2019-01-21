@@ -60,7 +60,6 @@ option(WITH_DOC         "Compile PaddlePaddle with documentation"       OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
-option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
 option(WITH_FLUID_ONLY  "Compile PaddlePaddle fluid only"               OFF)
 option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
@@ -119,10 +118,6 @@ if(ANDROID OR IOS)
         "Disable golang when cross-compiling for Android and iOS" FORCE)
 
     # Compile PaddlePaddle mobile inference library
-    if (NOT WITH_C_API)
-        set(WITH_C_API ON CACHE STRING
-            "Always compile the C_API when cross-compiling for Android and iOS" FORCE)
-    endif()
     set(MOBILE_INFERENCE ON)
     add_definitions(-DPADDLE_MOBILE_INFERENCE)
 endif()
@@ -135,8 +130,6 @@ endif()
 if (WIN32)
     set(WITH_DISTRIBUTE OFF CACHE STRING
             "Disable DISTRIBUTE when compiling for Windows" FORCE)
-    set(WITH_C_API OFF CACHE STRING
-            "Disable C_API when compiling for Windows" FORCE)
     set(WITH_FLUID_ONLY ON CACHE STRING
             "Enable FLUID_ONLY when compiling for Windows" FORCE)
 endif()
@@ -149,16 +142,6 @@ set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
 
 set(FLUID_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_install_dir" CACHE STRING
   "A path setting fluid inference shared and static libraries")
-
-if (WITH_C_API AND WITH_PYTHON)
-  message(WARNING "It is suggest not embedded a python interpreter in Paddle "
-    "when using C-API. It will give an unpredictable behavior when using a "
-    "different Python interpreter from compiling.")
-endif()
-
-if (WITH_C_API)
-  set(WITH_FLUID_ONLY OFF CACHE STRING "Disable install fluid when compile the C_API" FORCE)
-endif()
 
 if(MOBILE_INFERENCE)
     set(THIRD_PARTY_BUILD_TYPE MinSizeRel)
