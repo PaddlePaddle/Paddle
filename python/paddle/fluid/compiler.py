@@ -112,12 +112,11 @@ class CompiledProgram(object):
             self._build_strategy = BuildStrategy()
         return self
 
-    def with_inference_optimize(self, config, infer_attrs):
+    def with_inference_optimize(self, config):
         """ Add inference optimize
 
         Args:
             config: instance of `NativeConfig` or `AnalysisConfig` to create predictor
-            infer_attrs(dict): attributes to run inference, no attribute is currently supported.
         Returns:
             self
         """
@@ -128,7 +127,6 @@ class CompiledProgram(object):
         self._is_data_parallel = False
         self._is_inference = True
         self._infer_config = config
-        self._infer_attrs = infer_attrs
         return self
 
     def _with_distributed(self):
