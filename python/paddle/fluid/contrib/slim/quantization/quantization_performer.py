@@ -374,7 +374,7 @@ class QuantizationPerformer(object):
             return dequant_var
 
         def _load_var(name):
-            return np.array(scope.find_var(name).get_tensor())
+            return np.array(graph.scope.find_var(name).get_tensor())
 
         def _restore_var(name, arr):
             t = graph.scope.find_var(name).get_tensor()

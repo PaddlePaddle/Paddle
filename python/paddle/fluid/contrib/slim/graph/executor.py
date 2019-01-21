@@ -48,17 +48,17 @@ class ImitationGraphExecutor(GraphExecutor):
         if not parallel:
             self.exe = executor.Executor(place)
 
-    def run(self, graph, data=None):
+    def run(self, graph, data=None, fetches=None):
         assert isinstance(graph, ImitationGraph)
-
         feeder = DataFeeder(
-            feed_list=graph.in_nodes, place=self.place, program=graph.program)
+            feed_list=graph.in_nodes.values(),
+            place=self.place,
+            program=graph.program)
         feed = feeder.feed(data)
 
-        fetch_list = graph.out_nodes.values()
+        fetch_list = fetches if fetches else graph.out_nodes.values()
         #        print "fetch_list: %s" % (fetch_list, )
         if self.exe is None:
-            print "graph.out_nodes: %s" % (graph.out_nodes, )
             self.exe = parallel_executor.ParallelExecutor(
                 use_cuda=True,
                 loss_name=graph.out_nodes['cost']

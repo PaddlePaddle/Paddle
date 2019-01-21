@@ -38,13 +38,13 @@ class QuantizationStrategy(Strategy):
         self.target_device = target_device
         self.save_as_int8 = save_as_int8
 
-    def on_compress_begin(self, context):
-        super(QuantizationStrategy, self).on_compress_begin(context)
-        self.quantizer.quantize(context.train_graph, context.scope)
+    def on_compression_begin(self, context):
+        super(QuantizationStrategy, self).on_compression_begin(context)
+        self.quantizer.quantize(context.train_graph, context.place)
+        self.quantizer.quantize(context.eval_graph, context.place)
 
-    def on_compress_end(self, context):
-        super(QuantizationStrategy, self).on_compress_end(context)
-        self.quantizer.convert_model(context.graph, context.place,
-                                     context.scope, context.feeds,
-                                     context.fetches, self.dirname, context.exe,
-                                     self.target_device, self.save_as_int8)
+    def on_compression_end(self, context):
+        super(QuantizationStrategy, self).on_compression_end(context)
+        self.quantizer.convert_model(context.eval_graph, context.place,
+                                     self.dirname, self.target_device,
+                                     self.save_as_int8)

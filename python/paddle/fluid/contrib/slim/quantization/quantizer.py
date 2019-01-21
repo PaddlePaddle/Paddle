@@ -33,9 +33,9 @@ class Quantizer(object):
         self._performer = None
 
     @abstractmethod
-    def quantize(self, graph):
+    def quantize(self, graph, place):
         assert self._performer is not None
-        self._performer.quantize_transform(graph)
+        self._performer.quantize_transform(graph, place)
 
     @abstractmethod
     def convert_model(self,
@@ -94,8 +94,8 @@ class StaticQuantizer(Quantizer):
             weight_quantize_type='abs_max',
             window_size=window_size)
 
-    def quantize(self, graph):
-        super(StaticQuantizer, self).quantize(graph)
+    def quantize(self, graph, place):
+        super(StaticQuantizer, self).quantize(graph, place)
 
     def convert_model(self,
                       graph,
@@ -122,8 +122,8 @@ class DynamicQuantizer(Quantizer):
             activation_quantize_type='abs_max',
             weight_quantize_type='abs_max')
 
-    def quantize(self, graph):
-        super(DynamicQuantizer, self).quantize(graph)
+    def quantize(self, graph, place):
+        super(DynamicQuantizer, self).quantize(graph, place)
 
     def convert_model(self,
                       graph,

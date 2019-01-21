@@ -19,6 +19,7 @@ from config import ConfigFactory
 import numpy as np
 from collections import Iterable
 import time
+import os
 
 __all__ = ['Context', 'CompressPass']
 
@@ -135,6 +136,7 @@ class CompressPass(object):
 
         self.checkpoint = None
         self.model_save_dir = None
+        self.eval_epoch = 1
 
     def add_strategy(self, strategy):
         """
@@ -162,8 +164,9 @@ class CompressPass(object):
             print("Loaded checkpoint from: {}".format(self.checkpoint))
 
     def _save_checkpoint(self, context):
-        if context.pass_id % 5 == 0:
-            model_path = os.path.join(self.model_save_dir, str(pass_id))
+        if context.epoch_id % 5 == 0 and self.model_save_dir:
+            model_path = os.path.join(self.model_save_dir,
+                                      str(context.epoch_id))
             if not os.path.isdir(model_path):
                 os.makedirs(model_path)
             exe = get_executor(context.train_graph, parallel=False)
@@ -191,7 +194,7 @@ class CompressPass(object):
         self._save_checkpoint(context)
 
     def _eval(self, context):
-        result, names = context.run_eval_grap()
+        results, names = context.run_eval_graph()
         print("epoch:{}; batch_id:{}; eval results: {}={}".format(
             context.epoch, context.batch_id, names, results))
 
@@ -226,10 +229,10 @@ class CompressPass(object):
                 strategy.on_epoch_end(context)
             context.epoch_id += 1
 
-            if epoch % self.eval_epoch == 0:
+            if self.eval_epoch and epoch % self.eval_epoch == 0:
                 self._eval(context)
 
         for strategy in self.strategies:
             strategy.on_compression_end(context)
 
-        return context.graph
+        return context.eval_graph
