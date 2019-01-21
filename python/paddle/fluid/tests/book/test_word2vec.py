@@ -209,6 +209,9 @@ def infer(use_cuda, save_dirname=None):
 
         infer_config = fluid.core.NativeConfig()
         infer_config.model_dir = 'word2vec.inference.model'
+        infer_config.use_gpu = use_cuda
+        infer_config.device = 0
+        infer_config.fraction_of_gpu_memory = 0.15
         compiled_program = fluid.compiler.CompiledProgram(inference_program)
         infer_attrs = {}
         compiled_program.with_inference_optimize(infer_config, infer_attrs)
