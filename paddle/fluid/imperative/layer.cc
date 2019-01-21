@@ -27,6 +27,9 @@
 namespace paddle {
 namespace imperative {
 
+const char* PyLayer::kFwdInp = "X";
+const char* PyLayer::kFwdOut = "Out";
+
 std::map<int, py::object> py_funcs_;
 
 using framework::Variable;
@@ -131,8 +134,9 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
   std::map<std::string, std::vector<framework::Variable*>> grad_outputs;
   if (backward_id_ > 0) {
     VLOG(3) << "py_layer_grad";
-    grad_outputs["Out@GRAD"] =
-        PyLayer::ApplyGrad(backward_id_, grad_input_vars_["X@GRAD"]);
+    grad_outputs[framework::GradVarName(PyLayer::kFwdOut)] = PyLayer::ApplyGrad(
+        backward_id_,
+        grad_input_vars_[framework::GradVarName(PyLayer::kFwdInp)]);
   } else {
     VLOG(3) << "op grad " << grad_op_desc_->Type();
     for (auto it : grad_output_vars_) {
