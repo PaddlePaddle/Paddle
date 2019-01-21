@@ -85,7 +85,7 @@ void Gather(const std::vector<distributed::RemoteVar>& vars,
 
   ASSERT_EQ(dst[0]->value().dims(), framework::make_ddim({20000, 1024}));
   ASSERT_EQ(dst[0]->height(), 20000);
-  ASSERT_EQ(dst[0]->rows().size(), 3);
+  ASSERT_EQ(dst[0]->rows().size(), static_cast<size_t>(3));
   for (int i = 0; i < 3; i++) {
     ASSERT_EQ(dst[0]->rows()[i], i);
   }
