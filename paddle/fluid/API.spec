@@ -45,6 +45,7 @@ paddle.fluid.AsyncExecutor.save_model ArgSpec(args=['self', 'save_path'], vararg
 paddle.fluid.AsyncExecutor.stop ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.CompiledProgram.__init__ ArgSpec(args=['self', 'program'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.CompiledProgram.with_data_parallel ArgSpec(args=['self', 'loss_name', 'build_strategy', 'exec_strategy', 'share_vars_from'], varargs=None, keywords=None, defaults=(None, None, None, None))
+paddle.fluid.CompiledProgram.with_inference_optimize ArgSpec(args=['self', 'config', 'infer_attrs'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.ExecutionStrategy.__init__ __init__(self: paddle.fluid.core.ParallelExecutor.ExecutionStrategy) -> None
 paddle.fluid.BuildStrategy.GradientScaleStrategy.__init__ __init__(self: paddle.fluid.core.ParallelExecutor.BuildStrategy.GradientScaleStrategy, arg0: int) -> None
 paddle.fluid.BuildStrategy.ReduceStrategy.__init__ __init__(self: paddle.fluid.core.ParallelExecutor.BuildStrategy.ReduceStrategy, arg0: int) -> None
@@ -506,4 +507,3 @@ paddle.reader.Fake.__init__ ArgSpec(args=['self'], varargs=None, keywords=None, 
 paddle.reader.creator.np_array ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None)
 paddle.reader.creator.text_file ArgSpec(args=['path'], varargs=None, keywords=None, defaults=None)
 paddle.reader.creator.recordio ArgSpec(args=['paths', 'buf_size'], varargs=None, keywords=None, defaults=(100,))
-paddle.fluid.compiler.CompileProgram.with_inference_optimize ArgSpec(args=['self', 'config', 'infer_attrs'], varargs=None, keywords=None, defaults=(,))
