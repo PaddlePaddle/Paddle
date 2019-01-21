@@ -37,11 +37,13 @@ try:
     from . import core
 except ImportError as e:
     if os.name == 'nt':
+        executable_path = os.path.abspath(os.path.dirname(sys.executable))
         raise ImportError(
-            """NOTE: You may need to run \"set PATH=c:\python27\lib:%PATH%\"
-        if you encounters \"mkldnn.dll not found\" errors. If you have python
-        installed in other directory, replace \"c:\python27\lib" with your own
-        directory. The original error is: \n""" + cpt.get_exception_message(e))
+            """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
+        if you encounters \"DLL load failed\" errors. If you have python
+        installed in other directory, replace \"%s\" with your own
+        directory. The original error is: \n %s""" %
+            (executable_path, executable_path, cpt.get_exception_message(e)))
     else:
         raise ImportError(
             """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
