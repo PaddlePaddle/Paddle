@@ -33,9 +33,7 @@ if(WIN32)
     set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
 endif(WIN32)
 
-if(NOT CMAKE_CROSSCOMPILING)
-    find_package(CUDA QUIET)
-endif(NOT CMAKE_CROSSCOMPILING)
+find_package(CUDA QUIET)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
 

@@ -232,14 +232,6 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
 ENDFUNCTION()
 
 SET(PROTOBUF_VERSION 3.1)
-IF(CMAKE_CROSSCOMPILING)
-    build_protobuf(protobuf_host TRUE)
-    LIST(APPEND external_project_dependencies protobuf_host)
-
-    SET(PROTOBUF_PROTOC_EXECUTABLE ${protobuf_host_PROTOC_EXECUTABLE}
-        CACHE FILEPATH "protobuf executable." FORCE)
-ENDIF()
-
 
 IF(NOT PROTOBUF_FOUND)
     build_protobuf(extern_protobuf FALSE)
@@ -253,11 +245,7 @@ IF(NOT PROTOBUF_FOUND)
     SET(PROTOBUF_PROTOC_LIBRARY ${extern_protobuf_PROTOC_LIBRARY}
         CACHE FILEPATH "protoc library." FORCE)
 
-    IF(CMAKE_CROSSCOMPILING)
-        PROMPT_PROTOBUF_LIB(protobuf_host extern_protobuf)
-    ELSE()
-        SET(PROTOBUF_PROTOC_EXECUTABLE ${extern_protobuf_PROTOC_EXECUTABLE}
-            CACHE FILEPATH "protobuf executable." FORCE)
-        PROMPT_PROTOBUF_LIB(extern_protobuf)
-    ENDIF()
+    SET(PROTOBUF_PROTOC_EXECUTABLE ${extern_protobuf_PROTOC_EXECUTABLE}
+        CACHE FILEPATH "protobuf executable." FORCE)
+    PROMPT_PROTOBUF_LIB(extern_protobuf)
 ENDIF(NOT PROTOBUF_FOUND)
