@@ -14,31 +14,17 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
-#include "paddle/fluid/inference/analysis/passes/passes.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-/*
- * The analysis pass to run a list of IR passes (like a function call).
- * Currently, it should be the first pass of analysis phase.
- */
-class IrAnalysisComposePass : public AnalysisPass {
+class IrGraphToProgramPass : public AnalysisPass {
  public:
-  void RunImpl(Argument* argument) override;
-  std::string repr() const override;
+  void RunImpl(Argument *argument) override;
 
- private:
-  void ApplyIrPasses(Argument* argument);
-
-  void CollectFusionStatis(Argument* argument);
-
-  // Assign a Scope for IR passes to modify the weights.
-  void AssignScopeToModify(Argument* argument);
+  std::string repr() const override { return "ir-graph-to-param-pass"; }
 };
 
 }  // namespace analysis

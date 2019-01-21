@@ -177,7 +177,7 @@ def polys_to_mask_wrt_box(polygons, box, M):
     mask = []
     for polygons in polygons_norm:
         assert polygons.shape[0] % 2 == 0
-        k = polygons.shape[0] / 2
+        k = polygons.shape[0] // 2
         mask.append(poly2mask(polygons, k, M, M))
     mask = np.array(mask)
     # Flatten in case polygons was a list

@@ -192,6 +192,13 @@ struct AnalysisConfig {
    */
   bool model_from_memory() const { return model_from_memory_; }
 
+  /** Turn on memory optimize
+   * NOTE still in development, will release latter.
+   */
+  void EnableMemoryOptim(bool force_update_cache = false);
+  /** Tell whether the memory optimization is activated. */
+  bool enable_memory_optim() const;
+
   friend class ::paddle::AnalysisPredictor;
 
   /** NOTE just for developer, not an official API, easily to be broken.
@@ -231,6 +238,10 @@ struct AnalysisConfig {
   //  We set this variable to control the minimum number of nodes in the
   //  subgraph, 3 as default value.
   int tensorrt_min_subgraph_size_{3};
+
+  // memory reuse related.
+  bool enable_memory_optim_{false};
+  bool memory_optim_force_update_{false};
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
