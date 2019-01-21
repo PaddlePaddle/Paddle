@@ -1054,8 +1054,8 @@ Scope* OperatorWithKernel::PrepareData(
       // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
       // variables, that behavior a lot different.
       if (!run_by_executor_) {
-        new_scope = TryCreateTransferScope(kernel_type_for_var,
-                                           expected_kernel_key, &scope);
+        // new_scope = TryCreateTransferScope(kernel_type_for_var,
+        //                                   expected_kernel_key, &scope);
       }
       if (!new_scope) {
         new_scope = &scope.NewScope();
