@@ -153,3 +153,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models SERIAL)
 endif()
+
+if(WITH_MKLDNN)
+    inference_analysis_test(test_conv_accuracy SRCS simple_conv_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --input=${PADDLE_SOURCE_DIR}/data/input_data.bin --weights=${PADDLE_SOURCE_DIR}/data/weights_data.bin --bias=${PADDLE_SOURCE_DIR}/data/bias_data.bin --output=${PADDLE_SOURCE_DIR}/data/output_data.bin)
+endif()
