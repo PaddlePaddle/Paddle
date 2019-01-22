@@ -21,51 +21,58 @@ class BoxClipOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("InputBox"),
-                   "Input(InputBox) of BoxClipOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Input"),
+                   "Input(Input) of BoxClipOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("ImInfo"),
                    "Input(ImInfo) of BoxClipOp should not be null.");
 
-    auto input_box_dims = ctx->GetInputDim("InputBox");
+    auto input_box_dims = ctx->GetInputDim("Input");
     auto im_info_dims = ctx->GetInputDim("ImInfo");
 
     if (ctx->IsRuntime()) {
       auto input_box_size = input_box_dims.size();
       PADDLE_ENFORCE_EQ(input_box_dims[input_box_size - 1], 4,
-                        "The last dimension of InputBox must be 4");
+                        "The last dimension of Input must be 4");
       PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
-                        "The rank of Input(InputBox) in BoxClipOp must be 2");
+                        "The rank of Input(Input) in BoxClipOp must be 2");
       PADDLE_ENFORCE_EQ(im_info_dims[1], 3,
                         "The last dimension of ImInfo must be 3");
     }
-    ctx->ShareDim("InputBox", /*->*/ "OutputBox");
-    ctx->ShareLoD("InputBox", /*->*/ "OutputBox");
+    ctx->ShareDim("Input", /*->*/ "Output");
+    ctx->ShareLoD("Input", /*->*/ "Output");
   }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("InputBox"));
-    return framework::OpKernelType(data_type, platform::CPUPlace());
-  }
+  /*
+  protected:
+   framework::OpKernelType GetExpectedKernelType(
+       const framework::ExecutionContext& ctx) const override {
+     auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Input"));
+     return framework::OpKernelType(data_type, platform::CPUPlace());
+   }
+   */
 };
 
 class BoxClipOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("InputBox",
+    AddInput("Input",
              "(LoDTensor) "
-             "InputBox is a LoDTensor with shape [..., 4] holds 4 points"
+             "Input is a LoDTensor with shape [..., 4] holds 4 points"
              "in last dimension in format [xmin, ymin, xmax, ymax]");
     AddInput("ImInfo",
              "(Tensor) Information for image reshape is in shape (N, 3), "
              "in format (height, width, im_scale)");
-    AddOutput("OutputBox",
+    AddOutput("Output",
               "(LoDTensor) "
-              "OutputBox is a LoDTensor with the same shape as InputBox"
+              "Output is a LoDTensor with the same shape as Input"
               "and it is the result after clip");
     AddComment(R"DOC(
-  This operator clips input boxes to original input images.
+This operator clips input boxes to original input images.
+
+The formula is given as follows:
+
+       $$height_out = \max(\min(height_loc, im_h), 0)$$
+       $$width_out = \max(\min(width_loc, im_w), 0)$$     
+
 )DOC");
   }
 };
