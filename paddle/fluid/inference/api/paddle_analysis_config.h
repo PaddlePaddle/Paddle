@@ -151,6 +151,13 @@ struct AnalysisConfig {
    */
   bool mkldnn_enabled() const { return use_mkldnn_; }
 
+  /** Turn on INT8.
+   */
+  void EnableINT8();
+  /** A boolean state telling whether to use INT8 kernels.
+   */
+  bool int8_enabled() const { return use_int8_; }
+
   /** Set and get the number of cpu math library threads.
    */
   void SetCpuMathLibraryNumThreads(int cpu_math_library_num_threads);
@@ -178,6 +185,13 @@ struct AnalysisConfig {
    */
   void SetMKLDNNOp(std::unordered_set<std::string> op_list) {
     mkldnn_enabled_op_types_ = op_list;
+  }
+
+  /** Specify the operator type list to use INT8 kernel.
+   * @param op_list the operator type list.
+   */
+  void SetINT8Op(std::unordered_set<std::string> op_list) {
+    int8_enabled_op_types_ = op_list;
   }
 
   /** Specify the memory buffer of program and parameter
@@ -245,6 +259,9 @@ struct AnalysisConfig {
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
+
+  bool use_int8_{false};
+  std::unordered_set<std::string> int8_enabled_op_types_;
 
   bool model_from_memory_{false};
 

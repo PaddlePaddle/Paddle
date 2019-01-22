@@ -123,6 +123,10 @@ struct Argument {
   DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types, MKLDNNEnabledOpTypes,
                       std::unordered_set<std::string>);
 
+  // Pass a set of op types to enable its int8 kernel
+  DECL_ARGUMENT_FIELD(int8_enabled_op_types, INT8EnabledOpTypes,
+                      std::unordered_set<std::string>);
+
   // Passed from config.
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);

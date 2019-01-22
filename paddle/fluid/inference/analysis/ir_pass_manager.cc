@@ -61,6 +61,11 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new std::unordered_set<std::string>(
                     argument->mkldnn_enabled_op_types()));
     }
+    if (pass_name == "int8_placement_pass") {
+      pass->Set("int8_enabled_op_types",
+                new std::unordered_set<std::string>(
+                    argument->int8_enabled_op_types()));
+    }
 
     if (pass_name == "tensorrt_subgraph_pass") {
       pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));
