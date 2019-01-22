@@ -734,7 +734,7 @@ class NumpyArrayInitializer(Initializer):
             outputs={'Out': var},
             attrs={
                 'dtype': dtype,
-                'shape': list(input.shape),
+                'shape': list(self._value.shape),
                 value_name: values
             },
             stop_gradient=True)
