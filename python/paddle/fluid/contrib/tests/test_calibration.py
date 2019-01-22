@@ -42,6 +42,7 @@ img_mean = np.array([0.485, 0.456, 0.406]).reshape((3, 1, 1))
 img_std = np.array([0.229, 0.224, 0.225]).reshape((3, 1, 1))
 
 
+# TODO(guomingz): Remove duplicated code from line 45 ~ line 114
 def resize_short(img, target_size):
     percent = float(target_size) / min(img.size[0], img.size[1])
     resized_width = int(round(img.size[0] * percent))
@@ -99,7 +100,6 @@ def _reader_creator(file_list,
 
             for line in lines:
                 img_path, label = line.split()
-                #img_path = img_path.replace("JPEG", "jpeg")
                 img_path = os.path.join(data_dir, img_path)
                 if not os.path.exists(img_path):
                     continue
@@ -118,6 +118,7 @@ def val(data_dir=DATA_DIR):
 
 class TestCalibration(unittest.TestCase):
     def setUp(self):
+        # TODO(guomingz): Put the download process in the cmake.
         # Download and unzip test data set
         imagenet_dl_url = 'http://paddle-inference-dist.bj.bcebos.com/int8/calibration_test_data.tar.gz'
         zip_file_name = imagenet_dl_url.split('/')[-1]

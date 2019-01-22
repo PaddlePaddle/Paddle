@@ -23,7 +23,7 @@ class Calibrator(object):
     The calibrator class transforms the program and updates the calculated scale into it.
     This is INT8 v1 calibration tool, mainly for the support of ResNet-50 and MobileNet.
     '''
-    # TODO: Below op list will be updated once more INT8 op kernels are supported.
+    # TODO(guomingz): Below op list will be updated once more INT8 op kernels are supported.
     non_conv_int8_op_type = ("pool2d")
     supported_int8_op_type = ("conv2d", "pool2d")
     const_sign_op_type = ('pool2d', 'reshape', 'concat', 'transpose')
@@ -131,8 +131,8 @@ class Calibrator(object):
                                                     var_name,
                                                     start_index=0):
         '''
-        Check all the type of ops that use the specified variable as the input.
-        If one of those op is not int8-enabled, return False.
+        Check whether all the type of ops that use the specified variable as the
+        input.If one of those op is not int8-enabled, return False.
         '''
         op_type_list = [
             op.type for op in program.current_block().ops[start_index:]
@@ -145,7 +145,7 @@ class Calibrator(object):
 
     def __check_var_source_dt(self, var_name):
         '''
-        Check the specified variable is the output of int8 conv op or not.
+        Check whether the specified variable is the output of int8 conv op or not.
         If true, return the original op index.
         If false, return -1
         '''
@@ -376,8 +376,8 @@ class Calibrator(object):
 
     def __get_op_index_by_output_var(self, program, var_name, start_index=0):
         '''
-        Check the specified input variable is the output of the conv/pool2d
-        op's output or not.
+        Check whether the specified input variable is the output of the
+        conv/pool2d op's output or not.
 
         Returns:
             The index if the variable is the output of any conv/pool2d op's
