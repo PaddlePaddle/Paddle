@@ -313,6 +313,6 @@ class QuantizationTransformPass(object):
 
     def _quantized_scale_name(self, var_name):
         """
-        Return quantized variable name for the input `var_name`.
+        Return the scale name of quantized variable for the input `var_name`.
         """
         return "%s.scale" % (var_name)
