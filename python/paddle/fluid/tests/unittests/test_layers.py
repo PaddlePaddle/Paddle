@@ -1023,18 +1023,6 @@ class TestBook(unittest.TestCase):
 
         print(str(program))
 
-    def test_assign(self):
-        import numpy as np
-        startup = Program()
-        main = Program()
-        with program_guard(main, startup):
-            probs = layers.assign(
-                input=np.random.random([1, 2]).astype('float32'),
-                init_once=True)
-
-        print(str(main))
-        print(str(startup))
-
 
 if __name__ == '__main__':
     unittest.main()

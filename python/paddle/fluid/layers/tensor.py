@@ -291,7 +291,7 @@ def sums(input, out=None):
     return out
 
 
-def assign(input, output=None, init_once=False):
+def assign(input, output=None):
     """
     **Assign**
 
@@ -300,7 +300,6 @@ def assign(input, output=None, init_once=False):
     Args:
         input(Variable|numpy.ndarray): The source variable
         output(Variable|None): The destination variable
-        init_once(bool|false): assign value into global var only in startup program.
 
     Returns:
         Variable: The destination variable that was supplied as the *output*.
@@ -314,22 +313,10 @@ def assign(input, output=None, init_once=False):
     """
     helper = LayerHelper('assign', **locals())
     if output is None:
-        if init_once:
-            output = helper.create_parameter(
-                attr=ParamAttr(),
-                shape=input.shape,
-                dtype=input.dtype,
-                default_initializer=Constant(0.0))
-            output.stop_gradient = True
-        else:
-            output = helper.create_variable_for_type_inference(
-                dtype=input.dtype)
+        output = helper.create_variable_for_type_inference(dtype=input.dtype)
     if isinstance(input, Variable):
-        if init_once:
-            raise ValueError("init once only support numpy assign!")
         helper.append_op(
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
-
     elif isinstance(input, numpy.ndarray):
         dtype = convert_np_dtype_to_dtype_(input.dtype)
         if dtype == VarDesc.VarType.FP32:
@@ -340,28 +327,18 @@ def assign(input, output=None, init_once=False):
             values = [int(v) for v in input.flat]
         else:
             raise ValueError("Unsupported dtype %s", input.dtype)
-        if input.size > 1024 * 1024 * 5:
+        if input.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
 
-        if init_once:
-            helper.startup_program.global_block().append_op(
-                type='assign_value',
-                outputs={'Out': [output]},
-                attrs={
-                    'dtype': dtype,
-                    'shape': list(input.shape),
-                    value_name: values
-                })
-        else:
-            helper.append_op(
-                type='assign_value',
-                outputs={'Out': [output]},
-                attrs={
-                    'dtype': dtype,
-                    'shape': list(input.shape),
-                    value_name: values
-                })
+        helper.append_op(
+            type='assign_value',
+            outputs={'Out': [output]},
+            attrs={
+                'dtype': dtype,
+                'shape': list(input.shape),
+                value_name: values
+            })
     else:
         raise ValueError("Wrong type for assign input: %s" % type(input))
 
