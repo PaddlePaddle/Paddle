@@ -165,6 +165,9 @@ function cmake_gen() {
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
 
+    distibuted_flag=${WITH_DISTRIBUTE:-OFF}
+    grpc_flag=${WITH_GRPC:-${distibuted_flag}}
+
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
@@ -174,7 +177,7 @@ function cmake_gen() {
         -DWITH_DOC=${WITH_DOC:-OFF}
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
-        -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF}
+        -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_NGRAPH=${WITH_NGRAPH:-OFF}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -198,7 +201,7 @@ function cmake_gen() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} 
-        -DWITH_GRPC=${WITH_GRPC:-${WITH_DISTRIBUTE:-OFF}}
+        -DWITH_GRPC=${grpc_flag}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -211,7 +214,7 @@ EOF
         -DWITH_DOC=${WITH_DOC:-OFF} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
-        -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF} \
+        -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_NGRAPH=${WITH_NGRAPH:-OFF} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
@@ -234,7 +237,7 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} \
-        -DWITH_GRPC=${WITH_GRPC:-${WITH_DISTRIBUTE:-OFF}}
+        -DWITH_GRPC=${grpc_flag}
 
 }
 
