@@ -245,7 +245,6 @@ class TestImperative(unittest.TestCase):
             dy_grad_h2o = simple_rnn._cell._h2o_w._gradient()
             dy_grad_h2h = simple_rnn._cell._h2h_w._gradient()
             dy_grad_i2h = simple_rnn._cell._i2h_w._gradient()
-            # print("dy_grad is {}".format(dy_grad))
 
         with new_program_scope():
             print("im here")
@@ -262,10 +261,10 @@ class TestImperative(unittest.TestCase):
                     outs[3].name, param_grads[0][1].name,
                     param_grads[1][1].name, param_grads[2][1].name
                 ])
-            self.assertTrue(np.allclose(dy_out, static_out))
-            self.assertTrue(np.allclose(dy_grad_h2o, static_grad_h2o))
-            self.assertTrue(np.allclose(dy_grad_h2h, static_grad_h2h))
-            self.assertTrue(np.allclose(dy_grad_i2h, static_grad_i2h))
+        self.assertTrue(np.allclose(dy_out, static_out))
+        self.assertTrue(np.allclose(dy_grad_h2o, static_grad_h2o))
+        self.assertTrue(np.allclose(dy_grad_h2h, static_grad_h2h))
+        self.assertTrue(np.allclose(dy_grad_i2h, static_grad_i2h))
 
 
 if __name__ == '__main__':
