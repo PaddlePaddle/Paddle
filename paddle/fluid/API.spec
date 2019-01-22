@@ -353,7 +353,7 @@ paddle.fluid.contrib.BeamSearchDecoder.read_array ArgSpec(args=['self', 'init', 
 paddle.fluid.contrib.BeamSearchDecoder.update_array ArgSpec(args=['self', 'array', 'value'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.contrib.memory_usage ArgSpec(args=['program', 'batch_size'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.contrib.op_freq_statistic ArgSpec(args=['program'], varargs=None, keywords=None, defaults=None)
-paddle.fluid.contrib.QuantizeTranspiler.__init__ ArgSpec(args=['self', 'weight_bits', 'activation_bits', 'activation_quantize_type', 'weight_quantize_type', 'window_size'], varargs=None, keywords=None, defaults=(8, 8, 'abs_max', 'abs_max', 10000))
+paddle.fluid.contrib.QuantizeTranspiler.__init__ ArgSpec(args=['self', 'weight_bits', 'activation_bits', 'activation_quantize_type', 'weight_quantize_type', 'window_size', 'moving_rate'], varargs=None, keywords=None, defaults=(8, 8, 'abs_max', 'abs_max', 10000, 0.9))
 paddle.fluid.contrib.QuantizeTranspiler.convert_to_int8 ArgSpec(args=['self', 'program', 'place', 'scope'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.contrib.QuantizeTranspiler.freeze_program ArgSpec(args=['self', 'program', 'place', 'fuse_bn', 'scope'], varargs=None, keywords=None, defaults=(False, None))
 paddle.fluid.contrib.QuantizeTranspiler.training_transpile ArgSpec(args=['self', 'program', 'startup_program'], varargs=None, keywords=None, defaults=(None, None))
