@@ -5146,9 +5146,9 @@ def nce(input,
         littles = []
         for i in range(custom_dist_len):
             normal_prob = custom_dist[i] * custom_dist_len
-            if normal_prob - 1.0 > 1e-4:
+            if normal_prob - 1.0 > 0:
                 bigs.append((i, normal_prob))
-            elif 1.0 - normal_prob > 1e-4:
+            elif 1.0 - normal_prob > 0:
                 littles.append((i, normal_prob))
             else:
                 alias_probs_[i] = normal_prob
@@ -5164,9 +5164,9 @@ def nce(input,
             alias_probs_[little[0]] = little[1]
             alias_[little[0]] = big_idx
             big_left = big[1] + little[1] - 1
-            if big_left - 1.0 > 1e-4:
+            if big_left - 1.0 > 0:
                 bigs.append((big_idx, big_left))
-            elif 1.0 - big_left > 1e-4:
+            elif 1.0 - big_left > 0:
                 littles.append((big_idx, big_left))
             else:
                 alias_probs_[big_idx] = big_left
