@@ -80,7 +80,7 @@ class SimpleRNN(fluid.imperative.Layer):
             fluid.ParamAttr(initializer=fluid.initializer.Constant(value=0.1)))
 
     def forward(self, inputs):
-        out = list()
+        outs = list()
         pre_hiddens = list()
 
         init_hidden = fluid.layers.tensor.create_parameter(
@@ -94,10 +94,10 @@ class SimpleRNN(fluid.imperative.Layer):
             input = fluid.layers.slice(
                 inputs, axes=[1], starts=[i], ends=[i + 1])
             input = fluid.layers.reshape(input, shape=[1, 3])
-            pre_hidden, out_softmax = self._cell(input, pre_hidden)
-            out.append(out_softmax)
+            out_softmax, pre_hidden = self._cell(input, pre_hidden)
+            outs.append(out_softmax)
 
-        return out, pre_hiddens
+        return outs, pre_hiddens
 
 
 class TestImperative(unittest.TestCase):
@@ -235,15 +235,17 @@ class TestImperative(unittest.TestCase):
                            [10.0, 11.0, 12.0]])
         np_inp = np_inp.reshape((1, 4, 3))
         np_inp = np_inp.astype(np.float32)
-        # with fluid.imperative.guard():
-        #     var_inp = fluid.imperative.base.to_variable(np_inp)
-        #     var_inp = fluid.layers.reshape(var_inp, shape=[1, 4, 3])
-        #     simple_rnn = SimpleRNN()
-        #     outs, pre_hiddens = simple_rnn.forward(var_inp)
-        #     dy_out = outs[3]._numpy()
-        #     outs[3]._backward()
-        #     dy_grad = simple_rnn._cell._i2h_w._gradient()
-        #     print("dy_grad is {}".format(dy_grad))
+        with fluid.imperative.guard():
+            var_inp = fluid.imperative.base.to_variable(np_inp)
+            var_inp = fluid.layers.reshape(var_inp, shape=[1, 4, 3])
+            simple_rnn = SimpleRNN()
+            outs, pre_hiddens = simple_rnn.forward(var_inp)
+            dy_out = outs[3]._numpy()
+            outs[3]._backward()
+            dy_grad_h2o = simple_rnn._cell._h2o_w._gradient()
+            dy_grad_h2h = simple_rnn._cell._h2h_w._gradient()
+            dy_grad_i2h = simple_rnn._cell._i2h_w._gradient()
+            # print("dy_grad is {}".format(dy_grad))
 
         with new_program_scope():
             print("im here")
@@ -251,20 +253,19 @@ class TestImperative(unittest.TestCase):
                 name="inp", shape=[1, 4, 3], append_batch_size=False)
             simple_rnn = SimpleRNN()
             outs, pre_hiddens = simple_rnn(inp)
-            param_grads = fluid.backward.append_backward(
-                outs[3],
-                parameter_list=[
-                    simple_rnn._cell._i2h_w.name, simple_rnn._cell._h2h_w.name,
-                    simple_rnn._cell._h2o_w.name
-                ])
+            param_grads = fluid.backward.append_backward(outs[3])
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
-            # print("param_grads is : {} ".format(param_grads))
-            static_out, static_grad = exe.run(
+            static_out, static_grad_h2o, static_grad_h2h, static_grad_i2h = exe.run(
                 feed={inp.name: np_inp},
-                fetch_list=[outs[3].name, param_grads[2][1].name])
-            # self.assertTrue(np.allclose(dy_out, static_out))
-            # self.assertTrue(np.allclose(dy_grad, static_grad))
+                fetch_list=[
+                    outs[3].name, param_grads[0][1].name,
+                    param_grads[1][1].name, param_grads[2][1].name
+                ])
+            self.assertTrue(np.allclose(dy_out, static_out))
+            self.assertTrue(np.allclose(dy_grad_h2o, static_grad_h2o))
+            self.assertTrue(np.allclose(dy_grad_h2h, static_grad_h2h))
+            self.assertTrue(np.allclose(dy_grad_i2h, static_grad_i2h))
 
 
 if __name__ == '__main__':
