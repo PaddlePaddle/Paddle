@@ -23,13 +23,13 @@ if(WITH_GRPC)
   grpc_library(grpc_base PROTO ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto)
   cc_library(variable_response SRCS variable_response.cc DEPS data_type lod_tensor scope grpc_base_proto)
 
-  cc_library(grpc_server SRCS grpc/grpc_server.cc DEPS grpc_base_grpc)
-  cc_library(grpc_client SRCS grpc/grpc_client.cc DEPS grpc_base_grpc)
-  cc_library(grpc_serde SRCS grpc/grpc_serde.cc DEPS data_type grpc_base_grpc)
-  cc_library(grpc_bbs SRCS grpc/grpc_bytebuffer_stream.cc DEPS grpc_base_grpc)
-  cc_library(grpc_vr SRCS grpc/grpc_variable_response.cc DEPS grpc_base_grpc)
-  cc_library(collective_server SRCS collective_server.cc DEPS grpc_base_grpc)
-  cc_library(collective_client SRCS collective_client.cc DEPS grpc_base_grpc)
+  cc_library(grpc_server SRCS grpc/grpc_server.cc DEPS grpc_base_grpc scope)
+  cc_library(grpc_client SRCS grpc/grpc_client.cc DEPS grpc_base_grpc scope)
+  cc_library(grpc_serde SRCS grpc/grpc_serde.cc DEPS data_type grpc_base_grpc scope)
+  cc_library(grpc_bbs SRCS grpc/grpc_bytebuffer_stream.cc DEPS grpc_base_grpc scope)
+  cc_library(grpc_vr SRCS grpc/grpc_variable_response.cc DEPS grpc_base_grpc scope)
+  cc_library(collective_server SRCS collective_server.cc DEPS grpc_base_grpc scope)
+  cc_library(collective_client SRCS collective_client.cc DEPS grpc_base_grpc scope)
 
   # merge all
   cc_library(sendrecvop_rpc DEPS grpc_base_proto grpc_base_grpc
