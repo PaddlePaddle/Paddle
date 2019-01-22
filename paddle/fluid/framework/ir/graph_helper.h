@@ -34,6 +34,23 @@ size_t GraphNum(const Graph &graph);
 // `graph` cannot contain circle.
 std::vector<ir::Node *> TopologySortOperations(const Graph &graph);
 
+// Topological sort, but try to DFS.
+std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph);
+
+// Different kinds to sort the operators in a graph to a sequence.
+enum class SortKind {
+  // Topological Search
+  TS = 0,
+  // Topological and Depth First Search
+  TDFS
+};
+
+// Several kinds of topological sort.
+std::vector<Node *> TopologyVarientSort(const Graph &graph, SortKind sort_kind);
+
+// Clean the nodes that doesn't connect to others.
+void CleanIndividualNodes(Graph *graph);
+
 // Build an adjacency list of operations for the `graph`.
 std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     const Graph &graph);

@@ -19,6 +19,7 @@ from collections import defaultdict
 import contextlib
 import os
 import re
+import traceback
 import six
 
 import numpy as np
@@ -36,11 +37,13 @@ try:
     from . import core
 except ImportError as e:
     if os.name == 'nt':
+        executable_path = os.path.abspath(os.path.dirname(sys.executable))
         raise ImportError(
-            """NOTE: You may need to run \"set PATH=c:\python27\lib:%PATH%\"
-        if you encounters \"mkldnn.dll not found\" errors. If you have python
-        installed in other directory, replace \"c:\python27\lib" with your own
-        directory. The original error is: \n""" + cpt.get_exception_message(e))
+            """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
+        if you encounters \"DLL load failed\" errors. If you have python
+        installed in other directory, replace \"%s\" with your own
+        directory. The original error is: \n %s""" %
+            (executable_path, executable_path, cpt.get_exception_message(e)))
     else:
         raise ImportError(
             """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
@@ -372,27 +375,24 @@ class Variable(object):
         self.stop_gradient = stop_gradient
         self.is_data = is_data
         if _in_imperative_mode():
-            self._ivar = core.VarBase()
+            self._ivar = kwargs.get("ivar", None)
+            if not self._ivar:
+                self._ivar = core.VarBase()
             self._ivar.desc = self.desc
             self._ivar.stop_gradient = stop_gradient
 
     def _numpy(self):
-        tensor = self._ivar.value.get_tensor()
+        tensor = self._ivar.value().get_tensor()
         return np.array(tensor)
 
     def _backward(self):
         self._ivar._run_backward()
 
     def _gradient(self):
-        return np.array(self._ivar._grad())
+        return np.array(self._ivar._grad_value())
 
-    @property
-    def _value(self):
-        return self._ivar.value
-
-    @_value.setter
-    def _value(self, v):
-        self._ivar.value = v
+    def _clear_gradient(self):
+        self._ivar._clear_gradient()
 
     def __str__(self):
         return self.to_string(True)
@@ -631,6 +631,11 @@ class Operator(object):
         if type is None:
             raise ValueError(
                 "`type` to initilized an Operator can not be None.")
+        else:
+            callstack_var_name = op_maker.kOpCreationCallstackAttrName()
+            op_attrs[callstack_var_name] = list(
+                reversed(traceback.format_stack()))[1:]
+
         self.desc.set_type(type)
         proto = OpProtoHolder.instance().get_op_proto(type)
 

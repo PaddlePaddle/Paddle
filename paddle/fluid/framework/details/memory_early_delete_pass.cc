@@ -33,7 +33,7 @@ static ComputationOpHandle* FindNextComputationOpHandle(VarHandle* var_in) {
     queue.pop();
     for (auto* op : var->PendingOps()) {
       auto* compute_op = dynamic_cast<ComputationOpHandle*>(op);
-      if (compute_op != nullptr && compute_op->GetPlace() == var_in->place_) {
+      if (compute_op != nullptr && compute_op->GetPlace() == var_in->place()) {
         return compute_op;
       }
       for (auto* out_var : op->Outputs()) {
@@ -64,7 +64,7 @@ std::unique_ptr<ir::Graph> MemoryEarlyDeletePass::ApplyImpl(
     for (auto& var : vars) {
       auto* var_handle = dynamic_cast<VarHandle*>(var);
       auto var_name = var->Node()->Name();
-      auto& var_place = var_handle->place_;
+      auto& var_place = var_handle->place();
       if (unlived_vars.count(var_name) == 0) continue;
       if (!unlived_vars[var_name].empty()) {
         if (compute_op != nullptr &&
