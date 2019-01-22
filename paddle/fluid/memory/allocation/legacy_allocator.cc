@@ -53,7 +53,10 @@ size_t memory_usage(const platform::Place &p);
 
 using BuddyAllocator = detail::BuddyAllocator;
 
-std::unordered_map<int, std::pair<uint64_t, uint64_t>> gpu_mem_info;
+std::unordered_map</*device id*/ int,
+                   std::pair</*current memory usage*/ uint64_t,
+                             /*peak memory usage*/ uint64_t>>
+    gpu_mem_info;
 
 BuddyAllocator *GetCPUBuddyAllocator() {
   // We tried thread_local for inference::RNN1 model, but that not works much
