@@ -153,7 +153,8 @@ class VarBase {
 
   framework::LoDTensor& GradValue();
 
-  framework::LoDTensor* CopiedTensor() const;
+  VarBase* NewVarBase(const platform::Place& dst_place,
+                      const bool blocking) const;
 
   inline std::string GradName() const {
     PADDLE_ENFORCE(
@@ -184,7 +185,7 @@ class OpBase {
         forward_id_(-1),
         grad_op_desc_(nullptr),
         backward_id_(-1),
-        expected_place_(platform::CPUPlace()) {}
+        place_(platform::CPUPlace()) {}
 
   virtual ~OpBase() {
     if (grad_op_desc_) delete grad_op_desc_;
@@ -201,7 +202,7 @@ class OpBase {
   framework::OpDesc* grad_op_desc_;
   int backward_id_;
 
-  platform::Place expected_place_;
+  platform::Place place_;
 
   VarBasePtrMap input_vars_;
   VarBasePtrMap output_vars_;

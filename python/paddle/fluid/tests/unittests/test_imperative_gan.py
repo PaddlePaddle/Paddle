@@ -135,7 +135,7 @@ class TestImperativeMnist(unittest.TestCase):
                     scope.find_var(param.name).get_tensor())
 
         dy_params = dict()
-        with fluid.imperative.guard(device=None):
+        with fluid.imperative.guard(place=fluid.CPUPlace()):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 

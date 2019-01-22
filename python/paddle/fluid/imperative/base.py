@@ -25,23 +25,22 @@ def enabled():
 
 
 @contextlib.contextmanager
-def guard(device=0):
+def guard(place=None):
     train = framework.Program()
     startup = framework.Program()
     tracer = core.Tracer(train.current_block().desc)
 
-    if device is None:
-        place = core.CPUPlace()
-    else:
+    if place is None:
         if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(device)
+            place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
 
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
-            with framework._imperative_guard(tracer, place):
-                yield
+            with framework._imperative_guard(tracer):
+                with framework._imperative_place_guard(place):
+                    yield
 
 
 def to_variable(value, block=None):
