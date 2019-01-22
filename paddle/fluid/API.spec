@@ -67,6 +67,7 @@ paddle.fluid.initializer.BilinearInitializer.__init__ ArgSpec(args=['self'], var
 paddle.fluid.initializer.MSRAInitializer.__init__ ArgSpec(args=['self', 'uniform', 'fan_in', 'seed'], varargs=None, keywords=None, defaults=(True, None, 0))
 paddle.fluid.initializer.force_init_on_cpu ArgSpec(args=[], varargs=None, keywords=None, defaults=None)
 paddle.fluid.initializer.init_on_cpu ArgSpec(args=[], varargs='args', keywords='kwds', defaults=None)
+paddle.fluid.initializer.NumpyArrayInitializer.__init__ ArgSpec(args=['self', 'value'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.layers.fc ArgSpec(args=['input', 'size', 'num_flatten_dims', 'param_attr', 'bias_attr', 'act', 'is_test', 'name'], varargs=None, keywords=None, defaults=(1, None, None, None, False, None))
 paddle.fluid.layers.embedding ArgSpec(args=['input', 'size', 'is_sparse', 'is_distributed', 'padding_idx', 'param_attr', 'dtype'], varargs=None, keywords=None, defaults=(False, False, None, None, 'float32'))
 paddle.fluid.layers.dynamic_lstm ArgSpec(args=['input', 'size', 'h_0', 'c_0', 'param_attr', 'bias_attr', 'use_peepholes', 'is_reverse', 'gate_activation', 'cell_activation', 'candidate_activation', 'dtype', 'name'], varargs=None, keywords=None, defaults=(None, None, None, None, True, False, 'sigmoid', 'tanh', 'tanh', 'float32', None))
