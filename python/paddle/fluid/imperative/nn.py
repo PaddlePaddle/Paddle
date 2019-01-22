@@ -324,7 +324,7 @@ class SimpleRNNCell(layers.Layer):
             outputs={"Out": tmp_i2h},
             attrs={"x_num_col_dims": 1,
                    "y_num_col_dims": 1})
-        # print("mul op 1")
+
         self._helper.append_op(
             type="mul",
             inputs={"X": pre_hidden,
@@ -332,7 +332,7 @@ class SimpleRNNCell(layers.Layer):
             outputs={"Out": tmp_h2h},
             attrs={"x_num_col_dims": 1,
                    "y_num_col_dims": 1})
-        # print("mul op 2")
+
         self._helper.append_op(
             type="elementwise_add",
             inputs={'X': tmp_h2h,
@@ -340,21 +340,6 @@ class SimpleRNNCell(layers.Layer):
             outputs={'Out': hidden},
             attrs={'axis': -1,
                    'use_mkldnn': False})
-        # print("elementwise op 1")
-
-        # self._helper.append_op(
-        #     type='print',
-        #     inputs={'In': hidden},
-        #     attrs={
-        #         'first_n': -1,
-        #         'summarize': -1,
-        #         'message': None or "",
-        #         'print_tensor_name': True,
-        #         'print_tensor_type': True,
-        #         'print_tensor_shape': True,
-        #         'print_tensor_lod': True,
-        #         'print_phase': 'BOTH'
-        #     })
         hidden = self._helper.append_activation(hidden)
 
         self._helper.append_op(
@@ -364,14 +349,12 @@ class SimpleRNNCell(layers.Layer):
             outputs={"Out": out},
             attrs={"x_num_col_dims": 1,
                    "y_num_col_dims": 1})
-        # print("mul op 3")
 
         self._helper.append_op(
             type="softmax",
             inputs={"X": out},
             outputs={"Out": softmax_out},
             attrs={"use_cudnn": False})
-        # print("softmax op 1")
 
         self._helper.append_op(
             type='reduce_sum',
@@ -380,5 +363,5 @@ class SimpleRNNCell(layers.Layer):
             attrs={'dim': None,
                    'keep_dim': False,
                    'reduce_all': True})
-        # print("reduce_sum op 1")
+
         return reduce_out, hidden
