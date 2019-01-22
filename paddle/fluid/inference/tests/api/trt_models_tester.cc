@@ -157,5 +157,10 @@ TEST(AnalysisPredictor, use_gpu) {
   }
 }
 
+TEST(TensorRT_mobilenet, profile) {
+  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
+  profile(model_dir, true, false);
+}
+
 }  // namespace inference
 }  // namespace paddle
