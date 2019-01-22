@@ -24,17 +24,20 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
-#if PADDLE_WITH_TENSORRT
-#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#endif
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
+
+#if PADDLE_WITH_TENSORRT
+#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#endif
 
 DECLARE_bool(profile);
 
@@ -189,6 +192,12 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to get fetches";
     return false;
   }
+
+  // Collect variable shapes for memory optimization.
+  if (need_collect_var_shapes_for_memory_optim()) {
+    CollectVarShapes();
+  }
+
   VLOG(3) << "predict cost: " << timer.toc() << "ms";
 
   // All the containers in the scope will be hold in inference, but the
@@ -317,6 +326,8 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   argument_.SetUseGPU(config_.use_gpu());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
+  argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
+  argument_.SetMemoryOptimForceUpdate(config_.memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   if (!config_.model_dir().empty()) {
@@ -331,6 +342,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
 
   if (config_.use_gpu() && config_.tensorrt_engine_enabled()) {
+    LOG(INFO) << "TensorRT subgraph engine is enabled";
     argument_.SetUseTensorRT(true);
     argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
@@ -338,12 +350,17 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
 
   if (config_.use_mkldnn_) {
+    LOG(INFO) << "MKLDNN is enabled";
     argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
   }
 
   auto passes = config_.pass_builder()->AllPasses();
-  if (!config_.ir_optim()) passes.clear();
+  if (!config_.ir_optim()) {
+    passes.clear();
+    LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";
+  }
   argument_.SetIrAnalysisPasses(passes);
+  argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(const_cast<framework::Scope *>(scope_.get()));
   Analyzer().Run(&argument_);
 
@@ -558,12 +575,80 @@ AnalysisPredictor::~AnalysisPredictor() {
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
   }
+
+  // TODO(Superjomn) deduce the directory path.
+  std::string out_path = inference::analysis::GetMemoryCachePath(
+      config_.model_dir(), config_.prog_file());
+  if (need_collect_var_shapes_for_memory_optim()) {
+    SerializeBatchVarShapes(out_path);
+  }
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
+  std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
   x->Init(scope_, inference_program_);
   return std::unique_ptr<PaddlePredictor>(x);
+}
+
+void AnalysisPredictor::CollectVarShapes() {
+  VLOG(4) << "Collecting var shapes";
+  if (batch_var_shapes_.size() >= max_shape_collect_count_) return;
+  std::map<std::string, std::vector<int>> var_shapes;
+  for (auto var_name : inference_program_->Block(0).LocalVarNames()) {
+    auto *var = sub_scope_->FindVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(var);
+    if (var->Type() == framework::VarTypeTrait<framework::LoDTensor>::kId ||
+        var->Type() == framework::VarTypeTrait<framework::Tensor>::kId) {
+      auto &tensor = var->Get<framework::LoDTensor>();
+      auto shape = framework::vectorize(tensor.dims());
+      var_shapes[var_name].assign(shape.begin(), shape.end());
+    }
+  }
+  batch_var_shapes_.push_back(var_shapes);
+  LOG_FIRST_N(INFO, 1) << "Collected " << batch_var_shapes_.size()
+                       << " batch of var shapes for analysis";
+}
+
+void AnalysisPredictor::SerializeBatchVarShapes(const std::string &path) {
+  LOG(INFO) << "serialize batch var shapes to " << path;
+  std::ofstream file(path);
+  if (!file.is_open()) {
+    LOG(ERROR) << "failed to serialize the var shapes to " << path;
+    return;
+  }
+
+  // The sirialized data format:
+  // <tensor_name>:dim0,dim1,dim2,;
+  for (auto &batch : batch_var_shapes_) {
+    for (auto &ele : batch) {
+      file << ele.first << ":";
+      for (size_t i = 0; i < ele.second.size() - 1; i++) {
+        file << ele.second[i] << ",";
+      }
+      file << ele.second.back() << ";";
+    }
+    file << "\n";
+  }
+}
+
+bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
+  if (need_collect_var_shapes_ >= 0) return need_collect_var_shapes_;
+  bool need = false;
+  // check if the cache exists
+  if (!config_.enable_memory_optim()) {
+    need = false;
+  } else if (config_.enable_memory_optim() &&
+             !inference::IsFileExists(inference::analysis::GetMemoryCachePath(
+                 config_.model_dir(), config_.prog_file()))) {
+    need = true;
+  } else if (config_.enable_memory_optim() &&
+             config_.memory_optim_force_update_) {
+    need = true;
+  }
+
+  need_collect_var_shapes_ = need ? 1 : 0;
+  return need;
 }
 
 template <>

@@ -91,6 +91,7 @@ void VActJitCode::genCode() {
   }
 
 DECLARE_ACT_CREATOR(VRelu);
+DECLARE_ACT_CREATOR(VSquare);
 DECLARE_ACT_CREATOR(VIdentity);
 DECLARE_ACT_CREATOR(VExp);
 DECLARE_ACT_CREATOR(VSigmoid);
@@ -101,6 +102,10 @@ size_t VReluCreator::CodeSize(const int& d) const {
   return 96 /* init size */ +
          (d / YMM_FLOAT_BLOCK + 3) * 4 /* instructions */ *
              8 /* average bytes for each instruction */;
+}
+
+size_t VSquareCreator::CodeSize(const int& d) const {
+  return 96 + (d / YMM_FLOAT_BLOCK + 3) * 4 * 8;
 }
 
 size_t VIdentityCreator::CodeSize(const int& d) const {
@@ -129,6 +134,7 @@ size_t VTanhCreator::CodeSize(const int& d) const {
 namespace gen = paddle::operators::jit::gen;
 
 REGISTER_JITKERNEL_GEN(kVRelu, gen::VReluCreator);
+REGISTER_JITKERNEL_GEN(kVSquare, gen::VSquareCreator);
 REGISTER_JITKERNEL_GEN(kVIdentity, gen::VIdentityCreator);
 REGISTER_JITKERNEL_GEN(kVExp, gen::VExpCreator);
 REGISTER_JITKERNEL_GEN(kVSigmoid, gen::VSigmoidCreator);

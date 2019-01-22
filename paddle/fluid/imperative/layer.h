@@ -14,16 +14,25 @@
 
 #pragma once
 
-#include <map>
-#include <string>
-#include <vector>
+// clang-format off
+#include "paddle/fluid/framework/python_headers.h"
+// clang-format on
+
+#include <map>     // NOLINT
+#include <string>  // NOLINT
+#include <vector>  // NOLINT
+
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
+#include "paddle/fluid/imperative/type_defs.h"
+
 namespace paddle {
 namespace imperative {
+
+namespace py = ::pybind11;
 
 class PreparedOp {
  public:
@@ -77,31 +86,67 @@ class PreparedOp {
   framework::OperatorWithKernel::OpKernelFunc func;
   platform::DeviceContext* dev_ctx;
 };
+
 class OpBase;
 
+/* The wrapper for Variable which holds a Variable and a VarBase of its
+ * gradient. This object should be managed totally by Python intepreter.
+ *
+ * Nearly all interface should be implemented in C++.
+ */
 class VarBase {
  public:
-  VarBase()
-      : pre_op_(nullptr),
-        pre_op_out_idx_(-1),
-        var_desc_(nullptr),
-        var_(new framework::Variable()),
-        grads_(new framework::Variable()),
-        stop_gradient_(false) {}
+  VarBase() : VarBase(new framework::Variable(), new VarBase(true)) {}
+
+  // Owns `var` and `grad`
+  VarBase(framework::Variable* var, VarBase* grad)
+      : var_desc_(nullptr),
+        var_(var),
+        grads_(grad),
+        stop_gradient_(false),
+        pre_op_(nullptr),
+        pre_op_out_idx_(-1) {}
 
   explicit VarBase(bool stop_gradient)
-      : pre_op_(nullptr),
-        pre_op_out_idx_(-1),
-        var_desc_(nullptr),
+      : var_desc_(nullptr),
         var_(new framework::Variable()),
-        grads_(new framework::Variable()),
-        stop_gradient_(stop_gradient) {}
+        grads_(stop_gradient ? nullptr : new VarBase(true)),
+        stop_gradient_(stop_gradient),
+        pre_op_(nullptr),
+        pre_op_out_idx_(-1) {}
 
-  virtual ~VarBase() {}
+  virtual ~VarBase() {
+    if (var_) {
+      delete var_;
+    }
+
+    if (grads_) {
+      delete grads_;
+    }
+  }
+
+  OpBase* PreOp() const { return pre_op_; }
+  int PreOpOutIdx() const { return pre_op_out_idx_; }
+
+  void SetStopGradient(bool stop_gradient) { stop_gradient_ = stop_gradient; }
+  bool IsStopGradient() const { return stop_gradient_; }
 
   void RunBackward();
 
-  framework::LoDTensor& Grad();
+  void TrackPreOp(OpBase* pre_op, const std::string& pre_op_out_name,
+                  int pre_op_out_idx, bool stop_gradient) {
+    pre_op_ = pre_op;
+    pre_op_out_name_ = pre_op_out_name;
+    pre_op_out_idx_ = pre_op_out_idx;
+    stop_gradient_ = stop_gradient;
+  }
+
+  void ClearGradient() {
+    delete grads_;
+    grads_ = new VarBase(true);
+  }
+
+  framework::LoDTensor& GradValue();
 
   inline std::string GradName() const {
     PADDLE_ENFORCE(
@@ -110,20 +155,28 @@ class VarBase {
     return string::Sprintf("%s@IGrad", var_desc_->Name());
   }
 
+  framework::VarDesc* var_desc_;
+
+  framework::Variable* var_;
+  VarBase* grads_;
+
+ private:
+  bool stop_gradient_;
   OpBase* pre_op_;
   std::string pre_op_out_name_;
   int pre_op_out_idx_;
-
-  framework::VarDesc* var_desc_;
-  framework::Variable* var_;
-  framework::Variable* grads_;
-
-  bool stop_gradient_;
 };
 
+/* The wrapper for OpDesc which holds a OpDesc and a OpDesc of its
+ * gradient. This object should be managed totally by Python intepreter.
+ */
 class OpBase {
  public:
-  OpBase() : op_desc_(nullptr), grad_op_desc_(nullptr) {}
+  OpBase()
+      : op_desc_(nullptr),
+        forward_id_(-1),
+        grad_op_desc_(nullptr),
+        backward_id_(-1) {}
 
   virtual ~OpBase() {
     if (grad_op_desc_) delete grad_op_desc_;
@@ -131,16 +184,22 @@ class OpBase {
 
   std::map<std::string, std::vector<VarBase*>> ApplyGrad();
 
+  // One of `op_desc_` or `forward_id_` is set, not both.
+  // For pure python PyLayer, use `forward_id_`, otherwise, use op_desc_.
   framework::OpDesc* op_desc_;
+  int forward_id_;
+  // When has backward, one of `grad_op_desc_` or `backward_id_` is set,
+  // not both.
   framework::OpDesc* grad_op_desc_;
+  int backward_id_;
 
-  std::map<std::string, std::vector<VarBase*>> input_vars_;
-  std::map<std::string, std::vector<VarBase*>> output_vars_;
-  std::map<std::string, std::vector<OpBase*>> pre_ops_;
+  VarBasePtrMap input_vars_;
+  VarBasePtrMap output_vars_;
+  OpBasePtrMap pre_ops_;
   std::map<std::string, std::vector<int>> pre_ops_out_idx_;
 
-  std::map<std::string, std::vector<framework::Variable*>> grad_input_vars_;
-  std::map<std::string, std::vector<framework::Variable*>> grad_output_vars_;
+  framework::VariableValueMap grad_input_vars_;
+  framework::VariableValueMap grad_output_vars_;
   framework::BlockDesc* block_;
 };
 
@@ -152,8 +211,28 @@ class Layer {
     std::vector<VarBase> vars;
     return vars;
   }
+};
 
-  virtual void Backward() { LOG(ERROR) << "To support customize"; }
+class PyLayer {
+ public:
+  virtual ~PyLayer() {}
+
+  static const char* kFwdInp;
+  static const char* kFwdOut;
+
+  static void RegisterFunc(int func_id, const py::object& py_func);
+
+  static int NumFuncs();
+
+  static std::vector<VarBase*> Apply(int func_id,
+                                     const std::vector<VarBase*>& inputs);
+
+  static std::vector<framework::Variable*> ApplyGrad(
+      int func_id, const std::vector<framework::Variable*>& inputs);
+
+ private:
+  static std::vector<framework::Variable*> CallPythonFunc(
+      const py::object& callable, const std::vector<framework::Variable*>& ins);
 };
 
 }  // namespace imperative
