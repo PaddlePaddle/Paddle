@@ -105,8 +105,10 @@ This operator can get variables from server side.
         .SetDefault(true);
     AddAttr<std::vector<std::string>>(
         "varnames",
-        "(string vector, default {})"
-        "sometimes we need to put received var in another name")
+        "(string vector, default {}) "
+        "sometimes we need to put received var in another name "
+        "for example: we need var named 'moment_1@127.0.0.1:1001', "
+        "and it real name on parameter server is 'moment_1'. ")
         .SetDefault({});
   }
 };
