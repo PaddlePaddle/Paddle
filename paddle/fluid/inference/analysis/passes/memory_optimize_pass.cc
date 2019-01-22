@@ -444,6 +444,26 @@ std::vector<std::map<std::string, std::vector<int>>> DeseralizeBatchVarShapes(
   return batch_shapes;
 }
 
+// Replace the -1 in shape to a real number to fake the shape.
+std::vector<std::map<std::string, std::vector<int>>> FakeBatchVarShapes(
+    const framework::ProgramDesc& program) {
+  std::vector<std::map<std::string, std::vector<int>>> res;
+  res.emplace_back();
+  auto& record = res.front();
+  const int fake_batch_size = 3;
+  for (auto* var : program.Block(0).AllVars()) {
+    if (var->GetType() ==
+        framework::proto::VarType::Type::VarType_Type_LOD_TENSOR) {
+      auto shape = var->GetShape();
+      for (auto& v : shape) {
+        if (v < 0) v = fake_batch_size;
+      }
+      record[var->Name()].assign(shape.begin(), shape.end());
+    }
+  }
+  return res;
+}
+
 // Calculate the average dim of each tensor from the batch shape cache.
 std::unordered_map<std::string, size_t> GetBatchAverageSize(
     const std::vector<std::map<std::string, std::vector<int>>>& batches) {
@@ -538,9 +558,21 @@ std::vector<std::unordered_set<std::string>> AnalysisBatchShapesBySimilarSize(
 
 std::string MemoryOptimizePass::repr() const { return "memory optimize pass"; }
 
+std::pair<size_t, size_t> GetRange(
+    const std::unordered_map<std::string, size_t>& ave_size) {
+  auto res = std::make_pair(std::numeric_limits<size_t>::max(),
+                            std::numeric_limits<size_t>::min());
+  for (auto& item : ave_size) {
+    res.first = std::min(item.second, res.first);
+    res.second = std::max(item.second, res.second);
+  }
+  return res;
+}
+
 void MemoryOptimizePass::RunImpl(Argument* argument) {
   // When force update, should not optimize memory.
-  if (!argument->enable_memory_optim() || argument->memory_optim_force_update())
+  if (!argument->enable_memory_optim() ||
+      argument->static_memory_optim_force_update())
     return;
   graph_ = argument->main_graph_ptr();
 
@@ -549,58 +581,70 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
       argument->model_program_path_valid() ? argument->model_program_path()
                                            : "");
   VLOG(3) << "Load memory cache from " << path;
-  if (inference::IsFileExists(path)) {
-    VLOG(4) << "Performing memory optimize";
-    auto batches = DeseralizeBatchVarShapes(path);
-    auto var_batch_ave_size = GetBatchAverageSize(batches);
+  std::vector<std::map<std::string, std::vector<int>>> batches;
 
-    std::unordered_map<std::string, Node*> tensor_nodes;
-    space_table_t space_table;
-    CollectVarMemorySize(var_batch_ave_size, &tensor_nodes, &space_table);
+  if (argument->static_memory_optim() && inference::IsFileExists(path)) {
+    LOG(INFO) << "Performing static memory optimize";
+    batches = DeseralizeBatchVarShapes(path);
+  } else {
+    LOG(INFO) << "Performing dynamic memory optimize";
+    batches = FakeBatchVarShapes(argument->main_program());
+  }
+  auto var_batch_ave_size = GetBatchAverageSize(batches);
 
-    std::unordered_map<std::string, std::string> reuse_table;
-    double max_saving_ratio = 0.;
+  // Get min and max memory size.
+  const auto range = GetRange(var_batch_ave_size);
+  const int cluster_size =
+      std::max((range.second - range.first) / 100 /*cluster num*/, 1024UL);
+  const int cluster_size1 =
+      std::max((range.second - range.first) / 1000 /*cluster num*/, 1024UL);
 
-    std::vector<std::function<MemoryAllocation()>> strategies;
+  std::unordered_map<std::string, Node*> tensor_nodes;
+  space_table_t space_table;
+  CollectVarMemorySize(var_batch_ave_size, &tensor_nodes, &space_table);
 
-    for (int sort_kind = 0; sort_kind < 2; sort_kind++) {
-      strategies.emplace_back([&, sort_kind] {
-        auto clustered_vars_by_batch_size =
-            AnalysisBatchShapesByBatchSize(batches);
-        MemoryAllocation allocation;
-        MakeReusePlan(clustered_vars_by_batch_size, var_batch_ave_size,
-                      space_table, &reuse_table, sort_kind, &allocation);
-        return allocation;
-      });
+  std::unordered_map<std::string, std::string> reuse_table;
+  double max_saving_ratio = 0.;
 
-      strategies.emplace_back([&, sort_kind] {
-        auto clustered_vars_by_ave_size = AnalysisBatchShapesBySimilarSize(
-            space_table, batches, 1024);  // interval 1kb
-        MemoryAllocation allocation;
-        MakeReusePlan(clustered_vars_by_ave_size, var_batch_ave_size,
-                      space_table, &reuse_table, sort_kind, &allocation);
-        return allocation;
-      });
+  std::vector<std::function<MemoryAllocation()>> strategies;
 
-      strategies.emplace_back([&, sort_kind] {
-        auto clustered_vars_by_ave_size = AnalysisBatchShapesBySimilarSize(
-            space_table, batches, 1024 * 1024);  // interval 1MB
-        MemoryAllocation allocation;
-        MakeReusePlan(clustered_vars_by_ave_size, var_batch_ave_size,
-                      space_table, &reuse_table, sort_kind, &allocation);
-        return allocation;
-      });
+  for (int sort_kind = 0; sort_kind < 2; sort_kind++) {
+    strategies.emplace_back([&, sort_kind] {
+      auto clustered_vars_by_batch_size =
+          AnalysisBatchShapesByBatchSize(batches);
+      MemoryAllocation allocation;
+      MakeReusePlan(clustered_vars_by_batch_size, var_batch_ave_size,
+                    space_table, &reuse_table, sort_kind, &allocation);
+      return allocation;
+    });
 
-      strategies.emplace_back([&, sort_kind] {
-        auto clustered_vars_by_ave_size = AnalysisBatchShapesBySimilarSize(
-            space_table, batches,
-            std::numeric_limits<int>::max());  // no intervals
-        MemoryAllocation allocation;
-        MakeReusePlan(clustered_vars_by_ave_size, var_batch_ave_size,
-                      space_table, &reuse_table, sort_kind, &allocation);
-        return allocation;
-      });
-    }
+    strategies.emplace_back([&, sort_kind] {
+      auto clustered_vars_by_ave_size = AnalysisBatchShapesBySimilarSize(
+          space_table, batches, cluster_size);  // interval 1kb
+      MemoryAllocation allocation;
+      MakeReusePlan(clustered_vars_by_ave_size, var_batch_ave_size, space_table,
+                    &reuse_table, sort_kind, &allocation);
+      return allocation;
+    });
+
+    strategies.emplace_back([&, sort_kind] {
+      auto clustered_vars_by_ave_size = AnalysisBatchShapesBySimilarSize(
+          space_table, batches, cluster_size1);  // interval 1MB
+      MemoryAllocation allocation;
+      MakeReusePlan(clustered_vars_by_ave_size, var_batch_ave_size, space_table,
+                    &reuse_table, sort_kind, &allocation);
+      return allocation;
+    });
+
+    strategies.emplace_back([&, sort_kind] {
+      auto clustered_vars_by_ave_size = AnalysisBatchShapesBySimilarSize(
+          space_table, batches,
+          std::numeric_limits<int>::max());  // no intervals
+      MemoryAllocation allocation;
+      MakeReusePlan(clustered_vars_by_ave_size, var_batch_ave_size, space_table,
+                    &reuse_table, sort_kind, &allocation);
+      return allocation;
+    });
 
     std::function<MemoryAllocation()>* best_strategy{nullptr};
 
@@ -614,6 +658,7 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
         best_strategy = &strategy;
       }
     }
+    LOG(INFO) << "best_strateby " << best_strategy;
     if (!best_strategy) {
       LOG(ERROR)
           << "This model makes poor memory optimize, skip memory optimize";
