@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <functional>
 #include <iostream>
+#include <string>
 #include <vector>
 
 #include "paddle/fluid/platform/enforce.h"
@@ -32,6 +33,8 @@ struct CPUPlace {
   inline bool operator==(const CPUPlace &) const { return true; }
   inline bool operator!=(const CPUPlace &) const { return false; }
   inline bool operator<(const CPUPlace &) const { return false; }
+
+  const std::string name() const { return "CPUPlace"; }
 };
 
 struct CUDAPlace {
@@ -46,6 +49,8 @@ struct CUDAPlace {
   inline bool operator!=(const CUDAPlace &o) const { return !(*this == o); }
   inline bool operator<(const CUDAPlace &o) const { return device < o.device; }
 
+  const std::string name() const { return "Device: " + std::to_string(device); }
+
   int device;
 };
 
@@ -56,6 +61,20 @@ struct CUDAPinnedPlace {
   inline bool operator==(const CUDAPinnedPlace &) const { return true; }
   inline bool operator!=(const CUDAPinnedPlace &) const { return false; }
   inline bool operator<(const CUDAPinnedPlace &) const { return false; }
+
+  const std::string name() const { return "CUDAPinnedPlace"; }
+};
+
+struct PlaceNameVisitor : public boost::static_visitor<std::string> {
+  const std::string operator()(const CPUPlace &place) const {
+    return place.name();
+  }
+  const std::string operator()(const CUDAPlace &place) const {
+    return place.name();
+  }
+  const std::string operator()(const CUDAPinnedPlace &place) const {
+    return place.name();
+  }
 };
 
 struct IsCUDAPlace : public boost::static_visitor<bool> {

@@ -122,6 +122,9 @@ class BestFitAllocator : public Allocator {
   void Free(Allocation* allocation) override;
   Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
 
+  uint64_t total_allocated_ = 0;
+  uint64_t peak_allocated_ = 0;
+
  private:
   Allocation* allocation_;  // not owned
   details::ChunkList chunks_;

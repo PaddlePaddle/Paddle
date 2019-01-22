@@ -136,6 +136,7 @@ void BestFitAllocator::Free(Allocation* allocation) {
   }
 
   InsertFreeNode(chunk_it);
+  total_allocated_ -= allocation->size();
   delete allocation;
 }
 Allocation* BestFitAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
@@ -152,6 +153,13 @@ Allocation* BestFitAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
         "Cannot allocate %d, All fragments size is %d", size, FreeSize()));
   }
   auto chunk_it = SplitChunk(size, highest_set_bit, map_it);
+  total_allocated_ += size;
+  if (total_allocated_ > peak_allocated_) {
+    peak_allocated_ = total_allocated_;
+    VLOG(3) << boost::apply_visitor(platform::PlaceNameVisitor(),
+                                    allocation_->place())
+            << " peak memory usage : " << (peak_allocated_ >> 20) << " MiB";
+  }
   return new BestFitAllocation(this, chunk_it);
 }
 
