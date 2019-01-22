@@ -665,13 +665,10 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   }
   auto memory_allocation = (*best_strategy)();
 
-  string::PrettyLogH2(
+  string::PrettyLogInfo(
       "--- Saved %.2f%s memory for workspace(temporary variables)",
       memory_allocation.GetSavingRatio() * 100, "%");
-  string::PrettyLogDetail("--- Allocated %d MB",
-                          memory_allocation.allocated / 1024. / 1024.);
-  string::PrettyLogDetail("--- Saved %d MB",
-                          memory_allocation.saved / 1024. / 1024.);
+
   argument->main_graph().Set(framework::ir::kGraphToProgramVarsToRemove,
                              new std::unordered_set<std::string>);
   auto& vars2remove =
