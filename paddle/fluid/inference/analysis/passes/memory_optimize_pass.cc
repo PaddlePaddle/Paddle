@@ -584,10 +584,10 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   std::vector<std::map<std::string, std::vector<int>>> batches;
 
   if (argument->static_memory_optim() && inference::IsFileExists(path)) {
-    LOG(INFO) << "Performing static memory optimize";
+    string::PrettyLogInfo("--- Performing static memory optimize");
     batches = DeseralizeBatchVarShapes(path);
   } else {
-    LOG(INFO) << "Performing dynamic memory optimize";
+    string::PrettyLogInfo("--- Performing dynamic memory optimize");
     batches = FakeBatchVarShapes(argument->main_program());
   }
   auto var_batch_ave_size = GetBatchAverageSize(batches);
@@ -619,8 +619,8 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
     });
 
     strategies.emplace_back([&, sort_kind] {
-      auto clustered_vars_by_ave_size = AnalysisBatchShapesBySimilarSize(
-          space_table, batches, cluster_size);  // interval 1kb
+      auto clustered_vars_by_ave_size =
+          AnalysisBatchShapesBySimilarSize(space_table, batches, cluster_size);
       MemoryAllocation allocation;
       MakeReusePlan(clustered_vars_by_ave_size, var_batch_ave_size, space_table,
                     &reuse_table, sort_kind, &allocation);
@@ -628,8 +628,8 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
     });
 
     strategies.emplace_back([&, sort_kind] {
-      auto clustered_vars_by_ave_size = AnalysisBatchShapesBySimilarSize(
-          space_table, batches, cluster_size1);  // interval 1MB
+      auto clustered_vars_by_ave_size =
+          AnalysisBatchShapesBySimilarSize(space_table, batches, cluster_size1);
       MemoryAllocation allocation;
       MakeReusePlan(clustered_vars_by_ave_size, var_batch_ave_size, space_table,
                     &reuse_table, sort_kind, &allocation);
@@ -645,43 +645,41 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
                     &reuse_table, sort_kind, &allocation);
       return allocation;
     });
-
-    std::function<MemoryAllocation()>* best_strategy{nullptr};
-
-    // Try all strategies to get the best result.
-    for (auto& strategy : strategies) {
-      auto allocation = strategy();
-      string::PrettyLogDetail("--- get strategy saving %f memory for workspace",
-                              allocation.GetSavingRatio());
-      if (allocation.GetSavingRatio() > max_saving_ratio) {
-        max_saving_ratio = allocation.GetSavingRatio();
-        best_strategy = &strategy;
-      }
-    }
-    LOG(INFO) << "best_strateby " << best_strategy;
-    if (!best_strategy) {
-      LOG(ERROR)
-          << "This model makes poor memory optimize, skip memory optimize";
-      return;
-    }
-    auto memory_allocation = (*best_strategy)();
-
-    string::PrettyLogH2(
-        "--- Saved %.2f%s memory for workspace(temporary variables)",
-        memory_allocation.GetSavingRatio() * 100, "%");
-    string::PrettyLogDetail("--- Allocated %d MB",
-                            memory_allocation.allocated / 1024. / 1024.);
-    string::PrettyLogDetail("--- Saved %d MB",
-                            memory_allocation.saved / 1024. / 1024.);
-    argument->main_graph().Set(framework::ir::kGraphToProgramVarsToRemove,
-                               new std::unordered_set<std::string>);
-    auto& vars2remove =
-        argument->main_graph().Get<std::unordered_set<std::string>>(
-            framework::ir::kGraphToProgramVarsToRemove);
-
-    PerformReusePlan(reuse_table, memory_allocation.sort_kind, &vars2remove);
-    argument->SetMemoryOptimSortKind(memory_allocation.sort_kind);
   }
+
+  std::function<MemoryAllocation()>* best_strategy{nullptr};
+
+  // Try all strategies to get the best result.
+  for (auto& strategy : strategies) {
+    auto allocation = strategy();
+    string::PrettyLogDetail("--- get strategy saving %f memory for workspace",
+                            allocation.GetSavingRatio());
+    if (allocation.GetSavingRatio() > max_saving_ratio) {
+      max_saving_ratio = allocation.GetSavingRatio();
+      best_strategy = &strategy;
+    }
+  }
+  if (!best_strategy) {
+    LOG(ERROR) << "This model makes poor memory optimize, skip memory optimize";
+    return;
+  }
+  auto memory_allocation = (*best_strategy)();
+
+  string::PrettyLogH2(
+      "--- Saved %.2f%s memory for workspace(temporary variables)",
+      memory_allocation.GetSavingRatio() * 100, "%");
+  string::PrettyLogDetail("--- Allocated %d MB",
+                          memory_allocation.allocated / 1024. / 1024.);
+  string::PrettyLogDetail("--- Saved %d MB",
+                          memory_allocation.saved / 1024. / 1024.);
+  argument->main_graph().Set(framework::ir::kGraphToProgramVarsToRemove,
+                             new std::unordered_set<std::string>);
+  auto& vars2remove =
+      argument->main_graph().Get<std::unordered_set<std::string>>(
+          framework::ir::kGraphToProgramVarsToRemove);
+
+  PerformReusePlan(reuse_table, memory_allocation.sort_kind, &vars2remove);
+  argument->SetMemoryOptimSortKind(memory_allocation.sort_kind);
 }
 
 float MemoryOptimizePass::MemoryAllocation::GetSavingRatio() const {

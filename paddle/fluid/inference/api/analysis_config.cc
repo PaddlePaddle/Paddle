@@ -95,6 +95,7 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   CP_MEMBER(memory_pool_init_size_mb_);
 
   CP_MEMBER(enable_memory_optim_);
+  CP_MEMBER(static_memory_optim_);
   CP_MEMBER(static_memory_optim_force_update_);
   // TensorRT releated.
   CP_MEMBER(use_tensorrt_);
@@ -238,6 +239,7 @@ std::string contrib::AnalysisConfig::SerializeInfoCache() {
   ss << tensorrt_min_subgraph_size_;
 
   ss << enable_memory_optim_;
+  ss << static_memory_optim_;
   ss << static_memory_optim_force_update_;
 
   ss << use_mkldnn_;
@@ -281,7 +283,7 @@ float contrib::AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
 void contrib::AnalysisConfig::EnableMemoryOptim(
     bool static_optim, bool force_update_static_cache) {
   enable_memory_optim_ = true;
-  static_memory_optim_optim_ = static_optim;
+  static_memory_optim_ = static_optim;
   static_memory_optim_force_update_ = force_update_static_cache;
 
   Update();

@@ -327,7 +327,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   argument_.SetUseGPU(config_.use_gpu());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
-  argument_.SetStaticMemoryOptim(config_.static_memory_optim_optim_);
+  argument_.SetStaticMemoryOptim(config_.static_memory_optim_);
   argument_.SetStaticMemoryOptimForceUpdate(
       config_.static_memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
@@ -640,11 +640,11 @@ bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
   // check if the cache exists
   if (!config_.enable_memory_optim()) {
     need = false;
-  } else if (config_.static_memory_optim_optim_ &&
+  } else if (config_.static_memory_optim_ &&
              !inference::IsFileExists(inference::analysis::GetMemoryCachePath(
                  config_.model_dir(), config_.prog_file()))) {
     need = true;
-  } else if (config_.static_memory_optim_optim_ &&
+  } else if (config_.static_memory_optim_ &&
              config_.static_memory_optim_force_update_) {
     need = true;
   }

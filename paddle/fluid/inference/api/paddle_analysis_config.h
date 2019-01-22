@@ -232,7 +232,7 @@ struct AnalysisConfig {
 
   // memory reuse related.
   bool enable_memory_optim_{false};
-  bool static_memory_optim_optim_{false};
+  bool static_memory_optim_{false};
   bool static_memory_optim_force_update_{false};
 
   bool use_mkldnn_{false};
