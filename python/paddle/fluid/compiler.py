@@ -149,17 +149,42 @@ class CompiledProgram(object):
 
         self._exec_strategy.use_cuda = isinstance(self._place, core.CUDAPlace)
         if self._exec_strategy.use_cuda:
-            gpus_env = os.getenv("FLAGS_selected_gpus")
-            if gpus_env:
-                gpus = [int(s) for s in gpus_env.split(",")]
-            else:
+            # There are four ways to get _places, and their priority is:
+            # 1. Get the available gpu from build_strategy.gpu_ids, if it is empty,
+            #    skip to 2;
+            # 2. Get device_count from build_strategy.gpu_ids, and use the places
+            #    from O to device_count, if the device_count is zero, skip to 3;
+            # 3. Get the available gpu from FLAGS_selected_gpus, if it is empty,
+            #    skip to 4;
+            # 4. Use all the available gpus.
+            gpu_count = core.get_cuda_device_count()
+            gpus = [int(s) for s in self._build_strategy.gpu_ids.split(",")]
+            if len(gpus) > 0:
+                for gpu_id in gpus:
+                    assert gpu_id < gpu_count, ""
+            elif self._build_strategy.device_count > 0:
+                assert self._build_strategy.device_count < gpu_count
                 gpus = [
-                    i for i in six.moves.range(core.get_cuda_device_count())
+                    i
+                    for i in six.moves.range(self._build_strategy.device_count)
                 ]
+            else:
+                gpus_env = os.getenv("FLAGS_selected_gpus")
+                if gpus_env:
+                    gpus = [int(s) for s in gpus_env.split(",")]
+                else:
+                    gpus = [i for i in six.moves.range(gpu_count)]
             self._places = [core.CUDAPlace(i) for i in gpus]
         else:
+            # There are three ways to get _places for CPU, and their priority is:
+            # 1. Get the device_count from build_strategy.device_count, if it is zero,
+            #    skip to 2;
+            # 2. Get the device_count from CPU_NUM, if it is empty, skip to 3;
+            # 3. Use the number of cpu core as the device_count.
             cpu_num = int(
                 os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+            if self._build_strategy.device_count > 0:
+                cpu_num = self._build_strategy.device_count
             self._places = [core.CPUPlace() for _ in six.moves.range(cpu_num)]
         assert self._places, "no place for execution"
 
