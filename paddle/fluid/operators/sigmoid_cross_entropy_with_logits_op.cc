@@ -102,7 +102,8 @@ class SigmoidCrossEntropyWithLogitsOpMaker
               "(Tensor, default Tensor<float>), a 2-D tensor with shape N x D "
               " of elementwise logistic losses.");
     AddAttr<bool>("normalize",
-                  "if true, divide the loss by the number of targets > -1.")
+                  "if true, divide the loss by the number of "
+                  "targets != ignore_index.")
         .SetDefault(false);
     AddAttr<int>("ignore_index",
                  "(int, default kIgnoreIndex), Specifies a target value that "
