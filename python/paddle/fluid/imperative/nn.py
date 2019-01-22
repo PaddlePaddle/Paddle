@@ -23,11 +23,7 @@ from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant
 
-__all__ = [
-    'Conv2D',
-    'Pool2D',
-    'FC',
-]
+__all__ = ['Conv2D', 'Pool2D', 'FC', 'SimpleRNNCell']
 
 
 class Conv2D(layers.Layer):
@@ -251,14 +247,9 @@ class FC(layers.Layer):
 
 
 class SimpleRNNCell(layers.Layer):
-    def __init__(self,
-                 step_input_size,
-                 hidden_size,
-                 output_size,
-                 param_attr,
-                 dtype=core.VarDesc.VarType.FP32):
+    def __init__(self, step_input_size, hidden_size, output_size, param_attr):
         super(SimpleRNNCell, self).__init__()
-        self.input_size = step_input_size
+        self.step_input_size = step_input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
         self._dype = core.VarDesc.VarType.FP32
@@ -266,7 +257,7 @@ class SimpleRNNCell(layers.Layer):
         self._helper = LayerHelper(
             'SimpleRNNCell', act="tanh", param_attr=param_attr)
 
-    def _build_once(self, inputs):
+    def _build_once(self, inputs, pre_hidden):
         i2h_param_shape = [self.step_input_size, self.hidden_size]
         h2h_param_shape = [self.hidden_size, self.hidden_size]
         h2o_param_shape = [self.output_size, self.hidden_size]
@@ -294,6 +285,7 @@ class SimpleRNNCell(layers.Layer):
         out = self._helper.create_variable_for_type_inference(self._dype)
         softmax_out = self._helper.create_variable_for_type_inference(
             self._dtype)
+
         self._helper.append_op(
             type="mul",
             inputs={"X": input,
@@ -301,7 +293,7 @@ class SimpleRNNCell(layers.Layer):
             outputs={"Out": tmp_i2h},
             attrs={"x_num_col_dims": 1,
                    "y_num_col_dims": 1})
-
+        print("mul op 1")
         self._helper.append_op(
             type="mul",
             inputs={"X": pre_hidden,
@@ -309,14 +301,44 @@ class SimpleRNNCell(layers.Layer):
             outputs={"Out": tmp_h2h},
             attrs={"x_num_col_dims": 1,
                    "y_num_col_dims": 1})
+        print("mul op 2")
+        self._helper.append_op(
+            type="elementwise_add",
+            inputs={'X': tmp_h2h,
+                    'Y': tmp_i2h},
+            outputs={'Out': hidden},
+            attrs={'axis': -1,
+                   'use_mkldnn': False})
+        print("elementwise op 1")
 
         self._helper.append_op(
-            type='sum',
-            inputs={'X': [tmp_i2h, tmp_h2h]},
-            outputs={'Out': hidden},
-            attrs={'use_mkldnn': False})
-
+            type='print',
+            inputs={'In': hidden},
+            attrs={
+                'first_n': -1,
+                'summarize': -1,
+                'message': None or "",
+                'print_tensor_name': True,
+                'print_tensor_type': True,
+                'print_tensor_shape': True,
+                'print_tensor_lod': True,
+                'print_phase': 'BOTH'
+            })
         hidden = self._helper.append_activation(hidden)
+
+        self._helper.append_op(
+            type='print',
+            inputs={'In': hidden},
+            attrs={
+                'first_n': -1,
+                'summarize': -1,
+                'message': None or "",
+                'print_tensor_name': True,
+                'print_tensor_type': True,
+                'print_tensor_shape': True,
+                'print_tensor_lod': True,
+                'print_phase': 'BOTH'
+            })
 
         self._helper.append_op(
             type="mul",
@@ -325,11 +347,13 @@ class SimpleRNNCell(layers.Layer):
             outputs={"Out": out},
             attrs={"x_num_col_dims": 1,
                    "y_num_col_dims": 1})
+        print("mul op 3")
 
         self._helper.append_op(
             type="softmax",
             inputs={"X": out},
             outputs={"Out": softmax_out},
             attrs={"use_cudnn": False})
+        print("softmax op 1")
 
         return softmax_out, hidden

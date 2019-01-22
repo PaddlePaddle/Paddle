@@ -28,6 +28,8 @@ void CreateGradOp(const framework::OpDesc& op_desc,
           .GradOpMaker()(op_desc, no_grad_set, grad_to_var, grad_sub_block);
   PADDLE_ENFORCE(grad_op_descs.size() == 1, "Only support 1 grad op now.");
   // TODO(panyx0718): Leak?
+  // TODO(marsyang1993): Change grad_op_desc pointer to
+  // vector<framework::OpDesc*> to allow multi grad_op
   *grad_op_desc = grad_op_descs[0].release();
 }
 
