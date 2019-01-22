@@ -342,8 +342,8 @@ def box_coder(prior_box,
               target_box,
               code_type="encode_center_size",
               box_normalized=True,
-              axis=0,
-              name=None):
+              name=None,
+              axis=0):
     """
     ${comment}
 
