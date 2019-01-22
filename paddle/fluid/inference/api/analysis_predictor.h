@@ -45,6 +45,7 @@ using contrib::AnalysisConfig;
 class AnalysisPredictor : public PaddlePredictor {
  public:
   explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {}
+  ~AnalysisPredictor();
 
   bool Init(const std::shared_ptr<framework::Scope> &parent_scope,
             const std::shared_ptr<framework::ProgramDesc> &program = nullptr);
@@ -95,7 +96,6 @@ class AnalysisPredictor : public PaddlePredictor {
   template <typename T>
   void GetFetchOne(const framework::LoDTensor &fetchs,
                    PaddleTensor *output_data);
-  ~AnalysisPredictor();
 
 // Some more detailed tests, they are made the friends of the predictor, so that
 // the all the details can be tested.
