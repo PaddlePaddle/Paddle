@@ -296,12 +296,16 @@ function checkLinuxPip(){
             uncode=u
          fi
        fi
-       version_list=`echo "${array[@]}" | grep "$python_version" `
-       if [ "$version_list" != "" ];then
-         echo "找到python${python_version}版本"
-         break
+       if [ "$python_version" == "" ];then
+         echo "pip不存在,请重新输入" 
        else
-         echo "找不到可用的 pip, 我们只支持Python27/35/36/37及其对应的pip, 请重新输入， 或使用ctrl + c退出 "
+         version_list=`echo "${python_list[@]}" | grep "$python_version" `
+         if [ "$version_list" != "" ];then
+           echo "找到python${python_version}版本"
+           break
+         else
+           echo "找不到可用的 pip, 我们只支持Python27/35/36/37及其对应的pip, 请重新输入， 或使用ctrl + c退出 "
+         fi
        fi
     done
 }
@@ -686,14 +690,12 @@ function checkMacPythonVersion(){
                  uncode=m
               fi
            fi
-           for i in ${python_list[@]}
-             do
-               if [ "$python_brief_version" == "$i" ];then
-                 break
-               else
-                 echo "未发现可用的pip或pip3/pip3.x, 我们只支持Python2.7/3.5/3.6/3.7及其对应的pip, 请重新输入， 或使用ctrl + c退出"
-               fi
-             done
+           version_list=`echo "${python_list[@]}" | grep "$python_version" `
+           if [ "$version_list" != "" ];then
+              break
+            else
+              echo "未发现可用的pip或pip3/pip3.x, 我们只支持Python2.7/3.5/3.6/3.7及其对应的pip, 请重新输入， 或使用ctrl + c退出"
+           fi
         else
             echo "输入错误，请重新输入"
         fi
