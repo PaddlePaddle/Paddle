@@ -385,8 +385,8 @@ class Variable(object):
             self._ivar.stop_gradient = stop_gradient
 
     def _numpy(self):
-        tensor = self._ivar._cpu_tensor()
-        return np.array(tensor)
+        new_ivar = self._ivar._to(core.CPUPlace(), True)
+        return np.array(new_ivar.value().get_tensor())
 
     def _backward(self):
         self._ivar._run_backward()
@@ -2326,16 +2326,22 @@ def _get_var(name, program=None):
 
 
 @contextlib.contextmanager
-def _imperative_guard(tracer, place):
+def _imperative_guard(tracer):
     global _imperative_tracer_
     tmp_trace = _imperative_tracer_
     _imperative_tracer_ = tracer
 
+    yield
+
+    _imperative_tracer_ = tmp_trace
+
+
+@contextlib.contextmanager
+def _imperative_place_guard(place):
     global _current_expected_place_
     tmp_place = _current_expected_place_
     _current_expected_place_ = place
 
     yield
 
-    _imperative_tracer_ = tmp_trace
     _current_expected_place_ = tmp_place
