@@ -29,6 +29,9 @@ namespace analysis {
 class IrAnalysisPass : public AnalysisPass {
  public:
   void RunImpl(Argument* argument) override;
+
+  void CollectFusionStatis(Argument* argument);
+
   std::string repr() const override;
 };
 

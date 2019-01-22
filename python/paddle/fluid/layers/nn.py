@@ -183,6 +183,7 @@ __all__ = [
     'psroi_pool',
     'teacher_student_sigmoid_loss',
     'huber_loss',
+    'tree_conv',
 ]
 
 kIgnoreIndex = -100
@@ -864,12 +865,14 @@ def dynamic_gru(input,
                 is_reverse=False,
                 gate_activation='sigmoid',
                 candidate_activation='tanh',
-                h_0=None):
+                h_0=None,
+                origin_mode=False):
     """
     **Gated Recurrent Unit (GRU) Layer**
 
-    Refer to `Empirical Evaluation of Gated Recurrent Neural Networks on
-    Sequence Modeling <https://arxiv.org/abs/1412.3555>`_ .
+    if origin_mode is False, then the equation of a gru step is from paper
+    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
+    Modeling <https://arxiv.org/pdf/1412.3555.pdf>`_ .
 
     The formula is as follows:
 
@@ -882,6 +885,21 @@ def dynamic_gru(input,
         \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
 
         h_t & = (1-u_t) \odot h_{t-1} + u_t \odot \\tilde{h_t}
+
+
+    if origin_mode is True then the equation is from paper
+    Learning Phrase Representations using RNN Encoder-Decoder for Statistical
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
+
+    .. math::
+
+        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
+
+        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
+
+        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
+
+        h_t & = u_t \odot h_{t-1} + (1-u_t) \odot \\tilde{h_t}
 
     The :math:`\odot` is the element-wise product of the vectors. :math:`act_g`
     is the update gate and reset gate activation function and :math:`sigmoid`
@@ -980,7 +998,8 @@ def dynamic_gru(input,
         attrs={
             'is_reverse': is_reverse,
             'gate_activation': gate_activation,
-            'activation': candidate_activation
+            'activation': candidate_activation,
+            'origin_mode': origin_mode
         })
     return hidden
 
@@ -991,9 +1010,14 @@ def gru_unit(input,
              param_attr=None,
              bias_attr=None,
              activation='tanh',
-             gate_activation='sigmoid'):
+             gate_activation='sigmoid',
+             origin_mode=False):
     """
-    GRU unit layer. The equation of a gru step is:
+    **GRU unit layer**
+
+    if origin_mode is True, then the equation of a gru step is from paper
+    `Learning Phrase Representations using RNN Encoder-Decoder for Statistical
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
 
         .. math::
             u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
@@ -1002,7 +1026,21 @@ def gru_unit(input,
 
             m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
 
-            h_t & = dot((1-u_t), m_t) + dot(u_t, h_{t-1})
+            h_t & = dot(u_t, h_{t-1}) + dot((1-u_t), m_t)
+
+    if origin_mode is False, then the equation of a gru step is from paper
+    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
+    Modeling <https://arxiv.org/pdf/1412.3555.pdf>`_
+
+        .. math::
+            u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
+
+            r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
+
+            m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
+
+            h_t & = dot((1-u_t), h_{t-1}) + dot(u_t, m_t)
+
 
     The inputs of gru unit includes :math:`z_t`, :math:`h_{t-1}`. In terms
     of the equation above, the :math:`z_t` is split into 3 parts -
@@ -1934,6 +1972,7 @@ def conv2d(input,
             'groups': groups,
             'use_cudnn': use_cudnn,
             'use_mkldnn': False,
+            'fuse_relu_before_depthwise_conv': False
         })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
@@ -9893,3 +9932,73 @@ def huber_loss(input, label, delta):
                  'Residual': residual},
         attrs={'delta': delta})
     return out
+
+
+@templatedoc()
+def tree_conv(nodes_vector,
+              edge_set,
+              output_size,
+              num_filters=1,
+              max_depth=2,
+              act='tanh',
+              param_attr=None,
+              bias_attr=None,
+              name=None):
+    """ 
+    ${comment}
+    		
+    Args:
+        nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
+        edge_set(${edge_set_type}): ${edge_set_comment}
+        output_size(int): output feature width
+        num_filters(int): number of filters, Default 1
+        max_depth(int): max depth of filters, Default 2
+        act(str): activation function, Default tanh
+        param_attr(ParamAttr): the parameter attribute for the filters, Default None
+        bias_attr(ParamAttr): the parameter attribute for the bias of this layer, Default None
+        name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default None
+
+    Returns:
+        out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+          nodes_vector = layers.data(name='vectors', shape=[None, 10, 5], dtype='float32)
+          # None for batch size, 10 for max_node_size of dataset, 5 for vector width
+          edge_set = layers.data(name='edge_set', shape=[None, 10, 2], dtype='float32')
+          # None for batch size, 10 for max_node_size of dataset, 2 for every edge has two nodes
+          # edges must be directional
+          out_vector = layers.tree_conv(nodes_vector, edge_set, 6, 1, 2, 'tanh',
+              ParamAttr(initializer=Constant(1.0), ParamAttr(initializer=Constant(1.0))
+          # the shape of output will be [None, 10, 6, 1],
+          # None for batch size, 10 for max_node_size of dataset, 6 for output size, 1 for 1 filter
+          out_vector = layers.reshape(out_vector, shape=[None, 10, 6])
+          # After reshape, output tensor could be nodes_vector for next tree convolution
+          out_vector_2 = layers.tree_conv(out_vector, edge_set, 3, 4, 2, 'tanh',
+              ParamAttr(initializer=Constant(1.0), ParamAttr(initializer=Constant(1.0))
+          # also output tensor could be pooling(the pooling in paper called global pooling)
+          pooled = layers.reduce_max(out_vector, dims=2) # global pooling
+    """
+    helper = LayerHelper("tree_conv", **locals())
+    dtype = helper.input_dtype('nodes_vector')
+    feature_size = nodes_vector.shape[2]
+    W_shape = [feature_size, 3, output_size, num_filters]
+    W = helper.create_parameter(
+        attr=param_attr, shape=W_shape, dtype=dtype, is_bias=False)
+    if name == None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+    helper.append_op(
+        type='tree_conv',
+        inputs={'NodesVector': nodes_vector,
+                'EdgeSet': edge_set,
+                'Filter': W},
+        outputs={'Out': out, },
+        attrs={'max_depth': max_depth})
+    if helper.bias_attr:
+        pre_activation = helper.append_bias_op(out)
+    else:
+        pre_activation = out
+    return helper.append_activation(pre_activation)

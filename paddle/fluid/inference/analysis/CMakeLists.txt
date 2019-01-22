@@ -18,6 +18,7 @@ cc_library(analysis SRCS
   analyzer.cc
   analysis_pass
   DEPS ${analysis_deps} analysis_helper
+  ${INFER_IR_PASSES}
   )
 
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
