@@ -348,7 +348,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
       sync_mode, checkpoint_block_id));
   request_get_no_barrier_handler_.reset(
-      new distributed::RequestGetHandler(sync_mode, dc_sgd));
+      new distributed::RequestGetNoBarrierHandler());
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get(),
