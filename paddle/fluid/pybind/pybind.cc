@@ -797,18 +797,18 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
       .def("has", &ir::Pass::Has)
-      .def("set_program",
+      .def("set",
            [](ir::Pass &self, const std::string &attr_name,
               const ProgramDesc &attr) {
              return self.Set(attr_name, new ProgramDesc(attr));
            })
       .def(
-          "set_str",
+          "set",
           [](ir::Pass &self, const std::string &name, const std::string &attr) {
             self.Set<std::string>(name, new std::string(attr));
           })
-      .def("set_int", [](ir::Pass &self, const std::string &name,
-                         int val) { self.Set<const int>(name, new int(val)); })
+      .def("set", [](ir::Pass &self, const std::string &name,
+                     int val) { self.Set<const int>(name, new int(val)); })
       .def("get_program", &ir::Pass::Get<ProgramDesc>)
       .def("type", &ir::Pass::Type)
       .def("apply", [](ir::Pass &self, std::shared_ptr<ir::Graph> graph) {

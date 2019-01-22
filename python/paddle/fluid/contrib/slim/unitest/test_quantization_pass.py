@@ -18,8 +18,8 @@ import numpy as np
 import paddle.fluid as fluid
 import six
 from paddle.fluid.framework import Program
+from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
-from paddle.fluid.contrib.slim.graph import PyGraph
 from paddle.fluid import core
 
 
@@ -106,7 +106,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
         exe = fluid.Executor(fluid.CPUPlace())
-        graph = PyGraph(core.Graph(main.desc), for_test=False)
+        graph = IrGraph(core.Graph(main.desc), for_test=False)
         transform_pass = QuantizationTransformPass(
             scope=fluid.global_scope(),
             program_exe=exe,
@@ -119,7 +119,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
         graph.draw('.', 'quantize_fc_' + quant_type, marked_nodes)
         program = graph.to_program()
         self.check_program(transform_pass, program)
-        val_graph = PyGraph(core.Graph(program.desc), for_test=False)
+        val_graph = IrGraph(core.Graph(program.desc), for_test=False)
         val_marked_nodes = set()
         for op in val_graph.all_ops():
             if op.name().find('quantize') > -1:
@@ -142,7 +142,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
         exe = fluid.Executor(fluid.CPUPlace())
-        graph = PyGraph(core.Graph(main.desc), for_test=False)
+        graph = IrGraph(core.Graph(main.desc), for_test=False)
         transform_pass = QuantizationTransformPass(
             scope=fluid.global_scope(),
             program_exe=exe,
@@ -155,7 +155,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
         graph.draw('.', 'quantize_residual_' + quant_type, marked_nodes)
         program = graph.to_program()
         self.check_program(transform_pass, program)
-        val_graph = PyGraph(core.Graph(program.desc), for_test=False)
+        val_graph = IrGraph(core.Graph(program.desc), for_test=False)
         val_marked_nodes = set()
         for op in val_graph.all_ops():
             if op.name().find('quantize') > -1:
