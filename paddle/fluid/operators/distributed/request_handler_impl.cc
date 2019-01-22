@@ -85,18 +85,6 @@ bool RequestGetHandler::Handle(const std::string& varname,
   VLOG(4) << "RequestGetHandler:" << varname
           << " out_var_name: " << out_var_name;
 
-  // get var from pserver immediately without barriers
-  string::Piece without_barrier_piece(WITHOUT_BARRIER_MESSAGE);
-  string::Piece var_name_piece = string::Piece(varname);
-
-  if (string::Contains(var_name_piece, without_barrier_piece)) {
-    var_name_piece = string::TrimSuffix(var_name_piece, without_barrier_piece);
-    VLOG(4) << "Get var " << var_name_piece << " with "
-            << WITHOUT_BARRIER_MESSAGE;
-    *outvar = scope_->FindVar(var_name_piece.ToString());
-    return true;
-  }
-
   if (sync_mode_) {
     if (varname == FETCH_BARRIER_MESSAGE) {
       VLOG(3) << "sync: recv fetch barrier message";
