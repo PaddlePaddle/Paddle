@@ -55,6 +55,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 
     // Add op fusion.
+    if (strategy.fuse_relu_depthwise_conv_) {
+      AppendPass("fuse_relu_depthwise_conv_pass");
+    }
     if (strategy.fuse_elewise_add_act_ops_) {
       auto fuse_elewise_add_act_pass = AppendPass("fuse_elewise_add_act_pass");
       // Add a graph viz pass to record a graph.
@@ -210,6 +213,12 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Set<const std::vector<OpDesc *>>(
           kAllOpDescs,
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
+    } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
+      if (!use_cuda) {
+        LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
+                        "GPU, skipped.";
+        continue;
+      }
     }
     graph = pass->Apply(std::move(graph));
   }
@@ -220,6 +229,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 }  // namespace framework
 }  // namespace paddle
 
+USE_PASS(fuse_relu_depthwise_conv_pass);
 USE_PASS(fuse_elewise_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);

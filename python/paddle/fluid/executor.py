@@ -27,6 +27,8 @@ from .. import compat as cpt
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
 g_scope = core.Scope()
+InferNativeConfig = core.NativeConfig
+InferAnalysisConfig = core.AnalysisConfig
 
 
 def global_scope():
@@ -533,6 +535,8 @@ class Executor(object):
                 fetch_list=fetch_list,
                 fetch_var_name=fetch_var_name,
                 return_numpy=return_numpy)
+        elif program._is_inference:
+            return self._run_inference(program, feed)
         else:
             # TODO(panyx0718): Can compile program to optimize executor
             # performance.
@@ -590,3 +594,6 @@ class Executor(object):
         if return_numpy:
             outs = as_numpy(outs)
         return outs
+
+    def _run_inference(self, program, feed):
+        return self.executor.run(feed)
