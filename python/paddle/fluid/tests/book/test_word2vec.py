@@ -220,9 +220,7 @@ def infer(use_cuda, save_dirname=None):
         np_data = np.array(results[0])
         infer_out = infer_outputs[0].data.float_data()
         for a, b in zip(np_data[0], infer_out):
-            g_a = float("{:.6g}".format(a))
-            g_b = float("{:.6g}".format(b))
-            assert g_a == g_b
+            assert np.isclose(g_a, g_b)
 
 
 def main(use_cuda, is_sparse, is_parallel):
