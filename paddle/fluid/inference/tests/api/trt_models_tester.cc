@@ -178,6 +178,11 @@ TEST(AnalysisPredictor, use_gpu) {
   }
 }
 
+TEST(TensorRT_mobilenet, profile) {
+  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
+  profile(model_dir, true, false);
+}
+
 TEST(resnet50, compare_continuous_input) {
   std::string model_dir = FLAGS_infer_model + "/resnet50";
   compare_continuous_input(model_dir, true);

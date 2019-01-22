@@ -82,8 +82,7 @@ void Gather(const std::vector<distributed::RemoteVar>& vars,
   std::cout << "dst:" << distributed::GetSelectedRowsInfo(*dst[0]);
 }
 
-TEST(PREFETCH, GPU) {
-  setenv("FLAGS_max_body_size", "2147483647", 1);
+TEST(CollectiveServer, GPU) {
   platform::CUDAPlace place;
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);

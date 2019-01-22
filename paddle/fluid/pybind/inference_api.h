@@ -14,27 +14,10 @@
 
 #pragma once
 
-#include <string>
-#include "paddle/fluid/inference/analysis/analysis_pass.h"
+#include <pybind11/pybind11.h>
 
 namespace paddle {
-namespace inference {
-namespace analysis {
-
-/*
- * Perform IR analysis passes.
- *
- * It is used to fuse some
- */
-class IrAnalysisPass : public AnalysisPass {
- public:
-  void RunImpl(Argument* argument) override;
-
-  void CollectFusionStatis(Argument* argument);
-
-  std::string repr() const override;
-};
-
-}  // namespace analysis
-}  // namespace inference
+namespace pybind {
+void BindInferenceApi(pybind11::module *m);
+}  // namespace pybind
 }  // namespace paddle
