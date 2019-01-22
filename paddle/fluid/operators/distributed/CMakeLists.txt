@@ -20,7 +20,7 @@ add_subdirectory(handlers)
 # FIXME(typhoonzero): use add_subdirectory once we clean the dependency of these files
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 if(WITH_GRPC)
-  grpc_library(grpc_base PROTO ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto)
+  grpc_library(grpc_base PROTO send_recv.proto)
   cc_library(variable_response SRCS variable_response.cc DEPS data_type lod_tensor scope grpc_base_proto)
 
   cc_library(grpc_server SRCS grpc/grpc_server.cc DEPS grpc_base_grpc scope)
