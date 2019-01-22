@@ -60,10 +60,10 @@ class TestBoxClipOp(OpTest):
         output_boxes = batch_box_clip(input_boxes, im_info, lod[0])
 
         self.inputs = {
-            'InputBox': (input_boxes.astype('float32'), lod),
+            'Input': (input_boxes.astype('float32'), lod),
             'ImInfo': im_info.astype('float32'),
         }
-        self.outputs = {'OutputBox': output_boxes}
+        self.outputs = {'Output': output_boxes}
 
 
 if __name__ == '__main__':

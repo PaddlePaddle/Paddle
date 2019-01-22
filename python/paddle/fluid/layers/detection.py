@@ -31,11 +31,24 @@ import numpy
 from functools import reduce
 
 __all__ = [
-    'prior_box', 'density_prior_box', 'multi_box_head', 'bipartite_match',
-    'target_assign', 'detection_output', 'ssd_loss', 'detection_map',
-    'rpn_target_assign', 'anchor_generator', 'roi_perspective_transform',
-    'generate_proposal_labels', 'generate_proposals', 'iou_similarity',
-    'box_coder', 'polygon_box_transform', 'yolov3_loss', 'box_clip'
+    'prior_box',
+    'density_prior_box',
+    'multi_box_head',
+    'bipartite_match',
+    'target_assign',
+    'detection_output',
+    'ssd_loss',
+    'detection_map',
+    'rpn_target_assign',
+    'anchor_generator',
+    'roi_perspective_transform',
+    'generate_proposal_labels',
+    'generate_proposals',
+    'iou_similarity',
+    'box_coder',
+    'polygon_box_transform',
+    'yolov3_loss',
+    'box_clip',
 ]
 
 
@@ -1800,13 +1813,22 @@ def generate_proposals(scores,
     return rpn_rois, rpn_roi_probs
 
 
-def box_clip(input_box, im_info, inplace=False, name=None):
+def box_clip(input, im_info, inplace=False, name=None):
     """
     Clip the box into the size given by im_info
+    The formula is given as follows:
+        
+    .. code-block:: text
+
+        height_out = max(min(height_loc, im_h), 0)
+        width_out = max(min(width_loc, im_w), 0)
 
     Args:
         input_box(variable): The input box, the last dimension is 4.
-        im_info(variable): The information of image with shape [N, 3].
+        im_info(variable): The information of image with shape [N, 3] with 
+                            layout (height, width, scale). height and width
+                            is the input size and scale is the ratio of input
+                            size and original size.
         inplace(bool): Must use :attr:`False` if :attr:`input_box` is used in 
                        multiple operators. If this flag is set :attr:`True`, 
                        reuse input :attr:`input_box` to clip, which will 
@@ -1832,12 +1854,12 @@ def box_clip(input_box, im_info, inplace=False, name=None):
     """
 
     helper = LayerHelper("box_clip", **locals())
-    output = helper.create_variable_for_type_inference(dtype=input_box.dtype)
-    inputs = {"InputBox": input_box, "ImInfo": im_info}
+    output = helper.create_variable_for_type_inference(dtype=input.dtype)
+    inputs = {"Input": input, "ImInfo": im_info}
     helper.append_op(
         type="box_clip",
         inputs=inputs,
         attrs={"inplace:": inplace},
-        outputs={"OutputBox": output})
+        outputs={"Output": output})
 
     return output
