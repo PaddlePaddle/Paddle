@@ -207,6 +207,9 @@ class TestImperativeResnet(unittest.TestCase):
     def test_resnet_gpu_float32(self):
         seed = 90
 
+        if not core.is_compiled_with_cuda():
+            return
+
         batch_size = train_parameters["batch_size"]
         batch_num = 1
         with fluid.imperative.guard():
@@ -370,7 +373,7 @@ class TestImperativeResnet(unittest.TestCase):
 
         batch_size = train_parameters["batch_size"]
         batch_num = 1
-        with fluid.imperative.guard(device=None):
+        with fluid.imperative.guard(place=fluid.CPUPlace()):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 

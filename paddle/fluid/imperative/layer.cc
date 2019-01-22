@@ -49,8 +49,7 @@ class TensorAddToFunctor : public boost::static_visitor<> {
   void operator()(const platform::CPUPlace& place) {
     platform::CPUDeviceContext* ctx = dynamic_cast<platform::CPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
-    auto blas =
-        operators::math::GetBlas<platform::CPUDeviceContext, float>(*ctx);
+    auto blas = operators::math::GetBlas<platform::CPUDeviceContext, T>(*ctx);
     blas.AXPY(numel_, 1., x_, y_);
   }
 
@@ -59,8 +58,7 @@ class TensorAddToFunctor : public boost::static_visitor<> {
     platform::CUDADeviceContext* ctx =
         dynamic_cast<platform::CUDADeviceContext*>(
             platform::DeviceContextPool::Instance().Get(place));
-    auto blas =
-        operators::math::GetBlas<platform::CUDADeviceContext, float>(*ctx);
+    auto blas = operators::math::GetBlas<platform::CUDADeviceContext, T>(*ctx);
     blas.AXPY(numel_, 1., x_, y_);
   }
 #else
@@ -82,7 +80,7 @@ class TensorAddToFunctor : public boost::static_visitor<> {
 
 }  // namespace detail
 
-void AddGradTo(Variable* src, Variable* dst, platform::Place place) {
+void AddTo(Variable* src, Variable* dst, platform::Place place) {
   framework::Tensor* dst_tensor = dst->GetMutable<framework::LoDTensor>();
   framework::Tensor* src_tensor = src->GetMutable<framework::LoDTensor>();
 
@@ -170,27 +168,34 @@ class Autograd {
   }
 };
 
-framework::LoDTensor* VarBase::CopiedTensor() const {
+VarBase* VarBase::NewVarBase(const platform::Place& dst_place,
+                             const bool blocking) const {
   PADDLE_ENFORCE(var_->IsInitialized(),
                  "Variable must be initialized when getting numpy tensor");
-  platform::Place place = var_->Get<framework::LoDTensor>().place();
-  framework::LoDTensor* result = new framework::LoDTensor();
-  result->Resize(var_->Get<framework::LoDTensor>().dims());
-  result->set_lod(var_->Get<framework::LoDTensor>().lod());
-  if (platform::is_gpu_place(place)) {
-    VLOG(3) << "fetch tensor " << var_desc_->Name() << " from gpu";
 
-    framework::TensorCopy(var_->Get<framework::LoDTensor>(),
-                          platform::CPUPlace(), result);
+  VarBase* new_var = new VarBase();
+  framework::LoDTensor* tensor =
+      new_var->var_->GetMutable<framework::LoDTensor>();
+  tensor->Resize(var_->Get<framework::LoDTensor>().dims());
+  tensor->set_lod(var_->Get<framework::LoDTensor>().lod());
 
+  if (blocking) {
     platform::DeviceContext* dev_ctx =
-        platform::DeviceContextPool::Instance().Get(place);
+        platform::DeviceContextPool::Instance().Get(dst_place);
+
+    framework::TensorCopySync(var_->Get<framework::LoDTensor>(), dst_place,
+                              tensor);
+
     dev_ctx->Wait();
   } else {
-    TensorCopy(var_->Get<framework::LoDTensor>(), platform::CPUPlace(), result);
+    framework::TensorCopy(var_->Get<framework::LoDTensor>(), dst_place, tensor);
   }
 
-  return result;
+  if (platform::is_gpu_place(dst_place)) {
+    VLOG(3) << "copy tensor " << var_desc_->Name() << " from gpu";
+  }
+
+  return new_var;
 }
 
 framework::LoDTensor& VarBase::GradValue() {
@@ -235,7 +240,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
     PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
 
     framework::Scope scope;
-    platform::Place place = expected_place_;
+    platform::Place place = place_;
     PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place);
     p.op.RuntimeInferShape(scope, place, ctx);
     p.func(framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx));
@@ -249,7 +254,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
     for (size_t i = 0; i < outputs.size(); ++i) {
       framework::Variable* grad = outputs[i];
       framework::Variable* orig_grad = origin_outputs[i];
-      AddGradTo(grad, orig_grad, expected_place_);
+      AddTo(grad, orig_grad, place_);
       delete grad;
     }
   }

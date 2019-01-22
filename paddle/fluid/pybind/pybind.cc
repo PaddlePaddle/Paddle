@@ -137,8 +137,13 @@ PYBIND11_MODULE(core, m) {
       .def("_grad_ivar",
            [](const imperative::VarBase &self) { return self.grads_; },
            py::return_value_policy::reference)
-      .def("_cpu_tensor",
-           [](const imperative::VarBase &self) { return self.CopiedTensor(); },
+      .def("_to",
+           [](const imperative::VarBase &self, const platform::CPUPlace &place,
+              bool blocking) { return self.NewVarBase(place, blocking); },
+           py::return_value_policy::take_ownership)
+      .def("_to",
+           [](const imperative::VarBase &self, const platform::CUDAPlace &place,
+              bool blocking) { return self.NewVarBase(place, blocking); },
            py::return_value_policy::take_ownership)
       .def("value", [](const imperative::VarBase &self) { return self.var_; },
            py::return_value_policy::reference)

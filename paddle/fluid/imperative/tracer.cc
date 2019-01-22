@@ -131,10 +131,9 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
 
   framework::Scope scope;
-  op->expected_place_ = GetExpectedPlace(expected_place, inputs);
-  PreparedOp prepared_op =
-      PreparedOp::Prepare(ctx, *op_kernel, op->expected_place_);
-  prepared_op.op.RuntimeInferShape(scope, op->expected_place_, ctx);
+  op->place_ = GetExpectedPlace(expected_place, inputs);
+  PreparedOp prepared_op = PreparedOp::Prepare(ctx, *op_kernel, op->place_);
+  prepared_op.op.RuntimeInferShape(scope, op->place_, ctx);
   prepared_op.func(framework::ExecutionContext(
       prepared_op.op, scope, *prepared_op.dev_ctx, prepared_op.ctx));
 
