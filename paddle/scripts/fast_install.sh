@@ -296,8 +296,8 @@ function checkLinuxPip(){
             uncode=u
          fi
        fi
-       echo $python_version
-       if [ "$python_version" == "27" -o "$python_version" == "35" -o "$python_version" == "36" -o "$python_version" == "37" ];then
+       version_list=`echo "${array[@]}" | grep "$python_version" `
+       if [ "$version_list" != "" ];then
          echo "找到python${python_version}版本"
          break
        else
@@ -379,7 +379,15 @@ function checkLinuxGPU(){
 }
 
 function linux(){
-gpu_list=("GeForce 410M"
+python_list=(
+"27"
+"35"
+"36"
+"37"
+)
+
+gpu_list=(
+"GeForce 410M"
 "GeForce 610M"
 "GeForce 705M"
 "GeForce 710M"
@@ -678,11 +686,14 @@ function checkMacPythonVersion(){
                  uncode=m
               fi
            fi
-           if [[ "$python_brief_version" == "27" || "$python_brief_version" == "35" || "$python_brief_version" == "36" || "$python_brief_version" == "37" ]];then
-                break
-           else
-                echo "未发现可用的pip或pip3/pip3.x, 我们只支持Python2.7/3.5/3.6/3.7及其对应的pip, 请重新输入， 或使用ctrl + c退出"
-           fi
+           for i in ${python_list[@]}
+             do
+               if [ "$python_brief_version" == "$i" ];then
+                 break
+               else
+                 echo "未发现可用的pip或pip3/pip3.x, 我们只支持Python2.7/3.5/3.6/3.7及其对应的pip, 请重新输入， 或使用ctrl + c退出"
+               fi
+             done
         else
             echo "输入错误，请重新输入"
         fi
