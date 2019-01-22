@@ -1,7 +1,6 @@
 paddle.fluid.Program.__init__ ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Program.block ArgSpec(args=['self', 'index'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Program.clone ArgSpec(args=['self', 'for_test'], varargs=None, keywords=None, defaults=(False,))
-paddle.fluid.Program.construct_from_desc ArgSpec(args=['desc'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Program.current_block ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Program.global_block ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Program.list_vars ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
