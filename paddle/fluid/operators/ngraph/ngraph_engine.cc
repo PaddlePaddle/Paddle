@@ -118,6 +118,7 @@ static void SubstituteNgraphOp(framework::BlockDesc* block,
   ng_op->SetAttr("graph", block_str);
 }
 
+// TODO(baojun-nervana): Move EnableNgraph to compile time per PR #15089
 void NgraphEngine::EnableNgraph(const framework::ProgramDesc& program) {
 #ifdef PADDLE_WITH_NGRAPH
   VLOG(4) << "use_ngraph=True";
