@@ -3,6 +3,13 @@
 path='http://paddlepaddle.org/download?url='
 #release_version=`curl -s https://pypi.org/project/paddlepaddle/|grep -E "/project/paddlepaddle/"|grep "release"|awk -F '/' '{print $(NF-1)}'|head -1`
 release_version=1.2.0
+python_list=(
+"27"
+"35"
+"36"
+"37"
+)
+
 
 function use_cpu(){
    while true
@@ -314,14 +321,14 @@ function checkLinuxAVX(){
   while true
   do
     if [[ "$AVX" != "" ]];then
-      AVX=avx
+      AVX="avx"
       break
     else
       if [ "$CUDA" == "8" -a "$CUDNN" == "7" ] || [ "$GPU" == "cpu" ];then
-        AVX=navx
+        AVX="noavx"
         break
       else
-        echo "我们仅支持纯CPU或GPU with CUDA 8 cuDNN 7 下navx版本的安装，请使用cat /proc/cpuinfo | grep avx检查您计算机的avx指令集支持情况"
+        echo "我们仅支持纯CPU或GPU with CUDA 8 cuDNN 7 下noavx版本的安装，请使用cat /proc/cpuinfo | grep avx检查您计算机的avx指令集支持情况"
         break
       fi
     fi
@@ -331,7 +338,7 @@ function checkLinuxAVX(){
 function PipLinuxInstall(){
   wheel_cpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-${GPU}-${AVX}-${math}/paddlepaddle-${release_version}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
   wheel_gpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-${release_version}.post${CUDA}${CUDNN}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
-  wheel_gpu_release_navx="http://paddle-wheel.bj.bcebos.com/${release_version}-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-${release_version}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
+  wheel_gpu_release_noavx="http://paddle-wheel.bj.bcebos.com/${release_version}-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-${release_version}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
   wheel_cpu_develop="http://paddle-wheel.bj.bcebos.com/latest-cpu-${AVX}-${math}/paddlepaddle-latest-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
   wheel_gpu_develop="http://paddle-wheel.bj.bcebos.com/latest-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-latest-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
 
@@ -345,7 +352,7 @@ function PipLinuxInstall(){
         else
           rm -rf `echo $wheel_cpu_release_nvax|awk -F '/' '{print $NF}'`
           wget $wheel_cpu_release_nvax
-          $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release_navx
+          $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release_noavx
         fi
     else
         rm -rf `echo $wheel_cpu_develop|awk -F '/' '{print $NF}'`
@@ -383,13 +390,6 @@ function checkLinuxGPU(){
 }
 
 function linux(){
-python_list=(
-"27"
-"35"
-"36"
-"37"
-)
-
 gpu_list=(
 "GeForce 410M"
 "GeForce 610M"
@@ -685,12 +685,13 @@ function checkMacPythonVersion(){
            if [[ $python_brief_version == "27" ]];then
               uncode=`python -c "import pip._internal;print(pip._internal.pep425tags.get_supported())"|grep "cp27"`
               if [[ $uncode == "" ]];then
-                 uncode=mu
+                 uncode="mu"
               else
-                 uncode=m
+                 uncode="m"
               fi
            fi
-           version_list=`echo "${python_list[@]}" | grep "$python_version" `
+           echo ${python_list[@]}
+           version_list=`echo "${python_list[@]}" | grep "$python_brief_version" `
            if [ "$version_list" != "" ];then
               break
             else
@@ -704,7 +705,7 @@ function checkMacPythonVersion(){
 
 function checkMacAVX(){
     if [[ $AVX != "" ]];then
-        AVX=avx
+        AVX="avx"
     else
         echo "您的Mac不支持AVX指令集，目前不能安装PaddlePaddle"
     fi
