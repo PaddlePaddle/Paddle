@@ -80,8 +80,8 @@ int64_t CustomSampler::Sample() const {
   if (p > alias_probs_[index]) {
     int alias = alias_[index];
 
-    if (alias == -1) {
-      VLOG(3) << "WARNING: CustomSampler get alias -1";
+    if (alias == exceptional_val) {
+      LOG(WARNING) << "WARNING: CustomSampler get alias " << exceptional_val;
       return index;
     }
 
