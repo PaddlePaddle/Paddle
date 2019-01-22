@@ -19,7 +19,10 @@ import sys
 
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.imperative.nn import FC, SimpleRNNCell
+from paddle.fluid.imperative.nn import FC
+from paddle.fluid.imperative.nn import SimpleRNNCell
+from typing import List, Any, Tuple
+
 from test_imperative_base import new_program_scope
 
 
@@ -67,14 +70,34 @@ class MLP(fluid.imperative.Layer):
 
 
 class SimpleRNN(fluid.imperative.Layer):
-    def __init__(self, inputs):
+    def __init__(self):
         super(SimpleRNN, self).__init__()
-        self.seq_len = input.shape[0]
-        self.cell = SimpleRNNCell(input.shape[1], out)
+        self.seq_len = 4
+        self._cell = SimpleRNNCell(
+            3,
+            3,
+            3,
+            fluid.ParamAttr(initializer=fluid.initializer.Constant(value=0.1)))
 
     def forward(self, inputs):
+        out = list()
+        pre_hiddens = list()
+
+        init_hidden = fluid.layers.tensor.create_parameter(
+            attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.1)),
+            shape=[1, 3],
+            dtype='float32',
+            is_bias=False)
+        pre_hidden = init_hidden
         for i in range(self.seq_len):
-            x = self._fc1(inputs[i])
+            input = fluid.layers.slice(
+                inputs, axes=[1], starts=[i], ends=[i + 1])
+            input = fluid.layers.reshape(input, shape=[1, 3])
+            pre_hidden, out_softmax = self._cell(input, pre_hidden)
+            out.append(out_softmax)
+
+        return out, pre_hiddens
 
 
 class TestImperative(unittest.TestCase):
@@ -207,8 +230,41 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.allclose(dy_out, static_out))
         self.assertTrue(np.allclose(dy_grad, static_grad))
 
-    def test_rnn_ptb(self):
-        np_inp = np.arrary([])
+    def test_rnn(self):
+        np_inp = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0],
+                           [10.0, 11.0, 12.0]])
+        np_inp = np_inp.reshape((1, 4, 3))
+        np_inp = np_inp.astype(np.float32)
+        # with fluid.imperative.guard():
+        #     var_inp = fluid.imperative.base.to_variable(np_inp)
+        #     var_inp = fluid.layers.reshape(var_inp, shape=[1, 4, 3])
+        #     simple_rnn = SimpleRNN()
+        #     outs, pre_hiddens = simple_rnn.forward(var_inp)
+        #     dy_out = outs[3]._numpy()
+        #     outs[3]._backward()
+        #     dy_grad = simple_rnn._cell._i2h_w._gradient()
+        #     print("dy_grad is {}".format(dy_grad))
+
+        with new_program_scope():
+            print("im here")
+            inp = fluid.layers.data(
+                name="inp", shape=[1, 4, 3], append_batch_size=False)
+            simple_rnn = SimpleRNN()
+            outs, pre_hiddens = simple_rnn(inp)
+            param_grads = fluid.backward.append_backward(
+                outs[3],
+                parameter_list=[
+                    simple_rnn._cell._i2h_w.name, simple_rnn._cell._h2h_w.name,
+                    simple_rnn._cell._h2o_w.name
+                ])
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+            # print("param_grads is : {} ".format(param_grads))
+            static_out, static_grad = exe.run(
+                feed={inp.name: np_inp},
+                fetch_list=[outs[3].name, param_grads[2][1].name])
+            # self.assertTrue(np.allclose(dy_out, static_out))
+            # self.assertTrue(np.allclose(dy_grad, static_grad))
 
 
 if __name__ == '__main__':
