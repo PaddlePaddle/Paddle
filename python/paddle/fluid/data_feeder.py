@@ -71,13 +71,6 @@ class DataToLoDTensorConverter(object):
             for each_data in data:
                 self._feed_impl_(each_data, lod[1:], lod_level - 1)
 
-    def _check_shape(self, shape):
-        for s1, s2 in zip(self.shape, shape):
-            if s1 != s2 and s1 >= 0 and s2 >= 0:
-                raise ValueError(
-                    "Shape not match. What is defined in data layer is {}, but receive {}".
-                    format(self.shape, shape))
-
     def done(self):
         arr = numpy.array(self.data, dtype=self.dtype)
         if self.shape:
@@ -88,8 +81,6 @@ class DataToLoDTensorConverter(object):
                     raise ValueError(
                         "Reshape error. What is defined in data layer is {}, but receive {}"
                         .format(self.shape, arr.shape))
-            else:
-                self._check_shape(arr.shape)
         t = core.LoDTensor()
         t.set(arr, self.place)
         if self.lod_level > 0:
