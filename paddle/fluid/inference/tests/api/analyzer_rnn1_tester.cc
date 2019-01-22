@@ -297,6 +297,30 @@ TEST(Analyzer_rnn1, ZeroCopy) {
 
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
+  // Get valid vars
+  auto *a_predictor = static_cast<AnalysisPredictor *>(predictor.get());
+  auto &program = a_predictor->analysis_argument().ir_analyzed_program();
+  std::unordered_set<std::string> inputs_outputs;
+  for (auto &op : program.blocks(0).ops()) {
+    for (auto &x : op.inputs()) {
+      for (auto &arg : x.arguments()) {
+        inputs_outputs.insert(arg);
+      }
+    }
+    for (auto &x : op.outputs()) {
+      for (auto &arg : x.arguments()) {
+        inputs_outputs.insert(arg);
+      }
+    }
+  }
+
+  // valid vars are contained in inputs_output
+  LOG(INFO) << "valid var size " << inputs_outputs.size();
+
+  for (auto var_name : inputs_outputs) {
+    LOG(INFO) << "var " << var_name;
+  }
+
   config.SwitchUseFeedFetchOps(true);
   auto native_predictor =
       CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
