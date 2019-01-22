@@ -32,7 +32,7 @@ class BoxCoderOp : public framework::OperatorWithKernel {
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(prior_box_dims.size(), 2,
-                        "The rank of Input of PriorBox must be 2");
+                        "The rank of Input PriorBox must be 2");
       PADDLE_ENFORCE_EQ(prior_box_dims[1], 4,
                         "The shape of PriorBox is [N, 4]");
       if (ctx->HasInput("PriorBoxVar")) {
@@ -58,7 +58,7 @@ class BoxCoderOp : public framework::OperatorWithKernel {
     int axis = ctx->Attrs().Get<int>("axis");
     if (code_type == BoxCodeType::kEncodeCenterSize) {
       PADDLE_ENFORCE_EQ(target_box_dims.size(), 2,
-                        "The rank of Input of TargetBox must be 2");
+                        "The rank of Input TargetBox must be 2");
       PADDLE_ENFORCE_EQ(target_box_dims[1], 4,
                         "The shape of TargetBox is [M, 4]");
       ctx->SetOutputDim(
@@ -66,7 +66,7 @@ class BoxCoderOp : public framework::OperatorWithKernel {
           framework::make_ddim({target_box_dims[0], prior_box_dims[0], 4}));
     } else if (code_type == BoxCodeType::kDecodeCenterSize) {
       PADDLE_ENFORCE_EQ(target_box_dims.size(), 3,
-                        "The rank of Input of TargetBox must be 3");
+                        "The rank of Input TargetBox must be 3");
       if (axis == 0) {
         PADDLE_ENFORCE_EQ(target_box_dims[1], prior_box_dims[0]);
       } else if (axis == 1) {
@@ -126,8 +126,11 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
                   "whether treat the priorbox as a noramlized box")
         .SetDefault(true);
     AddAttr<int>("axis",
-                 "(int, default 1)"
-                 "which axis to broadcast for box decode, it is only valid"
+                 "(int, default 0)"
+                 "which axis in PriorBox to broadcast for box decode,"
+                 "for example, if axis is 0 and TargetBox has shape"
+                 "[N, M, 4] and PriorBox has shape [M, 4], then PriorBox "
+                 "will broadcast to [N, M, 4] for decoding. It is only valid"
                  "when code type is decode_center_size")
         .SetDefault(0)
         .InEnum({0, 1});

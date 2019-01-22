@@ -79,10 +79,7 @@ __global__ void DecodeCenterSizeKernel(const T* prior_box_data,
   if (idx < row * col) {
     const int col_idx = idx % col;
     const int row_idx = idx / col;
-    if (axis == 0)
-      prior_box_offset = col_idx * len;
-    else if (axis == 1)
-      prior_box_offset = row_idx * len;
+    prior_box_offset = axis == 0 ? col_idx * len : row_idx * len;
     T prior_box_width = prior_box_data[prior_box_offset + 2] -
                         prior_box_data[prior_box_offset] +
                         (normalized == false);
@@ -98,10 +95,7 @@ __global__ void DecodeCenterSizeKernel(const T* prior_box_data,
     if (prior_box_var_data) {
       int prior_var_offset = 0;
       if (prior_box_var_size == 2) {
-        if (axis == 0)
-          prior_var_offset = col_idx * len;
-        else if (axis == 1)
-          prior_var_offset = row_idx * len;
+        prior_var_offset = axis == 0 ? col_idx * len : row_idx * len;
       }
       target_box_width = exp(prior_box_var_data[prior_var_offset + 2] *
                              target_box_data[idx * len + 2]) *

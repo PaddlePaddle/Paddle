@@ -21,121 +21,80 @@ import math
 from op_test import OpTest
 
 
-def box_coder(target_box,
-              prior_box,
-              prior_box_var,
-              output_box,
-              code_type,
-              box_normalized,
-              axis=0):
-    prior_box_width = prior_box[:, 2] - prior_box[:, 0] + \
-                      (box_normalized==False)
-    prior_box_height = prior_box[:, 3] - prior_box[:, 1] + \
-                      (box_normalized==False)
-    prior_box_x = prior_box_width * 0.5 + prior_box[:, 0]
-    prior_box_y = prior_box_height * 0.5 + prior_box[:, 1]
-    if axis == 0:
-        prior_box_width = prior_box_width.reshape(1, prior_box.shape[0])
-        prior_box_height = prior_box_height.reshape(1, prior_box.shape[0])
-        prior_box_x = prior_box_x.reshape(1, prior_box.shape[0])
-        prior_box_y = prior_box_y.reshape(1, prior_box.shape[0])
+def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
+    pb_w = p_box[:, 2] - p_box[:, 0] + (norm == False)
+    pb_h = p_box[:, 3] - p_box[:, 1] + (norm == False)
+    pb_x = pb_w * 0.5 + p_box[:, 0]
+    pb_y = pb_h * 0.5 + p_box[:, 1]
+    shape = (1, p_box.shape[0]) if axis == 0 else (p_box.shape[0], 1)
+
+    pb_w = pb_w.reshape(shape)
+    pb_h = pb_h.reshape(shape)
+    pb_x = pb_x.reshape(shape)
+    pb_y = pb_y.reshape(shape)
+
+    if pb_v.ndim == 2:
+        pb_v = pb_v.reshape(1, pb_v.shape[0], pb_v.shape[1])
+    if pb_v.ndim == 1:
+        tb_x = pb_v[0] * t_box[:, :, 0] * pb_w + pb_x
+        tb_y = pb_v[1] * t_box[:, :, 1] * pb_h + pb_y
+        tb_w = np.exp(pb_v[2] * t_box[:, :, 2]) * pb_w
+        tb_h = np.exp(pb_v[3] * t_box[:, :, 3]) * pb_h
     else:
-        prior_box_width = prior_box_width.reshape(prior_box.shape[0], 1)
-        prior_box_height = prior_box_height.reshape(prior_box.shape[0], 1)
-        prior_box_x = prior_box_x.reshape(prior_box.shape[0], 1)
-        prior_box_y = prior_box_y.reshape(prior_box.shape[0], 1)
-    if prior_box_var.ndim == 2:
-        prior_box_var = prior_box_var.reshape(1, prior_box_var.shape[0],
-                                              prior_box_var.shape[1])
-    if (code_type == "EncodeCenterSize"):
-        target_box_x = ((target_box[:, 2] + target_box[:, 0]) / 2).reshape(
-            target_box.shape[0], 1)
-        target_box_y = ((target_box[:, 3] + target_box[:, 1]) / 2).reshape(
-            target_box.shape[0], 1)
-        target_box_width = ((target_box[:, 2] - target_box[:, 0])).reshape(
-            target_box.shape[0], 1)
-        target_box_height = ((target_box[:, 3] - target_box[:, 1])).reshape(
-            target_box.shape[0], 1)
-        if not box_normalized:
-            target_box_height = target_box_height + 1
-            target_box_width = target_box_width + 1
-        if prior_box_var.ndim == 1:
-            output_box[:,:,0] = (target_box_x - prior_box_x) / \
-                                prior_box_width / \
-                                prior_box_var[0]
-            output_box[:,:,1] = (target_box_y - prior_box_y) / \
-                                prior_box_height / \
-                                prior_box_var[1]
-            output_box[:,:,2] = np.log(np.fabs(target_box_width / \
-                                prior_box_width)) / \
-                                prior_box_var[2]
-            output_box[:,:,3] = np.log(np.fabs(target_box_height / \
-                                prior_box_height)) / \
-                                prior_box_var[3]
-        else:
-            output_box[:,:,0] = (target_box_x - prior_box_x) / \
-                                prior_box_width / \
-                                prior_box_var[:,:,0]
-            output_box[:,:,1] = (target_box_y - prior_box_y) / \
-                                prior_box_height / \
-                                prior_box_var[:,:,1]
-            output_box[:,:,2] = np.log(np.fabs(target_box_width / \
-                                prior_box_width)) / \
-                                prior_box_var[:,:,2]
-            output_box[:,:,3] = np.log(np.fabs(target_box_height / \
-                                prior_box_height)) / \
-                                prior_box_var[:,:,3]
-
-    elif (code_type == "DecodeCenterSize"):
-        if prior_box_var.ndim == 1:
-            target_box_x = prior_box_var[0] * target_box[:,:,0] * \
-                           prior_box_width + prior_box_x
-            target_box_y = prior_box_var[1] * target_box[:,:,1] * \
-                           prior_box_height + prior_box_y
-            target_box_width = np.exp(prior_box_var[2] * target_box[:,:,2]) * \
-                               prior_box_width
-            target_box_height = np.exp(prior_box_var[3] * target_box[:,:,3]) * \
-                                prior_box_height
-        else:
-            target_box_x = prior_box_var[:,:,0] * target_box[:,:,0] * \
-                           prior_box_width + prior_box_x
-            target_box_y = prior_box_var[:,:,1] * target_box[:,:,1] * \
-                           prior_box_height + prior_box_y
-            target_box_width = np.exp(prior_box_var[:,:,2] * \
-                               target_box[:,:,2]) * prior_box_width
-            target_box_height = np.exp(prior_box_var[:,:,3] * \
-                               target_box[:,:,3]) * prior_box_height
-        output_box[:, :, 0] = target_box_x - target_box_width / 2
-        output_box[:, :, 1] = target_box_y - target_box_height / 2
-        output_box[:, :, 2] = target_box_x + target_box_width / 2
-        output_box[:, :, 3] = target_box_y + target_box_height / 2
-        if not box_normalized:
-            output_box[:, :, 2] = output_box[:, :, 2] - 1
-            output_box[:, :, 3] = output_box[:, :, 3] - 1
+        tb_x = pb_v[:, :, 0] * t_box[:, :, 0] * pb_w + pb_x
+        tb_y = pb_v[:, :, 1] * t_box[:, :, 1] * pb_h + pb_y
+        tb_w = np.exp(pb_v[:, :, 2] * t_box[:, :, 2]) * pb_w
+        tb_h = np.exp(pb_v[:, :, 3] * t_box[:, :, 3]) * pb_h
+    output_box[:, :, 0] = tb_x - tb_w / 2
+    output_box[:, :, 1] = tb_y - tb_h / 2
+    output_box[:, :, 2] = tb_x + tb_w / 2 - (not norm)
+    output_box[:, :, 3] = tb_y + tb_h / 2 - (not norm)
 
 
-def batch_box_coder(prior_box,
-                    prior_box_var,
-                    target_box,
-                    lod,
-                    code_type,
-                    box_normalized,
-                    axis=0):
-    n = target_box.shape[0]
-    m = prior_box.shape[0]
+def box_encoder(t_box, p_box, pb_v, output_box, norm):
+    pb_w = p_box[:, 2] - p_box[:, 0] + (norm == False)
+    pb_h = p_box[:, 3] - p_box[:, 1] + (norm == False)
+    pb_x = pb_w * 0.5 + p_box[:, 0]
+    pb_y = pb_h * 0.5 + p_box[:, 1]
+    shape = (1, p_box.shape[0])
+
+    pb_w = pb_w.reshape(shape)
+    pb_h = pb_h.reshape(shape)
+    pb_x = pb_x.reshape(shape)
+    pb_y = pb_y.reshape(shape)
+
+    if pb_v.ndim == 2:
+        pb_v = pb_v.reshape(1, pb_v.shape[0], pb_v.shape[1])
+    tb_x = ((t_box[:, 2] + t_box[:, 0]) / 2).reshape(t_box.shape[0], 1)
+    tb_y = ((t_box[:, 3] + t_box[:, 1]) / 2).reshape(t_box.shape[0], 1)
+    tb_w = (t_box[:, 2] - t_box[:, 0]).reshape(t_box.shape[0], 1) + (not norm)
+    tb_h = (t_box[:, 3] - t_box[:, 1]).reshape(t_box.shape[0], 1) + (not norm)
+    if pb_v.ndim == 1:
+        output_box[:, :, 0] = (tb_x - pb_x) / pb_w / pb_v[0]
+        output_box[:, :, 1] = (tb_y - pb_y) / pb_h / pb_v[1]
+        output_box[:, :, 2] = np.log(np.fabs(tb_w / pb_w)) / pb_v[2]
+        output_box[:, :, 3] = np.log(np.fabs(tb_h / pb_h)) / pb_v[3]
+    else:
+        output_box[:, :, 0] = (tb_x - pb_x) / pb_w / pb_v[:, :, 0]
+        output_box[:, :, 1] = (tb_y - pb_y) / pb_h / pb_v[:, :, 1]
+        output_box[:, :, 2] = np.log(np.fabs(tb_w / pb_w)) / pb_v[:, :, 2]
+        output_box[:, :, 3] = np.log(np.fabs(tb_h / pb_h)) / pb_v[:, :, 3]
+
+
+def batch_box_coder(p_box, pb_v, t_box, lod, code_type, norm, axis=0):
+    n = t_box.shape[0]
+    m = p_box.shape[0]
     if code_type == "DecodeCenterSize":
-        m = target_box.shape[1]
+        m = t_box.shape[1]
     output_box = np.zeros((n, m, 4), dtype=np.float32)
     cur_offset = 0
     for i in range(len(lod)):
         if (code_type == "EncodeCenterSize"):
-            box_coder(target_box[cur_offset:(cur_offset + lod[i]), :],
-                      prior_box, prior_box_var,
-                      output_box[cur_offset:(cur_offset + lod[i]), :, :],
-                      code_type, box_normalized)
+            box_encoder(t_box[cur_offset:(cur_offset + lod[i]), :], p_box, pb_v,
+                        output_box[cur_offset:(cur_offset + lod[i]), :, :],
+                        norm)
         elif (code_type == "DecodeCenterSize"):
-            box_coder(target_box, prior_box, prior_box_var, output_box,
-                      code_type, box_normalized, axis)
+            box_decoder(t_box, p_box, pb_v, output_box, norm, axis)
         cur_offset += lod[i]
     return output_box
 
