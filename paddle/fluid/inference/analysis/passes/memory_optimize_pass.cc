@@ -498,6 +498,7 @@ std::vector<std::unordered_set<std::string>> AnalysisBatchShapesByBatchSize(
   std::unordered_map<std::string, std::stringstream> var_batchsize_hashes;
   for (auto& batch : batches) {
     for (auto& ele : batch) {
+      PADDLE_ENFORCE(!ele.second.empty());
       int batch_size = ele.second.front();
       // TODO(Superjomn) might consume large memory here, use combine hash.
       var_batchsize_hashes[ele.first] << batch_size;
@@ -609,14 +610,17 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   std::vector<std::function<MemoryAllocation()>> strategies;
 
   for (int sort_kind = 0; sort_kind < 2; sort_kind++) {
-    strategies.emplace_back([&, sort_kind] {
-      auto clustered_vars_by_batch_size =
-          AnalysisBatchShapesByBatchSize(batches);
-      MemoryAllocation allocation;
-      MakeReusePlan(clustered_vars_by_batch_size, var_batch_ave_size,
-                    space_table, &reuse_table, sort_kind, &allocation);
-      return allocation;
-    });
+    if (argument->static_memory_optim()) {
+      // This strategy only make scene in static memory optimize.
+      strategies.emplace_back([&, sort_kind] {
+        auto clustered_vars_by_batch_size =
+            AnalysisBatchShapesByBatchSize(batches);
+        MemoryAllocation allocation;
+        MakeReusePlan(clustered_vars_by_batch_size, var_batch_ave_size,
+                      space_table, &reuse_table, sort_kind, &allocation);
+        return allocation;
+      });
+    }
 
     strategies.emplace_back([&, sort_kind] {
       auto clustered_vars_by_ave_size =
