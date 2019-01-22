@@ -72,6 +72,10 @@ struct BuildStrategy {
 
   std::string debug_graphviz_path_{""};
 
+  std::string gpu_ids_{""};
+
+  size_t device_count_{0};
+
   bool fuse_elewise_add_act_ops_{false};
 
   bool fuse_relu_depthwise_conv_{false};
@@ -84,10 +88,10 @@ struct BuildStrategy {
 
   bool fuse_broadcast_op_{false};
 
-  // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
+  // FIXME(zcd): is_distributed_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
   // it's distributed model.
-  bool is_distribution_{false};
+  bool is_distributed_{false};
   int num_trainers_{1};
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;

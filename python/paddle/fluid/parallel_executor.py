@@ -101,24 +101,57 @@ class ParallelExecutor(object):
                  num_trainers=1,
                  trainer_id=0,
                  scope=None):
-        # step1: get places, the places are used in run too.
+        # step1: init build_strategy
+        if build_strategy is None:
+            build_strategy = BuildStrategy()
+        build_strategy.num_trainers = num_trainers
+        build_strategy.trainer_id = trainer_id
+        # FIXME(zcd): is_distributed_ is a temporary field, because in pserver mode,
+        # num_trainers is 1, so the current fields of build_strategy doesn't tell if
+        # it's distributed model.
+        build_strategy.is_distributed_ = _is_pserver_mode(
+            main_program) or num_trainers > 1
+
+        # step2: get places, the places are used in run too.
         self._places = []
         if use_cuda:
-            gpus_env = os.getenv("FLAGS_selected_gpus")
-            if gpus_env:
-                gpus = [int(s) for s in gpus_env.split(",")]
+            # There are four ways to get _places, and their priority is:
+            # 1. Get the available gpu from build_strategy.gpu_ids, if it is empty,
+            #    skip to 2;
+            # 2. Get device_count from build_strategy.gpu_ids, and use the places
+            #    from O to device_count, if the device_count is zero, skip to 3;
+            # 3. Get the available gpu from FLAGS_selected_gpus, if it is empty,
+            #    skip to 4;
+            # 4. Use all the available gpus.
+            gpu_count = core.get_cuda_device_count()
+            gpus = [int(s) for s in build_strategy.gpu_ids.split(",")]
+            if len(gpus) > 0:
+                for gpu_id in gpus:
+                    assert gpu_id < gpu_count, ""
+            elif build_strategy.device_count > 0:
+                assert build_strategy.device_count < gpu_count
+                gpus = [i for i in six.moves.range(build_strategy.device_count)]
             else:
-                gpus = [
-                    i for i in six.moves.range(core.get_cuda_device_count())
-                ]
+                gpus_env = os.getenv("FLAGS_selected_gpus")
+                if gpus_env:
+                    gpus = [int(s) for s in gpus_env.split(",")]
+                else:
+                    gpus = [i for i in six.moves.range(gpu_count)]
             self._places = [core.CUDAPlace(i) for i in gpus]
         else:
+            # There are three ways to get _places for CPU, and their priority is:
+            # 1. Get the device_count from build_strategy.device_count, if it is zero,
+            #    skip to 2;
+            # 2. Get the device_count from CPU_NUM, if it is empty, skip to 3;
+            # 3. Use the number of cpu core as the device_count.
             cpu_num = int(
                 os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+            if build_strategy.device_count > 0:
+                cpu_num = build_strategy.device_count
             self._places = [core.CPUPlace() for _ in six.moves.range(cpu_num)]
         assert self._places, "no place for execution"
 
-        # step2: init exec_strategy
+        # step3: init exec_strategy
         if exec_strategy is None:
             exec_strategy = ExecutionStrategy()
         exec_strategy.use_cuda = use_cuda
@@ -128,20 +161,7 @@ class ParallelExecutor(object):
                 # performance. Worth tunning for other models in the future.
                 exec_strategy.num_threads = len(self._places) * 4
             else:
-                cpu_num = int(
-                    os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-                exec_strategy.num_threads = cpu_num * 2
-
-        # step3: init build_strategy
-        if build_strategy is None:
-            build_strategy = BuildStrategy()
-        build_strategy.num_trainers = num_trainers
-        build_strategy.trainer_id = trainer_id
-        # FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
-        # num_trainers is 1, so the current fields of build_strategy doesn't tell if
-        # it's distributed model.
-        build_strategy.is_distribution = _is_pserver_mode(
-            main_program) or num_trainers > 1
+                exec_strategy.num_threads = len(self._places) * 2
 
         # step4: get main_program, scope, local_scopes
         main = main_program if main_program \

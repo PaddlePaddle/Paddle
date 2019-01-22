@@ -971,7 +971,7 @@ All parameter, weight, gradient are variables in Paddle.
             PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.debug_graphviz_path_ = path;
           },
-          R"DOC(The type is STR, debug_graphviz_path indicate the path that
+          R"DOC(The type is STR, debug_graphviz_path indicate the file path that
                     writing the SSA Graph to file in the form of graphviz, you.
                     It is useful for debugging. Default "")DOC")
       .def_property(
@@ -983,7 +983,8 @@ All parameter, weight, gradient are variables in Paddle.
             PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.enable_sequential_execution_ = b;
           },
-          R"DOC(The type is BOOL. If set True, the execution order of ops would be the same as what is in the program. Default False.)DOC")
+          R"DOC(The type is BOOL. If set True, the execution order of ops would be
+the same as what is in the program. Default False.)DOC")
       .def_property(
           "remove_unnecessary_lock",
           [](const BuildStrategy &self) {
@@ -993,7 +994,8 @@ All parameter, weight, gradient are variables in Paddle.
             PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.remove_unnecessary_lock_ = b;
           },
-          R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default False.)DOC")
+          R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released
+and ParallelExecutor would run faster. Default False.)DOC")
       .def_property(
           "num_trainers",
           [](const BuildStrategy &self) { return self.num_trainers_; },
@@ -1043,9 +1045,16 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.memory_optimize_; },
           [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; })
       .def_property(
-          "is_distribution",
-          [](const BuildStrategy &self) { return self.is_distribution_; },
-          [](BuildStrategy &self, bool b) { self.is_distribution_ = b; })
+          "is_distributed",
+          [](const BuildStrategy &self) { return self.is_distributed_; },
+          [](BuildStrategy &self, bool b) { self.is_distributed_ = b; })
+      .def_property(
+          "gpu_ids", [](const BuildStrategy &self) { return self.gpu_ids_; },
+          [](BuildStrategy &self, std::string b) { self.gpu_ids_ = b; })
+      .def_property(
+          "device_count",
+          [](const BuildStrategy &self) { return self.device_count_; },
+          [](BuildStrategy &self, size_t b) { self.device_count_ = b; })
       .def_property(
           "memory_early_delete",
           [](const BuildStrategy &self) { return self.memory_early_delete_; },
