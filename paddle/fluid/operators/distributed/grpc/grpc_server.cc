@@ -28,10 +28,10 @@ namespace operators {
 namespace distributed {
 
 void AsyncGRPCServer::WaitServerReady() {
-  VLOG(4) << "AsyncGRPCServer is waiting server ready";
+  VLOG(4) << "AsyncGRPCServer is waiting server to become ready";
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
-  VLOG(4) << "AsyncGRPCServer WaitSeverReady";
+  VLOG(4) << "AsyncGRPCServer WaitSeverReady end.";
 }
 
 // Define an option subclass in order to disable SO_REUSEPORT for the

@@ -178,7 +178,7 @@ bool VariableResponse::ProcSerializedField(
 
   if (meta_.type() == sendrecv::NCCL_ID) {
 #ifdef PADDLE_WITH_CUDA
-    auto* var = scope_->FindVar(meta_.varname());
+    auto* var = GetVar();
     if (var != nullptr) {
       ncclUniqueId* id = var->GetMutable<ncclUniqueId>();
       if (!ReadRaw(input, *dev_ctx_, platform::CPUPlace(), id->internal,

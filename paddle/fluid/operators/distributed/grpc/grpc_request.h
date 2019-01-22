@@ -36,8 +36,8 @@ enum CallStatus { PROCESS = 0, FINISH };
 // GRPC clients. It's quite different to general RPCRequest class
 // for:
 //
-// GRPCRequest: implementation for GRPC, call handlers when a
-//              request arrives.
+// GRPCRequest: implementation for GRPC, generate requests, call handlers
+//              then return the response to client side.
 // RPCRequest:  decoupled from rpc implementations, is the input
 //              of handlers.
 

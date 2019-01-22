@@ -98,6 +98,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
     std::thread server_thread(
         std::bind(&distributed::RPCServer::StartServer, rpc_service.get()));
 
+    rpc_service->WaitServerReady();
     rpc_service->SetState(distributed::RPCServerState::STATE_SEND);
     VLOG(3) << "start getting nccl id from trainer 0...";
     rpc_service->SendBarrier()->Wait();

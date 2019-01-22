@@ -117,8 +117,6 @@ class VariableResponse {
  protected:
   const framework::Scope* scope_;
   const platform::DeviceContext* dev_ctx_;
-  // bool create_scope_ = false;
-  // framework::Scope* local_scope_ = nullptr;
 
   framework::Variable* var_cache_ = nullptr;
   GetVarCallback get_var_callback_;

@@ -26,11 +26,11 @@ framework::Variable* SendHandlerSync::GetOrCreateRequestVar(
 }
 
 bool SendHandlerSync::Handle(RPCRequest* request) {
+  VLOG(3) << "sync: processing received var: " << request->varname_;
   rpc_server_->WaitState(RPCServerState::STATE_SEND);
   if (HandleSignal(request, scope_, rpc_server_)) {
     return true;
   }
-  VLOG(3) << "sync: processing received var: " << request->varname_;
 
   if (request->var_ == nullptr) {
     LOG(FATAL) << "sync: Can not find server side var: " << request->varname_;
