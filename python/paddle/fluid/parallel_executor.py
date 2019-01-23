@@ -106,10 +106,10 @@ class ParallelExecutor(object):
             build_strategy = BuildStrategy()
         build_strategy.num_trainers = num_trainers
         build_strategy.trainer_id = trainer_id
-        # FIXME(zcd): is_distributed_ is a temporary field, because in pserver mode,
+        # FIXME(zcd): is_distributed is a temporary field, because in pserver mode,
         # num_trainers is 1, so the current fields of build_strategy doesn't tell if
         # it's distributed model.
-        build_strategy.is_distributed_ = _is_pserver_mode(
+        build_strategy.is_distributed = _is_pserver_mode(
             main_program) or num_trainers > 1
 
         # step2: get places, the places are used in run too.
@@ -124,7 +124,8 @@ class ParallelExecutor(object):
             #    skip to 4;
             # 4. Use all the available gpus.
             gpu_count = core.get_cuda_device_count()
-            gpus = [int(s) for s in build_strategy.gpu_ids.split(",")]
+            gpu_ids = build_strategy.gpu_ids
+            gpus = [] if len(gpu_ids) == 0 else self._get_gpu_id(gpu_ids)
             if len(gpus) > 0:
                 for gpu_id in gpus:
                     assert gpu_id < gpu_count, ""
@@ -134,7 +135,7 @@ class ParallelExecutor(object):
             else:
                 gpus_env = os.getenv("FLAGS_selected_gpus")
                 if gpus_env:
-                    gpus = [int(s) for s in gpus_env.split(",")]
+                    gpus = self._get_gpu_id(gpus_env)
                 else:
                     gpus = [i for i in six.moves.range(gpu_count)]
             self._places = [core.CUDAPlace(i) for i in gpus]
@@ -325,3 +326,10 @@ class ParallelExecutor(object):
     @property
     def device_count(self):
         return len(self._places)
+
+    def _get_gpu_id(self, gpus):
+        try:
+            gpus_id = [int(s) for s in gpus.split(",")]
+        except ValueError:
+            raise ValueError('The input(%s) is not a valid gpu_id.' % (gpus))
+        return gpus_id

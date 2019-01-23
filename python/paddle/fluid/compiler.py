@@ -158,7 +158,8 @@ class CompiledProgram(object):
             #    skip to 4;
             # 4. Use all the available gpus.
             gpu_count = core.get_cuda_device_count()
-            gpus = [int(s) for s in self._build_strategy.gpu_ids.split(",")]
+            gpu_ids = self._build_strategy.gpu_ids
+            gpus = [] if len(gpu_ids) == 0 else self._get_gpu_id(gpu_ids)
             if len(gpus) > 0:
                 for gpu_id in gpus:
                     assert gpu_id < gpu_count, ""
@@ -171,7 +172,7 @@ class CompiledProgram(object):
             else:
                 gpus_env = os.getenv("FLAGS_selected_gpus")
                 if gpus_env:
-                    gpus = [int(s) for s in gpus_env.split(",")]
+                    gpus = self._get_gpu_id(gpus_env)
                 else:
                     gpus = [i for i in six.moves.range(gpu_count)]
             self._places = [core.CUDAPlace(i) for i in gpus]
@@ -252,3 +253,10 @@ class CompiledProgram(object):
             p = _place_obj(self._place)
             self._executor = core.Executor(p)
         return self
+
+    def _get_gpu_id(self, gpus):
+        try:
+            gpus_id = [int(s) for s in gpus.split(",")]
+        except ValueError:
+            raise ValueError('The input(%s) is not a valid gpu_id.' % (gpus))
+        return gpus_id
