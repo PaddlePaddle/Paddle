@@ -595,10 +595,12 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
 
   // Get min and max memory size.
   const auto range = GetRange(var_batch_ave_size);
-  const int cluster_size =
-      std::max((range.second - range.first) / 100 /*cluster num*/, 1024UL);
-  const int cluster_size1 =
-      std::max((range.second - range.first) / 1000 /*cluster num*/, 1024UL);
+  const int cluster_size = std::max(
+      static_cast<int>((range.second - range.first) / 100 /*cluster num*/),
+      1024);
+  const int cluster_size1 = std::max(
+      static_cast<int>((range.second - range.first) / 1000 /*cluster num*/),
+      1024);
 
   std::unordered_map<std::string, Node*> tensor_nodes;
   space_table_t space_table;
