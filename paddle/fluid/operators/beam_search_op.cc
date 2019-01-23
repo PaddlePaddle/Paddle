@@ -99,10 +99,19 @@ class BeamSearchOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("pre_ids")->type(),
-        ctx.device_context());
-    return kt;
+    auto *scores = ctx.Input<framework::LoDTensor>("scores");
+    size_t level = ctx.Attr<int>("level");
+    size_t batch_size = scores->lod()[level].size() - 1;
+    // The current CUDA kernel only support cases with batch_size < 4.
+    // Compute on CPU for cases with batch_size > 4.
+    if (batch_size <= 4) {
+      return framework::OpKernelType(
+          ctx.Input<framework::LoDTensor>("pre_ids")->type(), ctx.GetPlace());
+    } else {
+      return framework::OpKernelType(
+          ctx.Input<framework::LoDTensor>("pre_ids")->type(),
+          platform::CPUPlace());
+    }
   }
 };
 
