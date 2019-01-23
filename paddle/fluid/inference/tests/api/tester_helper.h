@@ -183,7 +183,7 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
     float *input_data = static_cast<float *>(input.data.data());
     // fill input data, for profile easily, do not use random data here.
     for (size_t j = 0; j < len; ++j) {
-      *(input_data + j) = Random(0, 10.);
+      *(input_data + j) = Random(0.0, 1.0) / 10.;
     }
   }
   (*inputs).emplace_back(input_slots);
