@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#ifdef WITH_JEMALLOC
+#ifdef PADDLE_WITH_JEMALLOC
 #include <jemalloc/jemalloc.h>
 #endif
 
@@ -95,7 +95,7 @@ struct NaiveAllocator {
 template <>
 void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
-#ifdef WITH_JEMALLOC
+#ifdef PADDLE_WITH_JEMALLOC
   void *p = malloc(size);
 #else
   void *p = GetCPUBuddyAllocator()->Alloc(size);
@@ -110,7 +110,7 @@ void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
 template <>
 void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
-#ifdef WITH_JEMALLOC
+#ifdef PADDLE_WITH_JEMALLOC
   free(p);
 #else
   GetCPUBuddyAllocator()->Free(p);
@@ -119,8 +119,8 @@ void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p) {
 
 template <>
 size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
-#ifdef WITH_JEMALLOC
-  // fake the result of used memory when WITH_JEMALLOC is ON
+#ifdef PADDLE_WITH_JEMALLOC
+  // fake the result of used memory when PADDLE_WITH_JEMALLOC is ON
   return 0U;
 #else
   return GetCPUBuddyAllocator()->Used();

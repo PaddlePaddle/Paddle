@@ -265,7 +265,7 @@ endif()
 if (WITH_JEMALLOC)
     find_package(JeMalloc REQUIRED)
     include_directories(${JEMALLOC_INCLUDE_DIR})
-    add_definitions(-DWITH_JEMALLOC)
+    add_definitions(-DPADDLE_WITH_JEMALLOC)
 endif()
 
 include(generic)            # simplify cmake module
