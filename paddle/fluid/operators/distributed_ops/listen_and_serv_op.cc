@@ -348,6 +348,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   }
   prefetch_handler_.reset(new distributed::PrefetchHandler());
   checkpoint_handler_.reset(new distributed::CheckpointHandler());
+  get_no_barrier_handler_.reset(new distributed::RequestGetNoBarrierHandler());
   static_cast<distributed::CheckpointHandler *>(checkpoint_handler_.get())
       ->SetId(checkpoint_block_id);
 
@@ -360,6 +361,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                             FLAGS_rpc_prefetch_thread_num);
   rpc_service_->RegisterRPC(distributed::RequestType::CHECKPOINT,
                             checkpoint_handler_.get());
+  rpc_service_->RegisterRPC(distributed::RequestType::RECV_NO_BARRIER,
+                            get_no_barrier_handler_.get());
   // ----------------------------------------------------------------------
   // Set handler contexts
   auto optimize_blocks =
@@ -376,6 +379,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   f(get_handler_.get());
   f(prefetch_handler_.get());
   f(checkpoint_handler_.get());
+  f(get_no_barrier_handler_.get());
   // ----------------------------------------------------------------------
   // Prepare checkpoint block to handler
   std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context = nullptr;

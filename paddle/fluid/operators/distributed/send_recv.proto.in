@@ -19,6 +19,7 @@ option cc_generic_services = @cc_generic_services@;
 service SendRecvService {
   rpc SendVariable(VariableMessage) returns (VariableMessage) {}
   rpc GetVariable(VariableMessage) returns (VariableMessage) {}
+  rpc GetVariableNoBarrier(VariableMessage) returns (VariableMessage) {}
   rpc PrefetchVariable(VariableMessage) returns (VariableMessage) {}
 
   rpc CheckpointNotify(VariableMessage) returns (VariableMessage) {}
@@ -47,16 +48,16 @@ message VariableMessage {
 
   message LodData { repeated int64 lod_data = 1; }
   string varname = 1;
-  // TODO(Yancey1989): reference framework::proto::VarDesc::VarType
   VarType type = 2;
   Type data_type = 3;
   repeated int64 dims = 4;
-
   int64 lod_level = 5;
   repeated LodData lod = 6;
+  // SelectedRows information including: slr_height, rows
   int64 slr_height = 7;
   bytes serialized = 8;
   bytes rows = 9;
+  // Look up table block execution output variable name.
   string out_varname = 10;
   // If 1, the ps server will start profiling, the ps
   // server stops profiling and generates a profile to /tmp/profile_ps_*
@@ -65,5 +66,3 @@ message VariableMessage {
   int64 trainer_id = 12;
   string table_name = 13;
 }
-
-message VoidMessage {}

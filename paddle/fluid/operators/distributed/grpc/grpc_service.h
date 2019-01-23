@@ -85,6 +85,8 @@ inline const char* GrpcMethodName(RequestType req_type) {
       return "/sendrecv.SendRecvService/SendVariable";
     case RequestType::RECV:
       return "/sendrecv.SendRecvService/GetVariable";
+    case RequestType::RECV_NO_BARRIER:
+      return "/sendrecv.SendRecvService/GetVariableNoBarrier";
     case RequestType::GET_MONOMER:
       return "/sendrecv.SendRecvService/GetMonomerVariable";
     case RequestType::GET_MONOMER_BARRIER:
