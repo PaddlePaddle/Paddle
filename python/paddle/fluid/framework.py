@@ -1696,12 +1696,20 @@ class Program(object):
         self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
         self._op_role_var = []
 
-        # for distribute
+        # for distribute training
+        # _is_distributed = True if under distributed training
         self._is_distributed = False
+        # _is_chief = True if the trainer is the first one, usually No.0
         self._is_chief = False
-        self._slice_vars_and_attrs = []
+        # _parameters_on_pservers records all the parameters distributed on parameter servers.
+        self._parameters_on_pservers = None
+        # _endpoints is a list about parameter servers ip:port, such as ["ip:port","ip:port"]
         self._endpoints = []
+        # if current role is parameter server, the _ps_endpoint is its "ip:port"
+        self._ps_endpoint = None
+        # trainers_endpoints, it is used for distribution.
         self._trainers_endpoints = []
+        # the distributed lookup table names
         self._distributed_lookup_table = None
 
     @property
@@ -2232,8 +2240,9 @@ class Program(object):
                             "Program")
         self._is_distributed = other._is_distributed
         self._is_chief = other._is_chief
-        self._slice_vars_and_attrs = other._slice_vars_and_attrs
+        self._parameters_on_pservers = other._parameters_on_pservers
         self._endpoints = other._endpoints
+        self._ps_endpoint = other._ps_endpoint
         self._distributed_lookup_table = other._distributed_lookup_table
 
     def _copy_data_info_from(self, other):
