@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from util import DataProviderWrapperConverter
-from dataprovider_converter import DataProviderConverter
+from __future__ import print_function
 
-__all__ = [
-    'paddle',
-    'DataProviderConverter',
-    'DataProviderWrapperConverter',  # for deprecated usage.
-    'loadParameterFile'
-]
-util.monkeypatches()
+from . import quantization_pass
+from .quantization_pass import *
+
+__all__ = quantization_pass.__all__
