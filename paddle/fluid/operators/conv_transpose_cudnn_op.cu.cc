@@ -104,16 +104,18 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     int output_offset = output->numel() / output->dims()[0] / groups;
     int filter_offset = filter->numel() / groups;
     T alpha = 1.0f, beta = 0.0f;
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+
+    auto temp_allocation =
+        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
+            workspace_size_in_bytes);
+    void* cudnn_workspace = temp_allocation->ptr();
+
     for (int g = 0; g < groups; g++) {
-      auto cudnn_func = [&](void* cudnn_workspace) {
-        CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
-            handle, &alpha, cudnn_filter_desc, filter_data + filter_offset * g,
-            cudnn_input_desc, input_data + input_offset * g, cudnn_conv_desc,
-            algo, cudnn_workspace, workspace_size_in_bytes, &beta,
-            cudnn_output_desc, output_data + output_offset * g));
-      };
-      workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
+      CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
+          handle, &alpha, cudnn_filter_desc, filter_data + filter_offset * g,
+          cudnn_input_desc, input_data + input_offset * g, cudnn_conv_desc,
+          algo, cudnn_workspace, workspace_size_in_bytes, &beta,
+          cudnn_output_desc, output_data + output_offset * g));
     }
   }
 };
@@ -209,20 +211,22 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
         output_grad->numel() / output_grad->dims()[0] / groups;
     int filter_offset = filter->numel() / groups;
     T alpha = 1.0f, beta = 0.0f;
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+
+    auto temp_allocation =
+        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
+            workspace_size_in_bytes);
+    void* cudnn_workspace = temp_allocation->ptr();
+
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset input_grad.
       for (int g = 0; g < groups; g++) {
-        auto cudnn_func = [&](void* cudnn_workspace) {
-          CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
-              handle, &alpha, cudnn_output_desc,
-              output_grad_data + output_grad_offset * g, cudnn_filter_desc,
-              filter_data + filter_offset * g, cudnn_conv_desc, data_algo,
-              cudnn_workspace, workspace_size_in_bytes, &beta, cudnn_input_desc,
-              input_grad_data + input_offset * g));
-        };
-        workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
+        CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
+            handle, &alpha, cudnn_output_desc,
+            output_grad_data + output_grad_offset * g, cudnn_filter_desc,
+            filter_data + filter_offset * g, cudnn_conv_desc, data_algo,
+            cudnn_workspace, workspace_size_in_bytes, &beta, cudnn_input_desc,
+            input_grad_data + input_offset * g));
       }
     }
 
@@ -232,15 +236,12 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       // Because beta is zero, it is unnecessary to reset filter_grad.
       // Gradient with respect to the filter
       for (int g = 0; g < groups; g++) {
-        auto cudnn_func = [&](void* cudnn_workspace) {
-          CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
-              handle, &alpha, cudnn_output_desc,
-              output_grad_data + output_grad_offset * g, cudnn_input_desc,
-              input_data + input_offset * g, cudnn_conv_desc, filter_algo,
-              cudnn_workspace, workspace_size_in_bytes, &beta,
-              cudnn_filter_desc, filter_grad_data + filter_offset * g));
-        };
-        workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
+        CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
+            handle, &alpha, cudnn_output_desc,
+            output_grad_data + output_grad_offset * g, cudnn_input_desc,
+            input_data + input_offset * g, cudnn_conv_desc, filter_algo,
+            cudnn_workspace, workspace_size_in_bytes, &beta, cudnn_filter_desc,
+            filter_grad_data + filter_offset * g));
       }
     }
   }

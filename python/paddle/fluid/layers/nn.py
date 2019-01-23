@@ -22,7 +22,7 @@ import six
 import os
 import inspect
 from ..layer_helper import LayerHelper
-from ..initializer import Normal, Constant
+from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -5181,14 +5181,21 @@ def nce(input,
             alias_probs_[little[0]] = 1.0
             alias_[little[0]] = -1
 
-        probs = assign(input=np.array(custom_dist).astype('float32'))
-        custom_alias = assign(input=np.array(alias_).astype('int32'))
-        custom_alias_probs = assign(
-            input=np.array(alias_probs_).astype('float32'))
+        def _init_by_numpy_array(numpy_array):
+            ret = helper.create_parameter(
+                attr=ParamAttr(),
+                shape=numpy_array.shape,
+                dtype=numpy_array.dtype,
+                default_initializer=NumpyArrayInitializer(numpy_array))
+            ret.stop_gradient = True
+            return ret
 
-        inputs['CustomDistProbs'] = probs
-        inputs['CustomDistAlias'] = custom_alias
-        inputs['CustomDistAliasProbs'] = custom_alias_probs
+        inputs['CustomDistProbs'] = _init_by_numpy_array(
+            np.array(custom_dist).astype('float32'))
+        inputs['CustomDistAlias'] = _init_by_numpy_array(
+            np.array(alias_).astype('int32'))
+        inputs['CustomDistAliasProbs'] = _init_by_numpy_array(
+            np.array(alias_probs_).astype('float32'))
         sampler = 2
     else:
         raise Exception("Unsupported sampler type.")
@@ -8927,7 +8934,8 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 def sigmoid_cross_entropy_with_logits(x,
                                       label,
                                       ignore_index=kIgnoreIndex,
-                                      name=None):
+                                      name=None,
+                                      normalize=False):
     """
     ${comment}
 
@@ -8936,9 +8944,25 @@ def sigmoid_cross_entropy_with_logits(x,
         label(${label_type}): ${label_comment}
         ignore_index(&{ignore_index}): ${ignore_index_comment}
         name(basestring|None): Name of the output.
+        normalize(bool): If true, divide the output by the number of
+            targets != ignore_index.
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(
+                name='data', shape=[10], dtype='float32')
+            label = fluid.layers.data(
+                name='data', shape=[10], dtype='float32')
+            loss = fluid.layers.sigmoid_cross_entropy_with_logits(
+                x=input,
+                label=label,
+                ignore_index=-1,
+                normalize=True) # or False
+            # loss = fluid.layers.reduce_sum(loss) # summation of loss
     """
 
     helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
@@ -8953,7 +8977,8 @@ def sigmoid_cross_entropy_with_logits(x,
         type="sigmoid_cross_entropy_with_logits",
         inputs={"X": x,
                 "Label": label},
-        attrs={"ignore_index": ignore_index},
+        attrs={"ignore_index": ignore_index,
+               'normalize': normalize},
         outputs={"Out": out})
     return out
 
