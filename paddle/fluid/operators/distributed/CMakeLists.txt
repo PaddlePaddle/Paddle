@@ -9,20 +9,17 @@ else()
 endif()
 configure_file(send_recv.proto.in ${CMAKE_CURRENT_SOURCE_DIR}/send_recv.proto @ONLY)
 
-
 cc_library(barrier SRCS barrier.cc)
 cc_library(rpc_server SRCS rpc_server.cc DEPS scope barrier)
 cc_library(rpc_client SRCS rpc_client.cc DEPS scope device_context)
 
-
 add_subdirectory(handlers)
 
-# FIXME(typhoonzero): use add_subdirectory once we clean the dependency of these files
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 if(WITH_GRPC)
   grpc_library(grpc_base PROTO send_recv.proto)
   cc_library(sendrecvop_utils SRCS sendrecvop_utils.cc DEPS data_type lod_tensor selected_rows grpc_base_grpc)
-  cc_library(variable_response SRCS variable_response.cc DEPS data_type lod_tensor scope grpc_base_proto)
+  cc_library(variable_response SRCS variable_response.cc DEPS data_type lod_tensor scope grpc_base_proto grpc_base_grpc)
 
   cc_library(grpc_server SRCS grpc/grpc_server.cc DEPS grpc_base_grpc scope)
   cc_library(grpc_client SRCS grpc/grpc_client.cc DEPS grpc_base_grpc scope)
