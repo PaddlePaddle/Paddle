@@ -913,7 +913,7 @@ def dynamic_gru(input,
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates
+            of GRU.Note that the bias with :math:`(1 \\times 3D)` concatenates
             the bias in the update gate, reset gate and candidate calculations.
             If it is set to False, no bias will be applied to the update gate,
             reset gate and candidate calculations. If it is set to None or one
@@ -1034,7 +1034,7 @@ def gru_unit(input,
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates
+            of GRU.Note that the bias with :math:`(1 \\times 3D)` concatenates
             the bias in the update gate, reset gate and candidate calculations.
             If it is set to False, no bias will be applied to the update gate,
             reset gate and candidate calculations. If it is set to None or one
@@ -5350,7 +5350,7 @@ def transpose(x, perm, name=None):
     Examples:
         .. code-block:: python
 
-            # use append_batch_size=False to avoid prepending extra
+            # use append_batch_size=False to avoid prepending extra
             # batch size in shape
             x = fluid.layers.data(name='x', shape=[5, 10, 15],
                             dtype='float32', append_batch_size=False)
@@ -5866,7 +5866,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                                 than :attr:`shape`.
         act (str): The non-linear activation to be applied to the reshaped tensor
                    variable.
-        inplace(bool): Must use :attr:`False` if :attr:`x` is used in multiple
+        inplace(bool): Must use :attr:`False` if :attr:`x` is used in multiple
                        operators. If this flag is set :attr:`True`, reuse input
                        :attr:`x` to reshape, which will change the shape of
                        tensor variable :attr:`x` and might cause errors when
@@ -6527,7 +6527,9 @@ def image_resize(input,
                  scale=None,
                  name=None,
                  resample='BILINEAR',
-                 actual_shape=None):
+                 actual_shape=None,
+                 align_corners=True,
+                 align_mode=0):
     """
     **Resize a Batch of Images**
 
@@ -6539,6 +6541,83 @@ def image_resize(input,
         'BILINEAR' : Bilinear interpolation
 
         'NEAREST' : Nearest neighbor interpolation
+
+    Nearest neighbor interpolation is to perform nearest neighbor interpolation
+    in both the 3rd dimention(in height direction) and the 4th dimention(in width 
+    direction) on input tensor.
+            
+    Bilinear interpolation is an extension of linear interpolation for 
+    interpolating functions of two variables (e.g. H-direction and 
+    W-direction in this op) on a rectilinear 2D grid. The key idea is 
+    to perform linear interpolation first in one direction, and then 
+    again in the other direction.
+
+    Align_corners and align_mode are optinal parameters,The calculation method 
+    of interpolation can be selected by them.
+
+    Example:
+
+      for scale:
+      
+        if align_corners = True && out_size > 1 :
+
+          scale_factor = (in_size-1.0)/(out_size-1.0)
+        
+        else:
+          
+          scale_factor = float(in_size/out_size)
+        
+      
+      Nearest neighbor interpolation:
+      
+      case 1:
+          align_corners = False
+
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+
+          H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
+          W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
+
+      case 2:
+          align_corners = True
+
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+
+          H_out = round(H_{in} * scale_{factor})
+          W_out = round(W_{in} * scale_{factor})
+
+      Bilinear interpolation:
+
+      case 1:
+          align_corners = False , align_mode = 0
+          
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+          
+          H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+          W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+
+      case 2:
+          align_corners = False , align_mode = 1
+          or
+          align_corners = True
+       
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+
+          H_out = H_{in} * scale_{factor}
+          W_out = W_{in} * scale_{factor}
+
+    For details of nearest neighbor interpolation, please refer to Wikipedia: 
+    https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
+
+    For details of bilinear interpolation, please refer to Wikipedia: 
+    https://en.wikipedia.org/wiki/Bilinear_interpolation.
+
+
 
     Args:
         input (Variable): The input tensor of image resize layer,
@@ -6569,6 +6648,12 @@ def image_resize(input,
                                 set, otherwise errors would be occured in graph
                                 constructing stage.
                                 Default: None
+        align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the 
+                               input and output tensors are aligned, preserving the values at the 
+                               corner pixels.
+                               Default: True
+        align_mode(int)  :  An optional input to specify align_corners mode. can be \'0\' 
+                             for pytorch calculation method, can be \'1'\ for tensorflow calculation method.
 
     Returns:
         Variable: The output is a 4-D tensor of the shape
@@ -6581,6 +6666,8 @@ def image_resize(input,
                     or 'NEAREST' currently.
         ValueError: One of out_shape and scale must not be None.
         ValueError: out_shape length should be 2.
+        TypeError: align_corners shoule be a bool value
+        ValueError: align_mode can only be '0' or '1'
 
     Examples:
         .. code-block:: python
@@ -6596,6 +6683,12 @@ def image_resize(input,
             "The 'resample' of image_resize can only be 'BILINEAR' or 'NEAREST' currently."
         )
     resample_type = resample_methods[resample]
+
+    if not isinstance(align_corners, bool):
+        raise TypeError("Attr align_corners should be a bool value")
+    if align_mode != 0 and align_mode != 1:
+        raise ValueError("align_mode can only be 0 or 1")
+
     if out_shape is None and scale is None:
         raise ValueError("One of out_shape and scale must not be None.")
     helper = LayerHelper('{}_interp'.format(resample_type), **locals())
@@ -6635,9 +6728,13 @@ def image_resize(input,
         type='{}_interp'.format(resample_type),
         inputs=inputs,
         outputs={"Out": out},
-        attrs={"out_h": out_h,
-               "out_w": out_w,
-               "interp_method": resample_type})
+        attrs={
+            "out_h": out_h,
+            "out_w": out_w,
+            "interp_method": resample_type,
+            "align_corners": align_corners,
+            "align_mode": align_mode
+        })
     return out
 
 
@@ -6646,7 +6743,9 @@ def resize_bilinear(input,
                     out_shape=None,
                     scale=None,
                     name=None,
-                    actual_shape=None):
+                    actual_shape=None,
+                    align_corners=True,
+                    align_mode=0):
     """
     Resize input by performing bilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
@@ -6660,6 +6759,50 @@ def resize_bilinear(input,
 
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation
+
+    Align_corners and align_mode are optinal parameters,The calculation 
+    method of interpolation can be selected by them.
+
+
+    Align_corners and align_mode are optinal parameters,The calculation method 
+    of interpolation can be selected by them.
+
+    Example:
+
+      for scale:
+      
+        if align_corners = True && out_size > 1 :
+
+          scale_factor = (in_size-1.0)/(out_size-1.0)
+        
+        else:
+          
+          scale_factor = float(in_size/out_size)     
+
+    Bilinear interpolation:
+
+      case 1:
+          align_corners = False , align_mode = 0
+          
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+          
+          H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+          W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+
+      case 2:
+          align_corners = False , align_mode = 1
+          or
+          align_corners = True
+       
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+
+          H_out = H_{in} * scale_{factor}
+          W_out = W_{in} * scale_{factor}
+
+
 
     Args:
         input(${x_type}): ${x_comment}.
@@ -6684,6 +6827,8 @@ def resize_bilinear(input,
                                 set, otherwise errors would be occured in graph
                                 constructing stage.
                                 Default: None
+        align_corners(bool): ${align_corners_comment}
+        align_mode(bool): ${align_mode_comment}
 
     Returns:
         ${out_comment}.
@@ -6694,7 +6839,8 @@ def resize_bilinear(input,
             out = fluid.layers.resize_bilinear(input, out_shape=[12, 12])
     """
 
-    return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape)
+    return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape,
+                        align_corners, align_mode)
 
 
 @templatedoc(op_type="nearest_interp")
@@ -6702,12 +6848,47 @@ def resize_nearest(input,
                    out_shape=None,
                    scale=None,
                    name=None,
-                   actual_shape=None):
+                   actual_shape=None,
+                   align_corners=True):
     """
     Resize input by performing nearest neighbor interpolation in both the
     3rd dimention(in height direction) and the 4th dimention(in width
     direction) based on given output shape which specified by actual_shape,
     out_shape and scale in priority order.
+
+    Example:
+
+      for scale:
+      
+        if align_corners = True && out_size > 1 :
+
+          scale_factor = (in_size-1.0)/(out_size-1.0)
+        
+        else:
+          
+          scale_factor = float(in_size/out_size)
+        
+      
+      Nearest neighbor interpolation:
+      
+      case 1:
+          align_corners = False
+
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+
+          H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
+          W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
+
+      case 2:
+          align_corners = True
+
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+
+          H_out = round(H_{in} * scale_{factor})
+          W_out = round(W_{in} * scale_{factor})
+
 
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
@@ -6735,6 +6916,7 @@ def resize_nearest(input,
                                 set, otherwise errors would be occured in graph
                                 constructing stage.
                                 Default: None
+        align_corners(bool): ${align_corners_comment}
 
     Returns:
         ${out_comment}.
@@ -6745,7 +6927,8 @@ def resize_nearest(input,
             out = fluid.layers.resize_nearest(input, out_shape=[12, 12])
     """
 
-    return image_resize(input, out_shape, scale, name, 'NEAREST', actual_shape)
+    return image_resize(input, out_shape, scale, name, 'NEAREST', actual_shape,
+                        align_corners)
 
 
 def image_resize_short(input, out_short_len, resample='BILINEAR'):
