@@ -41,14 +41,6 @@ class BoxClipOp : public framework::OperatorWithKernel {
     ctx->ShareDim("Input", /*->*/ "Output");
     ctx->ShareLoD("Input", /*->*/ "Output");
   }
-  /*
-  protected:
-   framework::OpKernelType GetExpectedKernelType(
-       const framework::ExecutionContext& ctx) const override {
-     auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Input"));
-     return framework::OpKernelType(data_type, platform::CPUPlace());
-   }
-   */
 };
 
 class BoxClipOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -68,11 +60,17 @@ class BoxClipOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 This operator clips input boxes to original input images.
 
-The formula is given as follows:
+For each input box, The formula is given as follows:
 
-       $$height_out = \max(\min(height_loc, im_h), 0)$$
-       $$width_out = \max(\min(width_loc, im_w), 0)$$     
+       $$xmin = \max(\min(xmin, im_w - 1), 0)$$
+       $$ymin = \max(\min(ymin, im_h - 1), 0)$$     
+       $$xmax = \max(\min(xmax, im_w - 1), 0)$$
+       $$ymax = \max(\min(ymax, im_h - 1), 0)$$
 
+where im_w and im_h are computed from ImInfo, the formula is given as follows:
+
+       $$im_w = \round(width / im_scale)$$
+       $$im_h = \round(height / im_scale)$$ 
 )DOC");
   }
 };
