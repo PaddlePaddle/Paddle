@@ -96,9 +96,13 @@ class TensorRTEngineOp : public framework::OperatorBase {
   void RunTrt(const framework::Scope &scope,
               const platform::Place &dev_place) const {
     int runtime_batch = 1;
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
+    auto stream =
+        reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
     if (trt_engine_.get() == nullptr) {
       trt_engine_.reset(new TensorRTEngine(
-          max_batch_size_, workspace_size_, nullptr,
+          max_batch_size_, workspace_size_, stream,
           boost::get<platform::CUDAPlace>(dev_place).device));
       Prepare(scope, dev_place, trt_engine_.get());
     }
@@ -126,6 +130,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       }
     }
 
+    cudaStreamSynchronize(stream);
     PADDLE_ENFORCE_LE(runtime_batch, max_batch_size_);
     // Execute the engine.
     engine->Execute(runtime_batch);
@@ -163,7 +168,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       output_index += 1;
     }
 
-    cudaStreamSynchronize(*engine->stream());
+    cudaStreamSynchronize(stream);
   }
 
   void Prepare(const framework::Scope &scope, const platform::Place &dev_place,

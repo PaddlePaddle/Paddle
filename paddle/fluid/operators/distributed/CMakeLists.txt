@@ -37,7 +37,7 @@ else()
       variable_response.cc
       collective_client.cc collective_server.cc
       ${BRPC_SRCS}
-    PROTO ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto
+    PROTO send_recv.proto
     DEPS lod_tensor selected_rows memory)
 
   set(RPC_DEPS sendrecvop_rpc brpc ssl crypto protobuf leveldb snappystream snappy zlib)
