@@ -626,7 +626,14 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace")
-      .def(py::init<int>())
+      .def("__init__",
+           [](platform::CUDAPlace self, int dev_id) {
+             PADDLE_ENFORCE(
+                 dev_id >= 0 && dev_id < platform::GetCUDADeviceCount(),
+                 "Invalid CUDAPlace(%d), must inside [0, %d)", dev_id,
+                 platform::GetCUDADeviceCount());
+             new (&self) platform::CUDAPlace(dev_id);
+           })
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")

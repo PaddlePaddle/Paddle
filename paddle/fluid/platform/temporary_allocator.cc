@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/temporary_allocator.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/memory/malloc.h"
 
 DEFINE_int64(limit_of_tmp_allocation, -1,
              "The up limit of temporary_allocation size.");
@@ -119,8 +119,7 @@ alloc::Allocation *TemporaryAllocator::AllocateImpl(
   }
   // If not find the the available allocation, get allocation from
   // AllocatorFacadeInstance.
-  auto raw_allocation =
-      alloc::AllocatorFacade::Instance().Alloc(place_, size, attr);
+  auto raw_allocation = memory::Alloc(place_, size, attr);
   auto temp_mem = new TemporaryAllocation(std::move(raw_allocation));
   VLOG(10) << "Alloc temporary allocation: " << temp_mem->ptr() << ": " << size;
   return temp_mem;

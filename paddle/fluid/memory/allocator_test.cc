@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
+#include "paddle/fluid/memory/malloc.h"
 
 #ifdef PADDLE_WITH_CUDA
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -23,8 +23,6 @@ DECLARE_int64(gpu_allocator_retry_time);
 #endif
 
 namespace paddle {
-namespace memory {
-namespace allocation {
 
 TEST(allocator, allocator) {
 #ifdef PADDLE_WITH_CUDA
@@ -33,14 +31,13 @@ TEST(allocator, allocator) {
   FLAGS_fraction_of_cuda_pinned_memory_to_use = 0.5;
 #endif
 
-  auto &instance = AllocatorFacade::Instance();
   platform::Place place;
   size_t size = 1024;
 
   {
     place = platform::CPUPlace();
     size = 1024;
-    auto cpu_allocation = instance.Alloc(place, size);
+    auto cpu_allocation = memory::Alloc(place, size);
     ASSERT_NE(cpu_allocation, nullptr);
     ASSERT_NE(cpu_allocation->ptr(), nullptr);
     ASSERT_EQ(cpu_allocation->place(), place);
@@ -51,7 +48,7 @@ TEST(allocator, allocator) {
   {
     place = platform::CUDAPlace(0);
     size = 1024;
-    auto gpu_allocation = instance.Alloc(place, size);
+    auto gpu_allocation = memory::Alloc(place, size);
     ASSERT_NE(gpu_allocation, nullptr);
     ASSERT_NE(gpu_allocation->ptr(), nullptr);
     ASSERT_EQ(gpu_allocation->place(), place);
@@ -62,7 +59,7 @@ TEST(allocator, allocator) {
     // Allocate 2GB gpu memory
     place = platform::CUDAPlace(0);
     size = 2 * static_cast<size_t>(1 << 30);
-    auto gpu_allocation = instance.Alloc(place, size);
+    auto gpu_allocation = memory::Alloc(place, size);
     ASSERT_NE(gpu_allocation, nullptr);
     ASSERT_NE(gpu_allocation->ptr(), nullptr);
     ASSERT_EQ(gpu_allocation->place(), place);
@@ -73,7 +70,7 @@ TEST(allocator, allocator) {
     place = platform::CUDAPinnedPlace();
     size = (1 << 20);
     auto cuda_pinned_allocation =
-        instance.Alloc(platform::CUDAPinnedPlace(), 1 << 20);
+        memory::Alloc(platform::CUDAPinnedPlace(), 1 << 20);
     ASSERT_NE(cuda_pinned_allocation, nullptr);
     ASSERT_NE(cuda_pinned_allocation->ptr(), nullptr);
     ASSERT_EQ(cuda_pinned_allocation->place(), place);
@@ -82,6 +79,4 @@ TEST(allocator, allocator) {
 #endif
 }
 
-}  // namespace allocation
-}  // namespace memory
 }  // namespace paddle

@@ -56,7 +56,7 @@ ELSE()
     set(MKLDNN_CTX_DEPS)
 ENDIF()
 
-cc_library(temp_allocator SRCS temporary_allocator.cc DEPS  allocator_facade)
+cc_library(temp_allocator SRCS temporary_allocator.cc DEPS malloc)
 
 nv_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce) 
 IF(WITH_GPU)
