@@ -168,12 +168,12 @@ class Autograd {
   }
 };
 
-VarBase* VarBase::NewVarBase(const platform::Place& dst_place,
-                             const bool blocking) const {
+std::unique_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
+                                             const bool blocking) const {
   PADDLE_ENFORCE(var_->IsInitialized(),
                  "Variable must be initialized when getting numpy tensor");
 
-  VarBase* new_var = new VarBase();
+  std::unique_ptr<VarBase> new_var(new VarBase());
   framework::LoDTensor* tensor =
       new_var->var_->GetMutable<framework::LoDTensor>();
   tensor->Resize(var_->Get<framework::LoDTensor>().dims());
@@ -240,9 +240,8 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
     PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
 
     framework::Scope scope;
-    platform::Place place = place_;
-    PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place);
-    p.op.RuntimeInferShape(scope, place, ctx);
+    PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place_);
+    p.op.RuntimeInferShape(scope, place_, ctx);
     p.func(framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx));
   }
 

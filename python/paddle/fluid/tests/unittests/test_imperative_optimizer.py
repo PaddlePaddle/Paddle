@@ -101,7 +101,7 @@ class TestImperativeMnist(unittest.TestCase):
     def test_mnist_cpu_float32(self):
         seed = 90
 
-        with fluid.imperative.guard(place=fuild.CPUPlace()):
+        with fluid.imperative.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
@@ -145,7 +145,8 @@ class TestImperativeMnist(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
             mnist = MNIST()
             sgd = SGDOptimizer(learning_rate=1e-3)
