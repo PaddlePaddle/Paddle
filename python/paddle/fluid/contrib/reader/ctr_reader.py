@@ -88,11 +88,11 @@ def ctr_reader(
        dense_slot_index(list(int)): the index of dense slots
        sparse_slot_index(list(int)): the index of sparse slots
        capacity(int): The buffer capacity maintained by :code:`py_reader`.
-       thread_num(list|tuple): List of tuples which declaring data shapes.
-       batch_size(list|tuple): List of strs which declaring data type.
-       file_list(list|tuple): List of ints which declaring data lod_level.
-       slots(bool): slot id of all sparse feature
-       name(basestring): The prefix Python queue name and Reader name. None will
+       thread_num(int): the thread num to read files by cpp reader.
+       batch_size(int): batch size of data.
+       file_list(list(str)): List of file names that need to read.
+       slots(list(int64)): list of slot id.
+       name(string): The prefix Python queue name and Reader name. None will
             be generated automatically.
 
     Returns:
@@ -100,7 +100,15 @@ def ctr_reader(
 
     Examples:
 
-        1. The basic usage of :code:`py_reader` is as follows:
+        1. The basic usage of :code:`ctr_reader` is as follows:
+
+     .. code-block:: python
+
+        py_reader = fluid.contrib.ctr_reader.ctr_reader(
+          feed_dict=datas, file_type='plain', file_format='csv',
+          file_list=file_list, dense_slot_indexs=[1, 2, 3, 4], sparse_slot_indexs=[],
+          capacity=64, thread_num=20, batch_size=1000, slots=[], name='ctr_reader')
+
     """
     if name is None:
         queue_name = unique_name('lod_tensor_blocking_queue')
