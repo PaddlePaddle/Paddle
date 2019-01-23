@@ -1816,26 +1816,35 @@ def generate_proposals(scores,
 def box_clip(input, im_info, inplace=False, name=None):
     """
     Clip the box into the size given by im_info
-    The formula is given as follows:
+    For each input box, The formula is given as follows:
         
     .. code-block:: text
 
-        height_out = max(min(height_loc, im_h), 0)
-        width_out = max(min(width_loc, im_w), 0)
+        xmin = max(min(xmin, im_w - 1), 0)
+        ymin = max(min(ymin, im_h - 1), 0) 
+        xmax = max(min(xmax, im_w - 1), 0)
+        ymax = max(min(ymax, im_h - 1), 0)
+    
+    where im_w and im_h are computed from im_info:
+ 
+    .. code-block:: text
+
+        im_h = round(height / scale)
+        im_w = round(weight / scale)
 
     Args:
-        input_box(variable): The input box, the last dimension is 4.
+        input(variable): The input box, the last dimension is 4.
         im_info(variable): The information of image with shape [N, 3] with 
                             layout (height, width, scale). height and width
                             is the input size and scale is the ratio of input
                             size and original size.
-        inplace(bool): Must use :attr:`False` if :attr:`input_box` is used in 
+        inplace(bool): Must use :attr:`False` if :attr:`input` is used in 
                        multiple operators. If this flag is set :attr:`True`, 
-                       reuse input :attr:`input_box` to clip, which will 
-                       change the value of tensor variable :attr:`input_box` 
-                       and might cause errors when :attr:`input_box` is used 
+                       reuse input :attr:`input` to clip, which will 
+                       change the value of tensor variable :attr:`input` 
+                       and might cause errors when :attr:`input` is used 
                        in multiple operators. If :attr:`False`, preserve the 
-                       value pf :attr:`input_box` and create a new output 
+                       value pf :attr:`input` and create a new output 
                        tensor variable whose data is copied from input x but 
                        cliped.
         name (str): The name of this layer. It is optional.
@@ -1850,16 +1859,13 @@ def box_clip(input, im_info, inplace=False, name=None):
                 name='data', shape=[8, 4], dtype='float32', lod_level=1)
             im_info = fluid.layers.data(name='im_info', shape=[3])
             out = fluid.layers.box_clip(
-                input_box=boxes, im_info=im_info, inplace=True)
+                input=boxes, im_info=im_info, inplace=True)
     """
 
     helper = LayerHelper("box_clip", **locals())
-    output = helper.create_variable_for_type_inference(dtype=input.dtype)
+    output = x if inplace else helper.create_variable_for_type_inference(\
+             dtype=input.dtype)
     inputs = {"Input": input, "ImInfo": im_info}
-    helper.append_op(
-        type="box_clip",
-        inputs=inputs,
-        attrs={"inplace:": inplace},
-        outputs={"Output": output})
+    helper.append_op(type="box_clip", inputs=inputs, outputs={"Output": output})
 
     return output
