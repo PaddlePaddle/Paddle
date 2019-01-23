@@ -23,7 +23,7 @@ from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant
 
-__all__ = ['Conv2D', 'Pool2D', 'FC', 'SimpleRNNCell']
+__all__ = ['Conv2D', 'Pool2D', 'FC']
 
 
 class Conv2D(layers.Layer):
@@ -274,94 +274,3 @@ class FC(layers.Layer):
             out = bias_out
         # add activation
         return self._helper.append_activation(out)
-
-
-class SimpleRNNCell(layers.Layer):
-    def __init__(self, step_input_size, hidden_size, output_size, param_attr):
-        super(SimpleRNNCell, self).__init__()
-        self.step_input_size = step_input_size
-        self.hidden_size = hidden_size
-        self.output_size = output_size
-        self._dype = core.VarDesc.VarType.FP32
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(
-            'SimpleRNNCell', act="tanh", param_attr=param_attr)
-
-    def _build_once(self, inputs, pre_hidden):
-        i2h_param_shape = [self.step_input_size, self.hidden_size]
-        h2h_param_shape = [self.hidden_size, self.hidden_size]
-        h2o_param_shape = [self.output_size, self.hidden_size]
-        self._i2h_w = self._helper.create_parameter(
-            attr=self._helper.param_attr,
-            shape=i2h_param_shape,
-            dtype=self._dtype,
-            is_bias=False)
-        self._h2h_w = self._helper.create_parameter(
-            attr=self._helper.param_attr,
-            shape=h2h_param_shape,
-            dtype=self._dtype,
-            is_bias=False)
-        self._h2o_w = self._helper.create_parameter(
-            attr=self._helper.param_attr,
-            shape=h2o_param_shape,
-            dtype=self._dtype,
-            is_bias=False)
-
-    def forward(self, input, pre_hidden):
-
-        tmp_i2h = self._helper.create_variable_for_type_inference(self._dtype)
-        tmp_h2h = self._helper.create_variable_for_type_inference(self._dtype)
-        hidden = self._helper.create_variable_for_type_inference(self._dype)
-        out = self._helper.create_variable_for_type_inference(self._dype)
-        softmax_out = self._helper.create_variable_for_type_inference(
-            self._dtype)
-        reduce_out = self._helper.create_variable_for_type_inference(
-            self._dtype)
-        self._helper.append_op(
-            type="mul",
-            inputs={"X": input,
-                    "Y": self._i2h_w},
-            outputs={"Out": tmp_i2h},
-            attrs={"x_num_col_dims": 1,
-                   "y_num_col_dims": 1})
-
-        self._helper.append_op(
-            type="mul",
-            inputs={"X": pre_hidden,
-                    "Y": self._h2h_w},
-            outputs={"Out": tmp_h2h},
-            attrs={"x_num_col_dims": 1,
-                   "y_num_col_dims": 1})
-
-        self._helper.append_op(
-            type="elementwise_add",
-            inputs={'X': tmp_h2h,
-                    'Y': tmp_i2h},
-            outputs={'Out': hidden},
-            attrs={'axis': -1,
-                   'use_mkldnn': False})
-        hidden = self._helper.append_activation(hidden)
-
-        self._helper.append_op(
-            type="mul",
-            inputs={"X": hidden,
-                    "Y": self._h2o_w},
-            outputs={"Out": out},
-            attrs={"x_num_col_dims": 1,
-                   "y_num_col_dims": 1})
-
-        self._helper.append_op(
-            type="softmax",
-            inputs={"X": out},
-            outputs={"Out": softmax_out},
-            attrs={"use_cudnn": False})
-
-        self._helper.append_op(
-            type='reduce_sum',
-            inputs={'X': softmax_out},
-            outputs={'Out': reduce_out},
-            attrs={'dim': None,
-                   'keep_dim': False,
-                   'reduce_all': True})
-
-        return reduce_out, hidden
