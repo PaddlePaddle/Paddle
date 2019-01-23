@@ -33,7 +33,6 @@ function print_usage() {
     ${BLUE}gen_doc_lib${NONE}: generate paddle documents library
     ${BLUE}html${NONE}: convert C++ source code into HTML
     ${BLUE}dockerfile${NONE}: generate paddle release dockerfile
-    ${BLUE}capi${NONE}: generate paddle CAPI package
     ${BLUE}fluid_inference_lib${NONE}: deploy fluid inference library
     ${BLUE}check_style${NONE}: run code style check
     ${BLUE}cicheck${NONE}: run CI tasks
@@ -180,9 +179,7 @@ function cmake_gen() {
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
-        -DWITH_C_API=${WITH_C_API:-OFF}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
-        -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
@@ -216,8 +213,6 @@ EOF
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
-        -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \
-        -DWITH_C_API=${WITH_C_API:-OFF} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
@@ -706,59 +701,43 @@ EOF
 EOF
 }
 
-function gen_capi_package() {
-    if [[ ${WITH_C_API} == "ON" ]]; then
-        capi_install_prefix=${INSTALL_PREFIX:-/paddle/build}/capi_output
-        rm -rf $capi_install_prefix
-        make DESTDIR="$capi_install_prefix" install
-        cd $capi_install_prefix/
-        ls | egrep -v "^Found.*item$" | xargs tar -czf ${PADDLE_ROOT}/build/paddle.tgz
-    fi
-}
-
 function gen_fluid_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
-        cat <<EOF
+    cat <<EOF
     ========================================
     Generating fluid library for train and inference ...
     ========================================
 EOF
-        cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
-        make -j `nproc` fluid_lib_dist
-        make -j `nproc` inference_lib_dist
-      fi
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
+    make -j `nproc` fluid_lib_dist
+    make -j `nproc` inference_lib_dist
 }
 
 function tar_fluid_lib() {
-    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
-        cat <<EOF
+    cat <<EOF
     ========================================
     Taring fluid library for train and inference ...
     ========================================
 EOF
-        cd ${PADDLE_ROOT}/build
-        cp -r fluid_install_dir fluid
-        tar -czf fluid.tgz fluid
-        cp -r fluid_inference_install_dir fluid_inference
-        tar -czf fluid_inference.tgz fluid_inference
-      fi
+    cd ${PADDLE_ROOT}/build
+    cp -r fluid_install_dir fluid
+    tar -czf fluid.tgz fluid
+    cp -r fluid_inference_install_dir fluid_inference
+    tar -czf fluid_inference.tgz fluid_inference
 }
 
 function test_fluid_lib() {
-    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
-        cat <<EOF
+    cat <<EOF
     ========================================
     Testing fluid library for inference ...
     ========================================
 EOF
-        cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
-        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
-                 ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
-                 ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
-        ./clean.sh
-      fi
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
+             ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
+             ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
+    ./clean.sh
 }
 
 function main() {
@@ -791,11 +770,6 @@ function main() {
       dockerfile)
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
-      capi)
-        cmake_gen ${PYTHON_ABI:-""}
-        build
-        gen_capi_package
-        ;;
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
         gen_fluid_lib
@@ -810,7 +784,6 @@ function main() {
         build
         assert_api_not_changed ${PYTHON_ABI:-""}
         run_test
-        gen_capi_package
         gen_fluid_lib
         test_fluid_lib
         assert_api_spec_approvals
@@ -820,7 +793,6 @@ function main() {
         assert_api_spec_approvals
         ;;
       test_inference)
-        gen_capi_package
         gen_fluid_lib
         test_fluid_lib
         ;;

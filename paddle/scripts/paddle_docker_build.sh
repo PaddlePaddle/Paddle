@@ -28,7 +28,6 @@ function start_build_docker() {
         -e WITH_AVX=ON \
         -e WITH_GOLANG=OFF \
         -e WITH_TESTING=ON \
-        -e WITH_C_API=OFF \
         -e WITH_COVERAGE=ON \
         -e COVERALLS_UPLOAD=ON \
         -e WITH_DEB=OFF \
@@ -67,9 +66,6 @@ function main() {
     DOCKER_REPO="paddlepaddle/paddle"
     VERSION="latest-dev"
     PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
-    if [ "$1" == "build_android" ]; then
-        VERSION="latest-dev-android"
-    fi
     IMG=${DOCKER_REPO}:${VERSION}
     start_build_docker $@
 }
