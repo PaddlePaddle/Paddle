@@ -20,6 +20,7 @@ import sys
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.imperative.nn import Conv2D, Pool2D, FC
 from test_imperative_base import new_program_scope
@@ -58,7 +59,7 @@ class Generator(fluid.imperative.Layer):
 
 
 class TestImperativeMnist(unittest.TestCase):
-    def test_mnist_cpu_float32(self):
+    def test_gan_float32(self):
         seed = 90
 
         startup = fluid.Program()
@@ -115,7 +116,8 @@ class TestImperativeMnist(unittest.TestCase):
             sgd = SGDOptimizer(learning_rate=1e-3)
             sgd.minimize(g_loss)
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = fluid.Executor(fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0))
         static_params = dict()
         with fluid.scope_guard(scope):
             img = np.ones([2, 1], np.float32)
@@ -135,7 +137,7 @@ class TestImperativeMnist(unittest.TestCase):
                     scope.find_var(param.name).get_tensor())
 
         dy_params = dict()
-        with fluid.imperative.guard(place=fluid.CPUPlace()):
+        with fluid.imperative.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 

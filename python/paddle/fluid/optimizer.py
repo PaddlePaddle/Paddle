@@ -388,7 +388,6 @@ class Optimizer(object):
             params_grads = []
             for param in parameters:
                 if param.stop_gradient:
-                    print("parameter:", param.name, "stop gradient, skip it")
                     continue
                 # create gradient variable
                 grad_var = Variable(

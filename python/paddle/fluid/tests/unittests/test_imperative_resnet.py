@@ -143,7 +143,7 @@ class BottleneckBlock(fluid.imperative.Layer):
         y = fluid.layers.elementwise_add(x=short, y=conv2)
 
         layer_helper = LayerHelper('elementwise_add_activation', act='relu')
-        return layer_helper.append_activation(y, force_no_inplace=True)
+        return layer_helper.append_activation(y)
 
 
 class ResNet(fluid.imperative.Layer):
@@ -204,11 +204,8 @@ class ResNet(fluid.imperative.Layer):
 
 
 class TestImperativeResnet(unittest.TestCase):
-    def test_resnet_gpu_float32(self):
+    def test_resnet_float32(self):
         seed = 90
-
-        if not core.is_compiled_with_cuda():
-            return
 
         batch_size = train_parameters["batch_size"]
         batch_num = 1
@@ -277,168 +274,8 @@ class TestImperativeResnet(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            exe = fluid.Executor(fluid.CUDAPlace(0))
-
-            resnet = ResNet()
-            optimizer = optimizer_setting(train_parameters)
-
-            np.random.seed(seed)
-            import random
-            random.seed = seed
-            train_reader = paddle.batch(
-                paddle.dataset.flowers.train(use_xmap=False),
-                batch_size=batch_size)
-
-            img = fluid.layers.data(
-                name='pixel', shape=[3, 224, 224], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            out = resnet(img)
-            loss = fluid.layers.cross_entropy(input=out, label=label)
-            avg_loss = fluid.layers.mean(x=loss)
-            optimizer.minimize(avg_loss)
-
-            # initialize params and fetch them
-            static_param_init_value = {}
-            static_param_name_list = []
-            static_grad_name_list = []
-            for param in fluid.default_startup_program().global_block(
-            ).all_parameters():
-                static_param_name_list.append(param.name)
-            for param in fluid.default_main_program().global_block(
-            ).all_parameters():
-                if not param.stop_gradient:
-                    static_grad_name_list.append(param.name +
-                                                 core.grad_var_suffix())
-
-            out = exe.run(fluid.default_startup_program(),
-                          fetch_list=static_param_name_list)
-
-            for i in range(len(static_param_name_list)):
-                static_param_init_value[static_param_name_list[i]] = out[i]
-
-            for batch_id, data in enumerate(train_reader()):
-                if batch_id >= batch_num:
-                    break
-
-                static_x_data = np.array(
-                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
-                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                    [batch_size, 1])
-
-                fetch_list = [avg_loss.name]
-                fetch_list.extend(static_param_name_list)
-                fetch_list.extend(static_grad_name_list)
-                out = exe.run(fluid.default_main_program(),
-                              feed={"pixel": static_x_data,
-                                    "label": y_data},
-                              fetch_list=fetch_list)
-
-                static_param_value = {}
-                static_grad_value = {}
-                static_out = out[0]
-                param_start_pos = 1
-                grad_start_pos = len(static_param_name_list) + param_start_pos
-                for i in range(param_start_pos,
-                               len(static_param_name_list) + param_start_pos):
-                    static_param_value[static_param_name_list[
-                        i - param_start_pos]] = out[i]
-                for i in range(grad_start_pos,
-                               len(static_grad_name_list) + grad_start_pos):
-                    static_grad_value[static_grad_name_list[
-                        i - grad_start_pos]] = out[i]
-
-        self.assertTrue(np.allclose(static_out, dy_out))
-
-        self.assertEqual(len(dy_param_init_value), len(static_param_init_value))
-        for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
-            self.assertTrue(np.isfinite(value.all()))
-            self.assertFalse(np.isnan(value.any()))
-
-        self.assertEqual(len(dy_grad_value), len(static_grad_value))
-        for key, value in six.iteritems(static_grad_value):
-            # TODO(minqiyang): find a way to align the gradient
-            self.assertTrue(np.allclose(value, dy_grad_value[key]))
-            self.assertTrue(np.isfinite(value.all()))
-            self.assertFalse(np.isnan(value.any()))
-
-        self.assertEqual(len(dy_param_value), len(static_param_value))
-        for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key]))
-            self.assertTrue(np.isfinite(value.all()))
-            self.assertFalse(np.isnan(value.any()))
-
-    def test_resnet_cpu_float32(self):
-        seed = 90
-
-        batch_size = train_parameters["batch_size"]
-        batch_num = 1
-        with fluid.imperative.guard(place=fluid.CPUPlace()):
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
-
-            resnet = ResNet()
-            optimizer = optimizer_setting(train_parameters)
-            np.random.seed(seed)
-            import random
-            random.seed = seed
-            train_reader = paddle.batch(
-                paddle.dataset.flowers.train(use_xmap=False),
-                batch_size=batch_size)
-
-            dy_param_init_value = {}
-            for param in fluid.default_main_program().global_block(
-            ).all_parameters():
-                dy_param_init_value[param.name] = param._numpy()
-
-            for batch_id, data in enumerate(train_reader()):
-                if batch_id >= batch_num:
-                    break
-
-                dy_x_data = np.array(
-                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
-                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                    batch_size, 1)
-
-                img = to_variable(dy_x_data)
-                label = to_variable(y_data)
-                label._stop_gradient = True
-
-                out = resnet(img)
-                loss = fluid.layers.cross_entropy(input=out, label=label)
-                avg_loss = fluid.layers.mean(x=loss)
-
-                dy_out = avg_loss._numpy()
-
-                if batch_id == 0:
-                    for param in fluid.default_main_program().global_block(
-                    ).all_parameters():
-                        if param.name not in dy_param_init_value:
-                            dy_param_init_value[param.name] = param._numpy()
-
-                avg_loss._backward()
-
-                dy_grad_value = {}
-                for param in fluid.default_main_program().global_block(
-                ).all_parameters():
-                    if not param.stop_gradient:
-                        np_array = np.array(param._ivar._grad_ivar().value()
-                                            .get_tensor())
-                        dy_grad_value[param.name + core.grad_var_suffix(
-                        )] = np_array
-
-                optimizer.minimize(avg_loss)
-
-                dy_param_value = {}
-                for param in fluid.default_main_program().global_block(
-                ).all_parameters():
-                    dy_param_value[param.name] = param._numpy()
-
-        with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
-
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
             resnet = ResNet()
             optimizer = optimizer_setting(train_parameters)
