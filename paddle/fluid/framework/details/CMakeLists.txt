@@ -10,6 +10,8 @@ cc_library(multi_devices_helper SRCS multi_devices_helper.cc DEPS graph graph_he
 cc_library(multi_devices_graph_print_pass SRCS multi_devices_graph_print_pass.cc DEPS multi_devices_helper)
 cc_library(multi_devices_graph_check_pass SRCS multi_devices_graph_check_pass.cc DEPS multi_devices_helper)
 
+cc_library(fuse_gradient_space_pass SRCS fuse_gradient_space_pass.cc DEPS graph graph_helper)
+
 cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_rows)
 
 if(WITH_DISTRIBUTE)

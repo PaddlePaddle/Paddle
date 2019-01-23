@@ -43,6 +43,9 @@ const char kGraphVars[] = "vars";
 // aux variables to represent dependency. Useful to resolve data hazard.
 typedef std::unordered_set<VarHandleBase*> GraphDepVars;
 const char kGraphDepVars[] = "dep_vars";
+
+typedef std::unordered_map<std::string, std::string> ParamsAndGrads;
+const char kParamsAndGrads[] = "params_grads";
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
