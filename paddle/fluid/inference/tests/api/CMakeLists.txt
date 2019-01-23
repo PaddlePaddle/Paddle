@@ -115,6 +115,11 @@ if (NOT EXISTS ${MOBILENET_INSTALL_DIR})
 endif()
 inference_analysis_api_test_with_refer_result(test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR} analyzer_vis_tester.cc SERIAL)
 
+# bert
+set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert")
+download_model_and_data(${BERT_INSTALL_DIR} "bert_model.tar.gz" "bert_data.txt.tar.gz")
+inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc)
+
 # resnet50
 inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
   "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz" SERIAL)
