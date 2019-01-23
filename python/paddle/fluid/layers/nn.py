@@ -6542,6 +6542,82 @@ def image_resize(input,
 
         'NEAREST' : Nearest neighbor interpolation
 
+    Nearest neighbor interpolation is to perform nearest neighbor interpolation
+    in both the 3rd dimention(in height direction) and the 4th dimention(in width 
+    direction) on input tensor.
+            
+    Bilinear interpolation is an extension of linear interpolation for 
+    interpolating functions of two variables (e.g. H-direction and 
+    W-direction in this op) on a rectilinear 2D grid. The key idea is 
+    to perform linear interpolation first in one direction, and then 
+    again in the other direction.
+
+    Align_corners and align_mode are optinal parameters,The calculation method 
+    of interpolation can be selected by them.
+
+    Example:
+          
+        Nearest neighbor interpolation:
+          
+        case 1:
+            align_mode = 0 , align_corners = True
+            or 
+            align_mode = 1 , align_corners = False
+
+            input : (N,C,H_in,W_in)
+            output: (N,C,H_out,W_out) where:
+
+            H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
+            W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
+
+        case 2:
+            align_mode = 0 , align_corners = False
+            or 
+            align_mode = 1 , align_corners = True
+
+            input : (N,C,H_in,W_in)
+            output: (N,C,H_out,W_out) where:
+
+            H_out = round(H_{in} * scale_{factor})
+            W_out = round(W_{in} * scale_{factor})
+
+        Bilinear interpolation:
+
+        case 1:
+            align_mode = 0 , align_corners = True
+            or 
+            align_mode = 1 , align_corners = True
+
+            input : (N,C,H_in,W_in)
+            output: (N,C,H_out,W_out) where:
+              
+            H_out = H_{in} * scale_{factor}
+            W_out = W_{in} * scale_{factor}
+
+        case 2:
+            align_mode = 0 , align_corners = False
+           
+            input : (N,C,H_in,W_in)
+            output: (N,C,H_out,W_out) where:
+
+            H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+            W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+        for scale:
+          
+        if align_corners = True and out_{size}>1 :
+          scale_{factor} = (in_{size}-1.0)/(out_{size}-1.0)
+        else:
+          scale_{factor} = float(in_{size}/out_{size})
+
+    For details of nearest neighbor interpolation, please refer to Wikipedia: 
+    https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
+
+    For details of bilinear interpolation, please refer to Wikipedia: 
+    https://en.wikipedia.org/wiki/Bilinear_interpolation.
+
+
+
     Args:
         input (Variable): The input tensor of image resize layer,
                           This is a 4-D tensor of the shape
@@ -6683,6 +6759,45 @@ def resize_bilinear(input,
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation
 
+    Align_corners and align_mode are optinal parameters,The calculation 
+    method of interpolation can be selected by them.
+
+
+    Align_corners and align_mode are optinal parameters,The calculation method 
+    of interpolation can be selected by them.
+
+    Example:          
+
+    Bilinear interpolation:
+
+        case 1:
+            align_mode = 0 , align_corners = True
+            or 
+            align_mode = 1 , align_corners = True
+
+            input : (N,C,H_in,W_in)
+            output: (N,C,H_out,W_out) where:
+              
+            H_out = H_{in} * scale_{factor}
+            W_out = W_{in} * scale_{factor}
+
+        case 2:
+            align_mode = 0 , align_corners = False
+           
+            input : (N,C,H_in,W_in)
+            output: (N,C,H_out,W_out) where:
+
+            H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+            W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+        for scale:
+          
+        if align_corners = True and out_{size}>1 :
+          scale_{factor} = (in_{size}-1.0)/(out_{size}-1.0)
+        else:
+          scale_{factor} = float(in_{size}/out_{size})
+
+
     Args:
         input(${x_type}): ${x_comment}.
 
@@ -6735,6 +6850,40 @@ def resize_nearest(input,
     3rd dimention(in height direction) and the 4th dimention(in width
     direction) based on given output shape which specified by actual_shape,
     out_shape and scale in priority order.
+
+    Example:
+          
+       Nearest neighbor interpolation:
+          
+       case 1:
+           align_mode = 0 , align_corners = True
+           or 
+           align_mode = 1 , align_corners = False
+
+           input : (N,C,H_in,W_in)
+           output: (N,C,H_out,W_out) where:
+
+           H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
+           W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
+
+       case 2:
+           align_mode = 0 , align_corners = False
+           or 
+           align_mode = 1 , align_corners = True
+
+           input : (N,C,H_in,W_in)
+           output: (N,C,H_out,W_out) where:
+
+           H_out = round(H_{in} * scale_{factor})
+           W_out = round(W_{in} * scale_{factor})
+
+       for scale:
+          
+       if align_corners = True and out_{size}>1 :
+          scale_{factor} = (in_{size}-1.0)/(out_{size}-1.0)
+       else:
+          scale_{factor} = float(in_{size}/out_{size})
+
 
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
