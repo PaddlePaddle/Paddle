@@ -354,7 +354,8 @@ class TestGenerateProposals(unittest.TestCase):
         data_shape = [20, 64, 64]
         images = fluid.layers.data(
             name='images', shape=data_shape, dtype='float32')
-        im_info = fluid.layers.data(name='im_info', shape=[3], dtype='float32')
+        im_info = fluid.layers.data(
+            name='im_info', shape=[1, 3], dtype='float32')
         anchors, variances = fluid.layers.anchor_generator(
             name='anchor_generator',
             input=images,
