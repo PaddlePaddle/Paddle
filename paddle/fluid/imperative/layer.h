@@ -21,6 +21,7 @@
 #include <map>     // NOLINT
 #include <string>  // NOLINT
 #include <vector>  // NOLINT
+#include <memory>  // NOLINT
 
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
@@ -153,8 +154,8 @@ class VarBase {
 
   framework::LoDTensor& GradValue();
 
-  VarBase* NewVarBase(const platform::Place& dst_place,
-                      const bool blocking) const;
+  std::unique_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
+                                      const bool blocking) const;
 
   inline std::string GradName() const {
     PADDLE_ENFORCE(

@@ -419,7 +419,7 @@ class LayerHelper(object):
             attrs={'axis': dim_start})
         return tmp
 
-    def append_activation(self, input_var, force_no_inplace=False):
+    def append_activation(self, input_var):
         act = self.kwargs.get('act', None)
         if act is None:
             return input_var
@@ -436,7 +436,7 @@ class LayerHelper(object):
         tmp = input_var
         # NOTE(dzhwinter): some activation support inplace compution.
         # NOTE(minqiyang): currently, we don't support inplace in imperative mode
-        if not force_no_inplace and core.IsInplace(act_type):
+        if not imperative_base.enabled() and core.IsInplace(act_type):
             tmp = input_var
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
