@@ -23,7 +23,7 @@ from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant
 
-__all__ = ['Conv2D', 'Pool2D', 'FC']
+__all__ = ['Conv2D', 'Pool2D', 'FC', 'EMBEDDING']
 
 
 class Conv2D(layers.Layer):
@@ -274,3 +274,53 @@ class FC(layers.Layer):
             out = bias_out
         # add activation
         return self._helper.append_activation(out)
+
+
+class EMBEDDING(layers.Layer):
+    def __init__(self,
+                 size,
+                 is_sparse=False,
+                 is_distributed=False,
+                 padding_idx=None,
+                 param_attr=None,
+                 dtype='float32'):
+
+        super(EMBEDDING, self).__init__()
+        self._size = size
+        self._is_sparse = is_sparse
+        self._is_distributed = is_distributed
+
+        self._padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+            size[0] + padding_idx)
+
+        self._param_attr = param_attr
+        self._dtype = dtype
+        self._remote_prefetch = self.is_sparse and (not self.is_distributed)
+        if self._remote_prefetch:
+            assert self._is_sparse is True and self._is_distributed is False
+
+        from ..layer_helper import LayerHelper
+        self._helper = LayerHelper('embedding', param_attr=param_attr)
+
+    def _build_once(self, input):
+        self._w = self._helper.create_parameter(
+            attr=self._param_attr,
+            shape=self._size,
+            dtype=self._dtype,
+            is_bias=False)
+
+    def forward(self, input):
+        out = self._helper.create_variable_for_type_inference(self._dtype)
+        self._helper.append_op(
+            type='lookup_table',
+            inputs={'Ids': input,
+                    'W': self._w},
+            outputs={'Out': out},
+            attrs={
+                'is_sparse': self._is_sparse,
+                'is_distributed': self._is_distributed,
+                'remote_prefetch': self._remote_prefetch,
+                'padding_idx': self._padding_idx
+            })
+
+        return out
