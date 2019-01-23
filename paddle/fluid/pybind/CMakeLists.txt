@@ -18,9 +18,9 @@ if(WITH_PYTHON)
       SRCS ${PYBIND_SRCS}
       DEPS ${PYBIND_DEPS}
       ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
-    if(NOT APPLE AND NOT ANDROID AND NOT WIN32)
+    if(NOT APPLE AND NOT WIN32)
       target_link_libraries(paddle_pybind rt)
-    endif(NOT APPLE AND NOT ANDROID AND NOT WIN32)
+    endif(NOT APPLE AND NOT WIN32)
   endif(WITH_AMD_GPU)
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)

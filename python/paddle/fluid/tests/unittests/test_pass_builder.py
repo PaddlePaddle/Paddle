@@ -111,7 +111,7 @@ class TestPassBuilder(unittest.TestCase):
 
         pass_builder.remove_pass(len(pass_builder.all_passes()) - 1)
         self.assertEqual(origin_len + 1, len(pass_builder.all_passes()))
-        viz_pass.set_str("graph_viz_path", "/tmp/test_viz_pass")
+        viz_pass.set("graph_viz_path", "/tmp/test_viz_pass")
 
         self.check_network_convergence(
             use_cuda=core.is_compiled_with_cuda(),
