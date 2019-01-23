@@ -20,6 +20,8 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
+#include "paddle/fluid/inference/tensorrt/op_teller.h"
+#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
@@ -35,8 +37,10 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
     std::unique_ptr<framework::ir::Graph> graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph.get());
 
-  auto teller =
-      Get<SubgraphDetector::NodeInsideSubgraphTeller>("tensorrt_node_teller");
+  auto teller = [](const framework::ir::Node *node) {
+    if (!node->IsOp() || !node->Op()) return false;
+    return tensorrt::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
+  };
 
   SubGraphFuser fuser(graph.get(), teller,
                       Get<int>("min_subgraph_size") /*min subgraph size*/);
@@ -74,6 +78,9 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   framework::BlockDesc block_desc(nullptr, &block_proto);
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
+  string::PrettyLogDetail("---  detect a sub-graph with %d nodes",
+                          subgraph.size());
+
   for (auto *node : subgraph) {
     auto *op = block_desc.AppendOp();
     *op->Proto() = *node->Op()->Proto();
@@ -232,7 +239,6 @@ std::vector<std::string> ExtractParameters(
 
 REGISTER_PASS(tensorrt_subgraph_pass,
               paddle::inference::analysis::TensorRtSubgraphPass)
-    .RequirePassAttr("tensorrt_node_teller")
     .RequirePassAttr("max_batch_size")
     .RequirePassAttr("workspace_size")
     .RequirePassAttr("min_subgraph_size");

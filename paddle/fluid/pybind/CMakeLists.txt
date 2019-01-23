@@ -1,9 +1,11 @@
+set(PYBIND_DEPS pybind python proto_desc memory executor async_executor prune
+  feed_fetch_method pass_builder parallel_executor profiler layer scope_pool
+  tracer analysis_predictor)
 
-set(PYBIND_DEPS pybind python proto_desc memory executor async_executor prune feed_fetch_method pass_builder parallel_executor profiler layer scope_pool)
 if(WITH_PYTHON)
   list(APPEND PYBIND_DEPS py_func_op)
 endif()
-set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc async_executor_py.cc imperative.cc)
+set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc async_executor_py.cc imperative.cc ir.cc inference_api.cc)
 
 if(WITH_PYTHON)
   if(WITH_AMD_GPU)
@@ -16,14 +18,13 @@ if(WITH_PYTHON)
       SRCS ${PYBIND_SRCS}
       DEPS ${PYBIND_DEPS}
       ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
-    if(NOT APPLE AND NOT ANDROID AND NOT WIN32)
+    if(NOT APPLE AND NOT WIN32)
       target_link_libraries(paddle_pybind rt)
-    endif(NOT APPLE AND NOT ANDROID AND NOT WIN32)
+    endif(NOT APPLE AND NOT WIN32)
   endif(WITH_AMD_GPU)
 
-  if(WIN32)
-    target_link_libraries(paddle_pybind shlwapi)
-  endif(WIN32)
+  get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+  target_link_libraries(paddle_pybind ${os_dependency_modules})
 
   cc_test(tensor_py_test SRCS tensor_py_test.cc DEPS python)
 endif(WITH_PYTHON)

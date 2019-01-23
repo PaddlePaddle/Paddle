@@ -15,25 +15,36 @@
 from __future__ import print_function
 
 import collections
+from collections import defaultdict
 import contextlib
 import os
 import re
+import traceback
 import six
-import sys
 
 import numpy as np
+import subprocess
 
 from .. import compat as cpt
 from .proto import framework_pb2
 try:
+    if os.name == 'nt':
+        import sys
+        third_lib_path = os.path.abspath(os.path.dirname(
+            __file__)) + os.sep + '..' + os.sep + 'libs'
+        os.environ['path'] += ';' + third_lib_path
+        sys.path.append(third_lib_path)
+
     from . import core
 except ImportError as e:
     if os.name == 'nt':
+        executable_path = os.path.abspath(os.path.dirname(sys.executable))
         raise ImportError(
-            """NOTE: You may need to run \"set PATH=c:\python27\lib:%PATH%\"
-        if you encounters \"mkldnn.dll not found\" errors. If you have python
-        installed in other directory, replace \"c:\python27\lib" with your own
-        directory. The original error is: \n""" + cpt.get_exception_message(e))
+            """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
+        if you encounters \"DLL load failed\" errors. If you have python
+        installed in other directory, replace \"%s\" with your own
+        directory. The original error is: \n %s""" %
+            (executable_path, executable_path, cpt.get_exception_message(e)))
     else:
         raise ImportError(
             """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
@@ -365,20 +376,24 @@ class Variable(object):
         self.stop_gradient = stop_gradient
         self.is_data = is_data
         if _in_imperative_mode():
-            self._ivar = core.VarBase()
+            self._ivar = kwargs.get("ivar", None)
+            if not self._ivar:
+                self._ivar = core.VarBase()
             self._ivar.desc = self.desc
+            self._ivar.stop_gradient = stop_gradient
 
     def _numpy(self):
-        scope = _imperative_tracer().get_scope(self.block.desc)
-        tensor = core.get_variable_tensor(scope, self.desc.name())
+        tensor = self._ivar.value().get_tensor()
         return np.array(tensor)
 
     def _backward(self):
-        scope = _imperative_tracer().get_scope(self.block.desc)
-        self._ivar._run_backward(scope)
+        self._ivar._run_backward()
 
     def _gradient(self):
-        return np.array(self._ivar._grad())
+        return np.array(self._ivar._grad_value())
+
+    def _clear_gradient(self):
+        self._ivar._clear_gradient()
 
     def __str__(self):
         return self.to_string(True)
@@ -422,6 +437,14 @@ class Variable(object):
             None
         """
         self.desc = input
+
+    @property
+    def _stop_gradient(self):
+        return self._ivar.stop_gradient
+
+    @_stop_gradient.setter
+    def _stop_gradient(self, s):
+        self._ivar.stop_gradient = s
 
     @property
     def persistable(self):
@@ -609,6 +632,11 @@ class Operator(object):
         if type is None:
             raise ValueError(
                 "`type` to initilized an Operator can not be None.")
+        else:
+            callstack_var_name = op_maker.kOpCreationCallstackAttrName()
+            op_attrs[callstack_var_name] = list(
+                reversed(traceback.format_stack()))[1:]
+
         self.desc.set_type(type)
         proto = OpProtoHolder.instance().get_op_proto(type)
 
@@ -648,20 +676,16 @@ class Operator(object):
                     self.desc.set_input(in_proto.name, [])
 
         if outputs is not None:
-            given = set()
-            need = set()
-            for n in outputs:
-                given.add(n)
             for m in proto.outputs:
-                need.add(m.name)
-            if not given == need:
-                raise ValueError(("Incorrect setting for output(s) of "
-                                  "operator \"%s\". Need: [%s] Given: [%s]") %
-                                 (type,
-                                  ", ".join(six.binary_type(e) for e in need),
-                                  ", ".join(six.binary_type(e) for e in given)))
-
+                if (m.name not in outputs) and m.dispensable:
+                    continue
+                if not ((m.name in outputs) or m.dispensable):
+                    raise ValueError(
+                        ("Incorrect setting for output(s) of "
+                         "operator \"%s\", should set: [%s].") % (type, m.name))
             for out_proto in proto.outputs:
+                if out_proto.name not in outputs:
+                    continue
                 out_args = outputs[out_proto.name]
                 if not isinstance(out_args, list):
                     out_args = [out_args]
@@ -686,26 +710,28 @@ class Operator(object):
                 self._update_desc_attr(attr_name, attr_val)
 
         self.desc.check_attrs()
+
         if self._has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
+
         if _in_imperative_mode():
             self.iop = core.OpBase()
             self.iop.desc = self.desc
-            self.inputs = []
+            self.inputs = defaultdict(list)
             if inputs is not None:
-                for inp in inputs.values():
-                    if isinstance(inp, Variable):
-                        self.inputs.append(inp)
-                    elif isinstance(inp, list) or isinstance(inp, tuple):
-                        self.inputs.extend(inp[:])
-            self.outputs = []
+                for k, v in six.iteritems(inputs):
+                    if isinstance(v, Variable):
+                        self.inputs[k].append(v._ivar)
+                    elif isinstance(v, list) or isinstance(v, tuple):
+                        self.inputs[k].extend([var._ivar for var in v])
+            self.outputs = defaultdict(list)
             if outputs is not None:
-                for out in outputs.values():
-                    if isinstance(out, Variable):
-                        self.outputs.append(out)
-                    elif isinstance(out, list) or isinstance(out, tuple):
-                        self.outputs.extend(out[:])
+                for k, v in six.iteritems(outputs):
+                    if isinstance(v, Variable):
+                        self.outputs[k].append(v._ivar)
+                    elif isinstance(v, list) or isinstance(v, tuple):
+                        self.outputs[k].extend([var._ivar for var in v])
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
@@ -1271,12 +1297,21 @@ class Block(object):
             Operator: the append Operator.
         """
         op_desc = self.desc.append_op()
-        op = Operator(block=self, desc=op_desc, *args, **kwargs)
-        if _in_imperative_mode():
-            _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
-                                       [v._ivar for v in op.outputs], self.desc)
+        op = Operator(
+            block=self,
+            desc=op_desc,
+            type=kwargs.get("type", None),
+            inputs=kwargs.get("inputs", None),
+            outputs=kwargs.get("outputs", None),
+            attrs=kwargs.get("attrs", None))
         self.ops.append(op)
+        self._trace_op(op, kwargs.get("stop_gradient", False))
         return op
+
+    def _trace_op(self, op, stop_gradient=False):
+        if _in_imperative_mode():
+            _imperative_tracer().trace(op.iop, op.inputs, op.outputs, self.desc,
+                                       stop_gradient)
 
     def _insert_op(self, index, *args, **kwargs):
         """
@@ -1323,11 +1358,15 @@ class Block(object):
 
     def _prepend_op(self, *args, **kwargs):
         op_desc = self.desc._prepend_op()
-        op = Operator(self, op_desc, *args, **kwargs)
-        if _in_imperative_mode():
-            _imperative_tracer().trace(op.iop, [v._ivar for v in op.inputs],
-                                       [v._ivar for v in op.outputs], self.desc)
+        op = Operator(
+            self,
+            op_desc,
+            type=kwargs.get("type", None),
+            inputs=kwargs.get("inputs", None),
+            outputs=kwargs.get("outputs", None),
+            attrs=kwargs.get("attrs", None))
         self.ops.insert(0, op)
+        self._trace_op(op, kwargs.get("stop_gradient", False))
         return op
 
     def _sync_with_cpp(self):
@@ -1472,6 +1511,154 @@ class Block(object):
                 persistable=True,
                 is_data=var.is_data)
         return ret_var
+
+
+class IrGraph(object):
+    """
+    IrGraph uses core.Graph as the delegation to accomplish the manipulation.
+    """
+
+    def __init__(self, graph, for_test=False):
+        """
+        Construct the IrGraph using core.Graph.
+        Args:
+            graph(core.Graph): C++ Graph.
+            for_test(bool): True for the test graph and false for the train graph.
+        """
+        assert isinstance(
+            graph, core.Graph), 'graph must be the instance of core.Graph.'
+        self.graph = graph
+        self._for_test = for_test
+
+    def is_test(self):
+        return self._for_test
+
+    def all_parameters(self):
+        param_nodes = set()
+        for node in self.graph.nodes():
+            if node.is_var() and node.var() is not None and node.var(
+            ).persistable():
+                param_nodes.add(node)
+        return param_nodes
+
+    def all_vars(self):
+        return {node for node in self.graph.nodes() if node.is_var()}
+
+    def all_ops(self):
+        return {node for node in self.graph.nodes() if node.is_op()}
+
+    def create_param_node(self, name, var_type, shape, var_dtype):
+        var_desc = core.VarDesc(name)
+        var_desc.set_type(var_type)
+        var_desc.set_shape(shape)
+        var_desc.set_dtype(var_dtype)
+        var_desc.set_persistable(True)
+        return self.graph.create_var_node(var_desc)
+
+    def create_var_node(self, name, var_type, shape, var_dtype):
+        var_desc = core.VarDesc(name)
+        var_desc.set_type(var_type)
+        var_desc.set_shape(shape)
+        var_desc.set_dtype(var_dtype)
+        return self.graph.create_var_node(var_desc)
+
+    def create_var_node_from_desc(self, var_desc):
+        return self.graph.create_var_node(var_desc)
+
+    def create_op_node(self, op_type, attrs, inputs, outputs):
+        op_desc = core.OpDesc()
+        op_desc.set_type(op_type)
+        for attr, value in attrs.iteritems():
+            self._update_desc_attr(op_desc, attr, value)
+        for input_name, var_nodes in inputs.iteritems():
+            if not isinstance(var_nodes, list):
+                var_nodes = [var_nodes]
+            op_desc.set_input(input_name,
+                              [var_node.name() for var_node in var_nodes])
+        for output_name, var_nodes in outputs.iteritems():
+            if not isinstance(var_nodes, list):
+                var_nodes = [var_nodes]
+            op_desc.set_output(output_name,
+                               [var_node.name() for var_node in var_nodes])
+        return self.graph.create_op_node(op_desc)
+
+    def create_op_node_from_desc(self, op_desc):
+        return self.graph.create_op_node(op_desc)
+
+    def update_input_link(self, old_input_node, new_input_node, op_node):
+        assert old_input_node in self.graph.nodes() and new_input_node in self.graph.nodes() and \
+            op_node in self.graph.nodes(), 'Th three arguments must be in the graph nodes.'
+        old_input_node.outputs_remove(op_node)
+        op_node.inputs_remove(old_input_node)
+        new_input_node.outputs_append(op_node)
+        op_node.inputs_append(new_input_node)
+        op_node.op()._rename_input(old_input_node.name(), new_input_node.name())
+
+    def link_to(self, node_in, node_out):
+        assert node_in in self.graph.nodes() and node_out in self.graph.nodes(), \
+            'Th two arguments must be in the graph nodes.'
+        node_in.outputs_append(node_out)
+        node_out.inputs_append(node_in)
+
+    def safe_remove_nodes(self, remove_nodes):
+        if not isinstance(remove_nodes, set):
+            remove_nodes = set(remove_nodes)
+        core.graph_safe_remove_nodes(self.graph, remove_nodes)
+
+    def draw(self, save_path, name, marked_nodes=None):
+        def _convert_to_pdf(dot_file_path):
+            pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
+            exited_code = subprocess.call('dot -Tpdf ' + dot_file_path \
+                            + ' -o ' + pdf_save_path, shell=True)
+            if exited_code != 0:
+                print('The dot command is needed for creating pdf files.')
+                print('The {} is saved as the dot filetype.'.format(
+                    dot_file_path))
+
+        remove_ctr_vars = set()
+        ops_num = 0
+        for node in self.graph.nodes():
+            if node.is_ctrl_var():
+                remove_ctr_vars.add(node)
+            elif node.is_op():
+                ops_num += 1
+        print('Total ops num = {}.'.format(ops_num))
+        self.safe_remove_nodes(remove_ctr_vars)
+        if marked_nodes is not None:
+            if not isinstance(marked_nodes, set):
+                marked_nodes = set(marked_nodes)
+            marked_nodes = marked_nodes - remove_ctr_vars
+            if self.graph.has('__graphviz__marked_node__'):
+                self.graph.erase('__graphviz__marked_node__')
+            self.graph.set('__graphviz__marked_node__', marked_nodes)
+        viz_dot_path = os.path.join(save_path, name) + '.dot'
+        viz_pass = core.get_pass('graph_viz_pass')
+        viz_pass.set('graph_viz_path', viz_dot_path)
+        viz_pass.apply(self.graph)
+        _convert_to_pdf(viz_dot_path)
+
+    def to_program(self):
+        convert_pass = core.get_pass('graph_to_program_pass')
+        convert_pass.set('program', Program().desc)
+        convert_pass.apply(self.graph)
+        desc = convert_pass.get_program('program')
+        program = Program._construct_from_desc(desc)
+        return program
+
+    def _update_desc_attr(self, desc, name, val):
+        """
+        Update the value of desc's attribute by attribute's name.
+        """
+        if isinstance(val, Block):
+            desc.set_block_attr(name, val.desc)
+        elif isinstance(val, list) and val and all(
+                isinstance(v, Block) for v in val):
+            desc.set_blocks_attr(name, [v.desc for v in val])
+        elif isinstance(val, core.BlockDesc) or \
+                isinstance(val, core.ProgramDesc):
+            desc.set_serialized_attr(name, val.serialize_to_string())
+        else:
+            desc._set_attr(name, val)
 
 
 class Program(object):
@@ -1641,8 +1828,8 @@ class Program(object):
                 parameters, e.g., :code:`trainable`, :code:`optimize_attr`, need
                 to print.
 
-        Returns
-            (str): The debug string.
+        Returns:
+            str : The debug string.
 
         Raises:
             ValueError: If any of required fields is not set and throw_on_error is
@@ -1894,6 +2081,23 @@ class Program(object):
         """
         p = Program()
         p.desc = core.ProgramDesc(binary_str)
+        p.blocks = [Block(p, i) for i in six.moves.range(p.desc.num_blocks())]
+        p._sync_with_cpp()
+        return p
+
+    @staticmethod
+    def _construct_from_desc(desc):
+        """
+        Construct a program from program desc.
+
+        Args:
+            desc(core.ProgramDesc): The program desc for constructing.
+
+        Returns:
+            Program: A program.
+        """
+        p = Program()
+        p.desc = desc
         p.blocks = [Block(p, i) for i in six.moves.range(p.desc.num_blocks())]
         p._sync_with_cpp()
         return p

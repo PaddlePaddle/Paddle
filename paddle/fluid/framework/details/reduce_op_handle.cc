@@ -60,8 +60,8 @@ void ReduceOpHandle::GatherSelectedRows(
       *CollectiveContext::GetInstance();
 
   // 1. gather local selected rows, merge them
-  std::string gathered_var_name = out_var_handle->name_ + "_gathered_tmp";
-  auto scope = local_scopes_.at(out_var_handle->scope_idx_);
+  std::string gathered_var_name = out_var_handle->name() + "_gathered_tmp";
+  auto scope = local_scopes_.at(out_var_handle->scope_idx());
   auto gathered_var_mid = scope->Var(gathered_var_name);
   auto gathered_select_rows =
       gathered_var_mid->GetMutable<framework::SelectedRows>();
@@ -73,7 +73,7 @@ void ReduceOpHandle::GatherSelectedRows(
   // merge them
   auto merged_dev_ctx = dynamic_cast<DevCtx *>(dev_ctxes.at(out_place));
   std::string merged_var_name =
-      GetRemoteVarName(out_var_handle->name_, collective_context.trainer_id_);
+      GetRemoteVarName(out_var_handle->name(), collective_context.trainer_id_);
   auto merged_select_rows =
       scope->Var(merged_var_name)->GetMutable<SelectedRows>();
   operators::math::scatter::MergeAdd<DevCtx, DataType> merge_func;
@@ -101,7 +101,7 @@ void ReduceOpHandle::GatherSelectedRows(
 
     operators::distributed::RemoteVar var;
     var.trainer_id_ = i;
-    var.var_name_ = GetRemoteVarName(out_var_handle->name_, i);
+    var.var_name_ = GetRemoteVarName(out_var_handle->name(), i);
     var.ep_ = collective_context.endpoints_[i];
 
     vars.push_back(var);
@@ -166,7 +166,7 @@ void ReduceOpHandle::RunImpl() {
   }
 
   auto pre_in_var =
-      var_scopes.at(in_0_handle->scope_idx_)->FindVar(in_0_handle->name_);
+      var_scopes.at(in_0_handle->scope_idx())->FindVar(in_0_handle->name());
   PADDLE_ENFORCE_NOT_NULL(pre_in_var);
 
   // Wait input done, this Wait is asynchronous operation
@@ -175,15 +175,15 @@ void ReduceOpHandle::RunImpl() {
   // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
   std::vector<platform::Place> in_places;  // used to get dev_ctx
   for (auto *in_handle : in_var_handles) {
-    in_places.emplace_back(in_handle->place_);
+    in_places.emplace_back(in_handle->place());
     auto in_var =
-        var_scopes.at(in_handle->scope_idx_)->FindVar(in_handle->name_);
+        var_scopes.at(in_handle->scope_idx())->FindVar(in_handle->name());
     PADDLE_ENFORCE_NOT_NULL(in_var);
     VariableVisitor::EnforceShapeAndDTypeEQ(*pre_in_var, *in_var);
   }
 
-  auto out_var =
-      var_scopes.at(out_var_handle->scope_idx_)->FindVar(out_var_handle->name_);
+  auto out_var = var_scopes.at(out_var_handle->scope_idx())
+                     ->FindVar(out_var_handle->name());
   PADDLE_ENFORCE_NOT_NULL(out_var);
 
   // NOTE: The tensors' Place of input and output must be all on GPU or all on
@@ -191,9 +191,9 @@ void ReduceOpHandle::RunImpl() {
   auto in_p = VariableVisitor::GetMutableTensor(pre_in_var).place();
   platform::Place t_out_p;
   if (platform::is_gpu_place(in_p)) {
-    PADDLE_ENFORCE(platform::is_gpu_place(out_var_handle->place_),
+    PADDLE_ENFORCE(platform::is_gpu_place(out_var_handle->place()),
                    "Places of input and output must be all on GPU.");
-    t_out_p = out_var_handle->place_;
+    t_out_p = out_var_handle->place();
   } else {
     t_out_p = platform::CPUPlace();
   }
@@ -253,7 +253,7 @@ void ReduceOpHandle::RunImpl() {
           auto &reduce_sum_trg = *this->local_scopes_[0]
                                       ->FindVar(kLocalExecScopeName)
                                       ->Get<Scope *>()
-                                      ->FindVar(out_var_handle->name_)
+                                      ->FindVar(out_var_handle->name())
                                       ->GetMutable<framework::LoDTensor>();
           ReduceLoDTensor func(lod_tensors, &reduce_sum_trg);
           VisitDataType(lod_tensors[0]->type(), func);
@@ -269,9 +269,9 @@ void ReduceOpHandle::RunImpl() {
       auto pre_in = pre_in_var->Get<framework::LoDTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(
-          out_var_handle->place_, pre_in.type());
+          out_var_handle->place(), pre_in.type());
 
-      auto out_p = out_var_handle->place_;
+      auto out_p = out_var_handle->place();
       int root_id = boost::get<platform::CUDAPlace>(out_p).device;
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < var_scopes.size(); ++i) {
@@ -286,7 +286,7 @@ void ReduceOpHandle::RunImpl() {
         if (root_id == dev_id) {
           recvbuffer =
               out_var->GetMutable<framework::LoDTensor>()->mutable_data(
-                  out_var_handle->place_);
+                  out_var_handle->place());
         }
 
         int type = platform::ToNCCLDataType(lod_tensor.type());
@@ -320,8 +320,8 @@ std::vector<const T *> ReduceOpHandle::GetInputValues(
     const std::vector<const Scope *> &var_scopes) const {
   std::vector<const T *> in_selected_rows;
   for (auto *in_handle : in_var_handles) {
-    auto &in_sr = var_scopes.at(in_handle->scope_idx_)
-                      ->FindVar(in_handle->name_)
+    auto &in_sr = var_scopes.at(in_handle->scope_idx())
+                      ->FindVar(in_handle->name())
                       ->Get<T>();
     in_selected_rows.emplace_back(&in_sr);
   }

@@ -76,11 +76,10 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
 }
 
 void SetConfig(contrib::AnalysisConfig *cfg) {
-  cfg->model_dir = FLAGS_infer_model;
-  cfg->use_gpu = false;
-  cfg->device = 0;
-  cfg->specify_input_name = true;
-  cfg->enable_ir_optim = true;
+  cfg->SetModel(FLAGS_infer_model);
+  cfg->DisableGpu();
+  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim();
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -95,10 +94,14 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 // Easy for profiling independently.
-TEST(Analyzer_MM_DNN, profile) {
+void profile(bool use_mkldnn = false) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
   std::vector<PaddleTensor> outputs;
+
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -120,6 +123,11 @@ TEST(Analyzer_MM_DNN, profile) {
   }
 }
 
+TEST(Analyzer_MM_DNN, profile) { profile(); }
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_MM_DNN, profile_mkldnn) { profile(true /* use_mkldnn */); }
+#endif
+
 // Check the fuse status
 TEST(Analyzer_MM_DNN, fuse_statis) {
   contrib::AnalysisConfig cfg;
@@ -132,15 +140,24 @@ TEST(Analyzer_MM_DNN, fuse_statis) {
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-TEST(Analyzer_MM_DNN, compare) {
+void compare(bool use_mkldnn = false) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
+
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
+
+TEST(Analyzer_MM_DNN, compare) { compare(); }
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_MM_DNN, compare_mkldnn) { compare(true /* use_mkldnn */); }
+#endif
 
 // Compare Deterministic result
 TEST(Analyzer_MM_DNN, compare_determine) {

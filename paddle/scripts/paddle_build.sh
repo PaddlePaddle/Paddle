@@ -26,8 +26,6 @@ function print_usage() {
 
     echo -e "\n${RED}Options${NONE}:
     ${BLUE}build${NONE}: run build for x86 platform
-    ${BLUE}build_android${NONE}: run build for android platform
-    ${BLUE}build_ios${NONE}: run build for ios platform
     ${BLUE}test${NONE}: run all unit tests
     ${BLUE}single_test${NONE}: run a single unit test
     ${BLUE}bind_test${NONE}: parallel tests bind to different GPU
@@ -35,7 +33,6 @@ function print_usage() {
     ${BLUE}gen_doc_lib${NONE}: generate paddle documents library
     ${BLUE}html${NONE}: convert C++ source code into HTML
     ${BLUE}dockerfile${NONE}: generate paddle release dockerfile
-    ${BLUE}capi${NONE}: generate paddle CAPI package
     ${BLUE}fluid_inference_lib${NONE}: deploy fluid inference library
     ${BLUE}check_style${NONE}: run code style check
     ${BLUE}cicheck${NONE}: run CI tasks
@@ -167,6 +164,9 @@ function cmake_gen() {
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
 
+    distibuted_flag=${WITH_DISTRIBUTE:-OFF}
+    grpc_flag=${WITH_GRPC:-${distibuted_flag}}
+
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
@@ -176,15 +176,13 @@ function cmake_gen() {
         -DWITH_DOC=${WITH_DOC:-OFF}
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
-        -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF}
+        -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_NGRAPH=${WITH_NGRAPH:-OFF}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
-        -DWITH_C_API=${WITH_C_API:-OFF}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
-        -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
@@ -199,6 +197,8 @@ function cmake_gen() {
         -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
+        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} 
+        -DWITH_GRPC=${grpc_flag}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -211,14 +211,12 @@ EOF
         -DWITH_DOC=${WITH_DOC:-OFF} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
-        -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF} \
+        -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_NGRAPH=${WITH_NGRAPH:-OFF} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
-        -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \
-        -DWITH_C_API=${WITH_C_API:-OFF} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
@@ -232,7 +230,9 @@ EOF
         -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}\
         -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}\
         -DPY_VERSION=${PY_VERSION:-2.7} \
-        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
+        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
+        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} \
+        -DWITH_GRPC=${grpc_flag}
 
 }
 
@@ -299,110 +299,6 @@ EOF
     make install -j 8
 }
 
-function build_android() {
-    if [ $ANDROID_ABI == "arm64-v8a" ]; then
-      ANDROID_ARCH=arm64
-      if [ $ANDROID_API -lt 21 ]; then
-        echo "Warning: arm64-v8a requires ANDROID_API >= 21."
-        ANDROID_API=21
-      fi
-    else # armeabi, armeabi-v7a
-      ANDROID_ARCH=arm
-    fi
-
-    ANDROID_STANDALONE_TOOLCHAIN=$ANDROID_TOOLCHAINS_DIR/$ANDROID_ARCH-android-$ANDROID_API
-
-    cat <<EOF
-    ============================================
-    Generating the standalone toolchain ...
-    ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh
-          --arch=$ANDROID_ARCH
-          --platform=android-$ANDROID_API
-          --install-dir=${ANDROID_STANDALONE_TOOLCHAIN}
-    ============================================
-EOF
-    ${ANDROID_NDK_HOME}/build/tools/make-standalone-toolchain.sh \
-          --arch=$ANDROID_ARCH \
-          --platform=android-$ANDROID_API \
-          --install-dir=$ANDROID_STANDALONE_TOOLCHAIN
-
-    BUILD_ROOT=${PADDLE_ROOT}/build_android
-    DEST_ROOT=${PADDLE_ROOT}/install_android
-
-    mkdir -p $BUILD_ROOT
-    cd $BUILD_ROOT
-
-    if [ $ANDROID_ABI == "armeabi-v7a" ]; then
-      cmake -DCMAKE_SYSTEM_NAME=Android \
-            -DANDROID_STANDALONE_TOOLCHAIN=$ANDROID_STANDALONE_TOOLCHAIN \
-            -DANDROID_ABI=$ANDROID_ABI \
-            -DANDROID_ARM_NEON=ON \
-            -DANDROID_ARM_MODE=ON \
-            -DHOST_C_COMPILER=/usr/bin/gcc \
-            -DHOST_CXX_COMPILER=/usr/bin/g++ \
-            -DCMAKE_INSTALL_PREFIX=$DEST_ROOT \
-            -DCMAKE_BUILD_TYPE=MinSizeRel \
-            -DUSE_EIGEN_FOR_BLAS=ON \
-            -DWITH_C_API=ON \
-            -DWITH_SWIG_PY=OFF \
-            ..
-    elif [ $ANDROID_ABI == "arm64-v8a" ]; then
-      cmake -DCMAKE_SYSTEM_NAME=Android \
-            -DANDROID_STANDALONE_TOOLCHAIN=$ANDROID_STANDALONE_TOOLCHAIN \
-            -DANDROID_ABI=$ANDROID_ABI \
-            -DANDROID_ARM_MODE=ON \
-            -DHOST_C_COMPILER=/usr/bin/gcc \
-            -DHOST_CXX_COMPILER=/usr/bin/g++ \
-            -DCMAKE_INSTALL_PREFIX=$DEST_ROOT \
-            -DCMAKE_BUILD_TYPE=MinSizeRel \
-            -DUSE_EIGEN_FOR_BLAS=OFF \
-            -DWITH_C_API=ON \
-            -DWITH_SWIG_PY=OFF \
-            ..
-    elif [ $ANDROID_ABI == "armeabi" ]; then
-      cmake -DCMAKE_SYSTEM_NAME=Android \
-            -DANDROID_STANDALONE_TOOLCHAIN=$ANDROID_STANDALONE_TOOLCHAIN \
-            -DANDROID_ABI=$ANDROID_ABI \
-            -DANDROID_ARM_MODE=ON \
-            -DHOST_C_COMPILER=/usr/bin/gcc \
-            -DHOST_CXX_COMPILER=/usr/bin/g++ \
-            -DCMAKE_INSTALL_PREFIX=$DEST_ROOT \
-            -DCMAKE_BUILD_TYPE=MinSizeRel \
-            -DWITH_C_API=ON \
-            -DWITH_SWIG_PY=OFF \
-            ..
-    else
-      echo "Invalid ANDROID_ABI: $ANDROID_ABI"
-    fi
-
-    cat <<EOF
-    ============================================
-    Building in $BUILD_ROOT ...
-    ============================================
-EOF
-    make -j `nproc`
-    make install -j `nproc`
-}
-
-function build_ios() {
-    # Create the build directory for CMake.
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-
-    # Compile paddle binaries
-    cmake .. \
-          -DCMAKE_SYSTEM_NAME=iOS \
-          -DIOS_PLATFORM=OS \
-          -DCMAKE_OSX_ARCHITECTURES="arm64" \
-          -DWITH_C_API=ON \
-          -DUSE_EIGEN_FOR_BLAS=ON \
-          -DWITH_TESTING=OFF \
-          -DWITH_SWIG_PY=OFF \
-          -DCMAKE_BUILD_TYPE=Release
-
-    make -j 2
-}
-
 function run_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -419,6 +315,45 @@ EOF
         fi
     fi
 }
+
+function run_brpc_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [[ ${WITH_TESTING:-ON} == "ON" \
+        && ${WITH_DISTRIBUTE:-OFF} == "ON" \
+        && ${WITH_GRPC:-OFF} == "OFF" ]] ; then
+    cat <<EOF
+    ========================================
+    Running brpc unit tests ...
+    ========================================
+EOF
+        set +x
+        declare -a other_tests=("test_listen_and_serv_op" "system_allocator_test")
+        all_tests=`ctest -N`
+
+        for t in "${other_tests[@]}"
+        do
+            if [[ ${all_tests} != *$t* ]]; then
+                continue
+            fi
+
+            if [[ ${TESTING_DEBUG_MODE:-OFF} == "ON" ]] ; then
+                ctest -V -R $t
+            else
+                ctest --output-on-failure -R $t
+            fi
+        done
+        set -x
+
+        if [[ ${TESTING_DEBUG_MODE:-OFF} == "ON" ]] ; then
+            ctest -V -R test_dist_*
+        else
+            ctest --output-on-failure -R test_dist_*
+        fi
+    fi
+}
+
+
 
 function run_mac_test() {
     mkdir -p ${PADDLE_ROOT}/build
@@ -447,7 +382,7 @@ EOF
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
-      
+
         if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
             paddle version
         fi
@@ -488,7 +423,8 @@ function assert_api_spec_approvals() {
         BRANCH="develop"
     fi
 
-    API_FILES=("paddle/fluid/API.spec"
+    API_FILES=("cmake/external"
+               "paddle/fluid/API.spec"
                "paddle/fluid/framework/operator.h"
                "paddle/fluid/framework/tensor.h"
                "paddle/fluid/framework/lod_tensor.h"
@@ -527,6 +463,18 @@ function assert_api_spec_approvals() {
         fi
     fi
 
+    pip install ${PADDLE_ROOT}/build/opt/paddle/share/wheels/*.whl
+    CHECK_DOCK_MD5=`python ${PADDLE_ROOT}/tools/check_doc_approval.py`
+    if [ "True" != ${CHECK_DOCK_MD5} ]; then
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 35982308`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "You must have shanyi15 approval for the api doc change! "
+            exit 1
+        fi
+        echo ${CHECK_DOCK_MD5} >/root/.cache/doc_md5.txt
+    fi
 }
 
 
@@ -624,7 +572,7 @@ EOF
     case $LIB_TYPE in
       full)
         # Build full Paddle Python module. Will timeout without caching 'copy_paddle_pybind' first
-        make -j `nproc` gen_proto_py framework_py_proto copy_paddle_pybind paddle_python
+        make -j `nproc` framework_py_proto copy_paddle_pybind paddle_python
         ;;
       pybind)
         # Build paddle pybind library. Takes 49 minutes to build. Might timeout
@@ -797,59 +745,43 @@ EOF
 EOF
 }
 
-function gen_capi_package() {
-    if [[ ${WITH_C_API} == "ON" ]]; then
-        capi_install_prefix=${INSTALL_PREFIX:-/paddle/build}/capi_output
-        rm -rf $capi_install_prefix
-        make DESTDIR="$capi_install_prefix" install
-        cd $capi_install_prefix/
-        ls | egrep -v "^Found.*item$" | xargs tar -czf ${PADDLE_ROOT}/build/paddle.tgz
-    fi
-}
-
 function gen_fluid_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
-        cat <<EOF
+    cat <<EOF
     ========================================
     Generating fluid library for train and inference ...
     ========================================
 EOF
-        cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
-        make -j `nproc` fluid_lib_dist
-        make -j `nproc` inference_lib_dist
-      fi
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
+    make -j `nproc` fluid_lib_dist
+    make -j `nproc` inference_lib_dist
 }
 
 function tar_fluid_lib() {
-    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
-        cat <<EOF
+    cat <<EOF
     ========================================
     Taring fluid library for train and inference ...
     ========================================
 EOF
-        cd ${PADDLE_ROOT}/build
-        cp -r fluid_install_dir fluid
-        tar -czf fluid.tgz fluid
-        cp -r fluid_inference_install_dir fluid_inference
-        tar -czf fluid_inference.tgz fluid_inference
-      fi
+    cd ${PADDLE_ROOT}/build
+    cp -r fluid_install_dir fluid
+    tar -czf fluid.tgz fluid
+    cp -r fluid_inference_install_dir fluid_inference
+    tar -czf fluid_inference.tgz fluid_inference
 }
 
 function test_fluid_lib() {
-    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
-        cat <<EOF
+    cat <<EOF
     ========================================
     Testing fluid library for inference ...
     ========================================
 EOF
-        cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
-        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
-                 ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
-                 ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
-        ./clean.sh
-      fi
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
+             ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
+             ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
+    ./clean.sh
 }
 
 function main() {
@@ -860,12 +792,6 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build
         gen_dockerfile ${PYTHON_ABI:-""}
-        ;;
-      build_android)
-        build_android
-        ;;
-      build_ios)
-        build_ios
         ;;
       test)
         run_test
@@ -888,11 +814,6 @@ function main() {
       dockerfile)
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
-      capi)
-        cmake_gen ${PYTHON_ABI:-""}
-        build
-        gen_capi_package
-        ;;
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
         gen_fluid_lib
@@ -907,17 +828,20 @@ function main() {
         build
         assert_api_not_changed ${PYTHON_ABI:-""}
         run_test
-        gen_capi_package
         gen_fluid_lib
         test_fluid_lib
         assert_api_spec_approvals
+        ;;
+      cicheck_brpc)
+        cmake_gen ${PYTHON_ABI:-""}
+        build
+        run_brpc_test
         ;;
       assert_api)
         assert_api_not_changed ${PYTHON_ABI:-""}
         assert_api_spec_approvals
         ;;
       test_inference)
-        gen_capi_package
         gen_fluid_lib
         test_fluid_lib
         ;;

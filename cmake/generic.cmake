@@ -90,11 +90,11 @@
 # including binary directory for generated headers.
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-if(NOT APPLE AND NOT ANDROID)
-    find_package(Threads REQUIRED)
-    link_libraries(${CMAKE_THREAD_LIBS_INIT})
-    set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
-endif(NOT APPLE AND NOT ANDROID)
+if(NOT APPLE)
+  find_package(Threads REQUIRED)
+  link_libraries(${CMAKE_THREAD_LIBS_INIT})
+  set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
+endif(NOT APPLE)
 
 set_property(GLOBAL PROPERTY FLUID_MODULES "")
 # find all fluid modules is used for paddle fluid static library
@@ -114,6 +114,10 @@ endfunction(find_fluid_modules)
 function(common_link TARGET_NAME)
   if (WITH_PROFILER)
     target_link_libraries(${TARGET_NAME} gperftools::profiler)
+  endif()
+
+  if (WITH_JEMALLOC)
+    target_link_libraries(${TARGET_NAME} jemalloc::jemalloc)
   endif()
 endfunction()
 
@@ -228,7 +232,7 @@ function(merge_static_libs TARGET_NAME)
       # Get the file names of the libraries to be merged
       set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
     endforeach()
-    # msvc will put libarary in directory of "/Release/xxxlib" by default 
+    # msvc will put libarary in directory of "/Release/xxxlib" by default
     #       COMMAND cmake -E remove "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET_NAME}.lib"
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
       COMMAND cmake -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}"
@@ -300,7 +304,7 @@ function(cc_library TARGET_NAME)
     if(cc_library_DEPS)
       merge_static_libs(${TARGET_NAME} ${cc_library_DEPS})
     else()
-      message(FATAL "Please specify source file or library in cc_library.")
+      message(FATAL_ERROR "Please specify source files or libraries in cc_library(${TARGET_NAME} ...).")
     endif()
   endif(cc_library_SRCS)
 endfunction(cc_library)
@@ -355,6 +359,8 @@ function(cc_binary TARGET_NAME)
     add_dependencies(${TARGET_NAME} ${cc_binary_DEPS})
     common_link(${TARGET_NAME})
   endif()
+  get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+  target_link_libraries(${TARGET_NAME} ${os_dependency_modules})
 endfunction(cc_binary)
 
 function(cc_test TARGET_NAME)
@@ -363,18 +369,15 @@ function(cc_test TARGET_NAME)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    add_executable(${TARGET_NAME} ${cc_test_SRCS})
     if(WIN32)
-      list(APPEND win32_deps shlwapi)
       if("${cc_test_DEPS};" MATCHES "python;")
         list(REMOVE_ITEM cc_test_DEPS python)
-        list(APPEND win32_deps ${PYTHON_LIBRARIES})
+        target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
       endif()
     endif(WIN32)
-    add_executable(${TARGET_NAME} ${cc_test_SRCS})
-    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
-    if(WIN32)
-      target_link_libraries(${TARGET_NAME} ${win32_deps})
-    endif(WIN32)
+    get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} ${os_dependency_modules} paddle_gtest_main lod_tensor memory gtest gflags glog)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
     common_link(${TARGET_NAME})
     add_test(NAME ${TARGET_NAME}
@@ -447,7 +450,8 @@ function(nv_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
-    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
+    get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog ${os_dependency_modules})
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
@@ -534,7 +538,8 @@ function(hip_test TARGET_NAME)
     endif()
     add_executable(${TARGET_NAME} ${_cmake_options} ${_generated_files} ${_sources})
     set_target_properties(${TARGET_NAME} PROPERTIES LINKER_LANGUAGE HIP)
-    target_link_libraries(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main memory gtest gflags)
+    get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+    target_link_libraries(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main memory gtest gflags ${os_dependency_modules})
     add_dependencies(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main memory gtest gflags)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
@@ -650,12 +655,6 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
   set(${SRCS})
   set(${HDRS})
 
-  if (MOBILE_INFERENCE)
-      set(EXTRA_FLAG "lite:")
-  else()
-      set(EXTRA_FLAG "")
-  endif()
-
   foreach(FIL ${ARGN})
     get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
     get_filename_component(FIL_WE ${FIL} NAME_WE)
@@ -672,7 +671,7 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
       COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}"
       COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
       -I${CMAKE_CURRENT_SOURCE_DIR}
-      --cpp_out "${EXTRA_FLAG}${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
+      --cpp_out "${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
       DEPENDS ${ABS_FIL} protoc
       COMMENT "Running C++ protocol buffer compiler on ${FIL}"
       VERBATIM )
@@ -743,7 +742,7 @@ function(grpc_library TARGET_NAME)
   #FIXME(putcn): the follwoing line is supposed to generate *.pb.h and cc, but
   # somehow it didn't. line 602 to 604 is to patching this. Leaving this here
   # for now to enable dist CI.
-  protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")
+  paddle_protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")
   set(grpc_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.cc")
   set(grpc_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.h")
   cc_library("${TARGET_NAME}_proto" SRCS "${grpc_proto_srcs}")
@@ -786,7 +785,7 @@ function(brpc_library TARGET_NAME)
   get_filename_component(PROTO_WE ${brpc_library_PROTO} NAME_WE)
   get_filename_component(PROTO_PATH ${ABS_PROTO} PATH)
 
-  protobuf_generate_cpp(brpc_proto_srcs brpc_proto_hdrs "${ABS_PROTO}")
+  paddle_protobuf_generate_cpp(brpc_proto_srcs brpc_proto_hdrs "${ABS_PROTO}")
   cc_library("${TARGET_NAME}_proto" SRCS "${brpc_proto_srcs}")
   cc_library("${TARGET_NAME}" SRCS "${brpc_library_SRCS}" DEPS "${TARGET_NAME}_proto" "${brpc_library_DEPS}")
 endfunction()

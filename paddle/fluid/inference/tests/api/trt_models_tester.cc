@@ -46,22 +46,20 @@ void SetConfig<contrib::AnalysisConfig>(contrib::AnalysisConfig* config,
                                         std::string model_dir, bool use_gpu,
                                         bool use_tensorrt, int batch_size) {
   if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
-    config->prog_file = model_dir + "/" + FLAGS_prog_filename;
-    config->param_file = model_dir + "/" + FLAGS_param_filename;
+    config->SetModel(model_dir + "/" + FLAGS_prog_filename,
+                     model_dir + "/" + FLAGS_param_filename);
   } else {
-    config->model_dir = model_dir;
+    config->SetModel(model_dir);
   }
   if (use_gpu) {
-    config->use_gpu = true;
-    config->device = 0;
-    config->fraction_of_gpu_memory = 0.15;
+    config->EnableUseGpu(100, 0);
     if (use_tensorrt) {
       config->EnableTensorRtEngine(1 << 10, batch_size);
       config->pass_builder()->DeletePass("conv_bn_fuse_pass");
       config->pass_builder()->DeletePass("fc_fuse_pass");
       config->pass_builder()->TurnOnDebug();
     } else {
-      config->enable_ir_optim = true;
+      config->SwitchIrOptim();
     }
   }
 }
@@ -77,7 +75,8 @@ void profile(std::string model_dir, bool use_analysis, bool use_tensorrt) {
 
   std::vector<PaddleTensor> outputs;
   if (use_analysis || use_tensorrt) {
-    contrib::AnalysisConfig config(true);
+    contrib::AnalysisConfig config;
+    config.EnableUseGpu(100, 0);
     config.pass_builder()->TurnOnDebug();
     SetConfig<contrib::AnalysisConfig>(&config, model_dir, true, use_tensorrt,
                                        FLAGS_batch_size);
@@ -100,23 +99,12 @@ void compare(std::string model_dir, bool use_tensorrt) {
     SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
   }
 
-  std::vector<PaddleTensor> native_outputs;
-  NativeConfig native_config;
-  SetConfig<NativeConfig>(&native_config, model_dir, true, false,
-                          FLAGS_batch_size);
-  TestOneThreadPrediction(
-      reinterpret_cast<PaddlePredictor::Config*>(&native_config), inputs_all,
-      &native_outputs, false);
-
-  std::vector<PaddleTensor> analysis_outputs;
-  contrib::AnalysisConfig analysis_config(true);
+  contrib::AnalysisConfig analysis_config;
   SetConfig<contrib::AnalysisConfig>(&analysis_config, model_dir, true,
                                      use_tensorrt, FLAGS_batch_size);
-  TestOneThreadPrediction(
-      reinterpret_cast<PaddlePredictor::Config*>(&analysis_config), inputs_all,
-      &analysis_outputs, true);
-
-  CompareResult(native_outputs, analysis_outputs);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config*>(&analysis_config),
+      inputs_all);
 }
 
 TEST(TensorRT_mobilenet, compare) {
@@ -154,9 +142,9 @@ TEST(TensorRT_mobilenet, analysis) {
 
 TEST(AnalysisPredictor, use_gpu) {
   std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
-  AnalysisConfig config(true);
-  config.model_dir = model_dir;
-  config.fraction_of_gpu_memory = 0.15;
+  AnalysisConfig config;
+  config.EnableUseGpu(100, 0);
+  config.SetModel(model_dir);
   config.pass_builder()->TurnOnDebug();
 
   std::vector<std::vector<PaddleTensor>> inputs_all;
@@ -167,6 +155,11 @@ TEST(AnalysisPredictor, use_gpu) {
   for (auto& input : inputs_all) {
     ASSERT_TRUE(predictor->Run(input, &outputs));
   }
+}
+
+TEST(TensorRT_mobilenet, profile) {
+  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
+  profile(model_dir, true, false);
 }
 
 }  // namespace inference

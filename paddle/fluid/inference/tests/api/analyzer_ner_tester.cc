@@ -60,8 +60,7 @@ struct DataRecord {
   }
 };
 
-void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
-                   int batch_size) {
+void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data) {
   PaddleTensor lod_word_tensor, lod_mention_tensor;
   lod_word_tensor.name = "word";
   lod_mention_tensor.name = "mention";
@@ -85,13 +84,12 @@ void SetConfig(contrib::AnalysisConfig *cfg, bool memory_load = false) {
     cfg->SetModelBuffer(&buffer_prog[0], buffer_prog.size(), &buffer_param[0],
                         buffer_param.size());
   } else {
-    cfg->prog_file = FLAGS_infer_model + "/__model__";
-    cfg->param_file = FLAGS_infer_model + "/param";
+    cfg->SetModel(FLAGS_infer_model + "/__model__",
+                  FLAGS_infer_model + "/param");
   }
-  cfg->use_gpu = false;
-  cfg->device = 0;
-  cfg->specify_input_name = true;
-  cfg->enable_ir_optim = true;
+  cfg->DisableGpu();
+  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim();
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -100,7 +98,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   int epoch = FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;
   LOG(INFO) << "number of samples: " << epoch * FLAGS_batch_size;
   for (int bid = 0; bid < epoch; ++bid) {
-    PrepareInputs(&input_slots, &data, FLAGS_batch_size);
+    PrepareInputs(&input_slots, &data);
     (*inputs).emplace_back(input_slots);
   }
 }

@@ -74,7 +74,7 @@ struct BuildStrategy {
 
   bool fuse_elewise_add_act_ops_{false};
 
-  bool enable_data_balance_{false};
+  bool fuse_relu_depthwise_conv_{false};
 
   bool memory_optimize_{false};
 
@@ -84,6 +84,10 @@ struct BuildStrategy {
 
   bool fuse_broadcast_op_{false};
 
+  // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
+  // num_trainers is 1, so the current fields of build_strategy doesn't tell if
+  // it's distributed model.
+  bool is_distribution_{false};
   int num_trainers_{1};
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;
@@ -104,18 +108,28 @@ struct BuildStrategy {
 
   bool IsFinalized() const { return is_finalized_; }
 
+  bool IsMultiDevPass(const std::string &pass_name) const;
+
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
   std::unique_ptr<ir::Graph> Apply(const ProgramDesc &main_program,
                                    const std::vector<platform::Place> &places,
                                    const std::string &loss_var_name,
                                    const std::vector<Scope *> &local_scopes,
+                                   const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
                                    const bool use_cuda,
                                    platform::NCCLContextMap *nccl_ctxs) const;
 #else
                                    const bool use_cuda) const;
 #endif
+
+  // If set true, ParallelExecutor would build the main_program into multiple
+  // graphs,
+  // each of the graphs would run with one device. This approach can achieve
+  // better performance
+  // on some scenarios.
+  mutable bool enable_parallel_graph_ = false;
 
  private:
   mutable bool is_finalized_ = false;

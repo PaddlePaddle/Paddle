@@ -126,6 +126,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   std::string turn_mask_pre = "turn_mask_";
 
   auto one_batch = data->NextBatch();
+  PADDLE_ENFORCE(!one_batch.response.empty());
   int size = one_batch.response[0].size();
   CHECK_EQ(size, kMaxTurnLen);
   // turn tensor assignment
@@ -165,12 +166,9 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
 }
 
 void SetConfig(contrib::AnalysisConfig *cfg) {
-  cfg->prog_file = FLAGS_infer_model + "/__model__";
-  cfg->param_file = FLAGS_infer_model + "/param";
-  cfg->use_gpu = false;
-  cfg->device = 0;
-  cfg->specify_input_name = true;
-  cfg->enable_ir_optim = true;
+  cfg->SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
+  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim(true);
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -194,13 +192,16 @@ void profile(bool use_mkldnn = false) {
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-    std::unordered_set<std::string> op_list = {"conv3d"};
+    // Enable all the mkldnn supported ops except conv3d in dam
+    std::unordered_set<std::string> op_list = {"softmax", "elementwise_add",
+                                               "relu"};
     cfg.SetMKLDNNOp(op_list);
   }
 
   std::vector<PaddleTensor> outputs;
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
+
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                  input_slots_all, &outputs, FLAGS_num_threads);
 
@@ -238,7 +239,9 @@ void compare(bool use_mkldnn = false) {
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-    std::unordered_set<std::string> op_list = {"conv3d"};
+    // Enable all the mkldnn supported ops except conv3d in dam
+    std::unordered_set<std::string> op_list = {"softmax", "elementwise_add",
+                                               "relu"};
     cfg.SetMKLDNNOp(op_list);
   }
 
@@ -249,7 +252,35 @@ void compare(bool use_mkldnn = false) {
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
+// Compare result of NativeConfig and AnalysisConfig with memory optimization.
+TEST(Analyzer_dam, compare_with_memory_optim) {
+  // The small dam will core in CI, but works in local.
+  if (FLAGS_max_turn_num == 9) {
+    contrib::AnalysisConfig cfg, cfg1;
+    DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
+
+    std::vector<std::vector<PaddleTensor>> input_slots_all;
+    SetInput(&input_slots_all);
+    // Run the first time to force to update memory cache
+    SetConfig(&cfg);
+    cfg.EnableMemoryOptim(true);
+
+    CompareNativeAndAnalysis(
+        reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+        input_slots_all);
+
+    // Run second time to use the memory cache and perform memory optimization.
+    SetConfig(&cfg1);
+    cfg1.EnableMemoryOptim();
+
+    CompareNativeAndAnalysis(
+        reinterpret_cast<const PaddlePredictor::Config *>(&cfg1),
+        input_slots_all);
+  }
+}
+
 TEST(Analyzer_dam, compare) { compare(); }
+
 #ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_dam, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
