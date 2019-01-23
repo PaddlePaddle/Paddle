@@ -12,17 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-#include <chrono>
-#include <fstream>
-#include <numeric>
-#include <sstream>
-#include <string>
-#include <vector>
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
-
-DEFINE_int32(repeat, 1, "repeat");
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
@@ -166,16 +156,17 @@ bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs) {
 
   std::ifstream fin(FLAGS_infer_data);
   std::string line;
+  int sample = 0;
 
-  int lineno = 0;
+  // The unit-test dataset only have 10 samples, each sample have 5 feeds.
   while (std::getline(fin, line)) {
     std::vector<paddle::PaddleTensor> feed_data;
-    if (!ParseLine(line, &feed_data)) {
-      LOG(ERROR) << "Parse line[" << lineno << "] error!";
-    } else {
-      inputs->push_back(std::move(feed_data));
-    }
+    ParseLine(line, &feed_data);
+    inputs->push_back(std::move(feed_data));
+    sample++;
+    if (!FLAGS_test_all_data && sample == FLAGS_batch_size) break;
   }
+  LOG(INFO) << "number of samples: " << sample;
 
   return true;
 }
@@ -199,19 +190,53 @@ void profile(bool use_mkldnn = false) {
                  inputs, &outputs, FLAGS_num_threads);
 }
 
-void compare(bool use_mkldnn = false) {
-  AnalysisConfig config;
-  SetConfig(&config);
-
-  std::vector<std::vector<PaddleTensor>> inputs;
-  LoadInputData(&inputs);
-  CompareNativeAndAnalysis(
-      reinterpret_cast<const PaddlePredictor::Config *>(&config), inputs);
-}
-
 TEST(Analyzer_bert, profile) { profile(); }
 #ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_bert, profile_mkldnn) { profile(true); }
 #endif
+
+// Check the fuse status
+TEST(Analyzer_bert, fuse_statis) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+  int num_ops;
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  auto fuse_statis = GetFuseStatis(
+      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+  LOG(INFO) << "num_ops: " << num_ops;
+}
+
+// Compare result of NativeConfig and AnalysisConfig
+void compare(bool use_mkldnn = false) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
+
+  std::vector<std::vector<PaddleTensor>> inputs;
+  LoadInputData(&inputs);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), inputs);
+}
+
+TEST(Analyzer_bert, compare) { compare(); }
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_bert, compare_mkldnn) { compare(true /* use_mkldnn */); }
+#endif
+
+// Compare Deterministic result
+// TODO(luotao): Since each unit-test on CI only have 10 minutes, cancel this to
+// decrease the CI time.
+// TEST(Analyzer_bert, compare_determine) {
+//   AnalysisConfig cfg;
+//   SetConfig(&cfg);
+//
+//   std::vector<std::vector<PaddleTensor>> inputs;
+//   LoadInputData(&inputs);
+//   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config
+//   *>(&cfg),
+//                        inputs);
+// }
 }  // namespace inference
 }  // namespace paddle
