@@ -23,7 +23,7 @@ import sys
 import six
 import os
 
-__all__ = ['ParallelExecutor', 'ExecutionStrategy', 'BuildStrategy']
+__all__ = ['ParallelExecutor']
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy

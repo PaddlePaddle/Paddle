@@ -15,7 +15,9 @@
 #include "paddle/fluid/pybind/ir.h"
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
@@ -24,6 +26,7 @@
 namespace py = pybind11;
 using paddle::framework::ir::Graph;
 using paddle::framework::ir::Node;
+using paddle::framework::ir::GraphSafeRemoveNodes;
 using paddle::framework::OpDesc;
 using paddle::framework::ProgramDesc;
 using paddle::framework::VarDesc;
@@ -32,6 +35,7 @@ using pybind11::return_value_policy;
 namespace paddle {
 namespace pybind {
 void BindGraph(py::module *m) {
+  m->def("graph_safe_remove_nodes", GraphSafeRemoveNodes);
   py::class_<Graph, std::shared_ptr<Graph>>(
       *m, "Graph",
       "The graph is a Directed Acyclic Single Static Assignment Graph, see "
@@ -42,6 +46,8 @@ void BindGraph(py::module *m) {
       .def("get_float", &Graph::Get<float>)
       .def("get_double", &Graph::Get<double>)
       .def("get_string", &Graph::Get<std::string>)
+      .def("get_program", &Graph::Get<ProgramDesc>)
+      .def("get_marked_nodes", &Graph::Get<std::unordered_set<const Node *>>)
       .def("set", [](Graph &self, const std::string &attr_name,
                      int attr) { return self.Set(attr_name, new int(attr)); })
       .def("set",
@@ -56,6 +62,17 @@ void BindGraph(py::module *m) {
       .def("set",
            [](Graph &self, const std::string &attr_name, double attr) {
              return self.Set(attr_name, new double(attr));
+           })
+      .def("set",
+           [](Graph &self, const std::string &attr_name,
+              const ProgramDesc &attr) {
+             return self.Set(attr_name, new ProgramDesc(attr));
+           })
+      .def("set",
+           [](Graph &self, const std::string &attr_name,
+              const std::unordered_set<const Node *> &attr) {
+             return self.Set(attr_name,
+                             new std::unordered_set<const Node *>(attr));
            })
       .def("erase", &Graph::Erase)
       .def("nodes", &Graph::Nodes, return_value_policy::reference)
@@ -85,12 +102,52 @@ void BindNode(py::module *m) {
   py::class_<Node> node(*m, "Node");
   node.def("name", &Node::Name)
       .def("node_type", &Node::NodeType)
-      .def("var", &Node::Var)
-      .def("op", &Node::Op)
+      .def("var", &Node::Var, return_value_policy::reference)
+      .def("op", &Node::Op, return_value_policy::reference)
       .def("id", &Node::id)
       .def("is_op", &Node::IsOp)
       .def("is_var", &Node::IsVar)
       .def("is_ctrl_var", &Node::IsCtrlVar)
+      .def("inputs_remove",
+           [](Node &self, int node_id) {
+             for (auto it = self.inputs.begin(); it != self.inputs.end();
+                  it++) {
+               if ((*it)->id() == node_id) {
+                 self.inputs.erase(it);
+               }
+             }
+           })
+      .def("inputs_remove",
+           [](Node &self, Node &node) {
+             for (auto it = self.inputs.begin(); it != self.inputs.end();
+                  it++) {
+               if (*it == &node) {
+                 self.inputs.erase(it);
+               }
+             }
+           })
+      .def("inputs_append",
+           [](Node &self, Node &node) { self.inputs.push_back(&node); })
+      .def("outputs_remove",
+           [](Node &self, int node_id) {
+             for (auto it = self.outputs.begin(); it != self.outputs.end();
+                  it++) {
+               if ((*it)->id() == node_id) {
+                 self.outputs.erase(it);
+               }
+             }
+           })
+      .def("outputs_remove",
+           [](Node &self, Node &node) {
+             for (auto it = self.outputs.begin(); it != self.outputs.end();
+                  it++) {
+               if (*it == &node) {
+                 self.outputs.erase(it);
+               }
+             }
+           })
+      .def("outputs_append",
+           [](Node &self, Node &node) { self.outputs.push_back(&node); })
       .def_readwrite("inputs", &Node::inputs)
       .def_readwrite("outputs", &Node::outputs);
 
