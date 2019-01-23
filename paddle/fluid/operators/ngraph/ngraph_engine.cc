@@ -123,6 +123,7 @@ void NgraphEngine::EnableNgraph(const framework::ProgramDesc& program) {
 #ifdef PADDLE_WITH_NGRAPH
   VLOG(4) << "use_ngraph=True";
   for (size_t bid = 0; bid < program.Size(); ++bid) {
+    // TODO(baojun-nervana): Remove the const_cast
     auto* block =
         const_cast<framework::ProgramDesc&>(program).MutableBlock(bid);
     std::string block_str = block->Proto()->SerializeAsString();
