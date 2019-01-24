@@ -17,6 +17,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -27,6 +28,10 @@ namespace py = pybind11;
 using paddle::framework::ir::Graph;
 using paddle::framework::ir::Node;
 using paddle::framework::ir::GraphSafeRemoveNodes;
+using paddle::framework::ir::HasCircle;
+using paddle::framework::ir::GraphNum;
+using paddle::framework::ir::TopologySortOperations;
+using paddle::framework::ir::BuildOperationAdjList;
 using paddle::framework::OpDesc;
 using paddle::framework::ProgramDesc;
 using paddle::framework::VarDesc;
@@ -36,6 +41,12 @@ namespace paddle {
 namespace pybind {
 void BindGraph(py::module *m) {
   m->def("graph_safe_remove_nodes", GraphSafeRemoveNodes);
+  m->def("has_circle", HasCircle);
+  m->def("graph_num", GraphNum);
+  m->def("topology_sort", TopologySortOperations,
+         return_value_policy::reference);
+  m->def("build_adjacency_list", BuildOperationAdjList,
+         return_value_policy::reference);
   py::class_<Graph, std::shared_ptr<Graph>>(
       *m, "Graph",
       "The graph is a Directed Acyclic Single Static Assignment Graph, see "

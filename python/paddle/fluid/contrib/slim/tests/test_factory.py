@@ -18,7 +18,7 @@ import unittest
 
 class TestFactory(unittest.TestCase):
     def test_parse(self):
-        factory = ConfigFactory('./unitest/configs/config.yaml')
+        factory = ConfigFactory('./configs/config.yaml')
 
         pruner = factory.instance('pruner_1')
         self.assertEquals(pruner.ratios['conv1_1.w'], 0.3)
