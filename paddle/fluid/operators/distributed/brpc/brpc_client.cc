@@ -165,7 +165,7 @@ VarHandlePtr BRPCClient::_AsyncGetVar(const std::string& ep,
   const std::string out_varname_val = out_var_name;
   const framework::Scope* p_scope = &scope;
   const auto ch_ptr = GetChannel(ep_val);
-  const std::string method = "GetRPC";
+  const std::string method = kGetRPC;
   VarHandlePtr var_h(
       new VarHandle(ep, method, out_varname_val, p_ctx, p_scope));
 

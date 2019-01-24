@@ -163,7 +163,7 @@ class BRPCServiceImpl : public SendRecvService {
                              VariableMessage* response,
                              google::protobuf::Closure* done) {
     PADDLE_ENFORCE(request_getnobarrier_h_ != nullptr,
-                   "RequestGet handler should be registed first!");
+                   "RequestGetNoBarrier handler should be registed first!");
 
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
@@ -172,7 +172,7 @@ class BRPCServiceImpl : public SendRecvService {
     std::string out_varname = request->out_varname();
     int trainer_id = request->trainer_id();
 
-    VLOG(3) << "RequestGet varname:" << varname
+    VLOG(3) << "RequestGetNoBarrier varname:" << varname
             << ", out_varname:" << out_varname << ", trainer_id:" << trainer_id
             << ", from:" << cntl->remote_side();
 
