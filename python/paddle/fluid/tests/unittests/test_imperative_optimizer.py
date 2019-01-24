@@ -98,7 +98,7 @@ class MNIST(fluid.imperative.Layer):
 
 
 class TestImperativeMnist(unittest.TestCase):
-    def test_mnist_cpu_float32(self):
+    def test_mnist_float32(self):
         seed = 90
 
         with fluid.imperative.guard():
@@ -196,11 +196,10 @@ class TestImperativeMnist(unittest.TestCase):
                     static_param_value[static_param_name_list[i - 1]] = out[i]
 
         for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(
-                np.allclose(value.all(), dy_param_init_value[key].all()))
-        self.assertTrue(np.allclose(static_out.all(), dy_out.all()))
+            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
+        self.assertTrue(np.allclose(static_out, dy_out))
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value.all(), dy_param_value[key].all()))
+            self.assertTrue(np.allclose(value, dy_param_value[key]))
 
 
 if __name__ == '__main__':
