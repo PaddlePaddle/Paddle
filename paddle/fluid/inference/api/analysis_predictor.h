@@ -75,6 +75,8 @@ class AnalysisPredictor : public PaddlePredictor {
 
   void SetMkldnnThreadID(int tid);
 
+  std::string GetSeriazlizedProgram() const override;
+
  protected:
   // For memory optimization.
   bool need_collect_var_shapes_for_memory_optim();

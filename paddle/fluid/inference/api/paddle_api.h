@@ -215,6 +215,11 @@ class PaddlePredictor {
    */
   virtual ~PaddlePredictor() = default;
 
+  /** \brief Get the serialized model program that executes in inference phase.
+   * Its data type is ProgramDesc, which is a protobuf message.
+   */
+  virtual std::string GetSeriazlizedProgram() const { return ""; };
+
   /** The common configs for all the predictors.
    */
   struct Config {
