@@ -1007,10 +1007,6 @@ Scope* OperatorWithKernel::PrepareData(
     const Scope& scope, const OpKernelType& expected_kernel_key,
     std::vector<std::string>* transfered_inplace_vars,
     RuntimeContext* ctx) const {
-  if (type_ == "is_empty") {
-    return nullptr;
-  }
-
   Scope* new_scope = nullptr;
   for (auto& var_name_item : Inputs()) {
     std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];

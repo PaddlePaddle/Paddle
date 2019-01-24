@@ -209,7 +209,6 @@ class Vector {
     };
 
     void CopyToCPU() const {
-      VLOG(3) << "CopyToCPU";
       // COPY GPU Data To CPU
       auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
           platform::DeviceContextPool::Instance().Get(gpu_->place()));
@@ -256,7 +255,6 @@ class Vector {
     }
 
     void CopyCPUDataToCUDA(const platform::Place &place) const {
-      VLOG(3) << "CopyCPUDataToCUDA";
       void *src = cpu_.data();
       gpu_ = memory::Alloc(place, cpu_.size() * sizeof(T));
       void *dst = gpu_->ptr();
