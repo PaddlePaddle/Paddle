@@ -155,10 +155,18 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         // different input dimension. For other dimensions, select the algo
         // of closest area.
         auto var_name = ctx.Inputs("AlgoCache")[0];
-        algo_cache =
-            ctx.scope()
-                .FindVar(var_name)
-                ->GetMutable<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>();
+        if (ctx.scope().FindVar(var_name)) {
+          algo_cache =
+              ctx.scope()
+                  .FindVar(var_name)
+                  ->GetMutable<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>();
+        } else {
+          // TODO(qingqing) remove const_cast
+          algo_cache =
+              const_cast<framework::Scope*>(ctx.scope().parent())
+                  ->Var(var_name)
+                  ->GetMutable<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>();
+        }
         algo = algo_cache->GetAlgorithm(x_dims[2] * x_dims[3], search_times, 0,
                                         search_func);
       } else {
