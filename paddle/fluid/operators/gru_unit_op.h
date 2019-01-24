@@ -113,7 +113,11 @@ class GRUUnitKernel : public framework::OpKernel<T> {
     auto c = g.slice(c_offsets, extents);  // output candidate
 
     // calculate final output
-    h.device(place) = u * (c - h_p) + h_p;
+    if (context.Attr<bool>("origin_mode")) {
+      h.device(place) = c + u * (h_p - c);  // (1 - u) * c + u * h_p
+    } else {
+      h.device(place) = u * (c - h_p) + h_p;  // u * c + (1 - u) * h_p
+    }
   }
 };
 
@@ -180,11 +184,19 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
     auto c = g.slice(c_offsets, extents);  // output candidate
 
     // backward for unactivated update gate
-    ActGradCompute(context.Attr<int>("gate_activation"), place, u, u,
-                   d_g.slice(u_offsets, extents), d_h * (c - h_p));
-    // backward for unactivated output candidate
-    ActGradCompute(context.Attr<int>("activation"), place, c, c,
-                   d_g.slice(c_offsets, extents), d_h * u);
+    if (context.Attr<bool>("origin_mode")) {
+      ActGradCompute(context.Attr<int>("gate_activation"), place, u, u,
+                     d_g.slice(u_offsets, extents), d_h * (h_p - c));
+      // backward for unactivated output candidate
+      ActGradCompute(context.Attr<int>("activation"), place, c, c,
+                     d_g.slice(c_offsets, extents), d_h * (1 - u));
+    } else {
+      ActGradCompute(context.Attr<int>("gate_activation"), place, u, u,
+                     d_g.slice(u_offsets, extents), d_h * (c - h_p));
+      // backward for unactivated output candidate
+      ActGradCompute(context.Attr<int>("activation"), place, c, c,
+                     d_g.slice(c_offsets, extents), d_h * u);
+    }
     // backward for reset_hidden_prev
     auto blas = math::GetBlas<DeviceContext, T>(context);
     blas.GEMM(false, true, batch_size, frame_size, frame_size, 1,
@@ -213,7 +225,11 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
       T* hidden_prev_grad_data =
           hidden_prev_grad->mutable_data<T>(context.GetPlace());
       auto d_h_p = EigenMatrix<T>::From(*hidden_prev_grad);
-      d_h_p.device(place) = d_r_h_p * r + d_h * (u.constant(T(1)) - u);
+      if (context.Attr<bool>("origin_mode")) {
+        d_h_p.device(place) = d_r_h_p * r + d_h * u;
+      } else {
+        d_h_p.device(place) = d_r_h_p * r + d_h * (1 - u);
+      }
       blas.GEMM(false, true, batch_size, frame_size, frame_size * 2, 1,
                 gate_grad_data, frame_size * 3, weight_data, frame_size * 2, 1,
                 hidden_prev_grad_data, frame_size);
