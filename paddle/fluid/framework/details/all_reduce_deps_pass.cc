@@ -82,13 +82,13 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     PADDLE_ENFORCE(i0 != nullptr && i1 != nullptr, "%s convert to %s error",
                    op1->DebugString(), op2->DebugString());
 
-    auto l_it = vars.find(i0->name_);
-    auto r_it = vars.find(i1->name_);
+    auto l_it = vars.find(i0->name());
+    auto r_it = vars.find(i1->name());
 
     if (l_it->second < r_it->second) return true;
 
     if (l_it->second == r_it->second) {
-      return i0->name_ < i1->name_;
+      return i0->name() < i1->name();
     }
 
     return false;
