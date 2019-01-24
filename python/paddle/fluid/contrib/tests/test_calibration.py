@@ -117,26 +117,36 @@ def val(data_dir=DATA_DIR):
 
 
 class TestCalibration(unittest.TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         # TODO(guomingz): Put the download process in the cmake.
         # Download and unzip test data set
         imagenet_dl_url = 'http://paddle-inference-dist.bj.bcebos.com/int8/calibration_test_data.tar.gz'
         zip_file_name = imagenet_dl_url.split('/')[-1]
-        cmd = 'rm -rf data {}  && mkdir data && wget {} && tar xvf {} -C data'.format(
+        cmd = 'rm -rf data {}  && mkdir data && wget {} && tar xf {} -C data'.format(
             zip_file_name, imagenet_dl_url, zip_file_name)
         os.system(cmd)
         # resnet50 fp32 data
         resnet50_fp32_model_url = 'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
         resnet50_zip_name = resnet50_fp32_model_url.split('/')[-1]
         resnet50_unzip_folder_name = 'resnet50_fp32'
-        cmd = 'rm -rf {} {} && mkdir {} && wget {} && tar xvf {} -C {}'.format(
+        cmd = 'rm -rf {} {} && mkdir {} && wget {} && tar xf {} -C {}'.format(
             resnet50_unzip_folder_name, resnet50_zip_name,
             resnet50_unzip_folder_name, resnet50_fp32_model_url,
             resnet50_zip_name, resnet50_unzip_folder_name)
         os.system(cmd)
 
-        self.iterations = 100
-        self.skip_batch_num = 5
+        # mobilnet fp32 data
+        mobilenetv1_fp32_model_url = 'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
+        mobilenetv1_zip_name = mobilenetv1_fp32_model_url.split('/')[-1]
+        mobilenetv1_unzip_folder_name = 'mobilenetv1_fp32'
+        cmd = 'rm -rf {} {} && mkdir {} && wget {} && tar xf {} -C {}'.format(
+            mobilenetv1_unzip_folder_name, mobilenetv1_zip_name,
+            mobilenetv1_unzip_folder_name, mobilenetv1_fp32_model_url,
+            mobilenetv1_zip_name, mobilenetv1_unzip_folder_name)
+        os.system(cmd)
+
+        cls.iterations = 50
 
     def run_program(self, model_path, generate_int8=False, algo='direct'):
         image_shape = [3, 224, 224]
@@ -221,6 +231,13 @@ class TestCalibration(unittest.TestCase):
     def test_calibration_for_resnet50(self):
         fp32_acc1 = self.run_program("resnet50_fp32/model")
         self.run_program("resnet50_fp32/model", True)
+        int8_acc1 = self.run_program("calibration_out")
+        delta_value = np.abs(fp32_acc1 - int8_acc1)
+        self.assertLess(delta_value, 0.01)
+
+    def test_calibration_for_mobilenetv1(self):
+        fp32_acc1 = self.run_program("mobilenetv1_fp32/model")
+        self.run_program("mobilenetv1_fp32/model", True, algo='KL')
         int8_acc1 = self.run_program("calibration_out")
         delta_value = np.abs(fp32_acc1 - int8_acc1)
         self.assertLess(delta_value, 0.01)
