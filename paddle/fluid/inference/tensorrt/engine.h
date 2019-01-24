@@ -56,21 +56,17 @@ class TensorRTEngine : public EngineBase {
     nvinfer1::Weights w_;
   };
 
-  TensorRTEngine(int max_batch, int max_workspace,
-                 cudaStream_t* stream = nullptr, int device = 0,
-                 bool enable_int8 = false,
+  TensorRTEngine(int max_batch, int max_workspace, cudaStream_t stream,
+                 int device = 0, bool enable_int8 = false,
                  TRTInt8Calibrator* calibrator = nullptr,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
-        stream_(stream ? stream : &default_stream_),
+        stream_(stream),
         device_(device),
         enable_int8_(enable_int8),
         calibrator_(calibrator),
-        logger_(logger) {
-    freshDeviceId();
-    cudaStreamCreate(stream_);
-  }
+        logger_(logger) {}
 
   virtual ~TensorRTEngine();
 
@@ -108,7 +104,7 @@ class TensorRTEngine : public EngineBase {
   // NOTE this should be used after calling `FreezeNetwork`.
   Buffer& buffer(const std::string& name) override;
 
-  cudaStream_t* stream() { return stream_; }
+  cudaStream_t stream() { return stream_; }
 
   // Fill an input from CPU memory with name and size.
   void SetInputFromCPU(const std::string& name, const void* data, size_t size);
@@ -162,9 +158,7 @@ class TensorRTEngine : public EngineBase {
   // the max memory size the engine uses
   int max_workspace_;
 
-  cudaStream_t* stream_;
-  // If stream_ is not set from outside, hold its own stream.
-  cudaStream_t default_stream_;
+  cudaStream_t stream_;
   // The specific GPU id that the TensorRTEngine bounded to.
   int device_;
 
@@ -172,6 +166,7 @@ class TensorRTEngine : public EngineBase {
   TRTInt8Calibrator* calibrator_;
   // batch size of the current data, will be updated each Executation.
   int batch_size_{-1};
+
   nvinfer1::ILogger& logger_;
 
   std::vector<Buffer> buffers_;
