@@ -533,7 +533,7 @@ function assert_api_spec_approvals() {
     pip install ${PADDLE_ROOT}/build/opt/paddle/share/wheels/*.whl
     python ${PADDLE_ROOT}/tools/check_doc_approval.py > new_md5.spec
     sed -i 's#),#)\n#g' new_md5.spec
-    check_fluid_document=python diff_api.py ${PADDLE_ROOT}/paddle/fluid/fluid_document.spec new_md5.spec 
+    check_fluid_document=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/fluid_document.spec new_md5.spec` 
     if [ "$check_fluid_document" != "API Difference is: " ];then
         APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
         python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 35982308`
