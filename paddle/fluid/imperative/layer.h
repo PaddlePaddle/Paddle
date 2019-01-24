@@ -100,22 +100,20 @@ class VarBase {
 
   // Owns `var` and `grad`
   VarBase(framework::Variable* var, VarBase* grad)
-      : pre_op_(nullptr),
-        pre_op_out_name_(),
-        pre_op_out_idx_(-1),
-        var_desc_(nullptr),
+      : var_desc_(nullptr),
         var_(var),
         grads_(grad),
-        stop_gradient_(false) {}
+        stop_gradient_(false),
+        pre_op_(nullptr),
+        pre_op_out_idx_(-1) {}
 
   explicit VarBase(bool stop_gradient)
-      : pre_op_(nullptr),
-        pre_op_out_name_(),
-        pre_op_out_idx_(-1),
-        var_desc_(nullptr),
+      : var_desc_(nullptr),
         var_(new framework::Variable()),
         grads_(stop_gradient ? nullptr : new VarBase(true)),
-        stop_gradient_(stop_gradient) {}
+        stop_gradient_(stop_gradient),
+        pre_op_(nullptr),
+        pre_op_out_idx_(-1) {}
 
   virtual ~VarBase() {
     if (var_) {
@@ -127,7 +125,26 @@ class VarBase {
     }
   }
 
+  OpBase* PreOp() const { return pre_op_; }
+  int PreOpOutIdx() const { return pre_op_out_idx_; }
+
+  void SetStopGradient(bool stop_gradient) { stop_gradient_ = stop_gradient; }
+  bool IsStopGradient() const { return stop_gradient_; }
+
   void RunBackward();
+
+  void TrackPreOp(OpBase* pre_op, const std::string& pre_op_out_name,
+                  int pre_op_out_idx, bool stop_gradient) {
+    pre_op_ = pre_op;
+    pre_op_out_name_ = pre_op_out_name;
+    pre_op_out_idx_ = pre_op_out_idx;
+    stop_gradient_ = stop_gradient;
+  }
+
+  void ClearGradient() {
+    delete grads_;
+    grads_ = new VarBase(true);
+  }
 
   framework::LoDTensor& GradValue();
 
@@ -138,16 +155,16 @@ class VarBase {
     return string::Sprintf("%s@IGrad", var_desc_->Name());
   }
 
-  OpBase* pre_op_;
-  std::string pre_op_out_name_;
-  int pre_op_out_idx_;
-
   framework::VarDesc* var_desc_;
 
   framework::Variable* var_;
   VarBase* grads_;
 
+ private:
   bool stop_gradient_;
+  OpBase* pre_op_;
+  std::string pre_op_out_name_;
+  int pre_op_out_idx_;
 };
 
 /* The wrapper for OpDesc which holds a OpDesc and a OpDesc of its
