@@ -101,6 +101,21 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
   return ret;
 }
 
+// std::vector<std::vector<ir::Node *>> TopologySortOperations(const Graph
+// &graph) {
+//  std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list =
+//      BuildOperationAdjList(graph);
+//  PADDLE_ENFORCE(!HasCircleInternal(adj_list));
+//  std::unordered_set<ir::Node *> visited;
+//  std::vector<ir::Node *> ret;
+//  for (auto adj : adj_list) {
+//    if (visited.find(adj.first) == visited.end()) {
+//      SortHelper(adj_list, adj.first, &visited, &ret);
+//    }
+//  }
+//  return ret;
+//}
+
 // Build operator inlink edge table.
 std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     const Graph &graph) {

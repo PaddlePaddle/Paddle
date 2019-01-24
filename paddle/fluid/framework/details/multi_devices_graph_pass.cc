@@ -11,18 +11,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include <algorithm>
 #include <fstream>
 #include <string>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/data_balance_op_handle.h"
+#include "paddle/fluid/framework/details/fused_all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
-#include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
@@ -392,14 +392,14 @@ void MultiDevSSAGraphBuilderBase::CreateComputationalOp(ir::Graph *result,
 
 void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
     ir::Graph *result, const std::string &og) const {
+  auto *op_node =
+      result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
-      result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-      local_scopes_, places_, nccl_ctxs_));
+  result->Get<GraphOps>(kGraphOps).emplace_back(
+      new AllReduceOpHandle(op_node, local_scopes_, places_, nccl_ctxs_));
 #else
-  result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
-      result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-      local_scopes_, places_));
+  result->Get<GraphOps>(kGraphOps).emplace_back(
+      new AllReduceOpHandle(op_node, local_scopes_, places_));
 #endif
   auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
 
@@ -941,6 +941,81 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
   }
 }
 
+void FuseAllReduceSSAGraphBuilder::Init() const {}
+
+void FuseAllReduceSSAGraphBuilder::InsertCollectiveOp(
+    ir::Graph *result, const std::string &p_name,
+    const std::string &g_name) const {
+  if (IsSparseGradient(g_name)) {
+    PADDLE_THROW("SparseGradient is not supported.");
+  } else {
+    CreateAllReduceOp(result, g_name);
+    auto *allreduce_op_handle = result->Get<GraphOps>(kGraphOps).back();
+
+    PADDLE_ENFORCE_EQ(
+        result->Get<ParamsAndGrads>(kParamsAndGrads).count(p_name), 1);
+    PADDLE_ENFORCE_EQ(grads_allreduce_.count(g_name), 0);
+    grads_allreduce_.emplace(g_name, allreduce_op_handle);
+  }
+}
+
+void FuseAllReduceSSAGraphBuilder::InsertPostprocessOps(
+    ir::Graph *result) const {
+  PADDLE_ENFORCE_EQ(result->Get<ParamsAndGrads>(kParamsAndGrads).size(),
+                    grads_allreduce_.size());
+
+  std::vector<VarHandleBase *> inputs;
+  std::vector<VarHandleBase *> outputs;
+  for (auto &op_handle : grads_allreduce_) {
+    inputs.insert(inputs.end(), op_handle.second->Inputs().begin(),
+                  op_handle.second->Inputs().end());
+    std::for_each(
+        op_handle.second->Inputs().begin(), op_handle.second->Inputs().end(),
+        [=](VarHandleBase *var_handle) {
+          // Remove output
+          var_handle->RemoveOutput(op_handle.second, op_handle.second->Node());
+        });
+
+    outputs.insert(outputs.end(), op_handle.second->Outputs().begin(),
+                   op_handle.second->Outputs().end());
+    std::for_each(op_handle.second->Outputs().begin(),
+                  op_handle.second->Outputs().end(),
+                  [=](VarHandleBase *var_handle) {
+                    // Remove Input
+                    var_handle->ClearGeneratedOp();
+                  });
+  }
+  CreateFusedAllReduceOp(result, inputs, outputs, grads_allreduce_.size());
+}
+
+void FuseAllReduceSSAGraphBuilder::CreateFusedAllReduceOp(
+    ir::Graph *result, const std::vector<VarHandleBase *> inputs,
+    const std::vector<VarHandleBase *> outputs,
+    const size_t num_of_all_reduce) const {
+  auto *op_node =
+      result->CreateEmptyNode("fused_allreduce", ir::Node::Type::kOperation);
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  result->Get<GraphOps>(kGraphOps).emplace_back(new FusedAllReduceOpHandle(
+      op_node, local_scopes_, places_, num_of_all_reduce, nccl_ctxs_));
+#else
+  result->Get<GraphOps>(kGraphOps).emplace_back(new FusedAllReduceOpHandle(
+      op_node, local_scopes_, places_, num_of_all_reduce));
+#endif
+  auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
+
+  for (auto in : inputs) {
+    op_handle->AddInput(in);
+  }
+  for (auto out : outputs) {
+    op_handle->AddOutput(out);
+  }
+
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto &p = places_[i];
+    SetCommunicationContext(op_handle, p);
+  }
+}
+
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder() {
   static std::unordered_set<std::string> regs;
   return regs;
@@ -975,3 +1050,20 @@ REGISTER_MULTI_DEVICES_PASS(
     paddle::framework::details::AllReduceSSAGraphBuilder);
 REGISTER_MULTI_DEVICES_PASS(dist_multi_devices_pass,
                             paddle::framework::details::DistSSAGraphBuilder);
+
+#define REGISTER_MULTI_DEVICES_PASS2(pass_name, pass_class)                    \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                              \
+      _reg_ssa_graph_builder_##pass_name,                                      \
+      "REGISTER_MULTI_DEVICES_PASS must be called in global namespace.");      \
+  int _reg_ssa_graph_builder_entry_##pass_name =                               \
+      paddle::framework::details::MultiDevSSAGraphBuilderRegister(#pass_name); \
+  REGISTER_PASS(pass_name, pass_class)                                         \
+      .RequirePassAttr(paddle::framework::details::kLossVarName)               \
+      .RequirePassAttr(paddle::framework::details::kPlaces)                    \
+      .RequirePassAttr(paddle::framework::details::kLocalScopes)               \
+      .RequirePassAttr(paddle::framework::details::kStrategy)                  \
+      .RequirePassAttr(paddle::framework::details::kNRanks)
+
+REGISTER_MULTI_DEVICES_PASS2(
+    fused_allreduce_mode_multi_devices_pass,
+    paddle::framework::details::FuseAllReduceSSAGraphBuilder);

@@ -100,6 +100,7 @@ std::unique_ptr<ir::Graph> FuseGradientSpacePass::ApplyImpl(
 
   auto alloc_space_node = result.CreateOpNode(&desc);
   // Need Insert alloc_space_node's input
+  // we should know the deep of the ops
 
   // Insert alloc_space_node's output
   for (auto& op : ops) {
@@ -109,6 +110,7 @@ std::unique_ptr<ir::Graph> FuseGradientSpacePass::ApplyImpl(
     op.second->inputs.emplace_back(ctl_node);
     ctl_node->outputs.emplace_back(op.second);
   }
+
   return std::move(graph);
 }
 
