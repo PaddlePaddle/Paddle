@@ -68,6 +68,11 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
                        "Level number of Input(X)'s lod could be 0. Otherwise "
                        "size of Input(X)'s first level lod should be equal to "
                        "size of Input(Y)'s referred level lod.");
+      } else {
+        PADDLE_ENFORCE_EQ(x_dims[0], y_lod[ref_level].size() - 1,
+                          "When Input(X)'s lod is null, the dims[0] of "
+                          "Input(X) should match the "
+                          "size of Input(Y)'s referred level lod.");
       }
 
       int64_t out_first_dim = 0;
