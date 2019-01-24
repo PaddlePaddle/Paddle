@@ -41,6 +41,8 @@ class Communicator {
 
   void receive() {}
 
+  void prefetch() {}
+
   void wait() {}
 
  private:
