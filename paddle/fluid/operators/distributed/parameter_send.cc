@@ -37,80 +37,11 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
-static size_t GetSectionIndex(int64_t id,
-                              const std::vector<int64_t>& abs_sections) {
-  for (size_t i = 1; i < abs_sections.size(); ++i) {
-    if (id < abs_sections[i]) {
-      return i - 1;
-    }
-  }
-  return abs_sections.size() - 1;
-}
-
-static int FindOutIdx(int row, const std::vector<int64_t>& abs_sections) {
-  for (size_t i = 1; i < abs_sections.size(); ++i) {
-    if (row < abs_sections[i]) {
-      return i - 1;
-    }
-  }
-  return abs_sections.size() - 1;
-}
-
-static std::vector<int64_t> ToAbsoluteSection(
-    const std::vector<int>& height_sections) {
-  std::vector<int64_t> abs_sections;
-  abs_sections.resize(height_sections.size());
-  abs_sections[0] = 0;
-  for (size_t i = 1; i < height_sections.size(); ++i) {
-    abs_sections[i] = height_sections[i - 1] + abs_sections[i - 1];
-  }
-  return abs_sections;
-}
-
-static std::vector<std::vector<int64_t>> SplitIds(
-    const std::vector<int64_t>& ids_vector,
-    const std::vector<int>& height_section, framework::Scope* scope) {
-  std::set<int64_t> all_ids;
-  for (auto id : ids_vector) {
-    all_ids.insert(id);
-  }
-
-  auto abs_sections = ToAbsoluteSection(height_section);
-  std::vector<std::vector<int64_t>> splited_ids;
-  splited_ids.resize(height_section.size() + 1);
-  for (auto& id : all_ids) {
-    auto section_index = GetSectionIndex(id, abs_sections);
-    splited_ids[section_index].push_back(id - abs_sections[section_index]);
-  }
-  return splited_ids;
-}
-
-static void SplitIdsIntoMultipleVarsBySection(
-    const std::vector<std::string>& in_var_names,
-    const std::vector<int>& height_section,
-    const std::vector<std::vector<int64_t>>& splited_ids,
-    framework::Scope* scope) {
-  PADDLE_ENFORCE_EQ(in_var_names.size(), height_section.size(), "");
-
-  auto place = platform::CPUPlace();
-
-  for (size_t i = 0; i < in_var_names.size(); ++i) {
-    auto* id_tensor =
-        scope->Var(in_var_names[i])->GetMutable<framework::LoDTensor>();
-    auto& ids = splited_ids[i];
-    if (!ids.empty()) {
-      auto* id_tensor_data = id_tensor->mutable_data<int64_t>(
-          framework::make_ddim({static_cast<int64_t>(ids.size()), 1}), place);
-      memcpy(id_tensor_data, ids.data(), sizeof(int64_t) * ids.size());
-    }
-  }
-}
-
 template <typename T>
 void send(const std::string& var_name,
           const std::vector<std::string>& send_varnames,
           const std::vector<std::string>& epmap,
-          const std::vector<int>& height_sections,
+          const std::vector<int64_t>& height_sections,
           const framework::ExecutionContext& ctx, const framework::Scope& scope,
           bool sync) {
   framework::Scope* local_scope = scope.NewTmpScope();
