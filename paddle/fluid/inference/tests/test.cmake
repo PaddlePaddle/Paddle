@@ -1,18 +1,43 @@
+include(ExternalProject)
 set(INFERENCE_URL "http://paddle-inference-dist.cdn.bcebos.com" CACHE STRING "inference download url")
 set(INFERENCE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
     "A path setting inference demo download directories.")
-function (inference_download install_dir url filename)
-    message(STATUS "Download inference test stuff from ${url}/${filename}")
-    file(DOWNLOAD "${url}/${filename}" "${install_dir}/${filename}")
-    message(STATUS "finish downloading ${filename}")
+message(STATUS "THIRD_PARTY_PATH: ${THIRD_PARTY_PATH}")
+message(STATUS "INFERENCE_DEMO_INSTALL_DIR: ${INFERENCE_DEMO_INSTALL_DIR}")
+
+function(inference_download INSTALL_DIR URL FILENAME)
+  message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")
+  string(REGEX REPLACE "[-%.]" "_" FILENAME_EX ${FILENAME})
+  ExternalProject_Add(
+      extern_inference_download_${FILENAME_EX}
+      ${EXTERNAL_PROJECT_LOG_ARGS}
+      PREFIX                ${INSTALL_DIR}
+      URL                   ${URL}/${FILENAME}
+      DOWNLOAD_DIR          ${INSTALL_DIR}
+      DOWNLOAD_NO_PROGRESS  1
+      CONFIGURE_COMMAND     ""
+      BUILD_COMMAND         ""
+      UPDATE_COMMAND        ""
+      INSTALL_COMMAND       ""
+  )
 endfunction()
 
-function (inference_download_and_uncompress install_dir url filename)
-    inference_download(${install_dir} ${url} ${filename})
-    execute_process(
-            COMMAND ${CMAKE_COMMAND} -E tar xzf ${install_dir}/${filename}
-            WORKING_DIRECTORY ${install_dir}
-    )
+function(inference_download_and_uncompress INSTALL_DIR URL FILENAME)
+  message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")
+  string(REGEX REPLACE "[-%.]" "_" FILENAME_EX ${FILENAME})
+  message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
+  ExternalProject_Add(
+      extern_inference_download_${FILENAME_EX}
+      ${EXTERNAL_PROJECT_LOG_ARGS}
+      PREFIX                ${INSTALL_DIR}
+      URL                   ${URL}/${FILENAME}
+      DOWNLOAD_DIR          ${INSTALL_DIR}
+      DOWNLOAD_NO_PROGRESS  1
+      CONFIGURE_COMMAND     ${CMAKE_COMMAND} -E tar xzf ${INSTALL_DIR}/${FILENAME}
+      BUILD_COMMAND         ""
+      UPDATE_COMMAND        ""
+      INSTALL_COMMAND       ""
+  )
 endfunction()
 
 set(WORD2VEC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/word2vec")

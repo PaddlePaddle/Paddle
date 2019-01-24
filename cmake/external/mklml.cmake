@@ -56,8 +56,8 @@ SET(MKLML_DOWNLOAD_DIR  "${MKLML_SOURCE_DIR}/src/${MKLML_PROJECT}")
 ExternalProject_Add(
     ${MKLML_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    PREFIX                 ${MKLML_SOURCE_DIR}
-    URL                    ${MKLML_URL}
+    PREFIX                ${MKLML_SOURCE_DIR}
+    URL                   ${MKLML_URL}
     DOWNLOAD_DIR          ${MKLML_DOWNLOAD_DIR}
     DOWNLOAD_NO_PROGRESS  1
     CONFIGURE_COMMAND     ""
