@@ -346,17 +346,17 @@ function PipLinuxInstall(){
   if [[ "$paddle_version" == "2" ]];then
     if [[ "$GPU" == "gpu" ]];then
         if [[ ${AVX} == "avx" ]];then
-          rm -rf `echo $wheel_cpu_develop|awk -F '/' '{print $NF}'`
-          wget $wheel_cpu_develop
+          rm -rf `echo $wheel_gpu_release|awk -F '/' '{print $NF}'`
+          wget $wheel_gpu_release
           $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release
         else
-          rm -rf `echo $wheel_cpu_release_nvax|awk -F '/' '{print $NF}'`
-          wget $wheel_cpu_release_nvax
+          rm -rf `echo $wheel_gpu_release_novax|awk -F '/' '{print $NF}'`
+          wget $wheel_gpu_release_novax
           $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release_noavx
         fi
     else
-        rm -rf `echo $wheel_cpu_develop|awk -F '/' '{print $NF}'`
-        wget $wheel_cpu_develop
+        rm -rf `echo $wheel_cpu_release|awk -F '/' '{print $NF}'`
+        wget $wheel_cpu_release
         $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_release
     fi
   else
@@ -375,8 +375,8 @@ function PipLinuxInstall(){
 
 function checkLinuxGPU(){
   AVX=`cat /proc/cpuinfo |grep avx|tail -1|grep avx`
-  which_gpu=`lspci |grep -i nvidia`
-  if [ "$which_gpu" == "" ];then
+  which nvidia-smi >/dev/null 2>&1
+  if [ "$?" != "0" ];then
     GPU='cpu'
     echo "您使用的是不包含支持的GPU的机器"
   else
