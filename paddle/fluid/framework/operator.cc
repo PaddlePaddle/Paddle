@@ -19,8 +19,6 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 #include <vector>
-#include "gflags/gflags.h"
-#include "glog/logging.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -35,6 +33,7 @@ DECLARE_bool(benchmark);
 DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
+DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
 
 namespace paddle {
 namespace framework {
