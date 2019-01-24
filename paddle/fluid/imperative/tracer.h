@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/engine.h"
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace imperative {
@@ -34,21 +35,25 @@ void CreateGradOp(const framework::OpDesc& op_desc,
 
 void InitVar(framework::Variable* var, framework::Variable* grad_var);
 
+platform::Place GetExpectedPlace(platform::Place place, VarBasePtrMap inputs);
+
 class Tracer {
  public:
   explicit Tracer(framework::BlockDesc* root_block) : root_block_(root_block) {}
 
   virtual ~Tracer() {}
 
-  void Trace(OpBase* op,
-             const std::map<std::string, std::vector<VarBase*>>& inputs,
-             const std::map<std::string, std::vector<VarBase*>>& outputs,
-             framework::BlockDesc* block, const bool stop_gradient = false);
+  void Trace(OpBase* op, const VarBasePtrMap& inputs,
+             const VarBasePtrMap& outputs, framework::BlockDesc* block,
+             const platform::Place expected_place,
+             const bool stop_gradient = false);
 
   std::vector<VarBase*> PyTrace(OpBase* op, const std::vector<VarBase*>& inputs,
                                 bool stop_gradient = false);
 
  private:
+  platform::Place GetPlace(const VarBasePtrMap& inputs);
+
   framework::BlockDesc* root_block_;
 };
 
