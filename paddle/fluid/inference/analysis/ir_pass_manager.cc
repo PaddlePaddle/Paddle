@@ -74,8 +74,9 @@ void IRPassManager::CreatePasses(Argument *argument,
 
       bool enable_int8 = false;
       if (argument->tensorrt_precision_mode() ==
-          contrib::AnalysisConfig::Precision::kInt8)
+          contrib::AnalysisConfig::Precision::kInt8) {
         enable_int8 = true;
+      }
 
       pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("model_dir", new std::string(argument->model_path()));
@@ -103,12 +104,14 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
 }
 
 framework::proto::ProgramDesc IRPassManager::AcquireProgram(
-    std::unique_ptr<Graph> *graph, const ProgramDesc &program) const {
+    std::unique_ptr<Graph> *graph, ProgramDesc *program) const {
   auto pass =
       framework::ir::PassRegistry::Instance().Get("graph_to_program_pass");
 
+  // Direct using ProgramDesc desc(argument->main_program()) may cause
+  // incomplete copies of information.
   ProgramDesc desc;
-  desc.CopyFrom(*const_cast<ProgramDesc &>(program).Proto());
+  desc.CopyFrom(*program->Proto());
   pass->SetNotOwned("program", &desc);
   auto *the_graph = graph->release();
   *graph = pass->Apply(std::unique_ptr<Graph>(the_graph));
