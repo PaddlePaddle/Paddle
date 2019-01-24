@@ -144,8 +144,6 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
         CUDNN_CTC_LOSS_ALGO_DETERMINISTIC, cu_ctcloss_desc, &workspace_size));
 
     T* loss_data = loss->mutable_data<T>(loss_dims, ctx.GetPlace());
-    math::SetConstant<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), loss, static_cast<T>(0));
 
     auto temp_allocation =
         platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
