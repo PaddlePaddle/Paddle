@@ -23,6 +23,7 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+template <typename T>
 void send(const std::string& var_name,
           const std::vector<std::string>& send_varnames,
           const std::vector<std::string>& epmap,
