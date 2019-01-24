@@ -89,7 +89,7 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
           framework::make_ddim({nums, embedding_size}), place);
       for (int j = 0; j < nums; ++j) {
         auto id = out_ids->data<int64_t>()[j];
-        auto row_tuple = selected_rows_idx_map[id];
+        auto row_tuple = selected_rows_idx_map.at(id);
         auto row_idx = std::get<1>(row_tuple);
         const auto *x_tensor = x_tensors[std::get<0>(row_tuple)];
 
