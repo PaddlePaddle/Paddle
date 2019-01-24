@@ -21,16 +21,20 @@
 #include <map>     // NOLINT
 #include <string>  // NOLINT
 #include <vector>  // NOLINT
+#include <memory>  // NOLINT
 
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/device_context.h"
 
 #include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace imperative {
+
+class VarBase;
 
 namespace py = ::pybind11;
 
@@ -81,6 +85,8 @@ class PreparedOp {
     return PreparedOp(op, ctx, kernel_iter->second, dev_ctx);
   }
 
+  inline platform::DeviceContext* GetDeviceContext() const { return dev_ctx; }
+
   const framework::OperatorBase& op;
   const framework::RuntimeContext& ctx;
   framework::OperatorWithKernel::OpKernelFunc func;
@@ -100,22 +106,20 @@ class VarBase {
 
   // Owns `var` and `grad`
   VarBase(framework::Variable* var, VarBase* grad)
-      : pre_op_(nullptr),
-        pre_op_out_name_(),
-        pre_op_out_idx_(-1),
-        var_desc_(nullptr),
+      : var_desc_(nullptr),
         var_(var),
         grads_(grad),
-        stop_gradient_(false) {}
+        stop_gradient_(false),
+        pre_op_(nullptr),
+        pre_op_out_idx_(-1) {}
 
   explicit VarBase(bool stop_gradient)
-      : pre_op_(nullptr),
-        pre_op_out_name_(),
-        pre_op_out_idx_(-1),
-        var_desc_(nullptr),
+      : var_desc_(nullptr),
         var_(new framework::Variable()),
         grads_(stop_gradient ? nullptr : new VarBase(true)),
-        stop_gradient_(stop_gradient) {}
+        stop_gradient_(stop_gradient),
+        pre_op_(nullptr),
+        pre_op_out_idx_(-1) {}
 
   virtual ~VarBase() {
     if (var_) {
@@ -127,9 +131,31 @@ class VarBase {
     }
   }
 
+  OpBase* PreOp() const { return pre_op_; }
+  int PreOpOutIdx() const { return pre_op_out_idx_; }
+
+  void SetStopGradient(bool stop_gradient) { stop_gradient_ = stop_gradient; }
+  bool IsStopGradient() const { return stop_gradient_; }
+
   void RunBackward();
 
+  void TrackPreOp(OpBase* pre_op, const std::string& pre_op_out_name,
+                  int pre_op_out_idx, bool stop_gradient) {
+    pre_op_ = pre_op;
+    pre_op_out_name_ = pre_op_out_name;
+    pre_op_out_idx_ = pre_op_out_idx;
+    stop_gradient_ = stop_gradient;
+  }
+
+  void ClearGradient() {
+    delete grads_;
+    grads_ = new VarBase(true);
+  }
+
   framework::LoDTensor& GradValue();
+
+  std::unique_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
+                                      const bool blocking) const;
 
   inline std::string GradName() const {
     PADDLE_ENFORCE(
@@ -138,16 +164,16 @@ class VarBase {
     return string::Sprintf("%s@IGrad", var_desc_->Name());
   }
 
-  OpBase* pre_op_;
-  std::string pre_op_out_name_;
-  int pre_op_out_idx_;
-
   framework::VarDesc* var_desc_;
 
   framework::Variable* var_;
   VarBase* grads_;
 
+ private:
   bool stop_gradient_;
+  OpBase* pre_op_;
+  std::string pre_op_out_name_;
+  int pre_op_out_idx_;
 };
 
 /* The wrapper for OpDesc which holds a OpDesc and a OpDesc of its
@@ -159,7 +185,8 @@ class OpBase {
       : op_desc_(nullptr),
         forward_id_(-1),
         grad_op_desc_(nullptr),
-        backward_id_(-1) {}
+        backward_id_(-1),
+        place_(platform::CPUPlace()) {}
 
   virtual ~OpBase() {
     if (grad_op_desc_) delete grad_op_desc_;
@@ -175,6 +202,8 @@ class OpBase {
   // not both.
   framework::OpDesc* grad_op_desc_;
   int backward_id_;
+
+  platform::Place place_;
 
   VarBasePtrMap input_vars_;
   VarBasePtrMap output_vars_;
@@ -199,6 +228,9 @@ class Layer {
 class PyLayer {
  public:
   virtual ~PyLayer() {}
+
+  static const char* kFwdInp;
+  static const char* kFwdOut;
 
   static void RegisterFunc(int func_id, const py::object& py_func);
 
