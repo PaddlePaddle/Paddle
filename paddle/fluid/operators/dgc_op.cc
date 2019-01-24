@@ -81,7 +81,7 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("U", "(Tensor) Middle tensor of DGC");
     AddInput("V", "(Tensor) Middle tensor of DGC");
     AddInput("Grad", "(Tensor) Input gradient");
-    AddInput("GradLocal", "(Tensor) Local gradient for accumulation.");
+    // AddInput("GradLocal", "(Tensor) Local gradient for accumulation.");
 
     AddOutput("U_out",
               "(Tensor) "
@@ -92,9 +92,11 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("EncodeGrad",
               "(Tensor) "
               "Output encoded gradient");
+    /*
     AddOutput("GradLocal_out",
               "(Tensor) "
               "Output encoded gradient");
+              */
 
     AddAttr<float>("m",
                    "(float, m) "

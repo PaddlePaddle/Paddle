@@ -488,9 +488,11 @@ class DistributeTranspiler(object):
 
             u_name = param_var.name + "__dgc_u__"
             v_name = param_var.name + "__dgc_v__"
-            grad_local_name = param_var.name + "__dgc_grad_local__"
+            #grad_local_name = param_var.name + "__dgc_grad_local__"
+            #encoded_grad_local_name = param_var.name + "__dgc_encoded_grad__"
 
-            names = [u_name, v_name, grad_local_name]
+            #names = [u_name, v_name, encoded_grad_local_name]
+            names = [u_name, v_name]
             for var_name in names:
                 startup_program.global_block().create_var(
                     name=var_name,

@@ -16,7 +16,7 @@
 #define COMMON_H_
 
 #include <stdio.h>
-#include "nccl.h"
+#include <nccl.h>
 
 #define CUDACHECK(cmd)                                              \
   do {                                                              \

@@ -15,9 +15,8 @@
 #ifndef SPARSE_H
 #define SPARSE_H
 
-//#include <cuda.h>
 #include <cuda_runtime.h>
-#include "nccl.h"
+#include <nccl.h>
 
 #ifdef __cplusplus
 extern "C" {

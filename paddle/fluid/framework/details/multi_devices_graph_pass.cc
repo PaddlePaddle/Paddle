@@ -392,11 +392,11 @@ void MultiDevSSAGraphBuilderBase::CreateComputationalOp(ir::Graph *result,
 }
 
 void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
-    ir::Graph *result, const std::string &og) const {
+    ir::Graph *result, const std::string &og, const std::string& encoded_grad_name) const {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
       result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-      local_scopes_, places_, nccl_ctxs_));
+      local_scopes_, places_, nccl_ctxs_, is_encoded));
 #else
   result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
       result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
@@ -407,10 +407,14 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &p = places_[i];
     SetCommunicationContext(op_handle, p);
-    auto &vars = result->Get<GraphVars>(kGraphVars)[i][og];
-    PADDLE_ENFORCE(!vars.empty());
-    auto &prev_grad = vars.back();
-    op_handle->AddInput(prev_grad);
+    std::vecotor<std::string> names{og, encoded_grad_name};
+    for(auto name : names){
+        auto &vars = result->Get<GraphVars>(kGraphVars)[i][name];
+        PADDLE_ENFORCE(!vars.empty());
+        auto &prev_grad = vars.back();
+        op_handle->AddInput(prev_grad);
+        VLOG(7) << "all_reduce_op_handle add input " << prev_grad;
+    }
 
     auto var =
         new VarHandle(result->CreateEmptyNode(og, ir::Node::Type::kVariable),
@@ -423,7 +427,7 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 std::unique_ptr<framework::OpDesc> CreateDGCOpDesc(
     const std::string &u_name, const std::string &v_name,
-    const std::string &grad_name, const std::string &grad_local_name,
+    const std::string &grad_name, const std::string &encoded_grad_name,
     float m = 0.9, float ratio = 0.001) {
   std::unique_ptr<framework::OpDesc> desc(new framework::OpDesc);
   desc->SetType("dgc");
@@ -434,45 +438,26 @@ std::unique_ptr<framework::OpDesc> CreateDGCOpDesc(
   desc->SetInput("U", std::vector<std::string>({u_name}));
   desc->SetInput("V", std::vector<std::string>({v_name}));
   desc->SetInput("Grad", std::vector<std::string>({grad_name}));
-  desc->SetInput("GradLocal", std::vector<std::string>({grad_local_name}));
+  // desc->SetInput("GradLocal", std::vector<std::string>({grad_local_name}));
 
   desc->SetOutput("U", std::vector<std::string>({u_name}));
   desc->SetOutput("V", std::vector<std::string>({v_name}));
-  desc->SetOutput("EncodeGradient", std::vector<std::string>({grad_name}));
-  desc->SetOutput("GradLocal", std::vector<std::string>({grad_local_name}));
+  desc->SetOutput("EncodeGradient", std::vector<std::string>({encoded_grad_name}));
+  // desc->SetOutput("GradLocal", std::vector<std::string>({grad_local_name}));
 
   return desc;
 }
 
-void DistSSAGraphBuilder::CreateDGCOpOrNot(ir::Graph *graph, size_t num_places,
+void DistSSAGraphBuilder::CreateDGCOp(ir::Graph *graph, size_t num_places,
                                            const std::string &p_name,
                                            const std::string &grad_name,
+                                           const std::string& encoded_grad_name,
                                            float m, float ratio) const {
-  if (!strategy_.enable_dgc_) {
-    return;
-  }
-
-  auto grad_desc = all_vars_.at(grad_name);
-  PADDLE_ENFORCE_NOT_NULL(grad_desc);
-  auto dim = framework::make_ddim(grad_desc->GetShape());
-  int64_t numel = framework::product(dim);
-
-  if (numel < 4096 || grad_desc->GetDataType() != proto::VarType::FP32) {
-    LOG(INFO) << "skip DGCOP because numel:" << numel
-              << ", datatype:" << grad_desc->GetDataType();
-    return;
-  }
-
-  LOG(INFO) << "Enter DGCOP mode numel:" << numel
-            << ", datatype:" << grad_desc->GetDataType();
-
   auto u_name = p_name + "__dgc_u__";
   auto v_name = p_name + "__dgc_v__";
-  auto grad_local_name = p_name + "__dgc_grad_local__";
-  std::vector<std::string> names{u_name, v_name, grad_local_name};
 
   auto dgc_op_desc =
-      CreateDGCOpDesc(u_name, v_name, grad_name, grad_local_name);
+      CreateDGCOpDesc(u_name, v_name, grad_name, encoded_grad_name);
   for (size_t i = 0; i < num_places; ++i) {
     // insert DGCop.
     auto place = places_[i];
@@ -480,23 +465,33 @@ void DistSSAGraphBuilder::CreateDGCOpOrNot(ir::Graph *graph, size_t num_places,
     graph->Get<GraphOps>(kGraphOps).emplace_back(new ComputationOpHandle(
         graph->CreateOpNode(dgc_op_desc.get()), scope, place, i));
 
+    // Add inputs
     auto *op_handle = graph->Get<GraphOps>(kGraphOps).back();
     auto &vars = graph->Get<GraphVars>(kGraphVars)[i][grad_name];
     op_handle->AddInput(vars.back());
 
-    auto var = new VarHandle(
-        graph->CreateEmptyNode(grad_name, ir::Node::Type::kVariable),
-        vars.size(), i, grad_name, place);
-    vars.emplace_back(var);
-    op_handle->AddOutput(var);
-
+    std::vector<std::string> names{u_name, v_name};
     for (auto name : names) {
       auto var_desc = all_vars_.at(name);
       PADDLE_ENFORCE_NOT_NULL(var_desc);
 
       auto var_node = graph->CreateVarNode(var_desc);
-      op_handle->AddInput(new VarHandle(var_node));
+      auto var_handle = new VarHandle(var_node);
+      op_handle->AddInput(var_handle);
+      VLOG(7) << "CreateDGCop add input " << name
+          <<", handle:" <<  var_handle->DebugString();
     }
+
+    // Add outputs
+    auto &out_vars = graph->Get<GraphVars>(kGraphVars)[i][encoded_grad_name];
+    auto out_var_h = new VarHandle(
+        graph->CreateEmptyNode(encoded_grad_name, ir::Node::Type::kVariable),
+        vars.size(), i, encoded_grad_name, place);
+    out_vars.emplace_back(out_var_h);
+    op_handle->AddOutput(out_var_h);
+
+    VLOG(7) << "CreateDGCop add input " << encoded_grad_name
+          <<", handle:" <<  out_var_h->DebugString();
   }
 }
 #endif
@@ -982,6 +977,25 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   return op_dev_id;
 }
 
+bool DistSSAGraphBuilder::IfCreateDGCOp(){
+    if (!strategy_.enable_dgc_) {
+        return false;
+    }
+
+    auto grad_desc = all_vars_.at(grad_name);
+    PADDLE_ENFORCE_NOT_NULL(grad_desc);
+    auto dim = framework::make_ddim(grad_desc->GetShape());
+    int64_t numel = framework::product(dim);
+
+    if (numel < 4096 || grad_desc->GetDataType() != proto::VarType::FP32) {
+        LOG(INFO) << "skip DGCOP because numel:" << numel
+            << ", datatype:" << grad_desc->GetDataType();
+        return false;
+    }
+
+    return true;
+}
+
 void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
                                              const std::string &p_name,
                                              const std::string &g_name) const {
@@ -997,8 +1011,13 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
         CreateReduceOp(result, g_name, 0);
         CreateBroadcastOp(result, g_name, 0);
       } else {
-        CreateDGCOpOrNot(result, places_.size(), p_name, g_name);
-        CreateAllReduceOp(result, g_name);
+        if(!IfCreateDGCOp()){
+            CreateAllReduceOp(result, g_name);
+        }else{
+            auto encoded_grad_name = g_name + "@ENCODED"
+            CreateDGCOp(result, places_.size(), p_name, g_name, encoded_grad_name);
+            CreateAllReduceOp(result, g_name, encoded_grad_name);
+        }
       }
       break;
     default:

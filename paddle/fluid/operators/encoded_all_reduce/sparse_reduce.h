@@ -15,7 +15,7 @@
 #ifndef SPARSE_REDUCE_H_
 #define SPARSE_REDUCE_H_
 
-#include "nccl.h"
+#include <nccl.h>
 
 void sparseReduce(void* gatherbuff, const int sparsecount, void* recvbuff,
                   const int recvcount, const int ranks, ncclDataType_t datatype,

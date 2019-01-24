@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "sparse.h"
 
 // asynchronous nccl allreduce or synchronous issue:
 // https://github.com/PaddlePaddle/Paddle/issues/15049
@@ -34,11 +35,12 @@ namespace details {
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
-                                     const platform::NCCLContextMap *ctxs)
+                                     const platform::NCCLContextMap *ctxs, is_encoded)
     : OpHandleBase(node),
       local_scopes_(local_scopes),
       places_(places),
-      nccl_ctxs_(ctxs) {
+      nccl_ctxs_(ctxs),
+      is_encoded_(is_encoded){
   if (nccl_ctxs_) {
     for (auto &p : places_) {
       this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
@@ -99,11 +101,19 @@ void AllReduceOpHandle::RunImpl() {
       auto &nccl_ctx = nccl_ctxs_->at(dev_id);
       auto stream = nccl_ctx.stream();
       auto comm = nccl_ctx.comm_;
-      all_reduce_calls.emplace_back([=] {
-        PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-            buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
-            comm, stream));
-      });
+      if(!is_encoded_){
+          all_reduce_calls.emplace_back([=] {
+            PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+                buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
+                comm, stream));
+          });
+      }else{
+          all_reduce_calls.emplace_back([=] {
+            PADDLE_ENFORCE(sparseAllGReduce(
+                buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
+                comm, stream));
+          });
+      }
     }
 
     this->RunAndRecordEvent([&] {

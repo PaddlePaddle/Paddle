@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common.h"
-#include "reduce_kernel.h"
-#include "sparse_reduce.h"
+#include "paddle/fluid/operators/encoded_all_reduce/common.h"
+#include "paddle/fluid/operators/encoded_all_reduce/reduce_kernel.h"
+#include "paddle/fluid/operators/encoded_all_reduce/sparse_reduce.h"
 
 #define FUNC_INDEX(redop, dtype) ((redop * ncclNumTypes) + dtype)
 
