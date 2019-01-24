@@ -1,5 +1,5 @@
 version: 1.0
-include: ["./unitest/configs/pruners.yaml", "./unitest/configs/pruners_0.yaml"]
+include: ["./configs/pruners.yaml", "./configs/pruners_0.yaml"]
 pruners:
     pruner_1:
         class: 'RatioPruner'

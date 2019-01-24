@@ -1533,19 +1533,46 @@ class IrGraph(object):
     def is_test(self):
         return self._for_test
 
-    def all_parameters(self):
-        param_nodes = set()
-        for node in self.graph.nodes():
-            if node.is_var() and node.var() is not None and node.var(
-            ).persistable():
-                param_nodes.add(node)
-        return param_nodes
+    def all_nodes(self):
+        return {node for node in self.graph.nodes()}
 
     def all_vars(self):
         return {node for node in self.graph.nodes() if node.is_var()}
 
+    def all_persistable_vars(self):
+        persistable_nodes = set()
+        for node in self.graph.nodes():
+            if node.is_var() and node.var() is not None and node.var(
+            ).persistable():
+                persistable_nodes.add(node)
+        return persistable_nodes
+
     def all_ops(self):
         return {node for node in self.graph.nodes() if node.is_op()}
+
+    def var_node(self, name):
+        """
+        Get a variable node by name from this graph.
+        Args:
+            name(str): the name of the variable node.
+        Raises:
+            ValueError: The If input's type is not str, or this graph
+            doesn't have a variable with the giving name.
+        Returns:
+            Node: the variable node with the giving name.
+        """
+        if not isinstance(name, six.string_types):
+            raise TypeError(
+                "var require string as parameter, but get %s instead." %
+                (type(name)))
+        target_var_node = None
+        var_nodes = self.all_vars()
+        for var_node in var_nodes:
+            if var_node.name() == name:
+                target_var_node = var_node
+        if target_var_node is None:
+            raise ValueError("var_node %s not in this graph" % name)
+        return target_var_node
 
     def create_param_node(self, name, var_type, shape, var_dtype):
         var_desc = core.VarDesc(name)
@@ -1586,8 +1613,9 @@ class IrGraph(object):
         return self.graph.create_op_node(op_desc)
 
     def update_input_link(self, old_input_node, new_input_node, op_node):
-        assert old_input_node in self.graph.nodes() and new_input_node in self.graph.nodes() and \
-            op_node in self.graph.nodes(), 'Th three arguments must be in the graph nodes.'
+        assert old_input_node in self.graph.nodes() and new_input_node in \
+        self.graph.nodes() and op_node in self.graph.nodes(), \
+        'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
         old_input_node.outputs_remove(op_node)
         op_node.inputs_remove(old_input_node)
         new_input_node.outputs_append(op_node)
@@ -1596,7 +1624,7 @@ class IrGraph(object):
 
     def link_to(self, node_in, node_out):
         assert node_in in self.graph.nodes() and node_out in self.graph.nodes(), \
-            'Th two arguments must be in the graph nodes.'
+            'The two arguments(node_in&node_out) must be in the graph nodes.'
         node_in.outputs_append(node_out)
         node_out.inputs_append(node_in)
 
@@ -1604,6 +1632,18 @@ class IrGraph(object):
         if not isinstance(remove_nodes, set):
             remove_nodes = set(remove_nodes)
         core.graph_safe_remove_nodes(self.graph, remove_nodes)
+
+    def has_circle(self):
+        return core.has_circle(self.graph)
+
+    def graph_num(self):
+        return core.graph_num(self.graph)
+
+    def topology_sort(self):
+        return core.topology_sort(self.graph)
+
+    def build_adjacency_list(self):
+        return core.build_adjacency_list(self.graph)
 
     def draw(self, save_path, name, marked_nodes=None):
         def _convert_to_pdf(dot_file_path):
