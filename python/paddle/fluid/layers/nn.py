@@ -2874,7 +2874,7 @@ def batch_norm(input,
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
     # setting stop_gradient=True to reduce computation
     if use_global_stats and helper.bias_attr.learning_rate == 0.:
-        scale.stop_gradient = True
+        bias.stop_gradient = True
 
     mean = helper.create_parameter(
         attr=ParamAttr(
@@ -5856,7 +5856,8 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
             type='increment',
             inputs={'X': [counter]},
             outputs={'Out': [counter]},
-            attrs={'step': float(step)})
+            attrs={'step': float(step)},
+            stop_gradient=True)
         counter.stop_gradient = True
 
     return counter
@@ -9475,7 +9476,7 @@ def teacher_student_sigmoid_loss(input,
                                 by the previous operator.
         label (Variable|list):  the ground truth which is a 2-D tensor with
                                 shape [N x 1], where N is the batch size.
-        soft_max_up_bound  (float):  if input > soft_max_up_bound, will be bound 
+        soft_max_up_bound  (float):  if input > soft_max_up_bound, will be bound
         soft_max_lower_bound (float): if input < soft_max_lower_bound, will be bound
 
     Returns:
