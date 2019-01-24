@@ -90,9 +90,9 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
         "if Flase, are not aligned")
         .SetDefault(true);
     AddAttr<int>("align_mode",
-                 "(int, default \'1\'), can be \'0\' for "
-                 "src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for "
-                 "src_idx = scale*dst_index .")
+                 "(int, default \'1\'), optional for bilinear interpolation"
+                 "can be \'0\' for src_idx = scale*(dst_indx+0.5)-0.5 , "
+                 "can be \'1\' for src_idx = scale*dst_index .")
         .SetDefault(1);
     AddComment(R"DOC(
           This operator samples input X to given output shape by using specified
