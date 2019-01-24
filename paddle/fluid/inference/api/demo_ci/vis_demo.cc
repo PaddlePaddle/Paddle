@@ -82,10 +82,12 @@ void Main(bool use_gpu) {
 
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
+#if CUDNN_VERSION >= 7100
   if (FLAGS_use_gpu) {
     paddle::demo::Main(true /*use_gpu*/);
   } else {
     paddle::demo::Main(false /*use_gpu*/);
   }
+#endif
   return 0;
 }

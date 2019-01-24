@@ -144,7 +144,8 @@ if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
     endif()
 endif()
 
-if(WITH_GPU AND TENSORRT_FOUND)
+if (NOT ${CUDNN_VERSION} VERSION_LESS 7100)
+  if(WITH_GPU AND TENSORRT_FOUND)
     set(TRT_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt")
     if (NOT EXISTS ${TRT_MODEL_INSTALL_DIR})
         inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_test_models.tar.gz")
@@ -152,4 +153,5 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(test_trt_models SRCS trt_models_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models SERIAL)
+  endif()
 endif()
