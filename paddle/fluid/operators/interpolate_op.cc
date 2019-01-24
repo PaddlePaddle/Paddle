@@ -128,7 +128,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           
           Nearest neighbor interpolation:
           
-          case 1:
+          if:
               align_corners = False
 
               input : (N,C,H_in,W_in)
@@ -137,7 +137,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
               H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
               W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
 
-          case 2:
+          else:
               align_corners = True
 
               input : (N,C,H_in,W_in)

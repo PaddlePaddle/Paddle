@@ -6570,7 +6570,7 @@ def image_resize(input,
       
       Nearest neighbor interpolation:
       
-      case 1:
+      if:
           align_corners = False
 
           input : (N,C,H_in,W_in)
@@ -6579,7 +6579,7 @@ def image_resize(input,
           H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
           W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
 
-      case 2:
+      else:
           align_corners = True
 
           input : (N,C,H_in,W_in)
@@ -6866,7 +6866,7 @@ def resize_nearest(input,
       
       Nearest neighbor interpolation:
       
-      case 1:
+      if:
           align_corners = False
 
           input : (N,C,H_in,W_in)
@@ -6875,7 +6875,7 @@ def resize_nearest(input,
           H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
           W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
 
-      case 2:
+      else:
           align_corners = True
 
           input : (N,C,H_in,W_in)
