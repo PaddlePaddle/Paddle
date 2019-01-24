@@ -54,17 +54,14 @@ class TensorRTEngine : public EngineBase {
     nvinfer1::Weights w_;
   };
 
-  TensorRTEngine(int max_batch, int max_workspace,
-                 cudaStream_t* stream = nullptr, int device = 0,
+  TensorRTEngine(int max_batch, int max_workspace, cudaStream_t stream,
+                 int device = 0,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
-        stream_(stream ? stream : &default_stream_),
+        stream_(stream),
         logger_(logger),
-        device_(device) {
-    freshDeviceId();
-    cudaStreamCreate(stream_);
-  }
+        device_(device) {}
 
   virtual ~TensorRTEngine();
 
@@ -102,7 +99,7 @@ class TensorRTEngine : public EngineBase {
   // NOTE this should be used after calling `FreezeNetwork`.
   Buffer& buffer(const std::string& name) override;
 
-  cudaStream_t* stream() { return stream_; }
+  cudaStream_t stream() { return stream_; }
 
   // Fill an input from CPU memory with name and size.
   void SetInputFromCPU(const std::string& name, const void* data, size_t size);
@@ -158,9 +155,8 @@ class TensorRTEngine : public EngineBase {
 
   // batch size of the current data, will be updated each Executation.
   int batch_size_{-1};
-  cudaStream_t* stream_;
-  // If stream_ is not set from outside, hold its own stream.
-  cudaStream_t default_stream_;
+  cudaStream_t stream_;
+
   nvinfer1::ILogger& logger_;
 
   std::vector<Buffer> buffers_;
@@ -207,38 +203,6 @@ class TensorRTEngine : public EngineBase {
 // library add new layer supports.
 #define TRT_ENGINE_ADD_LAYER(engine__, layer__, ARGS...) \
   engine__->network()->add##layer__(ARGS);
-
-/*
- * Helper to control the TensorRT engine's creation and deletion.
- */
-class TRT_EngineManager {
- public:
-  bool HasEngine(const std::string& name) const {
-    return engines_.count(name) != 0;
-  }
-
-  // Get an engine called `name`.
-  TensorRTEngine* Get(const std::string& name) const {
-    return engines_.at(name).get();
-  }
-
-  // Create or get an engine called `name`
-  TensorRTEngine* Create(int max_batch, int max_workspace, cudaStream_t* stream,
-                         const std::string& name, int gpu_device = 0) {
-    auto* p = new TensorRTEngine(max_batch, max_workspace, stream, gpu_device);
-    engines_[name].reset(p);
-    return p;
-  }
-
-  void DeleteALl() {
-    for (auto& item : engines_) {
-      item.second.reset(nullptr);
-    }
-  }
-
- private:
-  std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
-};
 
 }  // namespace tensorrt
 }  // namespace inference

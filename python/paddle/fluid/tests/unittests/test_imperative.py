@@ -41,26 +41,12 @@ class MyPyLayer(fluid.imperative.PyLayer):
 
     @staticmethod
     def forward(inputs):
-        sys.stderr.write('before forward\n')
-        ret = np.tanh(inputs[0])
-        sys.stderr.write('after forward: %s\n' % ret)
-        tensor = core.LoDTensor()
-        tensor.set(ret, core.CPUPlace())
-        return tuple([tensor])
+        return np.tanh(inputs[0])
 
     @staticmethod
     def backward(inputs):
-        sys.stderr.write('calling into backward: %s\n' % str(inputs))
         inp, out, dout = inputs
-        inp = np.array(inp)
-        out = np.array(out)
-        dout = np.array(dout)
-        sys.stderr.write('calling into backward: %s, %s, %s\n' %
-                         (inp, out, dout))
-        ret = np.array(dout) * (1 - np.square(np.array(out)))
-        tensor = core.LoDTensor()
-        tensor.set(ret, core.CPUPlace())
-        return tuple([tensor])
+        return np.array(dout) * (1 - np.square(np.array(out)))
 
 
 class MLP(fluid.imperative.Layer):
@@ -147,7 +133,8 @@ class TestImperative(unittest.TestCase):
             x = fluid.layers.reduce_sum(fluid.layers.tanh(x1))
             param_grads = fluid.backward.append_backward(
                 x, parameter_list=[x1.name])[0]
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
             static_out, static_grad = exe.run(
                 feed={inp.name: np_inp},
@@ -174,7 +161,8 @@ class TestImperative(unittest.TestCase):
             x = l(inp)[0]
             param_grads = fluid.backward.append_backward(
                 x, parameter_list=[l._x_for_debug.name])[0]
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
             static_out, static_grad = exe.run(
                 feed={inp.name: np_inp},
@@ -200,7 +188,8 @@ class TestImperative(unittest.TestCase):
             out = mlp(inp)
             param_grads = fluid.backward.append_backward(
                 out, parameter_list=[mlp._fc1._w.name])[0]
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             exe.run(fluid.default_startup_program())
 
             static_out, static_grad = exe.run(
