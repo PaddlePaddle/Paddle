@@ -208,7 +208,7 @@ class TestNearestNeighborInterpCase1Uint8(TestNearestInterpOpUint8):
         self.input_shape = [2, 3, 128, 64]
         self.out_h = 120
         self.out_w = 50
-        self.align_corners = False
+        self.align_corners = True
 
 
 class TestNearestNeighborInterpCase2Uint8(TestNearestInterpOpUint8):
