@@ -6557,7 +6557,7 @@ def image_resize(input,
 
     Example:
 
-      for scale:
+      For scale:
       
         if align_corners = True && out_size > 1 :
 
@@ -6590,7 +6590,7 @@ def image_resize(input,
 
       Bilinear interpolation:
 
-      case 1:
+      if:
           align_corners = False , align_mode = 0
           
           input : (N,C,H_in,W_in)
@@ -6600,10 +6600,7 @@ def image_resize(input,
           W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
 
-      case 2:
-          align_corners = False , align_mode = 1
-          or
-          align_corners = True
+      else:
        
           input : (N,C,H_in,W_in)
           output: (N,C,H_out,W_out) where:
@@ -6652,8 +6649,9 @@ def image_resize(input,
                                input and output tensors are aligned, preserving the values at the 
                                corner pixels.
                                Default: True
-        align_mode(int)  :  An optional input to specify align_corners mode. can be \'0\' 
-                             for pytorch calculation method, can be \'1'\ for tensorflow calculation method.
+        align_mode(int)  :  An optional input to specify src_idx calculation. can be \'0\' 
+                            for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for 
+                            src_idx = scale*dst_index .
 
     Returns:
         Variable: The output is a 4-D tensor of the shape
@@ -6769,7 +6767,7 @@ def resize_bilinear(input,
 
     Example:
 
-      for scale:
+      For scale:
       
         if align_corners = True && out_size > 1 :
 
@@ -6781,7 +6779,7 @@ def resize_bilinear(input,
 
     Bilinear interpolation:
 
-      case 1:
+      if:
           align_corners = False , align_mode = 0
           
           input : (N,C,H_in,W_in)
@@ -6791,11 +6789,8 @@ def resize_bilinear(input,
           W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
 
-      case 2:
-          align_corners = False , align_mode = 1
-          or
-          align_corners = True
-       
+      else:
+
           input : (N,C,H_in,W_in)
           output: (N,C,H_out,W_out) where:
 
@@ -6858,7 +6853,7 @@ def resize_nearest(input,
 
     Example:
 
-      for scale:
+      For scale:
       
         if align_corners = True && out_size > 1 :
 

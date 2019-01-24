@@ -108,7 +108,7 @@ class TestNearestNeighborInterpCase1(TestNearestInterpOp):
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
         self.out_w = 1
-        self.align_corners = False
+        self.align_corners = True
 
 
 class TestNearestNeighborInterpCase2(TestNearestInterpOp):

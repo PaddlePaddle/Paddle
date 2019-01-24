@@ -60,6 +60,7 @@ static void BilinearInterpolation(const Tensor& input, Tensor* output,
     int y_n = (align_mode == 0 && !align_corners)
                   ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
                   : static_cast<int>(ratio_h * k);
+    y_n = (y_n > 0) ? y_n : 0;
     int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
     float d_n = (align_mode == 0 && !align_corners)
                     ? ratio_h * (k + 0.5) - 0.5 - y_n
@@ -70,6 +71,7 @@ static void BilinearInterpolation(const Tensor& input, Tensor* output,
       int x_w = (align_mode == 0 && !align_corners)
                     ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
                     : static_cast<int>(ratio_w * l);
+      x_w = (x_w > 0) ? x_w : 0;
       int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
       float d_w = (align_mode == 0 && !align_corners)
                       ? ratio_w * (l + 0.5) - 0.5 - x_w
@@ -128,6 +130,7 @@ static void BilinearInterpolationGrad(const Tensor& output_grad,
     int y_n = (align_mode == 0 && !align_corners)
                   ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
                   : static_cast<int>(ratio_h * k);
+    y_n = (y_n > 0) ? y_n : 0;
     int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
     float d_n = (align_mode == 0 && !align_corners)
                     ? ratio_h * (k + 0.5) - 0.5 - y_n
@@ -138,6 +141,7 @@ static void BilinearInterpolationGrad(const Tensor& output_grad,
       int x_w = (align_mode == 0 && !align_corners)
                     ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
                     : static_cast<int>(ratio_w * l);
+      x_w = (x_w > 0) ? x_w : 0;
       int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
       float d_w = (align_mode == 0 && !align_corners)
                       ? ratio_w * (l + 0.5) - 0.5 - x_w
