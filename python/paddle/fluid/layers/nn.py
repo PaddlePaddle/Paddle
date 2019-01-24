@@ -6649,7 +6649,7 @@ def image_resize(input,
                                input and output tensors are aligned, preserving the values at the 
                                corner pixels.
                                Default: True
-        align_mode(int)  :  An optional input to specify src_idx calculation. can be \'0\' 
+        align_mode(int)  :  An optional for bilinear interpolation. can be \'0\' 
                             for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for 
                             src_idx = scale*dst_index .
 
