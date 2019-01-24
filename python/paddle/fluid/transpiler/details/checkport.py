@@ -16,6 +16,7 @@ import sys
 import time
 import socket
 from contextlib import closing
+from six import string_types
 
 
 def wait_server_ready(endpoints):
@@ -32,7 +33,7 @@ def wait_server_ready(endpoints):
 
            wait_server_ready(["127.0.0.1:8080", "127.0.0.1:8081"])
     """
-    assert not isinstance(endpoints, basestring)
+    assert not isinstance(endpoints, string_types)
     while True:
         all_ok = True
         not_ready_endpoints = []
