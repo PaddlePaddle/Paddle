@@ -28,6 +28,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/distributed/handlers/checkpoint_handler.h"
 #include "paddle/fluid/operators/distributed/handlers/get_handler.h"
+#include "paddle/fluid/operators/distributed/handlers/get_no_barrier_handler.h"
 #include "paddle/fluid/operators/distributed/handlers/prefetch_handler.h"
 #include "paddle/fluid/operators/distributed/handlers/send_handler.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -348,7 +349,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   }
   prefetch_handler_.reset(new distributed::PrefetchHandler());
   checkpoint_handler_.reset(new distributed::CheckpointHandler());
-  get_no_barrier_handler_.reset(new distributed::RequestGetNoBarrierHandler());
+  get_no_barrier_handler_.reset(new distributed::GetNoBarrierHandler());
   static_cast<distributed::CheckpointHandler *>(checkpoint_handler_.get())
       ->SetId(checkpoint_block_id);
 
