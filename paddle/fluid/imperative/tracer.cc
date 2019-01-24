@@ -24,15 +24,16 @@ namespace imperative {
 void CreateGradOp(const framework::OpDesc& op_desc,
                   const std::unordered_set<std::string>& no_grad_set,
                   const std::vector<framework::BlockDesc*>& grad_sub_block,
-                  framework::OpDesc** grad_op_desc,
+                  std::vector<framework::OpDesc*>* grad_op_descs,
                   std::unordered_map<std::string, std::string>* grad_to_var) {
-  std::vector<std::unique_ptr<framework::OpDesc>> grad_op_descs =
+  PADDLE_ENFORCE(grad_op_descs->empty());
+  std::vector<std::unique_ptr<framework::OpDesc>> descs =
       framework::OpInfoMap::Instance()
           .Get(op_desc.Type())
           .GradOpMaker()(op_desc, no_grad_set, grad_to_var, grad_sub_block);
-  PADDLE_ENFORCE(grad_op_descs.size() == 1, "Only support 1 grad op now.");
-  // TODO(panyx0718): Leak?
-  *grad_op_desc = grad_op_descs[0].release();
+  for (auto& desc : descs) {
+    grad_op_descs->emplace_back(desc.release());
+  }
 }
 
 void InitVar(framework::Variable* var, framework::Variable* grad_var,
@@ -138,49 +139,52 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
       prepared_op.op, scope, *prepared_op.dev_ctx, prepared_op.ctx));
 
   if (!stop_gradient) {
-    framework::OpDesc* grad_op_desc;
-    // TODO(panyx): Is this leaked?
     std::unique_ptr<std::unordered_map<std::string, std::string>> grad_to_var(
         new std::unordered_map<std::string, std::string>());
-    CreateGradOp(*op_desc, {}, {block}, &grad_op_desc, grad_to_var.get());
-    op->grad_op_desc_ = grad_op_desc;
+    CreateGradOp(*op_desc, {}, {block}, &op->grad_op_descs_, grad_to_var.get());
 
-    for (auto it : grad_op_desc->Inputs()) {
-      auto& grad_in_vars = op->grad_input_vars_[it.first];
-      for (const std::string& grad_invar : it.second) {
-        block->FindRecursiveOrCreateVar(grad_invar);
-        auto var_it = grad_to_var->find(grad_invar);
-        if (var_it == grad_to_var->end()) {
-          auto fwd_var_it = vars.find(grad_invar);
-          PADDLE_ENFORCE(fwd_var_it != vars.end());
-          // Forward inputs or outputs.
-          grad_in_vars.push_back(fwd_var_it->second->var_);
-        } else {
+    op->grad_input_vars_.resize(op->grad_op_descs_.size());
+    op->grad_output_vars_.resize(op->grad_op_descs_.size());
+    for (size_t i = 0; i < op->grad_op_descs_.size(); ++i) {
+      framework::OpDesc* grad_op_desc = op->grad_op_descs_[i];
+      for (auto it : grad_op_desc->Inputs()) {
+        auto& grad_in_vars = op->grad_input_vars_[i][it.first];
+        for (const std::string& grad_invar : it.second) {
+          block->FindRecursiveOrCreateVar(grad_invar);
+          auto var_it = grad_to_var->find(grad_invar);
+          if (var_it == grad_to_var->end()) {
+            auto fwd_var_it = vars.find(grad_invar);
+            PADDLE_ENFORCE(fwd_var_it != vars.end());
+            // Forward inputs or outputs.
+            grad_in_vars.push_back(fwd_var_it->second->var_);
+          } else {
+            VarBase* var = vars[var_it->second];
+            if (!var->grads_->var_->IsInitialized()) {
+              InitVar(var->var_, var->grads_->var_,
+                      prepared_op.GetDeviceContext());
+            }
+            // Douts.
+            grad_in_vars.push_back(var->grads_->var_);
+          }
+        }
+      }
+
+      for (auto it : grad_op_desc->Outputs()) {
+        auto& grad_out_vars = op->grad_output_vars_[i][it.first];
+        for (const std::string& grad_outvar : it.second) {
+          block->FindRecursiveOrCreateVar(grad_outvar);
+          auto var_it = grad_to_var->find(grad_outvar);
+          PADDLE_ENFORCE(var_it != grad_to_var->end(),
+                         "Could not found the grad op output var, should this "
+                         "operator %s's stop gradient be True",
+                         op_desc->Type());
           VarBase* var = vars[var_it->second];
           if (!var->grads_->var_->IsInitialized()) {
             InitVar(var->var_, var->grads_->var_,
                     prepared_op.GetDeviceContext());
           }
-          // Douts.
-          grad_in_vars.push_back(var->grads_->var_);
+          grad_out_vars.push_back(var->grads_->var_);
         }
-      }
-    }
-
-    for (auto it : grad_op_desc->Outputs()) {
-      auto& grad_out_vars = op->grad_output_vars_[it.first];
-      for (const std::string& grad_outvar : it.second) {
-        block->FindRecursiveOrCreateVar(grad_outvar);
-        auto var_it = grad_to_var->find(grad_outvar);
-        PADDLE_ENFORCE(var_it != grad_to_var->end(),
-                       "Could not found the grad op output var, should this "
-                       "operator %s's stop gradient be True",
-                       op_desc->Type());
-        VarBase* var = vars[var_it->second];
-        if (!var->grads_->var_->IsInitialized()) {
-          InitVar(var->var_, var->grads_->var_, prepared_op.GetDeviceContext());
-        }
-        grad_out_vars.push_back(var->grads_->var_);
       }
     }
   }
@@ -209,10 +213,12 @@ std::vector<VarBase*> Tracer::PyTrace(OpBase* op,
     out->TrackPreOp(op, PyLayer::kFwdOut, i, stop_gradient);
   }
   if (!stop_gradient) {
+    op->grad_input_vars_.resize(1);
+    op->grad_output_vars_.resize(1);
     auto& grad_input_vars =
-        op->grad_input_vars_[framework::GradVarName(PyLayer::kFwdInp)];
+        op->grad_input_vars_[0][framework::GradVarName(PyLayer::kFwdInp)];
     auto& grad_output_vars =
-        op->grad_output_vars_[framework::GradVarName(PyLayer::kFwdOut)];
+        op->grad_output_vars_[0][framework::GradVarName(PyLayer::kFwdOut)];
 
     for (const VarBase* inp : inputs) {
       grad_input_vars.push_back(inp->var_);
