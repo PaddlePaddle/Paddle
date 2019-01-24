@@ -42,8 +42,8 @@ class IRPassManager final {
 
   std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph);
 
-  framework::proto::ProgramDesc AcquireProgram(
-      std::unique_ptr<Graph> *graph, const ProgramDesc &program) const;
+  framework::proto::ProgramDesc AcquireProgram(std::unique_ptr<Graph> *graph,
+                                               ProgramDesc *program) const;
 
   framework::ir::Graph &graph() const { return *graph_; }
 
