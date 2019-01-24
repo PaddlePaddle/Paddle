@@ -22,27 +22,27 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+framework::Variable* GetVarNoBarrierInternal(framework::Scope* scope,
+                                             const std::string& varname) {
+  // get var from pserver immediately without barriers
+  string::Piece without_barrier_piece(WITHOUT_BARRIER_MESSAGE);
+  string::Piece var_name_piece = string::Piece(varname);
+
+  PADDLE_ENFORCE(string::Contains(var_name_piece, without_barrier_piece));
+  var_name_piece = string::TrimSuffix(var_name_piece, without_barrier_piece);
+  VLOG(4) << "Get var " << var_name_piece << " with "
+          << WITHOUT_BARRIER_MESSAGE;
+  return scope->FindVar(var_name_piece.ToString());
+}
+
 framework::Variable* GetNoBarrierHandler::GetOrCreateRequestVar(
     const std::string& varname, RPCRequest* request) {
-  return scope_->FindVar(varname);
+  return GetVarNoBarrierInternal(scope_, varname);
 }
 
 bool GetNoBarrierHandler::Handle(RPCRequest* request) {
   VLOG(4) << "GetNoBarrierHandler " << request->varname_;
-  // get var from pserver immediately without barriers
-  string::Piece without_barrier_piece(WITHOUT_BARRIER_MESSAGE);
-  string::Piece var_name_piece = string::Piece(request->varname_);
-
-  if (string::Contains(var_name_piece, without_barrier_piece)) {
-    var_name_piece = string::TrimSuffix(var_name_piece, without_barrier_piece);
-    VLOG(4) << "Get var " << var_name_piece << " with "
-            << WITHOUT_BARRIER_MESSAGE;
-    request->out_var_ = scope_->FindVar(var_name_piece.ToString());
-    request->out_var_name_ = request->varname_;
-    return true;
-  } else {
-    PADDLE_THROW("GetNoBarrier must contain %s", WITHOUT_BARRIER_MESSAGE);
-  }
+  request->out_var_ = GetVarNoBarrierInternal(scope_, request->varname_);
   return true;
 }
 
