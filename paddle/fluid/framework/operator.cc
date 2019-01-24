@@ -19,8 +19,6 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 #include <vector>
-#include "gflags/gflags.h"
-#include "glog/logging.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
