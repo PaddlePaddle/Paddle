@@ -64,9 +64,34 @@ Note: this operator will always run on CPU and the output tensor will always has
   }
 };
 
+class IsEmptyInferShape : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of IsEmptyOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of IsEmptyOp should not be null.");
+    ctx->SetOutputDim("Out", {1});
+  }
+};
+
+class IsEmptyInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
+    auto x_name = op_desc.Input("X")[0];
+    auto out_name = op_desc.Output("Out")[0];
+    auto &out = block->FindRecursiveOrCreateVar(out_name);
+    out.SetType(framework::proto::VarType::LOD_TENSOR);
+    out.SetDataType(framework::proto::VarType::BOOL);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 REGISTER_OPERATOR(is_empty, paddle::operators::IsEmptyOp,
                   paddle::operators::IsEmptyOpMaker,
+                  paddle::operators::IsEmptyInferShape,
+                  paddle::operators::IsEmptyInferVarType,
                   paddle::framework::EmptyGradOpMaker);
