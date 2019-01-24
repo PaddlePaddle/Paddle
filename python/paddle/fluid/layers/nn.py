@@ -22,7 +22,7 @@ import six
 import os
 import inspect
 from ..layer_helper import LayerHelper
-from ..initializer import Normal, Constant
+from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -183,6 +183,7 @@ __all__ = [
     'psroi_pool',
     'teacher_student_sigmoid_loss',
     'huber_loss',
+    'tree_conv',
 ]
 
 kIgnoreIndex = -100
@@ -1971,6 +1972,7 @@ def conv2d(input,
             'groups': groups,
             'use_cudnn': use_cudnn,
             'use_mkldnn': False,
+            'fuse_relu_before_depthwise_conv': False
         })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
@@ -5179,14 +5181,21 @@ def nce(input,
             alias_probs_[little[0]] = 1.0
             alias_[little[0]] = -1
 
-        probs = assign(input=np.array(custom_dist).astype('float32'))
-        custom_alias = assign(input=np.array(alias_).astype('int32'))
-        custom_alias_probs = assign(
-            input=np.array(alias_probs_).astype('float32'))
+        def _init_by_numpy_array(numpy_array):
+            ret = helper.create_parameter(
+                attr=ParamAttr(),
+                shape=numpy_array.shape,
+                dtype=numpy_array.dtype,
+                default_initializer=NumpyArrayInitializer(numpy_array))
+            ret.stop_gradient = True
+            return ret
 
-        inputs['CustomDistProbs'] = probs
-        inputs['CustomDistAlias'] = custom_alias
-        inputs['CustomDistAliasProbs'] = custom_alias_probs
+        inputs['CustomDistProbs'] = _init_by_numpy_array(
+            np.array(custom_dist).astype('float32'))
+        inputs['CustomDistAlias'] = _init_by_numpy_array(
+            np.array(alias_).astype('int32'))
+        inputs['CustomDistAliasProbs'] = _init_by_numpy_array(
+            np.array(alias_probs_).astype('float32'))
         sampler = 2
     else:
         raise Exception("Unsupported sampler type.")
@@ -8925,7 +8934,8 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 def sigmoid_cross_entropy_with_logits(x,
                                       label,
                                       ignore_index=kIgnoreIndex,
-                                      name=None):
+                                      name=None,
+                                      normalize=False):
     """
     ${comment}
 
@@ -8934,9 +8944,25 @@ def sigmoid_cross_entropy_with_logits(x,
         label(${label_type}): ${label_comment}
         ignore_index(&{ignore_index}): ${ignore_index_comment}
         name(basestring|None): Name of the output.
+        normalize(bool): If true, divide the output by the number of
+            targets != ignore_index.
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(
+                name='data', shape=[10], dtype='float32')
+            label = fluid.layers.data(
+                name='data', shape=[10], dtype='float32')
+            loss = fluid.layers.sigmoid_cross_entropy_with_logits(
+                x=input,
+                label=label,
+                ignore_index=-1,
+                normalize=True) # or False
+            # loss = fluid.layers.reduce_sum(loss) # summation of loss
     """
 
     helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
@@ -8951,7 +8977,8 @@ def sigmoid_cross_entropy_with_logits(x,
         type="sigmoid_cross_entropy_with_logits",
         inputs={"X": x,
                 "Label": label},
-        attrs={"ignore_index": ignore_index},
+        attrs={"ignore_index": ignore_index,
+               'normalize': normalize},
         outputs={"Out": out})
     return out
 
@@ -9930,3 +9957,73 @@ def huber_loss(input, label, delta):
                  'Residual': residual},
         attrs={'delta': delta})
     return out
+
+
+@templatedoc()
+def tree_conv(nodes_vector,
+              edge_set,
+              output_size,
+              num_filters=1,
+              max_depth=2,
+              act='tanh',
+              param_attr=None,
+              bias_attr=None,
+              name=None):
+    """ 
+    ${comment}
+    		
+    Args:
+        nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
+        edge_set(${edge_set_type}): ${edge_set_comment}
+        output_size(int): output feature width
+        num_filters(int): number of filters, Default 1
+        max_depth(int): max depth of filters, Default 2
+        act(str): activation function, Default tanh
+        param_attr(ParamAttr): the parameter attribute for the filters, Default None
+        bias_attr(ParamAttr): the parameter attribute for the bias of this layer, Default None
+        name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default None
+
+    Returns:
+        out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+          nodes_vector = layers.data(name='vectors', shape=[None, 10, 5], dtype='float32)
+          # None for batch size, 10 for max_node_size of dataset, 5 for vector width
+          edge_set = layers.data(name='edge_set', shape=[None, 10, 2], dtype='float32')
+          # None for batch size, 10 for max_node_size of dataset, 2 for every edge has two nodes
+          # edges must be directional
+          out_vector = layers.tree_conv(nodes_vector, edge_set, 6, 1, 2, 'tanh',
+              ParamAttr(initializer=Constant(1.0), ParamAttr(initializer=Constant(1.0))
+          # the shape of output will be [None, 10, 6, 1],
+          # None for batch size, 10 for max_node_size of dataset, 6 for output size, 1 for 1 filter
+          out_vector = layers.reshape(out_vector, shape=[None, 10, 6])
+          # After reshape, output tensor could be nodes_vector for next tree convolution
+          out_vector_2 = layers.tree_conv(out_vector, edge_set, 3, 4, 2, 'tanh',
+              ParamAttr(initializer=Constant(1.0), ParamAttr(initializer=Constant(1.0))
+          # also output tensor could be pooling(the pooling in paper called global pooling)
+          pooled = layers.reduce_max(out_vector, dims=2) # global pooling
+    """
+    helper = LayerHelper("tree_conv", **locals())
+    dtype = helper.input_dtype('nodes_vector')
+    feature_size = nodes_vector.shape[2]
+    W_shape = [feature_size, 3, output_size, num_filters]
+    W = helper.create_parameter(
+        attr=param_attr, shape=W_shape, dtype=dtype, is_bias=False)
+    if name == None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+    helper.append_op(
+        type='tree_conv',
+        inputs={'NodesVector': nodes_vector,
+                'EdgeSet': edge_set,
+                'Filter': W},
+        outputs={'Out': out, },
+        attrs={'max_depth': max_depth})
+    if helper.bias_attr:
+        pre_activation = helper.append_bias_op(out)
+    else:
+        pre_activation = out
+    return helper.append_activation(pre_activation)
