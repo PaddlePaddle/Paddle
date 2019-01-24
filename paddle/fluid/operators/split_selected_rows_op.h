@@ -16,30 +16,11 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
-
-static int FindOutIdx(int row, const std::vector<int64_t>& abs_sections) {
-  for (size_t i = 1; i < abs_sections.size(); ++i) {
-    if (row < abs_sections[i]) {
-      return i - 1;
-    }
-  }
-  return abs_sections.size() - 1;
-}
-
-static std::vector<int64_t> ToAbsoluteSection(
-    const std::vector<int64_t>& height_sections) {
-  std::vector<int64_t> abs_sections;
-  abs_sections.resize(height_sections.size());
-  abs_sections[0] = 0;
-  for (size_t i = 1; i < height_sections.size(); ++i) {
-    abs_sections[i] = height_sections[i - 1] + abs_sections[i - 1];
-  }
-  return abs_sections;
-}
 
 template <typename DeviceContext, typename T>
 class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {

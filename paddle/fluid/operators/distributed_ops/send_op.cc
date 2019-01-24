@@ -88,11 +88,11 @@ This operator will send variables to listen_and_serve op at the parameter server
                                       "Server endpoints in the order of input "
                                       "variables for mapping")
         .SetDefault({"127.0.0.1:6164"});
-    AddAttr<std::vector<int>>("sections",
-                              "(vector<int>) "
-                              "the length of each output along the "
-                              "specified axis.")
-        .SetDefault(std::vector<int>{});
+    AddAttr<std::vector<int64_t>>("sections",
+                                  "(vector<int>) "
+                                  "the length of each output along the "
+                                  "specified axis.")
+        .SetDefault(std::vector<int64_t>{});
     AddAttr<std::vector<std::string>>(
         "send_varnames",
         "(vector<string>) "
