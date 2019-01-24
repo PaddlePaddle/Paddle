@@ -54,6 +54,7 @@ def bilinear_interp_np(input,
         else:
             h = int(ratio_h * i)
 
+        h = max(0, h)
         hid = 1 if h < in_h - 1 else 0
         if (align_mode == 0 and not align_corners):
             h1lambda = ratio_h * (i + 0.5) - 0.5 - h
@@ -65,6 +66,7 @@ def bilinear_interp_np(input,
                 w = int(ratio_w * (j + 0.5) - 0.5)
             else:
                 w = int(ratio_w * j)
+            w = max(0, w)
             wid = 1 if w < in_w - 1 else 0
             if (align_mode == 0 and not align_corners):
                 w1lambda = ratio_w * (j + 0.5) - 0.5 - w
@@ -116,8 +118,8 @@ class TestBilinearInterpOp(OpTest):
         self.out_h = 2
         self.out_w = 2
         self.out_size = np.array([3, 3]).astype("int32")
-        self.align_corners = False
-        self.align_mode = 0
+        self.align_corners = True
+        self.align_mode = 1
 
 
 class TestBilinearInterpCase1(TestBilinearInterpOp):
@@ -126,8 +128,8 @@ class TestBilinearInterpCase1(TestBilinearInterpOp):
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
         self.out_w = 1
-        self.align_corners = False
-        self.align_mode = 0
+        self.align_corners = True
+        self.align_mode = 1
 
 
 class TestBilinearInterpCase2(TestBilinearInterpOp):
@@ -136,8 +138,8 @@ class TestBilinearInterpCase2(TestBilinearInterpOp):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
-        self.align_corners = False
-        self.align_mode = 0
+        self.align_corners = True
+        self.align_mode = 1
 
 
 class TestBilinearInterpCase3(TestBilinearInterpOp):
@@ -146,8 +148,8 @@ class TestBilinearInterpCase3(TestBilinearInterpOp):
         self.input_shape = [1, 1, 128, 64]
         self.out_h = 64
         self.out_w = 128
-        self.align_corners = False
-        self.align_mode = 0
+        self.align_corners = True
+        self.align_mode = 1
 
 
 class TestBilinearInterpCase4(TestBilinearInterpOp):
@@ -157,8 +159,8 @@ class TestBilinearInterpCase4(TestBilinearInterpOp):
         self.out_h = 1
         self.out_w = 1
         self.out_size = np.array([2, 2]).astype("int32")
-        self.align_corners = False
-        self.align_mode = 0
+        self.align_corners = True
+        self.align_mode = 1
 
 
 class TestBilinearInterpCase5(TestBilinearInterpOp):
@@ -168,8 +170,8 @@ class TestBilinearInterpCase5(TestBilinearInterpOp):
         self.out_h = 12
         self.out_w = 12
         self.out_size = np.array([11, 11]).astype("int32")
-        self.align_corners = False
-        self.align_mode = 0
+        self.align_corners = True
+        self.align_mode = 1
 
 
 class TestBilinearInterpCase6(TestBilinearInterpOp):
@@ -179,8 +181,8 @@ class TestBilinearInterpCase6(TestBilinearInterpOp):
         self.out_h = 64
         self.out_w = 128
         self.out_size = np.array([65, 129]).astype("int32")
-        self.align_corners = False
-        self.align_mode = 0
+        self.align_corners = True
+        self.align_mode = 1
 
 
 class TestBilinearInterpActualShape(TestBilinearInterpOp):
@@ -190,8 +192,8 @@ class TestBilinearInterpActualShape(TestBilinearInterpOp):
         self.out_h = 64
         self.out_w = 32
         self.out_size = np.array([66, 40]).astype("int32")
-        self.align_corners = False
-        self.align_mode = 0
+        self.align_corners = True
+        self.align_mode = 1
 
 
 class TestBilinearInterpOpUint8(OpTest):
@@ -225,8 +227,8 @@ class TestBilinearInterpOpUint8(OpTest):
         self.input_shape = [1, 3, 9, 6]
         self.out_h = 10
         self.out_w = 9
-        self.align_corners = False
-        self.align_mode = 0
+        self.align_corners = True
+        self.align_mode = 1
 
 
 class TestBilinearInterpCase1Uint8(TestBilinearInterpOpUint8):
@@ -235,8 +237,8 @@ class TestBilinearInterpCase1Uint8(TestBilinearInterpOpUint8):
         self.input_shape = [2, 3, 128, 64]
         self.out_h = 120
         self.out_w = 50
-        self.align_corners = False
-        self.align_mode = 0
+        self.align_corners = True
+        self.align_mode = 1
 
 
 class TestBilinearInterpCase2Uint8(TestBilinearInterpOpUint8):
@@ -246,20 +248,20 @@ class TestBilinearInterpCase2Uint8(TestBilinearInterpOpUint8):
         self.out_h = 5
         self.out_w = 13
         self.out_size = np.array([6, 15]).astype("int32")
-        self.align_corners = False
-        self.align_mode = 0
+        self.align_corners = True
+        self.align_mode = 1
 
 
 class TestBilinearInterpOtherMethod1(TestBilinearInterpOp):
     def set_align_mode(self):
-        self.align_mode = 1
         self.align_corners = False
+        self.align_mode = 1
 
 
 class TestBilinearInterpWithMethod2(TestBilinearInterpOp):
     def set_align_mode(self):
-        self.align_corners = True
-        self.align_mode = 1
+        self.align_corners = False
+        self.align_mode = 0
 
 
 class TestBilinearInterpWithMethod3(TestBilinearInterpOp):

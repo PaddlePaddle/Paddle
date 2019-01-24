@@ -105,6 +105,7 @@ __global__ void KeBilinearInterpFw(
     int in_img_idy = (align_mode == 0 && !align_corners)
                          ? static_cast<int>(ratio_h * (out_img_idy + 0.5) - 0.5)
                          : static_cast<int>(ratio_h * out_img_idy);
+    in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
     int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
     T h1lambda = (align_mode == 0 && !align_corners)
                      ? ratio_h * (out_img_idy + 0.5) - 0.5 - in_img_idy
@@ -115,6 +116,7 @@ __global__ void KeBilinearInterpFw(
     int in_img_idx = (align_mode == 0 && !align_corners)
                          ? static_cast<int>(ratio_w * (out_img_idx + 0.5) - 0.5)
                          : static_cast<int>(ratio_w * out_img_idx);
+    in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
     T w1lambda = (align_mode == 0 && !align_corners)
                      ? ratio_w * (out_img_idx + 0.5) - 0.5 - in_img_idx
@@ -153,6 +155,7 @@ __global__ void KeBilinearInterpBw(
     int in_img_idy = (align_mode == 0 && !align_corners)
                          ? ratio_h * (out_img_idy + 0.5) - 0.5
                          : ratio_h * out_img_idy;
+    in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
     int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
     T h1lambda = (align_mode == 0 && !align_corners)
                      ? ratio_h * (out_img_idy + 0.5) - 0.5 - in_img_idy
@@ -164,6 +167,7 @@ __global__ void KeBilinearInterpBw(
     int in_img_idx = (align_mode == 0 && !align_corners)
                          ? ratio_w * (out_img_idx + 0.5) - 0.5
                          : ratio_w * out_img_idx;
+    in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
     T w1lambda = (align_mode == 0 && !align_corners)
                      ? ratio_w * (out_img_idx + 0.5) - 0.5 - in_img_idx
