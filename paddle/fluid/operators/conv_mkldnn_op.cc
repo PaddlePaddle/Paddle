@@ -143,7 +143,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // Get unique name for storing MKLDNN primitives
     const std::string key = platform::ConvMKLDNNHandler::GetHash(
         src_tz, weights_tz, strides, paddings, dilations, groups,
-        ctx.op().Output("Output"));
+        ctx.op().Input("Input") + ctx.op().Input("Filter"));
     const std::string key_conv_pd = key + "@conv_pd";
 
     std::vector<primitive> pipeline;
@@ -371,7 +371,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     platform::ConvMKLDNNHandler::AppendKey(
         &key, src_tz, weights_tz, strides, paddings, dilations, groups, src_dt,
         input->format(), fuse_relu, fuse_residual_conn,
-        ctx.op().Output("Output"));
+        ctx.op().Input("Input") + ctx.op().Input("Filter"));
     const std::string key_conv_pd = key + "@conv_pd";
 
     bool need_s8_to_u8 = false;
@@ -798,7 +798,6 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     const Tensor* input = ctx.Input<Tensor>("Input");
     const Tensor* filter = ctx.Input<Tensor>("Filter");
-    const Tensor* output = ctx.Input<Tensor>("Output");
     const Tensor* output_grad =
         ctx.Input<Tensor>(framework::GradVarName("Output"));
     Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
@@ -810,9 +809,6 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE(filter->layout() == DataLayout::kMKLDNN &&
                        filter->format() != memory::format::format_undef,
                    "Wrong layout/format set for Filter tensor");
-    PADDLE_ENFORCE(output->layout() == DataLayout::kMKLDNN &&
-                       output->format() != memory::format::format_undef,
-                   "Wrong layout/format set for Output tensor");
     PADDLE_ENFORCE(output_grad->layout() == DataLayout::kMKLDNN &&
                        output_grad->format() != memory::format::format_undef,
                    "Wrong layout/format set for output_grad tensor");
@@ -840,18 +836,19 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         paddle::framework::vectorize2int(filter->dims());
     int g = std::max(groups, 1);
     GetWeightsTz(weights_tz, g, is_conv3d);
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    std::vector<int> dst_tz =
+        paddle::framework::vectorize2int(output_grad->dims());
 
     auto src_format = input->format();
     mkldnn::memory::format weights_format =
         GetWeightsFormat(filter->format(), g, is_conv3d);
 
-    // Get an unique name from "argument" name of "Output" variable
+    // Get an unique name from "argument" name of "input" and "Filter" variable
     // as well as attributes of primitive to be created
     // This name will be used as key when saving info into device context
     const std::string key = platform::ConvMKLDNNHandler::GetHash(
         src_tz, weights_tz, strides, paddings, dilations, groups,
-        ctx.op().Input("Output"));
+        ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
     const std::string key_conv_pd = key + "@conv_pd";
     std::vector<primitive> pipeline;

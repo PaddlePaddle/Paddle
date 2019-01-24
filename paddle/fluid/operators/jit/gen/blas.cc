@@ -43,6 +43,8 @@ void VXXJitCode::genCode() {
       vmulps(ymm_dst, ymm_src1, ymm_src2);
     } else if (type_ == operand_type::ADD) {
       vaddps(ymm_dst, ymm_src1, ymm_src2);
+    } else if (type_ == operand_type::SUB) {
+      vsubps(ymm_dst, ymm_src1, ymm_src2);
     }
     if (with_relu_) {
       vmaxps(ymm_dst, ymm_zero, ymm_dst);
@@ -84,6 +86,9 @@ void VXXJitCode::genCode() {
         break;
       case operand_type::ADD:
         vaddps(xmm_dst, xmm_src1, xmm_src2);
+        break;
+      case operand_type::SUB:
+        vsubps(xmm_dst, xmm_src1, xmm_src2);
         break;
       default:
         break;
@@ -178,8 +183,7 @@ namespace gen = paddle::operators::jit::gen;
 
 REGISTER_JITKERNEL_GEN(kVMul, gen::VMulCreator);
 REGISTER_JITKERNEL_GEN(kVAdd, gen::VAddCreator);
-// TODO(TJ): enable sub
-// REGISTER_JITKERNEL_GEN(kVSub, gen::VSubCreator);
+REGISTER_JITKERNEL_GEN(kVSub, gen::VSubCreator);
 REGISTER_JITKERNEL_GEN(kVAddRelu, gen::VAddReluCreator);
 REGISTER_JITKERNEL_GEN(kVScal, gen::VScalCreator);
 REGISTER_JITKERNEL_GEN(kVAddBias, gen::VAddBiasCreator);

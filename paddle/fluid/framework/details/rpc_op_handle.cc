@@ -30,7 +30,7 @@ RPCOpHandle::RPCOpHandle(ir::Node *node, const framework::OpDesc &op_desc,
 
 void RPCOpHandle::RunImpl() {
   for (auto *in : inputs_) {
-    auto &p = static_cast<VarHandle *>(in)->place_;
+    auto &p = static_cast<VarHandle *>(in)->place();
     if (ir::IsControlDepVar(*in->Node())) {
       continue;
     }
