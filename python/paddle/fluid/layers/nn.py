@@ -6529,7 +6529,7 @@ def image_resize(input,
                  resample='BILINEAR',
                  actual_shape=None,
                  align_corners=True,
-                 align_mode=0):
+                 align_mode=1):
     """
     **Resize a Batch of Images**
 
@@ -6743,7 +6743,7 @@ def resize_bilinear(input,
                     name=None,
                     actual_shape=None,
                     align_corners=True,
-                    align_mode=0):
+                    align_mode=1):
     """
     Resize input by performing bilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
