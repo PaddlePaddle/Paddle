@@ -34,6 +34,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
 
+DECLARE_int32(inner_op_parallelism);
+
 namespace paddle {
 namespace framework {
 
@@ -49,6 +51,8 @@ constexpr char kTempVarName[] = "@TEMP@";
 /// e.g. Variable "x@GRAD" is the gradient of varibale "x".
 constexpr char kGradVarSuffix[] = "@GRAD";
 
+constexpr size_t kGradVarSuffixSize = 5U;
+
 /// Variables with this suffix are supposed to be filled up with zeros.
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
@@ -60,7 +64,20 @@ constexpr char kNewGradSuffix[] = "@NEWGRAD@";
 extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
 
 inline std::string GradVarName(const std::string& var_name) {
-  return var_name + kGradVarSuffix;
+  std::string result;
+  result.reserve(var_name.size() + kGradVarSuffixSize);
+  result += var_name;
+  result += kGradVarSuffix;
+  return result;
+}
+
+inline std::string GradOriginalVarName(const std::string& grad_var_name) {
+  std::size_t pos = grad_var_name.rfind(kGradVarSuffix);
+  if (pos == std::string::npos) {
+    return grad_var_name;
+  } else {
+    return grad_var_name.substr(0, pos);
+  }
 }
 
 proto::VarType::Type GetDataTypeOfVar(const Variable* var);
@@ -69,6 +86,19 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
 class OperatorBase;
 class ExecutionContext;
+
+class RuntimeContext {
+ public:
+  RuntimeContext(const VariableNameMap& innames,
+                 const VariableNameMap& outnames, const Scope& scope);
+
+  RuntimeContext(const VariableValueMap& invars,
+                 const VariableValueMap& outvars)
+      : inputs(invars), outputs(outvars) {}
+
+  VariableValueMap inputs;
+  VariableValueMap outputs;
+};
 
 /**
  * OperatorBase has the basic elements that Net will call to do computation.
@@ -101,8 +131,8 @@ class OperatorBase {
   bool HasAttr(const std::string& name) const { return attrs_.count(name); }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
-                   name);
+    PADDLE_ENFORCE(attrs_.find(name) != attrs_.end(),
+                   "%s should be in AttributeMap", name);
     return boost::get<T>(attrs_.at(name));
   }
   const AttributeMap& Attrs() const { return attrs_; }
@@ -129,7 +159,8 @@ class OperatorBase {
 
   void SetIsCalledByExecutor(bool x) { run_by_executor_ = x; }
   virtual void RuntimeInferShape(const Scope& scope,
-                                 const platform::Place& place) const {}
+                                 const platform::Place& place,
+                                 const RuntimeContext& ctx) const {}
 
  protected:
   std::string type_;
@@ -156,8 +187,9 @@ class OperatorBase {
 class ExecutionContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
-                   const platform::DeviceContext& device_context)
-      : op_(op), scope_(scope), device_context_(device_context) {}
+                   const platform::DeviceContext& device_context,
+                   const RuntimeContext& ctx)
+      : op_(op), scope_(scope), device_context_(device_context), ctx_(ctx) {}
 
   const OperatorBase& op() const { return op_; }
 
@@ -180,20 +212,37 @@ class ExecutionContext {
     return op_.Outputs(name).size();
   }
 
-  const Variable* InputVar(const std::string& name) const {
-    auto ipt = op_.Input(name);
-    return ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-  }
+  const Variable* InputVar(const std::string& name) const;
 
-  Variable* OutputVar(const std::string& name) const {
-    auto opt = op_.Output(name);
-    return opt == kEmptyVarName ? nullptr : scope_.FindVar(opt);
-  }
+  Variable* OutputVar(const std::string& name) const;
 
   const std::vector<const Variable*> MultiInputVar(
       const std::string& name) const {
-    auto names = op_.Inputs(name);
+    auto it = ctx_.inputs.find(name);
+    if (it == ctx_.inputs.end()) {
+      return {};
+    }
     std::vector<const Variable*> res;
+    res.reserve(it->second.size());
+    std::transform(it->second.begin(), it->second.end(),
+                   std::back_inserter(res),
+                   [this](Variable* var) { return var; });
+    return res;
+  }
+
+  std::vector<Variable*> MultiOutputVar(const std::string& name) const {
+    auto names = op_.Outputs(name);
+    auto it = ctx_.outputs.find(name);
+    if (it == ctx_.outputs.end()) {
+      return {};
+    }
+    return it->second;
+  }
+
+  const std::vector<Variable*> LegacyMultiInputVar(
+      const std::string& name) const {
+    auto names = op_.Inputs(name);
+    std::vector<Variable*> res;
     res.reserve(names.size());
     std::transform(names.begin(), names.end(), std::back_inserter(res),
                    [this](const std::string& name) {
@@ -203,7 +252,7 @@ class ExecutionContext {
     return res;
   }
 
-  std::vector<Variable*> MultiOutputVar(const std::string& name) const {
+  std::vector<Variable*> LegacyMultiOutputVar(const std::string& name) const {
     auto names = op_.Outputs(name);
     std::vector<Variable*> res;
     res.reserve(names.size());
@@ -228,7 +277,55 @@ class ExecutionContext {
   }
 
   template <typename T>
+  const T* LegacyInput(const std::string& name) const {
+    auto* var = LegacyInputVar(name);
+    return var == nullptr ? nullptr : &var->Get<T>();
+  }
+
+  template <typename T>
+  T* LegacyOutput(const std::string& name) const {
+    auto var = LegacyOutputVar(name);
+    return var == nullptr ? nullptr : var->GetMutable<T>();
+  }
+
+  const Variable* LegacyInputVar(const std::string& name) const;
+
+  Variable* LegacyOutputVar(const std::string& name) const;
+
+  template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
+    auto it = ctx_.inputs.find(name);
+    if (it == ctx_.inputs.end()) {
+      return {};
+    }
+    const std::vector<Variable*>& vars = it->second;
+    std::vector<const T*> res;
+    res.reserve(vars.size());
+    std::transform(vars.begin(), vars.end(), std::back_inserter(res),
+                   [&](Variable* var) -> const T* {
+                     return var == nullptr ? nullptr : &var->Get<T>();
+                   });
+    return res;
+  }
+
+  template <typename T>
+  std::vector<T*> MultiOutput(const std::string& name) const {
+    auto it = ctx_.outputs.find(name);
+    if (it == ctx_.outputs.end()) {
+      return {};
+    }
+    const std::vector<Variable*>& vars = it->second;
+    std::vector<T*> res;
+    res.reserve(vars.size());
+    std::transform(vars.begin(), vars.end(), std::back_inserter(res),
+                   [&](Variable* var) -> T* {
+                     return var == nullptr ? nullptr : var->GetMutable<T>();
+                   });
+    return res;
+  }
+
+  template <typename T>
+  const std::vector<const T*> LegacyMultiInput(const std::string& name) const {
     auto names = op_.Inputs(name);
     std::vector<const T*> res;
     res.reserve(names.size());
@@ -241,7 +338,7 @@ class ExecutionContext {
   }
 
   template <typename T>
-  std::vector<T*> MultiOutput(const std::string& name) const {
+  std::vector<T*> LegacyMultiOutput(const std::string& name) const {
     auto names = op_.Outputs(name);
     std::vector<T*> res;
     res.reserve(names.size());
@@ -282,21 +379,57 @@ class ExecutionContext {
     return op_.Outputs(name);
   }
 
+  template <typename T, typename DevContext>
+  Tensor AllocateTmpTensor(const framework::DDim& dim,
+                           const DevContext& dev_ctx) const {
+    auto tmp_allocation_ptr = platform::DeviceTemporaryAllocator::Instance()
+                                  .Get<DevContext>(dev_ctx)
+                                  .Allocate(product(dim) * sizeof(T));
+    auto& deleter = tmp_allocation_ptr.get_deleter();
+    auto* allocation_ptr = tmp_allocation_ptr.release();
+    auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
+        allocation_ptr, deleter);
+
+    PADDLE_ENFORCE(
+        dynamic_cast<platform::TemporaryAllocation*>(allocation_ptr) != nullptr,
+        "The AllocationPtr must be TemporaryAllocation.");
+    PADDLE_ENFORCE_GE(allocation_ptr->size(),
+                      framework::product(dim) * sizeof(T));
+
+    paddle::framework::Tensor temp_tensor(
+        framework::ToDataType(std::type_index(typeid(T))));
+    temp_tensor.Resize(dim);
+    temp_tensor.ResetHolder(std::move(shared_allocation));
+    return temp_tensor;
+  }
+
  private:
   const OperatorBase& op_;
   const Scope& scope_;
   const platform::DeviceContext& device_context_;
+  const RuntimeContext& ctx_;
 };
 
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const;
 
 template <>
+const Tensor* ExecutionContext::LegacyInput<Tensor>(
+    const std::string& name) const;
+
+template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const;
 
 template <>
+const std::vector<const Tensor*> ExecutionContext::LegacyMultiInput<Tensor>(
+    const std::string& name) const;
+
+template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
+
+template <>
+Tensor* ExecutionContext::LegacyOutput<Tensor>(const std::string& name) const;
 
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
@@ -350,11 +483,12 @@ class OperatorWithKernel : public OperatorBase {
     OpInfoMap::Instance().Get(Type()).infer_shape_(ctx);
   }
 
-  void RuntimeInferShape(const Scope& scope,
-                         const platform::Place& place) const override;
+  void RuntimeInferShape(const Scope& scope, const platform::Place& place,
+                         const RuntimeContext& ctx) const override;
+
+  virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
 
  protected:
-  virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;
@@ -371,9 +505,10 @@ class OperatorWithKernel : public OperatorBase {
    *
    * * transfered_inplace_vars is a output vector.
    */
-  Scope* TryTransferData(
-      const Scope& scope, const OpKernelType& expected_kernel_key,
-      std::vector<std::string>* transfered_inplace_vars) const;
+  Scope* PrepareData(const Scope& scope,
+                     const OpKernelType& expected_kernel_key,
+                     std::vector<std::string>* transfered_inplace_vars,
+                     RuntimeContext* ctx) const;
 
   void TransferInplaceVarsBack(const Scope& scope,
                                const std::vector<std::string>& inplace_vars,

@@ -41,7 +41,9 @@ class SumOp : public framework::OperatorWithKernel {
       return;  // skip runtime infershape when is tensor array;
     }
 
+    auto x_var_types = ctx->GetInputsVarType("X");
     auto x_dims = ctx->GetInputsDim("X");
+
     size_t N = x_dims.size();
     PADDLE_ENFORCE_GT(N, 0, "Input tensors count should > 0.");
     if (N == 1) {
@@ -49,7 +51,13 @@ class SumOp : public framework::OperatorWithKernel {
     }
 
     framework::DDim in_dim({0});
-    for (auto& x_dim : x_dims) {
+    for (size_t i = 0; i < x_dims.size(); ++i) {
+      auto& x_dim = x_dims[i];
+      // x_dim.size() == 1 means the real dim of selected rows is [0]
+      if (x_var_types[i] == framework::proto::VarType::SELECTED_ROWS &&
+          x_dim.size() == 1) {
+        continue;
+      }
       if (framework::product(x_dim) == 0) {
         continue;
       }
@@ -91,9 +99,9 @@ class SumOp : public framework::OperatorWithKernel {
           continue;
         }
         if (dtype == -1) {
-          dtype = framework::ToDataType(tensor->type());
+          dtype = tensor->type();
         } else {
-          PADDLE_ENFORCE_EQ(dtype, framework::ToDataType(tensor->type()));
+          PADDLE_ENFORCE_EQ(dtype, tensor->type());
         }
       }
       PADDLE_ENFORCE_NE(dtype, -1,
@@ -106,8 +114,8 @@ class SumOp : public framework::OperatorWithKernel {
       for (auto& var : x_vars) {
         auto& value = var->Get<framework::SelectedRows>().value();
         if (value.IsInitialized()) {
-          return framework::OpKernelType(framework::ToDataType(value.type()),
-                                         ctx.device_context(), layout, library);
+          return framework::OpKernelType(value.type(), ctx.device_context(),
+                                         layout, library);
         }
       }
       // if input sparse vars are not initialized, use an default kernel type.
@@ -118,16 +126,15 @@ class SumOp : public framework::OperatorWithKernel {
         auto& array = x_var->Get<framework::LoDTensorArray>();
         for (auto& each : array) {
           if (each.numel() != 0) {
-            return framework::OpKernelType(framework::ToDataType(each.type()),
-                                           ctx.device_context(), layout,
-                                           library);
+            return framework::OpKernelType(each.type(), ctx.device_context(),
+                                           layout, library);
           }
         }
       }
       PADDLE_THROW("Cannot find the input data type by all input data");
     }
     PADDLE_THROW("Unexpected branch. Input type is %s",
-                 x_vars[0]->Type().name());
+                 framework::ToTypeName(x_vars[0]->Type()));
   }
 };
 

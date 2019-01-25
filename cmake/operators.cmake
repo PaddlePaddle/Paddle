@@ -84,7 +84,7 @@ function(op_library TARGET)
     endif()
     if (WIN32)
     # remove windows unsupported op, because windows has no nccl, no warpctc such ops.
-    foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op" "warpctc_op")
+    foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op")
         if ("${TARGET}" STREQUAL "${windows_unsupport_op}")
           return()
         endif()
@@ -110,7 +110,7 @@ function(op_library TARGET)
     # Define operators that don't need pybind here.
     foreach(manual_pybind_op "compare_op" "logical_op" "nccl_op"
 "tensor_array_read_write_op" "tensorrt_engine_op" "conv_fusion_op"
-"fusion_transpose_flatten_concat_op")
+"fusion_transpose_flatten_concat_op" "fusion_conv_inception_op")
         if ("${TARGET}" STREQUAL "${manual_pybind_op}")
             set(pybind_flag 1)
         endif()

@@ -161,13 +161,16 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
 }
 
 std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
+  std::lock_guard<std::mutex> lk(clone_mutex_);
   VLOG(3) << "Predictor::clone";
   std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
-
-  if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init(scope_)) {
+  // Hot fix the bug that result diff in multi-thread.
+  // TODO(Superjomn) re-implement a real clone here.
+  if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init(nullptr)) {
     LOG(ERROR) << "fail to call Init";
     return nullptr;
   }
+
 #ifdef __clang__
   // fix clang compile error
   return cls;
@@ -208,11 +211,14 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                   inputs[i].data.length());
     } else {
 #ifdef PADDLE_WITH_CUDA
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto *dev_ctx =
+          static_cast<const platform::CUDADeviceContext *>(pool.Get(place_));
       auto dst_gpu_place = boost::get<platform::CUDAPlace>(place_);
       memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
                    platform::CPUPlace(), inputs[i].data.data(),
-                   inputs[i].data.length(),
-                   0);  // stream 0 for sync copy
+                   inputs[i].data.length(), dev_ctx->stream());
 #else
       PADDLE_THROW("Not compile with CUDA, should not reach here.");
 #endif
@@ -266,10 +272,10 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     auto type = fetch.type();
     auto output = &(outputs->at(i));
     output->name = fetchs_[idx]->Input("X")[0];
-    if (type == typeid(float)) {
+    if (type == framework::DataTypeTrait<float>::DataType) {
       GetFetchOne<float>(fetch, output);
       output->dtype = PaddleDType::FLOAT32;
-    } else if (type == typeid(int64_t)) {
+    } else if (type == framework::DataTypeTrait<int64_t>::DataType) {
       GetFetchOne<int64_t>(fetch, output);
       output->dtype = PaddleDType::INT64;
     } else {
@@ -285,7 +291,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
     // 1. GPU memeroy
-    PADDLE_ENFORCE_GT(
+    PADDLE_ENFORCE_GE(
         config.fraction_of_gpu_memory, 0.f,
         "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
     PADDLE_ENFORCE_GE(config.device, 0, "Invalid device id %d", config.device);

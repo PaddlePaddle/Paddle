@@ -18,7 +18,10 @@ limitations under the License. */
 #include <fstream>
 #include <iosfwd>
 #include <ostream>
+#include <stack>
+#include <unordered_map>
 #include <unordered_set>
+#include "paddle/fluid/framework/ir/graph_traits.h"
 
 DEFINE_string(print_sub_graph_dir, "",
               "FLAGS_print_sub_graph_dir is used "
@@ -40,7 +43,7 @@ void SortHelper(
     }
   }
 
-  VLOG(3) << "topology sort insert: " << node->Name()
+  VLOG(5) << "topology sort insert: " << node->Name() << " "
           << reinterpret_cast<void *>(node) << " input " << node->inputs.size();
   ret->push_back(node);
 }
@@ -98,12 +101,13 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
   return ret;
 }
 
+// Build operator inlink edge table.
 std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     const Graph &graph) {
   std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list;
 
   for (auto &n : graph.Nodes()) {
-    if (n->NodeType() != ir::Node::Type::kOperation) continue;
+    if (!n->IsOp()) continue;
     if (adj_list.find(n) == adj_list.end()) {
       adj_list[n] = std::unordered_set<ir::Node *>();
     }
@@ -120,8 +124,121 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
   return adj_list;
 }
 
+// Build operator outlink edge table.
+std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationOutAdjList(
+    const Graph &graph) {
+  std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list;
+
+  for (auto &n : graph.Nodes()) {
+    if (!n->IsOp()) continue;
+    if (adj_list.find(n) == adj_list.end()) {
+      adj_list[n] = std::unordered_set<ir::Node *>();
+    }
+    for (auto &var : n->outputs) {
+      for (auto &adj_n : var->outputs) {
+        PADDLE_ENFORCE(adj_n->NodeType() == ir::Node::Type::kOperation);
+        VLOG(40) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
+                 << " -> " << n->Name() << reinterpret_cast<void *>(n)
+                 << "  via " << var->Name() << reinterpret_cast<void *>(var);
+        adj_list[n].insert(adj_n);
+      }
+    }
+  }
+  return adj_list;
+}
+
+std::vector<ir::Node *> OpDFSSort(const Graph &graph) {
+  auto edge_table = BuildOperationOutAdjList(graph);
+  std::stack<Node *> stack;
+  for (auto &ele : edge_table) {
+    if (ele.first->inputs.empty()) {
+      // find the input ops (those without input vars)
+      stack.push(ele.first);
+    } else {
+      // find the ops with only persistable vars as inputs.
+      bool all_persistable = true;
+      for (auto *input : ele.first->inputs) {
+        if (!(input->IsVar() && input->Var() && input->Var()->Persistable())) {
+          all_persistable = false;
+        }
+      }
+      if (all_persistable) {
+        stack.push(ele.first);
+      }
+    }
+  }
+
+  std::vector<Node *> res;
+  // start from the feed op and DFS
+  std::unordered_set<Node *> unique_set;
+  while (!stack.empty()) {
+    // will start from the last feed by default.
+    auto cur = stack.top();
+    stack.pop();
+    unique_set.insert(cur);
+    res.push_back(cur);
+
+    for (auto *op : edge_table[cur]) {
+      if (!unique_set.count(op)) {
+        stack.push(op);
+      }
+    }
+  }
+  return res;
+}
+
+std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
+  std::vector<ir::Node *> nodes;
+  std::unordered_map<Node *, int> in_degree;
+
+  auto set_out_ops_ready = [&](Node *var) {
+    for (auto *op : var->outputs) {
+      --in_degree[op];
+    }
+  };
+  // build in_degree
+  for (auto *node : graph.Nodes()) {
+    if (node->IsOp()) {
+      in_degree[node] += node->inputs.size();
+    } else if (node->IsVar() && node->inputs.empty()) {
+      // put all the inputs of the whole graph ready.
+      set_out_ops_ready(node);
+    }
+  }
+
+  std::deque<Node *> op_queue;
+  // first visit
+  for (auto &node : OpDFSSort(graph)) {
+    if (node->IsOp()) {
+      op_queue.push_back(node);
+    }
+  }
+
+  // traverse the graph
+  int num_ops = op_queue.size();
+  while (num_ops) {
+    for (auto it = op_queue.begin(); it != op_queue.end(); it++) {
+      auto *&cur_op = *it;
+      if (!cur_op || in_degree[cur_op] > 0) continue;
+      // visit this node
+      // put all the output var of this op valid.
+      for (auto *out_var : cur_op->outputs) {
+        if (!out_var) continue;
+        set_out_ops_ready(out_var);
+      }
+      VLOG(8) << "visit " << cur_op->Name();
+      nodes.push_back(cur_op);
+
+      cur_op = nullptr;
+      num_ops--;
+    }
+  }
+
+  return nodes;
+}
+
 size_t GraphNum(const Graph &graph) {
-  std::unordered_set<ir::Node *> nodes = graph.Nodes();
+  std::unordered_set<ir::Node *> nodes(graph.Nodes());
   std::unordered_set<ir::Node *> visited_nodes;
   visited_nodes.reserve(nodes.size());
   std::deque<ir::Node *> q_nodes;
@@ -200,6 +317,29 @@ size_t GraphNum(const Graph &graph) {
   }
 
   return graph_count;
+}
+
+void CleanIndividualNodes(Graph *graph) {
+  std::unordered_set<Node *> nodes2rm;
+  for (auto *node : graph->Nodes()) {
+    if (node->inputs.empty() && node->outputs.empty()) {
+      nodes2rm.insert(node);
+    }
+  }
+
+  for (auto *node : nodes2rm) {
+    graph->RemoveNode(node);
+  }
+}
+
+std::vector<Node *> TopologyVarientSort(const Graph &graph,
+                                        SortKind sort_kind) {
+  switch (sort_kind) {
+    case SortKind::TS:
+      return framework::ir::TopologySortOperations(graph);
+    default:
+      return framework::ir::TopologyDfsSortOperations(graph);
+  }
 }
 
 }  // namespace ir

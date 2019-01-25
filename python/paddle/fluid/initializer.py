@@ -18,12 +18,14 @@ from . import framework
 import numpy as np
 import contextlib
 from .core import VarDesc
+from . import unique_name
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
     'MSRA', 'force_init_on_cpu', 'init_on_cpu', 'ConstantInitializer',
     'UniformInitializer', 'NormalInitializer', 'TruncatedNormalInitializer',
-    'XavierInitializer', 'BilinearInitializer', 'MSRAInitializer'
+    'XavierInitializer', 'BilinearInitializer', 'MSRAInitializer',
+    'NumpyArrayInitializer'
 ]
 
 _force_init_on_cpu_ = False
@@ -161,7 +163,8 @@ class ConstantInitializer(Initializer):
                 "dtype": int(var.dtype),
                 "value": float(self._value),
                 'force_cpu': self._force_cpu or force_init_on_cpu()
-            })
+            },
+            stop_gradient=True)
         var.op = op
         return op
 
@@ -207,16 +210,40 @@ class UniformInitializer(Initializer):
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
+
+        # to be compatible of fp16 initalizers
+        if var.dtype == VarDesc.VarType.FP16:
+            out_dtype = VarDesc.VarType.FP32
+            out_var = block.create_var(
+                name=unique_name.generate(".".join(['gaussian_random', 'tmp'])),
+                shape=var.shape,
+                dtype=out_dtype,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False)
+        else:
+            out_dtype = var.dtype
+            out_var = var
+
         op = block._prepend_op(
             type="uniform_random",
-            outputs={"Out": var},
+            outputs={"Out": out_var},
             attrs={
                 "shape": var.shape,
-                "dtype": int(var.dtype),
+                "dtype": out_dtype,
                 "min": self._low,
                 "max": self._high,
                 "seed": self._seed
-            })
+            },
+            stop_gradient=True)
+
+        if var.dtype == VarDesc.VarType.FP16:
+            block.append_op(
+                type="cast",
+                inputs={"X": out_var},
+                outputs={"Out": var},
+                attrs={"in_dtype": out_var.dtype,
+                       "out_dtype": var.dtype})
+
         var.op = op
         return op
 
@@ -261,17 +288,40 @@ class NormalInitializer(Initializer):
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
+
+        # to be compatible of fp16 initalizers
+        if var.dtype == VarDesc.VarType.FP16:
+            out_dtype = VarDesc.VarType.FP32
+            out_var = block.create_var(
+                name=unique_name.generate(".".join(['gaussian_random', 'tmp'])),
+                shape=var.shape,
+                dtype=out_dtype,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False)
+        else:
+            out_dtype = var.dtype
+            out_var = var
+
         op = block._prepend_op(
             type="gaussian_random",
-            outputs={"Out": var},
+            outputs={"Out": out_var},
             attrs={
                 "shape": var.shape,
-                "dtype": int(var.dtype),
+                "dtype": out_dtype,
                 "mean": self._mean,
                 "std": self._std_dev,
                 "seed": self._seed,
                 "use_mkldnn": False
-            })
+            },
+            stop_gradient=True)
+
+        if var.dtype == VarDesc.VarType.FP16:
+            block.append_op(
+                type="cast",
+                inputs={"X": out_var},
+                outputs={"Out": var},
+                attrs={"in_dtype": out_var.dtype,
+                       "out_dtype": var.dtype})
         var.op = op
         return op
 
@@ -325,7 +375,8 @@ class TruncatedNormalInitializer(Initializer):
                 "mean": self._mean,
                 "std": self._std_dev,
                 "seed": self._seed
-            })
+            },
+            stop_gradient=True)
         var.op = op
         return op
 
@@ -415,7 +466,8 @@ class XavierInitializer(Initializer):
                     "min": -limit,
                     "max": limit,
                     "seed": self._seed
-                })
+                },
+                stop_gradient=True)
 
         else:
             std = np.sqrt(2.0 / float(fan_in + fan_out))
@@ -428,7 +480,8 @@ class XavierInitializer(Initializer):
                     "mean": 0.0,
                     "std": std,
                     "seed": self._seed
-                })
+                },
+                stop_gradient=True)
         var.op = op
         return op
 
@@ -513,7 +566,8 @@ class MSRAInitializer(Initializer):
                     "min": -limit,
                     "max": limit,
                     "seed": self._seed
-                })
+                },
+                stop_gradient=True)
 
         else:
             std = np.sqrt(2.0 / float(fan_in))
@@ -526,7 +580,8 @@ class MSRAInitializer(Initializer):
                     "mean": 0.0,
                     "std": std,
                     "seed": self._seed
-                })
+                },
+                stop_gradient=True)
         var.op = op
         return op
 
@@ -625,6 +680,64 @@ class BilinearInitializer(Initializer):
                 'shape': list(shape),
                 value_name: values
             })
+        var.op = op
+        return op
+
+
+class NumpyArrayInitializer(Initializer):
+    """Init an parameter with an numpy array
+
+    Args:
+        value (numpy): numpy array to initialize the variable
+
+    Examples:
+        .. code-block:: python
+
+            fc = fluid.layers.fc(input=x, size=10,
+                param_attr=fluid.initializer.NumpyArrayInitializer(numpy.array([1,2])))
+    """
+
+    def __init__(self, value):
+        import numpy
+        assert isinstance(value, numpy.ndarray)
+        super(NumpyArrayInitializer, self).__init__()
+        self._value = value
+
+    def __call__(self, var, block):
+        """Add constant initialization ops for a variable
+
+        Args:
+            var: Variable that needs to be initialized
+            block: The block in which initialization ops
+                   should be added
+
+        Returns:
+            the initialization op
+        """
+        assert isinstance(var, framework.Variable)
+        assert isinstance(block, framework.Block)
+        # Initialization Ops should be prepended and not appended
+        dtype = framework.convert_np_dtype_to_dtype_(self._value.dtype)
+        if dtype == VarDesc.VarType.FP32:
+            value_name = "fp32_values"
+            values = [float(v) for v in self._value.flat]
+        elif dtype == VarDesc.VarType.INT32:
+            value_name = "int32_values"
+            values = [int(v) for v in self._value.flat]
+        else:
+            raise ValueError("Unsupported dtype %s", self._value.dtype)
+        if self._value.size > 1024 * 1024 * 5:
+            raise ValueError("The size of input is too big. Please consider "
+                             "saving it to file and 'load_op' to load it")
+        op = block._prepend_op(
+            type='assign_value',
+            outputs={'Out': var},
+            attrs={
+                'dtype': dtype,
+                'shape': list(self._value.shape),
+                value_name: values
+            },
+            stop_gradient=True)
         var.op = op
         return op
 

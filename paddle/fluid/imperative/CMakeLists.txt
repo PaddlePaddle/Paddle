@@ -1,3 +1,5 @@
-cc_library(layer SRCS layer.cc DEPS proto_desc operator)
-cc_library(tracer SRCS tracer.cc DEPS proto_desc)
+if(WITH_PYTHON)
+cc_library(layer SRCS layer.cc DEPS proto_desc operator device_context blas)
+cc_library(tracer SRCS tracer.cc DEPS proto_desc device_context)
 cc_library(engine SRCS engine.cc)
+endif()

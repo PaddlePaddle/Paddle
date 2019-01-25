@@ -25,6 +25,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
 #include "paddle/fluid/string/printf.h"
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -104,7 +105,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
   for (auto &node : GraphTraits::DFS(graph)) {
     for (const auto &pdnode : pattern_.nodes()) {
       if (pdnode->Tell(&node)) {
-        VLOG(4) << "pdnode " << pdnode->name() << " marked";
+        VLOG(4) << "Node " << node.Name() << " marked as " << pdnode->name();
         pdnodes2nodes_[pdnode.get()].insert(&node);
       }
     }
@@ -1030,10 +1031,11 @@ PDNode *patterns::ElewiseAddActInplaceGrad::operator()(
 }
 
 PDNode *patterns::ConvBias::operator()(
-    paddle::framework::ir::PDNode *conv_input) {
+    paddle::framework::ir::PDNode *conv_input, bool is_conv3d) {
+  std::string type = is_conv3d ? "conv3d" : "conv2d";
   // Create Operators
-  conv_input->assert_is_op_input("conv2d", "Input");
-  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  conv_input->assert_is_op_input(type, "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op(type);
   auto *eltiwse_op =
       pattern->NewNode(eltwise_repr())->assert_is_op("elementwise_add");
   // Create variables
@@ -1041,11 +1043,11 @@ PDNode *patterns::ConvBias::operator()(
   auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
                               ->AsInput()
                               ->assert_is_persistable_var()
-                              ->assert_is_op_input("conv2d", "Filter");
+                              ->assert_is_op_input(type, "Filter");
   // intermediate variable, will be removed in the IR after fuse.
   auto *conv_out_var = pattern->NewNode(conv_out_repr())
                            ->AsIntermediate()
-                           ->assert_is_only_output_of_op("conv2d")
+                           ->assert_is_only_output_of_op(type)
                            ->assert_is_op_input("elementwise_add");
   // Bias stored in elementwise_add
   auto *eltwise_bias_var = pattern->NewNode(eltwise_bias_repr())
@@ -1098,6 +1100,275 @@ PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
 
   return out_var;
 }
+
+std::unordered_set<std::string> conv_act_set({"identity", "relu"});
+
+PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
+  conv_in->AsInput();
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+  auto conv_out = pattern->NewNode(conv_out_repr())
+                      ->assert_is_op_output("conv2d")
+                      ->assert_is_op_input("elementwise_add", "X")
+                      ->AsIntermediate();
+  auto conv_filter = pattern->NewNode(conv_filter_repr())
+                         ->assert_is_op_input("conv2d", "Filter")
+                         ->AsInput();
+  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
+                                ->assert_is_op("elementwise_add");
+  auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
+                                  ->assert_is_op_input("elementwise_add", "Y")
+                                  ->AsInput();
+  auto elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
+                                 ->assert_is_op_output("elementwise_add")
+                                 ->AsIntermediate();
+
+  auto act_op = pattern->NewNode(act_op_repr())
+                    ->assert_is_op()
+                    ->assert_more([&](Node *node) {
+                      auto op_type = node->Name();
+                      return conv_act_set.count(op_type);
+                    });
+
+  auto act_out = pattern->NewNode(act_out_repr())
+                     ->assert_is_var()
+                     // is activation op's output.
+                     ->assert_more([&](Node *node) {
+                       for (auto *in_op : node->inputs) {
+                         if (conv_act_set.count(in_op->Name())) {
+                           return true;
+                         }
+                       }
+                       return false;
+                     })
+                     ->AsOutput();
+
+  conv_op->LinksFrom({conv_in, conv_filter});
+  conv_out->LinksFrom({conv_op});
+  elementwise_add_op->LinksFrom({conv_out, elementwise_add_in_y})
+      .LinksTo({elementwise_add_out});
+  act_op->LinksFrom({elementwise_add_out}).LinksTo({act_out});
+
+  return act_out;
+}
+
+PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+  auto conv_filter = pattern->NewNode(conv_filter_repr())
+                         ->assert_is_op_input("conv2d", "Filter")
+                         ->AsInput();
+  auto conv_out = pattern->NewNode(conv_out_repr())
+                      ->assert_is_op_output("conv2d")
+                      ->assert_is_op_input("elementwise_add", "X")
+                      ->AsIntermediate();
+  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
+                                ->assert_is_op("elementwise_add");
+  auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
+                                  ->assert_is_op_input("elementwise_add", "Y")
+                                  ->AsInput();
+  auto elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
+                                 ->assert_is_op_output("elementwise_add")
+                                 ->assert_is_op_input("elementwise_add", "Y")
+                                 ->AsIntermediate();
+
+  auto elementwise_add_op_1 = pattern->NewNode(elementwise_add_op_1_repr())
+                                  ->assert_is_op("elementwise_add");
+  auto elementwise_add_in_y_1 = pattern->NewNode(elementwise_add_in_y_1_repr())
+                                    ->assert_is_op_input("elementwise_add", "X")
+                                    ->AsInput();
+  auto elementwise_add_out_1 = pattern->NewNode(elementwise_add_out_1_repr())
+                                   ->assert_is_op_output("elementwise_add")
+                                   ->AsIntermediate();
+
+  auto act_op = pattern->NewNode(act_op_repr())
+                    ->assert_is_op()
+                    ->assert_more([&](Node *node) {
+                      auto op_type = node->Name();
+                      return conv_act_set.count(op_type);
+                    });
+  auto act_out = pattern->NewNode(act_out_repr())
+                     ->assert_is_var()
+                     // is activation op's output.
+                     ->assert_more([&](Node *node) {
+                       for (auto *in_op : node->inputs) {
+                         if (conv_act_set.count(in_op->Name())) {
+                           return true;
+                         }
+                       }
+                       return false;
+                     })
+                     ->AsOutput();
+
+  conv_op->LinksFrom({conv_in, conv_filter}).LinksTo({conv_out});
+  elementwise_add_op->LinksFrom({conv_out, elementwise_add_in_y})
+      .LinksTo({elementwise_add_out});
+  elementwise_add_op_1->LinksFrom({elementwise_add_out, elementwise_add_in_y_1})
+      .LinksTo({elementwise_add_out_1});
+  act_op->LinksFrom({elementwise_add_out_1}).LinksTo({act_out});
+  return act_out;
+}
+
+PDNode *patterns::ConvElementwiseadd::operator()(PDNode *conv_in) {
+  conv_in->AsInput();
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+  auto conv_out = pattern->NewNode(conv_out_repr())
+                      ->assert_is_op_output("conv2d")
+                      ->assert_is_op_input("elementwise_add", "X")
+                      ->AsIntermediate();
+  auto conv_filter = pattern->NewNode(conv_filter_repr())
+                         ->assert_is_op_input("conv2d", "Filter")
+                         ->AsInput();
+  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
+                                ->assert_is_op("elementwise_add");
+  auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
+                                  ->assert_is_op_input("elementwise_add", "Y")
+                                  ->AsInput();
+  auto elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
+                                 ->assert_is_op_output("elementwise_add")
+                                 ->AsOutput();
+
+  conv_op->LinksFrom({conv_in, conv_filter});
+  conv_out->LinksFrom({conv_op});
+  elementwise_add_op->LinksFrom({conv_out, elementwise_add_in_y})
+      .LinksTo({elementwise_add_out});
+
+  return elementwise_add_out;
+}
+
+PDNode *patterns::ConvAffineChannel::operator()(
+    paddle::framework::ir::PDNode *conv_input, bool with_eltwise_add) {
+  // Create Operators
+  conv_input->assert_is_op_input("conv2d", "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+
+  PDNode *eltwise_op = nullptr;
+  if (with_eltwise_add) {
+    eltwise_op =
+        pattern->NewNode(eltwise_repr())->assert_is_op("elementwise_add");
+  }
+
+  auto *affine_channel_op =
+      pattern->NewNode(affine_channel_repr())->assert_is_op("affine_channel");
+  // Create variables
+  // Conv Filter
+  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
+                              ->AsInput()
+                              ->assert_is_persistable_var()
+                              ->assert_is_op_input("conv2d", "Filter");
+
+  auto *conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("conv2d");
+
+  PDNode *eltwise_y_in_var = nullptr;
+  PDNode *eltwise_out_var = nullptr;
+  if (with_eltwise_add) {
+    // Conv output as Bias input
+    conv_out_var->assert_is_op_input("elementwise_add", "X");
+    // Bias
+    eltwise_y_in_var = pattern->NewNode(eltwise_y_in_repr())
+                           ->assert_is_op_input("elementwise_add", "Y")
+                           ->AsInput();
+    eltwise_out_var = pattern->NewNode(eltwise_out_repr())
+                          ->AsIntermediate()
+                          ->assert_is_only_output_of_op("elementwise_add");
+  } else {
+    // Conv output as AffineChannel input
+    conv_out_var->assert_is_op_input("affine_channel", "X");
+  }
+
+  // AC Scale
+  auto *ac_scale_var = pattern->NewNode(ac_scale_repr())
+                           ->AsInput()
+                           ->assert_is_persistable_var()
+                           ->assert_is_op_input("affine_channel", "Scale");
+  // AC Bias
+  auto *ac_bias_var = pattern->NewNode(ac_bias_repr())
+                          ->AsInput()
+                          ->assert_is_persistable_var()
+                          ->assert_is_op_input("affine_channel", "Bias");
+
+  // AC output
+  auto *ac_out_var = pattern->NewNode(ac_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("affine_channel");
+
+  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
+
+  if (with_eltwise_add) {
+    eltwise_op->LinksFrom({conv_out_var, eltwise_y_in_var})
+        .LinksTo({eltwise_out_var});
+    affine_channel_op->LinksFrom({eltwise_out_var, ac_scale_var, ac_bias_var})
+        .LinksTo({ac_out_var});
+  } else {
+    affine_channel_op->LinksFrom({conv_out_var, ac_scale_var, ac_bias_var})
+        .LinksTo({ac_out_var});
+  }
+  return ac_out_var;
+}
+
+// a -> transpose_op(1) -> transpose_out_a -> flatten_op(1) -> flatten_out_a
+// b -> transpose_op(2) -> transpose_out_b -> flatten_op(2) -> flatten_out_b
+// ...
+// z -> transpose_op(n) -> transpose_out_z -> flatten_op(n) -> flatten_out_z
+// flatten_out_a -> concat_op  flatten_out_b -> concat_op ... flatten_out_z ->
+// concat_op
+PDNode *patterns::TransposeFlattenConcat::operator()(
+    std::vector<PDNode *> conv_in, int times) {
+  // The times represents the repeat times of the
+  // {trans, trans_out, flatten, flatten_out}
+  const int kNumFields = 4;
+  const int kTransOutOffset = 1;
+  const int kFlattenOffset = 2;
+  const int kFlattenOutOffset = 3;
+
+  std::vector<PDNode *> nodes;
+
+  for (int i = 0; i < times; i++) {
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("transpose" + std::to_string(i)))
+            ->assert_is_op("transpose2"));
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("transpose_out" + std::to_string(i)))
+            ->assert_is_op_output("transpose2")
+            ->assert_is_op_input("flatten2", "X")
+            ->AsIntermediate());
+    nodes.push_back(pattern->NewNode(GetNodeName("flatten" + std::to_string(i)))
+                        ->assert_is_op("flatten2"));
+
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("flatten_out" + std::to_string(i)))
+            ->assert_is_op_output("flatten2")
+            ->assert_is_op_nth_input("concat", "X", i)
+            ->AsIntermediate());
+  }
+
+  auto concat_op = pattern->NewNode(GetNodeName("concat"))
+                       ->assert_is_op("concat")
+                       ->assert_op_has_n_inputs("concat", times);
+  auto concat_out = pattern->NewNode(GetNodeName("concat_out"))
+                        ->assert_is_op_output("concat")
+                        ->AsOutput();
+
+  std::vector<PDNode *> flatten_outs;
+  for (int i = 0; i < times; i++) {
+    conv_in[i]->AsInput();
+    // trans
+    nodes[i * kNumFields]->LinksFrom({conv_in[i]});
+    // trans_out
+    nodes[i * kNumFields + kTransOutOffset]->LinksFrom({nodes[i * kNumFields]});
+    // flatten
+    nodes[i * kNumFields + kFlattenOffset]->LinksFrom(
+        {nodes[i * kNumFields + kTransOutOffset]});
+    // flatten_out
+    nodes[i * kNumFields + kFlattenOutOffset]->LinksFrom(
+        {nodes[i * kNumFields + kFlattenOffset]});
+    flatten_outs.push_back(nodes[i * kNumFields + kFlattenOutOffset]);
+  }
+
+  concat_op->LinksFrom(flatten_outs).LinksTo({concat_out});
+  return concat_out;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

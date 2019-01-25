@@ -49,12 +49,10 @@ if(NOT WITH_PROFILER)
     add_definitions(-DPADDLE_DISABLE_PROFILER)
 endif(NOT WITH_PROFILER)
 
-if(NOT CMAKE_CROSSCOMPILING)
-    if(WITH_AVX AND AVX_FOUND)
-        set(SIMD_FLAG ${AVX_FLAG})
-    elseif(SSE3_FOUND)
-        set(SIMD_FLAG ${SSE3_FLAG})
-    endif()
+if(WITH_AVX AND AVX_FOUND)
+    set(SIMD_FLAG ${AVX_FLAG})
+elseif(SSE3_FOUND)
+    set(SIMD_FLAG ${SSE3_FLAG})
 endif()
 
 if(WIN32)
@@ -84,8 +82,13 @@ if(NOT WITH_GOLANG)
     add_definitions(-DPADDLE_WITHOUT_GOLANG)
 endif(NOT WITH_GOLANG)
 
+if(WITH_PSLIB)
+    add_definitions(-DPADDLE_WITH_PSLIB)
+endif()
+
 if(WITH_GPU)
     add_definitions(-DPADDLE_WITH_CUDA)
+    add_definitions(-DEIGEN_USE_GPU)
 
     FIND_PACKAGE(CUDA REQUIRED)
 
@@ -129,6 +132,7 @@ if(WITH_GPU)
             message(WARNING "Anakin needs CUDNN >= 7.0 to compile. Force WITH_ANAKIN=OFF")
             set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when CUDNN >= 7.0." FORCE)
         endif()
+        add_definitions(-DWITH_ANAKIN)
     endif()
     if(WITH_ANAKIN)
         # NOTICE(minqiyang): the end slash is important because $CUDNN_INCLUDE_DIR

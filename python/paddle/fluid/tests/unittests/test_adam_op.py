@@ -194,7 +194,8 @@ def adam_step(inputs, attributes):
     return param_out, moment1_out, moment2_out
 
 
-def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
+def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad,
+                     lazy_mode):
     '''
     Simulate one step of the adam optimizer
     :param inputs: dict of inputs
@@ -218,19 +219,30 @@ def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
     moment2_out = np.zeros(shape=[height, row_numel])
     param_out = np.zeros(shape=[height, row_numel])
 
-    for idx, row_id in enumerate(rows):
+    def update_row(row_id, update_value):
         moment1_out[row_id] = beta1 * moment1[row_id] + (1 - beta1
-                                                         ) * np_grad[idx]
+                                                         ) * update_value
         moment2_out[row_id] = beta2 * moment2[row_id] + (
-            1 - beta2) * np.square(np_grad[idx])
+            1 - beta2) * np.square(update_value)
         lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
         param_out[row_id] = param[row_id] - lr_t * (moment1_out[row_id] / (
             np.sqrt(moment2_out[row_id]) + epsilon))
+
+    if lazy_mode:
+        for idx, row_id in enumerate(rows):
+            update_row(row_id, np_grad[idx])
+    else:
+        for row_id in range(param_out.shape[0]):
+            update_value = np.zeros(np_grad[0].shape).astype("float32")
+            if row_id in rows:
+                update_value = np_grad[rows.index(row_id)]
+            update_row(row_id, update_value)
+
     return param_out, moment1_out, moment2_out
 
 
 class TestSparseAdamOp(unittest.TestCase):
-    def setup(self, scope, place):
+    def setup(self, scope, place, lazy_mode):
         beta1 = 0.78
         beta2 = 0.836
         epsilon = 1e-4
@@ -248,7 +260,13 @@ class TestSparseAdamOp(unittest.TestCase):
             'Beta2Pow': np.array([beta2**10]).astype("float32"),
             "LearningRate": np.full((1), 2.0).astype("float32")
         }
-        self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
+        self.init_output = np.full((height, row_numel), 0.0).astype("float32")
+        self.attrs = {
+            'epsilon': epsilon,
+            'beta1': beta1,
+            'beta2': beta2,
+            'min_row_size_to_use_multithread': 2
+        }
 
         grad_selected_rows = scope.var('Grad').get_selected_rows()
         grad_selected_rows.set_height(height)
@@ -262,19 +280,21 @@ class TestSparseAdamOp(unittest.TestCase):
 
         self.sparse_inputs = ["Grad"]
 
-        param_out, mom1, mom2 = adam_step_sparse(
-            self.dense_inputs, self.attrs, height, rows, row_numel, np_array)
+        param_out, mom1, mom2 = adam_step_sparse(self.dense_inputs, self.attrs,
+                                                 height, rows, row_numel,
+                                                 np_array, lazy_mode)
         self.outputs = {
             "ParamOut": param_out,
             "Moment1Out": mom1,
             "Moment2Out": mom2
         }
 
-    def check_with_place(self, place):
+    def check_with_place(self, place, lazy_mode):
         scope = core.Scope()
-        self.setup(scope, place)
+        self.setup(scope, place, lazy_mode)
 
         op_args = dict()
+        op_args['lazy_mode'] = lazy_mode
         for key, np_array in self.dense_inputs.items():
             var = scope.var(key).get_tensor()
             var.set(np_array, place)
@@ -283,7 +303,7 @@ class TestSparseAdamOp(unittest.TestCase):
             op_args[s] = s
         for s in self.outputs:
             var = scope.var(s).get_tensor()
-            var.set(self.outputs[s], place)
+            var.set(self.init_output, place)
             op_args[s] = s
         for k in self.attrs:
             op_args[k] = self.attrs[k]
@@ -297,20 +317,17 @@ class TestSparseAdamOp(unittest.TestCase):
             actual = np.array(out_var)
             actual = actual.reshape([actual.size])
             np_array = np_array.reshape([np_array.size])
-            for idx, row_id in enumerate(self.rows):
-                j = 0
-                while j < self.row_numel:
-                    pos = row_id * self.row_numel + j
-                    self.assertLess((actual[pos] - np_array[pos]) / actual[pos],
-                                    0.00001)
-                    j += 1
 
-    def test_sparse_sgd(self):
+            for i in range(np_array.size):
+                self.assertLess((actual[i] - np_array[i]), 0.00001)
+
+    def test_sparse_adam(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
-            self.check_with_place(place)
+            for lazy_mode in (True, False):
+                self.check_with_place(place, lazy_mode)
 
 
 if __name__ == "__main__":

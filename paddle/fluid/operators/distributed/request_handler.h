@@ -37,14 +37,29 @@ namespace distributed {
 
 constexpr char kRequestSend[] = "RequestSend";
 constexpr char kRequestGet[] = "RequestGet";
+constexpr char kRequestGetMonomerVariable[] = "RequestGetMonomerVariable";
+constexpr char kRequestGetMonomerBarrier[] = "RequestGetMonomerBarrier";
 constexpr char kRequestPrefetch[] = "RequestPrefetch";
 constexpr char kRequestCheckpoint[] = "RequestCheckpoint";
 constexpr char kRequestPassBarrier[] = "RequestPassBarrier";
+constexpr char kRequestGetNoBarrier[] = "GetVariableNoBarrier";
+
+constexpr char kSendRPC[] = "SendRPC";
+constexpr char kGetRPC[] = "GetRPC";
+constexpr char kGetNoBarrierRPC[] = "GetNoBarrierRPC";
+constexpr char kGetMonomerRPC[] = "GetMonomerRPC";
+constexpr char kPrefetchRPC[] = "PrefetchRPC";
+constexpr char kBatchBarrierRPC[] = "BatchBarrierRPC";
+constexpr char kFetchBarrierRPC[] = "FetchBarrierRPC";
+constexpr char kSendMonomerFetchBarrierRPC[] = "SendMonomerFetchBarrierRPC";
+constexpr char kSendCompleteRPC[] = "SendCompleteRPC";
+constexpr char kCheckPointNotifyRPC[] = "CheckPointNotifyRPC";
 
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
 #define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"
 #define FETCH_BARRIER_MESSAGE "FETCH_BARRIER@RECV"
 #define COMPLETE_MESSAGE "COMPLETE@RECV"
+#define WITHOUT_BARRIER_MESSAGE "@WITHOUT_BARRIER@RECV"
 
 #define CHECKPOINT_SAVE_MESSAGE "SAVE@CHECKPOINTNOTIFY"
 #define CHECKPOINT_LOAD_MESSAGE "LOAD@CHECKPOINTNOTIFY"

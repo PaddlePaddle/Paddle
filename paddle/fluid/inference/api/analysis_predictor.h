@@ -35,13 +35,17 @@ using framework::proto::ProgramDesc;
 using framework::NaiveExecutor;
 using contrib::AnalysisConfig;
 
-/* This predictor is based on the original native predictor with IR and Analysis
- * support. It will optimize IR and Parameters in the runtime.
+/** \brief This predictor is based on the original native predictor with IR and
+ * Analysis support.
+ *
+ * It will optimize IR and Parameters in the runtime.
+ *
  * TODO(Superjomn) Replace the Navive predictor?
  */
 class AnalysisPredictor : public PaddlePredictor {
  public:
   explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {}
+  ~AnalysisPredictor();
 
   bool Init(const std::shared_ptr<framework::Scope> &parent_scope,
             const std::shared_ptr<framework::ProgramDesc> &program = nullptr);
@@ -72,6 +76,11 @@ class AnalysisPredictor : public PaddlePredictor {
   void SetMkldnnThreadID(int tid);
 
  protected:
+  // For memory optimization.
+  bool need_collect_var_shapes_for_memory_optim();
+  void CollectVarShapes();
+  void SerializeBatchVarShapes(const std::string &path);
+
   bool PrepareProgram(const std::shared_ptr<framework::ProgramDesc> &program);
   bool PrepareScope(const std::shared_ptr<framework::Scope> &parent_scope);
   bool CreateExecutor();
@@ -87,7 +96,6 @@ class AnalysisPredictor : public PaddlePredictor {
   template <typename T>
   void GetFetchOne(const framework::LoDTensor &fetchs,
                    PaddleTensor *output_data);
-  ~AnalysisPredictor();
 
 // Some more detailed tests, they are made the friends of the predictor, so that
 // the all the details can be tested.
@@ -112,6 +120,13 @@ class AnalysisPredictor : public PaddlePredictor {
   // concurrency problems, wrong results and memory leak, so cache them.
   std::vector<framework::LoDTensor> feed_tensors_;
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;
+  // A mutex help to make Clone thread safe.
+  std::mutex clone_mutex_;
+
+  // For memory optimization.
+  const size_t max_shape_collect_count_{1000};
+  int need_collect_var_shapes_{-1};  // -1 for default, 0 for false, 1 for true.
+  std::vector<std::map<std::string, std::vector<int>>> batch_var_shapes_;
 
  private:
   // Some status here that help to determine the status inside the predictor.

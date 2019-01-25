@@ -16,11 +16,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
+#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
-#include "paddle/fluid/operators/math/jit_kernel.h"
+#ifdef PADDLE_WITH_XBYAK
 #include "xbyak/xbyak.h"
 #include "xbyak/xbyak_util.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -81,8 +84,7 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
     UpdateDataFormat(ctx, const_cast<Tensor*>(x), "x_data_format");
     UpdateDataFormat(ctx, const_cast<Tensor*>(y), "y_data_format");
 
-    Xbyak::util::Cpu cpu;
-    const bool is_avx512_enabled = cpu.has(Xbyak::util::Cpu::tAVX512F);
+    const bool is_avx512_enabled = platform::MayIUse(platform::avx512f);
     const bool are_dims_divisable = !(x_int_dims[1] % 16);
     const bool is_x_format_correct = x->format() == memory::format::nChw16c;
     const bool is_y_format_correct = y->format() == memory::format::nc;
@@ -108,10 +110,8 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
         constexpr int simd_width = 16;
         int C = c / simd_width;
 
-        const auto& multiply =
-            math::jitkernel::KernelPool::Instance()
-                .template Get<math::jitkernel::EltwiseMulnChw16cNCKernel<T>>(n);
-
+        auto multiply = jit::Get<jit::kNCHW16CMulNC, jit::NCHW16CMulNCTuples<T>,
+                                 platform::CPUPlace>(0);
 #pragma omp parallel for collapse(2)
         for (int ni = 0; ni < n; ni++) {
           for (int ci = 0; ci < C; ci++) {
@@ -122,7 +122,7 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
             auto ptr_z =
                 z_data + ni * C * h * w * simd_width + ci * h * w * simd_width;
 
-            multiply->Compute(ptr_x, ptr_y, ptr_z, h, w);
+            multiply(ptr_x, ptr_y, ptr_z, h, w);
           }
         }
       }
@@ -134,16 +134,18 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
       const bool are_inputs_in_same_format = x->format() == y->format();
       const bool is_x_nchw = x->format() == memory::format::nchw;
       const bool is_x_nc = x->format() == memory::format::nc;
+      const bool is_x_x = x->format() == memory::format::x;
       const bool is_y_nchw = y->format() == memory::format::nchw;
       const bool is_y_nc = y->format() == memory::format::nc;
+      const bool is_y_x = y->format() == memory::format::x;
       if (!are_inputs_in_same_format) {
         using platform::MKLDNNDeviceContext;
         auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
         const auto& mkldnn_engine = dev_ctx.GetEngine();
-        if (!(is_x_nchw || is_x_nc))
+        if (!(is_x_nchw || is_x_nc || is_x_x))
           ReorderInput<T>(const_cast<Tensor*>(x), ctx.GetPlace(), mkldnn_engine,
                           x->dims().size() == 4);
-        if (!(is_y_nchw || is_y_nc))
+        if (!(is_y_nchw || is_y_nc || is_y_x))
           ReorderInput<T>(const_cast<Tensor*>(y), ctx.GetPlace(), mkldnn_engine,
                           y->dims().size() == 4);
       }

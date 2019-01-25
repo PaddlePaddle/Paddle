@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
+from .imperative import base as imperative_base
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
@@ -194,22 +195,18 @@ class Optimizer(object):
                             format(name, param.name))
         return self._accumulators[name][param.name]
 
-    def _create_optimization_pass(self,
-                                  parameters_and_grads,
-                                  loss,
-                                  startup_program=None):
+    def _create_optimization_pass(self, parameters_and_grads):
         """Add optimization operators to update gradients to variables.
 
         Args:
-          loss(Variable): the target that this optimization is for.
           parameters_and_grads(list(tuple(Variable, Variable))):
-          a list of (variable, gradient) pair to update.
+            a list of (variable, gradient) pair to update.
 
         Returns:
           return_op_list: a list of operators that will complete one step of
-          optimization. This will include parameter update ops, global step
-          update ops and any other custom ops required by subclasses to manage
-          their internal state.
+            optimization. This will include parameter update ops, global step
+            update ops and any other custom ops required by subclasses to manage
+            their internal state.
         """
         # This is a default implementation of create_optimization_pass that
         # can be shared by most optimizers. This implementation assumes that
@@ -218,37 +215,33 @@ class Optimizer(object):
         # _create_accumulators method if it needs to create accumulators
         # for parameters and extend _finish_update method to add custom ops.
 
-        # Create any accumulators
-        program = loss.block.program
-        self._dtype = loss.dtype
-        with program_guard(program, startup_program):
-            global_block = framework.default_main_program().global_block()
-            start = len(global_block.ops)
-            self.helper = LayerHelper(self.__class__.__name__)
-            self._create_accumulators(loss.block,
-                                      [p[0] for p in parameters_and_grads])
-            self._create_global_learning_rate()
+        # Allways called under program_guard use global block as loss block
+        global_block = framework.default_main_program().global_block()
+        start = len(global_block.ops)
+        self.helper = LayerHelper(self.__class__.__name__)
+        self._create_accumulators(global_block,
+                                  [p[0] for p in parameters_and_grads])
+        self._create_global_learning_rate()
 
-            optimize_ops = []
-            for param_and_grad in parameters_and_grads:
-                if param_and_grad[1] is None:
-                    continue
-                with param_and_grad[0].block.program._optimized_guard(
-                        param_and_grad), name_scope("optimizer"):
-                    if param_and_grad[0].trainable is True:
-                        optimize_op = self._append_optimize_op(loss.block,
-                                                               param_and_grad)
-                        optimize_ops.append(optimize_op)
+        optimize_ops = []
+        for param_and_grad in parameters_and_grads:
+            if param_and_grad[1] is None:
+                continue
+            with param_and_grad[0].block.program._optimized_guard(
+                    param_and_grad), name_scope("optimizer"):
+                if param_and_grad[0].trainable is True:
+                    optimize_op = self._append_optimize_op(global_block,
+                                                           param_and_grad)
+                    optimize_ops.append(optimize_op)
 
-            # Get custom finish ops for subclasses
-            # FIXME: Need to fix this once we figure out how to handle dependencies
-            self._finish_update(loss.block, parameters_and_grads)
+        # Get custom finish ops for subclasses
+        # FIXME: Need to fix this once we figure out how to handle dependencies
+        self._finish_update(global_block, parameters_and_grads)
 
-            end = len(global_block.ops)
-            return global_block._slice_ops(start, end)
+        end = len(global_block.ops)
+        return global_block._slice_ops(start, end)
 
-    def _process_distribute_lookuptable(self, param_grads, loss,
-                                        startup_program):
+    def _process_distribute_lookuptable(self, param_grads):
         """
         Because distribute lookup table only support SGD optimizer for now, not support
         other optimizer and regularization, so we should find the table parameter out,
@@ -258,7 +251,8 @@ class Optimizer(object):
         :param loss: the loss variable.
         :param startup_program: the startup program
         """
-        program = loss.block.program
+        program = framework.default_main_program()
+        global_block = framework.default_main_program().global_block()
         table_name = find_distributed_lookup_table(program)
         table_param = None
         table_grad = None
@@ -274,40 +268,78 @@ class Optimizer(object):
                 new_param_grads.append((p, g))
         sgd_op = None
         if table_param is not None:
-            with program_guard(program, startup_program):
-                param_and_grad = [table_param, table_grad]
-                with table_param.block.program._optimized_guard(param_and_grad), \
-                     framework.name_scope("optimizer"):
-                    self._create_global_learning_rate()
-                    # create the optimize op
-                    sgd_op = loss.block.append_op(
-                        type='sgd',
-                        inputs={
-                            "Param": table_param,
-                            "Grad": table_grad,
-                            "LearningRate":
-                            self._create_param_lr(param_and_grad)
-                        },
-                        outputs={"ParamOut": param_and_grad[0]})
+            param_and_grad = [table_param, table_grad]
+            with table_param.block.program._optimized_guard(param_and_grad), \
+                    framework.name_scope("optimizer"):
+                self._create_global_learning_rate()
+                # create the optimize op
+                sgd_op = global_block.append_op(
+                    type='sgd',
+                    inputs={
+                        "Param": table_param,
+                        "Grad": table_grad,
+                        "LearningRate": self._create_param_lr(param_and_grad)
+                    },
+                    outputs={"ParamOut": param_and_grad[0]})
         return new_param_grads, (table_param, table_grad), sgd_op
 
-    def minimize(self,
+    def backward(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None):
-        """Add operations to minimize `loss` by updating `parameter_list`.
-
-        This method combines interface `append_backward()` and
-        `create_optimization_pass()` into one.
+                 no_grad_set=None,
+                 callbacks=None):
         """
-        params_grads = append_backward(loss, parameter_list, no_grad_set,
-                                       [error_clip_callback])
+        First part of `minimize`, do auto-diff to append backward ops for
+        the current program.
 
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+            callbacks (list|None): list of callables to run when appending backward
+                operator for one parameter.
+
+        Return:
+            list: list of (param, grad) pair, grad is the output of backward.
+
+        Examples:
+            See examples in `apply_gradients`.
+        """
+        if callbacks is None:
+            callbacks = [error_clip_callback]
+        else:
+            assert (isinstance(callbacks, list))
+            callbacks.append(error_clip_callback)
+        return append_backward(loss, parameter_list, no_grad_set, callbacks)
+
+    def apply_gradients(self, params_grads):
+        """
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
+
+        Args:
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Returns:
+            list: A list of operators appended to the current program.
+
+        Examples:
+            .. code-block:: python
+
+                loss = network()
+                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+                params_grads = optimizer.backward(loss)
+                # you may append operations for params_grads here
+                # ...
+                optimizer.apply_gradients(params_grads)
+        """
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
         params_grads, table_param_and_grad, table_optimize_op = \
-            self._process_distribute_lookuptable(params_grads, loss, startup_program)
+            self._process_distribute_lookuptable(params_grads)
 
         params_grads = append_gradient_clip_ops(params_grads)
 
@@ -315,11 +347,63 @@ class Optimizer(object):
         params_grads = append_regularization_ops(params_grads,
                                                  self.regularization)
 
-        optimize_ops = self._create_optimization_pass(params_grads, loss,
-                                                      startup_program)
+        optimize_ops = self._create_optimization_pass(params_grads)
         if table_optimize_op is not None:
             optimize_ops.append(table_optimize_op)
             params_grads.append(table_param_and_grad)
+
+        return optimize_ops
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        """
+        Add operations to minimize `loss` by updating `parameter_list`.
+
+        This method combines interface `backward()` and
+        `apply_gradients()` into one.
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+
+        Returns:
+            tuple: (optimize_ops, params_grads) which are, list of operators appended;
+            and list of (param, grad) Variables pair for optimization.
+        """
+        self._dtype = loss.dtype
+        program = loss.block.program
+        optimize_ops = []
+        if imperative_base.enabled():
+            if parameter_list is not None:
+                parameters = parameter_list
+            else:
+                parameters = program.global_block().all_parameters()
+
+            params_grads = []
+            for param in parameters:
+                if param.stop_gradient:
+                    continue
+                # create gradient variable
+                grad_var = Variable(
+                    block=loss.block,
+                    name=param._ivar._grad_name(),
+                    stop_gradient=True,
+                    ivar=param._ivar._grad_ivar())
+                params_grads.append((param, grad_var))
+            with program_guard(program, startup_program):
+                optimize_ops = self._create_optimization_pass(params_grads)
+        else:
+            with program_guard(program, startup_program):
+                params_grads = self.backward(loss, startup_program,
+                                             parameter_list, no_grad_set)
+                optimize_ops = self.apply_gradients(params_grads)
+
         return optimize_ops, params_grads
 
 
@@ -364,7 +448,8 @@ class SGDOptimizer(Optimizer):
                 "Grad": param_and_grad[1],
                 "LearningRate": self._create_param_lr(param_and_grad)
             },
-            outputs={"ParamOut": param_and_grad[0]})
+            outputs={"ParamOut": param_and_grad[0]},
+            stop_gradient=True)
 
         return sgd_op
 
@@ -448,7 +533,8 @@ class MomentumOptimizer(Optimizer):
                 "VelocityOut": velocity_acc
             },
             attrs={"mu": self._momentum,
-                   "use_nesterov": self._use_nesterov})
+                   "use_nesterov": self._use_nesterov},
+            stop_gradient=True)
 
         return momentum_op
 
@@ -477,7 +563,7 @@ class LarsMomentumOptimizer(Optimizer):
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
-        
+
 
     Examples:
         .. code-block:: python
@@ -533,7 +619,8 @@ class LarsMomentumOptimizer(Optimizer):
                 "mu": self._momentum,
                 "lars_coeff": self._lars_coeff,
                 "lars_weight_decay": self._lars_weight_decay
-            })
+            },
+            stop_gradient=True)
 
         return momentum_op
 
@@ -608,7 +695,8 @@ class AdagradOptimizer(Optimizer):
             },
             outputs={"ParamOut": param_and_grad[0],
                      "MomentOut": moment_acc},
-            attrs={"epsilon": self._epsilon})
+            attrs={"epsilon": self._epsilon},
+            stop_gradient=True)
 
         return adagrad_op
 
@@ -641,9 +729,14 @@ class AdamOptimizer(Optimizer):
         beta1 (float): The exponential decay rate for the 1st moment estimates.
         beta2 (float): The exponential decay rate for the 2nd moment estimates.
         epsilon (float): a small float value for numerical stability.
-        regularization: A Regularizer, such as
-                        fluid.regularizer.L2DecayRegularizer.
+        regularization: A Regularizer, such as fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
+        lazy_mode(bool: false): The official Adam algorithm has two moving-average accumulators
+        the accumulators are updated at every step. Every element of the two moving-average is updated
+        in both dense mode and sparse mode. If the size of parameter is very large, then the update
+        may be very slow. The lazy mode only update the element that has gradient is the current
+        mini-batch, so it will be much more faster. But this mode has different semantics with the
+        original Adam algorithm and may lead to different result.
 
     Examples:
         .. code-block:: python
@@ -663,7 +756,8 @@ class AdamOptimizer(Optimizer):
                  beta2=0.999,
                  epsilon=1e-8,
                  regularization=None,
-                 name=None):
+                 name=None,
+                 lazy_mode=False):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
@@ -676,6 +770,7 @@ class AdamOptimizer(Optimizer):
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
+        self._lazy_mode = lazy_mode
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -729,8 +824,11 @@ class AdamOptimizer(Optimizer):
             attrs={
                 "beta1": self._beta1,
                 "beta2": self._beta2,
-                "epsilon": self._epsilon
-            })
+                "epsilon": self._epsilon,
+                "lazy_mode": self._lazy_mode,
+                "min_row_size_to_use_multithread": 1000
+            },
+            stop_gradient=True)
 
         return adam_op
 
@@ -752,13 +850,15 @@ class AdamOptimizer(Optimizer):
                     type="scale",
                     inputs={"X": beta1_pow_acc},
                     outputs={"Out": beta1_pow_acc},
-                    attrs={"scale": self._beta1})
+                    attrs={"scale": self._beta1},
+                    stop_gradient=True)
 
                 main_block.append_op(
                     type="scale",
                     inputs={"X": beta2_pow_acc},
                     outputs={"Out": beta2_pow_acc},
-                    attrs={"scale": self._beta2})
+                    attrs={"scale": self._beta2},
+                    stop_gradient=True)
 
 
 class AdamaxOptimizer(Optimizer):
@@ -869,7 +969,8 @@ class AdamaxOptimizer(Optimizer):
                 "beta1": self._beta1,
                 "beta2": self._beta2,
                 "epsilon": self._epsilon
-            })
+            },
+            stop_gradient=True)
 
         return adamax_op
 
@@ -889,7 +990,8 @@ class AdamaxOptimizer(Optimizer):
                     type="scale",
                     inputs={"X": beta1_pow_acc},
                     outputs={"Out": beta1_pow_acc},
-                    attrs={"scale": self._beta1})
+                    attrs={"scale": self._beta1},
+                    stop_gradient=True)
 
 
 class DecayedAdagradOptimizer(Optimizer):
@@ -971,7 +1073,8 @@ class DecayedAdagradOptimizer(Optimizer):
             },
             outputs={"ParamOut": param_and_grad[0],
                      "MomentOut": moment_acc},
-            attrs={"epsilon": self._epsilon})
+            attrs={"epsilon": self._epsilon},
+            stop_gradient=True)
 
         return decayed_adagrad_op
 
@@ -1067,7 +1170,8 @@ class AdadeltaOptimizer(Optimizer):
                 "AvgSquaredUpdateOut": avg_squared_update_acc
             },
             attrs={"epsilon": self._epsilon,
-                   "rho": self._rho})
+                   "rho": self._rho},
+            stop_gradient=True)
 
         return adadelta_op
 
@@ -1216,7 +1320,8 @@ class RMSPropOptimizer(Optimizer):
                 "decay": self._rho,
                 "momentum": self._momentum,
                 "centered": self._centered
-            })
+            },
+            stop_gradient=True)
 
         return rmsprop_op
 
@@ -1337,7 +1442,8 @@ class FtrlOptimizer(Optimizer):
             },
             attrs={"l1": self._l1,
                    "l2": self._l1,
-                   "lr_power": self._lr_power})
+                   "lr_power": self._lr_power},
+            stop_gradient=True)
 
         return ftrl_op
 
@@ -1501,7 +1607,8 @@ class ModelAverage(Optimizer):
                 "average_window": self.average_window,
                 "min_average_window": self.min_average_window,
                 "max_average_window": self.max_average_window,
-            })
+            },
+            stop_gradient=True)
 
     @contextmanager
     def apply(self, executor, need_restore=True):

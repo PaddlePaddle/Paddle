@@ -32,6 +32,20 @@ static constexpr char kStepScopes[] = "StepScopes";
 static constexpr char kX[] = "X";
 static constexpr char kXGRAD[] = "X@GRAD";
 static constexpr char kOutputs[] = "Out";
+static constexpr char kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
+
+namespace {  // NOLINT
+static std::string GetSkipEagerDeletionVarsDebugString(
+    const std::vector<std::string> &vars) {
+  std::string str = "Skip " + std::to_string(vars.size()) +
+                    " var(s) in eager deletion mode: ";
+  for (auto &var : vars) {
+    str.append(var);
+    str.push_back(' ');
+  }
+  return str;
+}
+}  // NOLINT
 
 class WhileOp : public framework::OperatorBase {
  public:
@@ -59,7 +73,10 @@ class WhileOp : public framework::OperatorBase {
                    "Condition of while op must in CPU memory.");
 
     bool is_test = Attr<bool>("is_test");
-    auto ctx = executor.Prepare(*program, block->ID());
+    auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
+    VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
+
+    auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
     while (cond.data<bool>()[0]) {
       auto &current_scope = scope.NewScope();
       step_scopes->push_back(&current_scope);
@@ -96,6 +113,10 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
+    AddAttr<std::vector<std::string>>(kSkipEagerDeletionVars,
+                                      "Vars that would skip eager deletion."
+                                      "Users should not set this manually.")
+        .SetDefault(std::vector<std::string>());
     AddComment(R"DOC(
 )DOC");
   }
@@ -119,7 +140,10 @@ class WhileGradOp : public framework::OperatorBase {
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
-    auto ctx = executor.Prepare(*program, block->ID());
+
+    auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
+    VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
+    auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
 
     auto *step_scopes =
         scope.FindVar(Input(kStepScopes))->GetMutable<StepScopeVar>();
@@ -151,14 +175,13 @@ class WhileGradOp : public framework::OperatorBase {
         auto &og_inside =
             detail::Ref(cur_scope.Var(inside_og_name),
                         "Cannot find inside gradient %s", inside_og_name);
-        if (framework::IsType<framework::LoDTensor>(og_outside.Type())) {
+        if (og_outside.IsType<framework::LoDTensor>()) {
           auto &outside_tensor = og_outside.Get<framework::LoDTensor>();
           auto &inside_tensor =
               detail::Ref(og_inside.GetMutable<framework::LoDTensor>());
           inside_tensor.set_lod(outside_tensor.lod());
           inside_tensor.ShareDataWith(outside_tensor);
-        } else if (framework::IsType<framework::LoDTensorArray>(
-                       og_outside.Type())) {
+        } else if (og_outside.IsType<framework::LoDTensorArray>()) {
           auto &outside_array = og_outside.Get<framework::LoDTensorArray>();
           auto &inside_array =
               detail::Ref(og_inside.GetMutable<framework::LoDTensorArray>());
@@ -232,12 +255,12 @@ class WhileGradOp : public framework::OperatorBase {
                   var->IsType<LoDTensor>(),
               "Currently the type of var only can be LoDTensorArray, "
               "or LoDTensor, but the received var[%s] is %s.",
-              inside_grad_name, var->Type().name());
+              inside_grad_name, framework::ToTypeName(var->Type()));
 
           if (var->IsType<LoDTensor>()) {
             auto &inside_tensor = var->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
-            attrs["dtype"] = framework::ToDataType(inside_tensor.type());
+            attrs["dtype"] = inside_tensor.type();
             attrs["shape"] = framework::vectorize2int(inside_tensor.dims());
             attrs["value"] = 0.0f;
 
@@ -341,6 +364,8 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     // while operator could be renamed.
     while_grad->SetAttr("original_output_grad", output_grads_list);
 
+    while_grad->SetAttr(kSkipEagerDeletionVars, std::vector<std::string>());
+
     return std::unique_ptr<framework::OpDesc>(while_grad);
   }
 };
@@ -373,26 +398,41 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
     ctx->HasInputs(kOutputs);
     ctx->HasInputs(framework::GradVarName(kOutputs));
 
-    auto p_names = ctx->Inputs(kX);
     auto pg_ig_names = ctx->Outputs(kXGRAD);
-    auto var_types = ctx->GetInputsVarType(kX);
-    std::vector<std::string> names_to_set;
-    std::vector<framework::DDim> dims_to_set;
-    for (size_t i = 0; i < p_names.size(); ++i) {
+    std::vector<framework::InferShapeVarPtr> in_var_ptrs =
+        ctx->GetInputVarPtrs(kX);
+    std::vector<framework::InferShapeVarPtr> out_var_ptrs =
+        ctx->GetOutputVarPtrs(kXGRAD);
+    PADDLE_ENFORCE(in_var_ptrs.size() == out_var_ptrs.size());
+
+    for (size_t i = 0; i < in_var_ptrs.size(); ++i) {
       if (pg_ig_names[i] == framework::kEmptyVarName) {
         continue;
       }
-      auto dims = ctx->GetInputsElementDim(kX, i);
-      if (var_types[i] == framework::proto::VarType::LOD_TENSOR) {
-        names_to_set.push_back(pg_ig_names[i]);
-        dims_to_set.push_back(dims);
-      } else if (var_types[i] == framework::proto::VarType::LOD_TENSOR_ARRAY) {
-        // not sure how to set the dim of LOD_TENSOR_ARRAY
-        names_to_set.push_back(pg_ig_names[i]);
-        dims_to_set.push_back(dims);
+      if (ctx->IsRuntime()) {
+        framework::Variable *in_var =
+            boost::get<framework::Variable *>(in_var_ptrs[i]);
+        framework::Variable *out_var =
+            boost::get<framework::Variable *>(out_var_ptrs[i]);
+
+        auto type = framework::ToVarType(in_var->Type());
+        if (type == framework::proto::VarType::LOD_TENSOR) {
+          out_var->GetMutable<LoDTensor>()->Resize(
+              in_var->Get<framework::LoDTensor>().dims());
+        } else if (type == framework::proto::VarType::SELECTED_ROWS) {
+          out_var->GetMutable<framework::SelectedRows>()->set_height(
+              in_var->Get<framework::SelectedRows>().GetCompleteDims()[0]);
+        } else if (type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+          PADDLE_THROW("WhileGradOp doesn't support type %d",
+                       static_cast<int>(type));
+        }
+      } else {
+        framework::VarDesc *in_var =
+            boost::get<framework::VarDesc *>(in_var_ptrs[i]);
+        boost::get<framework::VarDesc *>(out_var_ptrs[i])
+            ->SetShape(in_var->GetShape());
       }
     }
-    ctx->SetDims(names_to_set, dims_to_set);
   }
 };
 

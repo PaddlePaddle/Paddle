@@ -16,8 +16,10 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <thread>  // NOLINT
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 DEFINE_string(dirname, "", "dirname to tests.");
 
@@ -25,9 +27,9 @@ namespace paddle {
 using contrib::AnalysisConfig;
 
 TEST(AnalysisPredictor, analysis_off) {
-  AnalysisConfig config(false);
-  config.model_dir = FLAGS_dirname;
-  config.enable_ir_optim = false;
+  AnalysisConfig config;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchIrOptim(false);
 
   auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
@@ -55,9 +57,14 @@ TEST(AnalysisPredictor, analysis_off) {
 }
 
 TEST(AnalysisPredictor, analysis_on) {
-  AnalysisConfig config(false);
-  config.model_dir = FLAGS_dirname;
-  config.enable_ir_optim = true;
+  AnalysisConfig config;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchIrOptim(true);
+#ifdef PADDLE_WITH_CUDA
+  config.EnableUseGpu(100, 0);
+#else
+  config.DisableGpu();
+#endif
 
   auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
@@ -84,7 +91,8 @@ TEST(AnalysisPredictor, analysis_on) {
   }
 
   // compare with NativePredictor
-  auto naive_predictor = CreatePaddlePredictor<NativeConfig>(config);
+  auto naive_predictor =
+      CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
   std::vector<PaddleTensor> naive_outputs;
   ASSERT_TRUE(naive_predictor->Run(inputs, &naive_outputs));
   ASSERT_EQ(naive_outputs.size(), 1UL);
@@ -93,9 +101,8 @@ TEST(AnalysisPredictor, analysis_on) {
 
 TEST(AnalysisPredictor, ZeroCopy) {
   AnalysisConfig config;
-  config.model_dir = FLAGS_dirname;
-  config.use_feed_fetch_ops = false;
-
+  config.SetModel(FLAGS_dirname);
+  config.SwitchUseFeedFetchOps(false);
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
   auto w0 = predictor->GetInputTensor("firstw");
@@ -132,9 +139,9 @@ TEST(AnalysisPredictor, ZeroCopy) {
 
 TEST(AnalysisPredictor, Clone) {
   AnalysisConfig config;
-  config.model_dir = FLAGS_dirname;
-  config.use_feed_fetch_ops = true;
-  config.enable_ir_optim = true;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchUseFeedFetchOps(true);
+  config.SwitchIrOptim(true);
 
   std::vector<std::unique_ptr<PaddlePredictor>> predictors;
   predictors.emplace_back(CreatePaddlePredictor(config));
@@ -174,8 +181,9 @@ TEST(AnalysisPredictor, Clone) {
     threads.emplace_back([&predictors, &inputs, i] {
       LOG(INFO) << "thread #" << i << " running";
       std::vector<PaddleTensor> outputs;
+      auto predictor = predictors.front()->Clone();
       for (int j = 0; j < 10; j++) {
-        ASSERT_TRUE(predictors[i]->Run(inputs, &outputs));
+        ASSERT_TRUE(predictor->Run(inputs, &outputs));
       }
     });
   }
@@ -183,6 +191,55 @@ TEST(AnalysisPredictor, Clone) {
   for (auto& t : threads) {
     t.join();
   }
+}
+
+TEST(AnalysisPredictor, memory_optim) {
+  AnalysisConfig config(FLAGS_dirname);
+  config.DisableGpu();
+  config.EnableMemoryOptim(true);
+  config.pass_builder()->TurnOnDebug();
+
+  auto native_predictor =
+      CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
+
+  // 2. Dummy Input Data
+  int64_t data[4] = {1, 2, 3, 4};
+  PaddleTensor tensor;
+  tensor.shape = std::vector<int>({4, 1});
+  tensor.data.Reset(data, sizeof(data));
+  tensor.dtype = PaddleDType::INT64;
+
+  std::vector<PaddleTensor> inputs(4, tensor);
+  std::vector<PaddleTensor> output, output1;
+
+  {
+    // The first predictor help to cache the memory optimize strategy.
+    auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+
+    // Run several times to check the parameters are not reused by mistake.
+    for (int i = 0; i < 5; i++) {
+      ASSERT_TRUE(predictor->Run(inputs, &output));
+    }
+  }
+
+  {
+    output.clear();
+    // The second predictor to perform memory optimization.
+    config.EnableMemoryOptim(false);
+    auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+
+    // Run with memory optimization
+    ASSERT_TRUE(predictor->Run(inputs, &output));
+  }
+
+  // Run native
+  ASSERT_TRUE(native_predictor->Run(inputs, &output1));
+
+  LOG(INFO) << "the output " << inference::DescribeTensor(output.front());
+  LOG(INFO) << "the native output "
+            << inference::DescribeTensor(output1.front());
+
+  inference::CompareResult(output, output1);
 }
 
 }  // namespace paddle

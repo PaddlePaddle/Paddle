@@ -49,13 +49,6 @@ void IRPassManager::CreatePasses(Argument *argument,
   for (const std::string &pass_name : passes) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
 
-    // Set some pass attributes.
-    if (pass_name == "ir_analysis_pass") {
-      pass->Set("tensorrt_node_teller",
-                new SubgraphDetector::NodeInsideSubgraphTeller(
-                    argument->tensorrt_node_teller()));
-    }
-
     if (pass_name == "graph_viz_pass") {
       std::string dot_file_path = std::to_string(pass_num) + "_ir_" +
                                   (pre_pass.empty() ? "origin" : pre_pass) +
@@ -63,13 +56,17 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("graph_viz_path", new std::string(std::move(dot_file_path)));
       pass_num++;
     }
+    if (pass_name == "mkldnn_placement_pass") {
+      pass->Set("mkldnn_enabled_op_types",
+                new std::unordered_set<std::string>(
+                    argument->mkldnn_enabled_op_types()));
+    }
 
     if (pass_name == "tensorrt_subgraph_pass") {
-      PADDLE_ENFORCE(argument->tensorrt_node_teller_valid());
-      pass->SetNotOwned("tensorrt_node_teller",
-                        argument->tensorrt_node_teller_ptr());
       pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
+      pass->Set("min_subgraph_size",
+                new int(argument->tensorrt_min_subgraph_size()));
     }
 
     // graph_ = pass->Apply(std::move(graph_));
@@ -86,6 +83,7 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
   PADDLE_ENFORCE(graph.get());
   // Apply all the passes
   for (const auto &pass : passes_) {
+    if (pass->Type() == "graph_viz_pass") continue;
     PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
     graph = pass->Apply(std::move(graph));
   }

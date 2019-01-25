@@ -15,6 +15,9 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <iostream>
+#ifdef _WIN32
+#include <numeric>
+#endif
 #include <random>
 
 #define PADDLE_CUDA_FP16
@@ -93,7 +96,7 @@ TEST(CudaAtomic, float16) {
 
 // unalignment of uint8
 void TestUnalign(size_t num, const int shift_bit) {
-  PADDLE_ENFORCE(num % 2 == 0, "must be a multiple of 2");
+  ASSERT_EQ(num % 2, 0);
   float16 *in1, *in2, *out;
   float16 *d_in1, *d_in2;
   size_t size = sizeof(uint8_t) * (num + shift_bit);

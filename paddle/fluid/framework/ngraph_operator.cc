@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_NGRAPH
 #include <glog/logging.h>
 
 #include <algorithm>
@@ -58,16 +57,16 @@ typedef enum {                /* nGraph support state on ops          */
 } op_state;
 
 // perform graph build through bridge and execute computation
-class NgraphOperator {
+class NgraphEngine {
  public:
-  explicit NgraphOperator(const Scope& scope, const platform::Place& place,
-                          const std::vector<std::shared_ptr<OperatorBase>>& ops,
-                          const std::unordered_map<
-                              std::string, ngraph::element::Type>& var_type_map,
-                          const std::unordered_set<std::string>& persist,
-                          const std::unordered_set<std::string>& fetches,
-                          const std::unordered_set<std::string>& post_op_inputs,
-                          op_state ng_op_state)
+  explicit NgraphEngine(const Scope& scope, const platform::Place& place,
+                        const std::vector<std::shared_ptr<OperatorBase>>& ops,
+                        const std::unordered_map<
+                            std::string, ngraph::element::Type>& var_type_map,
+                        const std::unordered_set<std::string>& persist,
+                        const std::unordered_set<std::string>& fetches,
+                        const std::unordered_set<std::string>& post_op_inputs,
+                        op_state ng_op_state)
       : scope_(scope),
         place_(place),
         fused_ops_(ops),
@@ -132,7 +131,7 @@ class NgraphOperator {
 };
 
 std::vector<std::vector<std::vector<std::unique_ptr<OperatorBase>>::iterator>>
-FusedOperator::FusedOpIntervals(
+NgraphOperator::NgraphOpIntervals(
     std::vector<std::unique_ptr<paddle::framework::OperatorBase>>* ops) {
   std::vector<std::vector<std::vector<std::unique_ptr<OperatorBase>>::iterator>>
       intervals;
@@ -185,7 +184,7 @@ FusedOperator::FusedOpIntervals(
   return intervals;
 }
 
-FusedOperator::FusedOperator(
+NgraphOperator::NgraphOperator(
     const ProgramDesc& prog, size_t block_id,
     std::vector<std::unique_ptr<OperatorBase>>::iterator start,
     std::vector<std::unique_ptr<OperatorBase>>::iterator end,
@@ -215,7 +214,7 @@ FusedOperator::FusedOperator(
   Process();
 }
 
-void FusedOperator::Process() {
+void NgraphOperator::Process() {
   auto& bdesc = pdesc_.Block(block_);
   for (auto& var : bdesc.AllVars()) {
     if (!(var->GetType() == proto::VarType::SELECTED_ROWS ||
@@ -251,8 +250,8 @@ void FusedOperator::Process() {
   }
 }
 
-void FusedOperator::RunImpl(const Scope& scope,
-                            const platform::Place& place) const {
+void NgraphOperator::RunImpl(const Scope& scope,
+                             const platform::Place& place) const {
   op_state ng_op_state = PARTIAL_TEST;
   auto& bdesc = pdesc_.Block(block_);
   for (auto* op : bdesc.AllOps()) {
@@ -266,20 +265,21 @@ void FusedOperator::RunImpl(const Scope& scope,
     ng_op_state = ng_op_state == PARTIAL_TEST ? FULL_TEST : FULL_TRAIN;
   }
 
-  NgraphOperator ngraph_op(scope, place, fused_ops_, var_type_map_,
-                           persistables_, fetches_, post_op_inputs_,
-                           ng_op_state);
-  ngraph_op.Run(scope, place);
+  NgraphEngine ngraph_engine(scope, place, fused_ops_, var_type_map_,
+                             persistables_, fetches_, post_op_inputs_,
+                             ng_op_state);
+  ngraph_engine.Run(scope, place);
 }
 
 std::unordered_map<std::string, std::shared_ptr<ngraph::Function>>
-    NgraphOperator::func_cache_ = {};
+    NgraphEngine::func_cache_ = {};
 
-std::shared_ptr<ngraph::runtime::Backend> NgraphOperator::backend_ =
+std::shared_ptr<ngraph::runtime::Backend> NgraphEngine::backend_ =
     ngraph::runtime::Backend::create("CPU");
 
-void NgraphOperator::GetNgInputShape(std::shared_ptr<OperatorBase> op) {
-  op->RuntimeInferShape(scope_, place_);
+void NgraphEngine::GetNgInputShape(std::shared_ptr<OperatorBase> op) {
+  RuntimeContext ctx(op->Inputs(), op->Outputs(), scope_);
+  op->RuntimeInferShape(scope_, place_, ctx);
   for (auto& var_name_item : op->Inputs()) {
     for (auto& var_name : var_name_item.second) {
       auto* var = scope_.FindVar(var_name);
@@ -301,7 +301,7 @@ void NgraphOperator::GetNgInputShape(std::shared_ptr<OperatorBase> op) {
   }
 }
 
-void NgraphOperator::BuildNgNodes() {
+void NgraphEngine::BuildNgNodes() {
   for (auto& var_name : var_out_) {
     if (var_node_map_->find(var_name) == var_node_map_->end()) {
       auto* var = scope_.FindVar(var_name);
@@ -323,7 +323,7 @@ void NgraphOperator::BuildNgNodes() {
   }
 }
 
-void NgraphOperator::BuildNgIO() {
+void NgraphEngine::BuildNgIO() {
   std::unordered_set<std::string> inputs;
   std::unordered_set<std::string> outputs;
 
@@ -395,11 +395,11 @@ void NgraphOperator::BuildNgIO() {
   }
 }
 
-void NgraphOperator::BuildNgFunction() {
+void NgraphEngine::BuildNgFunction() {
   BuildNgNodes();
   ngraph_function_ = nullptr;
   ngraph::NodeVector func_outputs;
-  ngraph::op::ParameterVector func_inputs;
+  ngraph::ParameterVector func_inputs;
 
   for (auto& vo : var_out_) {
     func_outputs.push_back(var_node_map_->at(vo));
@@ -416,7 +416,7 @@ void NgraphOperator::BuildNgFunction() {
       std::make_shared<ngraph::Function>(func_outputs, func_inputs);
 }
 
-std::shared_ptr<std::string> NgraphOperator::GetCacheKey() {
+std::shared_ptr<std::string> NgraphEngine::GetCacheKey() {
   auto cache_key = std::make_shared<std::string>("");
   *cache_key += std::to_string(fused_ops_.size());
   for (auto& op : fused_ops_) {
@@ -444,7 +444,7 @@ std::shared_ptr<std::string> NgraphOperator::GetCacheKey() {
   return cache_key;
 }
 
-void NgraphOperator::GetNgFunction() {
+void NgraphEngine::GetNgFunction() {
   bool cache_on = true;
   if (cache_on) {
     std::string cache_key_val = *GetCacheKey();
@@ -459,8 +459,7 @@ void NgraphOperator::GetNgFunction() {
   }
 }
 
-void NgraphOperator::Run(const Scope& scope,
-                         const platform::Place& place) const {
+void NgraphEngine::Run(const Scope& scope, const platform::Place& place) const {
   std::vector<std::shared_ptr<ngraph::runtime::Tensor>> t_in;
   std::vector<std::shared_ptr<ngraph::runtime::Tensor>> t_out;
 
@@ -473,27 +472,23 @@ void NgraphOperator::Run(const Scope& scope,
       auto* tensor_pd = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       PADDLE_ENFORCE(sp == Ddim2Shape(tensor_pd->dims()),
                      "Ensure ngraph tensor layout align with paddle tensor");
-      if (tensor_pd->type().hash_code() ==
-          typeid(float).hash_code()) {  // NOLINT
+      if (tensor_pd->type() == proto::VarType::FP32) {
         const float* arr = tensor_pd->data<float>();
         ti = backend_->create_tensor(ngraph::element::f32, sp,
                                      const_cast<float*>(arr));
-      } else if (tensor_pd->type().hash_code() ==
-                 typeid(int).hash_code()) {  // NOLINT
+      } else if (tensor_pd->type() == proto::VarType::INT32) {
         const int* arr = tensor_pd->data<int>();
         ti = backend_->create_tensor(ngraph::element::i32, sp,
                                      const_cast<int*>(arr));
-      } else if (tensor_pd->type().hash_code() == typeid(int64_t).hash_code()) {
+      } else if (tensor_pd->type() == proto::VarType::INT64) {
         const int64_t* arr = tensor_pd->data<int64_t>();
         ti = backend_->create_tensor(ngraph::element::i64, sp,
                                      const_cast<int64_t*>(arr));
-      } else if (tensor_pd->type().hash_code() ==
-                 typeid(double).hash_code()) {  // NOLINT
+      } else if (tensor_pd->type() == proto::VarType::FP64) {
         const double* arr = tensor_pd->data<double>();
         ti = backend_->create_tensor(ngraph::element::f64, sp,
                                      const_cast<double*>(arr));
-      } else if (tensor_pd->type().hash_code() ==
-                 typeid(bool).hash_code()) {  // NOLINT
+      } else if (tensor_pd->type() == proto::VarType::BOOL) {
         const bool* arr = tensor_pd->data<bool>();
         ti = backend_->create_tensor(ngraph::element::boolean, sp,
                                      const_cast<bool*>(arr));
@@ -544,8 +539,7 @@ void NgraphOperator::Run(const Scope& scope,
     }
   }
 
-  backend_->call(ngraph_function_, t_out, t_in);
-}  // NgraphOperator::RunImpl
+  backend_->call(backend_->compile(ngraph_function_), t_out, t_in);
+}  // NgraphEngine::RunImpl
 }  // namespace framework
 }  // namespace paddle
-#endif

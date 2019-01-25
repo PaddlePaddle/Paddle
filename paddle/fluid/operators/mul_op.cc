@@ -49,7 +49,8 @@ class MulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(
         y_dims.size(), y_num_col_dims,
         "The input tensor Y's rank of MulOp should be larger than "
-        "y_num_col_dims.");
+        "y_num_col_dims: %ld vs %ld",
+        y_dims.size(), y_num_col_dims);
 
     auto x_mat_dims = framework::flatten_to_2d(x_dims, x_num_col_dims);
     auto y_mat_dims = framework::flatten_to_2d(y_dims, y_num_col_dims);
@@ -146,12 +147,6 @@ class MulGradOp : public framework::OperatorWithKernel {
                    "Input(Out@GRAD) should not be null");
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
-    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-
-    auto x_mat_dims = framework::flatten_to_2d(
-        x_dims, ctx->Attrs().Get<int>("x_num_col_dims"));
-    auto y_mat_dims = framework::flatten_to_2d(
-        y_dims, ctx->Attrs().Get<int>("y_num_col_dims"));
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");

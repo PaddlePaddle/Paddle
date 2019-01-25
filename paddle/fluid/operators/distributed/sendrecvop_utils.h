@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <iostream>
 #include <string>
+#include <typeindex>
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
@@ -23,9 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/distributed/distributed_pb.h"
 #include "paddle/fluid/platform/port.h"
-
-#include "paddle/fluid/operators/distributed/send_recv.pb.h"
 
 namespace paddle {
 namespace operators {
@@ -50,6 +50,13 @@ class TensorPayload final {
   size_t memory_size_;
 };
 
+inline void SerializeDestroyCallback(void* payload) {
+  if (payload != nullptr) {
+    auto* shared_payload = reinterpret_cast<TensorPayload*>(payload);
+    delete shared_payload;
+  }
+}
+
 TensorPayload GetTensorPayload(framework::Variable* var,
                                const platform::DeviceContext& ctx,
                                VarMsg* request);
@@ -58,21 +65,27 @@ TensorPayload GetSelectedRowsPayload(framework::Variable* var,
                                      const platform::DeviceContext& ctx,
                                      VarMsg* request);
 
-inline std::type_index ToTypeIndex(sendrecv::VariableMessage::Type type) {
+inline framework::proto::VarType::Type ToVarType(
+    sendrecv::VariableMessage::Type type) {
   switch (type) {
     case sendrecv::VariableMessage::FP32:
-      return typeid(float);  // NOLINT
+      return framework::proto::VarType::FP32;  // NOLINT
     case sendrecv::VariableMessage::FP64:
-      return typeid(double);  // NOLINT
+      return framework::proto::VarType::FP64;  // NOLINT
     case sendrecv::VariableMessage::INT32:
-      return typeid(int);  // NOLINT
+      return framework::proto::VarType::INT32;  // NOLINT
     case sendrecv::VariableMessage::INT64:
-      return typeid(int64_t);  // NOLINT
+      return framework::proto::VarType::INT64;  // NOLINT
     case sendrecv::VariableMessage::BOOL:
-      return typeid(bool);  // NOLINT
+      return framework::proto::VarType::BOOL;  // NOLINT
     default:
       PADDLE_THROW("Not support type %d", type);
   }
+}
+
+template <template <typename> class T, typename Elem>
+std::string VectorElemName(const T<Elem>& arg) {
+  return typeid(Elem).name();
 }
 
 }  // namespace distributed

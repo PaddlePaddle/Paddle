@@ -12,12 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
+#include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
+#include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
+#include "paddle/fluid/inference/tensorrt/op_teller.h"
+#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
@@ -33,10 +37,13 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
     std::unique_ptr<framework::ir::Graph> graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph.get());
 
-  auto teller =
-      Get<SubgraphDetector::NodeInsideSubgraphTeller>("tensorrt_node_teller");
+  auto teller = [](const framework::ir::Node *node) {
+    if (!node->IsOp() || !node->Op()) return false;
+    return tensorrt::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
+  };
 
-  SubGraphFuser fuser(graph.get(), teller, 2 /*min subgraph size*/);
+  SubGraphFuser fuser(graph.get(), teller,
+                      Get<int>("min_subgraph_size") /*min subgraph size*/);
   fuser();
 
   for (auto *node : graph->Nodes()) {
@@ -63,7 +70,6 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
 void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
                                             Graph *graph) const {
   auto *op_desc = node->Op();
-  static int counter{0};
   auto &subgraph = *Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
 
@@ -72,6 +78,9 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   framework::BlockDesc block_desc(nullptr, &block_proto);
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
+  string::PrettyLogDetail("---  detect a sub-graph with %d nodes",
+                          subgraph.size());
+
   for (auto *node : subgraph) {
     auto *op = block_desc.AppendOp();
     *op->Proto() = *node->Op()->Proto();
@@ -192,18 +201,32 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
           block_desc.Proto()->SerializeAsString());
   SetAttr(op_desc->Proto(), "max_batch_size", Get<int>("max_batch_size"));
   SetAttr(op_desc->Proto(), "workspace_size", Get<int>("workspace_size"));
-  SetAttr(op_desc->Proto(), "engine_uniq_key",
-          "trt-" + std::to_string(counter++));
   SetAttr(op_desc->Proto(), "parameters", ExtractParameters(graph->Nodes()));
   SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
 }
 
 std::vector<std::string> ExtractParameters(
     const std::unordered_set<Node *> &nodes) {
+  // We can judge whether a variable is a parameter by
+  // its presistable property, but sometimes the presistable
+  // of the feed op output is true, so we have to identify it.
+  std::vector<std::string> feed_outputs;
+  for (const auto &node : nodes) {
+    if (!node->IsOp()) continue;
+    std::string op_type = node->Op()->Type();
+    if (op_type == "feed") {
+      std::vector<std::string> output_names = node->Op()->OutputArgumentNames();
+      std::copy(output_names.begin(), output_names.end(),
+                std::back_inserter(feed_outputs));
+    }
+  }
+
   std::vector<std::string> parameters;
   for (const auto &node : nodes) {
     if (!node->IsVar()) continue;
-    if (node->Var()->Persistable()) {
+    if (node->Var()->Persistable() &&
+        std::find(feed_outputs.begin(), feed_outputs.end(), node->Name()) ==
+            feed_outputs.end()) {
       parameters.push_back(node->Name());
     }
   }
@@ -216,6 +239,6 @@ std::vector<std::string> ExtractParameters(
 
 REGISTER_PASS(tensorrt_subgraph_pass,
               paddle::inference::analysis::TensorRtSubgraphPass)
-    .RequirePassAttr("tensorrt_node_teller")
     .RequirePassAttr("max_batch_size")
-    .RequirePassAttr("workspace_size");
+    .RequirePassAttr("workspace_size")
+    .RequirePassAttr("min_subgraph_size");

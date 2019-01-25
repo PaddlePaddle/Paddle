@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <atomic>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -29,8 +28,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/framework/details/reference_count_pass.h"
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -46,14 +45,12 @@ class ParallelExecutor {
 
  public:
   explicit ParallelExecutor(const std::vector<platform::Place> &places,
-                            const std::unordered_set<std::string> &params,
                             const std::unordered_set<std::string> &bcast_vars,
                             const ProgramDesc &main_program,
                             const std::string &loss_var_name, Scope *scope,
                             const std::vector<Scope *> &local_scopes,
                             const ExecutionStrategy &exec_strategy,
-                            const BuildStrategy &build_strategy,
-                            size_t num_trainers = 1, size_t trainer_id = 0);
+                            const BuildStrategy &build_strategy);
 
   ~ParallelExecutor();
 
@@ -74,24 +71,13 @@ class ParallelExecutor {
 
  private:
   void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;
+  bool EnableParallelGraphExecution(const ProgramDesc &main_program,
+                                    const ExecutionStrategy &exec_strategy,
+                                    const BuildStrategy &build_strategy) const;
 
-  std::unique_ptr<ParallelExecutorPrivate> member_;
-
-#ifdef PADDLE_WITH_CUDA
-  // ref_cnts_ is only initialized when ParallelExecutor constructs, and then
-  // keeps unchanged
-  // Before each iteration, cur_ref_cnts_ is reset to ref_cnts_
-  details::DeviceReferenceCountMap ref_cnts_;
-  details::AtomicDeviceReferenceCountMap cur_ref_cnts_;
-  details::DeviceGarbageCollectorMap gcs_;
-
-  void ResetReferenceCount() {
-    for (auto &pair1 : ref_cnts_) {
-      for (auto &pair2 : *(pair1.second)) {
-        (*(cur_ref_cnts_[pair1.first]))[pair2.first] = pair2.second;
-      }
-    }
-  }
+  ParallelExecutorPrivate *member_;
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  std::unique_ptr<ncclUniqueId> local_nccl_id_;
 #endif
 };
 

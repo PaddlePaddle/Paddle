@@ -43,7 +43,19 @@ class RPCClient {
                                    const platform::DeviceContext& ctx,
                                    const framework::Scope& scope,
                                    const std::string& var_name,
+                                   const std::string& out_varname,
                                    int64_t time_out = FLAGS_rpc_deadline) = 0;
+
+  virtual VarHandlePtr AsyncGetVarNoBarrier(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      const std::string& out_varname,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
+
+  virtual VarHandlePtr AsyncGetMonomerVariable(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncPrefetchVar(
       const std::string& ep, const platform::DeviceContext& ctx,
@@ -56,6 +68,10 @@ class RPCClient {
 
   virtual VarHandlePtr AsyncSendFetchBarrier(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
+
+  virtual VarHandlePtr AsyncGetMonomerBarrier(
+      const std::string& ep, const std::string& var_name,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncCheckpointNotify(
       const std::string& ep, const std::string& dir,
@@ -87,8 +103,9 @@ class RPCClient {
     }
   }
 
- protected:
   virtual void InitImpl() {}
+
+ protected:
   // each trainer have exact one trainer id, it should be static
   static int trainer_id_;
 

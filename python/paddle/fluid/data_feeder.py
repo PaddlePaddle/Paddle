@@ -44,6 +44,8 @@ class DataToLoDTensorConverter(object):
             self.dtype = 'int64'
         elif dtype == core.VarDesc.VarType.FP64:
             self.dtype = 'float64'
+        elif dtype == core.VarDesc.VarType.FP16:
+            self.dtype = 'float16'
         elif dtype == core.VarDesc.VarType.INT32:
             self.dtype = 'int32'
         elif dtype == core.VarDesc.VarType.UINT8:
@@ -69,10 +71,25 @@ class DataToLoDTensorConverter(object):
             for each_data in data:
                 self._feed_impl_(each_data, lod[1:], lod_level - 1)
 
+    def _check_shape(self, shape):
+        for s1, s2 in zip(self.shape, shape):
+            if s1 != s2 and s1 >= 0 and s2 >= 0:
+                raise ValueError(
+                    "Shape not match. What is defined in data layer is {}, but receive {}".
+                    format(self.shape, shape))
+
     def done(self):
         arr = numpy.array(self.data, dtype=self.dtype)
-        if self.shape and len(arr.shape) != len(self.shape):
-            arr = arr.reshape(self.shape)
+        if self.shape:
+            if len(arr.shape) != len(self.shape):
+                try:
+                    arr = arr.reshape(self.shape)
+                except ValueError:
+                    raise ValueError(
+                        "Reshape error. What is defined in data layer is {}, but receive {}"
+                        .format(self.shape, arr.shape))
+            #else:
+            #    self._check_shape(arr.shape)
         t = core.LoDTensor()
         t.set(arr, self.place)
         if self.lod_level > 0:
@@ -150,17 +167,8 @@ class DataFeeder(object):
                 raise TypeError("Feed list should contain a list of variable")
             self.feed_dtypes.append(each_var.dtype)
             self.feed_names.append(each_var.name)
-            shape = each_var.shape
-            batch_size_dim = -1
-            for i, s in enumerate(shape):
-                if s < 0:
-                    batch_size_dim = i
-                    break
-            if batch_size_dim == -1:
-                raise ValueError("Variable {0} must has a batch size dimension",
-                                 each_var.name)
             self.feed_lod_level.append(each_var.lod_level)
-            self.feed_shapes.append(shape)
+            self.feed_shapes.append(each_var.shape)
 
         self.place = place
 
@@ -258,17 +266,19 @@ class DataFeeder(object):
         multiple mini-batches. Each mini-batch will be feed on each device.
 
         Args:
-            reader(fun): the input data.
-            multi_devices(bool): the number of places. Default None.
-            num_places(int): the number of places. Default None.
-            drop_last(bool): the number of places. Default None.
+            reader(function): the reader is the function which can generate data.
+            multi_devices(bool): whether to use multiple devices or not.
+            num_places(int): if the multi_devices is True, you can specify the number
+                of GPU to use, if 'num_places' is None, the function will use all the
+                GPU of the current machine. Default None.
+            drop_last(bool): whether to drop the last batch if the
+                size of the last batch is less than batch_size. Default True.
 
         Returns:
             dict: the result of conversion.
 
         Raises:
-            ValueError: If drop_last is False and the data batch which cannot
-            fit for devices.
+            ValueError: If drop_last is False and the data batch which cannot fit for devices.
         """
 
         def __reader_creator__():

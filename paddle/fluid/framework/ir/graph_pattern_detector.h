@@ -623,7 +623,7 @@ struct ElewiseAddActInplaceGrad : public PatternBase {
 struct ConvBias : public PatternBase {
   ConvBias(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_bias") {}
-  PDNode* operator()(PDNode* conv_input);
+  PDNode* operator()(PDNode* conv_input, bool is_conv3d = false);
   // declare operator node's name
   PATTERN_DECL_NODE(conv);
   PATTERN_DECL_NODE(eltwise);
@@ -671,6 +671,116 @@ struct ElementwiseAdd : public PatternBase {
   PATTERN_DECL_NODE(elementwise_add_y);
   PATTERN_DECL_NODE(elementwise_add_out);
 };
+
+// Conv + ElementwiseAdd + an activation
+// This pattern can futher fuse the conv related ops after the conv+bn fusion.
+struct ConvElementwiseaddAct : public PatternBase {
+  ConvElementwiseaddAct(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_elementwiseadd_act") {}
+
+  PDNode* operator()(PDNode* conv_in);
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(conv_filter);
+
+  PATTERN_DECL_NODE(elementwise_add_op);
+  PATTERN_DECL_NODE(elementwise_add_in_y);  // input
+  PATTERN_DECL_NODE(elementwise_add_out);
+
+  PATTERN_DECL_NODE(act_op);
+  PATTERN_DECL_NODE(act_out);
+};
+
+// Conv + ElementwiseAdd + ElementwiseAdd + Activation
+struct ConvElementwiseadd2Act : public PatternBase {
+  ConvElementwiseadd2Act(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope,
+                    "conv_elementwiseadd2_elementwiseadd_act") {}
+
+  PDNode* operator()(PDNode* conv_in);
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_filter);
+  PATTERN_DECL_NODE(conv_out);
+
+  PATTERN_DECL_NODE(elementwise_add_op);
+  PATTERN_DECL_NODE(elementwise_add_in_y);  // input
+  PATTERN_DECL_NODE(elementwise_add_out);
+
+  PATTERN_DECL_NODE(elementwise_add_op_1);
+  PATTERN_DECL_NODE(elementwise_add_in_y_1);  // input
+  PATTERN_DECL_NODE(elementwise_add_out_1);
+
+  PATTERN_DECL_NODE(act_op);
+  PATTERN_DECL_NODE(act_out);
+};
+
+// Conv + ElementwiseAdd
+// This pattern should be used after ConvElementwiseadd2Act or
+// ConvElementwiseadd pass
+struct ConvElementwiseadd : public PatternBase {
+  ConvElementwiseadd(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_elementwiseadd") {}
+
+  PDNode* operator()(PDNode* conv_in);
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(conv_filter);
+
+  PATTERN_DECL_NODE(elementwise_add_op);
+  PATTERN_DECL_NODE(elementwise_add_in_y);
+  PATTERN_DECL_NODE(elementwise_add_out);
+};
+
+// Conv with affine_channel
+// op: conv + (elementwise_add +) affine_channel
+// named nodes:
+// conv_weight, conv_out, conv,
+// ac_x, ac_scale, ac_bias
+// affine_channel, ac_out
+struct ConvAffineChannel : public PatternBase {
+  ConvAffineChannel(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_affine_channel") {}
+
+  PDNode* operator()(PDNode* conv_input, bool with_eltwise_add);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv);
+  PATTERN_DECL_NODE(affine_channel);
+  PATTERN_DECL_NODE(eltwise);  // ELEMENTWISE_ADD
+  // CONV inputs
+  PATTERN_DECL_NODE(conv_weight);  // Filter
+  // CONV outputs
+  PATTERN_DECL_NODE(conv_out);  // tmp
+  // ELTWISE inputs
+  PATTERN_DECL_NODE(eltwise_y_in);
+  // ELTWISE outputs
+  PATTERN_DECL_NODE(eltwise_out);  // tmp
+
+  // AC(Affine_Channel) inputs
+  PATTERN_DECL_NODE(ac_scale);
+  PATTERN_DECL_NODE(ac_bias);
+  // AC outputs
+  PATTERN_DECL_NODE(ac_out);  // Out
+};
+
+struct TransposeFlattenConcat : public PatternBase {
+  TransposeFlattenConcat(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "transpose_flatten_concat") {}
+
+  PDNode* operator()(std::vector<PDNode*> conv_inputs, int times);
+
+  std::string GetNodeName(const std::string& op_type) {
+    return PDNodeName(name_scope_, repr_, id_, op_type);
+  }
+
+  PDNode* GetPDNode(const std::string& op_type) {
+    return pattern->RetrieveNode(GetNodeName(op_type));
+  }
+};
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.

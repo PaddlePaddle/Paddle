@@ -15,31 +15,40 @@
 #pragma once
 
 #include <gtest/gtest.h>
+
 #include <algorithm>
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+#ifdef WITH_GPERFTOOLS
+#include <gperftools/profiler.h>
+#endif
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
-
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/tests/api/config_printer.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
+#include "paddle/fluid/inference/utils/benchmark.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DEFINE_string(model_name, "", "model name");
 DEFINE_string(infer_model, "", "model path");
 DEFINE_string(infer_data, "", "data file");
+DEFINE_string(refer_result, "", "reference result for comparison");
 DEFINE_int32(batch_size, 1, "batch size.");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
 DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");
 DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
 DEFINE_bool(use_analysis, true,
             "Running the inference program in analysis mode.");
+DEFINE_bool(record_benchmark, false,
+            "Record benchmark after profiling the model");
+DEFINE_double(accuracy, 1e-3, "Result Accuracy.");
 
 DECLARE_bool(profile);
 DECLARE_int32(paddle_num_threads);
@@ -47,12 +56,21 @@ DECLARE_int32(paddle_num_threads);
 namespace paddle {
 namespace inference {
 
+float Random(float low, float high) {
+  static std::random_device rd;
+  static std::mt19937 mt(rd());
+  std::uniform_real_distribution<double> dist(low, high);
+  return dist(mt);
+}
+
 void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
+  const auto *analysis_config =
+      reinterpret_cast<const contrib::AnalysisConfig *>(config);
   if (use_analysis) {
-    LOG(INFO) << *reinterpret_cast<const contrib::AnalysisConfig *>(config);
+    LOG(INFO) << *analysis_config;
     return;
   }
-  LOG(INFO) << *reinterpret_cast<const NativeConfig *>(config);
+  LOG(INFO) << analysis_config->ToNativeConfig();
 }
 
 void CompareResult(const std::vector<PaddleTensor> &outputs,
@@ -80,7 +98,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         float *pdata = static_cast<float *>(out.data.data());
         float *pdata_ref = static_cast<float *>(ref_out.data.data());
         for (size_t j = 0; j < size; ++j) {
-          EXPECT_NEAR(pdata_ref[j], pdata[j], 1e-3);
+          CHECK_LE(std::abs(pdata_ref[j] - pdata[j]), FLAGS_accuracy);
         }
         break;
       }
@@ -90,12 +108,13 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
 
 std::unique_ptr<PaddlePredictor> CreateTestPredictor(
     const PaddlePredictor::Config *config, bool use_analysis = true) {
+  const auto *analysis_config =
+      reinterpret_cast<const contrib::AnalysisConfig *>(config);
   if (use_analysis) {
-    return CreatePaddlePredictor<contrib::AnalysisConfig>(
-        *(reinterpret_cast<const contrib::AnalysisConfig *>(config)));
+    return CreatePaddlePredictor<contrib::AnalysisConfig>(*analysis_config);
   }
-  return CreatePaddlePredictor<NativeConfig>(
-      *(reinterpret_cast<const NativeConfig *>(config)));
+  auto native_config = analysis_config->ToNativeConfig();
+  return CreatePaddlePredictor<NativeConfig>(native_config);
 }
 
 size_t GetSize(const PaddleTensor &out) { return VecReduceToInt(out.shape); }
@@ -126,7 +145,8 @@ std::unordered_map<std::string, int> GetFuseStatis(PaddlePredictor *predictor,
 void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
                        const std::string &dirname, bool is_combined = true,
                        std::string model_filename = "model",
-                       std::string params_filename = "params") {
+                       std::string params_filename = "params",
+                       const std::vector<std::string> *feed_names = nullptr) {
   // Set fake_image_data
   PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0, "Only have single batch of data.");
   std::vector<std::vector<int64_t>> feed_target_shapes = GetFeedTargetShapes(
@@ -140,27 +160,45 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
     os << "}\n";
   }
   LOG(INFO) << os.str();
-
-  int dim1 = feed_target_shapes[0][1];
-  int dim2 = feed_target_shapes[0][2];
-  int dim3 = feed_target_shapes[0][3];
-
-  PaddleTensor input;
-  std::vector<int> shape({FLAGS_batch_size, dim1, dim2, dim3});
-  input.shape = shape;
-  input.dtype = PaddleDType::FLOAT32;
-
-  // fill input data, for profile easily, do not use random data here.
-  size_t size = FLAGS_batch_size * dim1 * dim2 * dim3;
-  input.data.Resize(size * sizeof(float));
-  float *input_data = static_cast<float *>(input.data.data());
-  for (size_t i = 0; i < size; i++) {
-    *(input_data + i) = static_cast<float>(i) / size;
+  if (feed_names) {
+    PADDLE_ENFORCE_EQ(feed_names->size(), feed_target_shapes.size());
   }
-
-  std::vector<PaddleTensor> input_slots;
-  input_slots.assign({input});
+  std::vector<PaddleTensor> input_slots(feed_target_shapes.size());
+  for (size_t i = 0; i < feed_target_shapes.size(); ++i) {
+    const auto &feed_shape = feed_target_shapes[i];
+    auto &input = input_slots[i];
+    std::vector<int> shape({FLAGS_batch_size});
+    for (size_t s = 1; s < feed_shape.size(); ++s) {
+      shape.push_back(static_cast<int>(feed_shape[s]));
+    }
+    if (feed_names) {
+      input.name = (*feed_names)[i];
+    }
+    input.shape = shape;
+    input.dtype = PaddleDType::FLOAT32;
+    size_t len = std::accumulate(shape.begin(), shape.end(), 1,
+                                 [](int a, int b) { return a * b; });
+    input.data.Resize(len * sizeof(float));
+    input.lod.assign({{0, static_cast<size_t>(FLAGS_batch_size)}});
+    float *input_data = static_cast<float *>(input.data.data());
+    // fill input data, for profile easily, do not use random data here.
+    for (size_t j = 0; j < len; ++j) {
+      *(input_data + j) = Random(0.0, 1.0) / 10.;
+    }
+  }
   (*inputs).emplace_back(input_slots);
+}
+
+void GetInputPerBatch(const std::vector<std::vector<int64_t>> &in,
+                      std::vector<std::vector<int64_t>> *out,
+                      std::vector<size_t> *lod, size_t batch_iter,
+                      size_t batch_end) {
+  lod->clear();
+  lod->push_back(0);
+  for (auto it = in.begin() + batch_iter; it < in.begin() + batch_end; it++) {
+    out->push_back(*it);
+    lod->push_back(lod->back() + (*it).size());  // calculate lod
+  }
 }
 
 void TestOneThreadPrediction(
@@ -187,13 +225,27 @@ void TestOneThreadPrediction(
   {
     Timer run_timer;
     run_timer.tic();
+#ifdef WITH_GPERFTOOLS
+    ProfilerStart("paddle_inference.prof");
+#endif
     for (int i = 0; i < num_times; i++) {
       for (size_t j = 0; j < inputs.size(); j++) {
         predictor->Run(inputs[j], outputs, batch_size);
       }
     }
-    PrintTime(batch_size, num_times, 1, 0, run_timer.toc() / num_times,
-              inputs.size());
+#ifdef WITH_GPERFTOOLS
+    ProfilerStop();
+#endif
+
+    double latency = run_timer.toc() / (num_times > 1 ? num_times : 1);
+    PrintTime(batch_size, num_times, 1, 0, latency, inputs.size());
+    if (FLAGS_record_benchmark) {
+      Benchmark benchmark;
+      benchmark.SetName(FLAGS_model_name);
+      benchmark.SetBatchSize(batch_size);
+      benchmark.SetLatency(latency);
+      benchmark.PersistToFile("benchmark_record.txt");
+    }
   }
 }
 
@@ -270,6 +322,25 @@ void TestPrediction(const PaddlePredictor::Config *config,
   }
 }
 
+void CompareDeterministic(
+    const PaddlePredictor::Config *config,
+    const std::vector<std::vector<PaddleTensor>> &inputs) {
+  int batch_size = FLAGS_batch_size;
+  int num_times = FLAGS_repeat;
+  auto predictor = CreateTestPredictor(config, FLAGS_use_analysis);
+
+  std::vector<PaddleTensor> warmup_outputs, outputs;
+  // run num_times to Compare Deterministic Result.
+  for (size_t j = 0; j < inputs.size(); j++) {
+    // warmup run
+    predictor->Run(inputs[j], &warmup_outputs, batch_size);
+    for (int i = 0; i < num_times; i++) {
+      predictor->Run(inputs[j], &outputs, batch_size);
+      CompareResult(outputs, warmup_outputs);
+    }
+  }
+}
+
 void CompareNativeAndAnalysis(
     const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
@@ -277,6 +348,16 @@ void CompareNativeAndAnalysis(
   std::vector<PaddleTensor> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
+  CompareResult(analysis_outputs, native_outputs);
+}
+
+void CompareNativeAndAnalysis(
+    PaddlePredictor *native_pred, PaddlePredictor *analysis_pred,
+    const std::vector<std::vector<PaddleTensor>> &inputs) {
+  int batch_size = FLAGS_batch_size;
+  std::vector<PaddleTensor> native_outputs, analysis_outputs;
+  native_pred->Run(inputs[0], &native_outputs, batch_size);
+  analysis_pred->Run(inputs[0], &analysis_outputs, batch_size);
   CompareResult(analysis_outputs, native_outputs);
 }
 
@@ -361,7 +442,7 @@ static bool CompareTensorData(const framework::LoDTensor &a,
   }
 
   for (size_t i = 0; i < a_size; i++) {
-    if (a.type() == typeid(float)) {
+    if (a.type() == framework::proto::VarType::FP32) {
       const auto *a_data = a.data<float>();
       const auto *b_data = b.data<float>();
       if (std::abs(a_data[i] - b_data[i]) > 1e-3) {
@@ -370,7 +451,7 @@ static bool CompareTensorData(const framework::LoDTensor &a,
             b_data[i]);
         return false;
       }
-    } else if (a.type() == typeid(int64_t)) {
+    } else if (a.type() == framework::proto::VarType::INT64) {
       const auto *a_data = a.data<int64_t>();
       const auto *b_data = b.data<int64_t>();
       if (std::abs(a_data[i] - b_data[i]) > 1e-3) {

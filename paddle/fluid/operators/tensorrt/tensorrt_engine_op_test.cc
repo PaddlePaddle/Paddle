@@ -24,8 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
 
-USE_CUDA_ONLY_OP(tensorrt_engine);
-
+USE_NO_KERNEL_OP(tensorrt_engine);
 namespace paddle {
 namespace operators {
 
@@ -100,7 +99,7 @@ TEST(TensorRTEngineOp, manual) {
   SetAttr<std::string>(engine_op_desc.Proto(), "subgraph",
                        block_->SerializeAsString());
   SetAttr<int>(engine_op_desc.Proto(), "max_batch_size", 2);
-  SetAttr<int>(engine_op_desc.Proto(), "workspace_size", 2 << 10);
+  SetAttr<int>(engine_op_desc.Proto(), "workspace_size", 1 << 20);
   SetAttr<std::string>(engine_op_desc.Proto(), "engine_uniq_key", "a_engine");
   SetAttr<std::vector<std::string>>(engine_op_desc.Proto(), "parameters",
                                     std::vector<std::string>({}));
@@ -194,7 +193,7 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   SetAttr<std::string>(engine_op_desc.Proto(), "subgraph",
                        block_->SerializeAsString());
   SetAttr<int>(engine_op_desc.Proto(), "max_batch_size", batch_size);
-  SetAttr<int>(engine_op_desc.Proto(), "workspace_size", 2 << 10);
+  SetAttr<int>(engine_op_desc.Proto(), "workspace_size", 1 << 20);
   SetAttr<std::vector<std::string>>(
       engine_op_desc.Proto(), "parameters",
       std::vector<std::string>({"y0", "y1", "y2", "y3"}));

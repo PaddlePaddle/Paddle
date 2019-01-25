@@ -204,12 +204,10 @@ void PrepareZeroCopyInputs(ZeroCopyTensor *lod_attention_tensor,
 }
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->prog_file = FLAGS_infer_model + "/__model__";
-  cfg->param_file = FLAGS_infer_model + "/param";
-  cfg->use_gpu = false;
-  cfg->device = 0;
-  cfg->specify_input_name = true;
-  cfg->enable_ir_optim = true;
+  cfg->SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
+  cfg->DisableGpu();
+  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim();
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -225,10 +223,10 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 TEST(Analyzer_rnn1, profile) {
-  contrib::AnalysisConfig cfg(false);
+  contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg.fraction_of_gpu_memory = 0.1;
-  cfg.pass_builder()->TurnOnDebug();
+  cfg.DisableGpu();
+  cfg.SwitchIrDebug();
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -265,6 +263,17 @@ TEST(Analyzer_rnn1, compare) {
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
+// Compare Deterministic result
+TEST(Analyzer_rnn1, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
+}
+
 // Test Multi-Thread.
 TEST(Analyzer_rnn1, multi_thread) {
   contrib::AnalysisConfig cfg;
@@ -274,7 +283,7 @@ TEST(Analyzer_rnn1, multi_thread) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, 4 /* multi_thread */);
+                 input_slots_all, &outputs, 2 /* multi_thread */);
 }
 
 // Validate that the AnalysisPredictor + ZeroCopyTensor really works by testing
@@ -282,16 +291,18 @@ TEST(Analyzer_rnn1, multi_thread) {
 TEST(Analyzer_rnn1, ZeroCopy) {
   AnalysisConfig config;
   SetConfig(&config);
-  config.use_feed_fetch_ops = false;
+  config.SwitchUseFeedFetchOps(false);
 
   PaddlePlace place;
 
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
-  config.use_feed_fetch_ops = true;
-  auto native_predictor = CreatePaddlePredictor<NativeConfig>(config);
+  config.SwitchUseFeedFetchOps(true);
+  auto native_predictor =
+      CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
 
-  config.use_feed_fetch_ops = true;  // the analysis predictor needs feed/fetch.
+  config.SwitchUseFeedFetchOps(
+      true);  // the analysis predictor needs feed/fetch.
   auto analysis_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
 #define NEW_TENSOR(name__) \
@@ -340,10 +351,10 @@ TEST(Analyzer_rnn1, ZeroCopy) {
   ASSERT_TRUE(native_predictor->Run(native_inputs.front(), &native_outputs));
   LOG(INFO) << "native output " << DescribeTensor(native_outputs.front());
 
-  int output_size{0};
+  int output_size{0};  // this is the number of elements not memory size
   auto *zero_copy_data = output_tensor->data<float>(&place, &output_size);
   auto *native_data = static_cast<float *>(native_outputs.front().data.data());
-  for (size_t i = 0; i < output_size / sizeof(float); i++) {
+  for (int i = 0; i < output_size; i++) {
     EXPECT_NEAR(zero_copy_data[i], native_data[i], 1e-3);
   }
 }
@@ -351,7 +362,7 @@ TEST(Analyzer_rnn1, ZeroCopy) {
 TEST(Analyzer_rnn1, ZeroCopyMultiThread) {
   AnalysisConfig config;
   SetConfig(&config);
-  config.use_feed_fetch_ops = false;
+  config.SwitchUseFeedFetchOps(false);
 
 #define NEW_TENSOR(name__) \
   auto name__##_tensor = predictor->GetInputTensor(#name__);
@@ -359,15 +370,12 @@ TEST(Analyzer_rnn1, ZeroCopyMultiThread) {
   auto base_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   double total_time_of_threads{0};
   std::vector<std::thread> threads;
-  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
-  for (int tid = 0; tid < FLAGS_num_threads; tid++) {
-    predictors.emplace_back(CreatePaddlePredictor<AnalysisConfig>(config));
-  }
 
   for (int tid = 0; tid < FLAGS_num_threads; tid++) {
-    threads.emplace_back([config, &total_time_of_threads, &predictors, tid] {
-      // auto predictor = base_predictor->Clone();
-      auto &predictor = predictors[tid];
+    threads.emplace_back([&, tid] {
+      // To ensure the thread binding correctly,
+      // please clone inside the threadpool.
+      auto predictor = base_predictor->Clone();
       NEW_TENSOR(data_lod_attention);
       NEW_TENSOR(cell_init);
       NEW_TENSOR(data);

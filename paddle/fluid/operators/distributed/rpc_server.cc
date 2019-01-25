@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/distributed/rpc_server.h"
+
 #include <fstream>
 #include <iostream>
 #include <limits>
 #include <string>
-
-#include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -132,6 +132,96 @@ void RPCServer::WaitCond(const std::string& rpc_name) {
       lock, [=] { return (cur_cond_.load() == cond || exit_flag_.load()); });
 }
 
+void RPCServer::RegisterVar(const std::string& var_name,
+                            const std::string& rpc_name,
+                            framework::Scope* scope,
+                            platform::DeviceContext* dev_ctx) {
+  MonomerHandle h;
+  h.var_name_ = var_name;
+  h.rpc_name_ = rpc_name;
+  h.scope_ = scope;
+  h.dev_ctx_ = dev_ctx;
+
+  {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (var_map_.find(var_name) != var_map_.end()) {
+      PADDLE_ENFORCE(false, "%s alreay in var_map", var_name);
+    }
+    var_map_[var_name] = h;
+  }
+
+  rpc_cond_.notify_all();
+  VLOG(4) << "RegisterVar context:" << h.String();
+}
+
+void RPCServer::IncreaseVarBarrier(const std::string& var_name) {
+  int b = 0;
+  MonomerHandle h;
+  {
+    std::unique_lock<std::mutex> lock(mutex_);
+    b = ++var_map_[var_name].barrier_;
+    h = var_map_[var_name];
+  }
+
+  if (b >= client_num_) {
+    barrier_cond_.notify_all();
+  }
+
+  VLOG(4) << "IncreaseVarBarrier context:" << h.String();
+}
+
+void RPCServer::WaitVarBarrier(const std::string& var_name) {
+  VLOG(4) << "WaitBarrier var_name:" << var_name;
+
+  std::unique_lock<std::mutex> lock(mutex_);
+  barrier_cond_.wait(lock, [&]() {
+    return ((var_map_[var_name].barrier_ >= client_num_ && client_num_ != 0) ||
+            exit_flag_.load());
+  });
+
+  VLOG(4) << "WaitBarrier context: " << var_map_[var_name].String();
+}
+
+void RPCServer::SetVarCond(const std::string& var_name) {
+  VLOG(4) << "SetVarCond var_name:" << var_name;
+  {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (var_map_.find(var_name) != var_map_.end()) {
+      rpc_cond_.notify_all();
+    }
+  }
+}
+
+void RPCServer::WaitVarCond(const std::string& var_name) {
+  VLOG(4) << "WaitVarCond var_name:" << var_name;
+
+  std::unique_lock<std::mutex> lock(mutex_);
+  rpc_cond_.wait(lock, [=] {
+    return (var_map_.find(var_name) != var_map_.end() || exit_flag_.load());
+  });
+
+  VLOG(4) << "WaitVarCond var_name:" << var_name << " end";
+}
+
+MonomerHandle RPCServer::GetMonomer(const std::string& var_name) {
+  MonomerHandle h;
+  {
+    std::unique_lock<std::mutex> lock(mutex_);
+    h = var_map_[var_name];
+  }
+
+  return h;
+}
+
+void RPCServer::ClearRegisteredVars() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  var_map_.clear();
+}
+
+void RPCServer::ClearVar(const std::string& var_name) {
+  std::unique_lock<std::mutex> lock(mutex_);
+  var_map_.erase(var_name);
+}
 }  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

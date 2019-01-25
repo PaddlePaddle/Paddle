@@ -75,8 +75,7 @@ class AdamOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type =
-        framework::ToDataType(ctx.Input<Tensor>("Param")->type());
+    auto input_data_type = ctx.Input<Tensor>("Param")->type();
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -110,6 +109,18 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 1.0e-8) "
                    "Constant for numerical stability")
         .SetDefault(1.0e-8f);
+    AddAttr<bool>(
+        "lazy_mode",
+        "(bool, default false) "
+        "only update the parameter that has gradient in sparse update")
+        .SetDefault(false);
+    AddAttr<int64_t>("min_row_size_to_use_multithread",
+                     "(int64_t, default 0) "
+                     "when not zero, if param row size is larger then "
+                     "min_row_size_to_use_multithread and "
+                     "inner_op_parallelism is larger then 0, sparse update "
+                     "will run in multithread mode")
+        .SetDefault(1000);
 
     AddComment(R"DOC(
 Adam Optimizer.
