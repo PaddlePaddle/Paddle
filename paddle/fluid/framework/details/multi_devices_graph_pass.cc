@@ -399,7 +399,7 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
   result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
       result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
       local_scopes_, places_, nccl_ctxs_, is_encoded,
-      static_cast<int>(rategy_.trainers_endpoints_.size())));
+      static_cast<int>(strategy_.trainers_endpoints_.size())));
 #else
   result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
       result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
@@ -407,7 +407,7 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
 #endif
   auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
 
-  std::vecotor<std::string> names;
+  std::vector<std::string> names;
   if (is_encoded) {
     names.push_back(encoded_grad_name);
   } else {
@@ -419,20 +419,22 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
     SetCommunicationContext(op_handle, p);
 
     for (auto name : names) {
-      auto &vars = result->Get<GraphVars>(kGraphVars)[i][name];
-      PADDLE_ENFORCE(!vars.empty());
-      auto &prev_grad = vars.back();
+      auto &in_vars = result->Get<GraphVars>(kGraphVars)[i][name];
+      PADDLE_ENFORCE(!in_vars.empty());
+      auto &prev_grad = in_vars.back();
       op_handle->AddInput(prev_grad);
       VLOG(7) << "all_reduce_op_handle add input " << prev_grad->DebugString();
     }
 
-    auto var =
+    auto &out_vars = result->Get<GraphVars>(kGraphVars)[i][og];
+    PADDLE_ENFORCE(!out_vars.empty());
+    auto out_var =
         new VarHandle(result->CreateEmptyNode(og, ir::Node::Type::kVariable),
-                      vars.size(), i, og, p);
-    vars.emplace_back(var);
-    op_handle->AddOutput(var);
+                      out_vars.size(), i, og, p);
+    out_vars.emplace_back(out_var);
+    op_handle->AddOutput(out_var);
     VLOG(7) << "all_reduce_op_handle add output " << og
-            << ", handle:" << var->DebugString();
+            << ", handle:" << out_var->DebugString();
   }
 }
 
@@ -990,12 +992,16 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   return op_dev_id;
 }
 
-bool DistSSAGraphBuilder::IfCreateDGCOp() {
+bool DistSSAGraphBuilder::IfCreateDGCOp(const std::string &grad_name) const {
   if (!strategy_.enable_dgc_) {
     return false;
   }
 
-  if (strategy_.trainers_endpoints_().size() <= 1) {
+#if !defined(PADDLE_WITH_CUDA) || defined(_WIN32)
+  return false;
+#endif
+
+  if (strategy_.trainers_endpoints_.size() <= 1) {
     return false;
   }
 
@@ -1028,13 +1034,17 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
         CreateReduceOp(result, g_name, 0);
         CreateBroadcastOp(result, g_name, 0);
       } else {
-        if (!IfCreateDGCOp()) {
+        if (!IfCreateDGCOp(g_name)) {
           CreateAllReduceOp(result, g_name);
         } else {
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
           auto encoded_grad_name = g_name + "@ENCODED";
           CreateDGCOp(result, places_.size(), p_name, g_name,
                       encoded_grad_name);
           CreateAllReduceOp(result, g_name, encoded_grad_name);
+#else
+          PADDLE_ENFORCE(false, "Compiled withoud cuda!");
+#endif
         }
       }
       break;

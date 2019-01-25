@@ -75,9 +75,8 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   bool IsSparseGradient(const std::string &og) const;
 
-  void CreateAllReduceOp(
-      ir::Graph *result,
-      const std::string &og const std::string encoded_grad_name = "");
+  void CreateAllReduceOp(ir::Graph *result, const std::string &og,
+                         const std::string encoded_grad_name = "") const;
 
   void CreateBroadcastOp(ir::Graph *result, const std::string &p_name,
                          size_t src_dev_id) const;
@@ -179,10 +178,12 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
   mutable bool need_broadcast_var_{false};
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  void CreateDGCOpOrNot(ir::Graph *graph, size_t num_places,
-                        const std::string &p_name, const std::string &grad_name,
-                        float m = 0.9, float ratio = 0.001) const;
+  void CreateDGCOp(ir::Graph *graph, size_t num_places,
+                   const std::string &p_name, const std::string &grad_name,
+                   const std::string &encoded_grad_name, float m = 0.9,
+                   float ratio = 0.001) const;
 #endif
+  bool IfCreateDGCOp(const std::string &grad_name) const;
 };
 
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder();
