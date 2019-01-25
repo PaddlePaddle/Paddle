@@ -378,6 +378,39 @@ void MatMul(const T* A, const T* B, T* C, int M, int N, int K) {
   }
 }
 
+template <typename T>
+T AMax(const T* x, int n) {
+  T max = x[0];
+  for (int i = 1; i < n; ++i) {
+    max = max < x[i] ? x[i] : max;
+  }
+  return max;
+}
+
+template <typename T>
+T ASum(const T* x, int n) {
+  T sum = x[0];
+  for (int i = 1; i < n; ++i) {
+    sum += x[i];
+  }
+  return sum;
+}
+
+// y = e^(x - max(x))
+// y = y/sum(y)
+template <typename T>
+void Softmax(const T* x, T* y, int n, int bs = 1) {
+  for (int i = 0; i < bs; ++i) {
+    T scalar = static_cast<T>(0) - AMax(x, n);
+    VAddBias(&scalar, x, y, n);  // max - x
+    VExp(y, y, n);
+    scalar = static_cast<T>(1) / ASum(y, n);
+    VScal(&scalar, y, y, n);
+    x += n;
+    y += n;
+  }
+}
+
 #define DECLARE_REFER_KERNEL(name, tuples)             \
   template <typename T>                                \
   class name##Kernel : public ReferKernel<tuples<T>> { \
@@ -420,6 +453,11 @@ DECLARE_REFER_KERNEL(NCHW16CMulNC, NCHW16CMulNCTuples);
 DECLARE_REFER_KERNEL(SeqPool, SeqPoolTuples);
 
 DECLARE_REFER_KERNEL(MatMul, MatMulTuples);
+
+DECLARE_REFER_KERNEL(AMax, RAXNTuples);
+DECLARE_REFER_KERNEL(ASum, RAXNTuples);
+
+DECLARE_REFER_KERNEL(Softmax, SoftmaxTuples);
 
 #undef DECLARE_REFER_KERNEL
 

@@ -44,6 +44,9 @@ typedef enum {
   kNCHW16CMulNC,
   kSeqPool,
   kMatMul,
+  kASum,
+  kAMax,
+  kSoftmax,
 } KernelType;
 
 typedef enum {
@@ -62,6 +65,14 @@ struct XYZNTuples {
 
 template <typename T>
 struct AXYNTuples : public XYZNTuples<T> {};
+
+// return an value
+template <typename T>
+struct RAXNTuples {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef T (*func_type)(const T*, int);
+};
 
 template <typename T>
 struct XYNTuples {
@@ -157,6 +168,13 @@ struct LayerNormTuples {
   typedef int attr_type;
   typedef void (*func_type)(T*, T*, T*, T*, const T*, const T*, int,
                             const float, int);
+};
+
+template <typename T>
+struct SoftmaxTuples {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const T*, T*, int, int);
 };
 
 // nChw16c = nChw16c .* NC
