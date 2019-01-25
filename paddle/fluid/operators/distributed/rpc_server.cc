@@ -56,6 +56,8 @@ void RPCServer::WaitBarrier(const std::string& rpc_name) {
 
 void RPCServer::IncreaseBatchBarrier(const std::string rpc_name) {
   VLOG(3) << "RPCServer begin IncreaseBatchBarrier " << rpc_name;
+  // barrier msg should make sure that it's in the right cond(send|recv)
+  WaitCond(rpc_name);
   int b = 0;
   std::unique_lock<std::mutex> lock(mutex_);
   b = ++barrier_counter_[rpc_name];
@@ -124,7 +126,7 @@ void RPCServer::SetCond(const std::string& rpc_name) {
 }
 
 void RPCServer::WaitCond(const std::string& rpc_name) {
-  VLOG(3) << "RPCServer WaitCond " << rpc_name;
+  VLOG(3) << "RPCServer WaitCond in " << rpc_name;
   int cond = 0;
   {
     std::unique_lock<std::mutex> lock(mutex_);
@@ -134,6 +136,7 @@ void RPCServer::WaitCond(const std::string& rpc_name) {
   std::unique_lock<std::mutex> lock(mutex_);
   rpc_cond_.wait(
       lock, [=] { return (cur_cond_.load() == cond || exit_flag_.load()); });
+  VLOG(3) << "RPCServer WaitCond out " << rpc_name;
 }
 
 void RPCServer::RegisterVar(const std::string& var_name,
