@@ -39,7 +39,6 @@ add_custom_target(copy_paddle_pybind ALL DEPENDS ${FLUID_CORE})
 IF(WIN32)
     add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
             COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python/paddle/
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/paddle/py_paddle ${PADDLE_BINARY_DIR}/python/
             COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
             COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
             COMMAND ${CMAKE_COMMAND} -E remove_directory ${PADDLE_PYTHON_BUILD_DIR}/lib-python
@@ -48,7 +47,6 @@ ELSE(WIN32)
 	add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
 		COMMAND touch stub.cc
 		COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python
-		COMMAND cp -r ${PADDLE_SOURCE_DIR}/paddle/py_paddle ${PADDLE_BINARY_DIR}/python/
 		COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
 		COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
 		COMMAND ${CMAKE_COMMAND} -E remove_directory ${PADDLE_PYTHON_BUILD_DIR}/lib-python
