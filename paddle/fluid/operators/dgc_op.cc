@@ -29,15 +29,15 @@ class DGCOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("V"), "Input(V) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grad"),
                    "Input(Grad) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("GradLocal"),
-                   "Input(GradLocal) of DGCop should not be null.");
+    // PADDLE_ENFORCE(ctx->HasInput("GradLocal"),
+    //"Input(GradLocal) of DGCop should not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("U_out"),
                    "Output(U_out) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("V_out"),
                    "Output(V_out) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("GradLocal_out"),
-                   "Output(GradLocal_out) of DGCop should not be null.");
+    // PADDLE_ENFORCE(ctx->HasOutput("GradLocal_out"),
+    //               "Output(GradLocal_out) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("EncodeGrad"),
                    "Output(EncodeGrad) of DGCop should not be null.");
 
