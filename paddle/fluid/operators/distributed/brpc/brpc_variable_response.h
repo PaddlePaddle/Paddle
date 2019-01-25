@@ -46,6 +46,7 @@ class BRPCSourceWrapper : public Source {
 };
 
 class BRPCVariableResponse : public VariableResponse {
+ public:
   using VariableResponse::VariableResponse;
   virtual ~BRPCVariableResponse() {}
 
