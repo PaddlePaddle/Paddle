@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import collections
 from collections import defaultdict
+from collections import Iterable
 import contextlib
 import os
 import re
@@ -1630,7 +1631,10 @@ class IrGraph(object):
 
     def safe_remove_nodes(self, remove_nodes):
         if not isinstance(remove_nodes, set):
-            remove_nodes = set(remove_nodes)
+            if isinstance(remove_nodes, Iterable):
+                remove_nodes = set(remove_nodes)
+            else:
+                remove_nodes = {remove_nodes}
         core.graph_safe_remove_nodes(self.graph, remove_nodes)
 
     def has_circle(self):
