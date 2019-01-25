@@ -72,14 +72,17 @@ void IRPassManager::CreatePasses(Argument *argument,
           new framework::ProgramDesc *(
               const_cast<framework::ProgramDesc *>(&argument->main_program())));
 
-      bool enable_int8 = false;
-      if (argument->tensorrt_precision_mode() ==
-          contrib::AnalysisConfig::Precision::kInt8) {
-        enable_int8 = true;
-      }
+      bool enable_int8 = argument->tensorrt_precision_mode() ==
+                         contrib::AnalysisConfig::Precision::kInt8;
 
       pass->Set("enable_int8", new bool(enable_int8));
-      pass->Set("model_dir", new std::string(argument->model_path()));
+      std::string model_opt_cache_dir =
+          argument->Has("model_dir")
+              ? argument->model_dir()
+              : GetDirRoot(argument->model_program_path());
+      pass->Set(
+          "model_opt_cache_dir",
+          new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
     }
 
     // graph_ = pass->Apply(std::move(graph_));
