@@ -199,8 +199,10 @@ class OpBase {
   // For pure python PyLayer, use `forward_id_`, otherwise, use op_desc_.
   framework::OpDesc* op_desc_;
   int forward_id_;
+
   // When has backward, one of `grad_op_descs_` or `backward_id_` is set,
   // not both.
+  // Note: each fwd op corresponds to a vector of bwd ops.
   std::vector<framework::OpDesc*> grad_op_descs_;
   int backward_id_;
 
@@ -211,8 +213,11 @@ class OpBase {
   OpBasePtrMap pre_ops_;
   std::map<std::string, std::vector<int>> pre_ops_out_idx_;
 
+  // Inputs to a vector of bwd ops.
   std::vector<framework::VariableValueMap> grad_input_vars_;
+  // Outputs to a vector of bwd ops.
   std::vector<framework::VariableValueMap> grad_output_vars_;
+
   framework::BlockDesc* block_;
 };
 

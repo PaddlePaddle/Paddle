@@ -68,19 +68,16 @@ class MLP(fluid.imperative.Layer):
 
 class TestImperative(unittest.TestCase):
     def test_sum_op(self):
+        x = np.ones([2, 2], np.float32)
         with fluid.imperative.guard():
             inputs = []
             for _ in range(10):
-                inputs.append(
-                    fluid.imperative.base.to_variable(
-                        np.ones([2, 2], np.float32)))
-            sys.stderr.write('%s\n' % inputs[0].dtype)
+                inputs.append(fluid.imperative.base.to_variable(x))
             ret = fluid.layers.sums(inputs)
-            sys.stderr.write('%s\n' % ret.dtype)
             loss = fluid.layers.reduce_sum(ret)
-            sys.stderr.write('%s\n' % loss.dtype)
             loss._backward()
-            sys.stderr.write('%s %s\n' % (ret._numpy(), inputs[0]._gradient()))
+            self.assertTrue(np.allclose(ret._numpy(), x * 10))
+            self.assertTrue(np.allclose(inputs[0]._gradient(), x))
 
     def test_layer(self):
         with fluid.imperative.guard():

@@ -211,8 +211,8 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
 
   std::vector<framework::VariableValueMap> grad_outputs;
   if (backward_id_ > 0) {
-    grad_outputs.resize(1);
     VLOG(3) << "py_layer_grad";
+    grad_outputs.resize(1);
     grad_outputs[0][framework::GradVarName(PyLayer::kFwdOut)] =
         PyLayer::ApplyGrad(
             backward_id_,
