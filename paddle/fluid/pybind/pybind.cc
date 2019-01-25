@@ -485,6 +485,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference);
 
   py::class_<framework::ReaderHolder>(m, "Reader", "")
+      .def("start", &framework::ReaderHolder::Start)
       .def("reset", &framework::ReaderHolder::ResetAll);
 
   using LoDTensorBlockingQueue =
@@ -505,19 +506,12 @@ All parameter, weight, gradient are variables in Paddle.
       .def("is_closed", &LoDTensorBlockingQueue::IsClosed);
 
   m.def("init_lod_tensor_blocking_queue",
-        [](Variable &var, size_t capacity,
-           const std::vector<std::vector<int64_t>> &shapes)
-            -> std::shared_ptr<LoDTensorBlockingQueue> {
-              std::vector<DDim> dims(shapes.size());
-              std::transform(shapes.begin(), shapes.end(), dims.begin(),
-                             [](const std::vector<int64_t> &shape) {
-                               return make_ddim(shape);
-                             });
-              auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
-              holder->InitOnce(capacity, dims,
-                               FLAGS_reader_queue_speed_test_mode);
-              return holder->GetQueue();
-            },
+        [](Variable &var,
+           size_t capacity) -> std::shared_ptr<LoDTensorBlockingQueue> {
+          auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
+          holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
+          return holder->GetQueue();
+        },
         py::return_value_policy::copy);
 
   py::class_<Scope>(m, "_Scope", R"DOC(
