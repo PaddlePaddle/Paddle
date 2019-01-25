@@ -235,7 +235,7 @@ void CudnnHolder::ReallocateWorkspace(size_t required_workspace_len) {
 }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
-    : place_(place), cudnn_holder_(nullptr) {
+    : place_(place), cudnn_holder_(nullptr), nccl_context_(nullptr) {
   CUDADeviceGuard guard(place_.device);
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);

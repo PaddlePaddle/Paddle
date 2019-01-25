@@ -265,6 +265,10 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
+  void set_nccl_context(NCCLContext* ctx) { nccl_context_ = ctx; }
+
+  NCCLContext* nccl_context() { return nccl_context_; }
+
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
     callback();
@@ -288,6 +292,11 @@ class CUDADeviceContext : public DeviceContext {
 
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
+
+  // nccl context on current device. Not using unique_ptr because
+  // it's owned by NCCLContextMap. Store reference here for operators
+  // to use.
+  NCCLContext* nccl_context_;
 
   int compute_capability_;
   int runtime_version_;
