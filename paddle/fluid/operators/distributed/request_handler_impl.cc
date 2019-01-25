@@ -54,7 +54,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
     // Async
     if (!sync_mode_) {
       VLOG(3) << "async process var: " << varname;
-      if (varname == BATCH_BARRIER_MESSAGE || varname == COMPLETE_MESSAGE) {
+      if (varname == BATCH_BARRIER_MESSAGE) {
         PADDLE_THROW(
             "async mode should not recv BATCH_BARRIER_MESSAGE or "
             "COMPLETE_MESSAGE");
