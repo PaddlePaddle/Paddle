@@ -483,9 +483,8 @@ def _py_reader(capacity,
                lod_levels=None,
                name=None,
                use_double_buffer=True,
-               use_cuda_pinned_place=False,
                feed_list=None):
-
+    use_cuda_pinned_place = use_double_buffer and core.is_compiled_with_cuda()
     if feed_list is not None:
         if not isinstance(feed_list, list):
             raise TypeError("feed_list should be a list of Variable"
@@ -639,8 +638,7 @@ def py_reader(capacity,
               dtypes,
               lod_levels=None,
               name=None,
-              use_double_buffer=True,
-              use_cuda_pinned_place=None):
+              use_double_buffer=True):
     """
     Create a Python reader for data feeding in Python
 
@@ -664,9 +662,6 @@ def py_reader(capacity,
        name(basestring): The prefix Python queue name and Reader name. None will
             be generated automatically.
        use_double_buffer(bool): Whether use double buffer or not.
-       use_cuda_pinned_place(bool): Whether use cuda pinned place or not,
-            this option only works with double buffer and cuda enabled.
-            None will be enabled when double buffer and cuda are enabled.
 
     Returns:
        Variable: A Reader from which we can get feeding data.
@@ -762,22 +757,13 @@ def py_reader(capacity,
         >>>     except fluid.core.EOFException:
         >>>         test_reader.reset()
     """
-    if use_double_buffer and core.is_compiled_with_cuda():
-        if use_cuda_pinned_place == None:
-            use_cuda_pinned_place = True
-    else:
-        if use_cuda_pinned_place:
-            raise RuntimeError(
-                "use_cuda_pinned_place can only be used with double buffer and cuda enabled."
-            )
     return _py_reader(
         capacity=capacity,
         shapes=shapes,
         dtypes=dtypes,
         lod_levels=lod_levels,
         name=name,
-        use_double_buffer=use_double_buffer,
-        use_cuda_pinned_place=use_cuda_pinned_place)
+        use_double_buffer=use_double_buffer)
 
 
 def create_py_reader_by_data(capacity,
