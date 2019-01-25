@@ -117,6 +117,11 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
   if (result == cudaSuccess) {
     *index = 0;
     gpu_alloc_size_ += size;
+    if (gpu_alloc_size_ > s_memoryMap[gpu_id_]) {
+        s_memoryMap[gpu_id_] = gpu_alloc_size_;
+        VLOG(3) << "device: " << gpu_id_
+          << " maximum memory size : " <<(gpu_alloc_size_ >> 20) << " MiB";
+    }
     return p;
   } else {
     LOG(WARNING)
