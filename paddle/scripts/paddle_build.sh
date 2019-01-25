@@ -328,7 +328,8 @@ function run_brpc_test() {
     ========================================
 EOF
         set +x
-        declare -a other_tests=("test_listen_and_serv_op" "system_allocator_test")
+        declare -a other_tests=("test_listen_and_serv_op" "system_allocator_test" \
+        "rpc_server_test" "varhandle_test" "collective_server_test" "brpc_serde_test")
         all_tests=`ctest -N`
 
         for t in "${other_tests[@]}"
