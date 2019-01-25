@@ -42,6 +42,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   use_reduce=False,
                                   use_ir_memory_optimize=False,
                                   fuse_elewise_add_act_ops=False,
+                                  fuse_all_reduce_ops=False,
                                   fuse_relu_depthwise_conv=False,
                                   optimizer=fluid.optimizer.Adam,
                                   use_fast_executor=False,
@@ -79,6 +80,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                 if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
             build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
             build_strategy.fuse_relu_depthwise_conv = fuse_relu_depthwise_conv
+            build_strategy.fuse_all_reduce_ops = fuse_all_reduce_ops
             build_strategy.memory_optimize = use_ir_memory_optimize
             build_strategy.enable_sequential_execution = enable_sequential_execution
             if use_cuda and core.is_compiled_with_cuda():

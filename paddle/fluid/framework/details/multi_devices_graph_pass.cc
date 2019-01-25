@@ -1062,7 +1062,8 @@ REGISTER_MULTI_DEVICES_PASS(dist_multi_devices_pass,
       .RequirePassAttr(paddle::framework::details::kPlaces)                    \
       .RequirePassAttr(paddle::framework::details::kLocalScopes)               \
       .RequirePassAttr(paddle::framework::details::kStrategy)                  \
-      .RequirePassAttr(paddle::framework::details::kNRanks)
+      .RequirePassAttr(paddle::framework::details::kNRanks)                    \
+      .RequirePassAttr(paddle::framework::details::kParamsAndGrads)
 
 REGISTER_MULTI_DEVICES_PASS2(
     fused_allreduce_mode_multi_devices_pass,

@@ -38,14 +38,20 @@ namespace details {
 // `std::vector<VarHandle*>` is the version of varaibles.
 typedef std::vector<std::unordered_map<std::string, std::vector<VarHandle*>>>
     GraphVars;
-const char kGraphVars[] = "vars";
+constexpr char kGraphVars[] = "vars";
 
 // aux variables to represent dependency. Useful to resolve data hazard.
 typedef std::unordered_set<VarHandleBase*> GraphDepVars;
-const char kGraphDepVars[] = "dep_vars";
+constexpr char kGraphDepVars[] = "dep_vars";
 
 typedef std::unordered_map<std::string, std::string> ParamsAndGrads;
-const char kParamsAndGrads[] = "params_grads";
+constexpr char kParamsAndGrads[] = "params_grads";
+
+constexpr char kLossVarName[] = "loss_var_name";
+constexpr char kPlaces[] = "places";
+constexpr char kLocalScopes[] = "local_scopes";
+constexpr char kStrategy[] = "strategy";
+constexpr char kNRanks[] = "nranks";
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

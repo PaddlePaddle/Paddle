@@ -1050,6 +1050,11 @@ All parameter, weight, gradient are variables in Paddle.
           "memory_early_delete",
           [](const BuildStrategy &self) { return self.memory_early_delete_; },
           [](BuildStrategy &self, bool b) { self.memory_early_delete_ = b; })
+      .def_property(
+          "fuse_all_reduce_ops",
+          [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
+          [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
+
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);

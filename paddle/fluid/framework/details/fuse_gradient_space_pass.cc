@@ -117,3 +117,6 @@ std::unique_ptr<ir::Graph> FuseGradientSpacePass::ApplyImpl(
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
+
+REGISTER_PASS(fuse_gradient_space_pass,
+              paddle::framework::details::FuseGradientSpacePass);

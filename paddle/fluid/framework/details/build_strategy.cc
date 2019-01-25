@@ -58,16 +58,21 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (strategy.fuse_relu_depthwise_conv_) {
       AppendPass("fuse_relu_depthwise_conv_pass");
     }
+
     if (strategy.fuse_elewise_add_act_ops_) {
-      auto fuse_elewise_add_act_pass = AppendPass("fuse_elewise_add_act_pass");
-      // Add a graph viz pass to record a graph.
-      if (!strategy.debug_graphviz_path_.empty()) {
-        auto viz_pass = AppendPass("graph_viz_pass");
-        const std::string graph_path = string::Sprintf(
-            "%s%s", strategy.debug_graphviz_path_.c_str(), "_fused_graph");
-        viz_pass->Set<std::string>("graph_viz_path",
-                                   new std::string(graph_path));
-      }
+      AppendPass("fuse_elewise_add_act_pass");
+    }
+
+    if (strategy.fuse_all_reduce_ops_) {
+      AppendPass("fuse_gradient_space_pass");
+    }
+
+    // Add a graph viz pass to record a graph.
+    if (!strategy.debug_graphviz_path_.empty()) {
+      auto viz_pass = AppendPass("graph_viz_pass");
+      const std::string graph_path = string::Sprintf(
+          "%s%s", strategy.debug_graphviz_path_.c_str(), "_fused_graph");
+      viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
     }
 
     CollectiveContext *context = CollectiveContext::GetInstance();
@@ -87,7 +92,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // A side-effect of that, memory optimize cannot forsee the fetched vars
     // , so fetchlist should be set persistable before call the Run interface.
     if (strategy.memory_optimize_) {
-      auto analysis_var_pass = AppendPass("analysis_var_pass");
+      AppendPass("analysis_var_pass");
     }
 
     AppendMultiDevPass(strategy);
@@ -243,3 +248,4 @@ USE_PASS(sequential_execution_pass);
 USE_PASS(all_reduce_deps_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
 USE_PASS(lock_free_optimize_pass);
+USE_PASS(fuse_gradient_space_pass);
