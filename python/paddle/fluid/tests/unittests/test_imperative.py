@@ -338,7 +338,6 @@ class TestImperative(unittest.TestCase):
             dy_grad_i2h = simple_rnn._cell._i2h_w._gradient()
 
         with new_program_scope():
-            print("im here")
             inp = fluid.layers.data(
                 name="inp", shape=[1, 4, 3], append_batch_size=False)
             simple_rnn = SimpleRNN()
