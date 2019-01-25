@@ -106,9 +106,9 @@ class TestBoxCoderOp(OpTest):
     def setUp(self):
         self.op_type = "box_coder"
         lod = [[1, 1, 1, 1, 1]]
-        prior_box = np.random.random((10, 4)).astype('float32')
-        prior_box_var = np.random.random((10, 4)).astype('float32')
-        target_box = np.random.random((5, 10, 4)).astype('float32')
+        prior_box = np.random.random((81, 4)).astype('float32')
+        prior_box_var = np.random.random((81, 4)).astype('float32')
+        target_box = np.random.random((20, 81, 4)).astype('float32')
         code_type = "DecodeCenterSize"
         box_normalized = False
         output_box = batch_box_coder(prior_box, prior_box_var, target_box,
@@ -132,9 +132,9 @@ class TestBoxCoderOpWithOneRankVar(OpTest):
     def setUp(self):
         self.op_type = "box_coder"
         lod = [[1, 1, 1, 1, 1]]
-        prior_box = np.random.random((6, 4)).astype('float32')
+        prior_box = np.random.random((81, 4)).astype('float32')
         prior_box_var = np.random.random((4)).astype('float32')
-        target_box = np.random.random((3, 6, 4)).astype('float32')
+        target_box = np.random.random((20, 81, 4)).astype('float32')
         code_type = "DecodeCenterSize"
         box_normalized = False
         output_box = batch_box_coder(prior_box, prior_box_var, target_box,
@@ -159,9 +159,9 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
     def setUp(self):
         self.op_type = "box_coder"
         lod = [[0, 1, 2, 3, 4, 5]]
-        prior_box = np.random.random((10, 4)).astype('float32')
-        prior_box_var = np.ones((10, 4)).astype('float32')
-        target_box = np.random.random((5, 10, 4)).astype('float32')
+        prior_box = np.random.random((81, 4)).astype('float32')
+        prior_box_var = np.ones((81, 4)).astype('float32')
+        target_box = np.random.random((20, 81, 4)).astype('float32')
         code_type = "DecodeCenterSize"
         box_normalized = False
         output_box = batch_box_coder(prior_box, prior_box_var, target_box,
@@ -184,10 +184,10 @@ class TestBoxCoderOpWithLoD(OpTest):
 
     def setUp(self):
         self.op_type = "box_coder"
-        lod = [[4, 8, 8]]
-        prior_box = np.random.random((10, 4)).astype('float32')
-        prior_box_var = np.random.random((10, 4)).astype('float32')
-        target_box = np.random.random((20, 4)).astype('float32')
+        lod = [[10, 20, 20]]
+        prior_box = np.random.random((20, 4)).astype('float32')
+        prior_box_var = np.random.random((20, 4)).astype('float32')
+        target_box = np.random.random((50, 4)).astype('float32')
         code_type = "EncodeCenterSize"
         box_normalized = True
         output_box = batch_box_coder(prior_box, prior_box_var, target_box,
@@ -209,9 +209,9 @@ class TestBoxCoderOpWithAxis(OpTest):
     def setUp(self):
         self.op_type = "box_coder"
         lod = [[1, 1, 1, 1, 1]]
-        prior_box = np.random.random((5, 4)).astype('float32')
+        prior_box = np.random.random((30, 4)).astype('float32')
         prior_box_var = np.random.random((4)).astype('float32')
-        target_box = np.random.random((5, 6, 4)).astype('float32')
+        target_box = np.random.random((30, 81, 4)).astype('float32')
         code_type = "DecodeCenterSize"
         box_normalized = False
         axis = 1
@@ -226,6 +226,35 @@ class TestBoxCoderOpWithAxis(OpTest):
         self.attrs = {
             'code_type': 'decode_center_size',
             'box_normalized': False,
+            'axis': axis
+        }
+        self.outputs = {'OutputBox': output_box}
+
+
+class TestBoxCoderOpWithVariance(OpTest):
+    def test_check_output(self):
+        self.check_output()
+
+    def setUp(self):
+        self.op_type = "box_coder"
+        lod = [[1, 1, 1, 1, 1]]
+        prior_box = np.random.random((30, 4)).astype('float32')
+        prior_box_var = np.random.random((4)).astype('float32')
+        target_box = np.random.random((30, 81, 4)).astype('float32')
+        code_type = "DecodeCenterSize"
+        box_normalized = False
+        axis = 1
+        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
+                                     lod[0], code_type, box_normalized, axis)
+
+        self.inputs = {
+            'PriorBox': prior_box,
+            'TargetBox': target_box,
+        }
+        self.attrs = {
+            'code_type': 'decode_center_size',
+            'box_normalized': False,
+            'variance': prior_box_var.astype(np.float).flatten(),
             'axis': axis
         }
         self.outputs = {'OutputBox': output_box}
