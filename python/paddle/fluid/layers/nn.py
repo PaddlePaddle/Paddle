@@ -3875,6 +3875,7 @@ def beam_search(pre_ids,
                 beam_size,
                 end_id,
                 level=0,
+                is_accumulated=True,
                 name=None):
     """
     Beam search is a classical algorithm for selecting candidate words in a
@@ -3887,14 +3888,17 @@ def beam_search(pre_ids,
     selects the top-K candidate word ids of current step from :attr:`ids`
     according to their :attr:`scores` for all source sentences, where K is
     :attr:`beam_size` and :attr:`ids, scores` are predicted results from the
-    computation cell. Additionally, :attr:`pre_ids` and :attr:`pre_scores` are
-    the output of beam_search at previous step, they are needed for special use
-    to handle ended candidate translations.
+    computation cell. If :attr:`ids` is not set, it will be calculated out
+    according to :attr:`scores`. Additionally, :attr:`pre_ids` and
+    :attr:`pre_scores` are the output of beam_search at previous step, they
+    are needed for special use to handle ended candidate translations.
 
-    Note that the :attr:`scores` passed in should be accumulated scores, and
-    length penalty should be done with extra operators before calculating the
-    accumulated scores if needed, also suggest finding top-K before it and
-    using the top-K candidates following.
+    Note that if :attr:`is_accumulated` is :attr:`True`, the :attr:`scores`
+    passed in should be accumulated scores. Else, the :attr:`scores` are
+    considered as the straightforward scores and will be transformed to the
+    log field and accumulated the :attr:`pre_scores` in this operator.
+    Length penalty should be done with extra operators before calculating the
+    accumulated scores if needed.
 
     Please see the following demo for a fully beam search usage example:
 
@@ -3924,6 +3928,8 @@ def beam_search(pre_ids,
             describes how these candidates belong to the prefix. The paths
             linking prefixes and selected candidates are organized and reserved
             in lod.
+        is_accumulated(bool, default True): Whether the input :attr:`score` is
+             accumulated scores.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
 
@@ -3952,8 +3958,12 @@ def beam_search(pre_ids,
                 end_id=end_id)
     """
     helper = LayerHelper('beam_search', **locals())
-    score_type = scores.dtype
-    id_type = ids.dtype
+    score_type = pre_scores.dtype
+    id_type = pre_ids.dtype
+
+    inputs = {"pre_ids": pre_ids, "pre_scores": pre_scores, "scores": scores}
+    if ids is not None:
+        inputs["ids"] = ids
 
     selected_scores = helper.create_variable_for_type_inference(
         dtype=score_type)
@@ -3961,12 +3971,7 @@ def beam_search(pre_ids,
 
     helper.append_op(
         type='beam_search',
-        inputs={
-            'pre_ids': pre_ids,
-            'pre_scores': pre_scores,
-            'ids': ids,
-            'scores': scores,
-        },
+        inputs=inputs,
         outputs={
             'selected_ids': selected_ids,
             'selected_scores': selected_scores,
@@ -3976,6 +3981,7 @@ def beam_search(pre_ids,
             'level': level,
             'beam_size': beam_size,
             'end_id': end_id,
+            'is_accumulated': is_accumulated,
         })
 
     return selected_ids, selected_scores

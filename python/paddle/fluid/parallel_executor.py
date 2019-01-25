@@ -159,7 +159,7 @@ class ParallelExecutor(object):
         trainers_endpoints = main._trainers_endpoints
         if num_trainers > 1 and trainers_endpoints:
             assert num_trainers == len(
-                trainers_endpoints), "num_trainers == len(end_points)"
+                trainers_endpoints), "num_trainers == len(endpoints)"
             build_strategy.trainers_endpoints = trainers_endpoints
 
         if main._enable_dgc:
