@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,22 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import os
-import unittest
-os.environ['FLAGS_eager_delete_tensor_gb'] = "0.0"
-
-# FIXME(zjl): It seems that this unittest fails randomly 
-# when comparing all reduce last loss and reduce last loss
-# e.g.: AssertionError: 1.0357145 != 1.0673475 within 0.01 delta
-# Disable it temporarily.
-'''
-from test_parallel_executor_mnist import TestMNIST
-
-
-class EagerDeletionTestMNIST(TestMNIST):
-    pass
-'''
-
-if __name__ == '__main__':
-    unittest.main()

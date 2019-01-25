@@ -138,6 +138,22 @@ PYBIND11_MODULE(core, m) {
       .def("_grad_ivar",
            [](const imperative::VarBase &self) { return self.grads_; },
            py::return_value_policy::reference)
+      .def("_copy_to",
+           [](const imperative::VarBase &self, const platform::CPUPlace &place,
+              bool blocking) {
+             std::unique_ptr<imperative::VarBase> new_var =
+                 self.NewVarBase(place, blocking);
+             return new_var.release();
+           },
+           py::return_value_policy::take_ownership)
+      .def("_copy_to",
+           [](const imperative::VarBase &self, const platform::CUDAPlace &place,
+              bool blocking) {
+             std::unique_ptr<imperative::VarBase> new_var =
+                 self.NewVarBase(place, blocking);
+             return new_var.release();
+           },
+           py::return_value_policy::take_ownership)
       .def("value", [](const imperative::VarBase &self) { return self.var_; },
            py::return_value_policy::reference)
       .def_property(
@@ -626,7 +642,18 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace")
-      .def(py::init<int>())
+      .def("__init__",
+           [](platform::CUDAPlace &self, int dev_id) {
+#ifdef PADDLE_WITH_CUDA
+             PADDLE_ENFORCE(
+                 dev_id >= 0 && dev_id < platform::GetCUDADeviceCount(),
+                 "Invalid CUDAPlace(%d), must inside [0, %d)", dev_id,
+                 platform::GetCUDADeviceCount());
+             new (&self) platform::CUDAPlace(dev_id);
+#else
+             PADDLE_THROW("Cannot use CUDAPlace in CPU only version");
+#endif
+           })
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
@@ -634,7 +661,12 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
   py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace")
-      .def(py::init<>())
+      .def("__init__",
+           [](platform::CUDAPinnedPlace &) {
+#ifndef PADDLE_WITH_CUDA
+             PADDLE_THROW("Cannot use CUDAPinnedPlace in CPU only version");
+#endif
+           })
       .def("__str__", string::to_string<const platform::CUDAPinnedPlace &>);
 
   py::class_<platform::Place>(m, "Place")
@@ -1005,7 +1037,7 @@ All parameter, weight, gradient are variables in Paddle.
             PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.remove_unnecessary_lock_ = b;
           },
-          R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default False.)DOC")
+          R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default True.)DOC")
       .def_property(
           "num_trainers",
           [](const BuildStrategy &self) { return self.num_trainers_; },

@@ -43,7 +43,8 @@ class TestDistRunnerBase(object):
                        pserver_endpoints,
                        trainers,
                        sync_mode,
-                       dc_asgd=False):
+                       dc_asgd=False,
+                       current_endpoint=None):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         config = fluid.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
@@ -53,7 +54,8 @@ class TestDistRunnerBase(object):
             program=main_program,
             pservers=pserver_endpoints,
             trainers=trainers,
-            sync_mode=sync_mode)
+            sync_mode=sync_mode,
+            current_endpoint=current_endpoint)
         return t
 
     def run_pserver(self, args):
@@ -122,7 +124,7 @@ class TestDistRunnerBase(object):
         if args.batch_merge_repeat > 1:
             pass_builder = build_stra._finalize_strategy_and_create_passes()
             mypass = pass_builder.insert_pass(
-                len(pass_builder.all_passes()) - 2, "multi_batch_merge_pass")
+                len(pass_builder.all_passes()) - 3, "multi_batch_merge_pass")
             mypass.set("num_repeats", args.batch_merge_repeat)
 
         if args.update_method == "nccl2":

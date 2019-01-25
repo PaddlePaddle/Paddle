@@ -21,16 +21,20 @@
 #include <map>     // NOLINT
 #include <string>  // NOLINT
 #include <vector>  // NOLINT
+#include <memory>  // NOLINT
 
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/device_context.h"
 
 #include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace imperative {
+
+class VarBase;
 
 namespace py = ::pybind11;
 
@@ -80,6 +84,8 @@ class PreparedOp {
     }
     return PreparedOp(op, ctx, kernel_iter->second, dev_ctx);
   }
+
+  inline platform::DeviceContext* GetDeviceContext() const { return dev_ctx; }
 
   const framework::OperatorBase& op;
   const framework::RuntimeContext& ctx;
@@ -148,6 +154,9 @@ class VarBase {
 
   framework::LoDTensor& GradValue();
 
+  std::unique_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
+                                      const bool blocking) const;
+
   inline std::string GradName() const {
     PADDLE_ENFORCE(
         var_desc_,
@@ -176,7 +185,8 @@ class OpBase {
       : op_desc_(nullptr),
         forward_id_(-1),
         grad_op_desc_(nullptr),
-        backward_id_(-1) {}
+        backward_id_(-1),
+        place_(platform::CPUPlace()) {}
 
   virtual ~OpBase() {
     if (grad_op_desc_) delete grad_op_desc_;
@@ -192,6 +202,8 @@ class OpBase {
   // not both.
   framework::OpDesc* grad_op_desc_;
   int backward_id_;
+
+  platform::Place place_;
 
   VarBasePtrMap input_vars_;
   VarBasePtrMap output_vars_;
