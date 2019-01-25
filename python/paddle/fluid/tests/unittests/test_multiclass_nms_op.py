@@ -19,7 +19,7 @@ import copy
 from op_test import OpTest
 
 
-def iou(box_a, box_b, normalized):
+def iou(box_a, box_b, norm):
     """Apply intersection-over-union overlap between box_a and box_b
     """
     xmin_a = min(box_a[0], box_a[2])
@@ -32,10 +32,10 @@ def iou(box_a, box_b, normalized):
     xmax_b = max(box_b[0], box_b[2])
     ymax_b = max(box_b[1], box_b[3])
 
-    area_a = (ymax_a - ymin_a + (normalized == False)) * \
-             (xmax_a - xmin_a + (normalized == False))
-    area_b = (ymax_b - ymin_b + (normalized == False)) * \
-             (xmax_b - xmin_b + (normalized == False))
+    area_a = (ymax_a - ymin_a + (norm == False)) * (xmax_a - xmin_a +
+                                                    (norm == False))
+    area_b = (ymax_b - ymin_b + (norm == False)) * (xmax_b - xmin_b +
+                                                    (norm == False))
     if area_a <= 0 and area_b <= 0:
         return 0.0
 
@@ -44,8 +44,8 @@ def iou(box_a, box_b, normalized):
     xb = min(xmax_a, xmax_b)
     yb = min(ymax_a, ymax_b)
 
-    inter_area = max(xb - xa + (normalized == False), 0.0) * \
-                 max(yb - ya + (normalized == False), 0.0)
+    inter_area = max(xb - xa + (norm == False),
+                     0.0) * max(yb - ya + (norm == False), 0.0)
 
     iou_ratio = inter_area / (area_a + area_b - inter_area)
 
@@ -210,7 +210,6 @@ def batched_multiclass_nms(boxes,
             normalized,
             shared=True)
         if nmsed_num == 0:
-            #    lod.append(1)
             continue
 
         lod.append(nmsed_num)

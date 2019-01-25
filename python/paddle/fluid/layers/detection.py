@@ -263,8 +263,10 @@ def detection_output(loc,
             number is N + 1, N is the batch size. The i-th image has
             `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
             has no detected results. If all images have not detected results,
-            all the elements in LoD are 0, and output tensor only contains one
+            LoD will be set to {1}, and output tensor only contains one
             value, which is -1.
+            (After version 1.3, when no boxes detected, the lod is changed
+             from {0} to {1}.)
 
     Examples:
         .. code-block:: python
@@ -1967,8 +1969,8 @@ def multiclass_nms(bboxes,
                    scores,
                    score_threshold,
                    nms_top_k,
-                   nms_threshold,
                    keep_top_k,
+                   nms_threshold=0.3,
                    normalized=True,
                    nms_eta=1.,
                    background_label=0,
@@ -2035,8 +2037,10 @@ def multiclass_nms(bboxes,
              Each row has 10 values: 
              [label, confidence, x1, y1, x2, y2, x3, y3, x4, y4]. No is the 
              total number of detections. If there is no detected boxes for all
-             images, lod will be set to {0, 1} and Out only contains one value
-             which is -1. 
+             images, lod will be set to {1} and Out only contains one value
+             which is -1.
+             (After version 1.3, when no boxes detected, the lod is changed 
+             from {0} to {1}) 
 
     Examples:
         .. code-block:: python
