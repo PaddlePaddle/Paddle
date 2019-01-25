@@ -156,7 +156,6 @@ __device__ __forceinline__ bool PruneEndBeams(Triple* top_beam_local,
   return finish_flag;
 }
 
-template <bool ReturnParentIdx = false>
 __device__ __forceinline__ void WriteBack(
     int64_t* selected_ids, float* selected_scores, int* parent_idx,
     size_t* selected_offsets, Triple* top_beam_local,
@@ -172,9 +171,7 @@ __device__ __forceinline__ void WriteBack(
         selected_ids[global_index] =
             static_cast<int64_t>(top_beam_local[local_index].id);
         selected_scores[global_index] = top_beam_local[local_index].score;
-        if (ReturnParentIdx) {
-          parent_idx[global_index] = static_cast<int>(global_offset);
-        }
+        parent_idx[global_index] = static_cast<int>(global_offset);
         global_index++;
       }
     }
@@ -232,15 +229,9 @@ __device__ void BeamSearchDetails(
       selected_offsets[0] = 0;
     }
 
-    if (parent_idx) {
-      WriteBack<true>(selected_ids, selected_scores, parent_idx,
-                      selected_offsets, top_beam_local, seq_offset_start,
-                      seq_offset_end, selected_seq_start, selected_seq_length);
-    } else {
-      WriteBack<false>(selected_ids, selected_scores, parent_idx,
-                       selected_offsets, top_beam_local, seq_offset_start,
-                       seq_offset_end, selected_seq_start, selected_seq_length);
-    }
+    WriteBack(selected_ids, selected_scores, parent_idx, selected_offsets,
+              top_beam_local, seq_offset_start, seq_offset_end,
+              selected_seq_start, selected_seq_length);
   }
 }
 
@@ -334,12 +325,8 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
         selected_ids->mutable_data<int64_t>(selected_dims, context.GetPlace());
     float* selected_scores_data =
         selected_scores->mutable_data<float>(selected_dims, context.GetPlace());
-    int* parent_idx_data =
-        parent_idx
-            ? parent_idx->mutable_data<int>(
-                  {static_cast<int64_t>(num_seqs * beam_size)},
-                  context.GetPlace())
-            : nullptr;
+    int* parent_idx_data = parent_idx->mutable_data<int>(
+        {static_cast<int64_t>(num_seqs * beam_size)}, context.GetPlace());
 
     framework::LoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());

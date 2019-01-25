@@ -58,17 +58,13 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     selected_ids->Resize(dims);
     selected_scores->Resize(dims);
-    if (parent_idx) {
-      parent_idx->Resize({static_cast<int64_t>(num_instances)});
-    }
+    parent_idx->Resize({static_cast<int64_t>(num_instances)});
 
     auto *selected_ids_data =
         selected_ids->mutable_data<int64_t>(platform::CPUPlace());
     auto *selected_scores_data =
         selected_scores->mutable_data<float>(platform::CPUPlace());
-    auto *parent_idx_data =
-        parent_idx ? parent_idx->mutable_data<int>(platform::CPUPlace())
-                   : nullptr;
+    auto *parent_idx_data = parent_idx->mutable_data<int>(platform::CPUPlace());
 
     // fill in data
     std::vector<size_t> low_level;
@@ -76,9 +72,7 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     for (auto &items : selected_items) {
       low_level.push_back(low_offset);
       for (auto &item : items) {
-        if (parent_idx) {
-          parent_idx_data[low_offset] = static_cast<int>(low_level.size() - 1);
-        }
+        parent_idx_data[low_offset] = static_cast<int>(low_level.size() - 1);
         selected_ids_data[low_offset] = item.id;
         selected_scores_data[low_offset] = item.score;
         low_offset++;
