@@ -59,7 +59,7 @@ class TestDetection(unittest.TestCase):
             iou = layers.iou_similarity(x=x, y=y)
             bcoder = layers.box_coder(
                 prior_box=x,
-                prior_box_var=y,
+                prior_box_var=[0.2, 0.3, 0.3, 0.2],
                 target_box=z,
                 code_type='encode_center_size')
             self.assertIsNotNone(iou)

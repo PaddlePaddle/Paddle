@@ -11,6 +11,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -34,7 +35,8 @@ class BoxCoderKernel : public framework::OpKernel<T> {
   void EncodeCenterSize(const framework::Tensor* target_box,
                         const framework::Tensor* prior_box,
                         const framework::Tensor* prior_box_var,
-                        const bool normalized, T* output) const {
+                        const bool normalized,
+                        const std::vector<float> variance, T* output) const {
     int64_t row = target_box->dims()[0];
     int64_t col = prior_box->dims()[0];
     int64_t len = prior_box->dims()[1];
@@ -85,6 +87,10 @@ class BoxCoderKernel : public framework::OpKernel<T> {
           output[offset + 1] /= prior_box_var_data[prior_var_offset + 1];
           output[offset + 2] /= prior_box_var_data[prior_var_offset + 2];
           output[offset + 3] /= prior_box_var_data[prior_var_offset + 3];
+        } else if (!(variance.empty())) {
+          for (int k = 0; k < 4; ++k) {
+            output[offset + k] /= static_cast<T>(variance[k]);
+          }
         }
       }
     }
@@ -93,7 +99,7 @@ class BoxCoderKernel : public framework::OpKernel<T> {
                         const framework::Tensor* prior_box,
                         const framework::Tensor* prior_box_var,
                         const bool normalized, const int axis,
-                        T* output) const {
+                        const std::vector<float> variance, T* output) const {
     int64_t row = target_box->dims()[0];
     int64_t col = target_box->dims()[1];
     int64_t len = target_box->dims()[2];
@@ -149,6 +155,20 @@ class BoxCoderKernel : public framework::OpKernel<T> {
               std::exp(prior_box_var_data[prior_var_offset + 3] *
                        target_box_data[offset + 3]) *
               prior_box_height;
+        } else if (!(variance.empty())) {
+          target_box_center_x = static_cast<T>(variance[0]) *
+                                    target_box_data[offset] * prior_box_width +
+                                prior_box_center_x;
+          target_box_center_y = static_cast<T>(variance[1]) *
+                                    target_box_data[offset + 1] *
+                                    prior_box_height +
+                                prior_box_center_y;
+          target_box_width = std::exp(static_cast<T>(variance[2]) *
+                                      target_box_data[offset + 2]) *
+                             prior_box_width;
+          target_box_height = std::exp(static_cast<T>(variance[3]) *
+                                       target_box_data[offset + 3]) *
+                              prior_box_height;
         } else {
           target_box_center_x =
               target_box_data[offset] * prior_box_width + prior_box_center_x;
@@ -175,10 +195,20 @@ class BoxCoderKernel : public framework::OpKernel<T> {
     auto* prior_box_var = context.Input<framework::Tensor>("PriorBoxVar");
     auto* target_box = context.Input<framework::LoDTensor>("TargetBox");
     auto* output_box = context.Output<framework::Tensor>("OutputBox");
+    std::vector<float> variance = context.Attr<std::vector<float>>("variance");
     const int axis = context.Attr<int>("axis");
     if (target_box->lod().size()) {
       PADDLE_ENFORCE_EQ(target_box->lod().size(), 1UL,
                         "Only support 1 level of LoD.");
+    }
+    if (prior_box_var) {
+      PADDLE_ENFORCE(variance.empty(),
+                     "Input 'PriorBoxVar' and attribute 'variance' should not"
+                     "be used at the same time.");
+    }
+    if (!(variance.empty())) {
+      PADDLE_ENFORCE(static_cast<int>(variance.size()) == 4,
+                     "Size of attribute 'variance' should be 4");
     }
     auto code_type = GetBoxCodeType(context.Attr<std::string>("code_type"));
     bool normalized = context.Attr<bool>("box_normalized");
@@ -195,10 +225,10 @@ class BoxCoderKernel : public framework::OpKernel<T> {
     T* output = output_box->data<T>();
     if (code_type == BoxCodeType::kEncodeCenterSize) {
       EncodeCenterSize(target_box, prior_box, prior_box_var, normalized,
-                       output);
+                       variance, output);
     } else if (code_type == BoxCodeType::kDecodeCenterSize) {
       DecodeCenterSize(target_box, prior_box, prior_box_var, normalized, axis,
-                       output);
+                       variance, output);
     }
   }
 };

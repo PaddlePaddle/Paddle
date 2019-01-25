@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detection/box_coder_op.h"
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -134,6 +135,12 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
                  "when code type is decode_center_size")
         .SetDefault(0)
         .InEnum({0, 1});
+    AddAttr<std::vector<float>>(
+        "variance",
+        "(vector<float>, default {}),"
+        "variance of prior box with shape [4]. PriorBoxVar and variance can"
+        "not be provided at the same time.")
+        .SetDefault(std::vector<float>{});
     AddOutput("OutputBox",
               "(LoDTensor or Tensor) "
               "When code_type is 'encode_center_size', the output tensor of "
