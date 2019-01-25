@@ -20,6 +20,7 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
+// TODO(TJ): reorder by alphabet
 typedef enum {
   kNone = 0,
   kVMul = 1,
@@ -44,6 +45,9 @@ typedef enum {
   kNCHW16CMulNC,
   kSeqPool,
   kMatMul,
+  kHSum,  // horizontal max
+  kHMax,  // horizontal sum
+  kSoftmax,
 } KernelType;
 
 typedef enum {
@@ -69,6 +73,10 @@ struct XYNTuples {
   typedef int attr_type;
   typedef void (*func_type)(const T*, T*, int);
 };
+
+// x, return and int
+template <typename T>
+struct XRNTuples : public XYNTuples<T> {};
 
 typedef struct {
   void* gates;  // gates: x_ch, x_ih, x_fh, x_oh
@@ -157,6 +165,13 @@ struct LayerNormTuples {
   typedef int attr_type;
   typedef void (*func_type)(T*, T*, T*, T*, const T*, const T*, int,
                             const float, int);
+};
+
+template <typename T>
+struct SoftmaxTuples {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const T*, T*, int, int);
 };
 
 // nChw16c = nChw16c .* NC
