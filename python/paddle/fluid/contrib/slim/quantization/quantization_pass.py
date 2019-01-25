@@ -14,14 +14,14 @@
 
 import collections
 import numpy as np
+from ..... import compat as cpt
 from .... import core
 from ....framework import IrGraph
 from ....framework import Program
-from ....framework import Variable
 from ....initializer import Constant
 from .... import unique_name
 
-__all__ = ['QuantizationTransformPass']
+__all__ = ['QuantizationTransformPass', 'QuantizationFreezePass']
 
 
 class QuantizationTransformPass(object):
@@ -148,8 +148,13 @@ class QuantizationTransformPass(object):
             'The program_exe cannot be set None when activation_quantize_type equals to range_abs_max.'
             init_program = Program()
             for var_desc, initializer in self._need_initialized.iteritems():
-                var = Variable(init_program.global_block())
-                var._set_desc(var_desc)
+                var = init_program.global_block().create_var(
+                    name=var_desc.name(),
+                    shape=var_desc.shape(),
+                    dtype=var_desc.dtype(),
+                    type=var_desc.type(),
+                    lod_level=var_desc.lod_level(),
+                    persistable=var_desc.persistable())
                 initializer(var, init_program.global_block())
             self._program_exe.run(program=init_program, scope=self._scope)
 
@@ -158,7 +163,7 @@ class QuantizationTransformPass(object):
     def _create_global_step(self, graph):
         if self._weight_quantize_type == 'range_abs_max' or \
                 self._activation_quantize_type == 'range_abs_max':
-            counter_name = '@STEP_COUNTER@'
+            counter_name = cpt.to_text('@STEP_COUNTER@')
             for node in graph.all_vars():
                 if node.name() == counter_name:
                     self._global_step = node
@@ -363,14 +368,16 @@ class QuantizationFreezePass(object):
                     # quantize weight and restore
                     param_v = self._load_var(input_arg_name)
                     quantized_param_v = self._quant(param_v, scale_v,
-                                                    self.weight_bits)
+                                                    self._weight_bits)
                     self._restore_var(input_arg_name, quantized_param_v)
 
+        ops = graph.all_ops()
         for op_node in ops:
             op_name = op_node.name()
             if op_name in self._fake_dequant_op_names:
                 self._remove_fake_quant_and_dequant_op(graph, op_node)
 
+        ops = graph.all_ops()
         for op_node in ops:
             op_name = op_node.name()
             if op_name in self._quantizable_ops:
@@ -382,7 +389,7 @@ class QuantizationFreezePass(object):
                 name = var_node.name()
                 if name in self._op_output_rename_map:
                     old_in = graph.var_node(name)
-                    new_in = graph.var_node(self._op_output_rename_map[name])
+                    new_in = self._op_output_rename_map[name]
                     graph.update_input_link(old_in, new_in, op_node)
 
         # remove the unused var node in the graph
@@ -395,23 +402,24 @@ class QuantizationFreezePass(object):
             self._op_input_rename_map[k] = v
         else:
             self._op_input_rename_map[k] = self._op_input_rename_map[v]
-        graph.save_remove_nodes(op_node)
+        graph.safe_remove_nodes(op_node)
 
     def _insert_post_dequant_op(self, graph, op_node):
         max_range = None
         scale_var_node = None
         persistable_vars = [p.name() for p in graph.all_persistable_vars()]
-        for var_node in op_node.op().inputs:
+        for var_node in op_node.inputs:
             name = var_node.name()
             if name in self._op_input_rename_map:
                 old_in = graph.var_node(name)
                 new_in = graph.var_node(self._op_input_rename_map[name])
+                new_in.clear_outputs()
                 graph.update_input_link(old_in, new_in, op_node)
             original_var_name = self._original_var_name(name)
+            scale_v = self._var_scale_map[original_var_name]
             if original_var_name in persistable_vars:
                 param_range = (1 << (self._weight_bits - 1)) - 1
                 act_range = (1 << (self._activation_bits - 1)) - 1
-                scale_v = self._var_scale_map[original_var_name]
                 assert self._is_float(
                     scale_v), 'The scale of parameter %s is not a float.' % (
                         original_var_name)
@@ -420,11 +428,11 @@ class QuantizationFreezePass(object):
                 assert isinstance(scale_v, core.Node)
                 scale_var_node = self._var_scale_map[original_var_name]
 
-        if len(op_node.op().outputs) != 1:
+        if len(op_node.outputs) != 1:
             raise ValueError("Only support one output, but op %s has"
                              " more than one output." % (op_node.name()))
 
-        output_var_node = op_node.op().outputs[0]
+        output_var_node = op_node.outputs[0]
         dequant_var_node = graph.create_var_node(
             name=self._dequantized_var_name(output_var_node.name()),
             var_type=output_var_node.var().type(),
@@ -439,8 +447,7 @@ class QuantizationFreezePass(object):
         graph.link_to(output_var_node, dequant_op_node)
         graph.link_to(scale_var_node, dequant_op_node)
         graph.link_to(dequant_op_node, dequant_var_node)
-        self._op_output_rename_map[output_var_node.name(
-        )] = dequant_var_node.name()
+        self._op_output_rename_map[output_var_node.name()] = dequant_var_node
         return dequant_var_node
 
     def _load_var(self, name):
@@ -483,9 +490,9 @@ class QuantizationFreezePass(object):
         """
         return "%s.dequantized" % (var_name)
 
-    def _is_float(v):
+    def _is_float(self, v):
         return isinstance(v, float) or isinstance(v, np.float32) \
             or isinstance(v, np.float64)
 
-    def _quant(x, scale, num_bits):
+    def _quant(self, x, scale, num_bits):
         return np.round(x / scale * ((1 << (num_bits - 1)) - 1))
