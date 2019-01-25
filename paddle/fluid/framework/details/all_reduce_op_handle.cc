@@ -39,12 +39,13 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
                                      const platform::NCCLContextMap *ctxs,
-                                     bool is_encoded)
+                                     bool is_encoded, int ranks)
     : OpHandleBase(node),
       local_scopes_(local_scopes),
       places_(places),
       nccl_ctxs_(ctxs),
-      is_encoded_(is_encoded) {
+      is_encoded_(is_encoded),
+      ranks_(ranks) {
   if (nccl_ctxs_) {
     for (auto &p : places_) {
       this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
@@ -58,7 +59,112 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
     : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 #endif
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+void AllReduceOpHandle::_RunImplEncoded() {
+  platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
+
+  WaitInputVarGenerated();
+
+  auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
+  auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
+  PADDLE_ENFORCE_EQ(
+      in_var_handles.size(), places_.size(),
+      "The NoDummyInputSize should be equal to the number of places.");
+  PADDLE_ENFORCE_EQ(
+      in_var_handles.size(), out_var_handles.size(),
+      "The NoDummyInputSize and NoDummyOutputSize should be equal.");
+
+  std::vector<const LoDTensor *> ins;
+  std::vector<const LoDTensor *> outs;
+  for (size_t i = 0; i < local_scopes_.size(); ++i) {
+    auto &local_scope =
+        local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
+    auto &in =
+        local_scope->FindVar(in_var_handles[i]->name())->Get<LoDTensor>();
+    ins.emplace_back(&in);
+
+    auto &out =
+        local_scope->FindVar(out_var_handles[i]->name())->Get<LoDTensor>();
+    outs.emplace_back(&out);
+  }
+
+  PADDLE_ENFORCE(platform::is_gpu_place(ins[0]->place()));
+  PADDLE_ENFORCE(platform::is_gpu_place(outs[0]->place()));
+  PADDLE_ENFORCE(nccl_ctxs_, "nccl_ctxs should not be nullptr.");
+
+  int dtype = -1;
+  size_t in_numel = 0;
+  size_t out_numel = 0;
+  PADDLE_ENFORCE(ranks_ > 1);
+  std::vector<std::function<void()>> all_reduce_calls;
+  for (size_t i = 0; i < local_scopes_.size(); ++i) {
+    auto &place = places_[i];
+    auto &in = *ins[i];
+    void *in_tensor_buf = const_cast<void *>(in.data<void>());
+
+    auto &out = *outs[i];
+    void *out_tensor_buf = const_cast<void *>(out.data<void>());
+
+    dtype = (dtype == -1) ? platform::ToNCCLDataType(in.type()) : dtype;
+    in_numel = (in_numel == 0) ? static_cast<size_t>(in.numel()) : in_numel;
+    PADDLE_ENFORCE(in_numel % 2 == 0);
+    size_t k = in_numel / 2;
+    out_numel = (out_numel == 0) ? static_cast<size_t>(out.numel()) : out_numel;
+
+    int dev_id = boost::get<platform::CUDAPlace>(place).device;
+    auto &nccl_ctx = nccl_ctxs_->at(dev_id);
+    auto stream = nccl_ctx.stream();
+    auto comm = nccl_ctx.comm_;
+
+    auto &allocator =
+        platform::DeviceTemporaryAllocator::Instance().Get(place, stream);
+    auto tmp_ious_data = allocator.Allocate(ranks_ * in_numel);
+    void *gather_buff = reinterpret_cast<void *>(tmp_ious_data->ptr());
+
+    all_reduce_calls.emplace_back([=] {
+      sparseAllGReduce(in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel,
+                       static_cast<ncclDataType_t>(dtype), ncclSum, comm,
+                       stream);
+    });
+  }
+
+  this->RunAndRecordEvent([&] {
+    if (all_reduce_calls.size() == 1UL) {
+      // Do not use NCCLGroup when manage NCCL by per thread per device
+      all_reduce_calls[0]();
+    } else {
+      platform::NCCLGroupGuard guard;
+      for (auto &call : all_reduce_calls) {
+        call();
+      }
+    }
+  });
+
+  if (FLAGS_sync_nccl_allreduce) {
+    for (auto &p : places_) {
+      int dev_id = boost::get<platform::CUDAPlace>(p).device;
+      auto &nccl_ctx = nccl_ctxs_->at(dev_id);
+      auto stream = nccl_ctx.stream();
+      cudaStreamSynchronize(stream);
+    }
+  }
+}
+#endif
+
 void AllReduceOpHandle::RunImpl() {
+  if (is_encoded_) {
+    _RunImpl();
+    return;
+  }
+
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  _RunImplEncoded();
+#else
+  PADDLE_THROW("Not compiled with CUDA");
+#endif
+}
+
+void AllReduceOpHandle::_RunImpl() {
   platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
 
   WaitInputVarGenerated();
@@ -74,9 +180,9 @@ void AllReduceOpHandle::RunImpl() {
   std::vector<const LoDTensor *> lod_tensors;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto *s = local_scopes_[i];
-    auto &local_scope = *s->FindVar(kLocalExecScopeName)->Get<Scope *>();
+    auto &local_scope = s->FindVar(kLocalExecScopeName)->Get<Scope *>();
     auto &lod_tensor =
-        local_scope.FindVar(in_var_handles[i]->name())->Get<LoDTensor>();
+        local_scope->FindVar(in_var_handles[i]->name())->Get<LoDTensor>();
     lod_tensors.emplace_back(&lod_tensor);
     PADDLE_ENFORCE_EQ(in_var_handles[i]->name(), out_var_handles[i]->name(),
                       "The name of input and output should be equal.");
@@ -105,39 +211,32 @@ void AllReduceOpHandle::RunImpl() {
       auto &nccl_ctx = nccl_ctxs_->at(dev_id);
       auto stream = nccl_ctx.stream();
       auto comm = nccl_ctx.comm_;
-      if (!is_encoded_) {
-        all_reduce_calls.emplace_back([=] {
-          PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-              buffer, buffer, numel, static_cast<ncclDataType_t>(dtype),
-              ncclSum, comm, stream));
-        });
-      } else {
-        all_reduce_calls.emplace_back([=] {
-          PADDLE_ENFORCE(sparseAllGReduce(buffer, buffer, numel,
-                                          static_cast<ncclDataType_t>(dtype),
-                                          ncclSum, comm, stream));
-        });
-      }
-    }
 
-    this->RunAndRecordEvent([&] {
-      if (all_reduce_calls.size() == 1UL) {
-        // Do not use NCCLGroup when manage NCCL by per thread per device
-        all_reduce_calls[0]();
-      } else {
-        platform::NCCLGroupGuard guard;
-        for (auto &call : all_reduce_calls) {
-          call();
+      all_reduce_calls.emplace_back([=] {
+        PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+            buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
+            comm, stream));
+      });
+
+      this->RunAndRecordEvent([&] {
+        if (all_reduce_calls.size() == 1UL) {
+          // Do not use NCCLGroup when manage NCCL by per thread per device
+          all_reduce_calls[0]();
+        } else {
+          platform::NCCLGroupGuard guard;
+          for (auto &call : all_reduce_calls) {
+            call();
+          }
         }
-      }
-    });
+      });
 
-    if (FLAGS_sync_nccl_allreduce) {
-      for (auto &p : places_) {
-        int dev_id = boost::get<platform::CUDAPlace>(p).device;
-        auto &nccl_ctx = nccl_ctxs_->at(dev_id);
-        auto stream = nccl_ctx.stream();
-        cudaStreamSynchronize(stream);
+      if (FLAGS_sync_nccl_allreduce) {
+        for (auto &p : places_) {
+          int dev_id = boost::get<platform::CUDAPlace>(p).device;
+          auto &nccl_ctx = nccl_ctxs_->at(dev_id);
+          auto stream = nccl_ctx.stream();
+          cudaStreamSynchronize(stream);
+        }
       }
     }
 

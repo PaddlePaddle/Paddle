@@ -75,7 +75,9 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   bool IsSparseGradient(const std::string &og) const;
 
-  void CreateAllReduceOp(ir::Graph *result, const std::string &og) const;
+  void CreateAllReduceOp(
+      ir::Graph *result,
+      const std::string &og const std::string encoded_grad_name = "");
 
   void CreateBroadcastOp(ir::Graph *result, const std::string &p_name,
                          size_t src_dev_id) const;

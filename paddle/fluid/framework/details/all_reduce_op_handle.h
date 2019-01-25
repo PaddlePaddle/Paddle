@@ -32,7 +32,8 @@ struct AllReduceOpHandle : public OpHandleBase {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
-                    const platform::NCCLContextMap *ctxs, bool is_encoded=false);
+                    const platform::NCCLContextMap *ctxs,
+                    bool is_encoded = false, int ranks = -1);
 #else
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places);
@@ -50,8 +51,12 @@ struct AllReduceOpHandle : public OpHandleBase {
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  void _RunImplEncoded();
+  void _RunImpl();
+
   const platform::NCCLContextMap *nccl_ctxs_;
   bool is_encoded_{false};
+  int ranks_{-1};
 #endif
 };
 

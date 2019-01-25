@@ -393,11 +393,13 @@ void MultiDevSSAGraphBuilderBase::CreateComputationalOp(ir::Graph *result,
 
 void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
     ir::Graph *result, const std::string &og,
-    const std::string &encoded_grad_name) const {
+    const std::string encoded_grad_name) const {
+  bool is_encoded = (encoded_grad_name != "");
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
       result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-      local_scopes_, places_, nccl_ctxs_, is_encoded));
+      local_scopes_, places_, nccl_ctxs_, is_encoded,
+      static_cast<int>(rategy_.trainers_endpoints_.size())));
 #else
   result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
       result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
@@ -405,16 +407,23 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
 #endif
   auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
 
+  std::vecotor<std::string> names;
+  if (is_encoded) {
+    names.push_back(encoded_grad_name);
+  } else {
+    names.push_back(og);
+  }
+
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &p = places_[i];
     SetCommunicationContext(op_handle, p);
-    std::vecotor<std::string> names{encoded_grad_name};
+
     for (auto name : names) {
       auto &vars = result->Get<GraphVars>(kGraphVars)[i][name];
       PADDLE_ENFORCE(!vars.empty());
       auto &prev_grad = vars.back();
       op_handle->AddInput(prev_grad);
-      VLOG(7) << "all_reduce_op_handle add input " << prev_grad;
+      VLOG(7) << "all_reduce_op_handle add input " << prev_grad->DebugString();
     }
 
     auto var =
@@ -983,6 +992,10 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
 
 bool DistSSAGraphBuilder::IfCreateDGCOp() {
   if (!strategy_.enable_dgc_) {
+    return false;
+  }
+
+  if (strategy_.trainers_endpoints_().size() <= 1) {
     return false;
   }
 
