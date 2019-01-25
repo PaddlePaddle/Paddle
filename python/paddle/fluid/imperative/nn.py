@@ -27,6 +27,7 @@ __all__ = [
     'Conv2D',
     'Pool2D',
     'FC',
+    'BatchNorm',
 ]
 
 
@@ -55,7 +56,8 @@ class Conv2D(layers.Layer):
             param_attr=param_attr,
             bias_attr=bias_attr,
             dtype=dtype,
-            name=name)
+            name=name,
+            act=act)
 
         self._groups = groups
         self._stride = utils.convert_to_list(stride, 2, 'stride')
@@ -141,6 +143,7 @@ class Conv2D(layers.Layer):
             outputs={'Out': [pre_act]},
             attrs={'axis': 1})
 
+        # Currently, we don't support inplace in imperative mode
         return self._helper.append_activation(pre_act)
 
 
@@ -216,6 +219,7 @@ class FC(layers.Layer):
                  act=None,
                  name=None):
         super(FC, self).__init__()
+
         self._size = size
         self._num_flatten_dims = num_flatten_dims
         self._dtype = dtype
@@ -241,6 +245,16 @@ class FC(layers.Layer):
             dtype=self._dtype,
             is_bias=False)
 
+        if self._helper.bias_attr:
+            size = list([self._size])
+            self._b = self._helper.create_parameter(
+                attr=self._helper.bias_attr,
+                shape=size,
+                dtype=self._dtype,
+                is_bias=True)
+        else:
+            self._b = None
+
     def forward(self, input):
         tmp = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
@@ -253,28 +267,155 @@ class FC(layers.Layer):
                 "y_num_col_dims": 1
             })
 
-        out = self._helper.create_variable_for_type_inference(self._dtype)
+        pre_bias = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
             type="sum",
             inputs={"X": [tmp]},
-            outputs={"Out": out},
+            outputs={"Out": pre_bias},
             attrs={"use_mkldnn": False})
 
-        bias_attr = self._helper.bias_attr
-        if bias_attr:
-            # add bias
-            size = list(out.shape[1:])
-            if not self._built:
-                self._b = self._helper.create_parameter(
-                    attr=bias_attr, shape=size, dtype=out.dtype, is_bias=True)
-            bias_out = self._helper.create_variable_for_type_inference(
-                dtype=out.dtype)
+        if self._b:
+            pre_activation = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
             self._helper.append_op(
                 type='elementwise_add',
-                inputs={'X': [out],
+                inputs={'X': [pre_bias],
                         'Y': [self._b]},
-                outputs={'Out': [bias_out]},
-                attrs={'axis': 1})
-            out = bias_out
-        # add activation
-        return self._helper.append_activation(out)
+                outputs={'Out': [pre_activation]},
+                attrs={'axis': self._num_flatten_dims})
+        else:
+            pre_activation = pre_bias
+        # Currently, we don't support inplace in imperative mode
+        return self._helper.append_activation(pre_activation)
+
+
+class BatchNorm(layers.Layer):
+    def __init__(self,
+                 num_channels,
+                 act=None,
+                 is_test=False,
+                 momentum=0.9,
+                 epsilon=1e-05,
+                 param_attr=None,
+                 bias_attr=None,
+                 dtype=core.VarDesc.VarType.FP32,
+                 data_layout='NCHW',
+                 in_place=False,
+                 name=None,
+                 moving_mean_name=None,
+                 moving_variance_name=None,
+                 do_model_average_for_mean_and_var=False,
+                 fuse_with_relu=False,
+                 use_global_stats=False):
+        super(BatchNorm, self).__init__()
+
+        assert bias_attr is not False, "bias_attr should not be False in batch_norm."
+
+        from ..layer_helper import LayerHelper
+        self._helper = LayerHelper(
+            'batch_norm',
+            param_attr=param_attr,
+            bias_attr=bias_attr,
+            name=name,
+            act=act)
+
+        if dtype == core.VarDesc.VarType.FP16:
+            self._dtype = core.VarDesc.VarType.FP32
+        else:
+            self._dtype = dtype
+
+        param_shape = [num_channels]
+
+        # create parameter
+        self._scale = self._helper.create_parameter(
+            attr=self._helper.param_attr,
+            shape=param_shape,
+            dtype=self._dtype,
+            default_initializer=Constant(1.0))
+
+        # TODO(minqiyang): change stop_gradient sign to trainable to align with static graph
+        #  # setting stop_gradient=True to reduce computation
+        #  if use_global_stats and self._helper.param_attr.learning_rate == 0.:
+        #  self._scale.stop_gradient = True
+
+        self._bias = self._helper.create_parameter(
+            attr=self._helper.bias_attr,
+            shape=param_shape,
+            dtype=self._dtype,
+            is_bias=True)
+        # TODO(minqiyang): change stop_gradient sign to trainable to align with static graph
+        #  # setting stop_gradient=True to reduce computation
+        #  if use_global_stats and self._helper.bias_attr.learning_rate == 0.:
+        #  self._bias.stop_gradient = True
+
+        self._mean = self._helper.create_parameter(
+            attr=ParamAttr(
+                name=moving_mean_name,
+                initializer=Constant(0.0),
+                trainable=False,
+                do_model_average=do_model_average_for_mean_and_var),
+            shape=param_shape,
+            dtype=self._dtype)
+        self._mean.stop_gradient = True
+
+        self._variance = self._helper.create_parameter(
+            attr=ParamAttr(
+                name=moving_variance_name,
+                initializer=Constant(1.0),
+                trainable=False,
+                do_model_average=do_model_average_for_mean_and_var),
+            shape=param_shape,
+            dtype=self._dtype)
+        self._variance.stop_gradient = True
+
+        self._in_place = in_place
+        self._momentum = momentum
+        self._epsilon = epsilon
+        self._is_test = is_test
+        self._fuse_with_relu = fuse_with_relu
+        self._use_global_stats = use_global_stats
+
+    def _build_once(self, input):
+        pass
+
+    def forward(self, input):
+        # create output
+        # mean and mean_out share the same memory
+        mean_out = self._mean
+        # variance and variance out share the same memory
+        variance_out = self._variance
+
+        saved_mean = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        saved_variance = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
+            self._dtype)
+
+        self._helper.append_op(
+            type="batch_norm",
+            inputs={
+                "X": input,
+                "Scale": self._scale,
+                "Bias": self._bias,
+                "Mean": self._mean,
+                "Variance": self._variance
+            },
+            outputs={
+                "Y": batch_norm_out,
+                "MeanOut": mean_out,
+                "VarianceOut": variance_out,
+                "SavedMean": saved_mean,
+                "SavedVariance": saved_variance
+            },
+            attrs={
+                "momentum": self._momentum,
+                "epsilon": self._epsilon,
+                "is_test": self._is_test,
+                "use_mkldnn": False,
+                "fuse_with_relu": self._fuse_with_relu,
+                "use_global_stats": self._use_global_stats
+            })
+
+        # Currently, we don't support inplace in imperative mode
+        return self._helper.append_activation(batch_norm_out)
