@@ -435,7 +435,10 @@ class LayerHelper(object):
         act_type = act.pop('type')
         tmp = input_var
         # NOTE(dzhwinter): some activation support inplace compution.
-        if not core.IsInplace(act_type):
+        # NOTE(minqiyang): currently, we don't support inplace in imperative mode
+        if not imperative_base.enabled() and core.IsInplace(act_type):
+            tmp = input_var
+        else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
         self.append_op(
             type=act_type,

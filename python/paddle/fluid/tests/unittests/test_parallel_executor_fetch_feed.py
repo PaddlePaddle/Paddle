@@ -24,14 +24,14 @@ import os
 
 
 def Lenet(data, class_dim):
-    conv1 = fluid.layers.conv2d(data, 32, 5, 1, act=None)
+    conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None)
     bn1 = fluid.layers.batch_norm(conv1, act='relu')
     pool1 = fluid.layers.pool2d(bn1, 2, 'max', 2)
-    conv2 = fluid.layers.conv2d(pool1, 50, 5, 1, act=None)
+    conv2 = fluid.layers.conv2d(pool1, 16, 5, 1, act=None)
     bn2 = fluid.layers.batch_norm(conv2, act='relu')
     pool2 = fluid.layers.pool2d(bn2, 2, 'max', 2)
 
-    fc1 = fluid.layers.fc(pool2, size=500, act='relu')
+    fc1 = fluid.layers.fc(pool2, size=50, act='relu')
     fc2 = fluid.layers.fc(fc1, size=class_dim, act='softmax')
 
     return fc2
