@@ -38,7 +38,6 @@ class TestImperativePtbRnn(unittest.TestCase):
             inp = to_variable(np.arange(160).reshape(4, 40).astype('float32'))
             st = Split_test()
             out = st(inp)
-            print(out)
 
 
 if __name__ == '__main__':
