@@ -476,7 +476,7 @@ class TestMulticlassNMS(unittest.TestCase):
             bboxes = layers.data(
                 name='bboxes', shape=[-1, 10, 4], dtype='float32')
             scores = layers.data(name='scores', shape=[-1, 10], dtype='float32')
-            output = layers.multiclass_nms(bboxes, scores, 0.3, 400, 0.7, 200)
+            output = layers.multiclass_nms(bboxes, scores, 0.3, 400, 200, 0.7)
             self.assertIsNotNone(output)
 
 
