@@ -21,6 +21,7 @@
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
@@ -77,6 +78,9 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   framework::BlockDesc block_desc(nullptr, &block_proto);
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
+  string::PrettyLogDetail("---  detect a sub-graph with %d nodes",
+                          subgraph.size());
+
   for (auto *node : subgraph) {
     auto *op = block_desc.AppendOp();
     *op->Proto() = *node->Op()->Proto();

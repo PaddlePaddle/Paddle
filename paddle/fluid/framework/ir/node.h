@@ -64,7 +64,7 @@ class Node {
 
   std::string Name() const { return name_; }
 
-  VarDesc* Var() {
+  VarDesc* Var() const {
     PADDLE_ENFORCE(IsVar());
     return var_desc_.get();
   }
