@@ -347,27 +347,52 @@ function PipLinuxInstall(){
     if [[ "$GPU" == "gpu" ]];then
         if [[ ${AVX} == "avx" ]];then
           rm -rf `echo $wheel_gpu_release|awk -F '/' '{print $NF}'`
-          wget $wheel_gpu_release
-          $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release
+          wget -q $wheel_gpu_release
+          if [ "$?" != "0" ];then
+            $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release
+          else
+            echo paddlepaddle whl包下载失败
+            exit 1
+          fi
         else
           rm -rf `echo $wheel_gpu_release_novax|awk -F '/' '{print $NF}'`
-          wget $wheel_gpu_release_novax
-          $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release_noavx
+          wget -q $wheel_gpu_release_novax
+          if [ "$?" != "0" ];then
+            $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release_noavx
+          else
+            echo paddlepaddle whl包下载失败
+            exit 1
+          fi
         fi
     else
         rm -rf `echo $wheel_cpu_release|awk -F '/' '{print $NF}'`
-        wget $wheel_cpu_release
-        $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_release
+        wget -q $wheel_cpu_release
+        if [ "$?" != "0" ];then
+          $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_release
+        else
+          echo paddlepaddle whl包下载失败
+          exit 1
+        fi
     fi
   else
     if [[ "$GPU" == "gpu" ]];then
         rm -rf `echo $wheel_gpu_develop|awk -F '/' '{print $NF}'`
-        wget $wheel_gpu_develop
-        $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_develop
+        wget -q $wheel_gpu_develop
+        if [ "$?" != "0" ];then
+          $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_develop
+        else
+          echo paddlepaddle whl包下载失败
+          exit 1
+        fi
     else
         rm -rf `echo $wheel_cpu_develop|awk -F '/' '{print $NF}'`
-        wget $wheel_cpu_develop
-        $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_develop
+        wget -q $wheel_cpu_develop
+        if [ "$?" != "0" ];then
+          $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_develop
+        else
+          echo paddlepaddle whl包下载失败
+          exit 1
+        fi
     fi
   fi
 }
@@ -748,6 +773,7 @@ function macos() {
                    echo""
                    echo "=========================================================================================="
                    echo""
+                   exit 1
                 fi
             else
                 wget ${path}$wheel_cpu_release -O $whl_cpu_release
@@ -763,6 +789,7 @@ function macos() {
                        echo""
                        echo "=========================================================================================="
                        echo""
+                       exit 1
                     fi
                 else
                       rm  $whl_cpu_release
@@ -770,6 +797,7 @@ function macos() {
                       echo""
                       echo "=========================================================================================="
                       echo""
+                      exit 1
                 fi
             fi
         else
@@ -784,6 +812,7 @@ function macos() {
                    echo""
                    echo "=========================================================================================="
                    echo""
+                   exit 1
                 fi
             else
                 wget ${path}$whl_cpu_develop -O $whl_cpu_develop
@@ -799,6 +828,7 @@ function macos() {
                        echo""
                        echo "=========================================================================================="
                        echo""
+                       exit 1
                     fi
                 else
                       rm  $whl_cpu_develop
@@ -806,6 +836,7 @@ function macos() {
                       echo""
                       echo "=========================================================================================="
                       echo""
+                      exit 1
                 fi
             fi
         fi
