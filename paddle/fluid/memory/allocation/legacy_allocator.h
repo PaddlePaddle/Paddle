@@ -19,6 +19,8 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+extern void ShowMemoryUsage();
+
 class LegacyAllocatorPrivate;
 class LegacyAllocator : public Allocator {
  public:

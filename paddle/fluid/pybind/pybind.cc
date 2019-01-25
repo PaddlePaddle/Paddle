@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
@@ -117,6 +118,9 @@ PYBIND11_MODULE(core, m) {
   using namespace paddle::framework;  // NOLINT
 
   BindException(&m);
+
+  m.def("show_memory_usage", &paddle::memory::allocation::ShowMemoryUsage,
+        "Print peak memory usage");
 
   m.def(
       "_append_python_callable_object_and_return_id",

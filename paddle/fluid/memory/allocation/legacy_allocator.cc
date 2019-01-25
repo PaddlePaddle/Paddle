@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
+#include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>
@@ -53,10 +54,11 @@ size_t memory_usage(const platform::Place &p);
 
 using BuddyAllocator = detail::BuddyAllocator;
 
+// used to store the GPU memory usage of each devices
 std::unordered_map</*device id*/ int,
                    std::pair</*current memory usage*/ uint64_t,
                              /*peak memory usage*/ uint64_t>>
-    gpu_mem_info;
+    gpuMemInfo;
 
 BuddyAllocator *GetCPUBuddyAllocator() {
   // We tried thread_local for inference::RNN1 model, but that not works much
@@ -185,11 +187,11 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
                  << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
     platform::SetDeviceId(cur_dev);
   } else {
-    gpu_mem_info[place.device].first += size;
-    if (gpu_mem_info[place.device].first > gpu_mem_info[place.device].second) {
-      gpu_mem_info[place.device].second = gpu_mem_info[place.device].first;
+    gpuMemInfo[place.device].first += size;
+    if (gpuMemInfo[place.device].first > gpuMemInfo[place.device].second) {
+      gpuMemInfo[place.device].second = gpuMemInfo[place.device].first;
       VLOG(3) << "device: " << place.device << " peak memory usage : "
-              << (gpu_mem_info[place.device].second >> 20) << " MiB";
+              << (gpuMemInfo[place.device].second >> 20) << " MiB";
     }
     if (FLAGS_init_allocated_mem) {
       cudaMemset(ptr, 0xEF, size);
@@ -206,7 +208,7 @@ void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p,
                                size_t size) {
 #ifdef PADDLE_WITH_CUDA
   GetGPUBuddyAllocator(place.device)->Free(p);
-  gpu_mem_info[place.device].first -= size;
+  gpuMemInfo[place.device].first -= size;
 #else
   PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
 #endif
@@ -315,6 +317,19 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 }  // namespace legacy
 
 namespace allocation {
+
+void ShowMemoryUsage() {
+  std::vector<int> devices;
+  for (const auto &item : legacy::gpuMemInfo) {
+    devices.emplace_back(item.first);
+  }
+  std::sort(devices.begin(), devices.end());
+  for (const auto &device : devices) {
+    std::cout << "Device : " << device << " Peak Memory Usage : "
+              << (legacy::gpuMemInfo[device].second >> 20) << " MiB"
+              << std::endl;
+  }
+}
 
 Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
