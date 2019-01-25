@@ -41,7 +41,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
 
     // local_g = local_g + g
     // ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-        // ctx, local_g, g, 0, AddFunctor<T>(), local_g_out);
+    // ctx, local_g, g, 0, AddFunctor<T>(), local_g_out);
 
     // FIXME(gognwb): use cublas.
     // u = m * u + g
@@ -64,10 +64,11 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto tmp_ious_data = allocator.Allocate(buffbytes);
     void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
-    k_select(v_out->mutable_data<T>(ctx.GetPlace()),
-             static_cast<int>(v_out->numel()),
-             static_cast<void*>(encode_grad_out->mutable_data<T>(ctx.GetPlace())), buf, k,
-             dev_ctx.stream(), u_out->mutable_data<T>(ctx.GetPlace()));
+    k_select(
+        v_out->mutable_data<T>(ctx.GetPlace()),
+        static_cast<int>(v_out->numel()),
+        static_cast<void*>(encode_grad_out->mutable_data<T>(ctx.GetPlace())),
+        buf, k, dev_ctx.stream(), u_out->mutable_data<T>(ctx.GetPlace()));
   }
 };
 }  // namespace operators
