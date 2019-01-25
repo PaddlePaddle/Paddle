@@ -26,7 +26,7 @@ import paddle.fluid.profiler as profiler
 from PIL import Image, ImageEnhance
 import math
 sys.path.append('..')
-import int8_inference.utility as ut
+import int8_inference.utility as int8_utility
 
 random.seed(0)
 np.random.seed(0)
@@ -120,13 +120,13 @@ class TestCalibration(unittest.TestCase):
     def setUp(self):
         # TODO(guomingz): Put the download process in the cmake.
         # Download and unzip test data set
-        imagenet_dl_url = 'http://paddle-inference-dist.bj.bcebos.com/int8/calibration_test_data.tar.gz'
+        imagenet_dl_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz'
         zip_file_name = imagenet_dl_url.split('/')[-1]
         cmd = 'rm -rf data {}  && mkdir data && wget {} && tar xvf {} -C data'.format(
             zip_file_name, imagenet_dl_url, zip_file_name)
         os.system(cmd)
         # resnet50 fp32 data
-        resnet50_fp32_model_url = 'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
+        resnet50_fp32_model_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/resnet50_int8_model.tar.gz'
         resnet50_zip_name = resnet50_fp32_model_url.split('/')[-1]
         resnet50_unzip_folder_name = 'resnet50_fp32'
         cmd = 'rm -rf {} {} && mkdir {} && wget {} && tar xvf {} -C {}'.format(
@@ -135,8 +135,7 @@ class TestCalibration(unittest.TestCase):
             resnet50_zip_name, resnet50_unzip_folder_name)
         os.system(cmd)
 
-        self.iterations = 100
-        self.skip_batch_num = 5
+        self.iterations = 50
 
     def run_program(self, model_path, generate_int8=False, algo='direct'):
         image_shape = [3, 224, 224]
@@ -163,16 +162,15 @@ class TestCalibration(unittest.TestCase):
 
             print("Start calibration ...")
 
-            calibrator = ut.Calibrator(
+            calibrator = int8_utility.Calibrator(
                 program=infer_program,
                 pretrained_model=model_path,
-                iterations=100,
-                debug=False,
-                algo=algo)
+                algo=algo,
+                exe=exe,
+                output=int8_model,
+                feed_var_names=feed_dict,
+                fetch_list=fetch_targets)
 
-            sampling_data = {}
-
-            calibrator.generate_sampling_program()
         test_info = []
         cnt = 0
         for batch_id, data in enumerate(val_reader()):
@@ -192,13 +190,7 @@ class TestCalibration(unittest.TestCase):
                       feed_dict[1]: label},
                 fetch_list=fetch_targets)
             if generate_int8:
-                for i in calibrator.sampling_program.list_vars():
-                    if i.name in calibrator.sampling_vars:
-                        np_data = np.array(fluid.global_scope().find_var(i.name)
-                                           .get_tensor())
-                        if i.name not in sampling_data:
-                            sampling_data[i.name] = []
-                        sampling_data[i.name].append(np_data)
+                calibrator.sample_data()
 
             test_info.append(np.mean(acc1) * len(data))
             cnt += len(data)
@@ -209,9 +201,8 @@ class TestCalibration(unittest.TestCase):
             break
 
         if generate_int8:
-            calibrator.generate_quantized_data(sampling_data)
-            fluid.io.save_inference_model(int8_model, feed_dict, fetch_targets,
-                                          exe, calibrator.sampling_program)
+            calibrator.save_int8_model()
+
             print(
                 "Calibration is done and the corresponding files were generated at {}".
                 format(os.path.abspath("calibration_out")))
