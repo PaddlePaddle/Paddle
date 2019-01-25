@@ -28,10 +28,14 @@ std::unique_ptr<Graph> Pass::Apply(std::unique_ptr<Graph> graph) const {
     PADDLE_ENFORCE(graph->Has(attr), "Required graph atrribute %s not set.",
                    attr);
   }
+  auto* native_graph = graph.get();
   auto applied_graph = ApplyImpl(std::move(graph));
   // TODO(panyx0718): Add more verifications.
   PADDLE_ENFORCE(!HasCircle(*applied_graph),
                  "Illegal Pass. Generated graph shouldn't has cycle.");
+  PADDLE_ENFORCE(applied_graph.get() == native_graph,
+                 "Pass::Apply() cannot delete the passed graph and shouldn't "
+                 "return a new graph.(For the need of pybind11)");
   applied_ = true;
   return applied_graph;
 }
