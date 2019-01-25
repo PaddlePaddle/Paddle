@@ -113,6 +113,15 @@ bool AnalysisPredictor::PrepareProgram(
   if (!program) {
     if (!LoadProgramDesc()) return false;
 
+    // If not cloned, the parameters should be loaded.
+    // If config_.ir_optim() is True, parameters is loaded in
+    // OptimizeInferenceProgram(), but other persistable variables
+    // (like RAW type var) are not created in scope.
+    // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
+    // still need to create other persistable variables.
+    // So in both case, create persistable variables at first.
+    executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
+
     // Optimize the program, and load parameters and modify them in the
     // scope_.
     // This will change the scope_ address.
@@ -120,15 +129,6 @@ bool AnalysisPredictor::PrepareProgram(
       status_ir_optim_enabled_ = true;
       OptimizeInferenceProgram();
     } else {
-      // If the parent_scope is passed, we assert that the persistable variables
-      // are already created, so just create the no persistable variables.
-
-      // If not cloned, the parameters should be loaded
-      // OptimizeInferenceProgram.
-      // So in both cases, just the local variables are needed to load, not the
-      // parematers.
-      executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
-
       // Load parameters
       LOG(INFO) << "load parameters ";
       LoadParameters();
@@ -361,7 +361,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
-  argument_.SetScopeNotOwned(const_cast<framework::Scope *>(scope_.get()));
+  argument_.SetScopeNotOwned(scope_.get());
   Analyzer().Run(&argument_);
 
   PADDLE_ENFORCE(argument_.scope_valid());
