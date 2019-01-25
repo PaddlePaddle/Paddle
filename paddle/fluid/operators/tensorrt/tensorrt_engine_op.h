@@ -133,7 +133,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
     // This process will builds a 32-bit trt engine, runs it on the calibration
     // set, and records a histogram for each
     // tensor of the distribution of activation values.
-    LOG(INFO) << "Running calibration trt int8 ...";
+    LOG_FIRST_N(INFO, 1) << "The TRT engine: " << engine_key_
+                         << " is running calibration trt int8... ";
     int runtime_batch = 1;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);

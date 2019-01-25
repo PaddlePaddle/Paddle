@@ -40,6 +40,7 @@
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
+
 #endif
 
 DECLARE_bool(profile);
@@ -341,7 +342,6 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   // Analyze inference_program
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
-    argument_.SetModelPath(config_.model_dir());
   } else {
     PADDLE_ENFORCE(
         !config_.params_file().empty(),
@@ -349,7 +349,6 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     PADDLE_ENFORCE(!config_.prog_file().empty());
     std::string dir = inference::analysis::GetDirRoot(config_.prog_file());
 
-    argument_.SetModelPath(dir);
     argument_.SetModelProgramPath(config_.prog_file());
     argument_.SetModelParamsPath(config_.params_file());
   }
@@ -599,7 +598,8 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
           Singleton<TRTCalibratorEngineManager>::Global().Get(engine_name);
       LOG(INFO) << "Wait for calib threads done.";
       calib_engine->calib_->waitAndSetDone();
-      LOG(INFO) << "Finish wait.";
+      LOG(INFO) << "Generating TRT Calibration table data, this may cost a lot "
+                   "of time...";
       calib_engine->thr_->join();
       std::string calibration_table_data =
           calib_engine->calib_->getCalibrationTableAsString();
@@ -609,9 +609,16 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
         return false;
       }
 
+      std::string model_opt_cache_dir =
+          argument_.Has("model_dir")
+              ? argument_.model_dir()
+              : inference::analysis::GetDirRoot(argument_.model_program_path());
+
       std::string calibration_table_data_path =
-          inference::analysis::GetTrtCalibPath(argument_.model_path(),
-                                               engine_name);
+          inference::analysis::GetTrtCalibPath(
+              inference::analysis::GetOrCreateModelOptCacheDir(
+                  model_opt_cache_dir),
+              engine_name);
 
       std::ofstream ofile(calibration_table_data_path, std::ios::out);
       LOG(INFO) << "Write Paddle-TRT INT8 calibration table data to file "
