@@ -43,18 +43,27 @@ if(WITH_GRPC)
   cc_test(grpc_serde_test SRCS grpc/grpc_serde_test.cc 
     DEPS ${RPC_DEPS} scope profiler math_function SERIAL)
 else()
-  set(BRPC_SRCS brpc/brpc_client.cc brpc/brpc_server.cc brpc/brpc_sendrecvop_utils.cc brpc/brpc_variable_response.cc brpc/brpc_rdma_pool.cc)
-  set_source_files_properties(${BRPC_SRCS} parameter_prefetch.cc rpc_server_test.cc brpc/brpc_serde_test.cc collective_server.cc collective_server_test.cc collective_client.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(brpc/brpc_client.cc brpc/brpc_server.cc
+        brpc/brpc_sendrecvop_utils.cc brpc/brpc_variable_response.cc
+        brpc/brpc_rdma_pool.cc brpc/brpc_serde_test.cc
+        collective_server.cc collective_client.cc 
+    PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
-  brpc_library(sendrecvop_rpc SRCS sendrecvop_utils.cc
-      request_handler_impl.cc rpc_client.cc rpc_server.cc
-      variable_response.cc
-      collective_client.cc collective_server.cc
-      ${BRPC_SRCS}
-    PROTO send_recv.proto
-    DEPS lod_tensor selected_rows memory)
+  brpc_library(brpc_base PROTO send_recv.proto DEPS brpc)
+  cc_library(brpc_client SRCS brpc/brpc_client.cc DEPS brpc_base_proto brpc)
+  cc_library(brpc_server SRCS brpc/brpc_server.cc DEPS brpc_base_proto brpc)
+  cc_library(brpc_sendrecvop_utils SRCS brpc/brpc_sendrecvop_utils.cc DEPS brpc_base_proto brpc)
+  cc_library(brpc_variable_response SRCS brpc/brpc_variable_response.cc DEPS brpc_base_proto brpc)
+  cc_library(brpc_rdma_pool SRC brpc/brpc_rdma_pool.cc DEPS brpc_base_proto brpc)
 
-  set(RPC_DEPS sendrecvop_rpc brpc ssl crypto protobuf leveldb snappystream snappy zlib)
+  cc_library(collective_server SRCS collective_server.cc DEPS brpc_base_proto brpc scope)
+  cc_library(collective_client SRCS collective_client.cc DEPS brpc_base_proto brpc scope)
+  # merge all
+  cc_library(sendrecvop_rpc DEPS brpc_client brpc_server brpc_sendrecvop_utils
+             brpc_variable_response brpc_rdma_pool
+             lod_tensor selected_rows memory scope ${BRPC_DEPS})
+
+  set(RPC_DEPS sendrecvop_rpc ${BRPC_DEPS})
   cc_test(brpc_serde_test SRCS brpc/brpc_serde_test.cc
       DEPS ${RPC_DEPS} gflags glog executor proto_desc lookup_sparse_table_op SERIAL)
 endif()

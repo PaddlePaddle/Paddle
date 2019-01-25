@@ -15,18 +15,38 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/imperative/tracer.h"
+#include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace pybind {
 
 // Bind Methods
-void BindTracer(pybind11::module *m) {
+void BindTracer(pybind11::module* m) {
   pybind11::class_<imperative::Tracer>(*m, "Tracer", "")
       .def("__init__",
-           [](imperative::Tracer &self, framework::BlockDesc *root_block) {
+           [](imperative::Tracer& self, framework::BlockDesc* root_block) {
              new (&self) imperative::Tracer(root_block);
            })
-      .def("trace", &imperative::Tracer::Trace)
+      .def("trace",
+           [](imperative::Tracer& self, imperative::OpBase* op,
+              const imperative::VarBasePtrMap& inputs,
+              const imperative::VarBasePtrMap& outputs,
+              framework::BlockDesc* block,
+              const platform::CPUPlace expected_place,
+              const bool stop_gradient = false) {
+             self.Trace(op, inputs, outputs, block, expected_place,
+                        stop_gradient);
+           })
+      .def("trace",
+           [](imperative::Tracer& self, imperative::OpBase* op,
+              const imperative::VarBasePtrMap& inputs,
+              const imperative::VarBasePtrMap& outputs,
+              framework::BlockDesc* block,
+              const platform::CUDAPlace expected_place,
+              const bool stop_gradient = false) {
+             self.Trace(op, inputs, outputs, block, expected_place,
+                        stop_gradient);
+           })
       .def("py_trace", &imperative::Tracer::PyTrace,
            pybind11::return_value_policy::take_ownership);
 }

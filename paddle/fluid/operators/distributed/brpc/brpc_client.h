@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/distributed_pb.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
+#include "paddle/fluid/operators/distributed/var_handle.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
@@ -65,6 +66,7 @@ class BRPCClient : public RPCClient {
                            const platform::DeviceContext& ctx,
                            const framework::Scope& scope,
                            const std::string& var_name,
+                           const std::string& out_var_name,
                            int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncGetMonomerBarrier(
@@ -75,6 +77,13 @@ class BRPCClient : public RPCClient {
       const std::string& ep, const platform::DeviceContext& ctx,
       const framework::Scope& scope, const std::string& var_name,
       int64_t time_out = FLAGS_rpc_deadline) override;
+
+  VarHandlePtr AsyncGetVarNoBarrier(const std::string& ep,
+                                    const platform::DeviceContext& ctx,
+                                    const framework::Scope& scope,
+                                    const std::string& var_name,
+                                    const std::string& out_varname,
+                                    int64_t time_out = FLAGS_rpc_deadline);
 
   VarHandlePtr AsyncPrefetchVar(const std::string& ep,
                                 const platform::DeviceContext& ctx,
@@ -103,6 +112,7 @@ class BRPCClient : public RPCClient {
                             const platform::DeviceContext& ctx,
                             const framework::Scope& scope,
                             const std::string& var_name,
+                            const std::string& out_var_name,
                             const std::string& method_name,
                             int64_t time_out = FLAGS_rpc_deadline);
 
@@ -122,7 +132,7 @@ class BRPCClient : public RPCClient {
                                    int64_t time_out);
 
   friend void HandleSendResponse(brpc::Controller* cntl,
-                                 sendrecv::VoidMessage* response,
+                                 sendrecv::VariableMessage* response,
                                  VarHandlePtr var_h, ChannelQueuePtr ch_ptr,
                                  ChannelContextPtr ch_ctx, BRPCClient* cls);
 
