@@ -295,7 +295,7 @@ class EMBEDDING(layers.Layer):
 
         self._param_attr = param_attr
         self._dtype = dtype
-        self._remote_prefetch = self.is_sparse and (not self.is_distributed)
+        self._remote_prefetch = self._is_sparse and (not self._is_distributed)
         if self._remote_prefetch:
             assert self._is_sparse is True and self._is_distributed is False
 
