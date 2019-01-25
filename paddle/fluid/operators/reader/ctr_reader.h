@@ -36,9 +36,63 @@ namespace reader {
 
 enum ReaderThreadStatus { Running, Stopped };
 
+struct DataDesc {
+  DataDesc(int batch_size, const std::vector<std::string>& file_names,
+           const std::string& file_type, const std::string& file_format,
+           const std::vector<int>& dense_slot_index,
+           const std::vector<int>& sparse_slot_index,
+           const std::vector<std::string>& sparse_slot_ids)
+      : batch_size_(batch_size),
+        file_names_(file_names),
+        file_type_(file_type),
+        file_format_(file_format),
+        dense_slot_index_(dense_slot_index),
+        sparse_slot_index_(sparse_slot_index),
+        sparse_slot_ids_(sparse_slot_ids) {}
+
+  const int batch_size_;
+  const std::vector<std::string> file_names_;
+  const std::string file_type_;    // gzip or plain
+  const std::string file_format_;  // csv or svm
+  // used for csv data format
+  const std::vector<int> dense_slot_index_;
+  const std::vector<int> sparse_slot_index_;
+  // used for svm data format
+  const std::vector<std::string> sparse_slot_ids_;
+};
+
+inline std::ostream& operator<<(std::ostream& os, const DataDesc& data_desc) {
+  os << "data_desc:\n";
+  os << "\tbatch_size -> " << data_desc.batch_size_ << "\n";
+  os << "\tfile_type -> " << data_desc.file_type_ << "\n";
+  os << "\tfile_format -> " << data_desc.file_format_ << "\n";
+  os << "\tfile_names -> {";
+  for (auto& file_name : data_desc.file_names_) {
+    os << file_name << ",";
+  }
+  os << "}\n";
+  os << "\tdense_slot_index -> {";
+  for (auto& slot : data_desc.dense_slot_index_) {
+    os << slot << ",";
+  }
+  os << "}\n";
+  os << "\tsparse_slot_index_ -> {";
+  for (auto& slot : data_desc.sparse_slot_index_) {
+    os << slot << ",";
+  }
+  os << "}\n";
+  os << "\tsparse_slot_ids_ -> {";
+  for (auto& slot : data_desc.sparse_slot_ids_) {
+    os << slot << ",";
+  }
+  os << "}\n";
+
+  return os;
+}
+
 void ReadThread(const std::vector<std::string>& file_list,
-                const std::vector<std::string>& slots, int batch_size,
-                int thread_id, std::vector<ReaderThreadStatus>* thread_status,
+                const DataDesc& data_desc, int thread_id,
+                std::vector<ReaderThreadStatus>* thread_status,
                 std::shared_ptr<LoDTensorBlockingQueue> queue);
 
 // monitor all running thread, if they are all stopped,
@@ -48,15 +102,15 @@ void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
 
 class CTRReader : public framework::FileReader {
  public:
-  explicit CTRReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue,
-                     int batch_size, size_t thread_num,
-                     const std::vector<std::string>& slots,
-                     const std::vector<std::string>& file_list)
-      : batch_size_(batch_size), slots_(slots), file_list_(file_list) {
+  CTRReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue,
+            int thread_num, const DataDesc& data_desc)
+      : data_desc_(data_desc) {
     PADDLE_ENFORCE_GT(thread_num, 0, "thread num should be larger then 0!");
     PADDLE_ENFORCE(queue != nullptr, "LoDTensorBlockingQueue must not be null");
-    PADDLE_ENFORCE_GT(file_list.size(), 0, "file list should not be empty");
-    thread_num_ = std::min<size_t>(file_list_.size(), thread_num);
+    PADDLE_ENFORCE_GT(data_desc_.file_names_.size(), 0,
+                      "file list should not be empty");
+
+    thread_num_ = std::min<size_t>(data_desc_.file_names_.size(), thread_num);
     queue_ = queue;
     SplitFiles();
     for (size_t i = 0; i < thread_num_; ++i) {
@@ -64,7 +118,7 @@ class CTRReader : public framework::FileReader {
     }
   }
 
-  ~CTRReader() {}
+  ~CTRReader() { Shutdown(); }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
     bool success;
@@ -81,7 +135,10 @@ class CTRReader : public framework::FileReader {
     for (auto& read_thread : read_threads_) {
       read_thread->join();
     }
-    monitor_thread_->join();
+
+    if (monitor_thread_) {
+      monitor_thread_->join();
+    }
 
     read_threads_.clear();
     monitor_thread_.reset(nullptr);
@@ -95,9 +152,9 @@ class CTRReader : public framework::FileReader {
     queue_->ReOpen();
     VLOG(3) << "reopen success";
     VLOG(3) << "thread_num " << thread_num_;
-    for (size_t thread_id = 0; thread_id < thread_num_; thread_id++) {
+    for (int thread_id = 0; thread_id < thread_num_; thread_id++) {
       read_threads_.emplace_back(new std::thread(std::bind(
-          &ReadThread, file_groups_[thread_id], slots_, batch_size_,
+          &ReadThread, file_groups_[thread_id], data_desc_,
           static_cast<int>(thread_id), &read_thread_status_, queue_)));
     }
     monitor_thread_.reset(new std::thread(
@@ -108,8 +165,8 @@ class CTRReader : public framework::FileReader {
  private:
   void SplitFiles() {
     file_groups_.resize(thread_num_);
-    for (size_t i = 0; i < file_list_.size(); ++i) {
-      auto& file_name = file_list_[i];
+    for (size_t i = 0; i < data_desc_.file_names_.size(); ++i) {
+      auto& file_name = data_desc_.file_names_[i];
       std::ifstream f(file_name.c_str());
       PADDLE_ENFORCE(f.good(), "file %s not exist!", file_name);
       file_groups_[i % thread_num_].push_back(file_name);
@@ -118,9 +175,7 @@ class CTRReader : public framework::FileReader {
 
  private:
   size_t thread_num_;
-  const int batch_size_;
-  const std::vector<std::string> slots_;
-  const std::vector<std::string> file_list_;
+  const DataDesc data_desc_;
   std::shared_ptr<LoDTensorBlockingQueue> queue_;
   std::vector<std::unique_ptr<std::thread>> read_threads_;
   std::unique_ptr<std::thread> monitor_thread_;

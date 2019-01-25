@@ -66,7 +66,7 @@ void TestSequencePoolingSum(const paddle::framework::LoD& lod) {
     cpu_in_grad.set_lod(in_grad.lod());
   }
 
-  EXPECT_EQ(in_grad.numel(), lod[0].back() * second_dim);
+  EXPECT_EQ(in_grad.numel(), static_cast<int64_t>(lod[0].back() * second_dim));
   EXPECT_EQ(in_grad.lod(), lod);
 
   if (paddle::platform::is_cpu_place(*place)) {
