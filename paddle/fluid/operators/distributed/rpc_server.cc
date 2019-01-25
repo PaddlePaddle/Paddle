@@ -43,15 +43,15 @@ void RPCServer::SavePort() const {
 }
 
 void RPCServer::WaitBarrier(const std::string& rpc_name) {
-  VLOG(3) << "WaitBarrier: " << rpc_name;
+  VLOG(3) << "WaitBarrier in: " << rpc_name;
   std::unique_lock<std::mutex> lock(this->mutex_);
   barrier_cond_.wait(lock, [this, &rpc_name] {
     return ((barrier_counter_[rpc_name] == client_num_ && client_num_ != 0) ||
             exit_flag_.load());
   });
 
-  VLOG(3) << "batch_barrier_: " << rpc_name << " "
-          << barrier_counter_[rpc_name];
+  VLOG(3) << "WaitBarrier out: " << rpc_name
+          << " counter: " << barrier_counter_[rpc_name];
 }
 
 void RPCServer::IncreaseBatchBarrier(const std::string rpc_name) {
@@ -59,8 +59,11 @@ void RPCServer::IncreaseBatchBarrier(const std::string rpc_name) {
   int b = 0;
   std::unique_lock<std::mutex> lock(mutex_);
   b = ++barrier_counter_[rpc_name];
+  VLOG(3) << rpc_name << " barrier_counter: " << b;
   if (b >= client_num_) {
     lock.unlock();
+    VLOG(3) << "BatchBarrier counter reach " << client_num_ << " for "
+            << rpc_name;
     barrier_cond_.notify_all();
     lock.lock();
   }
