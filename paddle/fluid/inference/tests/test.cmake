@@ -2,8 +2,6 @@ include(ExternalProject)
 set(INFERENCE_URL "http://paddle-inference-dist.cdn.bcebos.com" CACHE STRING "inference download url")
 set(INFERENCE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
     "A path setting inference demo download directories.")
-message(STATUS "THIRD_PARTY_PATH: ${THIRD_PARTY_PATH}")
-message(STATUS "INFERENCE_DEMO_INSTALL_DIR: ${INFERENCE_DEMO_INSTALL_DIR}")
 
 function(inference_download INSTALL_DIR URL FILENAME)
   message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")
@@ -14,6 +12,7 @@ function(inference_download INSTALL_DIR URL FILENAME)
       PREFIX                ${INSTALL_DIR}
       URL                   ${URL}/${FILENAME}
       DOWNLOAD_DIR          ${INSTALL_DIR}
+      DOWNLOAD_NO_EXTRACT   1
       DOWNLOAD_NO_PROGRESS  1
       CONFIGURE_COMMAND     ""
       BUILD_COMMAND         ""
@@ -25,7 +24,6 @@ endfunction()
 function(inference_download_and_uncompress INSTALL_DIR URL FILENAME)
   message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")
   string(REGEX REPLACE "[-%.]" "_" FILENAME_EX ${FILENAME})
-  message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
   ExternalProject_Add(
       extern_inference_download_${FILENAME_EX}
       ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -33,7 +31,7 @@ function(inference_download_and_uncompress INSTALL_DIR URL FILENAME)
       URL                   ${URL}/${FILENAME}
       DOWNLOAD_DIR          ${INSTALL_DIR}
       DOWNLOAD_NO_PROGRESS  1
-      CONFIGURE_COMMAND     ${CMAKE_COMMAND} -E tar xzf ${INSTALL_DIR}/${FILENAME}
+      CONFIGURE_COMMAND     ""
       BUILD_COMMAND         ""
       UPDATE_COMMAND        ""
       INSTALL_COMMAND       ""
