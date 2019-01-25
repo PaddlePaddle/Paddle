@@ -423,7 +423,7 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
     vars.emplace_back(var);
     op_handle->AddOutput(var);
     VLOG(7) << "all_reduce_op_handle add output " << og
-        << ", handle:" << var->DebugString();
+            << ", handle:" << var->DebugString();
   }
 }
 
@@ -1019,8 +1019,8 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
           CreateAllReduceOp(result, g_name);
         } else {
           auto encoded_grad_name = g_name + "@ENCODED";
-          CreateDGCOp(result, places_.size(), p_name,
-                                              g_name, encoded_grad_name);
+          CreateDGCOp(result, places_.size(), p_name, g_name,
+                      encoded_grad_name);
           CreateAllReduceOp(result, g_name, encoded_grad_name);
         }
       }

@@ -20,6 +20,7 @@ if(WITH_DISTRIBUTE)
 endif()
 
 if(WITH_GPU)
+    INCLUDE_DIRECTORIES("/root/gitlab.com/nccl-ags/build/include")
     nv_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
             dynload_cuda variable_visitor)
     if(WITH_DISTRIBUTE)

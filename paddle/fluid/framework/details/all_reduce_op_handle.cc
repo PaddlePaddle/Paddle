@@ -18,7 +18,10 @@
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/profiler.h"
+
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "sparse.h"
+#endif
 
 // asynchronous nccl allreduce or synchronous issue:
 // https://github.com/PaddlePaddle/Paddle/issues/15049
@@ -36,7 +39,7 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
                                      const platform::NCCLContextMap *ctxs,
-                                     is_encoded)
+                                     bool is_encoded)
     : OpHandleBase(node),
       local_scopes_(local_scopes),
       places_(places),

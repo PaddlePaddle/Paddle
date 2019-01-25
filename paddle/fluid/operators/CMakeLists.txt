@@ -73,7 +73,6 @@ if (WITH_GPU)
     endif()
     ADD_LIBRARY(sparse_allreduce STATIC IMPORTED GLOBAL)
     SET_PROPERTY(TARGET sparse_allreduce PROPERTY IMPORTED_LOCATION ${SPARSE_ALLREDUCE})
-    INCLUDE_DIRECTORIES("/root/gitlab.com/nccl-ags/build/include")
 
     #op_library(dgc_op DEPS k_select encoded_all_reduce)
     op_library(dgc_op DEPS k_select sparse_allreduce)
