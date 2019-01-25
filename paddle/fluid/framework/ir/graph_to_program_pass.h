@@ -20,6 +20,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+const char kGraphToProgramVarsToRemove[] =
+    "__graph_to_program_vars_to_remove__";
+const char kGraphToProgramSortKind[] = "__graph_to_program_sort_kind__";
+
 class GraphToProgramPass : public Pass {
  protected:
   std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const override;
