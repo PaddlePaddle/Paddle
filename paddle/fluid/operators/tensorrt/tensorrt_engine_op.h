@@ -114,9 +114,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>("sub_block");
     auto *program = block->Program();
-    auto *scope_ptr = const_cast<framework::Scope *>(&scope);
+    auto &current_scope = scope.NewScope();
     auto ctx = executor.Prepare(*program, block->ID());
-    executor.RunPreparedContext(ctx.get(), scope_ptr, false, true, true);
+    executor.RunPreparedContext(ctx.get(), &current_scope, false, true, true);
   }
 
   void RunImpl(const framework::Scope &scope,
