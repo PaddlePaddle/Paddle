@@ -1683,9 +1683,9 @@ class IrGraph(object):
 
     def to_program(self):
         convert_pass = core.get_pass('graph_to_program_pass')
-        convert_pass.set('program', Program().desc)
+        desc = core.ProgramDesc()
+        convert_pass.set_not_owned('program', desc)
         convert_pass.apply(self.graph)
-        desc = convert_pass.get_program('program')
         program = Program._construct_from_desc(desc)
         return program
 

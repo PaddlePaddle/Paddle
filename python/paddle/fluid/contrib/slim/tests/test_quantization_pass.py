@@ -248,8 +248,8 @@ class TestQuantizationFreezePass(unittest.TestCase):
 
         quantized_main_program = main_graph.to_program()
         quantized_test_program = test_graph.to_program()
-        iters = 5
-        batch_size = 8
+        iters = 10
+        batch_size = 128
 
         train_reader = paddle.batch(
             paddle.reader.shuffle(
