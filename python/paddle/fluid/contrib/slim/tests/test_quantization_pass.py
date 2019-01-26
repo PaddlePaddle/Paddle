@@ -18,10 +18,11 @@ import numpy as np
 import paddle.fluid as fluid
 import six
 import paddle
-from paddle.fluid.framework import Program
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
+from paddle.fluid.contrib.slim.quantization import ConvertToInt8Pass
+from paddle.fluid.contrib.slim.quantization import TransformForMobilePass
 from paddle.fluid import core
 
 
@@ -233,10 +234,22 @@ class TestQuantizationFreezePass(unittest.TestCase):
             scope=scope, program_exe=exe, activation_quantize_type=quant_type)
         transform_pass.apply(main_graph)
         transform_pass.apply(test_graph)
+        dev_name = '_gpu_' if use_cuda else '_cpu_'
+        marked_nodes = set()
+        for op in main_graph.all_ops():
+            if op.name().find('quantize') > -1:
+                marked_nodes.add(op)
+        main_graph.draw('.', 'main' + dev_name + quant_type, marked_nodes)
+        marked_nodes = set()
+        for op in test_graph.all_ops():
+            if op.name().find('quantize') > -1:
+                marked_nodes.add(op)
+        test_graph.draw('.', 'test' + dev_name + quant_type, marked_nodes)
 
+        quantized_main_program = main_graph.to_program()
+        quantized_test_program = test_graph.to_program()
         iters = 5
         batch_size = 8
-        dev_name = '_gpu_' if use_cuda else '_cpu_'
 
         train_reader = paddle.batch(
             paddle.reader.shuffle(
@@ -248,66 +261,86 @@ class TestQuantizationFreezePass(unittest.TestCase):
         with fluid.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())
-                loss_v = exe.run(program=main_graph.to_program(),
+                loss_v = exe.run(program=quantized_main_program,
                                  feed=feeder.feed(data),
                                  fetch_list=[loss])
-                print('{}: {}'.format(dev_name, loss_v))
+                print('{}: {}'.format('loss' + dev_name + quant_type, loss_v))
 
+        test_data = next(test_reader())
+        with fluid.program_guard(quantized_test_program):
+            w_var = fluid.framework._get_var('conv2d_1.w_0.quantized',
+                                             quantized_test_program)
+        # Testing
+        with fluid.scope_guard(scope):
+            test_loss1, w_quant = exe.run(program=quantized_test_program,
+                                          feed=feeder.feed(test_data),
+                                          fetch_list=[loss, w_var])
+
+        # Freeze graph for inference, but the weight of fc/conv is still float type.
+        freeze_pass = QuantizationFreezePass(scope=scope, place=place)
+        freeze_pass.apply(test_graph)
         marked_nodes = set()
-        for op in main_graph.all_ops():
+        for op in test_graph.all_ops():
             if op.name().find('quantize') > -1:
                 marked_nodes.add(op)
-        main_graph.draw('.', 'main' + dev_name + quant_type, marked_nodes)
-
-        freeze_pass = QuantizationFreezePass(scope=scope, place=place)
-        origin_marked_nodes = set()
-        for op in test_graph.all_ops():
-            if op.name().find('quantize') > -1:
-                origin_marked_nodes.add(op)
-        test_graph.draw('.', 'test_origin' + dev_name + quant_type,
-                        origin_marked_nodes)
-        freeze_pass.apply(test_graph)
-        freeze_marked_nodes = set()
-        for op in test_graph.all_ops():
-            if op.name().find('quantize') > -1:
-                freeze_marked_nodes.add(op)
         test_graph.draw('.', 'test_freeze' + dev_name + quant_type,
-                        freeze_marked_nodes)
+                        marked_nodes)
 
-    # with fluid.program_guard(test_program):
-    #     test_data = next(test_reader())
-    #     w_var = fluid.framework._get_var('conv2d_1.w_0.quantized',
-    #                                      test_program)
-    #     # Testing during training
-    #     test_loss1, w_quant = exe.run(program=test_program,
-    #                                   feed=feeder.feed(test_data),
-    #                                   fetch_list=[loss, w_var])
+        server_program = test_graph.to_program()
+        with fluid.scope_guard(scope):
+            test_loss2, = exe.run(program=server_program,
+                                  feed=feeder.feed(test_data),
+                                  fetch_list=[loss])
+        self.assertAlmostEqual(test_loss1, test_loss2, delta=5e-3)
+        print('{}: {}'.format('test_loss1' + dev_name + quant_type, test_loss1))
+        print('{}: {}'.format('test_loss2' + dev_name + quant_type, test_loss2))
+        w_freeze = np.array(scope.find_var('conv2d_1.w_0').get_tensor())
+        # Maybe failed, this is due to the calculation precision
+        self.assertAlmostEqual(np.sum(w_freeze), np.sum(w_quant))
+        print('{}: {}'.format('w_freeze' + dev_name + quant_type,
+                              np.sum(w_freeze)))
+        print('{}: {}'.format('w_quant' + dev_name + quant_type,
+                              np.sum(w_quant)))
 
-    #     # Freeze program for inference, but the weight of fc/conv is still float type.
-    #     quant_transpiler.freeze_program(test_program, place)
-    #     test_loss2, = exe.run(program=test_program,
-    #                           feed=feeder.feed(test_data),
-    #                           fetch_list=[loss])
-    #     self.assertAlmostEqual(test_loss1, test_loss2, delta=5e-3)
-    #     w_freeze = np.array(fluid.global_scope().find_var('conv2d_1.w_0')
-    #                         .get_tensor())
-    #     # fail: -432.0 != -433.0, this is due to the calculation precision
-    #     #self.assertAlmostEqual(np.sum(w_freeze), np.sum(w_quant))
+        # Convert parameter to 8-bit.
+        convert_int8_pass = ConvertToInt8Pass(scope=scope, place=place)
+        convert_int8_pass.apply(test_graph)
+        marked_nodes = set()
+        for op in test_graph.all_ops():
+            if op.name().find('quantize') > -1:
+                marked_nodes.add(op)
+        test_graph.draw('.', 'test_int8' + dev_name + quant_type, marked_nodes)
+        server_program_int8 = test_graph.to_program()
+        # Save the 8-bit parameter and model file.
+        with fluid.scope_guard(scope):
+            fluid.io.save_inference_model('server_int8' + dev_name + quant_type,
+                                          ['image', 'label'], [loss], exe,
+                                          server_program_int8)
+            # Test whether the 8-bit parameter and model file can be loaded successfully.
+            [infer, feed, fetch] = fluid.io.load_inference_model(
+                'server_int8' + dev_name + quant_type, exe)
+        # Check the loaded 8-bit weight.
+        w_8bit = np.array(scope.find_var('conv2d_1.w_0.int8').get_tensor())
+        self.assertEqual(w_8bit.dtype, np.int8)
+        self.assertEqual(np.sum(w_8bit), np.sum(w_freeze))
+        print('{}: {}'.format('w_8bit' + dev_name + quant_type, np.sum(w_8bit)))
+        print('{}: {}'.format('w_freeze' + dev_name + quant_type,
+                              np.sum(w_freeze)))
 
-    #     # Convert parameter to 8-bit.
-    #     quant_transpiler.convert_to_int8(test_program, place)
-    #     # Save the 8-bit parameter and model file.
-    #     fluid.io.save_inference_model('model_8bit', ['image', 'label'],
-    #                                   [loss], exe, test_program)
-    #     # Test whether the 8-bit parameter and model file can be loaded successfully.
-    #     [infer, feed, fetch] = fluid.io.load_inference_model('model_8bit',
-    #                                                          exe)
-    #     # Check the loaded 8-bit weight.
-    #     w_8bit = np.array(fluid.global_scope().find_var('conv2d_1.w_0.int8')
-    #                       .get_tensor())
+        mobile_pass = TransformForMobilePass()
+        mobile_pass.apply(test_graph)
+        marked_nodes = set()
+        for op in test_graph.all_ops():
+            if op.name().find('quantize') > -1:
+                marked_nodes.add(op)
+        test_graph.draw('.', 'test_mobile' + dev_name + quant_type,
+                        marked_nodes)
 
-    #     self.assertEqual(w_8bit.dtype, np.int8)
-    #     self.assertEqual(np.sum(w_8bit), np.sum(w_freeze))
+        mobile_program = test_graph.to_program()
+        with fluid.scope_guard(scope):
+            fluid.io.save_inference_model('mobile_int8' + dev_name + quant_type,
+                                          ['image', 'label'], [loss], exe,
+                                          mobile_program)
 
     def test_freeze_program_cuda_dynamic(self):
         if fluid.core.is_compiled_with_cuda():
