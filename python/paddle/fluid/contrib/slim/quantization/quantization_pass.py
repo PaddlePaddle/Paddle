@@ -21,7 +21,10 @@ from ....framework import Program
 from ....initializer import Constant
 from .... import unique_name
 
-__all__ = ['QuantizationTransformPass', 'QuantizationFreezePass']
+__all__ = [
+    'QuantizationTransformPass', 'QuantizationFreezePass', 'ConvertToInt8Pass',
+    'TransformForMobilePass'
+]
 
 
 class QuantizationTransformPass(object):
@@ -394,6 +397,7 @@ class QuantizationFreezePass(object):
 
         # remove the unused var node in the graph
         self._remove_unused_var_nodes(graph)
+        return graph
 
     def _remove_fake_quant_and_dequant_op(self, graph, op_node):
         k = op_node.op().output('Out')[0]
@@ -453,9 +457,9 @@ class QuantizationFreezePass(object):
     def _load_var(self, name):
         return np.array(self._scope.find_var(name).get_tensor())
 
-    def _restore_var(self, name, arr):
-        t = self._scope.find_var(name).get_tensor()
-        t.set(arr, self._place)
+    def _restore_var(self, name, array):
+        tensor = self._scope.find_var(name).get_tensor()
+        tensor.set(array, self._place)
 
     def _remove_unused_var_nodes(self, graph):
         all_used_vars = set()
@@ -496,3 +500,97 @@ class QuantizationFreezePass(object):
 
     def _quant(self, x, scale, num_bits):
         return np.round(x / scale * ((1 << (num_bits - 1)) - 1))
+
+
+class ConvertToInt8Pass(object):
+    def __init__(self, scope, place):
+        assert scope is not None, \
+            'The scope cannot be set None.'
+        assert place is not None, \
+            'The place cannot be set None.'
+        self._scope = scope
+        self._place = place
+        self._quantizable_ops = ['conv2d', 'depthwise_conv2d', 'mul']
+
+    def apply(self, graph):
+        persistable_vars = [p.name() for p in graph.all_persistable_vars()]
+        ops = graph.all_ops()
+        input_map = {}
+        for op_node in ops:
+            op_name = op_node.name()
+            if op_name in self._quantizable_ops:
+                for var_node in op_node.inputs:
+                    name = var_node.name()
+                    if name in persistable_vars:
+                        if name not in input_map:
+                            int8_var_node = self._convert_to_int8(graph,
+                                                                  var_node)
+                            input_map[name] = int8_var_node
+                        graph.update_input_link(var_node, input_map[name],
+                                                op_node)
+
+        # remove the unused var node in the graph
+        self._remove_unused_var_nodes(graph)
+        return graph
+
+    def _convert_to_int8(self, graph, var_node):
+        int8_var_node_name = var_node.name() + ".int8"
+        int8_var_node = graph.create_param_node(
+            name=cpt.to_text(int8_var_node_name),
+            var_type=var_node.var().type(),
+            shape=var_node.var().shape(),
+            var_dtype=core.VarDesc.VarType.INT8)
+        array = self._load_var(var_node.name())
+        self._scope.var(int8_var_node_name)
+        self._store_var(int8_var_node_name, array, np.int8)
+        return int8_var_node
+
+    def _load_var(self, name):
+        return np.array(self._scope.find_var(name).get_tensor())
+
+    def _store_var(self, name, array, dtype):
+        tensor = self._scope.find_var(name).get_tensor()
+        tensor.set(array.astype(dtype), self._place)
+
+    def _remove_unused_var_nodes(self, graph):
+        all_used_vars = set()
+        ops = graph.all_ops()
+        for op_node in ops:
+            for input_node in op_node.inputs:
+                all_used_vars.add(input_node)
+            for output_node in op_node.outputs:
+                all_used_vars.add(output_node)
+
+        all_unused_vars = graph.all_vars() - all_used_vars
+        graph.safe_remove_nodes(all_unused_vars)
+
+
+class TransformForMobilePass(object):
+    def __init__(self):
+        self._fake_quant_op_names = [
+            'fake_quantize_abs_max', 'fake_quantize_range_abs_max'
+        ]
+        self._fake_dequant_op_names = ['fake_dequantize_max_abs']
+
+    def apply(self, graph):
+        ops = graph.all_ops()
+        for op_node in ops:
+            name = op_node.name()
+            if name in self._fake_quant_op_names:
+                op_node.op().set_type('quantize')
+                quant_node = graph.create_op_node_from_desc(op_node.op())
+                for input_node in op_node.inputs:
+                    graph.link_to(input_node, quant_node)
+                for output_node in op_node.outputs:
+                    graph.link_to(quant_node, output_node)
+                graph.safe_remove_nodes(op_node)
+            if name in self._fake_dequant_op_names:
+                op_node.op().set_type('dequantize')
+                dequant_node = graph.create_op_node_from_desc(op_node.op())
+                for input_node in op_node.inputs:
+                    graph.link_to(input_node, dequant_node)
+                for output_node in op_node.outputs:
+                    graph.link_to(dequant_node, output_node)
+                graph.safe_remove_nodes(op_node)
+
+        return graph
