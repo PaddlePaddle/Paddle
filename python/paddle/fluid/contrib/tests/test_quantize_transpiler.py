@@ -204,7 +204,7 @@ class TestQuantizeTranspiler(unittest.TestCase):
         build_program(test_program, startup, True)
         test_program = test_program.clone(for_test=True)
 
-        quant_type = 'abs_max'
+        quant_type = 'range_abs_max'
         quant_transpiler = QuantizeTranspiler(
             activation_quantize_type=quant_type)
         quant_transpiler.training_transpile(main, startup)
