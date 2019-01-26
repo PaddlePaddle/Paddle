@@ -68,20 +68,18 @@ FeedFetchList AsyncSSAGraphExecutor::Run(
 
     if (pool_) {
       run_futures.emplace_back(pool_->enqueue(std::move(call)));
+      for (auto &f : run_futures) {
+        if (exception_holder_.IsCaught()) {
+          f.wait();
+        } else {
+          fetch_data.emplace_back(std::move(f.get()));
+        }
+      }
     } else {
       fetch_data.emplace_back(std::move(call()));
     }
   }
 
-  if (pool_) {
-    for (auto &f : run_futures) {
-      if (exception_holder_.IsCaught()) {
-        f.wait();
-      } else {
-        fetch_data.emplace_back(std::move(f.get()));
-      }
-    }
-  }
   if (exception_holder_.IsCaught()) {
     exception_holder_.ReThrow();
   }
