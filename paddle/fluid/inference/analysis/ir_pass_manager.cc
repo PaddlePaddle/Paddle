@@ -67,10 +67,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
       pass->Set("min_subgraph_size",
                 new int(argument->tensorrt_min_subgraph_size()));
-      pass->Set(
-          "program",
-          new framework::ProgramDesc *(
-              const_cast<framework::ProgramDesc *>(&argument->main_program())));
+      pass->Set("program",
+                new framework::ProgramDesc *(&argument->main_program()));
 
       bool enable_int8 = argument->tensorrt_precision_mode() ==
                          contrib::AnalysisConfig::Precision::kInt8;
