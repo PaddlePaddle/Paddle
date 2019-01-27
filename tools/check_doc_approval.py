@@ -53,4 +53,3 @@ def get_module():
 if __name__ == "__main__":
     doc_dict = collections.OrderedDict()
     get_module()
-    print(doc_dict)
