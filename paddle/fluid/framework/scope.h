@@ -144,6 +144,7 @@ class Scope {
 // Generate some debug string about the inherience structure of scope, quite
 // naive.
 std::string GenScopeTreeDebugInfo(Scope*);
+std::string GenParentScopeTreeDebugInfo(Scope*);
 
 }  // namespace framework
 }  // namespace paddle
