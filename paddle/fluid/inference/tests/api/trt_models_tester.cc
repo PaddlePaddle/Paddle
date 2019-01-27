@@ -108,9 +108,9 @@ void compare(std::string model_dir, bool use_tensorrt) {
 }
 
 void compare_continuous_input(std::string model_dir, bool use_tensorrt) {
-  contrib::AnalysisConfig analysis_config;
-  SetConfig<contrib::AnalysisConfig>(&analysis_config, model_dir, true,
-                                     use_tensorrt, FLAGS_batch_size);
+  AnalysisConfig analysis_config;
+  SetConfig<AnalysisConfig>(&analysis_config, model_dir, true, use_tensorrt,
+                            FLAGS_batch_size);
   auto config =
       reinterpret_cast<const PaddlePredictor::Config*>(&analysis_config);
   auto native_pred = CreateTestPredictor(config, false);
