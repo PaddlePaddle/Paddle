@@ -365,6 +365,7 @@ ParallelExecutor::ParallelExecutor(
 
 void ParallelExecutor::BCastParamsToDevices(
     const std::unordered_set<std::string> &vars) const {
+  VLOG(3) << "BCastParamsToDevices";
   // the initializing bcast, all vars would be bcast from device(0).
   for (auto &var : vars) {
     framework::Variable *main_var = member_->local_scopes_[0]->FindVar(var);
