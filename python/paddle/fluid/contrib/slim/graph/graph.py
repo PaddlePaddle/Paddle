@@ -15,6 +15,7 @@
 import collections
 from collections import OrderedDict
 from ....framework import Program
+from ....framework import Parameter
 from ....framework import Variable
 from ....executor import Executor
 import copy
@@ -234,9 +235,9 @@ class ImitationGraph(Graph):
         in_nodes = OrderedDict([(key, value)
                                 for key, value in self.in_nodes.items()
                                 if value in feeds])
-        print "feeds: %s" % (feeds, )
-        print "self.in_nodes: %s" % (self.in_nodes, )
-        print "in_nodes after pruning: %s" % (in_nodes, )
+        #        print "feeds: %s" % (feeds, )
+        #        print "self.in_nodes: %s" % (self.in_nodes, )
+        #        print "in_nodes after pruning: %s" % (in_nodes, )
         out_nodes = OrderedDict([(key, value)
                                  for key, value in self.out_nodes.items()
                                  if value in fetches])
@@ -258,15 +259,46 @@ class ImitationGraph(Graph):
 
     def pre_ops(self, op):
         ops = []
-        in_names = []
-        for i in op.input_names:
-            in_names += op.input(i)
+        in_var_names = []
+        for input_name in op.input_names:
+            in_var_names += op.input(input_name)
         for p in self.ops():
-            for out in p.output_names:
-                for o in p.output(out):
-                    if o in in_names:
+            for out_name in p.output_names:
+                for var_name in p.output(out_name):
+                    if var_name in in_var_names:
                         ops.append(p)
         return ops
+
+    def next_ops(self, op):
+        ops = []
+        out_var_names = []
+        for o in op.output_names:
+            out_var_names += op.output(o)
+        for p in self.ops():
+            for input_name in p.input_names:
+                for var_name in p.input(input_name):
+                    if var_name in out_var_names:
+                        ops.append(p)
+        return ops
+
+    def get_ops_by_param(self, param):
+        ops = []
+        if isinstance(param, Variable):
+            param = param.name
+        for op in self.ops():
+            for name in op.input_names:
+                if param in op.input(name):
+                    ops.append(op)
+        return ops
+
+    def get_param_by_op(self, op):
+        params = []
+        for in_name in op.input_names:
+            for var_name in op.input(in_name):
+                var = self.get_var(var_name)
+                if isinstance(var, Parameter):
+                    params.append(var)
+        return params
 
 
 class IRGraph(Graph):

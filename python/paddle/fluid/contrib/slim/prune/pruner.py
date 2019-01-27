@@ -58,17 +58,17 @@ class StructurePruner(Pruner):
         self.pruning_axis = pruning_axis
         self.criterions = criterions
 
-    def cal_pruned_idx(self, name, param, ratio):
-        pruning_axis = self.pruning_axis[
-            name] if name in self.pruning_axis else self.pruning_axis['*']
+    def cal_pruned_idx(self, name, param, ratio, axis):
+        #        pruning_axis = self.pruning_axis[
+        #            name] if name in self.pruning_axis else self.pruning_axis['*']
         criterion = self.criterions[
             name] if name in self.criterions else self.criterions['*']
-        prune_num = int(round(param.shape[pruning_axis] * ratio))
-        reduce_dims = [i for i in range(len(param.shape)) if i != pruning_axis]
+        prune_num = int(round(param.shape[axis] * ratio))
+        reduce_dims = [i for i in range(len(param.shape)) if i != axis]
         if criterion == 'l1_norm':
             criterions = np.sum(np.abs(param), axis=tuple(reduce_dims))
         pruned_idx = criterions.argsort()[:prune_num]
-        return pruned_idx, pruning_axis
+        return pruned_idx
 
     def prune_tensor(self, tensor, pruned_idx, pruned_axis, lazy=False):
         mask = np.zeros(tensor.shape[pruned_axis], dtype=bool)

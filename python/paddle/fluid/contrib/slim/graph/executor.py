@@ -67,6 +67,7 @@ class ImitationGraphExecutor(GraphExecutor):
                 scope=graph.scope)
         if self.parallel:
             results = self.exe.run(feed=feed, fetch_list=fetch_list)
+            print('results: {}'.format(results))
         else:
             results = self.exe.run(graph.program,
                                    scope=graph.scope,
