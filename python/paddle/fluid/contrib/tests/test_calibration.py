@@ -120,37 +120,39 @@ def val(data_dir=DATA_DIR):
 class TestCalibrationForResnet50(unittest.TestCase):
     def setUp(self):
         self.int8_download = 'int8/download'
-        self.cache_folder = os.path.expanduser('~/.cache/paddle/dataset/' + self.int8_download)
-        
+        self.cache_folder = os.path.expanduser('~/.cache/paddle/dataset/' +
+                                               self.int8_download)
+
         data_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz'
         data_md5 = '1b6c1c434172cca1bf9ba1e4d7a3157d'
         download(data_url, self.int8_download, data_md5)
         data_cache_folder = os.path.join(self.cache_folder, "data")
-        if not os.path.exists(data_cache_folder):
-            file_name = data_url.split('/')[-1]
-            zip_path = os.path.join(self.cache_folder, file_name)
-            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(data_cache_folder, zip_path)
-            os.system(cmd)
+        file_name = data_url.split('/')[-1]
+        zip_path = os.path.join(self.cache_folder, file_name)
+        self.cache_unzipping(data_cache_folder, zip_path)
 
         # reader/decorator.py requires the relative path to the data folder
-	cmd = 'rm -rf {0} && ln -s {1} {0}'.format("data", data_cache_folder)
+        cmd = 'rm -rf {0} && ln -s {1} {0}'.format("data", data_cache_folder)
         os.system(cmd)
 
         self.iterations = 50
 
+    def cache_unzipping(self, target_folder, zip_path):
+        if not os.path.exists(target_folder):
+            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(target_folder,
+                                                          zip_path)
+            os.system(cmd)
 
     def download_data(self):
         # resnet50 fp32 data
         data_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/resnet50_int8_model.tar.gz'
         data_md5 = '4a5194524823d9b76da6e738e1367881'
         download(data_url, self.int8_download, data_md5)
-        self.model_cache_folder = os.path.join(self.cache_folder, "resnet50_fp32")
-        if not os.path.exists(self.model_cache_folder):
-            file_name = data_url.split('/')[-1]
-            zip_path = os.path.join(self.cache_folder, file_name)
-            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(self.model_cache_folder, zip_path)
-            os.system(cmd)
-
+        self.model_cache_folder = os.path.join(self.cache_folder,
+                                               "resnet50_fp32")
+        file_name = data_url.split('/')[-1]
+        zip_path = os.path.join(self.cache_folder, file_name)
+        self.cache_unzipping(self.model_cache_folder, zip_path)
 
     def run_program(self, model_path, generate_int8=False, algo='direct'):
         image_shape = [3, 224, 224]
@@ -224,7 +226,6 @@ class TestCalibrationForResnet50(unittest.TestCase):
         else:
             return np.sum(test_info) / cnt
 
-
     def test_calibration(self):
         self.download_data()
         fp32_acc1 = self.run_program(self.model_cache_folder + "/model")
@@ -240,13 +241,11 @@ class TestCalibrationForMobilenetv1(TestCalibrationForResnet50):
         data_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
         data_md5 = '13892b0716d26443a8cdea15b3c6438b'
         download(data_url, self.int8_download, data_md5)
-        self.model_cache_folder = os.path.join(self.cache_folder, "mobilenetv1_fp32")
-        if not os.path.exists(self.model_cache_folder):
-            file_name = data_url.split('/')[-1]
-            zip_path = os.path.join(self.cache_folder, file_name)
-            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(self.model_cache_folder, zip_path)
-            os.system(cmd)
-
+        self.model_cache_folder = os.path.join(self.cache_folder,
+                                               "mobilenetv1_fp32")
+        file_name = data_url.split('/')[-1]
+        zip_path = os.path.join(self.cache_folder, file_name)
+        self.cache_unzipping(self.model_cache_folder, zip_path)
 
     def test_calibration(self):
         self.download_data()
