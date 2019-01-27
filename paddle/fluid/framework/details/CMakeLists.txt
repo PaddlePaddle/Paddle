@@ -51,7 +51,8 @@ cc_library(gather_op_handle SRCS gather_op_handle.cc DEPS op_handle_base scope d
 cc_library(fuse_vars_op_handle SRCS fuse_vars_op_handle.cc DEPS op_handle_base scope)
 
 cc_library(memory_optimize_pass SRCS memory_optimize_pass.cc memory_optimize_helper.cc DEPS graph graph_helper pass)
-cc_library(inplace_op_pass SRCS inplace_op_pass DEPS memory_optimize_pass op_info)
+cc_library(graph_print_pass SRCS graph_print_pass.cc DEPS graph_helper pass)
+cc_library(inplace_op_pass SRCS inplace_op_pass.cc DEPS memory_optimize_pass op_info graph_print_pass)
 cc_library(modify_op_lock_and_record_event_pass SRCS modify_op_lock_and_record_event_pass.cc DEPS computation_op_handle op_graph_view multi_devices_helper)
 cc_library(memory_early_delete_pass SRCS memory_early_delete_pass.cc DEPS memory_optimize_pass computation_op_handle scale_loss_grad_op_handle rpc_op_handle
         all_reduce_op_handle reduce_op_handle broadcast_op_handle data_balance_op_handle graph graph_helper pass)
@@ -72,6 +73,7 @@ if (WITH_GPU)
 endif()
 cc_test(memory_optimize_helper_test SRCS memory_optimize_helper_test.cc memory_optimize_helper.cc DEPS framework_proto graph)
 cc_test(memory_optimize_pass_test SRCS memory_optimize_pass_test.cc memory_optimize_pass.cc memory_optimize_helper.cc DEPS framework_proto graph graph_helper op_registry pass)
+cc_test(graph_print_pass_test SRCS graph_print_pass_test.cc DEPS graph_print_pass framework_proto graph graph_helper op_registry pass)
 
 cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
 
@@ -96,4 +98,4 @@ cc_library(build_strategy SRCS build_strategy.cc DEPS
         multi_devices_graph_print_pass multi_devices_graph_check_pass
         fuse_elewise_add_act_pass multi_batch_merge_pass 
         fuse_relu_depthwise_conv_pass
-        memory_optimize_pass lock_free_optimize_pass)
+        memory_optimize_pass lock_free_optimize_pass graph_print_pass)
