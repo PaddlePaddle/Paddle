@@ -281,7 +281,7 @@ TEST(Analyzer_dam, compare_with_static_memory_optim) {
 TEST(Analyzer_dam, compare_with_dynamic_memory_optim) {
   // The small dam will core in CI, but works in local.
   if (FLAGS_max_turn_num == 9) {
-    contrib::AnalysisConfig cfg, cfg1;
+    AnalysisConfig cfg, cfg1;
     DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
 
     std::vector<std::vector<PaddleTensor>> input_slots_all;
