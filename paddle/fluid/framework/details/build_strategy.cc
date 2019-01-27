@@ -17,6 +17,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <memory>
 
+#include "paddle/fluid/framework/details/graph_print_pass.h"
 #include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
@@ -43,8 +44,25 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy)
       : ir::PassBuilder(), strategy_(strategy) {
     if (strategy_.enable_inplace_) {
+      // before inplaced
+      // if (!strategy_.debug_graphviz_path_.empty()) {
+      //   const std::string path = strategy_.debug_graphviz_path_ +
+      //   "before_inplaced";
+      //   auto pass = AppendPass("graph_print_pass");
+      //   pass->Set<std::string>(kGraphvizPath, new std::string(path));
+      // }
+
       AppendPass("inplace_pass");
+      // after inplaced
+      // if (!strategy_.debug_graphviz_path_.empty()) {
+      //   const std::string path = strategy_.debug_graphviz_path_ +
+      //   "after_inplaced";
+      //   auto pass = AppendPass("graph_print_pass");
+      //   pass->Set<std::string>(details::kGraphvizPath, new
+      //   std::string(path));
+      // }
     }
+
     if (strategy_.enable_sequential_execution_) {
       AppendPass("sequential_execution_pass");
     }
@@ -189,6 +207,9 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
     } else if (pass->Type() == "memory_optimize_pass") {
+      if (graph->Has(kAllOpDescs)) {
+        graph->Erase(kAllOpDescs);
+      }
       const std::vector<OpDesc *> *all_op_descs =
           new std::vector<OpDesc *>(main_program.Block(0).AllOps());
       graph->Set<const std::vector<OpDesc *>>(kAllOpDescs,
@@ -219,6 +240,9 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       if (graph->Has(kAllOpDescs)) {
         graph->Erase(kAllOpDescs);
       }
+      if (!graph->Has(kGraphviz)) {
+        graph->Set<GraphvizNodes>(kGraphviz, new GraphvizNodes);
+      }
       graph->Set<const std::vector<OpDesc *>>(
           kAllOpDescs,
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
@@ -227,6 +251,10 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
         LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
                         "GPU, skipped.";
         continue;
+      }
+    } else if (pass->Type() == "graph_print_path") {
+      if (!graph->Has(kGraphviz)) {
+        graph->Set<GraphvizNodes>(kGraphviz, new GraphvizNodes);
       }
     }
     graph = pass->Apply(std::move(graph));
@@ -253,3 +281,4 @@ USE_PASS(all_reduce_deps_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
 USE_PASS(inplace_pass);
 USE_PASS(lock_free_optimize_pass);
+USE_PASS(graph_print_pass);

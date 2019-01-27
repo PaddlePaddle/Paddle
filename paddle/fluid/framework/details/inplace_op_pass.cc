@@ -21,6 +21,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/details/graph_print_pass.h"
 #include "paddle/fluid/framework/details/memory_optimize_pass.h"
 #include "paddle/fluid/framework/op_info.h"
 
@@ -76,42 +77,92 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static inline ir::Node* GetNextInplacedOpOutput(ir::Node* var) {
+static inline std::string NodeDebugString(ir::Node* var) {
+  std::ostringstream os;
+  if (var->IsCtrlVar()) {
+    os << "kControlDepVarName"
+       << " ";
+  } else if (var->IsOp()) {
+    os << "kOperation"
+       << " " << var->Name();
+    PADDLE_ENFORCE(var->Op() != nullptr && var->Op()->Type() == var->Name());
+  } else if (var->IsVar()) {
+    os << "kVariable"
+       << " " << var->Name();
+    PADDLE_ENFORCE(var->Var() != nullptr && var->Var()->Name() == var->Name());
+  } else {
+    PADDLE_THROW("Unknown node type.");
+  }
+  return os.str();
+}
+
+static inline std::string OpDebugString(ir::Node* var) {
+  ir::Node* op = var;
+  if (var->IsVar()) op = var->inputs.at(0);
+  std::stringstream os;
+  os << op->Name() << " : ";
+
+  os << "Input ";
+  VLOG(3) << op->Name();
+  for (auto* var : op->inputs) {
+    if (var->IsVar() && !var->IsCtrlVar()) {
+      PADDLE_ENFORCE(var->Var() != nullptr && var->Var()->Name() == var->Name(),
+                     "unmatched desc and var");
+      // os << var << ":" << var->Name() << " ";
+      os << var->Name() << " ";
+    }
+  }
+  os << "Output ";
+  VLOG(3) << op->Name();
+  for (auto* var : op->outputs) {
+    VLOG(3) << var;
+    VLOG(3) << var->Name();
+    if (!var->IsVar()) {
+      VLOG(3) << "error";
+    }
+    // VLOG(3) << var->Var()->Name();
+    if (var->IsVar() && !var->IsCtrlVar()) {
+      PADDLE_ENFORCE(var->Var() != nullptr && var->Var()->Name() == var->Name(),
+                     "unmatched desc and var");
+      // os << var << ":" << var->Name() << " ";
+      os << var->Name() << " ";
+    }
+    if (var->Name() == "fc_10.tmp_0") {
+      VLOG(3) << NodeDebugString(var);
+    }
+  }
+  return os.str();
+}
+
+static inline ir::Node* GetNextCascadeInplacedVar(ir::Node* var) {
   // if next op is inplaced, then return the output var
   // otherwise return nullptr
   PADDLE_ENFORCE(var && var->IsVar() && !var->IsCtrlVar());
   ir::Node* inplaced_var = nullptr;
-  // only has one output op can be inplaced
-  if (var->outputs.size() == 1 && var->outputs[0]->IsOp()) {
-    auto* op = var->outputs[0];
-    for (auto* out_var : op->outputs) {
-      if (!out_var->IsVar() || out_var->IsCtrlVar() ||
-          out_var->Var() == nullptr)
-        continue;
-      if (out_var->Name() == var->Name()) {
-        inplaced_var = out_var;
-        break;
+  for (auto* next_op : var->outputs) {
+    for (auto* output : next_op->outputs) {
+      if (output->IsVar() && !output->IsCtrlVar() &&
+          output->Name() == var->Name()) {
+        inplaced_var = output;
       }
     }
   }
   return inplaced_var;
 }
 
-static inline ir::Node* GetPrevInplacedOpInput(ir::Node* var) {
+static inline ir::Node* GetPrevCascadeInplacedVar(ir::Node* var) {
   PADDLE_ENFORCE(var && var->IsVar() && !var->IsCtrlVar());
-  ir::Node* inplaced_var = nullptr;
-  if (var->inputs.size() == 1 && var->inputs[0]->IsOp()) {
-    auto* op = var->inputs[0];
-    for (auto* in_var : op->inputs) {
-      if (!in_var->IsVar() || in_var->IsCtrlVar() || in_var->Var() == nullptr)
-        continue;
-      if (in_var->Name() == var->Name()) {
-        inplaced_var = in_var;
-        break;
-      }
-    }
-  }
-  return inplaced_var;
+  auto* prev_op = var->inputs.at(0);
+  auto input_it = std::find_if(prev_op->inputs.begin(), prev_op->inputs.end(),
+                               [&](ir::Node* node) {
+                                 if (node->IsVar() && !node->IsCtrlVar() &&
+                                     node->Name() == var->Name()) {
+                                   return true;
+                                 } else {
+                                   return false;
+                                 }
+                               });
+  return input_it == prev_op->inputs.end() ? nullptr : *input_it;
 }
 
 template <typename Container>
@@ -166,12 +217,22 @@ std::unique_ptr<ir::Graph> InplacePass::ApplyImpl(
   view_.Build(graph.get());
   InitSSAGraphNodes();
 
+  std::unique_ptr<SSAGraphPrinter> printer(new SSAGraphPrinterImpl);
+
   for (auto* op : view_.AllOps()) {
     if (FLAGS_enable_inplace_whitelist && !whitelist_.count(op->Name()))
       continue;
     TryInplaceOpInputOutput(op, graph.get());
   }
   graph->ResolveHazard(var_nodes_);
+
+  constexpr char graph_path[] = "ir_graph_inplaced.txt";
+  std::unique_ptr<std::ostream> fout(new std::ofstream(graph_path));
+  PADDLE_ENFORCE(fout->good());
+  printer->Print(*graph, *fout);
+  // for(auto* op : view_.AllOps()) {
+  //   VLOG(3) << OpDebugString(op);
+  // }
   return graph;
 }
 
@@ -179,7 +240,7 @@ void InplacePass::InplaceModifyDesc(const std::string& var,
                                     const std::string& cache_var,
                                     const size_t& idx) const {
   for (size_t i = idx; i < view_.AllOps().size(); ++i) {
-    auto* op = view_.AllOps()[i];
+    ir::Node* op = view_.AllOps()[i];
     PADDLE_ENFORCE(op->IsOp() && op->Op());
     auto* op_desc = op->Op();
     op_desc->RenameInput(var, cache_var);
@@ -203,14 +264,28 @@ void InplacePass::InplaceModifyVar(const std::string& var,
     // redirect the input to the latest version of cache_var
     for (auto* node : op->inputs) {
       if (node->Name() == var) {
-        ir::Node* cache_node = var_nodes_[cache_var].back();
+        ir::Node* cache_node = graph->CreateVarNode(var_desc.get());
+        var_nodes_[cache_var].emplace_back(cache_node);
+
         // swap node to cache_node
         cache_node->outputs.insert(cache_node->outputs.end(),
                                    node->outputs.begin(), node->outputs.end());
+        PADDLE_ENFORCE(node->inputs.size() == 1 && node->inputs[0]->IsOp());
+        auto* prev_op = node->inputs[0];
+        std::replace(prev_op->outputs.begin(), prev_op->outputs.end(), node,
+                     cache_node);
+        cache_node->inputs.emplace_back(prev_op);
         for (auto* next_op : node->outputs) {
           std::replace(next_op->inputs.begin(), next_op->inputs.end(), node,
                        cache_node);
         }
+
+        // release unused var in graph. Because python side memory optimize
+        // may reused the var in same name, so we only clear the var node
+        // after current inplaced index.
+        graph->RemoveNode(node);
+        auto& nodes = var_nodes_.at(var);
+        nodes.erase(std::remove(nodes.begin(), nodes.end(), node), nodes.end());
       }
     }
 
@@ -220,7 +295,6 @@ void InplacePass::InplaceModifyVar(const std::string& var,
       if (node->Name() == var) {
         ir::Node* cache_node = graph->CreateVarNode(var_desc.get());
         var_nodes_[cache_var].emplace_back(cache_node);
-
         // swap node to cache node
         cache_node->outputs.insert(cache_node->outputs.end(),
                                    node->outputs.begin(), node->outputs.end());
@@ -230,15 +304,14 @@ void InplacePass::InplaceModifyVar(const std::string& var,
           std::replace(next_op->inputs.begin(), next_op->inputs.end(), node,
                        cache_node);
         }
+
+        // release unsed var in graph
+        graph->RemoveNode(node);
+        auto& nodes = var_nodes_.at(var);
+        nodes.erase(std::remove(nodes.begin(), nodes.end(), node), nodes.end());
       }
     }
   }
-
-  // release node of unused var in graph
-  for (auto* node : var_nodes_[var]) {
-    graph->RemoveNode(node);
-  }
-  var_nodes_.at(var).clear();
 }
 
 void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
@@ -260,6 +333,7 @@ void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
   auto& all_ops = view_.AllOps();
   auto cursor = std::find(all_ops.begin(), all_ops.end(), op);
   size_t idx = std::distance(all_ops.begin(), cursor);
+  VLOG(3) << op->Name() << idx;
 
   for (auto& pair : in_to_outs) {
     auto& in_var_name = pair.first;
@@ -286,6 +360,7 @@ void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
     }
     VLOG(3) << string::Sprintf("!!! %s,  %s => %s inplaced", op->Name(),
                                out_var_name, in_var_name);
+    // VLOG(3) << "Out " << OpDebugString(op);
     InplaceModifyDesc(out_var_name, in_var_name, idx);
     InplaceModifyVar(out_var_name, in_var_name, idx, graph);
   }
@@ -319,7 +394,16 @@ ir::Node* GraphView::GetNodeByName(const std::string& name,
 }
 
 std::vector<ir::Node*> GraphView::PendingOpsOnVar(ir::Node* node) {
-  return node->outputs;
+  // get the pending ops depends on same var node.
+  // because node also maybe a inplaced variable, so need to backtrack all the
+  // previous inplaced vars.
+  std::vector<ir::Node*> pending_ops;
+  ir::Node* p = node;
+  while (p != nullptr) {
+    pending_ops.insert(pending_ops.end(), p->outputs.begin(), p->outputs.end());
+    p = GetPrevCascadeInplacedVar(p);
+  }
+  return pending_ops;
 }
 
 void GraphView::Build(ir::Graph* g) { ops_ = SortOpLikeDescOrder(*g); }
@@ -354,14 +438,14 @@ bool GraphView::OutConnectInputByCtrlVar(ir::Node* in_var, ir::Node* out_var) {
   // get the ops with same output name
   while (out != nullptr) {
     out_var_set.emplace(out);
-    out = GetNextInplacedOpOutput(out);
+    out = GetNextCascadeInplacedVar(out);
   }
 
   // get ops with same input name
   ir::Node* in = in_var;
   while (in != nullptr) {
     in_var_set.emplace(in);
-    in = GetPrevInplacedOpInput(in);
+    in = GetPrevCascadeInplacedVar(in);
   }
   // find if there is path with control dep var connect the in_var_set and
   // out_var_set

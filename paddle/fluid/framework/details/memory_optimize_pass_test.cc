@@ -18,56 +18,12 @@
 #include <iterator>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/details/graph_test_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-
-namespace paddle {
-namespace framework {
-
-class DummyOp : public OperatorBase {
- public:
-  DummyOp(const std::string& type, const VariableNameMap& inputs,
-          const VariableNameMap& outputs, const AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
-
- private:
-  void RunImpl(const Scope& scope,
-               const platform::Place& place) const override {}
-};
-
-class SumOpMaker : public OpProtoAndCheckerMaker {
- public:
-  void Make() {
-    AddInput("X", "").AsDuplicable();
-    AddOutput("Out", "");
-    AddComment("");
-  }
-};
-
-class AssignOpMaker : public OpProtoAndCheckerMaker {
- public:
-  void Make() {
-    AddInput("X", "").AsDuplicable();
-    AddOutput("Out", "");
-    AddComment("");
-  }
-};
-
-class DummyVarTypeInference : public VarTypeInference {
- public:
-  void operator()(const OpDesc& op_desc, BlockDesc* block) const override {
-    auto& inputs = op_desc.Input("X");
-    auto type = block->Var(inputs.front())->GetType();
-    auto out_var_name = op_desc.Output("Out").front();
-    block->Var(out_var_name)->SetType(type);
-  }
-};
-
-}  // namespace framework
-}  // namespace paddle
 
 REGISTER_OPERATOR(sum, paddle::framework::DummyOp,
                   paddle::framework::SumOpMaker,
@@ -139,15 +95,6 @@ inline static ProgramDesc FillProgramDesc() {
     op->SetOutput("Out", {"e"});
   }
   return prog;
-}
-
-template <typename Container>
-inline static std::string DebugString(const Container& c) {
-  std::stringstream ss;
-  for (auto& item : c) {
-    ss << item << " ";
-  }
-  return ss.str();
 }
 
 TEST(CFGGraph, IRGraph) {
