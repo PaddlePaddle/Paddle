@@ -219,7 +219,7 @@ class PaddlePredictor {
    * Its data type is ProgramDesc, which is a protobuf message.
    */
   virtual std::string GetSeriazlizedProgram() const {
-    assert false;  // Force raise error.
+    assert(false);  // Force raise error.
     return "NotImplemented";
   };
 
