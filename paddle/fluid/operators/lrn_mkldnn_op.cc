@@ -67,6 +67,12 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     mid->mutable_data<T>(ctx.GetPlace());
 
     const int n = ctx.Attr<int>("n");
+    // MKL-DNN implements LRN in a caffe way:
+    // http://caffe.berkeleyvision.org/tutorial/layers/lrn.html
+    // Where sum of squares is divided by size of normalization window
+    // this is not the case for PaddlePaddle LRN.
+    // Hence we need to compensate for this diffrence by
+    // multipliing alpha by size of window(n)
     const float alpha = ctx.Attr<float>("alpha") * static_cast<float>(n);
     const float beta = ctx.Attr<float>("beta");
     const float k = ctx.Attr<float>("k");
