@@ -157,17 +157,7 @@ struct AnalysisConfig {
 
   /** Transform the AnalysisConfig to NativeConfig.
    */
-  NativeConfig ToNativeConfig() const {
-    NativeConfig config;
-    config.model_dir = model_dir_;
-    config.prog_file = prog_file_;
-    config.param_file = params_file_;
-    config.use_gpu = use_gpu_;
-    config.device = device_id_;
-    config.fraction_of_gpu_memory = fraction_of_gpu_memory_for_pool();
-    config.specify_input_name = specify_input_name_;
-    return config;
-  }
+  NativeConfig ToNativeConfig() const;
   /** Specify the operator type list to use MKLDNN acceleration.
    * @param op_list the operator type list.
    */
@@ -190,7 +180,8 @@ struct AnalysisConfig {
   /** Turn on memory optimize
    * NOTE still in development, will release latter.
    */
-  void EnableMemoryOptim(bool force_update_cache = false);
+  void EnableMemoryOptim(bool static_optim = false,
+                         bool force_update_static_cache = false);
   /** Tell whether the memory optimization is activated. */
   bool enable_memory_optim() const;
 
@@ -236,7 +227,8 @@ struct AnalysisConfig {
 
   // memory reuse related.
   bool enable_memory_optim_{false};
-  bool memory_optim_force_update_{false};
+  bool static_memory_optim_{false};
+  bool static_memory_optim_force_update_{false};
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;

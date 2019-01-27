@@ -107,6 +107,27 @@ void compare(std::string model_dir, bool use_tensorrt) {
       inputs_all);
 }
 
+void compare_continuous_input(std::string model_dir, bool use_tensorrt) {
+  contrib::AnalysisConfig analysis_config;
+  SetConfig<contrib::AnalysisConfig>(&analysis_config, model_dir, true,
+                                     use_tensorrt, FLAGS_batch_size);
+  auto config =
+      reinterpret_cast<const PaddlePredictor::Config*>(&analysis_config);
+  auto native_pred = CreateTestPredictor(config, false);
+  auto analysis_pred = CreateTestPredictor(config, true);
+  for (int i = 0; i < 100; i++) {
+    std::vector<std::vector<PaddleTensor>> inputs_all;
+    if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
+      SetFakeImageInput(&inputs_all, model_dir, true, FLAGS_prog_filename,
+                        FLAGS_param_filename);
+    } else {
+      SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
+    }
+    CompareNativeAndAnalysis(native_pred.get(), analysis_pred.get(),
+                             inputs_all);
+  }
+}
+
 TEST(TensorRT_mobilenet, compare) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
   compare(model_dir, /* use_tensorrt */ true);
@@ -160,6 +181,16 @@ TEST(AnalysisPredictor, use_gpu) {
 TEST(TensorRT_mobilenet, profile) {
   std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
   profile(model_dir, true, false);
+}
+
+TEST(resnet50, compare_continuous_input) {
+  std::string model_dir = FLAGS_infer_model + "/resnet50";
+  compare_continuous_input(model_dir, true);
+}
+
+TEST(resnet50, compare_continuous_input_native) {
+  std::string model_dir = FLAGS_infer_model + "/resnet50";
+  compare_continuous_input(model_dir, false);
 }
 
 }  // namespace inference

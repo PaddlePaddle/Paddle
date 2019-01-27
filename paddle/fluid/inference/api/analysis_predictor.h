@@ -114,7 +114,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::shared_ptr<framework::ProgramDesc> inference_program_;
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
-  std::vector<framework::OpDesc *> fetchs_;
+  std::vector<framework::OpDesc *> fetches_;
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.
   std::vector<framework::LoDTensor> feed_tensors_;

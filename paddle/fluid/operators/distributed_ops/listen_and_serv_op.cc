@@ -347,6 +347,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       new distributed::RequestPrefetchHandler(sync_mode));
   request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
       sync_mode, checkpoint_block_id));
+  request_get_no_barrier_handler_.reset(
+      new distributed::RequestGetNoBarrierHandler());
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get(),
@@ -359,6 +361,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                             FLAGS_rpc_prefetch_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestCheckpoint,
                             request_checkpoint_handler_.get());
+  rpc_service_->RegisterRPC(distributed::kRequestGetNoBarrier,
+                            request_get_no_barrier_handler_.get());
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
@@ -413,6 +417,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   f(request_get_handler_.get());
   f(request_prefetch_handler_.get());
   f(request_checkpoint_handler_.get());
+  f(request_get_no_barrier_handler_.get());
 
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
