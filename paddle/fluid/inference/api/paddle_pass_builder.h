@@ -88,6 +88,7 @@ class CpuPassStrategy : public PassStrategy {
     // not be damaged by smaller ones.
     passes_.assign({
         "infer_clean_graph_pass",         //
+        "identity_scale_op_clean_pass",   //
         "attention_lstm_fuse_pass",       //
         "seqpool_concat_fuse_pass",       //
         "seqconv_eltadd_relu_fuse_pass",  //
@@ -135,6 +136,7 @@ class GpuPassStrategy : public PassStrategy {
   GpuPassStrategy() : PassStrategy({}) {
     passes_.assign({
         "infer_clean_graph_pass",                    //
+        "identity_scale_op_clean_pass",              //
         "conv_affine_channel_fuse_pass",             //
         "conv_eltwiseadd_affine_channel_fuse_pass",  //
         "conv_bn_fuse_pass",                         //
