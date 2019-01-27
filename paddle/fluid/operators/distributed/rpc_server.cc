@@ -111,8 +111,8 @@ void RPCServer::RegisterRPC(const std::string& rpc_name,
 
   static int cond = -1;
   rpc_cond_map_[rpc_name] = ++cond;
-  VLOG(3) << "RegisterRPC rpc_name:" << rpc_name << ", handler:" << handler
-          << ", cond:" << rpc_cond_map_[rpc_name];
+  VLOG(3) << "RegisterRPC rpc_name: " << rpc_name << ", handler: " << handler
+          << ", cond: " << rpc_cond_map_[rpc_name];
 }
 
 void RPCServer::SetCond(const std::string& rpc_name) {
