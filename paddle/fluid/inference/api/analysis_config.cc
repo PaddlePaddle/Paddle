@@ -280,8 +280,8 @@ float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
 #endif
 }
 
-void AnalysisConfig::EnableMemoryOptim(
-    bool static_optim, bool force_update_static_cache) {
+void AnalysisConfig::EnableMemoryOptim(bool static_optim,
+                                       bool force_update_static_cache) {
   enable_memory_optim_ = true;
   static_memory_optim_ = static_optim;
   static_memory_optim_force_update_ = force_update_static_cache;
