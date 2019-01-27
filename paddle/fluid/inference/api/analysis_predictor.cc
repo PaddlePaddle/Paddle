@@ -43,8 +43,6 @@ DECLARE_bool(profile);
 
 namespace paddle {
 
-using contrib::AnalysisConfig;
-
 namespace {
 bool IsPersistable(const framework::VarDesc *var) {
   if (var->Persistable() &&
@@ -652,10 +650,10 @@ bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
 }
 
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<contrib::AnalysisConfig>(
-    const contrib::AnalysisConfig &config) {
-  return CreatePaddlePredictor<contrib::AnalysisConfig,
-                               PaddleEngineKind::kAnalysis>(config);
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
+    const AnalysisConfig &config) {
+  return CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+      config);
 }
 
 }  // namespace paddle
