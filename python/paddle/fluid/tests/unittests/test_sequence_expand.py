@@ -81,11 +81,10 @@ class TestSequenceExpand(OpTest):
 class TestSequenceExpandCase1(TestSequenceExpand):
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [5, 1]).astype('float32')
-        x_lod = [[2, 3]]
         y_data = np.random.uniform(0.1, 1, [13, 1]).astype('float32')
         y_lod = [[2, 3], [2, 2, 3, 3, 3]]
         self.inputs = {'X': x_data, 'Y': (y_data, y_lod)}
-        self.attrs = {'ref_level': 0}
+        self.attrs = {'ref_level': 1}
 
 
 class TestSequenceExpandCase2(TestSequenceExpand):

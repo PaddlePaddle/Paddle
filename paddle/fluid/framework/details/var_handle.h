@@ -111,15 +111,22 @@ struct VarHandle : public VarHandleBase {
 
   // version field currently is not used, however, just store the version to
   // debug easily.
+ private:
   size_t version_;
   size_t scope_idx_;
   std::string name_;
   platform::Place place_;
 
+ public:
   bool IsTheSameVar(const VarHandle& o) const {
     return o.generated_op_ == generated_op_ && o.name_ == name_ &&
            o.scope_idx_ == scope_idx_;
   }
+
+  size_t version() const { return version_; }
+  size_t scope_idx() const { return scope_idx_; }
+  const std::string& name() const { return name_; }
+  const platform::Place& place() const { return place_; }
 };
 
 // Dummy Variable. It is used to represent dependencies between operators
