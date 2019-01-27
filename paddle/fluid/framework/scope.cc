@@ -271,16 +271,14 @@ std::string GenParentScopeTreeDebugInfo(Scope* leaf) {
   while (current_scope != nullptr) {
     scopes.push_back(current_scope);
     current_scope = current_scope->parent();
-    // end of a level
-    os << "\n------------------------------------------\n";
   }
 
-  os << "\nDetails:\n\n";
+  os << "\n--------------GenParentScopeTreeDebugInfo--------------\n";
 
-  for (auto* q : scopes) {
-    os << "====\n";
-    os << q << ":\n";
-    for (auto& var : q->LocalVarNames()) {
+  for (int i = scopes.size() - 1; i >= 0; --i) {
+    os << "=======level [" << i << "]=======\n";
+    os << scopes[i] << ":\n";
+    for (auto& var : scopes[i]->LocalVarNames()) {
       os << "  - " << var << "\n";
     }
   }

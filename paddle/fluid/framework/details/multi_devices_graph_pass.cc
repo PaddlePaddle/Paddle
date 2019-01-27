@@ -249,6 +249,8 @@ void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
       break;
   }
 
+  VLOG(3) << "loss_scale: " << loss_scale;
+
   if (loss_scale) {
     // TODO(paddle-dev): Why is there no input for this op_handle?
     auto loss_grad_name = node->Op()->OutputArgumentNames()[0];
