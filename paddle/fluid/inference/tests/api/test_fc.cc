@@ -5,7 +5,6 @@
 using namespace paddle;
 
 DEFINE_string(model, "/home/chunwei/project2/models/fc/fluid_checkpoint", "");
-DEFINE_int32(batch_size, 1, "");
 
 TEST(test, main) {
   contrib::AnalysisConfig config;
