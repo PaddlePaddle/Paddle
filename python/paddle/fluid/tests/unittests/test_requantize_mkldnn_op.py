@@ -17,20 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
-
-
-def format_reorder(out, size):
-    in_n = size[0]
-    out_h = size[2]
-    out_w = size[3]
-    out_c = size[1]
-    out_tmp = np.zeros((in_n, out_h, out_w, out_c))
-    for n in range(in_n):
-        for i in range(out_h):
-            for j in range(out_w):
-                for m in range(out_c):
-                    out_tmp[n, i, j, m] = out[n, m, i, j]
-    return out_tmp.reshape(in_n, out_c, out_h, out_w)
+from test_conv2d_int8_mkldnn_op import format_reorder
 
 
 class TestReQuantizeOp(OpTest):
@@ -50,13 +37,13 @@ class TestReQuantizeOp(OpTest):
                      ).astype(self.data_type)
             output_tmp = np.round(input.astype('float32') *
                                   scale_shift).astype('int8')
-            output = format_reorder(output_tmp, self.input_size)
         else:
             input = (np.random.randint(0, 100,
                                        self.input_size)).astype(self.data_type)
             output_tmp = np.round(input.astype('float32') *
                                   scale_shift).astype('uint8')
-            output = format_reorder(output_tmp, self.input_size)
+
+        output = format_reorder(output_tmp, self.input_size)
 
         self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(input)}
 
