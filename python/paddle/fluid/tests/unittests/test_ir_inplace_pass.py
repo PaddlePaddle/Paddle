@@ -46,7 +46,10 @@ class TestIrInplace(TestParallelExecutorBase):
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
 
-    def _fc_with_batchnorm(self, ir_memory_optimize, enable_inplace):
+    def _fc_with_batchnorm(self,
+                           ir_memory_optimize,
+                           enable_inplace,
+                           memory_opt=False):
         np.random.seed(5)
         img = np.random.random(size=[32, 784]).astype(np.float32)
         label = np.ones(shape=[32, 1], dtype='int64')
@@ -55,7 +58,7 @@ class TestIrInplace(TestParallelExecutorBase):
             feed_dict={"image": img,
                        "label": label},
             use_cuda=True,
-            memory_opt=False,  # inplace is conflict with memory opt
+            memory_opt=memory_opt,
             use_ir_memory_optimize=ir_memory_optimize,
             enable_inplace=enable_inplace)
 
@@ -67,3 +70,10 @@ class TestIrInplace(TestParallelExecutorBase):
         self.assertAlmostEqual(loss00, loss10, delta=delta)
         self.assertAlmostEqual(loss00, loss01, delta=delta)
         self.assertAlmostEqual(loss00, loss11, delta=delta)
+
+    def test_fc_with_batchnorm_memory_opt(self, delta=1e-3):
+        loss00 = self._fc_with_batchnorm(False, True, False)
+        loss10 = self._fc_with_batchnorm(False, True, True)
+        loss10 = self._fc_with_batchnorm(True, True, True)
+        self.assertAlmostEqual(loss00, loss10, delta=delta)
+        self.assertAlmostEqual(loss00, loss01, delta=delta)

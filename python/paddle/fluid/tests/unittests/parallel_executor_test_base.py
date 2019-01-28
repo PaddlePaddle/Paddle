@@ -32,7 +32,7 @@ class TestParallelExecutorBase(unittest.TestCase):
     def check_network_convergence(self,
                                   method,
                                   use_cuda=True,
-                                  memory_opt=True,
+                                  memory_opt=False,
                                   iter=50,
                                   batch_size=None,
                                   allow_op_delay=False,
@@ -67,8 +67,6 @@ class TestParallelExecutorBase(unittest.TestCase):
             if memory_opt:
                 fluid.memory_optimize(main)
 
-        with open("program_model.txt", "w") as f:
-            f.write(str(main))
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup)
@@ -82,9 +80,10 @@ class TestParallelExecutorBase(unittest.TestCase):
         build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
         build_strategy.fuse_relu_depthwise_conv = fuse_relu_depthwise_conv
         build_strategy.memory_optimize = use_ir_memory_optimize
-        build_strategy.enable_inplace = enable_inplace
+        # python memory optimization is conflict with inplace pass.
+        # Use ir graph memory optimization after inplace pass is the correct way.
+        build_strategy.enable_inplace = False if memory_opt else enable_inplace
         build_strategy.enable_sequential_execution = enable_sequential_execution
-        build_strategy.debug_graphviz_path = "debug_ir_graph_"
 
         if use_cuda and core.is_compiled_with_cuda():
             build_strategy.remove_unnecessary_lock = True

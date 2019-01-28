@@ -31,6 +31,8 @@ class GraphvizNode {
   GraphvizNode(ir::Node* n, const int& i) : node_(n), id_(i) {}
   virtual ~GraphvizNode() = default;
 
+  int Id() const { return id_; }
+
  protected:
   ir::Node* node_;
   int id_;

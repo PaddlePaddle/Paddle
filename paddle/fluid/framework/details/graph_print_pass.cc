@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/details/graph_print_pass.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -54,6 +55,11 @@ class GraphvizOp : public GraphvizNode {
     }
   }
 
+  template <typename Callback>
+  void AddCustomEdge(const Callback& cb) {
+    stream_ << cb() << std::endl;
+  }
+
  private:
   std::ostringstream stream_;
 };
@@ -68,12 +74,47 @@ std::vector<T*> FilterByNodeWrapper(const Container& con) {
   return ret;
 }
 
+// bool DetectCircleRecursive(const std::map<ir::Node*,
+// std::unordered_set<ir::Node*>>, std::unordered_set<ir::Node*>* visited,
+// std::unordered_set<ir::Node*> *in_trace, std::vector<std::vector<ir::Node*>>*
+// circles) {
+//   if (visited->find(node) == visited->end()) {
+//     visited->insert(node);
+//     in_trace->insert(node);
+
+//     for (ir::Node *in : adj_list.at(node)) {
+//       if (visited->find(in) == visited->end() &&
+//           HasCircleHelper(in, adj_list, visited, in_trace)) {
+//         return true;
+//       } else if (in_trace->find(in) != in_trace->end()) {
+//         circles->push_back(in_trace);
+//         return true;
+//       }
+//     }
+//   }
+//   in_trace->erase(node);
+//   return false;
+// }
+
+// bool DetectCircle(const std::map<ir::Node*, std::unordered_set<ir::Node*>>&
+// adj_list, std::vector<std::vector<ir::Node*>>* circles) {
+//   std::unordered_set<ir::Node *> visited;
+//   std::unordered_set<ir::Node *> in_trace;
+//   bool has_circle = false;
+//   for(auto& adj : adj_list) {
+//     has_circle &= DetectCircleRecursive(adj, adj_list,&visited, &in_trace,
+//     circles);
+//   }
+//   return has_circle;
+// }
+
 std::unordered_map<ir::Node*, int> SSAGraphPrinterImpl::ToGraphvizNode(
     const ir::Graph& graph) const {
   // Convert to GraphvizNode format
   auto& graphviz_nodes = graph.Get<GraphvizNodes>(kGraphviz);
   graphviz_nodes.clear();
   std::unordered_map<ir::Node*, int> vars;
+  std::unordered_map<ir::Node*, GraphvizOp*> ops;
   int var_id = 0;
   int op_id = 0;
   for (auto& node : graph.Nodes()) {
@@ -81,9 +122,31 @@ std::unordered_map<ir::Node*, int> SSAGraphPrinterImpl::ToGraphvizNode(
       graphviz_nodes.emplace(new GraphvizVar(node, var_id));
       vars.emplace(std::make_pair(node, var_id++));
     } else if (node->IsOp()) {
-      graphviz_nodes.emplace(new GraphvizOp(node, op_id++));
+      std::unique_ptr<GraphvizOp> op(new GraphvizOp(node, op_id++));
+      ops[node] = op.get();
+      graphviz_nodes.emplace(std::move(op));
+      // graphviz_nodes.emplace(new GraphvizOp(node, op_id++));
+      // ops.emplace(std::make_pair(node, graphviz_nodes.back().get()));
     } else {
       PADDLE_THROW("Unknown op type");
+    }
+  }
+
+  // Detect circle. Draw circle in different lines
+  std::vector<std::vector<ir::Node*>> circles;
+  const std::string kCircleEdge = "[color=red,penwidth=3.0]";
+  if (ir::FindCircleSubGraph(graph, &circles)) {
+    VLOG(3) << "Graph has circle! circles count : " << circles.size();
+    for (auto& circle : circles) {
+      for (size_t i = 0; i < circle.size() - 1; ++i) {
+        GraphvizOp* prev = ops[circle[i]];
+        GraphvizOp* next = ops[circle[i + 1]];
+        std::string prev_op = "op_" + std::to_string(prev->Id());
+        std::string next_op = "op_" + std::to_string(next->Id());
+        prev->AddCustomEdge([&]() -> std::string {
+          return prev_op + "->" + next_op + kCircleEdge;
+        });
+      }
     }
   }
   return vars;
