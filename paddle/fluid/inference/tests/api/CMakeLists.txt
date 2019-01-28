@@ -128,6 +128,11 @@ inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
 inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_conv
   "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz" SERIAL)
 
+# bert
+set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert")
+download_model_and_data(${BERT_INSTALL_DIR} "bert_model.tar.gz" "bert_data.txt.tar.gz")
+inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc)
+
 # anakin
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
     # anakin rnn1
