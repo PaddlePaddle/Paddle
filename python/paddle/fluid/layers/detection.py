@@ -1963,7 +1963,7 @@ def generate_proposals(scores,
     return rpn_rois, rpn_roi_probs
 
 
-def box_clip(input, im_info, inplace=False, name=None):
+def box_clip(input, im_info, name=None):
     """
     Clip the box into the size given by im_info
     For each input box, The formula is given as follows:
@@ -1988,15 +1988,6 @@ def box_clip(input, im_info, inplace=False, name=None):
                             layout (height, width, scale). height and width
                             is the input size and scale is the ratio of input
                             size and original size.
-        inplace(bool): Must use :attr:`False` if :attr:`input` is used in 
-                       multiple operators. If this flag is set :attr:`True`, 
-                       reuse input :attr:`input` to clip, which will 
-                       change the value of tensor variable :attr:`input` 
-                       and might cause errors when :attr:`input` is used 
-                       in multiple operators. If :attr:`False`, preserve the 
-                       value pf :attr:`input` and create a new output 
-                       tensor variable whose data is copied from input x but 
-                       cliped.
         name (str): The name of this layer. It is optional.
     
     Returns:
@@ -2013,8 +2004,7 @@ def box_clip(input, im_info, inplace=False, name=None):
     """
 
     helper = LayerHelper("box_clip", **locals())
-    output = x if inplace else helper.create_variable_for_type_inference(\
-             dtype=input.dtype)
+    output = helper.create_variable_for_type_inference(dtype=input.dtype)
     inputs = {"Input": input, "ImInfo": im_info}
     helper.append_op(type="box_clip", inputs=inputs, outputs={"Output": output})
 
