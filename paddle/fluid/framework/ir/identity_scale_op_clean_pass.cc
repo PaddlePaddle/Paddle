@@ -69,3 +69,6 @@ std::unique_ptr<ir::Graph> IdentityScaleOpCleanPass::ApplyImpl(
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
+
+REGISTER_PASS(identity_scale_op_clean_pass,
+              paddle::framework::ir::IdentityScaleOpCleanPass);
