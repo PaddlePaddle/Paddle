@@ -58,11 +58,11 @@ else()
   cc_library(sendrecvop_utils SRCS sendrecvop_utils.cc DEPS data_type lod_tensor selected_rows brpc_base_proto)
   cc_library(variable_response SRCS variable_response.cc DEPS data_type lod_tensor scope brpc_base_proto)
 
-  cc_library(brpc_client SRCS brpc/brpc_client.cc DEPS brpc_base_proto brpc)
-  cc_library(brpc_server SRCS brpc/brpc_server.cc DEPS brpc_base_proto brpc)
-  cc_library(brpc_sendrecvop_utils SRCS brpc/brpc_sendrecvop_utils.cc DEPS brpc_base_proto brpc)
-  cc_library(brpc_variable_response SRCS brpc/brpc_variable_response.cc DEPS brpc_base_proto brpc)
-  cc_library(brpc_rdma_pool SRC brpc/brpc_rdma_pool.cc DEPS brpc_base_proto brpc)
+  cc_library(brpc_client SRCS brpc/brpc_client.cc DEPS brpc_base_proto brpc scope)
+  cc_library(brpc_server SRCS brpc/brpc_server.cc DEPS brpc_base_proto brpc scope)
+  cc_library(brpc_sendrecvop_utils SRCS brpc/brpc_sendrecvop_utils.cc DEPS brpc_base_proto brpc scope)
+  cc_library(brpc_variable_response SRCS brpc/brpc_variable_response.cc DEPS brpc_base_proto brpc scope)
+  cc_library(brpc_rdma_pool SRC brpc/brpc_rdma_pool.cc DEPS brpc_base_proto brpc scope)
 
   cc_library(collective_server SRCS collective_server.cc DEPS brpc_base_proto brpc scope rpc_server brpc_server handlers)
   cc_library(collective_client SRCS collective_client.cc DEPS brpc_base_proto brpc scope rpc_client brpc_client)
@@ -71,7 +71,7 @@ else()
              brpc_client brpc_server brpc_sendrecvop_utils
              brpc_variable_response brpc_rdma_pool
              rpc_server rpc_client handlers barrier
-             lod_tensor selected_rows memory scope)
+             DEPS lod_tensor selected_rows memory scope)
 
   set(RPC_DEPS sendrecvop_rpc ${BRPC_DEPS})
   cc_test(brpc_serde_test SRCS brpc/brpc_serde_test.cc
