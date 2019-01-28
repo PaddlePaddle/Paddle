@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import unittest
-from test_concat_op import TestConcatOp, TestConcatOp2, TestConcatOp3
+from paddle.fluid.tests.unittests.test_concat_op import TestConcatOp, TestConcatOp2, TestConcatOp3
 
 
 class TestMKLDNNConcatOp(TestConcatOp):

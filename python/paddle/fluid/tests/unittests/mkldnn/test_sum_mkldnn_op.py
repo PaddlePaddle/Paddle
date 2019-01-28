@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 
-from test_sum_op import TestSumOp
+from paddle.fluid.tests.unittests.test_sum_op import TestSumOp
 
 
 class TestMKLDNN(TestSumOp):

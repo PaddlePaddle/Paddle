@@ -15,10 +15,10 @@
 from __future__ import print_function
 import unittest
 import numpy as np
-from op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-from test_elementwise_mul_op import *
+from paddle.fluid.tests.unittests.test_elementwise_mul_op import *
 
 
 class TestElementwiseMulMKLDNNOp_BroadcastNCHW16c(ElementwiseMulOp):
