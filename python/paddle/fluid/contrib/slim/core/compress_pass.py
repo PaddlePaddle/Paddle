@@ -75,11 +75,10 @@ class Context(object):
                     e_time - s_time, batch_id,
                     self.eval_graph.out_nodes.keys(), list(result)))
                 s_time = time.time()
-                break
             batch_id += 1
         result = np.mean(np.array(results), axis=0)
-        print("final eval result: {}={}".format(
-            self.eval_graph.out_nodes.keys(), result))
+        print("final eval result: {}={}".format(self.eval_graph.out_nodes.keys(
+        ), result))
         if not isinstance(result, Iterable):
             result = [result]
         return result, self.eval_graph.out_nodes.keys()
@@ -149,7 +148,6 @@ class CompressPass(object):
         Args:
             strategy: The strategy to be added into current compress pass.
         """
-        print "add strategy: %s" % (type(strategy))
         self.strategies.append(strategy)
         self.epoch = max(strategy.end_epoch, self.epoch)
 
