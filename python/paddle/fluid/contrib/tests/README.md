@@ -27,6 +27,7 @@ You can refer to the unit test in test_calibration.py. Basically, there are thre
 
 * Save INT8 model. Call the calibrator.save_int8_model() after sampling over specified iterations (e.g., iterations = 50)
             calibrator.save_int8_model() # Step 3
+			
 
 Please note that we assume FP32 pre-trained model has the `__model__ ` file with image and label feed variables which will be used by the accuracy measurememnt.
 
