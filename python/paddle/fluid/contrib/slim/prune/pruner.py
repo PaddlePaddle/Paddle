@@ -59,8 +59,6 @@ class StructurePruner(Pruner):
         self.criterions = criterions
 
     def cal_pruned_idx(self, name, param, ratio, axis):
-        #        pruning_axis = self.pruning_axis[
-        #            name] if name in self.pruning_axis else self.pruning_axis['*']
         criterion = self.criterions[
             name] if name in self.criterions else self.criterions['*']
         prune_num = int(round(param.shape[axis] * ratio))
