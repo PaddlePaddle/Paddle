@@ -15,6 +15,7 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include <glog/logging.h>
 #include <algorithm>
+#include <fstream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -25,6 +26,7 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
@@ -37,11 +39,20 @@
 
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
+
 #endif
 
 DECLARE_bool(profile);
 
 namespace paddle {
+
+using inference::Singleton;
+#if PADDLE_WITH_TENSORRT
+using inference::tensorrt::TRTInt8Calibrator;
+using inference::tensorrt::TRTCalibratorEngine;
+using inference::tensorrt::TRTCalibratorEngineManager;
+#endif
 
 namespace {
 bool IsPersistable(const framework::VarDesc *var) {
@@ -337,6 +348,8 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
         !config_.params_file().empty(),
         "Either model_dir or (param_file, prog_file) should be set.");
     PADDLE_ENFORCE(!config_.prog_file().empty());
+    std::string dir = inference::analysis::GetDirRoot(config_.prog_file());
+
     argument_.SetModelProgramPath(config_.prog_file());
     argument_.SetModelParamsPath(config_.params_file());
   }
@@ -347,6 +360,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
+    argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
   }
 
   if (config_.use_mkldnn_) {
@@ -567,7 +581,67 @@ bool AnalysisPredictor::LoadParameters() {
   return true;
 }
 
+#if PADDLE_WITH_TENSORRT
+bool AnalysisPredictor::SaveTrtCalibToDisk() {
+  PADDLE_ENFORCE(config_.tensorrt_engine_enabled(),
+                 "This func can be invoked only in trt mode");
+  auto &block = inference_program_->Block(0);
+  for (auto &op_desc : block.AllOps()) {
+    if (op_desc->Type() == "tensorrt_engine") {
+      std::string engine_name =
+          boost::get<std::string>(op_desc->GetAttr("engine_key"));
+      if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_name)) {
+        LOG(ERROR) << "You should run the predictor(with trt) on the real data "
+                      "to generate calibration info";
+        return false;
+      }
+      TRTCalibratorEngine *calib_engine =
+          Singleton<TRTCalibratorEngineManager>::Global().Get(engine_name);
+      LOG(INFO) << "Wait for calib threads done.";
+      calib_engine->calib_->waitAndSetDone();
+      LOG(INFO) << "Generating TRT Calibration table data, this may cost a lot "
+                   "of time...";
+      calib_engine->thr_->join();
+      std::string calibration_table_data =
+          calib_engine->calib_->getCalibrationTableAsString();
+
+      if (calibration_table_data.empty()) {
+        LOG(ERROR) << "the calibration table is empty.";
+        return false;
+      }
+
+      std::string model_opt_cache_dir =
+          argument_.Has("model_dir")
+              ? argument_.model_dir()
+              : inference::analysis::GetDirRoot(argument_.model_program_path());
+
+      std::string calibration_table_data_path =
+          inference::analysis::GetTrtCalibPath(
+              inference::analysis::GetOrCreateModelOptCacheDir(
+                  model_opt_cache_dir),
+              engine_name);
+
+      std::ofstream ofile(calibration_table_data_path, std::ios::out);
+      LOG(INFO) << "Write Paddle-TRT INT8 calibration table data to file "
+                << calibration_table_data_path;
+      ofile << calibration_table_data;
+      ofile.close();
+    }
+  }
+  // Free all calibrator resources.
+  Singleton<TRTCalibratorEngineManager>::Global().DeleteALL();
+  return true;
+}
+#endif
+
 AnalysisPredictor::~AnalysisPredictor() {
+#if PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled() &&
+      config_.tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
+      Singleton<TRTCalibratorEngineManager>::Global().Has()) {
+    SaveTrtCalibToDisk();
+  }
+#endif
   if (FLAGS_profile) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
@@ -649,6 +723,10 @@ bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
 
   need_collect_var_shapes_ = need ? 1 : 0;
   return need;
+}
+
+std::string AnalysisPredictor::GetSeriazlizedProgram() const {
+  return inference_program_->Proto()->SerializeAsString();
 }
 
 template <>
