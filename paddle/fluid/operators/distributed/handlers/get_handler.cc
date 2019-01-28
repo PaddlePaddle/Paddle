@@ -29,10 +29,10 @@ framework::Variable* GetHandlerSync::GetOrCreateRequestVar(
 }
 
 bool GetHandlerSync::Handle(RPCRequest* request) {
+  rpc_server_->WaitState(RPCServerState::STATE_RECV);
   if (HandleSignal(request, scope_, rpc_server_)) {
     return true;
   }
-  rpc_server_->WaitState(RPCServerState::STATE_RECV);
   request->out_var_ = scope_->FindVar(request->varname_);
   request->out_var_name_ = request->varname_;
   return true;
