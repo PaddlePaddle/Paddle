@@ -141,11 +141,13 @@ class VarBase {
   void RunBackward();
 
   void TrackPreOp(OpBase* pre_op, const std::string& pre_op_out_name,
-                  int pre_op_out_idx, bool stop_gradient) {
+                  int pre_op_out_idx, bool pre_op_stop_gradient) {
     pre_op_ = pre_op;
     pre_op_out_name_ = pre_op_out_name;
     pre_op_out_idx_ = pre_op_out_idx;
-    stop_gradient_ = stop_gradient;
+    if (pre_op_stop_gradient) {
+      stop_gradient_ = pre_op_stop_gradient;
+    }
   }
 
   void ClearGradient() {
