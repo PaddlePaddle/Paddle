@@ -121,7 +121,7 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
               "mask for calculate objectness loss in gradient kernel.")
         .AsIntermediate();
     AddOutput("GTMatchMask",
-              "This is an intermediate tensor with shape if [N, B], "
+              "This is an intermediate tensor with shape of [N, B], "
               "B is the max box number of GT boxes. This parameter caches "
               "matched mask index of each GT boxes for gradient calculate.")
         .AsIntermediate();
@@ -175,7 +175,7 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
          thresh, the confidence score loss of this anchor box will be ignored.
 
          Therefore, the yolov3 loss consist of three major parts, box location loss,
-         confidence score loss, and classification loss. The L1 loss is used for 
+         confidence score loss, and classification loss. The L2 loss is used for 
          box coordinates (w, h), and sigmoid cross entropy loss is used for box 
          coordinates (x, y), confidence score loss and classification loss.
 
