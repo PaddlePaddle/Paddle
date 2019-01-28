@@ -84,6 +84,8 @@ void Fprintf(std::ostream& out, const char* fmt, const Args&... args) {
   tinyformat::vformat(out, fmt, tinyformat::makeFormatList(args...));
 }
 
+inline std::string Sprintf() { return ""; }
+
 template <typename... Args>
 std::string Sprintf(const Args&... args) {
   std::ostringstream oss;
