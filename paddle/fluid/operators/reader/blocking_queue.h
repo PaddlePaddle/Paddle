@@ -79,6 +79,7 @@ class BlockingQueue {
       return true;
     } else {
       PADDLE_ENFORCE(closed_);
+      VLOG(3) << "queue is closed! return nothing.";
       return false;
     }
   }
