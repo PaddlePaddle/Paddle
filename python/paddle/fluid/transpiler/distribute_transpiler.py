@@ -1807,7 +1807,8 @@ class DistributeTranspiler(object):
             # update accumulator variable shape
             new_shape = self._get_optimizer_input_shape(
                 opt_op.type, key, var.shape, param_var.shape)
-            orig_var_name, block_part, _ = self._get_varname_parts(param_var)
+            orig_var_name, block_part, _ = self._get_varname_parts(
+                param_var.name)
             tmpvar_name = "{}.{}".format(
                 var.name, block_part) if block_part else orig_var_name
 
