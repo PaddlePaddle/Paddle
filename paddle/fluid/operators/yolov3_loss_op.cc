@@ -27,8 +27,6 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
                    "Input(GTBox) of Yolov3LossOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("GTLabel"),
                    "Input(GTLabel) of Yolov3LossOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("GTScore"),
-                   "Input(GTScore) of Yolov3LossOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Loss"),
                    "Output(Loss) of Yolov3LossOp should not be null.");
     PADDLE_ENFORCE(
@@ -40,7 +38,6 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
     auto dim_x = ctx->GetInputDim("X");
     auto dim_gtbox = ctx->GetInputDim("GTBox");
     auto dim_gtlabel = ctx->GetInputDim("GTLabel");
-    auto dim_gtscore = ctx->GetInputDim("GTScore");
     auto anchors = ctx->Attrs().Get<std::vector<int>>("anchors");
     int anchor_num = anchors.size() / 2;
     auto anchor_mask = ctx->Attrs().Get<std::vector<int>>("anchor_mask");
@@ -63,12 +60,6 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
                       "Input(GTBox) and Input(GTLabel) dim[0] should be same");
     PADDLE_ENFORCE_EQ(dim_gtlabel[1], dim_gtbox[1],
                       "Input(GTBox) and Input(GTLabel) dim[1] should be same");
-    PADDLE_ENFORCE_EQ(dim_gtscore.size(), 2,
-                      "Input(GTScore) should be a 2-D tensor");
-    PADDLE_ENFORCE_EQ(dim_gtscore[0], dim_gtbox[0],
-                      "Input(GTBox) and Input(GTScore) dim[0] should be same");
-    PADDLE_ENFORCE_EQ(dim_gtscore[1], dim_gtbox[1],
-                      "Input(GTBox) and Input(GTScore) dim[1] should be same");
     PADDLE_ENFORCE_GT(anchors.size(), 0,
                       "Attr(anchors) length should be greater then 0.");
     PADDLE_ENFORCE_EQ(anchors.size() % 2, 0,
@@ -121,11 +112,6 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
              "This is a 2-D tensor with shape of [N, max_box_num], "
              "and each element should be an integer to indicate the "
              "box class id.");
-    AddInput("GTScore",
-             "The score of GTLabel, This is a 2-D tensor in same shape "
-             "GTLabel, and score values should in range (0, 1). This "
-             "input is for GTLabel score can be not 1.0 in image mixup "
-             "augmentation.");
     AddOutput("Loss",
               "The output yolov3 loss tensor, "
               "This is a 1-D tensor with shape of [N]");
@@ -157,8 +143,6 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("ignore_thresh",
                    "The ignore threshold to ignore confidence loss.")
         .SetDefault(0.7);
-    AddAttr<bool>("use_label_smooth", "bool,default True", "use label smooth")
-        .SetDefault(true);
     AddComment(R"DOC(
          This operator generate yolov3 loss by given predict result and ground
          truth boxes.
@@ -245,7 +229,6 @@ class Yolov3LossGradMaker : public framework::SingleGradOpDescMaker {
     op->SetInput("X", Input("X"));
     op->SetInput("GTBox", Input("GTBox"));
     op->SetInput("GTLabel", Input("GTLabel"));
-    op->SetInput("GTScore", Input("GTScore"));
     op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
     op->SetInput("ObjectnessMask", Output("ObjectnessMask"));
     op->SetInput("GTMatchMask", Output("GTMatchMask"));
@@ -255,7 +238,6 @@ class Yolov3LossGradMaker : public framework::SingleGradOpDescMaker {
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetOutput(framework::GradVarName("GTBox"), {});
     op->SetOutput(framework::GradVarName("GTLabel"), {});
-    op->SetOutput(framework::GradVarName("GTScore"), {});
     return std::unique_ptr<framework::OpDesc>(op);
   }
 };
