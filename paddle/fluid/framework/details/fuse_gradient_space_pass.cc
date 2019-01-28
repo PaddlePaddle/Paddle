@@ -39,7 +39,8 @@ std::unique_ptr<ir::Graph> FuseGradientSpacePass::ApplyImpl(
     if (node->IsVar()) {
       if (node->Var()) {
         auto var_name = node->Var()->Name();
-        PADDLE_ENFORCE_EQ(vars.count(var_name), static_cast<size_t>(0));
+        // Note: The graph may have the same name node. For example, parameter
+        // is the input of operator and it also is the output of optimizer;
         vars.emplace(var_name, node);
       }
     } else {
@@ -69,6 +70,7 @@ std::unique_ptr<ir::Graph> FuseGradientSpacePass::ApplyImpl(
   }
 
   std::vector<std::string> grads_name;
+  std::vector<std::string> params_name;
   // Set Gradients as Persistable
   proto::VarType::Type fuse_space_type = static_cast<proto::VarType::Type>(0);
   auto& params_grads = result.Get<ParamsAndGrads>(kParamsAndGrads);
@@ -78,7 +80,7 @@ std::unique_ptr<ir::Graph> FuseGradientSpacePass::ApplyImpl(
     // Set Persistable
     iter->second->Var()->SetPersistable(true);
 
-    // The Gradient can be SeletedRows and LoDTensor
+    // The Gradient only can be LoDTensor.
     bool valid_type =
         (iter->second->Var()->GetType() == proto::VarType::LOD_TENSOR);
     PADDLE_ENFORCE(valid_type);
@@ -90,13 +92,17 @@ std::unique_ptr<ir::Graph> FuseGradientSpacePass::ApplyImpl(
     }
     PADDLE_ENFORCE_EQ(dtype, fuse_space_type);
 
+    params_name.emplace_back(p_g.first);
     grads_name.emplace_back(p_g.second);
   }
 
   OpDesc desc;
   desc.SetType("alloc_space_for_vars");
-  desc.SetInput("Input", grads_name);
-  desc.SetOutput("Output", grads_name);
+  desc.SetInput("Parameters", params_name);
+  desc.SetOutput("Gradients", grads_name);
+  // Op should not have op_role.
+  desc.SetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName(),
+               static_cast<int>(OpRole::kNotSpecified));
 
   auto alloc_space_node = result.CreateOpNode(&desc);
   // Need Insert alloc_space_node's input

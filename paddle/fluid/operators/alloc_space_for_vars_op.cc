@@ -22,6 +22,9 @@
 namespace paddle {
 namespace operators {
 
+static framework::proto::VarType::Type kDefaultDtype =
+    static_cast<framework::proto::VarType::Type>(0);
+
 class AllocSpaceForVarsOpOp : public framework::OperatorBase {
  public:
   AllocSpaceForVarsOpOp(const std::string &type,
@@ -33,59 +36,80 @@ class AllocSpaceForVarsOpOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto &in_var_names = Inputs("Input");
-    PADDLE_ENFORCE_GT(in_var_names.size(), 0);
+    auto &param_var_names = Inputs("Parameters");
+    auto &grad_var_names = Outputs("Gradients");
+    PADDLE_ENFORCE_GT(param_var_names.size(), 0);
+    PADDLE_ENFORCE_EQ(param_var_names.size(), grad_var_names.size());
     size_t mem_size = 0;
-    framework::proto::VarType::Type fuse_space_type =
-        static_cast<framework::proto::VarType::Type>(0);
-    for (auto &name : in_var_names) {
-      auto var = scope.FindVar(name);
-      PADDLE_ENFORCE_NOT_NULL(var);
-      // Only support LoDTensor,
-      bool valid_var = var->IsType<framework::LoDTensor>();
-      PADDLE_ENFORCE(valid_var, "");
-      auto tensor = var->Get<framework::LoDTensor>();
-      auto dtype = tensor.type();
-      if (fuse_space_type == static_cast<framework::proto::VarType::Type>(0)) {
-        fuse_space_type = dtype;
-        PADDLE_ENFORCE_NE(dtype,
-                          static_cast<framework::proto::VarType::Type>(0));
-      }
-      PADDLE_ENFORCE_EQ(dtype, fuse_space_type);
-      auto size = tensor.numel();
-      PADDLE_ENFORCE_GT(size, 0);
-      mem_size += size;
-    }
-    auto out_var_names = Outputs("Input");
+    framework::proto::VarType::Type fuse_space_type = kDefaultDtype;
 
-    PADDLE_ENFORCE_EQ(in_var_names.size(), out_var_names.size());
+    GetMemSizeAndDtype(scope, param_var_names, grad_var_names, &mem_size,
+                       &fuse_space_type);
+
     auto out_tensor =
-        scope.FindVar(out_var_names[0])->GetMutable<framework::LoDTensor>();
-    auto origin_dim = out_tensor->dims();
-    auto offset = framework::product(origin_dim);
+        scope.FindVar(grad_var_names[0])->GetMutable<framework::LoDTensor>();
+    auto &origin_dim = out_tensor->dims();
+    int64_t offset = framework::product(origin_dim);
 
-    out_tensor->Resize(framework::make_ddim({static_cast<int64_t>(mem_size)}));
-    out_tensor->mutable_data(dev_place, fuse_space_type);
+    out_tensor->Resize(framework::make_ddim({static_cast<int64_t>(mem_size)}))
+        .mutable_data(dev_place, fuse_space_type);
 
-    for (size_t i = 1; i < out_var_names.size(); ++i) {
-      PADDLE_ENFORCE_EQ(in_var_names[i], out_var_names[i]);
+    for (size_t i = 1; i < grad_var_names.size(); ++i) {
       auto out_t =
-          scope.FindVar(out_var_names[i])->GetMutable<framework::LoDTensor>();
-      auto &origin_dim = out_t->dims();
+          scope.FindVar(grad_var_names[i])->GetMutable<framework::LoDTensor>();
+      VLOG(10) << "alloc_space_for_vars: output(" << grad_var_names[i]
+               << ") ,dim:(" << origin_dim << ")";
+
       int64_t len = out_t->numel();
-      out_t->ShareDataWith(out_tensor->Slice(offset, offset + len));
+      out_t->ShareDataWith(out_tensor->Slice(offset, offset + len))
+          .Resize(out_t->dims());
       offset += len;
-      out_t->Resize(origin_dim);
     }
+
+    VLOG(10) << "alloc_space_for_vars: output(" << grad_var_names[0]
+             << ") ,dim:(" << origin_dim << ")";
     out_tensor->Resize(origin_dim);
+  }
+
+  void GetMemSizeAndDtype(const framework::Scope &scope,
+                          const std::vector<std::string> &param_var_names,
+                          const std::vector<std::string> &grad_var_names,
+                          size_t *mem_size,
+                          framework::proto::VarType::Type *dtype) const {
+    for (size_t i = 0; i < grad_var_names.size(); ++i) {
+      auto grad_var = scope.FindVar(grad_var_names[i]);
+      PADDLE_ENFORCE_NOT_NULL(grad_var, "%s", grad_var_names[i]);
+      // Only support LoDTensor,
+      PADDLE_ENFORCE(grad_var->IsType<framework::LoDTensor>(), "%s",
+                     grad_var_names[i]);
+
+      // Note: Assume that the dtype of parameter and gradient are the same.
+      // Doesn't get dtype from grad_var.
+      auto &p_tensor =
+          scope.FindVar(param_var_names[i])->Get<framework::LoDTensor>();
+      auto p_dtype = p_tensor.type();
+      if (*dtype == kDefaultDtype) {
+        PADDLE_ENFORCE_NE(p_dtype, kDefaultDtype, "%s", grad_var_names[i]);
+        *dtype = p_dtype;
+      }
+      PADDLE_ENFORCE_EQ(p_dtype, *dtype, "%s", grad_var_names[i]);
+
+      grad_var->GetMutable<framework::LoDTensor>()->Resize(p_tensor.dims());
+      auto size = p_tensor.numel();
+      VLOG(10) << "alloc_space_for_vars: input(" << grad_var_names[i]
+               << ") ,dim:(" << p_tensor.dims() << ")";
+      PADDLE_ENFORCE_GT(size, 0, "%s", grad_var_names[i]);
+      *mem_size += size;
+    }
   }
 };
 
 class AllocSpaceForVarsOpOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input", "A set of variables.").AsDuplicable();
-    AddOutput("Output", "A set of variables.").AsDuplicable();
+    //    AddInput("Gradients", "A set of variables.").AsDuplicable();
+    AddInput("Parameters", "A set of variables.").AsDuplicable();
+    AddOutput("Gradients", "A set of variables.").AsDuplicable();
     AddComment(R"DOC(
 )DOC");
   }

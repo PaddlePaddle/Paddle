@@ -484,20 +484,24 @@ VarHandle *MultiDevSSAGraphBuilderBase::CreateReduceOp(ir::Graph *result,
 }
 
 bool MultiDevSSAGraphBuilderBase::IsScaleLossOp(ir::Node *node) const {
-  return boost::get<int>(
-             node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-             (static_cast<int>(OpRole::kBackward) |
-              static_cast<int>(OpRole::kLoss)) &&
-         !loss_var_name_.empty();  // If loss_var is empty. This is test mode
+  // Note: The inserted opDesc may not have op_role.
+  if (node->Op()) {
+    VLOG(1) << node->Op()->Type();
+    // node->Op()->HasAttr(OpProtoAndCheckerMaker::OpRoleAttrName());
+    return node->Op() && !loss_var_name_.empty() &&
+           boost::get<int>(
+               node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+               (static_cast<int>(OpRole::kBackward) |
+                static_cast<int>(
+                    OpRole::kLoss));  // If loss_var is empty. This is test mode
+  }
+  return false;
 }
 
 bool MultiDevSSAGraphBuilderBase::IsSparseGradient(
     const std::string &og) const {
   PADDLE_ENFORCE(all_vars_.count(og) != 0);
-  if (all_vars_.at(og)->GetType() == proto::VarType::SELECTED_ROWS) {
-    return true;
-  }
-  return false;
+  return all_vars_.at(og)->GetType() == proto::VarType::SELECTED_ROWS;
 }
 
 void AllReduceSSAGraphBuilder::InsertCollectiveOp(

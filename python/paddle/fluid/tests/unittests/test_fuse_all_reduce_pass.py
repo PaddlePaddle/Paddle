@@ -75,10 +75,7 @@ class TestMNIST(TestParallelExecutorBase):
         label = np.ones(shape=[32, 1], dtype='int64')
         return img, label
 
-    def _compare_fuse_elewise_add_act_ops(self,
-                                          model,
-                                          use_cuda,
-                                          random_data=True):
+    def _compare_fuse_all_reduce_ops(self, model, use_cuda, random_data=True):
         if use_cuda and not core.is_compiled_with_cuda():
             return
         img, label = self._init_data(random_data)
@@ -112,12 +109,12 @@ class TestMNIST(TestParallelExecutorBase):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
 
     def test_simple_fc_with_fuse_op(self):
-        self._compare_fuse_elewise_add_act_ops(simple_fc_net, True)
-        # self._compare_fuse_elewise_add_act_ops(simple_fc_net, False)
+        self._compare_fuse_all_reduce_ops(simple_fc_net, True)
+        # self._compare_fuse_all_reduce_ops(simple_fc_net, False)
 
-    def test_batchnorm_fc_with_fuse_op(self):
-        self._compare_fuse_elewise_add_act_ops(fc_with_batchnorm, True)
-        # self._compare_fuse_elewise_add_act_ops(fc_with_batchnorm, False)
+    # def test_batchnorm_fc_with_fuse_op(self):
+    #     self._compare_fuse_all_reduce_ops(fc_with_batchnorm, True)
+    # self._compare_fuse_all_reduce_ops(fc_with_batchnorm, False)
 
 
 if __name__ == '__main__':

@@ -83,6 +83,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             build_strategy.fuse_all_reduce_ops = fuse_all_reduce_ops
             build_strategy.memory_optimize = use_ir_memory_optimize
             build_strategy.enable_sequential_execution = enable_sequential_execution
+            build_strategy.debug_graphviz_path = "./graph"
             if use_cuda and core.is_compiled_with_cuda():
                 build_strategy.remove_unnecessary_lock = True
             if use_parallel_executor:
