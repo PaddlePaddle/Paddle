@@ -383,16 +383,19 @@ void TestAXYNKernel() {
 template <jit::KernelType KT, typename T, typename PlaceType>
 void TestXRNKernel() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
+  auto last_acc = acc;
+  acc = 1e-4;
   for (int d : TestSizes()) {
     auto ref = jit::GetRefer<KT, jit::XRNTuples<T>>();
     EXPECT_TRUE(ref != nullptr);
     std::vector<T> x(d);
-    RandomVec<T>(d, x.data());
+    RandomVec<T>(d, x.data(), -2.f, 2.f);
     T ref_res;
     ref(x.data(), &ref_res, d);
     TestAllImpls<KT, jit::XRNTuples<T>, PlaceType, std::vector<T>, T>(d, x,
                                                                       ref_res);
   }
+  acc = last_acc;
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
