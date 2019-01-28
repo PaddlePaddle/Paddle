@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 
-from test_conv2d_transpose_op import TestConv2dTransposeOp, TestWithPad, TestWithStride
+from paddle.fluid.tests.unittests.test_conv2d_transpose_op import TestConv2dTransposeOp, TestWithPad, TestWithStride
 
 
 class TestMKLDNN(TestConv2dTransposeOp):

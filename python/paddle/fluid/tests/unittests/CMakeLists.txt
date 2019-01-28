@@ -1,15 +1,6 @@
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-# The MKLDNN tests are skiped when the MKLDNN flag is OFF
-if(NOT WITH_MKLDNN)
-    foreach(src ${TEST_OPS})
-        if(${src} MATCHES ".*_mkldnn_op$")
-            list(REMOVE_ITEM TEST_OPS ${src})
-        endif()
-    endforeach()
-endif(NOT WITH_MKLDNN)
-
 if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_recv_op)
     list(REMOVE_ITEM TEST_OPS test_dist_transpiler)
@@ -122,4 +113,8 @@ endif()
 
 if (WITH_NGRAPH)
     add_subdirectory(ngraph)
+endif()
+
+if (WITH_MKLDNN)
+    add_subdirectory(mkldnn)
 endif()

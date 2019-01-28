@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/depthwise_conv_mkldnn_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/depthwise_conv_mkldnn_pass.h"
 
 #include <gtest/gtest.h>
 
