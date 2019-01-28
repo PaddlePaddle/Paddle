@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
-#include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace inference {
