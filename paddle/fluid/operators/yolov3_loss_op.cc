@@ -98,7 +98,7 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
              "This is a 4-D tensor with shape of [N, C, H, W]."
              "H and W should be same, and the second dimention(C) stores"
              "box locations, confidence score and classification one-hot"
-             "key of each anchor box");
+             "keys of each anchor box");
     AddInput("GTBox",
              "The input tensor of ground truth boxes, "
              "This is a 3-D tensor with shape of [N, max_box_num, 5], "
@@ -178,6 +178,11 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
          confidence score loss, and classification loss. The L1 loss is used for 
          box coordinates (w, h), and sigmoid cross entropy loss is used for box 
          coordinates (x, y), confidence score loss and classification loss.
+
+         Each groud truth box find a best matching anchor box in all anchors, 
+         prediction of this anchor box will incur all three parts of losses, and
+         prediction of anchor boxes with no GT box matched will only incur objectness
+         loss.
 
          In order to trade off box coordinate losses between big boxes and small 
          boxes, box coordinate losses will be mutiplied by scale weight, which is
