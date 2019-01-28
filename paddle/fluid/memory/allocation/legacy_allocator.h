@@ -13,13 +13,56 @@
 // limitations under the License.
 
 #pragma once
+#include <algorithm>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-extern void ShowMemoryUsage();
+struct LegacyMemMonitor {
+  // used to store the GPU memory usage of each devices
+  using MemUsage =
+      std::unordered_map</*device id*/ int,
+                         std::pair</*current memory usage*/ uint64_t,
+                                   /*peak memory usage*/ uint64_t>>;
+
+  MemUsage GetMemUsageInfo() { return gpu_mem_info_; }
+
+  void Add(int device, size_t size) {
+    gpu_mem_info_[device].first += size;
+    if (gpu_mem_info_[device].first > gpu_mem_info_[device].second) {
+      gpu_mem_info_[device].second = gpu_mem_info_[device].first;
+      VLOG(3) << "device: " << device
+              << " peak memory usage : " << (gpu_mem_info_[device].second >> 20)
+              << " MiB";
+    }
+  }
+
+  void Minus(int device, size_t size) { gpu_mem_info_[device].first -= size; }
+
+  uint64_t GetMemUsage(int device) { return gpu_mem_info_[device].second; }
+
+  void PrintMemUsage() {
+    std::vector<int> devices;
+    for (const auto &item : gpu_mem_info_) {
+      devices.emplace_back(item.first);
+    }
+    std::sort(devices.begin(), devices.end());
+    for (const auto &device : devices) {
+      std::cout << "Device : " << device << " Peak Memory Usage : "
+                << (gpu_mem_info_[device].second >> 20) << " MiB" << std::endl;
+    }
+  }
+
+ private:
+  MemUsage gpu_mem_info_;
+};
+
+extern LegacyMemMonitor GPUMemMonitor;
 
 class LegacyAllocatorPrivate;
 class LegacyAllocator : public Allocator {
