@@ -3875,8 +3875,8 @@ def beam_search(pre_ids,
                 beam_size,
                 end_id,
                 level=0,
-                name=None,
                 is_accumulated=True,
+                name=None,
                 return_parent_idx=False):
     """
     Beam search is a classical algorithm for selecting candidate words in a
