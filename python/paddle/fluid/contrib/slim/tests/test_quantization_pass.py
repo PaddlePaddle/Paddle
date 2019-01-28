@@ -251,6 +251,11 @@ class TestQuantizationFreezePass(unittest.TestCase):
         iters = 10
         batch_size = 128
 
+        train_exe = fluid.ParallelExecutor(
+            main_program=quantized_main_program,
+            use_cuda=bool(use_cuda),
+            loss_name=loss.name,
+            scope=scope)
         train_reader = paddle.batch(
             paddle.reader.shuffle(
                 paddle.dataset.mnist.train(), buf_size=500),
@@ -261,9 +266,11 @@ class TestQuantizationFreezePass(unittest.TestCase):
         with fluid.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())
-                loss_v = exe.run(program=quantized_main_program,
-                                 feed=feeder.feed(data),
-                                 fetch_list=[loss])
+                #loss_v = exe.run(program=quantized_main_program,
+                #                 feed=feeder.feed(data),
+                #                 fetch_list=[loss])
+                loss_v = train_exe.run(feed=feeder.feed(data),
+                                       fetch_list=[loss.name])
                 print('{}: {}'.format('loss' + dev_name + quant_type, loss_v))
 
         test_data = next(test_reader())
