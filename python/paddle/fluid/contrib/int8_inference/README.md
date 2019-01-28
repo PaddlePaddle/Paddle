@@ -1,4 +1,4 @@
-PaddlePaddle supports offline INT8 calibration to accelerate the inferene speed. In this document, we provide the instructions on how to enable INT8 calibration and show the ResNet-50 and MobileNet-V1 results in both accuracy and performance.
+PaddlePaddle supports offline INT8 calibration to accelerate the inference speed. In this document, we provide the instructions on how to enable INT8 calibration and show the ResNet-50 and MobileNet-V1 results in both accuracy and performance.
 
 ## 0. Prerequisite
 You need to install at least PaddlePaddle-1.3 python package `pip install paddlepaddle==1.3`.
@@ -34,8 +34,6 @@ You can refer to the unit test in [test_calibration.py](../tests/test_calibratio
             calibrator.save_int8_model() # Step 3
 ```
 
-Please note that FP32 pre-trained model needs the `__model__ ` file with image and label feed variables for accuracy measurement.
-
 ## 2. How to run INT8 model
 You can load INT8 model by load_inference_model [API](https://github.com/PaddlePaddle/Paddle/blob/8b50ad80ff6934512d3959947ac1e71ea3fb9ea3/python/paddle/fluid/io.py#L991) and run INT8 inference similar as [FP32](https://github.com/PaddlePaddle/models/blob/develop/fluid/PaddleCV/object_detection/eval.py "FP32").
 
@@ -68,4 +66,6 @@ Please note that [Small](http://paddle-inference-dist.cdn.bcebos.com/int8/calibr
 | ResNet-50  | 1  |   65  | 101  | 1.55X |
 | MobileNet-V1 | 1  | 165  | 217  | 1.32X  |
 
-Please note that the performance improvement is ~1.33X on Intel® Xeon® Skylake Server ([Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")).
+Notes:
+* The accuracy measurement requires the model with `label`.
+* The performance improvement is ~1.33X on Intel® Xeon® Skylake Server ([Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")).
