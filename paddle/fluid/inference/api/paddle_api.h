@@ -176,18 +176,40 @@ class PaddlePredictor {
                    std::vector<PaddleTensor>* output_data,
                    int batch_size = -1) = 0;
 
-  /** Zero copy input and output optimization.
-   * Get the input or output tensors, and operate on their memory directly,
-   * without copy.
+  /** \brief Get a mutable tensor directly.
+   *
+   * NOTE Only works in AnalysisPredictor.
+   *
+   * One can also use this to modify any temporary variable related tensors in
+   * the predictor.
+   *
    */
   virtual std::unique_ptr<ZeroCopyTensor> GetInputTensor(
       const std::string& name) {
     return nullptr;
   }
+  /**
+   * \brief Get an immutable tensor without copy.
+   *
+   * NOTE Only works in AnalysisPredictor.
+   * One can use this API to get any temporary tensors in the predictor and
+   * read it.
+   */
   virtual std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
       const std::string& name) {
     return nullptr;
   }
+  /**
+   * \brief Run the predictor with zero-copied inputs and outputs.
+   *
+   * NOTE Only works in AnalysisPredictor.
+   *
+   * This will save the IO copy for transfering inputs and outputs to predictor
+   * workspace and get some performance improvement.
+   * To use it, one should call the `AnalysisConfig.SwitchUseFeedFetchOp(true)`
+   * and then use the `GetInputTensor` and `GetOutputTensor` to directly write
+   * or read the input/output tensors.
+   */
   virtual bool ZeroCopyRun() { return false; }
 
   /** Clone a predictor that share the model weights, the Cloned predictor
@@ -198,6 +220,14 @@ class PaddlePredictor {
   /** Destroy the Predictor.
    */
   virtual ~PaddlePredictor() = default;
+
+  /** \brief Get the serialized model program that executes in inference phase.
+   * Its data type is ProgramDesc, which is a protobuf message.
+   */
+  virtual std::string GetSeriazlizedProgram() const {
+    assert(false);  // Force raise error.
+    return "NotImplemented";
+  };
 
   /** The common configs for all the predictors.
    */
@@ -271,5 +301,7 @@ template <typename ConfigT, PaddleEngineKind engine>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
 int PaddleDtypeSize(PaddleDType dtype);
+
+std::string get_version();
 
 }  // namespace paddle
