@@ -119,9 +119,6 @@ PYBIND11_MODULE(core, m) {
 
   BindException(&m);
 
-  m.def("show_memory_usage", &paddle::memory::allocation::ShowMemoryUsage,
-        "Print peak memory usage");
-
   m.def(
       "_append_python_callable_object_and_return_id",
       [](py::object py_obj) -> size_t {
@@ -130,6 +127,13 @@ PYBIND11_MODULE(core, m) {
 
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
+
+  m.def("get_mem_usage", [](int device) {
+    return memory::allocation::GPUMemMonitor.GetMemUsage(device);
+  });
+
+  m.def("print_mem_usage",
+        []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
   py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
       // .def(py::init<>())
