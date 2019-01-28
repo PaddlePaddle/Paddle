@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import unittest
-from test_pool2d_op import TestPool2D_Op, TestCase1, TestCase2, TestCase3, TestCase4, TestCase5
+from paddle.fluid.tests.unittests.test_pool2d_op import TestPool2D_Op, TestCase1, TestCase2, TestCase3, TestCase4, TestCase5
 
 
 def create_test_mkldnn_class(parent):
