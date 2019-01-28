@@ -23,6 +23,7 @@ import argparse
 import functools
 import contextlib
 import paddle.fluid.profiler as profiler
+from paddle.dataset.common import download
 from PIL import Image, ImageEnhance
 import math
 sys.path.append('..')
@@ -116,26 +117,43 @@ def val(data_dir=DATA_DIR):
     return _reader_creator(file_list, 'val', shuffle=False, data_dir=data_dir)
 
 
-class TestCalibration(unittest.TestCase):
+class TestCalibrationForResnet50(unittest.TestCase):
     def setUp(self):
-        # TODO(guomingz): Put the download process in the cmake.
-        # Download and unzip test data set
-        imagenet_dl_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz'
-        zip_file_name = imagenet_dl_url.split('/')[-1]
-        cmd = 'rm -rf data {}  && mkdir data && wget {} && tar xvf {} -C data'.format(
-            zip_file_name, imagenet_dl_url, zip_file_name)
-        os.system(cmd)
-        # resnet50 fp32 data
-        resnet50_fp32_model_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/resnet50_int8_model.tar.gz'
-        resnet50_zip_name = resnet50_fp32_model_url.split('/')[-1]
-        resnet50_unzip_folder_name = 'resnet50_fp32'
-        cmd = 'rm -rf {} {} && mkdir {} && wget {} && tar xvf {} -C {}'.format(
-            resnet50_unzip_folder_name, resnet50_zip_name,
-            resnet50_unzip_folder_name, resnet50_fp32_model_url,
-            resnet50_zip_name, resnet50_unzip_folder_name)
+        self.int8_download = 'int8/download'
+        self.cache_folder = os.path.expanduser('~/.cache/paddle/dataset/' +
+                                               self.int8_download)
+
+        data_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz'
+        data_md5 = '1b6c1c434172cca1bf9ba1e4d7a3157d'
+        self.data_cache_folder = self.download_data(data_url, data_md5, "data")
+
+        # reader/decorator.py requires the relative path to the data folder
+        cmd = 'rm -rf {0} && ln -s {1} {0}'.format("data",
+                                                   self.data_cache_folder)
         os.system(cmd)
 
         self.iterations = 50
+
+    def cache_unzipping(self, target_folder, zip_path):
+        if not os.path.exists(target_folder):
+            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(target_folder,
+                                                          zip_path)
+            os.system(cmd)
+
+    def download_data(self, data_url, data_md5, folder_name):
+        download(data_url, self.int8_download, data_md5)
+        data_cache_folder = os.path.join(self.cache_folder, folder_name)
+        file_name = data_url.split('/')[-1]
+        zip_path = os.path.join(self.cache_folder, file_name)
+        self.cache_unzipping(data_cache_folder, zip_path)
+        return data_cache_folder
+
+    def download_resnet50_model(self):
+        # resnet50 fp32 data
+        data_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/resnet50_int8_model.tar.gz'
+        data_md5 = '4a5194524823d9b76da6e738e1367881'
+        self.model_cache_folder = self.download_data(data_url, data_md5,
+                                                     "resnet50_fp32")
 
     def run_program(self, model_path, generate_int8=False, algo='direct'):
         image_shape = [3, 224, 224]
@@ -204,14 +222,32 @@ class TestCalibration(unittest.TestCase):
             calibrator.save_int8_model()
 
             print(
-                "Calibration is done and the corresponding files were generated at {}".
+                "Calibration is done and the corresponding files are generated at {}".
                 format(os.path.abspath("calibration_out")))
         else:
             return np.sum(test_info) / cnt
 
-    def test_calibration_for_resnet50(self):
-        fp32_acc1 = self.run_program("resnet50_fp32/model")
-        self.run_program("resnet50_fp32/model", True)
+    def test_calibration(self):
+        self.download_resnet50_model()
+        fp32_acc1 = self.run_program(self.model_cache_folder + "/model")
+        self.run_program(self.model_cache_folder + "/model", True)
+        int8_acc1 = self.run_program("calibration_out")
+        delta_value = np.abs(fp32_acc1 - int8_acc1)
+        self.assertLess(delta_value, 0.01)
+
+
+class TestCalibrationForMobilenetv1(TestCalibrationForResnet50):
+    def download_mobilenetv1_model(self):
+        # mobilenetv1 fp32 data
+        data_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
+        data_md5 = '13892b0716d26443a8cdea15b3c6438b'
+        self.model_cache_folder = self.download_data(data_url, data_md5,
+                                                     "mobilenetv1_fp32")
+
+    def test_calibration(self):
+        self.download_mobilenetv1_model()
+        fp32_acc1 = self.run_program(self.model_cache_folder + "/model")
+        self.run_program(self.model_cache_folder + "/model", True, algo='KL')
         int8_acc1 = self.run_program("calibration_out")
         delta_value = np.abs(fp32_acc1 - int8_acc1)
         self.assertLess(delta_value, 0.01)
