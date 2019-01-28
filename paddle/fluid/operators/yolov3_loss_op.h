@@ -308,13 +308,15 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
               }
             }
 
+            // If best IoU is greater then ignore_thresh,
+            // ignore the objectness loss.
             if (best_iou > ignore_thresh) {
               int obj_idx = (i * mask_num + j) * stride + k * w + l;
               obj_mask_data[obj_idx] = static_cast<T>(-1);
             }
-            // TODO(dengkaipeng): all losses should be calculated if best IoU
-            // is bigger then truth thresh should be calculated here, but
-            // currently, truth thresh is an unreachable value as 1.0.
+            // all losses should be calculated if best IoU
+            // is bigger then truth thresh, but currently,
+            // truth thresh is an unreachable value as 1.0.
           }
         }
       }
@@ -341,8 +343,6 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
           an_box.w = anchors[2 * an_idx] / static_cast<T>(input_size);
           an_box.h = anchors[2 * an_idx + 1] / static_cast<T>(input_size);
           float iou = CalcBoxIoU<T>(an_box, gt_shift);
-          // TODO(dengkaipeng): In paper, objectness loss is ignore when
-          // best IoU > 0.5, but darknet code didn't implement this.
           if (iou > best_iou) {
             best_iou = iou;
             best_n = an_idx;
