@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import contextlib
 import sys
 import numpy as np
@@ -30,25 +31,13 @@ class Layer(core.Layer):
     def __init__(self, dtype=core.VarDesc.VarType.FP32, name=None):
         self._built = False
         self._dtype = dtype
+        self._parameters = collections.OrderedDict()
+        self._sub_layers = collections.OrderedDict()
 
     def parameters(self):
-        params = []
-        for key in self.__dict__.keys():
-            value = self.__dict__[key]
-            if isinstance(value, framework.Parameter):
-                params.append(value)
-            elif isinstance(value, core.Layer):
-                params.extend(value.parameters())
-            elif isinstance(value, collections.Container):
-                if len(value) == 0:
-                    continue
-                if isinstance(value[0], framework.Parameter):
-                    params.extend(value)
-                elif isinstance(value[0], core.Layer):
-                    for v in value:
-                        params.extend(v.parameters())
-
-        return params
+        """Returns an OrderedDict with parameters from current and sub-layers.
+        """
+        return self._parameters
 
     def clear_gradients(self):
         for p in self.parameters():
@@ -70,6 +59,36 @@ class Layer(core.Layer):
 
     def backward(self, *inputs):
         raise ValueError("Layer shouldn't implement backward")
+
+    def __getattr__(self, name):
+        if name in self._parameters:
+            return self._parameters[name]
+        elif name in self._sub_layers:
+            return self._sub_layers[name]
+
+    def __setattr__(self, name, value):
+        if isinstance(value, framework.Parameter):
+            params = self.__dict__.get('_parameters', None)
+            if params is None:
+                raise ValueError(
+                    "super(YourLayer, self).__init__() should be called first")
+            params[name] = value
+        elif isinstance(value, core.Layer):
+            layers = self.__dict__.get('_sub_layers', None)
+            if layers is None:
+                raise ValueError(
+                    "super(YourLayer, self).__init__() should be called first")
+            layers[name] = value
+        else:
+            object.__setattr__(self, name, value)
+
+    def __delattr__(self, name):
+        if name in self._parameters:
+            del self._parameters[name]
+        elif name in self._sub_layers:
+            del self._sub_layers[name]
+        else:
+            object.__delattr__(self, name)
 
 
 class PyLayer(core.PyLayer):
