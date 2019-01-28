@@ -38,27 +38,27 @@ using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
 template <typename T>
-void send(const std::string& var_name,
-          const std::vector<std::string>& send_varnames,
-          const std::vector<std::string>& epmap,
-          const std::vector<int64_t>& height_sections,
-          const framework::ExecutionContext& ctx, const framework::Scope& scope,
-          bool sync) {
-  framework::Scope* local_scope = scope.NewTmpScope();
+void ParameterSend<T>::operator()(const std::string &var_name,
+                                  const std::vector<std::string> &send_varnames,
+                                  const std::vector<std::string> &epmap,
+                                  const std::vector<int64_t> &height_sections,
+                                  const framework::ExecutionContext &ctx,
+                                  const framework::Scope &scope, bool sync) {
+  framework::Scope *local_scope = scope.NewTmpScope();
 
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto& cpu_ctx = *pool.Get(platform::CPUPlace());
-  auto& actual_ctx = *pool.Get(ctx.GetPlace());
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &cpu_ctx = *pool.Get(platform::CPUPlace());
+  auto &actual_ctx = *pool.Get(ctx.GetPlace());
 
-  distributed::RPCClient* rpc_client =
+  distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(
           ctx.Attr<int>("trainer_id"));
 
-  auto* send_var = scope.FindVar(var_name);
+  auto *send_var = scope.FindVar(var_name);
   size_t out_num = send_varnames.size();
   if (send_var->IsType<framework::LoDTensor>()) {
-    auto& send_tensor = send_var->Get<framework::LoDTensor>();
-    auto& send_tensor_dims = send_tensor.dims();
+    auto &send_tensor = send_var->Get<framework::LoDTensor>();
+    auto &send_tensor_dims = send_tensor.dims();
     std::vector<framework::DDim> outs_dims;
     outs_dims.reserve(out_num);
 
@@ -89,13 +89,13 @@ void send(const std::string& var_name,
     // create output var in local scope
     size_t row_offset = 0;
     for (auto i = 0; i < out_num; ++i) {
-      auto* out =
+      auto *out =
           local_scope->Var(send_varnames[i])->GetMutable<framework::Tensor>();
       *out = send_tensor.Slice(row_offset, row_offset + outs_dims[i][0]);
       row_offset += outs_dims[i][0];
     }
   } else if (send_var->IsType<framework::SelectedRows>()) {
-    auto& send_slr = send_var->Get<framework::SelectedRows>();
+    auto &send_slr = send_var->Get<framework::SelectedRows>();
     auto abs_sections = ToAbsoluteSection(height_sections);
 
     auto send_rows = send_slr.rows();
@@ -109,9 +109,9 @@ void send(const std::string& var_name,
     auto src = send_slr.value().data<T>();
 
     // create output var in local scope
-    std::vector<framework::SelectedRows*> outs;
-    for (auto& name : send_varnames) {
-      auto* out = local_scope->Var(name)->GetMutable<framework::SelectedRows>();
+    std::vector<framework::SelectedRows *> outs;
+    for (auto &name : send_varnames) {
+      auto *out = local_scope->Var(name)->GetMutable<framework::SelectedRows>();
       outs.push_back(out);
     }
 
@@ -163,8 +163,8 @@ void send(const std::string& var_name,
 
   std::vector<distributed::VarHandlePtr> rets;
   for (size_t i = 0; i < send_varnames.size(); i++) {
-    auto& send_var_name = send_varnames[i];
-    auto& endpoint = epmap[i];
+    auto &send_var_name = send_varnames[i];
+    auto &endpoint = epmap[i];
     if (NeedSend(*local_scope, send_var_name)) {
       VLOG(3) << "sending " << send_var_name << " to " << endpoint;
       rets.push_back(rpc_client->AsyncSendVar(endpoint, cpu_ctx, *local_scope,
@@ -182,6 +182,8 @@ void send(const std::string& var_name,
 
   delete local_scope;
 }
+
+template struct ParameterSend<float>;
 
 };  // namespace distributed
 };  // namespace operators
