@@ -382,7 +382,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             'dtype': out.dtype,
             'value': float(value),
             'force_cpu': force_cpu or force_init_on_cpu()
-        })
+        },
+        stop_gradient=True)
     out.stop_gradient = True
     return out
 
