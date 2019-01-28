@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include <string>
+#include <utility>
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
@@ -37,7 +38,7 @@ template <typename Place>
 void *Alloc(const Place &place, size_t size);
 
 template <typename Place>
-void Free(const Place &place, void *p);
+void Free(const Place &place, void *p, size_t size);
 
 template <typename Place>
 size_t Used(const Place &place);
@@ -51,6 +52,11 @@ struct Usage : public boost::static_visitor<size_t> {
 size_t memory_usage(const platform::Place &p);
 
 using BuddyAllocator = detail::BuddyAllocator;
+
+std::unordered_map</*device id*/ int,
+                   std::pair</*current memory usage*/ uint64_t,
+                             /*peak memory usage*/ uint64_t>>
+    gpu_mem_info;
 
 BuddyAllocator *GetCPUBuddyAllocator() {
   // We tried thread_local for inference::RNN1 model, but that not works much
@@ -98,7 +104,8 @@ void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
 }
 
 template <>
-void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p) {
+void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p,
+                              size_t size) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }
@@ -177,9 +184,16 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
     LOG(WARNING) << "GPU memory used: "
                  << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
     platform::SetDeviceId(cur_dev);
-  }
-  if (FLAGS_init_allocated_mem) {
-    cudaMemset(ptr, 0xEF, size);
+  } else {
+    gpu_mem_info[place.device].first += size;
+    if (gpu_mem_info[place.device].first > gpu_mem_info[place.device].second) {
+      gpu_mem_info[place.device].second = gpu_mem_info[place.device].first;
+      VLOG(3) << "device: " << place.device << " peak memory usage : "
+              << (gpu_mem_info[place.device].second >> 20) << " MiB";
+    }
+    if (FLAGS_init_allocated_mem) {
+      cudaMemset(ptr, 0xEF, size);
+    }
   }
   return ptr;
 #else
@@ -188,9 +202,11 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
 }
 
 template <>
-void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p) {
+void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p,
+                               size_t size) {
 #ifdef PADDLE_WITH_CUDA
   GetGPUBuddyAllocator(place.device)->Free(p);
+  gpu_mem_info[place.device].first -= size;
 #else
   PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
 #endif
@@ -243,7 +259,7 @@ void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
 
 template <>
 void Free<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
-                                     void *p) {
+                                     void *p, size_t size) {
 #ifdef PADDLE_WITH_CUDA
   GetCUDAPinnedBuddyAllocator()->Free(p);
 #else
@@ -264,15 +280,17 @@ struct AllocVisitor : public boost::static_visitor<void *> {
 };
 
 struct FreeVisitor : public boost::static_visitor<void> {
-  inline explicit FreeVisitor(void *ptr) : ptr_(ptr) {}
+  inline explicit FreeVisitor(void *ptr, size_t size)
+      : ptr_(ptr), size_(size) {}
 
   template <typename Place>
   inline void operator()(const Place &place) const {
-    Free<Place>(place, ptr_);
+    Free<Place>(place, ptr_, size_);
   }
 
  private:
   void *ptr_;
+  size_t size_;
 };
 
 size_t Usage::operator()(const platform::CPUPlace &cpu) const {
@@ -304,8 +322,9 @@ Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
 }
 
 void LegacyAllocator::Free(Allocation *allocation) {
-  boost::apply_visitor(legacy::FreeVisitor(allocation->ptr()),
-                       allocation->place());
+  boost::apply_visitor(
+      legacy::FreeVisitor(allocation->ptr(), allocation->size()),
+      allocation->place());
   delete allocation;
 }
 }  // namespace allocation

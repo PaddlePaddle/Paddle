@@ -1,4 +1,3 @@
-
 #windows treat symbolic file as a real file, which is different with unix
 #We create a hidden file and compile it instead of origin source file.
 function(windows_symbolic TARGET)
@@ -129,12 +128,6 @@ cc_test(version_test SRCS version_test.cc DEPS version)
 
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog version)
 
-if(WITH_NGRAPH)
-  cc_library(ngraph_bridge SRCS ngraph_bridge.cc DEPS operator framework_proto ngraph)
-  cc_library(ngraph_operator SRCS ngraph_operator.cc DEPS ngraph_bridge operator op_info device_context tensor scope glog
-             shape_inference data_transform lod_tensor profiler)
-endif(WITH_NGRAPH)
-
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
@@ -171,13 +164,12 @@ if(WITH_DISTRIBUTE)
 
    set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
    set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-
 else()
-  if(WITH_NGRAPH)
-    cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass ngraph_operator variable_helper)
-  else(WITH_NGRAPH)
+  if (WITH_NGRAPH)
+    cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper ngraph_engine)
+  else ()
     cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
-  endif(WITH_NGRAPH)
+  endif()
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
 
@@ -214,3 +206,24 @@ endif (NOT WIN32)
 
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
+
+# Get the current working branch
+execute_process(
+  COMMAND git rev-parse --abbrev-ref HEAD
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE PADDLE_BRANCH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Get the latest abbreviated commit hash of the working branch
+execute_process(
+  COMMAND git log -1 --format=%h
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE PADDLE_COMMIT
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+message(STATUS "commit: ${PADDLE_COMMIT}")
+message(STATUS "branch: ${PADDLE_BRANCH}")
+
+configure_file(commit.h.in commit.h)
