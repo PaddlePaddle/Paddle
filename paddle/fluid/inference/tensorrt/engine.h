@@ -23,12 +23,14 @@ limitations under the License. */
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
+#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+class TRTInt8Calibrator;
 /*
  * TensorRT Engine.
  *
@@ -55,13 +57,16 @@ class TensorRTEngine : public EngineBase {
   };
 
   TensorRTEngine(int max_batch, int max_workspace, cudaStream_t stream,
-                 int device = 0,
+                 int device = 0, bool enable_int8 = false,
+                 TRTInt8Calibrator* calibrator = nullptr,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
         stream_(stream),
-        logger_(logger),
-        device_(device) {}
+        device_(device),
+        enable_int8_(enable_int8),
+        calibrator_(calibrator),
+        logger_(logger) {}
 
   virtual ~TensorRTEngine();
 
@@ -139,8 +144,8 @@ class TensorRTEngine : public EngineBase {
   // In the normal case, the paddle-trt exists bug when runing the googlenet.
   // When there are more than two convolutions of 1 * 1 with the same input, the
   // paddle-tensorrt will do the merging optimization, which fuse those conv
-  // into
-  // one conv, and then trigger bug. So,  We should use strategy to avoid this
+  // into one conv, and then trigger bug. So,  We should use strategy to avoid
+  // this
   // optimization for the time being. This bug will be fixed in the future.
   std::unordered_map<std::string /*name*/, int /*ITensor_quote_num*/>
       itensor_quote_num;
@@ -153,9 +158,14 @@ class TensorRTEngine : public EngineBase {
   // the max memory size the engine uses
   int max_workspace_;
 
+  cudaStream_t stream_;
+  // The specific GPU id that the TensorRTEngine bounded to.
+  int device_;
+
+  bool enable_int8_;
+  TRTInt8Calibrator* calibrator_;
   // batch size of the current data, will be updated each Executation.
   int batch_size_{-1};
-  cudaStream_t stream_;
 
   nvinfer1::ILogger& logger_;
 
@@ -165,8 +175,6 @@ class TensorRTEngine : public EngineBase {
   std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>
       itensor_map_;
 
-  // The specific GPU id that the TensorRTEngine bounded to.
-  int device_;
   std::vector<std::unique_ptr<plugin::PluginTensorRT>> owned_plugin_;
 
   // TensorRT related internal members
