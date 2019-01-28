@@ -6552,7 +6552,7 @@ def image_resize(input,
     to perform linear interpolation first in one direction, and then 
     again in the other direction.
 
-    Align_corners and align_mode are optinal parameters,The calculation method 
+    Align_corners and align_mode are optinal parameters,the calculation method 
     of interpolation can be selected by them.
 
     Example:
@@ -6758,11 +6758,11 @@ def resize_bilinear(input,
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation
 
-    Align_corners and align_mode are optinal parameters,The calculation 
+    Align_corners and align_mode are optinal parameters,the calculation 
     method of interpolation can be selected by them.
 
 
-    Align_corners and align_mode are optinal parameters,The calculation method 
+    Align_corners and align_mode are optinal parameters,the calculation method 
     of interpolation can be selected by them.
 
     Example:

@@ -110,7 +110,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           to perform linear interpolation first in one direction, and then 
           again in the other direction.
 
-          Align_corners and align_mode are optinal parameters,The calculation method 
+          Align_corners and align_mode are optinal parameters,the calculation method 
           of interpolation can be selected by them.
           
           Example:
