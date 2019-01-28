@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid.imperative.nn import EMBEDDING
+from paddle.fluid.imperative.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.imperative.base import to_variable
@@ -143,7 +143,7 @@ class PtbModel(fluid.imperative.Layer):
             num_layers=num_layers,
             init_scale=init_scale,
             dropout=dropout)
-        self.embedding = EMBEDDING(
+        self.embedding = Embedding(
             size=[vocab_size, hidden_size],
             dtype='float32',
             is_sparse=False,
@@ -151,8 +151,6 @@ class PtbModel(fluid.imperative.Layer):
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale)))
-
-    def _build_once(self, input, label, init_hidden, init_cell):
         self.softmax_weight = fluid.layers.create_parameter(
             [self.hidden_size, self.vocab_size],
             dtype="float32",
@@ -165,6 +163,9 @@ class PtbModel(fluid.imperative.Layer):
             name='softmax_bias',
             default_initializer=fluid.initializer.UniformInitializer(
                 low=-self.init_scale, high=self.init_scale))
+
+    def _build_once(self, input, label, init_hidden, init_cell):
+        pass
 
     def forward(self, input, label, init_hidden, init_cell):
 
@@ -203,7 +204,7 @@ class PtbModel(fluid.imperative.Layer):
 
 
 class TestImperativePtbRnn(unittest.TestCase):
-    def test_mnist_cpu_float32(self):
+    def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
