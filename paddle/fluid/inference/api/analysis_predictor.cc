@@ -726,6 +726,10 @@ bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
   return need;
 }
 
+std::string AnalysisPredictor::GetSeriazlizedProgram() const {
+  return inference_program_->Proto()->SerializeAsString();
+}
+
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<contrib::AnalysisConfig>(
     const contrib::AnalysisConfig &config) {
