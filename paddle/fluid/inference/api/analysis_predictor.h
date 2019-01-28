@@ -75,6 +75,8 @@ class AnalysisPredictor : public PaddlePredictor {
 
   void SetMkldnnThreadID(int tid);
 
+  std::string GetSeriazlizedProgram() const override;
+
  protected:
   // For memory optimization.
   bool need_collect_var_shapes_for_memory_optim();
@@ -97,6 +99,21 @@ class AnalysisPredictor : public PaddlePredictor {
   void GetFetchOne(const framework::LoDTensor &fetchs,
                    PaddleTensor *output_data);
 
+#if PADDLE_WITH_TENSORRT
+  // When we use Paddle-TRT INT8 engine, we need to generate calibration table
+  // data first,
+  // the calibration table contains the range for each op's input and output,
+  // this whole process can be divided into several steps:
+  //
+  // 1. Builds a 32-bit engine, runs it on the calibration set, and records a
+  // histogram for each
+  // tensor of the distribution of activation values.
+  // 2. Builds a calibration table from the histograms.
+  //
+  // After step 2, we need to store the calibration table on disk
+  bool SaveTrtCalibToDisk();
+#endif
+
 // Some more detailed tests, they are made the friends of the predictor, so that
 // the all the details can be tested.
 #if PADDLE_WITH_TESTING
@@ -115,7 +132,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::shared_ptr<framework::ProgramDesc> inference_program_;
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
-  std::vector<framework::OpDesc *> fetchs_;
+  std::vector<framework::OpDesc *> fetches_;
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.
   std::vector<framework::LoDTensor> feed_tensors_;

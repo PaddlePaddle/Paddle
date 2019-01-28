@@ -135,19 +135,6 @@ bool ParseLine(const std::string &line,
   return true;
 }
 
-// Print outputs to log
-void PrintOutputs(const std::vector<paddle::PaddleTensor> &outputs) {
-  LOG(INFO) << "example_id\tcontradiction\tentailment\tneutral";
-
-  for (size_t i = 0; i < outputs.front().data.length(); i += 3) {
-    LOG(INFO) << (i / 3) << "\t"
-              << static_cast<float *>(outputs.front().data.data())[i] << "\t"
-              << static_cast<float *>(outputs.front().data.data())[i + 1]
-              << "\t"
-              << static_cast<float *>(outputs.front().data.data())[i + 2];
-  }
-}
-
 bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs) {
   if (FLAGS_infer_data.empty()) {
     LOG(ERROR) << "please set input data path";
