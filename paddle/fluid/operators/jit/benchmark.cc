@@ -187,6 +187,9 @@ void BenchAXYNKernel() {
     RandomVec<T>(d, x_data);
     BenchAllImpls<KT, jit::AXYNTuples<T>, PlaceType>(d, &a, x.data<T>(), y_data,
                                                      d);
+    // test inplace
+    BenchAllImpls<KT, jit::AXYNTuples<T>, PlaceType>(d, &a, x.data<T>(), x_data,
+                                                     d);
   }
 }
 
