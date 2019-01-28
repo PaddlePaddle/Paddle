@@ -23,6 +23,9 @@ function(inference_analysis_api_test target install_dir filename)
         ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt)
 endfunction()
 
+
+inference_analysis_test(fc SRCS test_fc.cc EXTRA_DEPS ${INFERENCE_EXTRA_DEPS})
+
 function(inference_analysis_api_test_with_fake_data target install_dir filename model_name)
     download_model(${install_dir} ${model_name})
     inference_analysis_test(${target} SRCS ${filename}
