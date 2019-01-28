@@ -43,7 +43,7 @@ You can load INT8 model by load_inference_model [API](https://github.com/PaddleP
 ```
 
 ## 3. Result
-We provide the results of accuracy and performance, measurd on [Intel® Xeon® Platinum 8180 Processor](https://ark.intel.com/products/120496/Intel-Xeon-Platinum-8180-Processor-38-5M-Cache-2-50-GHz- "Intel® Xeon® Platinum 8180 Processor") (also known as Intel® Xeon® Skylake8180).
+We provide the results of accuracy and performance, measurd on [Intel® Xeon® Platinum Gold Processor](https://ark.intel.com/products/120489/Intel-Xeon-Gold-6148-Processor-27-5M-Cache-2-40-GHz- "Intel® Xeon® Gold 6148 Processor") (also known as Intel® Xeon® Skylake6148).
 
 | Model  | Dataset  | FP32 Accuracy  | INT8 Accuracy  | Accuracy Diff  |
 | ------------ | ------------ | ------------ | ------------ | ------------ |
@@ -61,10 +61,8 @@ val  val_list.txt
 
 | Model  | Batch Size  | FP32 Throughput (Images/second)  | INT8 Throughput (Images/second)  | Improvement  |
 | ------------ | ------------ | ------------ | ------------ | ------------ |
-| ResNet-50  | 512  | 326  |   542 |  1.66X |
-| MobileNet-V1  | 512  | 1133 | 2246   | 1.98X  |
-| ResNet-50  | 1  |   65  | 101  | 1.55X |
-| MobileNet-V1 | 1  | 165  | 217  | 1.32X  |
+| ResNet-50  | 1  |   12  | 23  | 1.92X |
+| MobileNet-V1 | 1  | 51  | 93  | 1.82X  |
 
 Notes:
 * The accuracy measurement requires the model with `label`.
