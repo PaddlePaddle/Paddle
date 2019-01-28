@@ -84,6 +84,8 @@ FeedFetchList AsyncSSAGraphExecutor::Run(
   }
 
   if (exception_holder_.IsCaught()) {
+    VLOG(3) << "caught exception " << exception_holder_.Type()
+            << ", rethrow it";
     exception_holder_.ReThrow();
   }
 
