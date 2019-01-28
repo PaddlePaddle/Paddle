@@ -1072,8 +1072,9 @@ Scope* OperatorWithKernel::PrepareData(
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
-  proto::VarType::Type defaut_data_type = static_cast<proto::VarType::Type>(-1);
-  proto::VarType::Type data_type = defaut_data_type;
+  proto::VarType::Type dafault_data_type =
+      static_cast<proto::VarType::Type>(-1);
+  proto::VarType::Type data_type = dafault_data_type;
   for (auto& input : this->inputs_) {
     const std::vector<const Variable*> vars = ctx.MultiInputVar(input.first);
     for (size_t i = 0; i < vars.size(); ++i) {
@@ -1092,7 +1093,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
                          input.first, i);
           proto::VarType::Type tmp = t->type();
           PADDLE_ENFORCE(
-              tmp == data_type || data_type == defaut_data_type,
+              tmp == data_type || data_type == dafault_data_type,
               "DataType of Paddle Op %s must be the same. Get (%d) != (%d)",
               Type(), DataTypeToString(data_type), DataTypeToString(tmp));
           data_type = tmp;
@@ -1100,7 +1101,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
       }
     }
   }
-  PADDLE_ENFORCE(data_type != defaut_data_type,
+  PADDLE_ENFORCE(data_type != dafault_data_type,
                  "DataType should be indicated by input");
   return data_type;
 }
