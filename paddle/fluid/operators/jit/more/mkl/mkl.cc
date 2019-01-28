@@ -179,7 +179,8 @@ bool SeqPoolKernel<double>::UseMe(const seq_pool_attr_t& attr) const {
 
 template <>
 bool SoftmaxKernel<float>::UseMe(const int& d) const {
-  return true;
+  // tuned on avx2
+  return platform::MayIUse(platform::avx) && d < 60;
 }
 
 #define AWALYS_USE_ME_WITH_DOUBLE(func)                  \
