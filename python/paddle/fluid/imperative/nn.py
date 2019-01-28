@@ -333,7 +333,6 @@ class BatchNorm(layers.Layer):
             dtype=self._dtype,
             default_initializer=Constant(1.0))
         if use_global_stats and self._helper.param_attr.learning_rate == 0.:
-            self._scale.stop_gradient = True
             self._scale._stop_gradient = True
 
         self._bias = self._helper.create_parameter(
@@ -342,7 +341,6 @@ class BatchNorm(layers.Layer):
             dtype=self._dtype,
             is_bias=True)
         if use_global_stats and self._helper.bias_attr.learning_rate == 0.:
-            self._bias.stop_gradient = True
             self._bias._stop_gradient = True
 
         self._mean = self._helper.create_parameter(
@@ -353,7 +351,6 @@ class BatchNorm(layers.Layer):
                 do_model_average=do_model_average_for_mean_and_var),
             shape=param_shape,
             dtype=self._dtype)
-        self._mean.stop_gradient = True
         self._mean._stop_gradient = True
 
         self._variance = self._helper.create_parameter(
@@ -364,7 +361,6 @@ class BatchNorm(layers.Layer):
                 do_model_average=do_model_average_for_mean_and_var),
             shape=param_shape,
             dtype=self._dtype)
-        self._variance.stop_gradient = True
         self._variance._stop_gradient = True
 
         self._in_place = in_place
