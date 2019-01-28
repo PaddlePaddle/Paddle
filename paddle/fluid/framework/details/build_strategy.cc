@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/sequential_execution_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 
 namespace paddle {
@@ -282,3 +283,4 @@ USE_PASS(modify_op_lock_and_record_event_pass);
 USE_PASS(inplace_pass);
 USE_PASS(lock_free_optimize_pass);
 USE_PASS(graph_print_pass);
+USE_PASS(graph_to_program_pass);
