@@ -54,20 +54,23 @@ class AllocSpaceForVarsOpOp : public framework::OperatorBase {
     out_tensor->Resize(framework::make_ddim({static_cast<int64_t>(mem_size)}))
         .mutable_data(dev_place, fuse_space_type);
 
+    VLOG(10) << "alloc_space_for_vars: output(" << grad_var_names[0]
+             << ") ,dim:(" << origin_dim << ")"
+             << " Address: " << out_tensor->data<void>();
+
     for (size_t i = 1; i < grad_var_names.size(); ++i) {
       auto out_t =
           scope.FindVar(grad_var_names[i])->GetMutable<framework::LoDTensor>();
-      VLOG(10) << "alloc_space_for_vars: output(" << grad_var_names[i]
-               << ") ,dim:(" << origin_dim << ")";
 
       int64_t len = out_t->numel();
       out_t->ShareDataWith(out_tensor->Slice(offset, offset + len))
           .Resize(out_t->dims());
       offset += len;
+      VLOG(10) << "alloc_space_for_vars: output(" << grad_var_names[i]
+               << ") ,dim:(" << origin_dim << ")"
+               << " Address: " << out_t->data<void>();
     }
 
-    VLOG(10) << "alloc_space_for_vars: output(" << grad_var_names[0]
-             << ") ,dim:(" << origin_dim << ")";
     out_tensor->Resize(origin_dim);
   }
 

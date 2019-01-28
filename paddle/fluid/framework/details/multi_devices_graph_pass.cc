@@ -181,6 +181,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
         // It also assumes backward op will always follow the forward op in
         // the block.
         is_forwarding = false;
+        VLOG(10) << node->Name() << "ScaleGrad";
       } else {
         CreateComputationalOps(&result, node, places_.size());
       }
@@ -485,17 +486,16 @@ VarHandle *MultiDevSSAGraphBuilderBase::CreateReduceOp(ir::Graph *result,
 
 bool MultiDevSSAGraphBuilderBase::IsScaleLossOp(ir::Node *node) const {
   // Note: The inserted opDesc may not have op_role.
-  if (node->Op()) {
-    VLOG(1) << node->Op()->Type();
-    // node->Op()->HasAttr(OpProtoAndCheckerMaker::OpRoleAttrName());
-    return node->Op() && !loss_var_name_.empty() &&
-           boost::get<int>(
-               node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-               (static_cast<int>(OpRole::kBackward) |
-                static_cast<int>(
-                    OpRole::kLoss));  // If loss_var is empty. This is test mode
-  }
-  return false;
+  VLOG(1) << node->Name() << " "
+          << boost::get<int>(
+                 node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
+  // node->Op()->HasAttr(OpProtoAndCheckerMaker::OpRoleAttrName());
+  return node->Op() && !loss_var_name_.empty() &&
+         boost::get<int>(
+             node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+             (static_cast<int>(OpRole::kBackward) |
+              static_cast<int>(
+                  OpRole::kLoss));  // If loss_var is empty. This is test mode
 }
 
 bool MultiDevSSAGraphBuilderBase::IsSparseGradient(
@@ -945,7 +945,9 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
   }
 }
 
-void FuseAllReduceSSAGraphBuilder::Init() const {}
+void FuseAllReduceSSAGraphBuilder::Init() const {
+  MultiDevSSAGraphBuilderBase::Init();
+}
 
 void FuseAllReduceSSAGraphBuilder::InsertCollectiveOp(
     ir::Graph *result, const std::string &p_name,
@@ -960,6 +962,7 @@ void FuseAllReduceSSAGraphBuilder::InsertCollectiveOp(
         result->Get<ParamsAndGrads>(kParamsAndGrads).count(p_name), 1);
     PADDLE_ENFORCE_EQ(grads_allreduce_.count(g_name), 0);
     grads_allreduce_.emplace(g_name, allreduce_op_handle);
+    VLOG(10) << "Insert all_reduce:(" << g_name << ")";
   }
 }
 
@@ -988,6 +991,7 @@ void FuseAllReduceSSAGraphBuilder::InsertPostprocessOps(
                     // Remove Input
                     var_handle->ClearGeneratedOp();
                   });
+    result->RemoveNode(op_handle.second->Node());
   }
   CreateFusedAllReduceOp(result, inputs, outputs, grads_allreduce_.size());
 }
@@ -1066,8 +1070,7 @@ REGISTER_MULTI_DEVICES_PASS(dist_multi_devices_pass,
       .RequirePassAttr(paddle::framework::details::kPlaces)                    \
       .RequirePassAttr(paddle::framework::details::kLocalScopes)               \
       .RequirePassAttr(paddle::framework::details::kStrategy)                  \
-      .RequirePassAttr(paddle::framework::details::kNRanks)                    \
-      .RequirePassAttr(paddle::framework::details::kParamsAndGrads)
+      .RequirePassAttr(paddle::framework::details::kNRanks)
 
 REGISTER_MULTI_DEVICES_PASS2(
     fused_allreduce_mode_multi_devices_pass,

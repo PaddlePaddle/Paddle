@@ -56,6 +56,8 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
 void FusedAllReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
 
+  VLOG(4) << this->DebugString();
+
   WaitInputVarGenerated();
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
@@ -77,22 +79,23 @@ void FusedAllReduceOpHandle::RunImpl() {
     auto *s = local_scopes_[i];
     Scope &local_scope = *s->FindVar(kLocalExecScopeName)->Get<Scope *>();
     auto &vec = grads_tensor.at(i);
-    // TODO(zcd): check place
-    for (size_t j = 0; j < in_var_handles.size(); j += num_of_all_reduce_) {
+
+    for (size_t j = 0; j < in_var_handles.size(); j += place_num) {
       auto var_name = in_var_handles[j]->name();
       PADDLE_ENFORCE_EQ(var_name, out_var_handles[j]->name());
       auto &lod_tensor =
           local_scope.FindVar(var_name)->Get<framework::LoDTensor>();
       vec.emplace_back(std::make_pair(var_name, lod_tensor));
+      PADDLE_ENFORCE_EQ(lod_tensor.place(), places_[i]);
     }
 
     // Check the dtype of the input
     int64_t element_num = 0;
     for (size_t k = 0; k < vec.size(); ++k) {
-      int64_t len = vec.at(k - 1).second.numel();
+      int64_t len = vec.at(k).second.numel();
       PADDLE_ENFORCE_GT(len, 0);
       element_num += len;
-      auto dtype = vec.at(k - 1).second.type();
+      auto dtype = vec.at(k).second.type();
       if (fuse_space_type == static_cast<framework::proto::VarType::Type>(0)) {
         fuse_space_type = dtype;
         PADDLE_ENFORCE_NE(dtype,
@@ -110,15 +113,23 @@ void FusedAllReduceOpHandle::RunImpl() {
     sort(vec.begin(), vec.end(),
          [](std::pair<std::string, framework::LoDTensor> &a,
             std::pair<std::string, framework::LoDTensor> &b) -> bool {
-           return a.second.data<void>() > b.second.data<void>();
+           return a.second.data<void>() < b.second.data<void>();
          });
-    auto place = vec.at(0).second.place();
+
     for (size_t k = 1; k < vec.size(); ++k) {
-      PADDLE_ENFORCE_EQ(place, vec.at(k).second.place());
       void *pre_address = vec.at(k - 1).second.data<void>();
       int64_t len = vec.at(k - 1).second.numel();
-      void *cur_address = vec.at(k).second.data<void>();
       auto offset = len * framework::SizeOfType(fuse_space_type);
+      void *cur_address = vec.at(k).second.data<void>();
+
+      VLOG(10) << k << ", "
+               << " pre_address(" << vec.at(k - 1).first << "): " << pre_address
+               << ", cur_address(" << vec.at(k).first << "): " << cur_address
+               << ", offset:" << offset << ", "
+               << reinterpret_cast<void *>(
+                      reinterpret_cast<uintptr_t>(pre_address) + offset)
+               << ", " << cur_address;
+
       PADDLE_ENFORCE_EQ(reinterpret_cast<void *>(
                             reinterpret_cast<uintptr_t>(pre_address) + offset),
                         cur_address);
@@ -126,27 +137,25 @@ void FusedAllReduceOpHandle::RunImpl() {
   }
 
   if (!FLAGS_skip_fused_all_reduce_check) {
-    for (size_t j = 0; j < num_of_all_reduce_; ++j) {
-      for (size_t i = 1; i < place_num; ++i) {
-        PADDLE_ENFORCE_EQ(grads_tensor.at(j).at(0).first,
-                          grads_tensor.at(j).at(i).first);
+    for (size_t i = 0; i < place_num; ++i) {
+      for (size_t j = 1; j < num_of_all_reduce_; ++j) {
+        PADDLE_ENFORCE_EQ(grads_tensor.at(0).at(j).first,
+                          grads_tensor.at(i).at(j).first);
       }
     }
   }
 
   std::vector<LoDTensor *> lod_tensors;
   auto &tensor_0 = grads_tensor.at(0).at(0).second;
-  auto place = tensor_0.place();
   auto dtype = tensor_0.type();
-  lod_tensors.emplace_back(&(tensor_0));
+  lod_tensors.emplace_back(&tensor_0);
   for (size_t i = 1; i < place_num; ++i) {
     auto &tensor = grads_tensor.at(i).at(0).second;
-    PADDLE_ENFORCE_EQ(place, tensor.place());
     PADDLE_ENFORCE_EQ(dtype, tensor.type());
     lod_tensors.emplace_back(&tensor);
   }
 
-  if (platform::is_gpu_place(place)) {
+  if (platform::is_gpu_place(places_[0])) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     PADDLE_ENFORCE(nccl_ctxs_, "nccl_ctxs should not be nullptr.");
     int nccl_dtype = platform::ToNCCLDataType(dtype);

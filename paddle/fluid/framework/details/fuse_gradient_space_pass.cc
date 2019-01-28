@@ -31,11 +31,11 @@ std::unique_ptr<ir::Graph> FuseGradientSpacePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   ir::Graph& result = *graph;
 
-  result.Set(kParamsAndGrads, new ParamsAndGrads);
+  graph->Set(kParamsAndGrads, new ParamsAndGrads);
   std::unordered_map<std::string, ir::Node*> vars;
   std::unordered_map<std::string, ir::Node*> ops;
   // Get parameters and gradients
-  for (ir::Node* node : graph->Nodes()) {
+  for (ir::Node* node : result.Nodes()) {
     if (node->IsVar()) {
       if (node->Var()) {
         auto var_name = node->Var()->Name();

@@ -57,14 +57,17 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     // Add op fusion.
     if (strategy.fuse_relu_depthwise_conv_) {
+      VLOG(10) << "Add fuse_relu_depthwise_conv_pass";
       AppendPass("fuse_relu_depthwise_conv_pass");
     }
 
     if (strategy.fuse_elewise_add_act_ops_) {
+      VLOG(10) << "Add fuse_elewise_add_act_pass";
       AppendPass("fuse_elewise_add_act_pass");
     }
 
     if (strategy.fuse_all_reduce_ops_) {
+      VLOG(10) << "Add fuse_gradient_space_pass";
       AppendPass("fuse_gradient_space_pass");
     }
 
@@ -114,10 +117,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPass("multi_devices_check_pass");
 
     if (SeqOnlyAllReduceOps(strategy)) {
+      VLOG(10) << "Add all_reduce_deps_pass";
       AppendPass("all_reduce_deps_pass");
     }
 
     if (strategy_.remove_unnecessary_lock_) {
+      VLOG(10) << "Add modify_op_lock_and_record_event_pass";
       AppendPass("modify_op_lock_and_record_event_pass");
     }
   }
@@ -128,7 +133,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (strategy_.is_distribution_) {
       multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
     } else {
-      if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
+      if (strategy.fuse_all_reduce_ops_) {
+        multi_devices_pass =
+            AppendPass("fused_allreduce_mode_multi_devices_pass").get();
+      } else if (strategy.reduce_ ==
+                 BuildStrategy::ReduceStrategy::kAllReduce) {
         multi_devices_pass =
             AppendPass("allreduce_mode_multi_devices_pass").get();
       } else if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
