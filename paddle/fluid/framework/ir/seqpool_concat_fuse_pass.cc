@@ -50,7 +50,7 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
       // the other one should be unused empty var.
       if (is_nth_input_var_of_concat(x->outputs[0], idx)) {
         satisfied_all = satisfied_all && x->outputs[1]->IsVar() &&
-                        x->outputs[1]->outputs.size() == 0;
+                        x->outputs[1]->outputs.empty();
       } else {
         satisfied_all =
             satisfied_all && is_nth_input_var_of_concat(x->outputs[1], idx) &&
@@ -129,7 +129,8 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
   return concat_out_var;
 }
 
-int BuildFusion(Graph* graph, const std::string& name_scope, int num_inputs) {
+static int BuildFusion(Graph* graph, const std::string& name_scope,
+                       int num_inputs) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
   BuildSeqPoolConcatPattern(pattern, name_scope, num_inputs);

@@ -45,6 +45,9 @@ class PaddlePassBuilder {
   /** Delete all the passes that has type `pass_type`. */
   void DeletePass(const std::string &pass_type);
 
+  /** Append an analysis pass. */
+  void AppendAnalysisPass(const std::string &pass);
+
   /** Visualize the computation graph after each pass by generating a DOT
    * language file, one can draw them with the Graphviz toolkit.
    */
@@ -54,8 +57,18 @@ class PaddlePassBuilder {
   std::string DebugString();
 
   const std::vector<std::string> &AllPasses() const { return passes_; }
+  std::vector<std::string> AnalysisPasses() const {
+    auto passes = analysis_passes_;
+    // To make sure the ir_graph_to_program should be the last pass so any
+    // modication of IR will persist to the program.
+    passes.push_back("ir_graph_to_program_pass");
+    return passes;
+  }
 
  protected:
+  std::vector<std::string> analysis_passes_{
+      {"ir_graph_build_pass", "ir_analysis_pass",
+       "ir_params_sync_among_devices_pass"}};
   std::vector<std::string> passes_;
 };
 
@@ -69,7 +82,7 @@ class PassStrategy : public PaddlePassBuilder {
   /** The MKLDNN control exists in both CPU and GPU mode, because there can be
    * still some CPU kernels running in CPU mode.
    */
-  virtual void EnableMKLDNN() = 0;
+  virtual void EnableMKLDNN() {}
 
   bool use_gpu() const { return use_gpu_; }
 
@@ -77,6 +90,7 @@ class PassStrategy : public PaddlePassBuilder {
 
  protected:
   bool use_gpu_{false};
+  bool use_mkldnn_{false};
 };
 
 /** The CPU passes controller, it is used in AnalysisPredictor with CPU mode.
@@ -98,6 +112,8 @@ class CpuPassStrategy : public PassStrategy {
         "mul_gru_fuse_pass",             //
         "seq_concat_fc_fuse_pass",       //
         "fc_fuse_pass",                  //
+        "repeated_fc_relu_fuse_pass",    //
+        "squared_mat_sub_fuse_pass",     //
         "conv_bn_fuse_pass",             //
         "conv_eltwiseadd_bn_fuse_pass",  //
         "is_test_pass",                  //
@@ -105,25 +121,31 @@ class CpuPassStrategy : public PassStrategy {
     use_gpu_ = false;
   }
 
+  explicit CpuPassStrategy(const CpuPassStrategy &other)
+      : PassStrategy(other.AllPasses()) {}
+
   virtual ~CpuPassStrategy() = default;
 
   void EnableMKLDNN() override {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
 #ifdef PADDLE_WITH_MKLDNN
-    passes_.insert(passes_.begin(), "mkldnn_placement_pass");
+    if (!use_mkldnn_) {
+      passes_.insert(passes_.begin(), "mkldnn_placement_pass");
 
-    for (auto &pass :
-         std::vector<std::string>({"depthwise_conv_mkldnn_pass",    //
-                                   "conv_bias_mkldnn_fuse_pass",    //
-                                   "conv3d_bias_mkldnn_fuse_pass",  //
-                                   "conv_relu_mkldnn_fuse_pass",    //
-                                   "conv_elementwise_add_mkldnn_fuse_pass"})) {
-      passes_.push_back(pass);
+      for (auto &pass : std::vector<std::string>(
+               {"depthwise_conv_mkldnn_pass",    //
+                "conv_bias_mkldnn_fuse_pass",    //
+                "conv3d_bias_mkldnn_fuse_pass",  //
+                "conv_relu_mkldnn_fuse_pass",    //
+                "conv_elementwise_add_mkldnn_fuse_pass"})) {
+        passes_.push_back(pass);
+      }
     }
+    use_mkldnn_ = true;
+#else
+    use_mkldnn_ = false;
 #endif
   }
-
-  CpuPassStrategy(const CpuPassStrategy &other) : PassStrategy(other.passes_) {}
 };
 
 /** The GPU passes strategy, it is used in AnalysisPredictor with GPU mode.
@@ -132,19 +154,26 @@ class GpuPassStrategy : public PassStrategy {
  public:
   GpuPassStrategy() : PassStrategy({}) {
     passes_.assign({
-        "infer_clean_graph_pass",                    //
-        "conv_affine_channel_fuse_pass",             //
-        "conv_eltwiseadd_affine_channel_fuse_pass",  //
-        "conv_bn_fuse_pass",                         //
-        "conv_elementwise_add_act_fuse_pass",        //
-        "conv_elementwise_add2_act_fuse_pass",       //
-        "conv_elementwise_add_fuse_pass",            //
+      "infer_clean_graph_pass",                        //
+          "conv_affine_channel_fuse_pass",             //
+          "conv_eltwiseadd_affine_channel_fuse_pass",  //
+          "conv_bn_fuse_pass",                         //
+#if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
+                           // guaranteed at least v7
+          "conv_elementwise_add_act_fuse_pass",   //
+          "conv_elementwise_add2_act_fuse_pass",  //
+          "conv_elementwise_add_fuse_pass",       //
+#endif
     });
 
+    for (int i = 6; i >= 3; i--) {
+      passes_.push_back("transpose_flatten" + std::to_string(i) +
+                        "_concat_fuse_pass");
+    }
     use_gpu_ = true;
   }
 
-  GpuPassStrategy(const GpuPassStrategy &other)
+  explicit GpuPassStrategy(const GpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_gpu_ = true;
   }
