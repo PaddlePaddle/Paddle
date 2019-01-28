@@ -36,6 +36,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
   // var nodes for each var name, will have multiple versions in SSA
   std::map<std::string, std::vector<ir::Node *>> var_nodes;
   for (auto *var : program.Block(0).AllVars()) {
+    VLOG(10) << "insert into all_vars:" << var->Name();
     all_vars.emplace(var->Name(), var);
   }
 

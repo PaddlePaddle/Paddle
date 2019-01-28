@@ -452,13 +452,11 @@ std::unique_ptr<framework::OpDesc> CreateDGCOpDesc(
   desc->SetInput("U", std::vector<std::string>({u_name}));
   desc->SetInput("V", std::vector<std::string>({v_name}));
   desc->SetInput("Grad", std::vector<std::string>({grad_name}));
-  // desc->SetInput("GradLocal", std::vector<std::string>({grad_local_name}));
 
-  desc->SetOutput("U", std::vector<std::string>({u_name}));
-  desc->SetOutput("V", std::vector<std::string>({v_name}));
-  desc->SetOutput("EncodeGradient",
+  desc->SetOutput("U_out", std::vector<std::string>({u_name}));
+  desc->SetOutput("V_out", std::vector<std::string>({v_name}));
+  desc->SetOutput("EncodeGrad",
                   std::vector<std::string>({encoded_grad_name}));
-  // desc->SetOutput("GradLocal", std::vector<std::string>({grad_local_name}));
 
   return desc;
 }
@@ -473,22 +471,56 @@ void DistSSAGraphBuilder::CreateDGCOp(ir::Graph *graph, size_t num_places,
 
   auto dgc_op_desc =
       CreateDGCOpDesc(u_name, v_name, grad_name, encoded_grad_name);
+
+  std::cout << "CreateDGCOp " << u_name << ", " << v_name 
+      << "," << grad_name << "," << encoded_grad_name << std::endl;
+
+  std::unordered_map<std::string, VarDesc *> all_vars;
+  // var nodes for each var name, will have multiple versions in SSA
+  std::map<std::string, std::vector<ir::Node *>> var_nodes;
+  for (auto *var : graph->GetProgram().Block(0).AllVars()) {
+    all_vars.emplace(var->Name(), var);
+  }
+
   for (size_t i = 0; i < num_places; ++i) {
     // insert DGCop.
+      // std::cout << "CreateDGCOp 1:" << i << std::endl;
     auto place = places_[i];
+      // std::cout << "CreateDGCOp 2:" << i
+          // << ", " << dgc_op_desc.get() << std::endl;
     auto scope = local_scopes_[i];
-    graph->Get<GraphOps>(kGraphOps).emplace_back(new ComputationOpHandle(
-        graph->CreateOpNode(dgc_op_desc.get()), scope, place, i));
+
+    auto node=graph->CreateOpNode(dgc_op_desc.get());
+      // std::cout << "CreateDGCOp 2.1:" << i
+          // << ", node:" << node << std::endl;
+    auto op = framework::OpRegistry::CreateOp(*node->Op());
+    auto com_op_handle=new ComputationOpHandle(node,scope, place, i);
+      // std::cout << "CreateDGCOp 2.2:" << i 
+          // << ", op:" << &op << std::endl;
+    graph->Get<GraphOps>(kGraphOps).emplace_back(com_op_handle);
+      // std::cout << "CreateDGCOp 3:" << i << std::endl;
 
     // Add inputs
+    PADDLE_ENFORCE(graph->Get<GraphOps>(kGraphOps).back()!=nullptr);
+      // std::cout << "CreateDGCOp 4:" << i << std::endl;
     auto *op_handle = graph->Get<GraphOps>(kGraphOps).back();
+
+    auto &var_map=graph->Get<GraphVars>(kGraphVars)[i];
+      // std::cout << "CreateDGCOp 5:"<< i << std::endl;
+    if(var_map.find(grad_name) == var_map.end()){
+        PADDLE_ENFORCE(false, "not find %s", grad_name);
+    }
     auto &vars = graph->Get<GraphVars>(kGraphVars)[i][grad_name];
+
+    PADDLE_ENFORCE(!vars.empty());
     op_handle->AddInput(vars.back());
 
     std::vector<std::string> names{u_name, v_name};
     for (auto name : names) {
-      auto var_desc = all_vars_.at(name);
-      PADDLE_ENFORCE_NOT_NULL(var_desc);
+      VLOG(10) << "try to find var:" << name;
+      auto it = all_vars.find(name);
+      if(it == all_vars.end()) PADDLE_ENFORCE(false, "%s not find in all_vars", name);
+      auto var_desc = it->second;
 
       auto var_node = graph->CreateVarNode(var_desc);
       auto var_handle = new VarHandle(var_node);
@@ -501,7 +533,7 @@ void DistSSAGraphBuilder::CreateDGCOp(ir::Graph *graph, size_t num_places,
     auto &out_vars = graph->Get<GraphVars>(kGraphVars)[i][encoded_grad_name];
     auto out_var_h = new VarHandle(
         graph->CreateEmptyNode(encoded_grad_name, ir::Node::Type::kVariable),
-        vars.size(), i, encoded_grad_name, place);
+        out_vars.size(), i, encoded_grad_name, place);
     out_vars.emplace_back(out_var_h);
     op_handle->AddOutput(out_var_h);
 

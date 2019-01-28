@@ -474,11 +474,11 @@ class DistributeTranspiler(object):
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
 
-    def _add_dgc_vars(start_program, main_program):
-        startup_program._enable_dgc = True
+    def _add_dgc_vars(self, start_program, main_program):
+        main_program._enable_dgc = True
 
         _, params_grads = self._get_optimize_pass()
-        for param_var, grad_var in self.params_grads:
+        for param_var, grad_var in params_grads:
             var_numel = reduce(lambda x, y: x * y, param_var.shape)
             if var_numel < 4096 or \
                 param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
@@ -491,7 +491,7 @@ class DistributeTranspiler(object):
 
             names = [u_name, v_name]
             for var_name in names:
-                startup_program.global_block().create_var(
+                var = start_program.global_block().create_var(
                     name=var_name,
                     shape=param_var.shape,
                     dtype=param_var.dtype,
@@ -499,10 +499,17 @@ class DistributeTranspiler(object):
                     stop_gradient=True,
                     persistable=True)
 
-                startup_program.global_block().append_op(
+                main_program.global_block().create_var(
+                    name=var_name,
+                    shape=param_var.shape,
+                    dtype=param_var.dtype,
+                    type=param_var.type,
+                    stop_gradient=True,
+                    persistable=True)
+
+                start_program.global_block().append_op(
                     type="fill_constant",
-                    inputs=var_name,
-                    outputs={"Out": var_name},
+                    outputs={"Out": var},
                     attrs={
                         "shape": param_var.shape,
                         "dtype": param_var.dtype,
@@ -510,14 +517,6 @@ class DistributeTranspiler(object):
                         'force_cpu': False
                     },
                     stop_gradient=True)
-
-                main_program.global_block().create_var(
-                    name=u_name,
-                    shape=param_var.shape,
-                    dtype=param_var.dtype,
-                    type=param_var.type,
-                    stop_gradient=True,
-                    persistable=True)
 
     def _transpile_nccl2(self,
                          trainer_id,
@@ -611,7 +610,7 @@ class DistributeTranspiler(object):
         self.startup_program = startup_program
         self.origin_startup_program = self.startup_program.clone()
 
-        if self.config.enable_dgc and self.confi.mode != "nccl2":
+        if self.config.enable_dgc and self.config.mode != "nccl2":
             raise ValueError("enable_dgc should used under nccl mode!")
 
         if self.config.mode == "nccl2":
@@ -625,7 +624,7 @@ class DistributeTranspiler(object):
                 wait_port=self.config.wait_port)
             if self.config.enable_dgc:
                 self._add_dgc_vars(
-                    startup_program=startup_program, main_program=program)
+                    start_program=self.startup_program, main_program=program)
             return
 
         self.trainer_num = trainers

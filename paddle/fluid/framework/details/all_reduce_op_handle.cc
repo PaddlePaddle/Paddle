@@ -152,7 +152,7 @@ void AllReduceOpHandle::_RunImplEncoded() {
 #endif
 
 void AllReduceOpHandle::RunImpl() {
-  if (is_encoded_) {
+  if (!is_encoded_) {
     _RunImpl();
     return;
   }
