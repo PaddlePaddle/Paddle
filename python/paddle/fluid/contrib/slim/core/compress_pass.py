@@ -40,7 +40,8 @@ class Context(object):
                  train_graph=None,
                  train_reader=None,
                  eval_graph=None,
-                 eval_reader=None):
+                 eval_reader=None,
+                 optimizer=None):
         # The total number of epoches to be trained.
         self.epoch = 0
         # Current epoch
@@ -56,6 +57,7 @@ class Context(object):
         self.eval_graph = eval_graph
         self.eval_reader = eval_reader
         self.executor = None
+        self.optimizer = optimizer
 
     def run_eval_graph(self):
         assert self.eval_graph is not None
@@ -66,18 +68,17 @@ class Context(object):
         s_time = time.time()
         for data in self.eval_reader():
             result = self.executor.run(self.eval_graph, data=data)
+            results.append(result)
             if batch_id % 20 == 0:
                 e_time = time.time()
                 print("time: {}s; batch[{}] eval: {}={}".format(
                     e_time - s_time, batch_id,
                     self.eval_graph.out_nodes.keys(), list(result)))
                 s_time = time.time()
-                break
             batch_id += 1
-            results.append(result)
         result = np.mean(np.array(results), axis=0)
-        print("final eval result: {}={}".format(
-            self.eval_graph.out_nodes.keys(), result))
+        print("final eval result: {}={}".format(self.eval_graph.out_nodes.keys(
+        ), result))
         if not isinstance(result, Iterable):
             result = [result]
         return result, self.eval_graph.out_nodes.keys()
@@ -114,7 +115,8 @@ class CompressPass(object):
                  eval_reader=None,
                  eval_feed_list=None,
                  eval_fetch_list=None,
-                 teacher_programs=[]):
+                 teacher_programs=[],
+                 optimizer=None):
         self.strategies = []
         self.epoch = 0
         self.place = CPUPlace() if place is None else place
@@ -138,13 +140,14 @@ class CompressPass(object):
         self.model_save_dir = None
         self.eval_epoch = 1
 
+        self.optimizer = optimizer
+
     def add_strategy(self, strategy):
         """
         Add a strategy to current compress pass.
         Args:
             strategy: The strategy to be added into current compress pass.
         """
-        print "add strategy: %s" % (type(strategy))
         self.strategies.append(strategy)
         self.epoch = max(strategy.end_epoch, self.epoch)
 
@@ -205,7 +208,8 @@ class CompressPass(object):
             train_graph=self.train_graph,
             train_reader=self.train_reader,
             eval_graph=self.eval_graph,
-            eval_reader=self.eval_reader)
+            eval_reader=self.eval_reader,
+            optimizer=self.optimizer)
 
         self._load_checkpoint(context)
 

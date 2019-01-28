@@ -67,7 +67,8 @@ class Model(object):
             eval_program=eval_program,
             eval_reader=eval_reader,
             eval_feed_list=eval_feed_list,
-            eval_fetch_list=eval_fetch_list)
+            eval_fetch_list=eval_fetch_list,
+            optimizer=optimizer)
         com_pass.config('./config.yaml')
         com_pass.run()
 
