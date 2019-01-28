@@ -225,9 +225,6 @@ class FC(layers.Layer):
             act=act,
             name=name)
 
-    def parameters(self):
-        return [self._w, self._b]
-
     def _build_once(self, input):
         input_shape = input.shape
         param_shape = [
