@@ -43,11 +43,24 @@ pass_library(multi_batch_merge_pass base)
 pass_library(conv_bn_fuse_pass inference)
 pass_library(seqconv_eltadd_relu_fuse_pass inference)
 pass_library(seqpool_concat_fuse_pass inference)
+pass_library(repeated_fc_relu_fuse_pass inference)
+pass_library(squared_mat_sub_fuse_pass inference)
 pass_library(is_test_pass base)
 pass_library(conv_elementwise_add_act_fuse_pass inference)
 pass_library(conv_elementwise_add2_act_fuse_pass inference)
 pass_library(conv_elementwise_add_fuse_pass inference)
 pass_library(conv_affine_channel_fuse_pass inference)
+pass_library(transpose_flatten_concat_fuse_pass inference)
+
+# There may be many transpose-flatten structures in a model, and the output of
+# these structures will be used as inputs to the concat Op. This pattern will
+# be detected by our pass. The index here represents the number of structures in the
+# pattern. We use index 3 ~ 6, because these quantities of structures are
+# common in the models.
+foreach (index RANGE 3 6)
+   file(APPEND ${pass_file} "USE_PASS(transpose_flatten${index}_concat_fuse_pass);\n")
+endforeach()
+
 if(WITH_MKLDNN)
     pass_library(mkldnn_placement_pass base)
     pass_library(depthwise_conv_mkldnn_pass base)
@@ -57,6 +70,7 @@ if(WITH_MKLDNN)
 endif()
 
 cc_library(fuse_elewise_add_act_pass SRCS fuse_elewise_add_act_pass.cc DEPS pass graph_pattern_detector )
+cc_library(fuse_relu_depthwise_conv_pass SRCS fuse_relu_depthwise_conv_pass.cc DEPS pass graph_pattern_detector )
 
 set(GLOB_PASS_LIB ${PASS_LIBRARY} CACHE INTERNAL "Global PASS library")
 
