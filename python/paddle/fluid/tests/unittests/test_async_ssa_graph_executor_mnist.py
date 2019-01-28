@@ -15,13 +15,13 @@
 from __future__ import print_function
 
 import os
-from PIL import Image
+import unittest
+
 import numpy
 import paddle
 import paddle.fluid as fluid
 
 BATCH_SIZE = 64
-PASS_NUM = 5
 
 
 def loss_net(hidden, label):
@@ -51,11 +51,9 @@ def convolutional_neural_network(img, label):
     return loss_net(conv_pool_2, label)
 
 
-def train(use_cuda,
-          save_dirname=None,
-          model_filename=None,
-          params_filename=None):
+def train(use_cuda, thread_num, cpu_num):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
+        print("paddle is not compiled with cuda, exit!")
         return
 
     img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
@@ -84,8 +82,6 @@ def train(use_cuda,
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
-    exe = fluid.Executor(place)
-
     train_reader = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.mnist.train(), buf_size=500),
@@ -94,24 +90,22 @@ def train(use_cuda,
         paddle.dataset.mnist.test(), batch_size=BATCH_SIZE)
     feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
 
+    exe = fluid.Executor(place)
     exe.run(fluid.default_startup_program())
-    main_program = fluid.default_main_program()
 
-    exec_strategy = fluid.ExecutionStrategy()
-    build_strategy = fluid.BuildStrategy()
-
-    cpu_num = int(os.environ.get('CPU_NUM'))
-    thread_num = int(os.getenv("NUM_THREADS"))
+    os.environ['CPU_NUM'] = str(cpu_num)
 
     print("cpu_num:" + str(cpu_num))
     print("thread_num:" + str(thread_num))
 
-    build_strategy.async_mode = True
+    build_strategy = fluid.BuildStrategy()
+    build_strategy.async_mode = True  # enable async mode
 
+    exec_strategy = fluid.ExecutionStrategy()
     exec_strategy.num_threads = thread_num
-    exec_strategy.num_iteration_per_drop_scope = 1
-    exec_strategy.num_iteration_per_run = 10
+    exec_strategy.num_iteration_per_run = 2
 
+    main_program = fluid.default_main_program()
     pe = fluid.ParallelExecutor(
         use_cuda=False,
         loss_name=avg_loss.name,
@@ -119,96 +113,26 @@ def train(use_cuda,
         build_strategy=build_strategy,
         exec_strategy=exec_strategy)
 
-    lists = []
     step = 0
-    for epoch_id in range(PASS_NUM):
-        for step_id, data in enumerate(train_reader()):
-            loss_val, acc_val = pe.run(feed=feeder.feed(data),
-                                       fetch_list=[avg_loss.name, acc.name])
-            loss_val = numpy.mean(loss_val)
-            acc_val = numpy.mean(acc_val)
-            if step % 100 == 0:
-                print("Pass %d, Batch %d, Cost %f" % (epoch_id, step, loss_val))
-            step += 1
-        # test for epoch
-        avg_loss_val, acc_val = train_test(
-            train_test_program=test_program,
-            train_test_reader=test_reader,
-            train_test_feed=feeder)
+    for step_id, data in enumerate(train_reader()):
+        loss_val = pe.run(feed=feeder.feed(data), fetch_list=[avg_loss.name])
+        loss_val = numpy.mean(loss_val)
+        if step % 100 == 0:
+            print("Batch %d, Cost %f" % (step, loss_val))
+        step += 1
+    # test for epoch
+    avg_loss_val, acc_val = train_test(
+        train_test_program=test_program,
+        train_test_reader=test_reader,
+        train_test_feed=feeder)
 
-        print("Test with Epoch %d, avg_cost: %s, acc: %s" %
-              (epoch_id, avg_loss_val, acc_val))
-        lists.append((epoch_id, avg_loss_val, acc_val))
-        if save_dirname is not None:
-            fluid.io.save_inference_model(
-                save_dirname, ["img"], [prediction],
-                exe,
-                model_filename=model_filename,
-                params_filename=params_filename)
-
-    # find the best pass
-    best = sorted(lists, key=lambda list: float(list[1]))[0]
-    print('Best pass is %s, testing Avgcost is %s' % (best[0], best[1]))
-    print('The classification accuracy is %.2f%%' % (float(best[2]) * 100))
+    print("Test: avg_cost: %s, acc: %s" % (avg_loss_val, acc_val))
 
 
-def infer(use_cuda,
-          save_dirname=None,
-          model_filename=None,
-          params_filename=None):
-    if save_dirname is None:
-        return
-
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
-
-    def load_image(file):
-        im = Image.open(file).convert('L')
-        im = im.resize((28, 28), Image.ANTIALIAS)
-        im = numpy.array(im).reshape(1, 1, 28, 28).astype(numpy.float32)
-        im = im / 255.0 * 2.0 - 1.0
-        return im
-
-    cur_dir = os.path.dirname(os.path.realpath(__file__))
-    tensor_img = load_image(cur_dir + '/image/infer_3.png')
-
-    inference_scope = fluid.core.Scope()
-    with fluid.scope_guard(inference_scope):
-        # Use fluid.io.load_inference_model to obtain the inference program desc,
-        # the feed_target_names (the names of variables that will be feeded
-        # data using feed operators), and the fetch_targets (variables that
-        # we want to obtain data from using fetch operators).
-        [inference_program, feed_target_names,
-         fetch_targets] = fluid.io.load_inference_model(
-             save_dirname, exe, model_filename, params_filename)
-
-        # Construct feed as a dictionary of {feed_target_name: feed_target_data}
-        # and results will contain a list of data corresponding to fetch_targets.
-        results = exe.run(inference_program,
-                          feed={feed_target_names[0]: tensor_img},
-                          fetch_list=fetch_targets)
-        lab = numpy.argsort(results)
-        print("Inference result of image/infer_3.png is: %d" % lab[0][0][-1])
+class TestAsyncSSAGraphExecutor(unittest.TestCase):
+    def test_check_async_ssa_exe_train(self):
+        train(use_cuda=False, thread_num=2, cpu_num=2)
 
 
-def main(use_cuda):
-    model_filename = None
-    params_filename = None
-    save_dirname = "recognize_digits" + ".inference.model"
-
-    # call train() with is_local argument to run distributed train
-    train(
-        use_cuda=use_cuda,
-        save_dirname=save_dirname,
-        model_filename=model_filename,
-        params_filename=params_filename)
-    infer(
-        use_cuda=use_cuda,
-        save_dirname=save_dirname,
-        model_filename=model_filename,
-        params_filename=params_filename)
-
-
-if __name__ == '__main__':
-    use_cuda = False
-    main(use_cuda=use_cuda)
+if __name__ == "__main__":
+    unittest.main()
