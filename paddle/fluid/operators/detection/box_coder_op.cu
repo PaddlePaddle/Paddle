@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detection/box_coder_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
@@ -95,47 +96,33 @@ __global__ void DecodeCenterSizeKernel(
         prior_box_data[prior_box_offset + 1] + prior_box_height / 2;
     T target_box_width, target_box_height;
     T target_box_center_x, target_box_center_y;
+    T box_var_x = T(1), box_var_y = T(1);
+    T box_var_w = T(1), box_var_h = T(1);
     if (prior_box_var_data) {
       int prior_var_offset = 0;
       if (prior_box_var_size == 2) {
         prior_var_offset = axis == 0 ? col_idx * len : row_idx * len;
       }
-      target_box_width = exp(prior_box_var_data[prior_var_offset + 2] *
-                             target_box_data[idx * len + 2]) *
-                         prior_box_width;
-      target_box_height = exp(prior_box_var_data[prior_var_offset + 3] *
-                              target_box_data[idx * len + 3]) *
-                          prior_box_height;
-      target_box_center_x = prior_box_var_data[prior_var_offset] *
-                                target_box_data[idx * len] * prior_box_width +
-                            prior_box_center_x;
-      target_box_center_y = prior_box_var_data[prior_var_offset + 1] *
-                                target_box_data[idx * len + 1] *
-                                prior_box_height +
-                            prior_box_center_y;
+      box_var_x = prior_box_var_data[prior_var_offset];
+      box_var_y = prior_box_var_data[prior_var_offset + 1];
+      box_var_w = prior_box_var_data[prior_var_offset + 2];
+      box_var_h = prior_box_var_data[prior_var_offset + 3];
     } else if (var_size == 4) {
-      target_box_width =
-          exp(static_cast<T>(variance[2]) * target_box_data[idx * len + 2]) *
-          prior_box_width;
-      target_box_height =
-          exp(static_cast<T>(variance[3]) * target_box_data[idx * len + 3]) *
-          prior_box_height;
-      target_box_center_x = static_cast<T>(variance[0]) *
-                                target_box_data[idx * len] * prior_box_width +
-                            prior_box_center_x;
-      target_box_center_y = static_cast<T>(variance[1]) *
-                                target_box_data[idx * len + 1] *
-                                prior_box_height +
-                            prior_box_center_y;
-    } else {
-      target_box_width = exp(target_box_data[idx * len + 2]) * prior_box_width;
-      target_box_height =
-          exp(target_box_data[idx * len + 3]) * prior_box_height;
-      target_box_center_x =
-          target_box_data[idx * len] * prior_box_width + prior_box_center_x;
-      target_box_center_y = target_box_data[idx * len + 1] * prior_box_height +
-                            prior_box_center_y;
+      box_var_x = static_cast<T>(variance[0]);
+      box_var_y = static_cast<T>(variance[1]);
+      box_var_w = static_cast<T>(variance[2]);
+      box_var_h = static_cast<T>(variance[3]);
     }
+    target_box_width =
+        exp(box_var_w * target_box_data[idx * len + 2]) * prior_box_width;
+    target_box_height =
+        exp(box_var_h * target_box_data[idx * len + 3]) * prior_box_height;
+    target_box_center_x =
+        box_var_x * target_box_data[idx * len] * prior_box_width +
+        prior_box_center_x;
+    target_box_center_y =
+        box_var_y * target_box_data[idx * len + 1] * prior_box_height +
+        prior_box_center_y;
 
     output[idx * len] = target_box_center_x - target_box_width / 2;
     output[idx * len + 1] = target_box_center_y - target_box_height / 2;
@@ -177,9 +164,8 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(target_box->lod().size(), 1,
                         "Only support 1 level of LoD.");
     }
-    const int var_size = static_cast<T>(variance.size());
-    thrust::device_vector<float> dev_variance(variance.begin(), variance.end());
-    const float* dev_var_data = thrust::raw_pointer_cast(dev_variance.data());
+    const int var_size = static_cast<int>(variance.size());
+
     auto code_type = GetBoxCodeType(context.Attr<std::string>("code_type"));
     bool normalized = context.Attr<bool>("box_normalized");
     int axis = context.Attr<int>("axis");
@@ -193,6 +179,16 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     int block = 512;
     int grid = (row * col + block - 1) / block;
     auto& device_ctx = context.cuda_device_context();
+
+    auto& allocator =
+        platform::DeviceTemporaryAllocator::Instance().Get(device_ctx);
+    int bytes = var_size * sizeof(float);
+    auto dev_var = allocator.Allocate(bytes);
+    float* dev_var_data = reinterpret_cast<float*>(dev_var->ptr());
+    auto cplace = platform::CPUPlace();
+    const auto gplace = boost::get<platform::CUDAPlace>(context.GetPlace());
+    memory::Copy(gplace, dev_var_data, cplace, &variance[0], bytes,
+                 device_ctx.stream());
 
     output_box->mutable_data<T>({row, col, len}, context.GetPlace());
     T* output = output_box->data<T>();
