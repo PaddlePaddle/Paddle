@@ -59,6 +59,13 @@ def train(use_cuda, thread_num, cpu_num):
     img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
+    py_reader = fluid.layers.create_py_reader_by_data(
+        capacity=64,
+        feed_list=[img, label],
+        name='py_reader',
+        use_double_buffer=True)
+    img, label = fluid.layers.read_file(py_reader)
+
     prediction, avg_loss, acc = convolutional_neural_network(img, label)
 
     test_program = fluid.default_main_program().clone(for_test=True)
@@ -103,7 +110,7 @@ def train(use_cuda, thread_num, cpu_num):
 
     exec_strategy = fluid.ExecutionStrategy()
     exec_strategy.num_threads = thread_num
-    exec_strategy.num_iteration_per_run = 2
+    exec_strategy.num_iteration_per_run = 1
 
     main_program = fluid.default_main_program()
     pe = fluid.ParallelExecutor(
@@ -113,6 +120,22 @@ def train(use_cuda, thread_num, cpu_num):
         build_strategy=build_strategy,
         exec_strategy=exec_strategy)
 
+    py_reader.decorate_paddle_reader(train_reader)
+    py_reader.start()
+
+    step = 0
+    try:
+        while True:
+            print("step %d in" % step)
+            loss_val = pe.run(fetch_list=[avg_loss.name])
+            loss_val = numpy.mean(loss_val)
+            if step % 1 == 0:
+                print("Batch %d, Cost %f, queue size %d" %
+                      (step, loss_val, py_reader.queue.size()))
+            step += 1
+    except fluid.core.EOFException:
+        py_reader.reset()
+    """
     step = 0
     for step_id, data in enumerate(train_reader()):
         loss_val = pe.run(feed=feeder.feed(data), fetch_list=[avg_loss.name])
@@ -120,6 +143,8 @@ def train(use_cuda, thread_num, cpu_num):
         if step % 100 == 0:
             print("Batch %d, Cost %f" % (step, loss_val))
         step += 1
+    """
+
     # test for epoch
     avg_loss_val, acc_val = train_test(
         train_test_program=test_program,
