@@ -9,13 +9,13 @@ You can refer to the unit test in [test_calibration.py](../tests/test_calibratio
 
 ```python
             calibrator = int8_utility.Calibrator( # Step 1
-                program=infer_program, # FP32 program
-                pretrained_model=model_path, # FP32 pretrained model
-                algo=algo, # calibration algorithm; default is max, the alternative is KL (Kullback–Leibler divergence)
-                exe=exe, # executor
-                output=int8_model, # INT8 model
-                feed_var_names=feed_dict, # feed dict
-                fetch_list=fetch_targets) # fetch targets
+                program=infer_program, # required, FP32 program
+                pretrained_model=model_path, # required, FP32 pretrained model
+                algo=algo, # required, calibration algorithm; default is max, the alternative is KL (Kullback–Leibler divergence)
+                exe=exe, # required, executor
+                output=int8_model, # required, INT8 model
+                feed_var_names=feed_dict, # required, feed dict
+                fetch_list=fetch_targets) # required, fetch targets
 ```
 
 * Call the calibrator.sample_data() after executor run.
