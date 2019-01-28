@@ -52,8 +52,7 @@ class Layer(core.Layer):
 
     def clear_gradients(self):
         for p in self.parameters():
-            if not p._stop_gradient:
-                p._clear_gradient()
+            p._clear_gradient()
 
     def _build_once(self, inputs):
         pass
