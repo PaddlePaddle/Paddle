@@ -2,7 +2,7 @@
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// You may abtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
 //
@@ -15,6 +15,7 @@
 #pragma once
 #include <map>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/details/memory_optimize_helper.h"
@@ -40,10 +41,20 @@ class GraphView {
 
   bool OutConnectInputByCtrlVar(ir::Node* in_var, ir::Node* out_var);
 
+  // Will Deperated in the future.
+  // NOTE(dzhwinter) : Python memory optimize will reuse
+  // memory based var name, so different op output may
+  // have the same variable name. enable inplace on such node
+  // will generate a circle in ssa graph.
+  bool ReusedInPythonMemOpt(const std::string& var) const;
+
  private:
   std::vector<ir::Node*> ops_;
+  std::unordered_set<std::string> dup_nodes_;  // mem opt affect nodes
+  std::map<ir::Node*, std::unordered_set<ir::Node*>> adj_list_;
 };
 
+typedef std::unordered_map<ir::Node*, std::vector<ir::Node*>> SSANodeVector;
 class InplacePass : public ir::Pass {
  public:
   InplacePass();
@@ -57,6 +68,15 @@ class InplacePass : public ir::Pass {
  private:
   void InplaceModifyVar(const std::string& in_var, const std::string& out_var,
                         const size_t& idx, ir::Graph* graph) const;
+
+  const SSANodeVector TryInplaceModifyVar(const std::string& var,
+                                          const std::string& cache_var,
+                                          const size_t& idx,
+                                          ir::Graph* graph) const;
+
+  void CommitModify(const SSANodeVector&, ir::Graph* graph) const;
+
+  void WithDrawModify(const SSANodeVector& nodes, ir::Graph* graph) const;
 
   void InplaceModifyDesc(const std::string& in_var, const std::string& out_var,
                          const size_t& idx) const;
