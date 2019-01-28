@@ -125,14 +125,11 @@ class TestCalibrationForResnet50(unittest.TestCase):
 
         data_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz'
         data_md5 = '1b6c1c434172cca1bf9ba1e4d7a3157d'
-        download(data_url, self.int8_download, data_md5)
-        data_cache_folder = os.path.join(self.cache_folder, "data")
-        file_name = data_url.split('/')[-1]
-        zip_path = os.path.join(self.cache_folder, file_name)
-        self.cache_unzipping(data_cache_folder, zip_path)
+        self.data_cache_folder = self.download_data(data_url, data_md5, "data")
 
         # reader/decorator.py requires the relative path to the data folder
-        cmd = 'rm -rf {0} && ln -s {1} {0}'.format("data", data_cache_folder)
+        cmd = 'rm -rf {0} && ln -s {1} {0}'.format("data",
+                                                   self.data_cache_folder)
         os.system(cmd)
 
         self.iterations = 50
@@ -143,16 +140,20 @@ class TestCalibrationForResnet50(unittest.TestCase):
                                                           zip_path)
             os.system(cmd)
 
-    def download_data(self):
+    def download_data(self, data_url, data_md5, folder_name):
+        download(data_url, self.int8_download, data_md5)
+        data_cache_folder = os.path.join(self.cache_folder, folder_name)
+        file_name = data_url.split('/')[-1]
+        zip_path = os.path.join(self.cache_folder, file_name)
+        self.cache_unzipping(data_cache_folder, zip_path)
+        return data_cache_folder
+
+    def download_resnet50_model(self):
         # resnet50 fp32 data
         data_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/resnet50_int8_model.tar.gz'
         data_md5 = '4a5194524823d9b76da6e738e1367881'
-        download(data_url, self.int8_download, data_md5)
-        self.model_cache_folder = os.path.join(self.cache_folder,
-                                               "resnet50_fp32")
-        file_name = data_url.split('/')[-1]
-        zip_path = os.path.join(self.cache_folder, file_name)
-        self.cache_unzipping(self.model_cache_folder, zip_path)
+        self.model_cache_folder = self.download_data(data_url, data_md5,
+                                                     "resnet50_fp32")
 
     def run_program(self, model_path, generate_int8=False, algo='direct'):
         image_shape = [3, 224, 224]
@@ -227,7 +228,7 @@ class TestCalibrationForResnet50(unittest.TestCase):
             return np.sum(test_info) / cnt
 
     def test_calibration(self):
-        self.download_data()
+        self.download_resnet50_model()
         fp32_acc1 = self.run_program(self.model_cache_folder + "/model")
         self.run_program(self.model_cache_folder + "/model", True)
         int8_acc1 = self.run_program("calibration_out")
@@ -236,19 +237,15 @@ class TestCalibrationForResnet50(unittest.TestCase):
 
 
 class TestCalibrationForMobilenetv1(TestCalibrationForResnet50):
-    def download_data(self):
+    def download_mobilenetv1_model(self):
         # mobilenetv1 fp32 data
         data_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
         data_md5 = '13892b0716d26443a8cdea15b3c6438b'
-        download(data_url, self.int8_download, data_md5)
-        self.model_cache_folder = os.path.join(self.cache_folder,
-                                               "mobilenetv1_fp32")
-        file_name = data_url.split('/')[-1]
-        zip_path = os.path.join(self.cache_folder, file_name)
-        self.cache_unzipping(self.model_cache_folder, zip_path)
+        self.model_cache_folder = self.download_data(data_url, data_md5,
+                                                     "mobilenetv1_fp32")
 
     def test_calibration(self):
-        self.download_data()
+        self.download_mobilenetv1_model()
         fp32_acc1 = self.run_program(self.model_cache_folder + "/model")
         self.run_program(self.model_cache_folder + "/model", True, algo='KL')
         int8_acc1 = self.run_program("calibration_out")
