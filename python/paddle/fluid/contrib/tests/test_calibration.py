@@ -191,6 +191,7 @@ class TestCalibrationForResnet50(unittest.TestCase):
 
         test_info = []
         cnt = 0
+        periods = []
         for batch_id, data in enumerate(val_reader()):
             image = np.array(
                 [x[0].reshape(image_shape) for x in data]).astype("float32")
@@ -202,11 +203,16 @@ class TestCalibrationForResnet50(unittest.TestCase):
                 if op.has_attr("use_mkldnn"):
                     op._set_attr("use_mkldnn", True)
 
+            t1 = time.time()
             _, acc1, _ = exe.run(
                 running_program,
                 feed={feed_dict[0]: image,
                       feed_dict[1]: label},
                 fetch_list=fetch_targets)
+            t2 = time.time()
+            period = t2 - t1
+            periods.append(period)
+
             if generate_int8:
                 calibrator.sample_data()
 
@@ -225,15 +231,25 @@ class TestCalibrationForResnet50(unittest.TestCase):
                 "Calibration is done and the corresponding files are generated at {}".
                 format(os.path.abspath("calibration_out")))
         else:
-            return np.sum(test_info) / cnt
+            throughput = cnt / np.sum(periods)
+            latency = np.average(periods)
+            acc1 = np.sum(test_info) / cnt
+            return (throughput, latency, acc1)
 
     def test_calibration(self):
         self.download_resnet50_model()
-        fp32_acc1 = self.run_program(self.model_cache_folder + "/model")
+        (fp32_throughput, fp32_latency,
+         fp32_acc1) = self.run_program(self.model_cache_folder + "/model")
         self.run_program(self.model_cache_folder + "/model", True)
-        int8_acc1 = self.run_program("calibration_out")
+        (int8_throughput, int8_latency,
+         int8_acc1) = self.run_program("calibration_out")
         delta_value = np.abs(fp32_acc1 - int8_acc1)
         self.assertLess(delta_value, 0.01)
+        print("FP32 ResNet-50: throughput {0}, latency {1}, accuracy {2}".
+              format(fp32_throughput, fp32_latency, fp32_acc1))
+        print("INT8 ResNet-50: throughput {0}, latency {1}, accuracy {2}".
+              format(int8_throughput, int8_latency, int8_acc1))
+        sys.stdout.flush()
 
 
 class TestCalibrationForMobilenetv1(TestCalibrationForResnet50):
@@ -246,11 +262,18 @@ class TestCalibrationForMobilenetv1(TestCalibrationForResnet50):
 
     def test_calibration(self):
         self.download_mobilenetv1_model()
-        fp32_acc1 = self.run_program(self.model_cache_folder + "/model")
+        (fp32_throughput, fp32_latency,
+         fp32_acc1) = self.run_program(self.model_cache_folder + "/model")
         self.run_program(self.model_cache_folder + "/model", True, algo='KL')
-        int8_acc1 = self.run_program("calibration_out")
+        (int8_throughput, int8_latency,
+         int8_acc1) = self.run_program("calibration_out")
         delta_value = np.abs(fp32_acc1 - int8_acc1)
         self.assertLess(delta_value, 0.01)
+        print("FP32 MobileNet-V1: throughput {0}, latency {1}, accuracy {2}".
+              format(fp32_throughput, fp32_latency, fp32_acc1))
+        print("INT8 MobileNet-V1: throughput {0}, latency {1}, accuracy {2}".
+              format(int8_throughput, int8_latency, int8_acc1))
+        sys.stdout.flush()
 
 
 if __name__ == '__main__':
