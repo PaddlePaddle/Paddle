@@ -298,15 +298,15 @@ void AnalysisPredictor::GetFetchOne(const framework::LoDTensor &fetch,
 bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
                                  framework::Scope *scope) {
   VLOG(3) << "Predictor::get_fetch";
-  outputs->resize(fetchs_.size());
-  for (size_t i = 0; i < fetchs_.size(); ++i) {
-    int idx = boost::get<int>(fetchs_[i]->GetAttr("col"));
+  outputs->resize(fetches_.size());
+  for (size_t i = 0; i < fetches_.size(); ++i) {
+    int idx = boost::get<int>(fetches_[i]->GetAttr("col"));
     PADDLE_ENFORCE((size_t)idx == i);
     framework::LoDTensor &fetch =
         framework::GetFetchVariable(*scope, "fetch", idx);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
-    output->name = fetchs_[idx]->Input("X")[0];
+    output->name = fetches_[idx]->Input("X")[0];
     if (type == framework::proto::VarType::FP32) {
       GetFetchOne<float>(fetch, output);
       output->dtype = PaddleDType::FLOAT32;
@@ -327,7 +327,9 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   argument_.SetUseGPU(config_.use_gpu());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
-  argument_.SetMemoryOptimForceUpdate(config_.memory_optim_force_update_);
+  argument_.SetStaticMemoryOptim(config_.static_memory_optim_);
+  argument_.SetStaticMemoryOptimForceUpdate(
+      config_.static_memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   if (!config_.model_dir().empty()) {
@@ -422,10 +424,10 @@ void AnalysisPredictor::PrepareFeedFetch() {
       feed_names_[op->Output("Out")[0]] = idx;
     } else if (op->Type() == "fetch") {
       int idx = boost::get<int>(op->GetAttr("col"));
-      if (fetchs_.size() <= static_cast<size_t>(idx)) {
-        fetchs_.resize(idx + 1);
+      if (fetches_.size() <= static_cast<size_t>(idx)) {
+        fetches_.resize(idx + 1);
       }
-      fetchs_[idx] = op;
+      fetches_[idx] = op;
     }
   }
 }
@@ -638,12 +640,12 @@ bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
   // check if the cache exists
   if (!config_.enable_memory_optim()) {
     need = false;
-  } else if (config_.enable_memory_optim() &&
+  } else if (config_.static_memory_optim_ &&
              !inference::IsFileExists(inference::analysis::GetMemoryCachePath(
                  config_.model_dir(), config_.prog_file()))) {
     need = true;
-  } else if (config_.enable_memory_optim() &&
-             config_.memory_optim_force_update_) {
+  } else if (config_.static_memory_optim_ &&
+             config_.static_memory_optim_force_update_) {
     need = true;
   }
 
