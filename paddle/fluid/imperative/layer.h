@@ -28,6 +28,7 @@
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 #include "paddle/fluid/imperative/type_defs.h"
 
@@ -148,8 +149,12 @@ class VarBase {
   }
 
   void ClearGradient() {
-    delete grads_;
-    grads_ = new VarBase(true);
+    VLOG(1) << "clear gradient of " << var_desc_->Name();
+    auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
+    operators::math::set_constant(
+        *(platform::DeviceContextPool::Instance().Get(
+            grads_->var_->Get<framework::LoDTensor>().place())),
+        grads_t, 0.0);
   }
 
   framework::LoDTensor& GradValue();
