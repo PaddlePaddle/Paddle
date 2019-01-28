@@ -59,8 +59,11 @@ class TestFetchAndFeed(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(startup)
 
+        build_strategy = fluid.BuildStrategy()
+        if not use_cuda: build_strategy.device_count = 4  # Set CPU_NUM
+
         train_cp = compiler.CompiledProgram(main_program).with_data_parallel(
-            loss_name=loss.name)
+            loss_name=loss.name, build_strategy=build_strategy)
 
         run_parallel_exe(train_cp, exe, use_cuda, data, label, loss)
 
@@ -128,7 +131,6 @@ class TestFetchAndFeed(unittest.TestCase):
                 break
 
     def test_fetch(self):
-        os.environ['CPU_NUM'] = str(4)
         if core.is_compiled_with_cuda():
             self.parallel_exe(
                 use_cuda=True,
@@ -137,7 +139,6 @@ class TestFetchAndFeed(unittest.TestCase):
             use_cuda=False, run_parallel_exe=self.run_parallel_exe_with_fetch)
 
     def test_feed(self):
-        os.environ['CPU_NUM'] = str(4)
         if core.is_compiled_with_cuda():
             self.parallel_exe(
                 use_cuda=True, run_parallel_exe=self.run_parallel_exe_with_feed)

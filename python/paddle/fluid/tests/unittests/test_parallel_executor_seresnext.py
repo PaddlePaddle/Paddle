@@ -179,7 +179,7 @@ def optimizer(learning_rate=0.01):
 class TestResnet(TestParallelExecutorBase):
     @classmethod
     def setUpClass(cls):
-        os.environ['CPU_NUM'] = str(4)
+        # CPU_NUM = 4
         global remove_dropout
         global remove_bn
         remove_dropout = False

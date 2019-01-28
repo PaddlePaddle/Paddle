@@ -43,7 +43,6 @@ def simple_fc_net():
 
 class ParallelExecutorTestingDuringTraining(unittest.TestCase):
     def check_network_convergence(self, use_cuda, build_strategy=None):
-        os.environ['CPU_NUM'] = str(4)
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -98,6 +97,7 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.check_network_convergence(
                 use_cuda=True, build_strategy=build_strategy)
+        build_strategy.device_count = 4  # CPU_NUM
         self.check_network_convergence(
             use_cuda=False, build_strategy=build_strategy)
 
@@ -107,6 +107,7 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.check_network_convergence(
                 use_cuda=True, build_strategy=build_strategy)
+        build_strategy.device_count = 4  # CPU_NUM
         self.check_network_convergence(
             use_cuda=False, build_strategy=build_strategy)
 

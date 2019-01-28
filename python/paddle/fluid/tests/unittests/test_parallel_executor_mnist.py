@@ -64,10 +64,7 @@ def fc_with_batchnorm(use_feed):
 
 
 class TestMNIST(TestParallelExecutorBase):
-    @classmethod
-    def setUpClass(cls):
-        os.environ['CPU_NUM'] = str(4)
-
+    # CPU_NUM = 4
     def _init_data(self):
         np.random.seed(5)
         img = np.random.random(size=[32, 784]).astype(np.float32)

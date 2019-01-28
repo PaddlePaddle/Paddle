@@ -80,6 +80,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
             build_strategy.fuse_relu_depthwise_conv = fuse_relu_depthwise_conv
             build_strategy.memory_optimize = use_ir_memory_optimize
+            if not use_cuda: build_strategy.device_count = 4  # Set CPU_NUM
             build_strategy.enable_sequential_execution = enable_sequential_execution
             if use_cuda and core.is_compiled_with_cuda():
                 build_strategy.remove_unnecessary_lock = True

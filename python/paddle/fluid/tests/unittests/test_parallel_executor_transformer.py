@@ -153,7 +153,7 @@ def transformer(use_feed):
 class TestTransformer(TestParallelExecutorBase):
     @classmethod
     def setUpClass(cls):
-        os.environ['CPU_NUM'] = str(4)
+        # CPU_NUM=4
         reader = paddle.batch(
             wmt16.train(ModelHyperParams.src_vocab_size,
                         ModelHyperParams.trg_vocab_size),
