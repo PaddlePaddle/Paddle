@@ -40,7 +40,7 @@ void RPCServer::SavePort() const {
   port_file.open(file_path);
   port_file << selected_port_;
   port_file.close();
-  VLOG(4) << "selected port written to " << file_path;
+  VLOG(3) << "selected port written to " << file_path;
 }
 
 void RPCServer::Complete() {
@@ -145,15 +145,6 @@ void RPCServer::ResetAllBarriers() {
   }
 }
 
-// void RPCServer::ClearRegisteredVars() {
-//   std::unique_lock<std::mutex> lock(mutex_);
-//   var_map_.clear();
-// }
-
-// void RPCServer::ClearVar(const std::string& var_name) {
-//   std::unique_lock<std::mutex> lock(mutex_);
-//   var_map_.erase(var_name);
-// }
 }  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

@@ -113,7 +113,8 @@ bool VariableResponse::CopyLodTensorData(
       tensor->mutable_data(ctx.GetPlace(), ToVarType(meta_.data_type()));
 
   VLOG(6) << "Tensor.memory_size = " << tensor->memory_size()
-          << ", Buffer Size = " << length << " varname: " << meta_.varname();
+          << ", Buffer Size = " << length << ", dims:" << dims
+          << ", numel:" << tensor->numel();
   PADDLE_ENFORCE_EQ(tensor->memory_size(), static_cast<unsigned int>(length));
   return ReadRaw(input, ctx, tensor->place(), tensor_data, length);
 }

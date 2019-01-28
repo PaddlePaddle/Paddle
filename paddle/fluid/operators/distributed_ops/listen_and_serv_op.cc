@@ -168,6 +168,7 @@ void ListenAndServOp::RunSyncLoop(
                           recv_scope);
     VLOG(4) << "run all blocks spent " << GetTimestamp() - ts << "(ms)";
 
+    VLOG(3) << "ResetReceivedVars";
     ResetReceivedVars(recv_scope, dev_ctx, rpc_service_->NeedResetAllVars());
 
     rpc_service_->SetState(distributed::RPCServerState::STATE_RECV);

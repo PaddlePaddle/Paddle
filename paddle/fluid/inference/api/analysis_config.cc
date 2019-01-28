@@ -95,12 +95,14 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   CP_MEMBER(memory_pool_init_size_mb_);
 
   CP_MEMBER(enable_memory_optim_);
-  CP_MEMBER(memory_optim_force_update_);
+  CP_MEMBER(static_memory_optim_);
+  CP_MEMBER(static_memory_optim_force_update_);
   // TensorRT releated.
   CP_MEMBER(use_tensorrt_);
   CP_MEMBER(tensorrt_workspace_size_);
   CP_MEMBER(tensorrt_max_batchsize_);
   CP_MEMBER(tensorrt_min_subgraph_size_);
+  CP_MEMBER(tensorrt_precision_mode_);
   // MKLDNN releated.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -140,9 +142,9 @@ void contrib::AnalysisConfig::EnableMKLDNN() {
   Update();
 }
 
-void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size,
-                                                   int max_batch_size,
-                                                   int min_subgraph_size) {
+void contrib::AnalysisConfig::EnableTensorRtEngine(
+    int workspace_size, int max_batch_size, int min_subgraph_size,
+    contrib::AnalysisConfig::Precision precision_mode) {
 #ifdef PADDLE_WITH_CUDA
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
@@ -153,6 +155,7 @@ void contrib::AnalysisConfig::EnableTensorRtEngine(int workspace_size,
   tensorrt_workspace_size_ = workspace_size;
   tensorrt_max_batchsize_ = max_batch_size;
   tensorrt_min_subgraph_size_ = min_subgraph_size;
+  tensorrt_precision_mode_ = precision_mode;
 
   Update();
 #else
@@ -238,7 +241,8 @@ std::string contrib::AnalysisConfig::SerializeInfoCache() {
   ss << tensorrt_min_subgraph_size_;
 
   ss << enable_memory_optim_;
-  ss << memory_optim_force_update_;
+  ss << static_memory_optim_;
+  ss << static_memory_optim_force_update_;
 
   ss << use_mkldnn_;
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
@@ -278,9 +282,11 @@ float contrib::AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
 #endif
 }
 
-void contrib::AnalysisConfig::EnableMemoryOptim(bool force_update_cache) {
+void contrib::AnalysisConfig::EnableMemoryOptim(
+    bool static_optim, bool force_update_static_cache) {
   enable_memory_optim_ = true;
-  memory_optim_force_update_ = force_update_cache;
+  static_memory_optim_ = static_optim;
+  static_memory_optim_force_update_ = force_update_static_cache;
 
   Update();
 }
@@ -298,6 +304,18 @@ void contrib::AnalysisConfig::SetModelBuffer(const char *prog_buffer,
   model_from_memory_ = true;
 
   Update();
+}
+
+NativeConfig contrib::AnalysisConfig::ToNativeConfig() const {
+  NativeConfig config;
+  config.model_dir = model_dir_;
+  config.prog_file = prog_file_;
+  config.param_file = params_file_;
+  config.use_gpu = use_gpu_;
+  config.device = device_id_;
+  config.fraction_of_gpu_memory = fraction_of_gpu_memory_for_pool();
+  config.specify_input_name = specify_input_name_;
+  return config;
 }
 
 }  // namespace paddle
