@@ -51,9 +51,8 @@ class Layer(core.Layer):
         return params
 
     def clear_gradients(self):
-        print([p.name for p in self.parameters()])
         for p in self.parameters():
-            if p.name not in set(['batch_norm_0.w_2', 'batch_norm_0.w_1']):
+            if not p._stop_gradient:
                 p._clear_gradient()
 
     def _build_once(self, inputs):
