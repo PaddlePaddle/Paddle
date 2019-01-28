@@ -175,8 +175,8 @@ class TestAsyncSSAGraphExecutor(unittest.TestCase):
                 with fluid.program_guard(
                         fluid.Program(), startup_program=fluid.Program()):
                     test()
-        assert step_list[0] / 2 == step_list[1]
-        assert step_list[1] / 2 == step_list[2]
+        assert int(step_list[0] / 2) == int(step_list[1])
+        assert int(step_list[1] / 2) == int(step_list[2])
 
 
 if __name__ == "__main__":
