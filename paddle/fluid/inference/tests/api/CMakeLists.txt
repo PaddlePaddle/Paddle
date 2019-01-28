@@ -54,6 +54,7 @@ else()
     message(WARNING "These tests has been disabled in OSX or WITH_MKL=OFF before being fixed: \n test_analyzer_seq_pool1")
 endif()
 
+
 # RNN2
 set(RNN2_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn2")
 download_model_and_data(${RNN2_INSTALL_DIR} "rnn2_model.tar.gz" "rnn2_data.txt.tar.gz")
@@ -114,6 +115,10 @@ if (NOT EXISTS ${MOBILENET_INSTALL_DIR})
     inference_download_and_uncompress(${MOBILENET_INSTALL_DIR} "http://paddlemodels.cdn.bcebos.com/" "inference-vis-demos%2Fmobilenet.tar.gz")
 endif()
 inference_analysis_api_test_with_refer_result(test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR} analyzer_vis_tester.cc SERIAL)
+
+# googlenet
+inference_analysis_api_test_with_fake_data(test_analyzer_googlenet
+  "${INFERENCE_DEMO_INSTALL_DIR}/googlenet" analyzer_resnet50_tester.cc "googlenet.tar.gz" SERIAL)
 
 # resnet50
 inference_analysis_api_test_with_fake_data(test_analyzer_resnet50

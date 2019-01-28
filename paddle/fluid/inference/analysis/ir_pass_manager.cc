@@ -67,6 +67,20 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
       pass->Set("min_subgraph_size",
                 new int(argument->tensorrt_min_subgraph_size()));
+      pass->Set("program",
+                new framework::ProgramDesc *(&argument->main_program()));
+
+      bool enable_int8 = argument->tensorrt_precision_mode() ==
+                         contrib::AnalysisConfig::Precision::kInt8;
+
+      pass->Set("enable_int8", new bool(enable_int8));
+      std::string model_opt_cache_dir =
+          argument->Has("model_dir")
+              ? argument->model_dir()
+              : GetDirRoot(argument->model_program_path());
+      pass->Set(
+          "model_opt_cache_dir",
+          new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
     }
 
     // graph_ = pass->Apply(std::move(graph_));
@@ -91,11 +105,14 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
 }
 
 framework::proto::ProgramDesc IRPassManager::AcquireProgram(
-    std::unique_ptr<Graph> *graph, const ProgramDesc &program) const {
+    std::unique_ptr<Graph> *graph, ProgramDesc *program) const {
   auto pass =
       framework::ir::PassRegistry::Instance().Get("graph_to_program_pass");
 
-  ProgramDesc desc(program);
+  // Direct using ProgramDesc desc(argument->main_program()) may cause
+  // incomplete copies of information.
+  ProgramDesc desc;
+  desc.CopyFrom(*program->Proto());
   pass->SetNotOwned("program", &desc);
   auto *the_graph = graph->release();
   *graph = pass->Apply(std::unique_ptr<Graph>(the_graph));
