@@ -296,4 +296,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
 int PaddleDtypeSize(PaddleDType dtype);
 
+std::string get_version();
+
 }  // namespace paddle
