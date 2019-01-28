@@ -505,4 +505,3 @@ paddle.reader.Fake.__init__ ArgSpec(args=['self'], varargs=None, keywords=None, 
 paddle.reader.creator.np_array ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None)
 paddle.reader.creator.text_file ArgSpec(args=['path'], varargs=None, keywords=None, defaults=None)
 paddle.reader.creator.recordio ArgSpec(args=['paths', 'buf_size'], varargs=None, keywords=None, defaults=(100,))
-
