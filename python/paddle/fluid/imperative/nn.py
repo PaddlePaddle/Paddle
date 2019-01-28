@@ -22,7 +22,7 @@ from . import layers
 from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant
-__all__ = ['Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'EMBEDDING']
+__all__ = ['Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding']
 
 
 class Conv2D(layers.Layer):
@@ -415,7 +415,44 @@ class BatchNorm(layers.Layer):
         return self._helper.append_activation(batch_norm_out)
 
 
-class EMBEDDING(layers.Layer):
+class Embedding(layers.Layer):
+    """
+    **Embedding Layer**
+
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    a lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
+
+    All the input variables are passed in as local variables to the LayerHelper
+    constructor.
+
+    Args:
+        size(tuple|list): The shape of the look up table parameter. It should
+            have two elements which indicate the size of the dictionary of
+            embeddings and the size of each embedding vector respectively.
+        is_sparse(bool): The flag indicating whether to use sparse update.
+        is_distributed(bool): Whether to run lookup table from remote parameter server.
+        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
+            Otherwise the given :attr:`padding_idx` indicates padding the output
+            with zeros whenever lookup encounters it in :attr:`input`. If
+            :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is
+            :math:`size[0] + dim`.
+        param_attr(ParamAttr): Parameters for this layer
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+
+    Returns:
+        Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
+
+    Examples:
+        .. code-block:: python
+
+          dict_size = len(dataset.ids)
+          input = fluid.layers.data(name='ids', shape=[32, 32], dtype='float32')
+          embedding = fluid.imperative.Embedding(size=[dict_size, 16])
+          fc = embedding(input)
+    """
+
     def __init__(self,
                  size,
                  is_sparse=False,
@@ -424,7 +461,7 @@ class EMBEDDING(layers.Layer):
                  param_attr=None,
                  dtype='float32'):
 
-        super(EMBEDDING, self).__init__()
+        super(Embedding, self).__init__()
         self._size = size
         self._is_sparse = is_sparse
         self._is_distributed = is_distributed
@@ -440,8 +477,6 @@ class EMBEDDING(layers.Layer):
 
         from ..layer_helper import LayerHelper
         self._helper = LayerHelper('embedding', param_attr=param_attr)
-
-    def _build_once(self, input):
         self._w = self._helper.create_parameter(
             attr=self._param_attr,
             shape=self._size,
