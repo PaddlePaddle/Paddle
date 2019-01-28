@@ -1308,16 +1308,8 @@ class Block(object):
             attrs=kwargs.get("attrs", None))
         self.ops.append(op)
 
-        # set stop_gradient in static mode
-        if kwargs.get("stop_gradient", False):
-            outputs = kwargs.get("outputs", None)
-            if outputs is not None:
-                for k, v in six.iteritems(outputs):
-                    if isinstance(v, Variable):
-                        v.stop_gradient = True
-                    elif isinstance(v, list) or isinstance(v, tuple):
-                        for var in v:
-                            var.stop_gradient = True
+        # TODO(minqiyang): add stop_gradient support in static mode too.
+        # currently, we only support stop_gradient in imperative mode.
         self._trace_op(op, kwargs.get("stop_gradient", False))
         return op
 
