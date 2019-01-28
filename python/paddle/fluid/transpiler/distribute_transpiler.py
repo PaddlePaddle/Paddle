@@ -1051,28 +1051,32 @@ class DistributeTranspiler(object):
                         opt_op.type, key, origin_var.shape,
                         dist_var.slice.shape)
 
-                    orig_var_name, block_part, _ = self._get_varname_parts(
-                        dist_var.slice.name)
-                    tmpvar_name = "{}.{}".format(
-                        dist_var.origin.name,
-                        block_part) if block_part else dist_var.origin.name
+                    if new_shape == dist_var.slice.shape:
+                        splited_var = VarStruct(
+                            name=origin_var.name,
+                            shape=new_shape,
+                            dtype=origin_var.dtype,
+                            type=origin_var.type,
+                            lod_level=origin_var.lod_level,
+                            persistable=origin_var.persistable)
 
-                    splited_var = VarStruct(
-                        name=tmpvar_name,
-                        shape=new_shape,
-                        dtype=origin_var.dtype,
-                        type=origin_var.type,
-                        lod_level=origin_var.lod_level,
-                        persistable=origin_var.persistable)
-
-                    self.vars_overview.add_distributed_var(
-                        origin_var=origin_var,
-                        slice_var=splited_var,
-                        is_slice=dist_var.is_slice,
-                        block_id=dist_var.block_id,
-                        offset=dist_var.offset,
-                        vtype="Optimizer",
-                        endpoint=endpoint)
+                        self.vars_overview.add_distributed_var(
+                            origin_var=origin_var,
+                            slice_var=splited_var,
+                            is_slice=dist_var.is_slice,
+                            block_id=dist_var.block_id,
+                            offset=dist_var.offset,
+                            vtype="Optimizer",
+                            endpoint=endpoint)
+                    else:
+                        self.vars_overview.add_distributed_var(
+                            origin_var=origin_var,
+                            slice_var=origin_var,
+                            is_slice=False,
+                            block_id=0,
+                            offset=0,
+                            vtype="Optimizer",
+                            endpoint=endpoint)
 
         for ep in self.pserver_endpoints:
             _get_distributed_optimizer_var(ep)
@@ -1803,17 +1807,11 @@ class DistributeTranspiler(object):
                 continue
             var = self.origin_program.global_block().vars[opt_op.input(key)[0]]
             param_var = new_inputs["Param"]
-
             # update accumulator variable shape
             new_shape = self._get_optimizer_input_shape(
                 opt_op.type, key, var.shape, param_var.shape)
-            orig_var_name, block_part, _ = self._get_varname_parts(
-                param_var.name)
-            tmpvar_name = "{}.{}".format(
-                var.name, block_part) if block_part else orig_var_name
-
             tmpvar = pserver_block.create_var(
-                name=tmpvar_name,
+                name=var.name,
                 persistable=var.persistable,
                 dtype=var.dtype,
                 shape=new_shape)
