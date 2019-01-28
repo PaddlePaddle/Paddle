@@ -56,15 +56,14 @@ static void BilinearInterpolation(const Tensor& input, Tensor* output,
                                   const bool align_mode) {
   auto input_t = EigenTensor<T, 4>::From(input);
   auto output_t = EigenTensor<T, 4>::From(*output);
+  bool align_flag = (align_mode == 0 && !align_corners);
   for (int k = 0; k < out_h; k++) {  // loop for images
-    int y_n = (align_mode == 0 && !align_corners)
-                  ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
-                  : static_cast<int>(ratio_h * k);
+    int y_n = align_flag ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
+                         : static_cast<int>(ratio_h * k);
     y_n = (y_n > 0) ? y_n : 0;
     int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-    float d_n = (align_mode == 0 && !align_corners)
-                    ? ratio_h * (k + 0.5) - 0.5 - y_n
-                    : ratio_h * k - y_n;
+    float d_n =
+        align_flag ? ratio_h * (k + 0.5) - 0.5 - y_n : ratio_h * k - y_n;
     float d_s = 1.f - d_n;
 
     for (int l = 0; l < out_w; l++) {
@@ -73,9 +72,8 @@ static void BilinearInterpolation(const Tensor& input, Tensor* output,
                     : static_cast<int>(ratio_w * l);
       x_w = (x_w > 0) ? x_w : 0;
       int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
-      float d_w = (align_mode == 0 && !align_corners)
-                      ? ratio_w * (l + 0.5) - 0.5 - x_w
-                      : ratio_w * l - x_w;
+      float d_w =
+          align_flag ? ratio_w * (l + 0.5) - 0.5 - x_w : ratio_w * l - x_w;
       float d_e = 1.f - d_w;
 
       for (int i = 0; i < n; i++) {    // loop for batches
@@ -126,26 +124,23 @@ static void BilinearInterpolationGrad(const Tensor& output_grad,
                                       const int align_mode) {
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
+  bool align_flag = (align_mode == 0 && !align_corners);
   for (int k = 0; k < out_h; k++) {  // loop for images
-    int y_n = (align_mode == 0 && !align_corners)
-                  ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
-                  : static_cast<int>(ratio_h * k);
+    int y_n = align_flag ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
+                         : static_cast<int>(ratio_h * k);
     y_n = (y_n > 0) ? y_n : 0;
     int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-    float d_n = (align_mode == 0 && !align_corners)
-                    ? ratio_h * (k + 0.5) - 0.5 - y_n
-                    : ratio_h * k - y_n;
+    float d_n =
+        align_flag ? ratio_h * (k + 0.5) - 0.5 - y_n : ratio_h * k - y_n;
     float d_s = 1.f - d_n;
 
     for (int l = 0; l < out_w; l++) {
-      int x_w = (align_mode == 0 && !align_corners)
-                    ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
-                    : static_cast<int>(ratio_w * l);
+      int x_w = align_flag ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
+                           : static_cast<int>(ratio_w * l);
       x_w = (x_w > 0) ? x_w : 0;
       int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
-      float d_w = (align_mode == 0 && !align_corners)
-                      ? ratio_w * (l + 0.5) - 0.5 - x_w
-                      : ratio_w * l - x_w;
+      float d_w =
+          align_flag ? ratio_w * (l + 0.5) - 0.5 - x_w : ratio_w * l - x_w;
       float d_e = 1.f - d_w;
 
       for (int i = 0; i < n; i++) {    // loop for batches
