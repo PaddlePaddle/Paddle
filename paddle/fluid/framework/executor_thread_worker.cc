@@ -513,7 +513,6 @@ void AsyncExecutorThreadWorker::PullSparse(int table_id) {
 
   auto& push_g = _feature_push_value[table_id];
   check_pull_push_memory(features, &push_g, fea_dim);
-
   collect_feasign_info(table_id);
 }
 
