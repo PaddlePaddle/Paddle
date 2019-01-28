@@ -204,59 +204,68 @@ framework::LoDTensor& VarBase::GradValue() {
 }
 
 std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
-  if (!grad_op_desc_ && backward_id_ <= 0) {
+  if (grad_op_descs_.empty() && backward_id_ <= 0) {
     LOG(WARNING) << "op with no grad: " << op_desc_->Type();
     return {};
   }
 
-  std::map<std::string, std::vector<framework::Variable*>> grad_outputs;
+  std::vector<framework::VariableValueMap> grad_outputs;
   if (backward_id_ > 0) {
     VLOG(3) << "py_layer_grad";
-    grad_outputs[framework::GradVarName(PyLayer::kFwdOut)] = PyLayer::ApplyGrad(
-        backward_id_,
-        grad_input_vars_[framework::GradVarName(PyLayer::kFwdInp)]);
+    grad_outputs.resize(1);
+    grad_outputs[0][framework::GradVarName(PyLayer::kFwdOut)] =
+        PyLayer::ApplyGrad(
+            backward_id_,
+            grad_input_vars_[0][framework::GradVarName(PyLayer::kFwdInp)]);
   } else {
-    VLOG(3) << "op grad " << grad_op_desc_->Type();
-    for (auto it : grad_output_vars_) {
-      auto& outputs = grad_outputs[it.first];
-      for (size_t i = 0; i < it.second.size(); ++i) {
-        // Allocate a new variable
-        Variable* tmp_var = new framework::Variable();
-        tmp_var->GetMutable<framework::LoDTensor>();
-        outputs.push_back(tmp_var);
+    grad_outputs.resize(grad_op_descs_.size());
+    for (size_t k = 0; k < grad_op_descs_.size(); ++k) {
+      framework::OpDesc* grad_op_desc = grad_op_descs_[k];
+      VLOG(3) << "op grad " << grad_op_desc->Type();
+      for (auto it : grad_output_vars_[k]) {
+        auto& outputs = grad_outputs[k][it.first];
+        for (size_t i = 0; i < it.second.size(); ++i) {
+          // Allocate a new variable
+          Variable* tmp_var = new framework::Variable();
+          tmp_var->GetMutable<framework::LoDTensor>();
+          outputs.push_back(tmp_var);
+        }
+      }
+
+      framework::RuntimeContext ctx(grad_input_vars_[k], grad_outputs[k]);
+
+      // No need to do compile time infer shape here.
+      // grad_op_desc_->InferShape(*block_);
+      grad_op_desc->InferVarType(block_);
+
+      std::unique_ptr<framework::OperatorBase> opbase =
+          framework::OpRegistry::CreateOp(*grad_op_desc);
+      framework::OperatorWithKernel* op_kernel =
+          dynamic_cast<framework::OperatorWithKernel*>(opbase.get());
+      PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
+
+      framework::Scope scope;
+      PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place_);
+      p.op.RuntimeInferShape(scope, place_, ctx);
+      p.func(framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx));
+    }
+  }
+
+  for (size_t k = 0; k < grad_output_vars_.size(); ++k) {
+    for (auto it : grad_output_vars_[k]) {
+      auto& outputs = grad_outputs[k][it.first];
+      auto& origin_outputs = it.second;
+      PADDLE_ENFORCE_EQ(outputs.size(), origin_outputs.size());
+
+      for (size_t i = 0; i < outputs.size(); ++i) {
+        framework::Variable* grad = outputs[i];
+        framework::Variable* orig_grad = origin_outputs[i];
+        AddTo(grad, orig_grad, place_);
+        delete grad;
       }
     }
-
-    framework::RuntimeContext ctx(grad_input_vars_, grad_outputs);
-
-    // No need to do compile time infer shape here.
-    // grad_op_desc_->InferShape(*block_);
-    grad_op_desc_->InferVarType(block_);
-
-    std::unique_ptr<framework::OperatorBase> opbase =
-        framework::OpRegistry::CreateOp(*grad_op_desc_);
-    framework::OperatorWithKernel* op_kernel =
-        dynamic_cast<framework::OperatorWithKernel*>(opbase.get());
-    PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
-
-    framework::Scope scope;
-    PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place_);
-    p.op.RuntimeInferShape(scope, place_, ctx);
-    p.func(framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx));
   }
 
-  for (auto it : grad_output_vars_) {
-    auto& outputs = grad_outputs[it.first];
-    auto& origin_outputs = it.second;
-    PADDLE_ENFORCE_EQ(outputs.size(), origin_outputs.size());
-
-    for (size_t i = 0; i < outputs.size(); ++i) {
-      framework::Variable* grad = outputs[i];
-      framework::Variable* orig_grad = origin_outputs[i];
-      AddTo(grad, orig_grad, place_);
-      delete grad;
-    }
-  }
   return input_vars_;
 }
 
