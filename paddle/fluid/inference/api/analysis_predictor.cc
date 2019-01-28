@@ -15,6 +15,7 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include <glog/logging.h>
 #include <algorithm>
+#include <fstream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -25,6 +26,7 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
@@ -37,6 +39,8 @@
 
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
+
 #endif
 
 DECLARE_bool(profile);
@@ -44,6 +48,12 @@ DECLARE_bool(profile);
 namespace paddle {
 
 using contrib::AnalysisConfig;
+using inference::Singleton;
+#if PADDLE_WITH_TENSORRT
+using inference::tensorrt::TRTInt8Calibrator;
+using inference::tensorrt::TRTCalibratorEngine;
+using inference::tensorrt::TRTCalibratorEngineManager;
+#endif
 
 namespace {
 bool IsPersistable(const framework::VarDesc *var) {
@@ -113,6 +123,15 @@ bool AnalysisPredictor::PrepareProgram(
   if (!program) {
     if (!LoadProgramDesc()) return false;
 
+    // If not cloned, the parameters should be loaded.
+    // If config_.ir_optim() is True, parameters is loaded in
+    // OptimizeInferenceProgram(), but other persistable variables
+    // (like RAW type var) are not created in scope.
+    // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
+    // still need to create other persistable variables.
+    // So in both case, create persistable variables at first.
+    executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
+
     // Optimize the program, and load parameters and modify them in the
     // scope_.
     // This will change the scope_ address.
@@ -120,15 +139,6 @@ bool AnalysisPredictor::PrepareProgram(
       status_ir_optim_enabled_ = true;
       OptimizeInferenceProgram();
     } else {
-      // If the parent_scope is passed, we assert that the persistable variables
-      // are already created, so just create the no persistable variables.
-
-      // If not cloned, the parameters should be loaded
-      // OptimizeInferenceProgram.
-      // So in both cases, just the local variables are needed to load, not the
-      // parematers.
-      executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
-
       // Load parameters
       LOG(INFO) << "load parameters ";
       LoadParameters();
@@ -298,15 +308,15 @@ void AnalysisPredictor::GetFetchOne(const framework::LoDTensor &fetch,
 bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
                                  framework::Scope *scope) {
   VLOG(3) << "Predictor::get_fetch";
-  outputs->resize(fetchs_.size());
-  for (size_t i = 0; i < fetchs_.size(); ++i) {
-    int idx = boost::get<int>(fetchs_[i]->GetAttr("col"));
+  outputs->resize(fetches_.size());
+  for (size_t i = 0; i < fetches_.size(); ++i) {
+    int idx = boost::get<int>(fetches_[i]->GetAttr("col"));
     PADDLE_ENFORCE((size_t)idx == i);
     framework::LoDTensor &fetch =
         framework::GetFetchVariable(*scope, "fetch", idx);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
-    output->name = fetchs_[idx]->Input("X")[0];
+    output->name = fetches_[idx]->Input("X")[0];
     if (type == framework::proto::VarType::FP32) {
       GetFetchOne<float>(fetch, output);
       output->dtype = PaddleDType::FLOAT32;
@@ -327,7 +337,9 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   argument_.SetUseGPU(config_.use_gpu());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
-  argument_.SetMemoryOptimForceUpdate(config_.memory_optim_force_update_);
+  argument_.SetStaticMemoryOptim(config_.static_memory_optim_);
+  argument_.SetStaticMemoryOptimForceUpdate(
+      config_.static_memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   if (!config_.model_dir().empty()) {
@@ -337,6 +349,8 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
         !config_.params_file().empty(),
         "Either model_dir or (param_file, prog_file) should be set.");
     PADDLE_ENFORCE(!config_.prog_file().empty());
+    std::string dir = inference::analysis::GetDirRoot(config_.prog_file());
+
     argument_.SetModelProgramPath(config_.prog_file());
     argument_.SetModelParamsPath(config_.params_file());
   }
@@ -347,6 +361,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
+    argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
   }
 
   if (config_.use_mkldnn_) {
@@ -361,7 +376,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
-  argument_.SetScopeNotOwned(const_cast<framework::Scope *>(scope_.get()));
+  argument_.SetScopeNotOwned(scope_.get());
   Analyzer().Run(&argument_);
 
   PADDLE_ENFORCE(argument_.scope_valid());
@@ -422,10 +437,10 @@ void AnalysisPredictor::PrepareFeedFetch() {
       feed_names_[op->Output("Out")[0]] = idx;
     } else if (op->Type() == "fetch") {
       int idx = boost::get<int>(op->GetAttr("col"));
-      if (fetchs_.size() <= static_cast<size_t>(idx)) {
-        fetchs_.resize(idx + 1);
+      if (fetches_.size() <= static_cast<size_t>(idx)) {
+        fetches_.resize(idx + 1);
       }
-      fetchs_[idx] = op;
+      fetches_[idx] = op;
     }
   }
 }
@@ -567,7 +582,67 @@ bool AnalysisPredictor::LoadParameters() {
   return true;
 }
 
+#if PADDLE_WITH_TENSORRT
+bool AnalysisPredictor::SaveTrtCalibToDisk() {
+  PADDLE_ENFORCE(config_.tensorrt_engine_enabled(),
+                 "This func can be invoked only in trt mode");
+  auto &block = inference_program_->Block(0);
+  for (auto &op_desc : block.AllOps()) {
+    if (op_desc->Type() == "tensorrt_engine") {
+      std::string engine_name =
+          boost::get<std::string>(op_desc->GetAttr("engine_key"));
+      if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_name)) {
+        LOG(ERROR) << "You should run the predictor(with trt) on the real data "
+                      "to generate calibration info";
+        return false;
+      }
+      TRTCalibratorEngine *calib_engine =
+          Singleton<TRTCalibratorEngineManager>::Global().Get(engine_name);
+      LOG(INFO) << "Wait for calib threads done.";
+      calib_engine->calib_->waitAndSetDone();
+      LOG(INFO) << "Generating TRT Calibration table data, this may cost a lot "
+                   "of time...";
+      calib_engine->thr_->join();
+      std::string calibration_table_data =
+          calib_engine->calib_->getCalibrationTableAsString();
+
+      if (calibration_table_data.empty()) {
+        LOG(ERROR) << "the calibration table is empty.";
+        return false;
+      }
+
+      std::string model_opt_cache_dir =
+          argument_.Has("model_dir")
+              ? argument_.model_dir()
+              : inference::analysis::GetDirRoot(argument_.model_program_path());
+
+      std::string calibration_table_data_path =
+          inference::analysis::GetTrtCalibPath(
+              inference::analysis::GetOrCreateModelOptCacheDir(
+                  model_opt_cache_dir),
+              engine_name);
+
+      std::ofstream ofile(calibration_table_data_path, std::ios::out);
+      LOG(INFO) << "Write Paddle-TRT INT8 calibration table data to file "
+                << calibration_table_data_path;
+      ofile << calibration_table_data;
+      ofile.close();
+    }
+  }
+  // Free all calibrator resources.
+  Singleton<TRTCalibratorEngineManager>::Global().DeleteALL();
+  return true;
+}
+#endif
+
 AnalysisPredictor::~AnalysisPredictor() {
+#if PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled() &&
+      config_.tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
+      Singleton<TRTCalibratorEngineManager>::Global().Has()) {
+    SaveTrtCalibToDisk();
+  }
+#endif
   if (FLAGS_profile) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
@@ -638,17 +713,21 @@ bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
   // check if the cache exists
   if (!config_.enable_memory_optim()) {
     need = false;
-  } else if (config_.enable_memory_optim() &&
+  } else if (config_.static_memory_optim_ &&
              !inference::IsFileExists(inference::analysis::GetMemoryCachePath(
                  config_.model_dir(), config_.prog_file()))) {
     need = true;
-  } else if (config_.enable_memory_optim() &&
-             config_.memory_optim_force_update_) {
+  } else if (config_.static_memory_optim_ &&
+             config_.static_memory_optim_force_update_) {
     need = true;
   }
 
   need_collect_var_shapes_ = need ? 1 : 0;
   return need;
+}
+
+std::string AnalysisPredictor::GetSeriazlizedProgram() const {
+  return inference_program_->Proto()->SerializeAsString();
 }
 
 template <>

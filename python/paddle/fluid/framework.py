@@ -70,6 +70,7 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _imperative_tracer_ = None
+_imperative_current_expected_place_ = None
 
 
 def _in_imperative_mode():
@@ -78,6 +79,10 @@ def _in_imperative_mode():
 
 def _imperative_tracer():
     return _imperative_tracer_
+
+
+def _current_expected_place():
+    return _imperative_current_expected_place_
 
 
 class NameScope(object):
@@ -383,8 +388,8 @@ class Variable(object):
             self._ivar.stop_gradient = stop_gradient
 
     def _numpy(self):
-        tensor = self._ivar.value().get_tensor()
-        return np.array(tensor)
+        new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
+        return np.array(new_ivar.value().get_tensor())
 
     def _backward(self):
         self._ivar._run_backward()
@@ -1311,6 +1316,7 @@ class Block(object):
     def _trace_op(self, op, stop_gradient=False):
         if _in_imperative_mode():
             _imperative_tracer().trace(op.iop, op.inputs, op.outputs, self.desc,
+                                       _imperative_current_expected_place_,
                                        stop_gradient)
 
     def _insert_op(self, index, *args, **kwargs):
@@ -2502,5 +2508,18 @@ def _imperative_guard(tracer):
     global _imperative_tracer_
     tmp_trace = _imperative_tracer_
     _imperative_tracer_ = tracer
+
     yield
+
     _imperative_tracer_ = tmp_trace
+
+
+@contextlib.contextmanager
+def _imperative_place_guard(place):
+    global _imperative_current_expected_place_
+    tmp_place = _imperative_current_expected_place_
+    _imperative_current_expected_place_ = place
+
+    yield
+
+    _imperative_current_expected_place_ = tmp_place

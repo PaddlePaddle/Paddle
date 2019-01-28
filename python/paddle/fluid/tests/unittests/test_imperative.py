@@ -67,6 +67,18 @@ class MLP(fluid.imperative.Layer):
 
 
 class TestImperative(unittest.TestCase):
+    def test_sum_op(self):
+        x = np.ones([2, 2], np.float32)
+        with fluid.imperative.guard():
+            inputs = []
+            for _ in range(10):
+                inputs.append(fluid.imperative.base.to_variable(x))
+            ret = fluid.layers.sums(inputs)
+            loss = fluid.layers.reduce_sum(ret)
+            loss._backward()
+            self.assertTrue(np.allclose(ret._numpy(), x * 10))
+            self.assertTrue(np.allclose(inputs[0]._gradient(), x))
+
     def test_layer(self):
         with fluid.imperative.guard():
             cl = core.Layer()
@@ -133,7 +145,8 @@ class TestImperative(unittest.TestCase):
             x = fluid.layers.reduce_sum(fluid.layers.tanh(x1))
             param_grads = fluid.backward.append_backward(
                 x, parameter_list=[x1.name])[0]
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
             static_out, static_grad = exe.run(
                 feed={inp.name: np_inp},
@@ -160,7 +173,8 @@ class TestImperative(unittest.TestCase):
             x = l(inp)[0]
             param_grads = fluid.backward.append_backward(
                 x, parameter_list=[l._x_for_debug.name])[0]
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
             static_out, static_grad = exe.run(
                 feed={inp.name: np_inp},
@@ -186,7 +200,8 @@ class TestImperative(unittest.TestCase):
             out = mlp(inp)
             param_grads = fluid.backward.append_backward(
                 out, parameter_list=[mlp._fc1._w.name])[0]
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             exe.run(fluid.default_startup_program())
 
             static_out, static_grad = exe.run(
