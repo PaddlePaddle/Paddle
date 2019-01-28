@@ -184,6 +184,11 @@ class Blas {
   template <typename T>
   void VINV(int n, const T* a, T* y) const;
 
+#ifdef PADDLE_WITH_MKLML
+  template <typename T>
+  void VERF(int n, const T* a, T* y) const;
+#endif
+
  private:
   const DeviceContext& context_;
 };

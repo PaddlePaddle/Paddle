@@ -123,6 +123,11 @@ struct CBlas<float> {
   static void VINV(ARGS... args) {
     platform::dynload::vsInv(args...);
   }
+
+  template <typename... ARGS>
+  static void VERF(ARGS... args) {
+    platform::dynload::vsErf(args...);
+  }
 };
 
 template <>
@@ -222,6 +227,11 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void VINV(ARGS... args) {
     platform::dynload::vdInv(args...);
+  }
+
+  template <typename... ARGS>
+  static void VERF(ARGS... args) {
+    platform::dynload::vdErf(args...);
   }
 };
 
@@ -624,6 +634,14 @@ void Blas<DeviceContext>::VINV(int n, const T *a, T *y) const {
   }
 #endif
 }
+
+#ifdef PADDLE_WITH_MKLML
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::VERF(int n, const T *a, T *y) const {
+  CBlas<T>::VERF(n, a, y);
+}
+#endif
 
 }  // namespace math
 }  // namespace operators
