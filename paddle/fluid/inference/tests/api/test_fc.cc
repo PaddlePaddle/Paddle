@@ -17,7 +17,7 @@ TEST(test, main) {
   inputs.resize(1);
 
   auto& input = inputs.front();
-  int batch_size = 1;
+  int batch_size = 70;
   input.shape.assign({batch_size, 210});
   input.data.Resize(batch_size * 210 * sizeof(float));
   auto* data = static_cast<float*>(input.data.data());
@@ -32,5 +32,5 @@ TEST(test, main) {
   for (int i = 0; i < 1000; i++) {
     ASSERT_TRUE(predictor->Run(inputs, &outputs));
   }
-  LOG(INFO) << "latency " << timer.toc()/1000;
+  LOG(INFO) << "latency " << timer.toc() / 1000 / batch_size;
 }
