@@ -412,13 +412,11 @@ def polygon_box_transform(input, name=None):
 def yolov3_loss(x,
                 gtbox,
                 gtlabel,
-                gtscore,
                 anchors,
                 anchor_mask,
                 class_num,
                 ignore_thresh,
                 downsample,
-                use_label_smooth=True,
                 name=None):
     """
     ${comment}
@@ -432,14 +430,11 @@ def yolov3_loss(x,
                           an image.
         gtlabel (Variable): class id of ground truth boxes, shoud be in shape
                             of [N, B].
-        gtscore (Variable): score of gtlabel, should be in same shape with gtlabel
-                            and score value in range (0, 1).
         anchors (list|tuple): ${anchors_comment}
         anchor_mask (list|tuple): ${anchor_mask_comment}
         class_num (int): ${class_num_comment}
         ignore_thresh (float): ${ignore_thresh_comment}
         downsample (int): ${downsample_comment}
-        use_label_smooth(bool): ${use_label_smooth_comment}
         name (string): the name of yolov3 loss
 
     Returns:
@@ -449,11 +444,9 @@ def yolov3_loss(x,
         TypeError: Input x of yolov3_loss must be Variable
         TypeError: Input gtbox of yolov3_loss must be Variable"
         TypeError: Input gtlabel of yolov3_loss must be Variable"
-        TypeError: Input gtscore of yolov3_loss must be Variable"
         TypeError: Attr anchors of yolov3_loss must be list or tuple
         TypeError: Attr class_num of yolov3_loss must be an integer
         TypeError: Attr ignore_thresh of yolov3_loss must be a float number
-        TypeError: Attr use_label_smooth of yolov3_loss must be a bool value
 
     Examples:
     .. code-block:: python
@@ -474,16 +467,12 @@ def yolov3_loss(x,
         raise TypeError("Input gtbox of yolov3_loss must be Variable")
     if not isinstance(gtlabel, Variable):
         raise TypeError("Input gtlabel of yolov3_loss must be Variable")
-    if not isinstance(gtscore, Variable):
-        raise TypeError("Input gtscore of yolov3_loss must be Variable")
     if not isinstance(anchors, list) and not isinstance(anchors, tuple):
         raise TypeError("Attr anchors of yolov3_loss must be list or tuple")
     if not isinstance(anchor_mask, list) and not isinstance(anchor_mask, tuple):
         raise TypeError("Attr anchor_mask of yolov3_loss must be list or tuple")
     if not isinstance(class_num, int):
         raise TypeError("Attr class_num of yolov3_loss must be an integer")
-    if not isinstance(use_label_smooth, bool):
-        raise TypeError("Attr ues_label_smooth of yolov3 must be a bool value")
     if not isinstance(ignore_thresh, float):
         raise TypeError(
             "Attr ignore_thresh of yolov3_loss must be a float number")
@@ -503,7 +492,6 @@ def yolov3_loss(x,
         "class_num": class_num,
         "ignore_thresh": ignore_thresh,
         "downsample": downsample,
-        "use_label_smooth": use_label_smooth
     }
 
     helper.append_op(
@@ -512,7 +500,6 @@ def yolov3_loss(x,
             "X": x,
             "GTBox": gtbox,
             "GTLabel": gtlabel,
-            "GTScore": gtscore
         },
         outputs={
             'Loss': loss,
