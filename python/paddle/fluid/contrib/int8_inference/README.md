@@ -77,7 +77,7 @@ cd python/paddle/fluid/contrib/tests
 # TODO add some steps
 wget -nd -c http://www.image-net.org/challenges/LSVRC/2012/nnoupb/ILSVRC2012_img_val.tar 
 tar xf ILSVRC2012_img_val.tar -C val/
-wget -nd -c http://paddle-imagenet-models.bj.bcebos.com/ImageNet_label.tgz 
+wget -nd -c http://paddle-imagenet-models.cdn.bcebos.com/ImageNet_label.tgz 
 tar zxf ImageNet_label.tgz
 ```
 2. Check the dataset structure (similar to the requirement of [PaddlePaddle models](https://github.com/PaddlePaddle/models/tree/develop/fluid/PaddleCV/image_classification/data "PaddlePaddle models"))
