@@ -226,7 +226,9 @@ class ReshapeKernel {
     }
 
     out->mutable_data(ctx.GetPlace(), in->type());
-    framework::TensorCopySync(*in, ctx.GetPlace(), out);
+    framework::TensorCopy(
+        *in, ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(), out);
     out->Resize(out_dims);
   }
 };

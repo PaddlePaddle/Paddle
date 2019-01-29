@@ -47,10 +47,12 @@ using Label = Xbyak::Label;
 
 typedef enum {
   MUL = 0,
+  MAX,
   ADD,
   SUB,
   RELU,
   EXP,
+  SQUARE,
   SIGMOID,
   TANH,
   IDENTITY

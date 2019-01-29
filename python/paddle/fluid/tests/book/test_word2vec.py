@@ -195,9 +195,32 @@ def infer(use_cuda, save_dirname=None):
                           },
                           fetch_list=fetch_targets,
                           return_numpy=False)
-        print(results[0].recursive_sequence_lengths())
+
+        def to_infer_tensor(lod_tensor):
+            infer_tensor = fluid.core.PaddleTensor()
+            infer_tensor.lod = lod_tensor.lod()
+            infer_tensor.data = fluid.core.PaddleBuf(np.array(lod_tensor))
+            infer_tensor.shape = lod_tensor.shape()
+            infer_tensor.dtype = fluid.core.PaddleDType.INT64
+            return infer_tensor
+
+        infer_inputs = [first_word, second_word, third_word, fourth_word]
+        infer_inputs = [to_infer_tensor(t) for t in infer_inputs]
+
+        infer_config = fluid.core.NativeConfig()
+        infer_config.model_dir = 'word2vec.inference.model'
+        infer_config.use_gpu = use_cuda
+        if use_cuda:
+            infer_config.device = 0
+            infer_config.fraction_of_gpu_memory = 0.15
+        compiled_program = fluid.compiler.CompiledProgram(inference_program)
+        compiled_program.with_inference_optimize(infer_config)
+        assert compiled_program._is_inference is True
+        infer_outputs = exe.run(compiled_program, feed=infer_inputs)
         np_data = np.array(results[0])
-        print("Inference Shape: ", np_data.shape)
+        infer_out = infer_outputs[0].data.float_data()
+        for a, b in zip(np_data[0], infer_out):
+            assert np.isclose(a, b), "a: {}, b: {}".format(a, b)
 
 
 def main(use_cuda, is_sparse, is_parallel):
