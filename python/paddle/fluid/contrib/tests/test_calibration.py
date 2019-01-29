@@ -166,7 +166,7 @@ class TestCalibrationForResnet50(unittest.TestCase):
             file_names = []
             for i in range(0, len(data_urls)):
                 download(data_urls[i], self.int8_download, data_md5s[i])
-                file_names.append(data_url[i].split('/')[-1])
+                file_names.append(data_urls[i].split('/')[-1])
             cat_command = 'cat'
             for file_name in file_names:
                 cat_command += ' ' + os.path.join(self.cache_folder, file_name)
