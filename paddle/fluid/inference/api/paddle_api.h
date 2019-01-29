@@ -25,6 +25,14 @@
  */
 namespace paddle {
 
+/** \brief Get Paddle inference library version.
+ * The information include:
+ *  - version, such as 1.0.0
+ *  - commit, the git commit id
+ *  - branch, the corresponding git branch
+ */
+std::string get_paddle_version();
+
 /** paddle data type.
  */
 enum PaddleDType {
@@ -295,7 +303,5 @@ template <typename ConfigT, PaddleEngineKind engine>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
 int PaddleDtypeSize(PaddleDType dtype);
-
-std::string get_version();
 
 }  // namespace paddle

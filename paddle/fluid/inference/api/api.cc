@@ -99,7 +99,7 @@ void PaddleBuf::Free() {
   }
 }
 
-std::string get_version() {
+std::string paddle_get_version() {
   std::stringstream ss;
   ss << "version: " << framework::paddle_version() << "\n";
   ss << "commit: " << framework::paddle_commit() << "\n";
