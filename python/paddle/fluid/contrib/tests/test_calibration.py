@@ -167,14 +167,16 @@ class TestCalibrationForResnet50(unittest.TestCase):
             for i in range(0, len(data_urls)):
                 download(data_urls[i], self.int8_download, data_md5s[i])
                 file_names.append(data_urls[i].split('/')[-1])
-            cat_command = 'cat'
-            for file_name in file_names:
-                cat_command += ' ' + os.path.join(self.cache_folder, file_name)
 
             zip_path = os.path.join(self.cache_folder,
                                     'full_imagenet_val.tar.gz')
-            cat_command += ' > ' + zip_path
-            os.system(cat_command)
+            if not os.path.exists(zip_path):
+                cat_command = 'cat'
+                for file_name in file_names:
+                    cat_command += ' ' + os.path.join(self.cache_folder,
+                                                      file_name)
+                cat_command += ' > ' + zip_path
+                os.system(cat_command)
         else:
             download(data_urls[0], self.int8_download, data_md5s[0])
             file_name = data_urls[0].split('/')[-1]
