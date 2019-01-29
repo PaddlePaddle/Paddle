@@ -298,11 +298,13 @@ class TestCalibrationForResnet50(unittest.TestCase):
         delta_value = np.abs(fp32_acc1 - int8_acc1)
         self.assertLess(delta_value, 0.01)
         print(
-            "FP32 {0}: throughput {1} images/second, latency {2} second, accuracy {3}".
-            format(self.model, fp32_throughput, fp32_latency, fp32_acc1))
+            "FP32 {0}: batch_size {1} throughput {2} images/second, latency {3} second, accuracy {4}".
+            format(self.model, self.batch_size, fp32_throughput, fp32_latency,
+                   fp32_acc1))
         print(
-            "INT8 {0}: throughput {1} images/second, latency {2} second, accuracy {3}".
-            format(self.model, int8_throughput, int8_latency, int8_acc1))
+            "INT8 {0}: batch_size {1} throughput {2} images/second, latency {3} second, accuracy {4}".
+            format(self.model, self.batch_size, int8_throughput, int8_latency,
+                   int8_acc1))
         sys.stdout.flush()
 
 
