@@ -134,14 +134,14 @@ class TestCalibrationForResnet50(unittest.TestCase):
             )
             data_md5s.append('1e9f15f64e015e58d6f9ec3210ed18b5')
             self.data_cache_folder = self.download_data(data_urls, data_md5s,
-                                                        "full_data")
+                                                        "full_data", False)
         else:
             data_urls.append(
                 'http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz'
             )
             data_md5s.append('1b6c1c434172cca1bf9ba1e4d7a3157d')
             self.data_cache_folder = self.download_data(data_urls, data_md5s,
-                                                        "small_data")
+                                                        "small_data", False)
 
         # reader/decorator.py requires the relative path to the data folder
         cmd = 'rm -rf {0} && ln -s {1} {0}'.format("data",
@@ -159,7 +159,7 @@ class TestCalibrationForResnet50(unittest.TestCase):
                                                           zip_path)
             os.system(cmd)
 
-    def download_data(self, data_urls, data_md5s, folder_name):
+    def download_data(self, data_urls, data_md5s, folder_name, is_model=True):
         data_cache_folder = os.path.join(self.cache_folder, folder_name)
         zip_path = ''
         if os.environ.get('DATASET') == 'full':
@@ -177,7 +177,8 @@ class TestCalibrationForResnet50(unittest.TestCase):
                                                       file_name)
                 cat_command += ' > ' + zip_path
                 os.system(cat_command)
-        else:
+
+        if os.environ.get('DATASET') != 'full' or is_model:
             download(data_urls[0], self.int8_download, data_md5s[0])
             file_name = data_urls[0].split('/')[-1]
             zip_path = os.path.join(self.cache_folder, file_name)
