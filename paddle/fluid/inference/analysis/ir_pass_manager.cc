@@ -71,7 +71,7 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new framework::ProgramDesc *(&argument->main_program()));
 
       bool enable_int8 = argument->tensorrt_precision_mode() ==
-                         contrib::AnalysisConfig::Precision::kInt8;
+                         AnalysisConfig::Precision::kInt8;
 
       pass->Set("enable_int8", new bool(enable_int8));
       std::string model_opt_cache_dir =

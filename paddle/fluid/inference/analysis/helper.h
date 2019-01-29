@@ -32,7 +32,7 @@ limitations under the License. */
 #ifdef _WIN32
 #include <direct.h>
 #include <io.h>
-#define GCC_ATTRIBUTE(attr__) ;
+#define GCC_ATTRIBUTE(attr__)
 #define MKDIR(path) _mkdir(path)
 #else
 #include <unistd.h>
