@@ -15,6 +15,7 @@
 #pragma once
 
 #include <gtest/gtest.h>
+
 #include <algorithm>
 #include <string>
 #include <thread>  // NOLINT
@@ -28,9 +29,8 @@
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
-
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/tests/api/config_printer.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 #include "paddle/fluid/inference/utils/benchmark.h"
@@ -56,9 +56,16 @@ DECLARE_int32(paddle_num_threads);
 namespace paddle {
 namespace inference {
 
+float Random(float low, float high) {
+  static std::random_device rd;
+  static std::mt19937 mt(rd());
+  std::uniform_real_distribution<double> dist(low, high);
+  return dist(mt);
+}
+
 void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
   const auto *analysis_config =
-      reinterpret_cast<const contrib::AnalysisConfig *>(config);
+      reinterpret_cast<const AnalysisConfig *>(config);
   if (use_analysis) {
     LOG(INFO) << *analysis_config;
     return;
@@ -91,7 +98,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         float *pdata = static_cast<float *>(out.data.data());
         float *pdata_ref = static_cast<float *>(ref_out.data.data());
         for (size_t j = 0; j < size; ++j) {
-          EXPECT_NEAR(pdata_ref[j], pdata[j], FLAGS_accuracy);
+          CHECK_LE(std::abs(pdata_ref[j] - pdata[j]), FLAGS_accuracy);
         }
         break;
       }
@@ -102,9 +109,9 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
 std::unique_ptr<PaddlePredictor> CreateTestPredictor(
     const PaddlePredictor::Config *config, bool use_analysis = true) {
   const auto *analysis_config =
-      reinterpret_cast<const contrib::AnalysisConfig *>(config);
+      reinterpret_cast<const AnalysisConfig *>(config);
   if (use_analysis) {
-    return CreatePaddlePredictor<contrib::AnalysisConfig>(*analysis_config);
+    return CreatePaddlePredictor<AnalysisConfig>(*analysis_config);
   }
   auto native_config = analysis_config->ToNativeConfig();
   return CreatePaddlePredictor<NativeConfig>(native_config);
@@ -176,7 +183,7 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
     float *input_data = static_cast<float *>(input.data.data());
     // fill input data, for profile easily, do not use random data here.
     for (size_t j = 0; j < len; ++j) {
-      *(input_data + j) = static_cast<float>(j) / len;
+      *(input_data + j) = Random(0.0, 1.0) / 10.;
     }
   }
   (*inputs).emplace_back(input_slots);
@@ -341,6 +348,16 @@ void CompareNativeAndAnalysis(
   std::vector<PaddleTensor> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
+  CompareResult(analysis_outputs, native_outputs);
+}
+
+void CompareNativeAndAnalysis(
+    PaddlePredictor *native_pred, PaddlePredictor *analysis_pred,
+    const std::vector<std::vector<PaddleTensor>> &inputs) {
+  int batch_size = FLAGS_batch_size;
+  std::vector<PaddleTensor> native_outputs, analysis_outputs;
+  native_pred->Run(inputs[0], &native_outputs, batch_size);
+  analysis_pred->Run(inputs[0], &analysis_outputs, batch_size);
   CompareResult(analysis_outputs, native_outputs);
 }
 

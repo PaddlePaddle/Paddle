@@ -295,7 +295,7 @@ TEST(inference_api_native, image_classification_gpu) {
 #endif
 
 TEST(PassBuilder, Delete) {
-  contrib::AnalysisConfig config;
+  AnalysisConfig config;
   config.DisableGpu();
   config.pass_builder()->DeletePass("attention_lstm_fuse_pass");
   const auto& passes = config.pass_builder()->AllPasses();
