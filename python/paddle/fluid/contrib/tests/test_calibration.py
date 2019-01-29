@@ -266,7 +266,6 @@ class TestCalibrationForMobilenetv1(TestCalibrationForResnet50):
                                                      "mobilenetv1_fp32")
         self.model = "MobileNet-V1"
         self.algo = "KL"
-        self.full = False
 
 
 if __name__ == '__main__':
