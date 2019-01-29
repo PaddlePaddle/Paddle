@@ -183,8 +183,6 @@ class TestCalibrationForResnet50(unittest.TestCase):
                 os.system("rm -rf " + int8_model)
                 os.system("mkdir " + int8_model)
 
-            print("Start calibration ...")
-
             calibrator = int8_utility.Calibrator(
                 program=infer_program,
                 pretrained_model=model_path,
@@ -224,10 +222,12 @@ class TestCalibrationForResnet50(unittest.TestCase):
             test_info.append(np.mean(acc1) * len(data))
             cnt += len(data)
 
-            if batch_id != iterations - 1:
-                continue
+            if (batch_id + 1) % 100 == 0:
+                print("{0} images,".format(batch_id + 1))
+                sys.stdout.flush()
 
-            break
+            if (batch_id + 1) == iterations:
+                break
 
         if generate_int8:
             calibrator.save_int8_model()
@@ -243,18 +243,26 @@ class TestCalibrationForResnet50(unittest.TestCase):
 
     def test_calibration(self):
         self.download_model()
+        print("Start FP32 inference for {0} on {1} images ...").format(
+            self.model, self.infer_iterations)
         (fp32_throughput, fp32_latency,
          fp32_acc1) = self.run_program(self.model_cache_folder + "/model")
+        print("Start INT8 calibration for {0} on {1} images ...").format(
+            self.model, self.sample_iterations)
         self.run_program(
             self.model_cache_folder + "/model", True, algo=self.algo)
+        print("Start INT8 inference for {0} on {1} images ...").format(
+            self.model, self.infer_iterations)
         (int8_throughput, int8_latency,
          int8_acc1) = self.run_program("calibration_out")
         delta_value = np.abs(fp32_acc1 - int8_acc1)
         self.assertLess(delta_value, 0.01)
-        print("FP32 {0}: throughput {1}, latency {2}, accuracy {3}".format(
-            self.model, fp32_throughput, fp32_latency, fp32_acc1))
-        print("INT8 {0}: throughput {1}, latency {2}, accuracy {3}".format(
-            self.model, int8_throughput, int8_latency, int8_acc1))
+        print(
+            "FP32 {0}: throughput {1} images/second, latency {2} second, accuracy {3}".
+            format(self.model, fp32_throughput, fp32_latency, fp32_acc1))
+        print(
+            "INT8 {0}: throughput {1} images/second, latency {2} second, accuracy {3}".
+            format(self.model, int8_throughput, int8_latency, int8_acc1))
         sys.stdout.flush()
 
 
