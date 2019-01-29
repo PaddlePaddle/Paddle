@@ -406,7 +406,7 @@ class Optimizer(object):
 
             params_grads = []
             for param in parameters:
-                if param.stop_gradient:
+                if param.stop_gradient or not param.trainable:
                     continue
                 # create gradient variable
                 grad_var = Variable(

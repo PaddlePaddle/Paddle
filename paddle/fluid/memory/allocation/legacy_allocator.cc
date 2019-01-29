@@ -13,9 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
+
 #include <string>
 #include <utility>
 #include <vector>
+
+#ifdef PADDLE_WITH_JEMALLOC
+#include <jemalloc/jemalloc.h>
+#endif
+
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
@@ -95,7 +101,11 @@ struct NaiveAllocator {
 template <>
 void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+#ifdef PADDLE_WITH_JEMALLOC
+  void *p = malloc(size);
+#else
   void *p = GetCPUBuddyAllocator()->Alloc(size);
+#endif
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
   }
@@ -107,12 +117,21 @@ template <>
 void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p,
                               size_t size) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+#ifdef PADDLE_WITH_JEMALLOC
+  free(p);
+#else
   GetCPUBuddyAllocator()->Free(p);
+#endif
 }
 
 template <>
 size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
+#ifdef PADDLE_WITH_JEMALLOC
+  // fake the result of used memory when PADDLE_WITH_JEMALLOC is ON
+  return 0U;
+#else
   return GetCPUBuddyAllocator()->Used();
+#endif
 }
 
 #ifdef PADDLE_WITH_CUDA

@@ -31,6 +31,7 @@ void CreateGradOp(const framework::OpDesc& op_desc,
       framework::OpInfoMap::Instance()
           .Get(op_desc.Type())
           .GradOpMaker()(op_desc, no_grad_set, grad_to_var, grad_sub_block);
+
   for (auto& desc : descs) {
     grad_op_descs->emplace_back(desc.release());
   }
@@ -84,11 +85,12 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   op->input_vars_ = inputs;
   for (auto it : op->input_vars_) {
     auto& invars = invars_map[it.first];
+    invars.reserve(it.second.size());
     for (VarBase* inp : it.second) {
       PADDLE_ENFORCE_NOT_NULL(inp->var_, "op %s input %s nullptr",
                               op->op_desc_->Type(), inp->var_desc_->Name());
 
-      invars.push_back(inp->var_);
+      invars.emplace_back(inp->var_);
       vars[inp->var_desc_->Name()] = inp;
       if (inp->PreOp()) {
         op->pre_ops_[it.first].push_back(inp->PreOp());
@@ -105,9 +107,10 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   for (auto it : op->output_vars_) {
     auto& outvars = outvars_map[it.first];
     const std::vector<VarBase*>& outputs = it.second;
+    outvars.reserve(outputs.size());
     for (size_t i = 0; i < outputs.size(); ++i) {
       VarBase* out = outputs[i];
-      outvars.push_back(out->var_);
+      outvars.emplace_back(out->var_);
       vars[out->var_desc_->Name()] = out;
 
       framework::VarDesc* var_desc = block->FindVar(out->var_desc_->Name());
