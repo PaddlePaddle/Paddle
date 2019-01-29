@@ -29,20 +29,13 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto u = ctx.Input<framework::Tensor>("U");
     auto v = ctx.Input<framework::Tensor>("V");
     auto g = ctx.Input<framework::Tensor>("Grad");
-    // auto local_g = ctx.Input<framework::Tensor>("GradLocal");
     float m = ctx.Attr<float>("m");
     float ratio = ctx.Attr<float>("ratio");
     int k = static_cast<int>(g->numel() * ratio);
 
     auto u_out = ctx.Output<framework::Tensor>("U_out");
     auto v_out = ctx.Output<framework::Tensor>("V_out");
-    // auto g_out = ctx.Output<framework::Tensor>("Grad");
-    // auto local_g_out = ctx.Output<framework::Tensor>("GradLocal_out");
     auto encode_grad_out = ctx.Output<framework::Tensor>("EncodeGrad");
-
-    // local_g = local_g + g
-    // ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-    // ctx, local_g, g, 0, AddFunctor<T>(), local_g_out);
 
     // FIXME(gognwb): use cublas.
     // u = m * u + g
@@ -57,6 +50,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
     ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
         ctx, u, v, 0, AddFunctor<T>(), v_out);
 
+    /*
     int buffbytes = 2 * MAX_BLOCKS * MAX_THREADS * sizeof(int);
 
     // Temporary memory
@@ -70,6 +64,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
         static_cast<int>(v_out->numel()),
         static_cast<void*>(encode_grad_out->mutable_data<T>(ctx.GetPlace())),
         buf, k, dev_ctx.stream(), u_out->mutable_data<T>(ctx.GetPlace()));
+        */
   }
 };
 }  // namespace operators

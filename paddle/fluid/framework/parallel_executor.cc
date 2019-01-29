@@ -300,7 +300,9 @@ ParallelExecutor::ParallelExecutor(
   std::vector<details::VariableInfo> var_infos;
   for (auto &graph : graphs) {
     for (auto &node : graph->Nodes()) {
+      VLOG(10) << "varinfo name1:" << node->Name();
       if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
+        VLOG(10) << "varinfo name2:" << node->Var()->Name();
         var_infos.emplace_back();
         var_infos.back().name_ = node->Var()->Name();
         var_infos.back().type_ = node->Var()->GetType();

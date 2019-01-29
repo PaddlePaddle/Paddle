@@ -322,6 +322,26 @@ CUDADeviceContext::~CUDADeviceContext() {
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const {
+  /*
+auto& allocator =
+    DeviceTemporaryAllocator::Instance().Get<CUDADeviceContext>(*this);
+allocator.Release([this]() {
+  PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
+  PADDLE_ENFORCE(cudaGetLastError());
+});
+*/
+  cudaError_t e_sync = cudaStreamSynchronize(stream_);
+  if (e_sync != 0) {
+    VLOG(10) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
+  }
+
+  cudaError_t e_get = cudaGetLastError();
+  if (e_get != 0) {
+    VLOG(10) << "cudaGetLastError  " << cudaGetErrorString(e_get)
+             << " errno:" << e_get;
+    exit(-1);
+  }
+
   auto& allocator =
       DeviceTemporaryAllocator::Instance().Get<CUDADeviceContext>(*this);
   allocator.Release([this]() {

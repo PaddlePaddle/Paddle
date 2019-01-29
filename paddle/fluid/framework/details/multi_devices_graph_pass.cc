@@ -394,7 +394,8 @@ void MultiDevSSAGraphBuilderBase::CreateComputationalOp(ir::Graph *result,
 void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
     ir::Graph *result, const std::string &og,
     const std::string encoded_grad_name) const {
-  bool is_encoded = (encoded_grad_name != "");
+  // bool is_encoded = (encoded_grad_name != "");
+  bool is_encoded = false;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
       result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
@@ -439,6 +440,18 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
 }
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+std::unique_ptr<framework::VarDesc> CreateDGCVarDesc(
+    const std::unordered_map<std::string, VarDesc *> &all_vars,
+    const std::string &grad_name, const std::string &var_name) {
+  auto grad_desc = all_vars.at(grad_name);
+  PADDLE_ENFORCE_NOT_NULL(grad_desc);
+
+  std::unique_ptr<framework::VarDesc> desc(new framework::VarDesc(var_name));
+  desc->SetDataType(grad_desc->GetDataType());
+
+  return desc;
+}
+
 std::unique_ptr<framework::OpDesc> CreateDGCOpDesc(
     const std::string &u_name, const std::string &v_name,
     const std::string &grad_name, const std::string &encoded_grad_name,
@@ -523,10 +536,12 @@ void DistSSAGraphBuilder::CreateDGCOp(ir::Graph *graph, size_t num_places,
     }
 
     // Add outputs
+    auto out_var_desc =
+        CreateDGCVarDesc(all_vars_, grad_name, encoded_grad_name);
     auto &out_vars = graph->Get<GraphVars>(kGraphVars)[i][encoded_grad_name];
-    auto out_var_h = new VarHandle(
-        graph->CreateEmptyNode(encoded_grad_name, ir::Node::Type::kVariable),
-        out_vars.size(), i, encoded_grad_name, place);
+    auto out_var_h =
+        new VarHandle(graph->CreateVarNode(out_var_desc.get()), out_vars.size(),
+                      i, encoded_grad_name, place);
     out_vars.emplace_back(out_var_h);
     op_handle->AddOutput(out_var_h);
     op_handle->SetDeviceContext(
