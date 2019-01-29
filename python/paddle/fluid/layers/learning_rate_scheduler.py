@@ -28,6 +28,7 @@ from . import ops
 from . import tensor
 from ..initializer import init_on_cpu
 from ..framework import default_main_program, Parameter, unique_name, name_scope
+from ..imperative import base as imperative_base
 
 __all__ = [
     'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
@@ -277,34 +278,38 @@ def piecewise_decay(boundaries, values):
         if len(values) - len(boundaries) != 1:
             raise ValueError("len(values) - len(boundaries) should be 1")
 
-        global_step = _decay_step_counter()
+        if imperative_base.enabled():
+            decay = imperative.PiecewiseDecay(boundaries, values, 0)
+            return decay
+        else:
+            global_step = _decay_step_counter()
 
-        lr = tensor.create_global_var(
-            shape=[1],
-            value=0.0,
-            dtype='float32',
-            persistable=True,
-            name="learning_rate")
+            lr = tensor.create_global_var(
+                shape=[1],
+                value=0.0,
+                dtype='float32',
+                persistable=True,
+                name="learning_rate")
 
-        with control_flow.Switch() as switch:
-            for i in range(len(boundaries)):
-                boundary_val = tensor.fill_constant(
+            with control_flow.Switch() as switch:
+                for i in range(len(boundaries)):
+                    boundary_val = tensor.fill_constant(
+                        shape=[1],
+                        dtype='float32',
+                        value=float(boundaries[i]),
+                        force_cpu=True)
+                    value_var = tensor.fill_constant(
+                        shape=[1], dtype='float32', value=float(values[i]))
+                    with switch.case(global_step < boundary_val):
+                        tensor.assign(value_var, lr)
+                last_value_var = tensor.fill_constant(
                     shape=[1],
                     dtype='float32',
-                    value=float(boundaries[i]),
-                    force_cpu=True)
-                value_var = tensor.fill_constant(
-                    shape=[1], dtype='float32', value=float(values[i]))
-                with switch.case(global_step < boundary_val):
-                    tensor.assign(value_var, lr)
-            last_value_var = tensor.fill_constant(
-                shape=[1],
-                dtype='float32',
-                value=float(values[len(values) - 1]))
-            with switch.default():
-                tensor.assign(last_value_var, lr)
+                    value=float(values[len(values) - 1]))
+                with switch.default():
+                    tensor.assign(last_value_var, lr)
 
-    return lr
+            return lr
 
 
 def append_LARS(params_grads, learning_rate, weight_decay):
