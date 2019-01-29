@@ -24,7 +24,6 @@
 DEFINE_string(dirname, "", "dirname to tests.");
 
 namespace paddle {
-using contrib::AnalysisConfig;
 
 TEST(AnalysisPredictor, analysis_off) {
   AnalysisConfig config;

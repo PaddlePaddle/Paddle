@@ -65,7 +65,7 @@ float Random(float low, float high) {
 
 void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
   const auto *analysis_config =
-      reinterpret_cast<const contrib::AnalysisConfig *>(config);
+      reinterpret_cast<const AnalysisConfig *>(config);
   if (use_analysis) {
     LOG(INFO) << *analysis_config;
     return;
@@ -109,9 +109,9 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
 std::unique_ptr<PaddlePredictor> CreateTestPredictor(
     const PaddlePredictor::Config *config, bool use_analysis = true) {
   const auto *analysis_config =
-      reinterpret_cast<const contrib::AnalysisConfig *>(config);
+      reinterpret_cast<const AnalysisConfig *>(config);
   if (use_analysis) {
-    return CreatePaddlePredictor<contrib::AnalysisConfig>(*analysis_config);
+    return CreatePaddlePredictor<AnalysisConfig>(*analysis_config);
   }
   auto native_config = analysis_config->ToNativeConfig();
   return CreatePaddlePredictor<NativeConfig>(native_config);

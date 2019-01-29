@@ -29,11 +29,6 @@
 namespace paddle {
 
 class AnalysisPredictor;
-// ==
-//
-// -----------------------------------------------------------------------------------
-// NOTE: The following APIs are not mature yet, we are still working on them.
-namespace contrib {
 
 // NOTE WIP, not stable yet.
 struct AnalysisConfig {
@@ -260,5 +255,4 @@ struct AnalysisConfig {
   mutable std::unique_ptr<PassStrategy> pass_builder_;
 };
 
-}  // namespace contrib
 }  // namespace paddle
