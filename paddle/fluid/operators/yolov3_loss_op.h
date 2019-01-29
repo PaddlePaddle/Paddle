@@ -32,7 +32,7 @@ static inline bool LessEqualZero(T x) {
 }
 
 template <typename T>
-static T SCE(T x, T label) {
+static T SigmoidCrossEntropy(T x, T label) {
   return (x > 0 ? x : 0.0) - x * label + std::log(1.0 + std::exp(-std::abs(x)));
 }
 
@@ -42,7 +42,7 @@ static T L2Loss(T x, T y) {
 }
 
 template <typename T>
-static T SCEGrad(T x, T label) {
+static T SigmoidCrossEntropyGrad(T x, T label) {
   return 1.0 / (1.0 + std::exp(-x)) - label;
 }
 
@@ -62,7 +62,7 @@ static int GetMaskIndex(std::vector<int> mask, int val) {
 
 template <typename T>
 struct Box {
-  float x, y, w, h;
+  T x, y, w, h;
 };
 
 template <typename T>
@@ -128,8 +128,8 @@ static void CalcBoxLocationLoss(T* loss, const T* input, Box<T> gt,
   T th = std::log(gt.h * input_size / anchors[2 * an_idx + 1]);
 
   T scale = (2.0 - gt.w * gt.h);
-  loss[0] += SCE<T>(input[box_idx], tx) * scale;
-  loss[0] += SCE<T>(input[box_idx + stride], ty) * scale;
+  loss[0] += SigmoidCrossEntropy<T>(input[box_idx], tx) * scale;
+  loss[0] += SigmoidCrossEntropy<T>(input[box_idx + stride], ty) * scale;
   loss[0] += L2Loss<T>(input[box_idx + 2 * stride], tw) * scale;
   loss[0] += L2Loss<T>(input[box_idx + 3 * stride], th) * scale;
 }
@@ -145,9 +145,10 @@ static void CalcBoxLocationLossGrad(T* input_grad, const T loss, const T* input,
   T th = std::log(gt.h * input_size / anchors[2 * an_idx + 1]);
 
   T scale = (2.0 - gt.w * gt.h);
-  input_grad[box_idx] = SCEGrad<T>(input[box_idx], tx) * scale * loss;
+  input_grad[box_idx] =
+      SigmoidCrossEntropyGrad<T>(input[box_idx], tx) * scale * loss;
   input_grad[box_idx + stride] =
-      SCEGrad<T>(input[box_idx + stride], ty) * scale * loss;
+      SigmoidCrossEntropyGrad<T>(input[box_idx + stride], ty) * scale * loss;
   input_grad[box_idx + 2 * stride] =
       L2LossGrad<T>(input[box_idx + 2 * stride], tw) * scale * loss;
   input_grad[box_idx + 3 * stride] =
@@ -160,7 +161,7 @@ static inline void CalcLabelLoss(T* loss, const T* input, const int index,
                                  const int stride) {
   for (int i = 0; i < class_num; i++) {
     T pred = input[index + i * stride];
-    loss[0] += SCE<T>(pred, (i == label) ? 1.0 : 0.0);
+    loss[0] += SigmoidCrossEntropy<T>(pred, (i == label) ? 1.0 : 0.0);
   }
 }
 
@@ -172,7 +173,7 @@ static inline void CalcLabelLossGrad(T* input_grad, const T loss,
   for (int i = 0; i < class_num; i++) {
     T pred = input[index + i * stride];
     input_grad[index + i * stride] =
-        SCEGrad<T>(pred, (i == label) ? 1.0 : 0.0) * loss;
+        SigmoidCrossEntropyGrad<T>(pred, (i == label) ? 1.0 : 0.0) * loss;
   }
 }
 
@@ -187,11 +188,11 @@ static inline void CalcObjnessLoss(T* loss, const T* input, const T* objness,
         for (int l = 0; l < w; l++) {
           T obj = objness[k * w + l];
           if (obj > 1e-5) {
-            // positive sample: obj = mixup score
-            loss[i] += SCE<T>(input[k * w + l], 1.0);
+            // positive sample: obj = 1
+            loss[i] += SigmoidCrossEntropy<T>(input[k * w + l], 1.0);
           } else if (obj > -0.5) {
             // negetive sample: obj = 0
-            loss[i] += SCE<T>(input[k * w + l], 0.0);
+            loss[i] += SigmoidCrossEntropy<T>(input[k * w + l], 0.0);
           }
         }
       }
@@ -213,9 +214,11 @@ static inline void CalcObjnessLossGrad(T* input_grad, const T* loss,
         for (int l = 0; l < w; l++) {
           T obj = objness[k * w + l];
           if (obj > 1e-5) {
-            input_grad[k * w + l] = SCEGrad<T>(input[k * w + l], 1.0) * loss[i];
+            input_grad[k * w + l] =
+                SigmoidCrossEntropyGrad<T>(input[k * w + l], 1.0) * loss[i];
           } else if (obj > -0.5) {
-            input_grad[k * w + l] = SCEGrad<T>(input[k * w + l], 0.0) * loss[i];
+            input_grad[k * w + l] =
+                SigmoidCrossEntropyGrad<T>(input[k * w + l], 0.0) * loss[i];
           }
         }
       }
@@ -256,7 +259,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     auto anchor_mask = ctx.Attr<std::vector<int>>("anchor_mask");
     int class_num = ctx.Attr<int>("class_num");
     float ignore_thresh = ctx.Attr<float>("ignore_thresh");
-    int downsample = ctx.Attr<int>("downsample");
+    int downsample_ratio = ctx.Attr<int>("downsample_ratio");
 
     const int n = input->dims()[0];
     const int h = input->dims()[2];
@@ -264,7 +267,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     const int an_num = anchors.size() / 2;
     const int mask_num = anchor_mask.size();
     const int b = gt_box->dims()[1];
-    int input_size = downsample * h;
+    int input_size = downsample_ratio * h;
 
     const int stride = h * w;
     const int an_stride = (class_num + 5) * stride;
@@ -308,7 +311,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
               }
             }
 
-            // If best IoU is greater then ignore_thresh,
+            // If best IoU is bigger then ignore_thresh,
             // ignore the objectness loss.
             if (best_iou > ignore_thresh) {
               int obj_idx = (i * mask_num + j) * stride + k * w + l;
@@ -388,7 +391,7 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     auto anchors = ctx.Attr<std::vector<int>>("anchors");
     auto anchor_mask = ctx.Attr<std::vector<int>>("anchor_mask");
     int class_num = ctx.Attr<int>("class_num");
-    int downsample = ctx.Attr<int>("downsample");
+    int downsample_ratio = ctx.Attr<int>("downsample_ratio");
 
     const int n = input_grad->dims()[0];
     const int c = input_grad->dims()[1];
@@ -396,7 +399,7 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     const int w = input_grad->dims()[3];
     const int mask_num = anchor_mask.size();
     const int b = gt_match_mask->dims()[1];
-    int input_size = downsample * h;
+    int input_size = downsample_ratio * h;
 
     const int stride = h * w;
     const int an_stride = (class_num + 5) * stride;

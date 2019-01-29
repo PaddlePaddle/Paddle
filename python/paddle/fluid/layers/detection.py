@@ -416,7 +416,7 @@ def yolov3_loss(x,
                 anchor_mask,
                 class_num,
                 ignore_thresh,
-                downsample,
+                downsample_ratio,
                 name=None):
     """
     ${comment}
@@ -434,7 +434,7 @@ def yolov3_loss(x,
         anchor_mask (list|tuple): ${anchor_mask_comment}
         class_num (int): ${class_num_comment}
         ignore_thresh (float): ${ignore_thresh_comment}
-        downsample (int): ${downsample_comment}
+        downsample_ratio (int): ${downsample_ratio_comment}
         name (string): the name of yolov3 loss
 
     Returns:
@@ -456,8 +456,8 @@ def yolov3_loss(x,
         gtlabel = fluid.layers.data(name='gtlabel', shape=[6, 1], dtype='int32')
         anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
         anchors = [0, 1, 2]
-        loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80
-                                        anchors=anchors, ignore_thresh=0.5)
+        loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80, anchors=anchors, 
+                                        ignore_thresh=0.5, downsample_ratio=32)
     """
     helper = LayerHelper('yolov3_loss', **locals())
 
@@ -491,7 +491,7 @@ def yolov3_loss(x,
         "anchor_mask": anchor_mask,
         "class_num": class_num,
         "ignore_thresh": ignore_thresh,
-        "downsample": downsample,
+        "downsample_ratio": downsample_ratio,
     }
 
     helper.append_op(
