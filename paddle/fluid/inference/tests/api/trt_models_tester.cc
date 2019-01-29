@@ -42,9 +42,9 @@ void SetConfig(ConfigType* config, std::string model_dir, bool use_gpu,
 }
 
 template <>
-void SetConfig<contrib::AnalysisConfig>(contrib::AnalysisConfig* config,
-                                        std::string model_dir, bool use_gpu,
-                                        bool use_tensorrt, int batch_size) {
+void SetConfig<AnalysisConfig>(AnalysisConfig* config, std::string model_dir,
+                               bool use_gpu, bool use_tensorrt,
+                               int batch_size) {
   if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
     config->SetModel(model_dir + "/" + FLAGS_prog_filename,
                      model_dir + "/" + FLAGS_param_filename);
@@ -75,11 +75,11 @@ void profile(std::string model_dir, bool use_analysis, bool use_tensorrt) {
 
   std::vector<PaddleTensor> outputs;
   if (use_analysis || use_tensorrt) {
-    contrib::AnalysisConfig config;
+    AnalysisConfig config;
     config.EnableUseGpu(100, 0);
     config.pass_builder()->TurnOnDebug();
-    SetConfig<contrib::AnalysisConfig>(&config, model_dir, true, use_tensorrt,
-                                       FLAGS_batch_size);
+    SetConfig<AnalysisConfig>(&config, model_dir, true, use_tensorrt,
+                              FLAGS_batch_size);
     TestPrediction(reinterpret_cast<PaddlePredictor::Config*>(&config),
                    inputs_all, &outputs, FLAGS_num_threads, true);
   } else {
@@ -99,18 +99,18 @@ void compare(std::string model_dir, bool use_tensorrt) {
     SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
   }
 
-  contrib::AnalysisConfig analysis_config;
-  SetConfig<contrib::AnalysisConfig>(&analysis_config, model_dir, true,
-                                     use_tensorrt, FLAGS_batch_size);
+  AnalysisConfig analysis_config;
+  SetConfig<AnalysisConfig>(&analysis_config, model_dir, true, use_tensorrt,
+                            FLAGS_batch_size);
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config*>(&analysis_config),
       inputs_all);
 }
 
 void compare_continuous_input(std::string model_dir, bool use_tensorrt) {
-  contrib::AnalysisConfig analysis_config;
-  SetConfig<contrib::AnalysisConfig>(&analysis_config, model_dir, true,
-                                     use_tensorrt, FLAGS_batch_size);
+  AnalysisConfig analysis_config;
+  SetConfig<AnalysisConfig>(&analysis_config, model_dir, true, use_tensorrt,
+                            FLAGS_batch_size);
   auto config =
       reinterpret_cast<const PaddlePredictor::Config*>(&analysis_config);
   auto native_pred = CreateTestPredictor(config, false);
