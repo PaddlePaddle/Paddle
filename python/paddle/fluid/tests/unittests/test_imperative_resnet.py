@@ -264,6 +264,7 @@ class TestImperativeResnet(unittest.TestCase):
                         )] = np_array
 
                 optimizer.minimize(avg_loss)
+                resnet.clear_gradients()
 
                 dy_param_value = {}
                 for param in fluid.default_main_program().global_block(

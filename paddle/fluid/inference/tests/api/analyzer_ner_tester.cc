@@ -16,7 +16,6 @@
 
 namespace paddle {
 namespace inference {
-using contrib::AnalysisConfig;
 
 struct DataRecord {
   std::vector<std::vector<int64_t>> word, mention;
@@ -76,7 +75,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data) {
   }
 }
 
-void SetConfig(contrib::AnalysisConfig *cfg, bool memory_load = false) {
+void SetConfig(AnalysisConfig *cfg, bool memory_load = false) {
   if (memory_load) {
     std::string buffer_prog, buffer_param;
     ReadBinaryFile(FLAGS_infer_model + "/__model__", &buffer_prog);
@@ -105,7 +104,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 void profile(bool memory_load = false) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg, memory_load);
   std::vector<PaddleTensor> outputs;
 
@@ -136,7 +135,7 @@ TEST(Analyzer_Chinese_ner, profile_memory_load) {
 
 // Check the fuse status
 TEST(Analyzer_Chinese_ner, fuse_statis) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
 
   int num_ops;
@@ -152,7 +151,7 @@ TEST(Analyzer_Chinese_ner, fuse_statis) {
 
 // Compare result of NativeConfig and AnalysisConfig
 TEST(Analyzer_Chinese_ner, compare) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
