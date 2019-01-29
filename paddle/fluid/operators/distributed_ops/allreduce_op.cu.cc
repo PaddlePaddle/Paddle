@@ -29,21 +29,31 @@ class AllReduceOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
-    auto* in = Input("X");
-    auto* out = Output("Out");
-    PADDLE_ENFORCE(in->IsType<>(framework::Tensor) ||
-                   in->IsType<>(framework::LoDTensor));
+    auto* ctx = pool.Get(place);
+    auto in_names = Inputs("X");
+    auto out_names = Outputs("Out");
+    PADDLE_ENFORCE_EQ(in_names.size(), 1);
+    PADDLE_ENFORCE_EQ(out_names.size(), 1);
 
-    auto in_tensor = in->Get<Tensor>();
+    auto* in = scope.FindVar(in_names[0]);
+    auto* out = scope.FindVar(out_names[0]);
+
+    PADDLE_ENFORCE(in->IsType<framework::Tensor>() ||
+                   in->IsType<framework::LoDTensor>());
+
+    int dtype = -1;
+    auto in_tensor = in->Get<framework::Tensor>();
+    dtype = platform::ToNCCLDataType(in_tensor.type());
+
     int64_t numel = in_tensor.numel();
-    auto* sendbuff = in_tensor.data<void>(place);
-    auto* out_tensor = out->GetMutable<Tensor>();
-    auto* recvbuff = out_tensor->mutable_data<void>(place);
+    auto* sendbuff = in_tensor.data<void>();
+    auto* out_tensor = out->GetMutable<framework::Tensor>();
+    auto* recvbuff =
+        static_cast<void*>(out_tensor->mutable_data<uint8_t>(place));
 
-    auto cuda_ctx = static_cast<platform::CUDADeviceContext>(ctx);
-    auto* comm = cuda_ctx.comm();
-    auto stream = cuda_ctx.stream();
+    auto cuda_ctx = static_cast<platform::CUDADeviceContext*>(ctx);
+    auto* comm = cuda_ctx->nccl_comm();
+    auto stream = cuda_ctx->stream();
 
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
@@ -78,5 +88,5 @@ class AllReduceOpShapeInference : public framework::InferShapeBase {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(allreduce, ops::AllReduceOp,
-                  paddle::framework::EmptyGradOpMaker,
-                  ops::AllReduceOpMaker, ops::AllReduceOpShapeInference);
+                  paddle::framework::EmptyGradOpMaker, ops::AllReduceOpMaker,
+                  ops::AllReduceOpShapeInference);

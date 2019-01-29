@@ -254,6 +254,13 @@ ParallelExecutor::ParallelExecutor(
     member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
         member_->places_, nccl_id, build_strategy.num_trainers_,
         build_strategy.trainer_id_));
+    // initialize device context's nccl comm, so that all operators
+    // can use it.
+    for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
+      auto &nccl_ctx = member_->nccl_ctxs_->at(dev_id);
+      auto *dev_ctx = member_->nccl_ctxs_->DevCtx(dev_id);
+      dev_ctx->set_nccl_comm(nccl_ctx.comm());
+    }
 #else
     PADDLE_THROW("Not compiled with CUDA");
 #endif
