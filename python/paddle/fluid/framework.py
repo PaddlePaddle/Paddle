@@ -1725,6 +1725,18 @@ class Program(object):
         self._trainers_endpoints = []
         # the distributed lookup table names
         self._distributed_lookup_table = None
+        # whether the program is optimized by memory_optimize_transpiler
+        self.__is_optimized = False
+
+    @property
+    def _is_optimized(self):
+        # if the program is optimized, operator input/outputs
+        # maybe same, which conflict with save_inference_model.
+        return self.__is_optimized
+
+    @_is_optimized.setter
+    def set__is_optimized(self, target):
+        self.__is_optimized = target
 
     @property
     def op_role(self):
