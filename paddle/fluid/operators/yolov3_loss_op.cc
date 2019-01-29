@@ -135,7 +135,7 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
                               "The mask index of anchors used in "
                               "current YOLOv3 loss calculation.")
         .SetDefault(std::vector<int>{});
-    AddAttr<int>("downsample",
+    AddAttr<int>("downsample_ratio",
                  "The downsample ratio from network input to YOLOv3 loss "
                  "input, so 32, 16, 8 should be set for the first, second, "
                  "and thrid YOLOv3 loss operators.")
