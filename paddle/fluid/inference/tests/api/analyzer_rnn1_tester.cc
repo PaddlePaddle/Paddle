@@ -20,7 +20,6 @@ namespace paddle {
 namespace inference {
 
 using namespace framework;  // NOLINT
-using namespace contrib;    // NOLINT
 
 struct DataRecord {
   std::vector<std::vector<std::vector<float>>> link_step_data_all;
