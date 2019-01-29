@@ -71,7 +71,7 @@ else()
              brpc_client brpc_server brpc_sendrecvop_utils
              brpc_variable_response brpc_rdma_pool
              rpc_server rpc_client handlers barrier
-             DEPS lod_tensor selected_rows memory scope)
+             lod_tensor selected_rows memory scope)
 
   set(RPC_DEPS sendrecvop_rpc ${BRPC_DEPS})
   cc_test(brpc_serde_test SRCS brpc/brpc_serde_test.cc
