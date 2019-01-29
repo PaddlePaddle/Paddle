@@ -299,7 +299,7 @@ void BenchMatMulKernel() {
         const T* b_data = b.data<T>();
         T* c_data = c.mutable_data<T>(PlaceType());
         const jit::matmul_attr_t attr{m, n, k};
-        BenchAllImpls<KT, jit::MatMulTuples<T>, PlaceType>(k, a_data, b_data,
+        BenchAllImpls<KT, jit::MatMulTuples<T>, PlaceType>(attr, a_data, b_data,
                                                            c_data, &attr);
       }
     }
