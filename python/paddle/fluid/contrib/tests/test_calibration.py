@@ -41,7 +41,7 @@ img_mean = np.array([0.485, 0.456, 0.406]).reshape((3, 1, 1))
 img_std = np.array([0.229, 0.224, 0.225]).reshape((3, 1, 1))
 
 
-# TODO(guomingz): Remove duplicated code from line 45 ~ line 114
+# TODO(guomingz): Remove duplicated code from resize_short, crop_image, process_image, _reader_creator
 def resize_short(img, target_size):
     percent = float(target_size) / min(img.size[0], img.size[1])
     resized_width = int(round(img.size[0] * percent))
