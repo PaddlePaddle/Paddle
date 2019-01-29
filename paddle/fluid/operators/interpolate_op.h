@@ -191,12 +191,18 @@ class InterpolateKernel : public framework::OpKernel<T> {
       return;
     }
 
-    float ratio_h = (align_corners && out_h > 1)
-                        ? static_cast<float>(in_h - 1) / (out_h - 1)
-                        : static_cast<float>(in_h) / out_h;
-    float ratio_w = (align_corners && out_w > 1)
-                        ? static_cast<float>(in_w - 1) / (out_w - 1)
-                        : static_cast<float>(in_w) / out_w;
+    float ratio_h = 0.f;
+    float ratio_w = 0.f;
+
+    if (out_h > 1) {
+      ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
+                                : static_cast<float>(in_h) / out_h;
+    }
+    if (out_w > 1) {
+      ratio_w = (align_corners && out_w > 1)
+                    ? static_cast<float>(in_w - 1) / (out_w - 1)
+                    : static_cast<float>(in_w) / out_w;
+    }
 
     if ("bilinear" == interp_method) {
       BilinearInterpolation<T>(*input, output, ratio_h, ratio_w, in_h, in_w, n,
@@ -244,12 +250,18 @@ class InterpolateGradKernel : public framework::OpKernel<T> {
       return;
     }
 
-    float ratio_h = (align_corners && out_h > 1)
-                        ? static_cast<float>(in_h - 1) / (out_h - 1)
-                        : static_cast<float>(in_h) / out_h;
-    float ratio_w = (align_corners && out_w > 1)
-                        ? static_cast<float>(in_w - 1) / (out_w - 1)
-                        : static_cast<float>(in_w) / out_w;
+    float ratio_h = 0.f;
+    float ratio_w = 0.f;
+
+    if (out_h > 1) {
+      ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
+                                : static_cast<float>(in_h) / out_h;
+    }
+    if (out_w > 1) {
+      ratio_w = (align_corners && out_w > 1)
+                    ? static_cast<float>(in_w - 1) / (out_w - 1)
+                    : static_cast<float>(in_w) / out_w;
+    }
 
     if ("bilinear" == interp_method) {
       BilinearInterpolationGrad<T>(*output_grad, input_grad, ratio_h, ratio_w,
