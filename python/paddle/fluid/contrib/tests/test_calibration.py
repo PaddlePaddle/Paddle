@@ -19,10 +19,8 @@ import sys
 import random
 import paddle
 import paddle.fluid as fluid
-import argparse
 import functools
 import contextlib
-import paddle.fluid.profiler as profiler
 from paddle.dataset.common import download
 from PIL import Image, ImageEnhance
 import math
@@ -132,10 +130,9 @@ class TestCalibrationForResnet50(unittest.TestCase):
                                                    self.data_cache_folder)
         os.system(cmd)
 
-        self.dataset = "small"  # full for ImageNet val dataset
         self.batch_size = 1
         self.sample_iterations = 50
-        self.infer_iterations = 50000 if self.dataset == "full" else 50
+        self.infer_iterations = 50000 if os.environ["DATASET"] == 'full' else 50
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
