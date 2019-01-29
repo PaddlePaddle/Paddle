@@ -132,7 +132,10 @@ class TestCalibrationForResnet50(unittest.TestCase):
                                                    self.data_cache_folder)
         os.system(cmd)
 
-        self.iterations = 50
+        self.full = False  # True for full ImageNet val
+        self.batch_size = 1
+        self.sample_iterations = 50
+        self.infer_iterations = 50000 if self.full else 50
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
@@ -148,12 +151,14 @@ class TestCalibrationForResnet50(unittest.TestCase):
         self.cache_unzipping(data_cache_folder, zip_path)
         return data_cache_folder
 
-    def download_resnet50_model(self):
+    def download_model(self):
         # resnet50 fp32 data
         data_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/resnet50_int8_model.tar.gz'
         data_md5 = '4a5194524823d9b76da6e738e1367881'
         self.model_cache_folder = self.download_data(data_url, data_md5,
                                                      "resnet50_fp32")
+        self.model = "ResNet-50"
+        self.algo = "direct"
 
     def run_program(self, model_path, generate_int8=False, algo='direct'):
         image_shape = [3, 224, 224]
@@ -169,10 +174,12 @@ class TestCalibrationForResnet50(unittest.TestCase):
         t = fluid.transpiler.InferenceTranspiler()
         t.transpile(infer_program, fluid.CPUPlace())
 
-        val_reader = paddle.batch(val(), batch_size=1)
+        val_reader = paddle.batch(val(), self.batch_size)
+        iterations = self.infer_iterations
 
         if generate_int8:
             int8_model = os.path.join(os.getcwd(), "calibration_out")
+            iterations = self.sample_iterations
 
             if os.path.exists(int8_model):
                 os.system("rm -rf " + int8_model)
@@ -219,7 +226,7 @@ class TestCalibrationForResnet50(unittest.TestCase):
             test_info.append(np.mean(acc1) * len(data))
             cnt += len(data)
 
-            if batch_id != self.iterations - 1:
+            if batch_id != iterations - 1:
                 continue
 
             break
@@ -237,43 +244,32 @@ class TestCalibrationForResnet50(unittest.TestCase):
             return (throughput, latency, acc1)
 
     def test_calibration(self):
-        self.download_resnet50_model()
+        self.download_model()
         (fp32_throughput, fp32_latency,
          fp32_acc1) = self.run_program(self.model_cache_folder + "/model")
-        self.run_program(self.model_cache_folder + "/model", True)
+        self.run_program(
+            self.model_cache_folder + "/model", True, algo=self.algo)
         (int8_throughput, int8_latency,
          int8_acc1) = self.run_program("calibration_out")
         delta_value = np.abs(fp32_acc1 - int8_acc1)
         self.assertLess(delta_value, 0.01)
-        print("FP32 ResNet-50: throughput {0}, latency {1}, accuracy {2}".
-              format(fp32_throughput, fp32_latency, fp32_acc1))
-        print("INT8 ResNet-50: throughput {0}, latency {1}, accuracy {2}".
-              format(int8_throughput, int8_latency, int8_acc1))
+        print("FP32 {0}: throughput {1}, latency {2}, accuracy {3}".format(
+            self.model, fp32_throughput, fp32_latency, fp32_acc1))
+        print("INT8 {0}: throughput {1}, latency {2}, accuracy {3}".format(
+            self.model, int8_throughput, int8_latency, int8_acc1))
         sys.stdout.flush()
 
 
 class TestCalibrationForMobilenetv1(TestCalibrationForResnet50):
-    def download_mobilenetv1_model(self):
+    def download_model(self):
         # mobilenetv1 fp32 data
         data_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
         data_md5 = '13892b0716d26443a8cdea15b3c6438b'
         self.model_cache_folder = self.download_data(data_url, data_md5,
                                                      "mobilenetv1_fp32")
-
-    def test_calibration(self):
-        self.download_mobilenetv1_model()
-        (fp32_throughput, fp32_latency,
-         fp32_acc1) = self.run_program(self.model_cache_folder + "/model")
-        self.run_program(self.model_cache_folder + "/model", True, algo='KL')
-        (int8_throughput, int8_latency,
-         int8_acc1) = self.run_program("calibration_out")
-        delta_value = np.abs(fp32_acc1 - int8_acc1)
-        self.assertLess(delta_value, 0.01)
-        print("FP32 MobileNet-V1: throughput {0}, latency {1}, accuracy {2}".
-              format(fp32_throughput, fp32_latency, fp32_acc1))
-        print("INT8 MobileNet-V1: throughput {0}, latency {1}, accuracy {2}".
-              format(int8_throughput, int8_latency, int8_acc1))
-        sys.stdout.flush()
+        self.model = "MobileNet-V1"
+        self.algo = "KL"
+        self.full = False
 
 
 if __name__ == '__main__':
