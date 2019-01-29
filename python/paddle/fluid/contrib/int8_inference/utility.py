@@ -32,10 +32,13 @@ class Calibrator(object):
 
     def __init__(self, *args, **kwargs):
         self.program = kwargs['program']
-        self.iterations = kwargs['iterations']
         self.pretrained_model = kwargs['pretrained_model']
-        self.debug = kwargs['debug']
+        self.debug = kwargs['debug'] if 'debug' in kwargs else False
         self.algo = kwargs['algo']
+        self.output = kwargs['output']
+        self.feed_var_names = kwargs['feed_var_names']
+        self.fetch_list = kwargs['fetch_list']
+        self.exe = kwargs['exe']
 
         self._conv_input_var_name = []
         self._conv_output_var_name = []
@@ -54,17 +57,38 @@ class Calibrator(object):
         self._u8_output_var = []
         self._s8_output_var = []
         self._persistable_vars = []
+        self._sampling_data = {}
 
-    def generate_sampling_program(self):
         self.__init_analysis()
         self.__generate_output_program()
 
-    def generate_quantized_data(self, sampling_data):
-        self.__sampling(sampling_data)
+    def save_int8_model(self):
+        self.__sampling(self._sampling_data)
         self.__save_scale()
         self.__update_program()
         self.__update_output_program_attr()
         self.__display_debug()
+        self.__save_offline_model()
+
+    def sample_data(self):
+        '''
+        Sampling the tensor data of variable.
+        '''
+        for i in self.sampling_program.list_vars():
+            if i.name in self.sampling_vars:
+                np_data = np.array(fluid.global_scope().find_var(i.name)
+                                   .get_tensor())
+                if i.name not in self._sampling_data:
+                    self._sampling_data[i.name] = []
+                self._sampling_data[i.name].append(np_data)
+
+    def __save_offline_model(self):
+        '''
+        Save the quantized model to the disk.
+        '''
+        fluid.io.save_inference_model(self.output, self.feed_var_names,
+                                      self.fetch_list, self.exe,
+                                      self.sampling_program)
 
     def __display_debug(self):
         if self.debug:
