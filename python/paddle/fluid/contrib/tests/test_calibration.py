@@ -132,7 +132,8 @@ class TestCalibrationForResnet50(unittest.TestCase):
 
         self.batch_size = 1
         self.sample_iterations = 50
-        self.infer_iterations = 50000 if os.environ["DATASET"] == 'full' else 50
+        self.infer_iterations = 50000 if os.environ.get(
+            'DATASET') == 'full' else 50
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
