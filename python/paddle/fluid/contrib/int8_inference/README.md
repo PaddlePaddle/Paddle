@@ -61,9 +61,9 @@ val  val_list.txt
 
 | Model  | Batch Size  | FP32 Throughput (Images/second)  | INT8 Throughput (Images/second)  | Improvement  |
 | ------------ | ------------ | ------------ | ------------ | ------------ |
-| ResNet-50  | 1  |   12  | 23  | 1.92X |
-| MobileNet-V1 | 1  | 51  | 93  | 1.82X  |
+| ResNet-50  | 1  |   14  | 23  | 1.59X |
+| MobileNet-V1 | 1  | 60  | 97  | 1.61X  |
 
 Notes:
 * The accuracy measurement requires the model with `label`.
-* The performance improvement is ~1.33X on Intel® Xeon® Skylake Server ([Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")).
+* The performance is measurd on SKX6148 (batch size = 1 and iterations = 50). INT8 performance improvement is ~1.33X on Intel® Xeon® Skylake Server ([Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")).
