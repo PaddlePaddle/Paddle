@@ -28,6 +28,7 @@
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 #include "paddle/fluid/imperative/type_defs.h"
 
@@ -140,16 +141,24 @@ class VarBase {
   void RunBackward();
 
   void TrackPreOp(OpBase* pre_op, const std::string& pre_op_out_name,
-                  int pre_op_out_idx, bool stop_gradient) {
+                  int pre_op_out_idx, bool pre_op_stop_gradient) {
     pre_op_ = pre_op;
     pre_op_out_name_ = pre_op_out_name;
     pre_op_out_idx_ = pre_op_out_idx;
-    stop_gradient_ = stop_gradient;
+    if (pre_op_stop_gradient) {
+      stop_gradient_ = pre_op_stop_gradient;
+    }
   }
 
   void ClearGradient() {
-    delete grads_;
-    grads_ = new VarBase(true);
+    VLOG(1) << "clear gradient of " << var_desc_->Name();
+    if (grads_ && grads_->var_ && grads_->var_->IsInitialized()) {
+      auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
+      operators::math::set_constant(
+          *(platform::DeviceContextPool::Instance().Get(
+              grads_->var_->Get<framework::LoDTensor>().place())),
+          grads_t, 0.0);
+    }
   }
 
   framework::LoDTensor& GradValue();
