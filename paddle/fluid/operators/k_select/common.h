@@ -38,7 +38,11 @@
     }                                                                      \
   } while (0)
 
-#if CUDA_VERSION < 9000
+#ifndef CUDART_VERSION
+#error CUDART_VERSION Undefined!
+#endif
+
+#if CUDART_VERSION < 9000
 #define CREATE_SHFL_MASK(mask, predicate) mask = 0u;
 #else
 #define FULL_WARP_MASK 0xFFFFFFFF
@@ -49,7 +53,7 @@
 template <typename T>
 __forceinline__ __device__ T CudaShuffleSync(unsigned mask, T val, int src_line,
                                              int width = 32) {
-#if CUDA_VERSION < 9000
+#if CUDART_VERSION < 9000
   return __shfl(val, src_line, width);
 #else
   return __shfl_sync(mask, val, src_line, width);
@@ -59,7 +63,7 @@ __forceinline__ __device__ T CudaShuffleSync(unsigned mask, T val, int src_line,
 template <typename T>
 __forceinline__ __device__ T CudaShuffleUpSync(unsigned mask, T val, int delta,
                                                int width = 32) {
-#if CUDA_VERSION < 9000
+#if CUDART_VERSION < 9000
   return __shfl_up(val, delta, width);
 #else
   return __shfl_up_sync(mask, val, delta, width);

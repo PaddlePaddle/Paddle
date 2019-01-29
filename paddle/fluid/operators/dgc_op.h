@@ -50,21 +50,24 @@ class DGCOpKernel : public framework::OpKernel<T> {
     ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
         ctx, u, v, 0, AddFunctor<T>(), v_out);
 
-    /*
-    int buffbytes = 2 * MAX_BLOCKS * MAX_THREADS * sizeof(int);
+    encode_grad_out->mutable_data<T>(ctx.GetPlace());
+    operators::math::SetConstant<DeviceContext, T> constant_functor;
+    constant_functor(ctx.template device_context<DeviceContext>(),
+                     encode_grad_out, static_cast<T>(0));
+
+    int buf_size = get_buffer_size(k);
 
     // Temporary memory
     auto& allocator = platform::DeviceTemporaryAllocator::Instance().Get(
         ctx.GetPlace(), dev_ctx.stream());
-    auto tmp_ious_data = allocator.Allocate(buffbytes);
+    auto tmp_ious_data = allocator.Allocate(buf_size);
     void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
     k_select(
         v_out->mutable_data<T>(ctx.GetPlace()),
         static_cast<int>(v_out->numel()),
         static_cast<void*>(encode_grad_out->mutable_data<T>(ctx.GetPlace())),
-        buf, k, dev_ctx.stream(), u_out->mutable_data<T>(ctx.GetPlace()));
-        */
+        buf, k, 0, dev_ctx.stream(), u_out->mutable_data<T>(ctx.GetPlace()));
   }
 };
 }  // namespace operators

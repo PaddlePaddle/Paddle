@@ -23,10 +23,12 @@
 
 #define BUCKETS 10
 
+// protocol, 0 select COO, 1 select CSR
 bool k_select(float* input, int count, void* encode, void* buffer, int k,
-              cudaStream_t stream, float* moment = nullptr);
+              int protocol, cudaStream_t stream, float* moment = nullptr);
 
 bool k_select_bucket(float* input, int count, void* encode, void* buffer, int k,
-                     cudaStream_t stream, float* moment = nullptr);
+                     int protocol, cudaStream_t stream,
+                     float* moment = nullptr);
 
 int get_buffer_size(int count);

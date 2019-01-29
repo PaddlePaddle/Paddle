@@ -15,6 +15,7 @@
 #include "k_select.h"
 
 #define FABS(a) ((a != -INFINITY) ? fabs(a) : a)
+#include "dense2csr.h"
 
 __device__ int blockSyncCnt = 0;
 __device__ int blockSyncCnt2 = 0;
@@ -640,8 +641,26 @@ __global__ void KeMask(int* index, int k, T* data) {
   }
 }
 
-bool k_select(float* input, int count, void* encode, void* buff, int k,
-              cudaStream_t stream, float* moment) {
+void get_threshold(float* threshold, float* input, int count, int k,
+                   cudaStream_t stream) {
+  const int max_length = 5;
+  int sampk = min(32, k / 2);
+  const float sample_prop = static_cast<float>(k) / sampk;
+  int sampdim = count / sample_prop;
+
+  const int BlockSize = 1024;
+  int threads = BlockSize;
+  int blocks = min(16, static_cast<int>(sample_prop / 2));
+  int lds = count / blocks;
+
+  KeGetSampleTopK<float, max_length, BlockSize><<<blocks, threads, 0, stream>>>(
+      threshold, input, lds, sampdim, sampk);
+  KeGetTotalTopk<float, BlockSize><<<blocks, threads, 0, stream>>>(threshold,
+                                                                   blocks);
+}
+
+bool k_select_min(float* input, int count, void* encode, void* buff, int k,
+                  cudaStream_t stream, float* moment) {
   if (count < MIN_COUNT_FOR_SHORT_TOPK) {
     return false;
   }
@@ -661,24 +680,14 @@ bool k_select(float* input, int count, void* encode, void* buff, int k,
       KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
                                                                     moment);
     }
+    return true;
   }
-  float* threshold = static_cast<float*>(buff);
-  const int max_length = 5;
-  int sampk = min(32, k / 2);
-  const float sample_prop = static_cast<float>(k) / sampk;
-  int sampdim = count / sample_prop;
+  return false;
+}
 
-  const int BlockSize = 1024;
-  int threads = BlockSize;
-  int blocks = min(16, static_cast<int>(sample_prop / 2));
-  int lds = count / blocks;
-  int* thr_cnt = static_cast<int*>(buff) + blocks;
-
-  KeGetSampleTopK<float, max_length, BlockSize><<<blocks, threads, 0, stream>>>(
-      threshold, input, lds, sampdim, sampk);
-  KeGetTotalTopk<float, BlockSize><<<blocks, threads, 0, stream>>>(threshold,
-                                                                   blocks);
-
+void dense2coo(void* encode, float* input, float* threshold, int* thr_cnt,
+               int count, int k, cudaStream_t stream, float* moment) {
+  int blocks, threads;
   getNumBlocksAndThreads(count, blocks, threads);
   int smemSize = sizeof(float) * threads;
   int p_threads = min(blocks, threads);
@@ -700,50 +709,60 @@ bool k_select(float* input, int count, void* encode, void* buff, int k,
     KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
                                                                   moment);
   }
-  return true;
 }
 
-bool k_select_bucket(float* input, int count, void* encode, void* buff, int k,
-                     cudaStream_t stream, float* moment) {
+void get_threshold_bucket(void* buff, float* input, int count, int k,
+                          cudaStream_t stream) {
   int blocks;
   int threads;
   getNumBlocksAndThreads(count, blocks, threads);
-
   int smemSize = sizeof(float) * threads * 2;
   int chunks = ((float)count / k) * (BUCKETS / 4);
   KeMinMax<float><<<blocks, threads, smemSize, stream>>>(input, count,
                                                          (float*)buff, chunks);
   smemSize = sizeof(int) * BUCKETS * threads * 2;
-  float* threshold = (float*)buff;
-  float* pdel = (float*)buff + 1;
-  int* pk = (int*)buff + 2;
-  int* pkmin = (int*)buff + 3;
-  int* block_count = (int*)buff + 4;
+  float* threshold = static_cast<float*>(buff);
+  float* pdel = static_cast<float*>(buff) + 1;
+  int* pk = static_cast<int*>(buff) + 2;
+  int* pkmin = static_cast<int*>(buff) + 3;
+  int* block_count = static_cast<int*>(buff) + 4;
 
   KeFindKth<float, BUCKETS><<<blocks, threads, smemSize, stream>>>(
       input, count, block_count, threshold, pdel, pk, pkmin, 1, k);
   KeFindKth<float, BUCKETS><<<blocks, threads, smemSize, stream>>>(
       input, count, block_count, threshold, pdel, pk, pkmin, 0);
+}
 
-  int* thr_cnt = (int*)buff + 4;
-  smemSize = sizeof(float) * threads;
-  int p_threads = min(blocks, threads);
-  int p_blocks = iDivUp(blocks, p_threads);
-  KeGetThreadCountByThreshold<float><<<blocks, threads, smemSize, 0>>>(
-      input, thr_cnt, count, threshold);
-  int* part = thr_cnt + threads * blocks;
-  KePrefixSum<<<blocks, threads, smemSize, 0>>>(thr_cnt, 32, part);
-  KePrefixSum<<<p_blocks, p_threads, smemSize, 0>>>(part, 32);
-  KeGlobalPrefixSum<<<blocks - 1, threads>>>(thr_cnt + threads, part, count, k);
-  int* index = static_cast<int*>(encode);
-  float* value = static_cast<float*>(encode) + k;
-  KeEncode<float><<<blocks, threads, 0, stream>>>(input, count, thr_cnt, value,
-                                                  index, threshold, k);
-  KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
-                                                                input);
-  if (moment != nullptr) {
-    KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
-                                                                  moment);
+bool k_select_bucket(float* input, int count, void* encode, void* buff, int k,
+                     int protocal, cudaStream_t stream, float* moment) {
+  get_threshold_bucket(buff, input, count, k, stream);
+
+  float* threshold = static_cast<float*>(buff);
+  int* thr_cnt = static_cast<int*>(buff) + 4;
+
+  if (protocal == 0) {
+    dense2coo(encode, input, threshold, thr_cnt, count, k, stream, moment);
+  } else if (protocal == 1) {
+    dense2csr(encode, input, threshold, thr_cnt, count, k, stream);
+  }
+
+  return true;
+}
+
+bool k_select(float* input, int count, void* encode, void* buff, int k,
+              int protocal, cudaStream_t stream, float* moment) {
+  if (count < MIN_COUNT_FOR_LARGE_TOPK) {
+    return k_select_min(input, count, encode, buff, k, stream, moment);
+  }
+
+  float* threshold = static_cast<float*>(buff);
+  get_threshold(threshold, input, count, k, stream);
+
+  int* thr_cnt = static_cast<int*>(buff) + 1;
+  if (protocal == 0) {  // coo
+    dense2coo(encode, input, threshold, thr_cnt, count, k, stream, moment);
+  } else if (protocal == 1) {  // csr
+    dense2csr(encode, input, threshold, thr_cnt, count, k, stream);
   }
   return true;
 }
