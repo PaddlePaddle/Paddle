@@ -469,5 +469,16 @@ class TestYoloDetection(unittest.TestCase):
             self.assertIsNotNone(loss)
 
 
+class TestMulticlassNMS(unittest.TestCase):
+    def test_multiclass_nms(self):
+        program = Program()
+        with program_guard(program):
+            bboxes = layers.data(
+                name='bboxes', shape=[-1, 10, 4], dtype='float32')
+            scores = layers.data(name='scores', shape=[-1, 10], dtype='float32')
+            output = layers.multiclass_nms(bboxes, scores, 0.3, 400, 200, 0.7)
+            self.assertIsNotNone(output)
+
+
 if __name__ == '__main__':
     unittest.main()
