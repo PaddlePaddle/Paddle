@@ -22,7 +22,7 @@
 
 namespace paddle {
 
-PassStrategy *contrib::AnalysisConfig::pass_builder() const {
+PassStrategy *AnalysisConfig::pass_builder() const {
   if (!pass_builder_.get()) {
     if (use_gpu_) {
       LOG(INFO) << "Create GPU IR passes";
@@ -42,27 +42,27 @@ PassStrategy *contrib::AnalysisConfig::pass_builder() const {
   return pass_builder_.get();
 }
 
-contrib::AnalysisConfig::AnalysisConfig(const std::string &model_dir) {
+AnalysisConfig::AnalysisConfig(const std::string &model_dir) {
   model_dir_ = model_dir;
 
   Update();
 }
-contrib::AnalysisConfig::AnalysisConfig(const std::string &prog_file,
-                                        const std::string &params_file) {
+AnalysisConfig::AnalysisConfig(const std::string &prog_file,
+                               const std::string &params_file) {
   prog_file_ = prog_file;
   params_file_ = params_file;
 
   Update();
 }
-void contrib::AnalysisConfig::SetModel(const std::string &prog_file_path,
-                                       const std::string &params_file_path) {
+void AnalysisConfig::SetModel(const std::string &prog_file_path,
+                              const std::string &params_file_path) {
   prog_file_ = prog_file_path;
   params_file_ = params_file_path;
 
   Update();
 }
-void contrib::AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
-                                           int device_id) {
+void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
+                                  int device_id) {
 #ifdef PADDLE_WITH_CUDA
   use_gpu_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
@@ -74,13 +74,13 @@ void contrib::AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
 
   Update();
 }
-void contrib::AnalysisConfig::DisableGpu() {
+void AnalysisConfig::DisableGpu() {
   use_gpu_ = false;
 
   Update();
 }
 
-contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
+AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #define CP_MEMBER(member__) member__ = other.member__;
 
   // Model related.
@@ -130,7 +130,7 @@ contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
   Update();
 }
 
-void contrib::AnalysisConfig::EnableMKLDNN() {
+void AnalysisConfig::EnableMKLDNN() {
 #ifdef PADDLE_WITH_MKLDNN
   pass_builder()->EnableMKLDNN();
   use_mkldnn_ = true;
@@ -142,9 +142,9 @@ void contrib::AnalysisConfig::EnableMKLDNN() {
   Update();
 }
 
-void contrib::AnalysisConfig::EnableTensorRtEngine(
+void AnalysisConfig::EnableTensorRtEngine(
     int workspace_size, int max_batch_size, int min_subgraph_size,
-    contrib::AnalysisConfig::Precision precision_mode) {
+    AnalysisConfig::Precision precision_mode) {
 #ifdef PADDLE_WITH_CUDA
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
@@ -165,7 +165,7 @@ void contrib::AnalysisConfig::EnableTensorRtEngine(
 }
 
 // TODO(Superjomn) refactor this, buggy.
-void contrib::AnalysisConfig::Update() {
+void AnalysisConfig::Update() {
   auto info = SerializeInfoCache();
   if (info == serialized_info_cache_) return;
 
@@ -225,7 +225,7 @@ void contrib::AnalysisConfig::Update() {
   }
 }
 
-std::string contrib::AnalysisConfig::SerializeInfoCache() {
+std::string AnalysisConfig::SerializeInfoCache() {
   std::stringstream ss;
   ss << model_dir_;
   ss << prog_file_;
@@ -260,14 +260,14 @@ std::string contrib::AnalysisConfig::SerializeInfoCache() {
   return ss.str();
 }
 
-void contrib::AnalysisConfig::SetCpuMathLibraryNumThreads(
+void AnalysisConfig::SetCpuMathLibraryNumThreads(
     int cpu_math_library_num_threads) {
   cpu_math_library_num_threads_ = cpu_math_library_num_threads;
 
   Update();
 }
 
-float contrib::AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
+float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
 #ifdef PADDLE_WITH_CUDA
   // Get the GPU memory details and calculate the fraction of memory for the
   // GPU memory pool.
@@ -282,8 +282,8 @@ float contrib::AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
 #endif
 }
 
-void contrib::AnalysisConfig::EnableMemoryOptim(
-    bool static_optim, bool force_update_static_cache) {
+void AnalysisConfig::EnableMemoryOptim(bool static_optim,
+                                       bool force_update_static_cache) {
   enable_memory_optim_ = true;
   static_memory_optim_ = static_optim;
   static_memory_optim_force_update_ = force_update_static_cache;
@@ -291,14 +291,14 @@ void contrib::AnalysisConfig::EnableMemoryOptim(
   Update();
 }
 
-bool contrib::AnalysisConfig::enable_memory_optim() const {
+bool AnalysisConfig::enable_memory_optim() const {
   return enable_memory_optim_;
 }
 
-void contrib::AnalysisConfig::SetModelBuffer(const char *prog_buffer,
-                                             size_t prog_buffer_size,
-                                             const char *param_buffer,
-                                             size_t param_buffer_size) {
+void AnalysisConfig::SetModelBuffer(const char *prog_buffer,
+                                    size_t prog_buffer_size,
+                                    const char *param_buffer,
+                                    size_t param_buffer_size) {
   prog_file_ = std::string(prog_buffer, prog_buffer + prog_buffer_size);
   params_file_ = std::string(param_buffer, param_buffer + param_buffer_size);
   model_from_memory_ = true;
@@ -306,7 +306,7 @@ void contrib::AnalysisConfig::SetModelBuffer(const char *prog_buffer,
   Update();
 }
 
-NativeConfig contrib::AnalysisConfig::ToNativeConfig() const {
+NativeConfig AnalysisConfig::ToNativeConfig() const {
   NativeConfig config;
   config.model_dir = model_dir_;
   config.prog_file = prog_file_;
