@@ -30,19 +30,23 @@ Steps to transpile pserver:
 5. add listen_and_serv op
 """
 
+import sys
 import math
-import numpy as np
+from functools import reduce
+
 import collections
+import six
 import logging
+
+import numpy as np
 
 from .ps_dispatcher import RoundRobin, PSDispatcher
 from .. import core, framework, unique_name
 from ..framework import Program, default_main_program, \
-    default_startup_program, Block, \
-    Parameter, grad_var_name
-from .details import *
+    default_startup_program, Block, Parameter, grad_var_name
+from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
+from .details import delete_ops, find_op_by_output_arg
 from ..distribute_lookup_table import find_distributed_lookup_table
-from functools import reduce
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
