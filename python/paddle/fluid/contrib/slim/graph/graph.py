@@ -251,6 +251,28 @@ class ImitationGraph(Graph):
             self.program.clone(for_test), self.scope,
             copy.deepcopy(self.in_nodes), copy.deepcopy(self.out_nodes))
 
+    def merge(self, graph):
+        for var in graph.program.list_vars():
+            self.program.global_block()._clone_variable(var)
+        for op in graph.all_ops():
+            inputs = {}
+            outputs = {}
+            attrs = {}
+            for input_name in op.input_names:
+                inputs[input_name] = [
+                    self.get_var(in_var_name)
+                    for in_var_name in op.input(input_name)
+                ]
+            for output_name in op.output_names:
+                outputs[output_name] = [
+                    self.get_var(out_var_name)
+                    for out_var_name in op.output(output_name)
+                ]
+            for attr_name in op.attr_names:
+                attrs[attr_name] = op.attr(attr_name)
+            self.program.global_block().append_op(
+                type=op.type, inputs=inputs, outputs=outputs, attrs=attrs)
+
     def ops(self):
         return self.program.global_block().ops
 

@@ -1,0 +1,14 @@
+version: 1.0
+distillers:
+    fsp_distiller:
+        class: 'FSPDistiller'
+strategies:
+    fsp_distillation_strategy:
+        class: 'FSPDistillationStrategy'
+        distiller: 'fsp_distiller'
+        start_epoch: 0
+        end_epoch: 10
+compress_pass:
+    epoch: 10
+    strategies:
+        - fsp_distillation_strategy

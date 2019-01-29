@@ -1487,7 +1487,7 @@ class Block(object):
                 shape=var.shape,
                 dtype=var.dtype,
                 type=var.type,
-                persistable=True,
+                persistable=var.persistable,
                 is_data=var.is_data)
         else:
             ret_var = self.create_var(
@@ -1496,7 +1496,8 @@ class Block(object):
                 dtype=var.dtype,
                 type=var.type,
                 lod_level=var.lod_level,
-                persistable=True,
+                persistable=var.persistable,
+                stop_gradient=var.stop_gradient,
                 is_data=var.is_data)
         return ret_var
 
