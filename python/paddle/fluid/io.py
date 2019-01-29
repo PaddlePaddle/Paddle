@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import os
 import errno
+import warnings
 import time
 import shutil
 import six
@@ -930,6 +931,13 @@ def save_inference_model(dirname,
 
     if main_program is None:
         main_program = default_main_program()
+        if main_program.is_optimized:
+            warnings.warn(
+                "save_inference_model must put before you call memory_optimize. \
+                                            the memory_optimize will modify the original program, \
+                                            is not suitable for saving inference model \
+                                            we save the original program as inference model.",
+                RuntimeWarning)
 
     # when a pserver and a trainer running on the same machine, mkdir may conflict
     try:
