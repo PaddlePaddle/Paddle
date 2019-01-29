@@ -65,13 +65,13 @@ Notes:
 
 ## 4. How to reproduce the results
 * Small dataset
-  * Run the test
+1. Run the test
 ```bash
 python python/paddle/fluid/contrib/tests/test_calibration.py
 ```
 
 * Full dataset
-  * Download the full ImageNet val and label
+1. Download the full ImageNet val and label
 ```bash
 cd python/paddle/fluid/contrib/tests
 # TODO add some steps
@@ -80,14 +80,12 @@ tar xf ILSVRC2012_img_val.tar -C val/
 wget -nd -c http://paddle-imagenet-models.bj.bcebos.com/ImageNet_label.tgz 
 tar zxf ImageNet_label.tgz
 ```
-
-  * Check the dataset structure (similar to the requirement of [PaddlePaddle models](https://github.com/PaddlePaddle/models/tree/develop/fluid/PaddleCV/image_classification/data "PaddlePaddle models"))
+2. Check the dataset structure (similar to the requirement of [PaddlePaddle models](https://github.com/PaddlePaddle/models/tree/develop/fluid/PaddleCV/image_classification/data "PaddlePaddle models"))
 ```bash
 $ ls data/ILSVRC2012/
 val  val_list.txt
 ```
-
-  * Run the test
+3. Run the test
 ```bash
 DATASET=full python python/paddle/fluid/contrib/tests/test_calibration.py
 ```
