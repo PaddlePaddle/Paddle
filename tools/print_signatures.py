@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,23 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Print all signature of a python module in alphabet order.
 
-Usage:
-    ./print_signature  "paddle.fluid,paddle.reader" > signature.txt
-"""
 from __future__ import print_function
 
 import importlib
 import inspect
 import collections
 import sys
+import hashlib
 import pydoc
 
 member_dict = collections.OrderedDict()
 
 experimental_namespace = {"paddle.fluid.imperative"}
+
+
+def md5(doc):
+    hash = hashlib.md5()
+    hash.update(str(doc))
+    return hash.hexdigest()
 
 
 def visit_member(parent_name, member):
@@ -39,7 +41,10 @@ def visit_member(parent_name, member):
                 visit_member(cur_name, value)
     elif callable(member):
         try:
-            member_dict[cur_name] = inspect.getargspec(member)
+            doc = ('document', md5(member.__doc__))
+            s = inspect.getargspec(member)
+            all = (s, doc)
+            member_dict[cur_name] = all
         except TypeError:  # special for PyBind method
             member_dict[cur_name] = "  ".join([
                 line.strip() for line in pydoc.render_doc(member).split('\n')
@@ -68,7 +73,8 @@ def visit_all_module(mod):
             visit_member(mod.__name__, instance)
 
 
-modules = sys.argv[1].split(",")
+#modules = sys.argv[1].split(",")
+modules = ["paddle.fluid", "paddle.reader"]
 for m in modules:
     visit_all_module(importlib.import_module(m))
 
