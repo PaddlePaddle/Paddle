@@ -15,7 +15,10 @@
 #pragma once
 
 #include <glog/logging.h>
-
+#include <fstream>
+#if !defined(_WIN32)
+#include <sys/time.h>
+#endif
 #include <algorithm>
 #include <chrono>  // NOLINT
 #include <iterator>
@@ -114,6 +117,16 @@ static void TensorAssignData(PaddleTensor *tensor,
 }
 
 template <typename T>
+static void TensorAssignData(PaddleTensor *tensor,
+                             const std::vector<std::vector<T>> &data,
+                             const std::vector<size_t> &lod) {
+  int size = lod[lod.size() - 1];
+  tensor->shape.assign({size, 1});
+  tensor->lod.assign({lod});
+  TensorAssignData(tensor, data);
+}
+
+template <typename T>
 static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
                                     const std::vector<std::vector<T>> &data) {
   int size{0};
@@ -172,7 +185,8 @@ static bool CompareTensor(const PaddleTensor &a, const PaddleTensor &b) {
   return true;
 }
 
-static std::string DescribeTensor(const PaddleTensor &tensor) {
+static std::string DescribeTensor(const PaddleTensor &tensor,
+                                  int max_num_of_data = 15) {
   std::stringstream os;
   os << "Tensor [" << tensor.name << "]\n";
   os << " - type: ";
@@ -194,11 +208,14 @@ static std::string DescribeTensor(const PaddleTensor &tensor) {
     os << to_string(l) << "; ";
   }
   os << "\n";
-  os << " - data: ";
+  os << " - memory length: " << tensor.data.length();
+  os << "\n";
 
+  os << " - data: ";
   int dim = VecReduceToInt(tensor.shape);
+  float *pdata = static_cast<float *>(tensor.data.data());
   for (int i = 0; i < dim; i++) {
-    os << static_cast<float *>(tensor.data.data())[i] << " ";
+    os << pdata[i] << " ";
   }
   os << '\n';
   return os.str();
@@ -214,10 +231,12 @@ static std::string DescribeZeroCopyTensor(const ZeroCopyTensor &tensor) {
     os << to_string(l) << "; ";
   }
   os << "\n";
-  os << " - data: ";
   PaddlePlace place;
   int size;
   const auto *data = tensor.data<float>(&place, &size);
+  os << " - numel: " << size;
+  os << "\n";
+  os << " - data: ";
   for (int i = 0; i < size; i++) {
     os << data[i] << " ";
   }
@@ -236,6 +255,13 @@ static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
               << ", average latency of each sample: " << latency / samples
               << "ms ======";
   }
+}
+
+static bool IsFileExists(const std::string &path) {
+  std::ifstream file(path);
+  bool exists = file.is_open();
+  file.close();
+  return exists;
 }
 
 }  // namespace inference

@@ -30,6 +30,7 @@ typedef enum {
   kVAddBias,
   kVRelu,
   kVIdentity,
+  kVSquare,
   kVExp,
   kVSigmoid,
   kVTanh,
@@ -41,7 +42,16 @@ typedef enum {
   kCRFDecoding,
   kLayerNorm,
   kNCHW16CMulNC,
+  kSeqPool,
+  kMatMul,
 } KernelType;
+
+typedef enum {
+  kNonePoolType = 0,
+  kSum = 1,
+  kAvg,
+  kSqrt,
+} SeqPoolType;
 
 template <typename T>
 struct XYZNTuples {
@@ -110,6 +120,28 @@ struct GRUTuples {
   typedef T data_type;
   typedef gru_attr_t attr_type;
   typedef void (*func_type)(gru_t*, const gru_attr_t*);
+};
+
+typedef struct seq_pool_attr_s {
+  int h, w;  // h should always be the first one
+  SeqPoolType type;
+  seq_pool_attr_s() = default;
+  explicit seq_pool_attr_s(int width, SeqPoolType pool_type, int height = 1)
+      : h(height), w(width), type(pool_type) {}
+} seq_pool_attr_t;
+
+template <typename T>
+struct SeqPoolTuples {
+  typedef T data_type;
+  typedef seq_pool_attr_t attr_type;
+  typedef void (*func_type)(const T*, T*, const seq_pool_attr_t*);
+};
+
+template <typename T>
+struct MatMulTuples {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const T*, const T*, T*, int, int, int);
 };
 
 template <typename T>

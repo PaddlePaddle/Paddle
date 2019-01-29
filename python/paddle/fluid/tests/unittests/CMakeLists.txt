@@ -21,18 +21,19 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_dist_simnet_bow)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_batch_merge)
     LIST(REMOVE_ITEM TEST_OPS test_dist_text_classification)
+    LIST(REMOVE_ITEM TEST_OPS test_nce_remote_table_op)
+    LIST(REMOVE_ITEM TEST_OPS test_hsigmoid_remote_table_op)
 endif(NOT WITH_DISTRIBUTE)
 
 if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
-elseif(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_modified_huber_loss_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5184
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
-list(REMOVE_ITEM TEST_OPS test_nce) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/7778
 list(REMOVE_ITEM TEST_OPS test_recurrent_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/6152
 list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
 
@@ -83,12 +84,16 @@ list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
 list(REMOVE_ITEM TEST_OPS test_image_classification_resnet)
 list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
 list(REMOVE_ITEM TEST_OPS test_nearest_interp_op)
+list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
+py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS FLAGS_inner_op_parallelism=4)
 py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR} SERIAL)
 py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op SERIAL)
 py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op SERIAL)
+py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
+  FLAGS_cudnn_deterministic=1)
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
@@ -106,7 +111,7 @@ if(WITH_DISTRIBUTE)
 endif()
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SERIAL)
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)
-set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 150)
+set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer SERIAL)
 if(NOT APPLE)
     py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)

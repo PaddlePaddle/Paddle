@@ -23,10 +23,19 @@ import sys
 import six
 import os
 
-__all__ = ['ParallelExecutor', 'ExecutionStrategy', 'BuildStrategy']
+__all__ = ['ParallelExecutor']
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
+
+
+def _is_pserver_mode(main_program):
+    main = main_program if main_program \
+        else framework.default_main_program()
+    for op in main.global_block().ops:
+        if op.type in ["send", "recv"]:
+            return True
+    return False
 
 
 class ParallelExecutor(object):
@@ -128,6 +137,11 @@ class ParallelExecutor(object):
             build_strategy = BuildStrategy()
         build_strategy.num_trainers = num_trainers
         build_strategy.trainer_id = trainer_id
+        # FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
+        # num_trainers is 1, so the current fields of build_strategy doesn't tell if
+        # it's distributed model.
+        build_strategy.is_distribution = _is_pserver_mode(
+            main_program) or num_trainers > 1
 
         # step4: get main_program, scope, local_scopes
         main = main_program if main_program \
@@ -145,10 +159,10 @@ class ParallelExecutor(object):
         trainers_endpoints = main._trainers_endpoints
         if num_trainers > 1 and trainers_endpoints:
             assert num_trainers == len(
-                trainers_endpoints), "num_trainers == len(end_points)"
+                trainers_endpoints), "num_trainers == len(endpoints)"
             build_strategy.trainers_endpoints = trainers_endpoints
 
-        # step5: get persistable_vars, parameter_vars, places. persistable_vars
+        # step6: get persistable_vars, places. persistable_vars
         # need be broadcast to other local_scope.
         persistable_vars = set([
             cpt.to_text(v.name) for v in [
@@ -164,12 +178,11 @@ class ParallelExecutor(object):
 
         places = list(map(place_obj, self._places))
 
-        # step6: init ParallelExecutor
+        # step7: init ParallelExecutor
         self.executor = core.ParallelExecutor(
             places, persistable_vars, main.desc,
-            cpt.to_text(loss_name)
-            if loss_name else six.u(''), scope, local_scopes, exec_strategy,
-            build_strategy, num_trainers, trainer_id)
+            cpt.to_text(loss_name) if loss_name else six.u(''), scope,
+            local_scopes, exec_strategy, build_strategy)
 
         self.scope = scope
 
@@ -280,7 +293,7 @@ class ParallelExecutor(object):
                 res.append(res_dict)
             self.executor.feed_tensors_into_local_scopes(res)
 
-        fetch_var_name = '@FETCHED_VAR_NAME@'
+        fetch_var_name = 'fetch'
         self.executor.run(fetch_list, fetch_var_name)
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
 

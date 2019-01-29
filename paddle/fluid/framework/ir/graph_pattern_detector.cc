@@ -1234,6 +1234,141 @@ PDNode *patterns::ConvElementwiseadd::operator()(PDNode *conv_in) {
   return elementwise_add_out;
 }
 
+PDNode *patterns::ConvAffineChannel::operator()(
+    paddle::framework::ir::PDNode *conv_input, bool with_eltwise_add) {
+  // Create Operators
+  conv_input->assert_is_op_input("conv2d", "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+
+  PDNode *eltwise_op = nullptr;
+  if (with_eltwise_add) {
+    eltwise_op =
+        pattern->NewNode(eltwise_repr())->assert_is_op("elementwise_add");
+  }
+
+  auto *affine_channel_op =
+      pattern->NewNode(affine_channel_repr())->assert_is_op("affine_channel");
+  // Create variables
+  // Conv Filter
+  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
+                              ->AsInput()
+                              ->assert_is_persistable_var()
+                              ->assert_is_op_input("conv2d", "Filter");
+
+  auto *conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("conv2d");
+
+  PDNode *eltwise_y_in_var = nullptr;
+  PDNode *eltwise_out_var = nullptr;
+  if (with_eltwise_add) {
+    // Conv output as Bias input
+    conv_out_var->assert_is_op_input("elementwise_add", "X");
+    // Bias
+    eltwise_y_in_var = pattern->NewNode(eltwise_y_in_repr())
+                           ->assert_is_op_input("elementwise_add", "Y")
+                           ->AsInput();
+    eltwise_out_var = pattern->NewNode(eltwise_out_repr())
+                          ->AsIntermediate()
+                          ->assert_is_only_output_of_op("elementwise_add");
+  } else {
+    // Conv output as AffineChannel input
+    conv_out_var->assert_is_op_input("affine_channel", "X");
+  }
+
+  // AC Scale
+  auto *ac_scale_var = pattern->NewNode(ac_scale_repr())
+                           ->AsInput()
+                           ->assert_is_persistable_var()
+                           ->assert_is_op_input("affine_channel", "Scale");
+  // AC Bias
+  auto *ac_bias_var = pattern->NewNode(ac_bias_repr())
+                          ->AsInput()
+                          ->assert_is_persistable_var()
+                          ->assert_is_op_input("affine_channel", "Bias");
+
+  // AC output
+  auto *ac_out_var = pattern->NewNode(ac_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("affine_channel");
+
+  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
+
+  if (with_eltwise_add) {
+    eltwise_op->LinksFrom({conv_out_var, eltwise_y_in_var})
+        .LinksTo({eltwise_out_var});
+    affine_channel_op->LinksFrom({eltwise_out_var, ac_scale_var, ac_bias_var})
+        .LinksTo({ac_out_var});
+  } else {
+    affine_channel_op->LinksFrom({conv_out_var, ac_scale_var, ac_bias_var})
+        .LinksTo({ac_out_var});
+  }
+  return ac_out_var;
+}
+
+// a -> transpose_op(1) -> transpose_out_a -> flatten_op(1) -> flatten_out_a
+// b -> transpose_op(2) -> transpose_out_b -> flatten_op(2) -> flatten_out_b
+// ...
+// z -> transpose_op(n) -> transpose_out_z -> flatten_op(n) -> flatten_out_z
+// flatten_out_a -> concat_op  flatten_out_b -> concat_op ... flatten_out_z ->
+// concat_op
+PDNode *patterns::TransposeFlattenConcat::operator()(
+    std::vector<PDNode *> conv_in, int times) {
+  // The times represents the repeat times of the
+  // {trans, trans_out, flatten, flatten_out}
+  const int kNumFields = 4;
+  const int kTransOutOffset = 1;
+  const int kFlattenOffset = 2;
+  const int kFlattenOutOffset = 3;
+
+  std::vector<PDNode *> nodes;
+
+  for (int i = 0; i < times; i++) {
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("transpose" + std::to_string(i)))
+            ->assert_is_op("transpose2"));
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("transpose_out" + std::to_string(i)))
+            ->assert_is_op_output("transpose2")
+            ->assert_is_op_input("flatten2", "X")
+            ->AsIntermediate());
+    nodes.push_back(pattern->NewNode(GetNodeName("flatten" + std::to_string(i)))
+                        ->assert_is_op("flatten2"));
+
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("flatten_out" + std::to_string(i)))
+            ->assert_is_op_output("flatten2")
+            ->assert_is_op_nth_input("concat", "X", i)
+            ->AsIntermediate());
+  }
+
+  auto concat_op = pattern->NewNode(GetNodeName("concat"))
+                       ->assert_is_op("concat")
+                       ->assert_op_has_n_inputs("concat", times);
+  auto concat_out = pattern->NewNode(GetNodeName("concat_out"))
+                        ->assert_is_op_output("concat")
+                        ->AsOutput();
+
+  std::vector<PDNode *> flatten_outs;
+  for (int i = 0; i < times; i++) {
+    conv_in[i]->AsInput();
+    // trans
+    nodes[i * kNumFields]->LinksFrom({conv_in[i]});
+    // trans_out
+    nodes[i * kNumFields + kTransOutOffset]->LinksFrom({nodes[i * kNumFields]});
+    // flatten
+    nodes[i * kNumFields + kFlattenOffset]->LinksFrom(
+        {nodes[i * kNumFields + kTransOutOffset]});
+    // flatten_out
+    nodes[i * kNumFields + kFlattenOutOffset]->LinksFrom(
+        {nodes[i * kNumFields + kFlattenOffset]});
+    flatten_outs.push_back(nodes[i * kNumFields + kFlattenOutOffset]);
+  }
+
+  concat_op->LinksFrom(flatten_outs).LinksTo({concat_out});
+  return concat_out;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

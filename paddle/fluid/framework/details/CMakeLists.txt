@@ -77,6 +77,8 @@ cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ${SSA_GRAPH_EXECUT
 cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS fetch_op_handle ssa_graph_executor scope
         simple_threadpool device_context)
 
+cc_library(parallel_ssa_graph_executor SRCS parallel_ssa_graph_executor.cc DEPS threaded_ssa_graph_executor)
+
 cc_test(broadcast_op_test SRCS broadcast_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
         device_context broadcast_op_handle)
 cc_test(gather_op_test SRCS gather_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
@@ -91,5 +93,6 @@ cc_test(fused_broadcast_op_test SRCS fused_broadcast_op_handle_test.cc DEPS fuse
 cc_library(build_strategy SRCS build_strategy.cc DEPS
         graph_viz_pass multi_devices_graph_pass
         multi_devices_graph_print_pass multi_devices_graph_check_pass
-        fuse_elewise_add_act_pass multi_batch_merge_pass
-        memory_optimize_pass)
+        fuse_elewise_add_act_pass multi_batch_merge_pass 
+        fuse_relu_depthwise_conv_pass
+        memory_optimize_pass lock_free_optimize_pass)

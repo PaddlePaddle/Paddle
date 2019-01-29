@@ -22,12 +22,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 #ifdef PADDLE_WITH_NGRAPH
-#include "paddle/fluid/framework/ngraph_operator.h"
+#include "paddle/fluid/operators/ngraph/ngraph_engine.h"
 #endif
 
 DECLARE_bool(benchmark);
@@ -119,7 +119,7 @@ static void DeleteUnusedTensors(
           }
         } else {
           PADDLE_THROW("Type %s of %s is not supported eager deletion",
-                       var->Type().name(), name);
+                       framework::ToTypeName(var->Type()), name);
         }
       }
     }
@@ -131,24 +131,6 @@ static void DeleteUnusedTensors(
   if (!garbages.empty()) {
     gc->Add(std::move(garbages));
   }
-}
-
-static void EnableFusedOp(ExecutorPrepareContext* ctx) {
-#ifdef PADDLE_WITH_NGRAPH
-  VLOG(3) << "use_ngraph=True";
-  auto intervals = NgraphOperator::NgraphOpIntervals(&ctx->ops_);
-  for (auto& interval : intervals) {
-    auto* ng_op = new NgraphOperator(ctx->prog_, ctx->block_id_, interval.at(0),
-                                     interval.at(1));
-    *interval[0] = std::unique_ptr<OperatorBase>(ng_op);
-  }
-  for (auto it = intervals.rbegin(); it != intervals.rend(); ++it) {
-    ctx->ops_.erase(it->at(0) + 1, it->at(1));
-  }
-#else
-  LOG(WARNING)
-      << "'NGRAPH' is not supported, Please re-compile with WITH_NGRAPH option";
-#endif
 }
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
@@ -204,6 +186,9 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars) {
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
+#ifdef PADDLE_WITH_NGRAPH
+  if (FLAGS_use_ngraph) operators::NgraphEngine::EnableNgraph(pdesc);
+#endif
   auto ctx = Prepare(pdesc, block_id);
   RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
 }
@@ -379,7 +364,6 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
-  if (FLAGS_use_ngraph) EnableFusedOp(ctx.get());
   return ctx;
 }
 

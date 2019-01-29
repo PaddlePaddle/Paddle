@@ -98,10 +98,12 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 #endif
 
   auto input_data_type = ctx.Input<Tensor>("Input")->type();
-  auto filter_data_type = ctx.Input<Tensor>("Filter")->type();
-  PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
-                    "input and filter data type should be consistent");
-
+  if (input_data_type != framework::proto::VarType::INT8 &&
+      input_data_type != framework::proto::VarType::UINT8) {
+    auto filter_data_type = ctx.Input<Tensor>("Filter")->type();
+    PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
+                      "input and filter data type should be consistent");
+  }
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(library, framework::LibraryType::kCUDNN,
                       "float16 can only be used when CUDNN is used");
@@ -169,6 +171,9 @@ void Conv2DOpMaker::Make() {
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
+  AddAttr<bool>("fuse_relu_before_depthwise_conv",
+                "(bool, default false) Only used in cuda depthwise kernel")
+      .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
@@ -178,6 +183,26 @@ void Conv2DOpMaker::Make() {
                 "(bool, default false) Only used in mkldnn kernel. Used "
                 "whenever convolution output is as an input to residual "
                 "connection.")
+      .SetDefault(false);
+  AddAttr<float>("Scale_in",
+                 "Scale_in to be used for int8 input data."
+                 "Only used with MKL-DNN INT8.")
+      .SetDefault(1.0f);
+  AddAttr<float>("Scale_out",
+                 "Scale_out to be used for int8 output data."
+                 "Only used with MKL-DNN INT8.")
+      .SetDefault(1.0f);
+  AddAttr<float>("Scale_in_eltwise",
+                 "Scale_in_eltwise to be used for int8 eltwise input data."
+                 "Only used with MKL-DNN INT8.")
+      .SetDefault(1.0f);
+  AddAttr<std::vector<float>>("Scale_weights",
+                              "Scale_weights to be used for int8 weights data."
+                              "Only used with MKL-DNN INT8.")
+      .SetDefault({1.0f});
+  AddAttr<bool>("force_fp32_output",
+                "(bool, default false) Force INT8 kernel output FP32, only "
+                "used in MKL-DNN INT8")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -303,6 +328,9 @@ void Conv3DOpMaker::Make() {
       "Defaults to \"NHWC\". Specify the data format of the output data, "
       "the input will be transformed automatically. ")
       .SetDefault("AnyLayout");
+  AddAttr<bool>("force_fp32_output",
+                "(bool, default false) Only used in mkldnn INT8 kernel")
+      .SetDefault(false);
   // TODO(dzhwinter): need to registered layout transform function
   AddAttr<int>("workspace_size_MB",
                "Only used in cudnn kernel. workspace size for cudnn, in MB, "
@@ -387,18 +415,43 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
                                  customized_type_value);
 }
 
+class Conv2dGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op = new framework::OpDesc();
+    op->SetType(GradOpType());
+    op->SetInput("Input", Input("Input"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetInput("Bias", Input("Bias"));
+    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+
+    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+
+    op->SetAttrMap(Attrs());
+
+    return std::unique_ptr<framework::OpDesc>(op);
+  }
+
+  virtual std::string GradOpType() const {
+    return this->ForwardOpType() + "_grad";
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  ops::ConvOpInferVarType,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ConvOpInferVarType, ops::Conv2dGradMaker);
 REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad);
 
 // depthwise convolution op
 REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ConvOpInferVarType, ops::Conv2dGradMaker);
 REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
 
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,

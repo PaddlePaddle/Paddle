@@ -523,7 +523,7 @@ def _py_reader(capacity,
         double_buffer_name = "_".join([name, "double_buffer"])
 
     var = global_scope().var(queue_name)
-    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, shapes)
+    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity)
 
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=reader_name)
@@ -949,12 +949,11 @@ def shuffle(reader, buffer_size):
     is determined by argument buf_size.
 
     Args:
-        param reader: the original reader whose output will be shuffled.
-        type reader: callable
-        param buf_size: shuffle buffer size.
-        type buf_size: int
-        return: the new reader whose output is shuffled.
-        rtype: callable
+        reader(callable): the original reader whose output will be shuffled.
+        buf_size(int): shuffle buffer size.
+
+    Returns:
+        callable: the new reader whose output is shuffled.
     """
     return __create_unshared_decorated_reader__(
         'create_shuffle_reader', reader, {'buffer_size': int(buffer_size)})

@@ -12,12 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
+#include <algorithm>
+#include <set>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
+#include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
+#include "paddle/fluid/inference/tensorrt/op_teller.h"
+#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
@@ -33,10 +38,13 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
     std::unique_ptr<framework::ir::Graph> graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph.get());
 
-  auto teller =
-      Get<SubgraphDetector::NodeInsideSubgraphTeller>("tensorrt_node_teller");
+  auto teller = [](const framework::ir::Node *node) {
+    if (!node->IsOp() || !node->Op()) return false;
+    return tensorrt::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
+  };
 
-  SubGraphFuser fuser(graph.get(), teller, 2 /*min subgraph size*/);
+  SubGraphFuser fuser(graph.get(), teller,
+                      Get<int>("min_subgraph_size") /*min subgraph size*/);
   fuser();
 
   for (auto *node : graph->Nodes()) {
@@ -60,25 +68,54 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
   return graph;
 }
 
+std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
+                              const std::set<std::string> &engine_outputs) {
+  std::string engine_hash_key = "";
+  for (auto name : engine_inputs) {
+    engine_hash_key += name;
+  }
+  for (auto name : engine_outputs) {
+    engine_hash_key += name;
+  }
+  auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
+  return engine_key;
+}
+
 void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
                                             Graph *graph) const {
   auto *op_desc = node->Op();
   auto &subgraph = *Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
 
+  framework::ProgramDesc *program_desc =
+      Get<framework::ProgramDesc *>("program");
+  // Add new block for TensorRTEngineOP
+  const framework::BlockDesc &main_block =
+      program_desc->Block(framework::kRootBlockIndex);
+  // const framework::BlockDesc& main_block = program_desc->Block(0);
+  framework::BlockDesc *new_block = program_desc->AppendBlock(main_block);
+
   // An fake block desc.
   framework::proto::BlockDesc block_proto;
   framework::BlockDesc block_desc(nullptr, &block_proto);
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
+  string::PrettyLogDetail("---  detect a sub-graph with %d nodes",
+                          subgraph.size());
+
   for (auto *node : subgraph) {
+    auto *new_block_op = new_block->AppendOp();
     auto *op = block_desc.AppendOp();
+    *new_block_op->Proto() = *node->Op()->Proto();
     *op->Proto() = *node->Op()->Proto();
   }
 
-  // collect inputs
-  std::unordered_set<std::string> input_names;
-  std::unordered_set<std::string> input_names_with_id;
+  // Then, we will use the input_names_with_id and output_names_with_id to
+  // generate the eigine key.
+  // So, We use set instead of unordered_set here to ensure that the engine key
+  // is unique.
+  std::set<std::string> input_names;
+  std::set<std::string> input_names_with_id;
   for (auto *x : node->inputs) {
     input_names.insert(x->Name());
     input_names_with_id.insert(x->Name() + std::to_string(x->id()));
@@ -86,8 +123,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   op_desc->SetInput(
       "Xs", std::vector<std::string>(input_names.begin(), input_names.end()));
 
-  std::unordered_set<std::string> output_names;
-  std::unordered_set<std::string> output_names_with_id;
+  std::set<std::string> output_names;
+  std::set<std::string> output_names_with_id;
   for (auto *x : node->outputs) {
     output_names.insert(x->Name());
     output_names_with_id.insert(x->Name() + std::to_string(x->id()));
@@ -172,7 +209,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   // to Tensor.
   std::vector<std::string> output_mapping;
   for (auto name : output_names) {
-    // LOG(INFO) << name << " " << output_name_map.size();
     PADDLE_ENFORCE(output_name_map.count(name) != 0);
     output_mapping.push_back(output_name_map[name]);
   }
@@ -183,24 +219,53 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
       *vars->Add() = *node->Var()->Proto();
     }
   }
+
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
                  "the block has no var-desc");
   PADDLE_ENFORCE(!output_mapping.empty());
-  // Set attrs
+  op_desc->SetBlockAttr("sub_block", new_block);
   SetAttr(op_desc->Proto(), "subgraph",
           block_desc.Proto()->SerializeAsString());
+  // Set attrs
   SetAttr(op_desc->Proto(), "max_batch_size", Get<int>("max_batch_size"));
   SetAttr(op_desc->Proto(), "workspace_size", Get<int>("workspace_size"));
   SetAttr(op_desc->Proto(), "parameters", ExtractParameters(graph->Nodes()));
   SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
+
+  auto enable_int8 = Get<bool>("enable_int8");
+  auto engine_key =
+      GenerateEngineKey(input_names_with_id, output_names_with_id);
+
+  std::string calibration_data = GetTrtCalibTableData(
+      Get<std::string>("model_opt_cache_dir"), engine_key, enable_int8);
+  SetAttr(op_desc->Proto(), "calibration_data", calibration_data);
+
+  SetAttr(op_desc->Proto(), "enable_int8", enable_int8);
+  SetAttr(op_desc->Proto(), "engine_key", engine_key);
 }
 
 std::vector<std::string> ExtractParameters(
     const std::unordered_set<Node *> &nodes) {
+  // We can judge whether a variable is a parameter by
+  // its presistable property, but sometimes the presistable
+  // of the feed op output is true, so we have to identify it.
+  std::vector<std::string> feed_outputs;
+  for (const auto &node : nodes) {
+    if (!node->IsOp()) continue;
+    std::string op_type = node->Op()->Type();
+    if (op_type == "feed") {
+      std::vector<std::string> output_names = node->Op()->OutputArgumentNames();
+      std::copy(output_names.begin(), output_names.end(),
+                std::back_inserter(feed_outputs));
+    }
+  }
+
   std::vector<std::string> parameters;
   for (const auto &node : nodes) {
     if (!node->IsVar()) continue;
-    if (node->Var()->Persistable()) {
+    if (node->Var()->Persistable() &&
+        std::find(feed_outputs.begin(), feed_outputs.end(), node->Name()) ==
+            feed_outputs.end()) {
       parameters.push_back(node->Name());
     }
   }
@@ -213,6 +278,6 @@ std::vector<std::string> ExtractParameters(
 
 REGISTER_PASS(tensorrt_subgraph_pass,
               paddle::inference::analysis::TensorRtSubgraphPass)
-    .RequirePassAttr("tensorrt_node_teller")
     .RequirePassAttr("max_batch_size")
-    .RequirePassAttr("workspace_size");
+    .RequirePassAttr("workspace_size")
+    .RequirePassAttr("min_subgraph_size");

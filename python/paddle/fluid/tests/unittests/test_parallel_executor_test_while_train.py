@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import paddle.fluid as fluid
+from paddle.fluid import compiler
 import paddle.fluid.core as core
 import numpy as np
 import unittest
@@ -61,22 +62,21 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
             exe.run(startup)
             feed_dict = {'image': image, 'label': label}
 
-            train_exe = fluid.ParallelExecutor(
-                use_cuda=use_cuda,
+            train_cp = compiler.CompiledProgram(main).with_data_parallel(
+                loss_name=loss.name, build_strategy=build_strategy)
+            test_cp = compiler.CompiledProgram(test_program).with_data_parallel(
                 loss_name=loss.name,
-                main_program=main,
-                build_strategy=build_strategy)
-
-            test_exe = fluid.ParallelExecutor(
-                use_cuda=use_cuda,
-                main_program=test_program,
-                share_vars_from=train_exe,
-                build_strategy=build_strategy)
+                build_strategy=build_strategy,
+                share_vars_from=train_cp)
 
             for i in range(5):
-                test_loss, = test_exe.run([loss.name], feed=feed_dict)
-
-                train_loss, = train_exe.run([loss.name], feed=feed_dict)
+                exe.run(train_cp, feed=feed_dict, fetch_list=[loss.name])
+                test_loss, = exe.run(test_cp,
+                                     feed=feed_dict,
+                                     fetch_list=[loss.name])
+                train_loss, = exe.run(train_cp,
+                                      feed=feed_dict,
+                                      fetch_list=[loss.name])
 
                 avg_test_loss_val = np.array(test_loss).mean()
                 if math.isnan(float(avg_test_loss_val)):

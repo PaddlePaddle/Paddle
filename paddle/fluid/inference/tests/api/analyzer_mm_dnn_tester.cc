@@ -19,11 +19,9 @@ namespace inference {
 using contrib::AnalysisConfig;
 
 struct DataRecord {
-  std::vector<std::vector<int64_t>> query_data_all, title_data_all;
+  std::vector<std::vector<int64_t>> query, title;
   std::vector<size_t> lod1, lod2;
-  size_t batch_iter{0};
-  size_t batch_size{1};
-  size_t num_samples;  // total number of samples
+  size_t batch_iter{0}, batch_size{1}, num_samples;  // total number of samples
   DataRecord() = default;
   explicit DataRecord(const std::string &path, int batch_size = 1)
       : batch_size(batch_size) {
@@ -33,22 +31,9 @@ struct DataRecord {
     DataRecord data;
     size_t batch_end = batch_iter + batch_size;
     // NOTE skip the final batch, if no enough data is provided.
-    if (batch_end <= query_data_all.size()) {
-      data.query_data_all.assign(query_data_all.begin() + batch_iter,
-                                 query_data_all.begin() + batch_end);
-      data.title_data_all.assign(title_data_all.begin() + batch_iter,
-                                 title_data_all.begin() + batch_end);
-      // Prepare LoDs
-      data.lod1.push_back(0);
-      data.lod2.push_back(0);
-      CHECK(!data.query_data_all.empty());
-      CHECK(!data.title_data_all.empty());
-      CHECK_EQ(data.query_data_all.size(), data.title_data_all.size());
-      for (size_t j = 0; j < data.query_data_all.size(); j++) {
-        // calculate lod
-        data.lod1.push_back(data.lod1.back() + data.query_data_all[j].size());
-        data.lod2.push_back(data.lod2.back() + data.title_data_all[j].size());
-      }
+    if (batch_end <= query.size()) {
+      GetInputPerBatch(query, &data.query, &data.lod1, batch_iter, batch_end);
+      GetInputPerBatch(title, &data.title, &data.lod2, batch_iter, batch_end);
     }
     batch_iter += batch_size;
     return data;
@@ -67,8 +52,8 @@ struct DataRecord {
       // load title data
       std::vector<int64_t> title_data;
       split_to_int64(data[1], ' ', &title_data);
-      query_data_all.push_back(std::move(query_data));
-      title_data_all.push_back(std::move(title_data));
+      query.push_back(std::move(query_data));
+      title.push_back(std::move(title_data));
     }
     num_samples = num_lines;
   }
@@ -80,15 +65,9 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   lod_query_tensor.name = "left";
   lod_title_tensor.name = "right";
   auto one_batch = data->NextBatch();
-  int size1 = one_batch.lod1[one_batch.lod1.size() - 1];  // token batch size
-  int size2 = one_batch.lod2[one_batch.lod2.size() - 1];  // token batch size
-  lod_query_tensor.shape.assign({size1, 1});
-  lod_query_tensor.lod.assign({one_batch.lod1});
-  lod_title_tensor.shape.assign({size2, 1});
-  lod_title_tensor.lod.assign({one_batch.lod2});
   // assign data
-  TensorAssignData<int64_t>(&lod_query_tensor, one_batch.query_data_all);
-  TensorAssignData<int64_t>(&lod_title_tensor, one_batch.title_data_all);
+  TensorAssignData<int64_t>(&lod_query_tensor, one_batch.query, one_batch.lod1);
+  TensorAssignData<int64_t>(&lod_title_tensor, one_batch.title, one_batch.lod2);
   // Set inputs.
   input_slots->assign({lod_query_tensor, lod_title_tensor});
   for (auto &tensor : *input_slots) {
@@ -97,11 +76,10 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
 }
 
 void SetConfig(contrib::AnalysisConfig *cfg) {
-  cfg->model_dir = FLAGS_infer_model;
-  cfg->use_gpu = false;
-  cfg->device = 0;
-  cfg->specify_input_name = true;
-  cfg->enable_ir_optim = true;
+  cfg->SetModel(FLAGS_infer_model);
+  cfg->DisableGpu();
+  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim();
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -116,10 +94,14 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 // Easy for profiling independently.
-TEST(Analyzer_MM_DNN, profile) {
+void profile(bool use_mkldnn = false) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
   std::vector<PaddleTensor> outputs;
+
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -141,6 +123,11 @@ TEST(Analyzer_MM_DNN, profile) {
   }
 }
 
+TEST(Analyzer_MM_DNN, profile) { profile(); }
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_MM_DNN, profile_mkldnn) { profile(true /* use_mkldnn */); }
+#endif
+
 // Check the fuse status
 TEST(Analyzer_MM_DNN, fuse_statis) {
   contrib::AnalysisConfig cfg;
@@ -153,15 +140,24 @@ TEST(Analyzer_MM_DNN, fuse_statis) {
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-TEST(Analyzer_MM_DNN, compare) {
+void compare(bool use_mkldnn = false) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
+
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
+
+TEST(Analyzer_MM_DNN, compare) { compare(); }
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_MM_DNN, compare_mkldnn) { compare(true /* use_mkldnn */); }
+#endif
 
 // Compare Deterministic result
 TEST(Analyzer_MM_DNN, compare_determine) {
