@@ -34,16 +34,21 @@ class Layer(core.Layer):
         self._parameters = collections.OrderedDict()
         self._sub_layers = collections.OrderedDict()
 
-    def parameters(self):
-        """Returns an OrderedDict with parameters from current and sub-layers.
+    def parameters(self, include_sublayers=True):
+        """Returns a list of Parameters from current and sub-layers.
         """
-        return self._parameters
+        ret = [p for p in self._parameters.values()]
+        if include_sublayers:
+            for l in self._sub_layers.values():
+                for p in l.parameters(include_sublayers):
+                    ret.append(p)
+        return ret
 
     def clear_gradients(self):
         for p in self.parameters():
             p._clear_gradient()
 
-    def _build_once(self, inputs):
+    def _build_once(self, *args):
         pass
 
     def __call__(self, *inputs):
