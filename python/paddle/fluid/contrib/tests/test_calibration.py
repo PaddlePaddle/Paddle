@@ -132,10 +132,10 @@ class TestCalibrationForResnet50(unittest.TestCase):
                                                    self.data_cache_folder)
         os.system(cmd)
 
-        self.full = False  # True for full ImageNet val
+        self.dataset = "small"  # full for ImageNet val dataset
         self.batch_size = 1
         self.sample_iterations = 50
-        self.infer_iterations = 50000 if self.full else 50
+        self.infer_iterations = 50000 if self.dataset == "full" else 50
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
