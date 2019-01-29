@@ -43,13 +43,14 @@ std::shared_ptr<ngraph::Node> NgReshaper(std::shared_ptr<ngraph::Node> input,
 
 std::shared_ptr<ngraph::Node> GetNode(
     const std::shared_ptr<paddle::framework::OperatorBase>& op,
-    const std::string prm, const paddle::framework::VariableNameMap& var_map,
+    const std::string name, const paddle::framework::VariableNameMap& var_map,
     std::shared_ptr<
         std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
         ngb_node_map) {
-  auto& var_names = var_map.at(prm);
+  auto& var_names = var_map.at(name);
   PADDLE_ENFORCE_EQ(var_names.size(), 1,
-                    "op %s prm %s expects one associated var", op->Type(), prm);
+                    "op %s name %s expects one associated var", op->Type(),
+                    name);
   if (ngb_node_map->find(var_names[0]) != ngb_node_map->end()) {
     return (*ngb_node_map)[var_names[0]];
   } else {
@@ -59,43 +60,53 @@ std::shared_ptr<ngraph::Node> GetNode(
 
 std::shared_ptr<ngraph::Node> GetInputNode(
     const std::shared_ptr<paddle::framework::OperatorBase>& op,
-    const std::string prm,
+    const std::string name,
     std::shared_ptr<
         std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
         ngb_node_map) {
-  return GetNode(op, prm, op->Inputs(), ngb_node_map);
+  return GetNode(op, name, op->Inputs(), ngb_node_map);
 }
 
 std::shared_ptr<ngraph::Node> GetOutputNode(
     const std::shared_ptr<paddle::framework::OperatorBase>& op,
-    const std::string prm,
+    const std::string name,
     std::shared_ptr<
         std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
         ngb_node_map) {
-  return GetNode(op, prm, op->Outputs(), ngb_node_map);
+  return GetNode(op, name, op->Outputs(), ngb_node_map);
 }
 
 void SetOutputNode(
     const std::shared_ptr<paddle::framework::OperatorBase>& op,
-    const std::string prm, std::shared_ptr<ngraph::Node> node,
+    const std::string name, std::shared_ptr<ngraph::Node> node,
     std::shared_ptr<
         std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
         ngb_node_map) {
-  auto& var_names = op->Outputs().at(prm);
+  auto& var_names = op->Outputs().at(name);
   if (var_names.size() == 1) {
+    /*  */
+    auto dummy_out = GetOutputNode(op, name, ngb_node_map);
+    if (dummy_out && dummy_out->get_shape() != node->get_shape()) {
+      node = NgReshaper(node, dummy_out->get_shape());
+    }
+    if (dummy_out &&
+        dummy_out->get_element_type() != node->get_element_type()) {
+      node = std::make_shared<ngraph::op::Convert>(
+          node, dummy_out->get_element_type());
+    }
     (*ngb_node_map)[var_names[0]] = node;
   } else if (var_names.size() == 0) {
     (*ngb_node_map)[""] = node;
   } else {
-    PADDLE_THROW("prm %s has more than 1 var_names.", prm);
+    PADDLE_THROW("name %s has more than 1 var_names.", name);
   }
 }
 
 bool HasOutput(const std::shared_ptr<paddle::framework::OperatorBase>& op,
-               const std::string prm) {
+               const std::string name) {
   auto& outputs = op->Outputs();
-  if (outputs.find(prm) == outputs.end()) return false;
-  return outputs.at(prm).size() > 0;
+  if (outputs.find(name) == outputs.end()) return false;
+  return outputs.at(name).size() > 0;
 }
 
 inline void GetMidDims(const ngraph::Shape& x_shape,

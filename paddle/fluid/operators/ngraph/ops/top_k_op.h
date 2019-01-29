@@ -36,11 +36,6 @@ void BuildTopKNode(
       std::make_shared<ngraph::op::GetOutputElement>(top_k, 0);
   std::shared_ptr<ngraph::Node> out =
       std::make_shared<ngraph::op::GetOutputElement>(top_k, 1);
-  auto dummy_out = paddle::platform::GetOutputNode(op, "Out", ngb_node_map);
-  if (dummy_out && dummy_out->get_element_type() != out->get_element_type()) {
-    out = std::make_shared<ngraph::op::Convert>(out,
-                                                dummy_out->get_element_type());
-  }
   paddle::platform::SetOutputNode(op, "Indices", indices, ngb_node_map);
   paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
 }
