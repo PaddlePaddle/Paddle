@@ -447,30 +447,6 @@ def get_inference_model(main_program, feeded_var_names, target_vars):
     main_program = main_program._prune(targets=target_vars)
     main_program = main_program._inference_optimize(prune_read_op=True)
 
-    main_program.global_block().create_var(
-        name="firstw30",
-        persistable=False,
-        type=paddle.fluid.core.VarDesc.VarType.LOD_TENSOR,
-        dtype=paddle.fluid.core.VarDesc.VarType.INT64,
-        shape=(-1, 1),
-        lod_level=0)
-
-    main_program.global_block().create_var(
-        name="firstw24",
-        persistable=False,
-        type=paddle.fluid.core.VarDesc.VarType.LOD_TENSOR,
-        dtype=paddle.fluid.core.VarDesc.VarType.INT64,
-        shape=(-1, 1),
-        lod_level=0)
-
-    main_program.global_block().create_var(
-        name="firstw31",
-        persistable=False,
-        type=paddle.fluid.core.VarDesc.VarType.LOD_TENSOR,
-        dtype=paddle.fluid.core.VarDesc.VarType.INT64,
-        shape=(-1, 1),
-        lod_level=0)
-
     fetch_var_names = [v.name for v in target_vars]
 
     prepend_feed_ops(main_program, feeded_var_names)
