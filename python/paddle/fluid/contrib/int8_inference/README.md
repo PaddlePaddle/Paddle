@@ -80,6 +80,7 @@ tar xf ILSVRC2012_img_val.tar -C val/
 wget -nd -c http://paddle-imagenet-models.bj.bcebos.com/ImageNet_label.tgz 
 tar zxf ImageNet_label.tgz
 ```
+
   *  Check the dataset structure (similar to the requirement of [PaddlePaddle models](https://github.com/PaddlePaddle/models/tree/develop/fluid/PaddleCV/image_classification/data "PaddlePaddle models"))
 ```bash
 $ ls data/ILSVRC2012/
