@@ -48,6 +48,65 @@ void VTanh(const T* x, T* y, int n) {
   compute_addbias(&b, y, y, n);
 }
 
+void Softmax(const T* x, T* y, int n, int bs) {
+  typename XRNTuples<T>::func_type compute_hmax{nullptr};
+  typename XRNTuples<T>::func_type compute_hsum{nullptr};
+  typename AXYNTuples<T>::func_type compute_vscal{nullptr};
+  typename AXYNTuples<T>::func_type compute_vaddbias{nullptr};
+  typename XYNTuples<T>::func_type compute_vexp{nullptr};
+
+  if (!KernelFuncsCache<kHMax, XRNTuples<T>>::Instance().Has(n)) {
+    compute_hmax = Get<kHMax, XRNTuples<T>, platform::CPUPlace>(n);
+    KernelFuncsCache<kHMax, XRNTuples<T>>::Instance().Insert(n, compute_hmax);
+  } else {
+    compute_hmax = KernelFuncsCache<kHMax, XRNTuples<T>>::Instance().At(n);
+  }
+
+  if (!KernelFuncsCache<kHSum, XRNTuples<T>>::Instance().Has(n)) {
+    compute_hsum = Get<kHSum, XRNTuples<T>, platform::CPUPlace>(n);
+    KernelFuncsCache<kHSum, XRNTuples<T>>::Instance().Insert(n, compute_hsum);
+  } else {
+    compute_hsum = KernelFuncsCache<kHSum, XRNTuples<T>>::Instance().At(n);
+  }
+
+  if (!KernelFuncsCache<kVScal, AXYNTuples<T>>::Instance().Has(n)) {
+    compute_vscal = Get<kVScal, AXYNTuples<T>, platform::CPUPlace>(n);
+    KernelFuncsCache<kVScal, AXYNTuples<T>>::Instance().Insert(n,
+                                                               compute_vscal);
+  } else {
+    compute_vscal = KernelFuncsCache<kVScal, AXYNTuples<T>>::Instance().At(n);
+  }
+
+  if (!KernelFuncsCache<kVAddBias, AXYNTuples<T>>::Instance().Has(n)) {
+    compute_vaddbias = Get<kVAddBias, AXYNTuples<T>, platform::CPUPlace>(n);
+    KernelFuncsCache<kVAddBias, AXYNTuples<T>>::Instance().Insert(
+        n, compute_vaddbias);
+  } else {
+    compute_vaddbias =
+        KernelFuncsCache<kVAddBias, AXYNTuples<T>>::Instance().At(n);
+  }
+
+  if (!KernelFuncsCache<kVExp, XYNTuples<T>>::Instance().Has(n)) {
+    compute_vexp = Get<KernelType::kVExp, XYNTuples<T>, platform::CPUPlace>(n);
+    KernelFuncsCache<kVExp, XYNTuples<T>>::Instance().Insert(n, compute_vexp);
+  } else {
+    compute_vexp = KernelFuncsCache<kVExp, XYNTuples<T>>::Instance().At(n);
+  }
+
+  for (int i = 0; i < bs; ++i) {
+    T scalar;
+    compute_hmax(x, &scalar, n);
+    scalar = static_cast<T>(0) - scalar;
+    compute_vaddbias(&scalar, x, y, n);  // x - max
+    compute_vexp(y, y, n);
+    compute_hsum(y, &scalar, n);
+    scalar = static_cast<T>(1) / scalar;
+    compute_vscal(&scalar, y, y, n);
+    x += n;
+    y += n;
+  }
+}
+
 void (*getActFunc(KernelType type, int d))(const T*, T*, int) {  // NOLINT
   if (type == kVSigmoid) {
     return Get<kVSigmoid, XYNTuples<T>, platform::CPUPlace>(d);
@@ -184,6 +243,8 @@ bool VSigmoidKernel::UseMe(const int& d) const { return true; }
 
 bool VTanhKernel::UseMe(const int& d) const { return true; }
 
+bool SoftmaxKernel::UseMe(const int& d) const { return true; }
+
 bool LSTMCtHtKernel::UseMe(const lstm_attr_t& attr) const { return true; }
 
 bool LSTMC1H1Kernel::UseMe(const lstm_attr_t& attr) const { return true; }
@@ -207,6 +268,7 @@ namespace mix = paddle::operators::jit::more::mix;
 
 REGISTER_MORE_KERNEL(kVSigmoid, VSigmoid);
 REGISTER_MORE_KERNEL(kVTanh, VTanh);
+REGISTER_MORE_KERNEL(kSoftmax, Softmax);
 REGISTER_MORE_KERNEL(kLSTMCtHt, LSTMCtHt);
 REGISTER_MORE_KERNEL(kLSTMC1H1, LSTMC1H1);
 REGISTER_MORE_KERNEL(kGRUH1, GRUH1);

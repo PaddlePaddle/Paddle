@@ -29,11 +29,6 @@
 namespace paddle {
 
 class AnalysisPredictor;
-// ==
-//
-// -----------------------------------------------------------------------------------
-// NOTE: The following APIs are not mature yet, we are still working on them.
-namespace contrib {
 
 // NOTE WIP, not stable yet.
 struct AnalysisConfig {
@@ -42,6 +37,10 @@ struct AnalysisConfig {
   explicit AnalysisConfig(const std::string& model_dir);
   explicit AnalysisConfig(const std::string& prog_file,
                           const std::string& params_file);
+  enum class Precision {
+    kFloat32 = 0,
+    kInt8,
+  };
 
   /** Set model with a directory.
    */
@@ -135,7 +134,8 @@ struct AnalysisConfig {
    * subgraph is less than this, it will not transfer to TensorRT engine.
    */
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
-                            int max_batch_size = 1, int min_subgraph_size = 3);
+                            int max_batch_size = 1, int min_subgraph_size = 3,
+                            Precision precision = Precision::kFloat32);
   /** A boolean state telling whether the TensorRT engine is used.
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
@@ -229,6 +229,7 @@ struct AnalysisConfig {
   //  We set this variable to control the minimum number of nodes in the
   //  subgraph, 3 as default value.
   int tensorrt_min_subgraph_size_{3};
+  Precision tensorrt_precision_mode_;
 
   // memory reuse related.
   bool enable_memory_optim_{false};
@@ -254,5 +255,4 @@ struct AnalysisConfig {
   mutable std::unique_ptr<PassStrategy> pass_builder_;
 };
 
-}  // namespace contrib
 }  // namespace paddle
