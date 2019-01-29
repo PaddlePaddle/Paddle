@@ -31,21 +31,16 @@ class FuseGradientSpacePass : public ir::Pass {
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
 
-  void GetParamsAndGrads(const ir::Graph &graph) const;
-  /*
-    void SetGradientAsPersistable(
-        ir::Graph &graph,
-        const std::unordered_map<std::string, std::string> params_grads) const;
+ private:
+  bool IsSupportedVarType(const proto::VarType::Type &type) const;
 
-    ir::Node CreateFusedSpaceOp(
-        const std::unordered_map<std::string, std::string> params_grads) const;
+  ir::Node *CreateAllocSpaceForVarsNode(
+      const std::vector<std::string> &grads_name,
+      const std::vector<std::string> &params_name, ir::Graph *graph) const;
 
-    ir::Node CreateGetVarSpaceOp(
-        const std::unordered_map<std::string, std::string> params_grads) const;
-
-   private:
-    std::unordered_map<std::string, std::string> params_grads;
-  */
+  void GetTrainingGradVarName(ir::Node *node,
+                              std::unordered_map<std::string, ir::Node *> *ops,
+                              ir::Graph *result) const;
 };
 
 }  // namespace details

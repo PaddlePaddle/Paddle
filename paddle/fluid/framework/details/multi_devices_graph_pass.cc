@@ -1058,20 +1058,6 @@ REGISTER_MULTI_DEVICES_PASS(
     paddle::framework::details::AllReduceSSAGraphBuilder);
 REGISTER_MULTI_DEVICES_PASS(dist_multi_devices_pass,
                             paddle::framework::details::DistSSAGraphBuilder);
-
-#define REGISTER_MULTI_DEVICES_PASS2(pass_name, pass_class)                    \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                              \
-      _reg_ssa_graph_builder_##pass_name,                                      \
-      "REGISTER_MULTI_DEVICES_PASS must be called in global namespace.");      \
-  int _reg_ssa_graph_builder_entry_##pass_name =                               \
-      paddle::framework::details::MultiDevSSAGraphBuilderRegister(#pass_name); \
-  REGISTER_PASS(pass_name, pass_class)                                         \
-      .RequirePassAttr(paddle::framework::details::kLossVarName)               \
-      .RequirePassAttr(paddle::framework::details::kPlaces)                    \
-      .RequirePassAttr(paddle::framework::details::kLocalScopes)               \
-      .RequirePassAttr(paddle::framework::details::kStrategy)                  \
-      .RequirePassAttr(paddle::framework::details::kNRanks)
-
-REGISTER_MULTI_DEVICES_PASS2(
+REGISTER_MULTI_DEVICES_PASS(
     fused_allreduce_mode_multi_devices_pass,
     paddle::framework::details::FuseAllReduceSSAGraphBuilder);

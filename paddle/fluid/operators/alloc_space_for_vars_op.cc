@@ -13,11 +13,9 @@
 // limitations under the License.
 
 #include <vector>
-#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
@@ -40,11 +38,11 @@ class AllocSpaceForVarsOpOp : public framework::OperatorBase {
     auto &grad_var_names = Outputs("Gradients");
     PADDLE_ENFORCE_GT(param_var_names.size(), 0);
     PADDLE_ENFORCE_EQ(param_var_names.size(), grad_var_names.size());
-    size_t mem_size = 0;
-    framework::proto::VarType::Type fuse_space_type = kDefaultDtype;
 
+    size_t mem_size = 0;
+    framework::proto::VarType::Type dtype = kDefaultDtype;
     GetMemSizeAndDtype(scope, param_var_names, grad_var_names, &mem_size,
-                       &fuse_space_type);
+                       &dtype);
 
     auto out_tensor =
         scope.FindVar(grad_var_names[0])->GetMutable<framework::LoDTensor>();
@@ -52,7 +50,7 @@ class AllocSpaceForVarsOpOp : public framework::OperatorBase {
     int64_t offset = framework::product(origin_dim);
 
     out_tensor->Resize(framework::make_ddim({static_cast<int64_t>(mem_size)}))
-        .mutable_data(dev_place, fuse_space_type);
+        .mutable_data(dev_place, dtype);
 
     VLOG(10) << "alloc_space_for_vars: output(" << grad_var_names[0]
              << ") ,dim:(" << origin_dim << ")"
@@ -79,17 +77,20 @@ class AllocSpaceForVarsOpOp : public framework::OperatorBase {
                           const std::vector<std::string> &grad_var_names,
                           size_t *mem_size,
                           framework::proto::VarType::Type *dtype) const {
+    *mem_size = 0;
     for (size_t i = 0; i < grad_var_names.size(); ++i) {
       auto grad_var = scope.FindVar(grad_var_names[i]);
       PADDLE_ENFORCE_NOT_NULL(grad_var, "%s", grad_var_names[i]);
+
       // Only support LoDTensor,
       PADDLE_ENFORCE(grad_var->IsType<framework::LoDTensor>(), "%s",
                      grad_var_names[i]);
 
       // Note: Assume that the dtype of parameter and gradient are the same.
-      // Doesn't get dtype from grad_var.
+      // Doesn't get dtype from grad_var in runtime.
       auto &p_tensor =
           scope.FindVar(param_var_names[i])->Get<framework::LoDTensor>();
+
       auto p_dtype = p_tensor.type();
       if (*dtype == kDefaultDtype) {
         PADDLE_ENFORCE_NE(p_dtype, kDefaultDtype, "%s", grad_var_names[i]);
@@ -110,7 +111,6 @@ class AllocSpaceForVarsOpOp : public framework::OperatorBase {
 class AllocSpaceForVarsOpOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    //    AddInput("Gradients", "A set of variables.").AsDuplicable();
     AddInput("Parameters", "A set of variables.").AsDuplicable();
     AddOutput("Gradients", "A set of variables.").AsDuplicable();
     AddComment(R"DOC(
