@@ -61,6 +61,7 @@ std::vector<int> TestSizes() {
 }
 
 namespace jit = paddle::operators::jit;
+using CPUPlace = paddle::platform::CPUPlace;
 
 template <typename KernelTuples, typename... Args>
 struct TestFuncWithRefer {
@@ -122,6 +123,40 @@ struct TestFuncWithRefer<jit::AXYNTuples<T>, T, std::vector<T>,
 };
 
 template <typename T>
+struct TestFuncWithRefer<jit::SoftmaxTuples<T>, std::vector<T>, std::vector<T>,
+                         int, int> {
+  void operator()(const typename jit::SoftmaxTuples<T>::func_type tgt,
+                  const std::vector<T>& x, const std::vector<T>& yref, int n,
+                  int bs) {
+    EXPECT_TRUE(tgt != nullptr);
+    EXPECT_EQ(yref.size(), x.size());
+    EXPECT_EQ(x.size(), static_cast<size_t>(n * bs));
+    const T* x_data = x.data();
+    const T* yref_data = yref.data();
+    std::vector<T> ytgt(n * bs);
+    T* ytgt_data = ytgt.data();
+    // test normal
+    tgt(x_data, ytgt_data, n, bs);
+    ExpectEQ<T>(ytgt_data, yref_data, n * bs);
+    // test inplace x
+    std::copy(x.begin(), x.end(), ytgt.begin());
+    tgt(ytgt_data, ytgt_data, n, bs);
+    ExpectEQ<T>(ytgt_data, yref_data, n * bs);
+  }
+};
+
+template <typename T>
+struct TestFuncWithRefer<jit::XRNTuples<T>, std::vector<T>, T> {
+  void operator()(const typename jit::XRNTuples<T>::func_type tgt,
+                  const std::vector<T>& x, const T ref_res) {
+    EXPECT_TRUE(tgt != nullptr);
+    T tgt_res;
+    tgt(x.data(), &tgt_res, x.size());
+    ExpectEQ<T>(&tgt_res, &ref_res, 1);
+  }
+};
+
+template <typename T>
 struct TestFuncWithRefer<jit::XYNTuples<T>, std::vector<T>, std::vector<T>> {
   void operator()(const typename jit::XYNTuples<T>::func_type tgt,
                   const std::vector<T>& x, const std::vector<T>& yref) {
@@ -172,7 +207,7 @@ struct TestFuncWithRefer<jit::LSTMTuples<T>, std::vector<T>, std::vector<T>,
     T* ht_data = ht.data();
     T* checked_data = checked.data();
 
-    paddle::operators::jit::lstm_t step;
+    jit::lstm_t step;
     step.gates = x_data;
     step.ct_1 = ct_1_data;
     step.ct = ct_data;
@@ -208,7 +243,7 @@ struct TestFuncWithRefer<jit::GRUTuples<T>, std::vector<T>, std::vector<T>,
     const T* ht_ref_data = ht_ref.data();
     T* x_data = x.data();
     T* ht_data = ht.data();
-    paddle::operators::jit::gru_t step;
+    jit::gru_t step;
     step.gates = x_data;
     step.ht_1 = ht_1_data;
     step.ht = ht_data;
@@ -255,8 +290,8 @@ struct TestFuncWithRefer<jit::MatMulTuples<T>, std::vector<T>, std::vector<T>,
   }
 };
 
-template <paddle::operators::jit::KernelType KT, typename KernelTuples,
-          typename PlaceType, typename... Args>
+template <jit::KernelType KT, typename KernelTuples, typename PlaceType,
+          typename... Args>
 void TestAllImpls(const typename KernelTuples::attr_type& attr, Args... args) {
   TestFuncWithRefer<KernelTuples, Args...> test;
   // test jitcode
@@ -286,9 +321,8 @@ void TestAllImpls(const typename KernelTuples::attr_type& attr, Args... args) {
   test(tgt, args...);
 }
 
-template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+template <jit::KernelType KT, typename T, typename PlaceType>
 void TestXYZNKernel() {
-  namespace jit = paddle::operators::jit;
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   for (int d : TestSizes()) {
     auto ref = jit::GetRefer<KT, jit::XYZNTuples<T>>();
@@ -320,9 +354,8 @@ void TestXYZNKernel() {
   }
 }
 
-template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+template <jit::KernelType KT, typename T, typename PlaceType>
 void TestAXYNKernel() {
-  namespace jit = paddle::operators::jit;
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   for (int d : TestSizes()) {
     auto ref = jit::GetRefer<KT, jit::AXYNTuples<T>>();
@@ -347,9 +380,26 @@ void TestAXYNKernel() {
   }
 }
 
-template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+template <jit::KernelType KT, typename T, typename PlaceType>
+void TestXRNKernel() {
+  VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
+  auto last_acc = acc;
+  acc = 1e-4;
+  for (int d : TestSizes()) {
+    auto ref = jit::GetRefer<KT, jit::XRNTuples<T>>();
+    EXPECT_TRUE(ref != nullptr);
+    std::vector<T> x(d);
+    RandomVec<T>(d, x.data(), -2.f, 2.f);
+    T ref_res;
+    ref(x.data(), &ref_res, d);
+    TestAllImpls<KT, jit::XRNTuples<T>, PlaceType, std::vector<T>, T>(d, x,
+                                                                      ref_res);
+  }
+  acc = last_acc;
+}
+
+template <jit::KernelType KT, typename T, typename PlaceType>
 void TestXYNKernel() {
-  namespace jit = paddle::operators::jit;
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   for (int d : TestSizes()) {
     auto ref = jit::GetRefer<KT, jit::XYNTuples<T>>();
@@ -373,9 +423,8 @@ void TestXYNKernel() {
   }
 }
 
-template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+template <jit::KernelType KT, typename T, typename PlaceType>
 void TestLSTMKernel() {
-  namespace jit = paddle::operators::jit;
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   std::vector<std::string> all_acts = {"sigmoid", "tanh", "relu", "identity"};
   for (int d : TestSizes()) {
@@ -424,9 +473,8 @@ void TestLSTMKernel() {
   }
 }
 
-template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+template <jit::KernelType KT, typename T, typename PlaceType>
 void TestGRUKernel() {
-  namespace jit = paddle::operators::jit;
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   std::vector<std::string> all_acts = {"sigmoid", "tanh", "relu", "identity"};
   for (int d : TestSizes()) {
@@ -459,7 +507,7 @@ void TestGRUKernel() {
   }
 }
 
-template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+template <jit::KernelType KT, typename T, typename PlaceType>
 void TestSeqPoolKernel() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   std::vector<jit::SeqPoolType> pool_types = {
@@ -484,7 +532,7 @@ void TestSeqPoolKernel() {
   }
 }
 
-template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+template <jit::KernelType KT, typename T, typename PlaceType>
 void TestMatMulKernel() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   auto last_acc = acc;
@@ -510,7 +558,32 @@ void TestMatMulKernel() {
   acc = last_acc;
 }
 
-template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+template <jit::KernelType KT, typename T, typename PlaceType>
+void TestSoftmaxKernel() {
+  VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
+  for (int bs : {1, 2, 10}) {
+    for (int n : TestSizes()) {
+      auto ref = jit::GetRefer<KT, jit::SoftmaxTuples<T>>();
+      EXPECT_TRUE(ref != nullptr);
+      std::vector<T> x(bs * n), y(bs * n);
+      RandomVec<T>(bs * n, x.data(), -2.f, 2.f);
+      const T* x_data = x.data();
+      T* y_data = y.data();
+
+      std::vector<T> xinp(x.size());  // inplace test
+      std::copy(x.begin(), x.end(), xinp.begin());
+      ref(x_data, y_data, n, bs);
+      T* xinp_data = xinp.data();
+      ref(xinp_data, xinp_data, n, bs);
+      ExpectEQ<T>(xinp_data, y_data, n * bs);
+
+      TestAllImpls<KT, jit::SoftmaxTuples<T>, PlaceType, std::vector<T>,
+                   std::vector<T>>(n, x, y, n, bs);
+    }
+  }
+}
+
+template <jit::KernelType KT, typename T, typename PlaceType>
 void TestNCHW16CMulNCKernel() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   const int n = 3, c = 16 * 4, h = 10, w = 10;
@@ -565,129 +638,123 @@ void TestNCHW16CMulNCKernel() {
 
 // XYZNTuple
 TEST(JITKernel, kVMul) {
-  namespace jit = paddle::operators::jit;
-  TestXYZNKernel<jit::kVMul, float, paddle::platform::CPUPlace>();
-  TestXYZNKernel<jit::kVMul, double, paddle::platform::CPUPlace>();
+  TestXYZNKernel<jit::kVMul, float, CPUPlace>();
+  TestXYZNKernel<jit::kVMul, double, CPUPlace>();
 }
 
 TEST(JITKernel, kVAdd) {
-  namespace jit = paddle::operators::jit;
-  TestXYZNKernel<jit::kVAdd, float, paddle::platform::CPUPlace>();
-  TestXYZNKernel<jit::kVAdd, double, paddle::platform::CPUPlace>();
+  TestXYZNKernel<jit::kVAdd, float, CPUPlace>();
+  TestXYZNKernel<jit::kVAdd, double, CPUPlace>();
 }
 
 TEST(JITKernel, kVAddRelu) {
-  namespace jit = paddle::operators::jit;
-  TestXYZNKernel<jit::kVAddRelu, float, paddle::platform::CPUPlace>();
-  TestXYZNKernel<jit::kVAddRelu, double, paddle::platform::CPUPlace>();
+  TestXYZNKernel<jit::kVAddRelu, float, CPUPlace>();
+  TestXYZNKernel<jit::kVAddRelu, double, CPUPlace>();
 }
 
 TEST(JITKernel, kVSub) {
-  namespace jit = paddle::operators::jit;
-  TestXYZNKernel<jit::kVSub, float, paddle::platform::CPUPlace>();
-  TestXYZNKernel<jit::kVSub, double, paddle::platform::CPUPlace>();
+  TestXYZNKernel<jit::kVSub, float, CPUPlace>();
+  TestXYZNKernel<jit::kVSub, double, CPUPlace>();
 }
 
 // AXYNTuples
 TEST(JITKernel, kVScal) {
-  namespace jit = paddle::operators::jit;
-  TestAXYNKernel<jit::kVScal, float, paddle::platform::CPUPlace>();
-  TestAXYNKernel<jit::kVScal, double, paddle::platform::CPUPlace>();
+  TestAXYNKernel<jit::kVScal, float, CPUPlace>();
+  TestAXYNKernel<jit::kVScal, double, CPUPlace>();
 }
 
 TEST(JITKernel, kVAddBias) {
-  namespace jit = paddle::operators::jit;
-  TestAXYNKernel<jit::kVAddBias, float, paddle::platform::CPUPlace>();
-  TestAXYNKernel<jit::kVAddBias, double, paddle::platform::CPUPlace>();
+  TestAXYNKernel<jit::kVAddBias, float, CPUPlace>();
+  TestAXYNKernel<jit::kVAddBias, double, CPUPlace>();
+}
+
+// XRNTuples
+TEST(JITKernel, kHMax) {
+  TestXRNKernel<jit::kHMax, float, CPUPlace>();
+  TestXRNKernel<jit::kHMax, double, CPUPlace>();
+}
+
+TEST(JITKernel, kHSum) {
+  TestXRNKernel<jit::kHSum, float, CPUPlace>();
+  TestXRNKernel<jit::kHSum, double, CPUPlace>();
 }
 
 // XYNTuples
 TEST(JITKernel, kVRelu) {
-  namespace jit = paddle::operators::jit;
-  TestXYNKernel<jit::kVRelu, float, paddle::platform::CPUPlace>();
-  TestXYNKernel<jit::kVRelu, double, paddle::platform::CPUPlace>();
+  TestXYNKernel<jit::kVRelu, float, CPUPlace>();
+  TestXYNKernel<jit::kVRelu, double, CPUPlace>();
 }
 
 TEST(JITKernel, kVIdentity) {
-  namespace jit = paddle::operators::jit;
-  TestXYNKernel<jit::kVIdentity, float, paddle::platform::CPUPlace>();
-  TestXYNKernel<jit::kVIdentity, double, paddle::platform::CPUPlace>();
+  TestXYNKernel<jit::kVIdentity, float, CPUPlace>();
+  TestXYNKernel<jit::kVIdentity, double, CPUPlace>();
 }
 
 TEST(JITKernel, kVSquare) {
-  namespace jit = paddle::operators::jit;
-  TestXYNKernel<jit::kVSquare, float, paddle::platform::CPUPlace>();
-  TestXYNKernel<jit::kVSquare, double, paddle::platform::CPUPlace>();
+  TestXYNKernel<jit::kVSquare, float, CPUPlace>();
+  TestXYNKernel<jit::kVSquare, double, CPUPlace>();
 }
 
 TEST(JITKernel, kVExp) {
-  namespace jit = paddle::operators::jit;
-  TestXYNKernel<jit::kVExp, float, paddle::platform::CPUPlace>();
-  TestXYNKernel<jit::kVExp, double, paddle::platform::CPUPlace>();
+  TestXYNKernel<jit::kVExp, float, CPUPlace>();
+  TestXYNKernel<jit::kVExp, double, CPUPlace>();
 }
 
 TEST(JITKernel, kVSigmoid) {
-  namespace jit = paddle::operators::jit;
-  TestXYNKernel<jit::kVSigmoid, float, paddle::platform::CPUPlace>();
-  TestXYNKernel<jit::kVSigmoid, double, paddle::platform::CPUPlace>();
+  TestXYNKernel<jit::kVSigmoid, float, CPUPlace>();
+  TestXYNKernel<jit::kVSigmoid, double, CPUPlace>();
 }
 
 TEST(JITKernel, kVTanh) {
-  namespace jit = paddle::operators::jit;
-  TestXYNKernel<jit::kVTanh, float, paddle::platform::CPUPlace>();
-  TestXYNKernel<jit::kVTanh, double, paddle::platform::CPUPlace>();
+  TestXYNKernel<jit::kVTanh, float, CPUPlace>();
+  TestXYNKernel<jit::kVTanh, double, CPUPlace>();
 }
 
 // LSTM
 TEST(JITKernel, kLSTMCtHt) {
-  namespace jit = paddle::operators::jit;
-  TestLSTMKernel<jit::kLSTMCtHt, float, paddle::platform::CPUPlace>();
-  TestLSTMKernel<jit::kLSTMCtHt, double, paddle::platform::CPUPlace>();
+  TestLSTMKernel<jit::kLSTMCtHt, float, CPUPlace>();
+  TestLSTMKernel<jit::kLSTMCtHt, double, CPUPlace>();
 }
 
 TEST(JITKernel, kLSTMC1H1) {
-  namespace jit = paddle::operators::jit;
-  TestLSTMKernel<jit::kLSTMC1H1, float, paddle::platform::CPUPlace>();
-  TestLSTMKernel<jit::kLSTMC1H1, double, paddle::platform::CPUPlace>();
+  TestLSTMKernel<jit::kLSTMC1H1, float, CPUPlace>();
+  TestLSTMKernel<jit::kLSTMC1H1, double, CPUPlace>();
 }
 
 // GRU
 TEST(JITKernel, kGRUH1) {
-  namespace jit = paddle::operators::jit;
-  TestGRUKernel<jit::kGRUH1, float, paddle::platform::CPUPlace>();
-  TestGRUKernel<jit::kGRUH1, double, paddle::platform::CPUPlace>();
+  TestGRUKernel<jit::kGRUH1, float, CPUPlace>();
+  TestGRUKernel<jit::kGRUH1, double, CPUPlace>();
 }
 
 TEST(JITKernel, kGRUHtPart1) {
-  namespace jit = paddle::operators::jit;
-  TestGRUKernel<jit::kGRUHtPart1, float, paddle::platform::CPUPlace>();
-  TestGRUKernel<jit::kGRUHtPart1, double, paddle::platform::CPUPlace>();
+  TestGRUKernel<jit::kGRUHtPart1, float, CPUPlace>();
+  TestGRUKernel<jit::kGRUHtPart1, double, CPUPlace>();
 }
 
 TEST(JITKernel, kGRUHtPart2) {
-  namespace jit = paddle::operators::jit;
-  TestGRUKernel<jit::kGRUHtPart2, float, paddle::platform::CPUPlace>();
-  TestGRUKernel<jit::kGRUHtPart2, double, paddle::platform::CPUPlace>();
+  TestGRUKernel<jit::kGRUHtPart2, float, CPUPlace>();
+  TestGRUKernel<jit::kGRUHtPart2, double, CPUPlace>();
 }
 
 TEST(JITKernel, kSeqPool) {
-  namespace jit = paddle::operators::jit;
-  TestSeqPoolKernel<jit::kSeqPool, float, paddle::platform::CPUPlace>();
-  TestSeqPoolKernel<jit::kSeqPool, double, paddle::platform::CPUPlace>();
+  TestSeqPoolKernel<jit::kSeqPool, float, CPUPlace>();
+  TestSeqPoolKernel<jit::kSeqPool, double, CPUPlace>();
 }
 
 TEST(JITKernel, kMatMul) {
-  namespace jit = paddle::operators::jit;
-  TestMatMulKernel<jit::kMatMul, float, paddle::platform::CPUPlace>();
-  TestMatMulKernel<jit::kMatMul, double, paddle::platform::CPUPlace>();
+  TestMatMulKernel<jit::kMatMul, float, CPUPlace>();
+  TestMatMulKernel<jit::kMatMul, double, CPUPlace>();
+}
+
+TEST(JITKernel, kSoftmax) {
+  TestSoftmaxKernel<jit::kSoftmax, float, CPUPlace>();
+  TestSoftmaxKernel<jit::kSoftmax, double, CPUPlace>();
 }
 
 TEST(JITKernel, kNCHW16CMulNC) {
-  namespace jit = paddle::operators::jit;
-  TestNCHW16CMulNCKernel<jit::kNCHW16CMulNC, float,
-                         paddle::platform::CPUPlace>();
-  TestNCHW16CMulNCKernel<jit::kNCHW16CMulNC, double,
-                         paddle::platform::CPUPlace>();
+  TestNCHW16CMulNCKernel<jit::kNCHW16CMulNC, float, CPUPlace>();
+  TestNCHW16CMulNCKernel<jit::kNCHW16CMulNC, double, CPUPlace>();
 }
 
 // TODO(yihua/TJ): add crf decoding and layer norm unit tests
