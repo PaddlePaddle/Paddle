@@ -118,6 +118,16 @@ void VAXPY<double>(double a, const double* x, double* y, int n) {
   platform::dynload::cblas_daxpy(n, a, x, 1, y, 1);
 }
 
+template <>
+void ASum<float>(const float* x, float* res, int n) {
+  res[0] = platform::dynload::cblas_sasum(n, x, 1);
+}
+
+template <>
+void ASum<double>(const double* x, double* res, int n) {
+  res[0] = platform::dynload::cblas_dasum(n, x, 1);
+}
+
 // TODO(TJ): tuning me carefully on AVX, AVX2 and AVX512
 template <>
 bool VMulKernel<float>::UseMe(const int& d) const {
@@ -174,6 +184,12 @@ bool MatMulKernel<double>::UseMe(const matmul_attr_t& attr) const {
   return true;
 }
 
+template <>
+bool SoftmaxKernel<float>::UseMe(const int& d) const {
+  // tuned on avx2
+  return platform::MayIUse(platform::avx) && d < 60;
+}
+
 #define AWALYS_USE_ME_WITH_DOUBLE(func)                  \
   template <>                                            \
   bool func##Kernel<double>::UseMe(const int& d) const { \
@@ -187,6 +203,7 @@ AWALYS_USE_ME_WITH_DOUBLE(VExp);
 AWALYS_USE_ME_WITH_DOUBLE(VSigmoid);
 AWALYS_USE_ME_WITH_DOUBLE(VTanh);
 AWALYS_USE_ME_WITH_DOUBLE(VSquare);
+AWALYS_USE_ME_WITH_DOUBLE(Softmax);
 
 #undef AWALYS_USE_ME_WITH_DOUBLE
 }  // namespace mkl
@@ -210,5 +227,6 @@ REGISTER_MKL_KERNEL(kVSquare, VSquare);
 REGISTER_MKL_KERNEL(kVSigmoid, VSigmoid);
 REGISTER_MKL_KERNEL(kVTanh, VTanh);
 REGISTER_MKL_KERNEL(kSeqPool, SeqPool);
+REGISTER_MKL_KERNEL(kSoftmax, Softmax);
 
 #undef REGISTER_MKL_KERNEL
