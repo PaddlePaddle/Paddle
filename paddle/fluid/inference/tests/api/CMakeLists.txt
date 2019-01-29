@@ -130,7 +130,7 @@ inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_con
 
 # bert
 set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert")
-download_model_and_data(${BERT_INSTALL_DIR} "bert_model.tar.gz" "bert_data.txt.tar.gz")
+download_model_and_data(${BERT_INSTALL_DIR} "bert_model.tar.gz" "bert_data_len100.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc)
 
 # anakin
