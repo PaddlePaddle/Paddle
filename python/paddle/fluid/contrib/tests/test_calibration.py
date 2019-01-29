@@ -121,9 +121,27 @@ class TestCalibrationForResnet50(unittest.TestCase):
         self.cache_folder = os.path.expanduser('~/.cache/paddle/dataset/' +
                                                self.int8_download)
 
-        data_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz'
-        data_md5 = '1b6c1c434172cca1bf9ba1e4d7a3157d'
-        self.data_cache_folder = self.download_data(data_url, data_md5, "data")
+        data_urls = []
+        data_md5s = []
+        self.data_cache_folder = ''
+        if os.environ.get('DATASET') == 'full':
+            data_urls.append(
+                'https://paddle-inference-dist.bj.bcebos.com/int8/ILSVRC2012_img_val.tar.gz.partaa'
+            )
+            data_md5s.append('60f6525b0e1d127f345641d75d41f0a8')
+            data_urls.append(
+                'https://paddle-inference-dist.bj.bcebos.com/int8/ILSVRC2012_img_val.tar.gz.partab'
+            )
+            data_md5s.append('1e9f15f64e015e58d6f9ec3210ed18b5')
+            self.data_cache_folder = self.download_data(data_urls, data_md5s,
+                                                        "full_data")
+        else:
+            data_urls.append(
+                'http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz'
+            )
+            data_md5s.append('1b6c1c434172cca1bf9ba1e4d7a3157d')
+            self.data_cache_folder = self.download_data(data_urls, data_md5s,
+                                                        "small_data")
 
         # reader/decorator.py requires the relative path to the data folder
         cmd = 'rm -rf {0} && ln -s {1} {0}'.format("data",
@@ -141,19 +159,38 @@ class TestCalibrationForResnet50(unittest.TestCase):
                                                           zip_path)
             os.system(cmd)
 
-    def download_data(self, data_url, data_md5, folder_name):
-        download(data_url, self.int8_download, data_md5)
+    def download_data(self, data_urls, data_md5s, folder_name):
         data_cache_folder = os.path.join(self.cache_folder, folder_name)
-        file_name = data_url.split('/')[-1]
-        zip_path = os.path.join(self.cache_folder, file_name)
+        zip_path = ''
+        if os.environ.get('DATASET') == 'full':
+            file_names = []
+            for i in range(0, len(data_urls)):
+                download(data_urls[i], self.int8_download, data_md5s[i])
+                file_names.append(data_url[i].split('/')[-1])
+            cat_command = 'cat'
+            for file_name in file_names:
+                cat_command += ' ' + os.path.join(self.cache_folder, file_name)
+
+            zip_path = os.path.join(self.cache_folder,
+                                    'full_imagenet_val.tar.gz')
+            cat_command += ' > ' + zip_path
+            os.system(cat_command)
+        else:
+            download(data_urls[0], self.int8_download, data_md5s[0])
+            file_name = data_urls[0].split('/')[-1]
+            zip_path = os.path.join(self.cache_folder, file_name)
+
+        print('Data is downloaded at {0}').format(zip_path)
         self.cache_unzipping(data_cache_folder, zip_path)
         return data_cache_folder
 
     def download_model(self):
         # resnet50 fp32 data
-        data_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/resnet50_int8_model.tar.gz'
-        data_md5 = '4a5194524823d9b76da6e738e1367881'
-        self.model_cache_folder = self.download_data(data_url, data_md5,
+        data_urls = [
+            'http://paddle-inference-dist.cdn.bcebos.com/int8/resnet50_int8_model.tar.gz'
+        ]
+        data_md5s = ['4a5194524823d9b76da6e738e1367881']
+        self.model_cache_folder = self.download_data(data_urls, data_md5s,
                                                      "resnet50_fp32")
         self.model = "ResNet-50"
         self.algo = "direct"
@@ -269,9 +306,11 @@ class TestCalibrationForResnet50(unittest.TestCase):
 class TestCalibrationForMobilenetv1(TestCalibrationForResnet50):
     def download_model(self):
         # mobilenetv1 fp32 data
-        data_url = 'http://paddle-inference-dist.cdn.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
-        data_md5 = '13892b0716d26443a8cdea15b3c6438b'
-        self.model_cache_folder = self.download_data(data_url, data_md5,
+        data_urls = [
+            'http://paddle-inference-dist.cdn.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
+        ]
+        data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
+        self.model_cache_folder = self.download_data(data_urls, data_md5s,
                                                      "mobilenetv1_fp32")
         self.model = "MobileNet-V1"
         self.algo = "KL"
