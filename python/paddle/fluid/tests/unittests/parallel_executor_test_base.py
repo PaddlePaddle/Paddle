@@ -32,7 +32,7 @@ class TestParallelExecutorBase(unittest.TestCase):
     def check_network_convergence(self,
                                   method,
                                   use_cuda=True,
-                                  memory_opt=False,
+                                  memory_opt=True,
                                   iter=50,
                                   batch_size=None,
                                   allow_op_delay=False,

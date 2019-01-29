@@ -70,10 +70,3 @@ class TestIrInplace(TestParallelExecutorBase):
         self.assertAlmostEqual(loss00, loss10, delta=delta)
         self.assertAlmostEqual(loss00, loss01, delta=delta)
         self.assertAlmostEqual(loss00, loss11, delta=delta)
-
-    def test_fc_with_batchnorm_memory_opt(self, delta=1e-3):
-        loss00 = self._fc_with_batchnorm(False, True, False)
-        loss10 = self._fc_with_batchnorm(False, True, True)
-        loss10 = self._fc_with_batchnorm(True, True, True)
-        self.assertAlmostEqual(loss00, loss10, delta=delta)
-        self.assertAlmostEqual(loss00, loss01, delta=delta)

@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -54,7 +55,7 @@ class GraphView {
   std::map<ir::Node*, std::unordered_set<ir::Node*>> adj_list_;
 };
 
-typedef std::unordered_map<ir::Node*, std::vector<ir::Node*>> SSANodeVector;
+typedef std::vector<std::pair<ir::Node*, ir::Node*>> SSANodePair;
 class InplacePass : public ir::Pass {
  public:
   InplacePass();
@@ -66,17 +67,14 @@ class InplacePass : public ir::Pass {
   void InitSSAGraphNodes() const;
 
  private:
-  void InplaceModifyVar(const std::string& in_var, const std::string& out_var,
-                        const size_t& idx, ir::Graph* graph) const;
+  const SSANodePair TryInplaceModifyVar(const std::string& var,
+                                        const std::string& cache_var,
+                                        const size_t& idx,
+                                        ir::Graph* graph) const;
 
-  const SSANodeVector TryInplaceModifyVar(const std::string& var,
-                                          const std::string& cache_var,
-                                          const size_t& idx,
-                                          ir::Graph* graph) const;
+  void CommitModify(const SSANodePair&, ir::Graph* graph) const;
 
-  void CommitModify(const SSANodeVector&, ir::Graph* graph) const;
-
-  void WithDrawModify(const SSANodeVector& nodes, ir::Graph* graph) const;
+  void WithdrawModify(const SSANodePair& nodes, ir::Graph* graph) const;
 
   void InplaceModifyDesc(const std::string& in_var, const std::string& out_var,
                          const size_t& idx) const;
