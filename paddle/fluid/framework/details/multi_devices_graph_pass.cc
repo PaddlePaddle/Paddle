@@ -529,6 +529,8 @@ void DistSSAGraphBuilder::CreateDGCOp(ir::Graph *graph, size_t num_places,
         out_vars.size(), i, encoded_grad_name, place);
     out_vars.emplace_back(out_var_h);
     op_handle->AddOutput(out_var_h);
+    op_handle->SetDeviceContext(
+        place, platform::DeviceContextPool::Instance().Get(place));
 
     // auto &graph_kvars =
     // graph->Get<GraphVars>(kGraphVars).at(i)[encoded_grad_name];
@@ -1067,7 +1069,7 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
           CreateAllReduceOp(result, g_name);
         } else {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-          auto encoded_grad_name = g_name + "@ENCODED";
+          auto encoded_grad_name = g_name + "@ENCODED@DGC";
           CreateDGCOp(result, places_.size(), p_name, g_name,
                       encoded_grad_name);
           CreateAllReduceOp(result, g_name, encoded_grad_name);

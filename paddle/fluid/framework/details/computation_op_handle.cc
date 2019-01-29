@@ -29,12 +29,14 @@ ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
       scope_idx_(scope_idx) {}
 
 void ComputationOpHandle::RunImpl() {
+  VLOG(10) << "ComputationOpHandle WaitInputVarGenerated";
   WaitInputVarGenerated(place_);
 
   auto run_func = [this]() {
     op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
   };
 
+  VLOG(10) << "ComputationOpHandle RunImpl";
   if (is_lock_and_record_event_free_) {
     run_func();
   } else {

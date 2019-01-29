@@ -43,6 +43,22 @@ VarHandle* GetValidInput(const OpHandleBase* a) {
   return nullptr;
 }
 
+static bool replace(std::string& str, const std::string& from,
+                    const std::string& to) {
+  size_t start_pos = str.find(from);
+  if (start_pos == std::string::npos) return false;
+  str.replace(start_pos, from.length(), to);
+  return true;
+}
+
+static void EraseSub(std::string& src, const std::string& sub) {
+  size_t pos = src.find(sub);
+
+  if (pos != std::string::npos) {
+    src.erase(pos, sub.length());
+  }
+}
+
 std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   auto graph_ops = ir::FilterByNodeWrapper<OpHandleBase>(*graph);
@@ -82,8 +98,18 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     PADDLE_ENFORCE(i0 != nullptr && i1 != nullptr, "%s convert to %s error",
                    op1->DebugString(), op2->DebugString());
 
-    auto l_it = vars.find(i0->name());
-    auto r_it = vars.find(i1->name());
+    std::string sub = "@ENCODED@DGC";
+    std::string i0_name = i0->name();
+    std::string i1_name = i1->name();
+    EraseSub(i0_name, sub);
+    EraseSub(i1_name, sub);
+
+    auto l_it = vars.find(i0_name);
+    auto r_it = vars.find(i1_name);
+
+    PADDLE_ENFORCE(l_it != vars.end() && r_it != vars.end(),
+                   "can't find var's name %s and %s in opdesc", i0_name,
+                   i1_name);
 
     if (l_it->second < r_it->second) return true;
 
