@@ -124,11 +124,12 @@ TEST(PaddleBuf, Copy_owned1) {
   for (int i = 0; i < num_elem; ++i) {
     EXPECT_EQ(data1[i], i);
   }
+}
 
-  TEST(paddle_inference_api, get_version) {
-    LOG(INFO) << "paddle version:\n" << get_version();
-    auto version = get_version();
-    ASSERT_FALSE(version.empty());
-  }
+TEST(paddle_inference_api, get_version) {
+  LOG(INFO) << "paddle version:\n" << get_version();
+  auto version = get_version();
+  ASSERT_FALSE(version.empty());
+}
 
 }  // namespace paddle
