@@ -63,9 +63,7 @@ function(select_nvcc_arch_flags out_variable)
   # List of arch names
   set(archs_names "Kepler" "Maxwell" "Pascal" "Volta" "Turing" "All" "Manual")
   set(archs_name_default "All")
-  if(NOT CMAKE_CROSSCOMPILING)
-    list(APPEND archs_names "Auto")
-  endif()
+  list(APPEND archs_names "Auto")
 
   # set CUDA_ARCH_NAME strings (so it will be seen as dropbox in CMake-Gui)
   set(CUDA_ARCH_NAME ${archs_name_default} CACHE STRING "Select target NVIDIA GPU achitecture.")

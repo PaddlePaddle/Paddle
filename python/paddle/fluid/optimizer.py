@@ -301,10 +301,10 @@ class Optimizer(object):
             no_grad_set (set|None): set of Variables should be ignored.
             callbacks (list|None): list of callables to run when appending backward
                 operator for one parameter.
-        
+
         Return:
             list: list of (param, grad) pair, grad is the output of backward.
-        
+
         Examples:
             See examples in `apply_gradients`.
         """
@@ -322,10 +322,10 @@ class Optimizer(object):
 
         Args:
             params_grads (list): list of (param, grad) pair to do optimization.
-        
+
         Returns:
             list: A list of operators appended to the current program.
-        
+
         Examples:
             .. code-block:: python
 
@@ -364,7 +364,7 @@ class Optimizer(object):
 
         This method combines interface `backward()` and
         `apply_gradients()` into one.
-        
+
         Args:
             loss (Variable): loss variable to run optimizations.
             startup_program (Program): startup_program for initializing parameters
@@ -381,18 +381,21 @@ class Optimizer(object):
         optimize_ops = []
         if imperative_base.enabled():
             if parameter_list is not None:
-                params_grads = parameter_list
+                parameters = parameter_list
             else:
                 parameters = program.global_block().all_parameters()
-                params_grads = []
-                for param in parameters:
-                    # create gradient variable
-                    grad_var = Variable(
-                        block=loss.block,
-                        name=param._ivar._grad_name(),
-                        stop_gradient=True,
-                        ivar=param._ivar._grad_ivar())
-                    params_grads.append((param, grad_var))
+
+            params_grads = []
+            for param in parameters:
+                if param.stop_gradient:
+                    continue
+                # create gradient variable
+                grad_var = Variable(
+                    block=loss.block,
+                    name=param._ivar._grad_name(),
+                    stop_gradient=True,
+                    ivar=param._ivar._grad_ivar())
+                params_grads.append((param, grad_var))
             with program_guard(program, startup_program):
                 optimize_ops = self._create_optimization_pass(params_grads)
         else:
