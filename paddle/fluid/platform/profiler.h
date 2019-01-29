@@ -56,6 +56,34 @@ class Event {
 #endif
 };
 
+class MemEvent {
+ public:
+  MemEvent(EventType type, uint64_t crt_time, size_t bytes,
+          Place place, bool is_alloc, uint32_t thread_id);
+
+  const EventType& type() const { return type_; }
+
+  uint64_t crt_time() const { return crt_time_; }
+
+  size_t bytes() const { return bytes_; }
+  Place place() const { return place_; }
+  bool is_alloc() const { return is_alloc_; }
+  int32_t thread_id() const { return thread_id_; }
+  bool operator < (MemEvent& b) {
+    return crt_time() < b.crt_time();
+  }
+  bool operator > (MemEvent& b) {
+    return crt_time() > b.crt_time();
+  }
+ private:
+  EventType type_;
+  uint64_t crt_time_;
+  size_t bytes_;
+  Place place_;
+  bool is_alloc_;
+  int32_t thread_id_;
+};
+
 enum ProfilerState {
   kDisabled,  // disabled state
   kCPU,       // CPU profiling state
@@ -84,6 +112,17 @@ struct RecordEvent {
   // Need to distinguish name by op type, block_id, program_id and perhaps
   // different kernel invocations within an op.
   std::string full_name_;
+};
+
+struct RecordMemEvent {
+  RecordMemEvent(bool is_alloc, size_t bytes, Place place);
+  ~RecordMemEvent();
+
+  bool is_enabled_;
+  bool is_alloc_;
+  uint64_t crt_time_;
+  size_t bytes_;
+  Place place_;
 };
 
 class RecordRPCEvent {
