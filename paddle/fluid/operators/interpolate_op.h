@@ -199,9 +199,8 @@ class InterpolateKernel : public framework::OpKernel<T> {
                                 : static_cast<float>(in_h) / out_h;
     }
     if (out_w > 1) {
-      ratio_w = (align_corners && out_w > 1)
-                    ? static_cast<float>(in_w - 1) / (out_w - 1)
-                    : static_cast<float>(in_w) / out_w;
+      ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
+                                : static_cast<float>(in_w) / out_w;
     }
 
     if ("bilinear" == interp_method) {
@@ -258,9 +257,8 @@ class InterpolateGradKernel : public framework::OpKernel<T> {
                                 : static_cast<float>(in_h) / out_h;
     }
     if (out_w > 1) {
-      ratio_w = (align_corners && out_w > 1)
-                    ? static_cast<float>(in_w - 1) / (out_w - 1)
-                    : static_cast<float>(in_w) / out_w;
+      ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
+                                : static_cast<float>(in_w) / out_w;
     }
 
     if ("bilinear" == interp_method) {
