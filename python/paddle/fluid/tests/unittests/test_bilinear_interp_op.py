@@ -37,14 +37,16 @@ def bilinear_interp_np(input,
     batch_size, channel, in_h, in_w = input.shape
 
     ratio_h = ratio_w = 0.0
-    if (align_corners and out_h > 1):
-        ratio_h = (in_h - 1.0) / (out_h - 1.0)
-    else:
-        ratio_h = 1.0 * in_h / out_h
-    if (align_corners and out_w > 1):
-        ratio_w = (in_w - 1.0) / (out_w - 1.0)
-    else:
-        ratio_w = 1.0 * in_w / out_w
+    if out_h > 1:
+        if (align_corners):
+            ratio_h = (in_h - 1.0) / (out_h - 1.0)
+        else:
+            ratio_h = 1.0 * in_h / out_h
+    if out_w > 1:
+        if (align_corners):
+            ratio_w = (in_w - 1.0) / (out_w - 1.0)
+        else:
+            ratio_w = 1.0 * in_w / out_w
 
     out = np.zeros((batch_size, channel, out_h, out_w))
 

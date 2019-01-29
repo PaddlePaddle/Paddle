@@ -220,12 +220,17 @@ class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
     int in_chw = c * in_hw;
     int out_chw = c * out_hw;
 
-    float ratio_h = (align_corners && out_h > 1)
-                        ? static_cast<float>(in_h - 1) / (out_h - 1)
-                        : static_cast<float>(in_h) / out_h;
-    float ratio_w = (align_corners && out_w > 1)
-                        ? static_cast<float>(in_w - 1) / (out_w - 1)
-                        : static_cast<float>(in_w) / out_w;
+    float ratio_h = 0.f;
+    float ratio_w = 0.f;
+    if (out_h > 1) {
+      ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
+                                : static_cast<float>(in_h) / out_h;
+    }
+    if (out_w > 1) {
+      ratio_w = (align_corners && out_w > 1)
+                    ? static_cast<float>(in_w - 1) / (out_w - 1)
+                    : static_cast<float>(in_w) / out_w;
+    }
 
     if (in_h == out_h && in_w == out_w) {
       framework::TensorCopy(*input, ctx.GetPlace(), output);
@@ -290,12 +295,17 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
     int in_chw = c * in_hw;
     int out_chw = c * out_hw;
 
-    float ratio_h = (align_corners && out_h > 1)
-                        ? static_cast<float>(in_h - 1) / (out_h - 1)
-                        : static_cast<float>(in_h) / out_h;
-    float ratio_w = (align_corners && out_w > 1)
-                        ? static_cast<float>(in_w - 1) / (out_w - 1)
-                        : static_cast<float>(in_w) / out_w;
+    float ratio_h = 0.f;
+    float ratio_w = 0.f;
+    if (out_h > 1) {
+      ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
+                                : static_cast<float>(in_h) / out_h;
+    }
+    if (out_w > 1) {
+      ratio_w = (align_corners && out_w > 1)
+                    ? static_cast<float>(in_w - 1) / (out_w - 1)
+                    : static_cast<float>(in_w) / out_w;
+    }
 
     if (in_h == out_h && in_w == out_w) {
       framework::TensorCopy(*output_grad, ctx.GetPlace(), input_grad);
