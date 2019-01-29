@@ -38,6 +38,8 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   virtual void Init() const;
 
+  virtual void CheckGraph(const ir::Graph &graph) const;
+
   virtual std::vector<ir::Node *> SortOperations(const ir::Graph &graph) const;
 
   virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
@@ -173,16 +175,14 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
 
 class FuseAllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
  protected:
-  virtual void Init() const;
-
   virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const;
 
-  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const {
-    return false;
-  }
+  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
 
   virtual void InsertPostprocessOps(ir::Graph *result) const;
+
+  virtual void CheckGraph(const ir::Graph &graph) const;
 
   void CreateFusedAllReduceOp(ir::Graph *result,
                               const std::vector<VarHandleBase *> inputs,

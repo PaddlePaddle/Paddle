@@ -135,11 +135,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     } else {
       if (strategy.fuse_all_reduce_ops_) {
         multi_devices_pass =
-            AppendPass("fused_allreduce_mode_multi_devices_pass").get();
+            AppendPass("fused_all_reduce_mode_multi_devices_pass").get();
       } else if (strategy.reduce_ ==
                  BuildStrategy::ReduceStrategy::kAllReduce) {
         multi_devices_pass =
-            AppendPass("allreduce_mode_multi_devices_pass").get();
+            AppendPass("all_reduce_mode_multi_devices_pass").get();
       } else if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
         multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
       } else {
@@ -249,7 +249,7 @@ USE_PASS(fuse_elewise_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
 USE_PASS(reduce_mode_multi_devices_pass);
-USE_PASS(allreduce_mode_multi_devices_pass);
+USE_PASS(all_reduce_mode_multi_devices_pass);
 USE_PASS(dist_multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);

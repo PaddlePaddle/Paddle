@@ -134,6 +134,8 @@ void AddOutputToLeafOps(ir::Graph *graph) {
 }
 }  // namespace
 
+void MultiDevSSAGraphBuilderBase::CheckGraph(const ir::Graph &graph) const {}
+
 void MultiDevSSAGraphBuilderBase::Init() const {
   all_vars_.clear();
 
@@ -149,6 +151,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
 std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   Init();
+  CheckGraph(*graph);
   std::vector<ir::Node *> sorted_ops = SortOperations(*graph);
 
   auto nodes = graph->ReleaseNodes();
@@ -945,8 +948,13 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
   }
 }
 
-void FuseAllReduceSSAGraphBuilder::Init() const {
-  MultiDevSSAGraphBuilderBase::Init();
+bool FuseAllReduceSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
+                                                     ir::Node *node) const {
+  return false;
+}
+
+void FuseAllReduceSSAGraphBuilder::CheckGraph(const ir::Graph &graph) const {
+  PADDLE_ENFORCE(graph.Has(kParamsAndGrads));
 }
 
 void FuseAllReduceSSAGraphBuilder::InsertCollectiveOp(
@@ -976,21 +984,19 @@ void FuseAllReduceSSAGraphBuilder::InsertPostprocessOps(
   for (auto &op_handle : grads_allreduce_) {
     inputs.insert(inputs.end(), op_handle.second->Inputs().begin(),
                   op_handle.second->Inputs().end());
+    // Remove output
     std::for_each(
         op_handle.second->Inputs().begin(), op_handle.second->Inputs().end(),
         [=](VarHandleBase *var_handle) {
-          // Remove output
           var_handle->RemoveOutput(op_handle.second, op_handle.second->Node());
         });
 
     outputs.insert(outputs.end(), op_handle.second->Outputs().begin(),
                    op_handle.second->Outputs().end());
-    std::for_each(op_handle.second->Outputs().begin(),
-                  op_handle.second->Outputs().end(),
-                  [=](VarHandleBase *var_handle) {
-                    // Remove Input
-                    var_handle->ClearGeneratedOp();
-                  });
+    // Remove Input
+    std::for_each(
+        op_handle.second->Outputs().begin(), op_handle.second->Outputs().end(),
+        [=](VarHandleBase *var_handle) { var_handle->ClearGeneratedOp(); });
     result->RemoveNode(op_handle.second->Node());
   }
   CreateFusedAllReduceOp(result, inputs, outputs, grads_allreduce_.size());
@@ -1019,8 +1025,7 @@ void FuseAllReduceSSAGraphBuilder::CreateFusedAllReduceOp(
   }
 
   for (size_t i = 0; i < places_.size(); ++i) {
-    auto &p = places_[i];
-    SetCommunicationContext(op_handle, p);
+    SetCommunicationContext(op_handle, places_[i]);
   }
 }
 
@@ -1054,10 +1059,10 @@ static int MultiDevSSAGraphBuilderRegister(const std::string &builder_mode) {
 REGISTER_MULTI_DEVICES_PASS(reduce_mode_multi_devices_pass,
                             paddle::framework::details::ReduceSSAGraphBuilder);
 REGISTER_MULTI_DEVICES_PASS(
-    allreduce_mode_multi_devices_pass,
+    all_reduce_mode_multi_devices_pass,
     paddle::framework::details::AllReduceSSAGraphBuilder);
 REGISTER_MULTI_DEVICES_PASS(dist_multi_devices_pass,
                             paddle::framework::details::DistSSAGraphBuilder);
 REGISTER_MULTI_DEVICES_PASS(
-    fused_allreduce_mode_multi_devices_pass,
+    fused_all_reduce_mode_multi_devices_pass,
     paddle::framework::details::FuseAllReduceSSAGraphBuilder);

@@ -137,10 +137,10 @@ void FusedAllReduceOpHandle::RunImpl() {
     }
   }
 
-  std::vector<const LoDTensor *> lod_tensors;
+  std::vector<const void *> lod_tensor_data;
   for (size_t scope_idx = 0; scope_idx < place_num; ++scope_idx) {
-    auto &tensor = grads_tensor.at(scope_idx).at(0).second;
-    lod_tensors.emplace_back(tensor);
+    auto data = grads_tensor.at(scope_idx).at(0).second->data<void>();
+    lod_tensor_data.emplace_back(data);
   }
 
   if (platform::is_gpu_place(places_[0])) {
@@ -150,7 +150,7 @@ void FusedAllReduceOpHandle::RunImpl() {
     std::vector<std::function<void()>> all_reduce_calls;
     for (size_t i = 0; i < local_scopes_.size(); ++i) {
       auto &p = places_[i];
-      void *buffer = const_cast<void *>(lod_tensors.at(i)->data<void>());
+      void *buffer = const_cast<void *>(lod_tensor_data.at(i));
 
       int dev_id = boost::get<platform::CUDAPlace>(p).device;
       auto &nccl_ctx = nccl_ctxs_->at(dev_id);
@@ -186,11 +186,9 @@ void FusedAllReduceOpHandle::RunImpl() {
                      ->FindVar(grad_name)
                      ->GetMutable<framework::LoDTensor>();
 
-    // Reduce All Tensor to trg in CPU
-    ReduceLoDTensor func(lod_tensors, &trg);
-    VisitDataType(lod_tensors[0]->type(), func);
-
-    std::vector<std::function<void()>> all_reduce_calls;
+    // Reduce All data to trg in CPU
+    ReduceBufferData func(lod_tensor_data, trg.data<void>(), numel);
+    VisitDataType(trg.type(), func);
 
     for (size_t i = 1; i < local_scopes_.size(); ++i) {
       auto &scope =
@@ -198,11 +196,11 @@ void FusedAllReduceOpHandle::RunImpl() {
       auto &p = places_[i];
       auto *var = scope.FindVar(grad_name);
       auto *dev_ctx = dev_ctxes_.at(p);
-
-      RunAndRecordEvent(p, [&trg, var, dev_ctx, p] {
-        auto &tensor_gpu = *var->GetMutable<framework::LoDTensor>();
-        auto &tensor_cpu = trg;
-        TensorCopy(tensor_cpu, p, *dev_ctx, &tensor_gpu);
+      size_t size = numel * SizeOfType(trg.type());
+      RunAndRecordEvent(p, [&trg, var, dev_ctx, p, size] {
+        auto dst_ptr = var->GetMutable<framework::LoDTensor>()->data<void>();
+        platform::CPUPlace cpu_place;
+        memory::Copy(cpu_place, dst_ptr, cpu_place, trg.data<void>(), size);
       });
     }
   }
