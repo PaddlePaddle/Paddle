@@ -46,7 +46,6 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
     def test_optimizer_float32(self):
         seed = 90
-
         with fluid.imperative.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -61,12 +60,12 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 if batch_id >= self.batch_num:
                     break
 
-                x_data = np.array(
+                dy_x_data = np.array(
                     [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
                 y_data = np.array([x[1] for x in data]).astype('int64').reshape(
                     128, 1)
 
-                img = to_variable(x_data)
+                img = to_variable(dy_x_data)
                 label = to_variable(y_data)
                 label._stop_gradient = True
 
@@ -81,7 +80,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
                 avg_loss._backward()
                 self.optimizer.minimize(avg_loss)
-
+                mlp.clear_gradients()
                 dy_param_value = {}
                 for param in fluid.default_main_program().global_block(
                 ).all_parameters():
@@ -123,7 +122,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 if batch_id >= self.batch_num:
                     break
 
-                x_data = np.array(
+                static_x_data = np.array(
                     [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
                 y_data = np.array([x[1] for x in data]).astype('int64').reshape(
                     [128, 1])
@@ -131,7 +130,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 fetch_list = [avg_loss.name]
                 fetch_list.extend(static_param_name_list)
                 out = exe.run(fluid.default_main_program(),
-                              feed={"pixel": x_data,
+                              feed={"pixel": static_x_data,
                                     "label": y_data},
                               fetch_list=fetch_list)
 
@@ -141,11 +140,12 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                     static_param_value[static_param_name_list[i - 1]] = out[i]
 
         for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(
-                np.allclose(value.all(), dy_param_init_value[key].all()))
-        self.assertTrue(np.allclose(static_out.all(), dy_out.all()))
+            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
+
+        self.assertTrue(np.allclose(static_out, dy_out))
+
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value.all(), dy_param_value[key].all()))
+            self.assertTrue(np.allclose(value, dy_param_value[key]))
 
 
 if __name__ == '__main__':
