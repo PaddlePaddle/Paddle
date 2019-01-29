@@ -48,6 +48,7 @@ class DGCOp : public framework::OperatorWithKernel {
     int k = static_cast<int>(framework::product(dim) * ratio);
 
     ctx->SetOutputDim("EncodeGrad", framework::DDim{2 * k});
+    VLOG(10) << "set EncodeGrad dims:" << framework::DDim{2 * k};
     // ctx->ShareLoD("Grad", /*->*/ "EncodeGrad");
 
     // auto dim = ctx->GetInputDim("Grad");
