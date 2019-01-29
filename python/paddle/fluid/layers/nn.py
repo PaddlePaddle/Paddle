@@ -2966,6 +2966,18 @@ def layer_norm(input,
     helper = LayerHelper('layer_norm', **locals())
     dtype = helper.input_dtype()
 
+    # cast to fp32 if using fp16
+    if dtype == core.VarDesc.VarType.FP16:
+        in_fp32 = helper.create_variable_for_type_inference(dtype="float32")
+        helper.append_op(
+            type="cast",
+            inputs={'X': [input]},
+            outputs={'Out': [in_fp32]},
+            attrs={'in_dtype': input.dtype,
+                   'out_dtype': in_fp32.dtype})
+        dtype = core.VarDesc.VarType.FP32
+        input = in_fp32
+
     # create intput and parameters
     inputs = {'X': input}
     input_shape = input.shape
@@ -3000,6 +3012,18 @@ def layer_norm(input,
         },
         attrs={"epsilon": epsilon,
                "begin_norm_axis": begin_norm_axis})
+
+    # cast back to fp16 if using fp16
+    in_dtype = helper.input_dtype()
+    if in_dtype == core.VarDesc.VarType.FP16:
+        out_fp16 = helper.create_variable_for_type_inference(dtype=in_dtype)
+        helper.append_op(
+            type="cast",
+            inputs={'X': [layer_norm_out]},
+            outputs={'Out': [out_fp16]},
+            attrs={'in_dtype': dtype,
+                   'out_dtype': in_dtype})
+        layer_norm_out = out_fp16
 
     return helper.append_activation(layer_norm_out)
 
