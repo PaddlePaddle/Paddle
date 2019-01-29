@@ -555,18 +555,17 @@ Tensor* ExecutionContext::LegacyOutput<Tensor>(const std::string& name) const {
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
     const std::string& name) const {
-  auto names = op().Outputs(name);
+  auto it = ctx_.outputs.find(name);
+  if (it == ctx_.outputs.end()) {
+    return {};
+  }
+  const std::vector<Variable*>& vars = it->second;
   std::vector<Tensor*> res;
-  res.reserve(names.size());
-  std::transform(names.begin(), names.end(), std::back_inserter(res),
-                 [&](const std::string& sub_name) -> Tensor* {
-                   auto var = scope_.FindVar(sub_name);
-                   if (var == nullptr) return nullptr;
-                   PADDLE_ENFORCE(
-                       var->IsType<LoDTensor>(),
-                       "%s should be LoDTensor, but the received type is %s",
-                       sub_name, ToTypeName(var->Type()));
-                   return var->GetMutable<LoDTensor>();
+  res.reserve(vars.size());
+  std::transform(vars.begin(), vars.end(), std::back_inserter(res),
+                 [&](Variable* var) -> Tensor* {
+                   return var == nullptr ? nullptr
+                                         : var->GetMutable<LoDTensor>();
                  });
   return res;
 }
@@ -1073,7 +1072,9 @@ Scope* OperatorWithKernel::PrepareData(
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
-  int data_type = -1;
+  proto::VarType::Type dafault_data_type =
+      static_cast<proto::VarType::Type>(-1);
+  proto::VarType::Type data_type = dafault_data_type;
   for (auto& input : this->inputs_) {
     const std::vector<const Variable*> vars = ctx.MultiInputVar(input.first);
     for (size_t i = 0; i < vars.size(); ++i) {
@@ -1090,18 +1091,19 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
         if (t != nullptr) {
           PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu)is not initialized",
                          input.first, i);
-          int tmp = static_cast<int>(t->type());
+          proto::VarType::Type tmp = t->type();
           PADDLE_ENFORCE(
-              tmp == data_type || data_type == -1,
+              tmp == data_type || data_type == dafault_data_type,
               "DataType of Paddle Op %s must be the same. Get (%d) != (%d)",
-              Type(), data_type, tmp);
+              Type(), DataTypeToString(data_type), DataTypeToString(tmp));
           data_type = tmp;
         }
       }
     }
   }
-  PADDLE_ENFORCE(data_type != -1, "DataType should be indicated by input");
-  return static_cast<proto::VarType::Type>(data_type);
+  PADDLE_ENFORCE(data_type != dafault_data_type,
+                 "DataType should be indicated by input");
+  return data_type;
 }
 
 OpKernelType OperatorWithKernel::GetExpectedKernelType(
