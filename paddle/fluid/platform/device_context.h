@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -265,9 +266,13 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
-  void set_nccl_context(NCCLContext* ctx) { nccl_context_ = ctx; }
+  ncclComm_t nccl_comm() {
+    return nccl_comm_;
+  }
 
-  NCCLContext* nccl_context() { return nccl_context_; }
+  void set_nccl_comm(ncclComm_t comm) {
+    nccl_comm_ = comm;
+  }
 
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
@@ -293,10 +298,9 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
 
-  // nccl context on current device. Not using unique_ptr because
-  // it's owned by NCCLContextMap. Store reference here for operators
-  // to use.
-  NCCLContext* nccl_context_;
+  // NCCL comm for allreduce ops, value should be set when
+  // ParallelExecutor initializes.
+  ncclComm_t nccl_comm_{nullptr};
 
   int compute_capability_;
   int runtime_version_;

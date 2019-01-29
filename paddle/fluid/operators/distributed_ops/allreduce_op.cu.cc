@@ -24,7 +24,6 @@ namespace paddle {
 namespace operators {
 
 class AllReduceOp : public framework::OperatorBase {
-  // inherit op base constructor.
   using OperatorBase::OperatorBase;
 
   void RunImpl(const framework::Scope& scope,
@@ -41,6 +40,10 @@ class AllReduceOp : public framework::OperatorBase {
     auto* sendbuff = in_tensor.data<void>(place);
     auto* out_tensor = out->GetMutable<Tensor>();
     auto* recvbuff = out_tensor->mutable_data<void>(place);
+
+    auto cuda_ctx = static_cast<platform::CUDADeviceContext>(ctx);
+    auto* comm = cuda_ctx.comm();
+    auto stream = cuda_ctx.stream();
 
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
@@ -74,5 +77,6 @@ class AllReduceOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(send, ops::AllReduceOp, paddle::framework::EmptyGradOpMaker,
+REGISTER_OPERATOR(allreduce, ops::AllReduceOp,
+                  paddle::framework::EmptyGradOpMaker,
                   ops::AllReduceOpMaker, ops::AllReduceOpShapeInference);
