@@ -52,12 +52,7 @@ We provide the results of accuracy and performance, measurd on [Intel® Xeon® P
 | ResNet-50  | Full ImageNet Val  |  76.63%  | 76.14%  | 0.48% |
 | MobileNet-V1 | Full ImageNet Val  | 70.78%  | 70.41%  | 0.37%  |
 
-Please note that [Small](http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz "Small") is a subset of [full ImageNet validation dataset](http://www.image-net.org/challenges/LSVRC/2012/nnoupb/ILSVRC2012_img_val.tar "full ImageNet validation dataset"). Here is the typical dataset structure, similar to the requirement of [PaddlePaddle models](https://github.com/PaddlePaddle/models/tree/develop/fluid/PaddleCV/image_classification/data "PaddlePaddle models"):
-
-```bash
-$ ls data/ILSVRC2012/
-val  val_list.txt
-```
+Please note that [Small](http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz "Small") is a subset of [full ImageNet validation dataset](http://www.image-net.org/challenges/LSVRC/2012/nnoupb/ILSVRC2012_img_val.tar "full ImageNet validation dataset"). 
 
 | Model  | Batch Size  | FP32 Throughput (Images/second)  | INT8 Throughput (Images/second)  | Improvement  |
 | ------------ | ------------ | ------------ | ------------ | ------------ |
@@ -66,4 +61,32 @@ val  val_list.txt
 
 Notes:
 * The accuracy measurement requires the model with `label`.
-* The performance is measurd on SKX6148 (batch size = 1 and iterations = 50). INT8 performance improvement is ~1.33X on Intel® Xeon® Skylake Server ([Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")).
+* The performance is measurd on SKX6148 (batch size = 1 and iterations = 50). INT8 theoretical speedup is ~1.33X on Intel® Xeon® Skylake Server (please refer to `This allows for 4x more input at the cost of 3x more instructions or 33.33% more compute` in  [Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")).
+
+## 4. How to reproduce the results
+* Small dataset
+  * Run the test
+```bash
+python python/paddle/fluid/contrib/tests/test_calibration.py
+```
+
+* Full dataset
+  * Download the full ImageNet val and label
+```bash
+cd python/paddle/fluid/contrib/tests
+# TODO add some steps
+wget -nd -c http://www.image-net.org/challenges/LSVRC/2012/nnoupb/ILSVRC2012_img_val.tar 
+tar xf ILSVRC2012_img_val.tar -C val/
+wget -nd -c http://paddle-imagenet-models.bj.bcebos.com/ImageNet_label.tgz 
+tar zxf ImageNet_label.tgz
+```
+  *  Check the dataset structure (similar to the requirement of [PaddlePaddle models](https://github.com/PaddlePaddle/models/tree/develop/fluid/PaddleCV/image_classification/data "PaddlePaddle models"))
+```bash
+$ ls data/ILSVRC2012/
+val  val_list.txt
+```
+
+  * Run the test
+```bash
+DATASET=full python python/paddle/fluid/contrib/tests/test_calibration.py
+```
