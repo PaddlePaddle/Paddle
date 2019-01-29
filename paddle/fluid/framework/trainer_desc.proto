@@ -59,7 +59,6 @@ message TableParameter {
   optional int64 table_id = 1;
   repeated string dense_value_name = 2;
   repeated string dense_grad_name = 3;
-  repeated int32 dense_table_size = 4;
   repeated int32 push_dense_wait_times = 5;
   // sparse table only
   repeated string sparse_key_name = 6;
