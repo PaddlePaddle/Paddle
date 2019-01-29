@@ -31,7 +31,6 @@ void CreateGradOp(const framework::OpDesc& op_desc,
       framework::OpInfoMap::Instance()
           .Get(op_desc.Type())
           .GradOpMaker()(op_desc, no_grad_set, grad_to_var, grad_sub_block);
-
   for (auto& desc : descs) {
     grad_op_descs->emplace_back(desc.release());
   }

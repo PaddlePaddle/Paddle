@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include <string>
-#include <utility>
-#include <vector>
+
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
 #include "paddle/fluid/platform/port.h"
 
