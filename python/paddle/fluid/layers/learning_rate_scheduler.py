@@ -29,6 +29,7 @@ from . import tensor
 from ..initializer import init_on_cpu
 from ..framework import default_main_program, Parameter, unique_name, name_scope
 from ..imperative import base as imperative_base
+from ..imperative import learning_rate_scheduler as imperate_lr
 
 __all__ = [
     'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
@@ -279,7 +280,7 @@ def piecewise_decay(boundaries, values):
             raise ValueError("len(values) - len(boundaries) should be 1")
 
         if imperative_base.enabled():
-            decay = imperative.PiecewiseDecay(boundaries, values, 0)
+            decay = imperate_lr.PiecewiseDecay(boundaries, values, 0)
             return decay
         else:
             global_step = _decay_step_counter()
