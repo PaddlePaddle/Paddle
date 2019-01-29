@@ -21,44 +21,98 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.imperative.nn import FC
+from paddle.fluid.imperative.nn import Conv2D, Pool2D, FC
 from paddle.fluid.imperative.base import to_variable
 from test_imperative_base import new_program_scope
 
 
-class MLP(fluid.imperative.Layer):
-    def __init__(self, param_attr=None, bias_attr=None):
-        self._fc1 = FC(10)
-        self._fc2 = FC(10)
+class SimpleImgConvPool(fluid.imperative.Layer):
+    def __init__(self,
+                 num_channels,
+                 num_filters,
+                 filter_size,
+                 pool_size,
+                 pool_stride,
+                 pool_padding=0,
+                 pool_type='max',
+                 global_pooling=False,
+                 conv_stride=1,
+                 conv_padding=0,
+                 conv_dilation=1,
+                 conv_groups=1,
+                 act=None,
+                 use_cudnn=False,
+                 param_attr=None,
+                 bias_attr=None):
+        super(SimpleImgConvPool, self).__init__()
+
+        self._conv2d = Conv2D(
+            num_channels=num_channels,
+            num_filters=num_filters,
+            filter_size=filter_size,
+            stride=conv_stride,
+            padding=conv_padding,
+            dilation=conv_dilation,
+            groups=conv_groups,
+            param_attr=None,
+            bias_attr=None,
+            use_cudnn=use_cudnn)
+
+        self._pool2d = Pool2D(
+            pool_size=pool_size,
+            pool_type=pool_type,
+            pool_stride=pool_stride,
+            pool_padding=pool_padding,
+            global_pooling=global_pooling,
+            use_cudnn=use_cudnn)
 
     def forward(self, inputs):
-        y = self._fc1(inputs)
-        y = self._fc2(y)
-        return y
+        x = self._conv2d(inputs)
+        x = self._pool2d(x)
+        return x
 
 
-class TestImperativeOptimizerBase(unittest.TestCase):
-    def setUp(self):
-        self.batch_num = 2
+class MNIST(fluid.imperative.Layer):
+    def __init__(self, param_attr=None, bias_attr=None):
+        super(MNIST, self).__init__()
 
-    def get_optimizer(self):
-        self.optimizer = SGDOptimizer(learning_rate=1e-3)
+        self._simple_img_conv_pool_1 = SimpleImgConvPool(
+            1, 20, 5, 2, 2, act="relu")
 
-    def test_optimizer_float32(self):
+        self._simple_img_conv_pool_2 = SimpleImgConvPool(
+            20, 50, 5, 2, 2, act="relu")
+
+        pool_2_shape = 50 * 8 * 8
+        SIZE = 10
+        scale = (2.0 / (pool_2_shape**2 * SIZE))**0.5
+        self._fc = FC(10,
+                      param_attr=fluid.param_attr.ParamAttr(
+                          initializer=fluid.initializer.NormalInitializer(
+                              loc=0.0, scale=scale)))
+
+    def forward(self, inputs):
+        x = self._simple_img_conv_pool_1(inputs)
+        x = self._simple_img_conv_pool_2(x)
+        x = self._fc(x)
+        return x
+
+
+class TestImperativeMnist(unittest.TestCase):
+    def test_mnist_cpu_float32(self):
         seed = 90
 
         with fluid.imperative.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            mlp = MLP()
-            self.get_optimizer()
+            mnist = MNIST()
+            sgd = SGDOptimizer(learning_rate=1e-3)
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128)
 
             dy_param_init_value = {}
             for batch_id, data in enumerate(train_reader()):
-                if batch_id >= self.batch_num:
+                if batch_id >= 2:
                     break
 
                 x_data = np.array(
@@ -70,8 +124,9 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 label = to_variable(y_data)
                 label._stop_gradient = True
 
-                cost = mlp(img)
-                avg_loss = fluid.layers.reduce_mean(cost)
+                cost = mnist(img)
+                loss = fluid.layers.cross_entropy(cost, label)
+                avg_loss = fluid.layers.mean(loss)
                 dy_out = avg_loss._numpy()
 
                 if batch_id == 0:
@@ -80,8 +135,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                         dy_param_init_value[param.name] = param._numpy()
 
                 avg_loss._backward()
-                self.optimizer.minimize(avg_loss)
-
+                sgd.minimize(avg_loss)
                 dy_param_value = {}
                 for param in fluid.default_main_program().global_block(
                 ).all_parameters():
@@ -95,7 +149,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
             mnist = MNIST()
-            self.get_optimizer()
+            sgd = SGDOptimizer(learning_rate=1e-3)
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128)
 
@@ -103,8 +157,9 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 name='pixel', shape=[1, 28, 28], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             cost = mnist(img)
-            avg_loss = fluid.layers.reduce_mean(cost)
-            self.optimizer.minimize(avg_loss)
+            loss = fluid.layers.cross_entropy(cost, label)
+            avg_loss = fluid.layers.mean(loss)
+            sgd.minimize(avg_loss)
 
             # initialize params and fetch them
             static_param_init_value = {}
@@ -120,7 +175,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 static_param_init_value[static_param_name_list[i]] = out[i]
 
             for batch_id, data in enumerate(train_reader()):
-                if batch_id >= self.batch_num:
+                if batch_id >= 2:
                     break
 
                 x_data = np.array(
