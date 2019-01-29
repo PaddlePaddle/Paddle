@@ -132,7 +132,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_min_subgraph_size, TensorRtMinSubgraphSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_precision_mode, TensorRtPrecisionMode,
-                      contrib::AnalysisConfig::Precision);
+                      AnalysisConfig::Precision);
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
