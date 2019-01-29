@@ -21,6 +21,8 @@
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/fluid/platform/profiler.h"
+
 
 DEFINE_bool(init_allocated_mem, false,
             "It is a mistake that the values of the memory allocated by "
@@ -300,12 +302,14 @@ namespace allocation {
 
 Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
+  platform::RecordMemEvent record_mem_event(true, size, place_);
   return new Allocation(ptr, size, place_);
 }
 
 void LegacyAllocator::Free(Allocation *allocation) {
   boost::apply_visitor(legacy::FreeVisitor(allocation->ptr()),
                        allocation->place());
+  platform::RecordMemEvent record_mem_event(false, allocation->size(), place_);
   delete allocation;
 }
 }  // namespace allocation
