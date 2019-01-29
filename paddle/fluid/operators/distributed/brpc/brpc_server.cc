@@ -36,30 +36,33 @@ class BRPCServiceImpl : public SendRecvService {
     VLOG(3) << "BRPCServiceImpl size: " << rpc_call_map->size();
     auto it = rpc_call_map->find(distributed::RequestType::SEND);
     if (it != rpc_call_map->end()) {
-      send_threads_.reset(new paddle::framework::ThreadPool(5));
+      send_threads_.reset(new paddle::framework::ThreadPool(
+          rpc_server_->GetThreadNum(distributed::RequestType::SEND)));
     }
 
     it = rpc_call_map->find(distributed::RequestType::RECV);
     if (it != rpc_call_map->end()) {
-      get_threads_.reset(new paddle::framework::ThreadPool(5));
+      get_threads_.reset(new paddle::framework::ThreadPool(
+          rpc_server_->GetThreadNum(distributed::RequestType::RECV)));
     }
 
     it = rpc_call_map->find(distributed::RequestType::RECV_NO_BARRIER);
     if (it != rpc_call_map->end()) {
-      getnobarrier_threads_.reset(new paddle::framework::ThreadPool(5));
-      // rpc_server_->GetThreadNum(distributed::kRequestGetNoBarrier)));
+      getnobarrier_threads_.reset(
+          new paddle::framework::ThreadPool(rpc_server_->GetThreadNum(
+              distributed::RequestType::RECV_NO_BARRIER)));
     }
 
     it = rpc_call_map->find(distributed::RequestType::PREFETCH);
     if (it != rpc_call_map->end()) {
-      prefetch_threads_.reset(new paddle::framework::ThreadPool(5));
-      // rpc_server_->GetThreadNum(distributed::kRequestPrefetch)));
+      prefetch_threads_.reset(new paddle::framework::ThreadPool(
+          rpc_server_->GetThreadNum(distributed::RequestType::PREFETCH)));
     }
 
     it = rpc_call_map->find(distributed::RequestType::CHECKPOINT);
     if (it != rpc_call_map->end()) {
-      checkpoint_notify_threads_.reset(new paddle::framework::ThreadPool(5));
-      // rpc_server_->GetThreadNum(distributed::kRequestPrefetch)));
+      checkpoint_notify_threads_.reset(new paddle::framework::ThreadPool(
+          rpc_server_->GetThreadNum(distributed::RequestType::CHECKPOINT)));
     }
   }
 
