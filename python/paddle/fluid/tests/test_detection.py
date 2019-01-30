@@ -476,8 +476,8 @@ class TestYoloDetection(unittest.TestCase):
             x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
             gtbox = layers.data(name='gtbox', shape=[10, 4], dtype='float32')
             gtlabel = layers.data(name='gtlabel', shape=[10], dtype='int32')
-            loss = layers.yolov3_loss(x, gtbox, gtlabel, [10, 13, 30, 13], 10,
-                                      0.5)
+            loss = layers.yolov3_loss(x, gtbox, gtlabel, [10, 13, 30, 13],
+                                      [0, 1], 10, 0.7, 32)
 
             self.assertIsNotNone(loss)
 

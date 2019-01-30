@@ -508,13 +508,10 @@ def yolov3_loss(x,
                 gtbox,
                 gtlabel,
                 anchors,
+                anchor_mask,
                 class_num,
                 ignore_thresh,
-                loss_weight_xy=None,
-                loss_weight_wh=None,
-                loss_weight_conf_target=None,
-                loss_weight_conf_notarget=None,
-                loss_weight_class=None,
+                downsample_ratio,
                 name=None):
     """
     ${comment}
@@ -526,16 +523,13 @@ def yolov3_loss(x,
                           and x, y, w, h should be relative value of input image.
                           N is the batch number and B is the max box number in 
                           an image.
-        gtlabel (Variable): class id of ground truth boxes, shoud be ins shape
+        gtlabel (Variable): class id of ground truth boxes, shoud be in shape
                             of [N, B].
         anchors (list|tuple): ${anchors_comment}
+        anchor_mask (list|tuple): ${anchor_mask_comment}
         class_num (int): ${class_num_comment}
         ignore_thresh (float): ${ignore_thresh_comment}
-        loss_weight_xy (float|None): ${loss_weight_xy_comment}
-        loss_weight_wh (float|None): ${loss_weight_wh_comment}
-        loss_weight_conf_target (float|None): ${loss_weight_conf_target_comment}
-        loss_weight_conf_notarget (float|None): ${loss_weight_conf_notarget_comment}
-        loss_weight_class (float|None): ${loss_weight_class_comment}
+        downsample_ratio (int): ${downsample_ratio_comment}
         name (string): the name of yolov3 loss
 
     Returns:
@@ -555,9 +549,10 @@ def yolov3_loss(x,
         x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
         gtbox = fluid.layers.data(name='gtbox', shape=[6, 5], dtype='float32')
         gtlabel = fluid.layers.data(name='gtlabel', shape=[6, 1], dtype='int32')
-        anchors = [10, 13, 16, 30, 33, 23]
-        loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80
-                                        anchors=anchors, ignore_thresh=0.5)
+        anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
+        anchors = [0, 1, 2]
+        loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80, anchors=anchors, 
+                                        ignore_thresh=0.5, downsample_ratio=32)
     """
     helper = LayerHelper('yolov3_loss', **locals())
 
@@ -569,6 +564,8 @@ def yolov3_loss(x,
         raise TypeError("Input gtlabel of yolov3_loss must be Variable")
     if not isinstance(anchors, list) and not isinstance(anchors, tuple):
         raise TypeError("Attr anchors of yolov3_loss must be list or tuple")
+    if not isinstance(anchor_mask, list) and not isinstance(anchor_mask, tuple):
+        raise TypeError("Attr anchor_mask of yolov3_loss must be list or tuple")
     if not isinstance(class_num, int):
         raise TypeError("Attr class_num of yolov3_loss must be an integer")
     if not isinstance(ignore_thresh, float):
@@ -581,31 +578,29 @@ def yolov3_loss(x,
         loss = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
 
+    objectness_mask = helper.create_variable_for_type_inference(dtype='int32')
+    gt_match_mask = helper.create_variable_for_type_inference(dtype='int32')
+
     attrs = {
         "anchors": anchors,
+        "anchor_mask": anchor_mask,
         "class_num": class_num,
         "ignore_thresh": ignore_thresh,
+        "downsample_ratio": downsample_ratio,
     }
-
-    if loss_weight_xy is not None and isinstance(loss_weight_xy, float):
-        self.attrs['loss_weight_xy'] = loss_weight_xy
-    if loss_weight_wh is not None and isinstance(loss_weight_wh, float):
-        self.attrs['loss_weight_wh'] = loss_weight_wh
-    if loss_weight_conf_target is not None and isinstance(
-            loss_weight_conf_target, float):
-        self.attrs['loss_weight_conf_target'] = loss_weight_conf_target
-    if loss_weight_conf_notarget is not None and isinstance(
-            loss_weight_conf_notarget, float):
-        self.attrs['loss_weight_conf_notarget'] = loss_weight_conf_notarget
-    if loss_weight_class is not None and isinstance(loss_weight_class, float):
-        self.attrs['loss_weight_class'] = loss_weight_class
 
     helper.append_op(
         type='yolov3_loss',
-        inputs={"X": x,
-                "GTBox": gtbox,
-                "GTLabel": gtlabel},
-        outputs={'Loss': loss},
+        inputs={
+            "X": x,
+            "GTBox": gtbox,
+            "GTLabel": gtlabel,
+        },
+        outputs={
+            'Loss': loss,
+            'ObjectnessMask': objectness_mask,
+            'GTMatchMask': gt_match_mask
+        },
         attrs=attrs)
     return loss
 
