@@ -164,16 +164,18 @@ function cmake_gen() {
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
 
+    distibuted_flag=${WITH_DISTRIBUTE:-OFF}
+    grpc_flag=${WITH_GRPC:-${distibuted_flag}}
+
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
         -DWITH_DSO=ON
-        -DWITH_DOC=${WITH_DOC:-OFF}
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
-        -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF}
+        -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_NGRAPH=${WITH_NGRAPH:-OFF}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -194,7 +196,8 @@ function cmake_gen() {
         -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
-        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF}
+        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} 
+        -DWITH_GRPC=${grpc_flag}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -204,10 +207,9 @@ EOF
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
         -DWITH_DSO=ON \
-        -DWITH_DOC=${WITH_DOC:-OFF} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
-        -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF} \
+        -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_NGRAPH=${WITH_NGRAPH:-OFF} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
@@ -227,7 +229,8 @@ EOF
         -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}\
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF}
+        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} \
+        -DWITH_GRPC=${grpc_flag}
 
 }
 
@@ -310,6 +313,46 @@ EOF
         fi
     fi
 }
+
+function run_brpc_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [[ ${WITH_TESTING:-ON} == "ON" \
+        && ${WITH_DISTRIBUTE:-OFF} == "ON" \
+        && ${WITH_GRPC:-OFF} == "OFF" ]] ; then
+    cat <<EOF
+    ========================================
+    Running brpc unit tests ...
+    ========================================
+EOF
+        set +x
+        declare -a other_tests=("test_listen_and_serv_op" "system_allocator_test" \
+        "rpc_server_test" "varhandle_test" "collective_server_test" "brpc_serde_test")
+        all_tests=`ctest -N`
+
+        for t in "${other_tests[@]}"
+        do
+            if [[ ${all_tests} != *$t* ]]; then
+                continue
+            fi
+
+            if [[ ${TESTING_DEBUG_MODE:-OFF} == "ON" ]] ; then
+                ctest -V -R $t
+            else
+                ctest --output-on-failure -R $t
+            fi
+        done
+        set -x
+
+        if [[ ${TESTING_DEBUG_MODE:-OFF} == "ON" ]] ; then
+            ctest -V -R test_dist_*
+        else
+            ctest --output-on-failure -R test_dist_*
+        fi
+    fi
+}
+
+
 
 function run_mac_test() {
     mkdir -p ${PADDLE_ROOT}/build
@@ -483,31 +526,6 @@ function bind_test() {
     wait
 }
 
-
-function gen_docs() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-    cat <<EOF
-    ========================================
-    Building documentation ...
-    In /paddle/build
-    ========================================
-EOF
-    cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DWITH_DOC=ON \
-        -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF
-
-    make -j `nproc` paddle_docs paddle_apis
-
-    # check websites for broken links
-    linkchecker doc/v2/en/html/index.html
-    linkchecker doc/v2/cn/html/index.html
-    linkchecker doc/v2/api/en/html/index.html
-
-}
-
 function gen_doc_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -519,7 +537,6 @@ function gen_doc_lib() {
 EOF
     cmake .. \
         -DCMAKE_BUILD_TYPE=Release \
-        -DWITH_DOC=ON \
         -DWITH_GPU=OFF \
         -DWITH_MKL=OFF \
         -DWITH_FLUID_ONLY=ON
@@ -758,9 +775,6 @@ function main() {
       bind_test)
         bind_test
         ;;
-      doc)
-        gen_docs
-        ;;
       gen_doc_lib)
         gen_doc_lib $2
         ;;
@@ -787,6 +801,11 @@ function main() {
         gen_fluid_lib
         test_fluid_lib
         assert_api_spec_approvals
+        ;;
+      cicheck_brpc)
+        cmake_gen ${PYTHON_ABI:-""}
+        build
+        run_brpc_test
         ;;
       assert_api)
         assert_api_not_changed ${PYTHON_ABI:-""}

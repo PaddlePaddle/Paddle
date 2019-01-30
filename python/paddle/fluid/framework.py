@@ -71,6 +71,7 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _imperative_tracer_ = None
+_imperative_current_expected_place_ = None
 
 
 def _in_imperative_mode():
@@ -79,6 +80,10 @@ def _in_imperative_mode():
 
 def _imperative_tracer():
     return _imperative_tracer_
+
+
+def _current_expected_place():
+    return _imperative_current_expected_place_
 
 
 class NameScope(object):
@@ -384,8 +389,8 @@ class Variable(object):
             self._ivar.stop_gradient = stop_gradient
 
     def _numpy(self):
-        tensor = self._ivar.value().get_tensor()
-        return np.array(tensor)
+        new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
+        return np.array(new_ivar.value().get_tensor())
 
     def _backward(self):
         self._ivar._run_backward()
@@ -441,11 +446,16 @@ class Variable(object):
 
     @property
     def _stop_gradient(self):
-        return self._ivar.stop_gradient
+        if _in_imperative_mode():
+            return self._ivar.stop_gradient
+        else:
+            return self.stop_gradient
 
     @_stop_gradient.setter
     def _stop_gradient(self, s):
-        self._ivar.stop_gradient = s
+        if _in_imperative_mode():
+            self._ivar.stop_gradient = s
+        self.stop_gradient = s
 
     @property
     def persistable(self):
@@ -1306,12 +1316,16 @@ class Block(object):
             outputs=kwargs.get("outputs", None),
             attrs=kwargs.get("attrs", None))
         self.ops.append(op)
+
+        # TODO(minqiyang): add stop_gradient support in static mode too.
+        # currently, we only support stop_gradient in imperative mode.
         self._trace_op(op, kwargs.get("stop_gradient", False))
         return op
 
     def _trace_op(self, op, stop_gradient=False):
         if _in_imperative_mode():
             _imperative_tracer().trace(op.iop, op.inputs, op.outputs, self.desc,
+                                       _imperative_current_expected_place_,
                                        stop_gradient)
 
     def _insert_op(self, index, *args, **kwargs):
@@ -1893,12 +1907,20 @@ class Program(object):
         self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
         self._op_role_var = []
 
-        # for distribute
+        # for distribute training
+        # _is_distributed = True if under distributed training
         self._is_distributed = False
+        # _is_chief = True if the trainer is the first one, usually No.0
         self._is_chief = False
-        self._slice_vars_and_attrs = []
+        # _parameters_on_pservers records all the parameters distributed on parameter servers.
+        self._parameters_on_pservers = None
+        # _endpoints is a list about parameter servers ip:port, such as ["ip:port","ip:port"]
         self._endpoints = []
+        # if current role is parameter server, the _ps_endpoint is its "ip:port"
+        self._ps_endpoint = None
+        # trainers_endpoints, it is used for distribution.
         self._trainers_endpoints = []
+        # the distributed lookup table names
         self._distributed_lookup_table = None
 
     @property
@@ -2429,8 +2451,9 @@ class Program(object):
                             "Program")
         self._is_distributed = other._is_distributed
         self._is_chief = other._is_chief
-        self._slice_vars_and_attrs = other._slice_vars_and_attrs
+        self._parameters_on_pservers = other._parameters_on_pservers
         self._endpoints = other._endpoints
+        self._ps_endpoint = other._ps_endpoint
         self._distributed_lookup_table = other._distributed_lookup_table
 
     def _copy_data_info_from(self, other):
@@ -2690,5 +2713,18 @@ def _imperative_guard(tracer):
     global _imperative_tracer_
     tmp_trace = _imperative_tracer_
     _imperative_tracer_ = tracer
+
     yield
+
     _imperative_tracer_ = tmp_trace
+
+
+@contextlib.contextmanager
+def _imperative_place_guard(place):
+    global _imperative_current_expected_place_
+    tmp_place = _imperative_current_expected_place_
+    _imperative_current_expected_place_ = place
+
+    yield
+
+    _imperative_current_expected_place_ = tmp_place

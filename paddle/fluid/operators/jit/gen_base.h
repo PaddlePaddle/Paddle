@@ -16,6 +16,7 @@
 
 #include <gflags/gflags.h>
 #include <memory>  // for unique_ptr
+#include <vector>
 #include "paddle/fluid/operators/jit/kernel_base.h"
 
 DECLARE_bool(dump_jitcode);
@@ -66,6 +67,11 @@ class JitCodeCreator : public GenCreator {
   // create this code
   virtual std::unique_ptr<GenBase> CreateJitCode(const Attr& attr) const = 0;
 };
+
+// unify the method of packed groups
+// output the packed groups which used in weights, the block size and rest size
+std::vector<int> packed_groups(int n, int k, int* block = nullptr,
+                               int* rest = nullptr);
 
 }  // namespace jit
 }  // namespace operators
