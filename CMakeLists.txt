@@ -44,7 +44,7 @@ option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_F
 option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FOUND})
-option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
+option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     ON)
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
 option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
