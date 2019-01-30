@@ -14,6 +14,7 @@
 
 #pragma once
 #include <algorithm>
+#include <mutex>  // NOLINT
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -23,42 +24,43 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-struct LegacyMemMonitor {
-  // used to store the GPU memory usage of each devices
-  using MemUsage =
-      std::unordered_map</*device id*/ int,
-                         std::pair</*current memory usage*/ uint64_t,
-                                   /*peak memory usage*/ uint64_t>>;
+class MemInfo {
+ public:
+  MemInfo() : usage_(0), peak_usage_(0) {}
+  MemInfo(const MemInfo &) = delete;
+  MemInfo &operator=(const MemInfo &) = delete;
 
-  MemUsage GetMemUsageInfo() { return gpu_mem_info_; }
+  // return a flag to indicate current operation will create a peak point or not
+  bool Add(const size_t &);
+  void Minus(const size_t &);
 
-  void Add(int device, size_t size) {
-    gpu_mem_info_[device].first += size;
-    if (gpu_mem_info_[device].first > gpu_mem_info_[device].second) {
-      gpu_mem_info_[device].second = gpu_mem_info_[device].first;
-      VLOG(3) << "device: " << device
-              << " peak memory usage : " << (gpu_mem_info_[device].second >> 20)
-              << " MiB";
-    }
-  }
-
-  void Minus(int device, size_t size) { gpu_mem_info_[device].first -= size; }
-
-  uint64_t GetMemUsage(int device) { return gpu_mem_info_[device].second; }
-
-  void PrintMemUsage() {
-    std::vector<int> devices;
-    for (const auto &item : gpu_mem_info_) {
-      devices.emplace_back(item.first);
-    }
-    std::sort(devices.begin(), devices.end());
-    for (const auto &device : devices) {
-      std::cout << "Device : " << device << " Peak Memory Usage : "
-                << (gpu_mem_info_[device].second >> 20) << " MiB" << std::endl;
-    }
-  }
+  uint64_t GetPeakUsage();
 
  private:
+  /* current memory usage*/
+  uint64_t usage_;
+  uint64_t peak_usage_;
+  std::mutex mutex_;
+};
+
+class LegacyMemMonitor {
+ public:
+  // used to store the GPU memory usage of each devices
+  using MemUsage = std::unordered_map</*device id*/ int,
+                                      /*mem usage info node*/ MemInfo *>;
+
+  MemUsage GetMemUsageInfo() { return gpu_mem_info_; }
+  ~LegacyMemMonitor();
+
+  void Initialize(const int &);
+  void Add(const int &, const size_t &);
+  void Minus(const int &, const size_t &);
+
+  uint64_t GetMemUsage(const int &);
+
+  void PrintMemUsage();
+
+ protected:
   MemUsage gpu_mem_info_;
 };
 

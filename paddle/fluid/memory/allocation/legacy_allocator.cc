@@ -29,6 +29,7 @@ DEFINE_bool(init_allocated_mem, false,
             "To find this error in time, we use init_allocated_mem to indicate "
             "that initializing the allocated memory with a small value "
             "during unit testing.");
+DECLARE_bool(benchmark);
 DECLARE_double(fraction_of_gpu_memory_to_use);
 
 namespace paddle {
@@ -120,6 +121,8 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
     devices = platform::GetSelectedDevices();
     int gpu_num = devices.size();
 
+    allocation::GPUMemMonitor.Initialize(devices.size());
+
     a_arr = new BuddyAllocator *[gpu_num];
     for (size_t i = 0; i < devices.size(); ++i) {
       int dev_id = devices[i];
@@ -180,7 +183,7 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
                  << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
     platform::SetDeviceId(cur_dev);
   } else {
-    allocation::GPUMemMonitor.Add(place.device, size);
+    if (FLAGS_benchmark) allocation::GPUMemMonitor.Add(place.device, size);
     if (FLAGS_init_allocated_mem) {
       cudaMemset(ptr, 0xEF, size);
     }
@@ -196,7 +199,7 @@ void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p,
                                size_t size) {
 #ifdef PADDLE_WITH_CUDA
   GetGPUBuddyAllocator(place.device)->Free(p);
-  allocation::GPUMemMonitor.Minus(place.device, size);
+  if (FLAGS_benchmark) allocation::GPUMemMonitor.Minus(place.device, size);
 #else
   PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
 #endif
@@ -319,6 +322,61 @@ void LegacyAllocator::Free(Allocation *allocation) {
       allocation->place());
   delete allocation;
 }
+
+bool MemInfo::Add(const size_t &size) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  usage_ += size;
+  bool peak_point = usage_ > peak_usage_;
+  if (peak_point) peak_usage_ = usage_;
+  return peak_point;
+}
+
+void MemInfo::Minus(const size_t &size) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  usage_ -= size;
+}
+
+uint64_t MemInfo::GetPeakUsage() { return peak_usage_; }
+
+LegacyMemMonitor::~LegacyMemMonitor() {
+  for (auto &item : gpu_mem_info_) delete item.second;
+}
+
+void LegacyMemMonitor::Initialize(const int &device_num) {
+  for (auto i = 0; i < device_num; ++i) {
+    gpu_mem_info_[i] = new MemInfo();
+  }
+}
+
+void LegacyMemMonitor::Add(const int &device, const size_t &size) {
+  if (gpu_mem_info_[device]->Add(size)) {
+    VLOG(3) << "#LegacyMemMonitor# device: " << device
+            << " peak memory usage : "
+            << (gpu_mem_info_[device]->GetPeakUsage() >> 20) << " MiB";
+  }
+}
+
+void LegacyMemMonitor::Minus(const int &device, const size_t &size) {
+  gpu_mem_info_[device]->Minus(size);
+}
+
+uint64_t LegacyMemMonitor::GetMemUsage(const int &device) {
+  return gpu_mem_info_[device]->GetPeakUsage();
+}
+
+void LegacyMemMonitor::PrintMemUsage() {
+  std::vector<int> devices;
+  for (const auto &item : gpu_mem_info_) {
+    devices.emplace_back(item.first);
+  }
+  std::sort(devices.begin(), devices.end());
+  for (const auto &device : devices) {
+    std::cout << "Device : " << device << " Peak Memory Usage : "
+              << (gpu_mem_info_[device]->GetPeakUsage() >> 20) << " MiB"
+              << std::endl;
+  }
+}
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
