@@ -248,8 +248,7 @@ class SampleLogitsGradCUDAKernel : public framework::OpKernel<T> {
     if (!FLAGS_debug_print) {
       return;
     }
-    VLOG(1) << "qxz print " << name;
-    VLOG(1) << name << "size = " << t.numel();
+    VLOG(1) << name << " size = " << t.numel();
     size_t size = t.numel();
     const type* d = t.data<type>();
 #ifdef PADDLE_WITH_CUDA

@@ -207,37 +207,6 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
                                         num_true);
     }
 
-    /* Debug
-    const auto num_sampled_classes = samples_dim[1];
-    std::cout << "Sampled Logits" << std::endl;
-    const auto sampled_logits_data = sampled_logits->data<T>();
-    for (int i = 0; i < sampled_logits->numel(); ++i) {
-      std::cout << sampled_logits_data[i] << ", ";
-      if ((i + 1) % num_sampled_classes == 0)
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
-    */
-    /* Debug
-    std::cout << "Samples" << std::endl;
-    const auto samples_data = samples->data<int64_t>();
-    for (int i = 0; i < samples->numel(); ++i) {
-      std::cout << samples_data[i] << ", ";
-      if ((i + 1) % num_sampled_classes == 0)
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
-    */
-    /* Debug
-    std::cout << "Probabilities" << std::endl;
-    const auto probabilities_data = probabilities->data<T>();
-    for (int i = 0; i < probabilities->numel(); ++i) {
-      std::cout << probabilities_data[i] << ", ";
-      if ((i + 1) % num_sampled_classes == 0)
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
-    */
     // subtracted sampled logits with logQ(y|x)
     auto probs = EigenMatrix<T>::From(*probabilities);
     auto smp_logits = EigenMatrix<T>::From(*sampled_logits);
@@ -262,9 +231,6 @@ class SampleLogitsGradKernel : public framework::OpKernel<T> {
         context.template device_context<platform::CPUDeviceContext>();
     math::SetConstant<platform::CPUDeviceContext, T> set_zero;
     set_zero(dev_ctx, logits_grad, static_cast<T>(0));
-
-    // const bool remove_accidental_hits =
-    //    context.Attr<bool>("remove_accidental_hits");
 
     // UNDERSTAND: scatter it back to logit_grad
     CPUPutAlongD1<T>(dev_ctx, logits_grad, *samples, *sampled_logits_grad);
