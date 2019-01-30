@@ -51,38 +51,63 @@ class DGCOpKernel : public framework::OpKernel<T> {
         ctx, u, v, 0, AddFunctor<T>(), v_out);
 
     encode_grad_out->mutable_data<T>(ctx.GetPlace());
-    v_out->mutable_data<T>(ctx.GetPlace());
-    u_out->mutable_data<T>(ctx.GetPlace());
-    operators::math::SetConstant<DeviceContext, T> constant_functor;
-    constant_functor(dev_ctx, encode_grad_out, static_cast<T>(0));
-    constant_functor(dev_ctx, u_out, static_cast<T>(0));
-    constant_functor(dev_ctx, v_out, static_cast<T>(0));
+    T* v_out_data = v_out->mutable_data<T>(ctx.GetPlace());
+    T* u_out_data = u_out->mutable_data<T>(ctx.GetPlace());
+    T* encode_grad_out_data = encode_grad_out->mutable_data<T>(ctx.GetPlace());
+    void* buf = static_cast<void*>(encode_grad_out_data + 2 * k);
 
-    int buf_size = get_buffer_size(k) * sizeof(T) * 10;
+    int buf_size = get_buffer_size(k) * sizeof(T);
     int dev_id = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()).device;
     VLOG(10) << "k:" << k << "encode_grad_out dims:" << encode_grad_out->dims()
              << ", buf_size:" << buf_size << ", v_out dims:" << v_out->dims()
              << ", u_out dims:" << u_out->dims() << ", devid:" << dev_id;
 
-    // Temporary memory
+    k_select(v_out_data,
+        static_cast<int>(v_out->numel()),
+        static_cast<void*>(encode_grad_out_data),
+        buf, k, 0, dev_ctx.stream(), u_out_data);
+
+
+    /*
+    operators::math::SetConstant<DeviceContext, T> constant_functor;
+    constant_functor(dev_ctx, encode_grad_out, static_cast<T>(0));
+    constant_functor(dev_ctx, u_out, static_cast<T>(0));
+    constant_functor(dev_ctx, v_out, static_cast<T>(0));
+    */
+     // Temporary memory
     /*
     auto& allocator = platform::DeviceTemporaryAllocator::Instance().Get(
         ctx.GetPlace(), dev_ctx.stream());
     auto tmp_ious_data = allocator.Allocate(buf_size);
     void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
-    */
+     */
+    /*
     PADDLE_ENFORCE(cudaSetDevice(dev_id));
     void* buf = nullptr;
     cudaMalloc(&buf, buf_size);
     PADDLE_ENFORCE(buf);
+    */
+    /*
+    framework::Tensor tmp;
+    int buf_count = get_buffer_size(k)  * 10;
+    void* buf = reinterpret_cast<void*> (tmp.Resize(framework::DDim({buf_count})).mutable_data<T>(ctx.GetPlace()));
+    std::cout << buf << std::endl;
+    */
 
+    /*
     k_select(
         v_out->mutable_data<T>(ctx.GetPlace()),
         static_cast<int>(v_out->numel()),
         static_cast<void*>(encode_grad_out->mutable_data<T>(ctx.GetPlace())),
         buf, k, 0, dev_ctx.stream(), u_out->mutable_data<T>(ctx.GetPlace()));
+        */
+    // constant_functor(dev_ctx, &tmp, static_cast<T>(0));
+    /*
+    cudaMemsetAsync(buf, 0, tmp.numel(), dev_ctx.stream());
     dev_ctx.Wait();
-    cudaFree(buf);
+    */
+
+    //cudaFree(buf);
   }
 };
 }  // namespace operators
