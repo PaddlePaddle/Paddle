@@ -225,7 +225,6 @@ class LSTMPKernel : public framework::OpKernel<T> {
         // Since the batch computing for LSTMP reorders the input sequence
         // according to their length. The initialized hidden state also needs
         // to reorder.
-        VLOG(1) << "qxz h0 used";
         ReorderInitState<DeviceContext, T>(device_ctx, *hidden_t0, order,
                                            &ordered_h0, true);
         blas.MatMul(ordered_h0, false, *weight, false, static_cast<T>(1.0),
