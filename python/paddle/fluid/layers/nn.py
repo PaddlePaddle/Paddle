@@ -659,14 +659,18 @@ def lstm(input,
 def dynamic_lstmp(input,
                   size,
                   proj_size,
+                  h_0=None,
+                  c_0=None,
                   param_attr=None,
                   bias_attr=None,
                   use_peepholes=True,
+                  cell_clip=None,
+                  proj_clip=None,
                   is_reverse=False,
                   gate_activation='sigmoid',
                   cell_activation='tanh',
                   candidate_activation='tanh',
-                  proj_activation='tanh',
+                  proj_activation='identity',
                   dtype='float32',
                   name=None):
     """
@@ -736,6 +740,12 @@ def dynamic_lstmp(input,
                          mini-batch, D is the hidden size.
         size(int): 4 * hidden size.
         proj_size(int): The size of projection output.
+        h_0(Variable): The initial hidden state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size and D is the projection size.
+        c_0(Variable): The initial cell state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
                                hidden-hidden weight and projection weight.
 
@@ -770,6 +780,11 @@ def dynamic_lstmp(input,
                               the bias is initialized zero. Default: None.
         use_peepholes(bool): Whether to enable diagonal/peephole connections,
                              default `True`.
+        cell_clip(float): If provided the cell state is clipped
+                             by this value prior to the cell output activation.
+        proj_clip(float): If `num_proj > 0` and `proj_clip` is
+                            provided, then the projected values are clipped elementwise to within
+                            `[-proj_clip, proj_clip]`.
         is_reverse(bool): Whether to compute reversed LSTM, default `False`.
         gate_activation(str): The activation for input gate, forget gate and
                               output gate. Choices = ["sigmoid", "tanh", "relu",
@@ -781,7 +796,7 @@ def dynamic_lstmp(input,
                               default "tanh".
         proj_activation(str): The activation for projection output.
                               Choices = ["sigmoid", "tanh", "relu", "identity"],
-                              default "tanh".
+                              default "identity".
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
@@ -831,25 +846,36 @@ def dynamic_lstmp(input,
     batch_hidden = helper.create_variable_for_type_inference(dtype)
     batch_gate = helper.create_variable_for_type_inference(dtype)
     batch_cell_pre_act = helper.create_variable_for_type_inference(dtype)
+    inputs = {
+        'Input': input,
+        'Weight': weight,
+        'ProjWeight': proj_weight,
+        'Bias': bias
+    }
+    batch_size = input.shape[0]
+    if h_0:
+        assert h_0.shape == (batch_size, proj_size), \
+            'The shape of h0 should be (batch_size, %d)' % proj_size
+        inputs['H0'] = h_0
+    if c_0:
+        assert c_0.shape == (batch_size, size), \
+            'The shape of c0 should be (batch_size, %d)' % size
+        inputs['C0'] = c_0
 
     helper.append_op(
         type='lstmp',
-        inputs={
-            'Input': input,
-            'Weight': weight,
-            'ProjWeight': proj_weight,
-            'Bias': bias
-        },
+        inputs=inputs,
         outputs={
             'Projection': projection,
             'Cell': cell,
-            'OrderedP0': ordered_proj0,
             'BatchHidden': batch_hidden,
             'BatchGate': batch_gate,
             'BatchCellPreAct': batch_cell_pre_act
         },
         attrs={
             'use_peepholes': use_peepholes,
+            'cell_clip': cell_clip,
+            'proj_clip': proj_clip,
             'is_reverse': is_reverse,
             'gate_activation': gate_activation,
             'cell_activation': cell_activation,
