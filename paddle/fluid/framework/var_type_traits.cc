@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/fluid/operators/reader/queue_based_reader.h"
 #include "paddle/fluid/platform/macros.h"
 #ifdef PADDLE_WITH_CUDA
 #ifndef _WIN32

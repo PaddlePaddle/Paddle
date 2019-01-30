@@ -40,6 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/fluid/operators/reader/queue_based_reader.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
@@ -439,6 +440,31 @@ PYBIND11_MODULE(core, m) {
         return new_rows;
       });
 
+  using MultiDeviceLoDTensorBlockingQueueHolder =
+      ::paddle::operators::reader::MultiDeviceLoDTensorBlockingQueueHolder;
+
+  py::class_<MultiDeviceLoDTensorBlockingQueueHolder,
+             std::shared_ptr<MultiDeviceLoDTensorBlockingQueueHolder>>(
+      m, "MultiDeviceLoDTensorBlockingQueueHolder", "")
+      .def("__getitem__", [](MultiDeviceLoDTensorBlockingQueueHolder &self,
+                             size_t i) { return self.GetQueue(i); })
+      .def("__len__",
+           [](MultiDeviceLoDTensorBlockingQueueHolder &self) {
+             return self.DeviceNum();
+           })
+      .def("push",
+           [](MultiDeviceLoDTensorBlockingQueueHolder &self, size_t i,
+              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+             py::gil_scoped_release guard;
+             self.GetQueue(i)->Push(lod_tensor_vec);
+           })
+      .def("close",
+           [](MultiDeviceLoDTensorBlockingQueueHolder &self) {
+             py::gil_scoped_release guard;
+             self.Close();
+           })
+      .def("reset", &MultiDeviceLoDTensorBlockingQueueHolder::ResetReaders);
+
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
 All parameter, weight, gradient are variables in Paddle.
@@ -482,7 +508,17 @@ All parameter, weight, gradient are variables in Paddle.
              PADDLE_ENFORCE(self.IsType<framework::ReaderHolder>());
              return self.GetMutable<framework::ReaderHolder>();
            },
-           py::return_value_policy::reference);
+           py::return_value_policy::reference)
+      .def(
+          "get_multi_device_lod_tensor_blocking_queue",
+          [](Variable &self)
+              -> std::shared_ptr<MultiDeviceLoDTensorBlockingQueueHolder> {
+                PADDLE_ENFORCE(self.IsType<std::shared_ptr<
+                                   MultiDeviceLoDTensorBlockingQueueHolder>>());
+                return *self.GetMutable<
+                    std::shared_ptr<MultiDeviceLoDTensorBlockingQueueHolder>>();
+              },
+          py::return_value_policy::copy);
 
   py::class_<framework::ReaderHolder>(m, "Reader", "")
       .def("start", &framework::ReaderHolder::Start)
@@ -492,17 +528,22 @@ All parameter, weight, gradient are variables in Paddle.
       ::paddle::operators::reader::LoDTensorBlockingQueue;
   using LoDTensorBlockingQueueHolder =
       ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
+
   py::class_<LoDTensorBlockingQueue, std::shared_ptr<LoDTensorBlockingQueue>>(
       m, "LoDTensorBlockingQueue", "")
       .def("push",
            [](LoDTensorBlockingQueue &self,
               const std::vector<framework::LoDTensor> &lod_tensor_vec) {
-             pybind11::gil_scoped_release release;
+             py::gil_scoped_release release;
              return self.Push(lod_tensor_vec);
+           })
+      .def("close",
+           [](LoDTensorBlockingQueue &self) {
+             py::gil_scoped_release release;
+             self.Close();
            })
       .def("size", &LoDTensorBlockingQueue::Size)
       .def("capacity", &LoDTensorBlockingQueue::Cap)
-      .def("close", &LoDTensorBlockingQueue::Close)
       .def("is_closed", &LoDTensorBlockingQueue::IsClosed);
 
   m.def("init_lod_tensor_blocking_queue",

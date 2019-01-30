@@ -27,6 +27,7 @@ reader_library(create_double_buffer_reader_op SRCS create_double_buffer_reader_o
 reader_library(create_multi_pass_reader_op SRCS create_multi_pass_reader_op.cc)
 reader_library(create_custom_reader_op SRCS create_custom_reader_op.cc)
 reader_library(create_py_reader_op SRCS create_py_reader_op.cc)
+reader_library(create_queue_based_reader_op SRCS create_queue_based_reader_op.cc)
 
 if (NOT WIN32 AND NOT ON_INFER)
     cc_library(ctr_reader SRCS ctr_reader.cc DEPS gzstream reader zlib)
@@ -39,6 +40,7 @@ cc_test(reader_blocking_queue_test SRCS reader_blocking_queue_test.cc)
 # set(READER_LIBRARY ${LOCAL_READER_LIBS} PARENT_SCOPE)
 
 op_library(read_op)
+op_library(create_multi_device_lod_tensor_blocking_queue_op DEPS op_registry)
 
 foreach(src ${LOCAL_READER_LIBS})
     set(OP_LIBRARY ${src} ${OP_LIBRARY} CACHE INTERNAL "op libs")

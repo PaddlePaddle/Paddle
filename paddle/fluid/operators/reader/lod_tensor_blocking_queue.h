@@ -27,9 +27,11 @@ namespace operators {
 namespace reader {
 
 class LoDTensorBlockingQueueHolder;
+class MultiDeviceLoDTensorBlockingQueueHolder;
 
 class LoDTensorBlockingQueue {
   friend class LoDTensorBlockingQueueHolder;
+  friend class MultiDeviceLoDTensorBlockingQueueHolder;
 
  private:
   explicit LoDTensorBlockingQueue(size_t capacity, bool speed_test_mode = false)

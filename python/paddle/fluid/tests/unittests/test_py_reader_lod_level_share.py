@@ -21,7 +21,7 @@ class TestLoDLevelShare(unittest.TestCase):
         self.use_double_buffer = False
 
     def test_lod_level_share(self):
-        reader = fluid.layers.py_reader(
+        reader = fluid.layers.py_reader2(
             capacity=16,
             shapes=([-1, 256], [-1, 512], [-1, 100]),
             dtypes=('float32', 'int64', 'double'),

@@ -31,8 +31,8 @@ from ..unique_name import generate as unique_name
 
 __all__ = [
     'data', 'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
-    'random_data_generator', 'py_reader', 'create_py_reader_by_data',
-    'Preprocessor', 'load'
+    'random_data_generator', 'py_reader', 'py_reader2',
+    'create_py_reader_by_data', 'Preprocessor', 'load'
 ]
 
 
@@ -611,6 +611,174 @@ def _py_reader(capacity,
                 yield [slots[data_name] for data_name in data_names]
 
         __set_tensor_provider__(__tensor_provider__)
+
+    def __reset__():
+        current_reset_method()
+        if reader.thread is not None and reader.tensor_provider is not None:
+            reader.exited = True
+            reader.thread.join()
+            reader.exited = False
+
+    def __start__():
+        start_provide_thread(reader.tensor_provider)
+
+    reader.reset = __reset__
+    reader.decorate_tensor_provider = __set_tensor_provider__
+    reader.decorate_paddle_reader = __set_paddle_reader__
+    reader.start = __start__
+
+    return reader
+
+
+def py_reader2(capacity,
+               shapes,
+               dtypes,
+               lod_levels=None,
+               name=None,
+               use_double_buffer=True,
+               num_places=None):
+    dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
+    shape_concat = []
+    ranks = []
+
+    for shape in shapes:
+        shape_concat.extend(shape)
+        ranks.append(len(shape))
+
+    if lod_levels is None:
+        lod_levels = [0] * len(shapes)
+
+    if name is None:
+        queue_name = unique_name('multi_device_lod_tensor_blocking_queue')
+        reader_name = unique_name('queue_based_reader')
+        double_buffer_name = unique_name('dbuffer')
+    else:
+        queue_name = "_".join([name, "m_queue"])
+        reader_name = "_".join([name, "m_reader"])
+        double_buffer_name = "_".join([name, "_m_double_buffer"])
+
+    # var = global_scope().var(queue_name)
+    # feed_queue = core.init_lod_tensor_blocking_queue(var, capacity)
+    speed_test_mode = bool(
+        os.environ.get('FLAGS_reader_queue_speed_test_mode', False))
+    dev_cnt = num_places if num_places is not None else -1
+
+    startup_blk = default_startup_program().current_block()
+    queue_var = startup_blk.create_var(
+        name=queue_name, type=core.VarDesc.VarType.RAW, persistable=True)
+    startup_blk.append_op(
+        type='create_multi_device_lod_tensor_blocking_queue',
+        inputs={},
+        outputs={'Out': [queue_var]},
+        attrs={
+            'dev_cnt': dev_cnt,
+            'capacity': capacity,
+            'speed_test_mode': speed_test_mode
+        })
+
+    main_block = default_main_program().current_block()
+    reader = main_block.create_var(
+        name=reader_name, type=core.VarDesc.VarType.READER, persistable=True)
+
+    main_block.append_op(
+        type='create_queue_based_reader',
+        inputs={'blocking_queue': [queue_name]},
+        outputs={'Out': [reader]},
+        attrs={
+            'shape_concat': shape_concat,
+            'lod_levels': lod_levels,
+            'ranks': ranks
+        })
+
+    reader.desc.set_dtypes(dtypes)
+
+    reader.scope = global_scope()
+    reader._queues = None
+
+    def monkey_patch_methods(r):
+        def __get_queue__():
+            if r._queues is None:
+                r._queues = r.scope.find_var(
+                    queue_name).get_multi_device_lod_tensor_blocking_queue()
+            return r._queues
+
+        def __reset__():
+            r._queues.reset()
+
+        r.queues = __get_queue__
+        r.reset = __reset__
+        return r
+
+    reader = monkey_patch_methods(reader)
+
+    if use_double_buffer:
+        double_buffer_reader = double_buffer(reader, name=double_buffer_name)
+        double_buffer_reader.reset = reader.reset
+        double_buffer_reader.queues = reader.queues
+        reader = double_buffer_reader
+
+    # monkey patch py_reader special methods
+    # reader.queue = feed_queue
+    current_reset_method = reader.reset
+    reader.thread = None
+    reader.tensor_provider = None
+    reader.exited = False
+
+    def start_provide_thread(func):
+        def __provider_thread__():
+            queues = reader.queues()
+            dev_cnt = len(queues)
+            print('device count: {}'.format(dev_cnt))
+            idx = 0
+            for tensors in func():
+                array = core.LoDTensorArray()
+                for item in tensors:
+                    if not isinstance(item, core.LoDTensor):
+                        tmp = core.LoDTensor()
+                        tmp.set(item, core.CPUPlace())
+                        item = tmp
+
+                    array.append(item)
+
+                if reader.exited:
+                    break
+
+                queues.push(idx, array)
+                idx = (idx + 1) % dev_cnt
+
+                if reader.exited:
+                    break
+
+            queues.close()
+
+        reader.thread = threading.Thread(target=__provider_thread__)
+        reader.thread.daemon = True
+        reader.thread.start()
+
+    def __set_tensor_provider__(func):
+        reader.tensor_provider = func
+
+    def __set_paddle_reader__(paddle_reader):
+        with program_guard(Program(), Program()):
+            actual_feed_list = feed_list
+            if actual_feed_list is None:
+                actual_feed_list = []
+                counter = 0
+                for dtype, shape, lod_level in zip(dtypes, shapes, lod_levels):
+                    name = str(counter)
+                    actual_feed_list.append(
+                        data(
+                            name=name,
+                            dtype=dtype,
+                            shape=shape,
+                            lod_level=lod_level))
+                    counter += 1
+
+            data_names = [feed_data.name for feed_data in actual_feed_list]
+            feeder = DataFeeder(
+                feed_list=actual_feed_list, place=core.CPUPlace())
+            paddle_reader = feeder.decorate_reader(
+                paddle_reader, multi_devices=False)
 
     def __reset__():
         current_reset_method()
