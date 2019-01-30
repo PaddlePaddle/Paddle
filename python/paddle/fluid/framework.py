@@ -445,11 +445,16 @@ class Variable(object):
 
     @property
     def _stop_gradient(self):
-        return self._ivar.stop_gradient
+        if _in_imperative_mode():
+            return self._ivar.stop_gradient
+        else:
+            return self.stop_gradient
 
     @_stop_gradient.setter
     def _stop_gradient(self, s):
-        self._ivar.stop_gradient = s
+        if _in_imperative_mode():
+            self._ivar.stop_gradient = s
+        self.stop_gradient = s
 
     @property
     def persistable(self):
@@ -1310,6 +1315,9 @@ class Block(object):
             outputs=kwargs.get("outputs", None),
             attrs=kwargs.get("attrs", None))
         self.ops.append(op)
+
+        # TODO(minqiyang): add stop_gradient support in static mode too.
+        # currently, we only support stop_gradient in imperative mode.
         self._trace_op(op, kwargs.get("stop_gradient", False))
         return op
 
