@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/mkldnn_placement_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_placement_pass.h"
 #include <string>
 
 namespace paddle {
