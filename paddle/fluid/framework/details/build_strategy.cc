@@ -66,6 +66,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("fuse_elewise_add_act_pass");
     }
 
+    // for single card training, fuse_all_reduce_ops is unnecessary.
     if (strategy.fuse_all_reduce_ops_) {
       VLOG(10) << "Add fuse_gradient_space_pass";
       AppendPass("fuse_gradient_space_pass");

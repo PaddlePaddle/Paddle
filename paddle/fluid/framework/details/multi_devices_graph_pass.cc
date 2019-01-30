@@ -140,6 +140,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
   all_vars_.clear();
 
   loss_var_name_ = Get<const std::string>(kLossVarName);
+  VLOG(10) << "Init MultiDevSSAGraphBuilder, loss name: " << loss_var_name_;
   places_ = Get<const std::vector<platform::Place>>(kPlaces);
   local_scopes_ = Get<const std::vector<Scope *>>(kLocalScopes);
   strategy_ = Get<const BuildStrategy>(kStrategy);
@@ -170,6 +171,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
 
   bool is_forwarding = true;
   bool insert_collection_ops = NeedCollectiveOps();
+  bool has_inserted_collection_ops = false;
 
   for (ir::Node *node : sorted_ops) {
     if (DealWithSpecialOp(&result, node)) {
@@ -184,7 +186,6 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
         // It also assumes backward op will always follow the forward op in
         // the block.
         is_forwarding = false;
-        VLOG(10) << node->Name() << "ScaleGrad";
       } else {
         CreateComputationalOps(&result, node, places_.size());
       }
@@ -204,18 +205,23 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
               boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
                   OpProtoAndCheckerMaker::OpRoleVarAttrName()));
           PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
-
           for (size_t i = 0; i < backward_vars.size(); i += 2) {
             auto &p_name = backward_vars[i];
             auto &g_name = backward_vars[i + 1];
             VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
 
             InsertCollectiveOp(&result, p_name, g_name);
+            has_inserted_collection_ops = true;
           }
         } catch (boost::bad_get e) {
         }
       }
     }
+  }
+
+  if (insert_collection_ops) {
+    PADDLE_ENFORCE(has_inserted_collection_ops,
+                   "Doesn't find trainable parameter's gradient.");
   }
 
   InsertPostprocessOps(&result);
@@ -230,6 +236,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
    * Only variables should be the leaves of graph.
    */
   AddOutputToLeafOps(&result);
+
   result.Erase(kGraphOps);
   return graph;
 }
@@ -260,6 +267,11 @@ void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
     this->CreateScaleLossGradOp(result, loss_grad_name, node->outputs[0],
                                 loss_scale, out_dtype);
   }
+}
+
+bool MultiDevSSAGraphBuilderBase::DealWithSpecialOp(ir::Graph *result,
+                                                    ir::Node *node) const {
+  return false;
 }
 
 std::vector<ir::Node *> MultiDevSSAGraphBuilderBase::SortOperations(
@@ -492,8 +504,7 @@ bool MultiDevSSAGraphBuilderBase::IsScaleLossOp(ir::Node *node) const {
   VLOG(1) << node->Name() << " "
           << boost::get<int>(
                  node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
-  // node->Op()->HasAttr(OpProtoAndCheckerMaker::OpRoleAttrName());
-  return node->Op() && !loss_var_name_.empty() &&
+  return !loss_var_name_.empty() && node->Op() &&
          boost::get<int>(
              node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
              (static_cast<int>(OpRole::kBackward) |
@@ -948,11 +959,6 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
   }
 }
 
-bool FuseAllReduceSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
-                                                     ir::Node *node) const {
-  return false;
-}
-
 void FuseAllReduceSSAGraphBuilder::CheckGraph(const ir::Graph &graph) const {
   PADDLE_ENFORCE(graph.Has(kParamsAndGrads));
 }
@@ -970,14 +976,26 @@ void FuseAllReduceSSAGraphBuilder::InsertCollectiveOp(
         result->Get<ParamsAndGrads>(kParamsAndGrads).count(p_name), 1);
     PADDLE_ENFORCE_EQ(grads_allreduce_.count(g_name), 0);
     grads_allreduce_.emplace(g_name, allreduce_op_handle);
-    VLOG(10) << "Insert all_reduce:(" << g_name << ")";
   }
 }
 
 void FuseAllReduceSSAGraphBuilder::InsertPostprocessOps(
     ir::Graph *result) const {
+  if (!NeedCollectiveOps()) {
+    return;
+  }
+
+  VLOG(10) << "Insert fused_all_reduce";
   PADDLE_ENFORCE_EQ(result->Get<ParamsAndGrads>(kParamsAndGrads).size(),
                     grads_allreduce_.size());
+
+  // This implemention is slower.
+  auto &op_handles = result->Get<GraphOps>(kGraphOps);
+  auto remove_op_handle = [&op_handles](OpHandleBase *op) {
+    auto iter = std::find(op_handles.begin(), op_handles.end(), op);
+    PADDLE_ENFORCE(iter != op_handles.end());
+    op_handles.erase(iter);
+  };
 
   std::vector<VarHandleBase *> inputs;
   std::vector<VarHandleBase *> outputs;
@@ -997,17 +1015,20 @@ void FuseAllReduceSSAGraphBuilder::InsertPostprocessOps(
     std::for_each(
         op_handle.second->Outputs().begin(), op_handle.second->Outputs().end(),
         [=](VarHandleBase *var_handle) { var_handle->ClearGeneratedOp(); });
+
     result->RemoveNode(op_handle.second->Node());
+    remove_op_handle(op_handle.second);
   }
-  CreateFusedAllReduceOp(result, inputs, outputs, grads_allreduce_.size());
+
+  CreateFusedAllReduceOp(inputs, outputs, grads_allreduce_.size(), result);
 }
 
 void FuseAllReduceSSAGraphBuilder::CreateFusedAllReduceOp(
-    ir::Graph *result, const std::vector<VarHandleBase *> inputs,
-    const std::vector<VarHandleBase *> outputs,
-    const size_t num_of_all_reduce) const {
+    const std::vector<VarHandleBase *> &inputs,
+    const std::vector<VarHandleBase *> &outputs, const size_t num_of_all_reduce,
+    ir::Graph *result) const {
   auto *op_node =
-      result->CreateEmptyNode("fused_allreduce", ir::Node::Type::kOperation);
+      result->CreateEmptyNode("fused_all_reduce", ir::Node::Type::kOperation);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   result->Get<GraphOps>(kGraphOps).emplace_back(new FusedAllReduceOpHandle(
       op_node, local_scopes_, places_, num_of_all_reduce, nccl_ctxs_));
@@ -1020,6 +1041,7 @@ void FuseAllReduceSSAGraphBuilder::CreateFusedAllReduceOp(
   for (auto in : inputs) {
     op_handle->AddInput(in);
   }
+
   for (auto out : outputs) {
     op_handle->AddOutput(out);
   }

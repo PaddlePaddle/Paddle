@@ -81,7 +81,7 @@ class SSAGraghBuilderWithChecker : public ir::Pass {
       for (auto ready_var : ready_vars) {
         pending_vars.erase(ready_var);
         for (auto *op : ready_var->PendingOps()) {
-          auto &deps = --pending_ops[op];
+          auto &deps = --pending_ops.at(op);
           if (deps == 0) {
             ready_ops.insert(op);
           }

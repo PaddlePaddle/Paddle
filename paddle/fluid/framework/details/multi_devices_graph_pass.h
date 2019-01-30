@@ -45,7 +45,7 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
   virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const = 0;
 
-  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const = 0;
+  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
 
   virtual void InsertPostprocessOps(ir::Graph *result) const = 0;
 
@@ -104,10 +104,6 @@ class AllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
  protected:
   virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const;
-
-  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const {
-    return false;
-  }
 
   virtual void InsertPostprocessOps(ir::Graph *result) const {}
 };
@@ -178,16 +174,14 @@ class FuseAllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
   virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const;
 
-  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
-
   virtual void InsertPostprocessOps(ir::Graph *result) const;
 
   virtual void CheckGraph(const ir::Graph &graph) const;
 
-  void CreateFusedAllReduceOp(ir::Graph *result,
-                              const std::vector<VarHandleBase *> inputs,
-                              const std::vector<VarHandleBase *> outputs,
-                              const size_t num_of_all_reduce) const;
+  void CreateFusedAllReduceOp(const std::vector<VarHandleBase *> &inputs,
+                              const std::vector<VarHandleBase *> &outputs,
+                              const size_t num_of_all_reduce,
+                              ir::Graph *result) const;
 
   mutable std::unordered_map<std::string, OpHandleBase *> grads_allreduce_;
 };
