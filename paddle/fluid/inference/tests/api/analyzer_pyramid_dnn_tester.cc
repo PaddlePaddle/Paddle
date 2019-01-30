@@ -16,7 +16,6 @@
 
 namespace paddle {
 namespace inference {
-using contrib::AnalysisConfig;
 
 struct DataRecord {
   std::vector<std::vector<int64_t>> query_basic, query_phrase, title_basic,
@@ -103,7 +102,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   }
 }
 
-void SetConfig(contrib::AnalysisConfig *cfg) {
+void SetConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model);
   cfg->DisableGpu();
   cfg->SwitchSpecifyInputNames();
@@ -123,7 +122,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 TEST(Analyzer_Pyramid_DNN, profile) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
   std::vector<PaddleTensor> outputs;
 
@@ -147,7 +146,7 @@ TEST(Analyzer_Pyramid_DNN, profile) {
 
 // Check the fuse status
 TEST(Analyzer_Pyramid_DNN, fuse_statis) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
 
   int num_ops;
@@ -158,7 +157,7 @@ TEST(Analyzer_Pyramid_DNN, fuse_statis) {
 
 // Compare result of NativeConfig and AnalysisConfig
 TEST(Analyzer_Pyramid_DNN, compare) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

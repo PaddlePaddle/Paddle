@@ -26,6 +26,7 @@ limitations under the License. */
 #include "ops/fill_constant_op.h"
 #include "ops/mean_op.h"
 #include "ops/mul_op.h"
+#include "ops/pool2d_op.h"
 #include "ops/scale_op.h"
 #include "ops/softmax_op.h"
 #include "ops/top_k_op.h"
