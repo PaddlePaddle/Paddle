@@ -50,6 +50,19 @@ class TestDetection(unittest.TestCase):
             self.assertEqual(out.shape[-1], 6)
         print(str(program))
 
+    def test_box_coder_api(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[4], dtype='float32')
+            y = layers.data(name='z', shape=[4], dtype='float32', lod_level=1)
+            bcoder = layers.box_coder(
+                prior_box=x,
+                prior_box_var=[0.1, 0.2, 0.1, 0.2],
+                target_box=y,
+                code_type='encode_center_size')
+            self.assertIsNotNone(bcoder)
+        print(str(program))
+
     def test_detection_api(self):
         program = Program()
         with program_guard(program):

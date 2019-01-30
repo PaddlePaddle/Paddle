@@ -16,6 +16,7 @@
 
 #include <cmath>
 #include <type_traits>
+#include <vector>
 #include "paddle/fluid/operators/jit/kernel_base.h"
 
 namespace paddle {
@@ -90,6 +91,30 @@ void SeqPool(const T* x, T* y, const seq_pool_attr_t* attr) {
   }
 }
 
+template <typename T>
+void ASum(const T* x, T* res, int n);
+
+template <typename T>
+void Softmax(const T* x, T* y, int n, int bs) {
+  std::vector<T> entities(bs);
+  for (int i = 0; i < bs; ++i) {
+    entities[i] = x[i * n];
+    for (int c = 1; c < n; ++c) {
+      entities[i] = x[i * n + c] > entities[i] ? x[i * n + c] : entities[i];
+    }
+    for (int c = 0; c < n; ++c) {
+      y[i * n + c] = x[i * n + c] - entities[i];
+    }
+  }
+  VExp(y, y, n * bs);
+  for (int i = 0; i < bs; ++i) {
+    T sum;
+    ASum(&y[i * n], &sum, n);
+    sum = static_cast<T>(1) / sum;
+    VScal(&sum, &y[i * n], &y[i * n], n);
+  }
+}
+
 #define DECLARE_MKL_KERNEL(name, tuples)                             \
   template <typename T>                                              \
   class name##Kernel : public KernelMore<tuples<T>> {                \
@@ -116,6 +141,8 @@ DECLARE_MKL_KERNEL(VTanh, XYNTuples);
 DECLARE_MKL_KERNEL(VSquare, XYNTuples);
 
 DECLARE_MKL_KERNEL(SeqPool, SeqPoolTuples);
+
+DECLARE_MKL_KERNEL(Softmax, SoftmaxTuples);
 
 #undef DECLARE_MKL_KERNEL
 

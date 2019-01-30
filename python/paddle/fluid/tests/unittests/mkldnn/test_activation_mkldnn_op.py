@@ -17,9 +17,9 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest
 from scipy.special import expit
-from test_activation_op import TestRelu, TestTanh, TestSqrt, TestAbs
+from paddle.fluid.tests.unittests.test_activation_op import TestRelu, TestTanh, TestSqrt, TestAbs
 
 
 class TestMKLDNNReluDim2(TestRelu):

@@ -16,8 +16,8 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from op_test import OpTest
-from test_elementwise_add_op import *
+from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.test_elementwise_add_op import *
 '''
 Some tests differ from the tests defined in test_elementwise_add_op.py
 because MKLDNN does not support tensors of number of dimensions 3.
