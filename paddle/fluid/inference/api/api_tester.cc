@@ -61,7 +61,10 @@ TEST(paddle_inference_api, demo) {
   predictor->Run({}, &outputs);
 }
 
-TEST(PaddleBuf, zero_length) { PaddleBuf buf(0); }
+TEST(PaddleBuf, zero_length) {
+  PaddleBuf buf(0);
+  ASSERT_EQ(buf.length(), 0)
+};
 
 TEST(PaddleBuf, Resize) {
   PaddleBuf buf;
