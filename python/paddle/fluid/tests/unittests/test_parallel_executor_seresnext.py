@@ -277,7 +277,7 @@ class TestResnet(TestParallelExecutorBase):
                                   use_cuda=True,
                                   use_reduce=False,
                                   iter=20,
-                                  delta2=1e-6):
+                                  delta2=1e-5):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
@@ -308,7 +308,7 @@ class TestResnet(TestParallelExecutorBase):
             optimizer=optimizer)
 
         self.assertAlmostEquals(
-            np.mean(parallel_first_loss), single_first_loss[0], delta=1e-6)
+            np.mean(parallel_first_loss), single_first_loss[0], delta=1e-5)
         self.assertAlmostEquals(
             np.mean(parallel_last_loss), single_last_loss[0], delta=delta2)
 

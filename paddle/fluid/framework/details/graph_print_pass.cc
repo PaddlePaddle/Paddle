@@ -74,40 +74,6 @@ std::vector<T*> FilterByNodeWrapper(const Container& con) {
   return ret;
 }
 
-// bool DetectCircleRecursive(const std::map<ir::Node*,
-// std::unordered_set<ir::Node*>>, std::unordered_set<ir::Node*>* visited,
-// std::unordered_set<ir::Node*> *in_trace, std::vector<std::vector<ir::Node*>>*
-// circles) {
-//   if (visited->find(node) == visited->end()) {
-//     visited->insert(node);
-//     in_trace->insert(node);
-
-//     for (ir::Node *in : adj_list.at(node)) {
-//       if (visited->find(in) == visited->end() &&
-//           HasCircleHelper(in, adj_list, visited, in_trace)) {
-//         return true;
-//       } else if (in_trace->find(in) != in_trace->end()) {
-//         circles->push_back(in_trace);
-//         return true;
-//       }
-//     }
-//   }
-//   in_trace->erase(node);
-//   return false;
-// }
-
-// bool DetectCircle(const std::map<ir::Node*, std::unordered_set<ir::Node*>>&
-// adj_list, std::vector<std::vector<ir::Node*>>* circles) {
-//   std::unordered_set<ir::Node *> visited;
-//   std::unordered_set<ir::Node *> in_trace;
-//   bool has_circle = false;
-//   for(auto& adj : adj_list) {
-//     has_circle &= DetectCircleRecursive(adj, adj_list,&visited, &in_trace,
-//     circles);
-//   }
-//   return has_circle;
-// }
-
 std::unordered_map<ir::Node*, int> SSAGraphPrinterImpl::ToGraphvizNode(
     const ir::Graph& graph) const {
   // Convert to GraphvizNode format
@@ -125,8 +91,6 @@ std::unordered_map<ir::Node*, int> SSAGraphPrinterImpl::ToGraphvizNode(
       std::unique_ptr<GraphvizOp> op(new GraphvizOp(node, op_id++));
       ops[node] = op.get();
       graphviz_nodes.emplace(std::move(op));
-      // graphviz_nodes.emplace(new GraphvizOp(node, op_id++));
-      // ops.emplace(std::make_pair(node, graphviz_nodes.back().get()));
     } else {
       PADDLE_THROW("Unknown op type");
     }
