@@ -1086,7 +1086,7 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
           auto encoded_grad_name = g_name + "@ENCODED@DGC";
           CreateDGCOp(result, places_.size(), p_name, g_name,
                       encoded_grad_name);
-          CreateAllReduceOp(result, g_name,"");
+          CreateAllReduceOp(result, g_name, encoded_grad_name);
 #else
           PADDLE_ENFORCE(false, "Compiled withoud cuda!");
 #endif
