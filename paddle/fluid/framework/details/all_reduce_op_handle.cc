@@ -216,31 +216,35 @@ void AllReduceOpHandle::_RunImpl() {
       auto stream = nccl_ctx.stream();
       auto comm = nccl_ctx.comm_;
 
+      VLOG(10) << "before all reduce buffer:" << buffer << ", numel:" << numel
+               << ", dev_id:" << dev_id << ", dtype:" << dtype
+               << ", place:" << p;
+
       all_reduce_calls.emplace_back([=] {
         PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
             buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
             comm, stream));
       });
-
-      this->RunAndRecordEvent([&] {
-        if (all_reduce_calls.size() == 1UL) {
-          // Do not use NCCLGroup when manage NCCL by per thread per device
-          all_reduce_calls[0]();
-        } else {
-          platform::NCCLGroupGuard guard;
-          for (auto &call : all_reduce_calls) {
-            call();
-          }
+    }
+    this->RunAndRecordEvent([&] {
+      if (all_reduce_calls.size() == 1UL) {
+        // Do not use NCCLGroup when manage NCCL by per thread per device
+        all_reduce_calls[0]();
+      } else {
+        platform::NCCLGroupGuard guard;
+        for (auto &call : all_reduce_calls) {
+          call();
         }
-      });
+      }
+    });
 
-      if (FLAGS_sync_nccl_allreduce) {
-        for (auto &p : places_) {
-          int dev_id = boost::get<platform::CUDAPlace>(p).device;
-          auto &nccl_ctx = nccl_ctxs_->at(dev_id);
-          auto stream = nccl_ctx.stream();
-          cudaStreamSynchronize(stream);
-        }
+    if (FLAGS_sync_nccl_allreduce) {
+      for (auto &p : places_) {
+        int dev_id = boost::get<platform::CUDAPlace>(p).device;
+        auto &nccl_ctx = nccl_ctxs_->at(dev_id);
+        // auto stream = nccl_ctx.stream();
+        // cudaStreamSynchronize(stream);
+        nccl_ctx.Wait();
       }
     }
 
