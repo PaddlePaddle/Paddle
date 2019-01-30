@@ -64,7 +64,6 @@ def lstmp(
                 new_a[i] = max(new_a[i], -1.0 * clip)
                 new_a[i] = min(new_a[i], clip)
             new_a = np.reshape(new_a, a.shape)
-            #print('new' + str(new_a))
             return new_a
 
         if cell_clip > 0.0:
@@ -103,9 +102,7 @@ def lstmp(
         # compute one sequence
         seq_len = lod[0][i]
         x = input[offset[i]:offset[i + 1], :]
-        #r_pre = np.dot(h0[i], w_rh)  # 1 x P
         r_pre = h0[i]
-        #r_pre = act_proj(r_pre)
         c_pre = c0[i]  # 1 x D
         for j in range(seq_len):
             # compute one step
