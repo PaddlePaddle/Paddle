@@ -1,4 +1,6 @@
-PaddlePaddle supports offline INT8 calibration to accelerate the inference speed. In this document, we provide the instructions on how to enable INT8 calibration and show the ResNet-50 and MobileNet-V1 results in both accuracy and performance.
+# Offline INT8 Calibration Tool
+
+PaddlePaddle supports offline INT8 calibration to accelerate the inference speed. In this document, we provide the instructions on how to enable INT8 calibration and show the ResNet-50 and MobileNet-V1 results in accuracy.
 
 ## 0. Prerequisite
 You need to install at least PaddlePaddle-1.3 python package `pip install paddlepaddle==1.3`.
