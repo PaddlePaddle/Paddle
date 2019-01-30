@@ -294,6 +294,7 @@ class OpTest(unittest.TestCase):
         # fetch_list = map(block.var, fetch_list)
         if not isinstance(fetch_list[0], fluid.framework.Variable):
             fetch_list = list(map(block.var, fetch_list))
+        #import pdb; pdb.set_trace()
         outs = executor.run(program,
                             feed=feed_map,
                             fetch_list=fetch_list,
@@ -468,8 +469,10 @@ class OpTest(unittest.TestCase):
                 delta=numeric_grad_delta,
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
+        #import pdb; pdb.set_trace()
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set)
+        #import pdb; pdb.set_trace()
 
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                               max_relative_error,
