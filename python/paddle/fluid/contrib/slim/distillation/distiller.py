@@ -21,9 +21,9 @@ __all__ = ['FSPDistiller']
 
 
 class FSPDistiller(object):
-    def __init__(self):
-        self.student_pairs = None
-        self.teacher_pairs = None
+    def __init__(self, student_pairs=None, teacher_pairs=None):
+        self.student_pairs = student_pairs
+        self.teacher_pairs = teacher_pairs
 
     def _feature_map_pairs(self, graph):
         pairs = []
@@ -49,27 +49,34 @@ class FSPDistiller(object):
 
     def distiller_graph(self, student, teachers, optimizer, place):
         """
-        Merge student and teacher into training graph.
+        Generate distillation training graph.
         """
         teacher = teachers[0]
         for var in teacher.program.list_vars():
             var.stop_gradient = True
+        # step 1: merge student and teacher into graph
         graph = student.clone()
         graph.merge(teacher)
-        s_pairs, s_sizes = self._feature_map_pairs(student)
-        t_pairs, t_sizes = self._feature_map_pairs(teacher)
-        distiller_pass = FSPDistillerPass(s_pairs, s_sizes, t_pairs, t_sizes,
-                                          optimizer, place)
+        if not self.student_pairs:
+            self.student_pairs = self._feature_map_pairs(student)
+        if not self.teacher_pairs:
+            self.teacher_pairs = self._feature_map_pairs(teacher)
+        # step 2: add fsp loss and backward ops
+        distiller_pass = FSPDistillerPass(self.student_pairs,
+                                          self.teacher_pairs, optimizer, place)
         dis_graph = distiller_pass.apply(graph)
         return dis_graph
 
 
 class FSPDistillerPass(object):
-    def __init__(self, s_pairs, s_sizes, t_pairs, t_sizes, optimizer, place):
+    '''
+    Convert graph to fsp distillation training graph
+    by adding fsp loss and backward operators.
+    '''
+
+    def __init__(self, s_pairs, t_pairs, optimizer, place):
         self.s_pairs = s_pairs
-        self.s_sizes = s_sizes
         self.t_pairs = t_pairs
-        self.t_sizes = t_sizes
         self.optimizer = optimizer
         self.place = place
 
@@ -81,10 +88,10 @@ class FSPDistillerPass(object):
             for s_pair, t_pair in zip(self.s_pairs, self.t_pairs):
                 s_pair_start = ret_graph.get_var(s_pair[0])
                 s_pair_end = ret_graph.get_var(s_pair[1])
-                s_fsp_matrix = self.fsp_matrix(s_pair_start, s_pair_end)
+                s_fsp_matrix = self._fsp_matrix(s_pair_start, s_pair_end)
                 t_pair_start = ret_graph.get_var(t_pair[0])
                 t_pair_end = ret_graph.get_var(t_pair[1])
-                t_fsp_matrix = self.fsp_matrix(t_pair_start, t_pair_end)
+                t_fsp_matrix = self._fsp_matrix(t_pair_start, t_pair_end)
                 l2_loss = layers.mean(
                     layers.square(s_fsp_matrix - t_fsp_matrix))
                 losses.append(l2_loss)
@@ -92,6 +99,8 @@ class FSPDistillerPass(object):
             self.optimizer.minimize(loss)
 
             exe = Executor(self.place)
+            # init variable created when append backward ops. Such as leaning rate
+            # and accumulators in some optimizer.
             exe.run(startup_program, scope=ret_graph.scope)
             ret_graph.out_nodes['loss'] = loss.name
         return ret_graph

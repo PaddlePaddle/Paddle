@@ -28,13 +28,14 @@ class FSPDistillationStrategy(Strategy):
         self.distiller = distiller
         self.train_graph_backup = None
 
-    def on_compression_begin(self, context):
-        self.train_graph_backup = context.train_graph
+    def on_epoch_begin(self, context):
+        if self.start_epoch == context.epoch_id:
+            self.train_graph_backup = context.train_graph
+            graph = self.distiller.distiller_graph(
+                context.eval_graph, context.teacher_graphs, context.optimizer,
+                context.place)
+            context.train_graph = graph
 
-        graph = self.distiller.distiller_graph(context.eval_graph,
-                                               context.teacher_graphs,
-                                               context.optimizer, context.place)
-        context.train_graph = graph
-
-    def on_compression_end(self, context):
-        context.train_graph = self.train_graph_backup
+    def on_epoch_end(self, context):
+        if context.epoch_id == (self.end_epoch - 1):
+            context.train_graph = self.train_graph_backup
