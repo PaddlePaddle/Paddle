@@ -14,103 +14,23 @@ python_list=(
 function use_cpu(){
    while true
     do
-     read -p "是否安装CPU版本的PaddlePaddle？(y/n)， 或使用ctrl + c退出: " cpu_option
+     read -p "是否安装CPU版本的PaddlePaddle？(y/n)" cpu_option
      cpu_option=`echo $cpu_option | tr 'A-Z' 'a-z'`
      if [[ "$cpu_option" == "" || "$cpu_option" == "n" ]];then
-        echo "退出安装中...."
+        echo "退出安装中..."
         exit
      else
         GPU='cpu'
-        echo "为您安装CPU版本"
+        echo "将为您安装CPU版本的PaddlePaddle"
         break
      fi
     done
 }
 
-function checkMacPython2(){
-    while true
-       do
-          read -p "未发现除MacOS自带的python外的可用python，
-                   请安装brew或从pypi.org下载的python2.7.15或更高版本，
-                   或 输入您安装的python路径（可以使用ctrl + c后退出后使用which python查询）,
-                   或 使用ctrl + c退出: " python_root
-          python_version=`$python_root --version 2>&1 1>&1`
-          if [ $? == "0" ];then
-            :
-          else
-            python_version=""
-          fi
-          check_python=`echo $python_version | grep "Python 2"`
-          echo $check_python
-          if [ "$python_version" == "" ] || [ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ] ;then
-               python_version=""
-          elif [ -n "$check_python" ];then
-              while true
-                do
-                  read -p "找到：$python_version, 是否使用：(y/n)，输入n来输入自定义使用的python路径，或者按ctrl + c退出： " use_python
-                  use_python=`echo $use_python | tr 'A-Z' 'a-z'`
-                  if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
-                       use_python="y"
-                       break
-                  elif [ "$use_python" == "n" ];then
-                       python_root=""
-                       break
-                  else
-                      echo "输入错误，请重新输入"
-                  fi
-                done
-              if [ "$use_python" == "y" ];then
-                break
-              fi
-          else
-               echo "您输入Python的不是Python2"
-               python_version=""
-          fi
-       done
-}
-
-function checkMacPython3(){
-    while true
-       do
-          read -p "未发现可用的python3，
-                   请安装brew或从pypi.org下载的python3或更高版本，
-                   或输入您安装的python3路径（可使用which python3查询），
-                   或使用ctrl + c退出: " python_root
-          python_version=`$python_root --version  2>&1 1>&1`
-          if [ $? == "0" ];then
-              :
-          else
-              python_version=""
-          fi
-          check_python=`echo $python_version | grep "Python 3"`
-          if [ "$python_version" == "" ] || [ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ] ;then
-               python_version=""
-          elif [ -n "$check_python" ] ;then
-              while true
-                do
-                  read -p "找到：$python_version, 是否使用：(y/n)，输入n来输入自定义使用的python路径，或者按ctrl + c退出： " use_python
-                  use_python=`echo $use_python | tr 'A-Z' 'a-z'`
-                  if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
-                       use_python="y"
-                       break
-                  elif [ "$use_python" == "n" ];then
-                        python_root=""
-                        break
-                  else
-                      echo "输入错误，请重新输入"
-                  fi
-                done
-              if [ "$use_python" == "y" ];then
-                    break
-              fi
-          else
-              echo "您输入Python的不是Python2"
-              python_version=""
-          fi
-       done
-}
-
 function checkLinuxCUDNN(){
+   echo
+   read -n1 -p "请按回车键进行下一步..."
+   echo
    while true
    do
        version_file='/usr/local/cuda/include/cudnn.h'
@@ -122,22 +42,25 @@ function checkLinuxCUDNN(){
            if [ "$version_file" != "" ];then
                CUDNN=`cat ${version_file} | grep CUDNN_MAJOR -A 2|awk 'NR==1{print $NF}'`
            else
-               echo "未找到cuda/include/cudnn.h文件"
+               echo "检测结果：未在常规路径下找到cuda/include/cudnn.h文件"
                while true
                do
-                  read -p "请提供cudnn.h的路径:" cudnn_version
+                  read -p "请核实cudnn.h位置，并在此输入路径（请注意，路径需要输入到“cudnn.h”这一级）:" cudnn_version
+                  echo
                   if [ "$cudnn_version" == "" ] || [ ! -f "$cudnn_version" ];then
-                        read -p "未找到cuDNN,只能安装cpu版本的PaddlePaddle，是否安装（y/n）, 或使用ctrl + c退出:" cpu_option
+                        read -p "仍未找到cuDNN，输入y将安装CPU版本的PaddlePaddle，输入n可重新录入cuDNN路径，请输入（y/n）" cpu_option
+                        echo
                         cpu_option=`echo $cpu_option | tr 'A-Z' 'a-z'`
                         if [ "$cpu_option" == "y" -o "$cpu_option" == "" ];then
                             GPU='cpu'
                             break
                         else
-                            echo "重新输入..."
+                            echo "请重新输入"
+                            echo
                         fi
                   else
                      CUDNN=`cat $cudnn_version | grep CUDNN_MAJOR |awk 'NR==1{print $NF}'`
-                     echo "您的CUDNN版本是${CUDNN}"
+                     echo "检测结果：找到cudnn.h"
                      break
                   fi
                  done
@@ -147,7 +70,9 @@ function checkLinuxCUDNN(){
            fi
        fi
        if [ "$CUDA" == "9" -a "$CUDNN" != "7" ];then
-           echo CUDA9目前只支持CUDNN7
+           echo
+           echo "目前CUDA9下仅支持cuDNN7，暂不支持您机器上的CUDNN${CUDNN}。您可以访问NVIDIA官网下载适合版本的CUDNN，请ctrl+c退出安装进程。按回车键将为您安装CPU版本的PaddlePaddle"
+           echo
           use_cpu()
           if [ "$GPU"=="cpu" ];then
              break
@@ -155,10 +80,13 @@ function checkLinuxCUDNN(){
        fi
 
        if [ "$CUDNN" == 5 ] || [ "$CUDNN" == 7 ];then
-          echo "您的CUDNN版本是CUDNN$CUDNN"
+          echo
+          echo "您的CUDNN版本是: CUDNN$CUDNN"
           break
        else
-          echo "你的CUDNN${CUDNN}版本不支持,目前支持CUDNN5/7"
+          echo
+          read -n1 -p "目前支持的CUDNN版本为5和7,暂不支持您机器上的CUDNN${CUDNN}，将为您安装CPU版本的PaddlePaddle,请按回车键开始安装"
+          echo
           use_cpu
           if [ "$GPU"=="cpu" ];then
              break
@@ -187,22 +115,22 @@ function checkLinuxCUDA(){
        fi
 
        if [ "$tmp_cuda" != "" ];then
-         echo "找到CUDA $tmp_cuda"
+         echo "检测结果：找到CUDA $tmp_cuda"
        fi
        if [ "$tmp_cudai8" != "" ];then
-         echo "找到CUDA $tmp_cuda8"
+         echo "检测结果：找到CUDA $tmp_cuda8"
        fi
        if [ "$tmp_cuda9" != "" ];then
-         echo "找到CUDA $tmp_cuda9"
+         echo "检测结果：找到CUDA $tmp_cuda9"
        fi
 
        if [ "$CUDA" == "" ];then
-            echo "没有找到cuda/version.txt文件"
+            echo "检测结果：没有在常规路径下找到cuda/version.txt文件"
             while true
             do
-                read -p "请提供cuda version.txt的路径:" cuda_version
+                read -p "请输入cuda/version.txt的路径:" cuda_version
                 if [ "$cuda_version" == "" || ! -f "$cuda_version" ];then
-                    read -p "未找到CUDA,只能安装cpu版本的PaddlePaddle，是否安装（y/n）,  或使用ctrl + c退出" cpu_option
+                    read -p "仍未找到CUDA，输入y将安装CPU版本的PaddlePaddle，输入n可重新录入CUDA路径，请输入（y/n）" cpu_option
                     cpu_option=`echo $cpu_option | tr 'A-Z' 'a-z'`
                     if [ "$cpu_option" == "y" || "$cpu_option" == "" ];then
                         GPU='cpu'
@@ -213,7 +141,7 @@ function checkLinuxCUDA(){
                 else
                     CUDA=`cat $cuda_version | grep 'CUDA Version'|awk -F '[ .]' '{print $3}'`
                     if [ "$CUDA" == "" ];then
-                        echo "未找到CUDA，重新输入..."
+                        echo "未能在version.txt中找到CUDA相关信息"
                     else
                         break
                     fi
@@ -228,7 +156,8 @@ function checkLinuxCUDA(){
           echo "您的CUDA版本是${CUDA}"
           break
        else
-          echo "你的CUDA${CUDA}版本不支持,目前支持CUDA8/9"
+          echo "目前支持CUDA8/9，暂不支持您的CUDA${CUDA}，将为您安装CPU版本的PaddlePaddle"
+          echo
           use_cpu
        fi
 
@@ -242,28 +171,32 @@ function checkLinuxMathLibrary(){
   while true
     do
       if [ "$AVX" ==  "" ];then
+        echo "正在检测您环境中是否存在AVX指令集..."
+        echo
+        echo "检测结果：您电脑上没有AVX指令集，目前针对无AVX指令集的环境，我们仅提供支持mkl数学库的PaddlePaddle，将为您安装此版本的PaddlePaddle"
         math='mkl'
         break
       elif [ "$GPU" == "gpu" ];then
         math='mkl'
+        echo "检测到您的机器上配备GPU，推荐您使用mkl数学库"
         break
       else
-        read -p "请输入您想使用哪个数学库？OpenBlas或MKL？：
-            输入1：openblas
-            输入2：mkl
-            请选择：" math
+        read -p "请输入您希望使用的数学库：
+            1：openblas 一个高性能多核 BLAS 库
+            2：mkl（推荐） 英特尔数学核心函数库
+            => 请输入数字1或2。如输入其他字符或直接回车，将会默认选择【 2. mkl 】 。请在这里输入并回车：" math
           if [ "$math" == "" ];then
             math="mkl"
-            echo "为您安装mkl"
+            echo "您选择了数字【2】"
             break
           fi
           if [ "$math" == "1" ];then
             math=openblas
-            echo "为您安装openblas"
+            echo "您选择了数字【1】"
             break
           elif [ "$math" == "2" ];then
             math=mkl
-            echo "为您安装mkl"
+            echo "您选择了数字【2】"
             break
           fi
           echo "输入错误，请再次输入"
@@ -272,22 +205,23 @@ function checkLinuxMathLibrary(){
 }
 
 function checkLinuxPaddleVersion(){
+  read -n1 -p "请按回车键继续..."
   while true
     do
-      read -p "请选择Paddle版本：
-          输入1：develop
-          输入2：release-${release_version}
-          请选择：" paddle_version
+      read -p "
+               1. 开发版：对应Github上develop分支，如您需要开发、或希望使用PaddlePaddle最新功能，请选用此版本
+               2. 稳定版（推荐）：如您无特殊开发需求，建议使用此版本，目前最新的版本号为 ${release_version}
+                => 请输入数字1或2。如输入其他字符或直接回车，将会默认选择【 2. 稳定版 】 。请在这里输入并回车：" paddle_version
         if [ "$paddle_version" == "" ];then
           paddle_version="release-${release_version}"
-          echo "为您安装release-${release_version}"
+          echo "您选择了数字【2】，为您安装release-${release_version}"
           break
         fi
         if [ "$paddle_version" == "1" ];then
-          echo "为您安装develop"
+          echo "您选择了数字【1】，将为您安装开发版"
           break
         elif [ "$paddle_version" == "2" ];then
-          echo "为您安装release-${release_version}"
+          echo "您选择了数字【2】，为您安装release-${release_version}"
           break
         fi
         echo "输入错误，请再次输入"
@@ -297,10 +231,10 @@ function checkLinuxPaddleVersion(){
 function checkLinuxPip(){
   while true
     do
-       echo "请输入您要使用的pip目录（您可以使用which pip来查看）："
+       echo "请输入您要使用的pip目录（您可以另起终端，并使用which pip来查看）："
        read -p "" pip_path
        if [ "$pip_path" == "" -o ! -f "$pip_path" ];then
-         echo "pip不存在,请重新输入"
+         echo "检测结果：pip不存在,请重新输入"
          continue
        fi
        python_version=`$pip_path --version|awk -F "[ |)]" '{print $6}'|sed 's#\.##g'`
@@ -313,14 +247,14 @@ function checkLinuxPip(){
          fi
        fi
        if [ "$python_version" == "" ];then
-         echo "pip不存在,请重新输入" 
+         echo "检测结果：pip不存在,请重新输入"
        else
          version_list=`echo "${python_list[@]}" | grep "$python_version" `
          if [ "$version_list" != "" ];then
-           echo "找到python${python_version}版本"
+           echo "检测结果：找到python${python_version}版本"
            break
          else
-           echo "找不到可用的 pip, 我们只支持Python27/35/36/37及其对应的pip, 请重新输入， 或使用ctrl + c退出 "
+           echo "检测结果：找不到可用的 pip, 我们只支持Python27/35/36/37及其对应的pip, 请重新输入， 或使用ctrl + c退出 "
          fi
        fi
     done
@@ -337,7 +271,9 @@ function checkLinuxAVX(){
         AVX="noavx"
         break
       else
-        echo "我们仅支持纯CPU或GPU with CUDA 8 cuDNN 7 下noavx版本的安装，请使用cat /proc/cpuinfo | grep avx检查您计算机的avx指令集支持情况"
+        echo "Step 6. 检测是否有avx"
+        echo
+        echo "检测结果：未能找到avx，我们仅提供CPU版本或配置为CUDA8 cuDNN7的GPU版本的安装包"
         break
       fi
     fi
@@ -357,29 +293,29 @@ function PipLinuxInstall(){
         if [[ ${AVX} == "avx" ]];then
           rm -rf `echo $wheel_gpu_release|awk -F '/' '{print $NF}'`
           wget -q $wheel_gpu_release
-          if [ "$?" != "0" ];then
+          if [ "$?" == "0" ];then
             $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release
           else
-            echo paddlepaddle whl包下载失败
+            echo "paddlepaddle whl包下载失败"
             exit 1
           fi
         else
           rm -rf `echo $wheel_gpu_release_novax|awk -F '/' '{print $NF}'`
           wget -q $wheel_gpu_release_novax
-          if [ "$?" != "0" ];then
+          if [ "$?" == "0" ];then
             $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release_noavx
           else
-            echo paddlepaddle whl包下载失败
+            echo "paddlepaddle whl包下载失败"
             exit 1
           fi
         fi
     else
         rm -rf `echo $wheel_cpu_release|awk -F '/' '{print $NF}'`
         wget -q $wheel_cpu_release
-        if [ "$?" != "0" ];then
+        if [ "$?" == "0" ];then
           $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_release
         else
-          echo paddlepaddle whl包下载失败
+          echo "paddlepaddle whl包下载失败"
           exit 1
         fi
     fi
@@ -387,19 +323,19 @@ function PipLinuxInstall(){
     if [[ "$GPU" == "gpu" ]];then
         rm -rf `echo $wheel_gpu_develop|awk -F '/' '{print $NF}'`
         wget -q $wheel_gpu_develop
-        if [ "$?" != "0" ];then
+        if [ "$?" == "0" ];then
           $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_develop
         else
-          echo paddlepaddle whl包下载失败
+          echo "paddlepaddle whl包下载失败"
           exit 1
         fi
     else
         rm -rf `echo $wheel_cpu_develop|awk -F '/' '{print $NF}'`
         wget -q $wheel_cpu_develop
-        if [ "$?" != "0" ];then
+        if [ "$?" == "0" ];then
           $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_develop
         else
-          echo paddlepaddle whl包下载失败
+          echo "paddlepaddle whl包下载失败"
           exit 1
         fi
     fi
@@ -408,14 +344,17 @@ function PipLinuxInstall(){
 
 
 function checkLinuxGPU(){
+  read -n1 -p "即将检测您的机器是否含GPU，请按回车键继续..."
+  echo
   AVX=`cat /proc/cpuinfo |grep avx|tail -1|grep avx`
   which nvidia-smi >/dev/null 2>&1
   if [ "$?" != "0" ];then
     GPU='cpu'
-    echo "您使用的是不包含支持的GPU的机器"
+    echo "未在机器上找到GPU，或PaddlePaddle暂不支持此型号的GPU"
   else
     GPU='gpu'
-    echo "您使用的是包含我们支持的GPU机器"
+    echo "已在您的机器上找到GPU，即将确认CUDA和CUDNN版本..."
+    echo
   fi
   if [ "$GPU" == 'gpu' ];then
     checkLinuxCUDA
@@ -621,26 +560,133 @@ gpu_list=(
 "Tesla P4"
 "Tesla P40"
 "Tesla V100")
+
+  echo "Step 2. 检测GPU型号和CUDA/cuDNN版本"
+  echo
   checkLinuxGPU
+  echo
+  echo "Step 3. 检测数学库"
+  echo
   checkLinuxMathLibrary
+  echo
+  echo "Step 4. 选择要安装的PaddlePaddle版本"
+  echo
   checkLinuxPaddleVersion
+  echo
+  echo "Step 5. 检测pip版本"
+  echo
   checkLinuxPip
+  echo
   checkLinuxAVX
+  echo "*********************2. 开始安装*****************************"
   PipLinuxInstall
+}
+
+function checkMacPython2(){
+    while true
+       do
+          read -p "
+                => 未能在常规路径下找到Python2，请使用ctrl+c命令退出安装程序，并使用brew或pypi.org下载安装Python2（注意Python版本不能低于2.7.15）
+                如希望自定义Python路径，请输入路径：" python_root
+          echo
+          python_version=`$python_root --version 2>&1 1>&1`
+          if [ $? == "0" ];then
+            :
+          else
+            python_version=""
+          fi
+          check_python=`echo $python_version | grep "Python 2"`
+          if [ "$python_version" == "" ] || [ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ]  ;then
+               python_version=""
+          elif [ -n "$check_python" ];then
+              while true
+                do
+                  read -p "
+                => 在您的环境中找到 $python_version, 确认使用此版本请输入y；如您希望自定义Python路径请输入n。请在这里输入（y/n）并回车: " use_python
+                  echo
+                  use_python=`echo $use_python | tr 'A-Z' 'a-z'`
+                  if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
+                       use_python="y"
+                       break
+                  elif [ "$use_python" == "n" ];then
+                       python_root=""
+                       break
+                  else
+                      echo "输入错误，请重新输入(y/n)"
+                  fi
+                done
+              if [ "$use_python" == "y" ];then
+                break
+              fi
+            else
+              echo "您输入Python的不是Python2"
+              python_version=""
+            fi
+       done
+}
+
+function checkMacPython3(){
+    while true
+       do
+          read -p "
+                => 未能在常规路径下找到Python3，请使用ctrl+c命令退出安装程序，并使用brew或pypi.org下载Python3
+                如希望自定义Python路径，请输入路径：" python_root
+          python_version=`$python_root --version  2>&1 1>&1`
+          if [ $? == "0" ];then
+              :
+          else
+              python_version=""
+          fi
+          check_python=`echo $python_version | grep "Python 3"`
+          if [ "$python_version" == "" ] || [ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ] ;then
+               python_version=""
+          elif [ -n "$check_python" ] ;then
+              while true
+                do
+                  read -p "
+                => 在您的环境中找到 $python_version, 确认使用此版本请输入y；如您希望自定义Python路径请输入n。请在这里输入（y/n）并回车: " use_python
+                  echo
+                  use_python=`echo $use_python | tr 'A-Z' 'a-z'`
+                  if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
+                       use_python="y"
+                       break
+                  elif [ "$use_python" == "n" ];then
+                        python_root=""
+                        break
+                  else
+                      echo "输入错误，请重新输入(y/n)"
+                  fi
+                done
+              if [ "$use_python" == "y" ];then
+                    break
+              fi
+            else
+              echo "您输入Python的不是Python3"
+              python_version=""
+            fi
+       done
 }
 
 function checkMacPaddleVersion(){
   while true
     do
-      read -p "请选择Paddle版本(默认是release)：
-               输入 1 来使用develop版本
-               输入 2 来使用release ${release_version}
-               请输入，或者按ctrl + c退出： " paddle_version
+      read -n1 -p "Step 2. 选择PaddlePaddle的版本，请按回车键继续..."
+      echo
+      read -p "
+               1. 开发版：对应Github上develop分支，如您需要开发、或希望使用PaddlePaddle最新功能，请选用此版本
+               2. 稳定版（推荐）：如您无特殊开发需求，建议使用此版本，目前最新的版本号为 ${release_version}
+
+               => 请输入数字1或2。如输入其他字符或直接回车，将会默认选择【 2. 稳定版 】 。请在这里输入并回车：" paddle_version
       if [ "$paddle_version" == "1" ]||[ "$paddle_version" == "2" ];then
+          echo
+          echo "您选择了数字【"$paddle_version" 】"
+          echo
           break
       else
           paddle_version="2"
-          echo "将会下载release版本PaddlePaddle"
+          echo
+          echo "您选择了数字【2】"
+          echo
           break
       fi
     done
@@ -649,13 +695,18 @@ function checkMacPaddleVersion(){
 function checkMacPythonVersion(){
   while true
     do
-       read -p "请您选择希望使用的python版本
-                输入 2 使用python2.x
-                输入 3 使用python3.x
-                请选择(默认为2)，或者按ctrl + c退出：" python_V
+       read -n1 -p "Step 3. 选择Python版本，请按回车键继续..."
+       read -p "
+               2. 使用python 2.x
+               3. 使用python 3.x
+
+                => 请输入数字2或3。如输入其他字符或直接回车，将会默认使用【Python 2 】。请在这里输入并回车：" python_V
+                echo
        if [ "$python_V" == "" ];then
             python_V="2"
        fi
+       echo "您选择了数字【"$python_V"】，正在寻找符合您要求的Python版本，请按回车键继续..."
+       echo
        if [ "$python_V" == "2" ];then
            python_root=`which python2.7`
            if [ "$python_root" == "" ];then
@@ -672,7 +723,9 @@ function checkMacPythonVersion(){
            fi
            while true
              do
-               read -p "找到：$python_version, 是否使用：(y/n)，输入n来输入自定义使用的python路径，或者按ctrl + c退出：  " use_python
+               read -p "
+                => 在您的环境中找到 $python_version, 确认使用此版本请输入y；如您希望自定义Python路径请输入n。请在这里输入（y/n）并回车：" use_python
+               echo
                use_python=`echo $use_python | tr 'A-Z' 'a-z'`
                if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
                     break
@@ -681,7 +734,7 @@ function checkMacPythonVersion(){
                     checkMacPython2
                     break
                else
-                    echo "输入错误，请重新输入"
+                    echo "输入错误，请重新输入(y/n)"
                fi
             done
 
@@ -698,7 +751,9 @@ function checkMacPythonVersion(){
            fi
            while true
              do
-               read -p "找到：$python_version, 是否使用：(y/n), 输入n来输入自定义使用的python路径，或者按ctrl + c退出：" use_python
+               read -p "
+                => 在您的环境中找到 $python_version, 确认使用此版本请输入y；如您希望自定义Python路径请输入n。请在这里输入（y/n）并回车：" use_python
+               echo
                use_python=`echo $use_python | tr 'A-Z' 'a-z'`
                if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
                    break
@@ -706,7 +761,7 @@ function checkMacPythonVersion(){
                     checkMacPython3
                     break
                else
-                    echo "输入错误，请重新输入"
+                    echo "输入错误，请重新输入(y/n)"
                fi
            done
        else
@@ -724,12 +779,11 @@ function checkMacPythonVersion(){
                  uncode="m"
               fi
            fi
-           echo ${python_list[@]}
            version_list=`echo "${python_list[@]}" | grep "$python_brief_version" `
            if [ "$version_list" != "" ];then
               break
             else
-              echo "未发现可用的pip或pip3/pip3.x, 我们只支持Python2.7/3.5/3.6/3.7及其对应的pip, 请重新输入， 或使用ctrl + c退出"
+              echo "未找到可用的pip或pip3。PaddlePaddle目前支持：Python2.7/3.5/3.6/3.7及其对应的pip, 请重新输入，或使用ctrl + c退出"
            fi
         else
             echo "输入错误，请重新输入"
@@ -738,20 +792,28 @@ function checkMacPythonVersion(){
 }
 
 function checkMacAVX(){
+    read -n1 -p "Step 4. 检测您的Mac是否支持AVX指令集，请按回车键继续..."
+    echo
     if [[ $AVX != "" ]];then
         AVX="avx"
+        echo "检测结果：支持"
     else
-        echo "您的Mac不支持AVX指令集，目前不能安装PaddlePaddle"
+        echo "检测结果：不支持。非常抱歉，PaddlePaddle在Mac系统暂不提供no_avx类型的安装包，您可以选择在Linux系统中安装no_avx版的PaddlePaddle"
+        echo
     fi
+    echo
 }
 
 function checkMacGPU(){
+    read -n1 -p "Step 5. 选择CPU/GPU版本，请按回车键继续..."
+    echo
     if [[ $GPU != "" ]];then
-        echo "MacOS上暂不支持GPU版本的PaddlePaddle, 将为您安装CPU版本的PaddlePaddle"
+        echo "MacOS环境下，暂未提供GPU版本的PaddlePaddle安装包，将为您安装CPU版本的PaddlePaddle"
     else
-        echo "MacOS上暂不支持GPU版本的PaddlePaddle, 将为您安装CPU版本的PaddlePaddle"
+        echo "MacOS环境下，暂未提供GPU版本的PaddlePaddle安装包，将为您安装CPU版本的PaddlePaddle"
         GPU=cpu
     fi
+    echo
 }
 
 function macos() {
@@ -766,6 +828,10 @@ function macos() {
         checkMacGPU
 
 
+        echo "*********************2. 开始安装*****************************"
+        echo
+        read -n1 -p "即将为您下载并安装PaddlePaddle，请按回车键继续..."
+        echo
         if [[ $paddle_version == "2" ]];then
             $python_root -m pip install paddlepaddle
             if [ $? == "0" ];then
@@ -784,7 +850,7 @@ function macos() {
                 $python_root -m pip install $whl_cpu_develop
                 if [ $? == "0" ];then
                    rm -rf $whl_cpu_develop
-                   echo "安装成功，可以使用: ${python_root} 来启动安装了PaddlePaddle的Python解释器"
+                   echo "安装成功！小提示：可以使用: ${python_root} 来启动安装了PaddlePaddle的Python解释器"
                    break
                 else
                    echo "未能正常安装PaddlePaddle，请尝试更换您输入的python路径，或者ctrl + c退出后请检查您使用的python对应的pip或pip源是否可用"
@@ -823,18 +889,34 @@ function macos() {
 }
 
 function main() {
-  echo "一键安装脚本将会基于您的系统和硬件情况为您安装适合的PaddlePaddle"
+  echo "*********************************"
+  echo "欢迎使用PaddlePaddle快速安装脚本"
+  echo "*********************************"
+  echo
+  echo "如果您在安装过程中遇到任何问题，请在https://github.com/PaddlePaddle/Paddle/issues反馈，我们的工作人员将会帮您答疑解惑"
+  echo
+  echo "本安装包将帮助您在Linux或Mac系统下安装PaddlePaddle，包括 1）安装前的准备和 2）开始安装 两部分"
+  echo
+  read -n1 -p "请按回车键进行下一步..."
+  echo
+  echo
+  echo "*********************1. 安装前的准备*****************************"
+  echo
+  echo "Step 1. 正在检测您的操作系统信息..."
+  echo
   SYSTEM=`uname -s`
   if [ "$SYSTEM" == "Darwin" ];then
-  	echo "您正在使用MAC OSX"
+  	echo "您的系统为：MAC OSX"
+    echo
   	macos
   else
- 	echo "您正在使用Linux"
+ 	echo "您的系统为：Linux"
+  echo
 	  OS=`cat /etc/issue|awk 'NR==1 {print $1}'`
 	  if [ $OS == "\S" ] || [ "$OS" == "CentOS" ] || [ $OS == "Ubuntu" ];then
 	    linux
-	  else 
-	    echo 系统不支持
+	  else
+	    echo "您的系统不在本安装包的支持范围，如您需要在windows环境下安装PaddlePaddle，请您参考PaddlePaddle官网的windows安装文档"
 	  fi
   fi
 }
