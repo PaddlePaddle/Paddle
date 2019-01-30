@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 
-from test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride, TestWithGroup, TestWith1x1, TestWithInput1x1Filter1x1
+from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride, TestWithGroup, TestWith1x1, TestWithInput1x1Filter1x1
 
 
 class TestMKLDNN(TestConv2dOp):

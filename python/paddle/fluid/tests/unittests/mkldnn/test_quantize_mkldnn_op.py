@@ -16,32 +16,35 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest
 
 
-class TestDeQuantizeOp(OpTest):
+class TestQuantizeOp(OpTest):
     def setUp(self):
-        self.op_type = 'dequantize'
+        self.op_type = 'quantize'
         self.scale = 2.0
         self.input_size = [1, 1, 5, 5]  #Naive nChw16c
-        self.data_type = 'int8'
+        self.is_negative = False
         self.set_scale()
-        self.set_data_type()
+        self.set_is_negative()
 
-        if self.data_type == 'int8':
-            input = (np.random.randint(0, 100, self.input_size) - 50
-                     ).astype(self.data_type)
-            output = (input * (1 / self.scale)).astype('float')
+        if self.is_negative:
+            input = (100 * np.random.random_sample(self.input_size) - 50
+                     ).astype('float32')
+            output = np.round(input * self.scale).astype('int8')
         else:
-            input = (np.random.randint(0, 100,
-                                       self.input_size)).astype(self.data_type)
-            output = (input * (1 / self.scale)).astype('float')
+            input = (100 *
+                     np.random.random_sample(self.input_size)).astype('float32')
+            output = np.round(input * self.scale).astype('uint8')
 
         self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(input)}
 
         self.outputs = {'Output': output}
 
-        self.attrs = {'Scale': self.scale, }
+        self.attrs = {
+            'Scale': self.scale,
+            'is_negative_input': self.is_negative
+        }
 
     def test_check_output(self):
         self.check_output()
@@ -49,24 +52,24 @@ class TestDeQuantizeOp(OpTest):
     def set_scale(self):
         pass
 
-    def set_data_type(OpTest):
+    def set_is_negative(self):
         pass
 
 
-class TestDeQuantizeOp1(TestDeQuantizeOp):
+class TestQuantizeOp1(TestQuantizeOp):
     def set_scale(self):
         self.scale = 1.5
 
-    def set_data_type(self):
-        self.data_type = 'int8'
+    def set_is_negative(self):
+        self.is_nagative = True
 
 
-class TestDeQuantizeOp2(TestDeQuantizeOp):
+class TestQuantizeOp2(TestQuantizeOp):
     def set_scale(self):
-        self.scale = 0.8
+        self.scale = 0.1
 
-    def set_data_type(self):
-        self.data_type = 'uint8'
+    def set_is_negative(self):
+        self.is_nagative = False
 
 
 if __name__ == '__main__':
