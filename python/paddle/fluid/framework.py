@@ -1516,12 +1516,16 @@ class Block(object):
 
 class IrGraph(object):
     """
-    IrGraph uses core.Graph as the delegation to accomplish the manipulation.
+    Python IrGraph. Beneath it is a core.Graph, which is used for
+    create a c++ Ir Pass Graph. An IrGraph is just a graph view of
+    a Program. In an IrGraph, both Variables and Operators are graph
+    nodes.
     """
 
     def __init__(self, graph, for_test=False):
         """
-        Construct the IrGraph using core.Graph.
+        Construct an IrGraph using core.Graph.
+
         Args:
             graph(core.Graph): C++ Graph.
             for_test(bool): True for the test graph and false for the train graph.
@@ -1532,15 +1536,27 @@ class IrGraph(object):
         self._for_test = for_test
 
     def is_test(self):
+        """
+        If the graph is used for testing, the function returns true. Otherwise, returns false.
+        """
         return self._for_test
 
     def all_nodes(self):
+        """
+        Return all nodes included in the graph as a set.
+        """
         return {node for node in self.graph.nodes()}
 
     def all_vars(self):
+        """
+        Return all variable nodes included in the graph as a set.
+        """
         return {node for node in self.graph.nodes() if node.is_var()}
 
     def all_persistable_vars(self):
+        """
+        Return all persistable variable nodes included in the graph as a set.
+        """
         persistable_nodes = set()
         for node in self.graph.nodes():
             if node.is_var() and node.var() is not None and node.var(
@@ -1549,18 +1565,24 @@ class IrGraph(object):
         return persistable_nodes
 
     def all_ops(self):
+        """
+        Return all operator nodes included in the graph as a set.
+        """
         return {node for node in self.graph.nodes() if node.is_op()}
 
     def var_node(self, name):
         """
-        Get a variable node by name from this graph.
+        Get a variable node by name from the graph.
+
         Args:
             name(str): the name of the variable node.
+
         Raises:
             ValueError: The If input's type is not str, or this graph
             doesn't have a variable with the giving name.
+
         Returns:
-            Node: the variable node with the giving name.
+            core.Node: the variable node with the giving name.
         """
         if not isinstance(name, six.string_types):
             raise TypeError(
@@ -1576,6 +1598,19 @@ class IrGraph(object):
         return target_var_node
 
     def create_param_node(self, name, var_type, shape, var_dtype):
+        """
+        Create a persistable variable node in the graph. In IrGraph,
+        it can not distinguish between persistable variables and parameters.
+
+        Args:
+            name(str): the name of the persistable variable node.
+            vart_type(core.VarDesc.VarType): the type of the persistable variable node.
+            shape(list): the shape of the persistable variable node.
+            var_dtype(core.VarDesc.VarType): the data type of the persistable variable node.
+
+        Returns:
+            core.Node: the created persistable variable node.
+        """
         var_desc = core.VarDesc(name)
         var_desc.set_type(var_type)
         var_desc.set_shape(shape)
@@ -1584,6 +1619,20 @@ class IrGraph(object):
         return self.graph.create_var_node(var_desc)
 
     def create_var_node(self, name, var_type, shape, var_dtype):
+        """
+        Create a variable node in the graph. The created variable node is
+        not persistable.
+
+        Args:
+            name(str): the name of the variable node.
+            vart_type(core.VarDesc.VarType): the type of the variable node.
+            shape(list): the shape of the variable node.
+            var_dtype(core.VarDesc.VarType): the data type of the variable node.
+
+        Returns:
+            core.Node: the created variable node.
+        """
+
         var_desc = core.VarDesc(name)
         var_desc.set_type(var_type)
         var_desc.set_shape(shape)
@@ -1591,9 +1640,31 @@ class IrGraph(object):
         return self.graph.create_var_node(var_desc)
 
     def create_var_node_from_desc(self, var_desc):
+        """
+        Create a variable node by using an existing VarDesc in the graph.
+        Depend on the giving VarDesc, the created variable node may be persistable.
+
+        Args:
+            var_desc(core.VarDesc): the giving variable description.
+
+        Returns:
+            core.Node: the created variable node.
+        """
         return self.graph.create_var_node(var_desc)
 
     def create_op_node(self, op_type, attrs, inputs, outputs):
+        """
+        Create a operator node in the graph.
+
+        Args:
+            op_type(str): the type of the operator node.
+            attrs(dict): the attributes of the operator node.
+            inputs(dict): the inputs of the operator node.
+            outputs(dict): the outpus of the operator node.
+
+        Returns:
+            core.Node: the created operator node.
+        """
         op_desc = core.OpDesc()
         op_desc.set_type(op_type)
         for attr, value in attrs.iteritems():
@@ -1611,9 +1682,26 @@ class IrGraph(object):
         return self.graph.create_op_node(op_desc)
 
     def create_op_node_from_desc(self, op_desc):
+        """
+        Create a operator node by using an existing OpDesc in the graph.
+
+        Args:
+            op_desc(core.VarDesc): the giving operator description.
+
+        Returns:
+            core.Node: the created operator node.
+        """
         return self.graph.create_op_node(op_desc)
 
     def update_input_link(self, old_input_node, new_input_node, op_node):
+        """
+        Update the input's link of a operator node.
+
+        Args:
+            old_input_node(core.Node): the old input node of the giving op_node.
+            new_input_node(core.Node): the new input node of the giving op_node.
+            op_node(core.Node): the operator node that is needed to update input's link.
+        """
         assert old_input_node in self.graph.nodes() and new_input_node in \
         self.graph.nodes() and op_node in self.graph.nodes(), \
         'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
@@ -1624,12 +1712,26 @@ class IrGraph(object):
         op_node.op()._rename_input(old_input_node.name(), new_input_node.name())
 
     def link_to(self, node_in, node_out):
+        """
+        Connect two nodes.
+
+        Args:
+            node_in(core.Node): the input node.
+            node_out(core.Node): the output node.
+        """
         assert node_in in self.graph.nodes() and node_out in self.graph.nodes(), \
             'The two arguments(node_in&node_out) must be in the graph nodes.'
         node_in.outputs_append(node_out)
         node_out.inputs_append(node_in)
 
     def safe_remove_nodes(self, remove_nodes):
+        """
+        Remove nodes safely since links connected to these removed nodes are
+        also removed.
+
+        Args:
+            remove_nodes(set): the nodes prepared to be removed.
+        """
         if not isinstance(remove_nodes, set):
             if isinstance(remove_nodes, Iterable):
                 remove_nodes = set(remove_nodes)
@@ -1638,18 +1740,57 @@ class IrGraph(object):
         core.graph_safe_remove_nodes(self.graph, remove_nodes)
 
     def has_circle(self):
+        """
+        Check if the graph has a circle.
+
+        Returns:
+            bool: True if the graph has a circle else False.
+        """
         return core.has_circle(self.graph)
 
     def graph_num(self):
+        """
+        Count the number of unconnected graphs in this graph.
+
+        Returns:
+            int: the number of unconnected graphs.
+        """
         return core.graph_num(self.graph)
 
     def topology_sort(self):
+        """
+        Perform the topology sort operation on the graph.
+
+        Notes: the `graph` cannot contain a circle.
+
+        Returns:
+            set(core.Node): nodes in topology order.
+        """
         return core.topology_sort(self.graph)
 
     def build_adjacency_list(self):
+        """
+        Build an adjacency list of operations for the `graph`.
+
+        Returns:
+            dict{core.Node: set(core.Node)}: the adjacency list.
+        """
         return core.build_adjacency_list(self.graph)
 
-    def draw(self, save_path, name, marked_nodes=None):
+    def draw(self, save_path, name, marked_nodes=None, remove_ctr_var=True):
+        """
+        Draw the graph. If `dot` command is installed, the drawn graph
+        will be saved as pdf file type, otherwise dot file type is used.
+
+        Args:
+            save_path(str): the save path of drawn graph.
+            name(str): the name of drawn graph.
+            marked_nodes(set(core.Node)): nodes that are needed to be marked.
+            Default value is None.
+            remove_ctr_var(bool): If it is set True, all control variable nodes
+            in the graph will be removed. Default value is True.
+        """
+
         def _convert_to_pdf(dot_file_path):
             pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
             exited_code = subprocess.call('dot -Tpdf ' + dot_file_path \
@@ -1659,15 +1800,17 @@ class IrGraph(object):
                 print('The {} is saved as the dot filetype.'.format(
                     dot_file_path))
 
-        remove_ctr_vars = set()
+        if remove_ctr_var:
+            remove_ctr_vars = set()
+            for node in self.graph.nodes():
+                if node.is_ctrl_var():
+                    remove_ctr_vars.add(node)
+            self.safe_remove_nodes(remove_ctr_vars)
         ops_num = 0
         for node in self.graph.nodes():
-            if node.is_ctrl_var():
-                remove_ctr_vars.add(node)
-            elif node.is_op():
+            if node.is_op():
                 ops_num += 1
         print('Total ops num = {}.'.format(ops_num))
-        self.safe_remove_nodes(remove_ctr_vars)
         if marked_nodes is not None:
             if not isinstance(marked_nodes, set):
                 marked_nodes = set(marked_nodes)
@@ -1682,6 +1825,16 @@ class IrGraph(object):
         _convert_to_pdf(viz_dot_path)
 
     def to_program(self):
+        """
+        Convert the graph into a Program.
+
+        Notes: When the graph includes backward operator nodes, the
+        conversion process may be failed. Usually, this function is
+        only used to convert a test graph.
+
+        Returns:
+            Program: a program converted from the graph.
+        """
         convert_pass = core.get_pass('graph_to_program_pass')
         desc = core.ProgramDesc()
         convert_pass.set_not_owned('program', desc)

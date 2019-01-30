@@ -39,7 +39,13 @@ class QuantizationTransformPass(object):
         """
         Convert and rewrite the IrGraph according to weight and
         activation quantization type.
+
         Args:
+            scope(fluid.Scope): When activation use 'range_abs_max' as the quantize
+            type, this pass will create some new parameters. The scope is used to
+            initialize these new parameters.
+            program_exe(fluid.Executor): program_exe is used to initialize new
+            parameters described above.
             weight_bits (int): quantization bit number for weights,
                 the bias is not quantized.
             activation_bits (int): quantization bit number for activation.
@@ -53,6 +59,7 @@ class QuantizationTransformPass(object):
                 support 'abs_max'. The 'range_abs_max' usually is not used for
                 weight, since weights are fixed once the model is well trained.
             window_size (int): the window size for 'range_abs_max' quantization.
+
         Examples:
         .. code-block:: python
             # The original graph will be rewrite.
@@ -96,6 +103,14 @@ class QuantizationTransformPass(object):
         self._global_step = None
 
     def apply(self, graph):
+        """
+        Quantize the graph for training process. According to weight and
+        activation quantization type, the graph will be added some fake
+        quantize operators and fake dequantize operators.
+
+        Args:
+            graph(IrGraph): the applied graph.
+        """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
         self._need_initialized.clear()
@@ -336,6 +351,23 @@ class QuantizationTransformPass(object):
 
 
 class QuantizationFreezePass(object):
+    """
+    The freeze pass is used to adjust the quantize operator order, for example:
+        1) `activation -> quant -> dequant -> conv2d` will be freezed into
+        `activation -> quant -> conv2d -> dequant`
+        2) `weight -> quant -> dequant -> conv2d` will be freezed into `weight -> conv2d`,
+        and weight will be sacled offline.
+
+    Args:
+        scope(fluid.Scope): scope is used to get the weight tensor values.
+        place(fluid.CPUPlace|fluid.CUDAPlace): place is used to restore the weight tensors.
+        weight_bits (int): quantization bit number for weights.
+        activation_bits (int): quantization bit number for activation.
+        weight_quantize_type (str): quantization type for weights, support 'abs_max'.
+        The 'range_abs_max' usually is not used for weight, since weights are fixed once the
+        model is well trained.
+    """
+
     def __init__(self,
                  scope,
                  place,
@@ -361,6 +393,12 @@ class QuantizationFreezePass(object):
         self._var_scale_map = collections.OrderedDict()
 
     def apply(self, graph):
+        """
+        Adjust quantize/dequantize operators order for the inference process.
+
+        Args:
+            graph(IrGraph): the applied graph.
+        """
         persistable_vars = [p.name() for p in graph.all_persistable_vars()]
         ops = graph.all_ops()
         for op_node in ops:
@@ -518,6 +556,15 @@ class QuantizationFreezePass(object):
 
 
 class ConvertToInt8Pass(object):
+    """
+    Convert the weights into int8_t type.
+
+    Args:
+        scope(fluid.Scope): scope is used to get the weight tensor values.
+        place(fluid.CPUPlace|fluid.CUDAPlace): place is used to restore the
+        8bits weight tensors.
+    """
+
     def __init__(self, scope, place):
         assert scope is not None, \
             'The scope cannot be set None.'
@@ -528,6 +575,13 @@ class ConvertToInt8Pass(object):
         self._quantizable_ops = ['conv2d', 'depthwise_conv2d', 'mul']
 
     def apply(self, graph):
+        """
+        Convert weights' tpye of the graph. After that, the data type of the
+        graph weigths is int8_t.
+
+        Args:
+            graph(IrGraph): the applied graph.
+        """
         persistable_vars = [p.name() for p in graph.all_persistable_vars()]
         ops = graph.all_ops()
         input_map = {}
@@ -581,6 +635,10 @@ class ConvertToInt8Pass(object):
 
 
 class TransformForMobilePass(object):
+    """
+    This pass is used to convert the freezed graph for paddle-mobile execution.
+    """
+
     def __init__(self):
         self._fake_quant_op_names = [
             'fake_quantize_abs_max', 'fake_quantize_range_abs_max'
@@ -588,6 +646,14 @@ class TransformForMobilePass(object):
         self._fake_dequant_op_names = ['fake_dequantize_max_abs']
 
     def apply(self, graph):
+        """
+        Because paddle-mobile use `quantize` an `dequantize` as the names of
+        quantize operator and dequantize operator, the `apply` function just
+        realize this logic.
+
+        Args:
+            graph(IrGraph): the graph will be transformed.
+        """
         ops = graph.all_ops()
         for op_node in ops:
             name = op_node.name()
