@@ -40,9 +40,11 @@ function checkMacPython2(){
           else
             python_version=""
           fi
+          check_python=`echo $python_version | grep "Python 2"`
+          echo $check_python
           if [ "$python_version" == "" ] || [ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ] ;then
                python_version=""
-          else
+          elif [ -n "$check_python" ];then
               while true
                 do
                   read -p "找到：$python_version, 是否使用：(y/n)，输入n来输入自定义使用的python路径，或者按ctrl + c退出： " use_python
@@ -60,6 +62,9 @@ function checkMacPython2(){
               if [ "$use_python" == "y" ];then
                 break
               fi
+          else
+               echo "您输入Python的不是Python2"
+               python_version=""
           fi
        done
 }
@@ -77,9 +82,10 @@ function checkMacPython3(){
           else
               python_version=""
           fi
+          check_python=`echo $python_version | grep "Python 3"`
           if [ "$python_version" == "" ] || [ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ] ;then
                python_version=""
-          else
+          elif [ -n "$check_python" ] ;then
               while true
                 do
                   read -p "找到：$python_version, 是否使用：(y/n)，输入n来输入自定义使用的python路径，或者按ctrl + c退出： " use_python
@@ -97,6 +103,9 @@ function checkMacPython3(){
               if [ "$use_python" == "y" ];then
                     break
               fi
+          else
+              echo "您输入Python的不是Python2"
+              python_version=""
           fi
        done
 }
