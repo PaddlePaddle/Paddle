@@ -24,19 +24,22 @@ std::unique_ptr<ir::Graph> IdentityScaleOpCleanPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   FusePassBase::Init("identity_scale_op_clean", graph.get());
 
+  // pre_op -> scale_in -> scale_op -> scale_out
+  // ->
+  // pre_op -> scale_out
   GraphPatternDetector detector;
+  auto pre_op = detector.mutable_pattern()->NewNode("pre_op")->assert_is_op();
+  auto scale_in = detector.mutable_pattern()
+                      ->NewNode("scale_in")
+                      ->assert_is_op_input("scale")->AsIntermediate();
   auto scale_op = detector.mutable_pattern()
                       ->NewNode("scale_fuse")
                       ->assert_is_op("scale")
                       ->assert_op_attr<float>("scale", 1.)
                       ->assert_op_attr<float>("bias", 0.);
-  auto scale_in = detector.mutable_pattern()
-                      ->NewNode("scale_in")
-                      ->assert_is_op_input("scale");
   auto scale_out = detector.mutable_pattern()
                        ->NewNode("scale_out")
                        ->assert_is_op_output("scale");
-  auto pre_op = detector.mutable_pattern()->NewNode("pre_op")->assert_is_op();
 
   pre_op->LinksTo({scale_in});
   scale_op->LinksFrom({scale_in}).LinksTo({scale_out});
@@ -51,12 +54,12 @@ std::unique_ptr<ir::Graph> IdentityScaleOpCleanPass::ApplyImpl(
     const std::string scale_in_name = scale_in_var->Name();
     const std::string scale_out_name = scale_out_var->Name();
     // Remove links in graph
-    GraphSafeRemoveNodes(graph, {scale_out_var, scale_op_var});
+    GraphSafeRemoveNodes(graph, {scale_in_var, scale_op_var});
     // Modify proto message
     auto* pre_op_desc = pre_op_var->Op();
-    for (auto& parameter : *pre_op_desc->Proto()->mutable_inputs()) {
+    for (auto& parameter : *pre_op_desc->Proto()->mutable_outputs()) {
       auto* arguments = parameter.mutable_arguments();
-      auto it = std::find(arguments->begin(), arguments->end(), scale_out_name);
+      auto it = std::find(arguments->begin(), arguments->end(), scale_in_name);
       PADDLE_ENFORCE(it != arguments->end());
       *it = scale_out_name;
     }
