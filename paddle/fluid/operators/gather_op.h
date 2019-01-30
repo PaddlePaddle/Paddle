@@ -35,7 +35,7 @@ class GatherOpKernel : public framework::OpKernel<T> {
     auto *output = ctx.Output<Tensor>("Out");
 
     output->mutable_data<T>(ctx.GetPlace());
-
+    if (x->numel() == 0) return;
     CPUGather<T>(ctx.device_context(), *x, *index, output);
   }
 };
@@ -56,7 +56,7 @@ class GatherGradientOpKernel : public framework::OpKernel<T> {
     auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
     dxt.device(place) = dxt.constant(static_cast<T>(0));
-
+    if (dO->numel() == 0) return;
     ScatterAssign<T>(ctx.device_context(), *dO, *Index, dX);
   }
 };

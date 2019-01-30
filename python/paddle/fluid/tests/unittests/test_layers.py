@@ -58,7 +58,8 @@ class TestBook(unittest.TestCase):
     def test_simple_conv2d(self):
         program = Program()
         with program_guard(program, startup_program=Program()):
-            images = layers.data(name='pixel', shape=[3, 48, 48], dtype='int32')
+            images = layers.data(
+                name='pixel', shape=[3, 48, 48], dtype='float32')
             layers.conv2d(input=images, num_filters=3, filter_size=[4, 4])
 
         print(str(program))
@@ -1021,6 +1022,14 @@ class TestBook(unittest.TestCase):
                 name='data', shape=[32, 128, 128], dtype="float32")
             out = layers.batch_norm(data)
 
+        print(str(program))
+
+    def test_shuffle_channel(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="X", shape=[16, 4, 4], dtype="float32")
+            out = layers.shuffle_channel(x, group=4)
+            self.assertIsNotNone(out)
         print(str(program))
 
 

@@ -30,8 +30,9 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
     PADDLE_THROW(
-        "'Place' is not supported, Please re-compile with WITH_GPU "
-        "option");
+        "Place %s is not supported, Please re-compile with WITH_GPU "
+        "option",
+        place);
   }
   return it->second.get().get();
 }
