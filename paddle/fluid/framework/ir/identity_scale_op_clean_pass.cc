@@ -64,6 +64,8 @@ std::unique_ptr<ir::Graph> IdentityScaleOpCleanPass::ApplyImpl(
       PADDLE_ENFORCE(it != arguments->end());
       *it = scale_out_name;
     }
+
+    IR_NODE_LINK_TO(pre_op_var, scale_out_var);
   };
 
   detector(graph.get(), handler);
