@@ -118,6 +118,28 @@ typename KernelTuples::func_type Get(
   return GetRefer<KT, KernelTuples>();
 }
 
+template <KernelType KT, typename KernelTuples>
+class KernelFuncsCache {
+ public:
+  KernelFuncsCache() = default;
+  static KernelFuncsCache& Instance() {
+    static thread_local KernelFuncsCache<KT, KernelTuples> g_func_cache;
+    return g_func_cache;
+  }
+
+  bool Has(int key) const { return funcs_.find(key) != funcs_.end(); }
+
+  typename KernelTuples::func_type At(int key) { return funcs_.at(key); }
+
+  void Insert(int key, typename KernelTuples::func_type func) {
+    funcs_.emplace(key, func);
+  }
+
+ private:
+  std::unordered_map<int, typename KernelTuples::func_type> funcs_;
+  DISABLE_COPY_AND_ASSIGN(KernelFuncsCache);
+};
+
 const char* to_string(KernelType kt);
 const char* to_string(SeqPoolType kt);
 

@@ -15,6 +15,7 @@
 import contextlib
 import sys
 import numpy as np
+import collections
 
 from paddle.fluid import core
 from paddle.fluid import framework
@@ -27,18 +28,41 @@ class Layer(core.Layer):
     """Layers composed of operators."""
 
     def __init__(self, dtype=core.VarDesc.VarType.FP32, name=None):
-        self._once_built = False
+        self._built = False
         self._dtype = dtype
+
+    def parameters(self):
+        params = []
+        for key in self.__dict__.keys():
+            value = self.__dict__[key]
+            if isinstance(value, framework.Parameter):
+                params.append(value)
+            elif isinstance(value, core.Layer):
+                params.extend(value.parameters())
+            elif isinstance(value, collections.Container):
+                if len(value) == 0:
+                    continue
+                if isinstance(value[0], framework.Parameter):
+                    params.extend(value)
+                elif isinstance(value[0], core.Layer):
+                    for v in value:
+                        params.extend(v.parameters())
+
+        return params
+
+    def clear_gradients(self):
+        for p in self.parameters():
+            p._clear_gradient()
 
     def _build_once(self, inputs):
         pass
 
     def __call__(self, *inputs):
-        if not self._once_built:
+        if not self._built:
             self._build_once(*inputs)
-            self._once_built = True
 
         outputs = self.forward(*inputs)
+        self._built = True
         return outputs
 
     def forward(self, *inputs):
