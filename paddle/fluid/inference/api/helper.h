@@ -81,6 +81,13 @@ static void split_to_int64(const std::string &str, char sep,
   std::transform(pieces.begin(), pieces.end(), std::back_inserter(*is),
                  [](const std::string &v) { return std::stoi(v); });
 }
+static void split_to_int(const std::string &str, char sep,
+                         std::vector<int> *is) {
+  std::vector<std::string> pieces;
+  split(str, sep, &pieces);
+  std::transform(pieces.begin(), pieces.end(), std::back_inserter(*is),
+                 [](const std::string &v) { return std::stoi(v); });
+}
 template <typename T>
 std::string to_string(const std::vector<T> &vec) {
   std::stringstream ss;
