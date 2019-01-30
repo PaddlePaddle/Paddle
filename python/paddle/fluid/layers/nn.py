@@ -87,7 +87,7 @@ __all__ = [
     'transpose',
     'im2sequence',
     'nce',
-    'sample_logits',
+    'sampled_softmax_with_cross_entropy',
     'hsigmoid',
     'beam_search',
     'row_conv',
@@ -5765,23 +5765,22 @@ def softmax_with_cross_entropy(logits,
     return loss
 
 
-def sample_logits(logits,
-                  label,
-                  num_samples,
-                  uniq=True,
-                  remove_accidental_hits=True,
-                  use_custom_samples=False,
-                  custom_samples=None,
-                  custom_probabilities=None,
-                  seed=0):
+def sampled_softmax_with_cross_entropy(logits,
+                                       label,
+                                       num_samples,
+                                       num_true=num_true,
+                                       remove_accidental_hits=True,
+                                       use_custom_samples=False,
+                                       custom_samples=None,
+                                       custom_probabilities=None,
+                                       seed=0):
     """
     **Sampled Softmax With Cross Entropy Operator.**
 
     Cross entropy loss with sampled softmax is used as the output layer for 
     larger output classes extensively. This operator samples a number of samples
-    for each example(row), and computes the softmax normalized values for each 
+    for all examples, and computes the softmax normalized values for each 
     row of the sampled tensor, after which cross-entropy loss is computed. 
-    This provides a more numerically stable gradient.
 
     Because this operator performs a softmax on logits internally, it expects
     unscaled logits. This operator should not be used with the output of
@@ -5810,13 +5809,19 @@ def sample_logits(logits,
             labels per example. 
         num_samples (int): The number for each example, num_samples should be 
             less than the number of class.
-        seed (int): The random seed for generating random number, which is used
-            in the process of sampling. Default is 0.
+        num_true(int): The number of target classes per training example.
         remove_accidental_hits (bool): A flag indicating whether to remove 
             accidental hits when sampling. If True and if a sample[i, j] 
             accidentally hits true labels, then the corresponding 
             sampled_logits[i, j] is minus by 1e20 to make its softmax result 
             close to zero. Default is True.
+        use_custom_samples (bool): Whether to use custom samples and probabities to sample
+            logits.
+        custom_samples (Variable): User defined samples, which is a 1-D tensor with shape [S]. S is the num_samples. 
+        custom_probabilities (Variable): User defined probabilities of samples, a 1-D tensor which has the same shape with custom_samples.
+        seed (int): The random seed for generating random number, which is used
+            in the process of sampling. Default is 0.
+
 
     Returns:
         Variable: Return the cross entropy loss which is a 2-D tensor with shape
@@ -5855,12 +5860,21 @@ def sample_logits(logits,
         },
         attrs={
             'use_custom_samples': use_custom_samples,
-            'uniq': uniq,
+            'uniq': True,
             'remove_accidental_hits': remove_accidental_hits,
             'num_samples': num_samples,
             'seed': seed
         })
-    return sampled_logits, sampled_label, samples, probabilities
+    helper.append_op(
+        type='softmax_with_cross_entropy',
+        inputs={
+            'Logits': sampled_logits,
+            'Label': sampled_label,
+            'soft_label': False,
+        },
+        outputs={'loss': samples, })
+
+    return outputs / num_true
 
 
 def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
