@@ -85,8 +85,9 @@ def convert_dist_to_sparse_program(program):
     when we train model with distributed lookup table but want to do the local inference, we can use
     this function to convert the train program with distributed lookup table to sparse lookup table.
 
-    :param program(Program): the program must be the trainer program, which will be get by the distribute transpiler.
-    :return:
+    Args:
+        program(Program): the program must be the trainer program, which will be get by the distribute transpiler.
+    Returns:
         program: The `program` is a Program, it's the program replace distributed lookup table to sparse lookup table.
     """
     if not program._distributed_lookup_table:
@@ -137,13 +138,15 @@ def load_persistables_for_increment(dirname, executor, program,
     but also load the suitable lookup table var. Because of slice lookup table
     var with HASH, we must load the correct slice var.
 
+    Args:
+        dirname(str): The directory path
+        executor(Executor): The executor to run for loading inference model.
+        program(Program): The parameter server program, which will run on Pserver.
+        lookup_table_var: the distributed lookup tables var name.
+        lookup_table_var_path: the the distributed lookup tables var location.
 
-    :param dirname(str): The directory path
-    :param executor(Executor): The executor to run for loading inference model.
-    :param program(Program): The parameter server program, which will run on Pserver.
-    :param lookup_table_var: the distributed lookup tables var name.
-    :param lookup_table_var_path: the the distributed lookup tables var location.
-    :return: None
+    Returns:
+        None
     """
 
     def _load_persistable_vars(executor, dirname, need_load_vars):
@@ -258,11 +261,13 @@ def load_persistables_for_inference(dirname, executor, program,
     Inference with distributed lookup table is a little funky, this function will load distributed
     lookup table vars into sparse var, can be used in local inference mode.
 
-    :param dirname(str): The directory path
-    :param executor(Executor): The executor to run for loading inference model.
-    :param program(Program): The parameter server program, which will run on Pserver.
-    :param lookup_table_var_name: the distributed lookup tables var name.
-    :return: None
+    Args:
+        dirname(str): The directory path
+        executor(Executor): The executor to run for loading inference model.
+        program(Program): The parameter server program, which will run on Pserver.
+        lookup_table_var_name: the distributed lookup tables var name.
+    Returns:
+        None
     """
 
     def _load_persistable_vars(executor, dirname, program, lookup_table_vars):
