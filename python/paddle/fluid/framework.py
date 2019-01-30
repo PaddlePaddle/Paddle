@@ -1735,7 +1735,7 @@ class Program(object):
         return self.__is_optimized
 
     @_is_optimized.setter
-    def set__is_optimized(self, target):
+    def _is_optimized(self, target):
         self.__is_optimized = target
 
     @property
@@ -1756,7 +1756,7 @@ class Program(object):
         return self._current_role
 
     @op_role.setter
-    def set_op_role(self, role):
+    def op_role(self, role):
         self._current_role = role
 
     @property

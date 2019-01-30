@@ -108,9 +108,9 @@ class TestSaveInferenceModel(unittest.TestCase):
         exe.run(init_program, feed={}, fetch_list=[])
 
         memory_optimize(program, print_log=True)
-        self.assertRaises(RuntimeError,
-                          save_inference_model(MODEL_DIR, ["x", "y"],
-                                               [avg_cost], exe, program))
+        self.assertEqual(program._is_optimized, True)
+        # will print warning message
+        save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
 
 
 if __name__ == '__main__':
