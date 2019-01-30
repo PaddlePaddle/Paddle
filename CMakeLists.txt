@@ -26,6 +26,7 @@ message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 if(WIN32)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
+    set(CMAKE_SUPPRESS_REGENERATION ON)
     add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
     set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd")
     set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
