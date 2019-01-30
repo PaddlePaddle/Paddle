@@ -40,7 +40,7 @@ limitations under the License. */
 #define PADDLE_ASSERT_MSG_CODE(e, m, c)                                    \
   do {                                                                     \
     if (!(e)) {                                                            \
-      printf("%s:%d Assertion `%s` failed (%s %d).\n", __FILE__, __LINE__, \
+      printf("%s:%d Assertion `%s` failed (%s %ld).\n", __FILE__, __LINE__, \
              TOSTRING(e), m, c);                                           \
       asm("trap;");                                                        \
     }                                                                      \

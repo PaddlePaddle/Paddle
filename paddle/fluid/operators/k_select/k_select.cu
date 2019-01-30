@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "k_select.h"
+#include "paddle/fluid/platform/assert.h"
 
 #define FABS(a) ((a != -INFINITY) ? fabs(a) : a)
 #include "dense2csr.h"
@@ -537,7 +538,7 @@ __global__ void KeFindKth(const T* input, int count, int* block_count, T* pmax,
 
 template <typename T>
 __global__ void KeGetThreadCountByThreshold(const T* idata, int* odata,
-                                            int count, T* threshold) {
+                                            int count, T* threshold, int buf_count) {
   extern int __shared__ sdata[];
   sdata[threadIdx.x] = 0;
   __syncthreads();
@@ -550,6 +551,7 @@ __global__ void KeGetThreadCountByThreshold(const T* idata, int* odata,
     }
   }
   __syncthreads();
+  PADDLE_ASSERT_MSG_CODE((threadIdx.x + blockDim.x * blockIdx.x) < buf_count, "should < buf_count", buf_count);
   odata[threadIdx.x + blockDim.x * blockIdx.x] = sdata[threadIdx.x];
 }
 
@@ -686,15 +688,20 @@ bool k_select_min(float* input, int count, void* encode, void* buff, int k,
 }
 
 void dense2coo(void* encode, float* input, float* threshold, int* thr_cnt,
-               int count, int k, cudaStream_t stream, float* moment) {
+               int count, int k, cudaStream_t stream, float* moment, int buf_count) {
   int blocks, threads;
   getNumBlocksAndThreads(count, blocks, threads);
-  int smemSize = sizeof(float) * threads;
+  int smemSize = sizeof(float) * threads * 2;
   int p_threads = min(blocks, threads);
   int p_blocks = iDivUp(blocks, p_threads);
 
+  std::cout << "smemsize:" << smemSize
+      << ", p_threads:" << p_threads
+      << ", p_blocks:" << p_blocks 
+      << ", buf_count:" << buf_count;
+
   KeGetThreadCountByThreshold<float><<<blocks, threads, smemSize, stream>>>(
-      input, thr_cnt, count, threshold);
+      input, thr_cnt, count, threshold, buf_count);
 
   /*
   int* part = thr_cnt + threads * blocks;
@@ -744,7 +751,7 @@ bool k_select_bucket(float* input, int count, void* encode, void* buff, int k,
   int* thr_cnt = static_cast<int*>(buff) + 4;
 
   if (protocal == 0) {
-    dense2coo(encode, input, threshold, thr_cnt, count, k, stream, moment);
+    // dense2coo(encode, input, threshold, thr_cnt, count, k, stream, moment);
   } else if (protocal == 1) {
     dense2csr(encode, input, threshold, thr_cnt, count, k, stream);
   }
@@ -764,9 +771,10 @@ bool k_select(float* input, int count, void* encode, void* buff, int k,
   int blocks=0;
   int threads=0;
   getNumBlocksAndThreads(count, blocks, threads);
-  int* thr_cnt = static_cast<int*>(buff) + blocks;
+  int* thr_cnt = static_cast<int*>(buff) + 1;
   if (protocal == 0) {  // coo
-    dense2coo(encode, input, threshold, thr_cnt, count, k, stream, moment);
+    int buf_count = get_buffer_size(count);
+    dense2coo(encode, input, threshold, thr_cnt, count, k, stream, moment, buf_count - 1); 
   } else if (protocal == 1) {  // csr
     // dense2csr(encode, input, threshold, thr_cnt, count, k, stream);
     exit(-1);

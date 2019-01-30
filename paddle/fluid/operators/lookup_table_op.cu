@@ -183,6 +183,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 
       dim3 threads(128, 8);
       dim3 grids(8, 1);
+      VLOG(10) << "lookup table N:" << N;
       LookupTableGrad<T, 128, 8, 8><<<grids, threads, 0, dev_ctx.stream()>>>(
           d_table, d_output, ids, N, K, D);
     }

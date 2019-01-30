@@ -394,8 +394,7 @@ void MultiDevSSAGraphBuilderBase::CreateComputationalOp(ir::Graph *result,
 void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
     ir::Graph *result, const std::string &og,
     const std::string encoded_grad_name) const {
-  // bool is_encoded = (encoded_grad_name != "");
-  bool is_encoded = false;
+  bool is_encoded = (encoded_grad_name != "");
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
       result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
@@ -1087,7 +1086,7 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
           auto encoded_grad_name = g_name + "@ENCODED@DGC";
           CreateDGCOp(result, places_.size(), p_name, g_name,
                       encoded_grad_name);
-          CreateAllReduceOp(result, g_name, encoded_grad_name);
+          CreateAllReduceOp(result, g_name,"");
 #else
           PADDLE_ENFORCE(false, "Compiled withoud cuda!");
 #endif
