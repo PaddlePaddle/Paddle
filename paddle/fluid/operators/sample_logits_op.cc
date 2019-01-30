@@ -64,12 +64,13 @@ class SampleLogitsOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput("SampledLogits",
               "(Tensor, default: Tensor<float>), A 2-D tensor with shape"
-              "[N x S+NT]. The outputs value of sampled softmax, which will be"
+              "[N x S+NT]. The outputs value of sample logits, which will be"
               "used in backward calculation.")
         .AsIntermediate();
-    AddOutput("SampledLabel",
-              "(Tensor, default: Tensor<int64>), A 2-D tensor. The cross "
-              "entropy loss with shape [N x NT].");
+    AddOutput(
+        "SampledLabel",
+        "(Tensor, default: Tensor<int64>), A 2-D tensor. The sampled label"
+        "with shape [N x S + NT].");
     AddAttr<bool>(
         "use_custom_samples",
         "An indicator whether to use custom samples with probabilities, if True"
@@ -81,7 +82,7 @@ class SampleLogitsOpMaker : public framework::OpProtoAndCheckerMaker {
         "An indicator whether to sample non-repetitive negtive labels, if True"
         "the operator will sample negtive labels without replacement."
         "otherwise, the operator will sample negtive labels with replacement.")
-        .SetDefault(false);
+        .SetDefault(true);
     AddAttr<bool>(
         "remove_accidental_hits",
         "An indicator whether to remove accidental hits when samples hits true"
@@ -92,35 +93,11 @@ class SampleLogitsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("seed", "Random seed for generating samples").SetDefault(0);
 
     AddComment(R"DOC(
-TODO(chenfeiyu): Write documentation for this Operator.
-Sampled Softmax With Cross Entropy Operator.
+  """
+  Computes sampled output training logits and labels suitable for implementing
+  sampled softmax.
 
-Cross entropy loss with sampled softmax is used as the output layer extensively.
-This operator computes the softmax normalized values for each row of the input
-tensor, after which cross-entropy loss is computed. This provides a more
-numerically stable gradient.
-
-Because this operator performs a softmax on logits internally, it expects
-unscaled logits. This operator should not be used with the output of
-softmax operator since that would produce incorrect results.
-
-When the attribute soft_label is set false, this operators expects mutually
-exclusive hard labels, each sample in a batch is in exactly one class with a
-probability of 1.0. Each sample in the batch will have a single label.
-
-The equation is as follows:
-
-1) Hard label (one-hot label, so every sample has exactly one class)
-
-$$Loss_j =  -\text{Logit}_{Label_j} +
-\log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right),
-j = 1,..., K$$
-
-2) Soft label (each sample can have a distribution over all classes)
-
-$$Loss_j =  -\sum_{i=0}^{K}\text{Label}_i \left(\text{Logit}_i -
-\log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right)\right),
-j = 1,...,K$$
+  """
 
 )DOC");
   }
