@@ -595,9 +595,10 @@ function checkMacPython2(){
           else
             python_version=""
           fi
+          check_python=`echo $python_version | grep "Python 2"`
           if [ "$python_version" == "" ] || [ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ]  ;then
                python_version=""
-          else
+          elif [ -n "$check_python" ];then
               while true
                 do
                   read -p "
@@ -617,7 +618,10 @@ function checkMacPython2(){
               if [ "$use_python" == "y" ];then
                 break
               fi
-          fi
+            else
+              echo "您输入Python的不是Python2"
+              python_version=""
+            fi
        done
 }
 
@@ -633,9 +637,10 @@ function checkMacPython3(){
           else
               python_version=""
           fi
+          check_python=`echo $python_version | grep "Python 3"`
           if [ "$python_version" == "" ] || [ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ] ;then
                python_version=""
-          else
+          elif [ -n "$check_python" ] ;then
               while true
                 do
                   read -p "
@@ -655,7 +660,10 @@ function checkMacPython3(){
               if [ "$use_python" == "y" ];then
                     break
               fi
-          fi
+            else
+              echo "您输入Python的不是Python3"
+              python_version=""
+            fi
        done
 }
 
@@ -697,7 +705,7 @@ function checkMacPythonVersion(){
        if [ "$python_V" == "" ];then
             python_V="2"
        fi
-       read -n1 -p "您选择了数字【"$python_V"】，正在寻找符合您要求的Python版本，请按回车键继续..."
+       echo "您选择了数字【"$python_V"】，正在寻找符合您要求的Python版本，请按回车键继续..."
        echo
        if [ "$python_V" == "2" ];then
            python_root=`which python2.7`
@@ -771,7 +779,6 @@ function checkMacPythonVersion(){
                  uncode="m"
               fi
            fi
-           echo ${python_list[@]}
            version_list=`echo "${python_list[@]}" | grep "$python_brief_version" `
            if [ "$version_list" != "" ];then
               break
