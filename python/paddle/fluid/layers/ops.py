@@ -135,7 +135,7 @@ def thresholded_relu(x, threshold=None):
         if val is not None:
             kwargs[name] = val
 
-    _thresholded_relu_(**kwargs)
+    return _thresholded_relu_(**kwargs)
 
 
 thresholded_relu.__doc__ = _thresholded_relu_.__doc__ + """
