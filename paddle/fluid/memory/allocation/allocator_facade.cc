@@ -29,6 +29,7 @@
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/memory/allocation/zero_size_allocator.h"
+#include "paddle/fluid/memory/allocation/buffered_allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
@@ -190,6 +191,12 @@ class AllocatorFacadePrivate {
   AllocatorFacadePrivate() {
     if (GetAllocatorStrategy() == AllocatorStrategy::kLegacy) {
       InitLegacyAllocator();
+    } else if (GetAllocatorStrategy() == AllocatorStrategy::kAllowGrowth) {
+      // disable fraction on purpose.
+      FLAGS_fraction_of_gpu_memory_to_use = 0.0;
+      InitLegacyAllocator();
+      WrapBufferedAllocator();
+      WrapZeroSizeAllocator();
     } else {
       InitCPUAllocator();
       InitCUDAAllocator();
@@ -237,6 +244,12 @@ class AllocatorFacadePrivate {
     for (auto& pair : allocators_) {
       pair.second =
           std::make_shared<ZeroSizeAllocator>(pair.second, pair.first);
+    }
+  }
+
+  void WrapBufferedAllocator() {
+    for (auto& pair : allocators_) {
+      pair.second = std::make_shared<BufferedAllocator>(pair.second);
     }
   }
 };

@@ -12,22 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "gflags/gflags.h"
 
 DEFINE_string(
     allocator_strategy, "legacy",
     "The allocation strategy. Legacy means the original allocator of Fluid."
-    "New means the experimental allocators of Fluid. in [legacy, new]");
+    "New means the experimental allocators of Fluid. in [legacy, new, incement]");
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
 static AllocatorStrategy GetStrategyFromFlag() {
-  return FLAGS_allocator_strategy == "legacy"
-             ? AllocatorStrategy::kLegacy
-             : AllocatorStrategy::kNaiveBestFit;
+  const std::string s = FLAGS_allocator_strategy;
+  return s == "legacy" ? AllocatorStrategy::kLegacy
+    : (s == "increment" ? AllocatorStrategy::kAllowGrowth : AllocatorStrategy::kNaiveBestFit);
 }
 
 AllocatorStrategy GetAllocatorStrategy() {
