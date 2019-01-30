@@ -17,6 +17,7 @@ from __future__ import print_function
 import os
 import unittest
 import numpy as np
+import paddle.fluid.core as core
 import paddle.fluid as fluid
 from parallel_executor_test_base import TestParallelExecutorBase
 
@@ -50,6 +51,9 @@ class TestIrInplace(TestParallelExecutorBase):
                            ir_memory_optimize,
                            enable_inplace,
                            memory_opt=False):
+
+        if not core.is_compiled_with_cuda():
+            return
         np.random.seed(5)
         img = np.random.random(size=[32, 784]).astype(np.float32)
         label = np.ones(shape=[32, 1], dtype='int64')

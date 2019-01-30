@@ -34,6 +34,6 @@ TEST(Benchmark, PersistToFile) {
   benchmark.SetLatency(220);
 
   benchmark.PersistToFile("1.log");
-  benchmark.PersistToFile("1.log");
-  benchmark.PersistToFile("1.log");
+  benchmark.PersistToFile("2.log");
+  benchmark.PersistToFile("3.log");
 }
