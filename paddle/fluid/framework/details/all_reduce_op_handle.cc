@@ -121,10 +121,9 @@ void AllReduceOpHandle::_RunImplEncoded() {
     auto tmp_ious_data = allocator.Allocate(ranks_ * in_numel * sizeof(float));
     void *gather_buff = reinterpret_cast<void *>(tmp_ious_data->ptr());
 
-    VLOG(10) << "in_numel:" << in_numel
-        << ", out_numel:" << out_numel
-        << ", ranks:" << ranks_
-        << ", gather_buf size:" << ranks_ * in_numel * sizeof(float);
+    VLOG(10) << "in_numel:" << in_numel << ", out_numel:" << out_numel
+             << ", ranks:" << ranks_
+             << ", gather_buf size:" << ranks_ * in_numel * sizeof(float);
 
     all_reduce_calls.emplace_back([=] {
       sparseAllGReduce(in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel,
