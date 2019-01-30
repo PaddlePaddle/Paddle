@@ -393,6 +393,28 @@ def load_persistables_for_inference(dirname, executor, program,
 
 
 def get_inference_model(main_program, feeded_var_names, target_vars):
+    """
+    Prune the given `main_program` to build a new program especially for inference with distributed lookup table ,
+    and then add `feeded_vars` and `target_vars` in this program.
+
+    Args:
+        main_program(Program|None): The original program, which will be pruned to
+                                    build the inference model. If is setted None,
+                                    the default main program will be used.
+                                    Default: None.
+        feeded_var_names(list[str]): Names of variables that need to be feeded data
+                                     during inference.
+        target_vars(list[Variable]): Variables from which we can get inference
+                                     results.
+    Returns:
+        program(Program)
+
+    Raises:
+        ValueError: If `feed_var_names` is not a list of basestring.
+        ValueError: If `target_vars` is not a list of Variable.
+
+    """
+
     def prepend_feed_ops(inference_program,
                          feed_target_names,
                          feed_holder_name='feed'):
