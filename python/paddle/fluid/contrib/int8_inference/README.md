@@ -58,7 +58,7 @@ Please note that [Small](http://paddle-inference-dist.cdn.bcebos.com/int8/calibr
 
 Notes:
 * The accuracy measurement requires the model with `label`.
-* INT8 theoretical speedup is ~1.33X on Intel® Xeon® Skylake Server (please refer to `This allows for 4x more input at the cost of 3x more instructions or 33.33% more compute` in  [Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")).
+* The INT8 theoretical speedup is ~1.33X on Intel® Xeon® Skylake Server (please refer to `This allows for 4x more input at the cost of 3x more instructions or 33.33% more compute` in  [Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")).
 
 ## 4. How to reproduce the results
 * Small dataset
