@@ -203,7 +203,7 @@ TEST(GraphHelperTest, Circles) {
 
   std::vector<std::vector<ir::Node*>> circles;
   ASSERT_TRUE(FindCircleSubGraph(g, &circles));
-  ASSERT_EQ(circles.size() == 1UL);
+  ASSERT_EQ(circles.size(), 1UL);
 }
 
 TEST(GraphHelperTest, GraphNum) {
