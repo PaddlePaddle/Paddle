@@ -31,7 +31,8 @@ std::unique_ptr<ir::Graph> IdentityScaleOpCleanPass::ApplyImpl(
   auto pre_op = detector.mutable_pattern()->NewNode("pre_op")->assert_is_op();
   auto scale_in = detector.mutable_pattern()
                       ->NewNode("scale_in")
-                      ->assert_is_op_input("scale")->AsIntermediate();
+                      ->assert_is_op_input("scale")
+                      ->AsIntermediate();
   auto scale_op = detector.mutable_pattern()
                       ->NewNode("scale_fuse")
                       ->assert_is_op("scale")
