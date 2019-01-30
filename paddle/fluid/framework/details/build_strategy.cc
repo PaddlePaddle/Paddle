@@ -44,28 +44,18 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
  public:
   explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy)
       : ir::PassBuilder(), strategy_(strategy) {
-    if (strategy_.enable_inplace_) {
-      // before inplaced
-      // if (!strategy_.debug_graphviz_path_.empty()) {
-      //   const std::string path = strategy_.debug_graphviz_path_ +
-      //   "before_inplaced";
-      //   auto pass = AppendPass("graph_print_pass");
-      //   pass->Set<std::string>(kGraphvizPath, new std::string(path));
-      // }
-
-      AppendPass("inplace_pass");
-      // after inplaced
-      // if (!strategy_.debug_graphviz_path_.empty()) {
-      //   const std::string path = strategy_.debug_graphviz_path_ +
-      //   "after_inplaced";
-      //   auto pass = AppendPass("graph_print_pass");
-      //   pass->Set<std::string>(details::kGraphvizPath, new
-      //   std::string(path));
-      // }
-    }
-
     if (strategy_.enable_sequential_execution_) {
       AppendPass("sequential_execution_pass");
+    }
+
+    // Add op fusion.
+    if (strategy.fuse_relu_depthwise_conv_) {
+      AppendPass("fuse_relu_depthwise_conv_pass");
+    }
+
+    // Add automatically inplace.
+    if (strategy_.enable_inplace_) {
+      AppendPass("inplace_pass");
     }
 
     // Add a graph viz pass to record a graph.
@@ -76,10 +66,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
     }
 
-    // Add op fusion.
-    if (strategy.fuse_relu_depthwise_conv_) {
-      AppendPass("fuse_relu_depthwise_conv_pass");
-    }
     if (strategy.fuse_elewise_add_act_ops_) {
       auto fuse_elewise_add_act_pass = AppendPass("fuse_elewise_add_act_pass");
       // Add a graph viz pass to record a graph.
