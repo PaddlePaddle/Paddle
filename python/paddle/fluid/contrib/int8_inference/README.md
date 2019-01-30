@@ -43,25 +43,20 @@ You can load INT8 model by load_inference_model [API](https://github.com/PaddleP
 ```
 
 ## 3. Result
-We provide the results of accuracy and performance, measurd on [Intel® Xeon® Platinum Gold Processor](https://ark.intel.com/products/120489/Intel-Xeon-Gold-6148-Processor-27-5M-Cache-2-40-GHz- "Intel® Xeon® Gold 6148 Processor") (also known as Intel® Xeon® Skylake6148).
+We provide the results of accuracy measurd on [Intel® Xeon® Platinum Gold Processor](https://ark.intel.com/products/120489/Intel-Xeon-Gold-6148-Processor-27-5M-Cache-2-40-GHz- "Intel® Xeon® Gold 6148 Processor") (also known as Intel® Xeon® Skylake6148).
 
 | Model  | Dataset  | FP32 Accuracy  | INT8 Accuracy  | Accuracy Diff  |
 | ------------ | ------------ | ------------ | ------------ | ------------ |
 | ResNet-50  | Small  | 72.00%  | 72.00%  |  0.00% |
 | MobileNet-V1  | Small  | 62.00%  | 62.00%  | 0.00%  |
-| ResNet-50  | Full ImageNet Val  |  76.63%  | 76.14%  | 0.48% |
-| MobileNet-V1 | Full ImageNet Val  | 70.78%  | 70.41%  | 0.37%  |
+| ResNet-50  | Full ImageNet Val  |  76.63%  | 76.17%  | 0.46% |
+| MobileNet-V1 | Full ImageNet Val  | 70.78%  | 70.49%  | 0.29%  |
 
 Please note that [Small](http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz "Small") is a subset of [full ImageNet validation dataset](http://www.image-net.org/challenges/LSVRC/2012/nnoupb/ILSVRC2012_img_val.tar "full ImageNet validation dataset"). 
 
-| Model  | Batch Size  | FP32 Throughput (Images/second)  | INT8 Throughput (Images/second)  | Improvement  |
-| ------------ | ------------ | ------------ | ------------ | ------------ |
-| ResNet-50  | 1  |   14  | 23  | 1.59X |
-| MobileNet-V1 | 1  | 60  | 97  | 1.61X  |
-
 Notes:
 * The accuracy measurement requires the model with `label`.
-* The performance is measurd on SKX6148 (batch size = 1 and iterations = 50). INT8 theoretical speedup is ~1.33X on Intel® Xeon® Skylake Server (please refer to `This allows for 4x more input at the cost of 3x more instructions or 33.33% more compute` in  [Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")).
+* INT8 theoretical speedup is ~1.33X on Intel® Xeon® Skylake Server (please refer to `This allows for 4x more input at the cost of 3x more instructions or 33.33% more compute` in  [Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")).
 
 ## 4. How to reproduce the results
 * Small dataset
