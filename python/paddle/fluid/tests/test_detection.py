@@ -479,6 +479,7 @@ class TestBoxClip(unittest.TestCase):
             out = layers.box_clip(input_box, im_info)
             self.assertIsNotNone(out)
 
+
 class TestMulticlassNMS(unittest.TestCase):
     def test_multiclass_nms(self):
         program = Program()
