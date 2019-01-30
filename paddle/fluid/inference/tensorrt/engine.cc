@@ -69,6 +69,13 @@ void TensorRTEngine::FreezeNetwork() {
   // build engine.
   infer_builder_->setMaxBatchSize(max_batch_);
   infer_builder_->setMaxWorkspaceSize(max_workspace_);
+  if (enable_int8_) {
+    infer_builder_->setInt8Mode(true);
+    PADDLE_ENFORCE(
+        calibrator_ != nullptr,
+        "The precision mode is 'INT8', the calibrator should not be nullptr");
+    infer_builder_->setInt8Calibrator(calibrator_);
+  }
 
   infer_engine_.reset(infer_builder_->buildCudaEngine(*infer_network_));
   PADDLE_ENFORCE(infer_engine_ != nullptr, "build cuda engine failed!");
