@@ -135,7 +135,6 @@ class ParallelExecutor(object):
         # step3: init build_strategy
         if build_strategy is None:
             build_strategy = BuildStrategy()
-        build_strategy.enable_inplace = False if main._is_optimized else True
         build_strategy.num_trainers = num_trainers
         build_strategy.trainer_id = trainer_id
         # FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
@@ -147,6 +146,9 @@ class ParallelExecutor(object):
         # step4: get main_program, scope, local_scopes
         main = main_program if main_program \
             else framework.default_main_program()
+        # FIXME(dzhwinter): enable_inplace should be after memory_optimize
+        # if turn on python memory optimize, turn off the inplace_pass.
+        build_strategy.enable_inplace = False if main._is_optimized else True
         scope = scope if scope is not None else executor.global_scope()
 
         if share_vars_from and not isinstance(share_vars_from,
