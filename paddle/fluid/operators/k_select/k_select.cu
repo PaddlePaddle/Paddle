@@ -693,12 +693,14 @@ void dense2coo(void* encode, float* input, float* threshold, int* thr_cnt,
   int p_threads = min(blocks, threads);
   int p_blocks = iDivUp(blocks, p_threads);
 
-  KeGetThreadCountByThreshold<float><<<blocks, threads, smemSize, 0>>>(
+  KeGetThreadCountByThreshold<float><<<blocks, threads, smemSize, stream>>>(
       input, thr_cnt, count, threshold);
+
+  /*
   int* part = thr_cnt + threads * blocks;
-  KePrefixSum<<<blocks, threads, smemSize, 0>>>(thr_cnt, 32, part);
-  KePrefixSum<<<p_blocks, p_threads, smemSize, 0>>>(part, 32);
-  KeGlobalPrefixSum<<<blocks - 1, threads>>>(thr_cnt + threads, part, count, k);
+  KePrefixSum<<<blocks, threads, smemSize, stream>>>(thr_cnt, 32, part);
+  KePrefixSum<<<p_blocks, p_threads, smemSize, stream>>>(part, 32);
+  KeGlobalPrefixSum<<<blocks - 1, threads,0, stream>>>(thr_cnt + threads, part, count, k);
   int* index = static_cast<int*>(encode);
   float* value = static_cast<float*>(encode) + k;
   KeEncode<float><<<blocks, threads, 0, stream>>>(input, count, thr_cnt, value,
@@ -709,6 +711,7 @@ void dense2coo(void* encode, float* input, float* threshold, int* thr_cnt,
     KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
                                                                   moment);
   }
+  */
 }
 
 void get_threshold_bucket(void* buff, float* input, int count, int k,
@@ -758,11 +761,15 @@ bool k_select(float* input, int count, void* encode, void* buff, int k,
   float* threshold = static_cast<float*>(buff);
   get_threshold(threshold, input, count, k, stream);
 
-  int* thr_cnt = static_cast<int*>(buff) + 1;
+  int blocks=0;
+  int threads=0;
+  getNumBlocksAndThreads(count, blocks, threads);
+  int* thr_cnt = static_cast<int*>(buff) + blocks;
   if (protocal == 0) {  // coo
     dense2coo(encode, input, threshold, thr_cnt, count, k, stream, moment);
   } else if (protocal == 1) {  // csr
-    dense2csr(encode, input, threshold, thr_cnt, count, k, stream);
+    // dense2csr(encode, input, threshold, thr_cnt, count, k, stream);
+    exit(-1);
   }
   return true;
 }
