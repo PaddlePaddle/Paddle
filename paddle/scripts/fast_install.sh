@@ -765,49 +765,19 @@ function macos() {
         checkMacAVX
         checkMacGPU
 
-        wheel_cpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-${GPU}-mac/paddlepaddle-1.2.0-cp${python_brief_version}-cp${python_brief_version}m-macosx_10_6_intel.whl"
-        whl_cpu_release="paddlepaddle-1.2.0-cp${python_brief_version}-cp${python_brief_version}m-macosx_10_6_intel.whl"
-        wheel_cpu_develop="http://paddle-wheel.bj.bcebos.com/latest-cpu-mac/paddlepaddle-latest-cp${python_brief_version}-cp${python_brief_version}m-macosx_10_6_intel.whl"
-        whl_cpu_develop="paddlepaddle-latest-cp${python_brief_version}-cp${python_brief_version}m-macosx_10_6_intel.whl"
 
         if [[ $paddle_version == "2" ]];then
-            if [ -f $whl_cpu_release ];then
-                $python_root -m pip install $whl_cpu_release
-                if [ $? == "0" ];then
-                   rm -rf $whl_cpu_release
-                   echo "安装成功，可以使用: ${python_root} 来启动安装了PaddlePaddle的Python解释器"
-                   break
-                else
-                   echo "未能正常安装PaddlePaddle，请尝试更换您输入的python路径，或者ctrl + c退出后请检查您使用的python3对应的pip或pip源是否可用"
-                   echo""
-                   echo "=========================================================================================="
-                   echo""
-                   exit 1
-                fi
+            $python_root -m pip install paddlepaddle
+            if [ $? == "0" ];then
+               echo "安装成功，可以使用: ${python_root} 来启动安装了PaddlePaddle的Python解释器"
+               break
             else
-                wget ${path}$wheel_cpu_release -O $whl_cpu_release
-                if [ $? == "0" ];then
-                    $python_root -m pip install $whl_cpu_release
-                    if [ $? == "0" ];then
-                       rm  $whl_cpu_release
-                       echo "安装成功，可以使用: ${python_root} 来启动安装了PaddlePaddle的Python解释器"
-                       break
-                    else
-                       rm  $whl_cpu_release
-                       echo "未能正常安装PaddlePaddle，请尝试更换您输入的python路径，或者ctrl + c退出后请检查您使用的python3对应的pip或pip源是否可用"
-                       echo""
-                       echo "=========================================================================================="
-                       echo""
-                       exit 1
-                    fi
-                else
-                      rm  $whl_cpu_release
-                      echo "未能正常安装PaddlePaddle，请检查您的网络，或者ctrl + c退出后反馈至https://github.com/PaddlePaddle/Paddle/issues"
-                      echo""
-                      echo "=========================================================================================="
-                      echo""
-                      exit 1
-                fi
+               rm  $whl_cpu_release
+               echo "未能正常安装PaddlePaddle，请尝试更换您输入的python路径，或者ctrl + c退出后请检查您使用的python对应的pip或pip源是否可用"
+               echo""
+               echo "=========================================================================================="
+               echo""
+               exit 1
             fi
         else
             if [ -f $whl_cpu_develop ];then
@@ -817,7 +787,7 @@ function macos() {
                    echo "安装成功，可以使用: ${python_root} 来启动安装了PaddlePaddle的Python解释器"
                    break
                 else
-                   echo "未能正常安装PaddlePaddle，请尝试更换您输入的python路径，或者ctrl + c退出后请检查您使用的python3对应的pip或pip源是否可用"
+                   echo "未能正常安装PaddlePaddle，请尝试更换您输入的python路径，或者ctrl + c退出后请检查您使用的python对应的pip或pip源是否可用"
                    echo""
                    echo "=========================================================================================="
                    echo""
@@ -833,7 +803,7 @@ function macos() {
                        break
                     else
                        rm  $whl_cpu_release
-                       echo "未能正常安装PaddlePaddle，请尝试更换您输入的python路径，或者ctrl + c退出后请检查您使用的python3对应的pip或pip源是否可用"
+                       echo "未能正常安装PaddlePaddle，请尝试更换您输入的python路径，或者ctrl + c退出后请检查您使用的python对应的pip或pip源是否可用"
                        echo""
                        echo "=========================================================================================="
                        echo""
@@ -841,7 +811,7 @@ function macos() {
                     fi
                 else
                       rm  $whl_cpu_develop
-                      echo "未能正常安装PaddlePaddle，请检查您的网络，或者ctrl + c退出后反馈至https://github.com/PaddlePaddle/Paddle/issues"
+                      echo "未能正常安装PaddlePaddle，请检查您的网络 或者确认您是否安装有 wget，或者ctrl + c退出后反馈至https://github.com/PaddlePaddle/Paddle/issues"
                       echo""
                       echo "=========================================================================================="
                       echo""
