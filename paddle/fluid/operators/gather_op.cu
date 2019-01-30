@@ -31,7 +31,7 @@ class GatherOpCUDAKernel : public framework::OpKernel<T> {
     auto *output = ctx.Output<Tensor>("Out");
 
     output->mutable_data<T>(ctx.GetPlace());
-
+    if (x->numel() == 0) return;
     GPUGather<T>(ctx.device_context(), *x, *index, output);
   }
 };
@@ -45,14 +45,13 @@ class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
     auto *Index = ctx.Input<Tensor>("Index");
     auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dO = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto *x = ctx.Input<Tensor>("X");
 
     dX->mutable_data<T>(ctx.GetPlace());
     auto dxt = framework::EigenVector<T>::Flatten(*dX);
     auto &place = *ctx.template device_context<platform::CUDADeviceContext>()
                        .eigen_device();
     dxt.device(place) = dxt.constant(static_cast<T>(0));
-
+    if (dO->numel() == 0) return;
     GPUScatterAssign<T>(ctx.device_context(), *dO, *Index, dX);
   }
 };
