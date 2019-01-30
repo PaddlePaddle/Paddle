@@ -128,9 +128,9 @@ inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
 inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_conv
   "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz" SERIAL)
 
-# bert, max_len=20
-set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert20")
-download_model_and_data(${BERT_INSTALL_DIR} "bert_model.tar.gz" "bert_data_len20.txt.tar.gz")
+# bert, max_len=20, embedding_dim=128
+set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert_emb128")
+download_model_and_data(${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_data_len20.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc SERIAL)
 
 # anakin

@@ -3877,7 +3877,8 @@ def beam_search(pre_ids,
                 end_id,
                 level=0,
                 is_accumulated=True,
-                name=None):
+                name=None,
+                return_parent_idx=False):
     """
     Beam search is a classical algorithm for selecting candidate words in a
     machine translation task.
@@ -3933,10 +3934,16 @@ def beam_search(pre_ids,
              accumulated scores.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
+        return_parent_idx(bool): Whether to return an extra Tensor variable 
+                        preserving the selected_ids' parent indice in pre_ids
+                        in output, which can be used to gather cell states at
+                        the next time step.
 
     Returns:
-        Variable: The LodTensor pair containing the selected ids and the \
-            corresponding scores.
+        Variable: The LodTensor tuple containing the selected ids and the \
+            corresponding scores. If :attr:`return_parent_idx` is :attr:`True`, \
+            an extra Tensor variable preserving the selected_ids' parent indice \
+            is included.
 
     Examples:
         .. code-block:: python
@@ -3969,6 +3976,11 @@ def beam_search(pre_ids,
     selected_scores = helper.create_variable_for_type_inference(
         dtype=score_type)
     selected_ids = helper.create_variable_for_type_inference(dtype=id_type)
+    # parent_idx is a tensor used to gather cell states at the next time
+    # step. Though lod in selected_ids can also be used to gather by
+    # sequence_expand, it is not efficient.
+    # gather_op's index input only supports int32 dtype currently
+    parent_idx = helper.create_variable_for_type_inference(dtype="int32")
 
     helper.append_op(
         type='beam_search',
@@ -3976,6 +3988,7 @@ def beam_search(pre_ids,
         outputs={
             'selected_ids': selected_ids,
             'selected_scores': selected_scores,
+            'parent_idx': parent_idx
         },
         attrs={
             # TODO(ChunweiYan) to assure other value support
@@ -3984,8 +3997,10 @@ def beam_search(pre_ids,
             'end_id': end_id,
             'is_accumulated': is_accumulated,
         })
-
-    return selected_ids, selected_scores
+    if return_parent_idx:
+        return selected_ids, selected_scores, parent_idx
+    else:
+        return selected_ids, selected_scores
 
 
 def beam_search_decode(ids, scores, beam_size, end_id, name=None):
