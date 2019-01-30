@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-from op_test import OpTest
-from test_conv2d_op import conv2d_forward_naive, TestConv2dOp
+from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, TestConv2dOp
 
 
 def conv2d_forward_refer(input, filter, group, conv_param):

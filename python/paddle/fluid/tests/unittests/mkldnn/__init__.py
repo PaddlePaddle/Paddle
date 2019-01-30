@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,18 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from __future__ import print_function
-
-import unittest
-
-from test_gaussian_random_op import TestGaussianRandomOp
-
-
-class TestMKLDNN(TestGaussianRandomOp):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-if __name__ == '__main__':
-    unittest.main()
