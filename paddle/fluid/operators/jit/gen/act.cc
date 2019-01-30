@@ -81,9 +81,7 @@ void VActJitCode::genCode() {
 #define DECLARE_ACT_CREATOR(name)                                            \
   class name##Creator : public JitCodeCreator<int> {                         \
    public:                                                                   \
-    bool UseMe(const int& attr) const override {                             \
-      return platform::MayIUse(platform::avx);                               \
-    }                                                                        \
+    bool UseMe(const int& attr) const override;                              \
     size_t CodeSize(const int& d) const override;                            \
     std::unique_ptr<GenBase> CreateJitCode(const int& attr) const override { \
       return make_unique<name##JitCode>(attr, CodeSize(attr));               \
@@ -98,6 +96,30 @@ DECLARE_ACT_CREATOR(VSigmoid);
 DECLARE_ACT_CREATOR(VTanh);
 
 // TODO(TJ): tuning use me
+bool VReluCreator::UseMe(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
+bool VSquareCreator::UseMe(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
+bool VIdentityCreator::UseMe(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
+bool VExpCreator::UseMe(const int& d) const {
+  return platform::MayIUse(platform::avx) && d < 32;
+}
+
+bool VSigmoidCreator::UseMe(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
+bool VTanhCreator::UseMe(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
 size_t VReluCreator::CodeSize(const int& d) const {
   return 96 /* init size */ +
          (d / YMM_FLOAT_BLOCK + 3) * 4 /* instructions */ *
