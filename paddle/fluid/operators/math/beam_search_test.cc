@@ -93,13 +93,14 @@ void TestBeamSearch() {
 
   paddle::framework::LoDTensor selected_ids;
   paddle::framework::LoDTensor selected_scores;
+  paddle::framework::LoDTensor parent_idx;
 
   size_t level = 0;
   size_t beam_size = 2;
   int end_id = 0;
   paddle::operators::math::BeamSearchFunctor<DeviceContext, float> beamsearch;
   beamsearch(*context, &pre_ids, &pre_scores, &ids, &scores, &selected_ids,
-             &selected_scores, level, beam_size, end_id, true);
+             &selected_scores, &parent_idx, level, beam_size, end_id, true);
 
   ASSERT_EQ(selected_ids.lod(), selected_scores.lod());
 
