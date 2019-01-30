@@ -2,4 +2,4 @@ if(NOT WITH_GPU)
     return()
 endif()
 
-nv_library(k_select SRCS common.cu k_select.cu)
+nv_library(k_select SRCS common.cu k_select.cu k_select_tmp.cu)

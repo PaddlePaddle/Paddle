@@ -32,3 +32,6 @@ bool k_select_bucket(float* input, int count, void* encode, void* buffer, int k,
                      float* moment = nullptr);
 
 int get_buffer_size(int count);
+
+bool k_select(float* input, int input_count, void* encode, int k,
+              cudaStream_t stream);
