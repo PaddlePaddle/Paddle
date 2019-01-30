@@ -28,21 +28,9 @@ import six
 from functools import reduce
 
 __all__ = [
-    'While',
-    'Switch',
-    'increment',
-    'array_write',
-    'create_array',
-    'less_than',
-    'equal',
-    'array_read',
-    'array_length',
-    'IfElse',
-    'DynamicRNN',
-    'StaticRNN',
-    'reorder_lod_tensor_by_rank',
-    'Print',
-    'is_empty',
+    'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
+    'equal', 'array_read', 'array_length', 'IfElse', 'DynamicRNN', 'StaticRNN',
+    'reorder_lod_tensor_by_rank', 'Print', 'is_empty', 'allreduce'
 ]
 
 
@@ -1839,3 +1827,18 @@ def is_empty(x, cond=None, **ignored):
     helper.append_op(
         type='is_empty', inputs={'X': [x]}, outputs={'Out': [cond]})
     return cond
+
+
+def allreduce(x, out=None):
+    helper = LayerHelper("allreduce", **locals())
+    if out is None:
+        out = helper.create_variable(
+            name=unique_name.generate(".".join([x.name, 'tmp'])),
+            shape=x.shape,
+            dtype=x.dtype,
+            type=x.type,
+            persistable=x.persistable,
+            stop_gradient=True)
+    helper.append_op(
+        type='allreduce', inputs={'X': [x]}, outputs={'Out': [out]})
+    return out

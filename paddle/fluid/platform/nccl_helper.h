@@ -124,8 +124,8 @@ struct NCCLContextMap {
           } else {
             rank = trainer_id;
           }
-          VLOG(30) << "init nccl rank: " << rank << " nranks: " << nranks
-                   << "gpu id: " << gpu_id;
+          VLOG(3) << "init nccl rank: " << rank << " nranks: " << nranks
+                  << " gpu id: " << gpu_id;
           PADDLE_ENFORCE(cudaSetDevice(gpu_id));
           PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
               comms.get() + i, nranks, *nccl_id, rank));

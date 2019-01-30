@@ -38,21 +38,23 @@ class AllReduceOp : public framework::OperatorBase {
     auto* in = scope.FindVar(in_names[0]);
     auto* out = scope.FindVar(out_names[0]);
 
-    PADDLE_ENFORCE(in->IsType<framework::Tensor>() ||
+    PADDLE_ENFORCE(in->IsType<framework::LoDTensor>() ||
                    in->IsType<framework::LoDTensor>());
 
     int dtype = -1;
-    auto in_tensor = in->Get<framework::Tensor>();
+    auto in_tensor = in->Get<framework::LoDTensor>();
     dtype = platform::ToNCCLDataType(in_tensor.type());
 
     int64_t numel = in_tensor.numel();
     auto* sendbuff = in_tensor.data<void>();
-    auto* out_tensor = out->GetMutable<framework::Tensor>();
-    auto* recvbuff =
-        static_cast<void*>(out_tensor->mutable_data<uint8_t>(place));
+    auto* out_tensor = out->GetMutable<framework::LoDTensor>();
+    out_tensor->Resize(in_tensor.dims());
+    // FIXME(typhoonzero): out tensor should have same dtype as input.
+    auto* recvbuff = static_cast<void*>(out_tensor->mutable_data<float>(place));
 
     auto cuda_ctx = static_cast<platform::CUDADeviceContext*>(ctx);
     auto* comm = cuda_ctx->nccl_comm();
+    // FIXME(typhoonzero): should use nccl stream here.
     auto stream = cuda_ctx->stream();
 
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
