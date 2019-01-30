@@ -31,7 +31,7 @@ namespace paddle {
  *  - commit, the git commit id
  *  - branch, the corresponding git branch
  */
-std::string get_paddle_version();
+std::string paddle_get_version();
 
 /** paddle data type.
  */
