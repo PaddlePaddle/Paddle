@@ -22,7 +22,7 @@ import six
 import os
 import inspect
 from ..layer_helper import LayerHelper
-from ..initializer import Normal, Constant
+from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -58,6 +58,7 @@ __all__ = [
     'adaptive_pool2d',
     'adaptive_pool3d',
     'batch_norm',
+    'data_norm',
     'beam_search_decode',
     'conv2d_transpose',
     'conv3d_transpose',
@@ -178,9 +179,12 @@ __all__ = [
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
     'lstm',
+    'shuffle_channel',
     'py_func',
     'psroi_pool',
+    'teacher_student_sigmoid_loss',
     'huber_loss',
+    'tree_conv',
 ]
 
 kIgnoreIndex = -100
@@ -862,12 +866,14 @@ def dynamic_gru(input,
                 is_reverse=False,
                 gate_activation='sigmoid',
                 candidate_activation='tanh',
-                h_0=None):
+                h_0=None,
+                origin_mode=False):
     """
     **Gated Recurrent Unit (GRU) Layer**
 
-    Refer to `Empirical Evaluation of Gated Recurrent Neural Networks on
-    Sequence Modeling <https://arxiv.org/abs/1412.3555>`_ .
+    if origin_mode is False, then the equation of a gru step is from paper
+    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
+    Modeling <https://arxiv.org/pdf/1412.3555.pdf>`_ .
 
     The formula is as follows:
 
@@ -880,6 +886,21 @@ def dynamic_gru(input,
         \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
 
         h_t & = (1-u_t) \odot h_{t-1} + u_t \odot \\tilde{h_t}
+
+
+    if origin_mode is True then the equation is from paper
+    Learning Phrase Representations using RNN Encoder-Decoder for Statistical
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
+
+    .. math::
+
+        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
+
+        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
+
+        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
+
+        h_t & = u_t \odot h_{t-1} + (1-u_t) \odot \\tilde{h_t}
 
     The :math:`\odot` is the element-wise product of the vectors. :math:`act_g`
     is the update gate and reset gate activation function and :math:`sigmoid`
@@ -911,7 +932,7 @@ def dynamic_gru(input,
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates
+            of GRU.Note that the bias with :math:`(1 \\times 3D)` concatenates
             the bias in the update gate, reset gate and candidate calculations.
             If it is set to False, no bias will be applied to the update gate,
             reset gate and candidate calculations. If it is set to None or one
@@ -978,7 +999,8 @@ def dynamic_gru(input,
         attrs={
             'is_reverse': is_reverse,
             'gate_activation': gate_activation,
-            'activation': candidate_activation
+            'activation': candidate_activation,
+            'origin_mode': origin_mode
         })
     return hidden
 
@@ -989,9 +1011,14 @@ def gru_unit(input,
              param_attr=None,
              bias_attr=None,
              activation='tanh',
-             gate_activation='sigmoid'):
+             gate_activation='sigmoid',
+             origin_mode=False):
     """
-    GRU unit layer. The equation of a gru step is:
+    **GRU unit layer**
+
+    if origin_mode is True, then the equation of a gru step is from paper
+    `Learning Phrase Representations using RNN Encoder-Decoder for Statistical
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
 
         .. math::
             u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
@@ -1000,7 +1027,21 @@ def gru_unit(input,
 
             m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
 
-            h_t & = dot((1-u_t), m_t) + dot(u_t, h_{t-1})
+            h_t & = dot(u_t, h_{t-1}) + dot((1-u_t), m_t)
+
+    if origin_mode is False, then the equation of a gru step is from paper
+    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
+    Modeling <https://arxiv.org/pdf/1412.3555.pdf>`_
+
+        .. math::
+            u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
+
+            r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
+
+            m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
+
+            h_t & = dot((1-u_t), h_{t-1}) + dot(u_t, m_t)
+
 
     The inputs of gru unit includes :math:`z_t`, :math:`h_{t-1}`. In terms
     of the equation above, the :math:`z_t` is split into 3 parts -
@@ -1032,7 +1073,7 @@ def gru_unit(input,
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRU. Note that the bias with :math:`(1 \\times 3D)` concatenates
+            of GRU.Note that the bias with :math:`(1 \\times 3D)` concatenates
             the bias in the update gate, reset gate and candidate calculations.
             If it is set to False, no bias will be applied to the update gate,
             reset gate and candidate calculations. If it is set to None or one
@@ -1932,6 +1973,7 @@ def conv2d(input,
             'groups': groups,
             'use_cudnn': use_cudnn,
             'use_mkldnn': False,
+            'fuse_relu_before_depthwise_conv': False
         })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
@@ -2833,7 +2875,7 @@ def batch_norm(input,
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
     # setting stop_gradient=True to reduce computation
     if use_global_stats and helper.bias_attr.learning_rate == 0.:
-        scale.stop_gradient = True
+        bias.stop_gradient = True
 
     mean = helper.create_parameter(
         attr=ParamAttr(
@@ -2894,6 +2936,133 @@ def batch_norm(input,
         })
 
     return helper.append_activation(batch_norm_out)
+
+
+def data_norm(input,
+              act=None,
+              epsilon=1e-05,
+              param_attr=None,
+              data_layout='NCHW',
+              in_place=False,
+              use_mkldnn=False,
+              name=None,
+              moving_mean_name=None,
+              moving_variance_name=None,
+              do_model_average_for_mean_and_var=False):
+    """
+    **Data Normalization Layer**
+
+    Can be used as a normalizer function for conv2d and fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    1. NHWC `[batch, in_height, in_width, in_channels]`
+
+    2. NCHW `[batch, in_channels, in_height, in_width]`
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
+        \ mini-batch\ mean \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+    Args:
+        input(variable): The input variable which is a LoDTensor.
+        act(string, Default None): Activation type, linear|relu|prelu|...
+        epsilon(float, Default 1e-05):
+        param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
+        data_layout(string, default NCHW): NCHW|NHWC
+        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
+        use_mkldnn(bool, Default false): ${use_mkldnn_comment}
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
+        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+
+    Returns:
+        Variable: A tensor variable which is the result after applying data normalization on the input.
+
+    Examples:
+
+        .. code-block:: python
+
+            data = fluid.layers.data(input=x, size=200, param_attr='fc1.w')
+            hidden2 = fluid.layers.data_norm(input=hidden1)
+    """
+    helper = LayerHelper('data_norm', **locals())
+    dtype = helper.input_dtype()
+
+    input_shape = input.shape
+    if data_layout == 'NCHW':
+        channel_num = input_shape[1]
+    else:
+        if data_layout == 'NHWC':
+            channel_num = input_shape[-1]
+        else:
+            raise ValueError("unsupported data layout:" + data_layout)
+
+    param_shape = [channel_num]
+
+    batch_size_default = 1e4
+    batch_sum_default = 0.0
+    batch_square_sum_default = 1e4
+
+    if param_attr and isinstance(param_attr, dict):
+        batch_size_default = param_attr.get("batch_size", 1e4)
+        batch_sum_default = param_attr.get("batch_sum", 0.0)
+        batch_square_sum_default = param_attr.get("batch_square", 1e4)
+
+    # create parameter
+    batch_size = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.batch_size',
+            initializer=Constant(value=float(batch_size_default)),
+            trainable=True),
+        shape=param_shape,
+        dtype=input.dtype)
+
+    batch_sum = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.batch_sum',
+            initializer=Constant(value=float(batch_sum_default)),
+            trainable=True),
+        shape=param_shape,
+        dtype=input.dtype)
+
+    batch_square_sum = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.batch_square_sum',
+            initializer=Constant(value=float(batch_square_sum_default)),
+            trainable=True),
+        shape=param_shape,
+        dtype=input.dtype)
+
+    means = helper.create_variable(dtype=dtype, stop_gradient=True)
+    scales = helper.create_variable(dtype=dtype, stop_gradient=True)
+
+    data_norm_out = input if in_place else helper.create_variable(dtype=dtype)
+
+    helper.append_op(
+        type="data_norm",
+        inputs={
+            "X": input,
+            "BatchSize": batch_size,
+            "BatchSum": batch_sum,
+            "BatchSquareSum": batch_square_sum
+        },
+        outputs={"Y": data_norm_out,
+                 "Means": means,
+                 "Scales": scales},
+        attrs={"epsilon": epsilon,
+               "use_mkldnn": use_mkldnn})
+
+    return helper.append_activation(data_norm_out)
 
 
 @templatedoc()
@@ -3064,9 +3233,9 @@ def group_norm(input,
         inputs['Bias'] = bias
 
     # create output
-    mean_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
-    variance_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
-    group_norm_out = helper.create_tmp_variable(dtype)
+    mean_out = helper.create_variable(dtype=dtype, stop_gradient=True)
+    variance_out = helper.create_variable(dtype=dtype, stop_gradient=True)
+    group_norm_out = helper.create_variable(dtype)
 
     helper.append_op(
         type="group_norm",
@@ -3707,7 +3876,9 @@ def beam_search(pre_ids,
                 beam_size,
                 end_id,
                 level=0,
-                name=None):
+                is_accumulated=True,
+                name=None,
+                return_parent_idx=False):
     """
     Beam search is a classical algorithm for selecting candidate words in a
     machine translation task.
@@ -3719,14 +3890,17 @@ def beam_search(pre_ids,
     selects the top-K candidate word ids of current step from :attr:`ids`
     according to their :attr:`scores` for all source sentences, where K is
     :attr:`beam_size` and :attr:`ids, scores` are predicted results from the
-    computation cell. Additionally, :attr:`pre_ids` and :attr:`pre_scores` are
-    the output of beam_search at previous step, they are needed for special use
-    to handle ended candidate translations.
+    computation cell. If :attr:`ids` is not set, it will be calculated out
+    according to :attr:`scores`. Additionally, :attr:`pre_ids` and
+    :attr:`pre_scores` are the output of beam_search at previous step, they
+    are needed for special use to handle ended candidate translations.
 
-    Note that the :attr:`scores` passed in should be accumulated scores, and
-    length penalty should be done with extra operators before calculating the
-    accumulated scores if needed, also suggest finding top-K before it and
-    using the top-K candidates following.
+    Note that if :attr:`is_accumulated` is :attr:`True`, the :attr:`scores`
+    passed in should be accumulated scores. Else, the :attr:`scores` are
+    considered as the straightforward scores and will be transformed to the
+    log field and accumulated the :attr:`pre_scores` in this operator.
+    Length penalty should be done with extra operators before calculating the
+    accumulated scores if needed.
 
     Please see the following demo for a fully beam search usage example:
 
@@ -3756,12 +3930,20 @@ def beam_search(pre_ids,
             describes how these candidates belong to the prefix. The paths
             linking prefixes and selected candidates are organized and reserved
             in lod.
+        is_accumulated(bool, default True): Whether the input :attr:`score` is
+             accumulated scores.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
+        return_parent_idx(bool): Whether to return an extra Tensor variable 
+                        preserving the selected_ids' parent indice in pre_ids
+                        in output, which can be used to gather cell states at
+                        the next time step.
 
     Returns:
-        Variable: The LodTensor pair containing the selected ids and the \
-            corresponding scores.
+        Variable: The LodTensor tuple containing the selected ids and the \
+            corresponding scores. If :attr:`return_parent_idx` is :attr:`True`, \
+            an extra Tensor variable preserving the selected_ids' parent indice \
+            is included.
 
     Examples:
         .. code-block:: python
@@ -3784,33 +3966,41 @@ def beam_search(pre_ids,
                 end_id=end_id)
     """
     helper = LayerHelper('beam_search', **locals())
-    score_type = scores.dtype
-    id_type = ids.dtype
+    score_type = pre_scores.dtype
+    id_type = pre_ids.dtype
+
+    inputs = {"pre_ids": pre_ids, "pre_scores": pre_scores, "scores": scores}
+    if ids is not None:
+        inputs["ids"] = ids
 
     selected_scores = helper.create_variable_for_type_inference(
         dtype=score_type)
     selected_ids = helper.create_variable_for_type_inference(dtype=id_type)
+    # parent_idx is a tensor used to gather cell states at the next time
+    # step. Though lod in selected_ids can also be used to gather by
+    # sequence_expand, it is not efficient.
+    # gather_op's index input only supports int32 dtype currently
+    parent_idx = helper.create_variable_for_type_inference(dtype="int32")
 
     helper.append_op(
         type='beam_search',
-        inputs={
-            'pre_ids': pre_ids,
-            'pre_scores': pre_scores,
-            'ids': ids,
-            'scores': scores,
-        },
+        inputs=inputs,
         outputs={
             'selected_ids': selected_ids,
             'selected_scores': selected_scores,
+            'parent_idx': parent_idx
         },
         attrs={
             # TODO(ChunweiYan) to assure other value support
             'level': level,
             'beam_size': beam_size,
             'end_id': end_id,
+            'is_accumulated': is_accumulated,
         })
-
-    return selected_ids, selected_scores
+    if return_parent_idx:
+        return selected_ids, selected_scores, parent_idx
+    else:
+        return selected_ids, selected_scores
 
 
 def beam_search_decode(ids, scores, beam_size, end_id, name=None):
@@ -4978,9 +5168,9 @@ def nce(input,
         littles = []
         for i in range(custom_dist_len):
             normal_prob = custom_dist[i] * custom_dist_len
-            if normal_prob - 1.0 > 1e-4:
+            if normal_prob - 1.0 > 0:
                 bigs.append((i, normal_prob))
-            elif 1.0 - normal_prob > 1e-4:
+            elif 1.0 - normal_prob > 0:
                 littles.append((i, normal_prob))
             else:
                 alias_probs_[i] = normal_prob
@@ -4996,9 +5186,9 @@ def nce(input,
             alias_probs_[little[0]] = little[1]
             alias_[little[0]] = big_idx
             big_left = big[1] + little[1] - 1
-            if big_left - 1.0 > 1e-4:
+            if big_left - 1.0 > 0:
                 bigs.append((big_idx, big_left))
-            elif 1.0 - big_left > 1e-4:
+            elif 1.0 - big_left > 0:
                 littles.append((big_idx, big_left))
             else:
                 alias_probs_[big_idx] = big_left
@@ -5013,14 +5203,21 @@ def nce(input,
             alias_probs_[little[0]] = 1.0
             alias_[little[0]] = -1
 
-        probs = assign(input=np.array(custom_dist).astype('float32'))
-        custom_alias = assign(input=np.array(alias_).astype('int32'))
-        custom_alias_probs = assign(
-            input=np.array(alias_probs_).astype('float32'))
+        def _init_by_numpy_array(numpy_array):
+            ret = helper.create_parameter(
+                attr=ParamAttr(),
+                shape=numpy_array.shape,
+                dtype=numpy_array.dtype,
+                default_initializer=NumpyArrayInitializer(numpy_array))
+            ret.stop_gradient = True
+            return ret
 
-        inputs['CustomDistProbs'] = probs
-        inputs['CustomDistAlias'] = custom_alias
-        inputs['CustomDistAliasProbs'] = custom_alias_probs
+        inputs['CustomDistProbs'] = _init_by_numpy_array(
+            np.array(custom_dist).astype('float32'))
+        inputs['CustomDistAlias'] = _init_by_numpy_array(
+            np.array(alias_).astype('int32'))
+        inputs['CustomDistAliasProbs'] = _init_by_numpy_array(
+            np.array(alias_probs_).astype('float32'))
         sampler = 2
     else:
         raise Exception("Unsupported sampler type.")
@@ -5221,7 +5418,7 @@ def transpose(x, perm, name=None):
     Examples:
         .. code-block:: python
 
-            # use append_batch_size=False to avoid prepending extra
+            # use append_batch_size=False to avoid prepending extra
             # batch size in shape
             x = fluid.layers.data(name='x', shape=[5, 10, 15],
                             dtype='float32', append_batch_size=False)
@@ -5681,7 +5878,8 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
             type='increment',
             inputs={'X': [counter]},
             outputs={'Out': [counter]},
-            attrs={'step': float(step)})
+            attrs={'step': float(step)},
+            stop_gradient=True)
         counter.stop_gradient = True
 
     return counter
@@ -5737,7 +5935,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                                 than :attr:`shape`.
         act (str): The non-linear activation to be applied to the reshaped tensor
                    variable.
-        inplace(bool): Must use :attr:`False` if :attr:`x` is used in multiple
+        inplace(bool): Must use :attr:`False` if :attr:`x` is used in multiple
                        operators. If this flag is set :attr:`True`, reuse input
                        :attr:`x` to reshape, which will change the shape of
                        tensor variable :attr:`x` and might cause errors when
@@ -6398,7 +6596,9 @@ def image_resize(input,
                  scale=None,
                  name=None,
                  resample='BILINEAR',
-                 actual_shape=None):
+                 actual_shape=None,
+                 align_corners=True,
+                 align_mode=1):
     """
     **Resize a Batch of Images**
 
@@ -6410,6 +6610,80 @@ def image_resize(input,
         'BILINEAR' : Bilinear interpolation
 
         'NEAREST' : Nearest neighbor interpolation
+
+    Nearest neighbor interpolation is to perform nearest neighbor interpolation
+    in both the 3rd dimention(in height direction) and the 4th dimention(in width 
+    direction) on input tensor.
+            
+    Bilinear interpolation is an extension of linear interpolation for 
+    interpolating functions of two variables (e.g. H-direction and 
+    W-direction in this op) on a rectilinear 2D grid. The key idea is 
+    to perform linear interpolation first in one direction, and then 
+    again in the other direction.
+
+    Align_corners and align_mode are optinal parameters,the calculation method 
+    of interpolation can be selected by them.
+
+    Example:
+
+      For scale:
+      
+        if align_corners = True && out_size > 1 :
+
+          scale_factor = (in_size-1.0)/(out_size-1.0)
+        
+        else:
+          
+          scale_factor = float(in_size/out_size)
+        
+      
+      Nearest neighbor interpolation:
+      
+      if:
+          align_corners = False
+
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+
+          H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
+          W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
+
+      else:
+          align_corners = True
+
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+
+          H_out = round(H_{in} * scale_{factor})
+          W_out = round(W_{in} * scale_{factor})
+
+      Bilinear interpolation:
+
+      if:
+          align_corners = False , align_mode = 0
+          
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+          
+          H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+          W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+
+      else:
+       
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+
+          H_out = H_{in} * scale_{factor}
+          W_out = W_{in} * scale_{factor}
+
+    For details of nearest neighbor interpolation, please refer to Wikipedia: 
+    https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
+
+    For details of bilinear interpolation, please refer to Wikipedia: 
+    https://en.wikipedia.org/wiki/Bilinear_interpolation.
+
+
 
     Args:
         input (Variable): The input tensor of image resize layer,
@@ -6440,6 +6714,13 @@ def image_resize(input,
                                 set, otherwise errors would be occured in graph
                                 constructing stage.
                                 Default: None
+        align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the 
+                               input and output tensors are aligned, preserving the values at the 
+                               corner pixels.
+                               Default: True
+        align_mode(int)  :  An optional for bilinear interpolation. can be \'0\' 
+                            for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for 
+                            src_idx = scale*dst_index .
 
     Returns:
         Variable: The output is a 4-D tensor of the shape
@@ -6452,6 +6733,8 @@ def image_resize(input,
                     or 'NEAREST' currently.
         ValueError: One of out_shape and scale must not be None.
         ValueError: out_shape length should be 2.
+        TypeError: align_corners shoule be a bool value
+        ValueError: align_mode can only be '0' or '1'
 
     Examples:
         .. code-block:: python
@@ -6467,6 +6750,12 @@ def image_resize(input,
             "The 'resample' of image_resize can only be 'BILINEAR' or 'NEAREST' currently."
         )
     resample_type = resample_methods[resample]
+
+    if not isinstance(align_corners, bool):
+        raise TypeError("Attr align_corners should be a bool value")
+    if align_mode != 0 and align_mode != 1:
+        raise ValueError("align_mode can only be 0 or 1")
+
     if out_shape is None and scale is None:
         raise ValueError("One of out_shape and scale must not be None.")
     helper = LayerHelper('{}_interp'.format(resample_type), **locals())
@@ -6506,9 +6795,13 @@ def image_resize(input,
         type='{}_interp'.format(resample_type),
         inputs=inputs,
         outputs={"Out": out},
-        attrs={"out_h": out_h,
-               "out_w": out_w,
-               "interp_method": resample_type})
+        attrs={
+            "out_h": out_h,
+            "out_w": out_w,
+            "interp_method": resample_type,
+            "align_corners": align_corners,
+            "align_mode": align_mode
+        })
     return out
 
 
@@ -6517,7 +6810,9 @@ def resize_bilinear(input,
                     out_shape=None,
                     scale=None,
                     name=None,
-                    actual_shape=None):
+                    actual_shape=None,
+                    align_corners=True,
+                    align_mode=1):
     """
     Resize input by performing bilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
@@ -6531,6 +6826,47 @@ def resize_bilinear(input,
 
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation
+
+    Align_corners and align_mode are optinal parameters,the calculation 
+    method of interpolation can be selected by them.
+
+
+    Align_corners and align_mode are optinal parameters,the calculation method 
+    of interpolation can be selected by them.
+
+    Example:
+
+      For scale:
+      
+        if align_corners = True && out_size > 1 :
+
+          scale_factor = (in_size-1.0)/(out_size-1.0)
+        
+        else:
+          
+          scale_factor = float(in_size/out_size)     
+
+    Bilinear interpolation:
+
+      if:
+          align_corners = False , align_mode = 0
+          
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+          
+          H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+          W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+
+      else:
+
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+
+          H_out = H_{in} * scale_{factor}
+          W_out = W_{in} * scale_{factor}
+
+
 
     Args:
         input(${x_type}): ${x_comment}.
@@ -6555,6 +6891,8 @@ def resize_bilinear(input,
                                 set, otherwise errors would be occured in graph
                                 constructing stage.
                                 Default: None
+        align_corners(bool): ${align_corners_comment}
+        align_mode(bool): ${align_mode_comment}
 
     Returns:
         ${out_comment}.
@@ -6565,7 +6903,8 @@ def resize_bilinear(input,
             out = fluid.layers.resize_bilinear(input, out_shape=[12, 12])
     """
 
-    return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape)
+    return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape,
+                        align_corners, align_mode)
 
 
 @templatedoc(op_type="nearest_interp")
@@ -6573,12 +6912,47 @@ def resize_nearest(input,
                    out_shape=None,
                    scale=None,
                    name=None,
-                   actual_shape=None):
+                   actual_shape=None,
+                   align_corners=True):
     """
     Resize input by performing nearest neighbor interpolation in both the
     3rd dimention(in height direction) and the 4th dimention(in width
     direction) based on given output shape which specified by actual_shape,
     out_shape and scale in priority order.
+
+    Example:
+
+      For scale:
+      
+        if align_corners = True && out_size > 1 :
+
+          scale_factor = (in_size-1.0)/(out_size-1.0)
+        
+        else:
+          
+          scale_factor = float(in_size/out_size)
+        
+      
+      Nearest neighbor interpolation:
+      
+      if:
+          align_corners = False
+
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+
+          H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
+          W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
+
+      else:
+          align_corners = True
+
+          input : (N,C,H_in,W_in)
+          output: (N,C,H_out,W_out) where:
+
+          H_out = round(H_{in} * scale_{factor})
+          W_out = round(W_{in} * scale_{factor})
+
 
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
@@ -6606,6 +6980,7 @@ def resize_nearest(input,
                                 set, otherwise errors would be occured in graph
                                 constructing stage.
                                 Default: None
+        align_corners(bool): ${align_corners_comment}
 
     Returns:
         ${out_comment}.
@@ -6616,7 +6991,8 @@ def resize_nearest(input,
             out = fluid.layers.resize_nearest(input, out_shape=[12, 12])
     """
 
-    return image_resize(input, out_shape, scale, name, 'NEAREST', actual_shape)
+    return image_resize(input, out_shape, scale, name, 'NEAREST', actual_shape,
+                        align_corners)
 
 
 def image_resize_short(input, out_short_len, resample='BILINEAR'):
@@ -8350,8 +8726,7 @@ def shape(input):
     """
 
     helper = LayerHelper('shape', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('input'))
+    out = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(
         type='shape', inputs={'Input': input}, outputs={'Out': out})
 
@@ -8760,7 +9135,8 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 def sigmoid_cross_entropy_with_logits(x,
                                       label,
                                       ignore_index=kIgnoreIndex,
-                                      name=None):
+                                      name=None,
+                                      normalize=False):
     """
     ${comment}
 
@@ -8769,9 +9145,25 @@ def sigmoid_cross_entropy_with_logits(x,
         label(${label_type}): ${label_comment}
         ignore_index(&{ignore_index}): ${ignore_index_comment}
         name(basestring|None): Name of the output.
+        normalize(bool): If true, divide the output by the number of
+            targets != ignore_index.
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(
+                name='data', shape=[10], dtype='float32')
+            label = fluid.layers.data(
+                name='data', shape=[10], dtype='float32')
+            loss = fluid.layers.sigmoid_cross_entropy_with_logits(
+                x=input,
+                label=label,
+                ignore_index=-1,
+                normalize=True) # or False
+            # loss = fluid.layers.reduce_sum(loss) # summation of loss
     """
 
     helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
@@ -8786,7 +9178,8 @@ def sigmoid_cross_entropy_with_logits(x,
         type="sigmoid_cross_entropy_with_logits",
         inputs={"X": x,
                 "Label": label},
-        attrs={"ignore_index": ignore_index},
+        attrs={"ignore_index": ignore_index,
+               'normalize': normalize},
         outputs={"Out": out})
     return out
 
@@ -9264,6 +9657,47 @@ def log_loss(input, label, epsilon=1e-4, name=None):
     return loss
 
 
+def teacher_student_sigmoid_loss(input,
+                                 label,
+                                 soft_max_up_bound=15.0,
+                                 soft_max_lower_bound=-15.0):
+    """
+    **Teacher Student Log Loss Layer**
+
+    This layer accepts input predictions and target label and returns the
+    teacher_student loss.
+
+    .. math::
+        loss = max(x, 0) - x * z + log(1 + exp(-abs(x))) + max(x, 0) - x * z' + log(1 + exp(-abs(x)))
+
+    Args:
+        input (Variable|list):  a 2-D tensor with shape [N x 1], where N is the
+                                batch size. This input is a probability computed
+                                by the previous operator.
+        label (Variable|list):  the ground truth which is a 2-D tensor with
+                                shape [N x 1], where N is the batch size.
+        soft_max_up_bound  (float):  if input > soft_max_up_bound, will be bound
+        soft_max_lower_bound (float): if input < soft_max_lower_bound, will be bound
+
+    Returns:
+        Variable: A 2-D tensor with shape [N x 1], the teacher_student_sigmoid_loss.
+
+    Examples:
+        .. code-block:: python
+          cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
+    """
+    helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
+    out = helper.create_variable(dtype=input.dtype)
+    helper.append_op(
+        type='teacher_student_sigmoid_loss',
+        inputs={'X': [input],
+                'Label': [label]},
+        outputs={'Y': [out]},
+        attrs={"soft_max_lower_bound": float(soft_max_lower_bound), \
+                "soft_max_up_bound": float(soft_max_up_bound)})
+    return out
+
+
 def add_position_encoding(input, alpha, beta, name=None):
     """
     **Add Position Encoding Layer**
@@ -9403,6 +9837,79 @@ def get_tensor_from_selected_rows(x, name=None):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={})
+    return out
+
+
+def shuffle_channel(x, group, name=None):
+    """
+    **Shuffle Channel Operator**
+
+    This operator shuffles the channels of input x.
+    It divide the input channels in each group into :attr:`group` subgroups,
+    and obtain a new order by selecting element from every subgroup one by one.
+
+    Please refer to the paper
+    https://arxiv.org/pdf/1707.01083.pdf
+    
+    .. code-block:: text
+
+        Given a 4-D tensor input with the shape (N, C, H, W):
+            input.shape = (1, 4, 2, 2)
+            input.data =[[[[0.1, 0.2],
+                           [0.2, 0.3]],
+
+                          [[0.3, 0.4],
+                           [0.4, 0.5]],
+
+                          [[0.5, 0.6],
+                           [0.6, 0.7]],
+
+                          [[0.7, 0.8],
+                           [0.8, 0.9]]]]
+            Given group: 2
+            then we get a 4-D tensor out whth the same shape of input:
+            out.shape = (1, 4, 2, 2)
+            out.data = [[[[0.1, 0.2],
+                          [0.2, 0.3]],
+                          
+                         [[0.5, 0.6],
+                          [0.6, 0.7]],
+                          
+                         [[0.3, 0.4],
+                          [0.4, 0.5]],
+                          
+                         [[0.7, 0.8],
+                          [0.8, 0.9]]]]
+                        
+    Args: 
+        x(Variable): The input tensor variable. It should be a 4-D tensor with shape [N, C, H, W]
+        group(int): Indicating the conuts of subgroups, It should divide the number of channels.
+
+    Returns:
+        out(Variable): the channels shuffling result is a tensor variable with the 
+        same shape and same type as the input.
+
+    Raises:
+        ValueError: If group is not an int type variable.
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(name='input', shape=[4,2,2], dtype='float32')
+            out = fluid.layers.shuffle_channel(x=input, group=2)
+    """
+    helper = LayerHelper("shuffle_channel", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    if not isinstance(group, int):
+        raise TypeError("group must be int type")
+
+    helper.append_op(
+        type="shuffle_channel",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"group": group})
     return out
 
 
@@ -9724,3 +10231,73 @@ def huber_loss(input, label, delta):
                  'Residual': residual},
         attrs={'delta': delta})
     return out
+
+
+@templatedoc()
+def tree_conv(nodes_vector,
+              edge_set,
+              output_size,
+              num_filters=1,
+              max_depth=2,
+              act='tanh',
+              param_attr=None,
+              bias_attr=None,
+              name=None):
+    """ 
+    ${comment}
+    		
+    Args:
+        nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
+        edge_set(${edge_set_type}): ${edge_set_comment}
+        output_size(int): output feature width
+        num_filters(int): number of filters, Default 1
+        max_depth(int): max depth of filters, Default 2
+        act(str): activation function, Default tanh
+        param_attr(ParamAttr): the parameter attribute for the filters, Default None
+        bias_attr(ParamAttr): the parameter attribute for the bias of this layer, Default None
+        name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default None
+
+    Returns:
+        out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+          nodes_vector = layers.data(name='vectors', shape=[None, 10, 5], dtype='float32)
+          # None for batch size, 10 for max_node_size of dataset, 5 for vector width
+          edge_set = layers.data(name='edge_set', shape=[None, 10, 2], dtype='float32')
+          # None for batch size, 10 for max_node_size of dataset, 2 for every edge has two nodes
+          # edges must be directional
+          out_vector = layers.tree_conv(nodes_vector, edge_set, 6, 1, 2, 'tanh',
+              ParamAttr(initializer=Constant(1.0), ParamAttr(initializer=Constant(1.0))
+          # the shape of output will be [None, 10, 6, 1],
+          # None for batch size, 10 for max_node_size of dataset, 6 for output size, 1 for 1 filter
+          out_vector = layers.reshape(out_vector, shape=[None, 10, 6])
+          # After reshape, output tensor could be nodes_vector for next tree convolution
+          out_vector_2 = layers.tree_conv(out_vector, edge_set, 3, 4, 2, 'tanh',
+              ParamAttr(initializer=Constant(1.0), ParamAttr(initializer=Constant(1.0))
+          # also output tensor could be pooling(the pooling in paper called global pooling)
+          pooled = layers.reduce_max(out_vector, dims=2) # global pooling
+    """
+    helper = LayerHelper("tree_conv", **locals())
+    dtype = helper.input_dtype('nodes_vector')
+    feature_size = nodes_vector.shape[2]
+    W_shape = [feature_size, 3, output_size, num_filters]
+    W = helper.create_parameter(
+        attr=param_attr, shape=W_shape, dtype=dtype, is_bias=False)
+    if name == None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+    helper.append_op(
+        type='tree_conv',
+        inputs={'NodesVector': nodes_vector,
+                'EdgeSet': edge_set,
+                'Filter': W},
+        outputs={'Out': out, },
+        attrs={'max_depth': max_depth})
+    if helper.bias_attr:
+        pre_activation = helper.append_bias_op(out)
+    else:
+        pre_activation = out
+    return helper.append_activation(pre_activation)

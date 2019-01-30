@@ -16,6 +16,7 @@
 
 #include <cmath>
 #include <type_traits>
+#include <vector>
 #include "paddle/fluid/operators/jit/kernel_base.h"
 
 namespace paddle {
@@ -23,6 +24,9 @@ namespace operators {
 namespace jit {
 namespace more {
 namespace mkl {
+
+template <typename T>
+void MatMul(const T* a, const T* b, T* c, int m, int n, int k);
 
 template <typename T>
 void VMul(const T* x, const T* y, T* z, int n);
@@ -35,6 +39,9 @@ void VScal(const T* a, const T* x, T* y, int n);
 
 template <typename T>
 void VExp(const T* x, T* y, int n);
+
+template <typename T>
+void VSquare(const T* x, T* y, int n);
 
 template <typename T>
 void VCopy(const T* x, T* y, int n);
@@ -84,6 +91,30 @@ void SeqPool(const T* x, T* y, const seq_pool_attr_t* attr) {
   }
 }
 
+template <typename T>
+void ASum(const T* x, T* res, int n);
+
+template <typename T>
+void Softmax(const T* x, T* y, int n, int bs) {
+  std::vector<T> entities(bs);
+  for (int i = 0; i < bs; ++i) {
+    entities[i] = x[i * n];
+    for (int c = 1; c < n; ++c) {
+      entities[i] = x[i * n + c] > entities[i] ? x[i * n + c] : entities[i];
+    }
+    for (int c = 0; c < n; ++c) {
+      y[i * n + c] = x[i * n + c] - entities[i];
+    }
+  }
+  VExp(y, y, n * bs);
+  for (int i = 0; i < bs; ++i) {
+    T sum;
+    ASum(&y[i * n], &sum, n);
+    sum = static_cast<T>(1) / sum;
+    VScal(&sum, &y[i * n], &y[i * n], n);
+  }
+}
+
 #define DECLARE_MKL_KERNEL(name, tuples)                             \
   template <typename T>                                              \
   class name##Kernel : public KernelMore<tuples<T>> {                \
@@ -92,6 +123,9 @@ void SeqPool(const T* x, T* y, const seq_pool_attr_t* attr) {
     bool UseMe(const typename tuples<T>::attr_type&) const override; \
     const char* ImplType() const override { return "MKL"; }          \
   }
+
+// ABCMNK
+DECLARE_MKL_KERNEL(MatMul, MatMulTuples);
 
 // XYZN
 DECLARE_MKL_KERNEL(VMul, XYZNTuples);
@@ -104,8 +138,11 @@ DECLARE_MKL_KERNEL(VScal, AXYNTuples);
 DECLARE_MKL_KERNEL(VExp, XYNTuples);
 DECLARE_MKL_KERNEL(VSigmoid, XYNTuples);
 DECLARE_MKL_KERNEL(VTanh, XYNTuples);
+DECLARE_MKL_KERNEL(VSquare, XYNTuples);
 
 DECLARE_MKL_KERNEL(SeqPool, SeqPoolTuples);
+
+DECLARE_MKL_KERNEL(Softmax, SoftmaxTuples);
 
 #undef DECLARE_MKL_KERNEL
 

@@ -73,8 +73,7 @@ def visit_all_module(mod):
             visit_member(mod.__name__, instance)
 
 
-#modules = sys.argv[1].split(",")
-modules = ["paddle.fluid", "paddle.reader"]
+modules = sys.argv[1].split(",")
 for m in modules:
     visit_all_module(importlib.import_module(m))
 

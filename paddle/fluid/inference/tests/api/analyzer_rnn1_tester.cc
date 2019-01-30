@@ -20,7 +20,6 @@ namespace paddle {
 namespace inference {
 
 using namespace framework;  // NOLINT
-using namespace contrib;    // NOLINT
 
 struct DataRecord {
   std::vector<std::vector<std::vector<float>>> link_step_data_all;
@@ -223,7 +222,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 TEST(Analyzer_rnn1, profile) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
   cfg.DisableGpu();
   cfg.SwitchIrDebug();
@@ -237,7 +236,7 @@ TEST(Analyzer_rnn1, profile) {
 
 // Check the fuse status
 TEST(Analyzer_rnn1, fuse_statis) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
 
   int num_ops;
@@ -254,7 +253,7 @@ TEST(Analyzer_rnn1, fuse_statis) {
 
 // Compare result of NativeConfig and AnalysisConfig
 TEST(Analyzer_rnn1, compare) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -276,7 +275,7 @@ TEST(Analyzer_rnn1, compare_determine) {
 
 // Test Multi-Thread.
 TEST(Analyzer_rnn1, multi_thread) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
   std::vector<PaddleTensor> outputs;
 
@@ -370,15 +369,12 @@ TEST(Analyzer_rnn1, ZeroCopyMultiThread) {
   auto base_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   double total_time_of_threads{0};
   std::vector<std::thread> threads;
-  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
-  for (int tid = 0; tid < FLAGS_num_threads; tid++) {
-    predictors.emplace_back(CreatePaddlePredictor<AnalysisConfig>(config));
-  }
 
   for (int tid = 0; tid < FLAGS_num_threads; tid++) {
-    threads.emplace_back([config, &total_time_of_threads, &predictors, tid] {
-      // auto predictor = base_predictor->Clone();
-      auto &predictor = predictors[tid];
+    threads.emplace_back([&, tid] {
+      // To ensure the thread binding correctly,
+      // please clone inside the threadpool.
+      auto predictor = base_predictor->Clone();
       NEW_TENSOR(data_lod_attention);
       NEW_TENSOR(cell_init);
       NEW_TENSOR(data);
