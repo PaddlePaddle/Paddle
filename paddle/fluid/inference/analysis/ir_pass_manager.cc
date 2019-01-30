@@ -83,7 +83,6 @@ void IRPassManager::CreatePasses(Argument *argument,
           new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
     }
 
-    // graph_ = pass->Apply(std::move(graph_));
     pre_pass = pass_name;
 
     passes_.emplace_back(std::move(pass));
