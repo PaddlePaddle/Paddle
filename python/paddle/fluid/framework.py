@@ -642,6 +642,7 @@ class Operator(object):
         if type is None:
             raise ValueError(
                 "`type` to initilized an Operator can not be None.")
+
         if os.getenv("FLAGS_enable_callstack"):
             callstack_var_name = op_maker.kOpCreationCallstackAttrName()
             op_attrs[callstack_var_name] = list(
