@@ -135,6 +135,7 @@ class ParallelExecutor(object):
         # step3: init build_strategy
         if build_strategy is None:
             build_strategy = BuildStrategy()
+        build_strategy.enable_inplace = False if main._is_optimized else True
         build_strategy.num_trainers = num_trainers
         build_strategy.trainer_id = trainer_id
         # FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
