@@ -346,19 +346,107 @@ def box_coder(prior_box,
               target_box,
               code_type="encode_center_size",
               box_normalized=True,
-              name=None):
+              name=None,
+              axis=0):
     """
-    ${comment}
+    **Box Coder Layer**
+
+    Encode/Decode the target bounding box with the priorbox information.
+    
+    The Encoding schema described below:
+
+    .. math::
+
+        ox = (tx - px) / pw / pxv
+
+        oy = (ty - py) / ph / pyv
+
+        ow = \log(\abs(tw / pw)) / pwv 
+
+        oh = \log(\abs(th / ph)) / phv 
+
+    The Decoding schema described below:
+    
+    .. math::
+  
+        ox = (pw * pxv * tx * + px) - tw / 2
+
+        oy = (ph * pyv * ty * + py) - th / 2
+
+        ow = \exp(pwv * tw) * pw + tw / 2
+
+        oh = \exp(phv * th) * ph + th / 2   
+
+    where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates, 
+    width and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote 
+    the priorbox's (anchor) center coordinates, width and height. `pxv`, 
+    `pyv`, `pwv`, `phv` denote the variance of the priorbox and `ox`, `oy`, 
+    `ow`, `oh` denote the encoded/decoded coordinates, width and height. 
+
+    During Box Decoding, two modes for broadcast are supported. Say target 
+    box has shape [N, M, 4], and the shape of prior box can be [N, 4] or 
+    [M, 4]. Then prior box will broadcast to target box along the 
+    assigned axis. 
 
     Args:
-        prior_box(${prior_box_type}): ${prior_box_comment}
-        prior_box_var(${prior_box_var_type}): ${prior_box_var_comment}
-        target_box(${target_box_type}): ${target_box_comment}
-        code_type(${code_type_type}): ${code_type_comment}
-        box_normalized(${box_normalized_type}): ${box_normalized_comment}
+        prior_box(Variable): Box list prior_box is a 2-D Tensor with shape 
+                             [M, 4] holds M boxes, each box is represented as
+                             [xmin, ymin, xmax, ymax], [xmin, ymin] is the 
+                             left top coordinate of the anchor box, if the 
+                             input is image feature map, they are close to 
+                             the origin of the coordinate system. [xmax, ymax]
+                             is the right bottom coordinate of the anchor box.       
+        prior_box_var(Variable|list): prior_box_var supports two types of input. 
+                              One is variable with shape [M, 4] holds M group.
+                              The other one is list consist of 4 elements 
+                              shared by all boxes. 
+        target_box(Variable): This input can be a 2-D LoDTensor with shape 
+                              [N, 4] when code_type is 'encode_center_size'. 
+                              This input also can be a 3-D Tensor with shape 
+                              [N, M, 4] when code_type is 'decode_center_size'. 
+                              Each box is represented as  
+                              [xmin, ymin, xmax, ymax]. This tensor can 
+                              contain LoD information to represent a batch 
+                              of inputs. 
+        code_type(string): The code type used with the target box. It can be
+                           encode_center_size or decode_center_size
+        box_normalized(int): Whether treat the priorbox as a noramlized box.
+                             Set true by default.
+        name(string): The name of box coder.
+        axis(int): Which axis in PriorBox to broadcast for box decode, 
+                   for example, if axis is 0 and TargetBox has shape
+                   [N, M, 4] and PriorBox has shape [M, 4], then PriorBox
+                   will broadcast to [N, M, 4] for decoding. It is only valid
+                   when code type is decode_center_size. Set 0 by default. 
 
     Returns:
-        output_box(${output_box_type}): ${output_box_comment}
+        output_box(Variable): When code_type is 'encode_center_size', the 
+                              output tensor of box_coder_op with shape 
+                              [N, M, 4] representing the result of N target 
+                              boxes encoded with M Prior boxes and variances. 
+                              When code_type is 'decode_center_size', 
+                              N represents the batch size and M represents 
+                              the number of deocded boxes.
+
+    Examples:
+ 
+        .. code-block:: python
+ 
+            prior_box = fluid.layers.data(name='prior_box', 
+                                          shape=[512, 4], 
+                                          dtype='float32',
+                                          append_batch_size=False)
+            target_box = fluid.layers.data(name='target_box',
+                                           shape=[512,81,4],
+                                           dtype='float32',
+                                           append_batch_size=False)
+            output = fluid.layers.box_coder(prior_box=prior_box,
+                                            prior_box_var=[0.1,0.1,0.2,0.2],
+                                            target_box=target_box,
+                                            code_type="decode_center_size",
+                                            box_normalized=False,
+                                            axis=1)
+
     """
     helper = LayerHelper("box_coder", **locals())
 
@@ -369,15 +457,22 @@ def box_coder(prior_box,
         output_box = helper.create_variable(
             name=name, dtype=prior_box.dtype, persistable=False)
 
+    inputs = {"PriorBox": prior_box, "TargetBox": target_box}
+    attrs = {
+        "code_type": code_type,
+        "box_normalized": box_normalized,
+        "axis": axis
+    }
+    if isinstance(prior_box_var, Variable):
+        inputs['PriorBoxVar'] = prior_box_var
+    elif isinstance(prior_box_var, list):
+        attrs['variance'] = prior_box_var
+    else:
+        raise TypeError("Input variance of box_coder must be Variable or lisz")
     helper.append_op(
         type="box_coder",
-        inputs={
-            "PriorBox": prior_box,
-            "PriorBoxVar": prior_box_var,
-            "TargetBox": target_box
-        },
-        attrs={"code_type": code_type,
-               "box_normalized": box_normalized},
+        inputs=inputs,
+        attrs=attrs,
         outputs={"OutputBox": output_box})
     return output_box
 
