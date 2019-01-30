@@ -37,8 +37,6 @@ class GraphvizOp : public GraphvizNode {
   friend std::ostream& operator<<(std::ostream& sout, const GraphvizOp& op) {
     sout << "op_" + std::to_string(op.id_) << " [label=\"" << op.node_->Name()
          << "\", shape=rect]" << std::endl;
-    PADDLE_ENFORCE(op.stream_.rdbuf()->in_avail() != 0,
-                   "No inputs outputs. Please call AddEdge first!");
     sout << op.stream_.str();
     return sout;
   }
