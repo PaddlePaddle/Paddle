@@ -2010,8 +2010,9 @@ def box_clip(input, im_info, name=None):
     output = helper.create_variable_for_type_inference(dtype=input.dtype)
     inputs = {"Input": input, "ImInfo": im_info}
     helper.append_op(type="box_clip", inputs=inputs, outputs={"Output": output})
-    
+
     return output
+
 
 def multiclass_nms(bboxes,
                    scores,
