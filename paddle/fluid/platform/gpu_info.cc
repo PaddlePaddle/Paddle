@@ -31,12 +31,6 @@ constexpr static float fraction_of_gpu_memory_to_use = 0.92f;
 constexpr static float fraction_of_gpu_memory_to_use = 0.5f;
 #endif
 
-DEFINE_bool(benchmark, false,
-            "Doing memory benchmark. It will make deleting scope synchronized, "
-            "and add some memory usage logs."
-            "Default cuda is asynchronous device, set to True will"
-            "force op run in synchronous mode.");
-
 DEFINE_double(fraction_of_gpu_memory_to_use, fraction_of_gpu_memory_to_use,
               "Allocate a trunk of gpu memory that is this fraction of the "
               "total gpu memory size. Future memory usage will be allocated "
