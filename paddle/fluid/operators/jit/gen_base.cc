@@ -16,6 +16,8 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <vector>
+#include "paddle/fluid/platform/cpu_info.h"
 
 DEFINE_bool(dump_jitcode, false, "Whether to dump the jitcode to file");
 
@@ -36,6 +38,35 @@ void GenBase::dumpCode(const unsigned char* code) const {
       fout.close();
     }
   }
+}
+
+std::vector<int> packed_groups(int n, int k, int* block_out, int* rest_out) {
+  int block;
+  int max_num_regs;
+  if (platform::MayIUse(platform::avx512f)) {
+    block = ZMM_FLOAT_BLOCK;
+    max_num_regs = 32;
+  } else {
+    block = YMM_FLOAT_BLOCK;
+    max_num_regs = 16;
+  }
+  // one for x, one for y, others for z
+  const int max_used_regs_for_n = max_num_regs - 2;
+  const int aligned_n = n % block == 0 ? n : (n / block + 1) * block;
+  const int num_block = aligned_n / block;
+  const int num_groups = num_block / max_used_regs_for_n;
+  std::vector<int> groups(num_groups, max_used_regs_for_n);
+  int rest_num_regs = num_block % max_used_regs_for_n;
+  if (rest_num_regs != 0) {
+    groups.push_back(rest_num_regs);
+  }
+  if (block_out) {
+    *block_out = block;
+  }
+  if (rest_out) {
+    *rest_out = n % block;
+  }
+  return groups;
 }
 
 }  // namespace jit

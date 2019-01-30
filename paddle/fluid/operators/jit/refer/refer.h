@@ -363,17 +363,19 @@ void SeqPool(const T* x, T* y, const seq_pool_attr_t* attr) {
 
 // A(M,K) * B(K,N) = C(M,N)
 template <typename T>
-void MatMul(const T* A, const T* B, T* C, int M, int N, int K) {
+void MatMul(const T* A, const T* B, T* C, const matmul_attr_t* attr) {
+  int M = attr->m;
+  int N = attr->n;
+  int K = attr->k;
   for (int m = 0; m < M; ++m) {
     const T* pa = A + m * K;
     T* pc = C + m * N;
     for (int n = 0; n < N; ++n) {
       const T* pb = B + n;
-      T sum = static_cast<T>(0);
-      for (int k = 0; k < K; ++k) {
-        sum += (pa[k] * pb[k * N]);
+      pc[n] = pa[0] * pb[0];
+      for (int k = 1; k < K; ++k) {
+        pc[n] += pa[k] * pb[k * N];
       }
-      *(pc + n) = sum;
     }
   }
 }
