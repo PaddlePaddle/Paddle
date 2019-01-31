@@ -17,6 +17,7 @@
 #include <memory>
 #include <tuple>
 #include <type_traits>
+#include "paddle/fluid/memory/allocation/cpu_allocator.h"  // for posix_memalign
 #include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/operators/jit/kernel_pool.h"
 #include "paddle/fluid/platform/place.h"
@@ -30,7 +31,12 @@ namespace jit {
 template <typename T, typename... Args>
 inline std::unique_ptr<T> make_unique(Args&&... args) {
   static_assert(!std::is_array<T>::value, "T must not be array");
-  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+  void* ptr;
+  constexpr size_t alignment = 64;
+  PADDLE_ENFORCE_EQ(posix_memalign(&ptr, alignment, sizeof(T)), 0,
+                    "JITCode Alloc %ld error!", sizeof(T));
+  PADDLE_ENFORCE(ptr, "Fail to allocate CPU memory: size = %d .", sizeof(T));
+  return std::unique_ptr<T>(new (ptr) T(std::forward<Args>(args)...));
 }
 
 template <typename Pool, typename PlaceType, bool IsEnd, size_t I,
