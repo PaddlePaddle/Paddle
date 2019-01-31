@@ -9,6 +9,7 @@ function(USE_JITKERNEL_GEN TARGET)
 endfunction()
 
 # use gen jitcode kernel by name
+USE_JITKERNEL_GEN(kMatMul)
 USE_JITKERNEL_GEN(kVMul)
 USE_JITKERNEL_GEN(kVAdd)
 USE_JITKERNEL_GEN(kVSub)
