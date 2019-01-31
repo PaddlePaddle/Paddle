@@ -589,7 +589,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
  public:
   RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope,
                            const RuntimeContext& ctx)
-      : op_(op), scope_(scope), ctx_(ctx) {}
+      : op_(op), ctx_(ctx) {}
 
   bool HasInput(const std::string& name) const override {
     // has only one input
@@ -881,7 +881,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   const OperatorBase& op_;
-  const Scope& scope_;
   const RuntimeContext& ctx_;
 };
 
