@@ -97,6 +97,7 @@ void AllReduceOpHandle::_RunImplEncoded() {
   size_t out_numel = 0;
   PADDLE_ENFORCE(ranks_ > 1);
   std::vector<std::function<void()>> all_reduce_calls;
+  std::vector<memory::allocation::AllocationPtr> ptrs;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto &place = places_[i];
     auto &in = *ins[i];
@@ -118,17 +119,25 @@ void AllReduceOpHandle::_RunImplEncoded() {
 
     auto &allocator =
         platform::DeviceTemporaryAllocator::Instance().Get(place, stream);
-    auto tmp_ious_data = allocator.Allocate(ranks_ * in_numel * sizeof(float));
+    int buf_size = ranks_ * in_numel * sizeof(float);
+    auto tmp_ious_data = allocator.Allocate(buf_size);
     void *gather_buff = reinterpret_cast<void *>(tmp_ious_data->ptr());
+    ptrs.emplace_back(std::move(tmp_ious_data));
 
     VLOG(10) << "in_numel:" << in_numel << ", out_numel:" << out_numel
-             << ", ranks:" << ranks_
-             << ", gather_buf size:" << ranks_ * in_numel * sizeof(float);
+             << ", ranks:" << ranks_ << ", gather_buf size:" << buf_size
+             << ", k:" << k << ", place:" << place << ", stream:" << stream
+             << ", dtype:" << dtype << ", out_tensor_buf:" << out_tensor_buf;
 
     all_reduce_calls.emplace_back([=] {
-      sparseAllGReduce(in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel,
-                       static_cast<ncclDataType_t>(dtype), ncclSum, comm,
-                       stream);
+      /*
+sparseAllGReduce(in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel,
+                 static_cast<ncclDataType_t>(dtype), ncclSum, comm,
+                 stream);
+                 */
+      PADDLE_ENFORCE(platform::dynload::ncclAllGather(
+          in_tensor_buf, gather_buff, in_numel * sizeof(float), ncclChar, comm,
+          stream));
     });
   }
 
@@ -149,7 +158,18 @@ void AllReduceOpHandle::_RunImplEncoded() {
       int dev_id = boost::get<platform::CUDAPlace>(p).device;
       auto &nccl_ctx = nccl_ctxs_->at(dev_id);
       auto stream = nccl_ctx.stream();
-      cudaStreamSynchronize(stream);
+      // cudaStreamSynchronize(stream);
+      cudaError_t e_sync = cudaStreamSynchronize(stream);
+      if (e_sync != 0) {
+        VLOG(10) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
+      }
+
+      cudaError_t e_get = cudaGetLastError();
+      if (e_get != 0) {
+        VLOG(10) << "cudaGetLastError  " << cudaGetErrorString(e_get)
+                 << " errno:" << e_get;
+        exit(-1);
+      }
     }
   }
 }
@@ -188,6 +208,8 @@ void AllReduceOpHandle::_RunImpl() {
     auto &lod_tensor =
         local_scope->FindVar(in_var_handles[i]->name())->Get<LoDTensor>();
     lod_tensors.emplace_back(&lod_tensor);
+    VLOG(10) << "place:" << i << ", input_name:" << in_var_handles[i]->name()
+             << ", out_name:" << out_var_handles[i]->name();
     PADDLE_ENFORCE_EQ(in_var_handles[i]->name(), out_var_handles[i]->name(),
                       "The name of input and output should be equal.");
   }

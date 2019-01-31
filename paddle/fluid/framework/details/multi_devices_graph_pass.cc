@@ -399,7 +399,7 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
   result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
       result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
       local_scopes_, places_, nccl_ctxs_, is_encoded,
-      static_cast<int>(strategy_.trainers_endpoints_.size())));
+      static_cast<int>(strategy_.trainers_endpoints_.size()) * places_.size()));
 #else
   result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
       result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
