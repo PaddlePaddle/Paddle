@@ -1681,14 +1681,14 @@ class IrGraph(object):
         """
         op_desc = core.OpDesc()
         op_desc.set_type(op_type)
-        for attr, value in attrs.iteritems():
+        for attr, value in six.iteritems(attrs):
             self._update_desc_attr(op_desc, attr, value)
-        for input_name, var_nodes in inputs.iteritems():
+        for input_name, var_nodes in six.iteritems(inputs):
             if not isinstance(var_nodes, list):
                 var_nodes = [var_nodes]
             op_desc.set_input(input_name,
                               [var_node.name() for var_node in var_nodes])
-        for output_name, var_nodes in outputs.iteritems():
+        for output_name, var_nodes in six.iteritems(outputs):
             if not isinstance(var_nodes, list):
                 var_nodes = [var_nodes]
             op_desc.set_output(output_name,
