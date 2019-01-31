@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from ....core import CPUPlace
+from .... import io
 from ....data_feeder import DataFeeder
 from ..graph import get_executor, ImitationGraph
 from config import ConfigFactory
@@ -41,6 +42,7 @@ class Context(object):
                  train_reader=None,
                  eval_graph=None,
                  eval_reader=None,
+                 teacher_graphs=None,
                  optimizer=None):
         # The total number of epoches to be trained.
         self.epoch = 0
@@ -57,6 +59,7 @@ class Context(object):
         self.eval_graph = eval_graph
         self.eval_reader = eval_reader
         self.executor = None
+        self.teacher_graphs = teacher_graphs
         self.optimizer = optimizer
 
     def run_eval_graph(self):
@@ -159,8 +162,9 @@ class CompressPass(object):
 
     def _load_checkpoint(self, context):
         if self.checkpoint:
-            exe = get_executor(context.train_graph, parallel=False)
-            fluid.io.load_persistables(
+            exe = get_executor(
+                context.train_graph, context.place, parallel=False)
+            io.load_persistables(
                 exe.exe,
                 self.checkpoint,
                 main_program=context.train_graph.program)
@@ -168,12 +172,13 @@ class CompressPass(object):
 
     def _save_checkpoint(self, context):
         if context.epoch_id % 5 == 0 and self.model_save_dir:
-            model_path = os.path.join(self.model_save_dir,
-                                      str(context.epoch_id))
+            model_path = os.path.join(
+                self.model_save_dir,
+                str(context.epoch_id) + "_" + str(context.batch_id))
             if not os.path.isdir(model_path):
                 os.makedirs(model_path)
-            exe = get_executor(context.train_graph, parallel=False)
-            fluid.io.save_persistables(
+            exe = get_executor(context.train_graph, context.place, False)
+            io.save_persistables(
                 exe.exe, model_path, main_program=context.train_graph.program)
             print('Saved checkpoint to: {}'.format(model_path))
 
@@ -209,6 +214,7 @@ class CompressPass(object):
             train_reader=self.train_reader,
             eval_graph=self.eval_graph,
             eval_reader=self.eval_reader,
+            teacher_graphs=self.teacher_graphs,
             optimizer=self.optimizer)
 
         self._load_checkpoint(context)
