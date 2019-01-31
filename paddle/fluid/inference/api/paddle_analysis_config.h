@@ -140,9 +140,12 @@ struct AnalysisConfig {
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
 
-  /** Control whther to debug IR graph analysis phase.
+  /** \brief Control whether to debug IR graph analysis phase.
+   *
+   * This will generate DOT files for visualizing the computation graph after
+   * each analysis pass applied.
    */
-  void SwitchIrDebug(int x = true) { ir_debug_ = x; }
+  void SwitchIrDebug(int x = true);
 
   /** Turn on MKLDNN.
    */

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
 #include <string>
-#include "paddle/fluid/operators/mkldnn_activation_op.h"
+#include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
 
 namespace paddle {

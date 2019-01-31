@@ -49,6 +49,7 @@ __all__ = [
     'box_coder',
     'polygon_box_transform',
     'yolov3_loss',
+    'box_clip',
     'multiclass_nms',
 ]
 
@@ -346,19 +347,107 @@ def box_coder(prior_box,
               target_box,
               code_type="encode_center_size",
               box_normalized=True,
-              name=None):
+              name=None,
+              axis=0):
     """
-    ${comment}
+    **Box Coder Layer**
+
+    Encode/Decode the target bounding box with the priorbox information.
+    
+    The Encoding schema described below:
+
+    .. math::
+
+        ox = (tx - px) / pw / pxv
+
+        oy = (ty - py) / ph / pyv
+
+        ow = \log(\abs(tw / pw)) / pwv 
+
+        oh = \log(\abs(th / ph)) / phv 
+
+    The Decoding schema described below:
+    
+    .. math::
+  
+        ox = (pw * pxv * tx * + px) - tw / 2
+
+        oy = (ph * pyv * ty * + py) - th / 2
+
+        ow = \exp(pwv * tw) * pw + tw / 2
+
+        oh = \exp(phv * th) * ph + th / 2   
+
+    where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates, 
+    width and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote 
+    the priorbox's (anchor) center coordinates, width and height. `pxv`, 
+    `pyv`, `pwv`, `phv` denote the variance of the priorbox and `ox`, `oy`, 
+    `ow`, `oh` denote the encoded/decoded coordinates, width and height. 
+
+    During Box Decoding, two modes for broadcast are supported. Say target 
+    box has shape [N, M, 4], and the shape of prior box can be [N, 4] or 
+    [M, 4]. Then prior box will broadcast to target box along the 
+    assigned axis. 
 
     Args:
-        prior_box(${prior_box_type}): ${prior_box_comment}
-        prior_box_var(${prior_box_var_type}): ${prior_box_var_comment}
-        target_box(${target_box_type}): ${target_box_comment}
-        code_type(${code_type_type}): ${code_type_comment}
-        box_normalized(${box_normalized_type}): ${box_normalized_comment}
+        prior_box(Variable): Box list prior_box is a 2-D Tensor with shape 
+                             [M, 4] holds M boxes, each box is represented as
+                             [xmin, ymin, xmax, ymax], [xmin, ymin] is the 
+                             left top coordinate of the anchor box, if the 
+                             input is image feature map, they are close to 
+                             the origin of the coordinate system. [xmax, ymax]
+                             is the right bottom coordinate of the anchor box.       
+        prior_box_var(Variable|list): prior_box_var supports two types of input. 
+                              One is variable with shape [M, 4] holds M group.
+                              The other one is list consist of 4 elements 
+                              shared by all boxes. 
+        target_box(Variable): This input can be a 2-D LoDTensor with shape 
+                              [N, 4] when code_type is 'encode_center_size'. 
+                              This input also can be a 3-D Tensor with shape 
+                              [N, M, 4] when code_type is 'decode_center_size'. 
+                              Each box is represented as  
+                              [xmin, ymin, xmax, ymax]. This tensor can 
+                              contain LoD information to represent a batch 
+                              of inputs. 
+        code_type(string): The code type used with the target box. It can be
+                           encode_center_size or decode_center_size
+        box_normalized(int): Whether treat the priorbox as a noramlized box.
+                             Set true by default.
+        name(string): The name of box coder.
+        axis(int): Which axis in PriorBox to broadcast for box decode, 
+                   for example, if axis is 0 and TargetBox has shape
+                   [N, M, 4] and PriorBox has shape [M, 4], then PriorBox
+                   will broadcast to [N, M, 4] for decoding. It is only valid
+                   when code type is decode_center_size. Set 0 by default. 
 
     Returns:
-        output_box(${output_box_type}): ${output_box_comment}
+        output_box(Variable): When code_type is 'encode_center_size', the 
+                              output tensor of box_coder_op with shape 
+                              [N, M, 4] representing the result of N target 
+                              boxes encoded with M Prior boxes and variances. 
+                              When code_type is 'decode_center_size', 
+                              N represents the batch size and M represents 
+                              the number of deocded boxes.
+
+    Examples:
+ 
+        .. code-block:: python
+ 
+            prior_box = fluid.layers.data(name='prior_box', 
+                                          shape=[512, 4], 
+                                          dtype='float32',
+                                          append_batch_size=False)
+            target_box = fluid.layers.data(name='target_box',
+                                           shape=[512,81,4],
+                                           dtype='float32',
+                                           append_batch_size=False)
+            output = fluid.layers.box_coder(prior_box=prior_box,
+                                            prior_box_var=[0.1,0.1,0.2,0.2],
+                                            target_box=target_box,
+                                            code_type="decode_center_size",
+                                            box_normalized=False,
+                                            axis=1)
+
     """
     helper = LayerHelper("box_coder", **locals())
 
@@ -369,15 +458,22 @@ def box_coder(prior_box,
         output_box = helper.create_variable(
             name=name, dtype=prior_box.dtype, persistable=False)
 
+    inputs = {"PriorBox": prior_box, "TargetBox": target_box}
+    attrs = {
+        "code_type": code_type,
+        "box_normalized": box_normalized,
+        "axis": axis
+    }
+    if isinstance(prior_box_var, Variable):
+        inputs['PriorBoxVar'] = prior_box_var
+    elif isinstance(prior_box_var, list):
+        attrs['variance'] = prior_box_var
+    else:
+        raise TypeError("Input variance of box_coder must be Variable or lisz")
     helper.append_op(
         type="box_coder",
-        inputs={
-            "PriorBox": prior_box,
-            "PriorBoxVar": prior_box_var,
-            "TargetBox": target_box
-        },
-        attrs={"code_type": code_type,
-               "box_normalized": box_normalized},
+        inputs=inputs,
+        attrs=attrs,
         outputs={"OutputBox": output_box})
     return output_box
 
@@ -413,13 +509,10 @@ def yolov3_loss(x,
                 gtbox,
                 gtlabel,
                 anchors,
+                anchor_mask,
                 class_num,
                 ignore_thresh,
-                loss_weight_xy=None,
-                loss_weight_wh=None,
-                loss_weight_conf_target=None,
-                loss_weight_conf_notarget=None,
-                loss_weight_class=None,
+                downsample_ratio,
                 name=None):
     """
     ${comment}
@@ -431,16 +524,13 @@ def yolov3_loss(x,
                           and x, y, w, h should be relative value of input image.
                           N is the batch number and B is the max box number in 
                           an image.
-        gtlabel (Variable): class id of ground truth boxes, shoud be ins shape
+        gtlabel (Variable): class id of ground truth boxes, shoud be in shape
                             of [N, B].
         anchors (list|tuple): ${anchors_comment}
+        anchor_mask (list|tuple): ${anchor_mask_comment}
         class_num (int): ${class_num_comment}
         ignore_thresh (float): ${ignore_thresh_comment}
-        loss_weight_xy (float|None): ${loss_weight_xy_comment}
-        loss_weight_wh (float|None): ${loss_weight_wh_comment}
-        loss_weight_conf_target (float|None): ${loss_weight_conf_target_comment}
-        loss_weight_conf_notarget (float|None): ${loss_weight_conf_notarget_comment}
-        loss_weight_class (float|None): ${loss_weight_class_comment}
+        downsample_ratio (int): ${downsample_ratio_comment}
         name (string): the name of yolov3 loss
 
     Returns:
@@ -460,9 +550,10 @@ def yolov3_loss(x,
         x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
         gtbox = fluid.layers.data(name='gtbox', shape=[6, 5], dtype='float32')
         gtlabel = fluid.layers.data(name='gtlabel', shape=[6, 1], dtype='int32')
-        anchors = [10, 13, 16, 30, 33, 23]
-        loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80
-                                        anchors=anchors, ignore_thresh=0.5)
+        anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
+        anchors = [0, 1, 2]
+        loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80, anchors=anchors, 
+                                        ignore_thresh=0.5, downsample_ratio=32)
     """
     helper = LayerHelper('yolov3_loss', **locals())
 
@@ -474,6 +565,8 @@ def yolov3_loss(x,
         raise TypeError("Input gtlabel of yolov3_loss must be Variable")
     if not isinstance(anchors, list) and not isinstance(anchors, tuple):
         raise TypeError("Attr anchors of yolov3_loss must be list or tuple")
+    if not isinstance(anchor_mask, list) and not isinstance(anchor_mask, tuple):
+        raise TypeError("Attr anchor_mask of yolov3_loss must be list or tuple")
     if not isinstance(class_num, int):
         raise TypeError("Attr class_num of yolov3_loss must be an integer")
     if not isinstance(ignore_thresh, float):
@@ -486,31 +579,29 @@ def yolov3_loss(x,
         loss = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
 
+    objectness_mask = helper.create_variable_for_type_inference(dtype='int32')
+    gt_match_mask = helper.create_variable_for_type_inference(dtype='int32')
+
     attrs = {
         "anchors": anchors,
+        "anchor_mask": anchor_mask,
         "class_num": class_num,
         "ignore_thresh": ignore_thresh,
+        "downsample_ratio": downsample_ratio,
     }
-
-    if loss_weight_xy is not None and isinstance(loss_weight_xy, float):
-        self.attrs['loss_weight_xy'] = loss_weight_xy
-    if loss_weight_wh is not None and isinstance(loss_weight_wh, float):
-        self.attrs['loss_weight_wh'] = loss_weight_wh
-    if loss_weight_conf_target is not None and isinstance(
-            loss_weight_conf_target, float):
-        self.attrs['loss_weight_conf_target'] = loss_weight_conf_target
-    if loss_weight_conf_notarget is not None and isinstance(
-            loss_weight_conf_notarget, float):
-        self.attrs['loss_weight_conf_notarget'] = loss_weight_conf_notarget
-    if loss_weight_class is not None and isinstance(loss_weight_class, float):
-        self.attrs['loss_weight_class'] = loss_weight_class
 
     helper.append_op(
         type='yolov3_loss',
-        inputs={"X": x,
-                "GTBox": gtbox,
-                "GTLabel": gtlabel},
-        outputs={'Loss': loss},
+        inputs={
+            "X": x,
+            "GTBox": gtbox,
+            "GTLabel": gtlabel,
+        },
+        outputs={
+            'Loss': loss,
+            'ObjectnessMask': objectness_mask,
+            'GTMatchMask': gt_match_mask
+        },
         attrs=attrs)
     return loss
 
@@ -1965,6 +2056,54 @@ def generate_proposals(scores,
     return rpn_rois, rpn_roi_probs
 
 
+def box_clip(input, im_info, name=None):
+    """
+    Clip the box into the size given by im_info
+    For each input box, The formula is given as follows:
+        
+    .. code-block:: text
+
+        xmin = max(min(xmin, im_w - 1), 0)
+        ymin = max(min(ymin, im_h - 1), 0) 
+        xmax = max(min(xmax, im_w - 1), 0)
+        ymax = max(min(ymax, im_h - 1), 0)
+    
+    where im_w and im_h are computed from im_info:
+ 
+    .. code-block:: text
+
+        im_h = round(height / scale)
+        im_w = round(weight / scale)
+
+    Args:
+        input(variable): The input box, the last dimension is 4.
+        im_info(variable): The information of image with shape [N, 3] with 
+                            layout (height, width, scale). height and width
+                            is the input size and scale is the ratio of input
+                            size and original size.
+        name (str): The name of this layer. It is optional.
+    
+    Returns:
+        Variable: The cliped tensor variable.
+        
+    Examples:
+        .. code-block:: python
+        
+            boxes = fluid.layers.data(
+                name='data', shape=[8, 4], dtype='float32', lod_level=1)
+            im_info = fluid.layers.data(name='im_info', shape=[3])
+            out = fluid.layers.box_clip(
+                input=boxes, im_info=im_info, inplace=True)
+    """
+
+    helper = LayerHelper("box_clip", **locals())
+    output = helper.create_variable_for_type_inference(dtype=input.dtype)
+    inputs = {"Input": input, "ImInfo": im_info}
+    helper.append_op(type="box_clip", inputs=inputs, outputs={"Output": output})
+
+    return output
+
+
 def multiclass_nms(bboxes,
                    scores,
                    score_threshold,
@@ -2042,8 +2181,10 @@ def multiclass_nms(bboxes,
              (After version 1.3, when no boxes detected, the lod is changed 
              from {0} to {1}) 
 
+
     Examples:
         .. code-block:: python
+
 
             boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
                                       dtype='float32', lod_level=1)
