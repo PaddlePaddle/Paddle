@@ -40,8 +40,6 @@ class GraphView {
 
   std::vector<ir::Node*> PendingOpsOnVar(ir::Node* var);
 
-  bool OutConnectInputByCtrlVar(ir::Node* in_var, ir::Node* out_var);
-
   // Will Deperated in the future.
   // NOTE(dzhwinter) : Python memory optimize will reuse
   // memory based var name, so different op output may
