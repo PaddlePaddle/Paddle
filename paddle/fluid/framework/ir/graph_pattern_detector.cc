@@ -117,11 +117,6 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
       // return false;
     }
   }
-  for (auto &item : pdnodes2nodes_) {
-    for (auto &n : item.second) {
-      GetMarkedNodes(const_cast<Graph *>(&graph)).insert(n);
-    }
-  }
   VLOG(3) << pdnodes2nodes_.size() << " nodes marked";
 
   return !pdnodes2nodes_.empty();
