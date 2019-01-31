@@ -170,8 +170,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   result.Set(kGraphOps, new GraphOps);
 
   bool is_forwarding = true;
-  bool insert_collection_ops = NeedCollectiveOps();
-  bool has_inserted_collection_ops = false;
+  bool need_collection_ops = NeedCollectiveOps(*graph);
+  bool insert_collection_ops = false;
 
   for (ir::Node *node : sorted_ops) {
     if (DealWithSpecialOp(&result, node)) {
@@ -191,7 +191,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
       }
 
       // Insert collection ops
-      if (!is_forwarding && insert_collection_ops) {
+      if (!is_forwarding && need_collection_ops) {
         try {
           bool is_bk_op =
               static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
@@ -211,7 +211,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
             VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
 
             InsertCollectiveOp(&result, p_name, g_name);
-            has_inserted_collection_ops = true;
+            insert_collection_ops = true;
           }
         } catch (boost::bad_get e) {
         }
@@ -219,8 +219,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
     }
   }
 
-  if (insert_collection_ops) {
-    PADDLE_ENFORCE(has_inserted_collection_ops,
+  if (need_collection_ops) {
+    PADDLE_ENFORCE(insert_collection_ops,
                    "Doesn't find trainable parameter's gradient.");
   }
 
@@ -287,8 +287,21 @@ bool MultiDevSSAGraphBuilderBase::UseGPU() const {
   return use_gpu;
 }
 
-bool MultiDevSSAGraphBuilderBase::NeedCollectiveOps() const {
-  return Get<size_t>(kNRanks) > 1;
+bool MultiDevSSAGraphBuilderBase::NeedCollectiveOps(
+    const ir::Graph &graph) const {
+  bool has_bk_op = false;
+  for (auto &node : graph.Nodes()) {
+    if (!node->IsOp()) continue;
+    try {
+      has_bk_op =
+          static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
+                                OpProtoAndCheckerMaker::OpRoleAttrName())) &
+                            static_cast<int>(OpRole::kBackward));
+      if (has_bk_op) break;
+    } catch (boost::bad_get e) {
+    }
+  }
+  return has_bk_op && Get<size_t>(kNRanks) > 1;
 }
 
 void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
@@ -981,7 +994,7 @@ void FuseAllReduceSSAGraphBuilder::InsertCollectiveOp(
 
 void FuseAllReduceSSAGraphBuilder::InsertPostprocessOps(
     ir::Graph *result) const {
-  if (!NeedCollectiveOps()) {
+  if (!NeedCollectiveOps(*result)) {
     return;
   }
 
