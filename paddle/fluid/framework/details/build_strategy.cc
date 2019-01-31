@@ -17,7 +17,6 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <memory>
 
-#include "paddle/fluid/framework/details/graph_print_pass.h"
 #include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
@@ -233,9 +232,6 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       if (graph->Has(kAllOpDescs)) {
         graph->Erase(kAllOpDescs);
       }
-      if (!graph->Has(kGraphviz)) {
-        graph->Set<GraphvizNodes>(kGraphviz, new GraphvizNodes);
-      }
       graph->Set<const std::vector<OpDesc *>>(
           kAllOpDescs,
           new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
@@ -244,10 +240,6 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
         LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
                         "GPU, skipped.";
         continue;
-      }
-    } else if (pass->Type() == "graph_print_path") {
-      if (!graph->Has(kGraphviz)) {
-        graph->Set<GraphvizNodes>(kGraphviz, new GraphvizNodes);
       }
     }
     graph = pass->Apply(std::move(graph));
@@ -274,5 +266,4 @@ USE_PASS(all_reduce_deps_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
 USE_PASS(inplace_pass);
 USE_PASS(lock_free_optimize_pass);
-USE_PASS(graph_print_pass);
 USE_PASS(graph_to_program_pass);

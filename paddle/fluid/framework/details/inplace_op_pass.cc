@@ -21,7 +21,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/details/graph_print_pass.h"
 #include "paddle/fluid/framework/details/memory_optimize_pass.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -112,24 +111,6 @@ static inline ir::Node* GetPrevCascadeInplacedVar(ir::Node* var) {
                                  }
                                });
   return input_it == prev_op->inputs.end() ? nullptr : *input_it;
-}
-
-template <typename Container>
-static inline bool ConnectByCtrlVar(const Container& group1,
-                                    const Container& group2) {
-  bool connected = false;
-  std::unordered_set<ir::Node*> outputs;
-  for (auto* op : group1) {
-    for (auto* var : op->outputs) {
-      if (var->IsCtrlVar()) outputs.emplace(var);
-    }
-  }
-  for (auto* op : group2) {
-    for (auto* var : op->inputs) {
-      if (outputs.count(var)) connected = true;
-    }
-  }
-  return connected;
 }
 
 InplacePass::InplacePass() : Pass() {
@@ -316,18 +297,7 @@ void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
       continue;
     }
 
-    // 3. if output reuse input inplaced, the dependency group is not changed.
-    // For detail, check
-    // the function description in "OutConnectInputByCtrlVar"
-    if (view_.OutConnectInputByCtrlVar(in_node, out_node)) {
-      VLOG(4) << string::Sprintf(
-          "Skiped pair %s => %s. %s input and output connect by ctrl var."
-          "inplace such pair will generate a circle.",
-          out_var_name, in_var_name, op->Name());
-      continue;
-    }
-
-    // 4. if output has been memory optimize by python(fluid.memory_optmize()).
+    // 3. if output has been memory optimize by python(fluid.memory_optmize()).
     // this candidate  can not be inplaced. Will be deprecated in the future.
     if (view_.ReusedInPythonMemOpt(out_node->Name())) {
       VLOG(4) << string::Sprintf(
@@ -430,48 +400,6 @@ void GraphView::Build(ir::Graph* g) {
 }
 
 const std::vector<ir::Node*> GraphView::AllOps() { return ops_; }
-
-bool GraphView::OutConnectInputByCtrlVar(ir::Node* in_var, ir::Node* out_var) {
-  // assume v_a0, v_a1 is variable. v_a0 -> v_a0 means already inplaced.
-  // v_a1 -> v_a1 means already inplaced.
-  // Currently we make decision to check if the v_a0 -> v_a1 can be inplace.
-  //
-  // v_a0
-  //  +
-  //  |
-  //  v
-  // v_a0
-  //  +
-  //  |
-  //  v
-  // v_a1
-  //  +
-  //  |
-  //  v
-  // v_a1
-  // start from the first inplaced input v_a0(on the top one).
-  // Do a DFSSearch, get all its paths. If there is one path connect
-  // the in_var and out_var which contains control dep var.
-  // Means there a control path. out_var can not be inplaced use in_var.
-
-  std::unordered_set<ir::Node *> out_var_set, in_var_set;
-  ir::Node* out = out_var;
-  // get the ops with same output name
-  while (out != nullptr) {
-    out_var_set.emplace(out);
-    out = GetNextCascadeInplacedVar(out);
-  }
-
-  // get ops with same input name
-  ir::Node* in = in_var;
-  while (in != nullptr) {
-    in_var_set.emplace(in);
-    in = GetPrevCascadeInplacedVar(in);
-  }
-  // find if there is path with control dep var connect the in_var_set and
-  // out_var_set
-  return ConnectByCtrlVar(in_var_set, out_var_set);
-}
 
 bool GraphView::ReusedInPythonMemOpt(const std::string& var) const {
   return dup_nodes_.count(var);
