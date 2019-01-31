@@ -799,7 +799,7 @@ function checkMacAVX(){
         echo "检测结果：支持"
     else
         read -n1 -p "检测结果：不支持。非常抱歉，PaddlePaddle在Mac系统暂不提供no_avx类型的安装包，您可以选择在Linux系统中安装no_avx版的PaddlePaddle, 请按回车键退出..."
-        exit(0)
+        exit
     fi
     echo
 }
