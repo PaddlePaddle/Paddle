@@ -37,7 +37,7 @@ default_envs = {
 GPUS = 8
 
 
-def start_procs(gpus, entrypoint, log_dir):
+def start_procs(gpus, entrypoint, entrypoint_args, log_dir):
     procs = []
     log_fns = []
     os.system("mkdir -p %s" % log_dir)
@@ -73,15 +73,11 @@ def start_procs(gpus, entrypoint, log_dir):
             "PADDLE_TRAINER_ENDPOINTS": all_nodes_devices_endpoints
         })
 
-        print("starting process ", i, entrypoint, curr_env)
+        print("starting process ", i, entrypoint, entrypoint_args, curr_env)
         fn = open("%s/workerlog.%d" % (log_dir, i), "w")
         log_fns.append(fn)
-        procs.append(
-            subprocess.Popen(
-                entrypoint.strip().split(" "),
-                stdout=fn,
-                stderr=fn,
-                env=curr_env))
+        cmd = [sys.executable, "-u", entrypoint] + entrypoint_args
+        procs.append(subprocess.Popen(cmd, stdout=fn, stderr=fn, env=curr_env))
 
     for i in range(gpus):
         try:
@@ -113,16 +109,17 @@ POD_IP (current node ip address, not needed for local training)
         default=8,
         help='start number of processes for every gpu')
     parser.add_argument(
-        '--entrypoint',
-        type=str,
-        default="",
-        help='entrypoint for each process, e.g. python train.py --lr 0.1',
-        required=True)
-    parser.add_argument(
         '--log_dir',
         type=str,
         default="mylog",
         help='directory to put logs per process.')
+    parser.add_argument(
+        'entrypoint_script',
+        type=str,
+        help="The entrypoint script to be launched in parallel,"
+        "followed by all the arguments for each process,"
+        "e.g. train.py --lr 0.1")
+    parser.add_argument('entrypoint_args', nargs=argparse.REMAINDER)
     return parser.parse_args()
 
 
@@ -130,7 +127,8 @@ def main():
     args = parse_args()
 
     # launch multiple training process
-    start_procs(args.gpus, args.entrypoint, args.log_dir)
+    start_procs(args.gpus, args.entrypoint_script, args.entrypoint_args,
+                args.log_dir)
 
 
 if __name__ == "__main__":
