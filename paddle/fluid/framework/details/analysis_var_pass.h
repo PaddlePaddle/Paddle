@@ -60,8 +60,8 @@ class AnalysisVarPass : public ir::Pass {
   // valid a tensor can be reuse or not
   bool NodeCanReused(ir::Node* node) const;
   // scan subblock and collect the output/input variables.
-  std::unordered_set<std::string> GetSubBlockVars(
-      const std::unordered_set<ir::Node*>&) const;
+  // scan the dist 'send', 'recv' op inputs/outputs
+  void CollectSkipSet(const std::unordered_set<ir::Node*>&) const;
   // check op has subblock or not
   bool OpHasSubBlock(OpDesc* desc) const;
 
