@@ -59,7 +59,6 @@ from .parallel_executor import *
 from . import compiler
 from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
-from . import distributed
 
 Tensor = LoDTensor
 
@@ -92,7 +91,6 @@ __all__ = framework.__all__ + executor.__all__ + \
         'unique_name',
         'recordio_writer',
         'Scope',
-        'distributed',
     ]
 
 
