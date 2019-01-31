@@ -862,6 +862,11 @@ def dynamic_lstmp(input,
             'The shape of c0 should be (batch_size, %d)' % size
         inputs['C0'] = c_0
 
+    if cell_clip:
+        assert cell_clip >= 0, "cell_clip should not be negtive."
+    if proj_clip:
+        assert proj_clip >= 0, "proj_clip should not be negtive."
+
     helper.append_op(
         type='lstmp',
         inputs=inputs,
