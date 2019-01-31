@@ -19,11 +19,19 @@
 #include <iosfwd>
 #include <ostream>
 #include <string>
-#include "paddle/fluid/framework/details/graph_print_pass.h"
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
+
+constexpr char kGraphvizPath[] = "debug_graphviz_path";
+
+class SSAGraphPrinter {
+ public:
+  virtual ~SSAGraphPrinter() {}
+  virtual void Print(const ir::Graph& graph, std::ostream& sout) const = 0;
+};
 
 class GraphvizSSAGraphPrinter : public SSAGraphPrinter {
  public:
