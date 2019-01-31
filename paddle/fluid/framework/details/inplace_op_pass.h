@@ -41,11 +41,14 @@ class GraphView {
   std::vector<ir::Node*> PendingOpsOnVar(ir::Node* var);
 
   // Will Deperated in the future.
-  // NOTE(dzhwinter) : Python memory optimize will reuse
+  // NOTE(dzhwinter) :
+  // 1. Python memory optimize will reuse
   // memory based var name, so different op output may
   // have the same variable name. enable inplace on such node
   // will generate a circle in ssa graph.
-  bool ReusedInPythonMemOpt(const std::string& var) const;
+  // 2. DistributeTranspiler will use unique name to
+  // map the parameter and gradient, must be skipped.
+  bool InSkipSet(const std::string& var) const;
 
  private:
   std::vector<ir::Node*> ops_;
