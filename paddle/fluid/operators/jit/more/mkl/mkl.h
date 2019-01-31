@@ -26,7 +26,7 @@ namespace more {
 namespace mkl {
 
 template <typename T>
-void MatMul(const T* a, const T* b, T* c, int m, int n, int k);
+void MatMul(const T* a, const T* b, T* c, const matmul_attr_t* attr);
 
 template <typename T>
 void VMul(const T* x, const T* y, T* z, int n);

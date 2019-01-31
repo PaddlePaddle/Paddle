@@ -268,9 +268,6 @@ class TestImperativePtbRnn(unittest.TestCase):
                 sgd.minimize(dy_loss)
                 for param in ptb_model.parameters():
                     dy_param_updated[param.name] = param._numpy()
-                # print("dy_loss is {}".format(dy_loss._numpy()))
-                # print("last_hidden is {}".format(last_hidden._numpy()))
-                # print("last_cell is {}".format(last_cell._numpy()))
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
