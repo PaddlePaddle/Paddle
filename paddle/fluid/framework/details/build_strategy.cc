@@ -53,6 +53,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("fuse_relu_depthwise_conv_pass");
     }
 
+    // NOTE(dzhwinter): A note for automatical inplace.
+    // 1. modify program desc passes should put
+    // before inplace pass.
+    // 2. manually configured inplace should put
+    // before inplace_pass
+
     // Add automatically inplace.
     if (strategy_.enable_inplace_) {
       AppendPass("inplace_pass");
