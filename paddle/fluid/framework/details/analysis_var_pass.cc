@@ -79,8 +79,7 @@ void FilterVariables(const Container& nodes, Callback callback) {
 std::unique_ptr<ir::Graph> AnalysisVarPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   auto nodes = graph->Nodes();
-  auto subblock_vars = GetSubBlockVars(nodes);
-  skip_set_.insert(subblock_vars.begin(), subblock_vars.end());
+  CollectSkipSet(nodes);
 
   cfg_.reset(new details::ControlFlowGraph(*graph));
   cfg_->LiveVariableAnalysis();
@@ -247,20 +246,21 @@ void AnalysisVarPass::SubGraphOptimize(OpDesc* op_desc) const {
   }
 }
 
-std::unordered_set<std::string> AnalysisVarPass::GetSubBlockVars(
+void AnalysisVarPass::CollectSkipSet(
     const std::unordered_set<ir::Node*>& nodes) const {
-  std::unordered_set<std::string> vars;
+  auto update_skip_set = [&](OpDesc* op_desc) {
+    auto inputs = op_desc->InputArgumentNames();
+    auto outputs = op_desc->OutputArgumentNames();
+    skip_set_.insert(inputs.begin(), inputs.end());
+    skip_set_.insert(outputs.begin(), outputs.end());
+  };
   for (auto& op : nodes) {
     if (!op->IsOp() || op->Op() == nullptr) continue;
     auto* op_desc = op->Op();
-    if (OpHasSubBlock(op_desc)) {
-      auto inputs = op_desc->InputArgumentNames();
-      auto outputs = op_desc->OutputArgumentNames();
-      vars.insert(inputs.begin(), inputs.end());
-      vars.insert(outputs.begin(), outputs.end());
-    }
+    if (OpHasSubBlock(op_desc)) update_skip_set(op_desc);
+    if (op_desc->Type() == "send") update_skip_set(op_desc);
+    if (op_desc->Type() == "recv") update_skip_set(op_desc);
   }
-  return vars;
 }
 
 void AnalysisVarPass::RenameVarInGraphDesc(const std::string& var,
