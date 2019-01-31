@@ -15,6 +15,7 @@
 from __future__ import print_function
 import os
 import paddle.fluid as fluid
+from paddle.fluid import compiler
 import paddle
 import numpy as np
 import unittest
@@ -74,20 +75,13 @@ class TestReaderReset(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(startup_prog)
 
-        build_strategy = fluid.BuildStrategy()
-        exec_strategy = fluid.ExecutionStrategy()
-        parallel_exe = fluid.ParallelExecutor(
-            use_cuda=self.use_cuda,
-            main_program=main_prog,
-            build_strategy=build_strategy,
-            exec_strategy=exec_strategy)
-
-        data_appeared = [False] * self.total_ins_num
+        train_cp = compiler.CompiledProgram(main_prog).with_data_parallel()
         pass_count = 0
         while (True):
             try:
-                data_val, label_val = parallel_exe.run(fetch_list,
-                                                       return_numpy=True)
+                data_val, label_val = exe.run(train_cp,
+                                              fetch_list=fetch_list,
+                                              return_numpy=True)
                 ins_num = data_val.shape[0]
                 broadcasted_label = np.ones((ins_num, ) + tuple(
                     self.ins_shape)) * label_val.reshape((ins_num, 1))
