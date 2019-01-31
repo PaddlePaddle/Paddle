@@ -52,7 +52,6 @@ void TransformData(const OpKernelType &expected_kernel_type,
         // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
         // Just set layout/format. No real transform occur
         out.ShareDataWith(input_tensor);
-        out.set_layout(DataLayout::kMKLDNN);
         // TODO(jczaja): Remove that once all mkldnn ops
         // are modified to work with mkldnn_blocked
         auto mkldnn_fmt = [&](int rank) {

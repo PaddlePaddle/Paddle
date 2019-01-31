@@ -68,7 +68,6 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // so
     // it match output shape
 
-    output->set_layout(DataLayout::kMKLDNN);
     output->create_prim_desc_from_dims(mkldnn::memory::format::blocked);
   }
 };
@@ -128,7 +127,6 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // so
     // it match output shape
 
-    x_grad->set_layout(DataLayout::kMKLDNN);
     x_grad->create_prim_desc_from_dims(mkldnn::memory::format::blocked);
   }
 };

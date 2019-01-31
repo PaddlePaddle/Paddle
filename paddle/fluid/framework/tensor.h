@@ -56,6 +56,7 @@ class Tensor {
       mkldnn::memory::data_type data_type = mkldnn::memory::f32) {
     mem_pd_ = paddle::platform::create_prim_desc_from_format(
         paddle::framework::vectorize2int(dims()), fmt, data_type);
+    layout_ = DataLayout::kMKLDNN;
   }
 
   inline mkldnn::memory::primitive_desc get_prim_desc() const {
@@ -66,6 +67,7 @@ class Tensor {
     // Internally MKL-DNN is just copying (increasing reference counter)
     // to shared_ptr. So asignment should be quite cheap
     mem_pd_ = mem_pd;
+    layout_ = DataLayout::kMKLDNN;
   }
 
   inline void create_prim_desc_from_dims(
@@ -73,6 +75,7 @@ class Tensor {
       mkldnn::memory::data_type data_type = mkldnn::memory::data_type::f32) {
     mem_pd_ = paddle::platform::create_prim_desc_from_dims(
         paddle::framework::vectorize2int(dims()), fmt);
+    layout_ = DataLayout::kMKLDNN;
   }
 
  protected:

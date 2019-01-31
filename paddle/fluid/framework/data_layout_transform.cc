@@ -160,6 +160,7 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
   } else {
     out->ShareDataWith(in);
   }
+  out->set_layout(out_layout);
 #endif
 }
 

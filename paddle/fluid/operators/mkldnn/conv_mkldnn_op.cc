@@ -281,7 +281,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     pipeline.push_back(*conv_p);
     stream(stream::kind::eager).submit(pipeline).wait();
 
-    output->set_layout(DataLayout::kMKLDNN);
     auto dst_mpd = dst_memory_p->get_primitive_desc();
     output->set_prim_desc(dst_mpd);
   }
@@ -948,7 +947,6 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       // push primitive to stream and wait until it's executed
       pipeline.push_back(*conv_bwd_weights_p);
 
-      filter_grad->set_layout(DataLayout::kMKLDNN);
       auto filter_grad_mpd = diff_weights_memory_p->get_primitive_desc();
       filter_grad->set_prim_desc(filter_grad_mpd);
     }
