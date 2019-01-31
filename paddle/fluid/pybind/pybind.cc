@@ -1101,6 +1101,10 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
           [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
       .def_property(
+          "fuse_all_adam_ops",
+          [](const BuildStrategy &self) { return self.fuse_all_adam_ops_; },
+          [](BuildStrategy &self, bool b) { self.fuse_all_adam_ops_ = b; })
+      .def_property(
           "enable_inplace",
           [](const BuildStrategy &self) { return self.enable_inplace_; },
           [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })

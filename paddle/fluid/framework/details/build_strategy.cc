@@ -88,6 +88,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("fuse_gradient_space_pass");
     }
 
+    if (strategy.fuse_all_adam_ops_) {
+      VLOG(10) << "Add fuse_adam_op_pass";
+      AppendPass("fuse_adam_op_pass");
+    }
+
     // Add a graph viz pass to record a graph.
     if (!strategy.debug_graphviz_path_.empty()) {
       auto viz_pass = AppendPass("graph_viz_pass");
@@ -287,3 +292,4 @@ USE_PASS(inplace_pass);
 USE_PASS(lock_free_optimize_pass);
 USE_PASS(fuse_gradient_space_pass);
 USE_PASS(graph_to_program_pass);
+USE_PASS(fuse_adam_op_pass);

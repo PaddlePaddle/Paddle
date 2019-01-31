@@ -44,6 +44,9 @@ constexpr char kGraphVars[] = "vars";
 typedef std::unordered_set<VarHandleBase*> GraphDepVars;
 constexpr char kGraphDepVars[] = "dep_vars";
 
+typedef std::vector<framework::ProgramDesc> RunOnlyOnceProgram;
+constexpr char kRunOnlyOnceProgram[] = "program";
+
 typedef std::unordered_map<std::string, std::string> ParamsAndGrads;
 constexpr char kParamsAndGrads[] = "params_grads";
 

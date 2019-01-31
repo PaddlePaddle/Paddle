@@ -147,6 +147,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   nccl_ctxs_ = &Get<platform::NCCLContextMap>("nccl_ctxs");
 #endif
+  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 }
 
 std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
@@ -236,6 +237,23 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
    * Only variables should be the leaves of graph.
    */
   AddOutputToLeafOps(&result);
+
+  /*
+   * Run Only Once Programs
+   */
+  if (graph->Has(kRunOnlyOnceProgram)) {
+    auto &programs = graph->Get<RunOnlyOnceProgram>(kRunOnlyOnceProgram);
+    for (auto &program : programs) {
+      for (size_t i = 0; i < local_scopes_.size(); ++i) {
+        for (auto &op_desc : program.Block(0).AllOps()) {
+          auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
+          VLOG(4) << op->DebugStringEx(local_scopes_[i]);
+          op->Run(*local_scopes_[i], places_[i]);
+          VLOG(3) << op->DebugStringEx(local_scopes_[i]);
+        }
+      }
+    }
+  }
 
   result.Erase(kGraphOps);
   return graph;

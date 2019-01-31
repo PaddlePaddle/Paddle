@@ -11,6 +11,8 @@ cc_library(multi_devices_graph_print_pass SRCS multi_devices_graph_print_pass.cc
 cc_library(multi_devices_graph_check_pass SRCS multi_devices_graph_check_pass.cc DEPS multi_devices_helper)
 cc_library(fuse_gradient_space_pass SRCS fuse_gradient_space_pass.cc DEPS graph graph_helper)
 
+cc_library(fuse_adam_op_pass SRCS fuse_adam_op_pass.cc DEPS graph graph_helper)
+
 cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_rows)
 
 if(WITH_DISTRIBUTE)
@@ -103,4 +105,4 @@ cc_library(build_strategy SRCS build_strategy.cc DEPS
         multi_devices_graph_print_pass multi_devices_graph_check_pass
         fuse_elewise_add_act_pass multi_batch_merge_pass 
         fuse_relu_depthwise_conv_pass
-        memory_optimize_pass lock_free_optimize_pass fuse_gradient_space_pass)
+        memory_optimize_pass lock_free_optimize_pass fuse_gradient_space_pass fuse_adam_op_pass)
