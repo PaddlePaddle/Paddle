@@ -33,7 +33,7 @@ class GraphView {
 
   void Build(ir::Graph* g);
 
-  const std::vector<ir::Node*> AllOps();
+  const& std::vector<ir::Node*> AllOps();
 
   ir::Node* GetNodeByName(const std::string& name,
                           const std::vector<ir::Node*>& nodes) const;
