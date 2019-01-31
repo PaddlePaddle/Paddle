@@ -59,6 +59,7 @@ from .parallel_executor import *
 from . import compiler
 from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
+from . import distributed
 
 Tensor = LoDTensor
 
@@ -91,6 +92,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'unique_name',
         'recordio_writer',
         'Scope',
+        'distributed',
     ]
 
 
@@ -160,10 +162,9 @@ def __bootstrap__():
             'sync_nccl_allreduce', 'limit_of_tmp_allocation',
             'times_excess_than_required_tmp_allocation'
         ]
-
-    core.init_gflags([sys.argv[0]] +
-                     ["--tryfromenv=" + ",".join(read_env_flags)])
-    core.init_glog(sys.argv[0])
+    program = sys.argv[0] if sys.argv[0].endswith(".py") else ""
+    core.init_gflags([program] + ["--tryfromenv=" + ",".join(read_env_flags)])
+    core.init_glog(program)
     # don't init_p2p when in unittest to save time.
     core.init_devices(not in_test)
 
