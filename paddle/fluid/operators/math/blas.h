@@ -186,7 +186,7 @@ class Blas {
 
 #ifdef PADDLE_WITH_MKLML
   template <typename T>
-  void VERF(int n, const T* a, T* y) const;
+  void VMERF(int n, const T* a, T* y, int64_t mode) const;
 #endif
 
  private:

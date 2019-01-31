@@ -310,7 +310,7 @@ struct GeluFunctor : public BaseActivationFunctor<T> {
 
     std::memset(out_data, 0, n * sizeof(T));
     math::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, out_data, 1);
-    math::CBlas<T>::VERF(n, out_data, out_data);
+    math::CBlas<T>::VMERF(n, out_data, out_data, VML_LA);
     for (int i = 0; i < n; i++) out_data[i] += static_cast<T>(1);
     math::CBlas<T>::VMUL(n, x_data, out_data, out_data);
     for (int i = 0; i < n; i++) out_data[i] *= static_cast<T>(0.5);

@@ -125,8 +125,8 @@ struct CBlas<float> {
   }
 
   template <typename... ARGS>
-  static void VERF(ARGS... args) {
-    platform::dynload::vsErf(args...);
+  static void VMERF(ARGS... args) {
+    platform::dynload::vmsErf(args...);
   }
 };
 
@@ -230,8 +230,8 @@ struct CBlas<double> {
   }
 
   template <typename... ARGS>
-  static void VERF(ARGS... args) {
-    platform::dynload::vdErf(args...);
+  static void VMERF(ARGS... args) {
+    platform::dynload::vmdErf(args...);
   }
 };
 
@@ -638,8 +638,9 @@ void Blas<DeviceContext>::VINV(int n, const T *a, T *y) const {
 #ifdef PADDLE_WITH_MKLML
 template <>
 template <typename T>
-void Blas<platform::CPUDeviceContext>::VERF(int n, const T *a, T *y) const {
-  CBlas<T>::VERF(n, a, y);
+void Blas<platform::CPUDeviceContext>::VMERF(int n, const T *a, T *y,
+                                             int64_t mode) const {
+  CBlas<T>::VMERF(n, a, y, mode);
 }
 #endif
 
