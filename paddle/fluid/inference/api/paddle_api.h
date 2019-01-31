@@ -107,7 +107,7 @@ class PaddleBuf {
   /** Tell whether the buffer is empty.
    */
   bool empty() const { return length_ == 0; }
-  /** Get the memory address.
+  /** Get the data's memory address.
    */
   void* data() const { return data_; }
   /** Get the memory length.
