@@ -94,25 +94,6 @@ class LSTMPKernel : public framework::OpKernel<T> {
       PADDLE_THROW("unsupported activation type");
   }
 
-  void Print(const Tensor& t, std::string name) const {
-    VLOG(1) << name << "size = " << t.numel();
-    size_t size = t.numel();
-    T* d = t.data<T>();
-#ifdef PADDLE_WITH_CUDA
-    std::vector<T> vec;
-    platform::DeviceContextPool::Instance().Get(t.place())->Wait();
-    if (platform::is_gpu_place(t.place())) {
-      vec.resize(size);
-      cudaMemcpy(vec.data(), d, sizeof(T) * size, cudaMemcpyDeviceToHost);
-      d = vec.data();
-    }
-#endif
-    VLOG(1) << name << " data_ptr = " << static_cast<void*>(d);
-    for (size_t i = 0; i < size; i++) {
-      VLOG(1) << d[i] << ",";
-    }
-  }
-
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<LoDTensor>("Input");
     auto* weight = ctx.Input<Tensor>("Weight");
