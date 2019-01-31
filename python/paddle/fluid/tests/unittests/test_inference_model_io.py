@@ -83,7 +83,8 @@ class TestBook(unittest.TestCase):
 
         self.assertEqual(feed_var_names, ["x", "y"])
         self.assertEqual(len(fetch_vars), 1)
-        self.assertEqual(str(fetch_vars[0]), str(avg_cost))
+        print("fetch %s" % str(fetch_vars[0]))
+        self.assertTrue("scale" in str(fetch_vars[0]))
         self.assertEqual(expected, actual)
 
 

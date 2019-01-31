@@ -50,6 +50,19 @@ class TestDetection(unittest.TestCase):
             self.assertEqual(out.shape[-1], 6)
         print(str(program))
 
+    def test_box_coder_api(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[4], dtype='float32')
+            y = layers.data(name='z', shape=[4], dtype='float32', lod_level=1)
+            bcoder = layers.box_coder(
+                prior_box=x,
+                prior_box_var=[0.1, 0.2, 0.1, 0.2],
+                target_box=y,
+                code_type='encode_center_size')
+            self.assertIsNotNone(bcoder)
+        print(str(program))
+
     def test_detection_api(self):
         program = Program()
         with program_guard(program):
@@ -463,10 +476,21 @@ class TestYoloDetection(unittest.TestCase):
             x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
             gtbox = layers.data(name='gtbox', shape=[10, 4], dtype='float32')
             gtlabel = layers.data(name='gtlabel', shape=[10], dtype='int32')
-            loss = layers.yolov3_loss(x, gtbox, gtlabel, [10, 13, 30, 13], 10,
-                                      0.5)
+            loss = layers.yolov3_loss(x, gtbox, gtlabel, [10, 13, 30, 13],
+                                      [0, 1], 10, 0.7, 32)
 
             self.assertIsNotNone(loss)
+
+
+class TestBoxClip(unittest.TestCase):
+    def test_box_clip(self):
+        program = Program()
+        with program_guard(program):
+            input_box = layers.data(
+                name='input_box', shape=[7, 4], dtype='float32', lod_level=1)
+            im_info = layers.data(name='im_info', shape=[3], dtype='float32')
+            out = layers.box_clip(input_box, im_info)
+            self.assertIsNotNone(out)
 
 
 class TestMulticlassNMS(unittest.TestCase):

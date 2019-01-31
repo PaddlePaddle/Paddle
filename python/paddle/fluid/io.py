@@ -22,9 +22,10 @@ import shutil
 import six
 from functools import reduce
 
+from paddle.fluid import layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
-from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable
+from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, program_guard
 from . import core
 
 __all__ = [
@@ -938,6 +939,17 @@ def save_inference_model(dirname,
                                             is not suitable for saving inference model \
                                             we save the original program as inference model.",
                 RuntimeWarning)
+
+    # fix the bug that the activation op's output as target will be pruned.
+    # will affect the inference performance.
+    # TODO(Superjomn) add an IR pass to remove 1-scale op.
+    with program_guard(main_program):
+        uniq_target_vars = []
+        for var in target_vars:
+            if isinstance(var, Variable):
+                var1 = layers.scale(var, 1.)
+            uniq_target_vars.append(var1)
+        target_vars = uniq_target_vars
 
     # when a pserver and a trainer running on the same machine, mkdir may conflict
     try:
