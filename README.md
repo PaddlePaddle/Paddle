@@ -8,7 +8,6 @@ English | [简体中文](./README_cn.md)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
-
 Welcome to the PaddlePaddle GitHub.
 
 PaddlePaddle (PArallel Distributed Deep LEarning) is an easy-to-use,
