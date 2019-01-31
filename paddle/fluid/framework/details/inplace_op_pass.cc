@@ -266,11 +266,13 @@ void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
   VLOG(4) << "Try to inplace op " << op->Name();
   PADDLE_ENFORCE(op->Op() != nullptr && op->Op()->Block() != nullptr,
                  "op_desc is nullptr");
-  // 4 pre-requirments need to meet if the op want to inplaced.
-  // 1. infer_inplace_ is registered.
+  // some pre-requirments need to meet if the op want to inplaced.
+
   auto* op_desc = op->Op();
   auto& infer_inplace =
       OpInfoMap::Instance().Get(op_desc->Type()).infer_inplace_;
+
+  // 1. infer_inplace_ is registered.
   if (!static_cast<bool>(infer_inplace)) return;
   PADDLE_ENFORCE(static_cast<bool>(infer_inplace),
                  "%s's infer_inplace has not been registered", op_desc->Type());
@@ -399,7 +401,7 @@ void GraphView::Build(ir::Graph* g) {
   }
 }
 
-const std::vector<ir::Node*> GraphView::AllOps() { return ops_; }
+const& std::vector<ir::Node*> GraphView::AllOps() { return ops_; }
 
 bool GraphView::ReusedInPythonMemOpt(const std::string& var) const {
   return dup_nodes_.count(var);
