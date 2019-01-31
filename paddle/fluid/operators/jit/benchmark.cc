@@ -93,6 +93,7 @@ std::vector<int> TestSizes() {
 template <typename KernelTuples, typename... Args>
 struct BenchFunc {
   // return this function avg time
+  // TODO(TJ): clear cache every time
   double operator()(const typename KernelTuples::func_type tgt, Args... args) {
     for (int i = 0; i < FLAGS_burning; ++i) {
       tgt(args...);
@@ -172,6 +173,9 @@ void BenchXYZNKernel() {
     RandomVec<T>(d, y_data);
     BenchAllImpls<KT, jit::XYZNTuples<T>, PlaceType>(d, x.data<T>(),
                                                      y.data<T>(), z_data, d);
+    // test inplace
+    BenchAllImpls<KT, jit::XYZNTuples<T>, PlaceType>(d, x.data<T>(), z_data,
+                                                     z_data, d);
   }
 }
 
@@ -311,8 +315,9 @@ void BenchMatMulKernel() {
         const T* a_data = a.data<T>();
         const T* b_data = b.data<T>();
         T* c_data = c.mutable_data<T>(PlaceType());
-        BenchAllImpls<KT, jit::MatMulTuples<T>, PlaceType>(k, a_data, b_data,
-                                                           c_data, m, n, k);
+        const jit::matmul_attr_t attr{m, n, k};
+        BenchAllImpls<KT, jit::MatMulTuples<T>, PlaceType>(attr, a_data, b_data,
+                                                           c_data, &attr);
       }
     }
   }
