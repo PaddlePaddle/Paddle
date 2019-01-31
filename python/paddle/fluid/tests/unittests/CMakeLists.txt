@@ -110,6 +110,8 @@ py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executo
 if(NOT APPLE)
     py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)
 endif()
+# change the timeout from 600 to 900, because in debug mode, this test need more time.
+set_tests_properties(test_image_classification_resnet PROPERTIES TIMEOUT 900)
 
 if (WITH_NGRAPH)
     add_subdirectory(ngraph)
