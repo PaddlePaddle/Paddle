@@ -30,12 +30,12 @@ if(WITH_GRPC)
   cc_library(collective_client SRCS collective_client.cc DEPS grpc_base_grpc scope)
 
   # merge all
+  set(GRPC_DEPS grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
   cc_library(sendrecvop_rpc DEPS grpc_base_proto grpc_base_grpc
     grpc_server grpc_client grpc_serde grpc_bbs grpc_vr
     handlers barrier rpc_server rpc_client
     collective_server collective_client
-    sendrecvop_utils variable_response
-    grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
+    sendrecvop_utils variable_response)
 
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set(RPC_DEPS sendrecvop_rpc ${GRPC_DEPS})
@@ -70,8 +70,7 @@ else()
   cc_library(sendrecvop_rpc DEPS brpc_base_proto sendrecvop_utils variable_response
              brpc_client brpc_server brpc_sendrecvop_utils
              brpc_variable_response brpc_rdma_pool
-             rpc_server rpc_client handlers barrier
-             lod_tensor selected_rows memory scope)
+             rpc_server rpc_client handlers barrier)
 
   set(RPC_DEPS sendrecvop_rpc ${BRPC_DEPS})
   cc_test(brpc_serde_test SRCS brpc/brpc_serde_test.cc
