@@ -401,7 +401,7 @@ void GraphView::Build(ir::Graph* g) {
   }
 }
 
-const& std::vector<ir::Node*> GraphView::AllOps() { return ops_; }
+const std::vector<ir::Node*>& GraphView::AllOps() { return ops_; }
 
 bool GraphView::ReusedInPythonMemOpt(const std::string& var) const {
   return dup_nodes_.count(var);
