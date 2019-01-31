@@ -193,7 +193,7 @@ class SeqPoolJitCode : public JitCode {
   }
 
  private:
-  float ALIGN32_BEG fp_h_[1] ALIGN32_END;
+  float fp_h_[1];
   int w_;
   SeqPoolType type_;
   reg64_t param_src{abi_param1};
