@@ -242,9 +242,9 @@ void AllReduceOpHandle::_RunImpl() {
       for (auto &p : places_) {
         int dev_id = boost::get<platform::CUDAPlace>(p).device;
         auto &nccl_ctx = nccl_ctxs_->at(dev_id);
-        // auto stream = nccl_ctx.stream();
-        // cudaStreamSynchronize(stream);
-        nccl_ctx.Wait();
+        auto stream = nccl_ctx.stream();
+        cudaStreamSynchronize(stream);
+        // nccl_ctx.Wait();
       }
     }
 
