@@ -23,8 +23,7 @@ namespace paddle {
 namespace platform {
 
 inline mkldnn::memory::primitive_desc create_prim_desc_from_dims(
-    const std::vector<int>& ltz, 
-    mkldnn::memory::format fmt,
+    const std::vector<int>& ltz, mkldnn::memory::format fmt,
     mkldnn::memory::data_type data_type = mkldnn::memory::data_type::f32) {
   mkldnn_memory_desc_t mem_fmt;
 
@@ -52,27 +51,21 @@ inline mkldnn::memory::primitive_desc create_prim_desc_from_dims(
 
   auto& pool = platform::DeviceContextPool::Instance();
   auto place = paddle::platform::CPUPlace();
-  auto* dev_ctx =
-      dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(place));
+  auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(place));
   auto& cpu_engine = dev_ctx->GetEngine();
   return mkldnn::memory::primitive_desc(mem_fmt, cpu_engine);
 }
 
 inline mkldnn::memory::primitive_desc create_prim_desc_from_format(
-      const std::vector<int>& ltz, 
-      const mkldnn::memory::format format,
-      const mkldnn::memory::data_type data_type
-)
-{
+    const std::vector<int>& ltz, const mkldnn::memory::format format,
+    const mkldnn::memory::data_type data_type) {
   auto md = mkldnn::memory::desc({ltz}, data_type, format);
   auto& pool = platform::DeviceContextPool::Instance();
   auto place = paddle::platform::CPUPlace();
-  auto* dev_ctx =
-      dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(place));
+  auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(place));
   auto& cpu_engine = dev_ctx->GetEngine();
   return mkldnn::memory::primitive_desc(md, cpu_engine);
 }
-
 
 }  // namespace platform
 }  // namespace paddle
