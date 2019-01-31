@@ -86,11 +86,17 @@ class OrderedNodeList {
 // valid a tensor can be reuse or not
 bool NodeCanReused(ir::Node* node);
 
+// valid a tensor can be reuse or not.
+bool NodeCanReused(const VarDesc& node);
+
 // check op has subblock or not
 bool OpHasSubBlock(OpDesc* desc);
 
 // node memory size in bytes
 size_t NodeSizeInBytes(ir::Node* n);
+
+// node memory size in bytes
+size_t NodeSizeInBytes(const VarDesc&);
 
 std::string DebugString(ir::Node* var);
 

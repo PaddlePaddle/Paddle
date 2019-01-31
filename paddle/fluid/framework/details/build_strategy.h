@@ -80,6 +80,9 @@ struct BuildStrategy {
 
   bool memory_early_delete_{false};
 
+  // TODO(dzhwinter):
+  // make enable_inplace, memory_optimize_
+  // memory_early_delete_ true by default
   bool enable_inplace_{false};
 
   bool enable_sequential_execution_{false};

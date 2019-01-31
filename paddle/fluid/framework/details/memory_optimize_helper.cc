@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/memory_optimize_helper.h"
+#include <functional>
 #include <iostream>
+#include <numeric>
 #include <sstream>
 #include <string>
 
@@ -21,15 +23,17 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+size_t NodeSizeInBytes(const VarDesc& node) {
+  auto shape = node.GetShape();
+  int size =
+      std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
+  size_t type_size = SizeOfType(node.GetDataType());
+  return type_size * std::abs(size);
+}
+
 size_t NodeSizeInBytes(ir::Node* n) {
   auto* desc = FindVarDescInBlock(n);
-  auto shape = desc->GetShape();
-  size_t type_size = SizeOfType(desc->GetDataType());
-  int size = 1;
-  for (auto& s : shape) {
-    size *= s;
-  }
-  return type_size * std::abs(size);
+  return NodeSizeInBytes(*desc);
 }
 
 std::string DebugStringImpl(VarDesc* var) {
@@ -154,23 +158,28 @@ std::string OrderedNodeList::ToString() const {
 
 bool NodeCanReused(ir::Node* node) {
   if (node == nullptr || !node->IsVar() || node->IsCtrlVar()) return false;
-  auto* desc = node->Var();
-  auto type = desc->GetType();
-  if (desc->Persistable() || type != proto::VarType::LOD_TENSOR ||
-      desc->GetShape().empty()) {
-    return false;
-  }
-  // vars can be @EMPTY@, @LR_DECAY_REUSE_ID@. For example, while_grad
-  std::string name = node->Name();
-  if (!name.empty() && name[0] == '@' && name[name.size() - 1] == '@')
-    return false;
+  // auto* desc = node->Var();
+  bool flag = NodeCanReused(*node->Var());
   for (auto* op : node->inputs) {
     if (op->Op()->HasAttr("force_cpu")) {
       // op output force generated in cpu, can not be reused.
-      return framework::AttrReader(op->Op()->GetAttrMap())
-                 .Get<bool>("force_cpu") == 0;
+      flag &= framework::AttrReader(op->Op()->GetAttrMap())
+                  .Get<bool>("force_cpu") == 0;
     }
   }
+  return flag;
+}
+
+bool NodeCanReused(const VarDesc& node) {
+  auto type = node.GetType();
+  if (node.Persistable() || type != proto::VarType::LOD_TENSOR ||
+      node.GetShape().empty()) {
+    return false;
+  }
+  // vars can be @EMPTY@, @LR_DECAY_REUSE_ID@. For example, while_grad
+  std::string name = node.Name();
+  if (!name.empty() && name[0] == '@' && name[name.size() - 1] == '@')
+    return false;
   return true;
 }
 

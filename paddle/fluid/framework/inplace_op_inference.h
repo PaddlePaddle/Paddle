@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/type_defs.h"
 
@@ -66,30 +67,9 @@ class InplaceInToOut : public InplaceOpInference {
       const OpDesc& op_desc, BlockDesc* block) const = 0;
 
   bool TryInplaceInputOutput(const VarDesc& in, const VarDesc& out) const {
-    auto var_can_reused = [&](const VarDesc& node) -> bool {
-      auto type = node.GetType();
-      if (node.Persistable() || type != proto::VarType::LOD_TENSOR ||
-          node.GetShape().empty()) {
-        return false;
-      }
-      // vars can be @EMPTY@, @LR_DECAY_REUSE_ID@. For example, while_grad
-      std::string name = node.Name();
-      if (!name.empty() && name[0] == '@' && name[name.size() - 1] == '@')
-        return false;
-      return true;
-    };
-
-    auto var_size_in_bytes = [&](const VarDesc& node) -> size_t {
-      auto shape = node.GetShape();
-      int size = std::accumulate(shape.begin(), shape.end(), 1,
-                                 std::multiplies<int>());
-      size_t type_size = SizeOfType(node.GetDataType());
-      return type_size * std::abs(size);
-    };
-
-    return in.Name() != out.Name() && var_can_reused(in) &&
-           var_can_reused(out) &&
-           var_size_in_bytes(out) <= var_size_in_bytes(in);
+    return in.Name() != out.Name() && details::NodeCanReused(in) &&
+           details::NodeCanReused(out) &&
+           details::NodeSizeInBytes(out) <= details::NodeSizeInBytes(in);
   }
 };
 
