@@ -26,6 +26,11 @@ namespace details {
 constexpr char kGraphvizPath[] = "debug_graphviz_path";
 constexpr char kGraphviz[] = "graphviz";
 
+// NOTE(dzhwinter): If the graph contains circles.
+// the graph can not be topology sort.
+// This printer will print the whole graph
+// and highlight the circles. It's quite useful
+// for debug the deadlock and circles.
 class GraphvizNode {
  public:
   GraphvizNode(ir::Node* n, const int& i) : node_(n), id_(i) {}
@@ -37,7 +42,7 @@ class GraphvizNode {
   ir::Node* node_;
   int id_;
 };
-class GraphvizNode;
+
 typedef std::unordered_set<std::unique_ptr<GraphvizNode>> GraphvizNodes;
 
 class SSAGraphPrinter {
