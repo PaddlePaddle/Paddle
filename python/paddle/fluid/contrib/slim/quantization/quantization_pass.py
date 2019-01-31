@@ -14,6 +14,7 @@
 
 import collections
 import numpy as np
+import six
 from ..... import compat as cpt
 from .... import core
 from ....framework import IrGraph
@@ -165,7 +166,7 @@ class QuantizationTransformPass(object):
             assert self._program_exe is not None, \
             'The program_exe cannot be set None when activation_quantize_type equals to range_abs_max.'
             init_program = Program()
-            for var_desc, initializer in self._need_initialized.iteritems():
+            for var_desc, initializer in six.iteritems(self._need_initialized):
                 var = init_program.global_block().create_var(
                     name=var_desc.name(),
                     shape=var_desc.shape(),

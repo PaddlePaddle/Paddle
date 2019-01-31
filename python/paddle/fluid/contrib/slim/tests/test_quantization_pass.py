@@ -151,11 +151,11 @@ class TestQuantizationTransformPass(unittest.TestCase):
                 val_marked_nodes.add(op)
         val_graph.draw('.', 'val_fc_' + quant_type, val_marked_nodes)
 
-    def no_test_linear_fc_quant_abs_max(self):
+    def test_linear_fc_quant_abs_max(self):
         self.act_quant_op_type = 'fake_quantize_abs_max'
         self.linear_fc_quant('abs_max')
 
-    def no_test_linear_fc_quant_range_abs_max(self):
+    def test_linear_fc_quant_range_abs_max(self):
         self.act_quant_op_type = 'fake_quantize_range_abs_max'
         self.linear_fc_quant('range_abs_max')
 
@@ -187,11 +187,11 @@ class TestQuantizationTransformPass(unittest.TestCase):
                 val_marked_nodes.add(op)
         val_graph.draw('.', 'val_residual_' + quant_type, val_marked_nodes)
 
-    def no_test_residual_block_abs_max(self):
+    def test_residual_block_abs_max(self):
         self.act_quant_op_type = 'fake_quantize_abs_max'
         self.residual_block_quant('abs_max')
 
-    def no_test_residual_block_range_abs_max(self):
+    def test_residual_block_range_abs_max(self):
         self.act_quant_op_type = 'fake_quantize_range_abs_max'
         self.residual_block_quant('range_abs_max')
 
@@ -249,13 +249,13 @@ class TestQuantizationFreezePass(unittest.TestCase):
         quantized_main_program = main_graph.to_program()
         quantized_test_program = test_graph.to_program()
         iters = 5
-        batch_size = 16
+        batch_size = 8
 
-        train_exe = fluid.ParallelExecutor(
-            main_program=quantized_main_program,
-            use_cuda=bool(use_cuda),
-            loss_name=loss.name,
-            scope=scope)
+        #train_exe = fluid.ParallelExecutor(
+        #    main_program=quantized_main_program,
+        #    use_cuda=bool(use_cuda),
+        #    loss_name=loss.name,
+        #    scope=scope)
         train_reader = paddle.batch(
             paddle.reader.shuffle(
                 paddle.dataset.mnist.train(), buf_size=500),
@@ -266,11 +266,11 @@ class TestQuantizationFreezePass(unittest.TestCase):
         with fluid.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())
-                #loss_v = exe.run(program=quantized_main_program,
-                #                 feed=feeder.feed(data),
-                #                 fetch_list=[loss])
-                loss_v = train_exe.run(feed=feeder.feed(data),
-                                       fetch_list=[loss.name])
+                loss_v = exe.run(program=quantized_main_program,
+                                 feed=feeder.feed(data),
+                                 fetch_list=[loss])
+                #loss_v = train_exe.run(feed=feeder.feed(data),
+                #                       fetch_list=[loss.name])
                 #print('{}: {}'.format('loss' + dev_name + quant_type, loss_v))
 
         test_data = next(test_reader())
@@ -349,21 +349,21 @@ class TestQuantizationFreezePass(unittest.TestCase):
                                           ['image', 'label'], [loss], exe,
                                           mobile_program)
 
-    def test_freeze_program_cuda_dynamic(self):
+    def test_freeze_graph_cuda_dynamic(self):
         if fluid.core.is_compiled_with_cuda():
             with fluid.unique_name.guard():
                 self.freeze_graph(True, seed=1, quant_type='abs_max')
 
-    def test_freeze_program_cpu_dynamic(self):
+    def test_freeze_graph_cpu_dynamic(self):
         with fluid.unique_name.guard():
             self.freeze_graph(False, seed=2, quant_type='abs_max')
 
-    def test_freeze_program_cuda_static(self):
+    def test_freeze_graph_cuda_static(self):
         if fluid.core.is_compiled_with_cuda():
             with fluid.unique_name.guard():
                 self.freeze_graph(True, seed=1, quant_type='range_abs_max')
 
-    def test_freeze_program_cpu_static(self):
+    def test_freeze_graph_cpu_static(self):
         with fluid.unique_name.guard():
             self.freeze_graph(False, seed=2, quant_type='range_abs_max')
 
