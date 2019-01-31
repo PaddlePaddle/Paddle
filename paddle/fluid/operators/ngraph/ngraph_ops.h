@@ -22,7 +22,7 @@ limitations under the License. */
 #pragma once
 
 #include "ops/accuracy_op.h"
-#include "ops/binary_unnary_op.h"
+#include "ops/binary_unary_op.h"
 #include "ops/conv2d_op.h"
 #include "ops/elementwise_add_op.h"
 #include "ops/fill_constant_op.h"
