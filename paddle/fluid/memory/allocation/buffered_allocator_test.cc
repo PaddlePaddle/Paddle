@@ -22,19 +22,19 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-inline std::unique_ptr<BufferedAllocator> GetBufferedAllocator(
+inline std::shared_ptr<BufferedAllocator> GetBufferedAllocator(
     Allocation *allocation, bool thread_safe) {
-  std::unique_ptr<Allocator> allocator(new BestFitAllocator(allocation));
+  std::shared_ptr<Allocator> allocator(new BestFitAllocator(allocation));
   if (thread_safe) {
     allocator.reset(new LockedAllocator(std::move(allocator)));
   }
 
-  return std::unique_ptr<BufferedAllocator>(
+  return std::shared_ptr<BufferedAllocator>(
       new BufferedAllocator(std::move(allocator)));
 }
 
 TEST(buffered_allocator, thread_safety) {
-  std::unique_ptr<CPUAllocator> allocator(new CPUAllocator());
+  std::shared_ptr<CPUAllocator> allocator(new CPUAllocator());
   auto chunk = allocator->Allocate(1 << 20, allocator->kDefault);
   {
     auto buf_allocator = GetBufferedAllocator(chunk.get(), true);
@@ -90,9 +90,9 @@ constexpr size_t kOne = 1;
 constexpr size_t kTwo = 2;
 
 TEST(buffered_allocator, lazy_free) {
-  std::unique_ptr<StubAllocator> stub_allocator(new StubAllocator());
+  std::shared_ptr<StubAllocator> stub_allocator(new StubAllocator());
   auto *underlying_allocator = stub_allocator.get();
-  std::unique_ptr<BufferedAllocator> allocator(
+  std::shared_ptr<BufferedAllocator> allocator(
       new BufferedAllocator(std::move(stub_allocator)));
 
   {
@@ -127,7 +127,7 @@ TEST(buffered_allocator, lazy_free) {
 }
 
 TEST(buffered_allocator, garbage_collection) {
-  std::unique_ptr<CPUAllocator> cpu_allocator(new CPUAllocator());
+  std::shared_ptr<CPUAllocator> cpu_allocator(new CPUAllocator());
   auto chunk = cpu_allocator->Allocate(2048, cpu_allocator->kDefault);
   auto allocator = GetBufferedAllocator(chunk.get(), false);
   auto x1 = allocator->Allocate(1600, allocator->kDefault);
@@ -137,6 +137,15 @@ TEST(buffered_allocator, garbage_collection) {
   auto x3 = allocator->Allocate(1600, allocator->kDefault);
   ASSERT_NE(x3, nullptr);
   ASSERT_NE(x3->ptr(), nullptr);
+}
+
+TEST(buffered_allocator, merge_buffer) {
+  std::unique_ptr<StubAllocator> stub_allocator(new StubAllocator());
+  auto *raw_allocator = stub_allocator.get();
+  std::shared_ptr<BufferedAllocator> allocator(
+      new BufferedAllocator(std::move(stub_allocator), 2048));
+
+  raw_allocator->ResetCounter();
 }
 
 }  // namespace allocation

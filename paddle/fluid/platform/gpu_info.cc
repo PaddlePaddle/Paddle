@@ -23,12 +23,12 @@ limitations under the License. */
 #include "paddle/fluid/string/split.h"
 
 #ifndef _WIN32
-constexpr static float fraction_of_gpu_memory_to_use = 0.92f;
+constexpr static double fraction_of_gpu_memory_to_use = 0.92f;
 #else
 // fraction_of_gpu_memory_to_use cannot be too high on windows,
 // since the win32 graphic sub-system can occupy some GPU memory
 // which may lead to insufficient memory left for paddle
-constexpr static float fraction_of_gpu_memory_to_use = 0.5f;
+constexpr static double fraction_of_gpu_memory_to_use = 0.5f;
 #endif
 
 DEFINE_double(fraction_of_gpu_memory_to_use, fraction_of_gpu_memory_to_use,

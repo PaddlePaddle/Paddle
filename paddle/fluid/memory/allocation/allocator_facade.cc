@@ -23,13 +23,13 @@
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/auto_increment_allocator.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
+#include "paddle/fluid/memory/allocation/buffered_allocator.h"
 #include "paddle/fluid/memory/allocation/conditional_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/memory/allocation/zero_size_allocator.h"
-#include "paddle/fluid/memory/allocation/buffered_allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
@@ -43,6 +43,7 @@ DEFINE_int64(
     gpu_allocator_retry_time, 0,
     "The retry time (milliseconds) when allocator fails "
     "to allocate memory. No retry if this value is not greater than 0");
+DECLARE_double(fraction_of_gpu_memory_to_use);
 
 namespace paddle {
 namespace memory {

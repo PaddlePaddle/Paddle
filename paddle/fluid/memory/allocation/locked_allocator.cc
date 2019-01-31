@@ -23,7 +23,7 @@ namespace allocation {
 bool LockedAllocator::IsAllocThreadSafe() const { return true; }
 
 LockedAllocator::LockedAllocator(
-    std::unique_ptr<Allocator> &&underlying_allocator)
+    std::shared_ptr<Allocator> &&underlying_allocator)
     : underlying_allocator_(std::move(underlying_allocator)) {
   PADDLE_ENFORCE_NOT_NULL(underlying_allocator_);
   if (!underlying_allocator_->IsAllocThreadSafe()) {

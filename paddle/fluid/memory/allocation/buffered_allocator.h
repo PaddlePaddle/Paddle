@@ -11,9 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -31,7 +31,8 @@ namespace allocation {
 // underlying_allocator_
 class BufferedAllocator : public Allocator {
  public:
-  explicit BufferedAllocator(std::unique_ptr<Allocator> &&allocator);
+  explicit BufferedAllocator(std::shared_ptr<Allocator> allocator,
+                             const int64_t &threshold = -1);
 
   ~BufferedAllocator();
 
@@ -48,7 +49,9 @@ class BufferedAllocator : public Allocator {
   Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override;
 
  private:
-  std::unique_ptr<Allocator> underlying_allocator_;
+  int64_t kMergeBufferThreshold;
+  std::atomic<int64_t> cache_size_{0};
+  std::shared_ptr<Allocator> underlying_allocator_;
   std::multimap<size_t, AllocationPtr> allocations_;
   std::unique_ptr<std::mutex> mtx_;
 };

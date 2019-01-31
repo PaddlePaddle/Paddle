@@ -22,13 +22,19 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-BufferedAllocator::BufferedAllocator(std::unique_ptr<Allocator> &&allocator)
+BufferedAllocator::BufferedAllocator(std::shared_ptr<Allocator> allocator,
+                                     const int64_t &threshold)
     : underlying_allocator_(std::move(allocator)) {
   PADDLE_ENFORCE_NOT_NULL(
       underlying_allocator_,
       "Underlying allocator of BufferedAllocator must be unmanaged");
   if (underlying_allocator_->IsAllocThreadSafe()) {
     mtx_.reset(new std::mutex());
+  }
+  if (threshold >= 0) {
+    kMergeBufferThreshold = threshold;
+  } else {
+    kMergeBufferThreshold = 1 << 30;  // 1 GB
   }
 }
 
@@ -53,26 +59,28 @@ bool BufferedAllocator::IsAllocThreadSafe() const {
 void BufferedAllocator::Free(Allocation *allocation) {
   platform::LockGuardPtr<std::mutex> guard(mtx_);
   allocations_.emplace(allocation->size(), AllocationPtr(allocation));
+  cache_size_.fetch_add(allocation->size());
 }
 Allocation *BufferedAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   {
     platform::LockGuardPtr<std::mutex> guard(mtx_);
     auto it = allocations_.lower_bound(size);
-    if (it != allocations_.end() && it->first < size * 2) {
+    // only use same size cache. Otherwise allocate a new one.
+    if (it != allocations_.end()) {
+      // AllocationWithUnderlying* result = it->second;
       AllocationPtr result(std::move(it->second));
+      // AllocationPtr result(std::move(it->second));
       allocations_.erase(it);
-      return new AllocationWithUnderlying(std::move(result));
+      return static_cast<AllocationWithUnderlying *>(result.release());
+    } else {
+      if (cache_size_ > kMergeBufferThreshold) {
+        FreeCache(std::numeric_limits<size_t>::max());
+      }
     }
   }
 
-  try {
-    return new AllocationWithUnderlying(
-        underlying_allocator_->Allocate(size, attr));
-  } catch (BadAlloc &) {
-    FreeCache(size);
-    return new AllocationWithUnderlying(
-        underlying_allocator_->Allocate(size, attr));
-  }
+  return new AllocationWithUnderlying(
+      underlying_allocator_->Allocate(size, attr));
 }
 
 }  // namespace allocation
