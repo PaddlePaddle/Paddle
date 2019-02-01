@@ -662,7 +662,8 @@ class AdagradOptimizer(Optimizer):
                  learning_rate,
                  epsilon=1.0e-6,
                  regularization=None,
-                 name=None):
+                 name=None,
+                 initial_accumulator_value=0.1):
         assert learning_rate is not None
         assert epsilon is not None
         super(AdagradOptimizer, self).__init__(
@@ -671,6 +672,7 @@ class AdagradOptimizer(Optimizer):
             name=name)
         self.type = "adagrad"
         self._epsilon = epsilon
+        self.initial_accumulator_value = initial_accumulator_value
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -683,6 +685,16 @@ class AdagradOptimizer(Optimizer):
 
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
+        startup_block = framework.default_startup_program().global_block()
+        startup_block.append_op(
+            type='fill_constant',
+            inputs={},
+            outputs={'Out': [moment_acc]},
+            attrs={
+                'dtype': moment_acc.dtype,
+                'value': self.initial_accumulator_value,
+                'shape': moment_acc.shape,
+            })
 
         # Create the adagrad optimizer op
         adagrad_op = block.append_op(
