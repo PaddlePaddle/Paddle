@@ -1,4 +1,3 @@
-
 #windows treat symbolic file as a real file, which is different with unix
 #We create a hidden file and compile it instead of origin source file.
 function(windows_symbolic TARGET)
@@ -129,7 +128,7 @@ cc_test(version_test SRCS version_test.cc DEPS version)
 
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog version)
 
-cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
+cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc memory_optimize_helper)
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
 py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
@@ -193,6 +192,7 @@ cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
         proto_desc)
+cc_test(inplace_op_inference_test SRCS inplace_op_inference_test.cc DEPS op_registry proto_desc op_info memory_optimize_helper)
 cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
 cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 
@@ -207,3 +207,24 @@ endif (NOT WIN32)
 
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
+
+# Get the current working branch
+execute_process(
+  COMMAND git rev-parse --abbrev-ref HEAD
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE PADDLE_BRANCH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Get the latest abbreviated commit hash of the working branch
+execute_process(
+  COMMAND git log -1 --format=%h
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE PADDLE_COMMIT
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+message(STATUS "commit: ${PADDLE_COMMIT}")
+message(STATUS "branch: ${PADDLE_BRANCH}")
+
+configure_file(commit.h.in commit.h)

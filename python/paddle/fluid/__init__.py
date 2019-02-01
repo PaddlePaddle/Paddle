@@ -159,7 +159,7 @@ def __bootstrap__():
             'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
             'sync_nccl_allreduce', 'limit_of_tmp_allocation',
             'times_excess_than_required_tmp_allocation',
-            'skip_fused_all_reduce_check'
+            'skip_fused_all_reduce_check', 'enable_inplace_whitelist'
         ]
 
     core.init_gflags([sys.argv[0]] +

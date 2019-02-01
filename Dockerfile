@@ -11,12 +11,10 @@ RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ub
 # ENV variables
 ARG WITH_GPU
 ARG WITH_AVX
-ARG WITH_DOC
 
 ENV WOBOQ OFF
 ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
-ENV WITH_DOC=${WITH_DOC:-OFF}
 
 ENV HOME /root
 # Add bash enhancements
