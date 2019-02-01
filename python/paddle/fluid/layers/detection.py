@@ -49,6 +49,7 @@ __all__ = [
     'box_coder',
     'polygon_box_transform',
     'yolov3_loss',
+    'box_clip',
     'multiclass_nms',
 ]
 
@@ -2055,6 +2056,54 @@ def generate_proposals(scores,
     return rpn_rois, rpn_roi_probs
 
 
+def box_clip(input, im_info, name=None):
+    """
+    Clip the box into the size given by im_info
+    For each input box, The formula is given as follows:
+        
+    .. code-block:: text
+
+        xmin = max(min(xmin, im_w - 1), 0)
+        ymin = max(min(ymin, im_h - 1), 0) 
+        xmax = max(min(xmax, im_w - 1), 0)
+        ymax = max(min(ymax, im_h - 1), 0)
+    
+    where im_w and im_h are computed from im_info:
+ 
+    .. code-block:: text
+
+        im_h = round(height / scale)
+        im_w = round(weight / scale)
+
+    Args:
+        input(variable): The input box, the last dimension is 4.
+        im_info(variable): The information of image with shape [N, 3] with 
+                            layout (height, width, scale). height and width
+                            is the input size and scale is the ratio of input
+                            size and original size.
+        name (str): The name of this layer. It is optional.
+    
+    Returns:
+        Variable: The cliped tensor variable.
+        
+    Examples:
+        .. code-block:: python
+        
+            boxes = fluid.layers.data(
+                name='data', shape=[8, 4], dtype='float32', lod_level=1)
+            im_info = fluid.layers.data(name='im_info', shape=[3])
+            out = fluid.layers.box_clip(
+                input=boxes, im_info=im_info, inplace=True)
+    """
+
+    helper = LayerHelper("box_clip", **locals())
+    output = helper.create_variable_for_type_inference(dtype=input.dtype)
+    inputs = {"Input": input, "ImInfo": im_info}
+    helper.append_op(type="box_clip", inputs=inputs, outputs={"Output": output})
+
+    return output
+
+
 def multiclass_nms(bboxes,
                    scores,
                    score_threshold,
@@ -2132,8 +2181,10 @@ def multiclass_nms(bboxes,
              (After version 1.3, when no boxes detected, the lod is changed 
              from {0} to {1}) 
 
+
     Examples:
         .. code-block:: python
+
 
             boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
                                       dtype='float32', lod_level=1)
