@@ -32,4 +32,5 @@ limitations under the License. */
 #include "ops/pool2d_op.h"
 #include "ops/scale_op.h"
 #include "ops/softmax_op.h"
+#include "ops/sum_op.h"
 #include "ops/top_k_op.h"

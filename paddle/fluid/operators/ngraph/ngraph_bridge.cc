@@ -48,6 +48,7 @@ std::map<std::string,
         {"softmax", NG_OPS::BuildSoftmaxNode},
         {"softmax_grad", NG_OPS::BuildSoftmaxGradNode},
         {"scale", NG_OPS::BuildScaleNode},
+        {"sum", NG_OPS::BuildSumNode},
         {"relu", NG_OPS::BuildUnaryNode<ngraph::op::Relu>},
         {"tanh", NG_OPS::BuildUnaryNode<ngraph::op::Tanh>},
         {"top_k", NG_OPS::BuildTopKNode}};
