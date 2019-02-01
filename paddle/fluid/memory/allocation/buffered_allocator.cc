@@ -15,6 +15,7 @@
 #include "paddle/fluid/memory/allocation/buffered_allocator.h"
 #include <algorithm>
 #include <limits>
+#include <string>
 #include <utility>
 #include "paddle/fluid/memory/allocation/allocation_with_underlying.h"
 
@@ -56,24 +57,25 @@ void BufferedAllocator::FreeCache(size_t size) {
 bool BufferedAllocator::IsAllocThreadSafe() const {
   return this->underlying_allocator_->IsAllocThreadSafe();
 }
+
 void BufferedAllocator::Free(Allocation *allocation) {
   platform::LockGuardPtr<std::mutex> guard(mtx_);
   allocations_.emplace(allocation->size(), AllocationPtr(allocation));
   cache_size_.fetch_add(allocation->size());
 }
+
 Allocation *BufferedAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   {
     platform::LockGuardPtr<std::mutex> guard(mtx_);
     auto it = allocations_.lower_bound(size);
-    // only use same size cache. Otherwise allocate a new one.
-    if (it != allocations_.end()) {
-      // AllocationWithUnderlying* result = it->second;
+    if (it != allocations_.end() && it->first < size * 2) {
       AllocationPtr result(std::move(it->second));
-      // AllocationPtr result(std::move(it->second));
       allocations_.erase(it);
       return static_cast<AllocationWithUnderlying *>(result.release());
     } else {
+      int size = cache_size_;
       if (cache_size_ > kMergeBufferThreshold) {
+        VLOG(3) << "free cache : " << (string::HumanReadableSize(size));
         FreeCache(std::numeric_limits<size_t>::max());
       }
     }

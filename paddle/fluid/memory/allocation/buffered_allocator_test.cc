@@ -88,6 +88,7 @@ class StubAllocator : public Allocator {
 constexpr size_t kZero = 0;
 constexpr size_t kOne = 1;
 constexpr size_t kTwo = 2;
+constexpr size_t kThree = 3;
 
 TEST(buffered_allocator, lazy_free) {
   std::shared_ptr<StubAllocator> stub_allocator(new StubAllocator());
@@ -143,9 +144,26 @@ TEST(buffered_allocator, merge_buffer) {
   std::unique_ptr<StubAllocator> stub_allocator(new StubAllocator());
   auto *raw_allocator = stub_allocator.get();
   std::shared_ptr<BufferedAllocator> allocator(
-      new BufferedAllocator(std::move(stub_allocator), 2048));
+      new BufferedAllocator(std::move(stub_allocator), 2047));
 
   raw_allocator->ResetCounter();
+  {
+    auto x = allocator->Allocate(2048);
+    auto y = allocator->Allocate(1024);
+    ASSERT_EQ(raw_allocator->GetAllocCount(), kTwo);
+    ASSERT_EQ(raw_allocator->GetFreeCount(), kZero);
+  }
+
+  // use cache
+  {
+    auto cache_x = allocator->Allocate(1024);
+    ASSERT_EQ(raw_allocator->GetAllocCount(), kTwo);
+    ASSERT_EQ(raw_allocator->GetFreeCount(), kZero);
+    auto cache_y = allocator->Allocate(2049);
+  }
+
+  ASSERT_EQ(raw_allocator->GetAllocCount(), kThree);
+  ASSERT_EQ(raw_allocator->GetFreeCount(), kOne);
 }
 
 }  // namespace allocation
