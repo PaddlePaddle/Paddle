@@ -25,6 +25,7 @@ message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 if(WIN32)
+    set(CMAKE_SUPPRESS_REGENERATION true)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
     add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
     set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd")
