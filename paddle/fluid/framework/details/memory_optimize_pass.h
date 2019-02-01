@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/details/memory_reuse_types.h"
+#include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
@@ -35,12 +35,10 @@ namespace details {
 constexpr char kAllOpDescs[] = "all_op_descs";
 
 std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph);
-// sort op in bfs order
-std::vector<ir::Node*> BFSSortGraphOps(const ir::Graph& graph);
 
 class ControlFlowGraph;
 
-class AnalysisVarPass : public ir::Pass {
+class MemoryOptimizePass : public ir::Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
@@ -57,17 +55,13 @@ class AnalysisVarPass : public ir::Pass {
                             ir::Graph* graph) const;
 
   void SubGraphOptimize(OpDesc* op_desc) const;
-  // valid a tensor can be reuse or not
-  bool NodeCanReused(ir::Node* node) const;
   // scan subblock and collect the output/input variables.
   std::unordered_set<std::string> GetSubBlockVars(
       const std::unordered_set<ir::Node*>&) const;
-  // check op has subblock or not
-  bool OpHasSubBlock(OpDesc* desc) const;
 
  private:
   // Reuse Node Pool, Owned.
-  mutable OrderedNodePairPool pool_;
+  mutable OrderedNodeList pool_;
   // controlflow Graph
   mutable std::unique_ptr<ControlFlowGraph> cfg_;
   // skip set
