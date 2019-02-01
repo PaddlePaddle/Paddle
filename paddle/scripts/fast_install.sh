@@ -582,88 +582,103 @@ gpu_list=(
   PipLinuxInstall
 }
 
+function clearMacPythonEnv(){
+   python_V=""
+   python_version=""
+   python_brief_version=""
+   python_root=""
+}
+
 function checkMacPython2(){
     while true
        do
-          read -p "
-                => 未能在常规路径下找到Python2，请使用ctrl+c命令退出安装程序，并使用brew或pypi.org下载安装Python2（注意Python版本不能低于2.7.15）
-                如希望自定义Python路径，请输入路径：" python_root
-          echo
           python_version=`$python_root --version 2>&1 1>&1`
           if [ $? == "0" ];then
-            :
+               check_python=`echo $python_version | grep "Python 2"`
+               if [ "$python_version" == "" ] || [ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ]  ;then
+                    python_version=""
+               elif [ -n "$check_python" ];then
+                   while true
+                     do
+                       read -p "
+                     => 在您的环境中找到 $python_version, 确认使用此版本请输入y；如您希望自定义Python路径请输入n。请在这里输入（y/n）并回车: " use_python
+                       echo
+                       use_python=`echo $use_python | tr 'A-Z' 'a-z'`
+                       if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
+                            use_python="y"
+                            break
+                       elif [ "$use_python" == "n" ];then
+                            python_root=""
+                            break
+                       else
+                           echo "输入错误，请重新输入(y/n)"
+                       fi
+                     done
+                   if [ "$use_python" == "y" ];then
+                     return 0
+                   fi
+               else
+                   echo "您输入Python的不是Python2"
+                   clearMacPythonEnv
+               fi
           else
-            python_version=""
+               clearMacPythonEnv
+               read -p "
+                     => 未能在常规路径下找到Python2，请使用ctrl+c命令退出安装程序，并使用brew或pypi.org下载安装Python2（注意Python版本不能低于2.7.15）
+                     如希望自定义Python路径，请输入路径
+                     如果希望重新选择Python版本，请回车：" python_root
+               echo
+               if [ "$python_root" == "" ];then
+                     clearMacPythonEnv
+                     return 1
+               fi
           fi
-          check_python=`echo $python_version | grep "Python 2"`
-          if [ "$python_version" == "" ] || [ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ]  ;then
-               python_version=""
-          elif [ -n "$check_python" ];then
-              while true
-                do
-                  read -p "
-                => 在您的环境中找到 $python_version, 确认使用此版本请输入y；如您希望自定义Python路径请输入n。请在这里输入（y/n）并回车: " use_python
-                  echo
-                  use_python=`echo $use_python | tr 'A-Z' 'a-z'`
-                  if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
-                       use_python="y"
-                       break
-                  elif [ "$use_python" == "n" ];then
-                       python_root=""
-                       break
-                  else
-                      echo "输入错误，请重新输入(y/n)"
-                  fi
-                done
-              if [ "$use_python" == "y" ];then
-                break
-              fi
-            else
-              echo "您输入Python的不是Python2"
-              python_version=""
-            fi
        done
 }
 
 function checkMacPython3(){
     while true
        do
-          read -p "
-                => 未能在常规路径下找到Python3，请使用ctrl+c命令退出安装程序，并使用brew或pypi.org下载Python3
-                如希望自定义Python路径，请输入路径：" python_root
           python_version=`$python_root --version  2>&1 1>&1`
           if [ $? == "0" ];then
-              :
-          else
-              python_version=""
-          fi
-          check_python=`echo $python_version | grep "Python 3"`
-          if [ "$python_version" == "" ] || [ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ] ;then
-               python_version=""
-          elif [ -n "$check_python" ] ;then
-              while true
-                do
-                  read -p "
-                => 在您的环境中找到 $python_version, 确认使用此版本请输入y；如您希望自定义Python路径请输入n。请在这里输入（y/n）并回车: " use_python
-                  echo
-                  use_python=`echo $use_python | tr 'A-Z' 'a-z'`
-                  if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
-                       use_python="y"
-                       break
-                  elif [ "$use_python" == "n" ];then
-                        python_root=""
-                        break
-                  else
-                      echo "输入错误，请重新输入(y/n)"
+              check_python=`echo $python_version | grep "Python 3"`
+              if [ "$python_version" == "" ] || [ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ] ;then
+                   python_version=""
+              elif [ -n "$check_python" ] ;then
+                  while true
+                    do
+                      read -p "
+                    => 在您的环境中找到 $python_version, 确认使用此版本请输入y；如您希望自定义Python路径请输入n。请在这里输入（y/n）并回车: " use_python
+                      echo
+                      use_python=`echo $use_python | tr 'A-Z' 'a-z'`
+                      if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
+                           use_python="y"
+                           break
+                      elif [ "$use_python" == "n" ];then
+                            python_root=""
+                            break
+                      else
+                          echo "输入错误，请重新输入(y/n)"
+                      fi
+                    done
+                  if [ "$use_python" == "y" ];then
+                        return 0
                   fi
-                done
-              if [ "$use_python" == "y" ];then
-                    break
+              else
+                  echo "您输入Python的不是Python3"
+                  clearMacPythonEnv
               fi
-            else
-              echo "您输入Python的不是Python3"
-              python_version=""
-            fi
+          else
+              clearMacPythonEnv
+              read -p "
+                    => 未能在常规路径下找到Python3，请使用ctrl+c命令退出安装程序，并使用brew或pypi.org下载Python3
+                    如希望自定义Python路径，请输入路径：
+                    如果希望重新选择Python版本，请回车：" python_root
+              if [ "$python_root" == "" ];then
+                  clearMacPythonEnv
+                  return 1
+              fi
+          fi
        done
 }
 
@@ -691,6 +706,63 @@ function checkMacPaddleVersion(){
       fi
     done
 }
+function initCheckMacPython2(){
+   echo "您选择了Python "$python_V"，正在寻找符合您要求的Python 2版本"
+   python_root=`which python2.7`
+   if [ "$python_root" == "" ];then
+        python_root=`which python`
+   fi
+       checkMacPython2
+       if [ "$?" == "1" ];then
+            return 1
+       else
+            return 0
+       fi
+       else
+            echo "输入错误，请重新输入(y/n)"
+       fi
+   done
+}
+
+function initCheckMacPython3(){
+   echo "您选择了Python "$python_V"，正在寻找符合您要求的Python 2版本"
+   python_root=`which python3`
+   checkMacPython3
+   if [ "$?" == "1" ];then
+        return 1
+   else
+        return 0
+   fi
+}
+
+function checkMacPip(){
+   if [ "$python_V" == "2" ]||[ "$python_V" == "3" ];then
+       python_brief_version=`$python_root -m pip -V |awk -F "[ |)]" '{print $6}'|sed 's#\.##g'`
+       if [ "$python_brief_version" == "" ];then
+            python_V=""
+            python_brief_version=""
+            python_root=""
+            python_version=""
+            echo "您的 $python_root 对应的pip存在问题，请按ctrl + c退出后重新安装pip，或切换其他python版本"
+            return 1
+       else
+            if [[ $python_brief_version == "27" ]];then
+               uncode=`python -c "import pip._internal;print(pip._internal.pep425tags.get_supported())"|grep "cp27"`
+               if [[ $uncode == "" ]];then
+                  uncode="mu"
+               else
+                  uncode="m"
+               fi
+            fi
+            version_list=`echo "${python_list[@]}" | grep "$python_brief_version" `
+            if [ "$version_list" != "" ];then
+               return 0
+             else
+               echo "未找到可用的pip或pip3。PaddlePaddle目前支持：Python2.7/3.5/3.6/3.7及其对应的pip, 请重新输入，或使用ctrl + c退出"
+               return 1
+            fi
+       fi
+}
 
 function checkMacPythonVersion(){
   while true
@@ -705,89 +777,33 @@ function checkMacPythonVersion(){
        if [ "$python_V" == "" ];then
             python_V="2"
        fi
-       echo "您选择了数字【"$python_V"】，正在寻找符合您要求的Python版本，请按回车键继续..."
-       echo
        if [ "$python_V" == "2" ];then
-           python_root=`which python2.7`
-           if [ "$python_root" == "" ];then
-                python_root=`which python`
-           fi
-           python_version=`$python_root --version 2>&1 1>&1`
-           if [ $? == "0" ];then
-               :
-           else
-               python_version=""
-           fi
-           if [ "$python_root" == "" ]||[ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ]||[ "$python_root" == "/usr/bin/python2.7" -a "$python_version" == "Python 2.7.10" ];then
-               checkMacPython2
-           fi
-           while true
-             do
-               read -p "
-                => 在您的环境中找到 $python_version, 确认使用此版本请输入y；如您希望自定义Python路径请输入n。请在这里输入（y/n）并回车：" use_python
-               echo
-               use_python=`echo $use_python | tr 'A-Z' 'a-z'`
-               if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
+            initCheckMacPython2
+            if [ "$?" == "0" ];then
+                checkMacPip
+                if [ "$?" == "0" ];then
                     break
-               elif [ "$use_python" == "n" ];then
-                    python_root=""
-                    checkMacPython2
-                    break
-               else
-                    echo "输入错误，请重新输入(y/n)"
-               fi
-            done
-
-       elif [ "$python_V" == "3" ];then
-           python_root=`which python3`
-           python_version=`$python_root --version 2>&1 1>&1`
-           if [ $? == "0" ];then
-               :
-           else
-               python_version=""
-           fi
-           if [ "$python_root" == "" ]||[ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ];then
-               checkMacPython3
-           fi
-           while true
-             do
-               read -p "
-                => 在您的环境中找到 $python_version, 确认使用此版本请输入y；如您希望自定义Python路径请输入n。请在这里输入（y/n）并回车：" use_python
-               echo
-               use_python=`echo $use_python | tr 'A-Z' 'a-z'`
-               if [ "$use_python" == "y" ]||[ "$use_python" == "" ];then
-                   break
-               elif [ "$use_python" == "n" ];then
-                    checkMacPython3
-                    break
-               else
-                    echo "输入错误，请重新输入(y/n)"
-               fi
-           done
-       else
-           :
-       fi
-
-
-       if [ "$python_V" == "2" ]||[ "$python_V" == "3" ];then
-           python_brief_version=`$python_root -m pip -V |awk -F "[ |)]" '{print $6}'|sed 's#\.##g'`
-           if [[ $python_brief_version == "27" ]];then
-              uncode=`python -c "import pip._internal;print(pip._internal.pep425tags.get_supported())"|grep "cp27"`
-              if [[ $uncode == "" ]];then
-                 uncode="mu"
-              else
-                 uncode="m"
-              fi
-           fi
-           version_list=`echo "${python_list[@]}" | grep "$python_brief_version" `
-           if [ "$version_list" != "" ];then
-              break
+                else
+                    :
+                fi
             else
-              echo "未找到可用的pip或pip3。PaddlePaddle目前支持：Python2.7/3.5/3.6/3.7及其对应的pip, 请重新输入，或使用ctrl + c退出"
-           fi
-        else
+                :
+            fi
+       elif [ "$python_V" == "3" ];then
+            initCheckMacPython3
+            if [ "$?" == "0" ];then
+                checkMacPip
+                if [ "$?" == "0" ];then
+                    break
+                else
+                    :
+                fi
+            else
+                :
+            fi
+       else
             echo "输入错误，请重新输入"
-        fi
+       fi
   done
 }
 
@@ -850,6 +866,7 @@ function macos() {
                 $python_root -m pip install $whl_cpu_develop
                 if [ $? == "0" ];then
                    rm -rf $whl_cpu_develop
+                   # TODO add install success check here
                    echo "安装成功！小提示：可以使用: ${python_root} 来启动安装了PaddlePaddle的Python解释器"
                    break
                 else
