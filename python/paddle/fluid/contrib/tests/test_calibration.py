@@ -24,8 +24,7 @@ import contextlib
 from paddle.dataset.common import download
 from PIL import Image, ImageEnhance
 import math
-sys.path.append('..')
-import int8_inference.utility as int8_utility
+import paddle.fluid.contrib.int8_inference.utility as int8_utility
 
 random.seed(0)
 np.random.seed(0)
