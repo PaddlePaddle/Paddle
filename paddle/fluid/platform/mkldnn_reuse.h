@@ -210,13 +210,15 @@ class MKLDNNHandler {
     dst_memory.reset(new mkldnn::memory(*dst_pd, to_void_cast<T>(output_data)));
   }
 
-  static void AppendKey(
-      std::string* key, const mkldnn::memory::dims& input_dims,
-      const mkldnn::memory::dims& weights_dims, const std::vector<int>& strides,
-      const std::vector<int>& paddings, const std::vector<int>& dilations,
-      const int& groups, const mkldnn::memory::data_type& srcdt,
-      const mkldnn::memory::format& format,
-      const mkldnn::memory::data_type& dstdt, const std::string& suffix) {
+  static void AppendKey(std::string* key,
+                        const mkldnn::memory::dims& input_dims,
+                        const mkldnn::memory::dims& weights_dims,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::vector<int>& dilations, const int& groups,
+                        const mkldnn::memory::data_type& srcdt,
+                        const mkldnn::memory::format& format, const bool& relu,
+                        const bool& residual, const std::string& suffix) {
     AppendKeyDims(key, input_dims);
     AppendKeyDims(key, weights_dims);
     AppendKeyVec(key, strides);
@@ -225,7 +227,8 @@ class MKLDNNHandler {
     AppendKey(key, std::to_string(groups));
     AppendKey(key, std::to_string(srcdt));
     AppendKey(key, std::to_string(format));
-    AppendKey(key, std::to_string(dstdt));
+    AppendKey(key, std::to_string(relu));
+    AppendKey(key, std::to_string(residual));
     AppendKey(key, suffix);
   }
 
@@ -362,7 +365,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
     mem_fmt.ndims = axis.size();
     for (unsigned int i = 0; i < nchw_tz.size(); ++i) {
       mem_fmt.dims[i] = nchw_tz[i];  // logical dimensions (nchw format,
-                                     // regardless physical layout)
+      // regardless physical layout)
     }
     mem_fmt.data_type = mkldnn_f32;
     mem_fmt.format = mkldnn_blocked;
@@ -371,7 +374,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
     for (int i = nchw_tz.size() - 1; i >= 0; --i) {
       mem_fmt.layout_desc.blocking.padding_dims[i] =
           nchw_tz[i];  // logical dimensions (nchw format, regardless physical
-                       // layout)
+      // layout)
       mem_fmt.layout_desc.blocking.block_dims[i] = 1;
       mem_fmt.layout_desc.blocking.offset_padding_to_data[i] = 0;  // no offset
       mem_fmt.layout_desc.blocking.strides[0][axis[i]] = total_stride;
@@ -664,15 +667,35 @@ static std::shared_ptr<mkldnn::memory> SetDstMemory(
 }
 
 template <typename T>
-static std::shared_ptr<mkldnn::memory> SetDstMemoryHandler(
+static std::shared_ptr<mkldnn::memory> SetDstMemory(
     const framework::ExecutionContext& ctx, framework::Tensor* output,
-    const std::shared_ptr<ConvMKLDNNHandler>& handler) {
+    const framework::Tensor* residual_param,
+    const mkldnn::memory::desc& user_residual_md,
+    const std::shared_ptr<ConvMKLDNNHandler>& handler,
+    std::vector<mkldnn::primitive>* pipeline) {
+  const T* residual_param_data = residual_param->data<T>();
+  PADDLE_ENFORCE(residual_param_data != nullptr,
+                 "Provide data if you want MKLDNN conv+elementwise_add fusion");
+  std::shared_ptr<mkldnn::memory> user_residual_memory_p =
+      handler->AcquireResidualDataMemory(user_residual_md,
+                                         to_void_cast<T>(residual_param_data));
+  T* output_data = output->mutable_data<T>(ctx.GetPlace());
+  std::shared_ptr<mkldnn::memory> dst_memory_p =
+      handler->AcquireDstMemoryFromResidualDataMemory(
+          user_residual_memory_p, to_void_cast<T>(output_data), *pipeline);
+  return dst_memory_p;
+}
+
+template <typename T>
+static void SetDstMemoryHandler(
+    const framework::ExecutionContext& ctx, framework::Tensor* output,
+    const std::shared_ptr<ConvMKLDNNHandler>& handler,
+    std::shared_ptr<mkldnn::memory>* dst_memory_p) {
   T* output_data = output->mutable_data<T>(
       ctx.GetPlace(), ::paddle::memory::Allocator::kDefault,
       handler->GetDstMemorySize());
-  std::shared_ptr<mkldnn::memory> dst_memory_p;
-  dst_memory_p->set_data_handle(to_void_cast<T>(output_data));
-  return dst_memory_p;
+  (*dst_memory_p)->set_data_handle(to_void_cast<T>(output_data));
 }
+
 }  // namespace platform
 }  // namespace paddle

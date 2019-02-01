@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(MOBILE_INFERENCE OR RPI)
-    return()
-endif()
-
 include (ExternalProject)
 
 # NOTE: snappy is needed when linking with recordio

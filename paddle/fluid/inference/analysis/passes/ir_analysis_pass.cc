@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/ir_analysis_pass.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 
 namespace paddle {
@@ -31,9 +32,18 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
   IRPassManager the_ir_manager(argument);
   graph = the_ir_manager.Apply(std::move(graph));
   PADDLE_ENFORCE_GT(graph->Nodes().size(), 0);
-  argument->SetIrAnalyzedProgram(new framework::proto::ProgramDesc(
-      the_ir_manager.AcquireProgram(&graph, argument->main_program())));
   argument->SetMainGraph(graph.release());
+  CollectFusionStatis(argument);
+}
+
+void IrAnalysisPass::CollectFusionStatis(Argument* argument) {
+  if (!argument->main_graph().Has(framework::ir::kFuseStatisAttr)) {
+    LOG(INFO) << "argument has no fuse statis";
+    return;
+  }
+  argument->SetFusionStatis(
+      argument->main_graph().Get<Argument::fusion_statis_t>(
+          framework::ir::kFuseStatisAttr));
 }
 
 std::string IrAnalysisPass::repr() const { return "ir-analysis-pass"; }

@@ -16,7 +16,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-using namespace paddle::inference;
+using namespace paddle::inference;  // NOLINT
 TEST(Benchmark, basic) {
   Benchmark benchmark;
   benchmark.SetName("key0");

@@ -70,9 +70,9 @@ void AllReduceOpHandle::RunImpl() {
     auto *s = local_scopes_[i];
     auto &local_scope = *s->FindVar(kLocalExecScopeName)->Get<Scope *>();
     auto &lod_tensor =
-        local_scope.FindVar(in_var_handles[i]->name_)->Get<LoDTensor>();
+        local_scope.FindVar(in_var_handles[i]->name())->Get<LoDTensor>();
     lod_tensors.emplace_back(&lod_tensor);
-    PADDLE_ENFORCE_EQ(in_var_handles[i]->name_, out_var_handles[i]->name_,
+    PADDLE_ENFORCE_EQ(in_var_handles[i]->name(), out_var_handles[i]->name(),
                       "The name of input and output should be equal.");
   }
 
@@ -134,7 +134,7 @@ void AllReduceOpHandle::RunImpl() {
     auto &trg = *this->local_scopes_[0]
                      ->FindVar(kLocalExecScopeName)
                      ->Get<Scope *>()
-                     ->FindVar(out_var_handles[0]->name_)
+                     ->FindVar(out_var_handles[0]->name())
                      ->GetMutable<framework::LoDTensor>();
 
     // Reduce All Tensor to trg in CPU
@@ -145,7 +145,7 @@ void AllReduceOpHandle::RunImpl() {
       auto &scope =
           *local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
       auto &p = places_[i];
-      auto *var = scope.FindVar(out_var_handles[i]->name_);
+      auto *var = scope.FindVar(out_var_handles[i]->name());
       auto *dev_ctx = dev_ctxes_.at(p);
 
       RunAndRecordEvent(p, [&trg, var, dev_ctx, p] {

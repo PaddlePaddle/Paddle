@@ -39,21 +39,25 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
 
   auto is_seqpool_op_with_pootype_of_nth_input_of_concat = [=](
       Node* x, const std::string& type, int idx) -> bool {
-    bool ok = x && x->IsOp() && x->Op()->Type() == "sequence_pool" &&
-              x->Op()->HasAttr("pooltype") &&
-              boost::get<std::string>(x->Op()->GetAttr("pooltype")) == type &&
-              x->outputs.size() == 2;  // seqpool should only have 2 outputs
-    if (ok) {
-      // only one output of seqpool_op is nth_input_var of concat
-      // the other one should be unused empty var
+    bool this_is_seqpool_op =
+        x && x->IsOp() && x->Op()->Type() == "sequence_pool" &&
+        x->Op()->HasAttr("pooltype") &&
+        boost::get<std::string>(x->Op()->GetAttr("pooltype")) == type &&
+        x->outputs.size() == 2;  // seqpool should only have 2 outputs
+    bool satisfied_all = this_is_seqpool_op;
+    if (this_is_seqpool_op) {
+      // Only one output of seqpool_op is nth_input_var of concat,
+      // the other one should be unused empty var.
       if (is_nth_input_var_of_concat(x->outputs[0], idx)) {
-        ok = ok && x->outputs[1]->IsVar() && x->outputs[1]->outputs.size() == 0;
+        satisfied_all = satisfied_all && x->outputs[1]->IsVar() &&
+                        x->outputs[1]->outputs.empty();
       } else {
-        ok = ok && is_nth_input_var_of_concat(x->outputs[1], idx) &&
-             x->outputs[0]->IsVar() && x->outputs[0]->outputs.size() == 0;
+        satisfied_all =
+            satisfied_all && is_nth_input_var_of_concat(x->outputs[1], idx) &&
+            x->outputs[0]->IsVar() && x->outputs[0]->outputs.size() == 0;
       }
     }
-    return ok;
+    return satisfied_all;
   };
 
   auto* concat_op = pattern->NewNode(
@@ -72,6 +76,7 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
 
   std::vector<PDNode*> seqpool_ops_input_var(num_inputs);
   std::vector<PDNode*> seqpool_ops_output_var(num_inputs);
+  std::vector<PDNode*> seqpool_ops_output_unused_var(num_inputs);
   std::vector<PDNode*> seqpool_ops(num_inputs);
 
   for (int i = 0; i < num_inputs; ++i) {
@@ -84,6 +89,15 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
         },
         name_scope + "/sequence_pool_out_" + std::to_string(i));
 
+    seqpool_ops_output_unused_var[i] = pattern->NewNode(
+        [=](Node* x) {
+          return x && x->IsVar() && x->inputs.size() == 1 &&
+                 x->outputs.size() == 0 &&
+                 is_seqpool_op_with_pootype_of_nth_input_of_concat(x->inputs[0],
+                                                                   "SUM", i);
+        },
+        name_scope + "/sequence_pool_unused_out_" + std::to_string(i));
+
     seqpool_ops[i] = pattern->NewNode(
         [=](Node* x) {
           return x && x->IsOp() &&
@@ -93,23 +107,30 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
 
     seqpool_ops_input_var[i] = pattern->NewNode(
         [=](Node* x) {
-          return x && x->IsVar() && x->outputs.size() >= 1 &&
-                 is_seqpool_op_with_pootype_of_nth_input_of_concat(
-                     x->outputs[0], "SUM", i);
+          bool basic = x && x->IsVar() && x->outputs.size() >= 1;
+          bool next_is_fine = false;
+          for (auto* o : x->outputs) {
+            if (is_seqpool_op_with_pootype_of_nth_input_of_concat(o, "SUM",
+                                                                  i)) {
+              next_is_fine = true;
+              break;
+            }
+          }
+          return basic && next_is_fine;
         },
         name_scope + "/sequence_pool_in_" + std::to_string(i));
 
     // Links
     seqpool_ops[i]
         ->LinksFrom({seqpool_ops_input_var[i]})
-        .LinksTo({seqpool_ops_output_var[i]});
+        .LinksTo({seqpool_ops_output_var[i], seqpool_ops_output_unused_var[i]});
   }
   concat_op->LinksFrom(seqpool_ops_output_var).LinksTo({concat_out_var});
   return concat_out_var;
 }
 
-int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
-                int num_inputs) {
+static int BuildFusion(Graph* graph, const std::string& name_scope,
+                       int num_inputs) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
   BuildSeqPoolConcatPattern(pattern, name_scope, num_inputs);
@@ -178,8 +199,8 @@ std::unique_ptr<ir::Graph> SeqPoolConcatFusePass::ApplyImpl(
   FusePassBase::Init(name_scope_, graph.get());
   int fusion_count = 0;
   for (int i = MAX_CONCAT_INPUTS; i > 0; --i) {
-    fusion_count += BuildFusion(
-        graph.get(), name_scope_ + "/" + std::to_string(i), param_scope(), i);
+    fusion_count +=
+        BuildFusion(graph.get(), name_scope_ + "/" + std::to_string(i), i);
   }
   AddStatis(fusion_count);
 

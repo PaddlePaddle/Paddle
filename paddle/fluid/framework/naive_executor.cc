@@ -50,8 +50,8 @@ void NaiveExecutor::Run() {
                              "running Paddle Inference";
 #endif  // PADDLE_ON_INFERENCE
   for (auto &op : ops_) {
-    VLOG(3) << std::this_thread::get_id() << " run " << op->Type()
-            << " on scope " << scope_;
+    VLOG(4) << std::this_thread::get_id() << " run "
+            << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
     op->Run(*scope_, place_);
   }
@@ -69,10 +69,12 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
     anc = anc->parent();
   }
 
+  int num_vars = 0;
   for (auto &var : global_block.AllVars()) {
     if (var->Name() == framework::kEmptyVarName) {
       continue;
     }
+    num_vars++;
 
     if (persistable == var->Persistable()) {
       if (persistable) {
@@ -90,6 +92,7 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
       }
     }
   }
+  VLOG(4) << "naive executor create " << num_vars << " vars";
 }
 
 void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,

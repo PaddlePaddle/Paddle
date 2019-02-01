@@ -321,7 +321,7 @@ def append_LARS(params_grads, learning_rate, weight_decay):
         The decayed learning rate
     Examples:
         .. code-block:: python
-        
+
             learning_rate *= local_gw_ratio * sqrt(sumsq(param))
                         / (sqrt(sumsq(gradient))+ weight_decay * sqrt(sumsq(param)))
     """

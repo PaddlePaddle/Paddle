@@ -59,7 +59,7 @@ limitations under the License. */
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else
-#define PADDLE_ALIGN(x) /*do nothing*/
+#define PADDLE_ALIGN(x) __declspec(align(x))
 #endif
 
 namespace paddle {

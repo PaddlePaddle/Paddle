@@ -23,6 +23,20 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+/**
+ * Fuse SequencePool(with sum pooltype yet) and Concat;
+ *
+ * Before fuse:
+ *    |         |             |
+ * seq_pool, seq_pool, ... seq_pool
+ *    \         |      ...   /
+ *            concat
+ *              |
+ * After fuse:
+ *    \      |       /
+ *   FusionSeqPoolConcat
+ *           |
+ */
 class SeqPoolConcatFusePass : public FusePassBase {
  public:
   virtual ~SeqPoolConcatFusePass() {}

@@ -741,21 +741,40 @@ class TestLoadSliceVar(TranspilerTest):
         pserver, _ = self.get_pserver(self.pserver1_ep)
         pserver2, _ = self.get_pserver(self.pserver2_ep)
 
-        self.assertTrue(pserver._slice_vars_and_attrs)
-        self.assertTrue(pserver2._slice_vars_and_attrs)
+        vars_ps1 = pserver._parameters_on_pservers.get_distributed_vars_by_ep(
+            self.pserver1_ep)
+        vars_ps2 = pserver._parameters_on_pservers.get_distributed_vars_by_ep(
+            self.pserver2_ep)
 
-        for idx in six.moves.xrange(len(pserver._slice_vars_and_attrs)):
-            self.assertEqual(pserver._slice_vars_and_attrs[idx][0],
-                             pserver2._slice_vars_and_attrs[idx][0])
+        self.assertTrue(vars_ps1)
+        self.assertTrue(vars_ps2)
 
-            total_numel = six.moves.reduce(
-                lambda x, y: x * y, pserver._slice_vars_and_attrs[idx][0].shape)
-            self.assertEqual(
-                total_numel,
-                six.moves.reduce(lambda x, y: x * y,
-                                 pserver._slice_vars_and_attrs[idx][2].shape) +
-                six.moves.reduce(lambda x, y: x * y,
-                                 pserver2._slice_vars_and_attrs[idx][2].shape))
+        for idx in six.moves.xrange(len(vars_ps1)):
+            total_numel = 0
+            ps1_numel, ps2_numel = 0, 0
+
+            ps1_var = vars_ps1[idx]
+
+            if not ps1_var.is_slice:
+                total_numel = six.moves.reduce(lambda x, y: x * y,
+                                               vars_ps1[idx].origin.shape)
+                ps1_numel = six.moves.reduce(lambda x, y: x * y,
+                                             vars_ps1[idx].slice.shape)
+            else:
+                ps2_var = None
+                for var in vars_ps2:
+                    if var.origin.name == ps1_var.origin.name:
+                        ps2_var = var
+                        break
+
+                total_numel = six.moves.reduce(lambda x, y: x * y,
+                                               ps1_var.origin.shape)
+                ps1_numel = six.moves.reduce(lambda x, y: x * y,
+                                             ps1_var.slice.shape)
+                ps2_numel = six.moves.reduce(lambda x, y: x * y,
+                                             ps2_var.slice.shape)
+
+            self.assertEqual(total_numel, ps1_numel + ps2_numel)
 
 
 class TestNCCL2Transpile(TranspilerTest):

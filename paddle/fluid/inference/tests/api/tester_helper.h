@@ -15,19 +15,22 @@
 #pragma once
 
 #include <gtest/gtest.h>
+
 #include <algorithm>
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+#ifdef WITH_GPERFTOOLS
+#include <gperftools/profiler.h>
+#endif
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
-
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/tests/api/config_printer.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 #include "paddle/fluid/inference/utils/benchmark.h"
@@ -55,7 +58,7 @@ namespace inference {
 
 void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
   const auto *analysis_config =
-      reinterpret_cast<const contrib::AnalysisConfig *>(config);
+      reinterpret_cast<const AnalysisConfig *>(config);
   if (use_analysis) {
     LOG(INFO) << *analysis_config;
     return;
@@ -88,7 +91,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         float *pdata = static_cast<float *>(out.data.data());
         float *pdata_ref = static_cast<float *>(ref_out.data.data());
         for (size_t j = 0; j < size; ++j) {
-          EXPECT_NEAR(pdata_ref[j], pdata[j], FLAGS_accuracy);
+          CHECK_LE(std::abs(pdata_ref[j] - pdata[j]), FLAGS_accuracy);
         }
         break;
       }
@@ -99,9 +102,9 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
 std::unique_ptr<PaddlePredictor> CreateTestPredictor(
     const PaddlePredictor::Config *config, bool use_analysis = true) {
   const auto *analysis_config =
-      reinterpret_cast<const contrib::AnalysisConfig *>(config);
+      reinterpret_cast<const AnalysisConfig *>(config);
   if (use_analysis) {
-    return CreatePaddlePredictor<contrib::AnalysisConfig>(*analysis_config);
+    return CreatePaddlePredictor<AnalysisConfig>(*analysis_config);
   }
   auto native_config = analysis_config->ToNativeConfig();
   return CreatePaddlePredictor<NativeConfig>(native_config);
@@ -136,7 +139,8 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
                        const std::string &dirname, bool is_combined = true,
                        std::string model_filename = "model",
                        std::string params_filename = "params",
-                       const std::vector<std::string> *feed_names = nullptr) {
+                       const std::vector<std::string> *feed_names = nullptr,
+                       const int continuous_inuput_index = 0) {
   // Set fake_image_data
   PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0, "Only have single batch of data.");
   std::vector<std::vector<int64_t>> feed_target_shapes = GetFeedTargetShapes(
@@ -173,7 +177,8 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
     float *input_data = static_cast<float *>(input.data.data());
     // fill input data, for profile easily, do not use random data here.
     for (size_t j = 0; j < len; ++j) {
-      *(input_data + j) = static_cast<float>(j) / len;
+      *(input_data + j) =
+          static_cast<float>((j + continuous_inuput_index) % len) / len;
     }
   }
   (*inputs).emplace_back(input_slots);
@@ -215,13 +220,19 @@ void TestOneThreadPrediction(
   {
     Timer run_timer;
     run_timer.tic();
+#ifdef WITH_GPERFTOOLS
+    ProfilerStart("paddle_inference.prof");
+#endif
     for (int i = 0; i < num_times; i++) {
       for (size_t j = 0; j < inputs.size(); j++) {
         predictor->Run(inputs[j], outputs, batch_size);
       }
     }
+#ifdef WITH_GPERFTOOLS
+    ProfilerStop();
+#endif
 
-    double latency = run_timer.toc() / num_times;
+    double latency = run_timer.toc() / (num_times > 1 ? num_times : 1);
     PrintTime(batch_size, num_times, 1, 0, latency, inputs.size());
     if (FLAGS_record_benchmark) {
       Benchmark benchmark;
@@ -313,13 +324,12 @@ void CompareDeterministic(
   int num_times = FLAGS_repeat;
   auto predictor = CreateTestPredictor(config, FLAGS_use_analysis);
 
-  // warmup run
   std::vector<PaddleTensor> warmup_outputs, outputs;
-  predictor->Run(inputs[0], &warmup_outputs, batch_size);
-
   // run num_times to Compare Deterministic Result.
-  for (int i = 0; i < num_times; i++) {
-    for (size_t j = 0; j < inputs.size(); j++) {
+  for (size_t j = 0; j < inputs.size(); j++) {
+    // warmup run
+    predictor->Run(inputs[j], &warmup_outputs, batch_size);
+    for (int i = 0; i < num_times; i++) {
       predictor->Run(inputs[j], &outputs, batch_size);
       CompareResult(outputs, warmup_outputs);
     }
@@ -333,6 +343,16 @@ void CompareNativeAndAnalysis(
   std::vector<PaddleTensor> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
+  CompareResult(analysis_outputs, native_outputs);
+}
+
+void CompareNativeAndAnalysis(
+    PaddlePredictor *native_pred, PaddlePredictor *analysis_pred,
+    const std::vector<std::vector<PaddleTensor>> &inputs) {
+  int batch_size = FLAGS_batch_size;
+  std::vector<PaddleTensor> native_outputs, analysis_outputs;
+  native_pred->Run(inputs[0], &native_outputs, batch_size);
+  analysis_pred->Run(inputs[0], &analysis_outputs, batch_size);
   CompareResult(analysis_outputs, native_outputs);
 }
 

@@ -81,9 +81,7 @@ void VActJitCode::genCode() {
 #define DECLARE_ACT_CREATOR(name)                                            \
   class name##Creator : public JitCodeCreator<int> {                         \
    public:                                                                   \
-    bool UseMe(const int& attr) const override {                             \
-      return platform::MayIUse(platform::avx);                               \
-    }                                                                        \
+    bool UseMe(const int& attr) const override;                              \
     size_t CodeSize(const int& d) const override;                            \
     std::unique_ptr<GenBase> CreateJitCode(const int& attr) const override { \
       return make_unique<name##JitCode>(attr, CodeSize(attr));               \
@@ -91,16 +89,45 @@ void VActJitCode::genCode() {
   }
 
 DECLARE_ACT_CREATOR(VRelu);
+DECLARE_ACT_CREATOR(VSquare);
 DECLARE_ACT_CREATOR(VIdentity);
 DECLARE_ACT_CREATOR(VExp);
 DECLARE_ACT_CREATOR(VSigmoid);
 DECLARE_ACT_CREATOR(VTanh);
 
 // TODO(TJ): tuning use me
+bool VReluCreator::UseMe(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
+bool VSquareCreator::UseMe(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
+bool VIdentityCreator::UseMe(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
+bool VExpCreator::UseMe(const int& d) const {
+  return platform::MayIUse(platform::avx) && d < 32;
+}
+
+bool VSigmoidCreator::UseMe(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
+bool VTanhCreator::UseMe(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
 size_t VReluCreator::CodeSize(const int& d) const {
   return 96 /* init size */ +
          (d / YMM_FLOAT_BLOCK + 3) * 4 /* instructions */ *
              8 /* average bytes for each instruction */;
+}
+
+size_t VSquareCreator::CodeSize(const int& d) const {
+  return 96 + (d / YMM_FLOAT_BLOCK + 3) * 4 * 8;
 }
 
 size_t VIdentityCreator::CodeSize(const int& d) const {
@@ -129,6 +156,7 @@ size_t VTanhCreator::CodeSize(const int& d) const {
 namespace gen = paddle::operators::jit::gen;
 
 REGISTER_JITKERNEL_GEN(kVRelu, gen::VReluCreator);
+REGISTER_JITKERNEL_GEN(kVSquare, gen::VSquareCreator);
 REGISTER_JITKERNEL_GEN(kVIdentity, gen::VIdentityCreator);
 REGISTER_JITKERNEL_GEN(kVExp, gen::VExpCreator);
 REGISTER_JITKERNEL_GEN(kVSigmoid, gen::VSigmoidCreator);

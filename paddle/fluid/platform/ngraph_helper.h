@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-static ngraph::Shape FlattenTo2d(ngraph::Shape sh, int num) {
+ngraph::Shape FlattenTo2d(ngraph::Shape sh, int num) {
   auto x1 = std::accumulate(std::begin(sh), std::begin(sh) + num, 1,
                             std::multiplies<size_t>());
   auto x2 = std::accumulate(std::begin(sh) + num, std::end(sh), 1,
@@ -33,15 +33,15 @@ static ngraph::Shape FlattenTo2d(ngraph::Shape sh, int num) {
   return ngraph::Shape{x1_l, x2_l};
 }
 
-static std::shared_ptr<ngraph::Node> NgReshaper(
-    std::shared_ptr<ngraph::Node> input, ngraph::Shape shape) {
+std::shared_ptr<ngraph::Node> NgReshaper(std::shared_ptr<ngraph::Node> input,
+                                         ngraph::Shape shape) {
   std::vector<size_t> input_order(input->get_shape().size());
   std::iota(std::begin(input_order), std::end(input_order), 0);
   return std::make_shared<ngraph::op::Reshape>(
       input, ngraph::AxisVector(input_order), shape);
 }
 
-static std::shared_ptr<ngraph::Node> GetNode(
+std::shared_ptr<ngraph::Node> GetNode(
     const std::shared_ptr<paddle::framework::OperatorBase>& op,
     const std::string prm, const paddle::framework::VariableNameMap& var_map,
     std::shared_ptr<
@@ -57,7 +57,7 @@ static std::shared_ptr<ngraph::Node> GetNode(
   }
 }
 
-static std::shared_ptr<ngraph::Node> GetInputNode(
+std::shared_ptr<ngraph::Node> GetInputNode(
     const std::shared_ptr<paddle::framework::OperatorBase>& op,
     const std::string prm,
     std::shared_ptr<
@@ -66,7 +66,7 @@ static std::shared_ptr<ngraph::Node> GetInputNode(
   return GetNode(op, prm, op->Inputs(), ngb_node_map);
 }
 
-static std::shared_ptr<ngraph::Node> GetOutputNode(
+std::shared_ptr<ngraph::Node> GetOutputNode(
     const std::shared_ptr<paddle::framework::OperatorBase>& op,
     const std::string prm,
     std::shared_ptr<
@@ -75,7 +75,7 @@ static std::shared_ptr<ngraph::Node> GetOutputNode(
   return GetNode(op, prm, op->Outputs(), ngb_node_map);
 }
 
-static void SetOutputNode(
+void SetOutputNode(
     const std::shared_ptr<paddle::framework::OperatorBase>& op,
     const std::string prm, std::shared_ptr<ngraph::Node> node,
     std::shared_ptr<
@@ -91,14 +91,45 @@ static void SetOutputNode(
   }
 }
 
-static bool HasOutput(
-    const std::shared_ptr<paddle::framework::OperatorBase>& op,
-    const std::string prm) {
+bool HasOutput(const std::shared_ptr<paddle::framework::OperatorBase>& op,
+               const std::string prm) {
   auto& outputs = op->Outputs();
   if (outputs.find(prm) == outputs.end()) return false;
   return outputs.at(prm).size() > 0;
 }
 
+inline void GetMidDims(const ngraph::Shape& x_shape,
+                       const ngraph::Shape& y_shape, int axis, int* pre, int* n,
+                       int* post) {
+  *pre = 1;
+  *n = 1;
+  *post = 1;
+  for (int i = 0; i < axis; ++i) {
+    (*pre) *= x_shape[i];
+  }
+
+  for (size_t i = 0; i < y_shape.size(); ++i) {
+    PADDLE_ENFORCE_EQ(x_shape[i + axis], y_shape[i],
+                      "Broadcast dimension mismatch.");
+    (*n) *= y_shape[i];
+  }
+
+  for (size_t i = axis + y_shape.size(); i < x_shape.size(); ++i) {
+    (*post) *= x_shape[i];
+  }
+}
+
+inline void TrimTrailingSingularDims(ngraph::Shape* shape) {
+  // Remove trailing dimensions of size 1 for y
+  auto actual_shape_size = shape->size();
+  for (; actual_shape_size != 0; --actual_shape_size) {
+    if ((*shape)[actual_shape_size - 1] != 1) {
+      break;
+    } else {
+      shape->pop_back();
+    }
+  }
+}
 }  // namespace platform
 }  // namespace paddle
 
