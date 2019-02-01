@@ -169,9 +169,9 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   result.Set(kGraphDepVars, new GraphDepVars);
   result.Set(kGraphOps, new GraphOps);
 
-  bool is_forwarding = true;
-  bool need_collection_ops = NeedCollectiveOps(*graph);
+  need_collection_ops_ = NeedCollectiveOps(sorted_ops);
   bool insert_collection_ops = false;
+  bool is_forwarding = true;
 
   for (ir::Node *node : sorted_ops) {
     if (DealWithSpecialOp(&result, node)) {
@@ -191,7 +191,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
       }
 
       // Insert collection ops
-      if (!is_forwarding && need_collection_ops) {
+      if (!is_forwarding && need_collection_ops_) {
         try {
           bool is_bk_op =
               static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
@@ -219,7 +219,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
     }
   }
 
-  if (need_collection_ops) {
+  if (need_collection_ops_) {
     PADDLE_ENFORCE(insert_collection_ops,
                    "Doesn't find trainable parameter's gradient.");
   }
@@ -288,13 +288,13 @@ bool MultiDevSSAGraphBuilderBase::UseGPU() const {
 }
 
 bool MultiDevSSAGraphBuilderBase::NeedCollectiveOps(
-    const ir::Graph &graph) const {
+    const std::vector<ir::Node *> &nodes) const {
   bool has_bk_op = false;
-  for (auto &node : graph.Nodes()) {
-    if (!node->IsOp()) continue;
+  for (auto iter = nodes.rbegin(); iter != nodes.rend(); ++iter) {
     try {
       has_bk_op =
-          static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
+          (*iter)->Op() &&
+          static_cast<bool>(boost::get<int>((*iter)->Op()->GetAttr(
                                 OpProtoAndCheckerMaker::OpRoleAttrName())) &
                             static_cast<int>(OpRole::kBackward));
       if (has_bk_op) break;
@@ -994,7 +994,7 @@ void FuseAllReduceSSAGraphBuilder::InsertCollectiveOp(
 
 void FuseAllReduceSSAGraphBuilder::InsertPostprocessOps(
     ir::Graph *result) const {
-  if (!NeedCollectiveOps(*result)) {
+  if (this->need_collection_ops_) {
     return;
   }
 
