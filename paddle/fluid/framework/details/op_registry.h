@@ -18,6 +18,7 @@ limitations under the License. */
 #include <tuple>
 #include <vector>
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
+#include "paddle/fluid/framework/inplace_op_inference.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
@@ -32,7 +33,8 @@ enum OpInfoFillType {
   kOpProtoAndCheckerMaker = 1,
   kGradOpDescMaker = 2,
   kVarTypeInference = 3,
-  kShapeInference = 4
+  kShapeInference = 4,
+  kInplaceOpInference = 5
 };
 
 template <typename T>
@@ -48,8 +50,11 @@ struct OpInfoFillTypeID {
                                     ? kVarTypeInference
                                     : (std::is_base_of<InferShapeBase, T>::value
                                            ? kShapeInference
-                                           : static_cast<OpInfoFillType>(
-                                                 -1)))));
+                                           : (std::is_base_of<
+                                                  InplaceOpInference, T>::value
+                                                  ? kInplaceOpInference
+                                                  : static_cast<OpInfoFillType>(
+                                                        -1))))));
   }
 };
 
@@ -135,6 +140,16 @@ struct OpInfoFiller<T, kShapeInference> {
     info->infer_shape_ = [](InferShapeContext* ctx) {
       T inference;
       inference(ctx);
+    };
+  }
+};
+
+template <typename T>
+struct OpInfoFiller<T, kInplaceOpInference> {
+  void operator()(const char* op_type, OpInfo* info) const {
+    info->infer_inplace_ = [](const OpDesc& op_desc, BlockDesc* block) {
+      T infer;
+      return infer(op_desc, block);
     };
   }
 };
