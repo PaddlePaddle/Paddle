@@ -250,6 +250,20 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
   }
 };
 
+class ElementwiseOpInplace : public framework::InplaceInToOut {
+ public:
+  using framework::InplaceInToOut::InplaceInToOut;
+
+ protected:
+  std::unordered_map<std::string, std::string> Apply(
+      const framework::OpDesc &op_desc,
+      framework::BlockDesc *block) const override {
+    return std::unordered_map<std::string, std::string>{
+        {"X", "Out"},
+    };
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -299,6 +313,7 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
   REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,       \
                     __ElemwiseOp##op_type##Maker__,                    \
                     ::paddle::operators::ElementwiseOpInferVarType,    \
-                    op_type##GradMaker);                               \
+                    op_type##GradMaker,                                \
+                    ::paddle::operators::ElementwiseOpInplace);        \
   REGISTER_OPERATOR(op_type##_grad,                                    \
                     ::paddle::operators::ElementwiseOpExplicitGrad)
