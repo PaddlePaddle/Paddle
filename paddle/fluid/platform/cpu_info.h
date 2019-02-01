@@ -28,14 +28,6 @@ limitations under the License. */
 #endif
 #endif  // WIN32
 
-#if defined(_WIN32)
-#define ALIGN32_BEG __declspec(align(32))
-#define ALIGN32_END
-#else
-#define ALIGN32_BEG
-#define ALIGN32_END __attribute__((aligned(32)))
-#endif  // _WIN32
-
 namespace paddle {
 namespace platform {
 

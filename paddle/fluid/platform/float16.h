@@ -56,12 +56,6 @@ limitations under the License. */
 #include <immintrin.h>
 #endif  // PADDLE_ARM
 
-#if !defined(_WIN32)
-#define PADDLE_ALIGN(x) __attribute__((aligned(x)))
-#else
-#define PADDLE_ALIGN(x) __declspec(align(x))
-#endif
-
 namespace paddle {
 namespace platform {
 
@@ -77,11 +71,7 @@ struct float16;
 namespace paddle {
 namespace platform {
 
-// Use PADDLE_ALIGNED(2) to ensure that each float16 will be allocated
-// and aligned at least on a 2-byte boundary, which leads to efficient
-// memory access of float16 struct and also makes float16 compatible
-// with CUDA half, ARM float16_t, and Eigen::half data types.
-struct PADDLE_ALIGN(2) float16 {
+struct float16 {
  public:
   uint16_t x;
 

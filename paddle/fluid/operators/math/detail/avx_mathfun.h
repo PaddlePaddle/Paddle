@@ -49,9 +49,8 @@ typedef __m256 v8sf;   // vector of 8 float (avx)
 typedef __m256i v8si;  // vector of 8 int   (avx)
 typedef __m128i v4si;  // vector of 8 int   (avx)
 
-#define _PI32AVX_CONST(Name, Val)                                          \
-  static const ALIGN32_BEG int _pi32avx_##Name[4] ALIGN32_END = {Val, Val, \
-                                                                 Val, Val}
+#define _PI32AVX_CONST(Name, Val) \
+  alignas(32) static const int _pi32avx_##Name[4] = {Val, Val, Val, Val}
 
 _PI32AVX_CONST(1, 1);
 _PI32AVX_CONST(inv1, ~1);
@@ -59,15 +58,15 @@ _PI32AVX_CONST(2, 2);
 _PI32AVX_CONST(4, 4);
 
 /* declare some AVX constants -- why can't I figure a better way to do that? */
-#define _PS256_CONST(Name, Val)                                   \
-  static const ALIGN32_BEG float _ps256_##Name[8] ALIGN32_END = { \
-      Val, Val, Val, Val, Val, Val, Val, Val}
-#define _PI32_CONST256(Name, Val)                                  \
-  static const ALIGN32_BEG int _pi32_256_##Name[8] ALIGN32_END = { \
-      Val, Val, Val, Val, Val, Val, Val, Val}
-#define _PS256_CONST_TYPE(Name, Type, Val)                       \
-  static const ALIGN32_BEG Type _ps256_##Name[8] ALIGN32_END = { \
-      Val, Val, Val, Val, Val, Val, Val, Val}
+#define _PS256_CONST(Name, Val)                                          \
+  alignas(32) static const float _ps256_##Name[8] = {Val, Val, Val, Val, \
+                                                     Val, Val, Val, Val}
+#define _PI32_CONST256(Name, Val)                                         \
+  alignas(32) static const int _pi32_256_##Name[8] = {Val, Val, Val, Val, \
+                                                      Val, Val, Val, Val}
+#define _PS256_CONST_TYPE(Name, Type, Val)                              \
+  alignas(32) static const Type _ps256_##Name[8] = {Val, Val, Val, Val, \
+                                                    Val, Val, Val, Val}
 
 _PS256_CONST(1, 1.0f);
 _PS256_CONST(0p5, 0.5f);
@@ -106,20 +105,20 @@ typedef union imm_xmm_union {
   v4si xmm[2];
 } imm_xmm_union;
 
-#define COPY_IMM_TO_XMM(imm_, xmm0_, xmm1_)  \
-  {                                          \
-    imm_xmm_union ALIGN32_BEG u ALIGN32_END; \
-    u.imm = imm_;                            \
-    xmm0_ = u.xmm[0];                        \
-    xmm1_ = u.xmm[1];                        \
+#define COPY_IMM_TO_XMM(imm_, xmm0_, xmm1_) \
+  {                                         \
+    alignas(32) imm_xmm_union u;            \
+    u.imm = imm_;                           \
+    xmm0_ = u.xmm[0];                       \
+    xmm1_ = u.xmm[1];                       \
   }
 
-#define COPY_XMM_TO_IMM(xmm0_, xmm1_, imm_)  \
-  {                                          \
-    imm_xmm_union ALIGN32_BEG u ALIGN32_END; \
-    u.xmm[0] = xmm0_;                        \
-    u.xmm[1] = xmm1_;                        \
-    imm_ = u.imm;                            \
+#define COPY_XMM_TO_IMM(xmm0_, xmm1_, imm_) \
+  {                                         \
+    alignas(32) imm_xmm_union u;            \
+    u.xmm[0] = xmm0_;                       \
+    u.xmm[1] = xmm1_;                       \
+    imm_ = u.imm;                           \
   }
 
 #define AVX2_BITOP_USING_SSE2(fn)                        \
