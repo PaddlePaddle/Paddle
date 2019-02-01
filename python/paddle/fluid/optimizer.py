@@ -534,8 +534,10 @@ class MomentumOptimizer(Optimizer):
                     "ParamOut": param_and_grad[0],
                     "VelocityOut": velocity_acc
                 },
-                attrs={"mu": self._momentum,
-                       "use_nesterov": self._use_nesterov},
+                attrs={
+                    "mu": self._momentum,
+                    "use_nesterov": self._use_nesterov
+                },
                 stop_gradient=True)
 
             return momentum_op
@@ -697,8 +699,10 @@ class AdagradOptimizer(Optimizer):
                     "Moment": moment_acc,
                     "LearningRate": self._create_param_lr(param_and_grad)
                 },
-                outputs={"ParamOut": param_and_grad[0],
-                         "MomentOut": moment_acc},
+                outputs={
+                    "ParamOut": param_and_grad[0],
+                    "MomentOut": moment_acc
+                },
                 attrs={"epsilon": self._epsilon},
                 stop_gradient=True)
 
