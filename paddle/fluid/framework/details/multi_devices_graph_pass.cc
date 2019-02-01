@@ -169,6 +169,11 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   bool is_forwarding = true;
   bool insert_collection_ops = NeedCollectiveOps();
 
+  if(strategy_.enable_dgc_ 
+          && strategy_.trainers_endpoints_.size() > 1){
+     VLOG(1) << "set dgc mode";
+  }
+
   for (ir::Node *node : sorted_ops) {
     if (DealWithSpecialOp(&result, node)) {
       continue;
