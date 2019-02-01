@@ -25,15 +25,15 @@ message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 if(WIN32)
-    set(CMAKE_SUPPRESS_REGENERATION true)
+    set(CMAKE_SUPPRESS_REGENERATION ON)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
     add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
     set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd")
     set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
     set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd")
     set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
-    add_compile_options(/wd4244 /wd4267 /wd4530 /wd4577
-            /wd4819 /IGNORE:LNK4006,LNK4098,LNK4217,LNK4221,D9002,D9025)
+    add_compile_options(/wd4068 /wd4129 /wd4244 /wd4267 /wd4530 /wd4577 /wd4838 /wd4297
+            /IGNORE:LNK4006,LNK4098,LNK4217,LNK4221)
 endif(WIN32)
 
 find_package(CUDA QUIET)
