@@ -408,7 +408,8 @@ void GraphView::Build(ir::Graph* g) {
       if (in->IsVar() && in->Var() != nullptr) dup_nodes_.emplace(in->Name());
     }
     for (auto& out : node->outputs) {
-      if (in->IsVar() && in->Var() != nullptr) dup_nodes_.emplace(in->Name());
+      if (out->IsVar() && out->Var() != nullptr)
+        dup_nodes_.emplace(out->Name());
     }
   };
   for (auto& node : g->Nodes()) {
