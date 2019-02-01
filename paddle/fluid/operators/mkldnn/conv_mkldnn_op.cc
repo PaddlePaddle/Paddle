@@ -147,7 +147,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // For convolution with groups we need to recreate primitive descriptor
     // as Paddle tensor is not having group dims while mkldnn treats
     // group as another dimensions
-    mkldnn::memory::primitive_desc user_weights_mpd = filter->get_prim_desc();
+    mkldnn::memory::primitive_desc user_weights_mpd =
+        filter->get_mkldnn_prim_desc();
     if (g > 1) {
       mkldnn::memory::format weights_format =
           GetWeightsFormat(filter->format(), g, is_conv3d);
@@ -206,7 +207,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     // create mkldnn memory from input tensors (data/weights)
     auto user_src_memory_p = handler.AcquireSrcMemory(
-        input->get_prim_desc(), to_void_cast<T>(input_data));
+        input->get_mkldnn_prim_desc(), to_void_cast<T>(input_data));
     auto user_weights_memory_p = handler.AcquireWeightsMemory(
         user_weights_mpd, to_void_cast<T>(filter_data));
 
@@ -282,7 +283,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     stream(stream::kind::eager).submit(pipeline).wait();
 
     auto dst_mpd = dst_memory_p->get_primitive_desc();
-    output->set_prim_desc(dst_mpd);
+    output->set_mkldnn_prim_desc(dst_mpd);
   }
   void ComputeINT8(const paddle::framework::ExecutionContext& ctx) const {
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -948,7 +949,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       pipeline.push_back(*conv_bwd_weights_p);
 
       auto filter_grad_mpd = diff_weights_memory_p->get_primitive_desc();
-      filter_grad->set_prim_desc(filter_grad_mpd);
+      filter_grad->set_mkldnn_prim_desc(filter_grad_mpd);
     }
 
     if (input_grad) {

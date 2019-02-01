@@ -71,7 +71,11 @@ void TransformData(const OpKernelType &expected_kernel_type,
           }
         };
 
-        out.create_prim_desc_from_dims(mkldnn_fmt(out.dims().size()));
+        auto out_mem_pd = paddle::platform::create_prim_desc_from_dims(
+            paddle::framework::vectorize2int(out.dims()),
+            mkldnn_fmt(out.dims().size()));
+
+        out.set_mkldnn_prim_desc(out_mem_pd);
 #endif
       } else {
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel

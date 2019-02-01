@@ -149,11 +149,11 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
   auto out_mem_pd = paddle::platform::create_prim_desc_from_dims(
       paddle::framework::vectorize2int(out->dims()),
       mkldnn::memory::format::blocked, out_type);
-  if (in.get_prim_desc() != out_mem_pd) {
+  if (in.get_mkldnn_prim_desc() != out_mem_pd) {
     void* in_data = GetDataFromTensor(in, in_type);
     auto out_data = out->mutable_data(expected_kernel_type.place_, in.type());
 
-    auto in_memory = memory(in.get_prim_desc(), in_data);
+    auto in_memory = memory(in.get_mkldnn_prim_desc(), in_data);
     auto out_memory = memory(out_mem_pd, out_data);
 
     platform::Reorder(in_memory, out_memory);
