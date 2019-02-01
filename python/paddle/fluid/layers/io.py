@@ -484,7 +484,7 @@ def _py_reader(capacity,
                name=None,
                use_double_buffer=True,
                feed_list=None):
-    use_cuda_pinned_place = use_double_buffer and core.is_compiled_with_cuda()
+
     if feed_list is not None:
         if not isinstance(feed_list, list):
             raise TypeError("feed_list should be a list of Variable"
@@ -565,10 +565,7 @@ def _py_reader(capacity,
                 for item in tensors:
                     if not isinstance(item, core.LoDTensor):
                         tmp = core.LoDTensor()
-                        if use_cuda_pinned_place:
-                            tmp.set(item, core.CUDAPinnedPlace())
-                        else:
-                            tmp.set(item, core.CPUPlace())
+                        tmp.set(item, core.CPUPlace())
                         item = tmp
 
                     array.append(item)
