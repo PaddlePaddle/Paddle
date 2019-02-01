@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import os
 import errno
+import warnings
 import time
 import shutil
 import six
@@ -931,6 +932,13 @@ def save_inference_model(dirname,
 
     if main_program is None:
         main_program = default_main_program()
+        if main_program._is_mem_optimized:
+            warnings.warn(
+                "save_inference_model must put before you call memory_optimize. \
+                                            the memory_optimize will modify the original program, \
+                                            is not suitable for saving inference model \
+                                            we save the original program as inference model.",
+                RuntimeWarning)
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
