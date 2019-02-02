@@ -22,6 +22,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+trainerMap g_trainer_map;
+
 std::string TrainerFactory::TrainerTypeList() {
   std::string trainer_types;
   for (auto iter = g_trainer_map.begin(); iter != g_trainer_map.end(); ++iter) {
