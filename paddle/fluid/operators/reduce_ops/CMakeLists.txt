@@ -1,5 +1,5 @@
 include(operators)
-register_operators()
+register_operators(DEPS cub)
 
 if(WITH_GPU)
     file(GLOB OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.part.cu")
