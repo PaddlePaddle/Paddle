@@ -239,3 +239,24 @@ endif (NOT WIN32)
 
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
+
+# Get the current working branch
+execute_process(
+  COMMAND git rev-parse --abbrev-ref HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      OUTPUT_VARIABLE PADDLE_BRANCH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+
+# Get the latest abbreviated commit hash of the working branch
+execute_process(
+  COMMAND git log -1 --format=%h
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      OUTPUT_VARIABLE PADDLE_COMMIT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+
+message(STATUS "commit: ${PADDLE_COMMIT}")
+message(STATUS "branch: ${PADDLE_BRANCH}")
+
+configure_file(commit.h.in commit.h)
