@@ -47,7 +47,6 @@ class PullDenseWorker {
   void IncreaseThreadVersion(int thread_id, uint64_t table_id);
   void ResetThreadVersion(uint64_t table_id);
   void Wait(std::vector<::std::future<int32_t>>* status_vec);
-  static std::shared_ptr<PullDenseWorker> s_instance_;
   static std::shared_ptr<PullDenseWorker> GetInstance() {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::framework::PullDenseWorker());
@@ -61,6 +60,7 @@ class PullDenseWorker {
   bool CheckUpdateParam(uint64_t table_id);
 
  private:
+  static std::shared_ptr<PullDenseWorker> s_instance_;
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   PullDenseWorkerParameter param_;
   Scope* root_scope_;
