@@ -40,7 +40,8 @@ namespace framework {
 //   Async: PullSparseVarsAsync(not implemented currently)
 // Push
 //   Sync: PushSparseVarsSync
-//   Async: PushSparseVarsAsync
+//   Async: PushSparseVarsAsync(not implemented currently)
+//   Async: PushSparseVarsWithLabelAsync(with special usage)
 // Push dense variables to server in Async mode
 // Param<in>: scope, table_id, var_names
 // Param<out>: push_sparse_status
@@ -109,7 +110,6 @@ class FleetWrapper {
   uint64_t RunServer();
   void GatherServers(const std::vector<uint64_t>& host_sign_list, int node_num);
 
-  static std::shared_ptr<FleetWrapper> s_instance_;
   static std::shared_ptr<FleetWrapper> GetInstance() {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::framework::FleetWrapper());
@@ -120,6 +120,9 @@ class FleetWrapper {
 #ifdef PADDLE_WITH_PSLIB
   static std::shared_ptr<paddle::distributed::PSlib> pslib_ptr_;
 #endif
+
+ private:
+  static std::shared_ptr<FleetWrapper> s_instance_;
 
  private:
   FleetWrapper() {}
