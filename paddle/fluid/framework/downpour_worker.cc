@@ -213,12 +213,10 @@ void DownpourWorker::TrainFiles() {
       push_sparse_status_.resize(0);
     }
 
-    /*
     for (size_t i = 0; i < param_.dense_table_size(); ++i) {
       uint64_t tid = static_cast<uint64_t>(param_.dense_table(i).table_id());
       pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
     }
-    */
 
     thread_scope_->DropKids();
     ++batch_cnt;
