@@ -109,13 +109,12 @@ class TestMNIST(TestParallelExecutorBase):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
 
     def test_simple_fc_with_fuse_op(self):
-        #self._compare_fuse_all_reduce_ops(simple_fc_net, True)
+        self._compare_fuse_all_reduce_ops(simple_fc_net, True)
         self._compare_fuse_all_reduce_ops(simple_fc_net, False)
 
-    #
-    # def test_batchnorm_fc_with_fuse_op(self):
-    #     self._compare_fuse_all_reduce_ops(fc_with_batchnorm, True)
-    #     self._compare_fuse_all_reduce_ops(fc_with_batchnorm, False)
+    def test_batchnorm_fc_with_fuse_op(self):
+        self._compare_fuse_all_reduce_ops(fc_with_batchnorm, True)
+        self._compare_fuse_all_reduce_ops(fc_with_batchnorm, False)
 
 
 if __name__ == '__main__':

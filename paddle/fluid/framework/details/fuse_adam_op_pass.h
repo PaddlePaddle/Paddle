@@ -56,6 +56,10 @@ class FuseAdamOpPass : public ir::Pass {
       const std::string &str,
       std::unordered_map<std::string, std::vector<std::string>> *aux_var_set,
       std::vector<ir::Node *> *ops) const;
+
+  void AppendAllocContinuousSpace(const std::vector<std::string> &args,
+                                  bool copy_data,
+                                  BlockDesc *global_block) const;
 };
 
 }  // namespace details

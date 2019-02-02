@@ -35,10 +35,9 @@ std::unique_ptr<ir::Graph> FuseAdamOpPass::ApplyImpl(
   const std::string fuse_op = "adam";
   std::vector<std::string> aux_var_names = {"Param",  // "Moment1", "Moment2",
                                             "Beta1Pow", "Beta2Pow"};
+
   std::unordered_map<std::string, std::vector<std::string>> aux_var_set;
   std::vector<ir::Node *> adam_ops;
-
-  // Get Vars and Ops
   for (ir::Node *node : result.Nodes()) {
     if (node->IsOp()) {
       GetSpecifiedOpsAndVars(fuse_op, aux_var_names, node, &adam_ops,
@@ -64,21 +63,13 @@ std::unique_ptr<ir::Graph> FuseAdamOpPass::ApplyImpl(
   result.Get<RunOnlyOnceProgram>(kRunOnlyOnceProgram).emplace_back();
   auto &program_desc =
       result.Get<RunOnlyOnceProgram>(kRunOnlyOnceProgram).back();
-
   auto *global_block = program_desc.MutableBlock(0);
-  auto all_for_beta1_op = global_block->AppendOp();
-  all_for_beta1_op->SetType("alloc_continuous_space");
-  all_for_beta1_op->SetAttr("copy_data", false);
-  all_for_beta1_op->SetAttr("constant", 0.0f);
-  all_for_beta1_op->SetInput("Input", aux_var_set["Beta1Pow"]);
-  all_for_beta1_op->SetOutput("Output", aux_var_set["Beta1Pow"]);
 
-  auto all_for_beta2_op = global_block->AppendOp();
-  all_for_beta2_op->SetType("alloc_continuous_space");
-  all_for_beta1_op->SetAttr("copy_data", false);
-  all_for_beta1_op->SetAttr("constant", 0.0f);
-  all_for_beta2_op->SetInput("Input", aux_var_set["Beta2Pow"]);
-  all_for_beta2_op->SetOutput("Output", aux_var_set["Beta2Pow"]);
+  AppendAllocContinuousSpace(aux_var_set.at("Beta1Pow"), true /*copy_data*/,
+                             global_block);
+  AppendAllocContinuousSpace(aux_var_set.at("Beta2Pow"), true /*copy_data*/,
+                             global_block);
+
   VLOG(10) << "FuseAdamOpPass Over ";
   return std::move(graph);
 }
@@ -93,10 +84,10 @@ void FuseAdamOpPass::SortVarsName(
   for (size_t i = 0; i < param_vec.size(); ++i) {
     param_sort_idx.emplace_back(i);
   }
-  sort(param_sort_idx.begin(), param_sort_idx.end(),
-       [&param_vec](size_t a, size_t b) -> bool {
-         return param_vec[a] < param_vec[b];
-       });
+  std::sort(param_sort_idx.begin(), param_sort_idx.end(),
+            [&param_vec](size_t a, size_t b) -> bool {
+              return param_vec[a] < param_vec[b];
+            });
 
   for (auto &aux_vars : *aux_vars_set) {
     std::vector<std::string> sorted_vars;
@@ -113,6 +104,20 @@ void FuseAdamOpPass::SortVarsName(
     sorted_ops.emplace_back(ops->at(param_sort_idx[i]));
   }
   std::swap(*ops, sorted_ops);
+}
+
+void FuseAdamOpPass::GetSpecifiedOpsAndVars(
+    const std::string &op_type, const std::vector<std::string> &aux_vars_name,
+    ir::Node *node, std::vector<ir::Node *> *ops,
+    std::unordered_map<std::string, std::vector<std::string>> *aux_args_name)
+    const {
+  if (node->Op()->Type() != op_type) return;
+  for (auto &var_n : aux_vars_name) {
+    auto arg_names = node->Op()->Input(var_n);
+    PADDLE_ENFORCE_EQ(arg_names.size(), 1);
+    (*aux_args_name)[var_n].emplace_back(arg_names[0]);
+  }
+  ops->emplace_back(node);
 }
 
 void FuseAdamOpPass::FuseScaleOps(const std::vector<std::string> &beta_1_pow,
@@ -146,7 +151,6 @@ void FuseAdamOpPass::FuseScaleOps(const std::vector<std::string> &beta_1_pow,
   int op_role = boost::get<int>(
       scale_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
 
-  VLOG(10) << "Check attributions";
   // Check attributions
   PADDLE_ENFORCE_EQ(scale_ops.size(), beta_1_pow.size());
   float scale = boost::get<float>(scale_ops[0]->Op()->GetAttr("scale"));
@@ -163,7 +167,6 @@ void FuseAdamOpPass::FuseScaleOps(const std::vector<std::string> &beta_1_pow,
         boost::get<bool>(scale_op->Op()->GetAttr("bias_after_scale")));
   }
 
-  VLOG(10) << "Add reset_dim, only fuse the scale ops";
   // Add reset_dim, only fuse the scale ops
   int num_scale_op = static_cast<int>(beta_1_pow.size());
   OpDesc reset_dim_desc1;
@@ -184,7 +187,7 @@ void FuseAdamOpPass::FuseScaleOps(const std::vector<std::string> &beta_1_pow,
                    reset_dim_node1);
     }
   }
-  VLOG(10) << "Add fused scale";
+
   // Add fused scale
   OpDesc scale_desc;
   scale_desc.SetType("scale");
@@ -202,7 +205,6 @@ void FuseAdamOpPass::FuseScaleOps(const std::vector<std::string> &beta_1_pow,
   scale_node->inputs.emplace_back(dep_var);
   dep_var->outputs.emplace_back(scale_node);
 
-  VLOG(10) << "Reset dims";
   // Reset dims
   OpDesc reset_dim_desc2;
   reset_dim_desc2.SetType("reset_dim");
@@ -229,25 +231,21 @@ void FuseAdamOpPass::FuseScaleOps(const std::vector<std::string> &beta_1_pow,
     }
   }
 
-  VLOG(10) << "Delete scale_op";
   // Delete scale_op
   for (auto &scale_op : scale_ops) {
     graph->RemoveNode(scale_op);
   }
 }
 
-void FuseAdamOpPass::GetSpecifiedOpsAndVars(
-    const std::string &op_type, const std::vector<std::string> &aux_vars_name,
-    ir::Node *node, std::vector<ir::Node *> *ops,
-    std::unordered_map<std::string, std::vector<std::string>> *aux_args_name)
-    const {
-  if (node->Op()->Type() != op_type) return;
-  for (auto &var_n : aux_vars_name) {
-    auto arg_names = node->Op()->Input(var_n);
-    PADDLE_ENFORCE_EQ(arg_names.size(), 1);
-    (*aux_args_name)[var_n].emplace_back(arg_names[0]);
-  }
-  ops->emplace_back(node);
+void FuseAdamOpPass::AppendAllocContinuousSpace(
+    const std::vector<std::string> &args, bool copy_data,
+    BlockDesc *global_block) const {
+  auto op_desc = global_block->AppendOp();
+  op_desc->SetType("alloc_continuous_space");
+  op_desc->SetInput("Input", args);
+  op_desc->SetOutput("Output", args);
+  op_desc->SetAttr("copy_data", copy_data);
+  //  op_desc->SetAttr("constant", static_cast<float >(0));
 }
 
 }  // namespace details

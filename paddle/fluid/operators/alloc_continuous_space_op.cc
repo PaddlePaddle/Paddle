@@ -46,38 +46,39 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
     auto dtype = kDefaultDtype;
     GetMemSizeAndDtype(out_tensors, out_var_names, &mem_size, &dtype);
 
-    auto origin_dim = out_tensors[0]->dims();
-    int64_t offset = framework::product(origin_dim);
-    out_tensors[0]
-        ->Resize(framework::make_ddim({static_cast<int64_t>(mem_size)}))
+    framework::LoDTensor out_tensor;
+    out_tensor.Resize(framework::make_ddim({static_cast<int64_t>(mem_size)}))
         .mutable_data(context.GetPlace(), dtype);
 
-    VLOG(10) << "alloc_space_for_vars: output(" << in_var_names[0] << ") ,dim:("
-             << origin_dim << ")"
-             << " Address: " << out_tensors[0]->data<void>();
+    auto &dev_ctx = context.template device_context<DeviceContext>();
 
-    for (size_t i = 1; i < in_var_names.size(); ++i) {
-      auto out_t = out_tensors[i];
-      int64_t len = out_t->numel();
-      auto dim = out_t->dims();
-      out_t->ShareDataWith(out_tensors[0]->Slice(offset, offset + len))
-          .Resize(out_t->dims());
+    int64_t offset = 0;
+    if (context.Attr<bool>("copy_data")) {
+      for (size_t i = 0; i < in_var_names.size(); ++i) {
+        int64_t len = out_tensors[i]->numel();
+        auto sub_tensor = out_tensor.Slice(offset, offset + len);
+        offset += len;
+        framework::TensorCopy(*out_tensors[i], context.GetPlace(), dev_ctx,
+                              &sub_tensor);
+      }
+    } else {
+      math::SetConstant<DeviceContext, T> set_constant;
+      set_constant(dev_ctx, &out_tensor,
+                   static_cast<T>(context.Attr<float>("constant")));
+    }
+
+    offset = 0;
+    for (size_t i = 0; i < out_tensors.size(); ++i) {
+      int64_t len = out_tensors[i]->numel();
+      auto dim = out_tensors[i]->dims();
+      out_tensors[i]
+          ->ShareDataWith(out_tensor.Slice(offset, offset + len))
+          .Resize(dim);
       offset += len;
       VLOG(10) << "alloc_space_for_vars: output(" << in_var_names[i]
                << ") ,dim:(" << dim << ")"
-               << " Address: " << out_t->data<void>();
-      out_t->Resize(dim);
+               << " Address: " << out_tensors[i]->data<void>();
     }
-
-    if (context.Attr<bool>("copy_data")) {
-      PADDLE_THROW("Not implement.");
-    } else {
-      math::SetConstant<DeviceContext, T> set_zero;
-      auto &dev_ctx = context.template device_context<DeviceContext>();
-      set_zero(dev_ctx, out_tensors[0],
-               static_cast<T>(context.Attr<float>("constant")));
-    }
-    out_tensors[0]->Resize(origin_dim);
   }
 
   void GetMemSizeAndDtype(
@@ -121,7 +122,6 @@ class AllocContinuousSpaceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Output", "A set of variables.").AsDuplicable();
     AddAttr<bool>("copy_data", ".").SetDefault(false);
     AddAttr<float>("constant", ".").SetDefault(0.0);
-
     AddComment(R"DOC(
 )DOC");
   }
