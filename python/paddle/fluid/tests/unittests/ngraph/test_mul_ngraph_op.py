@@ -19,21 +19,37 @@ from paddle.fluid.tests.unittests.test_mul_op import TestMulOp, TestMulOp2, Test
 
 
 class TestNGRAPHMulOp(TestMulOp):
+    def setUp(self):
+        super(TestNGRAPHMulOp, self).setUp()
+        self._cpu_only = True
+
     def init_dtype_type(self):
         pass
 
 
 class TestNGRAPHMulOp2(TestMulOp2):
+    def setUp(self):
+        super(TestNGRAPHMulOp2, self).setUp()
+        self._cpu_only = True
+
     def init_dtype_type(self):
         pass
 
 
 class TestNGRAPHFP16MulOp1(TestFP16MulOp1):
+    def setUp(self):
+        super(TestNGRAPHFP16MulOp1, self).setUp()
+        self._cpu_only = True
+
     def init_dtype_type(self):
         pass
 
 
 class TestNGRAPHFP16MulOp2(TestFP16MulOp2):
+    def setUp(self):
+        super(TestNGRAPHFP16MulOp2, self).setUp()
+        self._cpu_only = True
+
     def init_dtype_type(self):
         pass
 

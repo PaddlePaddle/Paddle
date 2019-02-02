@@ -17,21 +17,37 @@ from paddle.fluid.tests.unittests.test_scale_op import TestScaleOp, TestScaleOpS
 
 
 class TestNGRAPHScaleOp(TestScaleOp):
+    def setUp(self):
+        super(TestNGRAPHScaleOp, self).setUp()
+        self._cpu_only = True
+
     def init_dtype_type(self):
         pass
 
 
 class TestNGRAPHScaleOpSelectedRows(TestScaleOpSelectedRows):
+    def setUp(self):
+        super(TestNGRAPHScaleOpSelectedRows, self).setUp()
+        self._cpu_only = True
+
     def init_dtype_type(self):
         pass
 
 
 class TestNGRAPHScaleFp16Op(TestScaleFp16Op):
+    def setUp(self):
+        super(TestNGRAPHScaleFp16Op, self).setUp()
+        self._cpu_only = True
+
     def init_dtype_type(self):
         pass
 
 
 class TestNGRAPHScaleFp16OpSelectedRows(TestScaleFp16OpSelectedRows):
+    def setUp(self):
+        super(TestNGRAPHScaleFp16OpSelectedRows, self).setUp()
+        self._cpu_only = True
+
     def init_dtype_type(self):
         pass
 

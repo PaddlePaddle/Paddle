@@ -19,31 +19,55 @@ from paddle.fluid.tests.unittests.test_conv2d_op import *
 
 
 class TestNGRAPH(TestConv2dOp):
+    def setUp(self):
+        super(TestNGRAPH, self).setUp()
+        self._cpu_only = True
+
     def init_kernel_type(self):
         super(TestNGRAPH, self).init_kernel_type()
 
 
 class TestNGRAPHWithPad(TestWithPad):
+    def setUp(self):
+        super(TestNGRAPHWithPad, self).setUp()
+        self._cpu_only = True
+
     def init_kernel_type(self):
         super(TestNGRAPHWithPad, self).init_kernel_type()
 
 
 class TestNGRAPHWithStride(TestWithStride):
+    def setUp(self):
+        super(TestNGRAPHWithStride, self).setUp()
+        self._cpu_only = True
+
     def init_kernel_type(self):
         super(TestNGRAPHWithStride, self).init_kernel_type()
 
 
 class TestNGRAPHWithGroup(TestWithGroup):
+    def setUp(self):
+        super(TestNGRAPHWithGroup, self).setUp()
+        self._cpu_only = True
+
     def init_kernel_type(self):
         super(TestNGRAPHWithGroup, self).init_kernel_type()
 
 
 class TestNGRAPHWith1x1(TestWith1x1):
+    def setUp(self):
+        super(TestNGRAPHWith1x1, self).setUp()
+        self._cpu_only = True
+
     def init_kernel_type(self):
         super(TestNGRAPHWith1x1, self).init_kernel_type()
 
 
 class TestNGRAPHWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
+    def setUp(self):
+        super(TestNGRAPHWithInput1x1Filter1x1, self).setUp()
+        self._cpu_only = True
+
     def init_kernel_type(self):
         super(TestNGRAPHWithInput1x1Filter1x1, self).init_kernel_type()
 
