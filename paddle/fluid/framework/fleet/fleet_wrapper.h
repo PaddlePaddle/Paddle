@@ -48,6 +48,7 @@ namespace framework {
 
 class FleetWrapper {
  public:
+  FleetWrapper() {}
   virtual ~FleetWrapper() {}
 
   // Pull sparse variables from server in Sync mode
@@ -110,6 +111,7 @@ class FleetWrapper {
   uint64_t RunServer();
   void GatherServers(const std::vector<uint64_t>& host_sign_list, int node_num);
 
+  static std::shared_ptr<FleetWrapper> s_instance_;
   static std::shared_ptr<FleetWrapper> GetInstance() {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::framework::FleetWrapper());

@@ -12,20 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-  http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 
 namespace paddle {
@@ -58,7 +44,7 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
                               int node_num, int index) {
 #ifdef PADDLE_WITH_PSLIB
   if (!is_initialized_) {
-    LOG(WARNING) << "Going to init server";
+    LOG(WARNING) << "Going to init worker";
     pslib_ptr_ = std::shared_ptr<paddle::distributed::PSlib>(
         new paddle::distributed::PSlib());
     pslib_ptr_->init_worker(dist_desc,
@@ -210,8 +196,6 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   int offset = 2;
   uint64_t fea_idx = 0u;
   for (size_t i = 0; i < sparse_key_names.size(); ++i) {
-    LOG(WARNING) << "sparse key names[" << i << "]: " << sparse_key_names[i];
-    LOG(WARNING) << "sparse grad names[" << i << "]: " << sparse_grad_names[i];
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
     CHECK(g_var != nullptr) << "var[" << sparse_grad_names[i] << "] not found";
     LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
@@ -228,7 +212,6 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       exit(-1);
     }
     int len = tensor->numel();
-    LOG(WARNING) << " tensor len: " << len;
     int64_t* ids = tensor->data<int64_t>();
     push_values->resize(fea_keys.size() + 1);
     for (auto& t : *push_values) {
@@ -240,14 +223,10 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
         g += emb_dim;
         continue;
       }
-      LOG(WARNING) << "going to memcpy";
       memcpy((*push_values)[fea_idx].data() + offset, g,
              sizeof(float) * emb_dim);
-      LOG(WARNING) << "show";
       (*push_values)[fea_idx][0] = 1.0f;
-      LOG(WARNING) << "click";
       (*push_values)[fea_idx][1] = static_cast<float>(fea_labels[fea_idx]);
-      LOG(WARNING) << "offset";
       g += emb_dim;
       fea_idx++;
     }
