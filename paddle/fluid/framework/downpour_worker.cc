@@ -58,6 +58,8 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
     skip_ops_[i] = param_.skip_ops(i);
   }
   skip_ops_.resize(param_.skip_ops_size());
+
+  fleet_ptr_ = FleetWrapper::GetInstance();
 }
 
 void DownpourWorker::CollectLabelInfo(size_t table_idx) {
