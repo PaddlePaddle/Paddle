@@ -22,7 +22,7 @@ namespace paddle {
 namespace framework {
 typedef std::shared_ptr<TrainerBase> (*CreatetrainerFunction)();
 typedef std::unordered_map<std::string, CreatetrainerFunction> trainerMap;
-trainerMap g_trainer_map;
+extern trainerMap g_trainer_map;
 
 #define REGISTER_TRAINER_CLASS(trainer_class)                   \
   namespace {                                                   \
