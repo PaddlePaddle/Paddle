@@ -134,6 +134,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
 }
 
 void DownpourWorker::TrainFiles() {
+  VLOG(3) << "Begin to train files";
   platform::SetNumThreads(1);
   device_reader_->Start();
   int batch_cnt = 0;
@@ -148,6 +149,7 @@ void DownpourWorker::TrainFiles() {
       CollectLabelInfo(i);
       FillSparseValue(i);
     }
+    VLOG(3) << "fill sparse value for all sparse table done.";
 
     // do computation here
     for (auto& op : ops_) {
@@ -179,6 +181,7 @@ void DownpourWorker::TrainFiles() {
           *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_);
     }
 
+    VLOG(3) << "push sparse and dense gradient done.";
     // the following code should be more precise and clean
     // TODO(guru4elephant)
     int32_t tmp_push_dense_wait_times = -1;
@@ -210,16 +213,17 @@ void DownpourWorker::TrainFiles() {
       push_sparse_status_.resize(0);
     }
 
+    /*
     for (size_t i = 0; i < param_.dense_table_size(); ++i) {
       uint64_t tid = static_cast<uint64_t>(param_.dense_table(i).table_id());
       pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
     }
+    */
 
     thread_scope_->DropKids();
     ++batch_cnt;
   }
 }
 
-REGISTER_DEVICE_WORKER_CLASS(DownpourWorker);
 }  // end namespace framework
 }  // end namespace paddle
