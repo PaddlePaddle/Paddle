@@ -65,6 +65,7 @@ class AsyncExecutor {
   void RunFromFile(const ProgramDesc& main_program,
                    const std::string& trainer_desc_str, const bool debug);
 
+  // TODO(guru4elephant): make init server decoupled from executor
   void InitServer(const std::string& dist_desc, int index);
   void InitWorker(const std::string& dist_desc,
                   const std::vector<uint64_t>& host_sign_list, int node_num,
