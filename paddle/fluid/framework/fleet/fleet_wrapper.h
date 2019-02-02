@@ -49,7 +49,6 @@ namespace framework {
 class FleetWrapper {
  public:
   virtual ~FleetWrapper() {}
-
   // Pull sparse variables from server in Sync mode
   // Param<in>: scope, table_id, var_names, fea_keys
   // Param<out>: fea_values
