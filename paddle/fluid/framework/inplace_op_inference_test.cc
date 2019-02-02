@@ -276,6 +276,7 @@ TEST(InferInplace, MultiGradInplaceInToOut) {
 
   auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
   auto in_to_outs = infer_inplace(*op, op->Block());
+
   EXPECT_EQ(in_to_outs.size(), 3ul);
   std::unordered_map<std::string, std::string> expects = {
       {"o0", "a0"}, {"y0", "b0"}, {"z0", "c0"},
