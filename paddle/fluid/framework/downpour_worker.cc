@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
+#include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 
 namespace paddle {
 namespace framework {
 
-void DownpourWorker::Initilize(const TrainerDesc& desc) {
+void DownpourWorker::Initialize(const TrainerDesc& desc) {
   param_ = desc.downpour_param();
-
   for (size_t i = 0; i < param_.sparse_table_size(); ++i) {
     uint64_t table_id =
         static_cast<uint64_t>(param_.sparse_table(i).table_id());
@@ -37,6 +37,7 @@ void DownpourWorker::Initilize(const TrainerDesc& desc) {
     for (size_t j = 0; j < table.sparse_grad_name_size(); ++j) {
       sparse_grad_names_[table_id][j] = table.sparse_grad_name(j);
     }
+    label_var_name_[table_id] = table.label_var_name();
   }
 
   for (size_t i = 0; i < param_.dense_table_size(); ++i) {
@@ -56,15 +57,18 @@ void DownpourWorker::Initilize(const TrainerDesc& desc) {
   for (size_t i = 0; i < param_.skip_ops_size(); ++i) {
     skip_ops_[i] = param_.skip_ops(i);
   }
-
-  label_var_name_ = param_.label_var_name();
+  skip_ops_.resize(param_.skip_ops_size());
 }
 
-void DownpourWorker::CollectLabelInfo(size_t table_id) {
+void DownpourWorker::CollectLabelInfo(size_t table_idx) {
+  auto table = param_.sparse_table(table_idx);
+  uint64_t table_id =
+      static_cast<uint64_t>(param_.sparse_table(table_idx).table_id());
+
   auto& feature = features_[table_id];
   auto& feature_label = feature_labels_[table_id];
   feature_label.resize(feature.size());
-  Variable* var = thread_scope_->FindVar(label_var_name_);
+  Variable* var = thread_scope_->FindVar(label_var_name_[table_id]);
   LoDTensor* tensor = var->GetMutable<LoDTensor>();
   int64_t* label_ptr = tensor->data<int64_t>();
 
@@ -75,13 +79,14 @@ void DownpourWorker::CollectLabelInfo(size_t table_id) {
     int64_t* ids = tensor->data<int64_t>();
     int fea_idx = 0;
     // tensor->lod()[0].size() == batch_size + 1
-    for (auto ins_idx = 0u; ins_idx < tensor->lod()[0].size() - 1; ++ins_idx) {
-      for (; fea_idx < tensor->lod()[0][ins_idx]; ++fea_idx) {
+    for (auto lod_idx = 1u; lod_idx < tensor->lod()[0].size(); ++lod_idx) {
+      for (; fea_idx < tensor->lod()[0][lod_idx]; ++fea_idx) {
         // should be skipped feasign defined in protobuf
         if (ids[fea_idx] == 0u) {
           continue;
         }
-        feature_label[global_index++] = static_cast<float>(label_ptr[ins_idx]);
+        feature_label[global_index++] =
+            static_cast<float>(label_ptr[lod_idx - 1]);
       }
     }
   }
@@ -128,10 +133,10 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
 
 void DownpourWorker::TrainFiles() {
   platform::SetNumThreads(1);
-  thread_reader_->Start();
+  device_reader_->Start();
   int batch_cnt = 0;
   int cur_batch;
-  while ((cur_batch = thread_reader_->Next()) > 0) {
+  while ((cur_batch = device_reader_->Next()) > 0) {
     // pull sparse here
     for (size_t i = 0; i < param_.sparse_table_size(); ++i) {
       uint64_t tid = static_cast<uint64_t>(param_.sparse_table(i).table_id());
@@ -144,7 +149,16 @@ void DownpourWorker::TrainFiles() {
 
     // do computation here
     for (auto& op : ops_) {
-      op->Run(*thread_scope_, place_);
+      bool need_skip = false;
+      for (auto t = 0u; t < skip_ops_.size(); ++t) {
+        if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+          need_skip = true;
+          break;
+        }
+      }
+      if (!need_skip) {
+        op->Run(*thread_scope_, place_);
+      }
     }
 
     // push gradients here
@@ -198,10 +212,12 @@ void DownpourWorker::TrainFiles() {
       uint64_t tid = static_cast<uint64_t>(param_.dense_table(i).table_id());
       pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
     }
+
     thread_scope_->DropKids();
     ++batch_cnt;
   }
 }
 
+REGISTER_DEVICE_WORKER_CLASS(DownpourWorker);
 }  // end namespace framework
 }  // end namespace paddle
