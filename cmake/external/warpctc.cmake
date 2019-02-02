@@ -31,8 +31,10 @@ ENDIF()
 
 IF(WIN32)
     SET(WARPCTC_REPOSITORY "https://github.com/wopeizl/warp-ctc.git")
+    SET(WARPCTC_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /IGNORE:4819")
 ELSE()
     SET(WARPCTC_REPOSITORY "https://github.com/dzhwinter/warp-ctc.git")
+    SET(WARPCTC_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 ENDIF()
 
 ExternalProject_Add(
@@ -46,7 +48,7 @@ ExternalProject_Add(
                     -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
                     -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
                     -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
-                    -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+                    -DCMAKE_CXX_FLAGS=${WARPCTC_CMAKE_CXX_FLAGS}
                     -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
                     -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
                     -DCMAKE_INSTALL_PREFIX=${WARPCTC_INSTALL_DIR}
