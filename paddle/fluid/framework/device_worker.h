@@ -39,12 +39,11 @@ namespace framework {
 
 class PullDenseWorker {
  public:
-  PullDenseWorker() {}
   virtual ~PullDenseWorker() {}
   virtual void Initialize(const TrainerDesc& param);
   int Start();
   void Stop();
-  void SetScope(Scope* scope) { root_scope_ = scope; }
+  void SetRootScope(Scope* scope) { root_scope_ = scope; }
   void IncreaseThreadVersion(int thread_id, uint64_t table_id);
   void ResetThreadVersion(uint64_t table_id);
   void Wait(std::vector<::std::future<int32_t>>* status_vec);
@@ -57,6 +56,7 @@ class PullDenseWorker {
   }
 
  private:
+  PullDenseWorker() : root_scope_(NULL) {}
   void Run();
   bool CheckUpdateParam(uint64_t table_id);
 
@@ -137,20 +137,18 @@ class HogwildWorker : public CPUWorkerBase {
  protected:
   void CreateThreadOperators(const ProgramDesc& program);
   void CreateThreadScope(const ProgramDesc& program);
-  std::shared_ptr<DataFeed> thread_reader_;
   std::vector<std::string> op_names_;
   std::vector<OperatorBase*> ops_;
   Scope* thread_scope_;
   std::vector<std::string> fetch_var_names_;
   std::vector<std::vector<float>> fetch_values_;
-  platform::Place place_;
 };
 
 class DownpourWorker : public HogwildWorker {
  public:
   DownpourWorker() {}
   virtual ~DownpourWorker() {}
-  virtual void Initilize(const TrainerDesc& desc);
+  virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
 
  protected:
@@ -163,7 +161,7 @@ class DownpourWorker : public HogwildWorker {
  private:
   DownpourWorkerParameter param_;
   // just save the value in param_ for easy access
-  std::string label_var_name_;
+  std::map<uint64_t, std::string> label_var_name_;
   std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
   std::map<uint64_t, std::vector<std::string>> sparse_value_names_;
   std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;

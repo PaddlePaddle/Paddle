@@ -26,7 +26,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/trainer_desc.pb.h"
+#include "paddle/fluid/framework/trainer_factory.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/pybind.h"
@@ -161,7 +163,7 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   trainer = TrainerFactory::CreateTrainer(trainer_desc.class_name());
   // initialize trainer
   trainer->Initialize(trainer_desc);
-  // trainer->SetRootScope(root_scope_);
+  trainer->SetScope(root_scope_);
   trainer->SetDebug(debug);
   // prepare training environment and helper environment
   trainer->InitTrainerEnv(main_program, place_);

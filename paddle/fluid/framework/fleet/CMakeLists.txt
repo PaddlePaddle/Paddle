@@ -1,1 +1,1 @@
-cc_library(fleet_wrapper SRCS fleet_wrapper.cc)
+cc_library(fleet_wrapper SRCS fleet_wrapper.cc DEPS pslib_brpc pslib)

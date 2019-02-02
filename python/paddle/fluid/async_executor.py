@@ -110,15 +110,17 @@ class AsyncExecutor(object):
         is_local = self.instance == None
         trainer = None
         if is_local:
-            trainer = MultiTrainer(data_feed=data_feed, worker="Hogwild")
+            trainer = MultiTrainer()
         else:
-            trainer = DistMultiTrainer(
-                data_feed, worker="Downpour", fleet_desc=self.dist_desc)
-
-        # define a trainer and a device_worker here
+            trainer = DistMultiTrainer()
+        trainer.gen_trainer_desc(
+            dataset=data_feed, fleet_desc=self.dist_desc, worker="downpour")
         trainer.set_thread(thread_num)
         trainer.set_filelist(filelist)
         trainer.set_data_feed(data_feed)
+        with open("trainer_desc.proto", "w") as fout:
+            fout.write(trainer._desc())
+        # define a trainer and a device_worker here
         self.executor.run_from_files(program_desc, trainer._desc(), debug)
 
     '''
@@ -284,8 +286,9 @@ class AsyncExecutor(object):
             raise ValueError(
                 'instance is None, please run config_distributed_nodes init instance'
             )
-        self.init_desc = init_desc
-        self.executor.init_server(dist_desc, self.instance._rankid)
+        self.dist_desc_str = text_format.MessageToString(dist_desc)
+        self.dist_desc = dist_desc
+        self.executor.init_server(self.dist_desc_str, self.instance._rankid)
         ip = self.executor.start_server()
         self.instance.set_ip(ip)
         self.instance.barrier_all()  #wait all server start
@@ -306,6 +309,7 @@ class AsyncExecutor(object):
                 'instance is None, please run config_distributed_nodes init instance'
             )
 
+        self.dist_desc_str = text_format.MessageToString(dist_desc)
         self.dist_desc = dist_desc
         place = core.CPUPlace()
         executor = Executor(place)
@@ -313,7 +317,7 @@ class AsyncExecutor(object):
 
         self.instance.barrier_all()  #wait all server start
         ips = self.instance.gather_ips()
-        self.executor.init_worker(dist_desc, ips,
+        self.executor.init_worker(self.dist_desc_str, ips,
                                   self.instance.get_node_cnt(),
                                   self.instance._rankid)
         self.instance.barrier_all()  #wait all worker start
