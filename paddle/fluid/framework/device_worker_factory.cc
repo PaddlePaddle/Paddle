@@ -20,6 +20,25 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+typedef std::shared_ptr<DeviceWorker> (*Createdevice_workerFunction)();
+typedef std::unordered_map<std::string, Createdevice_workerFunction>
+    device_workerMap;
+device_workerMap g_device_worker_map;
+#define REGISTER_DEVICE_WORKER_CLASS(device_worker_class)                \
+  namespace {                                                            \
+  std::shared_ptr<DeviceWorker> Creator_##device_worker_class() {        \
+    return std::shared_ptr<DeviceWorker>(new device_worker_class);       \
+  }                                                                      \
+  class __Registerer_##device_worker_class {                             \
+   public:                                                               \
+    __Registerer_##device_worker_class() {                               \
+      g_device_worker_map[#device_worker_class] =                        \
+          &Creator_##device_worker_class;                                \
+    }                                                                    \
+  };                                                                     \
+  __Registerer_##device_worker_class g_registerer_##device_worker_class; \
+  }  // namespace
+
 std::string DeviceWorkerFactory::DeviceWorkerTypeList() {
   std::string device_worker_types;
   for (auto iter = g_device_worker_map.begin();
@@ -40,5 +59,7 @@ std::shared_ptr<DeviceWorker> DeviceWorkerFactory::CreateDeviceWorker(
   return g_device_worker_map[device_worker_class]();
 }
 
+REGISTER_DEVICE_WORKER_CLASS(HogwildWorker);
+REGISTER_DEVICE_WORKER_CLASS(DownpourWorker);
 }  // namespace framework
 }  // namespace paddle
