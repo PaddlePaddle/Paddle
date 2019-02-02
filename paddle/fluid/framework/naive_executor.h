@@ -19,7 +19,10 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/inference/op_lite/op_lite.h"
 #include "paddle/fluid/platform/device_context.h"
+
+DECLARE_bool(global_with_gpu);
 
 namespace paddle {
 namespace framework {
@@ -30,6 +33,12 @@ namespace framework {
  */
 class NaiveExecutor {
  public:
+  // Either one should be set, and will be executed.
+  struct Gear {
+    std::unique_ptr<OperatorBase> op;
+    std::unique_ptr<inference::op_lite::OpLite> lite_op;
+  };
+
   explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
 
   // Create child scope.
@@ -61,7 +70,7 @@ class NaiveExecutor {
  private:
   const platform::Place place_;
   // Catch the required resource to avoid recreate.
-  std::vector<std::unique_ptr<OperatorBase>> ops_;
+  std::vector<Gear> gears_;
   Scope* scope_;
 };
 

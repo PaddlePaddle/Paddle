@@ -91,3 +91,6 @@ if(WITH_TESTING)
     add_subdirectory(tests/api)
   endif()  
 endif()
+
+
+add_subdirectory(op_lite)

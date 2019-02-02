@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/inference/op_lite/ops.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -49,11 +50,11 @@ void NaiveExecutor::Run() {
                              "setting the cmake flag ON_INFER=ON if you are "
                              "running Paddle Inference";
 #endif  // PADDLE_ON_INFERENCE
-  for (auto &op : ops_) {
+  for (auto &gear : gears_) {
     VLOG(4) << std::this_thread::get_id() << " run "
-            << op->DebugStringEx(scope_) << " on scope " << scope_;
-    op->SetIsCalledByExecutor(false);
-    op->Run(*scope_, place_);
+            << gear.op->DebugStringEx(scope_) << " on scope " << scope_;
+    gear.op->SetIsCalledByExecutor(false);
+    gear.op->Run(*scope_, place_);
   }
 }
 
@@ -105,7 +106,15 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
                             op_desc->Output("Out")[0]);
       continue;
     }
-    ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
+    if (!FLAGS_global_with_gpu &&
+        inference::op_lite::LiteOpRegistry::Global().Has(op_desc->Type())) {
+      gears_.emplace_back();
+      gears_.back().lite_op =
+          inference::op_lite::LiteOpRegistry::Global().Create(op_desc->Type());
+    } else {
+      gears_.emplace_back();
+      gears_.back().op = OpRegistry::CreateOp(*op_desc);
+    }
   }
 }
 
@@ -119,13 +128,15 @@ LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
 
 void NaiveExecutor::CleanFeedFetchOps() {
   std::vector<std::unique_ptr<OperatorBase>> ops;
-  for (auto &op : ops_) {
-    if (op->Type() != "feed" && op->Type() != "fetch") {
-      ops.emplace_back(std::move(op));
+  for (auto &gear : gears_) {
+    if (gear.op->Type() != "feed" && gear.op->Type() != "fetch") {
+      ops.emplace_back(std::move(gear));
     }
   }
-  ops_.swap(ops);
+  gears_.swap(ops);
 }
 
 }  // namespace framework
 }  // namespace paddle
+
+DEFINE_bool(global_with_gpu, false, "");
