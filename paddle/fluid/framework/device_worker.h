@@ -66,11 +66,11 @@ class PullDenseWorker {
   Scope* root_scope_;
   bool running_;
 
-  std::map<uint64_t, uint64_t> last_versions_;
-  std::map<uint64_t, uint64_t> current_version_;
-  std::mutex mutex_for_version_;
-  std::map<uint64_t, std::vector<uint64_t>> training_versions_;
-  std::map<uint64_t, std::vector<std::string>> dense_value_names_;
+  static std::map<uint64_t, uint64_t> last_versions_;
+  static std::map<uint64_t, uint64_t> current_version_;
+  static std::mutex mutex_for_version_;
+  static std::map<uint64_t, std::vector<uint64_t>> training_versions_;
+  static std::map<uint64_t, std::vector<std::string>> dense_value_names_;
 
   std::thread t_;
   int thread_num_;

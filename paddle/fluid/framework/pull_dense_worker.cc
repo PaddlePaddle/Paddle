@@ -18,6 +18,12 @@ namespace paddle {
 namespace framework {
 
 std::shared_ptr<PullDenseWorker> PullDenseWorker::s_instance_ = NULL;
+std::mutex PullDenseWorker::mutex_for_version_;
+std::map<uint64_t, uint64_t> PullDenseWorker::last_versions_;
+std::map<uint64_t, uint64_t> PullDenseWorker::current_version_;
+std::map<uint64_t, std::vector<uint64_t>> PullDenseWorker::training_versions_;
+std::map<uint64_t, std::vector<std::string>>
+    PullDenseWorker::dense_value_names_;
 
 void PullDenseWorker::Initialize(const TrainerDesc& param) {
   running_ = false;
