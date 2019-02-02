@@ -58,31 +58,28 @@ class Event {
 
 class MemEvent {
  public:
-  MemEvent(EventType type, uint64_t crt_time, size_t bytes,
-          Place place, bool is_alloc, uint32_t thread_id);
+  MemEvent(EventType type, size_t bytes, Place place);
 
   const EventType& type() const { return type_; }
 
-  uint64_t crt_time() const { return crt_time_; }
+  uint64_t start_ns() const { return start_ns_; }
+  uint64_t end_ns() const { return end_ns_; }
 
   size_t bytes() const { return bytes_; }
   Place place() const { return place_; }
-  bool is_alloc() const { return is_alloc_; }
-  int32_t thread_id() const { return thread_id_; }
-  bool operator < (MemEvent& b) {
-    return crt_time() < b.crt_time();
-  }
-  bool operator > (MemEvent& b) {
-    return crt_time() > b.crt_time();
-  }
  private:
   EventType type_;
-  uint64_t crt_time_;
+  uint64_t start_ns_ = 0;
+  uint64_t end_ns_ = 0;
   size_t bytes_;
   Place place_;
-  bool is_alloc_;
-  int32_t thread_id_;
 };
+
+void Mark(size_t bytes, Place place);
+
+void PushEvent(size_t bytes, Place place);
+
+void PopEvent(size_t bytes, Place place);
 
 enum ProfilerState {
   kDisabled,  // disabled state
@@ -115,12 +112,14 @@ struct RecordEvent {
 };
 
 struct RecordMemEvent {
-  RecordMemEvent(bool is_alloc, size_t bytes, Place place);
+  RecordMemEvent(size_t bytes, Place place);
   ~RecordMemEvent();
 
   bool is_enabled_;
-  bool is_alloc_;
-  uint64_t crt_time_;
+//  bool is_alloc_;
+//  uint64_t crt_time_;
+  uint64_t start_ns_;
+  uint64_t end_ns_;
   size_t bytes_;
   Place place_;
 };

@@ -13,15 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
-
 #include <string>
-#include <utility>
 #include <vector>
-
-#ifdef PADDLE_WITH_JEMALLOC
-#include <jemalloc/jemalloc.h>
-#endif
-
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
@@ -46,7 +39,7 @@ template <typename Place>
 void *Alloc(const Place &place, size_t size);
 
 template <typename Place>
-void Free(const Place &place, void *p, size_t size);
+void Free(const Place &place, void *p);
 
 template <typename Place>
 size_t Used(const Place &place);
@@ -60,11 +53,6 @@ struct Usage : public boost::static_visitor<size_t> {
 size_t memory_usage(const platform::Place &p);
 
 using BuddyAllocator = detail::BuddyAllocator;
-
-std::unordered_map</*device id*/ int,
-                   std::pair</*current memory usage*/ uint64_t,
-                             /*peak memory usage*/ uint64_t>>
-    gpu_mem_info;
 
 BuddyAllocator *GetCPUBuddyAllocator() {
   // We tried thread_local for inference::RNN1 model, but that not works much
@@ -103,11 +91,7 @@ struct NaiveAllocator {
 template <>
 void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
-#ifdef PADDLE_WITH_JEMALLOC
-  void *p = malloc(size);
-#else
   void *p = GetCPUBuddyAllocator()->Alloc(size);
-#endif
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
   }
@@ -116,24 +100,14 @@ void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
 }
 
 template <>
-void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p,
-                              size_t size) {
+void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
-#ifdef PADDLE_WITH_JEMALLOC
-  free(p);
-#else
   GetCPUBuddyAllocator()->Free(p);
-#endif
 }
 
 template <>
 size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
-#ifdef PADDLE_WITH_JEMALLOC
-  // fake the result of used memory when PADDLE_WITH_JEMALLOC is ON
-  return 0U;
-#else
   return GetCPUBuddyAllocator()->Used();
-#endif
 }
 
 #ifdef PADDLE_WITH_CUDA
@@ -205,16 +179,9 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
     LOG(WARNING) << "GPU memory used: "
                  << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
     platform::SetDeviceId(cur_dev);
-  } else {
-    gpu_mem_info[place.device].first += size;
-    if (gpu_mem_info[place.device].first > gpu_mem_info[place.device].second) {
-      gpu_mem_info[place.device].second = gpu_mem_info[place.device].first;
-      VLOG(3) << "device: " << place.device << " peak memory usage : "
-              << (gpu_mem_info[place.device].second >> 20) << " MiB";
-    }
-    if (FLAGS_init_allocated_mem) {
-      cudaMemset(ptr, 0xEF, size);
-    }
+  }
+  if (FLAGS_init_allocated_mem) {
+    cudaMemset(ptr, 0xEF, size);
   }
   return ptr;
 #else
@@ -223,11 +190,9 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
 }
 
 template <>
-void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p,
-                               size_t size) {
+void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p) {
 #ifdef PADDLE_WITH_CUDA
   GetGPUBuddyAllocator(place.device)->Free(p);
-  gpu_mem_info[place.device].first -= size;
 #else
   PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
 #endif
@@ -280,7 +245,7 @@ void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
 
 template <>
 void Free<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
-                                     void *p, size_t size) {
+                                     void *p) {
 #ifdef PADDLE_WITH_CUDA
   GetCUDAPinnedBuddyAllocator()->Free(p);
 #else
@@ -301,17 +266,15 @@ struct AllocVisitor : public boost::static_visitor<void *> {
 };
 
 struct FreeVisitor : public boost::static_visitor<void> {
-  inline explicit FreeVisitor(void *ptr, size_t size)
-      : ptr_(ptr), size_(size) {}
+  inline explicit FreeVisitor(void *ptr) : ptr_(ptr) {}
 
   template <typename Place>
   inline void operator()(const Place &place) const {
-    Free<Place>(place, ptr_, size_);
+    Free<Place>(place, ptr_);
   }
 
  private:
   void *ptr_;
-  size_t size_;
 };
 
 size_t Usage::operator()(const platform::CPUPlace &cpu) const {
@@ -336,18 +299,20 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 }  // namespace legacy
 
 namespace allocation {
+std::unordered_map<Allocation*, platform::RecordMemEvent> record_mem_events;
 
 Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
-  platform::RecordMemEvent record_mem_event(true, size, place_);
-  return new Allocation(ptr, size, place_);
+
+  Allocation *tmp = new Allocation(ptr, size, place_);
+  record_mem_events.insert({tmp, platform::RecordMemEvent{size, place_}});
+  return tmp;
 }
 
 void LegacyAllocator::Free(Allocation *allocation) {
   boost::apply_visitor(legacy::FreeVisitor(allocation->ptr()),
                        allocation->place());
-  platform::RecordMemEvent record_mem_event(false, allocation->size(), place_);
-  delete allocation;
+  record_mem_events.erase(allocation);
 }
 }  // namespace allocation
 }  // namespace memory

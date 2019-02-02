@@ -18,7 +18,6 @@
 #include <vector>
 #include "gflags/gflags.h"
 #include "glog/logging.h"
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/place.h"
@@ -156,22 +155,14 @@ void BenchAllImpls(const typename KernelTuples::attr_type& attr, Args... args) {
   LOG(INFO) << loginfos.str();
 }
 
-using Tensor = paddle::framework::Tensor;
-
 template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
 void BenchXYZNKernel() {
   for (int d : TestSizes()) {
-    Tensor x, y, z;
-    x.Resize({d});
-    y.Resize({d});
-    z.Resize({d});
-    T* x_data = x.mutable_data<T>(PlaceType());
-    T* y_data = y.mutable_data<T>(PlaceType());
-    T* z_data = z.mutable_data<T>(PlaceType());
-    RandomVec<T>(d, x_data);
-    RandomVec<T>(d, y_data);
-    BenchAllImpls<KT, jit::XYZNTuples<T>, PlaceType>(d, x.data<T>(),
-                                                     y.data<T>(), z_data, d);
+    std::vector<T> x(d), y(d), z(d);
+    RandomVec<T>(d, x.data());
+    RandomVec<T>(d, y.data());
+    BenchAllImpls<KT, jit::XYZNTuples<T>, PlaceType>(d, x.data(), y.data(),
+                                                     z.data(), d);
   }
 }
 
@@ -179,13 +170,9 @@ template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
 void BenchAXYNKernel() {
   for (int d : TestSizes()) {
     const T a = static_cast<T>(3);
-    Tensor x, y;
-    x.Resize({d});
-    y.Resize({d});
-    T* x_data = x.mutable_data<T>(PlaceType());
-    T* y_data = y.mutable_data<T>(PlaceType());
-    RandomVec<T>(d, x_data);
-    BenchAllImpls<KT, jit::AXYNTuples<T>, PlaceType>(d, &a, x.data<T>(), y_data,
+    std::vector<T> x(d), y(d);
+    RandomVec<T>(d, x.data());
+    BenchAllImpls<KT, jit::AXYNTuples<T>, PlaceType>(d, &a, x.data(), y.data(),
                                                      d);
   }
 }
@@ -193,13 +180,9 @@ void BenchAXYNKernel() {
 template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
 void BenchXYNKernel() {
   for (int d : TestSizes()) {
-    Tensor x, y;
-    x.Resize({d});
-    y.Resize({d});
-    T* x_data = x.mutable_data<T>(PlaceType());
-    T* y_data = y.mutable_data<T>(PlaceType());
-    RandomVec<T>(d, x_data);
-    BenchAllImpls<KT, jit::XYNTuples<T>, PlaceType>(d, x.data<T>(), y_data, d);
+    std::vector<T> x(d), y(d);
+    RandomVec<T>(d, x.data());
+    BenchAllImpls<KT, jit::XYNTuples<T>, PlaceType>(d, x.data(), y.data(), d);
   }
 }
 
@@ -209,23 +192,16 @@ void BenchLSTMKernel() {
     for (int d : TestSizes()) {
       const jit::lstm_attr_t attr(d, jit::kVSigmoid, jit::kVTanh, jit::kVTanh,
                                   use_peephole);
-      Tensor x, ct_1, ct, ht, wp, checked;
-      x.Resize({4 * d});
-      ct_1.Resize({d});
-      ct.Resize({d});
-      ht.Resize({d});
-      wp.Resize({3 * d});
-      checked.Resize({2 * d});
-      auto place = PlaceType();
-      RandomVec<T>(x.numel(), x.mutable_data<T>(place), -2.f, 2.f);
-      RandomVec<T>(wp.numel(), wp.mutable_data<T>(place), -2.f, 2.f);
-      RandomVec<T>(ct_1.numel(), ct_1.mutable_data<T>(place), -2.f, 2.f);
-      const T* ct_1_data = ct_1.data<T>();
-      const T* wp_data = wp.data<T>();
-      T* x_data = x.mutable_data<T>(place);
-      T* checked_data = checked.mutable_data<T>(place);
-      T* ct_data = ct.mutable_data<T>(place);
-      T* ht_data = ht.mutable_data<T>(place);
+      std::vector<T> x(4 * d), ct_1(d), ct(d), ht(d), wp(3 * d), checked(2 * d);
+      RandomVec<T>(4 * d, x.data(), -2.f, 2.f);
+      RandomVec<T>(3 * d, wp.data(), -2.f, 2.f);
+      RandomVec<T>(d, ct_1.data(), -2.f, 2.f);
+      const T* ct_1_data = ct_1.data();
+      const T* wp_data = wp.data();
+      T* x_data = x.data();
+      T* checked_data = checked.data();
+      T* ct_data = ct.data();
+      T* ht_data = ht.data();
       jit::lstm_t step;
       step.gates = x_data;
       step.ct_1 = ct_1_data;
@@ -244,16 +220,12 @@ template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
 void BenchGRUKernel() {
   for (int d : TestSizes()) {
     const jit::gru_attr_t attr(d, jit::kVSigmoid, jit::kVTanh);
-    auto place = PlaceType();
-    Tensor x, ht_1, ht;
-    x.Resize({3 * d});
-    ht_1.Resize({d});
-    ht.Resize({d});
-    RandomVec<T>(3 * d, x.mutable_data<T>(place), -2.f, 2.f);
-    RandomVec<T>(d, ht_1.mutable_data<T>(place), -2.f, 2.f);
-    const T* ht_1_data = ht_1.data<T>();
-    T* x_data = x.mutable_data<T>(place);
-    T* ht_data = ht.mutable_data<T>(place);
+    std::vector<T> x(3 * d), ht_1(d), ht(d);
+    RandomVec<T>(3 * d, x.data(), -2.f, 2.f);
+    RandomVec<T>(d, ht_1.data(), -2.f, 2.f);
+    const T* ht_1_data = ht_1.data();
+    T* x_data = x.data();
+    T* ht_data = ht.data();
     jit::gru_t step;
     step.gates = x_data;
     step.ht_1 = ht_1_data;
@@ -271,12 +243,10 @@ void BenchSeqPoolKernel() {
       jit::seq_pool_attr_t attr(w, type);
       for (int h : TestSizes()) {
         attr.h = h;
-        Tensor x, y;
-        x.Resize({h * w});
-        y.Resize({w});
-        RandomVec<T>(h * w, x.mutable_data<T>(PlaceType()), -2.f, 2.f);
-        const T* x_data = x.data<T>();
-        T* y_data = y.mutable_data<T>(PlaceType());
+        std::vector<T> x(h * w), y(w);
+        RandomVec<T>(h * w, x.data(), -2.f, 2.f);
+        const T* x_data = x.data();
+        T* y_data = y.data();
         BenchAllImpls<KT, jit::SeqPoolTuples<T>, PlaceType>(attr, x_data,
                                                             y_data, &attr);
       }
@@ -289,15 +259,12 @@ void BenchMatMulKernel() {
   for (int m : {1, 2, 3, 4}) {
     for (int n : TestSizes()) {
       for (int k : TestSizes()) {
-        Tensor a, b, c;
-        a.Resize({m * k});
-        b.Resize({k * n});
-        c.Resize({m * n});
-        RandomVec<T>(m * k, a.mutable_data<T>(PlaceType()), -2.f, 2.f);
-        RandomVec<T>(k * n, b.mutable_data<T>(PlaceType()), -2.f, 2.f);
-        const T* a_data = a.data<T>();
-        const T* b_data = b.data<T>();
-        T* c_data = c.mutable_data<T>(PlaceType());
+        std::vector<T> a(m * k), b(k * n), c(m * n);
+        RandomVec<T>(m * k, a.data(), -2.f, 2.f);
+        RandomVec<T>(k * n, b.data(), -2.f, 2.f);
+        const T* a_data = a.data();
+        const T* b_data = b.data();
+        T* c_data = c.data();
         BenchAllImpls<KT, jit::MatMulTuples<T>, PlaceType>(k, a_data, b_data,
                                                            c_data, m, n, k);
       }

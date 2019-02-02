@@ -65,7 +65,6 @@ class BRPCClient : public RPCClient {
                            const platform::DeviceContext& ctx,
                            const framework::Scope& scope,
                            const std::string& var_name,
-                           const std::string& out_var_name,
                            int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncGetMonomerBarrier(
@@ -76,13 +75,6 @@ class BRPCClient : public RPCClient {
       const std::string& ep, const platform::DeviceContext& ctx,
       const framework::Scope& scope, const std::string& var_name,
       int64_t time_out = FLAGS_rpc_deadline) override;
-
-  VarHandlePtr AsyncGetVarNoBarrier(const std::string& ep,
-                                    const platform::DeviceContext& ctx,
-                                    const framework::Scope& scope,
-                                    const std::string& var_name,
-                                    const std::string& out_varname,
-                                    int64_t time_out = FLAGS_rpc_deadline);
 
   VarHandlePtr AsyncPrefetchVar(const std::string& ep,
                                 const platform::DeviceContext& ctx,
@@ -111,7 +103,6 @@ class BRPCClient : public RPCClient {
                             const platform::DeviceContext& ctx,
                             const framework::Scope& scope,
                             const std::string& var_name,
-                            const std::string& out_var_name,
                             const std::string& method_name,
                             int64_t time_out = FLAGS_rpc_deadline);
 

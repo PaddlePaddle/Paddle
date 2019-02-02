@@ -305,9 +305,7 @@ class Executor(object):
     def __init__(self, place):
         self.place = place
         self.program_caches = dict()
-        p = core.Place()
-        p.set_place(self.place)
-        self._default_executor = core.Executor(p)
+        self.executor = None
         self._closed = False
 
     def _get_program_cache(self, program_cache_key):
@@ -399,13 +397,12 @@ class Executor(object):
             >>> ...
             >>> exe.close()
         """
-        if not self._closed:
-            self._default_executor.close()
+        if not self._closed and self.executor:
+            self.executor.close()
             self._closed = True
 
     def _run_parallel(self, program, scope, feed, fetch_list, fetch_var_name,
                       return_numpy):
-        exe = program._executor
         if isinstance(feed, dict):
             feed_tensor_dict = dict()
             for feed_name in feed:
@@ -417,7 +414,8 @@ class Executor(object):
                     feed_tensor.set(feed[feed_name], core.CPUPlace())
                 feed_tensor_dict[feed_name] = feed_tensor
 
-            exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
+            self.executor.feed_and_split_tensor_into_local_scopes(
+                feed_tensor_dict)
         elif isinstance(feed, list) or isinstance(feed, tuple):
             if len(feed) != len(program._places):
                 raise ValueError(
@@ -438,10 +436,10 @@ class Executor(object):
                         tensor = tmp
                     res_dict[feed_name] = tensor
                 res.append(res_dict)
-            exe.feed_tensors_into_local_scopes(res)
+            self.executor.feed_tensors_into_local_scopes(res)
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
-        exe.run(fetch_var_names, fetch_var_name)
+        self.executor.run(fetch_var_names, fetch_var_name)
         arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
 
         if return_numpy:
@@ -513,9 +511,12 @@ class Executor(object):
         compiled = isinstance(program, compiler.CompiledProgram)
         # For backward compatibility, run directly.
         if not compiled:
+            if not self.executor:
+                p = core.Place()
+                p.set_place(self.place)
+                self.executor = core.Executor(p)
             return self._run(
                 program,
-                self._default_executor,
                 feed=feed,
                 fetch_list=fetch_list,
                 feed_var_name=feed_var_name,
@@ -525,6 +526,7 @@ class Executor(object):
                 use_program_cache=use_program_cache)
 
         program._compile(scope, self.place)
+        self.executor = program._executor
         if program._is_data_parallel:
             return self._run_parallel(
                 program,
@@ -534,13 +536,12 @@ class Executor(object):
                 fetch_var_name=fetch_var_name,
                 return_numpy=return_numpy)
         elif program._is_inference:
-            return self._run_inference(program._executor, feed)
+            return self._run_inference(program, feed)
         else:
             # TODO(panyx0718): Can compile program to optimize executor
             # performance.
             return self._run(
                 program._program,
-                self._default_executor,
                 feed=feed,
                 fetch_list=fetch_list,
                 feed_var_name=feed_var_name,
@@ -549,8 +550,8 @@ class Executor(object):
                 return_numpy=return_numpy,
                 use_program_cache=use_program_cache)
 
-    def _run(self, program, exe, feed, fetch_list, feed_var_name,
-             fetch_var_name, scope, return_numpy, use_program_cache):
+    def _run(self, program, feed, fetch_list, feed_var_name, fetch_var_name,
+             scope, return_numpy, use_program_cache):
 
         if feed is None:
             feed = {}
@@ -588,11 +589,11 @@ class Executor(object):
                 fetch_var_name=fetch_var_name)
 
         self._feed_data(program, feed, feed_var_name, scope)
-        exe.run(program.desc, scope, 0, True, True)
+        self.executor.run(program.desc, scope, 0, True, True)
         outs = self._fetch_data(fetch_list, fetch_var_name, scope)
         if return_numpy:
             outs = as_numpy(outs)
         return outs
 
-    def _run_inference(self, exe, feed):
-        return exe.run(feed)
+    def _run_inference(self, program, feed):
+        return self.executor.run(feed)

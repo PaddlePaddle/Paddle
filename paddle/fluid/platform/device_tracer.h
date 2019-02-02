@@ -66,11 +66,10 @@ class DeviceTracer {
     uint64_t bytes;
   };
   struct MemInfoRecord {
-    uint64_t crt_time;
+    uint64_t start_ns;
+    uint64_t end_ns;
     size_t bytes;
     Place place;
-    bool is_alloc;
-    int32_t thread_id;
   };
 
 
@@ -94,8 +93,8 @@ class DeviceTracer {
                              uint64_t end_ns, int64_t device_id,
                              int64_t thread_id) = 0;
 
-  virtual void AddMemInfoRecord(uint64_t crt_time, size_t bytes, Place place,
-                             bool is_alloc, int32_t thread_id) = 0;
+  virtual void AddMemInfoRecord(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                             Place place) = 0;
 
     // Add a cuda kernel stats. `correlation_id` will be mapped to annotation
   // added before for human readability.

@@ -61,10 +61,4 @@ TEST(paddle_inference_api, demo) {
   predictor->Run({}, &outputs);
 }
 
-TEST(paddle_inference_api, get_version) {
-  LOG(INFO) << "paddle version:\n" << get_version();
-  auto version = get_version();
-  ASSERT_FALSE(version.empty());
-}
-
 }  // namespace paddle

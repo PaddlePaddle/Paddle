@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
 
-#include <set>
 #include <vector>
 
 namespace paddle {
@@ -80,7 +79,7 @@ NodesTSIterator::NodesTSIterator(const std::vector<Node *> &source) {
   }
 
   std::unordered_set<Node *> visited;
-  std::set<Node *> to_visit{source.begin(), source.end()};
+  std::unordered_set<Node *> to_visit{source.begin(), source.end()};
 
   std::vector<Node *> inlink_visited;
   while (!to_visit.empty()) {

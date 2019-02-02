@@ -71,8 +71,9 @@ struct EnforceNotMet : public std::exception {
     }
   }
 
-  EnforceNotMet(const std::string& str, const char* f, int l) {
-    Init(str, f, l);
+  template <typename... ARGS>
+  EnforceNotMet(const char* f, int l, ARGS... args) {
+    Init(string::Sprintf(args...), f, l);
   }
 
   const char* what() const noexcept override { return err_str_.c_str(); }
@@ -141,23 +142,28 @@ struct EOFException : public std::exception {
 
 inline bool is_error(bool stat) { return !stat; }
 
-inline void throw_on_error(bool stat, const std::string& msg) {
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    bool stat, const Args&... args) {
 #ifndef REPLACE_ENFORCE_GLOG
-  throw std::runtime_error(msg);
+  throw std::runtime_error(string::Sprintf(args...));
 #else
-  LOG(FATAL) << msg;
+  LOG(FATAL) << string::Sprintf(args...);
 #endif
 }
 
 #ifdef PADDLE_WITH_CUDA
 
-inline bool is_error(cudaError_t e) { return e != cudaSuccess; }
+inline bool is_error(cudaError_t e) { return UNLIKELY(e); }
 
-inline void throw_on_error(cudaError_t e, const std::string& msg) {
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    cudaError_t e, const Args&... args) {
 #ifndef REPLACE_ENFORCE_GLOG
-  throw thrust::system_error(e, thrust::cuda_category(), msg);
+  throw thrust::system_error(e, thrust::cuda_category(),
+                             string::Sprintf(args...));
 #else
-  LOG(FATAL) << msg;
+  LOG(FATAL) << string::Sprintf(args...);
 #endif
 }
 
@@ -165,12 +171,14 @@ inline bool is_error(curandStatus_t stat) {
   return stat != CURAND_STATUS_SUCCESS;
 }
 
-inline void throw_on_error(curandStatus_t stat, const std::string& msg) {
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    curandStatus_t stat, const Args&... args) {
 #ifndef REPLACE_ENFORCE_GLOG
   throw thrust::system_error(cudaErrorLaunchFailure, thrust::cuda_category(),
-                             msg);
+                             string::Sprintf(args...));
 #else
-  LOG(FATAL) << msg;
+  LOG(FATAL) << string::Sprintf(args...);
 #endif
 }
 
@@ -178,11 +186,14 @@ inline bool is_error(cudnnStatus_t stat) {
   return stat != CUDNN_STATUS_SUCCESS;
 }
 
-inline void throw_on_error(cudnnStatus_t stat, const std::string& msg) {
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    cudnnStatus_t stat, const Args&... args) {
 #ifndef REPLACE_ENFORCE_GLOG
-  throw std::runtime_error(platform::dynload::cudnnGetErrorString(stat) + msg);
+  throw std::runtime_error(platform::dynload::cudnnGetErrorString(stat) +
+                           string::Sprintf(args...));
 #else
-  LOG(FATAL) << platform::dynload::cudnnGetErrorString(stat) << msg;
+  LOG(FATAL) << string::Sprintf(args...);
 #endif
 }
 
@@ -190,7 +201,9 @@ inline bool is_error(cublasStatus_t stat) {
   return stat != CUBLAS_STATUS_SUCCESS;
 }
 
-inline void throw_on_error(cublasStatus_t stat, const std::string& msg) {
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    cublasStatus_t stat, const Args&... args) {
   std::string err;
   if (stat == CUBLAS_STATUS_NOT_INITIALIZED) {
     err = "CUBLAS: not initialized, ";
@@ -212,44 +225,86 @@ inline void throw_on_error(cublasStatus_t stat, const std::string& msg) {
     err = "CUBLAS: license error, ";
   }
 #ifndef REPLACE_ENFORCE_GLOG
-  throw std::runtime_error(err + msg);
+  throw std::runtime_error(err + string::Sprintf(args...));
 #else
-  LOG(FATAL) << err << msg;
+  LOG(FATAL) << err << string::Sprintf(args...);
 #endif
 }
 
 #if !defined(__APPLE__) && !defined(_WIN32)
-inline bool is_error(ncclResult_t nccl_result) {
-  return nccl_result != ncclSuccess;
-}
-
-inline void throw_on_error(ncclResult_t stat, const std::string& msg) {
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    ncclResult_t stat, const Args&... args) {
+  if (stat == ncclSuccess) {
+    return;
+  } else {
 #ifndef REPLACE_ENFORCE_GLOG
-  throw std::runtime_error(platform::dynload::ncclGetErrorString(stat) + msg);
+    throw std::runtime_error(platform::dynload::ncclGetErrorString(stat) +
+                             string::Sprintf(args...));
 #else
-  LOG(FATAL) << platform::dynload::ncclGetErrorString(stat) << msg;
+    LOG(FATAL) << platform::dynload::ncclGetErrorString(stat)
+               << string::Sprintf(args...);
 #endif
+  }
 }
 #endif  // __APPLE__ and windows
 #endif  // PADDLE_WITH_CUDA
 
-#define PADDLE_THROW(...)                  \
-  throw ::paddle::platform::EnforceNotMet( \
-      ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__)
+template <typename T>
+inline void throw_on_error(T e) {
+  throw_on_error(e, "");
+}
 
-#define PADDLE_ENFORCE(COND, ...)                                         \
-  do {                                                                    \
-    auto __cond__ = (COND);                                               \
-    if (UNLIKELY(::paddle::platform::is_error(__cond__))) {               \
-      try {                                                               \
-        ::paddle::platform::throw_on_error(                               \
-            __cond__, ::paddle::string::Sprintf(__VA_ARGS__));            \
-      } catch (...) {                                                     \
-        throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
-                                                __FILE__, __LINE__);      \
-      }                                                                   \
-    }                                                                     \
+#define PADDLE_THROW(...) \
+  throw ::paddle::platform::EnforceNotMet(__FILE__, __LINE__, __VA_ARGS__)
+
+#define __PADDLE_THROW_ERROR_I(_, _9, _8, _7, _6, _5, _4, _3, _2, X_, ...) X_;
+
+#define __THROW_ON_ERROR_ONE_ARG(COND, ARG) \
+  ::paddle::platform::throw_on_error(COND, ::paddle::string::Sprintf(ARG));
+
+#ifdef _WIN32
+#define __PADDLE_THROW_ON_ERROR(COND, ...) \
+  __THROW_ON_ERROR_ONE_ARG(COND, __VA_ARGS__)
+#else  // _WIN32
+#define __PADDLE_THROW_ON_ERROR(COND, ...)                                \
+  __PADDLE_THROW_ERROR_I(                                                 \
+      __VA_ARGS__, ::paddle::platform::throw_on_error(COND, __VA_ARGS__), \
+      ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
+      ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
+      ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
+      ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
+      ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
+      ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
+      ::paddle::platform::throw_on_error(COND, __VA_ARGS__),              \
+      __THROW_ON_ERROR_ONE_ARG(COND, __VA_ARGS__))
+#endif  // _WIN32
+
+#define __PADDLE_UNARY_COMPARE(COND, ...)                 \
+  do {                                                    \
+    auto __cond = COND;                                   \
+    if (UNLIKELY(::paddle::platform::is_error(__cond))) { \
+      __PADDLE_THROW_ON_ERROR(__cond, __VA_ARGS__);       \
+    }                                                     \
   } while (0)
+
+#ifndef REPLACE_ENFORCE_GLOG
+#define __PADDLE_ENFORCE_I(COND, ...)                                   \
+  do {                                                                  \
+    try {                                                               \
+      __PADDLE_UNARY_COMPARE(COND, __VA_ARGS__);                        \
+    } catch (...) {                                                     \
+      throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
+                                              __FILE__, __LINE__);      \
+    }                                                                   \
+  } while (0)
+
+#else
+#define __PADDLE_ENFORCE_I(COND, ...) __PADDLE_UNARY_COMPARE(COND, __VA_ARGS__);
+#endif  // REPLACE_ENFORCE_GLOG
+
+#define __PADDLE_ENFORCE(__args) __PADDLE_ENFORCE_I __args
+#define PADDLE_ENFORCE(...) __PADDLE_ENFORCE((__VA_ARGS__))
 
 #define PADDLE_THROW_EOF()                                                     \
   do {                                                                         \

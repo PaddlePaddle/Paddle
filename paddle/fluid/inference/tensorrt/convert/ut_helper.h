@@ -78,9 +78,11 @@ class TRTConvertValidation {
         scope_(scope),
         if_add_batch_(if_add_batch),
         max_batch_size_(max_batch_size) {
-    PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_), 0);
-    engine_.reset(new TensorRTEngine(max_batch_size, workspace_size, stream_));
+    // create engine.
+    engine_.reset(new TensorRTEngine(max_batch_size, workspace_size, &stream_));
     engine_->InitNetwork();
+
+    PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_), 0);
   }
 
   // Declare a Variable as input with random initialization.
@@ -173,7 +175,7 @@ class TRTConvertValidation {
     op_->Run(scope_, place);
     // Execute TRT.
     engine_->Execute(batch_size);
-    cudaStreamSynchronize(engine_->stream());
+    cudaStreamSynchronize(*engine_->stream());
 
     ASSERT_FALSE(op_desc_->OutputArgumentNames().empty());
     const size_t output_space_size = 3000;
@@ -182,7 +184,7 @@ class TRTConvertValidation {
       std::vector<float> fluid_out;
       std::vector<float> trt_out(output_space_size);
       engine_->GetOutputInCPU(output, &trt_out[0], output_space_size);
-      cudaStreamSynchronize(engine_->stream());
+      cudaStreamSynchronize(*engine_->stream());
 
       auto* var = scope_.FindVar(output);
       auto tensor = var->GetMutable<framework::LoDTensor>();

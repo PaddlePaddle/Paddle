@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <algorithm>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -68,32 +67,11 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
   return graph;
 }
 
-std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
-                              const std::set<std::string> &engine_outputs) {
-  std::string engine_hash_key = "";
-  for (auto name : engine_inputs) {
-    engine_hash_key += name;
-  }
-  for (auto name : engine_outputs) {
-    engine_hash_key += name;
-  }
-  auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
-  return engine_key;
-}
-
 void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
                                             Graph *graph) const {
   auto *op_desc = node->Op();
   auto &subgraph = *Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
-
-  framework::ProgramDesc *program_desc =
-      Get<framework::ProgramDesc *>("program");
-  // Add new block for TensorRTEngineOP
-  const framework::BlockDesc &main_block =
-      program_desc->Block(framework::kRootBlockIndex);
-  // const framework::BlockDesc& main_block = program_desc->Block(0);
-  framework::BlockDesc *new_block = program_desc->AppendBlock(main_block);
 
   // An fake block desc.
   framework::proto::BlockDesc block_proto;
@@ -104,18 +82,13 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
                           subgraph.size());
 
   for (auto *node : subgraph) {
-    auto *new_block_op = new_block->AppendOp();
     auto *op = block_desc.AppendOp();
-    *new_block_op->Proto() = *node->Op()->Proto();
     *op->Proto() = *node->Op()->Proto();
   }
 
-  // Then, we will use the input_names_with_id and output_names_with_id to
-  // generate the eigine key.
-  // So, We use set instead of unordered_set here to ensure that the engine key
-  // is unique.
-  std::set<std::string> input_names;
-  std::set<std::string> input_names_with_id;
+  // collect inputs
+  std::unordered_set<std::string> input_names;
+  std::unordered_set<std::string> input_names_with_id;
   for (auto *x : node->inputs) {
     input_names.insert(x->Name());
     input_names_with_id.insert(x->Name() + std::to_string(x->id()));
@@ -123,8 +96,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   op_desc->SetInput(
       "Xs", std::vector<std::string>(input_names.begin(), input_names.end()));
 
-  std::set<std::string> output_names;
-  std::set<std::string> output_names_with_id;
+  std::unordered_set<std::string> output_names;
+  std::unordered_set<std::string> output_names_with_id;
   for (auto *x : node->outputs) {
     output_names.insert(x->Name());
     output_names_with_id.insert(x->Name() + std::to_string(x->id()));
@@ -209,6 +182,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   // to Tensor.
   std::vector<std::string> output_mapping;
   for (auto name : output_names) {
+    // LOG(INFO) << name << " " << output_name_map.size();
     PADDLE_ENFORCE(output_name_map.count(name) != 0);
     output_mapping.push_back(output_name_map[name]);
   }
@@ -219,29 +193,16 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
       *vars->Add() = *node->Var()->Proto();
     }
   }
-
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
                  "the block has no var-desc");
   PADDLE_ENFORCE(!output_mapping.empty());
-  op_desc->SetBlockAttr("sub_block", new_block);
+  // Set attrs
   SetAttr(op_desc->Proto(), "subgraph",
           block_desc.Proto()->SerializeAsString());
-  // Set attrs
   SetAttr(op_desc->Proto(), "max_batch_size", Get<int>("max_batch_size"));
   SetAttr(op_desc->Proto(), "workspace_size", Get<int>("workspace_size"));
   SetAttr(op_desc->Proto(), "parameters", ExtractParameters(graph->Nodes()));
   SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
-
-  auto enable_int8 = Get<bool>("enable_int8");
-  auto engine_key =
-      GenerateEngineKey(input_names_with_id, output_names_with_id);
-
-  std::string calibration_data = GetTrtCalibTableData(
-      Get<std::string>("model_opt_cache_dir"), engine_key, enable_int8);
-  SetAttr(op_desc->Proto(), "calibration_data", calibration_data);
-
-  SetAttr(op_desc->Proto(), "enable_int8", enable_int8);
-  SetAttr(op_desc->Proto(), "engine_key", engine_key);
 }
 
 std::vector<std::string> ExtractParameters(

@@ -45,13 +45,6 @@ class BRPCServiceImpl : public SendRecvService {
           rpc_server_->GetThreadNum(distributed::kRequestGet)));
     }
 
-    it = rpc_call_map.find(distributed::kRequestGetNoBarrier);
-    if (it != rpc_call_map.end()) {
-      request_getnobarrier_h_ = it->second;
-      getnobarrier_threads_.reset(new paddle::framework::ThreadPool(
-          rpc_server_->GetThreadNum(distributed::kRequestGetNoBarrier)));
-    }
-
     it = rpc_call_map.find(distributed::kRequestPrefetch);
     if (it != rpc_call_map.end()) {
       request_prefetch_h_ = it->second;
@@ -119,14 +112,6 @@ class BRPCServiceImpl : public SendRecvService {
         [=] { _GetVariable(cntl_butil, request, response, done); });
   }
 
-  void GetVariableNoBarrier(google::protobuf::RpcController* cntl_butil,
-                            const VariableMessage* request,
-                            VariableMessage* response,
-                            google::protobuf::Closure* done) override {
-    getnobarrier_threads_->Run(
-        [=] { _GetVariableNoBarrier(cntl_butil, request, response, done); });
-  }
-
   void _GetVariable(google::protobuf::RpcController* cntl_butil,
                     const VariableMessage* request, VariableMessage* response,
                     google::protobuf::Closure* done) {
@@ -137,59 +122,23 @@ class BRPCServiceImpl : public SendRecvService {
     brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
 
     std::string varname = request->varname();
-    std::string out_varname = request->out_varname();
     VLOG(3) << "RequestGet varname:" << varname
-            << ", out_varname:" << out_varname
             << ", trainer_id:" << request->trainer_id()
             << ", from:" << cntl->remote_side();
 
     auto scope = request_get_h_->scope();
-    paddle::framework::Variable* invar = nullptr;
+    auto invar = scope->FindVar(varname);
     int trainer_id = request->trainer_id();
     paddle::framework::Variable* outvar = nullptr;
 
-    request_get_h_->Handle(varname, scope, invar, &outvar, trainer_id,
-                           out_varname);
+    request_get_h_->Handle(varname, scope, invar, &outvar, trainer_id);
 
     if (outvar) {
-      distributed::SerializeToIOBuf(out_varname, outvar,
-                                    *request_get_h_->dev_ctx(), response,
-                                    &cntl->response_attachment(), "", false);
+      distributed::SerializeToIOBuf(varname, outvar, *request_get_h_->dev_ctx(),
+                                    response, &cntl->response_attachment(), "",
+                                    false);
     }
   }
-
-  void _GetVariableNoBarrier(google::protobuf::RpcController* cntl_butil,
-                             const VariableMessage* request,
-                             VariableMessage* response,
-                             google::protobuf::Closure* done) {
-    PADDLE_ENFORCE(request_getnobarrier_h_ != nullptr,
-                   "RequestGetNoBarrier handler should be registed first!");
-
-    brpc::ClosureGuard done_guard(done);
-    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
-
-    std::string varname = request->varname();
-    std::string out_varname = request->out_varname();
-    int trainer_id = request->trainer_id();
-
-    VLOG(3) << "RequestGetNoBarrier varname:" << varname
-            << ", out_varname:" << out_varname << ", trainer_id:" << trainer_id
-            << ", from:" << cntl->remote_side();
-
-    auto scope = request_getnobarrier_h_->scope();
-    paddle::framework::Variable* invar = nullptr;
-    paddle::framework::Variable* outvar = nullptr;
-
-    request_getnobarrier_h_->Handle(varname, scope, invar, &outvar, trainer_id,
-                                    out_varname);
-
-    if (outvar) {
-      distributed::SerializeToIOBuf(
-          out_varname, outvar, *request_getnobarrier_h_->dev_ctx(), response,
-          &cntl->response_attachment(), "", false);
-    }
-  }
-
   void PrefetchVariable(google::protobuf::RpcController* cntl_butil,
                         const VariableMessage* request,
                         VariableMessage* response,
@@ -333,7 +282,6 @@ class BRPCServiceImpl : public SendRecvService {
  private:
   distributed::RequestHandler* request_send_h_{nullptr};
   distributed::RequestHandler* request_get_h_{nullptr};
-  distributed::RequestHandler* request_getnobarrier_h_{nullptr};
   distributed::RequestHandler* request_prefetch_h_{nullptr};
   distributed::RequestHandler* request_checkpoint_h_{nullptr};
   distributed::RequestHandler* request_get_monomer_handler_h_{nullptr};
@@ -341,10 +289,9 @@ class BRPCServiceImpl : public SendRecvService {
 
   distributed::RPCServer* rpc_server_{nullptr};
 
-  // FIXME(gongwb): brpc should support process one rpc use one threadpool.
+  // FIXME(gongwb): brpc should support process one rpce use one threadpool.
   std::unique_ptr<paddle::framework::ThreadPool> send_threads_;
   std::unique_ptr<paddle::framework::ThreadPool> get_threads_;
-  std::unique_ptr<paddle::framework::ThreadPool> getnobarrier_threads_;
   std::unique_ptr<paddle::framework::ThreadPool> prefetch_threads_;
   std::unique_ptr<paddle::framework::ThreadPool> checkpoint_notify_threads_;
 };

@@ -226,11 +226,15 @@ class DeviceTracerImpl : public DeviceTracer {
                                      stream_id, correlation_id, bytes});
   }
 
-  void AddMemInfoRecord(uint64_t crt_time, size_t bytes, Place place,
-                      bool is_alloc, int32_t thread_id) {
+  void AddMemInfoRecord(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                        Place place) {
+    if (0 == start_ns || 0 == end_ns) {
+      VLOG(3) << "Cannot be traced\n";
+      return;
+    }
     std::lock_guard<std::mutex> l(trace_mu_);
-    mem_info_record_.push_back(MemInfoRecord{crt_time, bytes, place,
-                                             is_alloc, thread_id});
+    mem_info_record_.emplace_back(MemInfoRecord{start_ns, end_ns, bytes,
+                                                place});
   }
 
   void AddKernelRecords(std::string name, uint64_t start, uint64_t end,
@@ -319,8 +323,15 @@ class DeviceTracerImpl : public DeviceTracer {
     }
     for (const MemInfoRecord &r : mem_info_record_) {
       auto *event = profile_pb.add_events();
-      event->set_start_ns(r.crt_time);
-      event->set_end_ns(r.crt_time);
+      event->set_start_ns(r.start_ns);
+      event->set_end_ns(r.end_ns);
+//      struct MemInfoRecord {
+//        uint64_t start_ns;
+//        uint64_t end_ns;
+//        size_t bytes;
+//        Place place;
+//        int32_t thread_id;
+//      };
     }
     std::ofstream profile_f;
     profile_f.open(profile_path, std::ios::out | std::ios::trunc);

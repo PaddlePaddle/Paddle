@@ -26,8 +26,14 @@ ENDIF(WIN32)
 
 INCLUDE_DIRECTORIES(${GLOG_INCLUDE_DIR})
 
-SET(GLOG_REPOSITORY "https://github.com/google/glog.git")
-SET(GLOG_TAG "v0.3.5")
+IF(ANDROID AND ${CMAKE_SYSTEM_VERSION} VERSION_LESS "21")
+  # Using the unofficial glog for Android API < 21
+  SET(GLOG_REPOSITORY "https://github.com/Xreki/glog.git")
+  SET(GLOG_TAG "8a547150548b284382ccb6582408e9140ff2bea8")
+ELSE()
+  SET(GLOG_REPOSITORY "https://github.com/google/glog.git")
+  SET(GLOG_TAG "v0.3.5")
+ENDIF()
 
 ExternalProject_Add(
     extern_glog
@@ -72,3 +78,12 @@ ADD_DEPENDENCIES(glog extern_glog gflags)
 LINK_LIBRARIES(glog gflags)
 
 LIST(APPEND external_project_dependencies glog)
+
+IF(WITH_C_API)
+  INSTALL(DIRECTORY ${GLOG_INCLUDE_DIR} DESTINATION third_party/glog)
+  IF(ANDROID)
+    INSTALL(FILES ${GLOG_LIBRARIES} DESTINATION third_party/glog/lib/${ANDROID_ABI})
+  ELSE()
+    INSTALL(FILES ${GLOG_LIBRARIES} DESTINATION third_party/glog/lib)
+  ENDIF()
+ENDIF()

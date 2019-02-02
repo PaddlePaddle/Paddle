@@ -81,7 +81,6 @@ enum class GrpcMethod {
   kGetVariable,
   kPrefetchVariable,
   kCheckpointNotify,
-  kGetVariableNoBarrier,
   kGetMonomerVariable,
   kGetMonomerBarrier,
 };
@@ -95,8 +94,6 @@ inline const char* GrpcMethodName(GrpcMethod id) {
       return "/sendrecv.SendRecvService/SendVariable";
     case GrpcMethod::kGetVariable:
       return "/sendrecv.SendRecvService/GetVariable";
-    case GrpcMethod::kGetVariableNoBarrier:
-      return "/sendrecv.SendRecvService/GetVariableNoBarrier";
     case GrpcMethod::kGetMonomerVariable:
       return "/sendrecv.SendRecvService/GetMonomerVariable";
     case GrpcMethod::kGetMonomerBarrier:

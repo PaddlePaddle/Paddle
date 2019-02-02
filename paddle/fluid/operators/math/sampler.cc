@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/sampler.h"
-#include <glog/logging.h>
 #include <iostream>
 #include <queue>
 #include <utility>
@@ -78,14 +77,7 @@ int64_t CustomSampler::Sample() const {
   auto index = (*int_dist_)(*random_engine_);
   auto p = (*real_dist_)(*random_engine_);
   if (p > alias_probs_[index]) {
-    int alias = alias_[index];
-
-    if (alias == exceptional_val) {
-      LOG(WARNING) << "WARNING: CustomSampler get alias " << exceptional_val;
-      return index;
-    }
-
-    return alias;
+    return alias_[index];
   } else {
     return index;
   }

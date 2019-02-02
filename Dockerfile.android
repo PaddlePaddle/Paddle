@@ -1,0 +1,42 @@
+FROM ubuntu:16.04
+MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
+
+ARG UBUNTU_MIRROR
+RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com/ubuntu#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
+
+# ENV variables
+ARG ANDROID_ABI
+ARG ANDROID_API
+
+ENV ANDROID_ABI=${ANDROID_ABI:-"armeabi-v7a"}
+ENV ANDROID_API=${ANDROID_API:-21}
+
+ENV HOME=/root \
+    ANDROID_NDK_HOME=/opt/android-ndk-linux \
+    ANDROID_TOOLCHAINS_DIR=/opt/toolchains
+
+RUN apt-get update && \
+    apt-get install -y \
+    git python-dev python-pip python-numpy \
+    wget curl tar unzip gcc g++ locales clang-format-3.8 swig cmake && \
+    apt-get clean -y
+
+# git credential to skip password typing
+RUN git config --global credential.helper store
+
+# Fix locales to en_US.UTF-8
+RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+
+RUN pip install --upgrade pip==9.0.3 && \
+    pip install -U 'protobuf==3.1.0' && \
+    pip install -U wheel sphinx && \
+    pip install pre-commit
+
+# Android NDK
+RUN mkdir -p ${ANDROID_TOOLCHAINS_DIR} && \
+    mkdir -p /opt/android-ndk-tmp && \
+    cd /opt/android-ndk-tmp && \
+    wget -q https://dl.google.com/android/repository/android-ndk-r14b-linux-x86_64.zip && \
+    unzip -q android-ndk-r14b-linux-x86_64.zip && \
+    mv android-ndk-r14b ${ANDROID_NDK_HOME} && \
+    rm -rf /opt/android-ndk-tmp

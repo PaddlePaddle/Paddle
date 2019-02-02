@@ -42,13 +42,14 @@ void TensorRTEngine::Execute(int batch_size) {
     PADDLE_ENFORCE(buf.device == DeviceType::GPU);
     buffers.push_back(buf.buffer);
   }
-  infer_context_->enqueue(batch_size, buffers.data(), stream_, nullptr);
-  cudaStreamSynchronize(stream_);
+  PADDLE_ENFORCE_NOT_NULL(stream_);
+  infer_context_->enqueue(batch_size, buffers.data(), *stream_, nullptr);
+  cudaStreamSynchronize(*stream_);
   SetRuntimeBatch(batch_size);
 }
 
 TensorRTEngine::~TensorRTEngine() {
-  cudaStreamSynchronize(stream_);
+  cudaStreamSynchronize(*stream_);
   // clean buffer
   for (auto &buf : buffers_) {
     if (buf.device == DeviceType::GPU && buf.buffer != nullptr) {
@@ -69,13 +70,6 @@ void TensorRTEngine::FreezeNetwork() {
   // build engine.
   infer_builder_->setMaxBatchSize(max_batch_);
   infer_builder_->setMaxWorkspaceSize(max_workspace_);
-  if (enable_int8_) {
-    infer_builder_->setInt8Mode(true);
-    PADDLE_ENFORCE(
-        calibrator_ != nullptr,
-        "The precision mode is 'INT8', the calibrator should not be nullptr");
-    infer_builder_->setInt8Calibrator(calibrator_);
-  }
 
   infer_engine_.reset(infer_builder_->buildCudaEngine(*infer_network_));
   PADDLE_ENFORCE(infer_engine_ != nullptr, "build cuda engine failed!");
@@ -179,7 +173,7 @@ void TensorRTEngine::GetOutputInGPU(const std::string &name, void *dst,
   auto &buf = buffer(name);
   PADDLE_ENFORCE_NOT_NULL(buf.buffer, "buffer should be allocated before");
   PADDLE_ENFORCE_EQ(cudaMemcpyAsync(dst, buf.buffer, dst_size,
-                                    cudaMemcpyDeviceToDevice, stream_),
+                                    cudaMemcpyDeviceToDevice, *stream_),
                     0);
 }
 
@@ -200,7 +194,7 @@ void TensorRTEngine::GetOutputInCPU(const std::string &name, void *dst,
   auto &buf = buffer(name);
   PADDLE_ENFORCE_NOT_NULL(buf.buffer, "buffer should be allocated before");
   PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(dst, buf.buffer, dst_size,
-                                       cudaMemcpyDeviceToHost, stream_));
+                                       cudaMemcpyDeviceToHost, *stream_));
 }
 
 Buffer &TensorRTEngine::buffer(const std::string &name) {
@@ -217,11 +211,12 @@ void TensorRTEngine::SetInputFromCPU(const std::string &name, const void *data,
   auto &buf = buffer(name);
   PADDLE_ENFORCE_NOT_NULL(buf.buffer);
   PADDLE_ENFORCE_NOT_NULL(data);
+  PADDLE_ENFORCE_NOT_NULL(stream_);
   PADDLE_ENFORCE_LE(size, buf.max_size, "buffer is too small");
   PADDLE_ENFORCE(buf.device == DeviceType::GPU);
   buf.size = size;
   PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(buf.buffer, data, size,
-                                       cudaMemcpyHostToDevice, stream_));
+                                       cudaMemcpyHostToDevice, *stream_));
 }
 
 void TensorRTEngine::SetInputFromGPU(const std::string &name, const void *data,
@@ -232,7 +227,7 @@ void TensorRTEngine::SetInputFromGPU(const std::string &name, const void *data,
   PADDLE_ENFORCE_LE(size, buf.max_size, "buffer is too small");
   PADDLE_ENFORCE(buf.device == DeviceType::GPU);
   PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(buf.buffer, data, size,
-                                       cudaMemcpyDeviceToDevice, stream_));
+                                       cudaMemcpyDeviceToDevice, *stream_));
 }
 
 void TensorRTEngine::SetITensor(const std::string &name,

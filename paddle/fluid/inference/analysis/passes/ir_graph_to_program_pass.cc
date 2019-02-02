@@ -31,11 +31,7 @@ void IrGraphToProgramPass::RunImpl(Argument *argument) {
   }
 
   std::unique_ptr<Graph> graph(argument->main_graph_ptr());
-
-  // Direct using ProgramDesc desc(argument->main_program()) may cause
-  // incomplete copies of information.
-  framework::ProgramDesc desc;
-  desc.CopyFrom(*argument->main_program().Proto());
+  framework::ProgramDesc desc(argument->main_program());
   pass->SetNotOwned("program", &desc);
   auto thegraph = pass->Apply(std::move(graph));
   thegraph.release();  // the argument still own the graph.

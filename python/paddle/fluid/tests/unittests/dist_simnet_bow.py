@@ -75,13 +75,9 @@ def get_loss(cos_q_pt, cos_q_nt):
     return avg_cost
 
 
-def get_optimizer(op="sgd"):
-    if op.upper() == "sgd".upper():
-        optimizer = fluid.optimizer.SGD(learning_rate=base_lr)
-    elif op.upper() == "adam".upper():
-        optimizer = fluid.optimizer.Adam(learning_rate=base_lr)
-    else:
-        optimizer = fluid.optimizer.SGD(learning_rate=base_lr)
+def get_optimizer():
+    # SGD optimizer
+    optimizer = fluid.optimizer.SGD(learning_rate=base_lr)
     return optimizer
 
 
@@ -241,8 +237,7 @@ class TestDistSimnetBow2x2(TestDistRunnerBase):
         inference_program = fluid.default_main_program().clone()
 
         # Optimization
-        opt = os.getenv('OPTIMIZER', 'sgd')
-        opt = get_optimizer(opt)
+        opt = get_optimizer()
         opt.minimize(avg_cost)
 
         # Reader
