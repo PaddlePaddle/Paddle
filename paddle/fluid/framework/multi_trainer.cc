@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
+#include "paddle/fluid/framework/trainer_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -65,5 +66,6 @@ void MultiTrainer::Finalize() {
   }
 }
 
+REGISTER_TRAINER_CLASS(MultiTrainer);
 }  // end namespace framework
 }  // end namespace paddle

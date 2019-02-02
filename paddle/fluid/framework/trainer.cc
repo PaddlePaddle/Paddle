@@ -19,7 +19,5 @@ namespace framework {
 
 void TrainerBase::SetScope(Scope* root_scope) { root_scope_ = root_scope; }
 
-void TrainerBase::Initialize(const TrainerDesc& trainer_desc) { return; }
-
 }  // end namespace framework
 }  // end namespace paddle

@@ -39,8 +39,8 @@ class TrainerBase {
   virtual ~TrainerBase() {}
   // model memory are hosted in root_scope
   void SetScope(Scope* root_scope);
-  void Initialize(const TrainerDesc& trainer_desc);
   void SetDebug(const bool debug) { debug_ = debug; }
+  virtual void Initialize(const TrainerDesc& trainer_desc) = 0;
   virtual void InitTrainerEnv(const ProgramDesc& main_program,
                               const platform::Place& place) = 0;
   virtual void InitOtherEnv(const ProgramDesc& main_program) = 0;

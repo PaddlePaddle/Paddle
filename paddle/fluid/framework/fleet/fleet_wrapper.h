@@ -47,7 +47,6 @@ namespace framework {
 
 class FleetWrapper {
  public:
-  FleetWrapper() {}
   virtual ~FleetWrapper() {}
 
   // Pull sparse variables from server in Sync mode
@@ -122,8 +121,11 @@ class FleetWrapper {
   static std::shared_ptr<paddle::distributed::PSlib> pslib_ptr_;
 #endif
 
+ private:
+  FleetWrapper() {}
+
  protected:
-  bool is_initialized_;
+  static bool is_initialized_;
   DISABLE_COPY_AND_ASSIGN(FleetWrapper);
 };
 
