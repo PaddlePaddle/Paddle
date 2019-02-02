@@ -203,7 +203,7 @@ if(WITH_PSLIB)
                               trainer_factory.cc trainer.cc device_worker.cc hogwild_worker.cc 
                               downpour_worker.cc pull_dense_worker.cc device_worker_factory.cc
 			      DEPS op_registry device_context scope framework_proto
-			      trainer_desc_proto glog lod_rank_table
+			      trainer_desc_proto glog lod_rank_table fleet_wrapper
 			      feed_fetch_method graph_to_program_pass async_executor_proto
 			      variable_helper pslib_brpc pslib timer)
 else()
@@ -212,7 +212,7 @@ else()
                               trainer_factory.cc trainer.cc device_worker.cc hogwild_worker.cc
                               downpour_worker.cc pull_dense_worker.cc device_worker_factory.cc
 			      DEPS op_registry device_context scope framework_proto
-			      trainer_desc_proto glog lod_rank_table
+			      trainer_desc_proto glog lod_rank_table fleet_wrapper
 			      feed_fetch_method graph_to_program_pass async_executor_proto
 			      variable_helper timer)
 endif(WITH_PSLIB)

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
+#include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 
 namespace paddle {
@@ -50,9 +51,9 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc& program) {
 
 void HogwildWorker::BindingDataFeedMemory() {
   const std::vector<std::string>& input_feed =
-      thread_reader_->GetUseSlotAlias();
+      device_reader_->GetUseSlotAlias();
   for (auto name : input_feed) {
-    thread_reader_->AddFeedVar(thread_scope_->Var(name), name);
+    device_reader_->AddFeedVar(thread_scope_->Var(name), name);
   }
 }
 
@@ -63,7 +64,7 @@ void HogwildWorker::CreateDeviceResource(const ProgramDesc& main_prog) {
 
 void HogwildWorker::TrainFilesWithProfiler() {
   platform::SetNumThreads(1);
-  thread_reader_->Start();
+  device_reader_->Start();
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
   for (auto& op : ops_) {
@@ -79,7 +80,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
   int cur_batch;
   int batch_cnt = 0;
   timeline.Start();
-  while ((cur_batch = thread_reader_->Next()) > 0) {
+  while ((cur_batch = device_reader_->Next()) > 0) {
     timeline.Pause();
     read_time += timeline.ElapsedSec();
     total_time += timeline.ElapsedSec();
@@ -115,10 +116,10 @@ void HogwildWorker::TrainFiles() {
   platform::SetNumThreads(1);
 
   // how to accumulate fetched values here
-  thread_reader_->Start();
+  device_reader_->Start();
   int cur_batch;
   int batch_cnt = 0;
-  while ((cur_batch = thread_reader_->Next()) > 0) {
+  while ((cur_batch = device_reader_->Next()) > 0) {
     for (auto& op : ops_) {
       op->Run(*thread_scope_, place_);
     }
@@ -128,5 +129,6 @@ void HogwildWorker::TrainFiles() {
   }
 }
 
+REGISTER_DEVICE_WORKER_CLASS(HogwildWorker);
 }  // end namespace framework
 }  // end namespace paddle

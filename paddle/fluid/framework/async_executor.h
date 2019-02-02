@@ -75,14 +75,6 @@ class AsyncExecutor {
   void InitModel();
   void SaveModel(const std::string& path);
 
- private:
-  void CreateThreads(ExecutorThreadWorker* worker,
-                     const ProgramDesc& main_program,
-                     const std::shared_ptr<DataFeed>& reader,
-                     const std::vector<std::string>& fetch_var_names,
-                     Scope* root_scope, const int thread_index,
-                     const bool debug);
-
  public:
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   Scope* root_scope_;
