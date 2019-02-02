@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
-#include "paddle/fluid/framework/trainer_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -48,11 +47,13 @@ void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc) {
   fleet_ptr_ = FleetWrapper::GetInstance();
   pull_dense_worker_ = PullDenseWorker::GetInstance();
   pull_dense_worker_->Initialize(trainer_desc);
+  VLOG(3) << "initialize pull dense worker";
 }
 
 void DistMultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
   pull_dense_worker_->SetRootScope(root_scope_);
   pull_dense_worker_->Start();
+  VLOG(3) << "init other env done.";
 }
 
 void DistMultiTrainer::Finalize() {
@@ -62,6 +63,5 @@ void DistMultiTrainer::Finalize() {
   pull_dense_worker_->Stop();
 }
 
-REGISTER_TRAINER_CLASS(DistMultiTrainer);
 }  // end namespace framework
 }  // end namespace paddle

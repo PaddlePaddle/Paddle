@@ -22,7 +22,23 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+typedef std::shared_ptr<TrainerBase> (*CreatetrainerFunction)();
+typedef std::unordered_map<std::string, CreatetrainerFunction> trainerMap;
 trainerMap g_trainer_map;
+
+#define REGISTER_TRAINER_CLASS(trainer_class)                   \
+  namespace {                                                   \
+  std::shared_ptr<TrainerBase> Creator_##trainer_class() {      \
+    return std::shared_ptr<TrainerBase>(new trainer_class);     \
+  }                                                             \
+  class __Registerer_##trainer_class {                          \
+   public:                                                      \
+    __Registerer_##trainer_class() {                            \
+      g_trainer_map[#trainer_class] = &Creator_##trainer_class; \
+    }                                                           \
+  };                                                            \
+  __Registerer_##trainer_class g_registerer_##trainer_class;    \
+  }  // namespace
 
 std::string TrainerFactory::TrainerTypeList() {
   std::string trainer_types;
@@ -38,10 +54,14 @@ std::string TrainerFactory::TrainerTypeList() {
 std::shared_ptr<TrainerBase> TrainerFactory::CreateTrainer(
     std::string trainer_class) {
   if (g_trainer_map.count(trainer_class) < 1) {
+    LOG(WARNING) << "Trainer class: " << trainer_class << " not defined";
+    LOG(WARNING) << TrainerTypeList();
     exit(-1);
   }
   return g_trainer_map[trainer_class]();
 }
 
+REGISTER_TRAINER_CLASS(MultiTrainer);
+REGISTER_TRAINER_CLASS(DistMultiTrainer);
 }  // namespace framework
 }  // namespace paddle

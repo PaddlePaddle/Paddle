@@ -20,23 +20,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-typedef std::shared_ptr<TrainerBase> (*CreatetrainerFunction)();
-typedef std::unordered_map<std::string, CreatetrainerFunction> trainerMap;
-extern trainerMap g_trainer_map;
-
-#define REGISTER_TRAINER_CLASS(trainer_class)                   \
-  namespace {                                                   \
-  std::shared_ptr<TrainerBase> Creator_##trainer_class() {      \
-    return std::shared_ptr<TrainerBase>(new trainer_class);     \
-  }                                                             \
-  class __Registerer_##trainer_class {                          \
-   public:                                                      \
-    __Registerer_##trainer_class() {                            \
-      g_trainer_map[#trainer_class] = &Creator_##trainer_class; \
-    }                                                           \
-  };                                                            \
-  __Registerer_##trainer_class g_registerer_##trainer_class;    \
-  }  // namespace
 
 class TrainerFactory {
  public:

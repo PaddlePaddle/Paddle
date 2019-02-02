@@ -66,21 +66,32 @@ void AsyncExecutor::SaveModel(const std::string& path) {}
 void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
                                 const std::string& trainer_desc_str,
                                 const bool debug) {
+  VLOG(3) << "start to run from files in async_executor";
   TrainerDesc trainer_desc;
   google::protobuf::TextFormat::ParseFromString(trainer_desc_str,
                                                 &trainer_desc);
+  VLOG(3) << "Going to create trainer, trainer class is "
+          << trainer_desc.class_name();
   std::shared_ptr<TrainerBase> trainer;
   trainer = TrainerFactory::CreateTrainer(trainer_desc.class_name());
   // initialize trainer
+  VLOG(3) << "Going to initialize trainer";
   trainer->Initialize(trainer_desc);
+  VLOG(3) << "Set root scope here";
   trainer->SetScope(root_scope_);
+  VLOG(3) << "Going to set debug";
   trainer->SetDebug(debug);
   // prepare training environment and helper environment
+  VLOG(3) << "Try to init train environment";
   trainer->InitTrainerEnv(main_program, place_);
+  VLOG(3) << "Try to init other environment";
   trainer->InitOtherEnv(main_program);
   // training and finalize training
+  VLOG(3) << "Trainer starts to run";
   trainer->Run();
+  VLOG(3) << "Trainer going to finalize";
   trainer->Finalize();
+  VLOG(3) << "Drop current scope kids";
   root_scope_->DropKids();
 
   return;
