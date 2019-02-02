@@ -64,7 +64,6 @@ void AsyncExecutor::InitModel() {}
 void AsyncExecutor::SaveModel(const std::string& path) {}
 
 void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
-<<<<<<< HEAD
                                 const std::string& data_feed_desc_str,
                                 const std::vector<std::string>& filelist,
                                 const int thread_num,
@@ -153,25 +152,8 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
     _pull_dense_thread->stop();
   }
 #endif
-=======
-                                const std::string& trainer_desc_str,
-                                const bool debug) {
-  TrainerDesc trainer_desc;
-  google::protobuf::TextFormat::ParseFromString(trainer_desc_str,
-                                                &trainer_desc);
-  std::shared_ptr<TrainerBase> trainer;
-  trainer = TrainerFactory::CreateTrainer(trainer_desc.class_name());
-  // initialize trainer
-  trainer->Initialize(trainer_desc);
-  trainer->SetScope(root_scope_);
-  trainer->SetDebug(debug);
-  // prepare training environment and helper environment
-  trainer->InitTrainerEnv(main_program, place_);
-  trainer->InitOtherEnv(main_program);
-  // training and finalize training
-  trainer->Run();
-  trainer->Finalize();
->>>>>>> add dist_multi_trainer for distributed training, add trainer_factory and device_worker_factory so that we can easily extend new training mode, add pull dense worker which is a singleton for parameter fetching
+  VLOG(3) << "start to run from files in async_executor";
+  VLOG(3) << "Drop current scope kids";
   root_scope_->DropKids();
 
   return;

@@ -129,6 +129,5 @@ void HogwildWorker::TrainFiles() {
   }
 }
 
-REGISTER_DEVICE_WORKER_CLASS(HogwildWorker);
 }  // end namespace framework
 }  // end namespace paddle
