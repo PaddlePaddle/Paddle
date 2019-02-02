@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from paddle.fluid.tests.unittests.test_pool2d_op import *
+from paddle.fluid.tests.unittests.test_pool2d_op import TestPool2D_Op, TestCase1, TestCase2, TestCase3, TestCase4, TestCase5
 
 
 class TestNGRAPHPool2D_Op(TestPool2D_Op):

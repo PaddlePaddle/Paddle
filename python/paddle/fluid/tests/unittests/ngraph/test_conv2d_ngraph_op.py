@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import unittest
-from paddle.fluid.tests.unittests.test_conv2d_op import *
+from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride, TestWithGroup, TestWith1x1, TestWithInput1x1Filter1x1
 
 
 class TestNGRAPH(TestConv2dOp):

@@ -15,43 +15,38 @@
 from __future__ import print_function
 
 import unittest
-from paddle.fluid.tests.unittests.test_mul_op import TestMulOp, TestMulOp2, TestFP16MulOp1, TestFP16MulOp2
+import numpy as np
+from paddle.fluid.tests.unittests.op_test import OpTest
 
 
-class TestNGRAPHMulOp(TestMulOp):
+class TestNGRAPHMulOp(OpTest):
     def setUp(self):
-        super(TestNGRAPHMulOp, self).setUp()
+        self.op_type = "mul"
+        self.dtype = np.float32
+        self.init_dtype_type()
+        self.inputs = {
+            'X': np.random.random((2, 4)).astype(self.dtype),
+            'Y': np.random.random((4, 4)).astype(self.dtype)
+        }
+        self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
         self._cpu_only = True
 
     def init_dtype_type(self):
         pass
 
+    def test_check_output(self):
+        self.check_output()
 
-class TestNGRAPHMulOp2(TestMulOp2):
-    def setUp(self):
-        super(TestNGRAPHMulOp2, self).setUp()
-        self._cpu_only = True
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
 
-    def init_dtype_type(self):
-        pass
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X"))
 
-
-class TestNGRAPHFP16MulOp1(TestFP16MulOp1):
-    def setUp(self):
-        super(TestNGRAPHFP16MulOp1, self).setUp()
-        self._cpu_only = True
-
-    def init_dtype_type(self):
-        pass
-
-
-class TestNGRAPHFP16MulOp2(TestFP16MulOp2):
-    def setUp(self):
-        super(TestNGRAPHFP16MulOp2, self).setUp()
-        self._cpu_only = True
-
-    def init_dtype_type(self):
-        pass
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
 
 
 if __name__ == "__main__":
