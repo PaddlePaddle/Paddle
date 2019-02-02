@@ -43,7 +43,6 @@ message DownpourWorkerParameter {
   repeated TableParameter sparse_table = 1;
   repeated TableParameter dense_table = 2;
   repeated string skip_ops = 3;
-  optional string label_var_name = 4;
 }
 
 message PullDenseWorkerParameter {
