@@ -55,9 +55,10 @@ class MemoryOptimizePass : public ir::Pass {
                             ir::Graph* graph) const;
 
   void SubGraphOptimize(OpDesc* op_desc) const;
-  // scan subblock and collect the output/input variables.
-  std::unordered_set<std::string> GetSubBlockVars(
-      const std::unordered_set<ir::Node*>&) const;
+  // 1. scan op with subblock and collect the output/input vars.
+  // while, while_grad, conditional_block
+  // 2. scan distributed ops and collect the output/input vars
+  void CollectSkipVarsSet(const std::unordered_set<ir::Node*>&) const;
 
  private:
   // Reuse Node Pool, Owned.
