@@ -330,8 +330,10 @@ class DeviceTracerImpl : public DeviceTracer {
         CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020,
         CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020,
         CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000,
-        CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000,
-        CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000};
+        CUPTI_DRIVER_TRACE_CBID_cuLaunchCooperativeKernel,
+        CUPTI_DRIVER_TRACE_CBID_cuLaunchCooperativeKernelMultiDevice};
+    // CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000,
+    // CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000};
     for (auto cbid : cbids)
       CUPTI_CALL(dynload::cuptiEnableCallback(
           1, subscriber_, CUPTI_CB_DOMAIN_RUNTIME_API, cbid));
