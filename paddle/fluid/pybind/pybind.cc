@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
@@ -126,6 +127,13 @@ PYBIND11_MODULE(core, m) {
 
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
+
+  m.def("get_mem_usage", [](int device) {
+    return memory::allocation::GPUMemMonitor.GetMemUsage(device);
+  });
+
+  m.def("print_mem_usage",
+        []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
   py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
       // .def(py::init<>())
@@ -1088,6 +1096,10 @@ All parameter, weight, gradient are variables in Paddle.
           "memory_early_delete",
           [](const BuildStrategy &self) { return self.memory_early_delete_; },
           [](BuildStrategy &self, bool b) { self.memory_early_delete_ = b; })
+      .def_property(
+          "enable_inplace",
+          [](const BuildStrategy &self) { return self.enable_inplace_; },
+          [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);
