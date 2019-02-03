@@ -155,7 +155,7 @@ class NCHW16CMulNCCreator : public JitCodeCreator<int> {
   class name##Creator : public JitCodeCreator<int> {                         \
    public:                                                                   \
     bool UseMe(const int& attr) const override {                             \
-      return platform::MayIUse(platform::avx);                               \
+      return platform::MayIUse(platform::avx) && attr <= 1024;               \
     }                                                                        \
     size_t CodeSize(const int& d) const override {                           \
       return 96 + d / YMM_FLOAT_BLOCK * 4 * 8;                               \

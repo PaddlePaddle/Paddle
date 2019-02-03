@@ -33,7 +33,6 @@ using paddle::PaddlePredictor;
 using paddle::NativeConfig;
 using paddle::NativePaddlePredictor;
 using paddle::AnalysisPredictor;
-using paddle::contrib::AnalysisConfig;
 
 static void BindPaddleDType(py::module *m);
 static void BindPaddleBuf(py::module *m);
