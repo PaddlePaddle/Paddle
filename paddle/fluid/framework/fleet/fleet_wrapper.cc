@@ -42,13 +42,13 @@ std::shared_ptr<paddle::distributed::PSlib> FleetWrapper::pslib_ptr_ = NULL;
 void FleetWrapper::InitServer(const std::string& dist_desc, int index) {
 #ifdef PADDLE_WITH_PSLIB
   if (!is_initialized_) {
-    LOG(WARNING) << "Going to init server";
+    VLOG(3) << "Going to init server";
     pslib_ptr_ = std::shared_ptr<paddle::distributed::PSlib>(
         new paddle::distributed::PSlib());
     pslib_ptr_->init_server(dist_desc, index);
     is_initialized_ = true;
   } else {
-    LOG(WARNING) << "Server can be initialized only once";
+    VLOG(3) << "Server can be initialized only once";
   }
 #endif
 }
@@ -58,7 +58,7 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
                               int node_num, int index) {
 #ifdef PADDLE_WITH_PSLIB
   if (!is_initialized_) {
-    LOG(WARNING) << "Going to init server";
+    VLOG(3) << "Going to init worker";
     pslib_ptr_ = std::shared_ptr<paddle::distributed::PSlib>(
         new paddle::distributed::PSlib());
     pslib_ptr_->init_worker(dist_desc,
@@ -66,21 +66,21 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
                             node_num, index);
     is_initialized_ = true;
   } else {
-    LOG(WARNING) << "Worker can be initialized only once";
+    VLOG(3) << "Worker can be initialized only once";
   }
 #endif
 }
 
 void FleetWrapper::StopServer() {
 #ifdef PADDLE_WITH_PSLIB
-  LOG(WARNING) << "Going to stop server";
+  VLOG(3) << "Going to stop server";
   pslib_ptr_->stop_server();
 #endif
 }
 
 uint64_t FleetWrapper::RunServer() {
 #ifdef PADDLE_WITH_PSLIB
-  LOG(WARNING) << "Going to run server";
+  VLOG(3) << "Going to run server";
   return pslib_ptr_->run_server();
 #else
   return 0;
@@ -90,7 +90,7 @@ uint64_t FleetWrapper::RunServer() {
 void FleetWrapper::GatherServers(const std::vector<uint64_t>& host_sign_list,
                                  int node_num) {
 #ifdef PADDLE_WITH_PSLIB
-  LOG(WARNING) << "Going to gather server ips";
+  VLOG(3) << "Going to gather server ips";
   pslib_ptr_->gather_servers(const_cast<uint64_t*>(host_sign_list.data()),
                              node_num);
 #endif
