@@ -61,6 +61,7 @@ class VXXJitCode : public JitCode {
       base += "_Vec";
     }
     base += (with_relu_ ? "_Relu" : "");
+    base += "_D" + std::to_string(num_);
     return base.c_str();
   }
   void genCode() override;

@@ -18,7 +18,6 @@ namespace paddle {
 namespace inference {
 
 using paddle::PaddleTensor;
-using paddle::contrib::AnalysisConfig;
 
 template <typename T>
 void GetValueFromStream(std::stringstream *ss, T *t) {
@@ -158,12 +157,10 @@ bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs) {
   return true;
 }
 
-void SetConfig(contrib::AnalysisConfig *config) {
-  config->SetModel(FLAGS_infer_model);
-}
+void SetConfig(AnalysisConfig *config) { config->SetModel(FLAGS_infer_model); }
 
 void profile(bool use_mkldnn = false) {
-  contrib::AnalysisConfig config;
+  AnalysisConfig config;
   SetConfig(&config);
 
   if (use_mkldnn) {
@@ -213,17 +210,14 @@ TEST(Analyzer_bert, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 
 // Compare Deterministic result
-// TODO(luotao): Since each unit-test on CI only have 10 minutes, cancel this to
-// decrease the CI time.
-// TEST(Analyzer_bert, compare_determine) {
-//   AnalysisConfig cfg;
-//   SetConfig(&cfg);
-//
-//   std::vector<std::vector<PaddleTensor>> inputs;
-//   LoadInputData(&inputs);
-//   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config
-//   *>(&cfg),
-//                        inputs);
-// }
+TEST(Analyzer_bert, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> inputs;
+  LoadInputData(&inputs);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       inputs);
+}
 }  // namespace inference
 }  // namespace paddle
