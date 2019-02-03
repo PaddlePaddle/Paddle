@@ -185,6 +185,7 @@ class FuseAllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
                               ir::Graph *result) const;
 
   mutable std::unordered_map<std::string, OpHandleBase *> grads_allreduce_;
+  mutable std::unordered_set<std::string> params_;
 };
 
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder();

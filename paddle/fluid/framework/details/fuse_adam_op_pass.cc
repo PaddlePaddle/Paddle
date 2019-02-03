@@ -11,16 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "paddle/fluid/framework/details/fuse_adam_op_pass.h"
 #include <algorithm>
-#include <fstream>
-#include <string>
-#include <utility>
-#include <vector>
-
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/node.h"
-#include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -30,10 +24,9 @@ namespace details {
 std::unique_ptr<ir::Graph> FuseAdamOpPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   ir::Graph &result = *graph;
-  graph->Set(kParamsAndGrads, new ParamsAndGrads);
 
   const std::string fuse_op = "adam";
-  std::vector<std::string> aux_var_names = {"Param",  // "Moment1", "Moment2",
+  std::vector<std::string> aux_var_names = {"Param", "Moment1", "Moment2",
                                             "Beta1Pow", "Beta2Pow"};
 
   std::unordered_map<std::string, std::vector<std::string>> aux_var_set;
@@ -59,7 +52,9 @@ std::unique_ptr<ir::Graph> FuseAdamOpPass::ApplyImpl(
 
   // Fuse the space of "Moment1", "Moment2", "Beta1Pow", "Beta2Pow"
   // alloc_continuous_space
-  result.Set(kRunOnlyOnceProgram, new RunOnlyOnceProgram);
+  if (!result.Has(kRunOnlyOnceProgram)) {
+    result.Set(kRunOnlyOnceProgram, new RunOnlyOnceProgram);
+  }
   result.Get<RunOnlyOnceProgram>(kRunOnlyOnceProgram).emplace_back();
   auto &program_desc =
       result.Get<RunOnlyOnceProgram>(kRunOnlyOnceProgram).back();
@@ -68,6 +63,10 @@ std::unique_ptr<ir::Graph> FuseAdamOpPass::ApplyImpl(
   AppendAllocContinuousSpace(aux_var_set.at("Beta1Pow"), true /*copy_data*/,
                              global_block);
   AppendAllocContinuousSpace(aux_var_set.at("Beta2Pow"), true /*copy_data*/,
+                             global_block);
+  AppendAllocContinuousSpace(aux_var_set.at("Moment1"), true /*copy_data*/,
+                             global_block);
+  AppendAllocContinuousSpace(aux_var_set.at("Moment2"), true /*copy_data*/,
                              global_block);
 
   VLOG(10) << "FuseAdamOpPass Over ";

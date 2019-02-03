@@ -34,9 +34,9 @@ class FuseGradientSpacePass : public ir::Pass {
  private:
   bool IsSupportedVarType(const proto::VarType::Type &type) const;
 
-  ir::Node *CreateAllocSpaceForVarsNode(
-      const std::vector<std::string> &grads_name,
-      const std::vector<std::string> &params_name, ir::Graph *graph) const;
+  void AppendAllocSpaceForVarsOp(const std::vector<std::string> &grads_name,
+                                 const std::vector<std::string> &params_name,
+                                 BlockDesc *global_block) const;
 
   void GetTrainingGradVarName(ir::Node *node,
                               std::unordered_map<std::string, ir::Node *> *ops,

@@ -238,6 +238,18 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
    */
   AddOutputToLeafOps(&result);
 
+  if (graph->Has(kParamsAndGrads)) {
+    VLOG(10) << "Init gradients";
+    auto &params_grads = graph->Get<ParamsAndGrads>(kParamsAndGrads);
+    for (size_t i = 0; i < local_scopes_.size(); ++i) {
+      for (auto &p_g : params_grads) {
+        auto iter = all_vars_.find(p_g.second);
+        PADDLE_ENFORCE(iter != all_vars_.end());
+        PADDLE_ENFORCE_EQ(iter->second->GetType(), proto::VarType::LOD_TENSOR);
+        local_scopes_[i]->Var(p_g.second)->GetMutable<framework::LoDTensor>();
+      }
+    }
+  }
   /*
    * Run Only Once Programs
    */
@@ -992,6 +1004,12 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
 
 void FuseAllReduceSSAGraphBuilder::CheckGraph(const ir::Graph &graph) const {
   PADDLE_ENFORCE(graph.Has(kParamsAndGrads));
+  auto &params_grads = graph.Get<ParamsAndGrads>(kParamsAndGrads);
+  params_.clear();
+  params_.reserve(params_grads.size());
+  for (auto p_g : params_grads) {
+    params_.insert(p_g.first);
+  }
 }
 
 void FuseAllReduceSSAGraphBuilder::InsertCollectiveOp(
@@ -1003,8 +1021,7 @@ void FuseAllReduceSSAGraphBuilder::InsertCollectiveOp(
     CreateAllReduceOp(result, g_name);
     auto *allreduce_op_handle = result->Get<GraphOps>(kGraphOps).back();
 
-    PADDLE_ENFORCE_EQ(
-        result->Get<ParamsAndGrads>(kParamsAndGrads).count(p_name), 1);
+    PADDLE_ENFORCE_EQ(params_.count(p_name), 1);
     PADDLE_ENFORCE_EQ(grads_allreduce_.count(g_name), 0);
     grads_allreduce_.emplace(g_name, allreduce_op_handle);
   }
@@ -1017,8 +1034,7 @@ void FuseAllReduceSSAGraphBuilder::InsertPostprocessOps(
   }
 
   VLOG(10) << "Insert fused_all_reduce";
-  PADDLE_ENFORCE_EQ(result->Get<ParamsAndGrads>(kParamsAndGrads).size(),
-                    grads_allreduce_.size());
+  PADDLE_ENFORCE_EQ(params_.size(), grads_allreduce_.size());
 
   // This implemention is slower.
   auto &op_handles = result->Get<GraphOps>(kGraphOps);

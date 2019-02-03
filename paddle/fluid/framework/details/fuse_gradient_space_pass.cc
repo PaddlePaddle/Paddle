@@ -11,16 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "paddle/fluid/framework/details/fuse_gradient_space_pass.h"
 #include <algorithm>
-#include <fstream>
-#include <string>
-#include <utility>
-#include <vector>
-
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/node.h"
-#include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -36,6 +30,7 @@ std::unique_ptr<ir::Graph> FuseGradientSpacePass::ApplyImpl(
   std::unordered_map<std::string, ir::Node*> ops;
 
   // Get Vars and Ops
+  VLOG(10) << "Record parameters and gradients.";
   for (ir::Node* node : result.Nodes()) {
     if (node->IsVar()) {
       if (node->Var()) {
@@ -49,15 +44,22 @@ std::unique_ptr<ir::Graph> FuseGradientSpacePass::ApplyImpl(
     }
   }
 
+  auto& params_grads = result.Get<ParamsAndGrads>(kParamsAndGrads);
+  // Note: The sort of parameter is impotant
+  std::sort(params_grads.begin(), params_grads.end(),
+            [](const std::pair<std::string, std::string>& a,
+               const std::pair<std::string, std::string>& b) -> bool {
+              return a.first < b.first;
+            });
+
   // Set Gradients as Persistable
   auto dtype = static_cast<proto::VarType::Type>(0);
-  auto& params_grads = result.Get<ParamsAndGrads>(kParamsAndGrads);
   for (auto& p_g : params_grads) {
     // Get gradient var
     auto iter = vars.find(p_g.second);
     PADDLE_ENFORCE(iter != vars.end());
 
-    // Set Persistable to prevent this var become reusable.
+    // Set Persistable to prevent this var becoming reusable.
     iter->second->Var()->SetPersistable(true);
 
     PADDLE_ENFORCE(IsSupportedVarType(iter->second->Var()->GetType()));
@@ -80,20 +82,14 @@ std::unique_ptr<ir::Graph> FuseGradientSpacePass::ApplyImpl(
     grads_name.emplace_back(p_g.second);
   }
 
-  auto alloc_space_node =
-      CreateAllocSpaceForVarsNode(grads_name, params_name, &result);
-
-  // Need Insert alloc_space_node's input
-  // we should know the deep of the ops
-
-  // Insert alloc_space_node's output
-  for (auto& op : ops) {
-    auto ctl_node = result.CreateControlDepVar();
-    alloc_space_node->outputs.emplace_back(ctl_node);
-    ctl_node->inputs.emplace_back(alloc_space_node);
-    op.second->inputs.emplace_back(ctl_node);
-    ctl_node->outputs.emplace_back(op.second);
+  if (!result.Has(kRunOnlyOnceProgram)) {
+    result.Set(kRunOnlyOnceProgram, new RunOnlyOnceProgram);
   }
+  result.Get<RunOnlyOnceProgram>(kRunOnlyOnceProgram).emplace_back();
+  auto& program_desc =
+      result.Get<RunOnlyOnceProgram>(kRunOnlyOnceProgram).back();
+  auto* global_block = program_desc.MutableBlock(0);
+  AppendAllocSpaceForVarsOp(params_name, grads_name, global_block);
 
   return std::move(graph);
 }
@@ -120,24 +116,20 @@ void FuseGradientSpacePass::GetTrainingGradVarName(
                << ", gradient: " << backward_vars[i + 1];
       ops->emplace(backward_vars[i + 1], node);
       result->Get<ParamsAndGrads>(kParamsAndGrads)
-          .emplace(backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/);
+          .emplace_back(std::make_pair(backward_vars[i] /*param*/,
+                                       backward_vars[i + 1] /*grad*/));
     }
   } catch (boost::bad_get e) {
   }
 }
 
-ir::Node* FuseGradientSpacePass::CreateAllocSpaceForVarsNode(
-    const std::vector<std::string>& grads_name,
-    const std::vector<std::string>& params_name, ir::Graph* graph) const {
-  OpDesc desc;
-  desc.SetType("alloc_space_for_vars");
-  desc.SetInput("Parameters", params_name);
-  desc.SetOutput("Gradients", grads_name);
-  // Op should not have op_role, but it is used by ParallelExecutor.
-  desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
-               static_cast<int>(OpRole::kNotSpecified));
-
-  return graph->CreateOpNode(&desc);
+void FuseGradientSpacePass::AppendAllocSpaceForVarsOp(
+    const std::vector<std::string>& params_name,
+    const std::vector<std::string>& grads_name, BlockDesc* global_block) const {
+  auto op_desc = global_block->AppendOp();
+  op_desc->SetType("alloc_space_for_vars");
+  op_desc->SetInput("Parameters", params_name);
+  op_desc->SetOutput("Gradients", grads_name);
 }
 
 bool FuseGradientSpacePass::IsSupportedVarType(
