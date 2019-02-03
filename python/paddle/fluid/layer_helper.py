@@ -300,6 +300,17 @@ class LayerHelper(object):
             attr.name = unique_name.generate(".".join([self.name, suffix]))
 
         if default_initializer is None and attr.initializer is None:
+            if isinstance(dtype, core.VarDesc.VarType):
+                if dtype != core.VarDesc.VarType.FP32 and \
+                    dtype != core.VarDesc.VarType.FP64:
+                    raise TypeError(
+                        "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
+                    )
+            else:
+                if not (dtype.startswith("float") or dtype == "double"):
+                    raise TypeError(
+                        "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
+                    )
             if is_bias:
                 attr._set_default_bias_initializer()
             else:
