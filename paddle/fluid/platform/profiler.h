@@ -34,7 +34,6 @@ class Event {
   const EventType& type() const;
   std::string name() const { return name_; }
   uint32_t thread_id() const { return thread_id_; }
-  bool has_cuda() const { return has_cuda_; }
 
 #ifdef PADDLE_WITH_CUDA
 #ifndef PADDLE_WITH_CUPTI
@@ -51,7 +50,6 @@ class Event {
   std::string name_;
   uint32_t thread_id_;
   int64_t cpu_ns_;
-  bool has_cuda_;
 #ifdef PADDLE_WITH_CUDA
 #ifdef PADDLE_WITH_CUPTI
   int64_t gpu_ns_ = 0;

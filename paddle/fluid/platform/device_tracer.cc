@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_tracer.h"
 
 #include <deque>
+#include <forward_list>
 #include <fstream>
 #include <list>
 #include <map>
@@ -31,9 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/cupti_cbid_str.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
-#ifdef __linux__
-#include <pthread.h>
-#endif
 
 namespace paddle {
 namespace platform {
@@ -247,14 +245,14 @@ class DeviceTracerImpl : public DeviceTracer {
   DeviceTracerImpl() : enabled_(false) {}
 
   void AddAnnotation(uint32_t id, Event *event) {
-    thread_local std::list<std::pair<uint32_t, Event *>>
+    thread_local std::forward_list<std::pair<uint32_t, Event *>>
         *local_correlations_pairs = nullptr;
     if (local_correlations_pairs == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
-      correlations_pairs.emplace_back();
-      local_correlations_pairs = &correlations_pairs.back();
+      correlations_pairs.emplace_front();
+      local_correlations_pairs = &correlations_pairs.front();
     }
-    local_correlations_pairs->push_back(std::make_pair(id, event));
+    local_correlations_pairs->push_front(std::make_pair(id, event));
   }
 
   void AddCPURecords(const std::string &anno, uint64_t start_ns,
@@ -263,13 +261,13 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(1) << "Empty timeline annotation.";
       return;
     }
-    thread_local std::list<CPURecord> *local_cpu_records_ = nullptr;
+    thread_local std::forward_list<CPURecord> *local_cpu_records_ = nullptr;
     if (local_cpu_records_ == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
-      cpu_records_.emplace_back();
-      local_cpu_records_ = &cpu_records_.back();
+      cpu_records_.emplace_front();
+      local_cpu_records_ = &cpu_records_.front();
     }
-    local_cpu_records_->push_back(
+    local_cpu_records_->push_front(
         CPURecord{anno, start_ns, end_ns, device_id, thread_id});
   }
 
@@ -283,8 +281,8 @@ class DeviceTracerImpl : public DeviceTracer {
     }
     // NOTE(liangdun): lock is not needed, only one thread call this function.
     // std::lock_guard<std::mutex> l(trace_mu_);
-    mem_records_.push_back(MemRecord{name, start_ns, end_ns, device_id,
-                                     stream_id, correlation_id, bytes});
+    mem_records_.push_front(MemRecord{name, start_ns, end_ns, device_id,
+                                      stream_id, correlation_id, bytes});
   }
 
   void AddKernelRecords(std::string name, uint64_t start, uint64_t end,
@@ -297,7 +295,7 @@ class DeviceTracerImpl : public DeviceTracer {
     }
     // NOTE(liangdun): lock is not needed, only one thread call this function.
     // std::lock_guard<std::mutex> l(trace_mu_);
-    kernel_records_.push_back(
+    kernel_records_.push_front(
         KernelRecord{name, start, end, device_id, stream_id, correlation_id});
   }
 
@@ -388,12 +386,13 @@ class DeviceTracerImpl : public DeviceTracer {
     for (const KernelRecord &r : kernel_records_) {
       auto *event = profile_pb.add_events();
       event->set_type(proto::Event::GPUKernel);
-      if (correlations_.find(r.correlation_id) != correlations_.end()) {
-        event->set_name(correlations_.at(r.correlation_id)->name() + "::" +
-                        r.name);
+      auto c = correlations_.find(r.correlation_id);
+      if (c != correlations_.end()) {
+        event->set_name(c->second->name());
+        event->set_detail_info(r.name);
         find++;
       } else {
-        VLOG(100) << "Missing Kernel Event: " << r.name;
+        VLOG(100) << "Missing Kernel Event: " + r.name;
         miss++;
         event->set_name(r.name);
       }
@@ -402,6 +401,7 @@ class DeviceTracerImpl : public DeviceTracer {
       event->set_sub_device_id(r.stream_id);
       event->set_device_id(r.device_id);
     }
+    VLOG(1) << "KernelRecord event miss: " << miss << " find: " << find;
     for (auto &tmp : cpu_records_)
       for (const CPURecord &r : tmp) {
         auto *event = profile_pb.add_events();
@@ -412,14 +412,14 @@ class DeviceTracerImpl : public DeviceTracer {
         event->set_sub_device_id(r.thread_id);
         event->set_device_id(r.device_id);
       }
-    VLOG(1) << "KernelRecord event miss: " << miss << " find: " << find;
     miss = find = 0;
     for (const MemRecord &r : mem_records_) {
       auto *event = profile_pb.add_events();
       event->set_type(proto::Event::GPUKernel);
       auto c = correlations_.find(r.correlation_id);
       if (c != correlations_.end() && c->second != nullptr) {
-        event->set_name(c->second->name() + "::" + r.name);
+        event->set_name(c->second->name());
+        event->set_detail_info(r.name);
         find++;
       } else {
         miss++;
@@ -474,10 +474,11 @@ class DeviceTracerImpl : public DeviceTracer {
   bool enabled_;
   uint64_t start_ns_;
   uint64_t end_ns_;
-  std::list<KernelRecord> kernel_records_;
-  std::list<MemRecord> mem_records_;
-  std::list<std::list<CPURecord>> cpu_records_;
-  std::list<std::list<std::pair<uint32_t, Event *>>> correlations_pairs;
+  std::forward_list<KernelRecord> kernel_records_;
+  std::forward_list<MemRecord> mem_records_;
+  std::forward_list<std::forward_list<CPURecord>> cpu_records_;
+  std::forward_list<std::forward_list<std::pair<uint32_t, Event *>>>
+      correlations_pairs;
   std::unordered_map<uint32_t, Event *> correlations_;
 };
 
@@ -514,26 +515,9 @@ uint32_t GetCurSystemThreadId() {
   return id;
 }
 
-int64_t GetCurSystemThreadIdFromPthread() {
-#ifdef __linux__
-  return static_cast<int64_t>(pthread_self());
-#endif
-  return 0;
-}
-
-void SetCurThreadId(int32_t id) {
-  /*
-    NOTE(liangdun): In order to map CUDA API thread id into paddle's thread id,
-    we have to get current thread id. However, I can not find other elegant and
-    portable way to get integer thread id. One way is get thread id from
-    pthread. But this method only works on Linux. Another way is using
-    stringstream, this method is more portable. These two methods are
-    equivalent In Linux.
-  */
+void RecoreCurThreadId(int32_t id) {
   auto gid = GetCurSystemThreadId();
-  auto gid_p = GetCurSystemThreadIdFromPthread();
-  VLOG(1) << "SetCurThreadId: " << gid << " -> " << id
-          << " pthread_id:" << gid_p;
+  VLOG(1) << "RecoreCurThreadId: " << gid << " -> " << id;
   system_thread_id_map[gid] = id;
 }
 

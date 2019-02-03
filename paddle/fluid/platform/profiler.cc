@@ -102,23 +102,7 @@ inline uint64_t GetTimeInNsec() {
 
 Event::Event(EventType type, std::string name, uint32_t thread_id,
              const DeviceContext* dev_ctx)
-    : type_(type), name_(name), thread_id_(thread_id), has_cuda_(false) {
-#ifdef PADDLE_WITH_CUDA
-  has_cuda_ = (dev_ctx && g_state != ProfilerState::kCPU)
-                  ? platform::is_gpu_place(dev_ctx->GetPlace())
-                  : false;
-#ifndef PADDLE_WITH_CUPTI
-  if (has_cuda_) {
-    auto* cuda_dev_ctx = static_cast<const CUDADeviceContext*>(dev_ctx);
-    PADDLE_ENFORCE(cudaSetDevice(
-        boost::get<platform::CUDAPlace>(cuda_dev_ctx->GetPlace()).device));
-    PADDLE_ENFORCE(cudaGetDevice(&device_));
-    PADDLE_ENFORCE(cudaEventCreate(&event_));
-    auto stream = cuda_dev_ctx->stream();
-    PADDLE_ENFORCE(cudaEventRecord(event_, stream));
-  }
-#endif
-#endif
+    : type_(type), name_(name), thread_id_(thread_id) {
   cpu_ns_ = GetTimeInNsec();
 }
 
@@ -130,17 +114,8 @@ double Event::CpuElapsedMs(const Event& e) const {
 
 double Event::CudaElapsedMs(const Event& e) const {
 #ifdef PADDLE_WITH_CUDA
-  if (!has_cuda_) return 0.0;
 #ifdef PADDLE_WITH_CUPTI
   return gpu_ns_ / 1000000.0;
-#else
-  PADDLE_ENFORCE(e.has_cuda() && has_cuda());
-  PADDLE_ENFORCE(e.device() == device());
-  PADDLE_ENFORCE(cudaEventSynchronize(event_));
-  PADDLE_ENFORCE(cudaEventSynchronize(e.event()));
-  float ms;
-  PADDLE_ENFORCE(cudaEventElapsedTime(&ms, event_, e.event()));
-  return ms;
 #endif
 #else
   PADDLE_THROW("CUDA is not enabled");
@@ -165,7 +140,7 @@ inline EventList& GetEventList() {
     g_event_list = std::make_shared<EventList>();
     g_thread_id = g_next_thread_id++;
     g_all_event_lists.emplace_front(g_event_list);
-    SetCurThreadId(g_thread_id);
+    RecoreCurThreadId(g_thread_id);
   }
   return *g_event_list;
 }

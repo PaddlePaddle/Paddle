@@ -24,7 +24,6 @@ TEST(Event, CpuElapsedTime) {
   using paddle::platform::EventType;
 
   Event start_event(EventType::kPushRange, "test", 0, nullptr);
-  EXPECT_TRUE(start_event.has_cuda() == false);
   int counter = 0;
   while (counter != 1000) {
     counter++;
@@ -32,28 +31,6 @@ TEST(Event, CpuElapsedTime) {
   Event stop_event(EventType::kPopRange, "test", 0, nullptr);
   EXPECT_GT(start_event.CpuElapsedMs(stop_event), 0);
 }
-
-#ifdef PADDLE_WITH_CUDA
-#ifndef PADDLE_WITH_CUPTI
-TEST(Event, CudaElapsedTime) {
-  using paddle::platform::DeviceContext;
-  using paddle::platform::CUDADeviceContext;
-  using paddle::platform::CUDAPlace;
-  using paddle::platform::Event;
-  using paddle::platform::EventType;
-
-  DeviceContext* dev_ctx = new CUDADeviceContext(CUDAPlace(0));
-  Event start_event(EventType::kPushRange, "test", 0, dev_ctx);
-  EXPECT_TRUE(start_event.has_cuda() == true);
-  int counter = 0;
-  while (counter != 1000) {
-    counter++;
-  }
-  Event stop_event(EventType::kPopRange, "test", 0, dev_ctx);
-  EXPECT_GT(start_event.CudaElapsedMs(stop_event), 0);
-}
-#endif
-#endif
 
 TEST(RecordEvent, RecordEvent) {
   using paddle::platform::DeviceContext;
