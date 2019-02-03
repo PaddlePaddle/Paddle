@@ -246,8 +246,8 @@ class DeviceTracerImpl : public DeviceTracer {
  public:
   DeviceTracerImpl() : enabled_(false) {}
 
-  void AddAnnotation(uint64_t id, Event *event) {
-    thread_local std::list<std::pair<uint64_t, Event *>>
+  void AddAnnotation(uint32_t id, Event *event) {
+    thread_local std::list<std::pair<uint32_t, Event *>>
         *local_correlations_pairs = nullptr;
     if (local_correlations_pairs == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
@@ -327,21 +327,26 @@ class DeviceTracerImpl : public DeviceTracer {
     } else if (ret != CUPTI_SUCCESS) {
       fprintf(stderr, "Failed to create CUPTI subscriber.\n");
     }
-    CUPTI_CALL(
-        dynload::cuptiEnableCallback(1, subscriber_, CUPTI_CB_DOMAIN_DRIVER_API,
-                                     CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel));
-    CUPTI_CALL(dynload::cuptiEnableCallback(
-        1, subscriber_, CUPTI_CB_DOMAIN_RUNTIME_API,
-        CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020));
-    CUPTI_CALL(dynload::cuptiEnableCallback(
-        1, subscriber_, CUPTI_CB_DOMAIN_RUNTIME_API,
-        CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020));
+    const std::vector<int> cbids{
+        CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020,
+        CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020,
+        CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020,
+        CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000,
+        CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000,
+        CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000};
+    for (auto cbid : cbids)
+      CUPTI_CALL(dynload::cuptiEnableCallback(
+          1, subscriber_, CUPTI_CB_DOMAIN_RUNTIME_API, cbid));
     CUPTI_CALL(dynload::cuptiGetTimestamp(&start_ns_));
 #endif  // PADDLE_WITH_CUPTI
     enabled_ = true;
   }
 
   void Reset() {
+#ifdef PADDLE_WITH_CUPTI
+    CUPTI_CALL(
+        dynload::cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
+#endif
     std::lock_guard<std::mutex> l(trace_mu_);
     kernel_records_.clear();
     mem_records_.clear();
@@ -372,6 +377,7 @@ class DeviceTracerImpl : public DeviceTracer {
   }
 
   proto::Profile GenProfile(const std::string &profile_path) {
+    int miss = 0, find = 0;
     std::lock_guard<std::mutex> l(trace_mu_);
     proto::Profile profile_pb;
     profile_pb.set_start_ns(start_ns_);
@@ -385,8 +391,10 @@ class DeviceTracerImpl : public DeviceTracer {
       if (correlations_.find(r.correlation_id) != correlations_.end()) {
         event->set_name(correlations_.at(r.correlation_id)->name() + "::" +
                         r.name);
+        find++;
       } else {
-        PADDLE_ENFORCE(false, "Missing Kernel Event: " + r.name);
+        VLOG(100) << "Missing Kernel Event: " << r.name;
+        miss++;
         event->set_name(r.name);
       }
       event->set_start_ns(r.start_ns);
@@ -404,7 +412,8 @@ class DeviceTracerImpl : public DeviceTracer {
         event->set_sub_device_id(r.thread_id);
         event->set_device_id(r.device_id);
       }
-    int miss = 0, find = 0;
+    VLOG(1) << "KernelRecord event miss: " << miss << " find: " << find;
+    miss = find = 0;
     for (const MemRecord &r : mem_records_) {
       auto *event = profile_pb.add_events();
       event->set_type(proto::Event::GPUKernel);
@@ -436,12 +445,13 @@ class DeviceTracerImpl : public DeviceTracer {
   void Disable() {
 #ifdef PADDLE_WITH_CUPTI
     // flush might cause additional calls to DeviceTracker.
-    dynload::cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED);
+    CUPTI_CALL(
+        dynload::cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
 #endif  // PADDLE_WITH_CUPTI
     std::lock_guard<std::mutex> l(trace_mu_);
 #ifdef PADDLE_WITH_CUPTI
     DisableActivity();
-    dynload::cuptiUnsubscribe(subscriber_);
+    CUPTI_CALL(dynload::cuptiUnsubscribe(subscriber_));
     CUPTI_CALL(dynload::cuptiGetTimestamp(&end_ns_));
 #endif  // PADDLE_WITH_CUPTI
     enabled_ = false;
@@ -453,18 +463,9 @@ class DeviceTracerImpl : public DeviceTracer {
                                    CUpti_CallbackId cbid, const void *cbdata) {
     auto *cbInfo = reinterpret_cast<const CUpti_CallbackData *>(cbdata);
     DeviceTracerImpl *tracer = reinterpret_cast<DeviceTracerImpl *>(userdata);
-
-    if (((domain == CUPTI_CB_DOMAIN_DRIVER_API) &&
-         (cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel)) ||
-        ((domain == CUPTI_CB_DOMAIN_RUNTIME_API) &&
-         (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020 ||
-          cbid == CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020))) {
-      if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-        Event *event = CurAnnotation();
-        tracer->AddAnnotation(cbInfo->correlationId, event);
-      }
-    } else {
-      VLOG(1) << "Unhandled API Callback for " << domain << " " << cbid;
+    if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+      Event *event = CurAnnotation();
+      tracer->AddAnnotation(cbInfo->correlationId, event);
     }
   }
   CUpti_SubscriberHandle subscriber_;
@@ -476,8 +477,8 @@ class DeviceTracerImpl : public DeviceTracer {
   std::list<KernelRecord> kernel_records_;
   std::list<MemRecord> mem_records_;
   std::list<std::list<CPURecord>> cpu_records_;
-  std::list<std::list<std::pair<uint64_t, Event *>>> correlations_pairs;
-  std::unordered_map<uint64_t, Event *> correlations_;
+  std::list<std::list<std::pair<uint32_t, Event *>>> correlations_pairs;
+  std::unordered_map<uint32_t, Event *> correlations_;
 };
 
 void CreateTracer(DeviceTracer **t) { *t = new DeviceTracerImpl(); }

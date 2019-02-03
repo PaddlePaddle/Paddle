@@ -76,7 +76,7 @@ class DeviceTracer {
   // Add a pair to correlate internal cuda id with high level
   // annotation event(with string). So cuda statistics can be represented by
   // human-readable annotations.
-  virtual void AddAnnotation(uint64_t id, Event* event) = 0;
+  virtual void AddAnnotation(uint32_t id, Event* event) = 0;
 
   virtual void AddMemRecords(const std::string& name, uint64_t start_ns,
                              uint64_t end_ns, int64_t device_id,

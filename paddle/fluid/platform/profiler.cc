@@ -250,7 +250,6 @@ void EnableProfiler(ProfilerState state) {
   }
   g_state = state;
   should_send_profile_state = true;
-  GetDeviceTracer()->Reset();
   GetDeviceTracer()->Enable();
 #ifdef PADDLE_WITH_CUDA
   if (g_state == ProfilerState::kCUDA || g_state == ProfilerState::kAll) {
@@ -270,7 +269,6 @@ void EnableProfiler(ProfilerState state) {
 }
 
 void ResetProfiler() {
-  return;
   GetDeviceTracer()->Reset();
   std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
   for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
