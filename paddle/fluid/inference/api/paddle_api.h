@@ -221,7 +221,7 @@ class PaddlePredictor {
   virtual std::string GetSeriazlizedProgram() const {
     assert(false);  // Force raise error.
     return "NotImplemented";
-  };
+  }
 
   /** The common configs for all the predictors.
    */

@@ -29,11 +29,6 @@
 namespace paddle {
 
 class AnalysisPredictor;
-// ==
-//
-// -----------------------------------------------------------------------------------
-// NOTE: The following APIs are not mature yet, we are still working on them.
-namespace contrib {
 
 // NOTE WIP, not stable yet.
 struct AnalysisConfig {
@@ -145,9 +140,12 @@ struct AnalysisConfig {
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
 
-  /** Control whther to debug IR graph analysis phase.
+  /** \brief Control whether to debug IR graph analysis phase.
+   *
+   * This will generate DOT files for visualizing the computation graph after
+   * each analysis pass applied.
    */
-  void SwitchIrDebug(int x = true) { ir_debug_ = x; }
+  void SwitchIrDebug(int x = true);
 
   /** Turn on MKLDNN.
    */
@@ -260,5 +258,4 @@ struct AnalysisConfig {
   mutable std::unique_ptr<PassStrategy> pass_builder_;
 };
 
-}  // namespace contrib
 }  // namespace paddle
