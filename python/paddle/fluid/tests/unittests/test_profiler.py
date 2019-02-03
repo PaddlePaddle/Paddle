@@ -90,7 +90,7 @@ class TestProfiler(unittest.TestCase):
                 pass_acc = pass_acc_calculator.eval()
 
     def test_cpu_profiler(self):
-        self.net_profiler('CPU')
+        #self.net_profiler('CPU')
         self.net_profiler('CPU', use_parallel_executor=True)
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),

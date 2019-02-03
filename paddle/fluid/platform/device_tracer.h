@@ -118,7 +118,7 @@ void ClearCurBlock();
 int BlockDepth();
 
 // Set current thread id, so we can map the system thread id to thread id.
-void SetCurThreadId(int32_t id);
+void RecoreCurThreadId(int32_t id);
 int32_t GetThreadIdFromSystemThreadId(uint32_t id);
 }  // namespace platform
 }  // namespace paddle

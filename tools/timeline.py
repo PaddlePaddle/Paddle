@@ -155,6 +155,8 @@ class Timeline(object):
                 args = {'name': event.name}
                 if event.memcopy.bytes > 0:
                     args = {'mem_bytes': event.memcopy.bytes}
+                if event.detail_info:
+                    args['name'] = event.detail_info
                 # TODO(panyx0718): Chrome tracing only handles ms. However, some
                 # ops takes micro-seconds. Hence, we keep the ns here.
                 self._chrome_trace.emit_region(
@@ -177,7 +179,7 @@ if args.timeline_path:
 profile_paths = profile_path.split(',')
 profile_dict = dict()
 if len(profile_paths) == 1:
-    with open(profile_path, 'r') as f:
+    with open(profile_path, 'rb') as f:
         profile_s = f.read()
         profile_pb = profiler_pb2.Profile()
         profile_pb.ParseFromString(profile_s)
@@ -185,7 +187,7 @@ if len(profile_paths) == 1:
 else:
     for profile_path in profile_paths:
         k, v = profile_path.split('=')
-        with open(v, 'r') as f:
+        with open(v, 'rb') as f:
             profile_s = f.read()
             profile_pb = profiler_pb2.Profile()
             profile_pb.ParseFromString(profile_s)
