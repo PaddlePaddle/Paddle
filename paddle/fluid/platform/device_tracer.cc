@@ -325,15 +325,17 @@ class DeviceTracerImpl : public DeviceTracer {
     } else if (ret != CUPTI_SUCCESS) {
       fprintf(stderr, "Failed to create CUPTI subscriber.\n");
     }
-    const std::vector<int> cbids{
-        CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020,
-        CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020,
-        CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020,
-        CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000,
-        CUPTI_DRIVER_TRACE_CBID_cuLaunchCooperativeKernel,
-        CUPTI_DRIVER_TRACE_CBID_cuLaunchCooperativeKernelMultiDevice};
-    // CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000,
-    // CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000};
+    const std::vector<int> cbids {
+      CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020,
+          CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020,
+          CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020,
+          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000
+#if CUDA_VERSION >= 9000
+          ,
+          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000,
+          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000
+#endif
+    };
     for (auto cbid : cbids)
       CUPTI_CALL(dynload::cuptiEnableCallback(
           1, subscriber_, CUPTI_CB_DOMAIN_RUNTIME_API, cbid));
