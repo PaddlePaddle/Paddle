@@ -36,7 +36,7 @@ cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
 
 nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce)
 
-cc_library(place SRCS place.cc DEPS enforce boost)
+cc_library(place SRCS place.cc DEPS enforce boost lib_any)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
 add_subdirectory(dynload)
