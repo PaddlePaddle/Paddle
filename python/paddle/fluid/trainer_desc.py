@@ -29,7 +29,9 @@ class TrainerDesc(object):
             text_format.Parse(f.read(), self.proto_desc)
         '''
         self.proto_desc = trainer_desc_pb2.TrainerDesc()
-        self.proto_desc.thread_num = 12
+        import multiprocessing as mp
+        # set default thread num == cpu count
+        self.proto_desc.thread_num = mp.cpu_count()
 
     def set_thread(self, thread_num):
         self.proto_desc.thread_num = thread_num

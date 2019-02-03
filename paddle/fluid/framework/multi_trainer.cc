@@ -39,6 +39,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc) {
   for (unsigned i = 0; i < trainer_desc.filelist_size(); ++i) {
     filelist_vec.push_back(trainer_desc.filelist(i));
   }
+  readers_[0]->SetFileList(filelist_vec);
 }
 
 // call only after all resources are set in current trainer
