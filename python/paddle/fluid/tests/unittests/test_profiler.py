@@ -21,6 +21,7 @@ import paddle.fluid as fluid
 import paddle.fluid.profiler as profiler
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
+import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
 
 class TestProfiler(unittest.TestCase):
@@ -28,6 +29,7 @@ class TestProfiler(unittest.TestCase):
                      state,
                      profile_path='/tmp/profile',
                      use_parallel_executor=False):
+        open(profile_path, "w").write("")
         startup_program = fluid.Program()
         main_program = fluid.Program()
 
@@ -88,6 +90,17 @@ class TestProfiler(unittest.TestCase):
                 b_size = np.array(outs[2])
                 pass_acc_calculator.add(value=acc, weight=b_size)
                 pass_acc = pass_acc_calculator.eval()
+        data = open(profile_path, 'rb').read()
+        self.assertGreater(len(data), 0)
+        profile_pb = profiler_pb2.Profile()
+        profile_pb.ParseFromString(data)
+        self.assertGreater(len(profile_pb.events), 0)
+        for event in profile_pb.events:
+            if event.type == profiler_pb2.Event.GPUKernel:
+                if not event.detail_info and not event.name.startswith("MEM"):
+                    raise Exception(
+                        "Kernel %s missing event. Has this kernel been recorded by RecordEvent?"
+                        % event.name)
 
     def test_cpu_profiler(self):
         self.net_profiler('CPU')
@@ -102,10 +115,8 @@ class TestProfiler(unittest.TestCase):
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
     def test_all_profiler(self):
-        self.net_profiler('All', '/tmp/profile_out')
-        self.net_profiler('All', '/tmp/profile_out', use_parallel_executor=True)
-        with open('/tmp/profile_out', 'rb') as f:
-            self.assertGreater(len(f.read()), 0)
+        self.net_profiler('All')
+        self.net_profiler('All', use_parallel_executor=True)
 
 
 if __name__ == '__main__':

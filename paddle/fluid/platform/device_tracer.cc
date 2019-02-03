@@ -425,7 +425,6 @@ class DeviceTracerImpl : public DeviceTracer {
         miss++;
         event->set_name(r.name);
       }
-      event->set_name(r.name);
       event->set_start_ns(r.start_ns);
       event->set_end_ns(r.end_ns);
       event->set_sub_device_id(r.stream_id);

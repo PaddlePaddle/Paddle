@@ -139,7 +139,7 @@ void ReduceOpHandle::GatherSelectedRows(
 #endif
 
 void ReduceOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
+  platform::RecordEvent record_event(Name());
 
   if (places_.size() == 1) return;
   // the input and output may have dummy var.

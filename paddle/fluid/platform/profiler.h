@@ -28,8 +28,7 @@ class Event {
  public:
   // The DeviceContext is used to get the cuda stream.
   // If CPU profiling mode, can pass nullptr.
-  Event(EventType type, std::string name, uint32_t thread_id,
-        const DeviceContext* dev_ctx);
+  Event(EventType type, std::string name, uint32_t thread_id);
 
   const EventType& type() const;
   std::string name() const { return name_; }
@@ -74,22 +73,19 @@ enum ProfilerState {
   kAll,       // Profile both CPU and GPU. (Currently experimental).
 };
 
-void Mark(const std::string& name, const DeviceContext* dev_ctx);
+void Mark(const std::string& name);
 
-Event* PushEvent(const std::string& name, const DeviceContext* dev_ctx);
+Event* PushEvent(const std::string& name);
 
-void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
+void PopEvent(const std::string& name);
 
 struct RecordEvent {
-  // dev_ctx can be set to nullptr if device is cpu.
-  RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
+  explicit RecordEvent(const std::string& name);
 
   ~RecordEvent();
 
   bool is_enabled_;
   uint64_t start_ns_;
-  // The device context is used by Event to get the current cuda stream.
-  const DeviceContext* dev_ctx_;
   // Event name
   std::string name_;
   // Need to distinguish name by op type, block_id, program_id and perhaps
@@ -99,8 +95,7 @@ struct RecordEvent {
 
 class RecordRPCEvent {
  public:
-  // dev_ctx can be set to nullptr if device is cpu.
-  RecordRPCEvent(const std::string& name, const DeviceContext* dev_ctx);
+  explicit RecordRPCEvent(const std::string& name);
   ~RecordRPCEvent() {}
 
  private:

@@ -100,8 +100,7 @@ inline uint64_t GetTimeInNsec() {
       .count();
 }
 
-Event::Event(EventType type, std::string name, uint32_t thread_id,
-             const DeviceContext* dev_ctx)
+Event::Event(EventType type, std::string name, uint32_t thread_id)
     : type_(type), name_(name), thread_id_(thread_id) {
   cpu_ns_ = GetTimeInNsec();
 }
@@ -145,29 +144,27 @@ inline EventList& GetEventList() {
   return *g_event_list;
 }
 
-void Mark(const std::string& name, const DeviceContext* dev_ctx) {
-  GetEventList().Record(EventType::kMark, name, g_thread_id, dev_ctx);
+void Mark(const std::string& name) {
+  GetEventList().Record(EventType::kMark, name, g_thread_id);
 }
 
-Event* PushEvent(const std::string& name, const DeviceContext* dev_ctx) {
-  return GetEventList().Record(EventType::kPushRange, name, g_thread_id,
-                               dev_ctx);
+Event* PushEvent(const std::string& name) {
+  return GetEventList().Record(EventType::kPushRange, name, g_thread_id);
 }
 
-void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
-  GetEventList().Record(EventType::kPopRange, name, g_thread_id, dev_ctx);
+void PopEvent(const std::string& name) {
+  GetEventList().Record(EventType::kPopRange, name, g_thread_id);
 }
 
-RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
+RecordEvent::RecordEvent(const std::string& name)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
   if (g_state == ProfilerState::kDisabled) return;
   // lock is not needed
   // std::lock_guard<std::mutex> l(profiler_mu);
 
   is_enabled_ = true;
-  dev_ctx_ = dev_ctx;
   name_ = name;
-  Event* e = PushEvent(name_, dev_ctx_);
+  Event* e = PushEvent(name_);
   // Maybe need the same push/pop behavior.
   SetCurAnnotation(e);
 }
@@ -182,13 +179,12 @@ RecordEvent::~RecordEvent() {
                           BlockDepth(), g_thread_id);
   }
   ClearCurAnnotation();
-  PopEvent(name_, dev_ctx_);
+  PopEvent(name_);
 }
 
-RecordRPCEvent::RecordRPCEvent(const std::string& name,
-                               const DeviceContext* dev_ctx) {
+RecordRPCEvent::RecordRPCEvent(const std::string& name) {
   if (FLAGS_enable_rpc_profiler) {
-    event_.reset(new platform::RecordEvent(name, dev_ctx));
+    event_.reset(new platform::RecordEvent(name));
   }
 }
 
@@ -232,7 +228,7 @@ void EnableProfiler(ProfilerState state) {
     for (int i = 0; i < 5; i++) {
       ForEachDevice([](int d) {
         DeviceContext* dev_ctx = new CUDADeviceContext(CUDAPlace(d));
-        Mark("_cuda_startup_", dev_ctx);
+        Mark("_cuda_startup_");
         dev_ctx->Wait();
         delete dev_ctx;
       });
@@ -240,7 +236,7 @@ void EnableProfiler(ProfilerState state) {
   }
 #endif
   // Mark the profiling start.
-  Mark("_start_profiler_", nullptr);
+  Mark("_start_profiler_");
 }
 
 void ResetProfiler() {
@@ -474,7 +470,7 @@ void DisableProfiler(EventSortingKey sorted_key,
   std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled) return;
   // Mark the profiling stop.
-  Mark("_stop_profiler_", nullptr);
+  Mark("_stop_profiler_");
 
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer->IsEnabled()) {
