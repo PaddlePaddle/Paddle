@@ -33,7 +33,6 @@ using inference::analysis::Argument;
 using inference::analysis::Analyzer;
 using framework::proto::ProgramDesc;
 using framework::NaiveExecutor;
-using contrib::AnalysisConfig;
 
 /** \brief This predictor is based on the original native predictor with IR and
  * Analysis support.
@@ -123,7 +122,7 @@ class AnalysisPredictor : public PaddlePredictor {
 #endif
 
  private:
-  contrib::AnalysisConfig config_;
+  AnalysisConfig config_;
   Argument argument_;
   std::unique_ptr<NaiveExecutor> executor_;
   platform::Place place_;
