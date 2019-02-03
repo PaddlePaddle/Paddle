@@ -13,24 +13,31 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/passes.h"
-#include "paddle/fluid/inference/analysis/passes/ir_analysis_compose_pass.cc"
 #include "paddle/fluid/inference/analysis/passes/ir_analysis_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
+#include "paddle/fluid/inference/analysis/passes/ir_graph_to_program_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_params_sync_among_devices_pass.h"
+#include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+
 PassRegistry::PassRegistry() {
+  // Register manually to avoid the trivial `USE_OP` like macro for easier use
+  // and link.
   passes_.emplace("ir_analysis_pass",
                   std::unique_ptr<AnalysisPass>(new IrAnalysisPass));
   passes_.emplace("ir_graph_build_pass",
                   std::unique_ptr<AnalysisPass>(new IrGraphBuildPass));
-  passes_.emplace("ir_analysis_compose_pass",
-                  std::unique_ptr<AnalysisPass>(new IrAnalysisComposePass));
+  passes_.emplace("memory_optimize_pass",
+                  std::unique_ptr<AnalysisPass>(new MemoryOptimizePass));
   passes_.emplace(
       "ir_params_sync_among_devices_pass",
       std::unique_ptr<AnalysisPass>(new IrParamsSyncAmongDevicesPass));
+  passes_.emplace(
+      "ir_graph_to_program_pass",
+      std::unique_ptr<IrGraphToProgramPass>(new IrGraphToProgramPass));
 }
 
 }  // namespace analysis

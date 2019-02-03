@@ -365,7 +365,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
     mem_fmt.ndims = axis.size();
     for (unsigned int i = 0; i < nchw_tz.size(); ++i) {
       mem_fmt.dims[i] = nchw_tz[i];  // logical dimensions (nchw format,
-                                     // regardless physical layout)
+      // regardless physical layout)
     }
     mem_fmt.data_type = mkldnn_f32;
     mem_fmt.format = mkldnn_blocked;
@@ -374,7 +374,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
     for (int i = nchw_tz.size() - 1; i >= 0; --i) {
       mem_fmt.layout_desc.blocking.padding_dims[i] =
           nchw_tz[i];  // logical dimensions (nchw format, regardless physical
-                       // layout)
+      // layout)
       mem_fmt.layout_desc.blocking.block_dims[i] = 1;
       mem_fmt.layout_desc.blocking.offset_padding_to_data[i] = 0;  // no offset
       mem_fmt.layout_desc.blocking.strides[0][axis[i]] = total_stride;

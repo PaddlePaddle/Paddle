@@ -261,7 +261,12 @@ class TestSparseAdamOp(unittest.TestCase):
             "LearningRate": np.full((1), 2.0).astype("float32")
         }
         self.init_output = np.full((height, row_numel), 0.0).astype("float32")
-        self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
+        self.attrs = {
+            'epsilon': epsilon,
+            'beta1': beta1,
+            'beta2': beta2,
+            'min_row_size_to_use_multithread': 2
+        }
 
         grad_selected_rows = scope.var('Grad').get_selected_rows()
         grad_selected_rows.set_height(height)

@@ -119,6 +119,11 @@ class NCEKernel : public framework::OpKernel<T> {
     PrepareSamples<DeviceContext, T>(context, sampler);
     auto sample_labels = context.Output<Tensor>("SampleLabels");
     const int64_t *sample_labels_data = sample_labels->data<int64_t>();
+
+    for (int x = 0; x < sample_labels->numel(); x++) {
+      PADDLE_ENFORCE_GE(sample_labels_data[x], 0, "nce sample label %d", x);
+    }
+
     auto sample_out = context.Output<Tensor>("SampleLogits");
     T *sample_out_data = sample_out->mutable_data<T>(context.GetPlace());
     auto label = context.Input<Tensor>("Label");

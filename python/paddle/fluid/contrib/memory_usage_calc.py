@@ -76,7 +76,7 @@ def memory_usage(program, batch_size):
 
     # Get the var_name list of first block and calculate
     total_memory = 0.0
-    processed_var_names = set()
+    processed_var_names = set(["@EMPTY@"])
     for op in program.global_block().ops:
         for var_name in op.output_arg_names:
             if var_name in processed_var_names:

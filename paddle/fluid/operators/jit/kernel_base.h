@@ -20,6 +20,7 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
+// TODO(TJ): reorder by alphabet
 typedef enum {
   kNone = 0,
   kVMul = 1,
@@ -30,6 +31,7 @@ typedef enum {
   kVAddBias,
   kVRelu,
   kVIdentity,
+  kVSquare,
   kVExp,
   kVSigmoid,
   kVTanh,
@@ -42,6 +44,10 @@ typedef enum {
   kLayerNorm,
   kNCHW16CMulNC,
   kSeqPool,
+  kMatMul,
+  kHSum,  // horizontal max
+  kHMax,  // horizontal sum
+  kSoftmax,
 } KernelType;
 
 typedef enum {
@@ -67,6 +73,10 @@ struct XYNTuples {
   typedef int attr_type;
   typedef void (*func_type)(const T*, T*, int);
 };
+
+// x, return and int
+template <typename T>
+struct XRNTuples : public XYNTuples<T> {};
 
 typedef struct {
   void* gates;  // gates: x_ch, x_ih, x_fh, x_oh
@@ -135,6 +145,21 @@ struct SeqPoolTuples {
   typedef void (*func_type)(const T*, T*, const seq_pool_attr_t*);
 };
 
+typedef struct matmul_attr_s {
+  int m, n, k;
+  void* packed_weight{nullptr};
+  matmul_attr_s() = default;
+  explicit matmul_attr_s(int m_, int n_, int k_, void* packed_weight_ = nullptr)
+      : m(m_), n(n_), k(k_), packed_weight(packed_weight_) {}
+} matmul_attr_t;
+
+template <typename T>
+struct MatMulTuples {
+  typedef T data_type;
+  typedef matmul_attr_t attr_type;
+  typedef void (*func_type)(const T*, const T*, T*, const matmul_attr_t*);
+};
+
 template <typename T>
 struct CRFDecodingTuples {
   typedef T data_type;
@@ -148,6 +173,13 @@ struct LayerNormTuples {
   typedef int attr_type;
   typedef void (*func_type)(T*, T*, T*, T*, const T*, const T*, int,
                             const float, int);
+};
+
+template <typename T>
+struct SoftmaxTuples {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const T*, T*, int, int);
 };
 
 // nChw16c = nChw16c .* NC

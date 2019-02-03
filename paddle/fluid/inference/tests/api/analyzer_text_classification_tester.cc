@@ -69,6 +69,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_Text_Classification, profile) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg.SwitchIrDebug();
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -98,6 +99,7 @@ TEST(Analyzer_Text_Classification, profile) {
 TEST(Analyzer_Text_Classification, compare) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg.EnableMemoryOptim();
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);

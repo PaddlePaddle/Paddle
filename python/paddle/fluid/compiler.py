@@ -20,8 +20,12 @@ from .. import compat as cpt
 
 from . import core
 
+__all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
+
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
+InferNativeConfig = core.NativeConfig
+InferAnalysisConfig = core.AnalysisConfig
 
 
 def _place_obj(place):
@@ -68,6 +72,7 @@ class CompiledProgram(object):
         self._executor = None
         self._compiled = False
         self._is_data_parallel = False
+        self._is_inference = False
 
     def with_data_parallel(self,
                            loss_name=None,
@@ -107,10 +112,24 @@ class CompiledProgram(object):
             self._build_strategy = BuildStrategy()
         return self
 
-    def _with_distributed(self):
-        raise NotImplementedError()
+    def with_inference_optimize(self, config):
+        """ Add inference optimize
 
-    def _with_inference_optimize(self):
+        Args:
+            config: instance of `NativeConfig` or `AnalysisConfig` to create predictor
+        Returns:
+            self
+        """
+        assert any([
+            isinstance(config, InferNativeConfig),
+            isinstance(config, InferAnalysisConfig)
+        ])
+        self._is_data_parallel = False
+        self._is_inference = True
+        self._infer_config = config
+        return self
+
+    def _with_distributed(self):
         raise NotImplementedError()
 
     def _compile_data_parallel(self):
@@ -155,6 +174,11 @@ class CompiledProgram(object):
                 self._exec_strategy.num_threads = cpu_num * 2
 
         trainers_endpoints = self._program._trainers_endpoints
+
+        # FIXME(dzhwinter): enable_inplace should be after memory_optimize
+        # if turn on python memory optimize, turn off the inplace_pass.
+        self._build_strategy.enable_inplace = False if self._program._is_mem_optimized else True
+
         if self._build_strategy.num_trainers > 1 and trainers_endpoints:
             assert self._build_strategy.num_trainers == len(
                 trainers_endpoints), "num_trainers == len(end_points)"
@@ -174,6 +198,10 @@ class CompiledProgram(object):
             cpt.to_text(self._loss_name)
             if self._loss_name else six.u(''), self._scope, self._local_scopes,
             self._exec_strategy, self._build_strategy)
+
+    def _compile_inference(self):
+        assert self._is_data_parallel is False
+        return core.create_paddle_predictor(self._infer_config)
 
     def _compile(self, scope, place):
         """Compile the program based on the configs.
@@ -198,6 +226,8 @@ class CompiledProgram(object):
         self._place = place
         if self._is_data_parallel:
             self._executor = self._compile_data_parallel()
+        elif self._is_inference:
+            self._executor = self._compile_inference()
         else:
             p = _place_obj(self._place)
             self._executor = core.Executor(p)
