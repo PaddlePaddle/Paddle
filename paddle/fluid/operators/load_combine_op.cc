@@ -90,7 +90,7 @@ class LoadCombineOp : public framework::OperatorBase {
         tensor->ShareDataWith(fp16_tensor);
       }
     }
-    buffer->peak();
+    buffer->peek();
     PADDLE_ENFORCE(buffer->eof(),
                    "You are not allowed to load partial data via "
                    "load_combine_op, use load_op instead.");
