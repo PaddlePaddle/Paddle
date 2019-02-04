@@ -48,7 +48,6 @@ void ParameterSend<T>::operator()(const std::string &var_name,
 
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &cpu_ctx = *pool.Get(platform::CPUPlace());
-  auto &actual_ctx = *pool.Get(ctx.GetPlace());
 
   distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(
