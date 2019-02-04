@@ -30,6 +30,19 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
   VLOG(3) << "build AsyncSSAGraphExecutor";
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 
+  if (strategy_.num_iteration_per_run_ > 1) {
+    int read_op_num = 0;
+    for (auto *node : graphs_[0]->Nodes()) {
+      if (node->IsOp() && node->Name() == "read") {
+        read_op_num++;
+      }
+    }
+    if (read_op_num == 0) {
+      LOG(WARNING) << "when num_iteration_per_run_ is larger then 1, the model "
+                      "should use pyreader to feed data!";
+    }
+  }
+
   // set the correct size of thread pool to each device.
   strategy_.num_threads_ = strategy_.num_threads_ < places_.size()
                                ? 1UL
