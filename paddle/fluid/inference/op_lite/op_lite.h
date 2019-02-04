@@ -16,7 +16,8 @@
 
 #include <map>
 #include <string>
-#include "boost/variant.hpp"
+#include <glog/logging.h>
+#include <boost/variant.hpp>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/variable.h"
@@ -38,7 +39,7 @@ using anys_t = std::map<std::string, any_t>;
  *
  * TODO(Superjomn) Integrate this to paddle/framework in the future.
  * TODO(Superjomn) This should be deleted if there are some equivalent
- * improvement in paddle/framework.
+ *                 improvement in paddle/framework.
  * NOTE It just works on CPU, and the MKLDNN is not supported.
  */
 class OpLite {

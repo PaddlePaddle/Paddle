@@ -28,7 +28,7 @@ namespace op_lite {
 
 class LiteOpRegistry {
  public:
-  using op_creator_t = std::function<std::unique_ptr<OpLite>>;
+  using op_creator_t = std::function<std::unique_ptr<OpLite>()>;
   LiteOpRegistry();
 
   static LiteOpRegistry& Global() {

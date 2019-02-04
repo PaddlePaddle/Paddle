@@ -61,8 +61,6 @@ class NaiveExecutor {
 
   Scope* scope() { return scope_; }
 
-  void CleanFeedFetchOps();
-
  protected:
   void CreateOps(const ProgramDesc& desc, int block_id,
                  bool with_feed_fetch_ops);

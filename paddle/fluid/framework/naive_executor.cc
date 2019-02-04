@@ -126,16 +126,6 @@ LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
   return tensor;
 }
 
-void NaiveExecutor::CleanFeedFetchOps() {
-  std::vector<std::unique_ptr<OperatorBase>> ops;
-  for (auto &gear : gears_) {
-    if (gear.op->Type() != "feed" && gear.op->Type() != "fetch") {
-      ops.emplace_back(std::move(gear));
-    }
-  }
-  gears_.swap(ops);
-}
-
 }  // namespace framework
 }  // namespace paddle
 

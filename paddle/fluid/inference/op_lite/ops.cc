@@ -20,14 +20,16 @@ namespace inference {
 namespace op_lite {
 
 LiteOpRegistry::LiteOpRegistry() {
-  creators_.emplace("fc", [] { return new FC; });
+  creators_.emplace("fc", []() -> std::unique_ptr<OpLite> {
+    return std::unique_ptr<OpLite>(new FC);
+  });
 }
 
 std::unique_ptr<OpLite> LiteOpRegistry::Create(const std::string &op_type) {
   auto it = creators_.find(op_type);
   PADDLE_ENFORCE(it != creators_.end(), "No lite op creator called %s",
                  op_type);
-  return (*it->second)();
+  return it->second();
 }
 
 bool LiteOpRegistry::Has(const std::string &op_type) {

@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/inference/op_lite/fc_op.h"
 #include <vector>
+#include "fc_op.h"
+#include "paddle/fluid/inference/op_lite/op_lite.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
 
 namespace paddle {
@@ -103,7 +105,10 @@ bool FC::Build(const framework::OpDesc &opdesc, framework::Scope *scope) {
     auto bias = scope->FindVar(inputs.at("Bias").front());
     param_.bias = bias->GetMutable<LoDTensor>();
   }
+  return true;
 }
+
+std::string FC::DebugString() const { return "fc lite op"; }
 
 }  // namespace op_lite
 }  // namespace inference
