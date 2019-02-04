@@ -63,7 +63,7 @@ class NaiveExecutor {
 
  protected:
   void CreateOps(const ProgramDesc& desc, int block_id,
-                 bool with_feed_fetch_ops);
+                 bool with_feed_fetch_ops, framework::Scope* scope = nullptr);
 
  private:
   const platform::Place place_;

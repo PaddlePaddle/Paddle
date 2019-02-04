@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include <map>
-#include <string>
 #include <glog/logging.h>
 #include <boost/variant.hpp>
+#include <map>
+#include <string>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/variable.h"
@@ -60,6 +60,26 @@ class OpLite {
   if (!(cond)) {                           \
     LOG(ERROR) << #cond << " test error!"; \
     return false;                          \
+  }
+#define CHECK_EQ_OR_FALSE(a__, b__)                           \
+  if ((a__) != (b__)) {                                       \
+    LOG(ERROR) << #a__ << " == " << #b__ << " check failed!"; \
+    LOG(ERROR) << a__ << " != " << b__;                       \
+    return false;                                             \
+  }
+
+#define CHECK_GT_OR_FALSE(a__, b__)                          \
+  if (!((a__) > (b__))) {                                    \
+    LOG(ERROR) << #a__ << " > " << #b__ << " check failed!"; \
+    LOG(ERROR) << a__ << " <= " << b__;                      \
+    return false;                                            \
+  }
+
+#define CHECK_GE_OR_FALSE(a__, b__)                           \
+  if (!((a__) >= (b__))) {                                    \
+    LOG(ERROR) << #a__ << " >= " << #b__ << " check failed!"; \
+    LOG(ERROR) << a__ << " < " << b__;                        \
+    return false;                                             \
   }
 
 }  // namespace op_lite
