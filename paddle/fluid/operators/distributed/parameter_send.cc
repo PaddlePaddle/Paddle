@@ -75,8 +75,8 @@ void ParameterSend<T>::operator()(const std::string &var_name,
       // create output var in local scope
       size_t row_offset = 0;
       for (auto i = 0; i < out_num; ++i) {
-        auto *out =
-            local_scope->Var(send_varnames[i])->GetMutable<framework::Tensor>();
+        framework::Tensor *out = local_scope->Var(send_varnames[i])
+                                     ->GetMutable<framework::LoDTensor>();
         *out = send_tensor.Slice(row_offset, row_offset + outs_dims[i][0]);
         row_offset += outs_dims[i][0];
       }
@@ -161,7 +161,8 @@ void ParameterSend<T>::operator()(const std::string &var_name,
     }
   }
 
-  if (sync) {
+  // note!! only support sync send now
+  if (true || sync) {
     for (size_t i = 0; i < rets.size(); i++) {
       PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
     }
