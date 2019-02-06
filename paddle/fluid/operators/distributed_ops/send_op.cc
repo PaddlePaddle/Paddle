@@ -42,7 +42,7 @@ class SendOp : public framework::OperatorBase {
     int sync_send = Attr<int>("sync_mode");
 
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
-    auto height_sections = Attr<std::vector<int64_t>>("height_sections");
+    auto height_sections = Attr<std::vector<int64_t>>("sections");
 
     if (send_varnames.size() > 0) {
       PADDLE_ENFORCE_EQ(ins.size(), 1, "");
