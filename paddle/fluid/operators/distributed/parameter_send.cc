@@ -56,25 +56,13 @@ void ParameterSend<T>::operator()(const std::string &var_name,
   auto *send_var = scope.FindVar(var_name);
   size_t out_num = send_varnames.size();
   if (send_var->IsType<framework::LoDTensor>()) {
-    auto &send_tensor = send_var->Get<framework::LoDTensor>();
-    auto &send_tensor_dims = send_tensor.dims();
-    std::vector<framework::DDim> outs_dims;
-    outs_dims.reserve(out_num);
+    if (out_num > 1) {
+      auto &send_tensor = send_var->Get<framework::LoDTensor>();
+      auto &send_tensor_dims = send_tensor.dims();
+      std::vector<framework::DDim> outs_dims;
+      outs_dims.reserve(out_num);
 
-    // infer output shape
-    int num = ctx.Attr<int>("num");
-    if (num > 0) {
-      int64_t in_axis_dim = send_tensor_dims[0];
-      PADDLE_ENFORCE_EQ(in_axis_dim % num, 0,
-                        "tensor split does not result"
-                        " in an equal division");
-      size_t out_axis_dim = in_axis_dim / num;
-      for (size_t i = 0; i < out_num; ++i) {
-        auto dim = send_tensor_dims;
-        dim[0] = out_axis_dim;
-        outs_dims.push_back(dim);
-      }
-    } else if (height_sections.size() > 0) {
+      // infer output shape
       PADDLE_ENFORCE_EQ(height_sections.size(), out_num,
                         "tensor split sections size"
                         "should be equal to output size.");
@@ -83,15 +71,15 @@ void ParameterSend<T>::operator()(const std::string &var_name,
         dim[0] = height_sections[i];
         outs_dims.push_back(dim);
       }
-    }
 
-    // create output var in local scope
-    size_t row_offset = 0;
-    for (auto i = 0; i < out_num; ++i) {
-      auto *out =
-          local_scope->Var(send_varnames[i])->GetMutable<framework::Tensor>();
-      *out = send_tensor.Slice(row_offset, row_offset + outs_dims[i][0]);
-      row_offset += outs_dims[i][0];
+      // create output var in local scope
+      size_t row_offset = 0;
+      for (auto i = 0; i < out_num; ++i) {
+        auto *out =
+            local_scope->Var(send_varnames[i])->GetMutable<framework::Tensor>();
+        *out = send_tensor.Slice(row_offset, row_offset + outs_dims[i][0]);
+        row_offset += outs_dims[i][0];
+      }
     }
   } else if (send_var->IsType<framework::SelectedRows>()) {
     auto &send_slr = send_var->Get<framework::SelectedRows>();

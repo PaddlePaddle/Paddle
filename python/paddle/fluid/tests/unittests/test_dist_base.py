@@ -48,6 +48,7 @@ class TestDistRunnerBase(object):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         config = fluid.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
+        config.runtime_split_send_recv = True
         t = fluid.DistributeTranspiler(config=config)
         t.transpile(
             trainer_id=trainer_id,
@@ -87,6 +88,9 @@ class TestDistRunnerBase(object):
                                     args.endpoints, args.trainers,
                                     args.sync_mode, args.dc_asgd)
             trainer_prog = t.get_trainer_program()
+            with open("/tmp/trainer." + str(args.trainer_id) + ".proto",
+                      "w") as f:
+                f.write(str(trainer_prog))
         elif args.update_method == "nccl2":
             # transpile for nccl2
             config = fluid.DistributeTranspilerConfig()
@@ -115,6 +119,7 @@ class TestDistRunnerBase(object):
         strategy.allow_op_delay = False
 
         build_stra = fluid.BuildStrategy()
+        build_stra.debug_graphviz_path = "/tmp/graph-" + str(args.trainer_id)
 
         if args.use_reduce:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
