@@ -394,7 +394,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
 
   int tid = platform::get_cur_thread_id();
 
-  std::lock_guard<std::mutex> lock(*p_mutex_.get());
+  std::lock_guard<std::mutex> lock(*p_mutex_);
 
   // Find KeyBlob for current thread
   auto map_it = pMap->find(tid);
@@ -427,7 +427,7 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
 
   int tid = platform::get_cur_thread_id();
 
-  std::lock_guard<std::mutex> lock(*p_mutex_.get());
+  std::lock_guard<std::mutex> lock(*p_mutex_);
 
   // Find KeyBlob for current thread firstly
   auto map_it = pMap->find(tid);
