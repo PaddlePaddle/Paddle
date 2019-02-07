@@ -177,11 +177,13 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 #else
     const bool use_cuda) const {
 #endif
+  VLOG(3) << "apply all passes";
   // Create a default one if not finalized by user.
   CreatePassesFromStrategy(false);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
+    VLOG(3) << "apply " << pass->Type();
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
