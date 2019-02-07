@@ -198,7 +198,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
 
     // push primitive to stream and wait until it's executed
-    std::vector<mkldnn::primitive> pipeline{*(pool_p.get())};
+    std::vector<mkldnn::primitive> pipeline{*pool_p};
     stream(stream::kind::eager).submit(pipeline).wait();
 
     output->set_layout(DataLayout::kMKLDNN);
@@ -367,8 +367,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       dev_ctx.SetBlob(key_pool_diff_dst_mem_p, diff_dst_memory);
 
       pool_bwd_p = std::make_shared<pooling_backward>(
-          pool_bwd_pd, *(diff_dst_memory.get()), *workspace_memory,
-          *(diff_src_memory));
+          pool_bwd_pd, *diff_dst_memory, *workspace_memory, *diff_src_memory);
       dev_ctx.SetBlob(key_pool_bwd_p, pool_bwd_p);
 
     } else {
@@ -404,7 +403,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     if (is_diff_dst_reordered) {
       pipeline.push_back(reorder_diff_dst);
     }
-    pipeline.push_back(*(pool_bwd_p.get()));
+    pipeline.push_back(*pool_bwd_p);
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
 
     in_x_grad->set_layout(DataLayout::kMKLDNN);
