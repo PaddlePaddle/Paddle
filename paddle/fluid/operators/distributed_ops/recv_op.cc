@@ -110,6 +110,11 @@ This operator can get variables from server side.
         "for example: we need var named 'moment_1@127.0.0.1:1001', "
         "and it real name on parameter server is 'moment_1'. ")
         .SetDefault({});
+    AddAttr<std::vector<std::string>>(
+        "recv_varnames",
+        "(vector<string>) "
+        "the splited parameter varnames to be recved from pserver")
+        .SetDefault(std::vector<std::string>{});
   }
 };
 
