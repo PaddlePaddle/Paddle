@@ -41,6 +41,7 @@ cc_library(aligned_allocator SRCS aligned_allocator.cc DEPS allocator)
 cc_library(auto_increment_allocator SRCS auto_increment_allocator.cc DEPS allocator)
 cc_library(zero_size_allocator SRCS zero_size_allocator.cc DEPS allocator)
 cc_library(conditional_allocator SRCS conditional_allocator.cc DEPS allocator)
+cc_library(pile_allocator SRCS pile_allocator.cc)
 cc_library(allocator_strategy SRCS allocator_strategy.cc DEPS gflags)
 cc_library(allocator_facade SRCS allocator_facade.cc DEPS
         ${AllocatorFacadeDeps}
@@ -62,3 +63,5 @@ nv_test(allocation_and_eigen_test SRCS allocation_and_eigen_test.cu DEPS allocat
 cc_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS retry_allocator best_fit_allocator locked_allocator cpu_allocator)
 
 cc_test(allocator_facade_test SRCS allocator_facade_test.cc DEPS allocator_facade)
+
+cc_test(pile_allocator_test SRCS pile_allocator_test.cc DEPS pile_allocator)
