@@ -518,13 +518,12 @@ class DistributeTranspiler(object):
                 self._update_remote_sparse_update_op(
                     param_varname, height_sections, eps, table_names)
             else:
-                all_recv_outputs.extend(splited_var)
-
                 recv_varnames = []
                 if self.config.runtime_split_send_recv:
                     orig_param = program.global_block().vars[param_varname]
-                    recv_varnames = [var.name for var in splited_vars]
+                    recv_varnames = [var.name for var in splited_var]
                     splited_var = [orig_param]
+                all_recv_outputs.extend(splited_var)
 
                 program.global_block().append_op(
                     type="recv",
