@@ -197,7 +197,8 @@ class CompiledProgram(object):
             self._build_strategy.trainers_endpoints = trainers_endpoints
 
         self._persistable_vars = set([
-            cpt.to_text(v.name) for v in [
+            cpt.to_text(v.name)
+            for v in [
                 var for var in self._program.list_vars()
                 if var.persistable and var.type != core.VarDesc.VarType.RAW
             ]
