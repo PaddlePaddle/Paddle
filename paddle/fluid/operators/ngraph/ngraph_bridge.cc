@@ -31,6 +31,7 @@ std::map<std::string,
                             std::shared_ptr<std::unordered_map<
                                 std::string, std::shared_ptr<ngraph::Node>>>)>>
     NgraphBridge::NG_NODE_MAP = {
+        {"accuracy", NG_OPS::BuildAccuracyNode},
         {"conv2d", NG_OPS::BuildConv2dNode},
         {"conv2d_grad", NG_OPS::BuildConv2dGradNode},
         {"elementwise_add", NG_OPS::BuildElementwiseAddNode},
