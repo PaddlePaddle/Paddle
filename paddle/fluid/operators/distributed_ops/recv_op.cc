@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
+#include "paddle/fluid/operators/distributed/parameter_recv.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -48,31 +49,44 @@ class RecvOp : public framework::OperatorBase {
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(
             Attr<int>("trainer_id"));
 
-    if (with_barrier) {
-      std::vector<distributed::VarHandlePtr> rets;
-      for (size_t i = 0; i < outs.size(); i++) {
-        std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
-        VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
-                << varname << " and with AsyncGetVar";
-        rets.push_back(
-            rpc_client->AsyncGetVar(epmap[i], ctx, scope, varname, outs[i]));
-      }
-      if (sync_mode) {
+    std::vector<std::string> recv_varnames =
+        Attr<std::vector<std::string>>("recv_varnames");
+
+    if (recv_varnames.size() > 0) {
+      framework::RuntimeContext ctx(Inputs(), Outputs(), scope);
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto *dev_ctx = pool.Get(place);
+      auto exe_ctx = framework::ExecutionContext(*this, scope, *dev_ctx, ctx);
+      auto recv_functor = distributed::ParameterRecv<float>();
+      recv_functor(outs[0], recv_varnames, epmap, exe_ctx, scope);
+    } else {
+      if (with_barrier) {
+        std::vector<distributed::VarHandlePtr> rets;
+        for (size_t i = 0; i < outs.size(); i++) {
+          std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
+          VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
+                  << varname << " and with AsyncGetVar";
+          rets.push_back(
+              rpc_client->AsyncGetVar(epmap[i], ctx, scope, varname, outs[i]));
+        }
+        if (sync_mode) {
+          for (size_t i = 0; i < rets.size(); i++) {
+            PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+          }
+        }
+      } else {
+        std::vector<distributed::VarHandlePtr> rets;
+        for (size_t i = 0; i < outs.size(); i++) {
+          std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
+          VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
+                  << varname << " and with AsyncGetVarNoBarrier";
+          rets.push_back(rpc_client->AsyncGetVarNoBarrier(epmap[i], ctx, scope,
+                                                          varname, outs[i]));
+        }
         for (size_t i = 0; i < rets.size(); i++) {
           PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
         }
-      }
-    } else {
-      std::vector<distributed::VarHandlePtr> rets;
-      for (size_t i = 0; i < outs.size(); i++) {
-        std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
-        VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
-                << varname << " and with AsyncGetVarNoBarrier";
-        rets.push_back(rpc_client->AsyncGetVarNoBarrier(epmap[i], ctx, scope,
-                                                        varname, outs[i]));
-      }
-      for (size_t i = 0; i < rets.size(); i++) {
-        PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
       }
     }
   }

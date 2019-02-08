@@ -519,12 +519,20 @@ class DistributeTranspiler(object):
                     param_varname, height_sections, eps, table_names)
             else:
                 all_recv_outputs.extend(splited_var)
+
+                recv_varnames = []
+                if self.config.runtime_split_send_recv:
+                    orig_param = program.global_block().vars[param_varname]
+                    recv_varnames = [var.name for var in splited_vars]
+                    splited_var = [orig_param]
+
                 program.global_block().append_op(
                     type="recv",
                     inputs={"X": [recv_dep_in]},
                     outputs={"Out": splited_var},
                     attrs={
                         "epmap": eps,
+                        "recv_varnames": recv_varnames,
                         "trainer_id": self.trainer_id,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                         OP_ROLE_VAR_ATTR_NAME:
@@ -549,14 +557,15 @@ class DistributeTranspiler(object):
                 continue
             orig_param = program.global_block().vars[param_varname]
             if param_varname not in self.sparse_param_to_height_sections:
-                program.global_block().append_op(
-                    type="concat",
-                    inputs={"X": splited_var},
-                    outputs={"Out": [orig_param]},
-                    attrs={
-                        "axis": 0,
-                        RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
-                    })
+                if not self.config.runtime_split_send_recv:
+                    program.global_block().append_op(
+                        type="concat",
+                        inputs={"X": splited_var},
+                        outputs={"Out": [orig_param]},
+                        attrs={
+                            "axis": 0,
+                            RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
+                        })
 
         self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
 
