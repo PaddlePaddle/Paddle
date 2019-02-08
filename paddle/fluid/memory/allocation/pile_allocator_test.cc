@@ -30,7 +30,7 @@ TEST(BitSet, main) {
 }
 
 TEST(BuddyManager, test1) {
-  BuddyManager manager(4, 10);
+  BuddyManager manager(4, 10, 9);
   LOG(INFO) << "min mem: " << manager.min_mem_size_ << " "
             << manager.min_mem_log_size_;
   LOG(INFO) << "max mem: " << manager.max_mem_size_ << " "
@@ -38,7 +38,7 @@ TEST(BuddyManager, test1) {
 }
 
 TEST(BuddyManager, BucketForRequest) {
-  BuddyManager manager(4, 10);
+  BuddyManager manager(4, 10, 9);
   LOG(INFO) << "num buckets: " << manager.num_buckets_;
   ASSERT_EQ(manager.BucketForRequest(1 << 10), 0);
   ASSERT_EQ(manager.BucketForRequest(1 << 9), 1);
@@ -48,13 +48,13 @@ TEST(BuddyManager, BucketForRequest) {
 }
 
 TEST(BuddyManager, BucketSize) {
-  BuddyManager manager(4, 10);
+  BuddyManager manager(4, 10, 9);
   ASSERT_EQ(manager.BucketSize(0), 1 << 10);
   ASSERT_EQ(manager.BucketSize(1), 1 << 9);
 }
 
 TEST(BuddyManager, TestFirstBucket) {
-  BuddyManager manager(4, 10);
+  BuddyManager manager(4, 10, 9);
   ASSERT_EQ(manager.buckets_.size(), manager.num_buckets_);
   // Only the first one bucket has one element.
   for (int i = 1; i < manager.num_buckets_; i++) {
@@ -66,7 +66,7 @@ TEST(BuddyManager, TestFirstBucket) {
   auto* res = manager.PopBucket(0);
   ASSERT_TRUE(res);
   // The first bucket just align from the head of the buffer.
-  ASSERT_EQ(reinterpret_cast<uint8_t*>(res), manager.buffer_);
+  ASSERT_EQ(reinterpret_cast<uint8_t*>(res), manager.buffer_[0]);
   ASSERT_EQ(res->next, res);
   ASSERT_EQ(res->pre, res);
   // Pop if there is no remaining buckets.
@@ -74,30 +74,30 @@ TEST(BuddyManager, TestFirstBucket) {
 }
 
 TEST(BuddyManager, PushBucket) {
-  BuddyManager manager(4, 10);
+  BuddyManager manager(4, 10, 9);
 
   // Push to the first bucket.
   ASSERT_FALSE(manager.buckets_[1]);
 
-  manager.PushBucket(
-      1, reinterpret_cast<ListNode*>(manager.buffer_ + sizeof(ListNode)));
+  manager.PushBucket(1, reinterpret_cast<ListNode*>(manager.buffer_.front() +
+                                                    sizeof(ListNode)));
   ASSERT_EQ(ListGetSizeSlow(manager.buckets_[1]), 1UL);
   ASSERT_EQ(manager.buckets_[1]->next, manager.buckets_[1]);
   ASSERT_EQ(manager.buckets_[1]->pre, manager.buckets_[1]);
 
   // There are 1<<10 nodes for the 0th bucket.
   for (int i = 2; i < 7; i++) {
-    manager.PushBucket(
-        1, reinterpret_cast<ListNode*>(manager.buffer_ + i * sizeof(ListNode)));
+    manager.PushBucket(1, reinterpret_cast<ListNode*>(manager.buffer_.front() +
+                                                      i * sizeof(ListNode)));
     ASSERT_EQ(ListGetSizeSlow(manager.buckets_[1]), i);
   }
 }
 
 TEST(BuddyManager, PopBucket) {
-  BuddyManager manager(4, 10);
+  BuddyManager manager(4, 10, 9);
   for (int i = 0; i < 4; i++) {
-    manager.PushBucket(
-        0, reinterpret_cast<ListNode*>(manager.buffer_ + i * sizeof(ListNode)));
+    manager.PushBucket(0, reinterpret_cast<ListNode*>(manager.buffer_.front() +
+                                                      i * sizeof(ListNode)));
   }
 
   for (int i = 0; i < 4; i++) {
@@ -107,7 +107,7 @@ TEST(BuddyManager, PopBucket) {
 }
 
 TEST(BuddyManager, GetBrotherNode) {
-  BuddyManager manager(4, 10);
+  BuddyManager manager(4, 10, 9);
   ASSERT_EQ(manager.GetBrotherNode(1), 2);
   ASSERT_EQ(manager.GetBrotherNode(3), 4);
   ASSERT_EQ(manager.GetBrotherNode(4), 3);
@@ -118,61 +118,62 @@ TEST(BuddyManager, GetBrotherNode) {
 }
 
 TEST(BuddyManager, SplitBucket) {
-  BuddyManager manager(4, 10);
+  BuddyManager manager(4, 10, 9);
   ASSERT_EQ(ListGetSizeSlow(manager.buckets_[0]), 1UL);
-  manager.SplitBucket(0, manager.buffer_, (1 << 10) / 2);
+  manager.SplitBucket(0, manager.buffer_[0], (1 << 10) / 2, 0);
   // The large bucket will not poped by default.
   ASSERT_EQ(ListGetSizeSlow(manager.buckets_[1]), 1UL);
   ASSERT_EQ(reinterpret_cast<uint8_t*>(manager.buckets_[1]),
-            manager.buffer_ + (1 << 10) / 2);
+            manager.buffer_[0] + (1 << 10) / 2);
 
-  ASSERT_TRUE(manager.is_splits_.Tell(0));
+  ASSERT_TRUE(manager.is_splits_[0].Tell(0));
 }
 
 TEST(BuddyManager, NodeForPtr) {
-  BuddyManager manager(4, 10);
-  ASSERT_EQ(
-      manager.NodeForPtr(manager.buffer_, manager.BucketForRequest(1 << 10)),
-      0UL);
+  BuddyManager manager(4, 10, 9);
+  ASSERT_EQ(manager.NodeForPtr(manager.buffer_.front(),
+                               manager.BucketForRequest(1 << 10), 0),
+            0UL);
 
-  ASSERT_EQ(
-      manager.NodeForPtr(manager.buffer_, manager.BucketForRequest(1 << 9)),
-      1UL);
-  ASSERT_EQ(manager.NodeForPtr(manager.buffer_ + (1 << 9),
-                               manager.BucketForRequest(1 << 9)),
+  ASSERT_EQ(manager.NodeForPtr(manager.buffer_.front(),
+                               manager.BucketForRequest(1 << 9), 0),
+            1UL);
+  ASSERT_EQ(manager.NodeForPtr(manager.buffer_.front() + (1 << 9),
+                               manager.BucketForRequest(1 << 9), 0),
             2UL);
   for (int i = 0; i < 4; i++) {
-    ASSERT_EQ(manager.NodeForPtr(manager.buffer_ + i * (1 << 8),
-                                 manager.BucketForRequest(1 << 8)),
+    ASSERT_EQ(manager.NodeForPtr(manager.buffer_.front() + i * (1 << 8),
+                                 manager.BucketForRequest(1 << 8), 0),
               2UL + i + 1);
   }
 
   for (int i = 0; i < 4 * 2; i++) {
-    ASSERT_EQ(manager.NodeForPtr(manager.buffer_ + i * (1 << 7),
-                                 manager.BucketForRequest(1 << 7)),
+    ASSERT_EQ(manager.NodeForPtr(manager.buffer_.front() + i * (1 << 7),
+                                 manager.BucketForRequest(1 << 7), 0),
               6UL + i + 1);
   }
 }
 
 TEST(BuddyManager, PtrForNode) {
-  BuddyManager manager(4, 10);
+  BuddyManager manager(4, 10, 9);
   // same start point with different buddy size.
-  ASSERT_EQ(manager.PtrForNode(0, 0), manager.buffer_);
-  ASSERT_EQ(manager.PtrForNode(1, 1), manager.buffer_);
-  ASSERT_EQ(manager.PtrForNode(2, 1), manager.buffer_ + (1 << 9));
-  ASSERT_EQ(manager.PtrForNode(3, 2), manager.buffer_);
-  ASSERT_EQ(manager.PtrForNode(4, 2), manager.buffer_ + 1 * (1 << 8));
-  ASSERT_EQ(manager.PtrForNode(5, 2), manager.buffer_ + 2 * (1 << 8));
-  ASSERT_EQ(manager.PtrForNode(6, 2), manager.buffer_ + 3 * (1 << 8));
+  ASSERT_EQ(manager.PtrForNode(0, 0, 0), manager.buffer_[0]);
+  ASSERT_EQ(manager.PtrForNode(1, 1, 0), manager.buffer_[0]);
+  ASSERT_EQ(manager.PtrForNode(2, 1, 0), manager.buffer_[0] + (1 << 9));
+  ASSERT_EQ(manager.PtrForNode(3, 2, 0), manager.buffer_[0]);
+  ASSERT_EQ(manager.PtrForNode(4, 2, 0), manager.buffer_[0] + 1 * (1 << 8));
+  ASSERT_EQ(manager.PtrForNode(5, 2, 0), manager.buffer_[0] + 2 * (1 << 8));
+  ASSERT_EQ(manager.PtrForNode(6, 2, 0), manager.buffer_[0] + 3 * (1 << 8));
 }
 
 TEST(BuddyManager, Malloc) {
-  BuddyManager manager(4, 10);
-  // OOM
-  ASSERT_FALSE(manager.Malloc(1 << 11));
+  BuddyManager manager(4, 10, 9, false);
+  // raw system allocation.
+  auto raw_ptr = manager.Malloc(1 << 11);
+  ASSERT_EQ(-1, manager.PoolIdxForPtr(static_cast<uint8_t*>(raw_ptr)));
 
   auto* ptr = manager.Malloc((1 << 9) - manager.kHeaderSize);
-  ASSERT_EQ(ptr, manager.buffer_ + manager.kHeaderSize);
+  ASSERT_EQ(ptr, manager.buffer_[0] + manager.kHeaderSize);
   // The 1-th bucket should not be empty
   ASSERT_TRUE(manager.buckets_[1]);
   for (int i = 2; i < manager.num_buckets_; i++) {
@@ -180,7 +181,7 @@ TEST(BuddyManager, Malloc) {
   }
 
   ptr = manager.Malloc((1 << 9) - manager.kHeaderSize);
-  ASSERT_EQ(ptr, manager.buffer_ + (1 << 9) + manager.kHeaderSize);
+  ASSERT_EQ(ptr, manager.buffer_[0] + (1 << 9) + manager.kHeaderSize);
 
   for (int i = 1; i < manager.num_buckets_; i++) {
     ASSERT_FALSE(manager.buckets_[i]);
@@ -191,7 +192,7 @@ TEST(BuddyManager, Malloc) {
 }
 
 TEST(BuddyManager, Malloc1) {
-  BuddyManager manager(2, 10);
+  BuddyManager manager(2, 10, 9);
 
   auto ShowBuckets = [&] {
     for (int i = 0; i < manager.num_buckets_; i++) {
@@ -200,22 +201,22 @@ TEST(BuddyManager, Malloc1) {
     }
 
     for (int v : std::vector<int>({0, 1, 3, 7, 8, 15})) {
-      LOG(INFO) << "node is flip " << v << " " << manager.is_splits_.Tell(v);
+      LOG(INFO) << "node is flip " << v << " " << manager.is_splits_[0].Tell(v);
     }
   };
 
   auto CheckIsSplits = [&](const std::unordered_set<int>& nodes) {
-    for (int i = 0; i < manager.is_splits_.num_bytes(); i++) {
+    for (int i = 0; i < manager.is_splits_[0].num_bytes(); i++) {
       if (nodes.count(i)) {
-        if (!manager.is_splits_.Tell(i)) {
+        if (!manager.is_splits_[0].Tell(i)) {
           LOG(ERROR) << "node " << i << " != true";
         }
-        EXPECT_TRUE(manager.is_splits_.Tell(i));
+        EXPECT_TRUE(manager.is_splits_[0].Tell(i));
       } else {
-        if (manager.is_splits_.Tell(i)) {
+        if (manager.is_splits_[0].Tell(i)) {
           LOG(ERROR) << "node " << i << " != false";
         }
-        EXPECT_FALSE(manager.is_splits_.Tell(i));
+        EXPECT_FALSE(manager.is_splits_[0].Tell(i));
       }
     }
   };
@@ -297,6 +298,36 @@ TEST(BuddyManager, Malloc1) {
   CheckIsSplits({3, 8});
   ASSERT_EQ(ListGetSizeSlow(manager.buckets_[0]), 0);
   ASSERT_EQ(ListGetSizeSlow(manager.buckets_[1]), 0);  // 1<<9, node2 is used.
+}
+
+TEST(BuddyManager, realloc) {
+  BuddyManager manager(2, 10, 9, true);
+
+  auto ShowBuckets = [&] {
+    for (int i = 0; i < manager.num_buckets_; i++) {
+      LOG(INFO) << i << " " << ListGetSizeSlow(manager.buckets_[i])
+                << " bucket_size " << manager.BucketSize(i);
+    }
+  };
+
+  // Occupy the initial memory block.
+  auto* ptr = manager.Malloc((1 << 10) - manager.kHeaderSize);
+  ASSERT_EQ(manager.PoolIdxForPtr(static_cast<uint8_t*>(ptr)), 0);
+  ASSERT_TRUE(ptr);
+  ASSERT_EQ(manager.is_splits_.size(), 1UL);
+  ASSERT_EQ(manager.buffer_.size(), 1UL);
+  ASSERT_EQ(manager.labels_.size(), 1UL);
+  ShowBuckets();
+
+  auto* ptr1 = manager.Malloc((1 << 8) - manager.kHeaderSize);
+  ASSERT_TRUE(ptr1);
+  ASSERT_EQ(manager.is_splits_.size(), 2UL);
+  ASSERT_EQ(manager.buffer_.size(), 2UL);
+  ASSERT_EQ(manager.labels_.size(), 2UL);
+  ASSERT_EQ(manager.PoolIdxForPtr(static_cast<uint8_t*>(ptr1)), 1);
+
+  auto* ptr2 = manager.Malloc((1 << 8) - manager.kHeaderSize);
+  ASSERT_EQ(manager.PoolIdxForPtr(static_cast<uint8_t*>(ptr1)), 1);
 }
 
 }  // namespace allocation
