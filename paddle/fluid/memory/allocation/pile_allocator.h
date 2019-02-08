@@ -116,21 +116,38 @@ struct BuddyManager {
   // to store this integer to keep memory aligned by 8.
   const uint32_t kHeaderSize{sizeof(size_t)};
 
-  BuddyManager(size_t min_mem_log_size, size_t max_mem_log_size)
+  BuddyManager(size_t min_mem_log_size, size_t max_mem_log_size,
+               size_t realloc_mem_log_size, bool allow_realloc = true)
       : min_mem_log_size_(min_mem_log_size),
         max_mem_log_size_(max_mem_log_size),
         min_mem_size_(1 << min_mem_log_size),
         max_mem_size_(1 << max_mem_log_size),
-        num_buckets_(max_mem_log_size - min_mem_log_size + 1) {
+        num_buckets_(max_mem_log_size - min_mem_log_size + 1),
+        realloc_mem_log_size_(realloc_mem_log_size),
+        realloc_mem_size_(1 << realloc_mem_log_size),
+        allow_realloc_{allow_realloc} {
     Init();
   }
 
   void* Malloc(size_t request) {
+    if (request > max_mem_size_) {
+      LOG(INFO) << "allocating raw large memory chunk";
+      return SystemAllocate(request);
+    }
+    auto* first_try = MallocImpl(request, 0);
+    if (first_try) return first_try;
+
+    if (!allow_realloc_) return nullptr;
+    ReallocMemoryBuffer();
+    return MallocImpl(request, 0);
+  }
+
+  void* MallocImpl(size_t request, size_t pool_idx) {
     if (request + kHeaderSize > max_mem_size_) {
       LOG(ERROR) << "OOM";
       return nullptr;
     }
-    PADDLE_ENFORCE_NOT_NULL(buffer_);
+    PADDLE_ENFORCE(!buffer_.empty());
 
     // We should reserve the memory for Header of request.
     size_t origin_bucket = BucketForRequest(request + kHeaderSize);
@@ -146,16 +163,17 @@ struct BuddyManager {
         continue;
       }
 
-      size_t index = NodeForPtr(ptr, bucket);
-      if (index != 0) FlipParentIsSplit(index);
+      size_t pool_idx = PoolIdxForPtr(ptr);
+      size_t index = NodeForPtr(ptr, bucket, pool_idx);
+      if (index != 0) FlipParentIsSplit(index, pool_idx);
 
       while (bucket < origin_bucket) {
         size_t size = BucketSize(bucket);
-        SplitBucket(bucket, ptr, size / 2);
-        size_t index = NodeForPtr(ptr, bucket);
+        SplitBucket(bucket, ptr, size / 2, pool_idx);
+        size_t index = NodeForPtr(ptr, bucket, pool_idx);
 
         VLOG(3) << "split bucket " << bucket << " node " << index << " fliped "
-                << is_splits_.Tell(index);
+                << is_splits_[pool_idx].Tell(index);
         bucket++;
       }
 
@@ -168,12 +186,23 @@ struct BuddyManager {
   // Label the allocated memory block.
   void MarkAllocated(byte_t* ptr, bool flag) {
     size_t request = *reinterpret_cast<size_t*>(ptr - kHeaderSize);
-    auto node = NodeForPtr(ptr, BucketForRequest(request));
+    size_t pool_idx = PoolIdxForPtr(ptr);
+    auto node = NodeForPtr(ptr, BucketForRequest(request), pool_idx);
     if (flag) {
-      labels_.Set(node);
+      labels_[pool_idx].Set(node);
     } else {
-      labels_.UnSet(node);
+      labels_[pool_idx].UnSet(node);
     }
+  }
+
+  // TODO(Superjomn) Optimize the performance here.
+  int PoolIdxForPtr(byte_t* ptr) {
+    if (buffer_.front() <= ptr && buffer_.front() + max_mem_size_ > ptr)
+      return 0;
+    for (int i = 1; i < buffer_.size(); i++) {
+      if (buffer_[i] <= ptr && buffer_[i] + realloc_mem_size_ > ptr) return i;
+    }
+    return -1;
   }
 
   void Free(void* p) {
@@ -184,18 +213,26 @@ struct BuddyManager {
     ptr = ptr - kHeaderSize;
     size_t request = *reinterpret_cast<size_t*>(ptr);
     size_t bucket = BucketForRequest(request + kHeaderSize);
-    size_t node = NodeForPtr(ptr, bucket);
+    int pool_idx = PoolIdxForPtr(ptr);
+    // System allocated.
+    if (pool_idx < 0) {
+      delete[] ptr;
+      return;
+    }
+
+    size_t node = NodeForPtr(ptr, bucket, pool_idx);
 
     while (node != 0) {
-      FlipParentIsSplit(node);
-      VLOG(3) << "parent is split " << IsParentSplit(node) << " node "
+      FlipParentIsSplit(node, pool_idx);
+      VLOG(3) << "parent is split " << IsParentSplit(node, pool_idx) << " node "
               << (node - 1) / 2 << " bucket_size " << BucketSize(bucket - 1);
       // The bucket is used, no need to merge.
-      if (IsParentSplit(node)) break;
+      if (IsParentSplit(node, pool_idx)) break;
 
       // Here, the bucket is not used, remove the bucket from free list.
       size_t brother = GetBrotherNode(node);
-      auto* listnode = reinterpret_cast<ListNode*>(PtrForNode(brother, bucket));
+      auto* listnode =
+          reinterpret_cast<ListNode*>(PtrForNode(brother, bucket, pool_idx));
       PopBucket(bucket, listnode);
       if (buckets_[bucket] == reinterpret_cast<ListNode*>(listnode))
         buckets_[bucket] = nullptr;
@@ -203,10 +240,15 @@ struct BuddyManager {
       node = (node - 1) / 2;
       bucket--;
     }
-    PushBucket(bucket, reinterpret_cast<ListNode*>(PtrForNode(node, bucket)));
+    PushBucket(bucket,
+               reinterpret_cast<ListNode*>(PtrForNode(node, bucket, pool_idx)));
   }
 
-  ~BuddyManager() { delete[] buffer_; }
+  ~BuddyManager() {
+    for (auto* v : buffer_) {
+      delete[] v;
+    }
+  }
 
  protected:
   /** The tree is always rooted at the largest bucket, and grow if needed. It
@@ -214,10 +256,10 @@ struct BuddyManager {
    */
   void Init() {
     buckets_.resize(num_buckets_, nullptr);
-    labels_.Resize(1 << num_buckets_);
 
-    InitIsSplits();
     AllocFirstBucket();
+    labels_.front().Resize(1 << num_buckets_);
+    is_splits_.front().Resize(1 << num_buckets_);
   }
 
   /**
@@ -225,11 +267,12 @@ struct BuddyManager {
    */
   void AllocFirstBucket() {
     PADDLE_ENFORCE_GE(max_mem_size_, sizeof(ListNode));
-    buffer_ = SystemAllocate(max_mem_size_);
-    PushBucket(0, reinterpret_cast<ListNode*>(buffer_));
-  }
+    AllocInitialMemoryBuffer();
+    PushBucket(0, reinterpret_cast<ListNode*>(buffer_.front()));
 
-  void InitIsSplits() { is_splits_.Resize(1 << num_buckets_); }
+    labels_.emplace_back();
+    is_splits_.emplace_back();
+  }
 
   /** Get the minest bucket that satisfy the request.
    */
@@ -247,15 +290,15 @@ struct BuddyManager {
     return (1 << (min_mem_log_size_ + num_buckets_ - bucket - 1));
   }
 
-  void FlipParentIsSplit(size_t index) {
+  void FlipParentIsSplit(size_t index, size_t pool_idx) {
     if (index == 0) return;
     index = (index - 1) / 2;
-    is_splits_.Flip(index);
+    is_splits_[pool_idx].Flip(index);
   }
 
-  bool IsParentSplit(size_t index) {
+  bool IsParentSplit(size_t index, size_t pool_idx) {
     index = (index - 1) / 2;
-    return is_splits_.Tell(index);
+    return is_splits_[pool_idx].Tell(index);
   }
 
   ListNode* PopBucket(size_t bucket) {
@@ -297,25 +340,41 @@ struct BuddyManager {
   size_t GetBrotherNode(size_t node) { return ((node - 1) ^ 1) + 1; }
 
   /** Split the bucket, and push the right child bucket to the free list */
-  void SplitBucket(size_t bucket, byte_t* ptr, size_t sub_bucket_size) {
+  void SplitBucket(size_t bucket, byte_t* ptr, size_t sub_bucket_size,
+                   size_t pool_idx) {
     size_t sub_bucket = BucketForRequest(sub_bucket_size);
-    size_t index = NodeForPtr(ptr, bucket);
-    is_splits_.Flip(index);
+    size_t index = NodeForPtr(ptr, bucket, pool_idx);
+    is_splits_[pool_idx].Flip(index);
     PushBucket(sub_bucket, reinterpret_cast<ListNode*>(ptr + sub_bucket_size));
   }
 
   /** Get the node's index for a memory address */
-  size_t NodeForPtr(byte_t* ptr, size_t bucket) {
-    auto offset = (ptr - buffer_) >> (max_mem_log_size_ - bucket);
+  size_t NodeForPtr(byte_t* ptr, size_t bucket, size_t pool_idx) {
+    auto offset = (ptr - buffer_[pool_idx]) >> (max_mem_log_size_ - bucket);
     return offset + (1 << bucket) - 1;
   }
 
   /**
    * Get the memory address of a node.
    */
-  byte_t* PtrForNode(size_t index, size_t bucket) {
-    return buffer_ +
+  byte_t* PtrForNode(size_t index, size_t bucket, size_t pool_idx) {
+    return buffer_[pool_idx] +
            ((index - (1 << bucket) + 1) << (max_mem_log_size_ - bucket));
+  }
+
+  void AllocInitialMemoryBuffer() {
+    buffer_.push_back(SystemAllocate(max_mem_size_));
+  }
+
+  void ReallocMemoryBuffer() {
+    LOG(INFO) << "Realloc one memory block";
+    PADDLE_ENFORCE(false);
+    PADDLE_ENFORCE_GT(buffer_.size(), 0UL,
+                      "should allocate the initial memory pool first.");
+    buffer_.push_back(SystemAllocate(realloc_mem_size_));
+
+    labels_.emplace_back();
+    is_splits_.emplace_back();
   }
 
   byte_t* SystemAllocate(size_t size) {
@@ -328,17 +387,21 @@ struct BuddyManager {
   // All the memory pools shares the same buckets.
   std::vector<ListNode*> buckets_;
   // State represents is_split, one bit for each node.
-  BitSet is_splits_;
+  std::vector<BitSet> is_splits_;
   // Label which mark the nodes, we use a bitset to support an 0/1 label.
-  BitSet labels_;
+  std::vector<BitSet> labels_;
 
   const int min_mem_log_size_;
   const int max_mem_log_size_;
   const size_t min_mem_size_;
   const size_t max_mem_size_;
   const uint32_t num_buckets_;
+  const int realloc_mem_log_size_;
+  const int realloc_mem_size_;
 
-  byte_t* buffer_{nullptr};
+  const bool allow_realloc_;
+
+  std::vector<byte_t*> buffer_;
 
   FRIEND_TEST(BuddyManager, test1);
   FRIEND_TEST(BuddyManager, BucketForRequest);
@@ -376,6 +439,7 @@ class PileAllocator : public Allocator {
 
   AllocationPtr Allocate(size_t size, Allocator::Attr attr = kDefault) {
     if (size > kMaxMemorySize) return nullptr;
+    return nullptr;
   }
 
   bool IsAllocThreadSafe() const override { return false; }
