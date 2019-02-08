@@ -111,7 +111,7 @@ size_t ListGetSizeSlow(ListNode* head) {
  *   | Request | ... rest memory of this bucket |
  */
 struct BuddyManager {
-  using byte_t = unsigned char;
+  using byte_t = uint8_t;
   // An integer is needed to store the size of request. We use a 8-byte header
   // to store this integer to keep memory aligned by 8.
   const uint32_t kHeaderSize{sizeof(size_t)};
@@ -165,6 +165,17 @@ struct BuddyManager {
     return nullptr;
   }
 
+  // Label the allocated memory block.
+  void MarkAllocated(byte_t* ptr, bool flag) {
+    size_t request = *reinterpret_cast<size_t*>(ptr - kHeaderSize);
+    auto node = NodeForPtr(ptr, BucketForRequest(request));
+    if (flag) {
+      labels_.Set(node);
+    } else {
+      labels_.UnSet(node);
+    }
+  }
+
   void Free(void* p) {
     byte_t* ptr = static_cast<byte_t*>(p);
     // Ignore null.
@@ -203,7 +214,7 @@ struct BuddyManager {
    */
   void Init() {
     buckets_.resize(num_buckets_, nullptr);
-    labels_.resize(1 << num_buckets_, 0);
+    labels_.Resize(1 << num_buckets_);
 
     InitIsSplits();
     AllocFirstBucket();
@@ -314,11 +325,12 @@ struct BuddyManager {
   }
 
  private:
+  // All the memory pools shares the same buckets.
   std::vector<ListNode*> buckets_;
-  std::vector<uint8_t> labels_;
-
   // State represents is_split, one bit for each node.
   BitSet is_splits_;
+  // Label which mark the nodes, we use a bitset to support an 0/1 label.
+  BitSet labels_;
 
   const int min_mem_log_size_;
   const int max_mem_log_size_;
