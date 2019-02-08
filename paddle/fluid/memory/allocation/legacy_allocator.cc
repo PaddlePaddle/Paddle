@@ -257,7 +257,7 @@ void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
   void *ptr = buddy_allocator->Alloc(size);
 
   if (ptr == nullptr) {
-    LOG(WARNING) << "cudaMallocHost Cannot allocate " << size
+    LOG(WARNING) << "cudaHostAlloc Cannot allocate " << size
                  << " bytes in CUDAPinnedPlace";
   }
   if (FLAGS_init_allocated_mem) {
