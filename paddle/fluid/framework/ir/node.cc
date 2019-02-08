@@ -41,3 +41,8 @@ std::unique_ptr<Node> CreateNodeForTest(OpDesc *op_desc) {
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
+
+size_t std::hash<paddle::framework::ir::Node *>::operator()(
+    paddle::framework::ir::Node *const &node) const {
+  return static_cast<size_t>(node->id());
+}

@@ -163,8 +163,6 @@ std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 namespace std {
 template <>
 struct hash<paddle::framework::ir::Node*> {
-  size_t operator()(paddle::framework::ir::Node* const& node) const {
-    return static_cast<size_t>(node->id());
-  }
+  size_t operator()(paddle::framework::ir::Node* const& node) const;
 };
 }
