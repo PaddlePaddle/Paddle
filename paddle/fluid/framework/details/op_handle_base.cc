@@ -171,3 +171,10 @@ size_t OpHandleBase::NotReadyInputSize() const {
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
+
+namespace std {
+size_t hash<paddle::framework::details::OpHandleBase *>::operator()(
+    paddle::framework::details::OpHandleBase *const &op_handle) const {
+  return hash<paddle::framework::ir::Node *>()(op_handle->Node());
+}
+}  // namespace std

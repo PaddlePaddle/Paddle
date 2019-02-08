@@ -123,7 +123,6 @@ class Graph {
   ir::Node *CreateVarNode(VarDesc *var_desc) {
     PADDLE_ENFORCE(var_desc);
     auto *x = AddNode(new ir::Node(var_desc));
-    x->SetId(num_node_created_++);
     return x;
   }
 
@@ -131,7 +130,6 @@ class Graph {
   ir::Node *CreateOpNode(OpDesc *op_desc) {
     PADDLE_ENFORCE(op_desc);
     auto *x = AddNode(new ir::Node(op_desc));
-    x->SetId(num_node_created_++);
     return x;
   }
 
@@ -143,7 +141,6 @@ class Graph {
     const std::string name = string::Sprintf(
         "%s@%llu", ir::Node::kControlDepVarName, node_set_.size());
     auto *x = AddNode(new ir::Node(name, ir::Node::Type::kVariable));
-    x->SetId(num_node_created_++);
     return x;
   }
 
@@ -151,7 +148,6 @@ class Graph {
   // or "copy" from another node. Avoid using it if possible.
   ir::Node *CreateEmptyNode(const std::string &name, ir::Node::Type type) {
     auto *x = AddNode(new ir::Node(name, type));
-    x->SetId(num_node_created_++);
     return x;
   }
 
@@ -192,6 +188,7 @@ class Graph {
 
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
+    node->SetId(num_node_created_++);
     PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
     nodes_[node].reset(node);
     node_set_.insert(node);

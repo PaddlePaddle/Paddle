@@ -27,6 +27,28 @@ namespace paddle {
 namespace framework {
 namespace details {
 class OpHandleBase;
+class VarHandleBase;
+}  // namespace details
+}  // namespace framework
+}  // namespace paddle
+
+namespace std {
+template <>
+struct hash<paddle::framework::details::VarHandleBase*> {
+  size_t operator()(
+      paddle::framework::details::VarHandleBase* const& var_handle) const;
+};
+
+template <>
+struct hash<paddle::framework::details::OpHandleBase*> {
+  size_t operator()(
+      paddle::framework::details::OpHandleBase* const& op_handle) const;
+};
+}  // namespace std
+
+namespace paddle {
+namespace framework {
+namespace details {
 
 // Wraps ir::Node and provide helper utilities.
 // It's responsible for populating necessary fields of ir::Node.

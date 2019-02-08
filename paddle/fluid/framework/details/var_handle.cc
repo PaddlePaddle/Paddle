@@ -36,3 +36,10 @@ DummyVarHandle::~DummyVarHandle() {
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
+
+namespace std {
+size_t hash<paddle::framework::details::VarHandleBase*>::operator()(
+    paddle::framework::details::VarHandleBase* const& var_handle) const {
+  return hash<paddle::framework::ir::Node*>()(var_handle->Node());
+}
+}  // namespace std
