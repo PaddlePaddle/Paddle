@@ -32,6 +32,8 @@ class VarHandleBase;
 }  // namespace framework
 }  // namespace paddle
 
+// Define the hash function of VarHandleBase* and OpHandleBase*,
+// so the order of unordered_set(or map) is deterministic
 namespace std {
 template <>
 struct hash<paddle::framework::details::VarHandleBase*> {

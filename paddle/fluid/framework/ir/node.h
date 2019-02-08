@@ -160,6 +160,8 @@ std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 }  // namespace framework
 }  // namespace paddle
 
+// Define the hash function of Node*, so the order of unordered_set(or map) is
+// deterministic
 namespace std {
 template <>
 struct hash<paddle::framework::ir::Node*> {
