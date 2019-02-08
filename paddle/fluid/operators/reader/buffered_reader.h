@@ -64,6 +64,8 @@ class BufferedReader : public framework::DecoratedReader {
   size_t prev_pos_{-1UL};
 #ifdef PADDLE_WITH_CUDA
   cudaStream_t stream;
+  cudaStream_t compute_stream;
+  std::vector<cudaEvent_t> events;
 #endif
 };
 

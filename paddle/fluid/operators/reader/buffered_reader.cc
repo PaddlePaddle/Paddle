@@ -29,6 +29,7 @@ BufferedReader::~BufferedReader() {
   if (platform::is_gpu_place(place_)) {
     platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
     PADDLE_ENFORCE(cudaStreamDestroy(stream));
+    for (auto &event : events) PADDLE_ENFORCE(cudaEventDestroy(event));
   }
 #endif
 }
@@ -43,7 +44,14 @@ BufferedReader::BufferedReader(
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(place_)) {
     platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
-    PADDLE_ENFORCE(cudaStreamCreate(&stream));
+    compute_stream =
+        ((platform::CUDADeviceContext *)(platform::DeviceContextPool::Instance()
+                                             .Get(place_)))
+            ->stream();
+    events.resize(buffer_size);
+    for (auto &event : events)
+      PADDLE_ENFORCE(cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+    PADDLE_ENFORCE(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
   }
 #endif
   cpu_buffer_.resize(buffer_size);
@@ -59,6 +67,12 @@ void BufferedReader::ReadTillBufferFullAsync() {
 }
 
 void BufferedReader::ReadAsync(size_t i) {
+#ifdef PADDLE_WITH_CUDA
+  if (platform::is_gpu_place(place_)) {
+    platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
+    PADDLE_ENFORCE(cudaEventRecord(events[i], compute_stream));
+  }
+#endif
   position_.emplace(thread_pool_.enqueue([this, i]() -> size_t {
     TensorVec &cpu = cpu_buffer_[i];
     reader_->ReadNext(&cpu);
@@ -71,6 +85,8 @@ void BufferedReader::ReadAsync(size_t i) {
     // NOTE(liangdun): using async copy instead of TensorCopySync
     // TensorCopySync would block other stream
     if (platform::is_gpu_place(place_)) {
+      platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
+      PADDLE_ENFORCE(cudaStreamWaitEvent(stream, events[i], 0));
       TensorVec &gpu = gpu_buffer_[i];
       gpu.resize(cpu.size());
       for (size_t i = 0; i < cpu.size(); ++i) {
