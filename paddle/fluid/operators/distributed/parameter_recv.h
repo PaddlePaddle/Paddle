@@ -26,11 +26,10 @@ namespace distributed {
 template <typename T>
 struct ParameterRecv {
   void operator()(const std::string &var_name,
-                  const std::vector<std::string> &send_varnames,
+                  const std::vector<std::string> &recv_varnames,
                   const std::vector<std::string> &epmap,
-                  const std::vector<int64_t> &height_sections,
                   const framework::ExecutionContext &context,
-                  const framework::Scope &scope, bool sync);
+                  const framework::Scope &scope);
 };
 
 };  // namespace distributed
