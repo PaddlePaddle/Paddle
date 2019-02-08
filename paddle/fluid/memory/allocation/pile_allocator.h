@@ -142,47 +142,6 @@ struct BuddyManager {
     return MallocImpl(request, 0);
   }
 
-  void* MallocImpl(size_t request, size_t pool_idx) {
-    if (request + kHeaderSize > max_mem_size_) {
-      LOG(ERROR) << "OOM";
-      return nullptr;
-    }
-    PADDLE_ENFORCE(!buffer_.empty());
-
-    // We should reserve the memory for Header of request.
-    size_t origin_bucket = BucketForRequest(request + kHeaderSize);
-    size_t bucket = origin_bucket;
-
-    while (bucket + 1 != 0) {
-      // If no free list in current bucket, go to bigger bucket and try.
-      // time complexity: O(logN)
-      byte_t* ptr = reinterpret_cast<byte_t*>(PopBucket(bucket));
-
-      if (!ptr) {
-        --bucket;
-        continue;
-      }
-
-      size_t pool_idx = PoolIdxForPtr(ptr);
-      size_t index = NodeForPtr(ptr, bucket, pool_idx);
-      if (index != 0) FlipParentIsSplit(index, pool_idx);
-
-      while (bucket < origin_bucket) {
-        size_t size = BucketSize(bucket);
-        SplitBucket(bucket, ptr, size / 2, pool_idx);
-        size_t index = NodeForPtr(ptr, bucket, pool_idx);
-
-        VLOG(3) << "split bucket " << bucket << " node " << index << " fliped "
-                << is_splits_[pool_idx].Tell(index);
-        bucket++;
-      }
-
-      *reinterpret_cast<size_t*>(ptr) = request;
-      return ptr + kHeaderSize;
-    }
-    return nullptr;
-  }
-
   // Label the allocated memory block.
   void MarkAllocated(byte_t* ptr, bool flag) {
     size_t request = *reinterpret_cast<size_t*>(ptr - kHeaderSize);
@@ -193,16 +152,6 @@ struct BuddyManager {
     } else {
       labels_[pool_idx].UnSet(node);
     }
-  }
-
-  // TODO(Superjomn) Optimize the performance here.
-  int PoolIdxForPtr(byte_t* ptr) {
-    if (buffer_.front() <= ptr && buffer_.front() + max_mem_size_ > ptr)
-      return 0;
-    for (int i = 1; i < buffer_.size(); i++) {
-      if (buffer_[i] <= ptr && buffer_[i] + realloc_mem_size_ > ptr) return i;
-    }
-    return -1;
   }
 
   void Free(void* p) {
@@ -260,6 +209,57 @@ struct BuddyManager {
     AllocFirstBucket();
     labels_.front().Resize(1 << num_buckets_);
     is_splits_.front().Resize(1 << num_buckets_);
+  }
+
+  void* MallocImpl(size_t request, size_t pool_idx) {
+    if (request + kHeaderSize > max_mem_size_) {
+      LOG(ERROR) << "OOM";
+      return nullptr;
+    }
+    PADDLE_ENFORCE(!buffer_.empty());
+
+    // We should reserve the memory for Header of request.
+    size_t origin_bucket = BucketForRequest(request + kHeaderSize);
+    size_t bucket = origin_bucket;
+
+    while (bucket + 1 != 0) {
+      // If no free list in current bucket, go to bigger bucket and try.
+      // time complexity: O(logN)
+      byte_t* ptr = reinterpret_cast<byte_t*>(PopBucket(bucket));
+
+      if (!ptr) {
+        --bucket;
+        continue;
+      }
+
+      size_t pool_idx = PoolIdxForPtr(ptr);
+      size_t index = NodeForPtr(ptr, bucket, pool_idx);
+      if (index != 0) FlipParentIsSplit(index, pool_idx);
+
+      while (bucket < origin_bucket) {
+        size_t size = BucketSize(bucket);
+        SplitBucket(bucket, ptr, size / 2, pool_idx);
+        size_t index = NodeForPtr(ptr, bucket, pool_idx);
+
+        VLOG(3) << "split bucket " << bucket << " node " << index << " fliped "
+                << is_splits_[pool_idx].Tell(index);
+        bucket++;
+      }
+
+      *reinterpret_cast<size_t*>(ptr) = request;
+      return ptr + kHeaderSize;
+    }
+    return nullptr;
+  }
+
+  // TODO(Superjomn) Optimize the performance here.
+  int PoolIdxForPtr(byte_t* ptr) {
+    if (buffer_.front() <= ptr && buffer_.front() + max_mem_size_ > ptr)
+      return 0;
+    for (int i = 1; i < buffer_.size(); i++) {
+      if (buffer_[i] <= ptr && buffer_[i] + realloc_mem_size_ > ptr) return i;
+    }
+    return -1;
   }
 
   /**
@@ -368,13 +368,16 @@ struct BuddyManager {
 
   void ReallocMemoryBuffer() {
     LOG(INFO) << "Realloc one memory block";
-    PADDLE_ENFORCE(false);
     PADDLE_ENFORCE_GT(buffer_.size(), 0UL,
                       "should allocate the initial memory pool first.");
     buffer_.push_back(SystemAllocate(realloc_mem_size_));
-
+    PushBucket(BucketForRequest(realloc_mem_size_),
+               reinterpret_cast<ListNode*>(buffer_.back()));
     labels_.emplace_back();
     is_splits_.emplace_back();
+
+    labels_.back().Resize(realloc_mem_size_/min_mem_size_);
+    is_splits_.back().Resize(realloc_mem_size_/min_mem_size_);
   }
 
   byte_t* SystemAllocate(size_t size) {
@@ -415,6 +418,7 @@ struct BuddyManager {
   FRIEND_TEST(BuddyManager, PtrForNode);
   FRIEND_TEST(BuddyManager, Malloc);
   FRIEND_TEST(BuddyManager, Malloc1);
+  FRIEND_TEST(BuddyManager, realloc);
 };
 
 /** \brief An (best-fit)allocator with memory share enabled.

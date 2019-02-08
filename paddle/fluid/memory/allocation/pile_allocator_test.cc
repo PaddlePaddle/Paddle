@@ -300,6 +300,36 @@ TEST(BuddyManager, Malloc1) {
   ASSERT_EQ(ListGetSizeSlow(manager.buckets_[1]), 0);  // 1<<9, node2 is used.
 }
 
+TEST(BuddyManager, realloc) {
+  BuddyManager manager(2, 10, 9, true);
+
+  auto ShowBuckets = [&] {
+    for (int i = 0; i < manager.num_buckets_; i++) {
+      LOG(INFO) << i << " " << ListGetSizeSlow(manager.buckets_[i])
+                << " bucket_size " << manager.BucketSize(i);
+    }
+  };
+
+  // Occupy the initial memory block.
+  auto* ptr = manager.Malloc((1 << 10) - manager.kHeaderSize);
+  ASSERT_EQ(manager.PoolIdxForPtr(static_cast<uint8_t*>(ptr)), 0);
+  ASSERT_TRUE(ptr);
+  ASSERT_EQ(manager.is_splits_.size(), 1UL);
+  ASSERT_EQ(manager.buffer_.size(), 1UL);
+  ASSERT_EQ(manager.labels_.size(), 1UL);
+  ShowBuckets();
+
+  auto* ptr1 = manager.Malloc((1 << 8) - manager.kHeaderSize);
+  ASSERT_TRUE(ptr1);
+  ASSERT_EQ(manager.is_splits_.size(), 2UL);
+  ASSERT_EQ(manager.buffer_.size(), 2UL);
+  ASSERT_EQ(manager.labels_.size(), 2UL);
+  ASSERT_EQ(manager.PoolIdxForPtr(static_cast<uint8_t*>(ptr1)), 1);
+
+  auto* ptr2 = manager.Malloc((1 << 8) - manager.kHeaderSize);
+  ASSERT_EQ(manager.PoolIdxForPtr(static_cast<uint8_t*>(ptr1)), 1);
+}
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
