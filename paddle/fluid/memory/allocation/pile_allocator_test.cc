@@ -1,5 +1,6 @@
 #include "paddle/fluid/memory/allocation/pile_allocator.h"
 #include <gtest/gtest.h>
+#include <unordered_set>
 
 namespace paddle {
 namespace memory {
@@ -21,6 +22,11 @@ TEST(BitSet, main) {
   ASSERT_FALSE(bits.Tell(3));
   bits.Flip(3);
   ASSERT_TRUE(bits.Tell(3));
+
+  bits.Flip(15);
+  EXPECT_TRUE(bits.Tell(15));
+  bits.Flip(15);
+  EXPECT_FALSE(bits.Tell(15));
 }
 
 TEST(BuddyManager, test1) {
@@ -193,35 +199,104 @@ TEST(BuddyManager, Malloc1) {
                 << " bucket_size " << manager.BucketSize(i);
     }
 
-    /*
-    LOG(INFO) << "is_splits ";
-    for (int i = 0; i < manager.is_splits_.size(); i++) {
-      LOG(INFO) << i << " " << manager.is_splits_.Tell(i);
-    }
-     */
-
-    for (int v : std::vector<int>({0, 1, 3, 7, 15})) {
+    for (int v : std::vector<int>({0, 1, 3, 7, 8, 15})) {
       LOG(INFO) << "node is flip " << v << " " << manager.is_splits_.Tell(v);
     }
   };
 
-  LOG(INFO) << "allocate " << (1 << 4) << " ----------------------------";
-  // need 1<<3 if Header included
-  auto* ptr = manager.Malloc(1 << 4);
-  // the 0th bucket will be splitted, and an 1th bucket will be added.
-  // the 1th bucket's buddy will be split to one 2th, one 3th, one 4th, one 5th
-  // buddies.
-  ShowBuckets();
+  auto CheckIsSplits = [&](const std::unordered_set<int>& nodes) {
+    for (int i = 0; i < manager.is_splits_.num_bytes(); i++) {
+      if (nodes.count(i)) {
+        if (!manager.is_splits_.Tell(i)) {
+          LOG(ERROR) << "node " << i << " != true";
+        }
+        EXPECT_TRUE(manager.is_splits_.Tell(i));
+      } else {
+        if (manager.is_splits_.Tell(i)) {
+          LOG(ERROR) << "node " << i << " != false";
+        }
+        EXPECT_FALSE(manager.is_splits_.Tell(i));
+      }
+    }
+  };
 
-  LOG(INFO) << "free " << (1 << 4) << " ----------------------------";
-  manager.Free(ptr);
+  LOG(INFO) << "allocate " << (1 << 5) << " ----------------------------";
+  // need extra 1<<3 if Header included, so an 1<<6 block is needed.
+  // The node 15 is used.
+  auto* node_15 = manager.Malloc(1 << 5);
   ShowBuckets();
+  CheckIsSplits({0, 1, 3, 7});
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[0]), 0);
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[1]), 1);  // 1<<9
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[2]), 1);  // 1<<8
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[3]), 1);  // 1<<7
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[4]), 1);  // 1<<6
 
-  manager.Malloc(1 << 4);
+  LOG(INFO) << "allocate " << (1 << 5) << " ----------------------------";
+  // Alloc another 1<<6 block, the node 16 is used, so the whole node 7 is used.
+  auto* node_16 = manager.Malloc(1 << 5);
   ShowBuckets();
+  CheckIsSplits({0, 1, 3});
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[0]), 0);
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[1]), 1);  // 1<<9
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[2]), 1);  // 1<<8
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[3]), 1);  // 1<<7
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[4]), 0);  // 1<<6
 
-  manager.Malloc(1 << 4);
+  // Alloc another 1<<6 block, the node 17 is used.
+  auto* node_17 = manager.Malloc(1 << 5);
   ShowBuckets();
+  CheckIsSplits({0, 1, 8});  // node 3 is used, so not split
+  // Alloc another 1<<6 block, the node 18 is used, and the whole node 8 is
+  // used.
+  auto* node_18 = manager.Malloc(1 << 5);
+  ShowBuckets();
+  CheckIsSplits({0, 1});  // node 3 is used, so not split
+
+  // Free node 17
+  manager.Free(node_17);
+  ShowBuckets();
+  CheckIsSplits({0, 1, 8});
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[0]), 0);
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[1]), 1);  // 1<<9
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[2]), 1);  // 1<<8
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[3]), 0);  // 1<<7
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[4]), 1);  // 1<<6, node17
+
+  // Free node 15
+  manager.Free(node_15);
+  ShowBuckets();
+  CheckIsSplits({0, 1, 7, 8});
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[0]), 0);
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[1]), 1);  // 1<<9
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[2]), 1);  // 1<<8
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[3]), 0);  // 1<<7
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[4]),
+            2);  // 1<<6, node17 and node15
+
+  // Free node 16, that block should merge with the block of node15, and make
+  // the entire node7 free.
+  manager.Free(node_16);
+  ShowBuckets();
+  CheckIsSplits({0, 1, 3, 8});  // node7 is free, and make node3 split
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[0]), 0);
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[1]), 1);  // 1<<9
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[2]), 1);  // 1<<8
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[3]), 1);  // 1<<7
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[4]),
+            1);  // 1<<6, node17 and node15
+
+  auto* node_4 = manager.Malloc((1 << 8) - manager.kHeaderSize);
+  ShowBuckets();
+  CheckIsSplits({0, 3, 8});
+
+  // Alloc node5 and node6, and that will make node2 used.
+  auto* node_5 = manager.Malloc((1 << 8) - manager.kHeaderSize);
+  auto* node_6 = manager.Malloc((1 << 8) - manager.kHeaderSize);
+  ShowBuckets();
+  CheckIsSplits({3, 8});
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[0]), 0);
+  ASSERT_EQ(ListGetSizeSlow(manager.buckets_[1]), 0);  // 1<<9, node2 is used.
 }
 
 }  // namespace allocation

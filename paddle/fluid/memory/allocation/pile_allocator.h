@@ -24,7 +24,7 @@ struct BitSet {
   void Set(size_t idx) {
     auto& byte = buffer_[idx / 8];
     int offset = idx - 8 * (idx / 8);
-    byte ^= 1 << offset;
+    byte |= (1 << offset);
   }
 
   void UnSet(size_t idx) {
@@ -36,14 +36,14 @@ struct BitSet {
 
   void Flip(size_t idx) {
     auto& byte = buffer_[idx / 8];
-    int offset = idx - 8 * (idx / 8);
-    byte ^= 1 << offset;
+    int offset = idx % 8;
+    byte ^= (1 << offset);
   }
 
   bool Tell(size_t idx) {
     auto& byte = buffer_[idx / 8];
-    int offset = idx - 8 * (idx / 8);
-    return byte & 1 << idx;
+    int offset = idx % 8;
+    return byte & (1 << offset);
   }
 
   size_t num_bytes() const { return buffer_.size(); }
@@ -146,13 +146,16 @@ struct BuddyManager {
         continue;
       }
 
+      size_t index = NodeForPtr(ptr, bucket);
+      if (index != 0) FlipParentIsSplit(index);
+
       while (bucket < origin_bucket) {
         size_t size = BucketSize(bucket);
         SplitBucket(bucket, ptr, size / 2);
         size_t index = NodeForPtr(ptr, bucket);
 
-        LOG(INFO) << "split bucket " << bucket << " node " << index
-                  << " fliped " << is_splits_.Tell(index);
+        VLOG(3) << "split bucket " << bucket << " node " << index << " fliped "
+                << is_splits_.Tell(index);
         bucket++;
       }
 
@@ -174,15 +177,15 @@ struct BuddyManager {
 
     while (node != 0) {
       FlipParentIsSplit(node);
-      LOG(INFO) << "parent is split " << IsParentSplit(node) << " node "
-                << (node - 1) / 2 << " bucket_size " << BucketSize(bucket - 1);
+      VLOG(3) << "parent is split " << IsParentSplit(node) << " node "
+              << (node - 1) / 2 << " bucket_size " << BucketSize(bucket - 1);
       // The bucket is used, no need to merge.
       if (IsParentSplit(node)) break;
 
       // Here, the bucket is not used, remove the bucket from free list.
       size_t brother = GetBrotherNode(node);
-      auto* listnode = PtrForNode(brother, bucket);
-      reinterpret_cast<ListNode*>(listnode)->Remove();
+      auto* listnode = reinterpret_cast<ListNode*>(PtrForNode(brother, bucket));
+      PopBucket(bucket, listnode);
       if (buckets_[bucket] == reinterpret_cast<ListNode*>(listnode))
         buckets_[bucket] = nullptr;
       // Jump to parent
@@ -260,6 +263,14 @@ struct BuddyManager {
     }
 
     return res;
+  }
+
+  void PopBucket(size_t bucket, ListNode* ptr) {
+    if (ptr->next == ptr) {
+      buckets_[bucket] = nullptr;
+    } else {
+      ptr->Remove();
+    }
   }
 
   void PushBucket(size_t bucket, ListNode* ptr) {
