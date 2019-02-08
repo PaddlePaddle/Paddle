@@ -403,18 +403,20 @@ void GraphView::Build(ir::Graph* g) {
   // 2. track the nodes which used by parameter server.
   // these node can not be inplaced, otherwise trainer
   // pserver can not find each other name.
+  auto update_skip_set = [&](ir::Node* node) {
+    for (auto& in : node->inputs) {
+      if (in->IsVar() && in->Var() != nullptr) dup_nodes_.emplace(in->Name());
+    }
+    for (auto& out : node->outputs) {
+      if (out->IsVar() && out->Var() != nullptr)
+        dup_nodes_.emplace(out->Name());
+    }
+  };
   for (auto& node : g->Nodes()) {
     if (!node->IsOp()) continue;
-    if (node->Name() == "send") {
-      for (auto& in : node->inputs) {
-        dup_nodes_.emplace(in->Name());
-      }
-    }
-    if (node->Name() == "recv") {
-      for (auto& out : node->outputs) {
-        dup_nodes_.emplace(out->Name());
-      }
-    }
+    if (node->Name() == "send") update_skip_set(node);
+    if (node->Name() == "recv") update_skip_set(node);
+    if (node->Name() == "prefetch") update_skip_set(node);
   }
 }
 
