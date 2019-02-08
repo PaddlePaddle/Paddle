@@ -925,9 +925,7 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
 }
 
 void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
-  if (need_broadcast_var_ ||
-      (UseGPU() &&
-       strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce)) {
+  if (UseGPU() && strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
     if (strategy_.fuse_broadcast_op_) {
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
