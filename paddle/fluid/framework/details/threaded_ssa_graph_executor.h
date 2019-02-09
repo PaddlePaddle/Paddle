@@ -51,6 +51,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ~ThreadedSSAGraphExecutor() final = default;
 
  private:
+  inline FeedFetchList RunImpl(const std::vector<std::string> &fetch_tensors);
   void RunOp(const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
              details::OpHandleBase *op);
 
