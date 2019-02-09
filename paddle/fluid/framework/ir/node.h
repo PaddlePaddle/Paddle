@@ -116,11 +116,11 @@ class Node {
   std::unique_ptr<VarDesc> var_desc_;
   std::unique_ptr<OpDesc> op_desc_;
   Type type_;
-  int id_;
+  size_t id_;
 
  private:
   // ID can only set by a Graph.
-  void SetId(int id) { id_ = id; }
+  void SetId(size_t id) { id_ = id; }
 
   friend class Graph;
   friend std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
