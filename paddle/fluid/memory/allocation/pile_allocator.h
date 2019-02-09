@@ -228,21 +228,6 @@ static std::shared_ptr<BuddyResource> CreateBuddyResource(
  * The underlying memory is an buffer allocated by system, the buckets is some
  * descriptions wraps it.
  *
- * There are several data structure on it:
- * - ListNode: the double-link list node, which help to maintain the free list
- * for buckets.
- * - Bucket: a free list of ListNodes.
- * - request: an size_t value which indicate the memory needed. For each
- *            allocated memory block, there is an 8-byte header ahead which
- *            store the `request`.
- * - memory pool: the memory buffer allocated from system, the BuddyManager will
- *                re-manage the allocation on it.
- *
- * For each free bucket, the memory is
- *   | ListNode |  ... rest memory of this bucket |
- * For each used bucket, the memory is
- *   | Request | ... rest memory of this bucket |
- *
  * Reallocation:
  * If the initial memory pool is full-filled, the extra memory pool is needed.
  * This will triger the system allocation, and put the memory pool reallcated to
