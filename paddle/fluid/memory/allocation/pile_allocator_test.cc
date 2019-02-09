@@ -340,6 +340,11 @@ TEST(BuddySystem, realloc) {
   ASSERT_EQ(manager.PoolIdxForPtr(static_cast<uint8_t*>(ptr1)), 1);
 }
 
+TEST(BuddySystem, resource_created_externally) {
+  auto resource = CreateBuddyResource(10, 2, 9, 4);
+  ASSERT_EQ(resource->num_piled(), 4);
+}
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

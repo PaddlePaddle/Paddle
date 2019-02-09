@@ -9,6 +9,9 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+// Stupid data structure, why the allocated memory should return with an
+// unique_ptr of Allocation?
+// This design adds overhead of CPU allocation.
 class PileAllocation : public Allocation {};
 
 struct BitSet {
@@ -509,49 +512,70 @@ struct BuddySystem {
 };
 
 /** \brief An (best-fit)allocator with memory share enabled.
+ * This allocator offers the sequential sharing of temporary workspace.
  *
- * This is an special best-fit allocator, it supports pile memory share.
- * About pile memory share: the memory chunk be shared by multiple consumers.
- * We will color the chunks with several labels, and determine which label can
- * be shared while others cannot be shared.
+ * The example scenerios:
+ *   We have N models, each has an average memory size W for weight and T for
+ * temporary variables, and all these models are used in sequential. By default,
+ * these models will occupy N*(W+T) size of memory.
+ *   By using PileAllocator, we can share the temporary variable memory space
+ * for all the models, and in tatal these model will only take N*W+T size of
+ * memory. That performance is remarkable when T is large.
+ *
  */
 class PileAllocator : public Allocator {
  public:
   using byte_t = char;
 
-  PileAllocator(size_t max_memory_size = 1 << 20,
-                size_t basic_cluster_size = 1 << 10, size_t page_size = 64,
-                size_t init_mem_size = 1 << 20, size_t inc_size = 1 << 20)
-      : kMaxMemorySize(max_memory_size),
-        kBasicClusterSize(basic_cluster_size),
-        kPageSize(page_size),
-        kInitMemSize(init_mem_size),
-        kIncSize(inc_size) {}
+  struct MemoryOption {
+    MemoryOption(size_t max_memory_size, size_t min_memory_size,
+                 size_t realloc_memory_size)
+        : max_memory_log_size(std::floor(std::log(max_memory_size))),
+          min_memory_log_size(std::floor(std::log(min_memory_size))),
+          realloc_memory_log_size(std::floor(std::log(realloc_memory_size))),
+          max_memory_size(1 << max_memory_log_size),
+          min_memory_size(1 << min_memory_log_size),
+          realloc_memory_size(1 << realloc_memory_log_size) {}
 
-  AllocationPtr Allocate(size_t size, Allocator::Attr attr = kDefault) {
-    if (size > kMaxMemorySize) return nullptr;
-    return nullptr;
+    const size_t max_memory_log_size;
+    const size_t min_memory_log_size;
+    const size_t realloc_memory_log_size;
+
+    const size_t max_memory_size;
+    const size_t min_memory_size;
+    const size_t realloc_memory_size;
+  };
+
+  PileAllocator(int num_pile, const MemoryOption& meta_memory,
+                const MemoryOption& pile_memory) {
+    meta_system_.reset(new BuddySystem(meta_memory.max_memory_log_size,
+                                       meta_memory.min_memory_log_size,
+                                       meta_memory.realloc_memory_log_size, 1));
+    auto pile_resource = CreateBuddyResource(
+        pile_memory.max_memory_log_size, pile_memory.min_memory_log_size,
+        pile_memory.realloc_memory_log_size, num_pile);
+
+    for (int i = 0; i < num_pile; i++) {
+      meta_system_.reset(new BuddySystem(pile_resource, i));
+    }
+  }
+
+  void SetPileIdx(int idx) { pile_idx_ = idx; }
+
+  // TODO(Superjomn) TODO(px) re-consider the allocation interface.
+  void* Allocate(size_t size, Allocator::Attr attr = kDefault) {
+    if (pile_idx_ == -1) {
+      return meta_system_->Malloc(size);
+    }
+    return pile_systems_.at(pile_idx_)->Malloc(size);
   }
 
   bool IsAllocThreadSafe() const override { return false; }
 
-  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override {
-    return nullptr;
-  }
-
- protected:
-  void* SystemAllocate(size_t size) {
-    auto* x = new byte_t[size];
-    PADDLE_ENFORCE(x, "system OOM! allocate %d bytes failed.", kInitMemSize);
-    return x;
-  }
-
  private:
-  const size_t kMaxMemorySize;
-  const size_t kBasicClusterSize;
-  const uint32_t kPageSize{64};
-  const size_t kInitMemSize;
-  const size_t kIncSize;
+  std::unique_ptr<BuddySystem> meta_system_;
+  std::vector<std::unique_ptr<BuddySystem>> pile_systems_;
+  int pile_idx_{-1};
 };
 
 }  // namespace allocation

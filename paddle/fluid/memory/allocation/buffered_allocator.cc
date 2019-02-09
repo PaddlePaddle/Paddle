@@ -56,7 +56,7 @@ void BufferedAllocator::Free(Allocation *allocation) {
 }
 Allocation *BufferedAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   {
-    platform::LockGuardPtr<std::mutex> guard(mtx_);
+    platform::LockGuardPtr<std::mutex> gurd(mtx_);
     auto it = allocations_.lower_bound(size);
     if (it != allocations_.end() && it->first < size * 2) {
       AllocationPtr result(std::move(it->second));
