@@ -272,9 +272,12 @@ class ElementwiseGradOpInplace : public framework::InplaceInToOut {
   std::unordered_map<std::string, std::string> Apply(
       const framework::OpDesc &op_desc,
       framework::BlockDesc *block) const override {
-    return std::unordered_map<std::string, std::string>{
-        {framework::GradVarName("Out"), framework::GradVarName("X")},
-    };
+    std::unordered_map<std::string, std::string> ret;
+    if (block->HasVar(framework::GradVarName("X")) &&
+        block->HasVar(framework::GradVarName("Out"))) {
+      ret[framework::GradVarName("Out")] = framework::GradVarName("X");
+    }
+    return ret;
   }
 };
 
