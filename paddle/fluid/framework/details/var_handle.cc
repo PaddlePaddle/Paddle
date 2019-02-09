@@ -37,9 +37,14 @@ DummyVarHandle::~DummyVarHandle() {
 }  // namespace framework
 }  // namespace paddle
 
-namespace std {
-size_t hash<paddle::framework::details::VarHandleBase*>::operator()(
+size_t std::hash<paddle::framework::details::VarHandleBase*>::operator()(
     paddle::framework::details::VarHandleBase* const& var_handle) const {
   return hash<paddle::framework::ir::Node*>()(var_handle->Node());
 }
-}  // namespace std
+
+bool std::less<paddle::framework::details::VarHandleBase*>::operator()(
+    paddle::framework::details::VarHandleBase* const& var_handle1,
+    paddle::framework::details::VarHandleBase* const& var_handle2) const {
+  return less<paddle::framework::ir::Node*>()(var_handle1->Node(),
+                                              var_handle2->Node());
+}

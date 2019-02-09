@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include <functional>
 #include <map>
 
 namespace paddle {
@@ -172,9 +173,14 @@ size_t OpHandleBase::NotReadyInputSize() const {
 }  // namespace framework
 }  // namespace paddle
 
-namespace std {
-size_t hash<paddle::framework::details::OpHandleBase *>::operator()(
+size_t std::hash<paddle::framework::details::OpHandleBase *>::operator()(
     paddle::framework::details::OpHandleBase *const &op_handle) const {
   return hash<paddle::framework::ir::Node *>()(op_handle->Node());
 }
-}  // namespace std
+
+bool std::less<paddle::framework::details::OpHandleBase *>::operator()(
+    paddle::framework::details::OpHandleBase *const &op_handle1,
+    paddle::framework::details::OpHandleBase *const &op_handle2) const {
+  return less<paddle::framework::ir::Node *>()(op_handle1->Node(),
+                                               op_handle2->Node());
+}

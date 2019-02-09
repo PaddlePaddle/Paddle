@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <functional>
 #include <string>
 #include <typeindex>
 #include <typeinfo>
@@ -160,11 +161,17 @@ std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 }  // namespace framework
 }  // namespace paddle
 
-// Define the hash function of Node*, so the order of unordered_set(or map) is
-// deterministic
+// Define the hash and less function of Node*, so the order of set(map) and
+// unordered_set(or map) is deterministic
 namespace std {
 template <>
 struct hash<paddle::framework::ir::Node*> {
   size_t operator()(paddle::framework::ir::Node* const& node) const;
 };
-}
+
+template <>
+struct less<paddle::framework::ir::Node*> {
+  bool operator()(paddle::framework::ir::Node* const& node1,
+                  paddle::framework::ir::Node* const& node2) const;
+};
+}  // namespace std

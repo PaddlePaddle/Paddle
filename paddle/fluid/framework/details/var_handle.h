@@ -15,6 +15,7 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 #include <sstream>
 #include <string>
 #include <unordered_set>
@@ -32,8 +33,8 @@ class VarHandleBase;
 }  // namespace framework
 }  // namespace paddle
 
-// Define the hash function of VarHandleBase* and OpHandleBase*,
-// so the order of unordered_set(or map) is deterministic
+// Define the hash and less function of VarHandleBase* and OpHandleBase*,
+// so the order of set(map) and unordered_set(or map) is deterministic
 namespace std {
 template <>
 struct hash<paddle::framework::details::VarHandleBase*> {
@@ -45,6 +46,20 @@ template <>
 struct hash<paddle::framework::details::OpHandleBase*> {
   size_t operator()(
       paddle::framework::details::OpHandleBase* const& op_handle) const;
+};
+
+template <>
+struct less<paddle::framework::details::VarHandleBase*> {
+  bool operator()(
+      paddle::framework::details::VarHandleBase* const& var_handle1,
+      paddle::framework::details::VarHandleBase* const& var_handle2) const;
+};
+
+template <>
+struct less<paddle::framework::details::OpHandleBase*> {
+  bool operator()(
+      paddle::framework::details::OpHandleBase* const& op_handle1,
+      paddle::framework::details::OpHandleBase* const& op_handle2) const;
 };
 }  // namespace std
 

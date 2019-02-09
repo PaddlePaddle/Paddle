@@ -46,3 +46,9 @@ size_t std::hash<paddle::framework::ir::Node *>::operator()(
     paddle::framework::ir::Node *const &node) const {
   return static_cast<size_t>(node->id());
 }
+
+bool std::less<paddle::framework::ir::Node *>::operator()(
+    paddle::framework::ir::Node *const &node1,
+    paddle::framework::ir::Node *const &node2) const {
+  return node1->id() < node2->id();
+}
