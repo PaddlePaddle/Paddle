@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
+
 #include <glog/logging.h>
 
 namespace paddle {
@@ -63,6 +64,10 @@ void PaddlePassBuilder::DeletePass(size_t idx) {
 
 void GpuPassStrategy::EnableMKLDNN() {
   LOG(ERROR) << "GPU not support MKLDNN yet";
+}
+
+void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
+  analysis_passes_.push_back(pass);
 }
 
 }  // namespace paddle

@@ -27,8 +27,8 @@ namespace tensorrt {
 class TensorRTEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    // ASSERT_EQ(0, cudaStreamCreate(&stream_));
-    engine_ = new TensorRTEngine(10, 1 << 10, &stream_);
+    ASSERT_EQ(0, cudaStreamCreate(&stream_));
+    engine_ = new TensorRTEngine(10, 1 << 10, stream_);
     engine_->InitNetwork();
   }
 
