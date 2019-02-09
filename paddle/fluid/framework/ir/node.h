@@ -99,7 +99,7 @@ class Node {
   }
 
   // Please don't use this API!
-  int id() const { return id_; }
+  size_t id() const { return id_; }
 
   bool IsOp() const { return type_ == Type::kOperation; }
   bool IsVar() const { return type_ == Type::kVariable; }
