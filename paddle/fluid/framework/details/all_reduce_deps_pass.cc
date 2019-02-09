@@ -27,8 +27,9 @@
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 DEFINE_bool(use_bfs_topological_sort, true,
-            "If true, all reduce will be execute in bfs topological order, "
-            "otherwise will be execute in origin order.");
+            "This option only works when AllReduceDepsPass is enabled"
+            "If true, all reduce ops will be execute in bfs topological order, "
+            "otherwise they will be execute in origin order (default true).");
 
 namespace paddle {
 namespace framework {
