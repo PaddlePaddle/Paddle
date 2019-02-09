@@ -110,14 +110,14 @@ size_t ListGetSizeSlow(ListNode* head) {
  * For each used bucket, the memory is
  *   | Request | ... rest memory of this bucket |
  */
-struct BuddyManager {
+struct BuddySystem {
   using byte_t = uint8_t;
   // An integer is needed to store the size of request. We use a 8-byte header
   // to store this integer to keep memory aligned by 8.
   const uint32_t kHeaderSize{sizeof(size_t)};
 
-  BuddyManager(size_t min_mem_log_size, size_t max_mem_log_size,
-               size_t realloc_mem_log_size, bool allow_realloc = true)
+  BuddySystem(size_t min_mem_log_size, size_t max_mem_log_size,
+              size_t realloc_mem_log_size, bool allow_realloc = true)
       : min_mem_log_size_(min_mem_log_size),
         max_mem_log_size_(max_mem_log_size),
         min_mem_size_(1 << min_mem_log_size),
@@ -180,11 +180,10 @@ struct BuddyManager {
 
       // Here, the bucket is not used, remove the bucket from free list.
       size_t brother = GetBrotherNode(node);
-      auto* listnode =
+      auto* list_node =
           reinterpret_cast<ListNode*>(PtrForNode(brother, bucket, pool_idx));
-      PopBucket(bucket, listnode);
-      if (buckets_[bucket] == reinterpret_cast<ListNode*>(listnode))
-        buckets_[bucket] = nullptr;
+      PopBucket(bucket, list_node);
+      if (buckets_[bucket] == list_node) buckets_[bucket] = nullptr;
       // Jump to parent
       node = (node - 1) / 2;
       bucket--;
@@ -193,7 +192,7 @@ struct BuddyManager {
                reinterpret_cast<ListNode*>(PtrForNode(node, bucket, pool_idx)));
   }
 
-  ~BuddyManager() {
+  ~BuddySystem() {
     for (auto* v : buffer_) {
       delete[] v;
     }
@@ -376,8 +375,8 @@ struct BuddyManager {
     labels_.emplace_back();
     is_splits_.emplace_back();
 
-    labels_.back().Resize(realloc_mem_size_/min_mem_size_);
-    is_splits_.back().Resize(realloc_mem_size_/min_mem_size_);
+    labels_.back().Resize(realloc_mem_size_ / min_mem_size_);
+    is_splits_.back().Resize(realloc_mem_size_ / min_mem_size_);
   }
 
   byte_t* SystemAllocate(size_t size) {
@@ -406,19 +405,19 @@ struct BuddyManager {
 
   std::vector<byte_t*> buffer_;
 
-  FRIEND_TEST(BuddyManager, test1);
-  FRIEND_TEST(BuddyManager, BucketForRequest);
-  FRIEND_TEST(BuddyManager, BucketSize);
-  FRIEND_TEST(BuddyManager, TestFirstBucket);
-  FRIEND_TEST(BuddyManager, PushBucket);
-  FRIEND_TEST(BuddyManager, PopBucket);
-  FRIEND_TEST(BuddyManager, GetBrotherNode);
-  FRIEND_TEST(BuddyManager, SplitBucket);
-  FRIEND_TEST(BuddyManager, NodeForPtr);
-  FRIEND_TEST(BuddyManager, PtrForNode);
-  FRIEND_TEST(BuddyManager, Malloc);
-  FRIEND_TEST(BuddyManager, Malloc1);
-  FRIEND_TEST(BuddyManager, realloc);
+  FRIEND_TEST(BuddySystem, test1);
+  FRIEND_TEST(BuddySystem, BucketForRequest);
+  FRIEND_TEST(BuddySystem, BucketSize);
+  FRIEND_TEST(BuddySystem, TestFirstBucket);
+  FRIEND_TEST(BuddySystem, PushBucket);
+  FRIEND_TEST(BuddySystem, PopBucket);
+  FRIEND_TEST(BuddySystem, GetBrotherNode);
+  FRIEND_TEST(BuddySystem, SplitBucket);
+  FRIEND_TEST(BuddySystem, NodeForPtr);
+  FRIEND_TEST(BuddySystem, PtrForNode);
+  FRIEND_TEST(BuddySystem, Malloc);
+  FRIEND_TEST(BuddySystem, Malloc1);
+  FRIEND_TEST(BuddySystem, realloc);
 };
 
 /** \brief An (best-fit)allocator with memory share enabled.
