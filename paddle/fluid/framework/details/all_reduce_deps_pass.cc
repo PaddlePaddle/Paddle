@@ -26,6 +26,10 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
+DEFINE_bool(use_bfs_topological_sort, true,
+            "If true, all reduce will be execute in bfs topological order, "
+            "otherwise will be execute in origin order.");
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -51,9 +55,7 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
   std::unordered_map<std::string, int> vars;
   auto& ops = Get<const std::vector<OpDesc*>>(kAllOpDescs);
 
-  // TODO(liangdun): add a config in build strategy
-  bool use_topological_sort = true;
-  if (use_topological_sort) {
+  if (FLAGS_use_bfs_topological_sort) {
     int op_size = ops.size();
     std::vector<std::vector<int>> op_deps(op_size);
     std::vector<int> deps(op_size, 0);
