@@ -68,10 +68,10 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
                              proto::VarType::Type dtype) const;
 
   VarHandle *CreateReduceOp(ir::Graph *result, const std::string &og,
-                            int dst_dev_id) const;
+                            size_t dst_dev_id) const;
 
   void CreateComputationalOp(ir::Graph *result, ir::Node *node,
-                             int dev_id) const;
+                             size_t dev_id) const;
 
   bool IsSparseGradient(const std::string &og) const;
 
@@ -118,16 +118,16 @@ class AllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
 
 class AsyncSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
  protected:
-  virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
-                                  const std::string &g_name) const {}
+  void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
+                          const std::string &g_name) const override {}
 
   bool NeedCollectiveOps() const override { return false; }
 
-  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const {
+  bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const override {
     return false;
   }
 
-  virtual void InsertPostprocessOps(ir::Graph *result) const {}
+  void InsertPostprocessOps(ir::Graph *result) const override {}
 };
 
 class BalanceVarSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
