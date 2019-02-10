@@ -160,9 +160,9 @@ def __bootstrap__():
             'sync_nccl_allreduce', 'limit_of_tmp_allocation',
             'times_excess_than_required_tmp_allocation'
         ]
-    program = sys.argv[0] if sys.argv[0].endswith(".py") else ""
-    core.init_gflags([program] + ["--tryfromenv=" + ",".join(read_env_flags)])
-    core.init_glog(program)
+    core.init_gflags([sys.argv[0]] +
+                     ["--tryfromenv=" + ",".join(read_env_flags)])
+    core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
     core.init_devices(not in_test)
 
