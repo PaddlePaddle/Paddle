@@ -51,8 +51,7 @@ static inline bool IsSameDesc(OpDesc* op1, OpDesc* op2) {
 std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   auto nodes = graph->Nodes();
-  auto subblock_vars = GetSubBlockVars(nodes);
-  skip_set_.insert(subblock_vars.begin(), subblock_vars.end());
+  CollectSkipVarsSet(nodes);
 
   cfg_.reset(new details::ControlFlowGraph(*graph));
   cfg_->LiveVariableAnalysis();
@@ -224,20 +223,27 @@ void MemoryOptimizePass::SubGraphOptimize(OpDesc* op_desc) const {
   }
 }
 
-std::unordered_set<std::string> MemoryOptimizePass::GetSubBlockVars(
+void MemoryOptimizePass::CollectSkipVarsSet(
     const std::unordered_set<ir::Node*>& nodes) const {
-  std::unordered_set<std::string> vars;
+  auto update_skip_set = [&](OpDesc* op_desc) {
+    auto inputs = op_desc->InputArgumentNames();
+    auto outputs = op_desc->OutputArgumentNames();
+    skip_set_.insert(inputs.begin(), inputs.end());
+    skip_set_.insert(outputs.begin(), outputs.end());
+  };
   for (auto& op : nodes) {
     if (!op->IsOp() || op->Op() == nullptr) continue;
     auto* op_desc = op->Op();
-    if (OpHasSubBlock(op_desc)) {
-      auto inputs = op_desc->InputArgumentNames();
-      auto outputs = op_desc->OutputArgumentNames();
-      vars.insert(inputs.begin(), inputs.end());
-      vars.insert(outputs.begin(), outputs.end());
-    }
+    // NOTE(dzhwinter):
+    // current block can not reuse next level block vars.
+    if (OpHasSubBlock(op_desc)) update_skip_set(op_desc);
+    // NOTE(dzhwinter):
+    // distributed ops input/output name need to
+    // keep same bettwen trainer/pserver
+    if (op_desc->Type() == "send") update_skip_set(op_desc);
+    if (op_desc->Type() == "recv") update_skip_set(op_desc);
+    if (op_desc->Type() == "prefetch") update_skip_set(op_desc);
   }
-  return vars;
 }
 
 void MemoryOptimizePass::RenameVarInGraphDesc(const std::string& var,
