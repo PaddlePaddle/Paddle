@@ -53,10 +53,12 @@ inline static int RoundToPowerOfTwo(int dim) {
     __VA_ARGS__;                           \
   } break
 
-#define CUDA_LAUNCH_KERNEL_HELPER(...)         \
-  CUDA_LAUNCH_KERNEL_BASE(256, ##__VA_ARGS__); \
-  CUDA_LAUNCH_KERNEL_BASE(128, ##__VA_ARGS__); \
-  CUDA_LAUNCH_KERNEL_BASE(64, ##__VA_ARGS__);  \
+#define CUDA_LAUNCH_KERNEL_HELPER(...)          \
+  CUDA_LAUNCH_KERNEL_BASE(1024, ##__VA_ARGS__); \
+  CUDA_LAUNCH_KERNEL_BASE(512, ##__VA_ARGS__);  \
+  CUDA_LAUNCH_KERNEL_BASE(256, ##__VA_ARGS__);  \
+  CUDA_LAUNCH_KERNEL_BASE(128, ##__VA_ARGS__);  \
+  CUDA_LAUNCH_KERNEL_BASE(64, ##__VA_ARGS__);   \
   CUDA_LAUNCH_KERNEL_BASE(32, ##__VA_ARGS__);
 
 template <typename T>
