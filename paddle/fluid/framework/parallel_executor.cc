@@ -333,7 +333,7 @@ ParallelExecutor::ParallelExecutor(
              "please don't pass loss_var_name.";
     }
   }
-  if (build_strategy.async_mode_) {
+  if (build_strategy.async_mode_ && !build_strategy.is_distribution_) {
     VLOG(3) << "use AsyncSSAGraphExecutor";
     member_->executor_.reset(new details::AsyncSSAGraphExecutor(
         exec_strategy, member_->local_scopes_, member_->places_,
