@@ -13,23 +13,7 @@
 # limitations under the License.
 from __future__ import print_function
 import unittest
-from paddle.fluid.tests.unittests.test_sum_op import *
-
-
-class TestNGRAPHSumOp(TestSumOp):
-    def setUp(self):
-        super(TestNGRAPHSumOp, self).setUp()
-
-
-class TestNGRAPHSelectedRowsSumOp(TestSelectedRowsSumOp):
-    def setUp(self):
-        super(TestNGRAPHSelectedRowsSumOp, self).setUp()
-
-
-class TestNGRAPHLoDTensorAndSelectedRowsSumOp(TestLoDTensorAndSelectedRowsOp):
-    def setUp(self):
-        super(TestNGRAPHLoDTensorAndSelectedRowsSumOp, self).setUp()
-
+from paddle.fluid.tests.unittests.test_sum_op import TestSumOp, TestSelectedRowsSumOp, TestLoDTensorAndSelectedRowsOp
 
 if __name__ == "__main__":
     unittest.main()
