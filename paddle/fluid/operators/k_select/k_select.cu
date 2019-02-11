@@ -619,6 +619,19 @@ __global__ void KeGlobalPrefixSum(int* data, int* partial_sums, int len,
 }
 
 template <typename T>
+__global__ void KeEncodeInit(T* value, int* index, int k) {
+  int id = blockDim.x * blockIdx.x + threadIdx.x;
+  if(id >= k){
+      return;
+  }
+
+  for (int i = id; i < k; i += gridDim.x * blockDim.x) {
+    index[i] = -1;
+    value[i] = -1;
+  }
+}
+
+template <typename T>
 __global__ void KeEncode(const T* data, int count, int* scan, T* value,
                          int* index, T* threshold, int k) {
   int id = blockDim.x * blockIdx.x + threadIdx.x;
@@ -648,13 +661,16 @@ __global__ void KeEncode(const T* data, int count, int* scan, T* value,
 }
 
 template <typename T>
-__global__ void KeMask(int* index, int k, T* data) {
+__global__ void KeMask(int* index, int k, T* data, int count) {
   int id = blockDim.x * blockIdx.x + threadIdx.x;
   if(id >= k){
       return;
   }
   for (int i = id; i < k; i += gridDim.x * blockDim.x) {
     int idx = index[i];
+    if(idx >= count || idx < 0){
+        continue;
+    }
     data[idx] = 0;
   }
 }
@@ -693,10 +709,10 @@ bool k_select_min(float* input, int count, void* encode, void* buff, int k,
     KeGetTopKShort<float, MaxLength, BlockSize><<<blocks, threads, 0, stream>>>(
         threshold, input, count, count, k, value, index);
     KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
-                                                                  input);
+                                                                  input, count);
     if (moment != nullptr) {
       KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
-                                                                    moment);
+                                                                    moment, count);
     }
     return true;
   }
@@ -725,13 +741,14 @@ void dense2coo(void* encode, float* input, float* threshold, int* thr_cnt,
   KeGlobalPrefixSum<<<blocks - 1, threads,0, stream>>>(thr_cnt + threads, part, count, k);
   int* index = static_cast<int*>(encode);
   float* value = static_cast<float*>(encode) + k;
+  KeEncodeInit<float><<<blocks, threads, 0, stream>>>(value, index, k);
   KeEncode<float><<<blocks, threads, 0, stream>>>(input, count, thr_cnt, value,
                                                   index, threshold, k);
   KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
-                                                                input);
+                                                                input, count);
   if (moment != nullptr) {
     KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
-                                                                  moment);
+                                                                  moment, count);
   }
 }
 
