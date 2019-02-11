@@ -11,11 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import paddle.fluid.core as core
+
+from paddle.fluid import core
 import numpy as np
 import math
 import os
-import paddle.fluid as fluid
+from paddle.fluid.executor import global_scope
+from paddle.fluid import io
+
+__all__ = ['Calibrator']
 
 
 class Calibrator(object):
@@ -76,8 +80,7 @@ class Calibrator(object):
         '''
         for i in self.sampling_program.list_vars():
             if i.name in self.sampling_vars:
-                np_data = np.array(fluid.global_scope().find_var(i.name)
-                                   .get_tensor())
+                np_data = np.array(global_scope().find_var(i.name).get_tensor())
                 if i.name not in self._sampling_data:
                     self._sampling_data[i.name] = []
                 self._sampling_data[i.name].append(np_data)
@@ -86,9 +89,9 @@ class Calibrator(object):
         '''
         Save the quantized model to the disk.
         '''
-        fluid.io.save_inference_model(self.output, self.feed_var_names,
-                                      self.fetch_list, self.exe,
-                                      self.sampling_program)
+        io.save_inference_model(self.output, self.feed_var_names,
+                                self.fetch_list, self.exe,
+                                self.sampling_program)
 
     def __display_debug(self):
         if self.debug:

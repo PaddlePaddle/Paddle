@@ -117,6 +117,7 @@ class CpuPassStrategy : public PassStrategy {
         "conv_bn_fuse_pass",             //
         "conv_eltwiseadd_bn_fuse_pass",  //
         "is_test_pass",                  //
+        "identity_scale_op_clean_pass",  //
     });
     use_gpu_ = false;
   }
@@ -155,6 +156,7 @@ class GpuPassStrategy : public PassStrategy {
   GpuPassStrategy() : PassStrategy({}) {
     passes_.assign({
       "infer_clean_graph_pass",                        //
+          "identity_scale_op_clean_pass",              //
           "conv_affine_channel_fuse_pass",             //
           "conv_eltwiseadd_affine_channel_fuse_pass",  //
           "conv_bn_fuse_pass",                         //
