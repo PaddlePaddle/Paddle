@@ -1061,9 +1061,12 @@ bool DistSSAGraphBuilder::IfCreateDGCOp(const std::string &grad_name) const {
   int64_t numel = framework::product(dim);
 
   if (numel < 4096 || grad_desc->GetDataType() != proto::VarType::FP32) {
-    LOG(INFO) << "skip DGCOP because numel:" << numel
+    VLOG(3) << "skip DGCOP because numel:" << numel
               << ", datatype:" << grad_desc->GetDataType();
     return false;
+  }else{
+    VLOG(3) << "add DGCOp numel:" << numel
+              << ", datatype:" << grad_desc->GetDataType();
   }
 
   return true;
