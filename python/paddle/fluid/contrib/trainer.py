@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import contextlib
+from .wrapped_decorator import contextmanager
 import os
 import errno
 import shutil
@@ -453,7 +453,7 @@ class Trainer(object):
             io.save_inference_model(param_path, feeded_var_names, target_vars,
                                     exe)
 
-    @contextlib.contextmanager
+    @contextmanager
     def _prog_and_scope_guard(self):
         with framework.program_guard(
                 main_program=self.train_program,
