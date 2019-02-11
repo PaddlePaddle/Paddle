@@ -538,15 +538,16 @@ __global__ void KeFindKth(const T* input, int count, int* block_count, T* pmax,
 
 template <typename T>
 __global__ void KeGetThreadCountByThreshold(const T* idata, int* odata,
-                                            int count, T* threshold, int buf_count) {
+                                            int count, T* threshold,
+                                            int buf_count) {
   extern int __shared__ sdata[];
   sdata[threadIdx.x] = 0;
   __syncthreads();
   T kth = *threshold;
 
   int id = threadIdx.x + blockDim.x * blockIdx.x;
-  if(id >= count){
-      return;
+  if (id >= count) {
+    return;
   }
 
   for (int i = threadIdx.x + blockDim.x * blockIdx.x; i < count;
@@ -556,15 +557,17 @@ __global__ void KeGetThreadCountByThreshold(const T* idata, int* odata,
     }
   }
   __syncthreads();
-  PADDLE_ASSERT_MSG_CODE((threadIdx.x + blockDim.x * blockIdx.x) < buf_count, "should < buf_count", buf_count);
+  PADDLE_ASSERT_MSG_CODE((threadIdx.x + blockDim.x * blockIdx.x) < buf_count,
+                         "should < buf_count", buf_count);
   odata[threadIdx.x + blockDim.x * blockIdx.x] = sdata[threadIdx.x];
 }
 
-__global__ void KePrefixSum(int* data, int count, int width, int* partial_sums = NULL) {
+__global__ void KePrefixSum(int* data, int count, int width,
+                            int* partial_sums = NULL) {
   extern __shared__ int shm[];
   int id = ((blockIdx.x * blockDim.x) + threadIdx.x);
-  if(id >= count){
-      return;
+  if (id >= count) {
+    return;
   }
 
   int lane_id = id % warpSize;
@@ -621,8 +624,8 @@ __global__ void KeGlobalPrefixSum(int* data, int* partial_sums, int len,
 template <typename T>
 __global__ void KeEncodeInit(T* value, int* index, int k) {
   int id = blockDim.x * blockIdx.x + threadIdx.x;
-  if(id >= k){
-      return;
+  if (id >= k) {
+    return;
   }
 
   for (int i = id; i < k; i += gridDim.x * blockDim.x) {
@@ -635,8 +638,8 @@ template <typename T>
 __global__ void KeEncode(const T* data, int count, int* scan, T* value,
                          int* index, T* threshold, int k) {
   int id = blockDim.x * blockIdx.x + threadIdx.x;
-  if(id >= count){
-      return;
+  if (id >= count) {
+    return;
   }
 
   int start = 0;
@@ -663,24 +666,13 @@ __global__ void KeEncode(const T* data, int count, int* scan, T* value,
 template <typename T>
 __global__ void KeMask(int* index, int k, T* data, int count) {
   int id = blockDim.x * blockIdx.x + threadIdx.x;
-  if(id >= k){
-      return;
+  if (id >= k) {
+    return;
   }
   for (int i = id; i < k; i += gridDim.x * blockDim.x) {
     int idx = index[i];
-    /*
-    __syncthreads();
-    if(idx >= count || idx < 0){
-        if(idx>=count)  {
-            printf("idx:%d > count:%d, idx:%f\n", idx, count, *(float*)(&idx));
-        }
-        if(idx < 0 && idx != -1){
-            printf("idx:%d < 0 != -1, idx:%f\n", idx, *(float*)(&idx));
-        }
-        continue;
-    }
-    */
-    PADDLE_ASSERT_MSG_CODE(((idx < count && idx >=0 ) || (idx == -1)), "idx should be valid", idx);
+    PADDLE_ASSERT_MSG_CODE(((idx < count && idx >= 0) || (idx == -1)),
+                           "idx should be valid", idx);
     data[idx] = 0;
   }
 }
@@ -721,8 +713,8 @@ bool k_select_min(float* input, int count, void* encode, void* buff, int k,
     KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
                                                                   input, count);
     if (moment != nullptr) {
-      KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
-                                                                    moment, count);
+      KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(
+          index, k, moment, count);
     }
     return true;
   }
@@ -730,35 +722,39 @@ bool k_select_min(float* input, int count, void* encode, void* buff, int k,
 }
 
 void dense2coo(void* encode, float* input, float* threshold, int* thr_cnt,
-               int count, int k, cudaStream_t stream, float* moment, int buf_count) {
+               int count, int k, cudaStream_t stream, float* moment,
+               int buf_count) {
   int blocks, threads;
   getNumBlocksAndThreads(count, blocks, threads);
   int smemSize = sizeof(float) * threads * 2;
   int p_threads = min(blocks, threads);
   int p_blocks = iDivUp(blocks, p_threads);
 
-  std::cout << "smemsize:" << smemSize
-      << ", p_threads:" << p_threads
-      << ", p_blocks:" << p_blocks 
-      << ", buf_count:" << buf_count << std::endl;
+  /*
+  std::cout << "smemsize:" << smemSize << ", p_threads:" << p_threads
+            << ", p_blocks:" << p_blocks << ", buf_count:" << buf_count
+            << std::endl;
+            */
 
   KeGetThreadCountByThreshold<float><<<blocks, threads, smemSize, stream>>>(
       input, thr_cnt, count, threshold, buf_count);
 
   int* part = thr_cnt + threads * blocks;
-  KePrefixSum<<<blocks, threads, smemSize, stream>>>(thr_cnt, threads*blocks, 32, part);
+  KePrefixSum<<<blocks, threads, smemSize, stream>>>(thr_cnt, threads * blocks,
+                                                     32, part);
   KePrefixSum<<<p_blocks, p_threads, smemSize, stream>>>(part, blocks, 32);
-  KeGlobalPrefixSum<<<blocks - 1, threads,0, stream>>>(thr_cnt + threads, part, count, k);
+  KeGlobalPrefixSum<<<blocks - 1, threads, 0, stream>>>(thr_cnt + threads, part,
+                                                        count, k);
   int* index = static_cast<int*>(encode);
   float* value = static_cast<float*>(encode) + k;
   KeEncodeInit<float><<<blocks, threads, 0, stream>>>(value, index, k);
   KeEncode<float><<<blocks, threads, 0, stream>>>(input, count, thr_cnt, value,
                                                   index, threshold, k);
-  KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
-                                                                input, count);
+  KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k, input,
+                                                                count);
   if (moment != nullptr) {
-    KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
-                                                                  moment, count);
+    KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(
+        index, k, moment, count);
   }
 }
 
@@ -802,7 +798,7 @@ bool k_select_bucket(float* input, int count, void* encode, void* buff, int k,
 
 bool k_select(float* input, int count, void* encode, void* buff, int k,
               int protocal, cudaStream_t stream, float* moment) {
-  std::cout << "count:" << count << std::endl;
+  // std::cout << "count:" << count << std::endl;
   if (count < MIN_COUNT_FOR_LARGE_TOPK) {
     return k_select_min(input, count, encode, buff, k, stream, moment);
   }
@@ -811,13 +807,14 @@ bool k_select(float* input, int count, void* encode, void* buff, int k,
   float* threshold = static_cast<float*>(buff);
   get_threshold(threshold, input, count, k, stream);
 
-  int blocks=0;
-  int threads=0;
+  int blocks = 0;
+  int threads = 0;
   getNumBlocksAndThreads(count, blocks, threads);
   int* thr_cnt = static_cast<int*>(buff) + 1;
   if (protocal == 0) {  // coo
     int buf_count = get_buffer_size(count);
-    dense2coo(encode, input, threshold, thr_cnt, count, k, stream, moment, buf_count - 1); 
+    dense2coo(encode, input, threshold, thr_cnt, count, k, stream, moment,
+              buf_count - 1);
   } else if (protocal == 1) {  // csr
     // dense2csr(encode, input, threshold, thr_cnt, count, k, stream);
     exit(-1);
