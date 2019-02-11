@@ -283,7 +283,7 @@ ParallelExecutor::ParallelExecutor(
     graphs.push_back(std::move(graph));
   }
 #else
-  if (build_strategy.async_mode_) {
+  if (build_strategy.async_mode_ && !build_strategy.is_distribution_) {
     for (size_t i = 0; i < member_->places_.size(); ++i) {
       std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
           main_program, {member_->places_[i]}, loss_var_name,
