@@ -378,9 +378,10 @@ class TestBook(unittest.TestCase):
         program = Program()
         with program_guard(program):
             logits = layers.data(name='Logits', shape=[256], dtype='float64')
-            label = layers.data(name='Label', shape=[5], dtype='int64')
+            label = layers.data(name='Label', shape=[1], dtype='int64')
             num_samples = 25
-            output = layers.sample_logits(logits, label, num_samples)
+            output = layers.sampled_softmax_with_cross_entropy(logits, label,
+                                                               num_samples)
             self.assertIsNotNone(output)
         print(str(program))
 
