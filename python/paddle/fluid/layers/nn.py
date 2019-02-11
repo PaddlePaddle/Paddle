@@ -5878,7 +5878,7 @@ def sampled_softmax_with_cross_entropy(logits,
             'ignore_index': False,
             'numeric_stable_mode': False
         })
-    return outputs / num_true
+    return loss / num_true
 
 
 def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
