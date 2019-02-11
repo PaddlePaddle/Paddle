@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from . import core
-from contextlib import contextmanager
+from .wrapped_decorator import contextmanager
 import os
 import six
 
