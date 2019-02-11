@@ -540,6 +540,7 @@ def memory_optimize(input_program,
     if skip_opt_set is not None:
         skip_opt_set = set(map(to_name_str, skip_opt_set))
     cfgs = _get_cfgs(input_program)
+    input_program._is_mem_optimized = True
     for cfg in cfgs:
         cfg.memory_optimize(skip_opt_set=skip_opt_set, level=level)
 
@@ -559,5 +560,6 @@ def release_memory(input_program, skip_opt_set=None):
         None
     """
     cfgs = _get_cfgs(input_program)
+    input_program._is_mem_optimized = True
     for cfg in cfgs:
         cfg.release_memory(skip_opt_set=skip_opt_set)

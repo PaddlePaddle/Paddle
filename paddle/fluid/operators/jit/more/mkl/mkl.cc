@@ -25,17 +25,19 @@ namespace more {
 namespace mkl {
 
 template <>
-void MatMul<float>(const float* a, const float* b, float* c, int m, int n,
-                   int k) {
-  platform::dynload::cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m,
-                                 n, k, 1.f, a, k, b, n, 0.f, c, n);
+void MatMul<float>(const float* a, const float* b, float* c,
+                   const matmul_attr_t* attr) {
+  platform::dynload::cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                                 attr->m, attr->n, attr->k, 1.f, a, attr->k, b,
+                                 attr->n, 0.f, c, attr->n);
 }
 
 template <>
-void MatMul<double>(const double* a, const double* b, double* c, int m, int n,
-                    int k) {
-  platform::dynload::cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m,
-                                 n, k, 1.0, a, k, b, n, 0.0, c, n);
+void MatMul<double>(const double* a, const double* b, double* c,
+                    const matmul_attr_t* attr) {
+  platform::dynload::cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                                 attr->m, attr->n, attr->k, 1.0, a, attr->k, b,
+                                 attr->n, 0.0, c, attr->n);
 }
 
 template <>
@@ -128,18 +130,13 @@ void ASum<double>(const double* x, double* res, int n) {
 
 // TODO(TJ): tuning me carefully on AVX, AVX2 and AVX512
 template <>
-bool MatMulKernel<float>::UseMe(const int& d) const {
-  return platform::MayIUse(platform::avx);
-}
-
-template <>
 bool VMulKernel<float>::UseMe(const int& d) const {
   return platform::MayIUse(platform::avx512f) && d > 512;
 }
 
 template <>
 bool VAddKernel<float>::UseMe(const int& d) const {
-  return platform::MayIUse(platform::avx512f) && d > 512;
+  return platform::MayIUse(platform::avx) && d > 512;
 }
 
 template <>
@@ -178,6 +175,16 @@ bool SeqPoolKernel<double>::UseMe(const seq_pool_attr_t& attr) const {
 }
 
 template <>
+bool MatMulKernel<float>::UseMe(const matmul_attr_t& attr) const {
+  return platform::MayIUse(platform::avx);
+}
+
+template <>
+bool MatMulKernel<double>::UseMe(const matmul_attr_t& attr) const {
+  return true;
+}
+
+template <>
 bool SoftmaxKernel<float>::UseMe(const int& d) const {
   // tuned on avx2
   return platform::MayIUse(platform::avx) && d < 60;
@@ -189,7 +196,6 @@ bool SoftmaxKernel<float>::UseMe(const int& d) const {
     return true;                                         \
   }
 
-AWALYS_USE_ME_WITH_DOUBLE(MatMul);
 AWALYS_USE_ME_WITH_DOUBLE(VMul);
 AWALYS_USE_ME_WITH_DOUBLE(VAdd);
 AWALYS_USE_ME_WITH_DOUBLE(VScal);
