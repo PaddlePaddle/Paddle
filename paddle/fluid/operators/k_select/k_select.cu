@@ -668,9 +668,19 @@ __global__ void KeMask(int* index, int k, T* data, int count) {
   }
   for (int i = id; i < k; i += gridDim.x * blockDim.x) {
     int idx = index[i];
+    /*
+    __syncthreads();
     if(idx >= count || idx < 0){
+        if(idx>=count)  {
+            printf("idx:%d > count:%d, idx:%f\n", idx, count, *(float*)(&idx));
+        }
+        if(idx < 0 && idx != -1){
+            printf("idx:%d < 0 != -1, idx:%f\n", idx, *(float*)(&idx));
+        }
         continue;
     }
+    */
+    PADDLE_ASSERT_MSG_CODE(((idx < count && idx >=0 ) || (idx == -1)), "idx should be valid", idx);
     data[idx] = 0;
   }
 }
