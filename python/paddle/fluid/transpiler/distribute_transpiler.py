@@ -274,7 +274,7 @@ class DistributeTranspiler(object):
 
             buf_var_name = param_var.name + "__dgc_buf__"
             # FIXME(gongwb): get_buffer_size
-            buf_var_shape=[256*128]
+            buf_var_shape=[2*256*128]
             self._create_dgc_vars(start_program, main_program, param_var, buf_var_name, buf_var_shape)
 
 

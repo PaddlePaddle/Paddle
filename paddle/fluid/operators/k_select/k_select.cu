@@ -544,6 +544,11 @@ __global__ void KeGetThreadCountByThreshold(const T* idata, int* odata,
   __syncthreads();
   T kth = *threshold;
 
+  int id = threadIdx.x + blockDim.x * blockIdx.x;
+  if(id >= count){
+      return;
+  }
+
   for (int i = threadIdx.x + blockDim.x * blockIdx.x; i < count;
        i += gridDim.x * blockDim.x) {
     if (FABS(idata[i]) >= kth) {
@@ -555,9 +560,13 @@ __global__ void KeGetThreadCountByThreshold(const T* idata, int* odata,
   odata[threadIdx.x + blockDim.x * blockIdx.x] = sdata[threadIdx.x];
 }
 
-__global__ void KePrefixSum(int* data, int width, int* partial_sums = NULL) {
+__global__ void KePrefixSum(int* data, int count, int width, int* partial_sums = NULL) {
   extern __shared__ int shm[];
   int id = ((blockIdx.x * blockDim.x) + threadIdx.x);
+  if(id >= count){
+      return;
+  }
+
   int lane_id = id % warpSize;
   int warp_id = threadIdx.x / warpSize;
   int value = data[id];
@@ -601,7 +610,7 @@ __global__ void KeGlobalPrefixSum(int* data, int* partial_sums, int len,
                                   int k) {
   __shared__ int buf;
   int id = blockIdx.x * blockDim.x + threadIdx.x;
-  if (id > len) return;
+  if (id >= len) return;
   if (threadIdx.x == 0) {
     buf = partial_sums[blockIdx.x];
   }
@@ -613,6 +622,10 @@ template <typename T>
 __global__ void KeEncode(const T* data, int count, int* scan, T* value,
                          int* index, T* threshold, int k) {
   int id = blockDim.x * blockIdx.x + threadIdx.x;
+  if(id >= count){
+      return;
+  }
+
   int start = 0;
   if (id == 0) {
     start = 0;
@@ -637,6 +650,9 @@ __global__ void KeEncode(const T* data, int count, int* scan, T* value,
 template <typename T>
 __global__ void KeMask(int* index, int k, T* data) {
   int id = blockDim.x * blockIdx.x + threadIdx.x;
+  if(id >= k){
+      return;
+  }
   for (int i = id; i < k; i += gridDim.x * blockDim.x) {
     int idx = index[i];
     data[idx] = 0;
@@ -703,10 +719,9 @@ void dense2coo(void* encode, float* input, float* threshold, int* thr_cnt,
   KeGetThreadCountByThreshold<float><<<blocks, threads, smemSize, stream>>>(
       input, thr_cnt, count, threshold, buf_count);
 
-  /*
   int* part = thr_cnt + threads * blocks;
-  KePrefixSum<<<blocks, threads, smemSize, stream>>>(thr_cnt, 32, part);
-  KePrefixSum<<<p_blocks, p_threads, smemSize, stream>>>(part, 32);
+  KePrefixSum<<<blocks, threads, smemSize, stream>>>(thr_cnt, threads*blocks, 32, part);
+  KePrefixSum<<<p_blocks, p_threads, smemSize, stream>>>(part, blocks, 32);
   KeGlobalPrefixSum<<<blocks - 1, threads,0, stream>>>(thr_cnt + threads, part, count, k);
   int* index = static_cast<int*>(encode);
   float* value = static_cast<float*>(encode) + k;
@@ -718,7 +733,6 @@ void dense2coo(void* encode, float* input, float* threshold, int* thr_cnt,
     KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
                                                                   moment);
   }
-  */
 }
 
 void get_threshold_bucket(void* buff, float* input, int count, int k,
