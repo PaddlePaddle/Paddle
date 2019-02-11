@@ -32,20 +32,15 @@
 namespace paddle {
 namespace framework {
 namespace details {
-constexpr char kAllOpDescs[] = "all_op_descs";
-
-std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph);
-
-class ControlFlowGraph;
 
 class MemoryOptimizePass : public ir::Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
-
- private:
   // fill the variable map(var_nodes) by version.
   void InitSSAGraphNodes() const;
+
+ private:
   // update program descs
   void RenameVarInGraphDesc(const std::string& var,
                             const std::string& cache_var, size_t idx) const;
@@ -62,52 +57,13 @@ class MemoryOptimizePass : public ir::Pass {
 
  private:
   // Reuse Node Pool, Owned.
-  mutable OrderedNodeList pool_;
+  mutable OrderedSet pool_;
   // controlflow Graph
   mutable std::unique_ptr<ControlFlowGraph> cfg_;
   // skip set
   mutable std::unordered_set<std::string> skip_set_;
   // var nodes
   mutable std::map<std::string, std::vector<ir::Node*>> var_nodes_;
-};
-
-class ControlFlowGraph {
- public:
-  ControlFlowGraph() = default;
-  // For IR Graph in parallelexecutor
-  explicit ControlFlowGraph(const ir::Graph& graph);
-
-  void LiveVariableAnalysis();
-
-  void RenameVarInCFGGraph(const std::string& old_node,
-                           const std::string& new_node, int begin_idx);
-
-  const std::set<std::string> LiveIn(ir::Node* op) const;
-  const std::set<std::string> LiveOut(ir::Node* op) const;
-  const std::set<std::string> Use(ir::Node* op) const;
-  const std::vector<ir::Node*> Ops() const;
-  std::vector<ir::Node*>& Ops();
-
-  // for ssa-graph nodes
-  ir::Node* GetNodeFromVarName(const std::string& name, ir::Node* op) const;
-
- private:
-  void BuildCFGGraph();
-  void ConnectNodes();
-  using NodeListMap = std::unordered_map<ir::Node*, std::set<ir::Node*>>;
-  using VarSetMap = std::map<ir::Node*, std::set<std::string>>;
-  // successors ops use the output variables.
-  NodeListMap successors_;
-  // predecessors ops generated input variables.
-  NodeListMap predecessors_;
-  // variables lived before run current op.
-  VarSetMap live_in_;
-  // variables lived after run current op.
-  VarSetMap live_out_;
-  VarSetMap uses_;  // op inputs
-  VarSetMap defs_;  // op outputs
-
-  std::vector<ir::Node*> ops_;  // op sequence by topology sort
 };
 
 }  // namespace details
