@@ -56,14 +56,14 @@ class DGCOpKernel : public framework::OpKernel<T> {
 
     auto buf_out = ctx.Output<framework::Tensor>("Encoded_buf");
     void* buf = static_cast<void*>(buf_out->mutable_data<T>(ctx.GetPlace()));
-    k_select(v_out_data, static_cast<int>(v_out->numel()),
-             static_cast<void*>(encode_grad_out_data), k, dev_ctx.stream());
-    /*
-    k_select(v_out_data,
+    PADDLE_ENFORCE(k_select(v_out_data,
         static_cast<int>(v_out->numel()),
         static_cast<void*>(encode_grad_out_data),
-        buf, k, 0, dev_ctx.stream(), u_out_data);
-        */
+        buf, k, 0, dev_ctx.stream(), u_out_data));
+
+    // PADDLE_ENFORCE(k_select(v_out_data, static_cast<int>(v_out->numel()),
+             // static_cast<void*>(encode_grad_out_data), k, dev_ctx.stream()));
+
     /*
     int buf_size = get_buffer_size(k) * sizeof(T);
     auto& allocator = platform::DeviceTemporaryAllocator::Instance().Get(
