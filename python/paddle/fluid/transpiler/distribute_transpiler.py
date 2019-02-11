@@ -224,6 +224,35 @@ class DistributeTranspiler(object):
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
 
+    def _create_dgc_vars(self, start_program, main_program, param_var, var_name, var_shape):
+        var = start_program.global_block().create_var(
+            name=var_name,
+            shape=var_shape,
+            dtype=param_var.dtype,
+            type=param_var.type,
+            stop_gradient=True,
+            persistable=True)
+
+        main_program.global_block().create_var(
+            name=var_name,
+            shape=var_shape,
+            dtype=param_var.dtype,
+            type=param_var.type,
+            stop_gradient=True,
+            persistable=True)
+
+        start_program.global_block().append_op(
+            type="fill_constant",
+            outputs={"Out": var},
+            attrs={
+                "shape": var_shape,
+                "dtype": param_var.dtype,
+                "value": 0.0,
+                'force_cpu': False
+            },
+            stop_gradient=True)
+
+
     def _add_dgc_vars(self, start_program, main_program):
         main_program._enable_dgc = True
 
@@ -241,32 +270,13 @@ class DistributeTranspiler(object):
 
             names = [u_name, v_name]
             for var_name in names:
-                var = start_program.global_block().create_var(
-                    name=var_name,
-                    shape=param_var.shape,
-                    dtype=param_var.dtype,
-                    type=param_var.type,
-                    stop_gradient=True,
-                    persistable=True)
+                self._create_dgc_vars(start_program, main_program, param_var, var_name, param_var.shape)
 
-                main_program.global_block().create_var(
-                    name=var_name,
-                    shape=param_var.shape,
-                    dtype=param_var.dtype,
-                    type=param_var.type,
-                    stop_gradient=True,
-                    persistable=True)
+            buf_var_name = param_var.name + "__dgc_buf__"
+            # FIXME(gongwb): get_buffer_size
+            buf_var_shape=[256*128]
+            self._create_dgc_vars(start_program, main_program, param_var, buf_var_name, buf_var_shape)
 
-                start_program.global_block().append_op(
-                    type="fill_constant",
-                    outputs={"Out": var},
-                    attrs={
-                        "shape": param_var.shape,
-                        "dtype": param_var.dtype,
-                        "value": 0.0,
-                        'force_cpu': False
-                    },
-                    stop_gradient=True)
 
     def _transpile_nccl2(self,
                          trainer_id,

@@ -36,8 +36,6 @@ class DGCOp : public framework::OperatorWithKernel {
                    "Output(U_out) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("V_out"),
                    "Output(V_out) of DGCop should not be null.");
-    // PADDLE_ENFORCE(ctx->HasOutput("GradLocal_out"),
-    //               "Output(GradLocal_out) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("EncodeGrad"),
                    "Output(EncodeGrad) of DGCop should not be null.");
 
@@ -47,22 +45,13 @@ class DGCOp : public framework::OperatorWithKernel {
     auto dim = ctx->GetInputDim("Grad");
     int k = static_cast<int>(framework::product(dim) * ratio);
 
-    // int buf_size = get_buffer_size(k);
     ctx->SetOutputDim("EncodeGrad", framework::DDim{2 * k});
     VLOG(10) << "set EncodeGrad dims:" << framework::DDim{2 * k};
     // ctx->ShareLoD("Grad", /*->*/ "EncodeGrad");
-
-    // auto dim = ctx->GetInputDim("Grad");
-    /*
-    auto dim = ctx->GetInputDim("U");
-    ctx->SetOutputDim("U", dim);
-
-    dim = ctx->GetInputDim("V");
-    ctx->SetOutputDim("V", dim);
-
-    auto param_dim = ctx->GetInputDim("GradLocal");
-    ctx->SetOutputDim("GradLocal", param_dim);
-    */
+    
+    // int buf_size = get_buffer_size(k);
+    PADDLE_ENFORCE(ctx->HasOutput("Encoded_buf"),
+                  "Output(Encoded_buf) of DGCop should not be null.");
   }
 };
 

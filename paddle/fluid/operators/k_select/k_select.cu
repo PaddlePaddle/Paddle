@@ -695,15 +695,17 @@ void dense2coo(void* encode, float* input, float* threshold, int* thr_cnt,
   int p_threads = min(blocks, threads);
   int p_blocks = iDivUp(blocks, p_threads);
 
+  /*
   std::cout << "smemsize:" << smemSize
       << ", p_threads:" << p_threads
       << ", p_blocks:" << p_blocks 
-      << ", buf_count:" << buf_count;
+      << ", buf_count:" << buf_count << std::endl;
+      */
 
   KeGetThreadCountByThreshold<float><<<blocks, threads, smemSize, stream>>>(
       input, thr_cnt, count, threshold, buf_count);
 
-  /*
+  ///*
   int* part = thr_cnt + threads * blocks;
   KePrefixSum<<<blocks, threads, smemSize, stream>>>(thr_cnt, 32, part);
   KePrefixSum<<<p_blocks, p_threads, smemSize, stream>>>(part, 32);
@@ -718,7 +720,7 @@ void dense2coo(void* encode, float* input, float* threshold, int* thr_cnt,
     KeMask<float><<<GET_BLOCKS(k), CUDA_NUM_THREADS, 0, stream>>>(index, k,
                                                                   moment);
   }
-  */
+  //*/
 }
 
 void get_threshold_bucket(void* buff, float* input, int count, int k,

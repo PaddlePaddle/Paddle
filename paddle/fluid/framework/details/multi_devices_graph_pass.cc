@@ -459,6 +459,7 @@ std::unique_ptr<framework::VarDesc> CreateDGCVarDesc(
 std::unique_ptr<framework::OpDesc> CreateDGCOpDesc(
     const std::string &u_name, const std::string &v_name,
     const std::string &grad_name, const std::string &encoded_grad_name,
+    const std::string& buf_name,
     float m = 0.9, float ratio = 0.001) {
   std::unique_ptr<framework::OpDesc> desc(new framework::OpDesc);
   desc->SetType("dgc");
@@ -473,6 +474,7 @@ std::unique_ptr<framework::OpDesc> CreateDGCOpDesc(
   desc->SetOutput("U_out", std::vector<std::string>({u_name}));
   desc->SetOutput("V_out", std::vector<std::string>({v_name}));
   desc->SetOutput("EncodeGrad", std::vector<std::string>({encoded_grad_name}));
+  desc->SetOutput("Encoded_buf", std::vector<std::string>({buf_name}));
 
   return desc;
 }
@@ -484,9 +486,10 @@ void DistSSAGraphBuilder::CreateDGCOp(ir::Graph *graph, size_t num_places,
                                       float m, float ratio) const {
   auto u_name = p_name + "__dgc_u__";
   auto v_name = p_name + "__dgc_v__";
+  auto buf_name = p_name + "__dgc_buf__";
 
   auto dgc_op_desc =
-      CreateDGCOpDesc(u_name, v_name, grad_name, encoded_grad_name);
+      CreateDGCOpDesc(u_name, v_name, grad_name, encoded_grad_name, buf_name);
 
   std::cout << "CreateDGCOp " << u_name << ", " << v_name << "," << grad_name
             << "," << encoded_grad_name << std::endl;
@@ -539,7 +542,8 @@ void DistSSAGraphBuilder::CreateDGCOp(ir::Graph *graph, size_t num_places,
       name_vars.emplace_back(var_handle);
     }
 
-    // Add outputs
+    // Add output Encoded_grad
+    {
     auto out_var_desc =
         CreateDGCVarDesc(all_vars_, grad_name, encoded_grad_name);
     auto &out_vars = graph->Get<GraphVars>(kGraphVars)[i][encoded_grad_name];
@@ -551,12 +555,29 @@ void DistSSAGraphBuilder::CreateDGCOp(ir::Graph *graph, size_t num_places,
     op_handle->SetDeviceContext(
         place, platform::DeviceContextPool::Instance().Get(place));
 
-    // auto &graph_kvars =
-    // graph->Get<GraphVars>(kGraphVars).at(i)[encoded_grad_name];
-    // graph_kvars.emplace_back(out_var_h);
-
     VLOG(7) << "CreateDGCop add output " << encoded_grad_name
             << ", handle:" << out_var_h->DebugString();
+    }
+
+
+    // Add output Encoded_buf
+    {
+    auto it = block_vars.find(buf_name);
+    if (it == block_vars.end())
+        PADDLE_ENFORCE(false, "%s not find in block_vars", buf_name);
+    auto buf_var_desc = it->second;
+    auto &out_vars = graph->Get<GraphVars>(kGraphVars)[i][buf_name];
+    auto out_var_h =
+        new VarHandle(graph->CreateVarNode(buf_var_desc), out_vars.size(),
+                      i, buf_name, place);
+    out_vars.emplace_back(out_var_h);
+    op_handle->AddOutput(out_var_h);
+    op_handle->SetDeviceContext(
+        place, platform::DeviceContextPool::Instance().Get(place));
+
+    VLOG(7) << "CreateDGCop add output " << buf_name
+            << ", handle:" << out_var_h->DebugString();
+    }
   }
 }
 #endif

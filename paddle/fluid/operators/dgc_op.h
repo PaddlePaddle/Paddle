@@ -54,10 +54,31 @@ class DGCOpKernel : public framework::OpKernel<T> {
     T* u_out_data = u_out->mutable_data<T>(ctx.GetPlace());
     T* encode_grad_out_data = encode_grad_out->mutable_data<T>(ctx.GetPlace());
 
+    auto buf_out = ctx.Output<framework::Tensor>("Encoded_buf");
+    void* buf = static_cast<void*>(buf_out->mutable_data<T>(ctx.GetPlace()));
+    k_select(v_out_data, static_cast<int>(v_out->numel()),
+             static_cast<void*>(encode_grad_out_data), k, dev_ctx.stream());
+    /*
+    k_select(v_out_data,
+        static_cast<int>(v_out->numel()),
+        static_cast<void*>(encode_grad_out_data),
+        buf, k, 0, dev_ctx.stream(), u_out_data);
+        */
+    /*
     int buf_size = get_buffer_size(k) * sizeof(T);
-    void* buf = nullptr;
-    int dev_id = 0;
+    auto& allocator = platform::DeviceTemporaryAllocator::Instance().Get(
+        ctx.GetPlace(), dev_ctx.stream());
+    auto tmp_ious_data = allocator.Allocate(buf_size);
+    void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
+    k_select(v_out_data,
+        static_cast<int>(v_out->numel()),
+        static_cast<void*>(encode_grad_out_data),
+        buf, k, 0, dev_ctx.stream(), u_out_data);
+    */
+
+    /*
+    int dev_id = 0;
     auto& allocator = platform::DeviceTemporaryAllocator::Instance().Get(
         ctx.GetPlace(), dev_ctx.stream());
     auto tmp_ious_data = allocator.Allocate(buf_size);
@@ -79,12 +100,6 @@ class DGCOpKernel : public framework::OpKernel<T> {
              << ", buf_size:" << buf_size << ", v_out dims:" << v_out->dims()
              << ", u_out dims:" << u_out->dims() << ", devid:" << dev_id;
 
-    /*
-    k_select(v_out_data,
-        static_cast<int>(v_out->numel()),
-        static_cast<void*>(encode_grad_out_data),
-        buf, k, 0, dev_ctx.stream(), u_out_data);
-        */
 
     k_select(v_out_data, static_cast<int>(v_out->numel()),
              static_cast<void*>(encode_grad_out_data), k, dev_ctx.stream());
@@ -95,6 +110,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
     if (malloc) {
       cudaFree(buf);
     }
+    */
 
     /*
     operators::math::SetConstant<DeviceContext, T> constant_functor;
