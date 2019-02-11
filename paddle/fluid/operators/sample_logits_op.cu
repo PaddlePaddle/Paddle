@@ -113,10 +113,9 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
     if (!FLAGS_debug_print) {
       return;
     }
-    VLOG(1) << "qxz print " << name;
-    VLOG(1) << name << "size = " << t.numel();
+    VLOG(1) << name << " size = " << t.numel();
     size_t size = t.numel();
-    type* d = t.data<type>();
+    const type* d = t.data<type>();
 #ifdef PADDLE_WITH_CUDA
     std::vector<type> vec;
     platform::DeviceContextPool::Instance().Get(t.place())->Wait();
@@ -126,7 +125,7 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
       d = vec.data();
     }
 #endif
-    VLOG(1) << name << " data_ptr = " << static_cast<void*>(d);
+    VLOG(1) << name << " data_ptr = " << static_cast<const void*>(d);
     std::string out;
     for (size_t i = 0; i < size; i++) {
       out += std::to_string(d[i]);
