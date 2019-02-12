@@ -60,14 +60,6 @@ class TestMomentumOp1(OpTest):
         self.check_output()
 
 
-class TestMomentumOpFp16(TestMomentumOp1):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        self.check_output(atol=1e-3)
-
-
 class TestMomentumOp2(OpTest):
     '''Test Momentum with default values for attributes
     '''
@@ -227,8 +219,6 @@ class TestSparseMomentumOp(unittest.TestCase):
 
     def test_sparse_momentum(self):
         places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
         for place in places:
             self.check_with_place(place)
 
