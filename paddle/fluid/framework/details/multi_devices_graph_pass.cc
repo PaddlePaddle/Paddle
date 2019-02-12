@@ -171,6 +171,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   result.Set(kGraphOps, new GraphOps);
 
   need_collection_ops_ = NeedCollectiveOps(sorted_ops);
+  VLOG(10) << "need_collection_ops: " << (need_collection_ops_ ? "yes" : "no")
+           << ".";
   bool insert_collection_ops = false;
   bool is_forwarding = true;
 
@@ -238,8 +240,23 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
    */
   AddOutputToLeafOps(&result);
 
+  /*
+   * Init Gradients and FusedVars
+   */
+  if (graph->Has(kFusedVars)) {
+    VLOG(10) << "Init FusedVars";
+    auto &fused_vars = result.Get<FusedVars>(kFusedVars);
+    for (size_t i = 0; i < local_scopes_.size(); ++i) {
+      for (auto &var : fused_vars) {
+        auto iter = all_vars_.find(var);
+        PADDLE_ENFORCE(iter == all_vars_.end());
+        local_scopes_[i]->Var(var)->GetMutable<framework::LoDTensor>();
+      }
+    }
+  }
+
   if (graph->Has(kParamsAndGrads)) {
-    VLOG(10) << "Init gradients";
+    VLOG(10) << "Init Gradients";
     auto &params_grads = graph->Get<ParamsAndGrads>(kParamsAndGrads);
     for (size_t i = 0; i < local_scopes_.size(); ++i) {
       for (auto &p_g : params_grads) {
@@ -250,6 +267,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
       }
     }
   }
+
   /*
    * Run Only Once Programs
    */
@@ -1029,7 +1047,7 @@ void FuseAllReduceSSAGraphBuilder::InsertCollectiveOp(
 
 void FuseAllReduceSSAGraphBuilder::InsertPostprocessOps(
     ir::Graph *result) const {
-  if (this->need_collection_ops_) {
+  if (!this->need_collection_ops_) {
     return;
   }
 

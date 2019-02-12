@@ -100,6 +100,7 @@ class TestMNIST(TestParallelExecutorBase):
                        "label": label},
             use_cuda=use_cuda,
             fuse_all_adam_ops=True,
+            fuse_all_reduce_ops=True,
             memory_opt=False, )
         # optimizer=_optimizer)
 

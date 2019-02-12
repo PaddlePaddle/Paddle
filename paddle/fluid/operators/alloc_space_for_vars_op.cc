@@ -36,6 +36,8 @@ class AllocSpaceForVarsOpOp : public framework::OperatorBase {
                const platform::Place &dev_place) const override {
     auto &param_var_names = Inputs("Parameters");
     auto &grad_var_names = Outputs("Gradients");
+    auto fused_var_name = Output("FusedOutput");
+
     PADDLE_ENFORCE_GT(param_var_names.size(), 0);
     PADDLE_ENFORCE_EQ(param_var_names.size(), grad_var_names.size());
 
@@ -44,32 +46,26 @@ class AllocSpaceForVarsOpOp : public framework::OperatorBase {
     GetMemSizeAndDtype(scope, param_var_names, grad_var_names, &mem_size,
                        &dtype);
 
-    auto out_tensor =
-        scope.FindVar(grad_var_names[0])->GetMutable<framework::LoDTensor>();
-    auto &origin_dim = out_tensor->dims();
-    int64_t offset = framework::product(origin_dim);
-
+    auto fused_var = scope.FindVar(fused_var_name);
+    PADDLE_ENFORCE_NOT_NULL(fused_var);
+    auto out_tensor = fused_var->GetMutable<framework::LoDTensor>();
     out_tensor->Resize(framework::make_ddim({static_cast<int64_t>(mem_size)}))
         .mutable_data(dev_place, dtype);
 
-    VLOG(10) << "alloc_space_for_vars: output(" << grad_var_names[0]
-             << ") ,dim:(" << origin_dim << ")"
-             << " Address: " << out_tensor->data<void>();
-
-    for (size_t i = 1; i < grad_var_names.size(); ++i) {
-      auto out_t =
-          scope.FindVar(grad_var_names[i])->GetMutable<framework::LoDTensor>();
-
+    int64_t offset = 0;
+    for (size_t i = 0; i < grad_var_names.size(); ++i) {
+      auto out_var = scope.FindVar(grad_var_names[i]);
+      PADDLE_ENFORCE_NOT_NULL(out_var);
+      auto out_t = out_var->GetMutable<framework::LoDTensor>();
       int64_t len = out_t->numel();
-      out_t->ShareDataWith(out_tensor->Slice(offset, offset + len))
-          .Resize(out_t->dims());
+      auto dim = out_t->dims();
+      out_t->ShareDataWith(out_tensor->Slice(offset, offset + len)).Resize(dim);
+
       offset += len;
       VLOG(10) << "alloc_space_for_vars: output(" << grad_var_names[i]
-               << ") ,dim:(" << origin_dim << ")"
+               << ") ,dim:(" << dim << ")"
                << " Address: " << out_t->data<void>();
     }
-
-    out_tensor->Resize(origin_dim);
   }
 
   void GetMemSizeAndDtype(const framework::Scope &scope,
@@ -88,8 +84,9 @@ class AllocSpaceForVarsOpOp : public framework::OperatorBase {
 
       // Note: Assume that the dtype of parameter and gradient are the same.
       // Doesn't get dtype from grad_var in runtime.
-      auto &p_tensor =
-          scope.FindVar(param_var_names[i])->Get<framework::LoDTensor>();
+      auto param_var = scope.FindVar(param_var_names[i]);
+      PADDLE_ENFORCE_NOT_NULL(param_var, "%s", param_var_names[i]);
+      auto &p_tensor = param_var->Get<framework::LoDTensor>();
 
       auto p_dtype = p_tensor.type();
       if (*dtype == kDefaultDtype) {
@@ -113,6 +110,7 @@ class AllocSpaceForVarsOpOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Parameters", "A set of variables.").AsDuplicable();
     AddOutput("Gradients", "A set of variables.").AsDuplicable();
+    AddOutput("FusedOutput", "");
     AddComment(R"DOC(
 )DOC");
   }

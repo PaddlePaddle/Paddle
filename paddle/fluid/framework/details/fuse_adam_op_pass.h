@@ -32,23 +32,19 @@ class FuseAdamOpPass : public ir::Pass {
       std::unique_ptr<ir::Graph> graph) const override;
 
  private:
-  //  bool IsSupportedVarType(const proto::VarType::Type &type) const;
-
-  //  ir::Node *CreateAllocSpaceForVarsNode(
-  //      const std::vector<std::string> &grads_name,
-  //      const std::vector<std::string> &params_name, ir::Graph *graph) const;
-
   void GetSpecifiedOpsAndVars(
       const std::string &op_type, const std::vector<std::string> &aux_vars_name,
       ir::Node *node, std::vector<ir::Node *> *ops,
       std::unordered_map<std::string, std::vector<std::string>> *aux_args_name)
       const;
 
-  //  void FuseAdamOps(
-  //      const std::unordered_map<std::string, std::vector<std::string>>
-  //      &vars_set,
-  //      const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const;
+  void FuseAdamOps(
+      const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
+      const std::unordered_map<std::string, std::string> &fused_vars_name,
+      const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const;
+
   void FuseScaleOps(const std::vector<std::string> &aux_var_set,
+                    const std::string &fused_var_name,
                     const std::vector<ir::Node *> &adam_ops,
                     ir::Graph *graph) const;
 
@@ -58,7 +54,7 @@ class FuseAdamOpPass : public ir::Pass {
       std::vector<ir::Node *> *ops) const;
 
   void AppendAllocContinuousSpace(const std::vector<std::string> &args,
-                                  bool copy_data,
+                                  const std::string &out_arg, bool copy_data,
                                   BlockDesc *global_block) const;
 };
 

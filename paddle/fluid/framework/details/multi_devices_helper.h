@@ -48,6 +48,10 @@ constexpr char kGraphDepVars[] = "dep_vars";
 typedef std::vector<framework::ProgramDesc> RunOnlyOnceProgram;
 constexpr char kRunOnlyOnceProgram[] = "program";
 
+typedef std::vector<std::string> FusedVars;
+constexpr char kFusedVars[] = "fused_vars";
+constexpr char kFusedVarNamePrefix[] = "@FUSEDVAR@";
+
 typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;
 constexpr char kParamsAndGrads[] = "params_grads";
 

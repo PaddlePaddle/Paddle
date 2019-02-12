@@ -36,6 +36,7 @@ class FuseGradientSpacePass : public ir::Pass {
 
   void AppendAllocSpaceForVarsOp(const std::vector<std::string> &grads_name,
                                  const std::vector<std::string> &params_name,
+                                 const std::string &fused_var_name,
                                  BlockDesc *global_block) const;
 
   void GetTrainingGradVarName(ir::Node *node,

@@ -41,14 +41,22 @@ std::unique_ptr<ir::Graph> FuseAdamOpPass::ApplyImpl(
   PADDLE_ENFORCE_NE(adam_ops.size(), 0, "Not found %s", fuse_op);
   VLOG(10) << "Find adam: " << adam_ops.size();
 
+  // Fused Var name
+  if (!result.Has(kFusedVars)) {
+    result.Set(kFusedVars, new FusedVars);
+  }
+
+  std::unordered_map<std::string, std::string> fused_vars_name;
+  fused_vars_name.reserve(aux_var_names.size() + 1);
+  const std::string prefix(kGradVarSuffix);
+  for (auto &var_name : aux_var_names) {
+    auto fused_var_name = prefix + "_" + fuse_op + "_" + var_name;
+    fused_vars_name.emplace(var_name, fused_var_name);
+    result.Get<FusedVars>(kFusedVars).emplace_back(fused_var_name);
+  }
+
   // Sort the parameters
   SortVarsName(aux_var_names[0], &aux_var_set, &adam_ops);
-
-  // Fuse the space of Gradient
-  // Fuse Scale Op
-  //  FuseAdamOps(aux_var_set,adam_ops, &result);
-  FuseScaleOps(aux_var_set.at("Beta1Pow"), adam_ops, &result);
-  FuseScaleOps(aux_var_set.at("Beta2Pow"), adam_ops, &result);
 
   // Fuse the space of "Moment1", "Moment2", "Beta1Pow", "Beta2Pow"
   // alloc_continuous_space
@@ -60,14 +68,25 @@ std::unique_ptr<ir::Graph> FuseAdamOpPass::ApplyImpl(
       result.Get<RunOnlyOnceProgram>(kRunOnlyOnceProgram).back();
   auto *global_block = program_desc.MutableBlock(0);
 
-  AppendAllocContinuousSpace(aux_var_set.at("Beta1Pow"), true /*copy_data*/,
-                             global_block);
-  AppendAllocContinuousSpace(aux_var_set.at("Beta2Pow"), true /*copy_data*/,
-                             global_block);
-  AppendAllocContinuousSpace(aux_var_set.at("Moment1"), true /*copy_data*/,
-                             global_block);
-  AppendAllocContinuousSpace(aux_var_set.at("Moment2"), true /*copy_data*/,
-                             global_block);
+  for (auto &var_name : aux_var_names) {
+    AppendAllocContinuousSpace(aux_var_set.at(var_name),
+                               fused_vars_name.at(var_name), true,
+                               global_block);
+  }
+
+  // Fuse the space of Gradient
+  fused_vars_name.emplace("Grad", prefix + "_GRAD");
+  // Fuse Adam Ops
+  FuseAdamOps(aux_var_set, fused_vars_name, adam_ops, &result);
+  // Fuse Scale Op
+  FuseScaleOps(aux_var_set.at("Beta1Pow"), fused_vars_name.at("Beta1Pow"),
+               adam_ops, &result);
+  FuseScaleOps(aux_var_set.at("Beta2Pow"), fused_vars_name.at("Beta2Pow"),
+               adam_ops, &result);
+
+  for (auto &adam_op : adam_ops) {
+    graph->RemoveNode(adam_op);
+  }
 
   VLOG(10) << "FuseAdamOpPass Over ";
   return std::move(graph);
@@ -119,19 +138,102 @@ void FuseAdamOpPass::GetSpecifiedOpsAndVars(
   ops->emplace_back(node);
 }
 
-void FuseAdamOpPass::FuseScaleOps(const std::vector<std::string> &beta_1_pow,
+void FuseAdamOpPass::FuseAdamOps(
+    const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
+    const std::unordered_map<std::string, std::string> &fused_vars_name,
+    const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const {
+  PADDLE_ENFORCE_GT(adam_ops.size(), 0);
+
+  // Check attributions
+  // NOTE: If new attribution is added, the following code maybe need change.
+  int op_role = boost::get<int>(
+      adam_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
+  float beta1 = boost::get<float>(adam_ops[0]->Op()->GetAttr("beta1"));
+  float beta2 = boost::get<float>(adam_ops[0]->Op()->GetAttr("beta2"));
+  float epsilon = boost::get<float>(adam_ops[0]->Op()->GetAttr("epsilon"));
+  bool lazy_mode = boost::get<bool>(adam_ops[0]->Op()->GetAttr("lazy_mode"));
+  int64_t min_row_size_to_use_multithread = boost::get<int64_t>(
+      adam_ops[0]->Op()->GetAttr("min_row_size_to_use_multithread"));
+  for (auto &adam_op : adam_ops) {
+    PADDLE_ENFORCE_EQ(beta1,
+                      boost::get<float>(adam_op->Op()->GetAttr("beta1")));
+    PADDLE_ENFORCE_EQ(beta2,
+                      boost::get<float>(adam_op->Op()->GetAttr("beta2")));
+    PADDLE_ENFORCE_EQ(epsilon,
+                      boost::get<float>(adam_op->Op()->GetAttr("epsilon")));
+    PADDLE_ENFORCE_EQ(lazy_mode,
+                      boost::get<bool>(adam_op->Op()->GetAttr("lazy_mode")));
+    PADDLE_ENFORCE_EQ(min_row_size_to_use_multithread,
+                      boost::get<int64_t>(adam_op->Op()->GetAttr(
+                          "min_row_size_to_use_multithread")));
+    PADDLE_ENFORCE_EQ(op_role, boost::get<int>(adam_op->Op()->GetAttr(
+                                   OpProtoAndCheckerMaker::OpRoleAttrName())));
+  }
+
+  // NOTE: fused_var is only exist in scope, so the graph doesn't have fused_var
+  // node.
+
+  // Add reset_dim, only fuse the scale ops
+  VLOG(10) << "Insert adam to graph ";
+  //  int num_scale_op = static_cast<int>(beta_name.size());
+  // Add fused scale
+  OpDesc adam_desc;
+  adam_desc.SetType("adam");
+  adam_desc.SetInput("Param", {fused_vars_name.at("Param")});
+  adam_desc.SetInput("Grad", {fused_vars_name.at("Grad")});
+  adam_desc.SetInput("Moment1", {fused_vars_name.at("Moment1")});
+  adam_desc.SetInput("Moment2", {fused_vars_name.at("Moment2")});
+  // The LearningRate, Beta1Pow, Beta2Pow should be equal.
+  adam_desc.SetInput("LearningRate", adam_ops[0]->Op()->Input("LearningRate"));
+  adam_desc.SetInput("Beta1Pow", adam_ops[0]->Op()->Input("Beta1Pow"));
+  adam_desc.SetInput("Beta2Pow", adam_ops[0]->Op()->Input("Beta2Pow"));
+
+  adam_desc.SetOutput("ParamOut", {fused_vars_name.at("Param")});
+  adam_desc.SetOutput("Moment1Out", {fused_vars_name.at("Moment1")});
+  adam_desc.SetOutput("Moment2Out", {fused_vars_name.at("Moment2")});
+  adam_desc.SetAttr("beta1", beta1);
+  adam_desc.SetAttr("beta2", beta2);
+  adam_desc.SetAttr("epsilon", epsilon);
+  adam_desc.SetAttr("lazy_mode", lazy_mode);
+  adam_desc.SetAttr("min_row_size_to_use_multithread",
+                    min_row_size_to_use_multithread);
+  // NOTE: multi_devices_pass requires that every op should have a role.
+  adam_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
+  auto adam_node = graph->CreateOpNode(&adam_desc);
+
+  for (auto adam_op : adam_ops) {
+    // set inputs
+    adam_node->inputs.insert(adam_node->inputs.begin(), adam_op->inputs.begin(),
+                             adam_op->inputs.end());
+    for (auto &input : adam_op->inputs) {
+      std::replace(input->outputs.begin(), input->outputs.end(), adam_op,
+                   adam_node);
+    }
+    // set outputs
+    adam_node->outputs.insert(adam_node->outputs.begin(),
+                              adam_op->outputs.begin(), adam_op->outputs.end());
+    for (auto &output : adam_op->outputs) {
+      std::replace(output->inputs.begin(), output->inputs.end(), adam_op,
+                   adam_node);
+    }
+  }
+}
+
+void FuseAdamOpPass::FuseScaleOps(const std::vector<std::string> &beta_name,
+                                  const std::string &fused_var_name,
                                   const std::vector<ir::Node *> &adam_ops,
                                   ir::Graph *graph) const {
-  // Collect scale_ops
+  PADDLE_ENFORCE_EQ(beta_name.size(), adam_ops.size());
+  // Get the scale_ops of dealing the adam's beta var.
   const std::string scale_op_name = "scale";
   std::vector<ir::Node *> scale_ops;
-  scale_ops.reserve(beta_1_pow.size());
+  scale_ops.reserve(beta_name.size());
 
   for (size_t i = 0; i < adam_ops.size(); ++i) {
-    auto &beta_1_pow_name = beta_1_pow[i];
+    auto &beta_1_pow_name = beta_name[i];
     auto beta_pow_iter = std::find_if(
         adam_ops[i]->inputs.begin(), adam_ops[i]->inputs.end(),
-        [&beta_1_pow, &beta_1_pow_name](ir::Node *var_node) -> bool {
+        [&beta_name, &beta_1_pow_name](ir::Node *var_node) -> bool {
           return var_node->Var() && var_node->Var()->Name() == beta_1_pow_name;
         });
     PADDLE_ENFORCE(beta_pow_iter != adam_ops[i]->inputs.end());
@@ -146,17 +248,19 @@ void FuseAdamOpPass::FuseScaleOps(const std::vector<std::string> &beta_1_pow,
 
     scale_ops.emplace_back(*scale_op_iter);
   }
+  PADDLE_ENFORCE_EQ(scale_ops.size(), beta_name.size());
 
   int op_role = boost::get<int>(
       scale_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
 
   // Check attributions
-  PADDLE_ENFORCE_EQ(scale_ops.size(), beta_1_pow.size());
+  // NOTE: If new attribution is added, the following code maybe need change.
+  //  PADDLE_ENFORCE_EQ(scale_ops[0]->Op()->AttrNames().size(), 3,
+  //                    "The attributions is excess three.");
   float scale = boost::get<float>(scale_ops[0]->Op()->GetAttr("scale"));
   float bias = boost::get<float>(scale_ops[0]->Op()->GetAttr("bias"));
   bool bias_after_scale =
       boost::get<bool>(scale_ops[0]->Op()->GetAttr("bias_after_scale"));
-  // check the scale's attr
   for (auto &scale_op : scale_ops) {
     PADDLE_ENFORCE_EQ(scale,
                       boost::get<float>(scale_op->Op()->GetAttr("scale")));
@@ -166,85 +270,57 @@ void FuseAdamOpPass::FuseScaleOps(const std::vector<std::string> &beta_1_pow,
         boost::get<bool>(scale_op->Op()->GetAttr("bias_after_scale")));
   }
 
-  // Add reset_dim, only fuse the scale ops
-  int num_scale_op = static_cast<int>(beta_1_pow.size());
-  OpDesc reset_dim_desc1;
-  reset_dim_desc1.SetType("reset_dim");
-  reset_dim_desc1.SetInput("Input", {beta_1_pow[0]});
-  reset_dim_desc1.SetOutput("Output", {beta_1_pow[0]});
-  reset_dim_desc1.SetAttr("new_dim", std::vector<int>{num_scale_op});
-  reset_dim_desc1.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
-  VLOG(10) << "Insert reset_dim to graph";
-  // Insert to graph
-  auto reset_dim_node1 = graph->CreateOpNode(&reset_dim_desc1);
-  for (auto scale_op : scale_ops) {
-    reset_dim_node1->inputs.insert(reset_dim_node1->inputs.begin(),
-                                   scale_op->inputs.begin(),
-                                   scale_op->inputs.end());
-    for (auto &input : scale_op->inputs) {
-      std::replace(input->outputs.begin(), input->outputs.end(), scale_op,
-                   reset_dim_node1);
-    }
-  }
+  // NOTE: fused_var is only exist in scope, so the graph doesn't have fused_var
+  // node.
 
+  // Add reset_dim, only fuse the scale ops
+  VLOG(10) << "Insert reset_dim to graph ";
+  //  int num_scale_op = static_cast<int>(beta_name.size());
   // Add fused scale
   OpDesc scale_desc;
   scale_desc.SetType("scale");
-  scale_desc.SetInput("X", {beta_1_pow[0]});
-  scale_desc.SetOutput("Out", {beta_1_pow[0]});
+  scale_desc.SetInput("X", {fused_var_name});
+  scale_desc.SetOutput("Out", {fused_var_name});
   scale_desc.SetAttr("scale", scale);
   scale_desc.SetAttr("bias", bias);
   scale_desc.SetAttr("bias_after_scale", bias_after_scale);
-  // Op should not have op_role, but it is used by ParallelExecutor.
+  // NOTE: multi_devices_pass requires that every op should have a role.
   scale_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
   auto scale_node = graph->CreateOpNode(&scale_desc);
-  ir::Node *dep_var = graph->CreateControlDepVar();
-  reset_dim_node1->outputs.emplace_back(dep_var);
-  dep_var->inputs.emplace_back(reset_dim_node1);
-  scale_node->inputs.emplace_back(dep_var);
-  dep_var->outputs.emplace_back(scale_node);
 
-  // Reset dims
-  OpDesc reset_dim_desc2;
-  reset_dim_desc2.SetType("reset_dim");
-  reset_dim_desc2.SetInput("Input", {beta_1_pow[0]});
-  reset_dim_desc2.SetOutput("Output", {beta_1_pow[0]});
-  reset_dim_desc2.SetAttr("new_dim", std::vector<int>{1});
-  reset_dim_desc2.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
-  auto reset_dim_node2 = graph->CreateOpNode(&reset_dim_desc2);
-  auto dep_var2 = graph->CreateControlDepVar();
-
-  scale_node->outputs.emplace_back(dep_var2);
-  dep_var2->inputs.emplace_back(scale_node);
-
-  reset_dim_node2->inputs.emplace_back(dep_var2);
-  dep_var2->outputs.emplace_back(reset_dim_node2);
-
-  for (auto &scale_op : scale_ops) {
-    reset_dim_node2->outputs.insert(reset_dim_node2->outputs.begin(),
-                                    scale_op->outputs.begin(),
-                                    scale_op->outputs.end());
+  for (auto scale_op : scale_ops) {
+    // set inputs
+    scale_node->inputs.insert(scale_node->inputs.begin(),
+                              scale_op->inputs.begin(), scale_op->inputs.end());
+    for (auto &input : scale_op->inputs) {
+      std::replace(input->outputs.begin(), input->outputs.end(), scale_op,
+                   scale_node);
+    }
+    // set outputs
+    scale_node->outputs.insert(scale_node->outputs.begin(),
+                               scale_op->outputs.begin(),
+                               scale_op->outputs.end());
     for (auto &output : scale_op->outputs) {
       std::replace(output->inputs.begin(), output->inputs.end(), scale_op,
-                   reset_dim_node2);
+                   scale_node);
     }
   }
 
-  // Delete scale_op
+  // Delete scale_ops
   for (auto &scale_op : scale_ops) {
     graph->RemoveNode(scale_op);
   }
 }
 
 void FuseAdamOpPass::AppendAllocContinuousSpace(
-    const std::vector<std::string> &args, bool copy_data,
-    BlockDesc *global_block) const {
+    const std::vector<std::string> &args, const std::string &out_arg,
+    bool copy_data, BlockDesc *global_block) const {
   auto op_desc = global_block->AppendOp();
   op_desc->SetType("alloc_continuous_space");
   op_desc->SetInput("Input", args);
   op_desc->SetOutput("Output", args);
+  op_desc->SetOutput("FusedOutput", {out_arg});
   op_desc->SetAttr("copy_data", copy_data);
-  //  op_desc->SetAttr("constant", static_cast<float >(0));
 }
 
 }  // namespace details

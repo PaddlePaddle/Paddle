@@ -45,7 +45,7 @@ std::unique_ptr<ir::Graph> FuseGradientSpacePass::ApplyImpl(
   }
 
   auto& params_grads = result.Get<ParamsAndGrads>(kParamsAndGrads);
-  // Note: The sort of parameter is impotant
+  // Note: The sort of parameter is important
   std::sort(params_grads.begin(), params_grads.end(),
             [](const std::pair<std::string, std::string>& a,
                const std::pair<std::string, std::string>& b) -> bool {
@@ -89,7 +89,17 @@ std::unique_ptr<ir::Graph> FuseGradientSpacePass::ApplyImpl(
   auto& program_desc =
       result.Get<RunOnlyOnceProgram>(kRunOnlyOnceProgram).back();
   auto* global_block = program_desc.MutableBlock(0);
-  AppendAllocSpaceForVarsOp(params_name, grads_name, global_block);
+
+  const std::string prefix(kGradVarSuffix);
+  auto fused_var_name = prefix + "_GRAD";
+  // Fused Var name
+  if (!result.Has(kFusedVars)) {
+    result.Set(kFusedVars, new FusedVars);
+  }
+  result.Get<FusedVars>(kFusedVars).emplace_back(fused_var_name);
+
+  AppendAllocSpaceForVarsOp(params_name, grads_name, fused_var_name,
+                            global_block);
 
   return std::move(graph);
 }
@@ -125,11 +135,13 @@ void FuseGradientSpacePass::GetTrainingGradVarName(
 
 void FuseGradientSpacePass::AppendAllocSpaceForVarsOp(
     const std::vector<std::string>& params_name,
-    const std::vector<std::string>& grads_name, BlockDesc* global_block) const {
+    const std::vector<std::string>& grads_name,
+    const std::string& fused_var_name, BlockDesc* global_block) const {
   auto op_desc = global_block->AppendOp();
   op_desc->SetType("alloc_space_for_vars");
   op_desc->SetInput("Parameters", params_name);
   op_desc->SetOutput("Gradients", grads_name);
+  op_desc->SetOutput("FusedOutput", {fused_var_name});
 }
 
 bool FuseGradientSpacePass::IsSupportedVarType(

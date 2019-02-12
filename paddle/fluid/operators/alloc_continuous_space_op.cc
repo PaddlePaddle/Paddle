@@ -30,6 +30,7 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto &in_var_names = context.Inputs("Input");
     auto &out_var_names = context.Outputs("Output");
+
     auto &in_vars = context.MultiInputVar("Input");
     PADDLE_ENFORCE_GT(in_var_names.size(), 0);
     PADDLE_ENFORCE_EQ(in_var_names.size(), out_var_names.size());
@@ -46,8 +47,8 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
     auto dtype = kDefaultDtype;
     GetMemSizeAndDtype(out_tensors, out_var_names, &mem_size, &dtype);
 
-    framework::LoDTensor out_tensor;
-    out_tensor.Resize(framework::make_ddim({static_cast<int64_t>(mem_size)}))
+    auto fused_tensor = context.Output<framework::LoDTensor>("FusedOutput");
+    fused_tensor->Resize(framework::make_ddim({static_cast<int64_t>(mem_size)}))
         .mutable_data(context.GetPlace(), dtype);
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
@@ -56,14 +57,14 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
     if (context.Attr<bool>("copy_data")) {
       for (size_t i = 0; i < in_var_names.size(); ++i) {
         int64_t len = out_tensors[i]->numel();
-        auto sub_tensor = out_tensor.Slice(offset, offset + len);
+        auto sub_tensor = fused_tensor->Slice(offset, offset + len);
         offset += len;
         framework::TensorCopy(*out_tensors[i], context.GetPlace(), dev_ctx,
                               &sub_tensor);
       }
     } else {
       math::SetConstant<DeviceContext, T> set_constant;
-      set_constant(dev_ctx, &out_tensor,
+      set_constant(dev_ctx, fused_tensor,
                    static_cast<T>(context.Attr<float>("constant")));
     }
 
@@ -72,7 +73,7 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
       int64_t len = out_tensors[i]->numel();
       auto dim = out_tensors[i]->dims();
       out_tensors[i]
-          ->ShareDataWith(out_tensor.Slice(offset, offset + len))
+          ->ShareDataWith(fused_tensor->Slice(offset, offset + len))
           .Resize(dim);
       offset += len;
       VLOG(10) << "alloc_space_for_vars: output(" << in_var_names[i]
@@ -120,6 +121,7 @@ class AllocContinuousSpaceOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Input", "A set of variables.").AsDuplicable();
     AddOutput("Output", "A set of variables.").AsDuplicable();
+    AddOutput("FusedOutput", "");
     AddAttr<bool>("copy_data", ".").SetDefault(false);
     AddAttr<float>("constant", ".").SetDefault(0.0);
     AddComment(R"DOC(
