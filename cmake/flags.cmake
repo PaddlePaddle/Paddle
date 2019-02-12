@@ -27,7 +27,6 @@ endfunction()
 
 CheckCompilerCXX11Flag()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
 # safe_set_flag
 #
 # Set a compile flag only if compiler is support
@@ -148,6 +147,7 @@ set(GPU_COMMON_FLAGS
     -Wno-error=unused-function  # Warnings in Numpy Header.
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
 endif(NOT WIN32)
 
 if (APPLE)
