@@ -21,12 +21,13 @@ function(CheckCompilerCXX11Flag)
             if (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.3)
                 message(FATAL_ERROR "Unsupported Clang version. Clang >= 3.3 required.")
             endif()
-        endif()   
+        endif()
     endif()
 endfunction()
 
 CheckCompilerCXX11Flag()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
 # safe_set_flag
 #
 # Set a compile flag only if compiler is support
@@ -147,12 +148,6 @@ set(GPU_COMMON_FLAGS
     -Wno-error=unused-function  # Warnings in Numpy Header.
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
-
-else(NOT WIN32)
-set(COMMON_FLAGS
-    "/w") #disable all warnings.
-set(GPU_COMMON_FLAGS
-    "/w") #disable all warnings
 endif(NOT WIN32)
 
 if (APPLE)
@@ -193,8 +188,7 @@ safe_set_static_flag()
         CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
-      if(${flag_var} MATCHES "/W3")
-        string(REGEX REPLACE "/W3" "/w" ${flag_var} "${${flag_var}}")
-      endif(${flag_var} MATCHES "/W3")
+        string(REGEX REPLACE "(^| )/W[0-9]( |$)" " " ${flag_var} "${${flag_var}}")
+        set(flag_var "${flag_var} /w")
     endforeach(flag_var)
 endif(WIN32)
