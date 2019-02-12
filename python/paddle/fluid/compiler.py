@@ -19,7 +19,6 @@ import sys
 from .. import compat as cpt
 
 from . import core
-from . import framework
 
 __all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
 
@@ -33,15 +32,6 @@ def _place_obj(place):
     p = core.Place()
     p.set_place(place)
     return p
-
-
-def _is_pserver_mode(main_program):
-    main = main_program if main_program \
-        else framework.default_main_program()
-    for op in main.global_block().ops:
-        if op.type in ["send", "recv"]:
-            return True
-    return False
 
 
 class CompiledProgram(object):
@@ -120,7 +110,6 @@ class CompiledProgram(object):
             self._exec_strategy = ExecutionStrategy()
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
-        self._build_strategy.is_distribution = _is_pserver_mode(self._program)
         return self
 
     def with_inference_optimize(self, config):
