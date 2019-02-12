@@ -21,6 +21,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include <ThreadPool.h>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -28,6 +30,53 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+/*
+ * split selected rows into multiple shards, each shard will has an thread to
+ * update it.
+ */
+class DataShard {
+ public:
+  DataShard(int64_t shard_id, int64_t shard_size)
+      : shard_id_(shard_id),
+        shard_size_(shard_size),
+        pool_(new ::ThreadPool(1)) {}
+
+  std::future<void> GetIndexsByIds(
+      const std::vector<std::pair<int64_t, int64_t>> id_to_offsets,
+      std::vector<int64_t>* value_indexs) {
+    auto task = [this, &id_to_offsets, value_indexs] {
+      for (auto& id_to_offset : id_to_offsets) {
+        int64_t id = id_to_offset.first;
+        int64_t offset = id_to_offset.second;
+        (*value_indexs)[offset] = GetIndexById(id, true);
+      }
+    };
+    return pool_->enqueue(std::move(task));
+  }
+
+ private:
+  // this method did not support multithread!
+  int64_t GetIndexById(int64_t id, bool auto_grown) {
+    auto iter = id_to_offset_.find(id);
+    if (iter == id_to_offset_.end()) {
+      if (auto_grown) {
+        auto offset = id_to_offset_.size();
+        id_to_offset_[id] = offset;
+        return shard_id_ * shard_size_ + offset;
+      } else {
+        return -1;
+      }
+    } else {
+      return shard_id_ * shard_size_ + iter->second;
+    }
+  }
+
+  std::unordered_map<int64_t, int64_t> id_to_offset_;
+  int64_t shard_id_;
+  int64_t shard_size_;
+  std::unique_ptr<::ThreadPool> pool_{nullptr};
+};
 
 class SelectedRows {
   /*
@@ -73,6 +122,8 @@ class SelectedRows {
   Vector<int64_t>* mutable_rows() { return &rows_; }
 
   void set_rows(const Vector<int64_t>& rows) { rows_ = rows; }
+
+  void InitDataShards() {}
 
   /*
    * @brief Get the index of key in rows
@@ -151,6 +202,7 @@ class SelectedRows {
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;  // height indicates the underline tensor's height
   std::unique_ptr<RWLock> rwlock_{nullptr};
+  std::vector<std::unique_ptr<DataShard>> data_shards_;
 };
 
 /*
