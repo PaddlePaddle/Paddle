@@ -140,6 +140,27 @@ bool SelectedRows::HasKey(int64_t key) const {
                                                                    : true;
 }
 
+void SelectedRows::GetIndexsByIds(const std::vector<int64_t>& ids,
+                                  std::vector<int64_t>* indexs,
+                                  bool auto_grown) {
+  std::vector<std::vector<std::pair<int64_t, int64_t>>> re_sharded_keys(
+      shard_num_);
+  for (size_t i = 0; i < ids.size(); ++i) {
+    auto id = ids[i];
+    size_t shard_id = id % shard_num_;
+    re_sharded_keys[shard_id].push_back(std::make_pair(id, i));
+  }
+
+  std::vector<std::future<void>> futures(shard_num_);
+  for (size_t i = 0; i < shard_num_; ++i) {
+    futures[i] =
+        data_shards_[i]->GetIndexsByIds(re_sharded_keys[i], indexs, auto_grown);
+  }
+  for (size_t i = 0; i < shard_num_; ++i) {
+    futures[i].wait();
+  }
+}
+
 int64_t SelectedRows::AutoGrownIndex(int64_t key, bool auto_grown,
                                      bool is_test) {
   if (is_test) {

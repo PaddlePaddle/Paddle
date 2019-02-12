@@ -124,8 +124,8 @@ class SelectedRows {
   void set_rows(const Vector<int64_t>& rows) { rows_ = rows; }
 
   void InitDataShards() {
-    PADDLE_ENFORCE(value_->IsInitialized(),
-                   "tensor should be inited when call InitDataShards");
+    PADDLE_ENFORCE_GT(value_->numel(), 0,
+                      "tensor should be inited when call InitDataShards");
     int64_t shard_size = value_->dims()[0] / shard_num_;
     for (int64_t i = 0; i < shard_num_; ++i) {
       data_shards_.emplace_back(new DataShard(i, shard_size));
@@ -178,24 +178,7 @@ class SelectedRows {
   int64_t AutoGrownIndex(int64_t key, bool auto_grown, bool is_test = false);
 
   void GetIndexsByIds(const std::vector<int64_t>& ids,
-                      std::vector<int64_t>* indexs, bool auto_grown) {
-    std::vector<std::vector<std::pair<int64_t, int64_t>>> re_sharded_keys(
-        shard_num_);
-    for (size_t i = 0; i < ids.size(); ++i) {
-      auto id = ids[i];
-      size_t shard_id = id % shard_num_;
-      re_sharded_keys[shard_id].push_back(std::make_pair(id, i));
-    }
-
-    std::vector<std::future<void>> futures(shard_num_);
-    for (size_t i = 0; i < shard_num_; ++i) {
-      futures[i] = data_shards_[i]->GetIndexsByIds(re_sharded_keys[i], indexs,
-                                                   auto_grown);
-    }
-    for (size_t i = 0; i < shard_num_; ++i) {
-      futures[i].wait();
-    }
-  }
+                      std::vector<int64_t>* indexs, bool auto_grown);
 
   /*
    * @brief Get the index of the key from id_to_index_ map.
