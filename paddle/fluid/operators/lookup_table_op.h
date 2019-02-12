@@ -188,7 +188,10 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       memset(d_table_data, 0, d_table->numel() * sizeof(T));
 
       for (int64_t i = 0; i < ids->numel(); ++i) {
-        if (ids_data[i != padding_idx) {
+        if (padding_idx != kNoPadding && ids_data[i] == padding_idx) {
+          // the gradient of padding_idx should be 0, already done by memset, so
+          // do nothing.
+        } else {
           PADDLE_ENFORCE_LT(ids_data[i], N);
           PADDLE_ENFORCE_GE(ids_data[i], 0);
           for (int j = 0; j < D; ++j) {
