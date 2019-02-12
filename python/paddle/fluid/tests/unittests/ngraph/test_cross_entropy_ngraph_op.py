@@ -271,37 +271,5 @@ class TestCrossEntropyOp7(TestCrossEntropyOp):
         self.class_num = 10
 
 
-# Add Fp16 test
-def create_test_class(parent, cls_name):
-    @unittest.skipIf(not core.is_compiled_with_cuda(),
-                     "core is not compiled with CUDA")
-    class TestCrossEntropyFP16Op(parent):
-        def init_dtype_type(self):
-            return np.float16
-
-        def test_check_output(self):
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-1)
-
-        def test_check_grad(self):
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_grad_with_place(
-                    place, ['X'], 'Y', max_relative_error=0.9)
-
-    cls_name = "{0}".format(cls_name)
-    TestCrossEntropyFP16Op.__name__ = cls_name
-    globals()[cls_name] = TestCrossEntropyFP16Op
-
-
-create_test_class(TestCrossEntropyOp, "TestCrossEntropyF16Op")
-#create_test_class(TestCrossEntropyOp2, "TestCrossEntropyF16Op2")
-create_test_class(TestCrossEntropyOp3, "TestCrossEntropyF16Op3")
-create_test_class(TestCrossEntropyOp4, "TestCrossEntropyF16Op4")
-#create_test_class(TestCrossEntropyOp5, "TestCrossEntropyF16Op5")
-create_test_class(TestCrossEntropyOp6, "TestCrossEntropyF16Op6")
-create_test_class(TestCrossEntropyOp7, "TestCrossEntropyF16Op7")
-
 if __name__ == "__main__":
     unittest.main()
