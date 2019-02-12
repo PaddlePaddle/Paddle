@@ -166,7 +166,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   result.Set(kGraphOps, new GraphOps);
 
   bool is_forwarding = true;
-  bool insert_collection_ops = NeedCollectiveOps();
+  bool insert_collection_ops = NeedCollectiveOps(sorted_ops);
 
   for (ir::Node *node : sorted_ops) {
     if (DealWithSpecialOp(&result, node)) {
@@ -271,7 +271,15 @@ bool MultiDevSSAGraphBuilderBase::UseGPU() const {
   return use_gpu;
 }
 
-bool MultiDevSSAGraphBuilderBase::NeedCollectiveOps() const {
+bool MultiDevSSAGraphBuilderBase::NeedCollectiveOps(
+    std::vector<ir::Node *> ops) const {
+  for (auto *node : ops) {
+    if (node->Op()->Type() == "allreduce") {
+      // HACK: if graph have allreduce op, do not append automatic
+      // allreduce allreduce_op_handles
+      return false;
+    }
+  }
   return Get<size_t>(kNRanks) > 1;
 }
 

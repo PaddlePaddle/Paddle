@@ -117,9 +117,9 @@ class TestDistRunnerBase(object):
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
 
-        strategy = fluid.ExecutionStrategy()
-        strategy.num_threads = 1
-        strategy.allow_op_delay = False
+        exec_strategy = fluid.ExecutionStrategy()
+        exec_strategy.num_threads = 1
+        exec_strategy.allow_op_delay = False
 
         build_stra = fluid.BuildStrategy()
 
@@ -128,13 +128,14 @@ class TestDistRunnerBase(object):
         else:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
 
+        pass_builder = None
         if args.batch_merge_repeat > 1:
             pass_builder = build_stra._finalize_strategy_and_create_passes()
             mypass = pass_builder.insert_pass(
                 len(pass_builder.all_passes()) - 3, "multi_batch_merge_pass")
             mypass.set("num_repeats", args.batch_merge_repeat)
 
-        if args.update_method == "nccl2":
+        if args.update_method == "nccl2" or args.update_method == "nccl2_reduce_layer":
             build_stra.num_trainers = len(args.endpoints.split(","))
             build_stra.trainer_id = args.trainer_id
         else:
@@ -145,7 +146,7 @@ class TestDistRunnerBase(object):
         binary = compiler.CompiledProgram(trainer_prog).with_data_parallel(
             loss_name=avg_cost.name,
             build_strategy=build_stra,
-            exec_strategy=strategy)
+            exec_strategy=exec_strategy)
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()

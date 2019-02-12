@@ -32,14 +32,15 @@ class AllReduceOp : public framework::OperatorBase {
     auto* ctx = pool.Get(place);
     auto in_names = Inputs("X");
     auto out_names = Outputs("Out");
-    PADDLE_ENFORCE_EQ(in_names.size(), 1);
-    PADDLE_ENFORCE_EQ(out_names.size(), 1);
+    PADDLE_ENFORCE_EQ(in_names.size(), 1, "Only support one input");
+    PADDLE_ENFORCE_EQ(out_names.size(), 1, "Only support one output");
 
     auto* in = scope.FindVar(in_names[0]);
     auto* out = scope.FindVar(out_names[0]);
 
     PADDLE_ENFORCE(in->IsType<framework::LoDTensor>() ||
-                   in->IsType<framework::LoDTensor>());
+                       out->IsType<framework::LoDTensor>(),
+                   "Only support allreduce LoDTensors");
 
     int dtype = -1;
     auto in_tensor = in->Get<framework::LoDTensor>();
@@ -56,10 +57,11 @@ class AllReduceOp : public framework::OperatorBase {
     auto* comm = cuda_ctx->nccl_comm();
     // FIXME(typhoonzero): should use nccl stream here.
     auto stream = cuda_ctx->stream();
-
+    VLOG(3) << "Before calling nccl allreduce, comm: " << comm;
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
-        comm, stream));
+        sendbuff, recvbuff, numel * sizeof(float),
+        static_cast<ncclDataType_t>(dtype), ncclSum, comm, stream));
+    VLOG(3) << "End calling nccl allreduce";
   }
 };
 
