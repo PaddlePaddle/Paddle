@@ -120,8 +120,7 @@ class CompiledProgram(object):
             self._exec_strategy = ExecutionStrategy()
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
-        self._build_strategy.is_distribution = _is_pserver_mode(
-            self._program) or self._build_strategy.num_trainers > 1
+        self._build_strategy.is_distribution = _is_pserver_mode(self._program)
         return self
 
     def with_inference_optimize(self, config):
