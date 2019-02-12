@@ -36,6 +36,7 @@ DEFINE_bool(init_allocated_mem, false,
             "that initializing the allocated memory with a small value "
             "during unit testing.");
 DECLARE_double(fraction_of_gpu_memory_to_use);
+DECLARE_bool(benchmark);
 
 namespace paddle {
 namespace memory {
@@ -198,7 +199,7 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
                << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
     platform::SetDeviceId(cur_dev);
   } else {
-    if (VLOG_IS_ON(3)) {
+    if (FLAGS_benchmark) {
       allocation::GPUMemMonitor.Add(place.device, size);
     }
     if (FLAGS_init_allocated_mem) {
@@ -216,7 +217,7 @@ void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p,
                                size_t size) {
 #ifdef PADDLE_WITH_CUDA
   GetGPUBuddyAllocator(place.device)->Free(p);
-  if (VLOG_IS_ON(3)) {
+  if (FLAGS_benchmark) {
     allocation::GPUMemMonitor.Minus(place.device, size);
   }
 #else
@@ -257,7 +258,7 @@ void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
   void *ptr = buddy_allocator->Alloc(size);
 
   if (ptr == nullptr) {
-    LOG(WARNING) << "cudaMallocHost Cannot allocate " << size
+    LOG(WARNING) << "cudaHostAlloc Cannot allocate " << size
                  << " bytes in CUDAPinnedPlace";
   }
   if (FLAGS_init_allocated_mem) {
