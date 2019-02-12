@@ -23,12 +23,12 @@ namespace operators {
 static framework::proto::VarType::Type kDefaultDtype =
     static_cast<framework::proto::VarType::Type>(0);
 
-class AllocSpaceForVarsOpOp : public framework::OperatorBase {
+class AllocSpaceForVarsOp : public framework::OperatorBase {
  public:
-  AllocSpaceForVarsOpOp(const std::string &type,
-                        const framework::VariableNameMap &inputs,
-                        const framework::VariableNameMap &outputs,
-                        const framework::AttributeMap &attrs)
+  AllocSpaceForVarsOp(const std::string &type,
+                      const framework::VariableNameMap &inputs,
+                      const framework::VariableNameMap &outputs,
+                      const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
  private:
@@ -105,7 +105,7 @@ class AllocSpaceForVarsOpOp : public framework::OperatorBase {
   }
 };
 
-class AllocSpaceForVarsOpOpMaker : public framework::OpProtoAndCheckerMaker {
+class AllocSpaceForVarsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Parameters", "A set of variables.").AsDuplicable();
@@ -119,6 +119,5 @@ class AllocSpaceForVarsOpOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(alloc_space_for_vars,
-                  paddle::operators::AllocSpaceForVarsOpOp,
-                  paddle::operators::AllocSpaceForVarsOpOpMaker);
+REGISTER_OPERATOR(alloc_space_for_vars, paddle::operators::AllocSpaceForVarsOp,
+                  paddle::operators::AllocSpaceForVarsOpMaker);

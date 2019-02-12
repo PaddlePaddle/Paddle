@@ -40,6 +40,7 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
       // Only support LoDTensor,
       PADDLE_ENFORCE(in_vars[i]->IsType<framework::LoDTensor>());
     }
+
     auto out_tensors = context.MultiOutput<framework::LoDTensor>("Output");
     PADDLE_ENFORCE_EQ(in_var_names.size(), out_tensors.size());
 
@@ -89,11 +90,10 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(lod_tensors.size(), var_names.size());
     *mem_size = 0;
     for (size_t i = 0; i < var_names.size(); ++i) {
-      auto tensor = lod_tensors[i];
-      PADDLE_ENFORCE(tensor->IsInitialized(), "%s is not initialized.",
+      PADDLE_ENFORCE(lod_tensors[i]->IsInitialized(), "%s is not initialized.",
                      var_names[i]);
 
-      auto p_dtype = tensor->type();
+      auto p_dtype = lod_tensors[i]->type();
       if (*dtype == kDefaultDtype) {
         PADDLE_ENFORCE_NE(p_dtype, kDefaultDtype, "%s's type should not be %s.",
                           var_names[i], kDefaultDtype);
@@ -101,10 +101,10 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
       }
       PADDLE_ENFORCE_EQ(p_dtype, *dtype, "Input vars is not equal.");
 
-      auto size = tensor->numel();
+      auto size = lod_tensors[i]->numel();
       PADDLE_ENFORCE_GT(size, 0);
       VLOG(10) << "alloc_space_for_vars: input(" << var_names[i] << ") ,dim:("
-               << tensor->dims() << ")";
+               << lod_tensors[i]->dims() << ")";
       *mem_size += size;
     }
   }

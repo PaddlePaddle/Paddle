@@ -118,6 +118,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // A side-effect of that, memory optimize cannot forsee the fetched vars
     // , so fetchlist should be set persistable before call the Run interface.
     if (strategy.memory_optimize_) {
+      VLOG(10) << "Add memory_optimize_pass";
       AppendPass("memory_optimize_pass");
     }
 

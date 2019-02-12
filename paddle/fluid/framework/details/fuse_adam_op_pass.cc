@@ -25,23 +25,25 @@ std::unique_ptr<ir::Graph> FuseAdamOpPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   ir::Graph &result = *graph;
 
-  const std::string fuse_op = "adam";
+  const std::string fuse_op_type = "adam";
   std::vector<std::string> aux_var_names = {"Param", "Moment1", "Moment2",
                                             "Beta1Pow", "Beta2Pow"};
 
+  // Step 1: Get the specified op and auxiliary variables.
   std::unordered_map<std::string, std::vector<std::string>> aux_var_set;
   std::vector<ir::Node *> adam_ops;
   for (ir::Node *node : result.Nodes()) {
     if (node->IsOp()) {
-      GetSpecifiedOpsAndVars(fuse_op, aux_var_names, node, &adam_ops,
+      GetSpecifiedOpsAndVars(fuse_op_type, aux_var_names, node, &adam_ops,
                              &aux_var_set);
     }
   }
 
-  PADDLE_ENFORCE_NE(adam_ops.size(), 0, "Not found %s", fuse_op);
-  VLOG(10) << "Find adam: " << adam_ops.size();
+  PADDLE_ENFORCE_NE(adam_ops.size(), 0, "Not found %s.", fuse_op_type);
+  VLOG(10) << "Find " << fuse_op_type << " operators: " << adam_ops.size();
 
-  // Fused Var name
+  // Step 2: Insert fused_var_name to FusedVars, and the FusedVars need be
+  // initialized in scopes before execution.
   if (!result.Has(kFusedVars)) {
     result.Set(kFusedVars, new FusedVars);
   }
@@ -50,16 +52,19 @@ std::unique_ptr<ir::Graph> FuseAdamOpPass::ApplyImpl(
   fused_vars_name.reserve(aux_var_names.size() + 1);
   const std::string prefix(kGradVarSuffix);
   for (auto &var_name : aux_var_names) {
-    auto fused_var_name = prefix + "_" + fuse_op + "_" + var_name;
+    auto fused_var_name = prefix + "_" + fuse_op_type + "_" + var_name;
     fused_vars_name.emplace(var_name, fused_var_name);
     result.Get<FusedVars>(kFusedVars).emplace_back(fused_var_name);
   }
 
-  // Sort the parameters
+  // Step 3: Sort the parameters and auxiliary variables according
+  // to parameters' name to make variables' name correspond correctly.
   SortVarsName(aux_var_names[0], &aux_var_set, &adam_ops);
 
-  // Fuse the space of "Moment1", "Moment2", "Beta1Pow", "Beta2Pow"
-  // alloc_continuous_space
+  // Step 4: Alloc continuous space for Moment1, Moment2, Beta1Pow, Beta2Pow
+  // of all the adam ops separately.
+  // And alloc_continuous_space ops are placed in RunOnlyOnceProgram,
+  // which is executed before running the model with ParallelExecutor.
   if (!result.Has(kRunOnlyOnceProgram)) {
     result.Set(kRunOnlyOnceProgram, new RunOnlyOnceProgram);
   }
@@ -67,28 +72,31 @@ std::unique_ptr<ir::Graph> FuseAdamOpPass::ApplyImpl(
   auto &program_desc =
       result.Get<RunOnlyOnceProgram>(kRunOnlyOnceProgram).back();
   auto *global_block = program_desc.MutableBlock(0);
-
   for (auto &var_name : aux_var_names) {
     AppendAllocContinuousSpace(aux_var_set.at(var_name),
                                fused_vars_name.at(var_name), true,
                                global_block);
   }
 
-  // Fuse the space of Gradient
-  fused_vars_name.emplace("Grad", prefix + "_GRAD");
-  // Fuse Adam Ops
+  // Step 5: Get the fused Gradient's name
+  auto fused_grad = prefix + "_GRAD";
+  auto &fused_vars = result.Get<FusedVars>(kFusedVars);
+  auto iter = std::find(fused_vars.begin(), fused_vars.end(), fused_grad);
+  PADDLE_ENFORCE(iter != fused_vars.end(), "Not find the fused_grad.");
+  fused_vars_name.emplace("Grad", fused_grad);
+
+  // Step 6: Fuse Adam Ops and Scale Ops
   FuseAdamOps(aux_var_set, fused_vars_name, adam_ops, &result);
-  // Fuse Scale Op
   FuseScaleOps(aux_var_set.at("Beta1Pow"), fused_vars_name.at("Beta1Pow"),
                adam_ops, &result);
   FuseScaleOps(aux_var_set.at("Beta2Pow"), fused_vars_name.at("Beta2Pow"),
                adam_ops, &result);
 
+  // Step 7: Remove Adam Ops
   for (auto &adam_op : adam_ops) {
     graph->RemoveNode(adam_op);
   }
 
-  VLOG(10) << "FuseAdamOpPass Over ";
   return std::move(graph);
 }
 
@@ -102,6 +110,7 @@ void FuseAdamOpPass::SortVarsName(
   for (size_t i = 0; i < param_vec.size(); ++i) {
     param_sort_idx.emplace_back(i);
   }
+
   std::sort(param_sort_idx.begin(), param_sort_idx.end(),
             [&param_vec](size_t a, size_t b) -> bool {
               return param_vec[a] < param_vec[b];
@@ -130,6 +139,7 @@ void FuseAdamOpPass::GetSpecifiedOpsAndVars(
     std::unordered_map<std::string, std::vector<std::string>> *aux_args_name)
     const {
   if (node->Op()->Type() != op_type) return;
+
   for (auto &var_n : aux_vars_name) {
     auto arg_names = node->Op()->Input(var_n);
     PADDLE_ENFORCE_EQ(arg_names.size(), 1);
@@ -183,7 +193,7 @@ void FuseAdamOpPass::FuseAdamOps(
   adam_desc.SetInput("Grad", {fused_vars_name.at("Grad")});
   adam_desc.SetInput("Moment1", {fused_vars_name.at("Moment1")});
   adam_desc.SetInput("Moment2", {fused_vars_name.at("Moment2")});
-  // The LearningRate, Beta1Pow, Beta2Pow should be equal.
+  // TODO(zcd): The LearningRate, Beta1Pow, Beta2Pow should be equal.
   adam_desc.SetInput("LearningRate", adam_ops[0]->Op()->Input("LearningRate"));
   adam_desc.SetInput("Beta1Pow", adam_ops[0]->Op()->Input("Beta1Pow"));
   adam_desc.SetInput("Beta2Pow", adam_ops[0]->Op()->Input("Beta2Pow"));
@@ -199,6 +209,7 @@ void FuseAdamOpPass::FuseAdamOps(
                     min_row_size_to_use_multithread);
   // NOTE: multi_devices_pass requires that every op should have a role.
   adam_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
+
   auto adam_node = graph->CreateOpNode(&adam_desc);
 
   for (auto adam_op : adam_ops) {
@@ -224,11 +235,11 @@ void FuseAdamOpPass::FuseScaleOps(const std::vector<std::string> &beta_name,
                                   const std::vector<ir::Node *> &adam_ops,
                                   ir::Graph *graph) const {
   PADDLE_ENFORCE_EQ(beta_name.size(), adam_ops.size());
-  // Get the scale_ops of dealing the adam's beta var.
   const std::string scale_op_name = "scale";
+
+  // Get the scale_ops of dealing the adam's beta var.
   std::vector<ir::Node *> scale_ops;
   scale_ops.reserve(beta_name.size());
-
   for (size_t i = 0; i < adam_ops.size(); ++i) {
     auto &beta_1_pow_name = beta_name[i];
     auto beta_pow_iter = std::find_if(
@@ -250,13 +261,10 @@ void FuseAdamOpPass::FuseScaleOps(const std::vector<std::string> &beta_name,
   }
   PADDLE_ENFORCE_EQ(scale_ops.size(), beta_name.size());
 
-  int op_role = boost::get<int>(
-      scale_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
-
   // Check attributions
   // NOTE: If new attribution is added, the following code maybe need change.
-  //  PADDLE_ENFORCE_EQ(scale_ops[0]->Op()->AttrNames().size(), 3,
-  //                    "The attributions is excess three.");
+  int op_role = boost::get<int>(
+      scale_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
   float scale = boost::get<float>(scale_ops[0]->Op()->GetAttr("scale"));
   float bias = boost::get<float>(scale_ops[0]->Op()->GetAttr("bias"));
   bool bias_after_scale =
@@ -268,15 +276,14 @@ void FuseAdamOpPass::FuseScaleOps(const std::vector<std::string> &beta_name,
     PADDLE_ENFORCE_EQ(
         bias_after_scale,
         boost::get<bool>(scale_op->Op()->GetAttr("bias_after_scale")));
+    PADDLE_ENFORCE_EQ(op_role, boost::get<int>(scale_op->Op()->GetAttr(
+                                   OpProtoAndCheckerMaker::OpRoleAttrName())));
   }
 
   // NOTE: fused_var is only exist in scope, so the graph doesn't have fused_var
   // node.
 
-  // Add reset_dim, only fuse the scale ops
-  VLOG(10) << "Insert reset_dim to graph ";
-  //  int num_scale_op = static_cast<int>(beta_name.size());
-  // Add fused scale
+  VLOG(10) << "Insert fused scale to graph.";
   OpDesc scale_desc;
   scale_desc.SetType("scale");
   scale_desc.SetInput("X", {fused_var_name});

@@ -171,8 +171,6 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   result.Set(kGraphOps, new GraphOps);
 
   need_collection_ops_ = NeedCollectiveOps(sorted_ops);
-  VLOG(10) << "need_collection_ops: " << (need_collection_ops_ ? "yes" : "no")
-           << ".";
   bool insert_collection_ops = false;
   bool is_forwarding = true;
 
@@ -244,7 +242,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
    * Init Gradients and FusedVars
    */
   if (graph->Has(kFusedVars)) {
-    VLOG(10) << "Init FusedVars";
+    VLOG(10) << "Init FusedVars.";
     auto &fused_vars = result.Get<FusedVars>(kFusedVars);
     for (size_t i = 0; i < local_scopes_.size(); ++i) {
       for (auto &var : fused_vars) {
@@ -256,7 +254,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   }
 
   if (graph->Has(kParamsAndGrads)) {
-    VLOG(10) << "Init Gradients";
+    VLOG(10) << "Init Gradients.";
     auto &params_grads = graph->Get<ParamsAndGrads>(kParamsAndGrads);
     for (size_t i = 0; i < local_scopes_.size(); ++i) {
       for (auto &p_g : params_grads) {
@@ -469,14 +467,14 @@ void MultiDevSSAGraphBuilderBase::CreateComputationalOp(ir::Graph *result,
 
 void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
     ir::Graph *result, const std::string &og) const {
-  auto *op_node =
-      result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  result->Get<GraphOps>(kGraphOps).emplace_back(
-      new AllReduceOpHandle(op_node, local_scopes_, places_, nccl_ctxs_));
+  result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
+      result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
+      local_scopes_, places_, nccl_ctxs_));
 #else
-  result->Get<GraphOps>(kGraphOps).emplace_back(
-      new AllReduceOpHandle(op_node, local_scopes_, places_));
+  result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
+      result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
+      local_scopes_, places_));
 #endif
   auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
 
@@ -561,10 +559,6 @@ VarHandle *MultiDevSSAGraphBuilderBase::CreateReduceOp(ir::Graph *result,
 }
 
 bool MultiDevSSAGraphBuilderBase::IsScaleLossOp(ir::Node *node) const {
-  // Note: The inserted opDesc may not have op_role.
-  VLOG(1) << node->Name() << " "
-          << boost::get<int>(
-                 node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
   return !loss_var_name_.empty() && node->Op() &&
          boost::get<int>(
              node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
@@ -1092,14 +1086,14 @@ void FuseAllReduceSSAGraphBuilder::CreateFusedAllReduceOp(
     const std::vector<VarHandleBase *> &inputs,
     const std::vector<VarHandleBase *> &outputs, const size_t num_of_all_reduce,
     ir::Graph *result) const {
-  auto *op_node =
-      result->CreateEmptyNode("fused_all_reduce", ir::Node::Type::kOperation);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   result->Get<GraphOps>(kGraphOps).emplace_back(new FusedAllReduceOpHandle(
-      op_node, local_scopes_, places_, num_of_all_reduce, nccl_ctxs_));
+      result->CreateEmptyNode("fused_all_reduce", ir::Node::Type::kOperation),
+      local_scopes_, places_, num_of_all_reduce, nccl_ctxs_));
 #else
   result->Get<GraphOps>(kGraphOps).emplace_back(new FusedAllReduceOpHandle(
-      op_node, local_scopes_, places_, num_of_all_reduce));
+      result->CreateEmptyNode("fused_all_reduce", ir::Node::Type::kOperation),
+      local_scopes_, places_, num_of_all_reduce));
 #endif
   auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
 
