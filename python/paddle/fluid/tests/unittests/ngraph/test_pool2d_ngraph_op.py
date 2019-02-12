@@ -14,35 +14,59 @@
 
 from __future__ import print_function
 
-from paddle.fluid.tests.unittests.test_pool2d_op import *
+from paddle.fluid.tests.unittests.test_pool2d_op import TestPool2D_Op, TestCase1, TestCase2, TestCase3, TestCase4, TestCase5
 
 
 class TestNGRAPHPool2D_Op(TestPool2D_Op):
+    def setUp(self):
+        super(TestNGRAPHPool2D_Op, self).setUp()
+        self._cpu_only = True
+
     def init_test_case(self):
         super(TestNGRAPHPool2D_Op, self).init_test_case()
 
 
 class TestNGRAPHCase1(TestCase1):
+    def setUp(self):
+        super(TestNGRAPHCase1, self).setUp()
+        self._cpu_only = True
+
     def init_test_case(self):
         super(TestNGRAPHCase1, self).init_test_case()
 
 
 class TestNGRAPHCase2(TestCase2):
+    def setUp(self):
+        super(TestNGRAPHCase2, self).setUp()
+        self._cpu_only = True
+
     def init_test_case(self):
         super(TestNGRAPHCase2, self).init_test_case()
 
 
 class TestNGRAPHCase3(TestCase3):
+    def setUp(self):
+        super(TestNGRAPHCase3, self).setUp()
+        self._cpu_only = True
+
     def init_pool_type(self):
         super(TestNGRAPHCase3, self).init_pool_type()
 
 
 class TestNGRAPHCase4(TestCase4):
+    def setUp(self):
+        super(TestNGRAPHCase4, self).setUp()
+        self._cpu_only = True
+
     def init_pool_type(self):
         super(TestNGRAPHCase4, self).init_pool_type()
 
 
 class TestNGRAPHCase5(TestCase5):
+    def setUp(self):
+        super(TestNGRAPHCase5, self).setUp()
+        self._cpu_only = True
+
     def init_pool_type(self):
         super(TestNGRAPHCase5, self).init_pool_type()
 

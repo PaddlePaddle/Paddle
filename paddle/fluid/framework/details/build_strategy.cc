@@ -133,12 +133,15 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   void AppendMultiDevPass(const BuildStrategy &strategy) {
     ir::Pass *multi_devices_pass;
     if (strategy_.is_distribution_) {
+      VLOG(3) << "multi device dist train mode";
       multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
     } else {
       if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
+        VLOG(3) << "multi device allreduce mode";
         multi_devices_pass =
             AppendPass("allreduce_mode_multi_devices_pass").get();
       } else if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
+        VLOG(3) << "multi device reduce mode";
         multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
       } else {
         PADDLE_THROW("Unknown reduce strategy.");
@@ -206,8 +209,6 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
           new std::vector<OpDesc *>(main_program.Block(0).AllOps());
       graph->Set<const std::vector<OpDesc *>>(kAllOpDescs,
                                               all_op_descs);  // take ownership
-      graph->Set<GraphNodePool>(kGraphNodePool,
-                                new GraphNodePool);  // take ownership
 
       pass->Erase(kAllOpDescs);
       pass->SetNotOwned<const std::vector<OpDesc *>>(kAllOpDescs, all_op_descs);
