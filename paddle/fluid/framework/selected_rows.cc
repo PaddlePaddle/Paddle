@@ -212,9 +212,15 @@ void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
     PADDLE_ENFORCE_EQ(value_width, value->numel() / value->dims()[0],
                       "output tensor should have the same shape with table "
                       "except the dims[0].");
+    std::vector<int64_t> all_ids(ids.numel());
+    for (auto i = 0; i < ids.numel(); ++i) {
+      all_ids.push_back(ids.data<int64_t>()[i]);
+    }
+    std::vector<int64_t> id_indexes(ids.numel());
+    GetIndexsByIds(all_ids, &id_indexes, auto_grown);
     for (int i = 0; i < ids.numel(); ++i) {
       auto id = ids.data<int64_t>()[i];
-      int64_t index = AutoGrownIndex(id, auto_grown, is_test);
+      int64_t index = id_indexes[i];
       if (index < 0) {
         VLOG(5) << "id " << id << " not in the table, return 0";
         framework::VisitDataType(

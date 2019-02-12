@@ -44,12 +44,12 @@ class DataShard {
 
   std::future<void> GetIndexsByIds(
       const std::vector<std::pair<int64_t, int64_t>> id_to_offsets,
-      std::vector<int64_t>* value_indexs) {
-    auto task = [this, &id_to_offsets, value_indexs] {
+      std::vector<int64_t>* value_indexs, bool auto_grown) {
+    auto task = [this, &id_to_offsets, value_indexs, auto_grown] {
       for (auto& id_to_offset : id_to_offsets) {
         int64_t id = id_to_offset.first;
         int64_t offset = id_to_offset.second;
-        (*value_indexs)[offset] = GetIndexById(id, true);
+        (*value_indexs)[offset] = GetIndexById(id, auto_grown);
       }
     };
     return pool_->enqueue(std::move(task));
@@ -178,7 +178,7 @@ class SelectedRows {
   int64_t AutoGrownIndex(int64_t key, bool auto_grown, bool is_test = false);
 
   void GetIndexsByIds(const std::vector<int64_t>& ids,
-                      std::vector<int64_t>* indexs) {
+                      std::vector<int64_t>* indexs, bool auto_grown) {
     std::vector<std::vector<std::pair<int64_t, int64_t>>> re_sharded_keys(
         shard_num_);
     for (size_t i = 0; i < ids.size(); ++i) {
@@ -189,7 +189,8 @@ class SelectedRows {
 
     std::vector<std::future<void>> futures(shard_num_);
     for (size_t i = 0; i < shard_num_; ++i) {
-      futures[i] = data_shards_[i]->GetIndexsByIds(re_sharded_keys[i], indexs);
+      futures[i] = data_shards_[i]->GetIndexsByIds(re_sharded_keys[i], indexs,
+                                                   auto_grown);
     }
     for (size_t i = 0; i < shard_num_; ++i) {
       futures[i].wait();
