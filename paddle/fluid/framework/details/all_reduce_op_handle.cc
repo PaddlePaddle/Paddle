@@ -130,14 +130,14 @@ void AllReduceOpHandle::_RunImplEncoded() {
              << ", dtype:" << dtype << ", out_tensor_buf:" << out_tensor_buf;
 
     all_reduce_calls.emplace_back([=] {
-      /*
 sparseAllGReduce(in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel,
                  static_cast<ncclDataType_t>(dtype), ncclSum, comm,
                  stream);
-                 */
+            /*
       PADDLE_ENFORCE(platform::dynload::ncclAllGather(
           in_tensor_buf, gather_buff, in_numel * sizeof(float), ncclChar, comm,
           stream));
+          */
     });
   }
 
