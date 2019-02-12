@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from ..wrapped_decorator import contextmanager
+from ..wrapped_decorator import signature_safe_contextmanager
 
 from .. import core
 
@@ -105,7 +105,7 @@ class Inferencer(object):
 
         return results
 
-    @contextmanager
+    @signature_safe_contextmanager
     def _prog_and_scope_guard(self):
         with framework.program_guard(main_program=self.inference_program):
             with executor.scope_guard(self.scope):

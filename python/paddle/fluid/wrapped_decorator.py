@@ -15,7 +15,7 @@
 import decorator
 import contextlib
 
-__all__ = ['wrap_decorator', 'contextmanager']
+__all__ = ['wrap_decorator', 'signature_safe_contextmanager']
 
 
 def wrap_decorator(decorator_func):
@@ -27,4 +27,4 @@ def wrap_decorator(decorator_func):
     return __impl__
 
 
-contextmanager = wrap_decorator(contextlib.contextmanager)
+signature_safe_contextmanager = wrap_decorator(contextlib.contextmanager)
