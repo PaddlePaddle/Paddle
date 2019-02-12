@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import collections
-from .wrapped_decorator import contextmanager
+from .wrapped_decorator import signature_safe_contextmanager
 import six
 import sys
 
@@ -68,7 +68,7 @@ def switch(new_generator=None):
     return old
 
 
-@contextmanager
+@signature_safe_contextmanager
 def guard(new_generator=None):
     if isinstance(new_generator, six.string_types):
         new_generator = UniqueNameGenerator(new_generator)
