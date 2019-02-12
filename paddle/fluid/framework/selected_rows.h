@@ -123,14 +123,7 @@ class SelectedRows {
 
   void set_rows(const Vector<int64_t>& rows) { rows_ = rows; }
 
-  void InitDataShards() {
-    PADDLE_ENFORCE_GT(value_->numel(), 0,
-                      "tensor should be inited when call InitDataShards");
-    int64_t shard_size = value_->dims()[0] / shard_num_;
-    for (int64_t i = 0; i < shard_num_; ++i) {
-      data_shards_.emplace_back(new DataShard(i, shard_size));
-    }
-  }
+  void InitDataShards();
 
   /*
    * @brief Get the index of key in rows
