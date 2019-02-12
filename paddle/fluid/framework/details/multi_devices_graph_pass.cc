@@ -731,6 +731,7 @@ bool DistSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
       }
     }
     insert_op = true;
+    need_broadcast_var_ = true;
   } else if (OpHaveRole(*node, OpRole::kDist)) {
     int op_dev_id = CreateDistTrainOp(result, node);
     if (node->Op()->Type() == "concat") {
@@ -924,8 +925,9 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
 }
 
 void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
-  // only GPU reduce mode need to broadcast parameters to each device.
-  if (UseGPU() && strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
+  if (need_broadcast_var_ ||
+      (UseGPU() &&
+       strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce)) {
     if (strategy_.fuse_broadcast_op_) {
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
