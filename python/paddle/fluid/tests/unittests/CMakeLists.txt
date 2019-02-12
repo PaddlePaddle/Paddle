@@ -1,15 +1,6 @@
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-# The MKLDNN tests are skiped when the MKLDNN flag is OFF
-if(NOT WITH_MKLDNN)
-    foreach(src ${TEST_OPS})
-        if(${src} MATCHES ".*_mkldnn_op$")
-            list(REMOVE_ITEM TEST_OPS ${src})
-        endif()
-    endforeach()
-endif(NOT WITH_MKLDNN)
-
 if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_recv_op)
     list(REMOVE_ITEM TEST_OPS test_dist_transpiler)
@@ -119,7 +110,15 @@ py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executo
 if(NOT APPLE)
     py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)
 endif()
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    # change the timeout from 600 to 900, because in debug mode, this test need more time.
+    set_tests_properties(test_image_classification_resnet PROPERTIES TIMEOUT 900)
+endif()
 
 if (WITH_NGRAPH)
     add_subdirectory(ngraph)
+endif()
+
+if (WITH_MKLDNN)
+    add_subdirectory(mkldnn)
 endif()

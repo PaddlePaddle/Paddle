@@ -22,7 +22,7 @@
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/place.h"
 
-static double acc = 1e-5;
+DEFINE_double(acc, 1e-5, "Test accuracy threshold.");
 
 template <typename T>
 void RandomVec(const int n, T* a, const T lower = static_cast<T>(-20.f),
@@ -39,7 +39,7 @@ template <typename T>
 void ExpectEQ(const T* target, const T* refer, int n) {
   if (std::is_floating_point<T>::value) {
     for (int i = 0; i < n; ++i) {
-      EXPECT_NEAR(target[i], refer[i], acc);
+      EXPECT_NEAR(target[i], refer[i], FLAGS_acc);
     }
   } else {
     for (int i = 0; i < n; ++i) {
@@ -272,21 +272,23 @@ struct TestFuncWithRefer<jit::SeqPoolTuples<T>, std::vector<T>, std::vector<T>,
 
 template <typename T>
 struct TestFuncWithRefer<jit::MatMulTuples<T>, std::vector<T>, std::vector<T>,
-                         std::vector<T>, int, int, int> {
+                         std::vector<T>,
+                         typename jit::MatMulTuples<T>::attr_type> {
   void operator()(const typename jit::MatMulTuples<T>::func_type tgt,
                   const std::vector<T>& a, const std::vector<T>& b,
-                  const std::vector<T>& cref, int m, int n, int k) {
+                  const std::vector<T>& cref,
+                  const typename jit::MatMulTuples<T>::attr_type& attr) {
     EXPECT_TRUE(tgt != nullptr);
-    EXPECT_EQ(a.size(), static_cast<size_t>(m * k));
-    EXPECT_EQ(b.size(), static_cast<size_t>(k * n));
-    EXPECT_EQ(cref.size(), static_cast<size_t>(m * n));
+    EXPECT_EQ(a.size(), static_cast<size_t>(attr.m * attr.k));
+    EXPECT_EQ(b.size(), static_cast<size_t>(attr.k * attr.n));
+    EXPECT_EQ(cref.size(), static_cast<size_t>(attr.m * attr.n));
     std::vector<T> c(cref.size());
     const T* a_data = a.data();
     const T* b_data = b.data();
     const T* cref_data = cref.data();
     T* c_data = c.data();
-    tgt(a_data, b_data, c_data, m, n, k);
-    ExpectEQ<T>(c_data, cref_data, m * n);
+    tgt(a_data, b_data, c_data, &attr);
+    ExpectEQ<T>(c_data, cref_data, attr.m * attr.n);
   }
 };
 
@@ -383,8 +385,8 @@ void TestAXYNKernel() {
 template <jit::KernelType KT, typename T, typename PlaceType>
 void TestXRNKernel() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
-  auto last_acc = acc;
-  acc = 1e-4;
+  auto last_acc = FLAGS_acc;
+  FLAGS_acc = 1e-4;
   for (int d : TestSizes()) {
     auto ref = jit::GetRefer<KT, jit::XRNTuples<T>>();
     EXPECT_TRUE(ref != nullptr);
@@ -395,7 +397,7 @@ void TestXRNKernel() {
     TestAllImpls<KT, jit::XRNTuples<T>, PlaceType, std::vector<T>, T>(d, x,
                                                                       ref_res);
   }
-  acc = last_acc;
+  FLAGS_acc = last_acc;
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
@@ -535,9 +537,10 @@ void TestSeqPoolKernel() {
 template <jit::KernelType KT, typename T, typename PlaceType>
 void TestMatMulKernel() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
-  auto last_acc = acc;
-  // TODO(intel): this should be acc issue of MKL
-  acc = 1e-3;
+  auto last_acc = FLAGS_acc;
+  // TODO(intel): fix MKL acc issue
+  // https://github.com/PaddlePaddle/Paddle/issues/15447
+  FLAGS_acc = 1e-3;
   for (int m : {1, 2, 3, 4}) {
     for (int n : {1, 2, 3, 4}) {
       for (int k : TestSizes()) {
@@ -549,13 +552,14 @@ void TestMatMulKernel() {
         const T* a_data = a.data();
         const T* b_data = b.data();
         T* c_data = c.data();
-        ref(a_data, b_data, c_data, m, n, k);
+        const jit::matmul_attr_t attr{m, n, k};
+        ref(a_data, b_data, c_data, &attr);
         TestAllImpls<KT, jit::MatMulTuples<T>, PlaceType, std::vector<T>,
-                     std::vector<T>, std::vector<T>>(k, a, b, c, m, n, k);
+                     std::vector<T>, std::vector<T>>(attr, a, b, c, attr);
       }
     }
   }
-  acc = last_acc;
+  FLAGS_acc = last_acc;
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
