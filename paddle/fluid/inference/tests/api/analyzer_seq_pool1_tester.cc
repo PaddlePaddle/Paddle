@@ -142,7 +142,7 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
   cfg->SetModel(FLAGS_infer_model + "/model", FLAGS_infer_model + "/params");
   cfg->DisableGpu();
   cfg->SwitchSpecifyInputNames();
-  cfg->pass_builder()->TurnOnDebug();
+  cfg->SwitchIrDebug();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
   if (use_mkldnn) {
     cfg->EnableMKLDNN();

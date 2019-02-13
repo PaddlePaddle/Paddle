@@ -54,7 +54,7 @@ ELSE(WIN32)
 		DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
 ENDIF()
 
-set(paddle_python_deps ${PADDLE_PYTHON_BUILD_DIR}/.timestamp ${MKL_DEPENDS})
+set(paddle_python_deps ${PADDLE_PYTHON_BUILD_DIR}/.timestamp ${MKL_DEPENDS} ${external_project_dependencies})
 add_custom_target(paddle_python ALL DEPENDS ${paddle_python_deps})
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
