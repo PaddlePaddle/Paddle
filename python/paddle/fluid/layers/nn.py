@@ -8331,6 +8331,8 @@ def stack(x, axis=0):
     If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x[0])+1`.
     If :code:`axis` is None, it would be replaced with 0.
 
+    For Example:
+
     .. code-block:: text
 
         Case 1:
