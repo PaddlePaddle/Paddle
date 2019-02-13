@@ -145,7 +145,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
   local_scopes_ = Get<const std::vector<Scope *>>(kLocalScopes);
   strategy_ = Get<const BuildStrategy>(kStrategy);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  nccl_ctxs_ = &Get<platform::NCCLContextMap>("nccl_ctxs");
+  nccl_ctxs_ = &Get<platform::NCCLContextMap>(kNCCLCtxs);
 #endif
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 }
@@ -1014,102 +1014,6 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
   }
 }
 
-void FuseAllReduceSSAGraphBuilder::CheckGraph(const ir::Graph &graph) const {
-  PADDLE_ENFORCE(graph.Has(kParamsAndGrads));
-  auto &params_grads = graph.Get<ParamsAndGrads>(kParamsAndGrads);
-  params_.clear();
-  params_.reserve(params_grads.size());
-  for (auto p_g : params_grads) {
-    params_.insert(p_g.first);
-  }
-}
-
-void FuseAllReduceSSAGraphBuilder::InsertCollectiveOp(
-    ir::Graph *result, const std::string &p_name,
-    const std::string &g_name) const {
-  if (IsSparseGradient(g_name)) {
-    PADDLE_THROW("SparseGradient is not supported.");
-  } else {
-    CreateAllReduceOp(result, g_name);
-    auto *allreduce_op_handle = result->Get<GraphOps>(kGraphOps).back();
-
-    PADDLE_ENFORCE_EQ(params_.count(p_name), 1);
-    PADDLE_ENFORCE_EQ(grads_allreduce_.count(g_name), 0);
-    grads_allreduce_.emplace(g_name, allreduce_op_handle);
-  }
-}
-
-void FuseAllReduceSSAGraphBuilder::InsertPostprocessOps(
-    ir::Graph *result) const {
-  if (!this->need_collection_ops_) {
-    return;
-  }
-
-  VLOG(10) << "Insert fused_all_reduce";
-  PADDLE_ENFORCE_EQ(params_.size(), grads_allreduce_.size());
-
-  // This implemention is slower.
-  auto &op_handles = result->Get<GraphOps>(kGraphOps);
-  auto remove_op_handle = [&op_handles](OpHandleBase *op) {
-    auto iter = std::find(op_handles.begin(), op_handles.end(), op);
-    PADDLE_ENFORCE(iter != op_handles.end());
-    op_handles.erase(iter);
-  };
-
-  std::vector<VarHandleBase *> inputs;
-  std::vector<VarHandleBase *> outputs;
-  for (auto &op_handle : grads_allreduce_) {
-    inputs.insert(inputs.end(), op_handle.second->Inputs().begin(),
-                  op_handle.second->Inputs().end());
-    // Remove output
-    std::for_each(
-        op_handle.second->Inputs().begin(), op_handle.second->Inputs().end(),
-        [&op_handle](VarHandleBase *var_handle) {
-          var_handle->RemoveOutput(op_handle.second, op_handle.second->Node());
-        });
-
-    outputs.insert(outputs.end(), op_handle.second->Outputs().begin(),
-                   op_handle.second->Outputs().end());
-    // Remove Input
-    std::for_each(
-        op_handle.second->Outputs().begin(), op_handle.second->Outputs().end(),
-        [](VarHandleBase *var_handle) { var_handle->ClearGeneratedOp(); });
-
-    result->RemoveNode(op_handle.second->Node());
-    remove_op_handle(op_handle.second);
-  }
-
-  CreateFusedAllReduceOp(inputs, outputs, grads_allreduce_.size(), result);
-}
-
-void FuseAllReduceSSAGraphBuilder::CreateFusedAllReduceOp(
-    const std::vector<VarHandleBase *> &inputs,
-    const std::vector<VarHandleBase *> &outputs, const size_t num_of_all_reduce,
-    ir::Graph *result) const {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  result->Get<GraphOps>(kGraphOps).emplace_back(new FusedAllReduceOpHandle(
-      result->CreateEmptyNode("fused_all_reduce", ir::Node::Type::kOperation),
-      local_scopes_, places_, num_of_all_reduce, nccl_ctxs_));
-#else
-  result->Get<GraphOps>(kGraphOps).emplace_back(new FusedAllReduceOpHandle(
-      result->CreateEmptyNode("fused_all_reduce", ir::Node::Type::kOperation),
-      local_scopes_, places_, num_of_all_reduce));
-#endif
-  auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
-
-  for (auto in : inputs) {
-    op_handle->AddInput(in);
-  }
-
-  for (auto out : outputs) {
-    op_handle->AddOutput(out);
-  }
-
-  for (size_t i = 0; i < places_.size(); ++i) {
-    SetCommunicationContext(op_handle, places_[i]);
-  }
-}
-
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder() {
   static std::unordered_set<std::string> regs;
   return regs;
@@ -1144,6 +1048,3 @@ REGISTER_MULTI_DEVICES_PASS(
     paddle::framework::details::AllReduceSSAGraphBuilder);
 REGISTER_MULTI_DEVICES_PASS(dist_multi_devices_pass,
                             paddle::framework::details::DistSSAGraphBuilder);
-REGISTER_MULTI_DEVICES_PASS(
-    fused_all_reduce_mode_multi_devices_pass,
-    paddle::framework::details::FuseAllReduceSSAGraphBuilder);

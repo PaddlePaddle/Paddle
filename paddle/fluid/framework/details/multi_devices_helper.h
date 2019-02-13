@@ -52,6 +52,11 @@ typedef std::vector<std::string> FusedVars;
 constexpr char kFusedVars[] = "fused_vars";
 constexpr char kFusedVarNamePrefix[] = "@FUSEDVAR@";
 
+typedef std::string FusedOptType;
+constexpr char kFusedOptType[] = "fused_opt_type";
+
+constexpr char kNCCLCtxs[] = "nccl_ctxs";
+
 typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;
 constexpr char kParamsAndGrads[] = "params_grads";
 

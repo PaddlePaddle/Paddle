@@ -44,6 +44,16 @@ std::unique_ptr<ir::Graph> FuseOptimizerOpPass::ApplyImpl(
     return std::move(graph);
   }
 
+  if (result.Has(kFusedOptType)) {
+    VLOG(10)
+        << "Currently only support fusing one type optimizer op. Has fused "
+        << result.Get<FusedOptType>(kFusedOptType);
+    return std::move(graph);
+  } else {
+    result.Set(kFusedOptType, new FusedOptType);
+  }
+  result.Get<FusedOptType>(kFusedOptType) = fuse_op_type;
+
   // Step 2: Insert fused_var_name to FusedVars, and the FusedVars need be
   // initialized in scopes before execution.
   if (!result.Has(kFusedVars)) {

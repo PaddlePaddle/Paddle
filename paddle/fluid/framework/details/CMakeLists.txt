@@ -72,7 +72,9 @@ cc_library(all_reduce_deps_pass SRCS all_reduce_deps_pass.cc DEPS graph graph_he
 
 cc_library(multi_devices_graph_pass SRCS multi_devices_graph_pass.cc DEPS multi_devices_helper computation_op_handle
         scale_loss_grad_op_handle rpc_op_handle all_reduce_op_handle reduce_op_handle broadcast_op_handle
-        data_balance_op_handle fused_broadcast_op_handle fused_all_reduce_op_handle)
+        data_balance_op_handle fused_broadcast_op_handle)
+
+cc_library(fuse_all_reduce_op_pass SRCS fuse_all_reduce_op_pass.cc DEPS graph graph_helper fused_all_reduce_op_handle)
 
 set(SSA_GRAPH_EXECUTOR_DEPS graph framework_proto sequential_execution_pass modify_op_lock_and_record_event_pass all_reduce_deps_pass reference_count_pass eager_deletion_pass memory_optimize_pass inplace_op_pass)
 if (WITH_GPU)
@@ -102,4 +104,4 @@ cc_library(build_strategy SRCS build_strategy.cc DEPS
         multi_devices_graph_print_pass multi_devices_graph_check_pass
         fuse_elewise_add_act_pass multi_batch_merge_pass 
         fuse_relu_depthwise_conv_pass
-        memory_optimize_pass lock_free_optimize_pass alloc_continuous_space_for_grad_pass fuse_adam_op_pass fuse_sgd_op_pass)
+        memory_optimize_pass lock_free_optimize_pass alloc_continuous_space_for_grad_pass fuse_adam_op_pass fuse_sgd_op_pass fuse_all_reduce_op_pass)

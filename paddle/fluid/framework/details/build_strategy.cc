@@ -86,10 +86,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 
     if (strategy.fuse_all_optimizer_ops_) {
-      if (!strategy.fuse_all_reduce_ops_) {
-        VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
-        AppendPass("alloc_continuous_space_for_grad_pass");
-      }
+      VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
+      AppendPass("alloc_continuous_space_for_grad_pass");
       VLOG(10) << "Add fuse_adam_op_pass";
       AppendPass("fuse_adam_op_pass");
       VLOG(10) << "Add fuse_sgd_op_pass";
@@ -127,6 +125,13 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     AppendMultiDevPass(strategy);
 
+    if (strategy.fuse_all_reduce_ops_) {
+      PADDLE_ENFORCE(strategy.reduce_ ==
+                     BuildStrategy::ReduceStrategy::kAllReduce);
+      VLOG(10) << "Add fuse_all_reduce_op_pass";
+      AppendPass("fuse_all_reduce_op_pass");
+    }
+
     // Add a graph print pass to record a graph with device info.
     if (!strategy_.debug_graphviz_path_.empty()) {
       auto multi_devices_print_pass = AppendPass("multi_devices_print_pass");
@@ -160,12 +165,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       VLOG(10) << "Add dist_multi_devices_pass";
       multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
     } else {
-      if (strategy.fuse_all_reduce_ops_) {
-        VLOG(10) << "Add fused_all_reduce_mode_multi_devices_pass";
-        multi_devices_pass =
-            AppendPass("fused_all_reduce_mode_multi_devices_pass").get();
-      } else if (strategy.reduce_ ==
-                 BuildStrategy::ReduceStrategy::kAllReduce) {
+      if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
         VLOG(10) << "Add all_reduce_mode_multi_devices_pass";
         multi_devices_pass =
             AppendPass("all_reduce_mode_multi_devices_pass").get();
@@ -227,8 +227,19 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
-      pass->Erase("nccl_ctxs");
-      pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
+      pass->Erase(kNCCLCtxs);
+      pass->SetNotOwned<platform::NCCLContextMap>(kNCCLCtxs, nctx);
+#endif
+    } else if (pass->Type() == "fuse_all_reduce_op_pass") {
+      pass->Erase(kPlaces);
+      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
+      pass->Erase(kLocalScopes);
+      pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
+                                                    &local_scopes);
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+      platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
+      pass->Erase(kNCCLCtxs);
+      pass->SetNotOwned<platform::NCCLContextMap>(kNCCLCtxs, nctx);
 #endif
     } else if (pass->Type() == "memory_optimize_pass") {
       if (graph->Has(kAllOpDescs)) {
@@ -300,3 +311,4 @@ USE_PASS(alloc_continuous_space_for_grad_pass);
 USE_PASS(graph_to_program_pass);
 USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
+USE_PASS(fuse_all_reduce_op_pass);

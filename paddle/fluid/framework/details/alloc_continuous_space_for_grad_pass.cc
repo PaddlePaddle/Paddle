@@ -26,13 +26,13 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-class AllocContinuousSpaceForGrad : public ir::Pass {
+class AllocContinuousSpaceForGradPass : public ir::Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override {
     ir::Graph& result = *graph;
     if (result.Has(kParamsAndGrads)) {
-      VLOG(10) << kParamsAndGrads << " are reset.";
+      VLOG(10) << kParamsAndGrads << " is reset.";
       result.Erase(kParamsAndGrads);
     }
     result.Set(kParamsAndGrads, new ParamsAndGrads);
@@ -161,4 +161,4 @@ class AllocContinuousSpaceForGrad : public ir::Pass {
 }  // namespace paddle
 
 REGISTER_PASS(alloc_continuous_space_for_grad_pass,
-              paddle::framework::details::AllocContinuousSpaceForGrad);
+              paddle::framework::details::AllocContinuousSpaceForGradPass);

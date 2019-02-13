@@ -170,24 +170,6 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
   mutable bool need_broadcast_var_{false};
 };
 
-class FuseAllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
- protected:
-  virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
-                                  const std::string &g_name) const;
-
-  virtual void InsertPostprocessOps(ir::Graph *result) const;
-
-  virtual void CheckGraph(const ir::Graph &graph) const;
-
-  void CreateFusedAllReduceOp(const std::vector<VarHandleBase *> &inputs,
-                              const std::vector<VarHandleBase *> &outputs,
-                              const size_t num_of_all_reduce,
-                              ir::Graph *result) const;
-
-  mutable std::unordered_map<std::string, OpHandleBase *> grads_allreduce_;
-  mutable std::unordered_set<std::string> params_;
-};
-
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder();
 
 }  // namespace details
