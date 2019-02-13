@@ -16,6 +16,7 @@
 
 #include <gflags/gflags.h>
 #include <memory>  // for unique_ptr
+#include <string>
 #include <vector>
 #include "paddle/fluid/operators/jit/kernel_base.h"
 
@@ -28,7 +29,7 @@ namespace jit {
 class GenBase : public Kernel {
  public:
   virtual ~GenBase() = default;
-  virtual const char* name() const = 0;
+  virtual std::string name() const = 0;
   virtual size_t getSize() const = 0;
   virtual const unsigned char* getCodeInternal() = 0;
   template <typename Func>
