@@ -201,7 +201,31 @@ TEST(SelectedRows, MultiThreadAutoIndex) {
 }
 */
 
-TEST(SelectedRows, MutlThreadDataShard) {
+TEST(SelectedRows, GetIndexsByIds) {
+  platform::CPUPlace cpu;
+  SelectedRows table;
+
+  int64_t table_size = 100000;
+  int64_t embedding_width = 8;
+  // initialize a sparse table
+  table.mutable_value()->Resize(
+      framework::make_ddim({table_size, embedding_width}));
+  table.mutable_value()->mutable_data<float>(cpu);
+
+  size_t shard_num = 13;  // default value in framework
+  size_t shard_size = table_size / shard_num;
+
+  std::vector<int64_t> ids = {1, 2, 3, 4};
+  std::vector<int64_t> indexs(ids.size());
+  table.InitDataShards();
+  table.GetIndexsByIds(ids, &indexs, true);
+  for (int i = 0; i < ids.size(); ++i) {
+    size_t shard_id = ids[i] % shard_num;
+    ASSERT_EQ(indexs[i], shard_id * shard_size);
+  }
+}
+
+TEST(SelectedRows, Get) {
   platform::CPUPlace cpu;
   SelectedRows table;
 
@@ -217,12 +241,33 @@ TEST(SelectedRows, MutlThreadDataShard) {
     }
   }
 
-  std::vector<int64_t> ids = {1, 2, 3, 4};
-  std::vector<int64_t> indexs(ids.size());
   table.InitDataShards();
-  table.GetIndexsByIds(ids, &indexs, true);
-  for (auto index : indexs) {
-    std::cout << index << std::endl;
+
+  size_t shard_num = 13;  // default value in framework
+  size_t shard_size = table_size / shard_num;
+
+  int64_t id_num = 10;
+  Tensor ids_t;
+  Tensor out_t;
+
+  ids_t.Resize(framework::make_ddim({id_num, 1}));
+  auto* ids_data = ids_t.mutable_data<int64_t>(cpu);
+  int64_t ids_num = ids_t.numel();
+  for (int i = 0; i < ids_num; ++i) {
+    ids_data[i] = i;
+  }
+
+  auto* out_data = out_t.Resize(framework::make_ddim({id_num, embedding_width}))
+                       .mutable_data<float>(cpu);
+  table.Get(ids_t, &out_t, true, false);
+
+  for (int i = 0; i < id_num; ++i) {
+    for (int j = 0; j < embedding_width; ++j) {
+      int shard_id = ids_data[i] % shard_num;
+      size_t offset = shard_id * shard_size;
+      float out_val = out_data[i * embedding_width + j];
+      ASSERT_EQ(out_val, offset);
+    }
   }
 }
 
