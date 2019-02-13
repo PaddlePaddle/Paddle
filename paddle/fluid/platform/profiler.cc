@@ -452,35 +452,35 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
 // print the memory infomation
 void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
                       const size_t name_width, const size_t data_width) {
-  std::cout << "in print memory profiler!!!\n";
+  VLOG(1) << "in print memory profiler!!!\n";
 
   for (size_t i = 0; i < events_table.size(); ++i) {
     std::string place = "Unknown";
     Place a;
-    std::cout << "this is the variable $place$! \n";
-    std::cout << place << "\n\n";
+    VLOG(1) << "this is the variable $place$! \n";
+    VLOG(1) << place << "\n\n";
     if (is_cpu_place(events_table[i].place)) {
       place = "CPU";
     } else {
       place = "GPU";
     }
-    std::cout << "Place: " << place << "\n";
-    std::cout << "Memory unit: MB"
-              << "\n";
+    VLOG(1) << "Place: " << place << "\n";
+    VLOG(1) << "Memory unit: MB"
+            << "\n";
     // Output events table
-    std::cout << std::setw(name_width) << "Event" << std::setw(data_width)
-              << "Peak" << std::setw(data_width) << "Valley"
-              << std::setw(data_width) << "Average" << std::setw(data_width)
-              << "Maximum" << std::setw(data_width) << "Minimum"
-              << "\n";
-    std::cout << std::setw(name_width) << "Memory" << std::setw(data_width)
-              << events_table[i].peak << std::setw(data_width)
-              << events_table[i].valley << std::setw(data_width)
-              << events_table[i].average << std::setw(data_width)
-              << events_table[i].max << std::setw(data_width)
-              << events_table[i].min << "\n";
+    VLOG(1) << std::setw(name_width) << "Event" << std::setw(data_width)
+            << "Peak" << std::setw(data_width) << "Valley"
+            << std::setw(data_width) << "Average" << std::setw(data_width)
+            << "Maximum" << std::setw(data_width) << "Minimum"
+            << "\n";
+    VLOG(1) << std::setw(name_width) << "Memory" << std::setw(data_width)
+            << events_table[i].peak << std::setw(data_width)
+            << events_table[i].valley << std::setw(data_width)
+            << events_table[i].average << std::setw(data_width)
+            << events_table[i].max << std::setw(data_width)
+            << events_table[i].min << "\n";
   }
-  std::cout << "\n";
+  VLOG(1) << "\n";
 }
 
 struct MemResult {
@@ -491,7 +491,7 @@ struct MemResult {
 void ParseMemEvents(
     const std::vector<std::vector<MemEvent>>& events /*, bool merge_place*/) {
   std::cout << "in memory parse!!!\n";
-
+  VLOG(1) << events << "\n";
   if (g_state == ProfilerState::kDisabled) return;
 
   static std::function<bool(const MemResult&, const MemResult&)> sort_func = [](
