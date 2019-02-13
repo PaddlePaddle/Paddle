@@ -452,13 +452,11 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
 // print the memory infomation
 void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
                       const size_t name_width, const size_t data_width) {
-  VLOG(1) << "in print memory profiler!!!\n";
+  VLOG(1) << "\n";
 
   for (size_t i = 0; i < events_table.size(); ++i) {
     std::string place = "Unknown";
     Place a;
-    VLOG(1) << "this is the variable $place$! \n";
-    VLOG(1) << place << "\n\n";
     if (is_cpu_place(events_table[i].place)) {
       place = "CPU";
     } else {
@@ -487,9 +485,7 @@ struct MemResult {
   double size_;
 };
 // parse memory events
-void ParseMemEvents(
-    const std::vector<std::vector<MemEvent>>& events /*, bool merge_place*/) {
-  //  VLOG(1) << events << "\n\n";
+void ParseMemEvents(const std::vector<std::vector<MemEvent>>& events) {
   if (g_state == ProfilerState::kDisabled) return;
 
   static std::function<bool(const MemResult&, const MemResult&)> sort_func = [](
@@ -535,7 +531,8 @@ void ParseMemEvents(
     } else {
       mem_timeline[i].push_back(
           {tmp_mem_results[tmp_mem_results.size() - 1].time,
-           tmp_mem_results[tmp_mem_results.size() - 1].size_});
+           mem_timeline[i].rbegin()->size_ +
+               tmp_mem_results[tmp_mem_results.size() - 1].size_});
     }
     event_info[i].peak =
         std::max(event_info[i].peak, mem_timeline[i].rbegin()->size_);
