@@ -318,4 +318,9 @@ NativeConfig AnalysisConfig::ToNativeConfig() const {
   return config;
 }
 
+void AnalysisConfig::SwitchIrDebug(int x) {
+  ir_debug_ = x;
+  Update();
+}
+
 }  // namespace paddle

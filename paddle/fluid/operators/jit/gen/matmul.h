@@ -36,7 +36,7 @@ class MatMulJitCode : public JitCode {
     this->genCode();
   }
 
-  virtual const char* name() const {
+  virtual const char* name() const override {
     std::string base = "MatMulJitCode";
     base = base + "_M" + std::to_string(m_) + "_N" + std::to_string(n_) + "_K" +
            std::to_string(k_);

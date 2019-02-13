@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,20 +13,21 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/details/early_delete_op_handle.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/pass.h"
+
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
 namespace paddle {
 namespace framework {
-namespace details {
+namespace ir {
 
-class MemoryEarlyDeletePass : public ir::Pass {
+class IdentityScaleOpCleanPass : public FusePassBase {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+
+ private:
+  virtual ~IdentityScaleOpCleanPass() = default;
 };
 
-}  // namespace details
+}  // namespace ir
 }  // namespace framework
 }  // namespace paddle

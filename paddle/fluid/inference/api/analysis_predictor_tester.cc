@@ -196,7 +196,7 @@ TEST(AnalysisPredictor, memory_optim) {
   AnalysisConfig config(FLAGS_dirname);
   config.DisableGpu();
   config.EnableMemoryOptim(true);
-  config.pass_builder()->TurnOnDebug();
+  config.SwitchIrDebug();
 
   auto native_predictor =
       CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());

@@ -158,9 +158,9 @@ def __bootstrap__():
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
             'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
             'sync_nccl_allreduce', 'limit_of_tmp_allocation',
-            'times_excess_than_required_tmp_allocation'
+            'times_excess_than_required_tmp_allocation',
+            'enable_inplace_whitelist'
         ]
-
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])

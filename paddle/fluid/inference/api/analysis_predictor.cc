@@ -58,7 +58,8 @@ namespace {
 bool IsPersistable(const framework::VarDesc *var) {
   if (var->Persistable() &&
       var->GetType() != framework::proto::VarType::FEED_MINIBATCH &&
-      var->GetType() != framework::proto::VarType::FETCH_LIST) {
+      var->GetType() != framework::proto::VarType::FETCH_LIST &&
+      var->GetType() != framework::proto::VarType::RAW) {
     return true;
   }
   return false;
@@ -420,7 +421,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   if (!dynamic_cast<AnalysisPredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }
-  return std::move(predictor);
+  return predictor;
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {
