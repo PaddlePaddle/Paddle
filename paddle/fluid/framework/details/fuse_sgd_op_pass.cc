@@ -47,7 +47,7 @@ void FuseSgdOpPass::FuseSgdOps(
   int op_role = boost::get<int>(
       sgd_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
   // Add reset_dim, only fuse the scale ops
-  VLOG(10) << "Insert sSgd to graph ";
+  VLOG(10) << "Insert sgd to graph ";
   // Add fused scale
   OpDesc Sgd_desc;
   Sgd_desc.SetType("sgd");
@@ -56,6 +56,8 @@ void FuseSgdOpPass::FuseSgdOps(
   Sgd_desc.SetOutput("ParamOut", {fused_vars_name.at("Param")});
   // TODO(zcd): The LearningRate, Beta1Pow, Beta2Pow should be equal.
   Sgd_desc.SetInput("LearningRate", sgd_ops[0]->Op()->Input("LearningRate"));
+
+  // TODO(zcd): Prune LearningRate Node's output
 
   // NOTE: multi_devices_pass requires that every op should have a role.
   Sgd_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);

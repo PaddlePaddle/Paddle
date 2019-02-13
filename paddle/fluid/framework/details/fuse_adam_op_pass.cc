@@ -100,6 +100,8 @@ void FuseAdamOpPass::FuseAdamOps(
   // NOTE: multi_devices_pass requires that every op should have a role.
   adam_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
 
+  // TODO(zcd): Prune LearningRate Node's output
+
   auto adam_node = graph->CreateOpNode(&adam_desc);
 
   InserInputAndOutputForOptOps(adam_ops, adam_node);
