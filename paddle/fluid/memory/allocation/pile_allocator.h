@@ -1,3 +1,17 @@
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <gtest/gtest_prod.h>
 #include <list>
 #include <stack>
@@ -197,8 +211,8 @@ struct BuddyResource {
 
  private:
   const int min_mem_log_size_;
-  const int max_mem_log_size_;
   const int min_mem_size_;
+  const int max_mem_log_size_;
   const int max_mem_size_;
   const uint32_t num_buckets_;
   const int realloc_mem_log_size_;
@@ -246,8 +260,8 @@ struct BuddySystem {
         realloc_mem_log_size_(resource->realloc_mem_log_size()),
         realloc_mem_size_(resource->realloc_mem_size()),
         num_buckets_(resource->num_buckets()),
-        resource_(resource),
         allow_realloc_(allow_realloc),
+        resource_(resource),
         buffer_(&resource->buffer()) {
     is_splits_ = &resource->is_splits(pile_idx);
     buckets_ = &resource->buckets(pile_idx);
@@ -265,9 +279,9 @@ struct BuddySystem {
         max_mem_log_size_(max_mem_log_size),
         min_mem_size_(1 << min_mem_log_size),
         max_mem_size_(1 << max_mem_log_size),
-        num_buckets_(max_mem_log_size - min_mem_log_size + 1),
         realloc_mem_log_size_(realloc_mem_log_size),
         realloc_mem_size_(1 << realloc_mem_log_size),
+        num_buckets_(max_mem_log_size - min_mem_log_size + 1),
         allow_realloc_{allow_realloc} {
     resource_ = CreateBuddyResource(max_mem_log_size, min_mem_log_size,
                                     realloc_mem_log_size, 1);
@@ -459,6 +473,18 @@ struct BuddySystem {
   }
 
  private:
+  const int min_mem_log_size_;
+  const int max_mem_log_size_;
+  const size_t min_mem_size_;
+  const size_t max_mem_size_;
+  const int realloc_mem_log_size_;
+  const int realloc_mem_size_;
+
+  const uint32_t num_buckets_;
+  const bool allow_realloc_;
+
+  std::shared_ptr<BuddyResource> resource_;
+
   // All the memory pools shares the same buckets.
   std::vector<bucket_t>* buckets_{nullptr};
   // State represents is_split, one bit for each node.
@@ -467,19 +493,7 @@ struct BuddySystem {
   // map from allocated memory address to the requested memory size.
   std::unordered_map<byte_t*, uint32_t> ptr2request_;
 
-  const int min_mem_log_size_;
-  const int max_mem_log_size_;
-  const size_t min_mem_size_;
-  const size_t max_mem_size_;
-  const uint32_t num_buckets_;
-  const int realloc_mem_log_size_;
-  const int realloc_mem_size_;
-
-  const bool allow_realloc_;
-
   std::vector<byte_t*>* buffer_{nullptr};
-
-  std::shared_ptr<BuddyResource> resource_;
 
   FRIEND_TEST(BuddySystem, test1);
   FRIEND_TEST(BuddySystem, BucketForRequest);

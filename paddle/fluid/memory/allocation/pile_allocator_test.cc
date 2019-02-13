@@ -1,3 +1,17 @@
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "paddle/fluid/memory/allocation/pile_allocator.h"
 #include <gtest/gtest.h>
 #include <unordered_set>
@@ -75,7 +89,7 @@ TEST(BuddySystem, TestFirstBucket) {
   BuddySystem manager(4, 10, 9);
   ASSERT_EQ(manager.buckets_->size(), manager.num_buckets_);
   // Only the first one bucket has one element.
-  for (int i = 1; i < manager.num_buckets_; i++) {
+  for (size_t i = 1; i < manager.num_buckets_; i++) {
     ASSERT_FALSE(!manager.buckets(i).empty());
   }
   ASSERT_TRUE(!manager.buckets_->front().empty());
@@ -189,14 +203,14 @@ TEST(BuddySystem, Malloc) {
   // The 1-th bucket should not be empty
   ASSERT_TRUE(!manager.buckets(1).empty());
   for (int i = 2; i < manager.num_buckets_; i++) {
-    ASSERT_FALSE(manager.buckets(i).top());
+    ASSERT_TRUE(manager.buckets(i).top());
   }
 
   ptr = manager.Malloc((1 << 9));
   ASSERT_EQ(ptr, manager.buffer(0) + (1 << 9));
 
-  for (int i = 1; i < manager.num_buckets_; i++) {
-    ASSERT_FALSE(manager.buckets(i).top());
+  for (size_t i = 1; i < manager.num_buckets_; i++) {
+    ASSERT_TRUE(manager.buckets(i).top());
   }
 
   // OOM
@@ -262,7 +276,8 @@ TEST(BuddySystem, Malloc1) {
   CheckIsSplits({0, 1, 8});  // node 3 is used, so not split
   // Alloc another 1<<6 block, the node 18 is used, and the whole node 8 is
   // used.
-  auto* node_18 = manager.Malloc(1 << 6);
+  // auto* node_18 =
+  manager.Malloc(1 << 6);
   ShowBuckets();
   CheckIsSplits({0, 1});  // node 3 is used, so not split
 
@@ -284,8 +299,7 @@ TEST(BuddySystem, Malloc1) {
   ASSERT_EQ(manager.buckets(1).size(), 1);  // 1<<9
   ASSERT_EQ(manager.buckets(2).size(), 1);  // 1<<8
   ASSERT_EQ(manager.buckets(3).size(), 0);  // 1<<7
-  ASSERT_EQ(manager.buckets(4).size(),
-            2);  // 1<<6, node17 and node15
+  ASSERT_EQ(manager.buckets(4).size(), 2);  // 1<<6, node17 and node15
 
   // Free node 16, that block should merge with the block of node15, and make
   // the entire node7 free.
@@ -296,16 +310,18 @@ TEST(BuddySystem, Malloc1) {
   ASSERT_EQ(manager.buckets(1).size(), 1);  // 1<<9
   ASSERT_EQ(manager.buckets(2).size(), 1);  // 1<<8
   ASSERT_EQ(manager.buckets(3).size(), 1);  // 1<<7
-  ASSERT_EQ(manager.buckets(4).size(),
-            1);  // 1<<6, node17 and node15
+  ASSERT_EQ(manager.buckets(4).size(), 1);  // 1<<6, node17 and node15
 
-  auto* node_4 = manager.Malloc((1 << 8));
+  // auto* node_4 =
+  manager.Malloc((1 << 8));
   ShowBuckets();
   CheckIsSplits({0, 3, 8});
 
   // Alloc node5 and node6, and that will make node2 used.
-  auto* node_5 = manager.Malloc((1 << 8));
-  auto* node_6 = manager.Malloc((1 << 8));
+  // auto* node_5 =
+  manager.Malloc((1 << 8));
+  // auto* node_6 =
+  manager.Malloc((1 << 8));
   ShowBuckets();
   CheckIsSplits({3, 8});
   ASSERT_EQ(manager.buckets(0).size(), 0);
@@ -336,7 +352,8 @@ TEST(BuddySystem, realloc) {
   ASSERT_EQ(manager.buffer_->size(), 2UL);
   ASSERT_EQ(manager.PoolIdxForPtr(static_cast<uint8_t*>(ptr1)), 1);
 
-  auto* ptr2 = manager.Malloc((1 << 8));
+  // auto* ptr2 =
+  manager.Malloc((1 << 8));
   ASSERT_EQ(manager.PoolIdxForPtr(static_cast<uint8_t*>(ptr1)), 1);
 }
 
