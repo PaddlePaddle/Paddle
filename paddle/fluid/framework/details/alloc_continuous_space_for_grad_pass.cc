@@ -31,7 +31,10 @@ class AllocContinuousSpaceForGrad : public ir::Pass {
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override {
     ir::Graph& result = *graph;
-    result.Erase(kParamsAndGrads);
+    if (result.Has(kParamsAndGrads)) {
+      VLOG(10) << kParamsAndGrads << " are reset.";
+      result.Erase(kParamsAndGrads);
+    }
     result.Set(kParamsAndGrads, new ParamsAndGrads);
 
     // Record parameters and gradients
