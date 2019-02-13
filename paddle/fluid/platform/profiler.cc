@@ -459,8 +459,10 @@ void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
     Place a;
     if (is_cpu_place(events_table[i].place)) {
       place = "CPU";
-    } else {
+    } else if (is_gpu_place(events_table[i].place)) {
       place = "GPU";
+    } else {
+      place = "CUDAPinnedPlace";
     }
     VLOG(1) << "Place: " << place << "\n";
     VLOG(1) << "Memory unit: MB\n";
@@ -486,6 +488,13 @@ struct MemResult {
 };
 // parse memory events
 void ParseMemEvents(const std::vector<std::vector<MemEvent>>& events) {
+  for (auto a : events) {
+    for (auto b : a) {
+      VLOG(3) << b.start_ns() << "\t" << b.end_ns() << "\t" << b.bytes()
+              << "\n\n";
+    }
+  }
+
   if (g_state == ProfilerState::kDisabled) return;
 
   static std::function<bool(const MemResult&, const MemResult&)> sort_func = [](
