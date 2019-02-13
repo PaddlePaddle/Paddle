@@ -458,13 +458,13 @@ void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
     std::string place = "Unknown";
     Place a;
     VLOG(1) << "this is the variable $place$! \n";
-    VLOG(1) << place << "\n\n";
+    //    VLOG(1) << place << "\n\n";
     if (is_cpu_place(events_table[i].place)) {
       place = "CPU";
     } else {
       place = "GPU";
     }
-    VLOG(1) << "Place: " << place << "\n";
+    //    VLOG(1) << "Place: " << place << "\n";
     VLOG(1) << "Memory unit: MB\n";
     // Output events table
     VLOG(1) << "\tEvent"
@@ -489,8 +489,8 @@ struct MemResult {
 // parse memory events
 void ParseMemEvents(
     const std::vector<std::vector<MemEvent>>& events /*, bool merge_place*/) {
-  std::cout << "in memory parse!!!\n";
-  VLOG(1) << events << "\n\n";
+  VLOG(1) << "in memory parse!!!\n";
+  //  VLOG(1) << events << "\n\n";
   if (g_state == ProfilerState::kDisabled) return;
 
   static std::function<bool(const MemResult&, const MemResult&)> sort_func = [](
