@@ -76,6 +76,13 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
       }
       if (NodeCanReused(var) && cfg_->Use(op).count(var->Name()) == 0) {
         ir::Node* cache = pool_.FindBestFitNode(var);
+        while (cache != nullptr && var->Name() == cache->Name()) {
+          VLOG(3) << "The same cache variable is cascade reused." << var->Name()
+                  << " is re-filled to the pool after"
+                  << "the reused op is finished. Current op can not "
+                  << "replace it again. Skip this candidate.";
+          cache = pool_.FindNextBestFitNode(var, cache);
+        }
         if (var->Name() == FLAGS_memory_optimize_debug) {
           VLOG(3) << "start match var " << DebugString(var) << " of op "
                   << op->Name();
@@ -85,14 +92,6 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
         }
 
         if (cache != nullptr) {
-          if (var->Name() == cache->Name()) {
-            VLOG(3) << "The same cache variable is cascade reused."
-                    << var->Name() << " is re-filled to the pool after"
-                    << "the reused op is finished. Current op can not "
-                    << "replace it again. Skip this candidate.";
-            continue;
-          }
-
           int node_idx_in_pool = pool_.GetNodeIndexInPool(cache);
           VLOG(3) << string::Sprintf(
               "!!! %s,  %s => %s, cache idx %d, pool size %d",

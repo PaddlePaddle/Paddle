@@ -62,6 +62,7 @@ class OrderedSet {
   }
   // find the bestfit shape node block with var.
   ir::Node* FindBestFitNode(ir::Node* var) const;
+  ir::Node* FindNextBestFitNode(ir::Node* var, ir::Node* prev) const;
   // map store non-const iterator, can not promise const
   int GetNodeIndexInPool(ir::Node* var);
   // pool all node to string
