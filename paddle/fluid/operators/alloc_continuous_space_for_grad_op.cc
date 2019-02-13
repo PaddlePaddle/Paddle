@@ -23,12 +23,12 @@ namespace operators {
 static framework::proto::VarType::Type kDefaultDtype =
     static_cast<framework::proto::VarType::Type>(0);
 
-class AllocSpaceForVarsOp : public framework::OperatorBase {
+class AllocContinuousSpaceForGradKernel : public framework::OperatorBase {
  public:
-  AllocSpaceForVarsOp(const std::string &type,
-                      const framework::VariableNameMap &inputs,
-                      const framework::VariableNameMap &outputs,
-                      const framework::AttributeMap &attrs)
+  AllocContinuousSpaceForGradKernel(const std::string &type,
+                                    const framework::VariableNameMap &inputs,
+                                    const framework::VariableNameMap &outputs,
+                                    const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
  private:
@@ -62,8 +62,8 @@ class AllocSpaceForVarsOp : public framework::OperatorBase {
       out_t->ShareDataWith(out_tensor->Slice(offset, offset + len)).Resize(dim);
 
       offset += len;
-      VLOG(10) << "alloc_space_for_vars: output(" << grad_var_names[i]
-               << ") ,dim:(" << dim << ")"
+      VLOG(10) << "alloc_continuous_space_for_grad: output("
+               << grad_var_names[i] << ") ,dim:(" << dim << ")"
                << " Address: " << out_t->data<void>();
     }
   }
@@ -97,7 +97,7 @@ class AllocSpaceForVarsOp : public framework::OperatorBase {
 
       grad_var->GetMutable<framework::LoDTensor>()->Resize(p_tensor.dims());
       auto size = p_tensor.numel();
-      VLOG(10) << "alloc_space_for_vars: input(" << grad_var_names[i]
+      VLOG(10) << "alloc_continuous_space_for_grad: input(" << grad_var_names[i]
                << ") ,dim:(" << p_tensor.dims() << ")";
       PADDLE_ENFORCE_GT(size, 0, "%s", grad_var_names[i]);
       *mem_size += size;
@@ -105,7 +105,8 @@ class AllocSpaceForVarsOp : public framework::OperatorBase {
   }
 };
 
-class AllocSpaceForVarsOpMaker : public framework::OpProtoAndCheckerMaker {
+class AllocContinuousSpaceForGradKernelMaker
+    : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Parameters", "A set of variables.").AsDuplicable();
@@ -119,5 +120,6 @@ class AllocSpaceForVarsOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(alloc_space_for_vars, paddle::operators::AllocSpaceForVarsOp,
-                  paddle::operators::AllocSpaceForVarsOpMaker);
+REGISTER_OPERATOR(alloc_continuous_space_for_grad,
+                  paddle::operators::AllocContinuousSpaceForGradKernel,
+                  paddle::operators::AllocContinuousSpaceForGradKernelMaker);

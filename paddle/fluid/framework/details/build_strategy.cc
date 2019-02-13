@@ -164,7 +164,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       } else if (strategy.reduce_ ==
                  BuildStrategy::ReduceStrategy::kAllReduce) {
         VLOG(10) << "Add all_reduce_mode_multi_devices_pass";
-        AppendPass("all_reduce_mode_multi_devices_pass").get();
+        multi_devices_pass =
+            AppendPass("all_reduce_mode_multi_devices_pass").get();
       } else if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
         VLOG(10) << "Add reduce_mode_multi_devices_pass";
         multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();

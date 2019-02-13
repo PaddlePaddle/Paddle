@@ -19,7 +19,6 @@
 
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
-#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -94,7 +93,7 @@ class FuseGradientSpacePass : public ir::Pass {
     }
     result.Get<FusedVars>(kFusedVars).emplace_back(fused_var_name);
 
-    // Insert alloc_space_for_vars to RunOnlyOnceProgram,
+    // Insert alloc_continuous_space_for_grad to RunOnlyOnceProgram,
     // which is executed before running the model with ParallelExecutor.
     if (!result.Has(kRunOnlyOnceProgram)) {
       result.Set(kRunOnlyOnceProgram, new RunOnlyOnceProgram);
@@ -121,7 +120,7 @@ class FuseGradientSpacePass : public ir::Pass {
                                  const std::string& fused_var_name,
                                  BlockDesc* global_block) const {
     auto op_desc = global_block->AppendOp();
-    op_desc->SetType("alloc_space_for_vars");
+    op_desc->SetType("alloc_continuous_space_for_grad");
     op_desc->SetInput("Parameters", params_name);
     op_desc->SetOutput("Gradients", grads_name);
     op_desc->SetOutput("FusedOutput", {fused_var_name});
