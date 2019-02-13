@@ -22,6 +22,9 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+#ifndef PROFILER_H
+#define PROFILER_H
+
 enum EventType { kMark, kPushRange, kPopRange };
 
 class Event {
@@ -173,5 +176,6 @@ bool ShouldSendProfileState();
 void SetProfileListener();
 int64_t ListenerId();
 
+#endif
 }  // namespace platform
 }  // namespace paddle
