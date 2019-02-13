@@ -379,6 +379,7 @@ TEST(PileAllocator, crazy_alloc) {
       LOG(INFO) << "free "
                 << " : " << last_ptr;
     }
+    LOG(INFO) << "frag ratio: " << allocator.frag_ratio(-1);
   }
 }
 

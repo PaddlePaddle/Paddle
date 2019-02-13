@@ -24,6 +24,7 @@ namespace memory {
 namespace allocation {
 
 void BuddySystem::Free(void* p) {
+  std::lock_guard<std::mutex> lk(mut_);
   auto* ptr = static_cast<byte_t*>(p);
   // Ignore null.
   if (!ptr) return;
@@ -37,8 +38,9 @@ void BuddySystem::Free(void* p) {
     return;
   }
 
-  size_t node = NodeForPtr(ptr, bucket, pool_idx);
+  request_memory_size_ -= request;
 
+  size_t node = NodeForPtr(ptr, bucket, pool_idx);
   while (node != 0) {
     FlipParentIsSplit(node, pool_idx);
     VLOG(3) << "parent is split " << IsParentSplit(node, pool_idx) << " node "
@@ -63,6 +65,8 @@ void* BuddySystem::MallocImpl(size_t request, size_t pool_idx) {
     return nullptr;
   }
   PADDLE_ENFORCE(!buffer_->empty());
+
+  request_memory_size_ += request;
 
   // We should reserve the memory for Header of request.
   size_t origin_bucket = BucketForRequest(request);
@@ -97,6 +101,16 @@ void* BuddySystem::MallocImpl(size_t request, size_t pool_idx) {
   }
   return nullptr;
 }
+
+PileAllocator::MemoryOption::MemoryOption(size_t max_memory_size,
+                                          size_t min_memory_size,
+                                          size_t realloc_memory_size)
+    : max_memory_log_size(std::floor(std::log(max_memory_size))),
+      min_memory_log_size(std::floor(std::log(min_memory_size))),
+      realloc_memory_log_size(std::floor(std::log(realloc_memory_size))),
+      max_memory_size(1 << max_memory_log_size),
+      min_memory_size(1 << min_memory_log_size),
+      realloc_memory_size(1 << realloc_memory_log_size) {}
 
 }  // namespace allocation
 }  // namespace memory

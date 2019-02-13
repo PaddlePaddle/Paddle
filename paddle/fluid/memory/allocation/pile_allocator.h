@@ -15,9 +15,11 @@
 #include <gflags/gflags.h>
 #include <gtest/gtest_prod.h>
 #include <list>
+#include <mutex>
 #include <stack>
 #include <unordered_map>
 #include <unordered_set>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 
@@ -154,8 +156,10 @@ struct BuddyResource {
   std::vector<byte_t*>& buffer() { return buffer_; }
   std::vector<bucket_t>& buckets(int idx) { return buckets_[idx]; }
   std::vector<BitSet>& is_splits(int idx) { return is_splits_[idx]; }
+  size_t total_memory_pool_size() const { return total_memory_pool_size_; }
 
   void* SystemAllocate(size_t size) {
+    total_memory_pool_size_ += size;
     switch (place_) {
       case Place::kCPU:
         return CpuSystemAllocate(size);
@@ -275,6 +279,8 @@ struct BuddyResource {
   // The buffer will shared by all the piled system.
   std::vector<byte_t*> buffer_;
 
+  size_t total_memory_pool_size_{0};
+
   // All the memory pools shares the same buckets. The outer vector is for
   // piled
   // systems, the inner vector is for different size of buddies.
@@ -361,18 +367,30 @@ struct BuddySystem {
   }
 
   void* Malloc(size_t request) {
+    std::lock_guard<std::mutex> lk(mut_);
     if (request > max_mem_size_) {
       return resource_->SystemAllocate(request);
     }
+
     auto* first_try = MallocImpl(request, 0);
-    if (first_try) return first_try;
+    if (first_try) {
+      return first_try;
+    }
 
     if (!allow_realloc_) return nullptr;
+
     resource_->ReallocMemoryBuffer();
     return MallocImpl(request, 0);
   }
 
   void Free(void* p);
+
+  size_t request_memory_size() const { return request_memory_size_; }
+  size_t buddy_free_size() const { return buddy_free_size_; }
+  float frag_ratio() {
+    return static_cast<double>(request_memory_size_) /
+           (resource_->total_memory_pool_size() - buddy_free_size_);
+  }
 
  protected:
   void* MallocImpl(size_t request, size_t pool_idx);
@@ -432,9 +450,15 @@ struct BuddySystem {
     return ptr;
   }
 
-  void PopBucket(size_t bucket, byte_t* ptr) { buckets(bucket).pop(ptr); }
+  void PopBucket(size_t bucket, byte_t* ptr) {
+    buddy_free_size_ -= BucketSize(bucket);
+    buckets(bucket).pop(ptr);
+  }
 
-  void PushBucket(size_t bucket, byte_t* ptr) { buckets(bucket).push(ptr); }
+  void PushBucket(size_t bucket, byte_t* ptr) {
+    buddy_free_size_ += BucketSize(bucket);
+    buckets(bucket).push(ptr);
+  }
 
   size_t GetBrotherNode(size_t node) { return ((node - 1) ^ 1) + 1; }
 
@@ -474,6 +498,7 @@ struct BuddySystem {
 
   const uint32_t num_buckets_;
   const bool allow_realloc_;
+  std::mutex mut_;
 
   std::shared_ptr<BuddyResource> resource_;
 
@@ -486,6 +511,11 @@ struct BuddySystem {
   std::unordered_map<byte_t*, uint32_t> ptr2request_;
 
   std::vector<byte_t*>* buffer_{nullptr};
+
+  // The sum of the exact memory size user requested.
+  size_t request_memory_size_{0};
+  // The sum of the free buddies in the free buckets.
+  size_t buddy_free_size_{0};
 
   FRIEND_TEST(BuddySystem, test1);
   FRIEND_TEST(BuddySystem, BucketForRequest);
@@ -521,13 +551,7 @@ class PileAllocator : public Allocator {
 
   struct MemoryOption {
     MemoryOption(size_t max_memory_size, size_t min_memory_size,
-                 size_t realloc_memory_size)
-        : max_memory_log_size(std::floor(std::log(max_memory_size))),
-          min_memory_log_size(std::floor(std::log(min_memory_size))),
-          realloc_memory_log_size(std::floor(std::log(realloc_memory_size))),
-          max_memory_size(1 << max_memory_log_size),
-          min_memory_size(1 << min_memory_log_size),
-          realloc_memory_size(1 << realloc_memory_log_size) {}
+                 size_t realloc_memory_size);
 
     const size_t max_memory_log_size;
     const size_t min_memory_log_size;
@@ -552,19 +576,16 @@ class PileAllocator : public Allocator {
     }
   }
 
+  float frag_ratio(int idx) {
+    if (idx == -1) {
+      return meta_system_->frag_ratio();
+    }
+    return pile_systems_.at(idx)->frag_ratio();
+  }
+
   void SetPileIdx(int idx) {
     PADDLE_ENFORCE_LT(idx, 1UL + pile_systems_.size());
     pile_idx_ = idx;
-  }
-
-  // It should be low-performance when allocating the Allocation. Each time it
-  // allocates, two malloc will be called.
-  // TODO(px) Re-consider the overall allocator interface design.
-  Allocation* AllocateImpl(size_t size,
-                           Allocator::Attr attr = kDefault) override {
-    auto* p = new Allocation(RawAllocate(size), size, platform::CPUPlace());
-    p->set_allocator(this);
-    return p;
   }
 
   void Free(Allocation* allocation) override {
@@ -594,6 +615,16 @@ class PileAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return false; }
 
  private:
+  // It should be low-performance when allocating the Allocation. Each time it
+  // allocates, two malloc will be called.
+  // TODO(px) Re-consider the overall allocator interface design.
+  Allocation* AllocateImpl(size_t size,
+                           Allocator::Attr attr = kDefault) override {
+    auto* p = new Allocation(RawAllocate(size), size, platform::CPUPlace());
+    p->set_allocator(this);
+    return p;
+  }
+
   std::unique_ptr<BuddySystem> meta_system_;
   std::vector<std::unique_ptr<BuddySystem>> pile_systems_;
   int pile_idx_{-1};
