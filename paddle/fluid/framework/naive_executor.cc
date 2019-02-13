@@ -36,7 +36,7 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
   }
 
   VLOG(3) << "NaiveExecutor init with scope " << scope;
-  CreateOps(program_desc, block_id, with_feed_fetch_ops);
+  CreateOps(program_desc, block_id, with_feed_fetch_ops, scope);
 }
 
 void NaiveExecutor::Run() {
@@ -51,10 +51,17 @@ void NaiveExecutor::Run() {
                              "running Paddle Inference";
 #endif  // PADDLE_ON_INFERENCE
   for (auto &gear : gears_) {
-    VLOG(4) << std::this_thread::get_id() << " run "
-            << gear.op->DebugStringEx(scope_) << " on scope " << scope_;
-    gear.op->SetIsCalledByExecutor(false);
-    gear.op->Run(*scope_, place_);
+    if (gear.op) {
+      VLOG(4) << std::this_thread::get_id() << " run "
+              << gear.op->DebugStringEx(scope_) << " on scope " << scope_;
+      gear.op->SetIsCalledByExecutor(false);
+      gear.op->Run(*scope_, place_);
+    } else {
+      PADDLE_ENFORCE(gear.lite_op->CheckShape());
+      PADDLE_ENFORCE(gear.lite_op->InferShape());
+      LOG(INFO) << "running lite op " << gear.lite_op->DebugString();
+      PADDLE_ENFORCE(gear.lite_op->Run());
+    }
   }
 }
 
@@ -97,7 +104,8 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
 }
 
 void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
-                              bool with_feed_fetch_ops) {
+                              bool with_feed_fetch_ops,
+                              framework::Scope *scope) {
   for (const auto &op_desc : desc.Block(block_id).AllOps()) {
     if (!with_feed_fetch_ops &&
         (op_desc->Type() == "feed" || op_desc->Type() == "fetch")) {
@@ -108,9 +116,11 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
     }
     if (!FLAGS_global_with_gpu &&
         inference::op_lite::LiteOpRegistry::Global().Has(op_desc->Type())) {
+      LOG(INFO) << "create lite op " << op_desc->Type();
       gears_.emplace_back();
       gears_.back().lite_op =
           inference::op_lite::LiteOpRegistry::Global().Create(op_desc->Type());
+      gears_.back().lite_op->Build(*op_desc, scope);
     } else {
       gears_.emplace_back();
       gears_.back().op = OpRegistry::CreateOp(*op_desc);
@@ -124,16 +134,6 @@ LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
   PADDLE_ENFORCE(var, "No variable [%s] in the scope");
   auto *tensor = const_cast<LoDTensor *>(&var->Get<LoDTensor>());
   return tensor;
-}
-
-void NaiveExecutor::CleanFeedFetchOps() {
-  std::vector<std::unique_ptr<OperatorBase>> ops;
-  for (auto &gear : gears_) {
-    if (gear.op->Type() != "feed" && gear.op->Type() != "fetch") {
-      ops.emplace_back(std::move(gear));
-    }
-  }
-  gears_.swap(ops);
 }
 
 }  // namespace framework

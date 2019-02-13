@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/inference/op_lite/fc_op.h"
 #include <vector>
+#include "fc_op.h"
+#include "paddle/fluid/inference/op_lite/op_lite.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
 
 namespace paddle {
@@ -34,19 +36,19 @@ bool FC::CheckShape() const {
   if (param_.bias) {
     const auto bias_dims = param_.bias->dims();
     if (bias_dims.size() == 2) {
-      CHECK_OR_FALSE(bias_dims[0] == 1);
-      CHECK_OR_FALSE(bias_dims[1] == w_dims[1]);
+      CHECK_EQ_OR_FALSE(bias_dims[0], 1);
+      CHECK_EQ_OR_FALSE(bias_dims[1], w_dims[1]);
     } else if (bias_dims.size() == 1) {
-      CHECK_OR_FALSE(bias_dims[0] == w_dims[1]);
+      CHECK_EQ_OR_FALSE(bias_dims[0], w_dims[1]);
     }
   }
 
-  CHECK_OR_FALSE(w_dims.size() == 2UL);
-  CHECK_OR_FALSE(input_dims.size() > param_.in_num_col_dims);
+  CHECK_EQ_OR_FALSE(w_dims.size(), 2UL);
+  CHECK_GT_OR_FALSE(input_dims.size(), param_.in_num_col_dims);
 
   auto in_mat_dims =
       framework::flatten_to_2d(input_dims, param_.in_num_col_dims);
-  CHECK_OR_FALSE(in_mat_dims[1] == w_dims[0]);
+  CHECK_EQ_OR_FALSE(in_mat_dims[1], w_dims[0]);
 
   return true;
 }
@@ -61,6 +63,7 @@ bool FC::InferShape() const {
     output_dims[i] = input_dims[i];
   }
   output_dims.back() = w_dims[1];
+  param_.output->Resize(framework::make_ddim(output_dims));
 
   // share LoD
   param_.output->set_lod(param_.input->lod());
@@ -68,11 +71,20 @@ bool FC::InferShape() const {
 }
 
 bool FC::Run() {
+  LOG(INFO) << "fc lite op Run";
+  CHECK_OR_FALSE(param_.output);
+  CHECK_OR_FALSE(param_.w);
+  CHECK_OR_FALSE(param_.input);
+  LOG(INFO) << "get dims output";
   auto output_dims = param_.output->dims();
+  LOG(INFO) << "get dims w";
   auto w_dims = param_.w->dims();
   using T = float;
 
+  LOG(INFO) << "output_dims.size " << output_dims.size();
+  LOG(INFO) << "to get M";
   int M = framework::product(output_dims) / output_dims[output_dims.size() - 1];
+  LOG(INFO) << "M " << M;
   auto blas = operators::math::BlasT<platform::CPUDeviceContext, T>(
       platform::CPUDeviceContext());
 
@@ -81,29 +93,37 @@ bool FC::Run() {
       param_.w->data<T>(), param_.output->mutable_data<T>(platform::CPUPlace()),
       param_.bias ? param_.bias->data<T>() : nullptr);
 
-  return false;
+  return true;
 }
 
 bool FC::Build(const framework::OpDesc &opdesc, framework::Scope *scope) {
   const auto &inputs = opdesc.Inputs();
+  const auto &outputs = opdesc.Outputs();
   CHECK_OR_FALSE(inputs.count("Input"));
+  CHECK_OR_FALSE(outputs.count("Out"));
   CHECK_OR_FALSE(inputs.count("W"));
   CHECK_OR_FALSE(inputs.count("Bias"));
-  CHECK_OR_FALSE(inputs.count("Out"));
+  CHECK_OR_FALSE(outputs.count("Out"));
 
   auto input = scope->FindVar(inputs.at("Input").front());
   auto w = scope->FindVar(inputs.at("W").front());
-  auto output = scope->FindVar(inputs.at("Output").front());
+  auto output = scope->FindVar(outputs.at("Out").front());
 
   param_.input = input->GetMutable<LoDTensor>();
   param_.output = output->GetMutable<LoDTensor>();
   param_.w = w->GetMutable<LoDTensor>();
+  param_.in_num_col_dims = boost::get<int>(opdesc.GetAttr("in_num_col_dims"));
+  LOG(INFO) << "in_num_cols " << param_.in_num_col_dims;
 
   if (!inputs.at("Bias").empty()) {
     auto bias = scope->FindVar(inputs.at("Bias").front());
     param_.bias = bias->GetMutable<LoDTensor>();
   }
+  LOG(INFO) << "finish building FC lite op";
+  return true;
 }
+
+std::string FC::DebugString() const { return "fc lite op"; }
 
 }  // namespace op_lite
 }  // namespace inference

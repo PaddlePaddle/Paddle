@@ -14,9 +14,10 @@
 
 #pragma once
 
+#include <glog/logging.h>
+#include <boost/variant.hpp>
 #include <map>
 #include <string>
-#include "boost/variant.hpp"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/variable.h"
@@ -38,7 +39,7 @@ using anys_t = std::map<std::string, any_t>;
  *
  * TODO(Superjomn) Integrate this to paddle/framework in the future.
  * TODO(Superjomn) This should be deleted if there are some equivalent
- * improvement in paddle/framework.
+ *                 improvement in paddle/framework.
  * NOTE It just works on CPU, and the MKLDNN is not supported.
  */
 class OpLite {
@@ -59,6 +60,26 @@ class OpLite {
   if (!(cond)) {                           \
     LOG(ERROR) << #cond << " test error!"; \
     return false;                          \
+  }
+#define CHECK_EQ_OR_FALSE(a__, b__)                           \
+  if ((a__) != (b__)) {                                       \
+    LOG(ERROR) << #a__ << " == " << #b__ << " check failed!"; \
+    LOG(ERROR) << a__ << " != " << b__;                       \
+    return false;                                             \
+  }
+
+#define CHECK_GT_OR_FALSE(a__, b__)                          \
+  if (!((a__) > (b__))) {                                    \
+    LOG(ERROR) << #a__ << " > " << #b__ << " check failed!"; \
+    LOG(ERROR) << a__ << " <= " << b__;                      \
+    return false;                                            \
+  }
+
+#define CHECK_GE_OR_FALSE(a__, b__)                           \
+  if (!((a__) >= (b__))) {                                    \
+    LOG(ERROR) << #a__ << " >= " << #b__ << " check failed!"; \
+    LOG(ERROR) << a__ << " < " << b__;                        \
+    return false;                                             \
   }
 
 }  // namespace op_lite
