@@ -335,8 +335,8 @@ Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
   Allocation *tmp_alloc = new Allocation(ptr, size, place_);
   platform::RecordMemEvent tmp_record;
-  platform::record_mem.insert({tmp_alloc, tmp_record});
-  platform::record_mem[tmp_alloc].InitRecordMem(size, place_);
+  record_mem.insert({tmp_alloc, tmp_record});
+  record_mem[tmp_alloc].InitRecordMem(size, place_);
   return tmp_alloc;
 }
 
@@ -344,8 +344,8 @@ void LegacyAllocator::Free(Allocation *allocation) {
   boost::apply_visitor(
       legacy::FreeVisitor(allocation->ptr(), allocation->size()),
       allocation->place());
-  platform::record_mem[allocation].DelRecordMem();
-  platform::record_mem.erase(allocation);
+  record_mem[allocation].DelRecordMem();
+  record_mem.erase(allocation);
 }
 
 bool MemInfo::Add(const size_t &size) {

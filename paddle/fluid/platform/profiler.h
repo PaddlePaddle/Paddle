@@ -22,9 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-#ifndef PROFILER_H
-#define PROFILER_H
-
 enum EventType { kMark, kPushRange, kPopRange };
 
 class Event {
@@ -128,8 +125,6 @@ struct RecordMemEvent {
   Place place_;
 };
 
-std::unordered_map<memory::Allocation*, platform::RecordMemEvent> record_mem;
-
 class RecordRPCEvent {
  public:
   // dev_ctx can be set to nullptr if device is cpu.
@@ -176,6 +171,5 @@ bool ShouldSendProfileState();
 void SetProfileListener();
 int64_t ListenerId();
 
-#endif
 }  // namespace platform
 }  // namespace paddle
