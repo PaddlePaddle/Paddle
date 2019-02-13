@@ -190,7 +190,8 @@ TEST(SelectedRows, GetIndexsByIds) {
   std::vector<int64_t> indexs(ids.size());
   table.InitDataShards();
   table.GetIndexsByIds(ids, &indexs, true);
-  for (int i = 0; i < ids.size(); ++i) {
+  size_t id_num = ids.size();
+  for (size_t i = 0; i < id_num; ++i) {
     size_t shard_id = ids[i] % shard_num;
     ASSERT_EQ(indexs[i], shard_id * shard_size);
   }
