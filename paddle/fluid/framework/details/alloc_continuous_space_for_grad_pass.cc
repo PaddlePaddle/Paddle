@@ -26,12 +26,12 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-class FuseGradientSpacePass : public ir::Pass {
+class AllocContinuousSpaceForGrad : public ir::Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override {
     ir::Graph& result = *graph;
-    PADDLE_ENFORCE(!result.Has(kParamsAndGrads));
+    result.Erase(kParamsAndGrads);
     result.Set(kParamsAndGrads, new ParamsAndGrads);
 
     // Record parameters and gradients
@@ -157,5 +157,5 @@ class FuseGradientSpacePass : public ir::Pass {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fuse_gradient_space_pass,
-              paddle::framework::details::FuseGradientSpacePass);
+REGISTER_PASS(alloc_continuous_space_for_grad_pass,
+              paddle::framework::details::AllocContinuousSpaceForGrad);

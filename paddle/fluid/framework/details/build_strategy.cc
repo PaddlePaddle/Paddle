@@ -43,12 +43,22 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
  public:
   explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy)
       : ir::PassBuilder(), strategy_(strategy) {
+    // Add a graph viz pass to record a graph.
+    if (!strategy_.debug_graphviz_path_.empty()) {
+      auto viz_pass = AppendPass("graph_viz_pass");
+      const std::string graph_path = string::Sprintf(
+          "%s%s", strategy_.debug_graphviz_path_.c_str(), "_original_graph");
+      viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
+    }
+
     if (strategy_.enable_sequential_execution_) {
+      VLOG(10) << "Add sequential_execution_pass";
       AppendPass("sequential_execution_pass");
     }
 
     // Add op fusion.
     if (strategy.fuse_relu_depthwise_conv_) {
+      VLOG(10) << "Add fuse_relu_depthwise_conv_pass";
       AppendPass("fuse_relu_depthwise_conv_pass");
     }
 
@@ -60,21 +70,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     // Add automatically inplace.
     if (strategy_.enable_inplace_) {
+      VLOG(10) << "Add inplace_pass";
       AppendPass("inplace_pass");
-    }
-
-    // Add a graph viz pass to record a graph.
-    if (!strategy_.debug_graphviz_path_.empty()) {
-      auto viz_pass = AppendPass("graph_viz_pass");
-      const std::string graph_path = string::Sprintf(
-          "%s%s", strategy_.debug_graphviz_path_.c_str(), "_original_graph");
-      viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
-    }
-
-    // Add op fusion.
-    if (strategy.fuse_relu_depthwise_conv_) {
-      VLOG(10) << "Add fuse_relu_depthwise_conv_pass";
-      AppendPass("fuse_relu_depthwise_conv_pass");
     }
 
     if (strategy.fuse_elewise_add_act_ops_) {
@@ -84,11 +81,15 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     // for single card training, fuse_all_reduce_ops is unnecessary.
     if (strategy.fuse_all_reduce_ops_) {
-      VLOG(10) << "Add fuse_gradient_space_pass";
-      AppendPass("fuse_gradient_space_pass");
+      VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
+      AppendPass("alloc_continuous_space_for_grad_pass");
     }
 
     if (strategy.fuse_all_adam_ops_) {
+      if (!strategy.fuse_all_reduce_ops_) {
+        VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
+        AppendPass("alloc_continuous_space_for_grad_pass");
+      }
       VLOG(10) << "Add fuse_adam_op_pass";
       AppendPass("fuse_adam_op_pass");
     }
@@ -293,6 +294,6 @@ USE_PASS(all_reduce_deps_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
 USE_PASS(inplace_pass);
 USE_PASS(lock_free_optimize_pass);
-USE_PASS(fuse_gradient_space_pass);
+USE_PASS(alloc_continuous_space_for_grad_pass);
 USE_PASS(graph_to_program_pass);
 USE_PASS(fuse_adam_op_pass);

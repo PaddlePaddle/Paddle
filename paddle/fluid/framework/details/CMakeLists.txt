@@ -9,7 +9,7 @@ cc_library(rpc_op_handle SRCS rpc_op_handle.cc DEPS framework_proto scope place 
 cc_library(multi_devices_helper SRCS multi_devices_helper.cc DEPS graph graph_helper)
 cc_library(multi_devices_graph_print_pass SRCS multi_devices_graph_print_pass.cc DEPS multi_devices_helper)
 cc_library(multi_devices_graph_check_pass SRCS multi_devices_graph_check_pass.cc DEPS multi_devices_helper)
-cc_library(fuse_gradient_space_pass SRCS fuse_gradient_space_pass.cc DEPS graph graph_helper)
+cc_library(alloc_continuous_space_for_grad_pass SRCS alloc_continuous_space_for_grad_pass.cc DEPS graph graph_helper)
 
 cc_library(fuse_adam_op_pass SRCS fuse_adam_op_pass.cc DEPS graph graph_helper)
 
@@ -101,4 +101,4 @@ cc_library(build_strategy SRCS build_strategy.cc DEPS
         multi_devices_graph_print_pass multi_devices_graph_check_pass
         fuse_elewise_add_act_pass multi_batch_merge_pass 
         fuse_relu_depthwise_conv_pass
-        memory_optimize_pass lock_free_optimize_pass fuse_gradient_space_pass fuse_adam_op_pass)
+        memory_optimize_pass lock_free_optimize_pass alloc_continuous_space_for_grad_pass fuse_adam_op_pass)
