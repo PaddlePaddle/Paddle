@@ -96,32 +96,6 @@ TEST(SelectedRows, SparseTable) {
   ASSERT_TRUE(table.HasKey(8));
   ASSERT_TRUE(table.HasKey(6));
   ASSERT_EQ(table.rows().size(), 3UL);
-
-  framework::Tensor ids;
-  ids.Resize(framework::make_ddim({4}));
-  auto* ids_data = ids.mutable_data<int64_t>(cpu);
-  ids_data[0] = static_cast<int64_t>(6);
-  ids_data[1] = static_cast<int64_t>(6);
-  ids_data[2] = static_cast<int64_t>(8);
-  ids_data[3] = static_cast<int64_t>(10);
-
-  framework::Tensor get_value;
-  auto* value_data = get_value.mutable_data<float>(
-      framework::make_ddim({4, embedding_width}), cpu);
-  table.Get(ids, &get_value);
-
-  for (int j = 0; j < embedding_width; ++j) {
-    ASSERT_EQ(value_data[0 * embedding_width + j], 2);
-  }
-  for (int j = 0; j < embedding_width; ++j) {
-    ASSERT_EQ(value_data[1 * embedding_width + j], 2);
-  }
-  for (int j = 0; j < embedding_width; ++j) {
-    ASSERT_EQ(value_data[2 * embedding_width + j], 1);
-  }
-  for (int j = 0; j < embedding_width; ++j) {
-    ASSERT_EQ(value_data[3 * embedding_width + j], 0);
-  }
 }
 
 void f1(SelectedRows* table, int table_size) {
