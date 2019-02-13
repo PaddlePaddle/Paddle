@@ -989,11 +989,14 @@ void OperatorWithKernel::TransferInplaceVarsBack(
     const Scope& transfer_scope) const {
   for (auto& var_name : inplace_vars) {
     VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
+    auto* origin_var = scope.FindVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(origin_var, "The var[%s] should not be nullptr.",
+                            var_name);
     auto* original_tensor =
-        GetMutableLoDTensorOrSelectedRowsValueFromVar(scope.FindVar(var_name));
+        GetMutableLoDTensorOrSelectedRowsValueFromVar(origin_var);
     auto* var = transfer_scope.FindVar(var_name);
-    PADDLE_ENFORCE(var != nullptr, "The var[%s] should not be nullptr",
-                   var_name);
+    PADDLE_ENFORCE_NOT_NULL(var, "The var[%s] should not be nullptr.",
+                            var_name);
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
     original_tensor->ShareDataWith(*transformed_tensor);
   }
