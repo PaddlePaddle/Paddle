@@ -133,6 +133,12 @@ struct BuddyResource {
         realloc_mem_size_(1 << realloc_mem_log_size),
         num_piled_(num_piled),
         place_(place) {
+    PADDLE_ENFORCE_LE(min_mem_log_size, 35);
+    PADDLE_ENFORCE_LE(max_mem_log_size, 35);
+    PADDLE_ENFORCE_LE(realloc_mem_log_size, 35);
+    PADDLE_ENFORCE_LE(num_buckets_, 10000);
+    PADDLE_ENFORCE_LE(num_piled, 10);
+
     buckets_.resize(num_piled_);
     is_splits_.resize(num_piled_);
 
@@ -233,6 +239,8 @@ struct BuddyResource {
     }
 
     // Init buckets
+    LOG(INFO) << "buckets_size " << buckets_.size();
+    LOG(INFO) << "num_buckets " << num_buckets_;
     for (auto& buckets : buckets_) {
       buckets.resize(num_buckets());
     }
@@ -332,6 +340,13 @@ struct BuddySystem {
         realloc_mem_size_(1 << realloc_mem_log_size),
         num_buckets_(max_mem_log_size - min_mem_log_size + 1),
         allow_realloc_{allow_realloc} {
+    PADDLE_ENFORCE_LE(max_mem_log_size, 35,
+                      "memory should be set lower than 34G");
+    PADDLE_ENFORCE_LE(min_mem_log_size, 35,
+                      "memory should be set lower than 34G");
+    PADDLE_ENFORCE_LE(realloc_mem_log_size, 35,
+                      "memory should be set lower than 34G");
+
     resource_ = CreateBuddyResource(max_mem_log_size, min_mem_log_size,
                                     realloc_mem_log_size, 1);
     is_splits_ = &resource_->is_splits(0);
@@ -347,7 +362,6 @@ struct BuddySystem {
 
   void* Malloc(size_t request) {
     if (request > max_mem_size_) {
-      LOG(INFO) << "allocating raw large memory chunk";
       return resource_->SystemAllocate(request);
     }
     auto* first_try = MallocImpl(request, 0);
@@ -526,8 +540,8 @@ class PileAllocator : public Allocator {
 
   PileAllocator(int num_pile, const MemoryOption& meta_memory,
                 const MemoryOption& pile_memory) {
-    meta_system_.reset(new BuddySystem(meta_memory.max_memory_log_size,
-                                       meta_memory.min_memory_log_size,
+    meta_system_.reset(new BuddySystem(meta_memory.min_memory_log_size,
+                                       meta_memory.max_memory_log_size,
                                        meta_memory.realloc_memory_log_size, 1));
     auto pile_resource = CreateBuddyResource(
         pile_memory.max_memory_log_size, pile_memory.min_memory_log_size,

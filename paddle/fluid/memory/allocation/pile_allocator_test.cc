@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/pile_allocator.h"
 #include <gtest/gtest.h>
+#include <time.h>
 #include <unordered_set>
 
 namespace paddle {
@@ -232,7 +233,7 @@ TEST(BuddySystem, Malloc1) {
   };
 
   auto CheckIsSplits = [&](const std::unordered_set<int>& nodes) {
-    for (int i = 0; i < manager.is_splits(0).num_bytes(); i++) {
+    for (size_t i = 0; i < manager.is_splits(0).num_bytes(); i++) {
       if (nodes.count(i)) {
         if (!manager.is_splits(0).Tell(i)) {
           LOG(ERROR) << "node " << i << " != true";
@@ -332,7 +333,7 @@ TEST(BuddySystem, realloc) {
   BuddySystem manager(2, 10, 9, true);
 
   auto ShowBuckets = [&] {
-    for (int i = 0; i < manager.num_buckets_; i++) {
+    for (size_t i = 0; i < manager.num_buckets_; i++) {
       LOG(INFO) << i << " " << manager.buckets(i).size() << " bucket_size "
                 << manager.BucketSize(i);
     }
@@ -360,6 +361,25 @@ TEST(BuddySystem, realloc) {
 TEST(BuddySystem, resource_created_externally) {
   auto resource = CreateBuddyResource(10, 2, 9, 4);
   ASSERT_EQ(resource->num_piled(), 4);
+}
+
+TEST(PileAllocator, crazy_alloc) {
+  PileAllocator::MemoryOption option(1 << 10, 1 << 4, 1 << 10);
+  PileAllocator allocator(0, option, option);
+
+  void* last_ptr{nullptr};
+
+  for (int i = 0; i < 100; i++) {
+    if (i == 0 || i % 3 != 0) {
+      size_t size = rand() % 800;
+      last_ptr = allocator.RawAllocate(size);
+      LOG(INFO) << "allocate " << size << " : " << last_ptr;
+    } else {
+      allocator.RawFree(last_ptr);
+      LOG(INFO) << "free "
+                << " : " << last_ptr;
+    }
+  }
 }
 
 }  // namespace allocation
