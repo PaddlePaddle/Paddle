@@ -76,7 +76,7 @@ struct BuildStrategy {
 
   bool fuse_all_reduce_ops_{false};
 
-  bool fuse_all_adam_ops_{false};
+  bool fuse_all_optimizer_ops_{false};
 
   bool fuse_relu_depthwise_conv_{false};
 

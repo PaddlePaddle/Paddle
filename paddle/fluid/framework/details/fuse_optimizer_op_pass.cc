@@ -38,8 +38,11 @@ std::unique_ptr<ir::Graph> FuseOptimizerOpPass::ApplyImpl(
     }
   }
 
-  PADDLE_ENFORCE_NE(opt_ops.size(), 0, "Not found %s.", fuse_op_type);
   VLOG(10) << "Find " << fuse_op_type << " operators: " << opt_ops.size();
+
+  if (opt_ops.size() == 0) {
+    return std::move(graph);
+  }
 
   // Step 2: Insert fused_var_name to FusedVars, and the FusedVars need be
   // initialized in scopes before execution.
@@ -154,6 +157,23 @@ void FuseOptimizerOpPass::AppendAllocContinuousSpace(
   op_desc->SetAttr("copy_data", copy_data);
 }
 
+void FuseOptimizerOpPass::InserInputAndOutputForOptOps(
+    const std::vector<ir::Node *> &opt_ops, ir::Node *opt_node) const {
+  for (auto opt_op : opt_ops) {
+    // set inputs
+    opt_node->inputs.insert(opt_node->inputs.begin(), opt_op->inputs.begin(),
+                            opt_op->inputs.end());
+    for (auto &input : opt_op->inputs) {
+      replace(input->outputs.begin(), input->outputs.end(), opt_op, opt_node);
+    }
+    // set outputs
+    opt_node->outputs.insert(opt_node->outputs.begin(), opt_op->outputs.begin(),
+                             opt_op->outputs.end());
+    for (auto &output : opt_op->outputs) {
+      replace(output->inputs.begin(), output->inputs.end(), opt_op, opt_node);
+    }
+  }
+}
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

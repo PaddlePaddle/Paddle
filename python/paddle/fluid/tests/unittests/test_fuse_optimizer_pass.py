@@ -61,7 +61,7 @@ def fc_with_batchnorm(use_feed):
     return loss
 
 
-class TestMNIST(TestParallelExecutorBase):
+class TestFuseAdamOps(TestParallelExecutorBase):
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
@@ -75,33 +75,30 @@ class TestMNIST(TestParallelExecutorBase):
         label = np.ones(shape=[32, 1], dtype='int64')
         return img, label
 
-    def _compare_fuse_all_reduce_ops(self, model, use_cuda, random_data=True):
+    def _compare_fuse_all_reduce_ops(self,
+                                     model,
+                                     use_cuda,
+                                     random_data=True,
+                                     optimizer=fluid.optimizer.Adam):
         if use_cuda and not core.is_compiled_with_cuda():
             return
         img, label = self._init_data(random_data)
-
-        def _optimizer(learning_rate=1e-6):
-            optimizer = fluid.optimizer.SGD(
-                learning_rate=learning_rate,
-                regularization=fluid.regularizer.L2Decay(1e-6))
-            return optimizer
-
         not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
-            fuse_all_adam_ops=False,
-            memory_opt=False, )
-        # optimizer=_optimizer)
+            fuse_all_optimizer_ops=False,
+            memory_opt=False,
+            optimizer=optimizer)
         fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
-            fuse_all_adam_ops=True,
-            memory_opt=False, )
-        # optimizer=_optimizer)
+            fuse_all_optimizer_ops=True,
+            memory_opt=False,
+            optimizer=optimizer)
 
         for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
@@ -115,6 +112,25 @@ class TestMNIST(TestParallelExecutorBase):
     def test_batchnorm_fc_with_fuse_op(self):
         self._compare_fuse_all_reduce_ops(fc_with_batchnorm, True)
         self._compare_fuse_all_reduce_ops(fc_with_batchnorm, False)
+
+
+class TestFuseSGDOps(TestFuseAdamOps):
+    def sgd_optimizer(self, learning_rate=1e-6):
+        return fluid.optimizer.SGD(
+            learning_rate=learning_rate,
+            regularization=fluid.regularizer.L2Decay(1e-6))
+
+    def test_simple_fc_with_fuse_op(self):
+        self._compare_fuse_all_reduce_ops(
+            simple_fc_net, True, optimizer=self.sgd_optimizer)
+        self._compare_fuse_all_reduce_ops(
+            simple_fc_net, False, optimizer=self.sgd_optimizer)
+
+    def test_batchnorm_fc_with_fuse_op(self):
+        self._compare_fuse_all_reduce_ops(
+            fc_with_batchnorm, True, optimizer=self.sgd_optimizer)
+        self._compare_fuse_all_reduce_ops(
+            fc_with_batchnorm, False, optimizer=self.sgd_optimizer)
 
 
 if __name__ == '__main__':

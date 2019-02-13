@@ -76,7 +76,6 @@ void FuseAdamOpPass::FuseAdamOps(
 
   // Add reset_dim, only fuse the scale ops
   VLOG(10) << "Insert adam to graph ";
-  //  int num_scale_op = static_cast<int>(beta_name.size());
   // Add fused scale
   OpDesc adam_desc;
   adam_desc.SetType("adam");
@@ -103,22 +102,7 @@ void FuseAdamOpPass::FuseAdamOps(
 
   auto adam_node = graph->CreateOpNode(&adam_desc);
 
-  for (auto adam_op : adam_ops) {
-    // set inputs
-    adam_node->inputs.insert(adam_node->inputs.begin(), adam_op->inputs.begin(),
-                             adam_op->inputs.end());
-    for (auto &input : adam_op->inputs) {
-      std::replace(input->outputs.begin(), input->outputs.end(), adam_op,
-                   adam_node);
-    }
-    // set outputs
-    adam_node->outputs.insert(adam_node->outputs.begin(),
-                              adam_op->outputs.begin(), adam_op->outputs.end());
-    for (auto &output : adam_op->outputs) {
-      std::replace(output->inputs.begin(), output->inputs.end(), adam_op,
-                   adam_node);
-    }
-  }
+  InserInputAndOutputForOptOps(adam_ops, adam_node);
 }
 
 void FuseAdamOpPass::FuseScaleOps(const std::vector<std::string> &beta_name,
