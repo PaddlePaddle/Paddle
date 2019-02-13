@@ -144,8 +144,6 @@ class FakeQuantizeMovingAverageAbsMaxKernel : public framework::OpKernel<T> {
     auto cur_scale = allocator.Allocate(1 * sizeof(T));
     T* cur_scale_data = static_cast<T*>(cur_scale->ptr());
 
-    // framework::Tensor cur_scale;
-    // T* cur_scale_data = cur_scale.mutable_data<T>({1}, context.GetPlace());
     FindAbsMaxFunctor<DeviceContext, T>()(dev_ctx, in->data<T>(), in->numel(),
                                           cur_scale_data);
 
