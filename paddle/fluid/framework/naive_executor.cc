@@ -59,7 +59,7 @@ void NaiveExecutor::Run() {
     } else {
       PADDLE_ENFORCE(gear.lite_op->CheckShape());
       PADDLE_ENFORCE(gear.lite_op->InferShape());
-      LOG(INFO) << "running lite op " << gear.lite_op->DebugString();
+      VLOG(3) << "running lite op " << gear.lite_op->DebugString();
       PADDLE_ENFORCE(gear.lite_op->Run());
     }
   }

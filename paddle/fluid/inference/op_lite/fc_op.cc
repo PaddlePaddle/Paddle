@@ -71,20 +71,14 @@ bool FC::InferShape() const {
 }
 
 bool FC::Run() {
-  LOG(INFO) << "fc lite op Run";
   CHECK_OR_FALSE(param_.output);
   CHECK_OR_FALSE(param_.w);
   CHECK_OR_FALSE(param_.input);
-  LOG(INFO) << "get dims output";
   auto output_dims = param_.output->dims();
-  LOG(INFO) << "get dims w";
   auto w_dims = param_.w->dims();
   using T = float;
 
-  LOG(INFO) << "output_dims.size " << output_dims.size();
-  LOG(INFO) << "to get M";
   int M = framework::product(output_dims) / output_dims[output_dims.size() - 1];
-  LOG(INFO) << "M " << M;
   auto blas = operators::math::BlasT<platform::CPUDeviceContext, T>(
       platform::CPUDeviceContext());
 
@@ -113,13 +107,12 @@ bool FC::Build(const framework::OpDesc &opdesc, framework::Scope *scope) {
   param_.output = output->GetMutable<LoDTensor>();
   param_.w = w->GetMutable<LoDTensor>();
   param_.in_num_col_dims = boost::get<int>(opdesc.GetAttr("in_num_col_dims"));
-  LOG(INFO) << "in_num_cols " << param_.in_num_col_dims;
+  VLOG(4) << "in_num_cols " << param_.in_num_col_dims;
 
   if (!inputs.at("Bias").empty()) {
     auto bias = scope->FindVar(inputs.at("Bias").front());
     param_.bias = bias->GetMutable<LoDTensor>();
   }
-  LOG(INFO) << "finish building FC lite op";
   return true;
 }
 
