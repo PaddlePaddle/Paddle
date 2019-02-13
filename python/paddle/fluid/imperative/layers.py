@@ -15,6 +15,7 @@
 import contextlib
 import sys
 import numpy as np
+import collections
 
 from paddle.fluid import core
 from paddle.fluid import framework
@@ -31,7 +32,23 @@ class Layer(core.Layer):
         self._dtype = dtype
 
     def parameters(self):
-        return []
+        params = []
+        for key in self.__dict__.keys():
+            value = self.__dict__[key]
+            if isinstance(value, framework.Parameter):
+                params.append(value)
+            elif isinstance(value, core.Layer):
+                params.extend(value.parameters())
+            elif isinstance(value, collections.Container):
+                if len(value) == 0:
+                    continue
+                if isinstance(value[0], framework.Parameter):
+                    params.extend(value)
+                elif isinstance(value[0], core.Layer):
+                    for v in value:
+                        params.extend(v.parameters())
+
+        return params
 
     def clear_gradients(self):
         for p in self.parameters():
