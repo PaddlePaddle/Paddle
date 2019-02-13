@@ -18,6 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+/*
 class SelectedRowsTester : public ::testing::Test {
  public:
   void SetUp() override {
@@ -168,6 +169,7 @@ void f4(SelectedRows* table, int table_size) {
   std::cout << "f4 run time:" << t2 - t1 << std::endl;
 }
 
+
 TEST(SelectedRows, MultiThreadAutoIndex) {
   platform::CPUPlace cpu;
   SelectedRows table;
@@ -196,6 +198,32 @@ TEST(SelectedRows, MultiThreadAutoIndex) {
   std::thread t4(f4, &table, table_size);
   t3.join();
   t4.join();
+}
+*/
+
+TEST(SelectedRows, MutlThreadDataShard) {
+  platform::CPUPlace cpu;
+  SelectedRows table;
+
+  int64_t table_size = 100000;
+  int64_t embedding_width = 8;
+  // initialize a sparse table
+  table.mutable_value()->Resize(
+      framework::make_ddim({table_size, embedding_width}));
+  auto* data = table.mutable_value()->mutable_data<float>(cpu);
+  for (int64_t i = 0; i < table_size; ++i) {
+    for (int64_t j = 0; j < embedding_width; ++j) {
+      data[i * embedding_width + j] = static_cast<float>(i);
+    }
+  }
+
+  std::vector<int64_t> ids = {1, 2, 3, 4};
+  std::vector<int64_t> indexs(ids.size());
+  table.InitDataShards();
+  table.GetIndexsByIds(ids, &indexs, true);
+  for (auto index : indexs) {
+    std::cout << index << std::endl;
+  }
 }
 
 }  // namespace framework

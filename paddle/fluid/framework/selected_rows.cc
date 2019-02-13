@@ -250,9 +250,12 @@ void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
     }
     std::vector<int64_t> id_indexes(ids.numel());
     GetIndexsByIds(all_ids, &id_indexes, auto_grown);
+    int64_t table_height = value_->dims()[0];
     for (int i = 0; i < ids.numel(); ++i) {
       auto id = ids.data<int64_t>()[i];
       int64_t index = id_indexes[i];
+      PADDLE_ENFORCE_LT(index, table_height,
+                        "index should be less then table height");
       if (index < 0) {
         VLOG(5) << "id " << id << " not in the table, return 0";
         framework::VisitDataType(
