@@ -152,7 +152,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
   // Convert graph to run on multi-devices.
   void AppendMultiDevPass(const BuildStrategy &strategy) {
-    ir::Pass *multi_devices_pass;
+    ir::Pass *multi_devices_pass = nullptr;
     if (strategy_.is_distribution_) {
       VLOG(10) << "Add dist_multi_devices_pass";
       multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
@@ -164,8 +164,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       } else if (strategy.reduce_ ==
                  BuildStrategy::ReduceStrategy::kAllReduce) {
         VLOG(10) << "Add all_reduce_mode_multi_devices_pass";
-        multi_devices_pass =
-            AppendPass("all_reduce_mode_multi_devices_pass").get();
+        AppendPass("all_reduce_mode_multi_devices_pass").get();
       } else if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
         VLOG(10) << "Add reduce_mode_multi_devices_pass";
         multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
