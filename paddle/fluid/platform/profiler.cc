@@ -465,8 +465,7 @@ void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
       place = "GPU";
     }
     VLOG(1) << "Place: " << place << "\n";
-    VLOG(1) << "Memory unit: MB"
-            << "\n";
+    VLOG(1) << "Memory unit: MB\n";
     // Output events table
     VLOG(1) << std::setw(name_width) << "Event" << std::setw(data_width)
             << "Peak" << std::setw(data_width) << "Valley"
@@ -491,7 +490,7 @@ struct MemResult {
 void ParseMemEvents(
     const std::vector<std::vector<MemEvent>>& events /*, bool merge_place*/) {
   std::cout << "in memory parse!!!\n";
-  VLOG(1) << events << "\n";
+  VLOG(1) << events << "\n\n";
   if (g_state == ProfilerState::kDisabled) return;
 
   static std::function<bool(const MemResult&, const MemResult&)> sort_func = [](
