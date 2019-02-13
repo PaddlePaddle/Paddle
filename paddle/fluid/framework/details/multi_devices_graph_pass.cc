@@ -1062,7 +1062,7 @@ void FuseAllReduceSSAGraphBuilder::InsertPostprocessOps(
     // Remove output
     std::for_each(
         op_handle.second->Inputs().begin(), op_handle.second->Inputs().end(),
-        [=](VarHandleBase *var_handle) {
+        [&op_handle](VarHandleBase *var_handle) {
           var_handle->RemoveOutput(op_handle.second, op_handle.second->Node());
         });
 
@@ -1071,7 +1071,7 @@ void FuseAllReduceSSAGraphBuilder::InsertPostprocessOps(
     // Remove Input
     std::for_each(
         op_handle.second->Outputs().begin(), op_handle.second->Outputs().end(),
-        [=](VarHandleBase *var_handle) { var_handle->ClearGeneratedOp(); });
+        [](VarHandleBase *var_handle) { var_handle->ClearGeneratedOp(); });
 
     result->RemoveNode(op_handle.second->Node());
     remove_op_handle(op_handle.second);
