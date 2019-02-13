@@ -63,7 +63,6 @@ class VActFunc : public JitCode {
  public:
   explicit VActFunc(size_t code_size, void* code_ptr)
       : JitCode(code_size, code_ptr) {}
-  virtual const char* name() const = 0;
   virtual void genCode() = 0;
 
  protected:
