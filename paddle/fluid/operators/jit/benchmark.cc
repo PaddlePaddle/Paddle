@@ -93,6 +93,7 @@ std::vector<int> TestSizes() {
 template <typename KernelTuples, typename... Args>
 struct BenchFunc {
   // return this function avg time
+  // TODO(TJ): clear cache every time
   double operator()(const typename KernelTuples::func_type tgt, Args... args) {
     for (int i = 0; i < FLAGS_burning; ++i) {
       tgt(args...);
@@ -172,6 +173,9 @@ void BenchXYZNKernel() {
     RandomVec<T>(d, y_data);
     BenchAllImpls<KT, jit::XYZNTuples<T>, PlaceType>(d, x.data<T>(),
                                                      y.data<T>(), z_data, d);
+    // test inplace
+    BenchAllImpls<KT, jit::XYZNTuples<T>, PlaceType>(d, x.data<T>(), z_data,
+                                                     z_data, d);
   }
 }
 
