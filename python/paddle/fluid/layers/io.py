@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-import contextlib
+from ..wrapped_decorator import signature_safe_contextmanager
 import multiprocessing
 import os
 import six
@@ -1116,7 +1116,7 @@ class Preprocessor(object):
     def _is_completed(self):
         return self.sub_block and self.source_var_names and self.sink_var_names
 
-    @contextlib.contextmanager
+    @signature_safe_contextmanager
     def block(self):
         self.status = Preprocessor.IN_SUB_BLOCK
         self.sub_block = self.main_prog._create_block()
