@@ -467,17 +467,17 @@ void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
     VLOG(1) << "Place: " << place << "\n";
     VLOG(1) << "Memory unit: MB\n";
     // Output events table
-    VLOG(1) << std::setw(name_width) << "Event" << std::setw(data_width)
-            << "Peak" << std::setw(data_width) << "Valley"
-            << std::setw(data_width) << "Average" << std::setw(data_width)
-            << "Maximum" << std::setw(data_width) << "Minimum"
+    VLOG(1) << "\tEvent"
+            << "\tPeak"
+            << "\tValley"
+            << "\tAverage"
+            << "\tMaximum"
+            << "\tMinimum"
             << "\n";
-    VLOG(1) << std::setw(name_width) << "Memory" << std::setw(data_width)
-            << events_table[i].peak << std::setw(data_width)
-            << events_table[i].valley << std::setw(data_width)
-            << events_table[i].average << std::setw(data_width)
-            << events_table[i].max << std::setw(data_width)
-            << events_table[i].min << "\n";
+    VLOG(1) << "\tMemory"
+            << "\t" << events_table[i].peak << "\t" << events_table[i].valley
+            << "\t" << events_table[i].average << "\t" << events_table[i].max
+            << "\t" << events_table[i].min << "\n";
   }
   VLOG(1) << "\n";
 }
