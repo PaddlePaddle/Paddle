@@ -164,8 +164,9 @@ void SelectedRows::InitDataShards() {
   PADDLE_ENFORCE_GT(value_->numel(), 0,
                     "tensor should be inited when call InitDataShards");
   int64_t shard_size = value_->dims()[0] / shard_num_;
-  VLOG(3) << "InitDataShards << shard_num_ " << shard_num_ << " shard_size"
-          << shard_size;
+  PADDLE_ENFORCE_GT(shard_size, 0, "shard_size should be larger then 0");
+  VLOG(3) << "InitDataShards << shard_num_=" << shard_num_
+          << " shard_size=" << shard_size;
   for (int64_t i = 0; i < shard_num_; ++i) {
     data_shards_.emplace_back(new DataShard(i, shard_size));
   }
@@ -174,6 +175,8 @@ void SelectedRows::InitDataShards() {
 void SelectedRows::GetIndexsByIds(const std::vector<int64_t>& ids,
                                   std::vector<int64_t>* indexs,
                                   bool auto_grown) {
+  PADDLE_ENFORCE_EQ(data_shards_.size(), shard_num_,
+                    "data shards is not inited");
   std::vector<std::vector<std::pair<int64_t, int64_t>>> re_sharded_keys(
       shard_num_);
   for (size_t i = 0; i < ids.size(); ++i) {

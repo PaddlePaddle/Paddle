@@ -66,12 +66,12 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
 }
 
 void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
-                         int64_t rows_numel) {
+                         int64_t id_num) {
   CreateVarsOnScope(scope, place);
   auto ids_var = scope->Var("ids")->GetMutable<framework::LoDTensor>();
   int64_t* ids_ptr =
-      ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}), *place);
-  for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
+      ids_var->mutable_data<int64_t>(framework::DDim({id_num, 1}), *place);
+  for (int64_t i = 0; i < id_num; ++i) ids_ptr[i] = i * 2;
 }
 
 void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
@@ -80,14 +80,22 @@ void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
   auto w = scope->Var("w")->GetMutable<framework::SelectedRows>();
   auto w_value = w->mutable_value();
   w_value->Resize({rows_numel, 10});
-  for (int64_t i = 0; i < rows_numel; ++i) w->AutoGrownIndex(i, true);
-
+  w->InitDataShards();
   auto ptr = w_value->mutable_data<float>(*place);
 
-  for (int64_t i = 0; i < w_value->numel(); ++i) {
-    ptr[i] = static_cast<float>(i / 10);
+  std::vector<int64_t> ids;
+  for (int64_t i = 0; i < rows_numel; ++i) ids.push_back(i);
+  std::vector<int64_t> indexs(ids.size());
+
+  auto& dims = w_value->dims();
+  for (int64_t i = 0; i < dims[0]; ++i) {
+    for (int64_t j = 0; j < dims[1]; ++j) {
+      ptr[i * dims[1] + j] = static_cast<float>(i);
+    }
   }
 }
+
+const int64_t server_rows_number = 100;
 
 void StartServer(const std::string& rpc_name) {
   framework::ProgramDesc program;
@@ -99,7 +107,7 @@ void StartServer(const std::string& rpc_name) {
   std::string in_var_name("ids");
   std::vector<int> prefetch_block_ids{block->ID()};
   auto prepared = exe.Prepare(program, prefetch_block_ids);
-  InitTensorsOnServer(&scope, &place, 10);
+  InitTensorsOnServer(&scope, &place, server_rows_number);
 
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>
@@ -138,8 +146,8 @@ TEST(PREFETCH, CPU) {
   platform::CPUDeviceContext ctx(place);
   {
     // create var on local scope
-    int64_t rows_numel = 5;
-    InitTensorsOnClient(&scope, &place, rows_numel);
+    const int64_t id_num = 5;
+    InitTensorsOnClient(&scope, &place, id_num);
     std::string in_var_name("ids");
     std::string out_var_name("out");
 
@@ -149,8 +157,16 @@ TEST(PREFETCH, CPU) {
     auto value = var->GetMutable<framework::LoDTensor>();
     auto ptr = value->mutable_data<float>(place);
 
-    for (int64_t i = 0; i < rows_numel; ++i) {
-      EXPECT_EQ(ptr[0 + i * value->dims()[1]], static_cast<float>(i * 2));
+    auto* id_t =
+        scope.Var(in_var_name)->Get<framework::LoDTensor>().data<int64_t>();
+
+    size_t shard_num = 13;
+    size_t shard_size = server_rows_number / shard_num;
+
+    for (int64_t i = 0; i < id_num; ++i) {
+      int64_t id = id_t[i];
+      size_t shard_id = id % shard_num;
+      EXPECT_EQ(ptr[0 + i * value->dims()[1]], shard_id * shard_size);
     }
   }
 
