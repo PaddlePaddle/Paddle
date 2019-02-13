@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/data_shard.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -25,6 +26,7 @@ std::future<void> DataShard::GetIndexsByIds(
       int64_t id = id_to_offset.first;
       int64_t offset = id_to_offset.second;
       (*value_indexs)[offset] = GetIndexById(id, auto_grown);
+      //      value_indexs->operator[](offset) = GetIndexById(id, auto_grown);
     }
   };
   return pool_->enqueue(std::move(task));
@@ -34,9 +36,10 @@ int64_t DataShard::GetIndexById(int64_t id, bool auto_grown) {
   auto iter = id_to_offset_.find(id);
   if (iter == id_to_offset_.end()) {
     if (auto_grown) {
-      auto offset = id_to_offset_.size();
-      id_to_offset_[id] = offset;
-      return shard_id_ * shard_size_ + offset;
+      auto shard_offset = id_to_offset_.size();
+      PADDLE_ENFORCE_LT(shard_offset, shard_size_, "shard is full!");
+      id_to_offset_[id] = shard_offset;
+      return shard_id_ * shard_size_ + shard_offset;
     } else {
       return -1;
     }

@@ -249,6 +249,7 @@ void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
       all_ids.push_back(ids.data<int64_t>()[i]);
     }
     std::vector<int64_t> id_indexes(ids.numel());
+    PADDLE_ENFORCE(value_->IsInitialized());
     GetIndexsByIds(all_ids, &id_indexes, auto_grown);
     int64_t table_height = value_->dims()[0];
     for (int i = 0; i < ids.numel(); ++i) {
