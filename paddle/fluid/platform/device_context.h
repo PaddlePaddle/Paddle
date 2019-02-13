@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
-#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -266,13 +266,9 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
-  ncclComm_t nccl_comm() {
-    return nccl_comm_;
-  }
+  ncclComm_t nccl_comm() { return nccl_comm_; }
 
-  void set_nccl_comm(ncclComm_t comm) {
-    nccl_comm_ = comm;
-  }
+  void set_nccl_comm(ncclComm_t comm) { nccl_comm_ = comm; }
 
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
