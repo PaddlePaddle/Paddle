@@ -18,7 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-/*
 class SelectedRowsTester : public ::testing::Test {
  public:
   void SetUp() override {
@@ -169,7 +168,6 @@ void f4(SelectedRows* table, int table_size) {
   std::cout << "f4 run time:" << t2 - t1 << std::endl;
 }
 
-
 TEST(SelectedRows, MultiThreadAutoIndex) {
   platform::CPUPlace cpu;
   SelectedRows table;
@@ -199,7 +197,6 @@ TEST(SelectedRows, MultiThreadAutoIndex) {
   t3.join();
   t4.join();
 }
-*/
 
 TEST(SelectedRows, GetIndexsByIds) {
   platform::CPUPlace cpu;
@@ -263,7 +260,7 @@ TEST(SelectedRows, Get) {
 
   for (int i = 0; i < id_num; ++i) {
     for (int j = 0; j < embedding_width; ++j) {
-      int shard_id = ids_data[i] % shard_num;
+      size_t shard_id = ids_data[i] % shard_num;
       size_t offset = shard_id * shard_size;
       float out_val = out_data[i * embedding_width + j];
       ASSERT_EQ(out_val, offset);
