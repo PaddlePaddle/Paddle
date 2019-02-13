@@ -24,11 +24,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/ngraph_bridge.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/ngraph/ngraph_bridge.h"
 #include "paddle/fluid/operators/ngraph/ngraph_engine.h"
 
 namespace paddle {
@@ -88,15 +88,14 @@ static std::vector<std::vector<int>> NgraphOpIntervals(
   int pivot = left;
   while (pivot < right) {
     auto op_type = ops.at(pivot)->Type();
-    if (paddle::framework::NgraphBridge::NG_NODE_MAP.find(op_type) ==
-        paddle::framework::NgraphBridge::NG_NODE_MAP.end()) {
+    if (NgraphBridge::NG_NODE_MAP.find(op_type) ==
+        NgraphBridge::NG_NODE_MAP.end()) {
       ++pivot;
     } else {
       int start = pivot, end = start;
       while (pivot < right &&
-             (paddle::framework::NgraphBridge::NG_NODE_MAP.find(
-                  ops.at(pivot)->Type()) !=
-              paddle::framework::NgraphBridge::NG_NODE_MAP.end())) {
+             (NgraphBridge::NG_NODE_MAP.find(ops.at(pivot)->Type()) !=
+              NgraphBridge::NG_NODE_MAP.end())) {
         ++pivot;
         ++end;
       }
@@ -283,7 +282,7 @@ void NgraphEngine::BuildNgNodes() {
       }
     }
   }
-  framework::NgraphBridge ngb(var_node_map_);
+  NgraphBridge ngb(var_node_map_);
   for (auto& op : fused_ops_) {
     ngb.BuildNgNode(op);
   }

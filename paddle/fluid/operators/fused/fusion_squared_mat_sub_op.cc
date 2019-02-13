@@ -87,15 +87,18 @@ class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
 
     auto x_dims = x->dims();
     auto y_dims = y->dims();
-    int m = x_dims[0];
-    int k = x_dims[1];
-    int n = y_dims[1];
-    int o_numel = m * n;
+    jit::matmul_attr_t attr;
+    attr.m = x_dims[0];
+    attr.k = x_dims[1];
+    attr.n = y_dims[1];
+    int o_numel = attr.m * attr.n;
 
     auto vsquare_x =
-        jit::Get<jit::kVSquare, jit::XYNTuples<T>, platform::CPUPlace>(m * k);
+        jit::Get<jit::kVSquare, jit::XYNTuples<T>, platform::CPUPlace>(attr.m *
+                                                                       attr.k);
     auto vsquare_y =
-        jit::Get<jit::kVSquare, jit::XYNTuples<T>, platform::CPUPlace>(k * n);
+        jit::Get<jit::kVSquare, jit::XYNTuples<T>, platform::CPUPlace>(attr.k *
+                                                                       attr.n);
     auto vsquare_xy =
         jit::Get<jit::kVSquare, jit::XYNTuples<T>, platform::CPUPlace>(o_numel);
     auto vsub =
@@ -103,7 +106,7 @@ class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
     auto vscal =
         jit::Get<jit::kVScal, jit::AXYNTuples<T>, platform::CPUPlace>(o_numel);
     auto matmul =
-        jit::Get<jit::kMatMul, jit::MatMulTuples<T>, platform::CPUPlace>(k);
+        jit::Get<jit::kMatMul, jit::MatMulTuples<T>, platform::CPUPlace>(attr);
 
     const T* x_data = x->data<T>();
     const T* y_data = y->data<T>();
@@ -112,12 +115,12 @@ class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
     T* squared_xy_data = squared_xy->mutable_data<T>(place);
     T* o_data = out->mutable_data<T>(place);
 
-    matmul(x_data, y_data, squared_xy_data, m, n, k);
+    matmul(x_data, y_data, squared_xy_data, &attr);
     vsquare_xy(squared_xy_data, squared_xy_data, o_numel);
 
-    vsquare_x(x_data, squared_x_data, m * k);
-    vsquare_y(y_data, squared_y_data, k * n);
-    matmul(squared_x_data, squared_y_data, o_data, m, n, k);
+    vsquare_x(x_data, squared_x_data, attr.m * attr.k);
+    vsquare_y(y_data, squared_y_data, attr.k * attr.n);
+    matmul(squared_x_data, squared_y_data, o_data, &attr);
 
     vsub(squared_xy_data, o_data, o_data, o_numel);
     vscal(&scalar, o_data, o_data, o_numel);
