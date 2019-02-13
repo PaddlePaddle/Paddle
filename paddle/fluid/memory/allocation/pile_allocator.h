@@ -74,6 +74,7 @@ struct BitSet {
 };
 
 // Stack with Set.
+// A low-performance implementation.
 template <typename T>
 struct StackSet {
   bool count(T t) { return map_.count(t); }
@@ -390,7 +391,7 @@ struct BuddySystem {
   BitSet& is_splits(int idx) { return is_splits_->at(idx); }
 
   bucket_t& buckets(int idx) {
-    PADDLE_ENFORCE_LT(idx, buckets_->size());
+    PADDLE_ENFORCE_LT(idx, static_cast<int>(buckets_->size()));
     return buckets_->at(idx);
   }
 
@@ -398,7 +399,7 @@ struct BuddySystem {
   int PoolIdxForPtr(byte_t* ptr) {
     if (buffer_->front() <= ptr && buffer_->front() + max_mem_size_ > ptr)
       return 0;
-    for (int i = 1; i < buffer_->size(); i++) {
+    for (size_t i = 1; i < buffer_->size(); i++) {
       if (buffer_->at(i) <= ptr && buffer_->at(i) + realloc_mem_size_ > ptr)
         return i;
     }
@@ -561,12 +562,38 @@ class PileAllocator : public Allocator {
 
   void SetPileIdx(int idx) { pile_idx_ = idx; }
 
-  // TODO(Superjomn) TODO(px) re-consider the allocation interface.
-  void* Allocate(size_t size, Allocator::Attr attr = kDefault) {
-    if (pile_idx_ == -1) {
-      return meta_system_->Malloc(size);
+  // It should be low-performance when allocating the Allocation. Each time it
+  // allocates, two malloc will be called.
+  // TODO(px) Re-consider the overall allocator interface design.
+  Allocation* AllocateImpl(size_t size,
+                           Allocator::Attr attr = kDefault) override {
+    auto* p = new Allocation(RawAllocate(size), size, platform::CPUPlace());
+    p->set_allocator(this);
+    return p;
+  }
+
+  void Free(Allocation* allocation) override {
+    RawFree(allocation->ptr());
+    delete allocation;
+  }
+
+  void* RawAllocate(size_t size) {
+    switch (pile_idx_) {
+      case -1:
+        return meta_system_->Malloc(size);
+      default:
+        return pile_systems_.at(pile_idx_)->Malloc(size);
     }
-    return pile_systems_.at(pile_idx_)->Malloc(size);
+  }
+
+  void RawFree(void* ptr) {
+    switch (pile_idx_) {
+      case -1:
+        meta_system_->Free(ptr);
+        break;
+      default:
+        pile_systems_.at(pile_idx_)->Free(ptr);
+    }
   }
 
   bool IsAllocThreadSafe() const override { return false; }

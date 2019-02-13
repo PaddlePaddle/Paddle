@@ -202,7 +202,7 @@ TEST(BuddySystem, Malloc) {
   ASSERT_EQ(ptr, manager.buffer(0));
   // The 1-th bucket should not be empty
   ASSERT_TRUE(!manager.buckets(1).empty());
-  for (int i = 2; i < manager.num_buckets_; i++) {
+  for (size_t i = 2; i < manager.num_buckets_; i++) {
     ASSERT_TRUE(manager.buckets(i).top());
   }
 
@@ -221,7 +221,7 @@ TEST(BuddySystem, Malloc1) {
   BuddySystem manager(2, 10, 9);
 
   auto ShowBuckets = [&] {
-    for (int i = 0; i < manager.num_buckets_; i++) {
+    for (size_t i = 0; i < manager.num_buckets_; i++) {
       LOG(INFO) << i << " "
                 << " bucket_size " << manager.BucketSize(i);
     }
