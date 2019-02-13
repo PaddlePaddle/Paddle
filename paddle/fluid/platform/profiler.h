@@ -67,6 +67,7 @@ class MemEvent {
 
   size_t bytes() const { return bytes_; }
   Place place() const { return place_; }
+
  private:
   EventType type_;
   uint64_t start_ns_ = 0;
@@ -123,6 +124,8 @@ struct RecordMemEvent {
   size_t bytes_;
   Place place_;
 };
+
+std::unordered_map<memory::Allocation*, platform::RecordMemEvent> record_mem;
 
 class RecordRPCEvent {
  public:

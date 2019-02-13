@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <float.h>
+#include <gflags/gflags.h>
 #include <algorithm>
 #include <iomanip>
 #include <limits>
@@ -20,7 +22,6 @@ limitations under the License. */
 #include <random>
 #include <string>
 #include <vector>
-#include <gflags/gflags.h>
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
@@ -59,7 +60,7 @@ static std::list<std::shared_ptr<EventList>> g_all_event_lists;
 // The thread local event list only can be accessed by the specific thread
 static thread_local std::shared_ptr<EventList> g_event_list;
 
-std::mutex profiler_mem; // record memory mutex
+std::mutex profiler_mem;  // record memory mutex
 static std::list<std::shared_ptr<MemEventList>> g_all_mem_event_lists;
 static thread_local std::shared_ptr<MemEventList> g_mem_event_list;
 static std::mutex g_all_mem_event_lists_mutex;
@@ -103,8 +104,8 @@ struct MemEventList {
   constexpr static size_t kEventSize = sizeof(MemEvent);
   constexpr static size_t kEventAlign = alignof(MemEvent);
   constexpr static size_t kNumBlock =
-          kEventBlockSize /
-          ((kEventSize + kEventAlign - 1) / kEventAlign * kEventAlign);
+      kEventBlockSize /
+      ((kEventSize + kEventAlign - 1) / kEventAlign * kEventAlign);
 
   template <typename... Args>
   void Record(Args&&... args) {
@@ -190,9 +191,11 @@ static void ForEachDevice(std::function<void(int)> func) {
 #endif
 
 MemEvent::MemEvent(EventType type, size_t bytes, Place place)
-                   : type_(type), bytes_(bytes), place_(place) {
-  if (0 == start_ns_) start_ns_ = GetTimeInNsec();
-  else end_ns_ = GetTimeInNsec();
+    : type_(type), bytes_(bytes), place_(place) {
+  if (0 == start_ns_)
+    start_ns_ = GetTimeInNsec();
+  else
+    end_ns_ = GetTimeInNsec();
 }
 
 inline MemEventList& GetMemEventList() {
@@ -353,8 +356,8 @@ void ResetProfiler() {
        ++it) {
     (*it)->Clear();
   }
-  for (auto it = g_all_mem_event_lists.begin(); it != g_all_mem_event_lists.end();
-        ++it) {
+  for (auto it = g_all_mem_event_lists.begin();
+       it != g_all_mem_event_lists.end(); ++it) {
     (*it)->Clear();
   }
 }
@@ -390,12 +393,12 @@ struct EventItem {
 };
 
 struct MemEventItem {
-    double peak;
-    double valley;
-    double average;
-    double max;
-    double min;
-    Place place;
+  double peak;
+  double valley;
+  double average;
+  double max;
+  double min;
+  Place place;
 };
 
 // Print results
@@ -449,8 +452,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
 // print the memory infomation
 void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
                       const size_t name_width, const size_t data_width) {
-
-  std::cout << "\n";
+  std::cout << "in print memory profiler!!!\n";
 
   for (size_t i = 0; i < events_table.size(); ++i) {
     std::string place = "Unknown";
@@ -459,70 +461,69 @@ void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
     std::cout << place << "\n\n";
     if (is_cpu_place(events_table[i].place)) {
       place = "CPU";
-    }
-    else {
+    } else {
       place = "GPU";
     }
     std::cout << "Place: " << place << "\n";
-    std::cout << "Memory unit: MB" << "\n";
+    std::cout << "Memory unit: MB"
+              << "\n";
     // Output events table
-//    std::cout.setf(std::ios::left);
-    std::cout << std::setw(name_width) << "Event"
-            << std::setw(data_width) << "Peak"
-            << std::setw(data_width) << "Valley"
-            << std::setw(data_width) << "Average"
-            << std::setw(data_width) << "Maximum"
-            << std::setw(data_width) << "Minimum"
-            << "\n";
-    std::cout << std::setw(name_width) << "Memory"
-            << std::setw(data_width) << events_table[i].peak
-            << std::setw(data_width) << events_table[i].valley
-            << std::setw(data_width) << events_table[i].average
-            << std::setw(data_width) << events_table[i].max
-            << std::setw(data_width) << events_table[i].min
-            << "\n";
+    std::cout << std::setw(name_width) << "Event" << std::setw(data_width)
+              << "Peak" << std::setw(data_width) << "Valley"
+              << std::setw(data_width) << "Average" << std::setw(data_width)
+              << "Maximum" << std::setw(data_width) << "Minimum"
+              << "\n";
+    std::cout << std::setw(name_width) << "Memory" << std::setw(data_width)
+              << events_table[i].peak << std::setw(data_width)
+              << events_table[i].valley << std::setw(data_width)
+              << events_table[i].average << std::setw(data_width)
+              << events_table[i].max << std::setw(data_width)
+              << events_table[i].min << "\n";
   }
   std::cout << "\n";
 }
 
 struct MemResult {
-    uint64_t time;
-    double size_;
+  uint64_t time;
+  double size_;
 };
 // parse memory events
-void ParseMemEvents(const std::vector<std::vector<MemEvent> >& events/*, bool merge_place*/) {
+void ParseMemEvents(
+    const std::vector<std::vector<MemEvent>>& events /*, bool merge_place*/) {
+  std::cout << "in memory parse!!!\n";
+
   if (g_state == ProfilerState::kDisabled) return;
 
-  static std::function<bool(const MemResult&, const MemResult&)> sort_func = [](const MemResult& a, const MemResult& b) {
-    return a.time < b.time;
-  };
+  static std::function<bool(const MemResult&, const MemResult&)> sort_func = [](
+      const MemResult& a, const MemResult& b) { return a.time < b.time; };
   // combine the start_ns and end_ns and parse record
   std::vector<MemEventItem> event_info(events.size());
-  std::vector<std::vector<MemResult> > mem_timeline(events.size());
+  std::vector<std::vector<MemResult>> mem_timeline(events.size());
   int base = 1024 * 1024;
   for (size_t i = 0; i < events.size(); ++i) {
     event_info[i].place = events[i][0].place();
-    double total = 0.;
-    event_info[i].peak = 0.;
-    event_info[i].valley = (double)INT_MAX;
-    event_info[i].max = 0.;
-    event_info[i].min = (double)INT_MAX;
+    double total = 0.0;
+    event_info[i].peak = 0.0;
+    event_info[i].valley = DBL_MAX;
+    event_info[i].max = 0.0;
+    event_info[i].min = DBL_MAX;
 
     std::vector<MemResult> tmp_mem_results;
-    for (auto item : events[i]) {
-      double individual_size = (double)item.bytes() / base;
+    for (size_t k = 0; k < events[i].size(); ++k) {
+      double individual_size = static_cast<double>(events[i][k].bytes()) / base;
       event_info[i].max = std::max(event_info[i].max, individual_size);
       event_info[i].min = std::min(event_info[i].min, individual_size);
       total += individual_size;
 
-      tmp_mem_results.push_back({item.start_ns(), individual_size});
-      tmp_mem_results.push_back({item.end_ns(), - individual_size});
+      tmp_mem_results.push_back({events[i][k].start_ns(), individual_size});
+      tmp_mem_results.push_back({events[i][k].end_ns(), -individual_size});
     }
     sort(tmp_mem_results.begin(), tmp_mem_results.end(), sort_func);
     double crt_size = 0.;
     for (size_t j = 0; j < tmp_mem_results.size() - 1; ++j) {
       crt_size += tmp_mem_results[j].size_;
-      while (j < tmp_mem_results.size() - 1 && tmp_mem_results[j].time == tmp_mem_results[j + 1].time)
+      while (j < tmp_mem_results.size() - 1 &&
+             tmp_mem_results[j].time == tmp_mem_results[j + 1].time)
         crt_size += tmp_mem_results[++j].size_;
       if (crt_size < 0) {
         VLOG(3) << "Wrong memory! \n";
@@ -533,15 +534,19 @@ void ParseMemEvents(const std::vector<std::vector<MemEvent> >& events/*, bool me
       event_info[i].peak = std::max(event_info[i].peak, crt_size);
       event_info[i].valley = std::min(event_info[i].valley, crt_size);
     }
-    if (mem_timeline[i].rbegin()->time == tmp_mem_results[tmp_mem_results.size() - 1].time) {
-      mem_timeline[i].rbegin()->size_ += tmp_mem_results[tmp_mem_results.size() - 1].size_;
+    if (mem_timeline[i].rbegin()->time ==
+        tmp_mem_results[tmp_mem_results.size() - 1].time) {
+      mem_timeline[i].rbegin()->size_ +=
+          tmp_mem_results[tmp_mem_results.size() - 1].size_;
+    } else {
+      mem_timeline[i].push_back(
+          {tmp_mem_results[tmp_mem_results.size() - 1].time,
+           tmp_mem_results[tmp_mem_results.size() - 1].size_});
     }
-    else {
-      mem_timeline[i].push_back({tmp_mem_results[tmp_mem_results.size() - 1].time,
-                              tmp_mem_results[tmp_mem_results.size() - 1].size_});
-    }
-    event_info[i].peak = std::max(event_info[i].peak, mem_timeline[i].rbegin()->size_);
-    event_info[i].valley = std::min(event_info[i].valley, mem_timeline[i].rbegin()->size_);
+    event_info[i].peak =
+        std::max(event_info[i].peak, mem_timeline[i].rbegin()->size_);
+    event_info[i].valley =
+        std::min(event_info[i].valley, mem_timeline[i].rbegin()->size_);
     event_info[i].average = total / mem_timeline[i].size();
   }
 
@@ -708,8 +713,8 @@ void DisableProfiler(EventSortingKey sorted_key,
   ParseEvents(all_events, true, sorted_key);
   ParseEvents(all_events, false, sorted_key);
   ParseMemEvents(all_mem_events);
-//  ParseMemEvents(all_mem_events, true);
-//  ParseMemEvents(all_mem_events, false);
+  //  ParseMemEvents(all_mem_events, true);
+  //  ParseMemEvents(all_mem_events, false);
   ResetProfiler();
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer->IsEnabled()) {

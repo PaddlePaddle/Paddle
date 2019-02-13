@@ -26,9 +26,9 @@
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
-#include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(init_allocated_mem, false,
             "It is a mistake that the values of the memory allocated by "
@@ -329,15 +329,14 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 }  // namespace legacy
 
 namespace allocation {
-std::unordered_map<Allocation *, platform::RecordMemEvent> record_mem;
 LegacyMemMonitor GPUMemMonitor;
 
 Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
-  Allocation * tmp_alloc = new Allocation(ptr, size, place_);
+  Allocation *tmp_alloc = new Allocation(ptr, size, place_);
   platform::RecordMemEvent tmp_record;
-  record_mem.insert({tmp_alloc, tmp_record});
-  record_mem[tmp_alloc].InitRecordMem(size, place_);
+  platform::record_mem.insert({tmp_alloc, tmp_record});
+  platform::record_mem[tmp_alloc].InitRecordMem(size, place_);
   return tmp_alloc;
 }
 
@@ -345,8 +344,8 @@ void LegacyAllocator::Free(Allocation *allocation) {
   boost::apply_visitor(
       legacy::FreeVisitor(allocation->ptr(), allocation->size()),
       allocation->place());
-  record_mem[allocation].DelRecordMem();
-  record_mem.erase(allocation);
+  platform::record_mem[allocation].DelRecordMem();
+  platform::record_mem.erase(allocation);
 }
 
 bool MemInfo::Add(const size_t &size) {
