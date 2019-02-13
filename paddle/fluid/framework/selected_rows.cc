@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/selected_rows.h"
 
+DEFINE_int32(dist_lookuptable_shard_num, 13,
+             "the number of shard on this pserver");
+
 namespace paddle {
 namespace framework {
 
@@ -133,6 +136,23 @@ void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows,
   }
   // the 4st field, tensor which contains the data
   TensorFromStream(is, selected_rows->mutable_value(), dev_ctx);
+}
+
+SelectedRows::SelectedRows(const std::vector<int64_t>& rows,
+                           const int64_t& height)
+    : rows_(rows),
+      height_(height),
+      shard_num_(FLAGS_dist_lookuptable_shard_num) {
+  VLOG(3) << "shard_num_ " << shard_num_;
+  value_.reset(new Tensor());
+  rwlock_.reset(new RWLock);
+}
+
+SelectedRows::SelectedRows() : shard_num_(FLAGS_dist_lookuptable_shard_num) {
+  VLOG(3) << "shard_num_ " << shard_num_;
+  height_ = 0;
+  value_.reset(new Tensor());
+  rwlock_.reset(new RWLock);
 }
 
 bool SelectedRows::HasKey(int64_t key) const {

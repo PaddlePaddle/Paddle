@@ -46,17 +46,9 @@ class SelectedRows {
    *
    */
  public:
-  SelectedRows(const std::vector<int64_t>& rows, const int64_t& height)
-      : rows_(rows), height_(height) {
-    value_.reset(new Tensor());
-    rwlock_.reset(new RWLock);
-  }
+  SelectedRows(const std::vector<int64_t>& rows, const int64_t& height);
 
-  SelectedRows() {
-    height_ = 0;
-    value_.reset(new Tensor());
-    rwlock_.reset(new RWLock);
-  }
+  SelectedRows();
 
   platform::Place place() const { return value_->place(); }
 
@@ -157,7 +149,7 @@ class SelectedRows {
   int64_t height_;  // height indicates the underline tensor's height
   std::unique_ptr<RWLock> rwlock_{nullptr};
   std::vector<std::unique_ptr<DataShard>> data_shards_;
-  const int64_t shard_num_ = 13;  // magic number
+  const int64_t shard_num_;  // magic number
 };
 
 /*
