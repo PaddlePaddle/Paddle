@@ -42,6 +42,11 @@ class GenBase : public Kernel {
     return reinterpret_cast<Func>(const_cast<unsigned char*>(code));
   }
 
+  void* operator new(size_t size);
+  void operator delete(void* ptr);
+  void* operator new[](size_t size) { return operator new(size); }
+  void operator delete[](void* ptr) { operator delete(ptr); }
+
  protected:
   void dumpCode(const unsigned char* code) const;
 };
