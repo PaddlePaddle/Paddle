@@ -28,7 +28,7 @@ struct ExecutionStrategy {
   // If we set this to 1, we will delete all variables when finish a batch. and
   // this will loss 15%+ performance.
   // Please be aware about this parameters.
-  size_t num_iteration_per_drop_scope_{100};
+  size_t num_iteration_per_drop_scope_{1};
   ExecutorType type_{kDefault};
   bool dry_run_{false};
 };
