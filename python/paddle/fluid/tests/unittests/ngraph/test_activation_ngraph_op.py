@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_activation_op import TestRelu, TestTanh
+from paddle.fluid.tests.unittests.test_activation_op import TestSigmoid, TestRelu, TestTanh
 
 
 class TestNGRAPHReluDim2(TestRelu):
@@ -52,6 +52,11 @@ class TestNGRAPHTanhDim4(TestTanh):
             'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
         }
         self.outputs = {'Out': np.tanh(self.inputs['X'])}
+
+
+class TestNGRAPHSigmoid(TestSigmoid):
+    def setUp(self):
+        super(TestNGRAPHSigmoid, self).setUp()
 
 
 if __name__ == '__main__':

@@ -22,6 +22,7 @@ limitations under the License. */
 #pragma once
 
 #include "ops/accuracy_op.h"
+#include "ops/activation_op.h"
 #include "ops/batch_norm_op.h"
 #include "ops/binary_unary_op.h"
 #include "ops/conv2d_op.h"

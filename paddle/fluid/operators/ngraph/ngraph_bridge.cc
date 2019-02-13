@@ -48,9 +48,12 @@ std::map<std::string,
         {"softmax", NG_OPS::BuildSoftmaxNode},
         {"softmax_grad", NG_OPS::BuildSoftmaxGradNode},
         {"scale", NG_OPS::BuildScaleNode},
+        {"sigmoid", NG_OPS::BuildUnaryNode<ngraph::op::Sigmoid>},
         {"sum", NG_OPS::BuildSumNode},
         {"relu", NG_OPS::BuildUnaryNode<ngraph::op::Relu>},
+        {"relu_grad", NG_OPS::BuildReluGradNode},
         {"tanh", NG_OPS::BuildUnaryNode<ngraph::op::Tanh>},
+        {"tanh_grad", NG_OPS::BuildTanhGradNode},
         {"top_k", NG_OPS::BuildTopKNode}};
 
 void NgraphBridge::BuildNgNode(
