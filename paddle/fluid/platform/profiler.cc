@@ -63,8 +63,6 @@ std::mutex profiler_mem; // record memory mutex
 static std::list<std::shared_ptr<MemEventList>> g_all_mem_event_lists;
 static thread_local std::shared_ptr<MemEventList> g_mem_event_list;
 static std::mutex g_all_mem_event_lists_mutex;
-static thread_local uint64_t g_device_id;
-static uint64_t g_next_device_id = 0;
 
 struct EventList {
   constexpr static size_t kMB = 1024 * 1024;
