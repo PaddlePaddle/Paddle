@@ -40,9 +40,11 @@ class FillConstantKernel : public framework::OpKernel<T> {
       tensor->Resize(
           framework::make_ddim(ctx.Attr<std::vector<int64_t>>("shape")));
     } else if (out_var->IsType<framework::SelectedRows>()) {
-      tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
+      auto *selected_rows = out_var->GetMutable<framework::SelectedRows>();
+      tensor = selected_rows->mutable_value();
       tensor->Resize(
           framework::make_ddim(ctx.Attr<std::vector<int64_t>>("shape")));
+      selected_rows->InitDataShards();
     } else {
       PADDLE_THROW(
           "fill constant op's output only"
