@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
 #include <string>
-#include "paddle/fluid/operators/mkldnn_activation_op.h"
+#include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
 
 namespace paddle {
@@ -547,12 +547,14 @@ namespace ops = paddle::operators;
   __macro(Swish, swish);             \
   __macro(ThresholdedRelu, thresholded_relu);
 
-#define REGISTER_INPLACE_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)        \
-  REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp, \
-                    ::paddle::operators::OP_NAME##OpMaker,          \
-                    ::paddle::operators::ActivationOpInferVarType,  \
-                    ::paddle::operators::OP_NAME##GradMaker);       \
-  REGISTER_OPERATOR(KERNEL_TYPE##_grad, ::paddle::operators::ActivationOpGrad)
+#define REGISTER_INPLACE_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)                   \
+  REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp,            \
+                    ::paddle::operators::OP_NAME##OpMaker,                     \
+                    ::paddle::operators::ActivationOpInferVarType,             \
+                    ::paddle::operators::OP_NAME##GradMaker,                   \
+                    ::paddle::framework::SingleOpInplaceInToOut);              \
+  REGISTER_OPERATOR(KERNEL_TYPE##_grad, ::paddle::operators::ActivationOpGrad, \
+                    ::paddle::framework::SingleOpInplaceInToOut)
 
 #define REGISTER_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)                    \
   REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp,     \
