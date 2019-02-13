@@ -47,6 +47,7 @@ class AllReduceOp : public framework::OperatorBase {
                const platform::Place& place) const override {
     PADDLE_ENFORCE(is_gpu_place(place),
                    "AllReduce op can run on gpu place only for now.");
+#ifdef PADDLE_WITH_CUDA
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto* ctx = pool.Get(place);
     auto in_names = Inputs("X");
@@ -57,7 +58,6 @@ class AllReduceOp : public framework::OperatorBase {
     auto* in = scope.FindVar(in_names[0]);
     auto* out = scope.FindVar(out_names[0]);
 
-#ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE(in->IsType<framework::LoDTensor>() ||
                        out->IsType<framework::LoDTensor>(),
                    "Only support allreduce LoDTensors");
