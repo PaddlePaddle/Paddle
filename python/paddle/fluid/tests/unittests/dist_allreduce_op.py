@@ -108,8 +108,8 @@ class TestDistMnist2x2(TestDistRunnerBase):
             params_grads = opt.backward(avg_cost)
             data_parallel_param_grads = []
             for p, g in params_grads:
-                # scale gradient to get mean
-                grad_reduce = fluid.layers.allreduce(g) * float(0.5)
+                # NOTE: scale will be done on loss scale in multi_devices_graph_pass using nranks.
+                grad_reduce = fluid.layers.allreduce(g)
                 data_parallel_param_grads.append([p, grad_reduce])
             opt.apply_gradients(data_parallel_param_grads)
 

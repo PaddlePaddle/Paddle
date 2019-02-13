@@ -23,6 +23,21 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+struct MutableDataFunctor {
+  MutableDataFunctor(void** data, framework::LoDTensor* tensor,
+                     const platform::Place& place)
+      : data_(data), tensor_(tensor), place_(place) {}
+
+  template <typename T>
+  void apply() {
+    *data_ = tensor_->mutable_data<T>(place_);
+  }
+
+  void** data_;
+  framework::LoDTensor* tensor_;
+  platform::Place place_;
+};
+
 class AllReduceOp : public framework::OperatorBase {
   using OperatorBase::OperatorBase;
 
@@ -50,18 +65,17 @@ class AllReduceOp : public framework::OperatorBase {
     auto* sendbuff = in_tensor.data<void>();
     auto* out_tensor = out->GetMutable<framework::LoDTensor>();
     out_tensor->Resize(in_tensor.dims());
-    // FIXME(typhoonzero): out tensor should have same dtype as input.
-    auto* recvbuff = static_cast<void*>(out_tensor->mutable_data<float>(place));
+    void* recvbuff = nullptr;
+    framework::VisitDataType(in_tensor.type(),
+                             MutableDataFunctor(&recvbuff, out_tensor, place));
 
     auto cuda_ctx = static_cast<platform::CUDADeviceContext*>(ctx);
     auto* comm = cuda_ctx->nccl_comm();
     // FIXME(typhoonzero): should use nccl stream here.
     auto stream = cuda_ctx->stream();
-    VLOG(3) << "Before calling nccl allreduce, comm: " << comm;
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel * sizeof(float),
-        static_cast<ncclDataType_t>(dtype), ncclSum, comm, stream));
-    VLOG(3) << "End calling nccl allreduce";
+        sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
+        comm, stream));
   }
 };
 

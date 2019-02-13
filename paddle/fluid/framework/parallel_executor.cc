@@ -258,7 +258,10 @@ ParallelExecutor::ParallelExecutor(
     // can use it.
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
       auto &nccl_ctx = member_->nccl_ctxs_->at(dev_id);
-      auto *dev_ctx = member_->nccl_ctxs_->DevCtx(dev_id);
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+          pool.Get(member_->places_[dev_id]));
       dev_ctx->set_nccl_comm(nccl_ctx.comm());
     }
 #else
