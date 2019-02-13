@@ -115,11 +115,10 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
       }
     }
     if (clip) {
-      platform::Transform<platform::CPUDeviceContext> trans;
-      ClipFunctor<T> clip_func;
-      trans(ctx.template device_context<platform::CPUDeviceContext>(),
-            boxes->data<T>(), boxes->data<T>() + boxes->numel(),
-            boxes->data<T>(), clip_func);
+      T* dt = boxes->data<T>();
+      for (int64_t i = 0; i < boxes->numel(); ++i) {
+        dt[i] = std::min<T>(std::max<T>(dt[i], 0.), 1.);
+      }
     }
     framework::Tensor var_t;
     var_t.mutable_data<T>(

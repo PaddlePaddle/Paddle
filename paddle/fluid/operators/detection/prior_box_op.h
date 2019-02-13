@@ -101,31 +101,30 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     boxes->mutable_data<T>(ctx.GetPlace());
     vars->mutable_data<T>(ctx.GetPlace());
 
-    auto e_boxes = framework::EigenTensor<T, 4>::From(*boxes);
+    T* b_t = boxes->data<T>();
     for (int h = 0; h < feature_height; ++h) {
       for (int w = 0; w < feature_width; ++w) {
         T center_x = (w + offset) * step_width;
         T center_y = (h + offset) * step_height;
         T box_width, box_height;
-        int idx = 0;
         for (size_t s = 0; s < min_sizes.size(); ++s) {
           auto min_size = min_sizes[s];
           if (min_max_aspect_ratios_order) {
             box_width = box_height = min_size / 2.;
-            e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
-            e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
-            e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
-            e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
-            idx++;
+            b_t[0] = (center_x - box_width) / img_width;
+            b_t[1] = (center_y - box_height) / img_height;
+            b_t[2] = (center_x + box_width) / img_width;
+            b_t[3] = (center_y + box_height) / img_height;
+            b_t += 4;
             if (max_sizes.size() > 0) {
               auto max_size = max_sizes[s];
               // square prior with size sqrt(minSize * maxSize)
               box_width = box_height = sqrt(min_size * max_size) / 2.;
-              e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
-              e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
-              e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
-              e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
-              idx++;
+              b_t[0] = (center_x - box_width) / img_width;
+              b_t[1] = (center_y - box_height) / img_height;
+              b_t[2] = (center_x + box_width) / img_width;
+              b_t[3] = (center_y + box_height) / img_height;
+              b_t += 4;
             }
             // priors with different aspect ratios
             for (size_t r = 0; r < aspect_ratios.size(); ++r) {
@@ -135,11 +134,11 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
               }
               box_width = min_size * sqrt(ar) / 2.;
               box_height = min_size / sqrt(ar) / 2.;
-              e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
-              e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
-              e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
-              e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
-              idx++;
+              b_t[0] = (center_x - box_width) / img_width;
+              b_t[1] = (center_y - box_height) / img_height;
+              b_t[2] = (center_x + box_width) / img_width;
+              b_t[3] = (center_y + box_height) / img_height;
+              b_t += 4;
             }
           } else {
             // priors with different aspect ratios
@@ -147,21 +146,21 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
               float ar = aspect_ratios[r];
               box_width = min_size * sqrt(ar) / 2.;
               box_height = min_size / sqrt(ar) / 2.;
-              e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
-              e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
-              e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
-              e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
-              idx++;
+              b_t[0] = (center_x - box_width) / img_width;
+              b_t[1] = (center_y - box_height) / img_height;
+              b_t[2] = (center_x + box_width) / img_width;
+              b_t[3] = (center_y + box_height) / img_height;
+              b_t += 4;
             }
             if (max_sizes.size() > 0) {
               auto max_size = max_sizes[s];
               // square prior with size sqrt(minSize * maxSize)
               box_width = box_height = sqrt(min_size * max_size) / 2.;
-              e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
-              e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
-              e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
-              e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
-              idx++;
+              b_t[0] = (center_x - box_width) / img_width;
+              b_t[1] = (center_y - box_height) / img_height;
+              b_t[2] = (center_x + box_width) / img_width;
+              b_t[3] = (center_y + box_height) / img_height;
+              b_t += 4;
             }
           }
         }
@@ -169,11 +168,10 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     }
 
     if (clip) {
-      platform::Transform<platform::CPUDeviceContext> trans;
-      ClipFunctor<T> clip_func;
-      trans(ctx.template device_context<platform::CPUDeviceContext>(),
-            boxes->data<T>(), boxes->data<T>() + boxes->numel(),
-            boxes->data<T>(), clip_func);
+      T* dt = boxes->data<T>();
+      for (int64_t i = 0; i < boxes->numel(); ++i) {
+        dt[i] = std::min<T>(std::max<T>(dt[i], 0.), 1.);
+      }
     }
 
     framework::Tensor var_t;
