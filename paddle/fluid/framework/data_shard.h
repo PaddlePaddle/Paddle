@@ -41,7 +41,7 @@ class DataShard {
 
  private:
   // this method did not support multithread!
-  int64_t GetIndexById(int64_t id, bool auto_grown);
+  inline int64_t GetIndexById(int64_t id, bool auto_grown);
 
   std::unordered_map<int64_t, int64_t> id_to_offset_;
   int64_t shard_id_;

@@ -266,14 +266,14 @@ void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
                       "except the dims[0].");
     std::vector<int64_t> all_ids(ids.numel());
     auto* ids_data = ids.data<int64_t>();
-    for (auto i = 0; i < ids.numel(); ++i) {
+    const size_t ids_num = ids.numel();
+    for (auto i = 0; i < ids_num; ++i) {
       all_ids[i] = ids_data[i];
     }
     std::vector<int64_t> id_indexes(ids.numel());
-    PADDLE_ENFORCE(value_->IsInitialized());
     GetIndexsByIds(all_ids, &id_indexes, auto_grown);
     int64_t table_height = value_->dims()[0];
-    for (int i = 0; i < ids.numel(); ++i) {
+    for (int i = 0; i < ids_num; ++i) {
       auto id = ids.data<int64_t>()[i];
       int64_t index = id_indexes[i];
       PADDLE_ENFORCE_LT(index, table_height,

@@ -31,7 +31,7 @@ std::future<void> DataShard::GetIndexsByIds(
   return pool_->enqueue(std::move(task));
 }
 
-int64_t DataShard::GetIndexById(int64_t id, bool auto_grown) {
+inline int64_t DataShard::GetIndexById(int64_t id, bool auto_grown) {
   auto iter = id_to_offset_.find(id);
   if (iter == id_to_offset_.end()) {
     if (auto_grown) {
