@@ -524,10 +524,6 @@ void ParseMemEvents(
       while (j < tmp_mem_results.size() - 1 &&
              tmp_mem_results[j].time == tmp_mem_results[j + 1].time)
         crt_size += tmp_mem_results[++j].size_;
-      if (crt_size < 0) {
-        VLOG(3) << "Wrong memory! \n";
-        return;
-      }
       mem_timeline[i].push_back({tmp_mem_results[j].time, crt_size});
 
       event_info[i].peak = std::max(event_info[i].peak, crt_size);
