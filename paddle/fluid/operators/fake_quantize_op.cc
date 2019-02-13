@@ -27,9 +27,6 @@ struct Compare {
   bool operator()(const T a, const T b) { return (std::abs(a) < std::abs(b)); }
 };
 
-template struct Compare<float>;
-template struct Compare<double>;
-
 template <typename T>
 struct FindAbsMaxFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx, const T* in,
