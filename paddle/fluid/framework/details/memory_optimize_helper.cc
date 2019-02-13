@@ -13,13 +13,19 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/memory_optimize_helper.h"
+#include <algorithm>
 #include <deque>
 #include <functional>
-#include <iostream>
+#include <iterator>
 #include <numeric>
 #include <sstream>
 #include <string>
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/platform/cpu_info.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/gpu_info.h"
+#endif  // PADDLE_WITH_CUDA
 
 namespace paddle {
 namespace framework {
@@ -230,6 +236,27 @@ ir::Node* OrderedSet::FindBestFitNode(ir::Node* var) const {
   return found_node;
 }
 
+ir::Node* OrderedSet::FindNextBestFitNode(ir::Node* var, ir::Node* prev) const {
+  ir::Node* found_node = nullptr;
+  NodeComparator functor;
+  auto it =
+      std::find_if(nodes_.begin(), nodes_.end(), [&](const NodeVector& v) {
+        if (v.front() == prev)
+          return true;
+        else
+          return false;
+      });
+  PADDLE_ENFORCE(it != nodes_.end(), "Not found previous in node list!");
+  for (it = std::next(it); it != nodes_.end(); ++it) {
+    auto& candidate = it->front();
+    if (functor(var, candidate)) {
+      found_node = candidate;
+      break;
+    }
+  }
+  return found_node;
+}
+
 bool OrderedSet::Has(ir::Node* var) const {
   if (mark_table_.count(var->Name())) {
     auto& node_in_samename = mark_table_.at(var->Name());
@@ -274,14 +301,35 @@ bool NodeCanReused(ir::Node* node) {
   return flag;
 }
 
+int MinChunkSize() {
+  int size{0};
+#ifdef PADDLE_WITH_CUDA
+  size = platform::GpuMinChunkSize();
+#else
+  size = platform::CpuMinChunkSize();
+#endif  // PADDLE_WITH_CUDA
+  return size;
+}
+
 bool NodeCanReused(const VarDesc& node) {
   auto type = node.GetType();
+  // only these types holds bulk of gpu memory
   if (!(type == proto::VarType::LOD_TENSOR ||
         type == proto::VarType::SELECTED_ROWS ||
         type == proto::VarType::LOD_TENSOR_ARRAY)) {
     return false;
   }
-  if (node.Persistable() || node.GetShape().empty()) {
+  // persistable variable is parameter
+  if (node.Persistable()) {
+    return false;
+  }
+  // shape < min_chunk_size is meaningless.
+  // further more, fetched loss always has size = 1
+  // which should not be reused.
+  auto shape = node.GetShape();
+  int size = std::abs(
+      std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>()));
+  if (shape.empty() || size < MinChunkSize()) {
     return false;
   }
   // vars can be @EMPTY@, @LR_DECAY_REUSE_ID@. For example, while_grad
