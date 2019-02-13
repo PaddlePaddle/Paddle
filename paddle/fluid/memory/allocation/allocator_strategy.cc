@@ -25,9 +25,12 @@ namespace memory {
 namespace allocation {
 
 static AllocatorStrategy GetStrategyFromFlag() {
-  return FLAGS_allocator_strategy == "legacy"
-             ? AllocatorStrategy::kLegacy
-             : AllocatorStrategy::kNaiveBestFit;
+  if (FLAGS_allocator_strategy == "legacy") {
+    return AllocatorStrategy::kLegacy;
+  } else if (FLAGS_allocator_strategy == "pile") {
+    return AllocatorStrategy::kPile;
+  }
+  return AllocatorStrategy::kNaiveBestFit;
 }
 
 AllocatorStrategy GetAllocatorStrategy() {

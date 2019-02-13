@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gflags/gflags.h>
 #include <gtest/gtest_prod.h>
 #include <list>
 #include <stack>
 #include <unordered_map>
 #include <unordered_set>
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/detail/system_allocator.h"
+
+DECLARE_int32(pile_allocator_init_memory_size_in_mb);
+DECLARE_int32(pile_allocator_realloc_memory_size_in_mb);
 
 namespace paddle {
 namespace memory {
 namespace allocation {
-
-// Stupid data structure, why the allocated memory should return with an
-// unique_ptr of Allocation?
-// This design adds overhead of CPU allocation.
-class PileAllocation : public Allocation {};
 
 struct BitSet {
   using byte_t = unsigned char;
@@ -119,9 +119,11 @@ struct StackSet {
 struct BuddyResource {
   using byte_t = uint8_t;
   using bucket_t = StackSet<byte_t*>;
+  enum class Place { kCPU = 0, kGPU };
 
   BuddyResource(int max_mem_log_size, int min_mem_log_size,
-                int realloc_mem_log_size, int num_piled = 1)
+                int realloc_mem_log_size, int num_piled = 1,
+                Place place = Place::kCPU)
       : min_mem_log_size_(min_mem_log_size),
         min_mem_size_(1 << min_mem_log_size),
         max_mem_log_size_(max_mem_log_size),
@@ -129,7 +131,8 @@ struct BuddyResource {
         num_buckets_(max_mem_log_size - min_mem_log_size + 1),
         realloc_mem_log_size_(realloc_mem_log_size),
         realloc_mem_size_(1 << realloc_mem_log_size),
-        num_piled_(num_piled) {
+        num_piled_(num_piled),
+        place_(place) {
     buckets_.resize(num_piled_);
     is_splits_.resize(num_piled_);
 
@@ -138,7 +141,7 @@ struct BuddyResource {
 
   ~BuddyResource() {
     for (auto* v : buffer_) {
-      delete[] v;
+      SystemFree(v);
     }
   }
 
@@ -146,17 +149,57 @@ struct BuddyResource {
   std::vector<bucket_t>& buckets(int idx) { return buckets_[idx]; }
   std::vector<BitSet>& is_splits(int idx) { return is_splits_[idx]; }
 
-  byte_t* SystemAllocate(size_t size) {
-    auto* x = new byte_t[size];
-    PADDLE_ENFORCE(x, "system OOM! allocate %d bytes failed.", max_mem_size_);
-    return x;
+  void* SystemAllocate(size_t size) {
+    switch (place_) {
+      case Place::kCPU:
+        return CpuSystemAllocate(size);
+        break;
+#ifdef PADDLE_WITH_CUDA
+      case Place::kGPU:
+        return GpuSystemAllocate(size);
+        break;
+#endif
+      default:
+        LOG(ERROR) << "wrong place get";
+        return nullptr;
+    }
   }
+
+  void SystemFree(void* ptr) {
+    switch (place_) {
+      case Place::kCPU:
+        CpuSystemFree(ptr);
+        break;
+#ifdef PADDLE_WITH_CUDA
+      case Place::kGPU:
+        GpuSystemFree(ptr);
+        break;
+#endif
+      default:
+        LOG(ERROR) << "wrong place get";
+    }
+  }
+
+  // We implement simple system allocators for CPU and GPU devices, for the
+  // existing SystemAllocators interface is trivial.
+  static void* CpuSystemAllocate(size_t size) { return new byte_t[size]; }
+  static void CpuSystemFree(void* ptr) { delete[] static_cast<byte_t*>(ptr); }
+
+#ifdef PADDLE_WITH_CUDA
+  static void* GpuSystemAllocate(size_t size) {
+    byte_t* ptr;
+    PADDLE_ENFORCE(cudaMalloc(&ptr, size));
+    return ptr;
+  }
+  static void GpuSystemFree(void* ptr) { PADDLE_ENFORCE(cudaFree(ptr)); }
+#endif
 
   void ReallocMemoryBuffer() {
     LOG(INFO) << "Realloc one memory block";
     PADDLE_ENFORCE_GT(buffer_.size(), 0UL,
                       "should allocate the initial memory pool first.");
-    buffer_.push_back(SystemAllocate(realloc_mem_size_));
+    buffer_.push_back(
+        reinterpret_cast<byte_t*>(SystemAllocate(realloc_mem_size_)));
     PushInitialBucket(max_mem_log_size() - realloc_mem_log_size(),
                       buffer_.back());
 
@@ -199,7 +242,7 @@ struct BuddyResource {
 
   void AllocInitialMemoryBuffer() {
     PADDLE_ENFORCE(buffer_.empty());
-    buffer_.push_back(SystemAllocate(max_mem_size_));
+    buffer_.push_back(reinterpret_cast<byte_t*>(SystemAllocate(max_mem_size_)));
     PushInitialBucket(0, buffer_.front());
   }
 
@@ -223,12 +266,16 @@ struct BuddyResource {
   const int num_piled_;
   // The buffer will shared by all the piled system.
   std::vector<byte_t*> buffer_;
-  // All the memory pools shares the same buckets. The outer vector is for piled
-  // systems, the innser vector is for different size of buddies.
+
+  // All the memory pools shares the same buckets. The outer vector is for
+  // piled
+  // systems, the inner vector is for different size of buddies.
   std::vector<std::vector<bucket_t>> buckets_;
   // State represents is_split, one bit for each node. The outer vector is for
   // multiple pile system, the inner vector is for multiple buffer.
   std::vector<std::vector<BitSet>> is_splits_;
+
+  Place place_;
 };
 
 static std::shared_ptr<BuddyResource> CreateBuddyResource(
@@ -245,7 +292,8 @@ static std::shared_ptr<BuddyResource> CreateBuddyResource(
  *
  * Reallocation:
  * If the initial memory pool is full-filled, the extra memory pool is needed.
- * This will triger the system allocation, and put the memory pool reallcated to
+ * This will triger the system allocation, and put the memory pool reallcated
+ * to
  * the free buckets.
  */
 struct BuddySystem {
@@ -310,81 +358,10 @@ struct BuddySystem {
     return MallocImpl(request, 0);
   }
 
-  void Free(void* p) {
-    auto* ptr = static_cast<byte_t*>(p);
-    // Ignore null.
-    if (!ptr) return;
-
-    size_t request = ptr2request_[ptr];
-    size_t bucket = BucketForRequest(request);
-    int pool_idx = PoolIdxForPtr(ptr);
-    // System allocated.
-    if (pool_idx < 0) {
-      delete[] ptr;
-      return;
-    }
-
-    size_t node = NodeForPtr(ptr, bucket, pool_idx);
-
-    while (node != 0) {
-      FlipParentIsSplit(node, pool_idx);
-      VLOG(3) << "parent is split " << IsParentSplit(node, pool_idx) << " node "
-              << (node - 1) / 2 << " bucket_size " << BucketSize(bucket - 1);
-      // The bucket is used, no need to merge.
-      if (IsParentSplit(node, pool_idx)) break;
-
-      // Here, the bucket is not used, remove the bucket from free list.
-      size_t brother = GetBrotherNode(node);
-      auto* list_node = PtrForNode(brother, bucket, pool_idx);
-      PopBucket(bucket, list_node);
-      // Jump to parent
-      node = (node - 1) / 2;
-      bucket--;
-    }
-    PushBucket(bucket, PtrForNode(node, bucket, pool_idx));
-  }
+  void Free(void* p);
 
  protected:
-  void* MallocImpl(size_t request, size_t pool_idx) {
-    if (request > max_mem_size_) {
-      LOG(ERROR) << "OOM";
-      return nullptr;
-    }
-    PADDLE_ENFORCE(!buffer_->empty());
-
-    // We should reserve the memory for Header of request.
-    size_t origin_bucket = BucketForRequest(request);
-    size_t bucket = origin_bucket;
-
-    while (bucket + 1 != 0) {
-      // If no free list in current bucket, go to bigger bucket and try.
-      // time complexity: O(logN)
-      byte_t* ptr = reinterpret_cast<byte_t*>(PopBucket(bucket));
-
-      if (!ptr) {
-        --bucket;
-        continue;
-      }
-
-      size_t pool_idx = PoolIdxForPtr(ptr);
-      size_t index = NodeForPtr(ptr, bucket, pool_idx);
-      if (index != 0) FlipParentIsSplit(index, pool_idx);
-
-      while (bucket < origin_bucket) {
-        size_t size = BucketSize(bucket);
-        SplitBucket(bucket, ptr, size / 2, pool_idx);
-        size_t index = NodeForPtr(ptr, bucket, pool_idx);
-
-        VLOG(3) << "split bucket " << bucket << " node " << index << " fliped "
-                << is_splits_->at(pool_idx).Tell(index);
-        bucket++;
-      }
-
-      ptr2request_[ptr] = request;
-      return ptr;
-    }
-    return nullptr;
-  }
+  void* MallocImpl(size_t request, size_t pool_idx);
 
   byte_t* buffer(int idx) { return buffer_->at(idx); }
 
@@ -516,7 +493,8 @@ struct BuddySystem {
  *
  * The example scenerios:
  *   We have N models, each has an average memory size W for weight and T for
- * temporary variables, and all these models are used in sequential. By default,
+ * temporary variables, and all these models are used in sequential. By
+ * default,
  * these models will occupy N*(W+T) size of memory.
  *   By using PileAllocator, we can share the temporary variable memory space
  * for all the models, and in tatal these model will only take N*W+T size of
@@ -560,7 +538,10 @@ class PileAllocator : public Allocator {
     }
   }
 
-  void SetPileIdx(int idx) { pile_idx_ = idx; }
+  void SetPileIdx(int idx) {
+    PADDLE_ENFORCE_LT(idx, 1UL + pile_systems_.size());
+    pile_idx_ = idx;
+  }
 
   // It should be low-performance when allocating the Allocation. Each time it
   // allocates, two malloc will be called.

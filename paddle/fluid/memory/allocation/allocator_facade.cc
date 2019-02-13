@@ -37,6 +37,7 @@
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
+#include "paddle/fluid/memory/allocation/pile_allocator.h"
 
 DEFINE_int64(
     gpu_allocator_retry_time, 0,
@@ -238,6 +239,19 @@ class AllocatorFacadePrivate {
       pair.second =
           std::make_shared<ZeroSizeAllocator>(pair.second, pair.first);
     }
+  }
+
+  // NOTE Currently, this allocator should only works for inference.
+  void InitPileAllocator() {
+    PileAllocator::MemoryOption option(
+        FLAGS_pile_allocator_init_memory_size_in_mb, 1 << 4 /*min memory*/,
+        FLAGS_pile_allocator_realloc_memory_size_in_mb);
+    allocators_[platform::CPUPlace()] =
+        std::make_shared<PileAllocator>(0 /*pile_num*/, option, option);
+#ifdef PADDLE_WITH_CUDA
+    allocators_[platform::CUDAPlace(0)] =
+        std::make_shared<PileAllocator>(0 /*pile_num*/, option, option);
+#endif
   }
 };
 
