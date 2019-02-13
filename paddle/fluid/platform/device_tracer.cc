@@ -26,6 +26,8 @@ limitations under the License. */
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/platform/device_context.h"
+
 
 namespace paddle {
 namespace platform {
@@ -224,6 +226,17 @@ class DeviceTracerImpl : public DeviceTracer {
                                      stream_id, correlation_id, bytes});
   }
 
+  void AddMemInfoRecord(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                        Place place) {
+    if (0 == start_ns || 0 == end_ns) {
+      VLOG(3) << "Cannot be traced\n";
+      return;
+    }
+    std::lock_guard<std::mutex> l(trace_mu_);
+    mem_info_record_.emplace_back(MemInfoRecord{start_ns, end_ns, bytes,
+                                                place});
+  }
+
   void AddKernelRecords(std::string name, uint64_t start, uint64_t end,
                         int64_t device_id, int64_t stream_id,
                         uint32_t correlation_id) {
@@ -289,7 +302,6 @@ class DeviceTracerImpl : public DeviceTracer {
       event->set_sub_device_id(r.stream_id);
       event->set_device_id(r.device_id);
     }
-
     for (const CPURecord &r : cpu_records_) {
       auto *event = profile_pb.add_events();
       event->set_type(proto::Event::CPU);
@@ -308,6 +320,19 @@ class DeviceTracerImpl : public DeviceTracer {
       event->set_sub_device_id(r.stream_id);
       event->set_device_id(r.device_id);
       event->mutable_memcopy()->set_bytes(r.bytes);
+    }
+    for (const MemInfoRecord &r : mem_info_record_) {
+      auto *event = profile_pb.add_mem_events();
+      if (is_gpu_place(r.place)) {
+        event->set_place(proto::MemEvent::CUDAPlace);
+      } else if (is_cpu_place(r.place)) {
+        event->set_place(proto::MemEvent::CPUPlace);
+      } else {
+        event->set_place(proto::MemEvent::CUDAPinnedPlace);
+      }
+      event->set_start_ns(r.start_ns);
+      event->set_end_ns(r.end_ns);
+      event->set_bytes(r.bytes);
     }
     std::ofstream profile_f;
     profile_f.open(profile_path, std::ios::out | std::ios::trunc);
@@ -360,6 +385,7 @@ class DeviceTracerImpl : public DeviceTracer {
   std::vector<KernelRecord> kernel_records_;
   std::vector<MemRecord> mem_records_;
   std::vector<CPURecord> cpu_records_;
+  std::vector<MemInfoRecord> mem_info_record_;
   std::unordered_map<uint32_t, std::string> correlations_;
 };
 
