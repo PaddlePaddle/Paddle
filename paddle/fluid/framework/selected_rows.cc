@@ -159,7 +159,7 @@ void SelectedRows::GetIndexsByIds(const std::vector<int64_t>& ids,
   for (size_t i = 0; i < ids.size(); ++i) {
     auto id = ids[i];
     size_t shard_id = id % shard_num_;
-    re_sharded_keys[shard_id].push_back(std::make_pair(id, i));
+    re_sharded_keys[shard_id].emplace_back(std::make_pair(id, i));
   }
 
   std::vector<std::future<void>> futures(shard_num_);
@@ -245,8 +245,9 @@ void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
                       "output tensor should have the same shape with table "
                       "except the dims[0].");
     std::vector<int64_t> all_ids(ids.numel());
+    auto* ids_data = ids.data<int64_t>();
     for (auto i = 0; i < ids.numel(); ++i) {
-      all_ids.push_back(ids.data<int64_t>()[i]);
+      all_ids[i] = ids_data[i];
     }
     std::vector<int64_t> id_indexes(ids.numel());
     PADDLE_ENFORCE(value_->IsInitialized());

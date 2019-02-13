@@ -26,7 +26,6 @@ std::future<void> DataShard::GetIndexsByIds(
       int64_t id = id_to_offset.first;
       int64_t offset = id_to_offset.second;
       (*value_indexs)[offset] = GetIndexById(id, auto_grown);
-      //      value_indexs->operator[](offset) = GetIndexById(id, auto_grown);
     }
   };
   return pool_->enqueue(std::move(task));
