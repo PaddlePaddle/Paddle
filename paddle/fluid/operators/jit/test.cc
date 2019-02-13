@@ -271,6 +271,32 @@ struct TestFuncWithRefer<jit::SeqPoolTuples<T>, std::vector<T>, std::vector<T>,
 };
 
 template <typename T>
+struct TestFuncWithRefer<jit::EmbSeqPoolTuples<T>, std::vector<T>,
+                         std::vector<int64_t>, std::vector<T>,
+                         typename jit::EmbSeqPoolTuples<T>::attr_type> {
+  void operator()(const typename jit::EmbSeqPoolTuples<T>::func_type tgt,
+                  const std::vector<T>& table, const std::vector<int64_t>& idx,
+                  const std::vector<T>& oref,
+                  const typename jit::EmbSeqPoolTuples<T>::attr_type& attr) {
+    EXPECT_TRUE(tgt != nullptr);
+    EXPECT_EQ(table.size(),
+              static_cast<size_t>(attr.table_height * attr.table_width));
+    EXPECT_EQ(idx.size(),
+              static_cast<size_t>(attr.index_height * attr.index_width));
+    EXPECT_EQ(oref.size(),
+              static_cast<size_t>(attr.table_width * attr.index_width));
+    const T* table_data = table.data();
+    const int64_t* idx_data = idx.data();
+    const T* oref_data = oref.data();
+    int o_w = oref.size();
+    std::vector<T> out(o_w);
+    T* o_data = out.data();
+    tgt(table_data, idx_data, o_data, &attr);
+    ExpectEQ<T>(o_data, oref_data, o_w);
+  }
+};
+
+template <typename T>
 struct TestFuncWithRefer<jit::MatMulTuples<T>, std::vector<T>, std::vector<T>,
                          std::vector<T>,
                          typename jit::MatMulTuples<T>::attr_type> {
@@ -588,6 +614,40 @@ void TestSoftmaxKernel() {
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
+void TestEmbSeqPoolKernel() {
+  VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
+  int64_t tbl_h = 1e4;
+  std::vector<jit::SeqPoolType> pool_types = {
+      jit::SeqPoolType::kSum};  // only support sum yet
+  for (int tbl_w : TestSizes()) {
+    std::vector<T> table(tbl_h * tbl_w);
+    RandomVec<T>(tbl_h * tbl_w, table.data(), -2.f, 2.f);
+    const T* table_data = table.data();
+    for (auto type : pool_types) {
+      for (int idx_w : {1, 2, 10, 16}) {
+        for (int idx_h : {1, 2, 10, 16}) {
+          auto ref = jit::GetRefer<KT, jit::EmbSeqPoolTuples<T>>();
+          EXPECT_TRUE(ref != nullptr);
+          std::vector<int64_t> idx(idx_h * idx_w);
+          RandomVec<int64_t>(idx_h * idx_w, idx.data(), 0, tbl_h - 1);
+          int64_t out_w = tbl_w * idx_w;
+          std::vector<T> oref(out_w);
+          const int64_t* idx_data = idx.data();
+          T* o_data = oref.data();
+          jit::emb_seq_pool_attr_t attr(tbl_h, tbl_w, idx_h, idx_w, out_w,
+                                        type);
+          ref(table_data, idx_data, o_data, &attr);
+
+          TestAllImpls<KT, jit::EmbSeqPoolTuples<T>, PlaceType, std::vector<T>,
+                       std::vector<int64_t>, std::vector<T>>(attr, table, idx,
+                                                             oref, attr);
+        }
+      }
+    }
+  }
+}
+
+template <jit::KernelType KT, typename T, typename PlaceType>
 void TestNCHW16CMulNCKernel() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   const int n = 3, c = 16 * 4, h = 10, w = 10;
@@ -754,6 +814,11 @@ TEST(JITKernel, kMatMul) {
 TEST(JITKernel, kSoftmax) {
   TestSoftmaxKernel<jit::kSoftmax, float, CPUPlace>();
   TestSoftmaxKernel<jit::kSoftmax, double, CPUPlace>();
+}
+
+TEST(JITKernel, kEmbSeqPool) {
+  TestEmbSeqPoolKernel<jit::kEmbSeqPool, float, CPUPlace>();
+  TestEmbSeqPoolKernel<jit::kEmbSeqPool, double, CPUPlace>();
 }
 
 TEST(JITKernel, kNCHW16CMulNC) {
