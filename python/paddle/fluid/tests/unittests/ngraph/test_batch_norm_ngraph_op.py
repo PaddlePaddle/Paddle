@@ -11,28 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import print_function
+
 import unittest
-from paddle.fluid.tests.unittests.test_scale_op import TestScaleOp, TestScaleOpSelectedRows
+from paddle.fluid.tests.unittests.test_batch_norm_op import TestBatchNormOpTraining, TestBatchNormOpInference
 
 
-class TestNGRAPHScaleOp(TestScaleOp):
-    def setUp(self):
-        super(TestNGRAPHScaleOp, self).setUp()
-        self._cpu_only = True
-
-    def init_dtype_type(self):
-        pass
+class TestNGRAPHBatchNormOpTraining(TestBatchNormOpTraining):
+    def init_kernel_type(self):
+        super(TestNGRAPHBatchNormOpTraining, self).init_kernel_type()
 
 
-class TestNGRAPHScaleOpSelectedRows(TestScaleOpSelectedRows):
-    def setUp(self):
-        super(TestNGRAPHScaleOpSelectedRows, self).setUp()
-        self._cpu_only = True
-
-    def init_dtype_type(self):
-        pass
+class TestNGRAPHBatchNormOpInference(TestBatchNormOpInference):
+    def init_kernel_type(self):
+        super(TestNGRAPHBatchNormOpInference, self).init_kernel_type()
 
 
-if __name__ == "__main__":
+class TestNGRAPHBatchNormOpWithReluInference(TestBatchNormOpInference):
+    def init_kernel_type(self):
+        super(TestNGRAPHBatchNormOpWithReluInference, self).init_kernel_type()
+
+
+if __name__ == '__main__':
     unittest.main()

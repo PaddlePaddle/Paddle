@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,17 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
 
-import unittest
-from paddle.fluid.tests.unittests.test_mean_op import TestMeanOp
+import decorator
+import contextlib
 
-
-class TestNGRAPHMeanOp(TestMeanOp):
-    def setUp(self):
-        super(TestNGRAPHMeanOp, self).setUp()
-        self._cpu_only = True
+__all__ = ['wrap_decorator', 'signature_safe_contextmanager']
 
 
-if __name__ == "__main__":
-    unittest.main()
+def wrap_decorator(decorator_func):
+    @decorator.decorator
+    def __impl__(func, *args, **kwargs):
+        wrapped_func = decorator_func(func)
+        return wrapped_func(*args, **kwargs)
+
+    return __impl__
+
+
+signature_safe_contextmanager = wrap_decorator(contextlib.contextmanager)
