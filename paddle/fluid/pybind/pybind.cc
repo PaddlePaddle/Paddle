@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
@@ -127,6 +128,13 @@ PYBIND11_MODULE(core, m) {
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
+  m.def("get_mem_usage", [](int device) {
+    return memory::allocation::GPUMemMonitor.GetMemUsage(device);
+  });
+
+  m.def("print_mem_usage",
+        []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
+
   py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
       // .def(py::init<>())
       .def(py::init<bool>(), py::arg("stop_gradient") = false)
@@ -138,6 +146,22 @@ PYBIND11_MODULE(core, m) {
       .def("_grad_ivar",
            [](const imperative::VarBase &self) { return self.grads_; },
            py::return_value_policy::reference)
+      .def("_copy_to",
+           [](const imperative::VarBase &self, const platform::CPUPlace &place,
+              bool blocking) {
+             std::unique_ptr<imperative::VarBase> new_var =
+                 self.NewVarBase(place, blocking);
+             return new_var.release();
+           },
+           py::return_value_policy::take_ownership)
+      .def("_copy_to",
+           [](const imperative::VarBase &self, const platform::CUDAPlace &place,
+              bool blocking) {
+             std::unique_ptr<imperative::VarBase> new_var =
+                 self.NewVarBase(place, blocking);
+             return new_var.release();
+           },
+           py::return_value_policy::take_ownership)
       .def("value", [](const imperative::VarBase &self) { return self.var_; },
            py::return_value_policy::reference)
       .def_property(
@@ -271,6 +295,7 @@ PYBIND11_MODULE(core, m) {
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
+      .def("_place", [](Tensor &self) { return self.place(); })
       .def("_dtype", [](Tensor &self) { return self.type(); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
@@ -469,6 +494,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference);
 
   py::class_<framework::ReaderHolder>(m, "Reader", "")
+      .def("start", &framework::ReaderHolder::Start)
       .def("reset", &framework::ReaderHolder::ResetAll);
 
   using LoDTensorBlockingQueue =
@@ -489,19 +515,12 @@ All parameter, weight, gradient are variables in Paddle.
       .def("is_closed", &LoDTensorBlockingQueue::IsClosed);
 
   m.def("init_lod_tensor_blocking_queue",
-        [](Variable &var, size_t capacity,
-           const std::vector<std::vector<int64_t>> &shapes)
-            -> std::shared_ptr<LoDTensorBlockingQueue> {
-              std::vector<DDim> dims(shapes.size());
-              std::transform(shapes.begin(), shapes.end(), dims.begin(),
-                             [](const std::vector<int64_t> &shape) {
-                               return make_ddim(shape);
-                             });
-              auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
-              holder->InitOnce(capacity, dims,
-                               FLAGS_reader_queue_speed_test_mode);
-              return holder->GetQueue();
-            },
+        [](Variable &var,
+           size_t capacity) -> std::shared_ptr<LoDTensorBlockingQueue> {
+          auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
+          holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
+          return holder->GetQueue();
+        },
         py::return_value_policy::copy);
 
   py::class_<Scope>(m, "_Scope", R"DOC(
@@ -626,7 +645,18 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace")
-      .def(py::init<int>())
+      .def("__init__",
+           [](platform::CUDAPlace &self, int dev_id) {
+#ifdef PADDLE_WITH_CUDA
+             PADDLE_ENFORCE(
+                 dev_id >= 0 && dev_id < platform::GetCUDADeviceCount(),
+                 "Invalid CUDAPlace(%d), must inside [0, %d)", dev_id,
+                 platform::GetCUDADeviceCount());
+             new (&self) platform::CUDAPlace(dev_id);
+#else
+             PADDLE_THROW("Cannot use CUDAPlace in CPU only version");
+#endif
+           })
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
@@ -634,11 +664,22 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
   py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace")
-      .def(py::init<>())
+      .def("__init__",
+           [](platform::CUDAPinnedPlace &) {
+#ifndef PADDLE_WITH_CUDA
+             PADDLE_THROW("Cannot use CUDAPinnedPlace in CPU only version");
+#endif
+           })
       .def("__str__", string::to_string<const platform::CUDAPinnedPlace &>);
 
   py::class_<platform::Place>(m, "Place")
       .def(py::init<>())
+      .def("is_gpu_place",
+           [](platform::Place &self) { return platform::is_gpu_place(self); })
+      .def("gpu_device_id",
+           [](platform::Place &self) {
+             return boost::get<platform::CUDAPlace>(self).device;
+           })
       .def("set_place",
            [](platform::Place &self, const platform::CPUPlace &cpu_place) {
              self = cpu_place;
@@ -1005,7 +1046,7 @@ All parameter, weight, gradient are variables in Paddle.
             PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.remove_unnecessary_lock_ = b;
           },
-          R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default False.)DOC")
+          R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default True.)DOC")
       .def_property(
           "num_trainers",
           [](const BuildStrategy &self) { return self.num_trainers_; },
@@ -1059,9 +1100,9 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.is_distribution_; },
           [](BuildStrategy &self, bool b) { self.is_distribution_ = b; })
       .def_property(
-          "memory_early_delete",
-          [](const BuildStrategy &self) { return self.memory_early_delete_; },
-          [](BuildStrategy &self, bool b) { self.memory_early_delete_ = b; })
+          "enable_inplace",
+          [](const BuildStrategy &self) { return self.enable_inplace_; },
+          [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);

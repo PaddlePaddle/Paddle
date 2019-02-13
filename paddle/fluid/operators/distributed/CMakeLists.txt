@@ -20,7 +20,7 @@ if(WITH_GRPC)
         collective_client.cc collective_server.cc
         ${GRPC_SRCS}
       PROTO send_recv.proto 
-      DEPS lod_tensor selected_rows_functor memory)
+      DEPS lod_tensor selected_rows_functor memory scope ${GRPC_DEPS})
 
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set(RPC_DEPS sendrecvop_rpc ${GRPC_DEPS})
@@ -32,15 +32,17 @@ else()
   set(BRPC_SRCS brpc/brpc_client.cc brpc/brpc_server.cc brpc/brpc_sendrecvop_utils.cc brpc/brpc_variable_response.cc brpc/brpc_rdma_pool.cc)
   set_source_files_properties(${BRPC_SRCS} parameter_prefetch.cc rpc_server_test.cc brpc/brpc_serde_test.cc collective_server.cc collective_server_test.cc collective_client.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
+  set(BRPC_DEPS brpc ssl crypto protobuf leveldb snappystream snappy zlib)
+
   brpc_library(sendrecvop_rpc SRCS sendrecvop_utils.cc
       request_handler_impl.cc rpc_client.cc rpc_server.cc
       variable_response.cc
       collective_client.cc collective_server.cc
       ${BRPC_SRCS}
     PROTO send_recv.proto
-    DEPS lod_tensor selected_rows memory)
+    DEPS lod_tensor selected_rows memory scope ${BRPC_DEPS})
 
-  set(RPC_DEPS sendrecvop_rpc brpc ssl crypto protobuf leveldb snappystream snappy zlib)
+  set(RPC_DEPS sendrecvop_rpc ${BRPC_DEPS})
   cc_test(brpc_serde_test SRCS brpc/brpc_serde_test.cc
       DEPS ${RPC_DEPS} gflags glog executor proto_desc lookup_sparse_table_op SERIAL)
 endif()

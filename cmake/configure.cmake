@@ -152,7 +152,12 @@ endif()
 
 if (WITH_MKLML AND MKLML_IOMP_LIB)
     message(STATUS "Enable Intel OpenMP with ${MKLML_IOMP_LIB}")
-    set(OPENMP_FLAGS "-fopenmp")
+    if(WIN32)
+        # openmp not support well for now on windows
+        set(OPENMP_FLAGS "")
+    else(WIN32)
+        set(OPENMP_FLAGS "-fopenmp")
+    endif(WIN32)
     set(CMAKE_C_CREATE_SHARED_LIBRARY_FORBIDDEN_FLAGS ${OPENMP_FLAGS})
     set(CMAKE_CXX_CREATE_SHARED_LIBRARY_FORBIDDEN_FLAGS ${OPENMP_FLAGS})
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPENMP_FLAGS}")

@@ -117,6 +117,7 @@ class CpuPassStrategy : public PassStrategy {
         "conv_bn_fuse_pass",             //
         "conv_eltwiseadd_bn_fuse_pass",  //
         "is_test_pass",                  //
+        "identity_scale_op_clean_pass",  //
     });
     use_gpu_ = false;
   }
@@ -154,13 +155,17 @@ class GpuPassStrategy : public PassStrategy {
  public:
   GpuPassStrategy() : PassStrategy({}) {
     passes_.assign({
-        "infer_clean_graph_pass",                    //
-        "conv_affine_channel_fuse_pass",             //
-        "conv_eltwiseadd_affine_channel_fuse_pass",  //
-        "conv_bn_fuse_pass",                         //
-        "conv_elementwise_add_act_fuse_pass",        //
-        "conv_elementwise_add2_act_fuse_pass",       //
-        "conv_elementwise_add_fuse_pass",            //
+      "infer_clean_graph_pass",                        //
+          "identity_scale_op_clean_pass",              //
+          "conv_affine_channel_fuse_pass",             //
+          "conv_eltwiseadd_affine_channel_fuse_pass",  //
+          "conv_bn_fuse_pass",                         //
+#if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
+                           // guaranteed at least v7
+          "conv_elementwise_add_act_fuse_pass",   //
+          "conv_elementwise_add2_act_fuse_pass",  //
+          "conv_elementwise_add_fuse_pass",       //
+#endif
     });
 
     for (int i = 6; i >= 3; i--) {

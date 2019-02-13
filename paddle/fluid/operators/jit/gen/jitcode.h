@@ -47,6 +47,7 @@ using Label = Xbyak::Label;
 
 typedef enum {
   MUL = 0,
+  MAX,
   ADD,
   SUB,
   RELU,
@@ -67,7 +68,6 @@ class JitCode : public GenBase, public Xbyak::CodeGenerator {
             (code_size % 4096 != 0 ? (code_size / 4096 + 1) * 4096 : code_size),
             code_ptr) {}
 
-  virtual const char* name() const = 0;
   virtual void genCode() = 0;
 
   size_t getSize() const override { return CodeGenerator::getSize(); }

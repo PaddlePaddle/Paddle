@@ -38,7 +38,7 @@ class SeqPoolJitCode : public JitCode {
     this->genCode();
   }
 
-  virtual const char* name() const {
+  virtual const char* name() const override {
     std::string base = "SeqPoolJitCode";
     if (type_ == SeqPoolType::kSum) {
       base += "_Sum";
