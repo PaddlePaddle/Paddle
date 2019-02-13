@@ -640,6 +640,66 @@ void TestNCHW16CMulNCKernel() {
   }
 }
 
+template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+void TestLayerNormKernel() {
+  VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
+  const int n = 3, x_dim_0 = 50, x_dims_1 = 200;
+  const T epsilon = 9.99999975e-06;
+  auto ref = jit::GetRefer<KT, jit::LayerNormTuples<T>>();
+  EXPECT_TRUE(ref != nullptr);
+  int sz = n * x_dim_0 * x_dims_1;
+  int left = n * x_dim_0, right = x_dims_1;
+  std::vector<T> x(sz), mean(left), var(left), scale(right), bias(right),
+      outref(sz);
+  std::vector<T> outtgt(sz);
+  RandomVec<T>(sz, x.data(), -2.f, 2.f);
+  RandomVec<T>(left, mean.data(), -2.f, 2.f);
+  RandomVec<T>(left, var.data(), -2.f, 2.f);
+  RandomVec<T>(right, scale.data(), -2.f, 2.f);
+  RandomVec<T>(right, bias.data(), -2.f, 2.f);
+
+  const T* scale_data = scale.data();
+  const T* bias_data = bias.data();
+  T* x_data = x.data();
+  T* mean_data = mean.data();
+  T* var_data = var.data();
+  T* outref_data = outref.data();
+  T* outtgt_data = outtgt.data();
+  auto tgt = jit::Get<KT, jit::LayerNormTuples<T>, PlaceType>(0);
+  EXPECT_TRUE(tgt != nullptr);
+
+  ref(x_data, outref_data, mean_data, var_data, scale_data, bias_data, left,
+      epsilon, right);
+  tgt(x_data, outtgt_data, mean_data, var_data, scale_data, bias_data, left,
+      epsilon, right);
+
+  ExpectEQ<T>(outtgt_data, outref_data, sz);
+}
+
+template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+void TestCRFDecodingKernel() {
+  VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
+  const int seq_len = 11, tag_num = 49;
+  auto ref = jit::GetRefer<KT, jit::CRFDecodingTuples<T>>();
+  EXPECT_TRUE(ref != nullptr);
+  int x_sz = seq_len * tag_num;
+  int w_sz = (tag_num + 2) * tag_num;
+  std::vector<T> x(x_sz), w(w_sz), alpharef(x_sz), alphatgt(x_sz);
+  std::vector<int> trackref(x_sz), tracktgt(x_sz);
+  RandomVec<T>(x_sz, x.data(), -2.f, 2.f);
+  RandomVec<T>(w_sz, w.data(), -2.f, 2.f);
+  auto tgt = jit::Get<KT, jit::CRFDecodingTuples<T>, PlaceType>(tag_num);
+  EXPECT_TRUE(tgt != nullptr);
+
+  memcpy(trackref.data(), tracktgt.data(), tag_num * sizeof(int));
+  ref(seq_len, (const T*)x.data(), (const T*)w.data(), alpharef.data(),
+      trackref.data(), tag_num);
+  tgt(seq_len, (const T*)x.data(), (const T*)w.data(), alphatgt.data(),
+      tracktgt.data(), tag_num);
+  ExpectEQ<T>(alpharef.data(), alphatgt.data(), x_sz);
+  ExpectEQ<int>(trackref.data(), tracktgt.data(), x_sz);
+}
+
 // XYZNTuple
 TEST(JITKernel, kVMul) {
   TestXYZNKernel<jit::kVMul, float, CPUPlace>();
@@ -761,7 +821,15 @@ TEST(JITKernel, kNCHW16CMulNC) {
   TestNCHW16CMulNCKernel<jit::kNCHW16CMulNC, double, CPUPlace>();
 }
 
-// TODO(yihua/TJ): add crf decoding and layer norm unit tests
+TEST(JITKernel, kLayerNorm) {
+  namespace jit = paddle::operators::jit;
+  TestLayerNormKernel<jit::kLayerNorm, float, paddle::platform::CPUPlace>();
+}
+
+TEST(JITKernel, kCRFDecoding) {
+  namespace jit = paddle::operators::jit;
+  TestCRFDecodingKernel<jit::kCRFDecoding, float, paddle::platform::CPUPlace>();
+}
 
 TEST(JITKernel, pool) {
   // TODO(TJ): add some test
