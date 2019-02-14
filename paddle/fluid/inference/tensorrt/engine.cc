@@ -32,37 +32,12 @@ void TensorRTEngine::Build(const DescType &paddle_model) {
   PADDLE_ENFORCE(false, "not implemented");
 }
 
-void TensorRTEngine::Execute(int batch_size, std::vector<void *> &buffers) {
+void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
+                             cudaStream_t stream) {
   batch_size_ = batch_size;
-  infer_context_->enqueue(batch_size, buffers.data(), stream_, nullptr);
-  cudaStreamSynchronize(stream_);
+  infer_context_->enqueue(batch_size, buffers->data(), stream, nullptr);
+  cudaStreamSynchronize(stream);
   SetRuntimeBatch(batch_size);
-}
-
-void TensorRTEngine::Execute(int batch_size) {
-  batch_size_ = batch_size;
-  std::vector<void *> buffers;
-  for (auto &buf : buffers_) {
-    PADDLE_ENFORCE_NOT_NULL(buf.buffer, "buffer should be allocated");
-    PADDLE_ENFORCE_GT(buf.max_size, 0);
-    PADDLE_ENFORCE(buf.device == DeviceType::GPU);
-    buffers.push_back(buf.buffer);
-  }
-  infer_context_->enqueue(batch_size, buffers.data(), stream_, nullptr);
-  cudaStreamSynchronize(stream_);
-  SetRuntimeBatch(batch_size);
-}
-
-TensorRTEngine::~TensorRTEngine() {
-  cudaStreamSynchronize(stream_);
-  // clean buffer
-  for (auto &buf : buffers_) {
-    if (buf.device == DeviceType::GPU && buf.buffer != nullptr) {
-      PADDLE_ENFORCE_EQ(0, cudaFree(buf.buffer));
-      buf.buffer = nullptr;
-      buf.max_size = 0;
-    }
-  }
 }
 
 void TensorRTEngine::FreezeNetwork() {
