@@ -190,13 +190,13 @@ static void ForEachDevice(std::function<void(int)> func) {
 }
 #endif
 
-MemEvent::MemEvent(EventType type, size_t bytes, Place place)
-    : type_(type), bytes_(bytes), place_(place) {
-  if (0 == start_ns_)
-    start_ns_ = GetTimeInNsec();
-  else
-    end_ns_ = GetTimeInNsec();
-}
+MemEvent::MemEvent(EventType type, uint64_t start_ns, uint64_t end_ns,
+                   size_t bytes, Place place)
+    : type_(type),
+      start_ns_(start_ns),
+      end_ns_(end_ns),
+      bytes_(bytes),
+      place_(place) {}
 
 inline MemEventList& GetMemEventList() {
   if (!g_mem_event_list) {
@@ -209,16 +209,18 @@ inline MemEventList& GetMemEventList() {
   return *g_mem_event_list;
 }
 
-void Mark(size_t bytes, Place place) {
-  GetMemEventList().Record(EventType::kMark, bytes, place);
+void Mark(uint64_t start_ns, uint64_t end_ns, size_t bytes, Place place) {
+  GetMemEventList().Record(EventType::kMark, start_ns, end_ns, bytes, place);
 }
 
-void PushEvent(size_t bytes, Place place) {
-  GetMemEventList().Record(EventType::kPushRange, bytes, place);
+void PushEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes, Place place) {
+  GetMemEventList().Record(EventType::kPushRange, start_ns, end_ns, bytes,
+                           place);
 }
 
-void PopEvent(size_t bytes, Place place) {
-  GetMemEventList().Record(EventType::kPopRange, bytes, place);
+void PopEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes, Place place) {
+  GetMemEventList().Record(EventType::kPopRange, start_ns, end_ns, bytes,
+                           place);
 }
 
 inline EventList& GetEventList() {
@@ -277,7 +279,7 @@ void RecordMemEvent::InitRecordMem(size_t bytes, Place place) {
   is_enabled_ = true;
   place_ = place;
   bytes_ = bytes;
-  PushEvent(bytes_, place_);
+  //  PushEvent(bytes_, place_);
 }
 
 void RecordMemEvent::DelRecordMem() {
@@ -285,11 +287,11 @@ void RecordMemEvent::DelRecordMem() {
   std::lock_guard<std::mutex> l(profiler_mem);
   DeviceTracer* tracer = GetDeviceTracer();
   end_ns_ = PosixInNsec();
-  VLOG(3) << start_ns_ << "\t" << bytes_ << "\n";
+  PushEvent(start_ns_, end_ns_, bytes_, place_);
   if (tracer) {
     tracer->AddMemInfoRecord(start_ns_, end_ns_, bytes_, place_);
   }
-  PopEvent(bytes_, place_);
+  PopEvent(start_ns_, end_ns_, bytes_, place_);
 }
 
 RecordRPCEvent::RecordRPCEvent(const std::string& name,
@@ -348,7 +350,7 @@ void EnableProfiler(ProfilerState state) {
 #endif
   // Mark the profiling start.
   Mark("_start_profiler_", nullptr);
-  Mark(0, get_place());
+  Mark(0, 0, 0, get_place());
 }
 
 void ResetProfiler() {
@@ -534,7 +536,7 @@ void ParseMemEvents(const std::vector<std::vector<MemEvent>>& events) {
       event_info[i].peak = std::max(event_info[i].peak, crt_size);
       event_info[i].valley = std::min(event_info[i].valley, crt_size);
     }
-    if (mem_timeline[i].rbegin()->time ==
+    /*if (mem_timeline[i].rbegin()->time ==
         tmp_mem_results[tmp_mem_results.size() - 1].time) {
       mem_timeline[i].rbegin()->size_ +=
           tmp_mem_results[tmp_mem_results.size() - 1].size_;
@@ -543,7 +545,7 @@ void ParseMemEvents(const std::vector<std::vector<MemEvent>>& events) {
           {tmp_mem_results[tmp_mem_results.size() - 1].time,
            mem_timeline[i].rbegin()->size_ +
                tmp_mem_results[tmp_mem_results.size() - 1].size_});
-    }
+    }*/
     event_info[i].peak =
         std::max(event_info[i].peak, mem_timeline[i].rbegin()->size_);
     event_info[i].valley =
@@ -707,7 +709,7 @@ void DisableProfiler(EventSortingKey sorted_key,
   if (g_state == ProfilerState::kDisabled) return;
   // Mark the profiling stop.
   Mark("_stop_profiler_", nullptr);
-  Mark(0, get_place());
+  Mark(0, 0, 0, get_place());
 
   std::vector<std::vector<Event>> all_events = GetAllEvents();
   std::vector<std::vector<MemEvent>> all_mem_events = GetMemEvents();

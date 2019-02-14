@@ -58,7 +58,8 @@ class Event {
 
 class MemEvent {
  public:
-  MemEvent(EventType type, size_t bytes, Place place);
+  MemEvent(EventType type, uint64_t start_ns, uint64_t end_ns, size_t bytes,
+           Place place);
 
   const EventType& type() const { return type_; }
 
@@ -76,11 +77,11 @@ class MemEvent {
   Place place_;
 };
 
-void Mark(size_t bytes, Place place);
+void Mark(uint64_t start_ns, uint64_t end_ns, size_t bytes, Place place);
 
-void PushEvent(size_t bytes, Place place);
+void PushEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes, Place place);
 
-void PopEvent(size_t bytes, Place place);
+void PopEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes, Place place);
 
 enum ProfilerState {
   kDisabled,  // disabled state
