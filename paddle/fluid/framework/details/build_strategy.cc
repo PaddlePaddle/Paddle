@@ -119,8 +119,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     // Verify that the graph is correct for multi-device executor.
     auto multi_devices_pass = AppendPass("multi_devices_check_pass");
-    multi_devices_pass->Set<bool>(kEnablePG,
-                                  new bool(strategy.enable_parallel_graph_));
 
     if (SeqOnlyAllReduceOps(strategy)) {
       AppendPass("all_reduce_deps_pass");
@@ -194,8 +192,6 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
                                                     &local_scopes);
       pass->Erase(kNRanks);
       pass->Set<size_t>(kNRanks, new size_t(nranks));
-      pass->Erase(kEnablePG);
-      pass->Set<bool>(kEnablePG, new bool(true));
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
