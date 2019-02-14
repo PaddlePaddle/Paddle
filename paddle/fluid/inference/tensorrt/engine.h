@@ -57,13 +57,12 @@ class TensorRTEngine : public EngineBase {
   };
 
   TensorRTEngine(int max_batch, int max_workspace, cudaStream_t stream,
-                 int device = 0, bool enable_int8 = false,
+                 bool enable_int8 = false,
                  TRTInt8Calibrator* calibrator = nullptr,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
         stream_(stream),
-        device_(device),
         enable_int8_(enable_int8),
         calibrator_(calibrator),
         logger_(logger) {}
@@ -74,6 +73,7 @@ class TensorRTEngine : public EngineBase {
   void Build(const DescType& paddle_model) override;
 
   void Execute(int batch_size) override;
+  void Execute(int batch_size, std::vector<void*>& buffers);
 
   // Initialize the inference network, so that TensorRT layers can add to this
   // network.
@@ -98,28 +98,8 @@ class TensorRTEngine : public EngineBase {
   // Check if the ITensor has been declared
   bool HasDeclared(const std::string& name);
 
-  // GPU memory address for an ITensor with specific name. One can operate on
-  // these memory directly for acceleration, for example, output the converted
-  // data directly to the buffer to save data copy overhead.
-  // NOTE this should be used after calling `FreezeNetwork`.
-  Buffer& buffer(const std::string& name) override;
-
   cudaStream_t stream() { return stream_; }
 
-  // Fill an input from CPU memory with name and size.
-  void SetInputFromCPU(const std::string& name, const void* data, size_t size);
-  // TODO(Superjomn) is this method necessary given that buffer(xxx) can be
-  // accessed directly. Fill an input from GPU memory with name and size.
-  void SetInputFromGPU(const std::string& name, const void* data, size_t size);
-  // Get an output called name, the output of tensorrt is in GPU, so this method
-  // Return the output's GPU memory address without copy.
-  void* GetOutputInGPU(const std::string& name);
-  // Copy data into dst inside the GPU device.
-  void GetOutputInGPU(const std::string& name, void* dst, size_t max_size);
-  // LOW EFFICENCY! Get output to CPU, this will trigger a memory copy from GPU
-  // to CPU.
-  void GetOutputInCPU(const std::string& name, void* dst, size_t max_size);
-  // Fill an ITensor into map itensor_map_.
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);
@@ -128,7 +108,6 @@ class TensorRTEngine : public EngineBase {
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
   void SetRuntimeBatch(size_t batch_size);
   int GetRuntimeBatch();
-  int GetDevice() { return device_; }
   nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
                                     int num_inputs, plugin::PluginTensorRT*);
 
@@ -140,16 +119,6 @@ class TensorRTEngine : public EngineBase {
   std::unordered_map<std::string /*name*/, std::unique_ptr<framework::Tensor>>
       weight_map;
 
-  // TODO(NHZLX)
-  // In the normal case, the paddle-trt exists bug when runing the googlenet.
-  // When there are more than two convolutions of 1 * 1 with the same input, the
-  // paddle-tensorrt will do the merging optimization, which fuse those conv
-  // into one conv, and then trigger bug. So,  We should use strategy to avoid
-  // this
-  // optimization for the time being. This bug will be fixed in the future.
-  std::unordered_map<std::string /*name*/, int /*ITensor_quote_num*/>
-      itensor_quote_num;
-
  private:
   // the max batch size
   int max_batch_;
@@ -159,8 +128,6 @@ class TensorRTEngine : public EngineBase {
   int max_workspace_;
 
   cudaStream_t stream_;
-  // The specific GPU id that the TensorRTEngine bounded to.
-  int device_;
 
   bool enable_int8_;
   TRTInt8Calibrator* calibrator_;
@@ -192,10 +159,6 @@ class TensorRTEngine : public EngineBase {
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
   infer_ptr<nvinfer1::IExecutionContext> infer_context_;
-  // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
-  // ensure that the thread is associated with the correct device by calling
-  // freshDeviceId().
-  void freshDeviceId();
 };  // class TensorRTEngine
 
 // Add an layer__ into engine__ with args ARGS.

@@ -146,19 +146,6 @@ class TRTConvertValidation {
 
     // Declare outputs.
     op_desc_.reset(new framework::OpDesc(desc, nullptr));
-
-    // Set Inputs.
-    for (const auto& input : op_desc_->InputArgumentNames()) {
-      if (parameters_.count(input)) continue;
-      auto* var = scope_.FindVar(input);
-      PADDLE_ENFORCE(var);
-      auto tensor = var->GetMutable<framework::LoDTensor>();
-
-      engine_->SetInputFromGPU(
-          input, static_cast<void*>(tensor->data<void>()),
-          sizeof(float) *
-              analysis::AccuDims(tensor->dims(), tensor->dims().size()));
-    }
   }
 
   // We use the set 'neglected_output' here, because some Ops like batch norm,
@@ -171,34 +158,64 @@ class TRTConvertValidation {
     platform::CUDAPlace place;
     platform::CUDADeviceContext ctx(place);
     op_->Run(scope_, place);
+
+    std::vector<std::string> input_output_names;
+
+    // Note: we need filter the parameter
+    for (const auto& input : op_desc_->InputArgumentNames()) {
+      if (parameters_.count(input)) continue;
+      input_output_names.push_back(input);
+    }
+
+    // Collect the fluid outputs.
+    std::vector<std::vector<float>> fluid_outs;
+    for (const auto& output : op_desc_->OutputArgumentNames()) {
+      if (neglected_output.count(output)) continue;
+      input_output_names.push_back(output);
+      std::vector<float> fluid_out;
+      auto* var = scope_.FindVar(output);
+      auto* tensor = var->GetMutable<framework::LoDTensor>();
+      framework::TensorToVector(*tensor, ctx, &fluid_out);
+      fluid_outs.push_back(fluid_out);
+    }
+
+    // Bind input and output for TRT.
+    const int num_bindings = input_output_names.size();
+    std::vector<void*> buffers(num_bindings);
+
+    for (const std::string& name : input_output_names) {
+      auto* var = scope_.FindVar(name);
+      auto* tensor = var->GetMutable<framework::LoDTensor>();
+      const int bind_index = engine_->engine()->getBindingIndex(name.c_str());
+      buffers[bind_index] =
+          static_cast<void*>(tensor->mutable_data<float>(place));
+    }
+
     // Execute TRT.
-    engine_->Execute(batch_size);
+    engine_->Execute(batch_size, buffers);
+
     cudaStreamSynchronize(engine_->stream());
 
     ASSERT_FALSE(op_desc_->OutputArgumentNames().empty());
-    const size_t output_space_size = 3000;
+    int index = 0;
     for (const auto& output : op_desc_->OutputArgumentNames()) {
       if (neglected_output.count(output)) continue;
-      std::vector<float> fluid_out;
-      std::vector<float> trt_out(output_space_size);
-      engine_->GetOutputInCPU(output, &trt_out[0], output_space_size);
-      cudaStreamSynchronize(engine_->stream());
-
+      std::vector<float> trt_out;
       auto* var = scope_.FindVar(output);
-      auto tensor = var->GetMutable<framework::LoDTensor>();
-      framework::TensorToVector(*tensor, ctx, &fluid_out);
+      auto* tensor = var->GetMutable<framework::LoDTensor>();
+      framework::TensorToVector(*tensor, ctx, &trt_out);
 
-      size_t fluid_out_size = fluid_out.size();
+      size_t fluid_out_size = fluid_outs[index].size();
       if (if_add_batch_ == true) {
         fluid_out_size =
             batch_size * (framework::product(tensor->dims()) / max_batch_size_);
       }
-      // Compare two output
-      ASSERT_FALSE(fluid_out.empty());
+
       for (size_t i = 0; i < fluid_out_size; i++) {
         // Loose the threshold for CI in different machine model.
-        EXPECT_LT(std::abs(fluid_out[i] - trt_out[i]), 2e-5);
+        EXPECT_LT(std::abs(fluid_outs[index][i] - trt_out[i]), 2e-5);
       }
+      index += 1;
     }
   }
 
