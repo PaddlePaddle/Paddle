@@ -123,7 +123,7 @@ TEST(CTR_READER, read_data) {
   std::vector<std::tuple<LoD, std::vector<int64_t>>> data_slot_6003{b1, b2, b3,
                                                                     b4};
 
-  std::vector<DDim> label_dims = {{1, 3}, {1, 3}, {1, 3}, {1, 1}};
+  std::vector<DDim> label_dims = {{3, 1}, {3, 1}, {3, 1}, {1, 1}};
 
   LoDTensorBlockingQueueHolder queue_holder;
   int capacity = 64;

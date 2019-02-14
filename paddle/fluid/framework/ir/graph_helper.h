@@ -28,6 +28,11 @@ namespace ir {
 // Test if the graph contains circle.
 bool HasCircle(const Graph &graph);
 
+// Find All Circles for debugging,
+// store all subgraph in circles.
+bool FindCircleSubGraph(const Graph &graph,
+                        std::vector<std::vector<ir::Node *>> *circles);
+
 size_t GraphNum(const Graph &graph);
 
 // Topology Sort the operations in the graph from inputs to outputs.

@@ -213,7 +213,7 @@ void ReadSvmData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
       framework::LoD lod{lod_data};
       lod_tensor.set_lod(lod);
       int64_t* tensor_data = lod_tensor.mutable_data<int64_t>(
-          framework::make_ddim({1, static_cast<int64_t>(batch_feasign.size())}),
+          framework::make_ddim({static_cast<int64_t>(batch_feasign.size()), 1}),
           platform::CPUPlace());
       memcpy(tensor_data, batch_feasign.data(),
              batch_feasign.size() * sizeof(int64_t));
@@ -223,7 +223,7 @@ void ReadSvmData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
     // insert label tensor
     framework::LoDTensor label_tensor;
     auto* label_tensor_data = label_tensor.mutable_data<int64_t>(
-        framework::make_ddim({1, static_cast<int64_t>(batch_label.size())}),
+        framework::make_ddim({static_cast<int64_t>(batch_label.size()), 1}),
         platform::CPUPlace());
     memcpy(label_tensor_data, batch_label.data(),
            batch_label.size() * sizeof(int64_t));

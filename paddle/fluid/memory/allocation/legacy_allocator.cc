@@ -35,8 +35,8 @@ DEFINE_bool(init_allocated_mem, false,
             "To find this error in time, we use init_allocated_mem to indicate "
             "that initializing the allocated memory with a small value "
             "during unit testing.");
-DECLARE_bool(benchmark);
 DECLARE_double(fraction_of_gpu_memory_to_use);
+DECLARE_bool(benchmark);
 
 namespace paddle {
 namespace memory {
@@ -188,21 +188,20 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
     platform::SetDeviceId(place.device);
     size_t avail, total;
     platform::GpuMemoryUsage(&avail, &total);
-    LOG(WARNING) << "Cannot allocate " << string::HumanReadableSize(size)
-                 << " in GPU " << place.device << ", available "
-                 << string::HumanReadableSize(avail);
-    LOG(WARNING) << "total " << total;
-    LOG(WARNING) << "GpuMinChunkSize "
-                 << string::HumanReadableSize(
-                        buddy_allocator->GetMinChunkSize());
-    LOG(WARNING) << "GpuMaxChunkSize "
-                 << string::HumanReadableSize(
-                        buddy_allocator->GetMaxChunkSize());
-    LOG(WARNING) << "GPU memory used: "
-                 << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
+    LOG(FATAL) << "Cannot allocate " << string::HumanReadableSize(size)
+               << " in GPU " << place.device << ", available "
+               << string::HumanReadableSize(avail) << "total " << total
+               << "GpuMinChunkSize "
+               << string::HumanReadableSize(buddy_allocator->GetMinChunkSize())
+               << "GpuMaxChunkSize "
+               << string::HumanReadableSize(buddy_allocator->GetMaxChunkSize())
+               << "GPU memory used: "
+               << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
     platform::SetDeviceId(cur_dev);
   } else {
-    if (FLAGS_benchmark) allocation::GPUMemMonitor.Add(place.device, size);
+    if (FLAGS_benchmark) {
+      allocation::GPUMemMonitor.Add(place.device, size);
+    }
     if (FLAGS_init_allocated_mem) {
       cudaMemset(ptr, 0xEF, size);
     }
@@ -218,7 +217,9 @@ void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p,
                                size_t size) {
 #ifdef PADDLE_WITH_CUDA
   GetGPUBuddyAllocator(place.device)->Free(p);
-  if (FLAGS_benchmark) allocation::GPUMemMonitor.Minus(place.device, size);
+  if (FLAGS_benchmark) {
+    allocation::GPUMemMonitor.Minus(place.device, size);
+  }
 #else
   PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
 #endif
@@ -257,7 +258,7 @@ void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
   void *ptr = buddy_allocator->Alloc(size);
 
   if (ptr == nullptr) {
-    LOG(WARNING) << "cudaMallocHost Cannot allocate " << size
+    LOG(WARNING) << "cudaHostAlloc Cannot allocate " << size
                  << " bytes in CUDAPinnedPlace";
   }
   if (FLAGS_init_allocated_mem) {
