@@ -128,7 +128,7 @@ FeedFetchList ParallelSSAGraphExecutor::Run(
     if (pool_) {
       run_futures.emplace_back(pool_->enqueue(std::move(call)));
     } else {
-      fetch_data.emplace_back(std::move(call()));
+      fetch_data.emplace_back(call());
     }
   }
 
@@ -137,7 +137,7 @@ FeedFetchList ParallelSSAGraphExecutor::Run(
       if (exception_holder_.IsCaught()) {
         f.wait();
       } else {
-        fetch_data.emplace_back(std::move(f.get()));
+        fetch_data.emplace_back(f.get());
       }
     }
   }

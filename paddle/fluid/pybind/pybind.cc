@@ -295,6 +295,7 @@ PYBIND11_MODULE(core, m) {
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
+      .def("_place", [](Tensor &self) { return self.place(); })
       .def("_dtype", [](Tensor &self) { return self.type(); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
@@ -673,6 +674,12 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<platform::Place>(m, "Place")
       .def(py::init<>())
+      .def("is_gpu_place",
+           [](platform::Place &self) { return platform::is_gpu_place(self); })
+      .def("gpu_device_id",
+           [](platform::Place &self) {
+             return boost::get<platform::CUDAPlace>(self).device;
+           })
       .def("set_place",
            [](platform::Place &self, const platform::CPUPlace &cpu_place) {
              self = cpu_place;
@@ -1093,9 +1100,9 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.is_distribution_; },
           [](BuildStrategy &self, bool b) { self.is_distribution_ = b; })
       .def_property(
-          "memory_early_delete",
-          [](const BuildStrategy &self) { return self.memory_early_delete_; },
-          [](BuildStrategy &self, bool b) { self.memory_early_delete_ = b; })
+          "enable_inplace",
+          [](const BuildStrategy &self) { return self.enable_inplace_; },
+          [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);
