@@ -304,6 +304,7 @@ ParallelExecutor::ParallelExecutor(
   }
 
   if (build_strategy.enable_parallel_graph_) {
+#ifdef PADDLE_WITH_CUDA
     auto parallel_graph =
         details::SeparateMultiDevicesGraph(member_->places_, std::move(graph));
     auto seq_allreduce_pass =
@@ -319,6 +320,10 @@ ParallelExecutor::ParallelExecutor(
     member_->executor_.reset(new details::ParallelSSAGraphExecutor(
         exec_strategy, member_->local_scopes_, member_->places_,
         std::move(parallel_graph)));
+#else
+    PADDLE_THROW(
+        "Paddle should be compiled with CUDA for ParallelGraph Execution.");
+#endif
   } else {
     if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
       member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
