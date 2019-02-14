@@ -112,7 +112,10 @@ class TestExpandOpRank4(OpTest):
 class TestExpandOpInteger(OpTest):
     def setUp(self):
         self.op_type = "expand"
-        self.inputs = {'X': np.random.random((2, 4, 5)).astype("int32")}
+        self.inputs = {
+            'X': np.random.randint(
+                10, size=(2, 4, 5)).astype("int32")
+        }
         self.attrs = {'expand_times': [2, 1, 4]}
         output = np.tile(self.inputs['X'], (2, 1, 4))
         self.outputs = {'Out': output}
@@ -124,7 +127,7 @@ class TestExpandOpInteger(OpTest):
 class TestExpandOpBoolean(OpTest):
     def setUp(self):
         self.op_type = "expand"
-        self.inputs = {'X': np.random.random((2, 4, 5)).astype("bool")}
+        self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
         self.attrs = {'expand_times': [2, 1, 4]}
         output = np.tile(self.inputs['X'], (2, 1, 4))
         self.outputs = {'Out': output}
