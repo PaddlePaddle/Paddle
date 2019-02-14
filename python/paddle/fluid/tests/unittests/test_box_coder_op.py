@@ -34,7 +34,9 @@ def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
     pb_y = pb_y.reshape(shape)
 
     if pb_v.ndim == 2:
-        pb_v = pb_v.reshape(1, pb_v.shape[0], pb_v.shape[1])
+        var_shape = (1, pb_v.shape[0], pb_v.shape[1]) if axis == 0 else (
+            pb_v.shape[0], 1, pb_v.shape[1])
+        pb_v = pb_v.reshape(var_shape)
     if pb_v.ndim == 1:
         tb_x = pb_v[0] * t_box[:, :, 0] * pb_w + pb_x
         tb_y = pb_v[1] * t_box[:, :, 1] * pb_h + pb_y
@@ -125,33 +127,6 @@ class TestBoxCoderOp(OpTest):
         self.outputs = {'OutputBox': output_box}
 
 
-class TestBoxCoderOpWithOneRankVar(OpTest):
-    def test_check_output(self):
-        self.check_output()
-
-    def setUp(self):
-        self.op_type = "box_coder"
-        lod = [[1, 1, 1, 1, 1]]
-        prior_box = np.random.random((81, 4)).astype('float32')
-        prior_box_var = np.random.random((4)).astype('float32')
-        target_box = np.random.random((20, 81, 4)).astype('float32')
-        code_type = "DecodeCenterSize"
-        box_normalized = False
-        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
-                                     lod[0], code_type, box_normalized)
-
-        self.inputs = {
-            'PriorBox': prior_box,
-            'PriorBoxVar': prior_box_var,
-            'TargetBox': target_box,
-        }
-        self.attrs = {
-            'code_type': 'decode_center_size',
-            'box_normalized': False
-        }
-        self.outputs = {'OutputBox': output_box}
-
-
 class TestBoxCoderOpWithoutBoxVar(OpTest):
     def test_check_output(self):
         self.check_output()
@@ -210,7 +185,7 @@ class TestBoxCoderOpWithAxis(OpTest):
         self.op_type = "box_coder"
         lod = [[1, 1, 1, 1, 1]]
         prior_box = np.random.random((30, 4)).astype('float32')
-        prior_box_var = np.random.random((4)).astype('float32')
+        prior_box_var = np.random.random((30, 4)).astype('float32')
         target_box = np.random.random((30, 81, 4)).astype('float32')
         code_type = "DecodeCenterSize"
         box_normalized = False

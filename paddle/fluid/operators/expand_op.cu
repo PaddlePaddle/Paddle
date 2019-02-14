@@ -15,7 +15,11 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    expand, ops::ExpandKernel<paddle::platform::CUDADeviceContext, float>);
+    expand, ops::ExpandKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ExpandKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ExpandKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ExpandKernel<paddle::platform::CUDADeviceContext, bool>);
 REGISTER_OP_CUDA_KERNEL(
     expand_grad,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, double>);
