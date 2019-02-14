@@ -49,5 +49,42 @@ class TestNGRAPHMulOp(OpTest):
             ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
 
 
+class TestNGRAPHMulOp2(OpTest):
+    def setUp(self):
+        self.op_type = "mul"
+        self.dtype = np.float32
+        self.init_dtype_type()
+        self.inputs = {
+            'X': np.random.random((3, 4, 4, 3)).astype(self.dtype),
+            'Y': np.random.random((2, 6, 1, 2, 3)).astype(self.dtype)
+        }
+        self.attrs = {
+            'x_num_col_dims': 2,
+            'y_num_col_dims': 2,
+        }
+        result = np.dot(self.inputs['X'].reshape(3 * 4, 4 * 3),
+                        self.inputs['Y'].reshape(2 * 6, 1 * 2 * 3))
+        result = result.reshape(3, 4, 1, 2, 3)
+        self.outputs = {'Out': result}
+        self._cpu_only = True
+
+    def init_dtype_type(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set('X'))
+
+    def test_check_grad_ignore_y(self):
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
+
+
 if __name__ == "__main__":
     unittest.main()
