@@ -31,7 +31,7 @@ class TensorRTEngineTest : public ::testing::Test {
   void SetUp() override {
     ctx_ = new platform::CUDADeviceContext(platform::CUDAPlace(0));
 
-    engine_ = new TensorRTEngine(10, 1 << 10, ctx_->stream());
+    engine_ = new TensorRTEngine(10, 1 << 10);
     engine_->InitNetwork();
   }
 
@@ -88,7 +88,7 @@ TEST_F(TensorRTEngineTest, add_layer) {
   buffers[1] = reinterpret_cast<void *>(y_gpu_data);
 
   LOG(INFO) << "to execute";
-  engine_->Execute(1, buffers);
+  engine_->Execute(1, &buffers, ctx_->stream());
 
   LOG(INFO) << "to get output";
   GetOutput(&y_cpu);
@@ -128,7 +128,7 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
   buffers[0] = reinterpret_cast<void *>(x_v_gpu_data);
   buffers[1] = reinterpret_cast<void *>(y_gpu_data);
 
-  engine_->Execute(1, buffers);
+  engine_->Execute(1, &buffers, ctx_->stream());
 
   LOG(INFO) << "to get output";
   GetOutput(&y_cpu);
@@ -175,7 +175,7 @@ TEST_F(TensorRTEngineTest, test_conv2d) {
   buffers[0] = reinterpret_cast<void *>(x_v_gpu_data);
   buffers[1] = reinterpret_cast<void *>(y_gpu_data);
 
-  engine_->Execute(2, buffers);
+  engine_->Execute(2, &buffers, ctx_->stream());
 
   LOG(INFO) << "to get output";
   GetOutput(&y_cpu);
@@ -214,7 +214,7 @@ TEST_F(TensorRTEngineTest, test_pool2d) {
   buffers[0] = reinterpret_cast<void *>(x_v_gpu_data);
   buffers[1] = reinterpret_cast<void *>(y_gpu_data);
 
-  engine_->Execute(2, buffers);
+  engine_->Execute(2, &buffers, ctx_->stream());
 
   LOG(INFO) << "to get output";
   GetOutput(&y_cpu);
