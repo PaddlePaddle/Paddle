@@ -259,7 +259,7 @@ Example:
        W_{out} = \\frac{(W_{in} - ksize[1] + 2 * paddings[1] + strides[1] - 1)}{strides[1]} + 1
        $$
 
-  For exclusive = true:
+  For exclusive = false:
        $$
        hstart = i * strides[0] - paddings[0]
        hend = hstart + ksize[0]
@@ -267,7 +267,7 @@ Example:
        wend = wstart + ksize[1]
        Output(i ,j) = \\frac{sum(Input[hstart:hend, wstart:wend])}{ksize[0] * ksize[1]}
        $$
-  For exclusive = false:
+  For exclusive = true:
        $$
        hstart = max(0, i * strides[0] - paddings[0])
        hend = min(H, hstart + ksize[0])
@@ -403,7 +403,7 @@ Example:
        H_{out} = \frac{(H_{in} - ksize[1] + 2 * paddings[1] + strides[1] -1)}{strides[1]} + 1 \\
        W_{out} = \frac{(W_{in} - ksize[2] + 2 * paddings[2] + strides[2] -1)}{strides[2]} + 1
   $$
-  For exclusive = true:
+  For exclusive = false:
   $$
   dstart = i * strides[0] - paddings[0]
   dend = dstart + ksize[0]
@@ -413,7 +413,7 @@ Example:
   wend = wstart + ksize[2]
   Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{ksize[0] * ksize[1] * ksize[2]}
   $$
-  For exclusive = false:
+  For exclusive = true:
   $$
   dstart = max(0, i * strides[0] - paddings[0])
   dend = min(D, dstart + ksize[0])

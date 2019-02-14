@@ -71,7 +71,7 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new framework::ProgramDesc *(&argument->main_program()));
 
       bool enable_int8 = argument->tensorrt_precision_mode() ==
-                         contrib::AnalysisConfig::Precision::kInt8;
+                         AnalysisConfig::Precision::kInt8;
 
       pass->Set("enable_int8", new bool(enable_int8));
       std::string model_opt_cache_dir =
@@ -83,7 +83,6 @@ void IRPassManager::CreatePasses(Argument *argument,
           new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
     }
 
-    // graph_ = pass->Apply(std::move(graph_));
     pre_pass = pass_name;
 
     passes_.emplace_back(std::move(pass));
@@ -97,11 +96,12 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
   PADDLE_ENFORCE(graph.get());
   // Apply all the passes
   for (const auto &pass : passes_) {
-    if (pass->Type() == "graph_viz_pass") continue;
-    PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
+    if (pass->Type() != "graph_viz_pass") {
+      PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
+    }
     graph = pass->Apply(std::move(graph));
   }
-  return std::move(graph);
+  return graph;
 }
 
 framework::proto::ProgramDesc IRPassManager::AcquireProgram(
