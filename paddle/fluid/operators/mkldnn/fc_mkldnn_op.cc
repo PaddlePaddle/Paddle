@@ -282,7 +282,7 @@ class FCMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                                ? mkldnn::inner_product_backward_weights::desc(
                                      src, diff_weights, bias, diff_dst)
                                : mkldnn::inner_product_backward_weights::desc(
-                                     src, diff_weights, bias, diff_dst);
+                                     src, diff_weights, diff_dst);
 
     return mkldnn::inner_product_backward_weights::primitive_desc(
         bwd_weight_desc, engine, pd);

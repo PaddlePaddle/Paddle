@@ -12,12 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/analysis_var_pass.h"
+#include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include <algorithm>
 #include <iostream>
 #include <iterator>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/details/graph_test_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -26,46 +32,82 @@
 
 namespace paddle {
 namespace framework {
+namespace details {
 
-class DummyOp : public OperatorBase {
- public:
-  DummyOp(const std::string& type, const VariableNameMap& inputs,
-          const VariableNameMap& outputs, const AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+TEST(OrderedSet, Normal) {
+  OrderedSet pool;
+  std::vector<std::unique_ptr<ir::Node>> nodes;
 
- private:
-  void RunImpl(const Scope& scope,
-               const platform::Place& place) const override {}
-};
+  // clang-format off
+  std::vector<std::vector<int64_t>> shapes = {{-1, 10},
+                                              {-1, 20},
+                                              {1, 2},
+                                              {5, 2},
+                                              {10, 20},
+                                              {-1, 2, 5},
+                                              {-1, 1, 5},
+                                              {-1, 1}};
+  // clang-format on
+  const int COUNT = shapes.size();
+  ProgramDesc prog;
+  BlockDesc* block_desc = prog.MutableBlock(0);
+  auto* op_desc = block_desc->AppendOp();
+  op_desc->SetType("dummy");
+  std::unique_ptr<ir::Node> op = ir::CreateNodeForTest(op_desc);
 
-class SumOpMaker : public OpProtoAndCheckerMaker {
- public:
-  void Make() {
-    AddInput("X", "").AsDuplicable();
-    AddOutput("Out", "");
-    AddComment("");
+  for (int i = 0; i < COUNT; ++i) {
+    auto desc = block_desc->Var(std::to_string(i));
+    desc->SetShape(shapes[i]);
+    std::unique_ptr<ir::Node> node = ir::CreateNodeForTest(desc);
+    node->inputs.emplace_back(op.get());
+    nodes.emplace_back(std::move(node));
   }
-};
 
-class AssignOpMaker : public OpProtoAndCheckerMaker {
- public:
-  void Make() {
-    AddInput("X", "").AsDuplicable();
-    AddOutput("Out", "");
-    AddComment("");
+  // Insert
+  for (auto& node : nodes) {
+    pool.Insert(node.get());
   }
-};
 
-class DummyVarTypeInference : public VarTypeInference {
- public:
-  void operator()(const OpDesc& op_desc, BlockDesc* block) const override {
-    auto& inputs = op_desc.Input("X");
-    auto type = block->Var(inputs.front())->GetType();
-    auto out_var_name = op_desc.Output("Out").front();
-    block->Var(out_var_name)->SetType(type);
+  // Has/size
+  ASSERT_EQ(pool.size(), shapes.size());
+  for (auto& node : nodes) {
+    ASSERT_TRUE(pool.Has(node.get()));
   }
-};
 
+  // assert its order and interface.
+  std::cout << pool.ToString() << std::endl;
+  pool.Erase(nodes.front().get());
+  std::cout << pool.ToString() << std::endl;
+
+  ASSERT_EQ(pool.size(), static_cast<size_t>(COUNT - 1));
+  ASSERT_EQ(pool.GetNodeIndexInPool(nodes.back().get()), 0);
+
+  {
+    auto v1 = block_desc->Var("11");
+    v1->SetShape({-1, 256, 56, 56});
+    std::unique_ptr<ir::Node> node1 = ir::CreateNodeForTest(v1);
+    node1->inputs.emplace_back(op.get());
+    auto* cache = pool.FindBestFitNode(node1.get());
+    ASSERT_EQ(cache, nullptr);
+  }
+  {
+    auto v2 = block_desc->Var("12");
+    v2->SetShape({-1, 2, 5});
+    std::unique_ptr<ir::Node> node1 = ir::CreateNodeForTest(v2);
+    node1->inputs.emplace_back(op.get());
+    auto* cache = pool.FindBestFitNode(node1.get());
+    ASSERT_EQ(pool.GetNodeIndexInPool(cache), 2);  // match 6:[-1,2,5]
+  }
+  {
+    auto v3 = block_desc->Var("13");
+    v3->SetShape({2, 5});
+    std::unique_ptr<ir::Node> node1 = ir::CreateNodeForTest(v3);
+    node1->inputs.emplace_back(op.get());
+    auto* cache = pool.FindBestFitNode(node1.get());
+    ASSERT_EQ(pool.GetNodeIndexInPool(cache), 5);  // match  4:[5,2]
+  }
+}
+}  // namespace details
 }  // namespace framework
 }  // namespace paddle
 
@@ -102,11 +144,6 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static inline bool IsSameDesc(OpDesc* op1, OpDesc* op2) {
-  return op1->Type() == op2->Type() && op1->Inputs() == op2->Inputs() &&
-         op1->Outputs() == op2->Outputs();
-}
-
 inline static ProgramDesc FillProgramDesc() {
   ProgramDesc prog;
   prog.MutableBlock(0)->Var("a")->SetType(proto::VarType::LOD_TENSOR);
@@ -139,15 +176,6 @@ inline static ProgramDesc FillProgramDesc() {
     op->SetOutput("Out", {"e"});
   }
   return prog;
-}
-
-template <typename Container>
-inline static std::string DebugString(const Container& c) {
-  std::stringstream ss;
-  for (auto& item : c) {
-    ss << item << " ";
-  }
-  return ss.str();
 }
 
 TEST(CFGGraph, IRGraph) {
