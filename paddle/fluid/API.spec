@@ -286,6 +286,7 @@ paddle.fluid.layers.StaticRNN.update_memory ArgSpec(args=['self', 'mem', 'var'],
 paddle.fluid.layers.reorder_lod_tensor_by_rank ArgSpec(args=['x', 'rank_table'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.layers.Print ArgSpec(args=['input', 'first_n', 'message', 'summarize', 'print_tensor_name', 'print_tensor_type', 'print_tensor_shape', 'print_tensor_lod', 'print_phase'], varargs=None, keywords=None, defaults=(-1, None, -1, True, True, True, True, 'both'))
 paddle.fluid.layers.is_empty ArgSpec(args=['x', 'cond'], varargs=None, keywords='ignored', defaults=(None,))
+paddle.fluid.layers.allreduce ArgSpec(args=['x', 'out'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.layers.sigmoid ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.layers.logsigmoid ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.layers.exp ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,))
