@@ -106,6 +106,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
     if (enable_int8_ && calibration_data_.size()) {
       calibrator_.reset(new TRTInt8Calibrator(calibration_data_));
     }
+
+    // we will create an engine here.
+    if (!calibration_mode_) {
+      // trt_engine_.reset();
+    }
   }
 
  protected:
@@ -125,7 +130,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
       RunCalibration(scope, dev_place);
       return;
     }
-    RunTrt(scope, dev_place);
+    auto trt_engine = GetEngine(scope, dev_place);
+    RunTrt(scope, dev_place, trt_engine);
   }
 
   void RunCalibration(const framework::Scope &scope,
@@ -155,10 +161,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
       calib_res->calib_.reset(new TRTInt8Calibrator(
           calib_buffers, runtime_batch, engine_key_, dev_place));
       calib_res->thr_.reset(new std::thread([&]() {
-        calib_res->engine_.reset(new TensorRTEngine(
-            max_batch_size_, workspace_size_, stream,
-            boost::get<platform::CUDAPlace>(dev_place).device, enable_int8_,
-            calib_res->calib_.get()));
+        calib_res->engine_.reset(
+            new TensorRTEngine(max_batch_size_, workspace_size_, stream,
+                               enable_int8_, calib_res->calib_.get()));
         VLOG(3) << "start the calib trt engine thread";
         Prepare(scope, dev_place, calib_res->engine_.get());
       }));
@@ -180,28 +185,30 @@ class TensorRTEngineOp : public framework::OperatorBase {
     RunNativeImpl(scope, dev_place);
   }
 
-  void RunTrt(const framework::Scope &scope,
-              const platform::Place &dev_place) const {
+  void RunTrt(const framework::Scope &scope, const platform::Place &dev_place,
+              TensorRTEngine *engine) const {
     int runtime_batch = 1;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
-    if (trt_engine_.get() == nullptr) {
-      trt_engine_.reset(
-          new TensorRTEngine(max_batch_size_, workspace_size_, stream,
-                             boost::get<platform::CUDAPlace>(dev_place).device,
-                             enable_int8_, calibrator_.get()));
-      Prepare(scope, dev_place, trt_engine_.get());
-    }
 
-    auto *engine = trt_engine_.get();
+    // auto *engine = trt_engine_.get();
     PADDLE_ENFORCE(!input_names_.empty(), "should pass more than one inputs");
 
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
 
-    // Convert input tensor from fluid to engine.
+    int num_inputs = 0;
+
+    for (const auto &x : Inputs("Xs")) {
+      if (param_names_.count(x)) continue;
+      num_inputs += 1;
+    }
+    const int num_bindings = num_inputs + Outputs("Ys").size();
+    std::vector<void *> buffers(num_bindings);
+
+    // Bind input tensor to TRT.
     for (const auto &x : Inputs("Xs")) {
       if (param_names_.count(x)) continue;
       // convert input and copy to TRT engine's buffer
@@ -209,26 +216,17 @@ class TensorRTEngineOp : public framework::OperatorBase {
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
       auto t_shape = framework::vectorize(t.dims());
       runtime_batch = t_shape[0];
-      if (platform::is_cpu_place(t.place())) {
-        engine->SetInputFromCPU(x, static_cast<const void *>(t.data<void>()),
-                                t.memory_size());
-      } else {
-        engine->SetInputFromGPU(x, static_cast<const void *>(t.data<void>()),
-                                t.memory_size());
-      }
+
+      const int bind_index = engine->engine()->getBindingIndex(x.c_str());
+      PADDLE_ENFORCE(bind_index < num_bindings,
+                     "The bind index should be less than num_bindings");
+      buffers[bind_index] = static_cast<void *>(t.data<float>());
     }
 
-    cudaStreamSynchronize(stream);
-    PADDLE_ENFORCE_LE(runtime_batch, max_batch_size_);
-    // Execute the engine.
-    engine->Execute(runtime_batch);
-
-    // Convert output tensor from engine to fluid
+    // Bind output tensor to TRT.
     int output_index = 0;
     VLOG(4) << "TensorRT Engine Op Outputs:";
     for (const auto &y : Outputs("Ys")) {
-      VLOG(4) << y;
-      // convert output and copy to fluid.
       nvinfer1::ITensor *trt_t = engine->GetITensor(output_maps[output_index]);
       auto dims = trt_t->getDimensions();
       // Use the output ITensor's dims to reshape the Fluid Tensor.
@@ -238,25 +236,44 @@ class TensorRTEngineOp : public framework::OperatorBase {
       for (int i = 0; i < dims.nbDims; i++) {
         ddim.push_back(dims.d[i]);
       }
-
       auto *fluid_v = scope.FindVar(y);
       PADDLE_ENFORCE_NOT_NULL(fluid_v, "no output variable called %s", y);
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
-
       fluid_t->Resize(framework::make_ddim(ddim));
 
-      // TODO(Superjomn) change this float to dtype size.
-      auto size =
-          inference::analysis::AccuDims(dims.d, dims.nbDims) * runtime_batch;
-      engine->GetOutputInGPU(
-          output_maps[output_index],
-          fluid_t->mutable_data<float>(platform::CUDAPlace(
-              boost::get<platform::CUDAPlace>(dev_place).device)),
-          size * sizeof(float));
+      const int bind_index =
+          engine->engine()->getBindingIndex(output_maps[output_index].c_str());
+      PADDLE_ENFORCE(bind_index < num_bindings,
+                     "The bind index should be less than num_bindings");
+      buffers[bind_index] = static_cast<void *>(fluid_t->mutable_data<float>(
+          boost::get<platform::CUDAPlace>(dev_place)));
+
       output_index += 1;
     }
 
+    PADDLE_ENFORCE_LE(runtime_batch, max_batch_size_);
+    // Execute the engine.
+    engine->Execute(runtime_batch, buffers);
     cudaStreamSynchronize(stream);
+  }
+
+  TensorRTEngine *GetEngine(const framework::Scope &scope,
+                            const platform::Place &dev_place) const {
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
+    auto stream =
+        reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
+    if (trt_engine_.get() == nullptr) {
+      trt_engine_.reset(new TensorRTEngine(max_batch_size_, workspace_size_,
+                                           stream, enable_int8_,
+                                           calibrator_.get()));
+      if (true) {
+        Prepare(scope, dev_place, trt_engine_.get());
+      } else {
+        // create static engine
+      }
+    }
+    return trt_engine_.get();
   }
 
   void Prepare(const framework::Scope &scope, const platform::Place &dev_place,
