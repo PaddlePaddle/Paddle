@@ -36,11 +36,6 @@ namespace framework {
 namespace details {
 
 namespace {
-// TODO(panyx0718): Clean this up as well.
-// all operators. NOTE that even we use a vector here, the operators is
-// unordered.
-typedef std::vector<OpHandleBase *> GraphOps;
-const char kGraphOps[] = "ops";
 
 bool OpHaveRole(const ir::Node &node, const framework::OpRole &role) {
   return boost::get<int>(
@@ -206,7 +201,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
             auto &g_name = backward_vars[i + 1];
             VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
 
-            InsertCollectiveOp(&result, p_name, g_name);
+            InsertCollectiveOp(&result, node, p_name, g_name);
           }
         } catch (boost::bad_get e) {
         }
@@ -226,7 +221,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
    * Only variables should be the leaves of graph.
    */
   AddOutputToLeafOps(&result);
-  result.Erase(kGraphOps);
+  // result.Erase(kGraphOps);
   return graph;
 }
 
@@ -391,20 +386,34 @@ void MultiDevSSAGraphBuilderBase::CreateComputationalOp(ir::Graph *result,
 }
 
 void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
-    ir::Graph *result, const std::string &og) const {
+    ir::Graph *result, ir::Node *node, const std::string &og) const {
+  OpHandleBase *op_handle = nullptr;
+
+  auto append_allreduce_op = [&](
+      std::vector<Scope *> &scopes,
+      std::vector<platform::Place> &places) -> OpHandleBase * {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
-      result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-      local_scopes_, places_, nccl_ctxs_));
+    result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
+        result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
+        scopes, places, nccl_ctxs_));
 #else
-  result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
-      result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-      local_scopes_, places_));
+    result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
+        result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
+        scopes, places));
 #endif
-  auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
+    return result->Get<GraphOps>(kGraphOps).back();
+  };
+
+  if (!strategy_.enable_parallel_graph_)
+    op_handle = append_allreduce_op(local_scopes_, places_);
 
   for (size_t i = 0; i < places_.size(); ++i) {
-    auto &p = places_[i];
+    auto p = places_[i];
+    std::vector<Scope *> ss{local_scopes_[i]};
+    std::vector<platform::Place> ps{p};
+    if (strategy_.enable_parallel_graph_)
+      op_handle = append_allreduce_op(ss, ps);
+
     SetCommunicationContext(op_handle, p);
     auto &vars = result->Get<GraphVars>(kGraphVars)[i][og];
     PADDLE_ENFORCE(!vars.empty());
@@ -501,13 +510,13 @@ bool MultiDevSSAGraphBuilderBase::IsSparseGradient(
 }
 
 void AllReduceSSAGraphBuilder::InsertCollectiveOp(
-    ir::Graph *result, const std::string &p_name,
+    ir::Graph *result, ir::Node *node, const std::string &p_name,
     const std::string &g_name) const {
   if (IsSparseGradient(g_name)) {
     CreateReduceOp(result, g_name, 0);
     CreateBroadcastOp(result, g_name, 0);
   } else {
-    CreateAllReduceOp(result, g_name);
+    CreateAllReduceOp(result, node, g_name);
   }
 }
 
@@ -580,7 +589,7 @@ void ReduceSSAGraphBuilder::ResetState() const {
 }
 
 void ReduceSSAGraphBuilder::InsertCollectiveOp(
-    ir::Graph *result, const std::string &p_name,
+    ir::Graph *result, ir::Node *node, const std::string &p_name,
     const std::string &g_name) const {
   size_t cur_device_id = GetAppropriateDeviceID({g_name});
   CreateReduceOp(result, g_name, cur_device_id);
@@ -900,7 +909,7 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   return op_dev_id;
 }
 
-void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
+void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result, ir::Node *node,
                                              const std::string &p_name,
                                              const std::string &g_name) const {
   size_t cur_device_id = 0;
@@ -915,7 +924,7 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
         CreateReduceOp(result, g_name, 0);
         CreateBroadcastOp(result, g_name, 0);
       } else {
-        CreateAllReduceOp(result, g_name);
+        CreateAllReduceOp(result, node, g_name);
       }
       break;
     default:
@@ -966,7 +975,8 @@ static int MultiDevSSAGraphBuilderRegister(const std::string &builder_mode) {
       .RequirePassAttr(paddle::framework::details::kPlaces)                    \
       .RequirePassAttr(paddle::framework::details::kLocalScopes)               \
       .RequirePassAttr(paddle::framework::details::kStrategy)                  \
-      .RequirePassAttr(paddle::framework::details::kNRanks)
+      .RequirePassAttr(paddle::framework::details::kNRanks)                    \
+      .RequirePassAttr(paddle::framework::details::kEnablePG)
 
 REGISTER_MULTI_DEVICES_PASS(reduce_mode_multi_devices_pass,
                             paddle::framework::details::ReduceSSAGraphBuilder);

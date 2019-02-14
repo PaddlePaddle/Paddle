@@ -72,6 +72,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             exe.run(startup)
             exec_strategy = fluid.ExecutionStrategy()
             exec_strategy.allow_op_delay = allow_op_delay
+            exec_strategy.num_threads = 1
             if use_fast_executor:
                 exec_strategy.use_experimental_executor = True
             build_strategy = fluid.BuildStrategy()
@@ -99,7 +100,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             first_loss, = run_executor(
                 exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss.name])
 
-            for i in range(iter):
+            for _ in range(iter):
                 run_executor(
                     exe=exe, binary=binary, feed=feed_dict, fetch_list=[])
 

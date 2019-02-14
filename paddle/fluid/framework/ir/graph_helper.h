@@ -59,7 +59,9 @@ template <typename T>
 std::vector<T *> FilterByNodeWrapper(const Graph &graph) {
   std::vector<T *> ret;
   for (ir::Node *n : graph.Nodes()) {
-    if (n->IsWrappedBy<T>()) ret.push_back(&n->Wrapper<T>());
+    if (n->IsWrappedBy<T>()) {
+      ret.push_back(&n->Wrapper<T>());
+    }
   }
   return ret;
 }

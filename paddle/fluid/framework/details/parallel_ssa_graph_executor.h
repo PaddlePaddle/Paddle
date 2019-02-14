@@ -14,15 +14,23 @@
 
 #pragma once
 
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 
 #include "ThreadPool.h"
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
+#include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
+
+std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
+    const std::vector<platform::Place> &places,
+    std::unique_ptr<ir::Graph> graph);
 
 class ParallelSSAGraphExecutor : public SSAGraphExecutor {
  public:
@@ -31,11 +39,14 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
                            const std::vector<platform::Place> &places,
                            std::vector<std::unique_ptr<ir::Graph>> &&graphs);
   ~ParallelSSAGraphExecutor() final = default;
+
   const ir::Graph &Graph() const override { return *graphs_[0]; }
 
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
 
  private:
+  // std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph();
+
   ExecutionStrategy strategy_;
   std::vector<Scope *> local_scopes_;
   std::unique_ptr<::ThreadPool> pool_{nullptr};
