@@ -822,12 +822,10 @@ TEST(JITKernel, kNCHW16CMulNC) {
 }
 
 TEST(JITKernel, kLayerNorm) {
-  namespace jit = paddle::operators::jit;
   TestLayerNormKernel<jit::kLayerNorm, float, paddle::platform::CPUPlace>();
 }
 
 TEST(JITKernel, kCRFDecoding) {
-  namespace jit = paddle::operators::jit;
   TestCRFDecodingKernel<jit::kCRFDecoding, float, paddle::platform::CPUPlace>();
 }
 
