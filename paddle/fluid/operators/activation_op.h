@@ -303,7 +303,8 @@ template <typename T>
 struct GeluFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
+    !defined(__OSX__)
     auto x_data = x.data();
     auto out_data = out.data();
     int n = std::min(x.size(), out.size());
