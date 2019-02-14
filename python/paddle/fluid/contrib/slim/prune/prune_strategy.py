@@ -47,7 +47,8 @@ class SensitivePruneStrategy(Strategy):
                  metric_name=None,
                  pruned_params='conv.*_weights',
                  sensitivities_file='./vgg11_sensitivities.data',
-                 sensitivities={}):
+                 sensitivities={},
+                 uniform=False):
         super(SensitivePruneStrategy, self).__init__(start_epoch, end_epoch)
         self.pruner = pruner
         self.delta_rate = delta_rate
@@ -58,6 +59,7 @@ class SensitivePruneStrategy(Strategy):
         self.sensitivities = sensitivities
         self.sensitivities_file = sensitivities_file
         self.backup = {}
+        self.uniform = uniform
 
     def _eval_graph(self, context):
         results, names = context.run_eval_graph()
@@ -104,7 +106,6 @@ class SensitivePruneStrategy(Strategy):
         print("calling _compute_sensitivities.")
 
         self._load_sensitivities()
-        metric = self._eval_graph(context)
 
         for param in context.eval_graph.all_parameters():
             if not re.match(self.pruned_params, param.name):
@@ -115,6 +116,9 @@ class SensitivePruneStrategy(Strategy):
                     'loss': [],
                     'size': param.shape[0]
                 }
+        if self.uniform:
+            return
+        metric = self._eval_graph(context)
 
         for param in self.sensitivities.keys():
             ratio = self.delta_rate
@@ -153,21 +157,28 @@ class SensitivePruneStrategy(Strategy):
                     param_t = context.eval_graph.scope.find_var(
                         param_name).get_tensor()
                     param_t.set(self.backup[param_name], context.place)
+                pruned_metric = self._eval_graph(context)
+                self.backup = {}
 
                 ratio += self.delta_rate
 
     def _get_best_ratios(self):
         losses = []
         sizes = []
-        for param in self.sensitivities:
-            losses.append(self.sensitivities[param]['loss'][self.sensitivities[
-                param]['pruned_percent'].index(self.target_ratio)])
-            sizes.append(self.sensitivities[param]['size'])
-        losses = np.array(losses) / np.max(np.array(losses))
-        sensitivities = (1.0 / losses) * np.array(sizes)
-        ratios = sensitivities / np.sum(sensitivities)
-        size_ratios = np.array(sizes, dtype='float32') / np.sum(np.array(sizes))
-        ratios = (ratios / size_ratios) * self.target_ratio
+        if self.uniform:
+            ratios = [self.target_ratio] * len(self.sensitivities.keys())
+        else:
+            for param in self.sensitivities:
+                losses.append(self.sensitivities[param]['loss'][
+                    self.sensitivities[param]['pruned_percent'].index(
+                        self.target_ratio)])
+                sizes.append(self.sensitivities[param]['size'])
+            losses = np.array(losses) / np.max(np.array(losses))
+            sensitivities = (1.0 / losses) * np.array(sizes)
+            ratios = sensitivities / np.sum(sensitivities)
+            size_ratios = np.array(
+                sizes, dtype='float32') / np.sum(np.array(sizes))
+            ratios = (ratios / size_ratios) * self.target_ratio
         tb = pt.PrettyTable()
         tb.field_names = ['parameter', 'pruned ratio']
         for param, ratio in zip(self.sensitivities.keys(), ratios):
@@ -190,6 +201,8 @@ class SensitivePruneStrategy(Strategy):
             params[0].name, np.array(param_t), ratio, axis=0)
         for param in params:
             param_t = scope.find_var(param.name).get_tensor()
+            if lazy:
+                self.backup[param.name] = copy.deepcopy(np.array(param_t))
             pruned_param = self.pruner.prune_tensor(
                 np.array(param_t), pruned_idx, pruned_axis=0, lazy=lazy)
             param_t.set(pruned_param, place)
@@ -200,8 +213,6 @@ class SensitivePruneStrategy(Strategy):
             )
             print('|{:^40}|{:^4}|{:^30}|{:^30}|'.format(param.name, 0,
                                                         ori_shape, param.shape))
-            if lazy:
-                self.backup[param.name] = copy.deepcopy(np.array(param_t))
             self.pruned_list[0].append(param.name)
         return pruned_idx
 
@@ -216,6 +227,8 @@ class SensitivePruneStrategy(Strategy):
             return
         for param in params:
             param_t = scope.find_var(param.name).get_tensor()
+            if lazy:
+                self.backup[param.name] = copy.deepcopy(np.array(param_t))
             pruned_param = self.pruner.prune_tensor(
                 np.array(param_t), pruned_idx, pruned_axis, lazy=lazy)
             param_t.set(pruned_param, place)
@@ -226,8 +239,6 @@ class SensitivePruneStrategy(Strategy):
             )
             print('|{:^40}|{:^4}|{:^30}|{:^30}|'.format(param.name, pruned_axis,
                                                         ori_shape, param.shape))
-            if lazy:
-                self.backup[param.name] = copy.deepcopy(np.array(param_t))
             self.pruned_list[pruned_axis].append(param.name)
 
     def _inputs(self, op):
@@ -337,6 +348,17 @@ class SensitivePruneStrategy(Strategy):
                                 graph, conv_param),
                             corrected_idxs,
                             pruned_axis=1,
+                            place=place,
+                            lazy=lazy)
+            if op.type == "depthwise_conv2d":
+                for param_name in self._inputs(op):
+                    if isinstance(graph.get_var(param_name), Parameter):
+                        conv_param = graph.get_var(param_name)
+                        self._prune_parameter_by_idx(
+                            scope, [conv_param] + self._get_accumulator(
+                                graph, conv_param),
+                            corrected_idxs,
+                            pruned_axis=0,
                             place=place,
                             lazy=lazy)
             elif op.type == "elementwise_add":
@@ -511,9 +533,17 @@ class SensitivePruneStrategy(Strategy):
             '|----+----------------------------------------+------------------------------+------------------------------|'
         )
 
+    def _update_depthwise_conv(self, graph):
+        for op in graph.all_ops():
+            if op.type == 'depthwise_conv2d':
+                op.desc._set_attr('groups',
+                                  graph.get_var(op.input('Filter')[0]).shape[0])
+                print('input shape: {:30} filter shape: {:30}'.format(
+                    graph.get_var(op.input('Input')[0]).shape,
+                    graph.get_var(op.input('Filter')[0]).shape))
+
     def on_compression_begin(self, context):
         self._compute_sensitivities(context)
-        self._load_sensitivities()
         params, ratios = self._get_best_ratios()
 
         self._prune_parameters(context.train_graph, context.train_graph.scope,
@@ -523,6 +553,8 @@ class SensitivePruneStrategy(Strategy):
         print('#          pruning eval graph    #')
         print('################################\n')
         self._prune_graph(context.eval_graph, context.train_graph)
+        self._update_depthwise_conv(context.train_graph)
+        self._update_depthwise_conv(context.eval_graph)
         print(
             '------------------SensitivePruneStrategy.on_compression_begin finish--------------------------------'
         )
