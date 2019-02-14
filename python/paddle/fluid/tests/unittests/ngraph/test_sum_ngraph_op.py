@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
-
 import unittest
-from paddle.fluid.tests.unittests.test_mean_op import TestMeanOp
-
-
-class TestNGRAPHMeanOp(TestMeanOp):
-    def setUp(self):
-        super(TestNGRAPHMeanOp, self).setUp()
-        self._cpu_only = True
-
+from paddle.fluid.tests.unittests.test_sum_op import TestSumOp, TestSelectedRowsSumOp, TestLoDTensorAndSelectedRowsOp
 
 if __name__ == "__main__":
     unittest.main()

@@ -421,7 +421,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   if (!dynamic_cast<AnalysisPredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }
-  return std::move(predictor);
+  return predictor;
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {

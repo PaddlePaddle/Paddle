@@ -161,7 +161,6 @@ def __bootstrap__():
             'times_excess_than_required_tmp_allocation',
             'enable_inplace_whitelist'
         ]
-
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
