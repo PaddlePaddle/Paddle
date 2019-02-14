@@ -41,14 +41,14 @@ std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
     auto &dev_ops = graphs[dev_id]->Get<GraphOps>(kGraphOps);
     auto &dev_dummys = graphs[dev_id]->Get<GraphDepVars>(kGraphDepVars);
     dev_ops.emplace_back(op);
-    graphs[dev_id]->AddNode(graph->ReleaseNode(op->Node()).release());
+    graphs[dev_id]->AddNode(graph->RemoveNode(op->Node()).release());
 
     for (auto &var : op->Inputs()) {
       auto dummy_ptr = dynamic_cast<DummyVarHandle *>(var);
       if (dummy_ptr) {
         dev_dummys.insert(var);
         if (graph->Nodes().count(var->Node()))
-          graphs[dev_id]->AddNode(graph->ReleaseNode(var->Node()).release());
+          graphs[dev_id]->AddNode(graph->RemoveNode(var->Node()).release());
       }
     }
     for (auto &var : op->Outputs()) {
@@ -56,7 +56,7 @@ std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
       if (dummy_ptr) {
         dev_dummys.insert(var);
         if (graph->Nodes().count(var->Node()))
-          graphs[dev_id]->AddNode(graph->ReleaseNode(var->Node()).release());
+          graphs[dev_id]->AddNode(graph->RemoveNode(var->Node()).release());
       }
     }
 #else
@@ -72,7 +72,7 @@ std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
       for (auto &version_pair : name_pair.second) {
         if (graph->Nodes().count(version_pair->Node())) {
           graphs[dev_id]->AddNode(
-              graph->ReleaseNode(version_pair->Node()).release());
+              graph->RemoveNode(version_pair->Node()).release());
         }
       }
     }
