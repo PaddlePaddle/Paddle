@@ -665,7 +665,7 @@ void TestLayerNormKernel() {
   T* var_data = var.data();
   T* outref_data = outref.data();
   T* outtgt_data = outtgt.data();
-  auto tgt = jit::Get<KT, jit::LayerNormTuples<T>, PlaceType>(0);
+  auto tgt = jit::Get<KT, jit::LayerNormTuples<T>, PlaceType>(right);
   EXPECT_TRUE(tgt != nullptr);
 
   ref(x_data, outref_data, mean_data, var_data, scale_data, bias_data, left,
