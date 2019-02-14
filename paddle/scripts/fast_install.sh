@@ -260,36 +260,126 @@ function checkLinuxPaddleVersion(){
     done
 }
 
-function checkLinuxPip(){
+function checkPythonVirtualenv(){
   while true
     do
-       echo "请输入您要使用的pip目录（您可以另起终端，并使用which pip来查看）："
-       read -p "" pip_path
-       if [ "$pip_path" == "" -o ! -f "$pip_path" ];then
-         echo "检测结果：pip不存在,请重新输入"
-         continue
-       fi
-       python_version=`$pip_path --version|awk -F "[ |)]" '{print $6}'|sed 's#\.##g'`
-       if [ "$python_version" == "27" ];then
-         uncode=`python -c "import pip._internal;print(pip._internal.pep425tags.get_supported())"|grep "cp27mu"`
-         if [[ "$uncode" == "" ]];then
-            uncode=
-         else
-            uncode=u
-         fi
-       fi
-       if [ "$python_version" == "" ];then
-         echo "检测结果：pip不存在,请重新输入"
-       else
-         version_list=`echo "${python_list[@]}" | grep "$python_version" `
-         if [ "$version_list" != "" ];then
-           echo "检测结果：找到python${python_version}版本"
-           break
-         else
-           echo "检测结果：找不到可用的 pip, 我们只支持Python27/35/36/37及其对应的pip, 请重新输入， 或使用ctrl + c退出 "
-         fi
-       fi
+      read -p "
+                是否使用python  virtualenv虚环境安装(y/n)": check_virtualenv
+    case $check_virtualenv in
+      y)
+        echo "为您使用python虚环境安装"
+        ;;
+      n)
+        break
+        ;;
+      *)
+        continue
+        ;;
+    esac
+
+    virtualenv_path=`which virtualenv 2>&1`
+    if [ "$virtualenv_path" == "" ];then
+      $python_path -m pip install virtualenv
+      if [ "$?" != '0' ];then
+        echo "安装虚拟环境失败,请检查本地环境"
+      fi
+    fi
+
+    while true
+      do
+        read -p "请输入虚拟环境名字：" virtualenv_name
+        if [ "$virtualenv_name" == "" ];then
+          echo "不能为空"
+          continue
+        fi
+        break
     done
+
+    virtualenv -p $python_path ${virtualenv_name}
+    if [ "$?" != 0 ];then
+      echo "创建虚环境失败,请检查环境"
+      exit 2
+    fi
+    cd ${virtualenv_name}
+    source ./bin/activate
+
+    if [ "$?" == 0 ];then
+      use_virtualenv=
+      python_path=python
+      break
+    else
+      echo "创建虚环境失败,请检查环境"
+      exit 2
+    fi
+  done
+}
+
+function checkLinuxPython(){
+  python_path=`which python 2>/dev/null`
+  while true
+    do
+  if [ "$python_path" == '' ];then
+    while true
+      do
+        read -p "没有找到默认的python版本,请输入要安装的python路径:"  python_path
+        python_path=`python_path -V`
+        if [ "$python_path" != "" ];then
+          break
+        fi
+    done
+  fi
+
+  python_version=`$python_path -V 2>&1|awk -F '[ .]' '{print $2$3}'`
+  pip_version=`python -m pip -V|awk -F '[ .]' '{print $2}'`
+  while true
+    do
+      read -p "
+                找到python版本$python_version,使用请输入y,选择其他版本请输n(y/n):"  check_python
+      case $check_python in
+        n)
+          read -p "请指定您的python路径:" new_python_path
+          python_V=`$new_python_path -V 2>/dev/null`
+          if [ "$python_V" != "" ];then
+            python_path=$new_python_path
+            python_version=`$python_path -V 2>&1|awk -F '[ .]' '{print $2$3}'`
+            pip_version=`python -m pip -V|awk -F '[ .]' '{print $2}'`
+            echo "您的python版本为${python_version}"
+            break
+          else
+            echo 输入有误,未找到python路径
+          fi
+          ;;
+        y)
+          break
+          ;;
+        *)
+          echo "输入有误，请重新输入."
+          continue
+          ;;
+      esac
+  done
+
+  if [ "$pip_version" -lt 9 ];then
+    echo "您的pip版本小于9.0.1  请升级pip (pip install --upgrade pip)"
+    exit 0
+  fi
+
+  if [ "$python_version" == "27" ];then
+     uncode=`python -c "import pip._internal;print(pip._internal.pep425tags.get_supported())"|grep "cp27mu"`
+     if [[ "$uncode" == "" ]];then
+        uncode=
+     else
+        uncode=u
+     fi
+  fi
+
+  version_list=`echo "${python_list[@]}" | grep "$python_version" `
+  if [ "$version_list" == "" ];then
+    echo "找不到可用的 pip, 我们只支持Python27/35/36/37及其对应的pip, 请重新输入， 或使用ctrl + c退出 "
+  else
+    break
+  fi
+  done
 }
 
 function checkLinuxAVX(){
@@ -319,25 +409,36 @@ function PipLinuxInstall(){
   wheel_cpu_develop="http://paddle-wheel.bj.bcebos.com/latest-cpu-${AVX}-${math}/paddlepaddle-latest-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
   wheel_gpu_develop="http://paddle-wheel.bj.bcebos.com/latest-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-latest-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
 
-
-  if [[ "$paddle_version" == "2" ]];then
+    if [[ "$paddle_version" == "2" ]];then
     if [[ "$GPU" == "gpu" ]];then
         if [[ ${AVX} == "avx" ]];then
           rm -rf `echo $wheel_gpu_release|awk -F '/' '{print $NF}'`
           wget -q $wheel_gpu_release
           if [ "$?" == "0" ];then
-            $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release
+            $python_path -m pip install ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release
+            if [ "$?" == 0 ];then
+              echo 安装成功
+            else
+              echo 安装失败
+              exit 1
+            fi
           else
-            echo "paddlepaddle whl包下载失败"
+            echo paddlepaddle whl包下载失败
             exit 1
           fi
         else
           rm -rf `echo $wheel_gpu_release_novax|awk -F '/' '{print $NF}'`
           wget -q $wheel_gpu_release_novax
           if [ "$?" == "0" ];then
-            $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release_noavx
+            $python_path -m pip install ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release_noavx
+            if [ "$?" == 0 ];then
+              echo 安装成功
+            else
+              echo 安装失败
+              exit 1
+            fi
           else
-            echo "paddlepaddle whl包下载失败"
+            echo paddlepaddle whl包下载失败
             exit 1
           fi
         fi
@@ -345,9 +446,15 @@ function PipLinuxInstall(){
         rm -rf `echo $wheel_cpu_release|awk -F '/' '{print $NF}'`
         wget -q $wheel_cpu_release
         if [ "$?" == "0" ];then
-          $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_release
+          $python_path -m pip install ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_release
+          if [ "$?" == 0 ];then
+              echo 安装成功
+            else
+              echo 安装失败
+              exit 1
+            fi
         else
-          echo "paddlepaddle whl包下载失败"
+          echo paddlepaddle whl包下载失败
           exit 1
         fi
     fi
@@ -356,18 +463,30 @@ function PipLinuxInstall(){
         rm -rf `echo $wheel_gpu_develop|awk -F '/' '{print $NF}'`
         wget -q $wheel_gpu_develop
         if [ "$?" == "0" ];then
-          $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_develop
+          $python_path -m pip install ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_develop
+          if [ "$?" == 0 ];then
+              echo 安装成功
+            else
+              echo 安装失败
+              exit 1
+            fi
         else
-          echo "paddlepaddle whl包下载失败"
+          echo paddlepaddle whl包下载失败
           exit 1
         fi
     else
         rm -rf `echo $wheel_cpu_develop|awk -F '/' '{print $NF}'`
         wget -q $wheel_cpu_develop
         if [ "$?" == "0" ];then
-          $pip_path install --user -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_develop
+          $python_path -m pip install ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_develop
+          if [ "$?" == 0 ];then
+              echo 安装成功
+            else
+              echo 安装失败
+              exit 1
+            fi
         else
-          echo "paddlepaddle whl包下载失败"
+          echo paddlepaddle whl包下载失败
           exit 1
         fi
     fi
@@ -607,11 +726,19 @@ gpu_list=(
   echo
   echo "Step 5. 检测pip版本"
   echo
-  checkLinuxPip
+  checkLinuxPython
   echo
   checkLinuxAVX
+  echo
+  echo "Step 6.是否使用Python的虚拟环境"
+  use_virtualenv="--user"
+  checkPythonVirtualenv
   echo "*********************2. 开始安装*****************************"
   PipLinuxInstall
+  if [ "$check_virtualenv" == 'y' ];then
+    echo "虚环境创建成功，请cd 进入${virtualenv_name}, 执行 source bin/activate　进入虚环境。退出虚环境执行 deactivate命令。
+  更多虚环境使用方法请参考virtualenv官网:https://virtualenv.pypa.io/en/latest/"
+  fi
 }
 
 function clearMacPythonEnv(){
