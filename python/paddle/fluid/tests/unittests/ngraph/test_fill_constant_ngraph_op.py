@@ -14,23 +14,50 @@
 
 from __future__ import print_function
 import unittest
+import numpy as np
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_fill_constant_op import TestFillConstantOp1, TestFillConstantOp2, TestFillConstantOpWithSelectedRows
 
 
-class TestNGRAPHFillConstantOp1(TestFillConstantOp1):
+class TestNGRAPHFillConstantOp1(OpTest):
     def setUp(self):
-        super(TestNGRAPHFillConstantOp1, self).setUp()
+        self.op_type = "fill_constant"
+        self.dtype = np.float64
+
+        self.inputs = {}
+        self.attrs = {'shape': [123, 92], 'value': 3.8, 'dtype': 6}
+        self.outputs = {'Out': np.full((123, 92), 3.8)}
+
+    def test_check_output(self):
+        self.check_output()
 
 
-class TestNGRAPHFillConstantOp2(TestFillConstantOp2):
+class TestNGRAPHFillConstantOp2(OpTest):
     def setUp(self):
-        super(TestNGRAPHFillConstantOp2, self).setUp()
+        self.op_type = "fill_constant"
+        self.dtype = np.int32
+
+        self.inputs = {}
+        self.attrs = {'shape': [123, 92], 'dtype': 2}
+        self.outputs = {'Out': np.full((123, 92), 0)}
+
+    def test_check_output(self):
+        self.check_output()
 
 
-class TestNGRAPHFillConstantOpWithSelectedRows(
-        TestFillConstantOpWithSelectedRows):
+class TestNGRAPHFillConstantOp3(OpTest):
     def setUp(self):
-        super(TestFillConstantOpWithSelectedRows, self).setUp()
+        self.op_type = "fill_constant"
+        self.dtype = np.int64
+
+        self.inputs = {}
+        self.attrs = {'shape': [123, 92], 'dtype': 3}
+        self.outputs = {'Out': np.full((123, 92), 0)}
+
+    def test_check_output(self):
+        self.check_output()
 
 
 if __name__ == "__main__":
