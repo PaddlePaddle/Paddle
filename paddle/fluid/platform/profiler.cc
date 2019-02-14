@@ -274,19 +274,18 @@ RecordMemEvent::RecordMemEvent()
 void RecordMemEvent::InitRecordMem(size_t bytes, Place place) {
   if (g_state == ProfilerState::kDisabled) return;
   std::lock_guard<std::mutex> l(profiler_mem);
-  VLOG(3) << "In initial memory! \n";
   is_enabled_ = true;
   place_ = place;
   bytes_ = bytes;
-  PushEvent(bytes_, place_);
+  //  PushEvent(bytes_, place_);
 }
 
 void RecordMemEvent::DelRecordMem() {
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   std::lock_guard<std::mutex> l(profiler_mem);
   DeviceTracer* tracer = GetDeviceTracer();
-  VLOG(3) << "In delete memory! \n";
   end_ns_ = PosixInNsec();
+  PushEvent(bytes_, place_);
   if (tracer) {
     tracer->AddMemInfoRecord(start_ns_, end_ns_, bytes_, place_);
   }
