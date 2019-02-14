@@ -33,6 +33,14 @@ using framework::ir::Node;
 std::vector<std::string> ExtractParameters(
     const std::unordered_set<Node *> &nodes);
 
+void RenameAndGetOutputs(
+    const std::vector<framework::ir::Node *> &subgraph_nodes,
+    framework::BlockDesc *block_desc,
+    const std::set<std::string> &input_names_with_id,
+    std::set<std::string> *output_names_with_id,
+    std::set<std::string> *output_names,
+    std::unordered_map<std::string, std::string> *output_name_map);
+
 std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
 
     std::unique_ptr<framework::ir::Graph> graph) const {
@@ -120,9 +128,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
     input_names.insert(x->Name());
     input_names_with_id.insert(x->Name() + std::to_string(x->id()));
   }
-  op_desc->SetInput(
-      "Xs", std::vector<std::string>(input_names.begin(), input_names.end()));
-
   std::set<std::string> output_names;
   std::set<std::string> output_names_with_id;
   for (auto *x : node->outputs) {
@@ -130,11 +135,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
     output_names_with_id.insert(x->Name() + std::to_string(x->id()));
   }
 
-  op_desc->SetOutput(
-      "Ys", std::vector<std::string>(output_names.begin(), output_names.end()));
-  op_desc->SetType("tensorrt_engine");
-
   std::unordered_map<std::string, std::string> output_name_map;
+  auto &subgraph_nodes = *Agent(node).subgraph();
 
   // The following procedure is used to rename all the intermediate
   // variables and the output variables of the subgraph.
@@ -148,61 +150,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   // input of a OP, but also the output of a Op, there will be problems.
   // So we have to rename the variable in the subgraph to make sure
   // it is either an OP's input or an OP's output.
-
-  auto &subgraph_nodes = *Agent(node).subgraph();
-  for (size_t index = 0; index < block_desc.OpSize(); ++index) {
-    framework::proto::OpDesc *op = block_desc.Op(index)->Proto();
-    auto correspond_node = subgraph_nodes[index];
-    PADDLE_ENFORCE_EQ(correspond_node->Name(), op->type());
-
-    std::unordered_map<std::string, size_t> var2id;
-    for (auto *in_var : correspond_node->inputs) {
-      var2id[in_var->Name()] = in_var->id();
-    }
-    // rename for the input variables of op inside subgraph
-    for (int i = 0; i < op->inputs_size(); i++) {
-      // one input
-      auto *in_var = op->mutable_inputs(i);
-      std::vector<std::string> replaced_names;
-      for (int k = 0; k < in_var->arguments_size(); k++) {  // all the arguments
-        std::string arg_value = in_var->arguments(k);
-        std::string arg_value_with_id =
-            arg_value + std::to_string(var2id[arg_value]);
-        if (input_names_with_id.count(arg_value_with_id)) {
-          replaced_names.push_back(arg_value);
-        } else {
-          replaced_names.push_back(arg_value_with_id);
-        }
-      }
-      in_var->clear_arguments();
-      for (size_t k = 0; k < replaced_names.size(); k++) {
-        in_var->add_arguments(replaced_names[k]);
-      }
-    }
-    var2id.clear();
-    for (auto out_var : correspond_node->outputs) {
-      var2id[out_var->Name()] = out_var->id();
-    }
-
-    // rename for the output variables of op inside subgraph
-    for (int i = 0; i < op->outputs_size(); i++) {
-      framework::proto::OpDesc_Var *out_var = op->mutable_outputs(i);
-      std::vector<std::string> replaced_names;
-      for (int k = 0; k < out_var->arguments_size(); k++) {
-        std::string arg_value = out_var->arguments(k);
-        std::string arg_value_with_id =
-            arg_value + std::to_string(var2id[arg_value]);
-        if (output_names_with_id.count(arg_value_with_id)) {
-          output_name_map[arg_value] = arg_value_with_id;
-        }
-        replaced_names.push_back(arg_value_with_id);
-      }
-      out_var->clear_arguments();
-      for (size_t k = 0; k < replaced_names.size(); k++) {
-        out_var->add_arguments(replaced_names[k]);
-      }
-    }
-  }
+  RenameAndGetOutputs(subgraph_nodes, &block_desc, input_names_with_id,
+                      &output_names_with_id, &output_names, &output_name_map);
 
   // When tensorrt engine runs at the end of the operation,
   // output_mapping help us copy the data from the renamed ITensor
@@ -222,6 +171,14 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
 
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
                  "the block has no var-desc");
+
+  op_desc->SetInput(
+      "Xs", std::vector<std::string>(input_names.begin(), input_names.end()));
+
+  op_desc->SetOutput(
+      "Ys", std::vector<std::string>(output_names.begin(), output_names.end()));
+  op_desc->SetType("tensorrt_engine");
+
   PADDLE_ENFORCE(!output_mapping.empty());
   op_desc->SetBlockAttr("sub_block", new_block);
   SetAttr(op_desc->Proto(), "subgraph",
@@ -236,6 +193,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   auto engine_key =
       GenerateEngineKey(input_names_with_id, output_names_with_id);
 
+  // Get "" when there is no cached calibration table data.
   std::string calibration_data = GetTrtCalibTableData(
       Get<std::string>("model_opt_cache_dir"), engine_key, enable_int8);
   SetAttr(op_desc->Proto(), "calibration_data", calibration_data);
@@ -270,6 +228,99 @@ std::vector<std::string> ExtractParameters(
     }
   }
   return parameters;
+}
+
+void RenameAndGetOutputs(
+    const std::vector<framework::ir::Node *> &subgraph_nodes,
+    framework::BlockDesc *block_desc,
+    const std::set<std::string> &input_names_with_id,
+    std::set<std::string> *output_names_with_id,
+    std::set<std::string> *output_names,
+    std::unordered_map<std::string, std::string> *output_name_map) {
+  //// In the normal case, the paddle-trt exists bug when runing the googlenet.
+  // When there are more than two convolutions of 1 * 1 with the same input, the
+  // paddle-tensorrt will do the merging optimization, which fuse those conv
+  // into one conv, and then trigger bug. So,  We should use strategy to avoid
+  // this optimization for the time being. This bug will be fixed in the future.
+  std::unordered_map<std::string /*name*/, int /*ITensor_quote_num*/>
+      same_hierarchy_conv2d_num_map;
+
+  for (size_t index = 0; index < block_desc->OpSize(); ++index) {
+    framework::proto::OpDesc *op = block_desc->Op(index)->Proto();
+    framework::OpDesc op_desc(*op, nullptr);
+    auto correspond_node = subgraph_nodes[index];
+    PADDLE_ENFORCE_EQ(correspond_node->Name(), op->type());
+
+    std::unordered_map<std::string, size_t> var2id;
+    std::unordered_map<std::string, framework::ir::Node *> in_vars;
+    for (auto *in_var : correspond_node->inputs) {
+      var2id[in_var->Name()] = in_var->id();
+      in_vars[in_var->Name()] = in_var;
+    }
+    // rename for the input variables of op inside subgraph
+    for (int i = 0; i < op->inputs_size(); i++) {
+      // one input
+      auto *in_var = op->mutable_inputs(i);
+      std::vector<std::string> replaced_names;
+      for (int k = 0; k < in_var->arguments_size(); k++) {  // all the arguments
+        std::string arg_value = in_var->arguments(k);
+        std::string arg_value_with_id =
+            arg_value + std::to_string(var2id[arg_value]);
+        if (input_names_with_id.count(arg_value_with_id)) {
+          replaced_names.push_back(arg_value);
+        } else {
+          replaced_names.push_back(arg_value_with_id);
+        }
+      }
+      in_var->clear_arguments();
+      for (size_t k = 0; k < replaced_names.size(); k++) {
+        in_var->add_arguments(replaced_names[k]);
+      }
+    }
+    var2id.clear();
+    for (auto out_var : correspond_node->outputs) {
+      var2id[out_var->Name()] = out_var->id();
+    }
+
+    if (op_desc.Type() == "conv2d") {
+      auto input_var_name = op_desc.Input("Input").front();
+      auto filter_var_name = op_desc.Input("Filter").front();
+      auto out_var_name = op_desc.Output("Output").front();
+      auto filter_shape = in_vars[filter_var_name]->Var()->GetShape();
+      const std::vector<int> strides =
+          boost::get<std::vector<int>>(op_desc.GetAttr("strides"));
+      const std::vector<int> paddings =
+          boost::get<std::vector<int>>(op_desc.GetAttr("paddings"));
+      if (same_hierarchy_conv2d_num_map[input_var_name] > 0) {
+        (*output_names_with_id)
+            .insert(out_var_name + std::to_string(var2id[out_var_name]));
+        (*output_names).insert(out_var_name);
+      } else if (filter_shape[2] == 1 && filter_shape[3] == 1 &&
+                 strides[0] == 1 && strides[1] == 1 && paddings[0] == 0 &&
+                 paddings[1] == 0) {
+        same_hierarchy_conv2d_num_map[input_var_name] += 1;
+      }
+    }
+
+    // rename for the output variables of op inside subgraph
+    for (int i = 0; i < op->outputs_size(); i++) {
+      framework::proto::OpDesc_Var *out_var = op->mutable_outputs(i);
+      std::vector<std::string> replaced_names;
+      for (int k = 0; k < out_var->arguments_size(); k++) {
+        std::string arg_value = out_var->arguments(k);
+        std::string arg_value_with_id =
+            arg_value + std::to_string(var2id[arg_value]);
+        if (output_names_with_id->count(arg_value_with_id)) {
+          (*output_name_map)[arg_value] = arg_value_with_id;
+        }
+        replaced_names.push_back(arg_value_with_id);
+      }
+      out_var->clear_arguments();
+      for (size_t k = 0; k < replaced_names.size(); k++) {
+        out_var->add_arguments(replaced_names[k]);
+      }
+    }
+  }
 }
 
 }  // namespace analysis
