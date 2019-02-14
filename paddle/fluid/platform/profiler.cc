@@ -274,6 +274,7 @@ RecordMemEvent::RecordMemEvent()
 void RecordMemEvent::InitRecordMem(size_t bytes, Place place) {
   if (g_state == ProfilerState::kDisabled) return;
   std::lock_guard<std::mutex> l(profiler_mem);
+  VLOG(3) << "In initial memory! \n";
   is_enabled_ = true;
   place_ = place;
   bytes_ = bytes;
@@ -284,6 +285,7 @@ void RecordMemEvent::DelRecordMem() {
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   std::lock_guard<std::mutex> l(profiler_mem);
   DeviceTracer* tracer = GetDeviceTracer();
+  VLOG(3) << "In delete memory! \n";
   end_ns_ = PosixInNsec();
   if (tracer) {
     tracer->AddMemInfoRecord(start_ns_, end_ns_, bytes_, place_);
@@ -467,14 +469,14 @@ void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
     VLOG(1) << "Place: " << place << "\n";
     VLOG(1) << "Memory unit: MB\n";
     // Output events table
-    VLOG(1) << "\tEvent"
+    VLOG(1) << "Event"
             << "\tPeak"
             << "\tValley"
             << "\tAverage"
             << "\tMaximum"
             << "\tMinimum"
             << "\n";
-    VLOG(1) << "\tMemory"
+    VLOG(1) << "Memory"
             << "\t" << events_table[i].peak << "\t" << events_table[i].valley
             << "\t" << events_table[i].average << "\t" << events_table[i].max
             << "\t" << events_table[i].min << "\n";
