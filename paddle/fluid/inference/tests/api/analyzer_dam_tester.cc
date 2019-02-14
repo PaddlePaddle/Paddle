@@ -19,7 +19,6 @@ DEFINE_int32(max_turn_num, 9,
 
 namespace paddle {
 namespace inference {
-using contrib::AnalysisConfig;
 
 constexpr int32_t kMaxTurnLen = 50;
 
@@ -165,7 +164,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   input_slots->push_back(std::move(response_mask_tensor));
 }
 
-void SetConfig(contrib::AnalysisConfig *cfg) {
+void SetConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim(true);
@@ -187,7 +186,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 void profile(bool use_mkldnn = false) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
 
   if (use_mkldnn) {
@@ -223,7 +222,7 @@ TEST(Analyzer_dam, profile_mkldnn) { profile(true /* use_mkldnn */); }
 
 // Check the fuse status
 TEST(Analyzer_dam, fuse_statis) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
 
   int num_ops;
@@ -256,7 +255,7 @@ void compare(bool use_mkldnn = false) {
 TEST(Analyzer_dam, compare_with_static_memory_optim) {
   // The small dam will core in CI, but works in local.
   if (FLAGS_max_turn_num == 9) {
-    contrib::AnalysisConfig cfg, cfg1;
+    AnalysisConfig cfg, cfg1;
     DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
 
     std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -282,7 +281,7 @@ TEST(Analyzer_dam, compare_with_static_memory_optim) {
 TEST(Analyzer_dam, compare_with_dynamic_memory_optim) {
   // The small dam will core in CI, but works in local.
   if (FLAGS_max_turn_num == 9) {
-    contrib::AnalysisConfig cfg, cfg1;
+    AnalysisConfig cfg, cfg1;
     DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
 
     std::vector<std::vector<PaddleTensor>> input_slots_all;

@@ -20,21 +20,25 @@ from paddle.fluid.tests.unittests.test_top_k_op import TestTopkOp, TestTopkOp3d,
 class TestNGRAPHTopkOp(TestTopkOp):
     def setUp(self):
         super(TestNGRAPHTopkOp, self).setUp()
+        self._cpu_only = True
 
 
 class TestNGRAPHTopkOp2(TestTopkOp2):
     def setUp(self):
         super(TestNGRAPHTopkOp2, self).setUp()
+        self._cpu_only = True
 
 
 class TestNGRAPHTopkOp3(TestTopkOp3):
     def setUp(self):
         super(TestNGRAPHTopkOp3, self).setUp()
+        self._cpu_only = True
 
 
 class TestNGRAPHTopkOp4(TestTopkOp4):
     def setUp(self):
         super(TestNGRAPHTopkOp4, self).setUp()
+        self._cpu_only = True
 
 
 if __name__ == "__main__":
