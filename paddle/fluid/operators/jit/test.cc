@@ -723,10 +723,6 @@ void TestLayerNormKernel() {
         T* mean_data = mean.data();
         T* var_data = var.data();
         T* outref_data = outref.data();
-        int d = 0;
-        if (std::is_same<T, float>::value) {
-          d = right;
-        }
 
         ref(x_data, outref_data, mean_data, var_data, scale_data, bias_data,
             left, epsilon, right);
@@ -734,7 +730,7 @@ void TestLayerNormKernel() {
         TestAllImpls<KT, jit::LayerNormTuples<T>, PlaceType, std::vector<T>,
                      std::vector<T>, std::vector<T>, std::vector<T>,
                      std::vector<T>, std::vector<T>, int, float>(
-            d, x, outref, mean, var, scale, bias, left, epsilon, right);
+            right, x, outref, mean, var, scale, bias, left, epsilon, right);
       }
     }
   }
@@ -754,18 +750,14 @@ void TestCRFDecodingKernel() {
       std::vector<int> trackref(x_sz);
       RandomVec<T>(x_sz, x.data(), -2.f, 2.f);
       RandomVec<T>(w_sz, w.data(), -2.f, 2.f);
-      int d = 0;
-      if (std::is_same<T, float>::value) {
-        d = tag_num;
-      }
 
       ref(seq_len, (const T*)x.data(), (const T*)w.data(), alpharef.data(),
           trackref.data(), tag_num);
 
       TestAllImpls<KT, jit::CRFDecodingTuples<T>, PlaceType, int,
                    std::vector<T>, std::vector<T>, std::vector<T>,
-                   std::vector<int>, int>(d, seq_len, x, w, alpharef, trackref,
-                                          tag_num);
+                   std::vector<int>, int>(tag_num, seq_len, x, w, alpharef,
+                                          trackref, tag_num);
     }
   }
 }
@@ -898,7 +890,8 @@ TEST(JITKernel, kLayerNorm) {
 
 TEST(JITKernel, kCRFDecoding) {
   TestCRFDecodingKernel<jit::kCRFDecoding, float, paddle::platform::CPUPlace>();
-  TestLayerNormKernel<jit::kLayerNorm, double, paddle::platform::CPUPlace>();
+  TestCRFDecodingKernel<jit::kCRFDecoding, double,
+                        paddle::platform::CPUPlace>();
 }
 
 TEST(JITKernel, pool) {
