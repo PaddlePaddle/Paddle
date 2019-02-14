@@ -173,14 +173,14 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 
   void* p;
   // PINNED memory is visible to all CUDA contexts.
-  cudaError_t result = cudaMallocHost(&p, size);
+  cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocPortable);
 
   if (result == cudaSuccess) {
     *index = 1;  // PINNED memory
     cuda_pinnd_alloc_size_ += size;
     return p;
   } else {
-    LOG(WARNING) << "cudaMallocHost failed.";
+    LOG(WARNING) << "cudaHostAlloc failed.";
     return nullptr;
   }
 

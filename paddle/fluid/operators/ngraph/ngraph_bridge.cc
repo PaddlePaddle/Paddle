@@ -31,6 +31,11 @@ std::map<std::string,
                             std::shared_ptr<std::unordered_map<
                                 std::string, std::shared_ptr<ngraph::Node>>>)>>
     NgraphBridge::NG_NODE_MAP = {
+        {"accuracy", NG_OPS::BuildAccuracyNode},
+        {"conv2d", NG_OPS::BuildConv2dNode},
+        {"conv2d_grad", NG_OPS::BuildConv2dGradNode},
+        {"batch_norm", NG_OPS::BuildBatchNormNode},
+        {"batch_norm_grad", NG_OPS::BuildBatchNormGradNode},
         {"elementwise_add", NG_OPS::BuildElementwiseAddNode},
         {"elementwise_add_grad", NG_OPS::BuildElementwiseAddGradNode},
         {"fill_constant", NG_OPS::BuildFillConstantNode},
@@ -38,11 +43,17 @@ std::map<std::string,
         {"mean_grad", NG_OPS::BuildMeanGradNode},
         {"mul", NG_OPS::BuildMulNode},
         {"mul_grad", NG_OPS::BuildMulGradNode},
+        {"pool2d", NG_OPS::BuildPool2dNode},
+        {"pool2d_grad", NG_OPS::BuildPool2dGradNode},
         {"softmax", NG_OPS::BuildSoftmaxNode},
         {"softmax_grad", NG_OPS::BuildSoftmaxGradNode},
         {"scale", NG_OPS::BuildScaleNode},
+        {"sigmoid", NG_OPS::BuildUnaryNode<ngraph::op::Sigmoid>},
+        {"sum", NG_OPS::BuildSumNode},
         {"relu", NG_OPS::BuildUnaryNode<ngraph::op::Relu>},
+        {"relu_grad", NG_OPS::BuildReluGradNode},
         {"tanh", NG_OPS::BuildUnaryNode<ngraph::op::Tanh>},
+        {"tanh_grad", NG_OPS::BuildTanhGradNode},
         {"top_k", NG_OPS::BuildTopKNode}};
 
 void NgraphBridge::BuildNgNode(

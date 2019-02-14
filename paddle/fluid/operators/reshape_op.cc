@@ -327,13 +327,45 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
   }
 };
 
+class ReshapeOpInplaceInToOut : public framework::InplaceInToOut {
+ public:
+  using InplaceInToOut::InplaceInToOut;
+
+ protected:
+  std::unordered_map<std::string, std::string> Apply(
+      const framework::OpDesc &op_desc,
+      framework::BlockDesc *block) const override {
+    std::unordered_map<std::string, std::string> inplace_in_to_out = {
+        {"X", "Out"},
+    };
+    return inplace_in_to_out;
+  }
+};
+
+class ReshapeGradInplaceInToOut : public framework::InplaceInToOut {
+  using InplaceInToOut::InplaceInToOut;
+
+ protected:
+  std::unordered_map<std::string, std::string> Apply(
+      const framework::OpDesc &op_desc,
+      framework::BlockDesc *block) const override {
+    std::unordered_map<std::string, std::string> inplace_in_to_out = {
+        {framework::GradVarName("Out"), framework::GradVarName("X")},
+    };
+    return inplace_in_to_out;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(reshape, ops::ReshapeOp, ops::ReshapeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(reshape_grad, ops::ReshapeGradOp);
+                  paddle::framework::DefaultGradOpDescMaker<true>,
+                  ops::ReshapeOpInplaceInToOut);
+REGISTER_OPERATOR(reshape_grad, ops::ReshapeGradOp,
+                  ops::ReshapeGradInplaceInToOut);
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
                                ops::ReshapeKernel, int, ops::ReshapeKernel,
                                int64_t, ops::ReshapeKernel);
@@ -343,8 +375,9 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
                                ops::ReshapeGradKernel);
 
 REGISTER_OPERATOR(reshape2, ops::Reshape2Op, ops::Reshape2OpMaker,
-                  ops::Reshape2GradMaker);
-REGISTER_OPERATOR(reshape2_grad, ops::Reshape2GradOp);
+                  ops::Reshape2GradMaker, ops::ReshapeOpInplaceInToOut);
+REGISTER_OPERATOR(reshape2_grad, ops::Reshape2GradOp,
+                  ops::ReshapeGradInplaceInToOut);
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
                                ops::ReshapeKernel, int, ops::ReshapeKernel,
                                int64_t, ops::ReshapeKernel);
@@ -356,16 +389,20 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
                                 ops::ReshapeKernel, int, ops::ReshapeKernel,
-                                int64_t, ops::ReshapeKernel);
+                                int64_t, ops::ReshapeKernel, plat::float16,
+                                ops::ReshapeKernel);
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
                                 double, ops::ReshapeGradKernel, int,
                                 ops::ReshapeGradKernel, int64_t,
+                                ops::ReshapeGradKernel, plat::float16,
                                 ops::ReshapeGradKernel);
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
                                 ops::ReshapeKernel, int, ops::ReshapeKernel,
-                                int64_t, ops::ReshapeKernel);
+                                int64_t, ops::ReshapeKernel, plat::float16,
+                                ops::ReshapeKernel);
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
                                 double, ops::ReshapeGradKernel, int,
                                 ops::ReshapeGradKernel, int64_t,
+                                ops::ReshapeGradKernel, plat::float16,
                                 ops::ReshapeGradKernel);
 #endif

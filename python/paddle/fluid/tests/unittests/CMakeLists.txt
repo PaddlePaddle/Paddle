@@ -1,15 +1,6 @@
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-# The MKLDNN tests are skiped when the MKLDNN flag is OFF
-if(NOT WITH_MKLDNN)
-    foreach(src ${TEST_OPS})
-        if(${src} MATCHES ".*_mkldnn_op$")
-            list(REMOVE_ITEM TEST_OPS ${src})
-        endif()
-    endforeach()
-endif(NOT WITH_MKLDNN)
-
 if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_recv_op)
     list(REMOVE_ITEM TEST_OPS test_dist_transpiler)
@@ -85,6 +76,7 @@ list(REMOVE_ITEM TEST_OPS test_image_classification_resnet)
 list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
 list(REMOVE_ITEM TEST_OPS test_nearest_interp_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
+list(REMOVE_ITEM TEST_OPS test_imperative_optimizer)
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
@@ -93,6 +85,8 @@ py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=$
 py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op SERIAL)
 py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op SERIAL)
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
+  FLAGS_cudnn_deterministic=1)
+py_test_modules(test_imperative_optimizer MODULES test_imperative_optimizer ENVS
   FLAGS_cudnn_deterministic=1)
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
@@ -115,8 +109,17 @@ set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer SERIAL)
 if(NOT APPLE)
     py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        # change the timeout from 600 to 1200, because in debug mode, this test need more time.
+        set_tests_properties(test_image_classification_resnet PROPERTIES TIMEOUT 1200)
+    endif()
 endif()
+
 
 if (WITH_NGRAPH)
     add_subdirectory(ngraph)
+endif()
+
+if (WITH_MKLDNN)
+    add_subdirectory(mkldnn)
 endif()
