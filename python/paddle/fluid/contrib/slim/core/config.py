@@ -18,7 +18,7 @@ import yaml
 from collections import OrderedDict
 from ..prune import *
 from ..quantization import *
-#from .compress_pass import *
+from ..distillation import *
 from .strategy import *
 
 __all__ = ['ConfigFactory']
@@ -74,7 +74,7 @@ class ConfigFactory(object):
                     assert self.version == int(key_values['version'])
 
                 # parse pruners
-                if key == 'pruners' or key == 'quantizers' or key == 'strategies':
+                if key == 'distillers' or key == 'pruners' or key == 'quantizers' or key == 'strategies':
                     instances = key_values[key]
                     for name in instances:
                         self._new_instance(name, instances[name])
