@@ -21,6 +21,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+constexpr char kAllOpDescs[] = "all_op_descs";
+
 // TODO(gongwb): overlap allreduce with backward computation.
 class AllReduceDepsPass : public ir::Pass {
  protected:
