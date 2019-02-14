@@ -176,12 +176,6 @@ class Graph {
     return ret;
   }
 
-  void RemoveNode(ir::Node *node) {
-    PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
-    node_set_.erase(node);
-    nodes_.erase(node);
-  }
-
   // NOTE low performance, but simple and secure.
   Node *RetrieveNode(int id) {
     for (auto &node : nodes_) {
@@ -198,10 +192,6 @@ class Graph {
     nodes_[node].reset(node);
     node_set_.insert(node);
     return node;
-  }
-
-  bool ContainNode(ir::Node *node) {
-    return node_set_.find(node) != node_set_.end();
   }
 
   void ResolveHazard(

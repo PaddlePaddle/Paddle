@@ -56,10 +56,10 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
       }
     }
   }
-
   for (auto &var : graph_->Get<details::GraphDepVars>(details::kGraphDepVars)) {
     InsertPendingVar(&pending_vars, ready_vars.get(), var);
   }
+
   for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
     if (op->Inputs().empty()) {  // Special case, Op has no input.
       ready_ops.insert(op);

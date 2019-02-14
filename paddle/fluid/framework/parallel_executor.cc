@@ -478,12 +478,11 @@ bool ParallelExecutor::EnableParallelGraphExecution(
     }
   }
 
-  // if (!member_->use_all_reduce_ || !member_->use_cuda_)
-  if (!member_->use_all_reduce_) enable_parallel_graph = false;
+  if (!member_->use_all_reduce_ || !member_->use_cuda_)
 
-  if (build_strategy.enable_sequential_execution_ ||
-      exec_strategy.type_ == ExecutionStrategy::ExecutorType::kExperimental)
-    enable_parallel_graph = false;
+    if (build_strategy.enable_sequential_execution_ ||
+        exec_strategy.type_ == ExecutionStrategy::ExecutorType::kExperimental)
+      enable_parallel_graph = false;
   return enable_parallel_graph;
 }
 
