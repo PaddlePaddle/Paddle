@@ -13,10 +13,73 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/parallel_ssa_graph_executor.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
+
+std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
+    const std::vector<platform::Place> &places,
+    std::unique_ptr<ir::Graph> graph) {
+  std::vector<std::unique_ptr<ir::Graph>> graphs;
+  graphs.reserve(places.size());
+  for (size_t i = 0; i < places.size(); ++i) {
+    ProgramDesc empty;
+    graphs.emplace_back(std::unique_ptr<ir::Graph>(new ir::Graph(empty)));
+    auto &g = graphs.back();
+    g->Set(kGraphVars, new GraphVars(1UL));
+    g->Set(kGraphDepVars, new GraphDepVars);
+    g->Set(kGraphOps, new GraphOps);
+  }
+
+  for (auto &op : graph->Get<GraphOps>(kGraphOps)) {
+    auto &dev_ctx = op->DeviceContext();
+    auto &p = dev_ctx.begin()->first;
+#ifdef PADDLE_WITH_CUDA
+    int dev_id = boost::get<platform::CUDAPlace>(p).device;
+    auto &dev_ops = graphs[dev_id]->Get<GraphOps>(kGraphOps);
+    auto &dev_dummys = graphs[dev_id]->Get<GraphDepVars>(kGraphDepVars);
+    dev_ops.emplace_back(op);
+    graphs[dev_id]->AddNode(graph->ReleaseNode(op->Node()).release());
+
+    for (auto &var : op->Inputs()) {
+      auto dummy_ptr = dynamic_cast<DummyVarHandle *>(var);
+      if (dummy_ptr) {
+        dev_dummys.insert(var);
+        if (graph->Nodes().count(var->Node()))
+          graphs[dev_id]->AddNode(graph->ReleaseNode(var->Node()).release());
+      }
+    }
+    for (auto &var : op->Outputs()) {
+      auto dummy_ptr = dynamic_cast<DummyVarHandle *>(var);
+      if (dummy_ptr) {
+        dev_dummys.insert(var);
+        if (graph->Nodes().count(var->Node()))
+          graphs[dev_id]->AddNode(graph->ReleaseNode(var->Node()).release());
+      }
+    }
+#else
+    PADDLE_THROW("Parallel Graph Execution only support CUDAPlace.");
+#endif
+  }
+
+  for (size_t dev_id = 0; dev_id < places.size(); ++dev_id) {
+    auto &dev_vars = graphs[dev_id]->Get<GraphVars>(kGraphVars)[0];
+    auto &origin_vars = graph->Get<GraphVars>(kGraphVars)[dev_id];
+    for (auto &name_pair : origin_vars) {
+      dev_vars.emplace(name_pair.first, name_pair.second);
+      for (auto &version_pair : name_pair.second) {
+        if (graph->Nodes().count(version_pair->Node())) {
+          graphs[dev_id]->AddNode(
+              graph->ReleaseNode(version_pair->Node()).release());
+        }
+      }
+    }
+  }
+
+  return graphs;
+}
 
 ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
@@ -37,7 +100,7 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
           << " to run the operators of the graph on each device.";
   for (size_t i = 0; i < places.size(); ++i) {
     executors_.emplace_back(new details::ThreadedSSAGraphExecutor(
-        strategy_, {local_scopes_[i]}, {places_[i]}, std::move(graphs_[i])));
+        strategy_, local_scopes_, {places_[i]}, std::move(graphs_.at(i))));
   }
 }
 

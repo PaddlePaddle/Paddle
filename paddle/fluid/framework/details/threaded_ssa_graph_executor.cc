@@ -56,10 +56,10 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
       }
     }
   }
+
   for (auto &var : graph_->Get<details::GraphDepVars>(details::kGraphDepVars)) {
     InsertPendingVar(&pending_vars, ready_vars.get(), var);
   }
-
   for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
     if (op->Inputs().empty()) {  // Special case, Op has no input.
       ready_ops.insert(op);
@@ -219,7 +219,7 @@ void ThreadedSSAGraphExecutor::RunOp(
       VLOG(10) << op << " " << op->Name() << " Done ";
       running_ops_--;
       ready_var_q->Extend(op->Outputs());
-      VLOG(10) << op << " " << op->Name() << "Signal posted";
+      VLOG(10) << op << " " << op->Name() << " Signal posted";
     } catch (...) {
       exception_holder_.Catch(std::current_exception());
     }
