@@ -25,15 +25,6 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-/*class LegacyMemRecord {
- public:
-  void InitRecordMem(size_t bytes, Place place);
-  void DelRecordMem();
-
- private:
-  std::unordered_map<Allocation *, platform::RecordMemEvent> record_mem;
-};*/
-
 class MemInfo {
  public:
   MemInfo() : usage_(0), peak_usage_(0) {}

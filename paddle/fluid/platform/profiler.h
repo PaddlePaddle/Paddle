@@ -77,11 +77,10 @@ class MemEvent {
   Place place_;
 };
 
-void Mark(uint64_t start_ns, uint64_t end_ns, size_t bytes, Place place);
+void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                  Place place);
 
-void PushEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes, Place place);
-
-void PopEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes, Place place);
+void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes, Place place);
 
 enum ProfilerState {
   kDisabled,  // disabled state

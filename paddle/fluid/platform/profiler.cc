@@ -202,23 +202,19 @@ inline MemEventList& GetMemEventList() {
   if (!g_mem_event_list) {
     std::lock_guard<std::mutex> guard(g_all_mem_event_lists_mutex);
     g_mem_event_list = std::make_shared<MemEventList>();
-    // place
-    // g_thread_id_ = g_next_thread_id_++;
     g_all_mem_event_lists.emplace_front(g_mem_event_list);
   }
   return *g_mem_event_list;
 }
 
-void Mark(uint64_t start_ns, uint64_t end_ns, size_t bytes, Place place) {
-  GetMemEventList().Record(EventType::kMark, start_ns, end_ns, bytes, place);
-}
-
-void PushEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes, Place place) {
+void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                  Place place) {
   GetMemEventList().Record(EventType::kPushRange, start_ns, end_ns, bytes,
                            place);
 }
 
-void PopEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes, Place place) {
+void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                 Place place) {
   GetMemEventList().Record(EventType::kPopRange, start_ns, end_ns, bytes,
                            place);
 }
@@ -279,7 +275,6 @@ void RecordMemEvent::InitRecordMem(size_t bytes, Place place) {
   is_enabled_ = true;
   place_ = place;
   bytes_ = bytes;
-  //  PushEvent(bytes_, place_);
 }
 
 void RecordMemEvent::DelRecordMem() {
@@ -287,11 +282,11 @@ void RecordMemEvent::DelRecordMem() {
   std::lock_guard<std::mutex> l(profiler_mem);
   DeviceTracer* tracer = GetDeviceTracer();
   end_ns_ = PosixInNsec();
-  PushEvent(start_ns_, end_ns_, bytes_, place_);
+  PushMemEvent(start_ns_, end_ns_, bytes_, place_);
   if (tracer) {
     tracer->AddMemInfoRecord(start_ns_, end_ns_, bytes_, place_);
   }
-  PopEvent(start_ns_, end_ns_, bytes_, place_);
+  PopMemEvent(start_ns_, end_ns_, bytes_, place_);
 }
 
 RecordRPCEvent::RecordRPCEvent(const std::string& name,
@@ -350,7 +345,6 @@ void EnableProfiler(ProfilerState state) {
 #endif
   // Mark the profiling start.
   Mark("_start_profiler_", nullptr);
-  Mark(0, 0, 0, get_place());
 }
 
 void ResetProfiler() {
@@ -467,7 +461,9 @@ void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
     } else {
       place = "CUDAPinnedPlace";
     }
-    VLOG(1) << "Place: " << place << "\n";
+    VLOG(1) << "Place: " << place;
+    if ("GPU" == place) VLOG(1) << get_gpu_id(events_table[i].place);
+    VLOG(3) << "\n";
     VLOG(1) << "Memory unit: MB\n";
     // Output events table
     VLOG(1) << "Event"
@@ -489,16 +485,12 @@ struct MemResult {
   uint64_t time;
   double size_;
 };
-// parse memory events
-void ParseMemEvents(const std::vector<std::vector<MemEvent>>& events) {
-  /*for (auto a : events) {
-    for (auto b : a) {
-      VLOG(3) << b.start_ns() << "\t" << b.end_ns() << "\t" << b.bytes()
-              << "\n\n";
-    }
-  }*/
 
+// parse memory events
+void ParseMemEvents(const std::vector<std::vector<MemEvent>>& evt) {
   if (g_state == ProfilerState::kDisabled) return;
+
+  std::vector<std::vector<MemEvent>> events;
 
   static std::function<bool(const MemResult&, const MemResult&)> sort_func = [](
       const MemResult& a, const MemResult& b) { return a.time < b.time; };
@@ -515,7 +507,7 @@ void ParseMemEvents(const std::vector<std::vector<MemEvent>>& events) {
     event_info[i].min = DBL_MAX;
 
     std::vector<MemResult> tmp_mem_results;
-    for (size_t k = 0; k < events[i].size(); ++k) {
+    for (size_t k = 1; k < events[i].size() - 1; ++k) {
       double individual_size = static_cast<double>(events[i][k].bytes()) / base;
       event_info[i].max = std::max(event_info[i].max, individual_size);
       event_info[i].min = std::min(event_info[i].min, individual_size);
@@ -526,7 +518,7 @@ void ParseMemEvents(const std::vector<std::vector<MemEvent>>& events) {
     }
     sort(tmp_mem_results.begin(), tmp_mem_results.end(), sort_func);
     double crt_size = 0.;
-    for (size_t j = 0; j < tmp_mem_results.size() - 1; ++j) {
+    for (size_t j = 0; j < tmp_mem_results.size(); ++j) {
       crt_size += tmp_mem_results[j].size_;
       while (j < tmp_mem_results.size() - 1 &&
              tmp_mem_results[j].time == tmp_mem_results[j + 1].time)
@@ -536,16 +528,6 @@ void ParseMemEvents(const std::vector<std::vector<MemEvent>>& events) {
       event_info[i].peak = std::max(event_info[i].peak, crt_size);
       event_info[i].valley = std::min(event_info[i].valley, crt_size);
     }
-    /*if (mem_timeline[i].rbegin()->time ==
-        tmp_mem_results[tmp_mem_results.size() - 1].time) {
-      mem_timeline[i].rbegin()->size_ +=
-          tmp_mem_results[tmp_mem_results.size() - 1].size_;
-    } else {
-      mem_timeline[i].push_back(
-          {tmp_mem_results[tmp_mem_results.size() - 1].time,
-           mem_timeline[i].rbegin()->size_ +
-               tmp_mem_results[tmp_mem_results.size() - 1].size_});
-    }*/
     event_info[i].peak =
         std::max(event_info[i].peak, mem_timeline[i].rbegin()->size_);
     event_info[i].valley =
@@ -709,15 +691,12 @@ void DisableProfiler(EventSortingKey sorted_key,
   if (g_state == ProfilerState::kDisabled) return;
   // Mark the profiling stop.
   Mark("_stop_profiler_", nullptr);
-  Mark(0, 0, 0, get_place());
 
   std::vector<std::vector<Event>> all_events = GetAllEvents();
   std::vector<std::vector<MemEvent>> all_mem_events = GetMemEvents();
   ParseEvents(all_events, true, sorted_key);
   ParseEvents(all_events, false, sorted_key);
   ParseMemEvents(all_mem_events);
-  //  ParseMemEvents(all_mem_events, true);
-  //  ParseMemEvents(all_mem_events, false);
   ResetProfiler();
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer->IsEnabled()) {

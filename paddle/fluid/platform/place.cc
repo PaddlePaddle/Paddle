@@ -49,6 +49,8 @@ const CUDAPlace default_gpu() { return CUDAPlace(0); }
 const CPUPlace default_cpu() { return CPUPlace(); }
 const CUDAPinnedPlace default_cuda_pinned() { return CUDAPinnedPlace(); }
 
+int get_gpu_id(const Place &p) { return boost::apply_visitor(GetCUDAId(), p); }
+
 bool is_gpu_place(const Place &p) {
   return boost::apply_visitor(IsCUDAPlace(), p);
 }
