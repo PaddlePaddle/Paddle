@@ -79,7 +79,7 @@ class TRTConvertValidation {
         if_add_batch_(if_add_batch),
         max_batch_size_(max_batch_size) {
     PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_), 0);
-    engine_.reset(new TensorRTEngine(max_batch_size, workspace_size, stream_));
+    engine_.reset(new TensorRTEngine(max_batch_size, workspace_size));
     engine_->InitNetwork();
   }
 
@@ -192,9 +192,7 @@ class TRTConvertValidation {
     }
 
     // Execute TRT.
-    engine_->Execute(batch_size, buffers);
-
-    cudaStreamSynchronize(engine_->stream());
+    engine_->Execute(batch_size, &buffers, stream_);
 
     ASSERT_FALSE(op_desc_->OutputArgumentNames().empty());
     int index = 0;

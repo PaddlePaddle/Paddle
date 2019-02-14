@@ -37,7 +37,9 @@ class TRTInt8Calibrator;
  * There are two alternative ways to use it, one is  to build from a paddle
  * protobuf model, another way is to manully construct the network.
  */
-class TensorRTEngine : public EngineBase {
+class TensorRTEngine {
+  using DescType = ::paddle::framework::proto::BlockDesc;
+
  public:
   // Weight is model parameter.
   class Weight {
@@ -56,24 +58,22 @@ class TensorRTEngine : public EngineBase {
     nvinfer1::Weights w_;
   };
 
-  TensorRTEngine(int max_batch, int max_workspace, cudaStream_t stream,
-                 bool enable_int8 = false,
+  TensorRTEngine(int max_batch, int max_workspace, bool enable_int8 = false,
                  TRTInt8Calibrator* calibrator = nullptr,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
-        stream_(stream),
         enable_int8_(enable_int8),
         calibrator_(calibrator),
         logger_(logger) {}
 
-  virtual ~TensorRTEngine();
+  ~TensorRTEngine() {}
 
   // TODO(Superjomn) implement it later when graph segmentation is supported.
-  void Build(const DescType& paddle_model) override;
+  void Build(const DescType& paddle_model);
 
-  void Execute(int batch_size) override;
-  void Execute(int batch_size, std::vector<void*>& buffers);
+  void Execute(int batch_size, std::vector<void*>* buffers,
+               cudaStream_t stream);
 
   // Initialize the inference network, so that TensorRT layers can add to this
   // network.
@@ -97,8 +97,6 @@ class TensorRTEngine : public EngineBase {
   void DeclareOutput(const std::string& name);
   // Check if the ITensor has been declared
   bool HasDeclared(const std::string& name);
-
-  cudaStream_t stream() { return stream_; }
 
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
@@ -127,8 +125,6 @@ class TensorRTEngine : public EngineBase {
   // the max memory size the engine uses
   int max_workspace_;
 
-  cudaStream_t stream_;
-
   bool enable_int8_;
   TRTInt8Calibrator* calibrator_;
   // batch size of the current data, will be updated each Executation.
@@ -136,7 +132,6 @@ class TensorRTEngine : public EngineBase {
 
   nvinfer1::ILogger& logger_;
 
-  std::vector<Buffer> buffers_;
   // max data size for the buffers.
   std::unordered_map<std::string /*name*/, size_t /*max size*/> buffer_sizes_;
   std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>
