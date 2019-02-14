@@ -36,7 +36,6 @@ std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
   for (auto &op : graph->Get<GraphOps>(kGraphOps)) {
     auto &dev_ctx = op->DeviceContext();
     auto &p = dev_ctx.begin()->first;
-#ifdef PADDLE_WITH_CUDA
     int dev_id = boost::get<platform::CUDAPlace>(p).device;
     auto &dev_ops = graphs[dev_id]->Get<GraphOps>(kGraphOps);
     auto &dev_dummys = graphs[dev_id]->Get<GraphDepVars>(kGraphDepVars);
@@ -59,9 +58,6 @@ std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
           graphs[dev_id]->AddNode(graph->RemoveNode(var->Node()).release());
       }
     }
-#else
-    PADDLE_THROW("Parallel Graph Execution only support CUDAPlace.");
-#endif
   }
 
   for (size_t dev_id = 0; dev_id < places.size(); ++dev_id) {
