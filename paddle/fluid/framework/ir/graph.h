@@ -168,7 +168,8 @@ class Graph {
     return ret;
   }
 
-  std::unique_ptr<ir::Node> ReleaseNode(ir::Node *node) {
+  std::unique_ptr<ir::Node> RemoveNode(ir::Node *node) {
+    PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
     std::unique_ptr<ir::Node> ret;
     ret.reset(nodes_.at(node).release());
     nodes_.erase(node);
