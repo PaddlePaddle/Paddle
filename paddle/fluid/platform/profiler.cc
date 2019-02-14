@@ -277,7 +277,7 @@ void RecordMemEvent::InitRecordMem(size_t bytes, Place place) {
   is_enabled_ = true;
   place_ = place;
   bytes_ = bytes;
-  //  PushEvent(bytes_, place_);
+  PushEvent(bytes_, place_);
 }
 
 void RecordMemEvent::DelRecordMem() {
@@ -285,7 +285,7 @@ void RecordMemEvent::DelRecordMem() {
   std::lock_guard<std::mutex> l(profiler_mem);
   DeviceTracer* tracer = GetDeviceTracer();
   end_ns_ = PosixInNsec();
-  PushEvent(bytes_, place_);
+  VLOG(3) << start_ns_ << "\t" << bytes_ << "\n";
   if (tracer) {
     tracer->AddMemInfoRecord(start_ns_, end_ns_, bytes_, place_);
   }
@@ -489,12 +489,12 @@ struct MemResult {
 };
 // parse memory events
 void ParseMemEvents(const std::vector<std::vector<MemEvent>>& events) {
-  for (auto a : events) {
+  /*for (auto a : events) {
     for (auto b : a) {
       VLOG(3) << b.start_ns() << "\t" << b.end_ns() << "\t" << b.bytes()
               << "\n\n";
     }
-  }
+  }*/
 
   if (g_state == ProfilerState::kDisabled) return;
 
