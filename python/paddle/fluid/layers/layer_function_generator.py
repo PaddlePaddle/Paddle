@@ -24,7 +24,7 @@ from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype
 from ..layer_helper import LayerHelper
 
 __all__ = [
-    'deprecated', 'generate_layer_fn', 'generate_layer_fn_noattr', 'autodoc',
+    'deprecated', 'generate_layer_fn', 'generate_activation_fn', 'autodoc',
     'templatedoc'
 ]
 
@@ -226,7 +226,7 @@ def generate_layer_fn(op_type):
     return func
 
 
-def generate_layer_fn_noattr(op_type):
+def generate_activation_fn(op_type):
     """Register the Python layer for an Operator without Attribute.
 
     Args:
@@ -238,14 +238,26 @@ def generate_layer_fn_noattr(op_type):
     """
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
-    def func(x, name=None):
+    def func(x, use_mkldnn=False, is_test=False, name=None):
         helper = LayerHelper(op_type, **locals())
         output = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": output})
+        helper.append_op(
+            type=op_type,
+            inputs={"X": x},
+            outputs={"Out": output},
+            attrs={"use_mkldnn": use_mkldnn,
+                   "is_test": is_test})
         return output
 
     func.__name__ = op_type
-    func.__doc__ = _generate_doc_string_(op_proto)
+
+    origin_doc_str = _generate_doc_string_(op_proto)
+    doc_str = ""
+    for line in origin_doc_str.splitlines():
+        if "op_callstack (STRINGS)" not in line:
+            doc_str += line + "\n"
+    func.__doc__ = doc_str
+
     return func
 
 
