@@ -47,13 +47,6 @@ inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
 }
 
 template <typename T>
-struct ClipFunctor {
-  HOSTDEVICE inline T operator()(T in) const {
-    return std::min<T>(std::max<T>(in, 0.), 1.);
-  }
-};
-
-template <typename T>
 class PriorBoxOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -169,9 +162,9 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
 
     if (clip) {
       T* dt = boxes->data<T>();
-      for (int64_t i = 0; i < boxes->numel(); ++i) {
-        dt[i] = std::min<T>(std::max<T>(dt[i], 0.), 1.);
-      }
+      std::transform(dt, dt + boxes->numel(), dt, [](T v) -> T {
+        return std::min<T>(std::max<T>(v, 0.), 1.);
+      });
     }
 
     framework::Tensor var_t;

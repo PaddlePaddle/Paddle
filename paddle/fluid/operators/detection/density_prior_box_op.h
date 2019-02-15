@@ -72,7 +72,7 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-    for (int i = 0; i < fixed_ratios.size(); i++) {
+    for (size_t i = 0; i < fixed_ratios.size(); i++) {
       sqrt_fixed_ratios.push_back(sqrt(fixed_ratios[i]));
     }
 
@@ -116,9 +116,9 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
     }
     if (clip) {
       T* dt = boxes->data<T>();
-      for (int64_t i = 0; i < boxes->numel(); ++i) {
-        dt[i] = std::min<T>(std::max<T>(dt[i], 0.), 1.);
-      }
+      std::transform(dt, dt + boxes->numel(), dt, [](T v) -> T {
+        return std::min<T>(std::max<T>(v, 0.), 1.);
+      });
     }
     framework::Tensor var_t;
     var_t.mutable_data<T>(
@@ -140,7 +140,7 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
 #pragma omp parallel for collapse(2)
 #endif
     for (int i = 0; i < box_num; ++i) {
-      for (int j = 0; j < variances.size(); ++j) {
+      for (size_t j = 0; j < variances.size(); ++j) {
         e_vars(i, j) = variances[j];
       }
     }
