@@ -76,12 +76,6 @@ struct IsCUDAPinnedPlace : public boost::static_visitor<bool> {
   bool operator()(const CUDAPinnedPlace &cuda_pinned) const { return true; }
 };
 
-struct GetCUDAId : public boost::static_visitor<int> {
-  int operator()(const CPUPlace &) const { return 0; }
-  int operator()(const CUDAPlace &gpu) const { return gpu.GetDeviceId(); }
-  int operator()(const CUDAPinnedPlace &) const { return 0; }
-};
-
 typedef boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace> Place;
 
 using PlaceList = std::vector<Place>;

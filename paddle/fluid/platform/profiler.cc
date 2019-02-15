@@ -487,10 +487,8 @@ struct MemResult {
 };
 
 // parse memory events
-void ParseMemEvents(const std::vector<std::vector<MemEvent>>& evt) {
+void ParseMemEvents(const std::vector<std::vector<MemEvent>>& events) {
   if (g_state == ProfilerState::kDisabled) return;
-
-  std::vector<std::vector<MemEvent>> events;
 
   static std::function<bool(const MemResult&, const MemResult&)> sort_func = [](
       const MemResult& a, const MemResult& b) { return a.time < b.time; };
