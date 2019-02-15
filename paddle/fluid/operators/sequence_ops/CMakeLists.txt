@@ -1,2 +1,6 @@
 include(operators)
-register_operators()
+if(WITH_GPU)
+    register_operators(DEPS cub)
+else()
+    register_operators()
+endif()
