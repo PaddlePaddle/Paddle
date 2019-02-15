@@ -250,13 +250,7 @@ def generate_activation_fn(op_type):
         return output
 
     func.__name__ = op_type
-
-    origin_doc_str = _generate_doc_string_(op_proto)
-    doc_str = ""
-    for line in origin_doc_str.splitlines():
-        if "op_callstack (STRINGS)" not in line:
-            doc_str += line + "\n"
-    func.__doc__ = doc_str
+    func.__doc__ = _generate_doc_string_(op_proto)
 
     return func
 
