@@ -5938,7 +5938,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         inplace(bool): If ``inplace`` is `True`, the input and output of ``layers.reshape``
                        are the same variable, otherwise, the input and output of
                        ``layers.reshape`` are different variables. Note that if :attr:`x`
-                       is more than one layers' input, ``inplace`` must be :attr:`False`.
+                       is more than one layer's input, ``inplace`` must be :attr:`False`.
         name (str): The name of this layer. It is optional.
 
     Returns:
