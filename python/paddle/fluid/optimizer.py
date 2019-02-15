@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from collections import defaultdict
-from contextlib import contextmanager
+from .wrapped_decorator import signature_safe_contextmanager
 
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
@@ -1619,7 +1619,7 @@ class ModelAverage(Optimizer):
             },
             stop_gradient=True)
 
-    @contextmanager
+    @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
         """Apply average values to parameters of current model.
         """

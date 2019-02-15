@@ -188,7 +188,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     VLOG(3) << place << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet exception) {
     if (Attrs().count("sub_block") != 0) {
-      throw exception;
+      throw;
     }
 
     std::ostringstream sout;
@@ -212,7 +212,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     sout << "C++ Callstacks: \n";
     sout << exception.err_str_;
     exception.err_str_ = sout.str();
-    throw exception;
+    throw;
   } catch (...) {
     std::rethrow_exception(std::current_exception());
   }
@@ -595,7 +595,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
  public:
   RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope,
                            const RuntimeContext& ctx)
-      : op_(op), scope_(scope), ctx_(ctx) {}
+      : op_(op), ctx_(ctx) {}
 
   bool HasInput(const std::string& name) const override {
     // has only one input
@@ -887,7 +887,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   const OperatorBase& op_;
-  const Scope& scope_;
   const RuntimeContext& ctx_;
 };
 
@@ -996,11 +995,14 @@ void OperatorWithKernel::TransferInplaceVarsBack(
     const Scope& transfer_scope) const {
   for (auto& var_name : inplace_vars) {
     VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
+    auto* origin_var = scope.FindVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(origin_var, "The var[%s] should not be nullptr.",
+                            var_name);
     auto* original_tensor =
-        GetMutableLoDTensorOrSelectedRowsValueFromVar(scope.FindVar(var_name));
+        GetMutableLoDTensorOrSelectedRowsValueFromVar(origin_var);
     auto* var = transfer_scope.FindVar(var_name);
-    PADDLE_ENFORCE(var != nullptr, "The var[%s] should not be nullptr",
-                   var_name);
+    PADDLE_ENFORCE_NOT_NULL(var, "The var[%s] should not be nullptr.",
+                            var_name);
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
     original_tensor->ShareDataWith(*transformed_tensor);
   }

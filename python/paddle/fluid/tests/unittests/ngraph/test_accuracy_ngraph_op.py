@@ -16,14 +16,37 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_accuracy_op import TestAccuracyOp
 
 
-class TestNGRAPHAccuracyOp(TestAccuracyOp):
+class TestNGRAPHAccuracyOp(OpTest):
     def setUp(self):
-        super(TestNGRAPHAccuracyOp, self).setUp()
+        self.op_type = "accuracy"
+        self.dtype = np.float32
+        self.init_dtype()
+        n = 128
+        infer = np.random.random((n, 1)).astype(self.dtype)
+        indices = np.random.randint(0, 2, (n, 1))
+        label = np.random.randint(0, 2, (n, 1))
+        self.inputs = {'Out': infer, 'Indices': indices, "Label": label}
+        num_correct = 0
+        for rowid in range(n):
+            for ele in indices[rowid]:
+                if ele == label[rowid]:
+                    num_correct += 1
+                    break
+        self.outputs = {
+            'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
+            'Correct': np.array([num_correct]).astype("int64"),
+            'Total': np.array([n]).astype("int64")
+        }
+        self._cpu_only = True
+
+    def init_dtype(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output()
 
 
 if __name__ == '__main__':

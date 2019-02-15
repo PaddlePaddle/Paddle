@@ -56,10 +56,7 @@ __global__ void EncodeCenterSizeKernel(
     output[idx * len + 2] = log(fabs(target_box_width / prior_box_width));
     output[idx * len + 3] = log(fabs(target_box_height / prior_box_height));
     if (prior_box_var_data) {
-      int prior_var_offset = 0;
-      if (prior_box_var_size == 2) {
-        prior_var_offset = col_idx * len;
-      }
+      int prior_var_offset = col_idx * len;
       output[idx * len] /= prior_box_var_data[prior_var_offset];
       output[idx * len + 1] /= prior_box_var_data[prior_var_offset + 1];
       output[idx * len + 2] /= prior_box_var_data[prior_var_offset + 2];
@@ -99,10 +96,7 @@ __global__ void DecodeCenterSizeKernel(
     T box_var_x = T(1), box_var_y = T(1);
     T box_var_w = T(1), box_var_h = T(1);
     if (prior_box_var_data) {
-      int prior_var_offset = 0;
-      if (prior_box_var_size == 2) {
-        prior_var_offset = axis == 0 ? col_idx * len : row_idx * len;
-      }
+      int prior_var_offset = axis == 0 ? col_idx * len : row_idx * len;
       box_var_x = prior_box_var_data[prior_var_offset];
       box_var_y = prior_box_var_data[prior_var_offset + 1];
       box_var_w = prior_box_var_data[prior_var_offset + 2];
