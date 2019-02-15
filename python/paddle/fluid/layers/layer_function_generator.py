@@ -238,15 +238,10 @@ def generate_activation_fn(op_type):
     """
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
-    def func(x, use_mkldnn=False, is_test=False, name=None):
+    def func(x, name=None):
         helper = LayerHelper(op_type, **locals())
         output = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type=op_type,
-            inputs={"X": x},
-            outputs={"Out": output},
-            attrs={"use_mkldnn": use_mkldnn,
-                   "is_test": is_test})
+        helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": output})
         return output
 
     func.__name__ = op_type
