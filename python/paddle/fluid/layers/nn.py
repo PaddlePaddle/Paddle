@@ -3236,7 +3236,7 @@ def group_norm(input,
     # create output
     mean_out = helper.create_variable(dtype=dtype, stop_gradient=True)
     variance_out = helper.create_variable(dtype=dtype, stop_gradient=True)
-    group_norm_out = helper.create_variable(dtype)
+    group_norm_out = helper.create_variable(dtype=dtype)
 
     helper.append_op(
         type="group_norm",
