@@ -38,7 +38,7 @@ math_library(context_project DEPS im2col math_function)
 math_library(cross_entropy)
 math_library(cos_sim_functor)
 math_library(depthwise_conv DEPS cub)
-math_library(im2col)
+math_library(im2col DEPS cub)
 math_library(sampler)
 
 math_library(gru_compute DEPS activation_functions math_function)
