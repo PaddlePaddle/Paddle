@@ -394,9 +394,9 @@ def _count_shape_params_flops(b_vars, one_op):
         kernel_ops = k_h * k_w * (c_in / k_groups)
         # keras's conv use bias defaultly
         # bias_ops = 0 if one_op.input("Bias") == [] else 1
-        bias_ops = 1  # for test
+        bias_ops = 0  # for test
         PARAMs = c_out * (kernel_ops + bias_ops)
-        FLOPs = data_h * data_w * c_out * (kernel_ops + bias_ops)
+        FLOPs = 2 * data_h * data_w * c_out * (kernel_ops + bias_ops)
 
     elif one_op.type == 'pool2d':
         in_data_shape = b_vars[one_op.input("X")[0]].shape
