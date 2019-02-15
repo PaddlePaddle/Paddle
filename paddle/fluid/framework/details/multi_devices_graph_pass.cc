@@ -459,13 +459,13 @@ std::unique_ptr<framework::VarDesc> CreateDGCVarDesc(
 std::unique_ptr<framework::OpDesc> CreateDGCOpDesc(
     const std::string &u_name, const std::string &v_name,
     const std::string &grad_name, const std::string &encoded_grad_name,
-    const std::string& buf_name,
-    float m = 0.9, float ratio = 0.001) {
+    const std::string& buf_name, float m = 0.9) {
   std::unique_ptr<framework::OpDesc> desc(new framework::OpDesc);
   desc->SetType("dgc");
 
   desc->SetAttr("m", Attribute(m));
-  desc->SetAttr("ratio", Attribute(ratio));
+  desc->SetInput("current_step", std::vector<std::string>({"__g_dgc_counter__"}));
+  desc->SetInput("rampup_step", std::vector<std::string>({"__g_rampup_step__"}));
 
   desc->SetInput("U", std::vector<std::string>({u_name}));
   desc->SetInput("V", std::vector<std::string>({v_name}));
@@ -486,13 +486,17 @@ void DistSSAGraphBuilder::CreateDGCOp(ir::Graph *graph, size_t num_places,
                                       float m, float ratio) const {
   auto u_name = p_name + "__dgc_u__";
   auto v_name = p_name + "__dgc_v__";
+  // auto ratio_name = "ratio__dgc__";
   auto buf_name = p_name + "__dgc_buf__";
 
   auto dgc_op_desc =
       CreateDGCOpDesc(u_name, v_name, grad_name, encoded_grad_name, buf_name);
 
-  std::cout << "CreateDGCOp " << u_name << ", " << v_name << "," << grad_name
-            << "," << encoded_grad_name << std::endl;
+  VLOG(10) << "CreateDGCOp u_name:" << u_name 
+      << ", v_name:" << v_name 
+      << ", grad_name:" << grad_name
+      << ", encoded_grad_name:" << encoded_grad_name ;
+      // << ", ratio_name:" << ratio_name;
 
   std::unordered_map<std::string, VarDesc *> block_vars;
   // var nodes for each var name, will have multiple versions in SSA

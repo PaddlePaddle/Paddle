@@ -47,6 +47,7 @@ from ..framework import Program, default_main_program, \
 from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
 from .details import delete_ops, find_op_by_output_arg
 from ..distribute_lookup_table import find_distributed_lookup_table
+from paddle.fluid.layers.nn import autoincreased_step_counter
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
@@ -157,6 +158,7 @@ class DistributeTranspilerConfig(object):
     print_log = False
     wait_port = True
     enable_dgc = False
+    rampup_step = 0
 
 
 class DistributeTranspiler(object):
@@ -224,20 +226,23 @@ class DistributeTranspiler(object):
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
 
-    def _create_dgc_vars(self, start_program, main_program, param_var, var_name, var_shape):
+    def _create_dgc_vars(self, start_program, main_program, var_name, var_shape, 
+                         dtype =core.VarDesc.VarType.FP32,  
+                         t_type=core.VarDesc.VarType.LOD_TENSOR,
+                         init_value=0.0):
         var = start_program.global_block().create_var(
             name=var_name,
             shape=var_shape,
-            dtype=param_var.dtype,
-            type=param_var.type,
+            dtype=dtype,
+            type=t_type,
             stop_gradient=True,
             persistable=True)
 
         main_program.global_block().create_var(
             name=var_name,
             shape=var_shape,
-            dtype=param_var.dtype,
-            type=param_var.type,
+            dtype=dtype,
+            type=t_type,
             stop_gradient=True,
             persistable=True)
 
@@ -246,12 +251,11 @@ class DistributeTranspiler(object):
             outputs={"Out": var},
             attrs={
                 "shape": var_shape,
-                "dtype": param_var.dtype,
-                "value": 0.0,
+                "dtype": dtype,
+                "value": init_value,
                 'force_cpu': False
             },
             stop_gradient=True)
-
 
     def _add_dgc_vars(self, start_program, main_program):
         main_program._enable_dgc = True
@@ -270,12 +274,20 @@ class DistributeTranspiler(object):
 
             names = [u_name, v_name]
             for var_name in names:
-                self._create_dgc_vars(start_program, main_program, param_var, var_name, param_var.shape)
+                self._create_dgc_vars(start_program, main_program, var_name, var_shape=param_var.shape)
 
             buf_var_name = param_var.name + "__dgc_buf__"
             # FIXME(gongwb): get_buffer_size
             buf_var_shape=[2*256*128]
-            self._create_dgc_vars(start_program, main_program, param_var, buf_var_name, buf_var_shape)
+            self._create_dgc_vars(start_program, main_program, buf_var_name, var_shape=buf_var_shape)
+
+        global_step = autoincreased_step_counter(counter_name='__g_dgc_counter__', begin=0, step=1)
+
+        rampup_var_name = "__g_rampup_step__"
+        rampup_var_shape=[1]
+        self._create_dgc_vars(start_program, main_program, rampup_var_name,
+                            var_shape=rampup_var_shape, 
+                            init_value=self.config.rampup_step*1.0)
 
 
     def _transpile_nccl2(self,

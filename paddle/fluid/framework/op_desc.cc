@@ -643,6 +643,7 @@ void OpDesc::CheckAttrs() {
     // not by users.
     return;
   }
+  VLOG(10) << "begin to check attribute of " << Type();
   checker->Check(&attrs_);
 }
 

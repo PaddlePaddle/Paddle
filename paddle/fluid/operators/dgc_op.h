@@ -20,6 +20,22 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+inline float get_period_sparcity(float cur_step, float rampup_steps){
+    if(static_cast<int>(cur_step) <=0){
+        return 0.75;
+    }
+
+    std::vector<float> a({0.75, 0.9375, 0.984375, 0.996, 0.999});
+    float rate = cur_step / rampup_steps;
+    int idx = static_cast<int>(rate / 0.2);
+    if(idx>=a.size()){
+        return 0.999;
+    }
+
+    PADDLE_ENFORCE(idx>=0 && idx < a.size());
+    return a[idx];
+}
+
 template <typename DeviceContext, typename T>
 class DGCOpKernel : public framework::OpKernel<T> {
  public:
@@ -30,8 +46,18 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto v = ctx.Input<framework::Tensor>("V");
     auto g = ctx.Input<framework::Tensor>("Grad");
     float m = ctx.Attr<float>("m");
-    float ratio = ctx.Attr<float>("ratio");
+
+    auto current_step_tensor = ctx.Input<framework::Tensor>("current_step");
+    auto rampup_step_tensor = ctx.Input<framework::Tensor>("ramup_step");
+    const int64_t* current_step = current_step_tensor->data<int64_t>();
+    const float* rampup_step  = rampup_step_tensor->data<float>();
+    float ratio = 1 - get_period_sparcity(static_cast<float>(*current_step), 
+            static_cast<float>(*rampup_step));
     int k = static_cast<int>(g->numel() * ratio);
+    VLOG(10) << "rampup_step:" << rampup_step
+        << ", current_step:" << current_step
+        << ", ratio:" << ratio
+        << ", k:" << k;
 
     auto u_out = ctx.Output<framework::Tensor>("U_out");
     auto v_out = ctx.Output<framework::Tensor>("V_out");
@@ -52,7 +78,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
 
     T* v_out_data = v_out->mutable_data<T>(ctx.GetPlace());
     T* u_out_data = u_out->mutable_data<T>(ctx.GetPlace());
-    T* encode_grad_out_data = encode_grad_out->mutable_data<T>(ctx.GetPlace());
+    T* encode_grad_out_data = encode_grad_out->mutable_data<T>(framework::DDim{2 * k}, ctx.GetPlace());
 
     auto buf_out = ctx.Output<framework::Tensor>("Encoded_buf");
     void* buf = static_cast<void*>(buf_out->mutable_data<T>(ctx.GetPlace()));

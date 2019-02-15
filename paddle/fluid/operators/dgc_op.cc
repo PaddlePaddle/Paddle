@@ -29,8 +29,12 @@ class DGCOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("V"), "Input(V) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grad"),
                    "Input(Grad) of DGCop should not be null.");
-    // PADDLE_ENFORCE(ctx->HasInput("GradLocal"),
-    //"Input(GradLocal) of DGCop should not be null.");
+    // PADDLE_ENFORCE(ctx->HasInput("ratio"),
+    //              "Input(ratio) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("current_step"), 
+            "Input(current_step) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("rampup_step"), 
+            "Input(rampup_step) of DGCop should not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("U_out"),
                    "Output(U_out) of DGCop should not be null.");
@@ -39,15 +43,26 @@ class DGCOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("EncodeGrad"),
                    "Output(EncodeGrad) of DGCop should not be null.");
 
-    float ratio = ctx->Attrs().Get<float>("ratio");
-    PADDLE_ENFORCE(ratio > 0.0001 && ratio < 1.0,
-                   "ratio of dgc must in range [0.0001, 1.0]");
+    /*
+    std::vector<framework::InferShapeVarPtr> ratio_var_ptrs = ctx->GetInputVarPtrs("ratio");
+    PADDLE_ENFORCE(ratio_var_ptrs.size() == 1);
+    auto ratio_var = boost::get<framework::Variable *>(ratio_var_ptrs[0])
+    auto ratio_tensor = ratio_var->Get<framework::Tensor>();
+    float ratio = 1 - *ratio_tensor->data<T>();
+    PADDLE_ENFORCE(ratio > 0.0009 && ratio < 1.0,
+                   "ratio of dgc must in range [0.0009, 1.0]");
+    VLOG(10) << "reserved ratio:" << ratio;
+    */
+
+    /*
     auto dim = ctx->GetInputDim("Grad");
     int k = static_cast<int>(framework::product(dim) * ratio);
 
+    FIXME(gongwb): need not set output dims?
     ctx->SetOutputDim("EncodeGrad", framework::DDim{2 * k});
     VLOG(10) << "set EncodeGrad dims:" << framework::DDim{2 * k};
-    // ctx->ShareLoD("Grad", /*->*/ "EncodeGrad");
+    ctx->ShareLoD("Grad", "EncodeGrad");
+    */
     
     // int buf_size = get_buffer_size(k);
     PADDLE_ENFORCE(ctx->HasOutput("Encoded_buf"),
@@ -72,7 +87,8 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("U", "(Tensor) Middle tensor of DGC");
     AddInput("V", "(Tensor) Middle tensor of DGC");
     AddInput("Grad", "(Tensor) Input gradient");
-    // AddInput("GradLocal", "(Tensor) Local gradient for accumulation.");
+    AddInput("current_step", "(Tensor) Current step.");
+    AddInput("rampup_step", "(Tensor) Ramping up step.");
 
     AddOutput("U_out",
               "(Tensor) "
@@ -83,19 +99,20 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("EncodeGrad",
               "(Tensor) "
               "Output encoded gradient");
-    /*
-    AddOutput("GradLocal_out",
-              "(Tensor) "
-              "Output encoded gradient");
-              */
 
     AddAttr<float>("m",
-                   "(float, m) "
-                   "The momentum of learning rate.");
-    AddAttr<float>("ratio",
-                   "(float, default 0.001) "
-                   "Reserve topk from tensor.")
-        .SetDefault(0.001);
+                   "(float, 0.9) "
+                   "The momentum of learning rate.").SetDefault(0.9);
+
+    /*
+    AddAttr<float>("current_step",
+                   "(float, 0.0)"
+                   "Current steps in all steps").SetDefault(0.0);
+
+    AddAttr<float>("rampup_step",
+                   "(float, 0.0)"
+                   "Sparsity rampup(warmup) steps").SetDefault(0.0);
+                   */
 
     AddComment(R"DOC(
     Please see appendix D of https://arxiv.org/abs/1712.01887.pdf
