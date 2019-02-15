@@ -17,70 +17,7 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-
-
-class TestElementwiseAddOp(OpTest):
-    def init_kernel_type(self):
-        self.use_mkldnn = False
-
-    def setUp(self):
-        self.op_type = "elementwise_add"
-        self._cpu_only = True
-        self.dtype = np.float32
-        self.axis = -1
-        self.init_dtype()
-        self.init_input_output()
-        self.init_kernel_type()
-        self.init_axis()
-
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
-        }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
-        self.outputs = {'Out': self.out}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad_normal(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.005)
-
-    def test_check_grad_ingore_x(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
-
-    def test_check_grad_ingore_y(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
-
-    def init_input_output(self):
-        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
-        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
-        self.out = np.add(self.x, self.y)
-
-    def init_dtype(self):
-        pass
-
-    def init_axis(self):
-        pass
-
-
-class TestElementwiseAddOp_broadcast_0(TestElementwiseAddOp):
-    def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(3, 4).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 3, 4, 1)
-
-    def init_axis(self):
-        self.axis = 1
-
+from paddle.fluid.tests.unittests.test_elementwise_add_op import TestElementwiseAddOp, TestElementwiseAddOp_broadcast_0
 
 if __name__ == '__main__':
     unittest.main()

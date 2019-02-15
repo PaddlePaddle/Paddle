@@ -13,51 +13,34 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
 import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_fill_constant_op import TestFillConstantOp1, TestFillConstantOp2, TestFillConstantOpWithSelectedRows
 
 
-class TestNGRAPHFillConstantOp1(OpTest):
+class TestNGRAPHFillConstantFP64(TestFillConstantOp1):
     def setUp(self):
-        self.op_type = "fill_constant"
-        self.dtype = np.float64
+        super(TestNGRAPHFillConstantFP64, self).setUp()
 
-        self.inputs = {}
         self.attrs = {'shape': [123, 92], 'value': 3.8, 'dtype': 6}
         self.outputs = {'Out': np.full((123, 92), 3.8)}
 
-    def test_check_output(self):
-        self.check_output()
 
-
-class TestNGRAPHFillConstantOp2(OpTest):
+class TestNGRAPHFillConstantINT32(TestFillConstantOp2):
     def setUp(self):
-        self.op_type = "fill_constant"
-        self.dtype = np.int32
+        super(TestNGRAPHFillConstantINT32, self).setUp()
 
-        self.inputs = {}
         self.attrs = {'shape': [123, 92], 'dtype': 2}
         self.outputs = {'Out': np.full((123, 92), 0)}
 
-    def test_check_output(self):
-        self.check_output()
 
-
-class TestNGRAPHFillConstantOp3(OpTest):
+class TestNGRAPHFillConstantINT64(TestFillConstantOp2):
     def setUp(self):
-        self.op_type = "fill_constant"
-        self.dtype = np.int64
+        super(TestNGRAPHFillConstantINT64, self).setUp()
 
-        self.inputs = {}
         self.attrs = {'shape': [123, 92], 'dtype': 3}
         self.outputs = {'Out': np.full((123, 92), 0)}
-
-    def test_check_output(self):
-        self.check_output()
 
 
 if __name__ == "__main__":
