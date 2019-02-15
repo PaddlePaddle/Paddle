@@ -21,6 +21,7 @@ from ....executor import Executor
 import copy
 from collections import Iterable
 from ....io import save_inference_model, load_inference_model
+import numpy as np
 
 __all__ = [
     'Graph', 'ImitationGraph', 'IRGraph', 'save_inference_graph_model',
@@ -322,6 +323,23 @@ class ImitationGraph(Graph):
                     params.append(var)
         return params
 
+    def flops(self):
+        ret = 0
+        b_vars = {}
+        for var in self.program.list_vars():
+            b_vars[var.name] = var
+        for op in self.all_ops():
+            if op.type in ['conv2d', 'depthwise_conv2d', 'mul']:
+                _, _, _, flop = _count_shape_params_flops(b_vars, op)
+                ret += flop
+        return ret
+
+    def numel_params(self):
+        ret = 0
+        for param in self.all_parameters():
+            ret += np.product(param.shape)
+        return ret
+
 
 class IRGraph(Graph):
     pass
@@ -352,3 +370,72 @@ def load_inference_graph_model(dirname,
     exe = Executor(place)
     return load_inference_model(dirname, exe, model_filename, params_filename,
                                 pserver_endpoints)
+
+
+def _count_shape_params_flops(b_vars, one_op):
+    '''
+    Args:
+        b_vars: all vars of one block
+        one_op: one operator to count
+    Returns:
+        in_data_shape: one operator's input data shape
+        out_data_shape: one operator's output data shape
+        PARAMs: one operator's PARAMs 
+        FLOPs: : one operator's FLOPs
+    '''
+    if one_op.type in ['conv2d', 'depthwise_conv2d']:
+        k_arg_shape = b_vars[one_op.input("Filter")[0]].shape
+        in_data_shape = b_vars[one_op.input("Input")[0]].shape
+        out_data_shape = b_vars[one_op.output("Output")[0]].shape
+        c_out, c_in, k_h, k_w = k_arg_shape
+        _, c_out_, data_h, data_w = out_data_shape
+        #        assert c_out == c_out_, 'shape error!'
+        k_groups = one_op.attr("groups")
+        kernel_ops = k_h * k_w * (c_in / k_groups)
+        # keras's conv use bias defaultly
+        # bias_ops = 0 if one_op.input("Bias") == [] else 1
+        bias_ops = 1  # for test
+        PARAMs = c_out * (kernel_ops + bias_ops)
+        FLOPs = data_h * data_w * c_out * (kernel_ops + bias_ops)
+
+    elif one_op.type == 'pool2d':
+        in_data_shape = b_vars[one_op.input("X")[0]].shape
+        out_data_shape = b_vars[one_op.output("Out")[0]].shape
+        _, c_out, data_h, data_w = out_data_shape
+        k_size = one_op.attr("ksize")
+        PARAMs = 0
+        FLOPs = data_h * data_w * c_out * (k_size[0]**2)
+
+    elif one_op.type == 'mul':
+        k_arg_shape = b_vars[one_op.input("Y")[0]].shape
+        in_data_shape = b_vars[one_op.input("X")[0]].shape
+        out_data_shape = b_vars[one_op.output("Out")[0]].shape
+        # TODO: fc has mul ops
+        # add attr to mul op, tell us whether it belongs to 'fc'
+        # this's not the best way
+        if 'fc' not in one_op.output("Out")[0]:
+            return None
+        k_in, k_out = k_arg_shape
+        # bias in sum op
+        PARAMs = k_in * k_out + 1
+        FLOPs = k_in * k_out
+
+    elif one_op.type in ['relu', 'sigmoid']:
+        in_data_shape = b_vars[one_op.input("X")[0]].shape
+        out_data_shape = b_vars[one_op.output("Out")[0]].shape
+        _, c_in, data_h, data_w = in_data_shape
+        PARAMs = 0
+        FLOPs = data_h * data_w * c_in
+
+    elif one_op.type == 'batch_norm':
+        in_data_shape = b_vars[one_op.input("X")[0]].shape
+        out_data_shape = b_vars[one_op.output("Y")[0]].shape
+        _, c_in, data_h, data_w = in_data_shape
+        # gamma, beta, mean, std
+        PARAMs = c_in * 4
+        FLOPs = data_h * data_w * c_in
+
+    else:
+        return None
+
+    return in_data_shape, out_data_shape, PARAMs, FLOPs
