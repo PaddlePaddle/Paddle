@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import unittest
 import numpy as np
-import six
-import sys
 
-import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layer_helper import LayerHelper
 
@@ -74,18 +70,12 @@ class TestBaseLayer(unittest.TestCase):
             self.assertEqual(l.w1.name, "MyLayer_0.w_0")
             self.assertEqual(l.w2.name, "MyLayer_0.w_1")
             self.assertTrue(np.allclose(ret._numpy(), 0.2 * np.ones([2, 2])))
-            sys.stderr.write(
-                '%s %s %s %s\n' %
-                (ret._numpy(), l.w1.name, l.w2.name, l._sub_layers))
 
     def test_three_level(self):
         with fluid.imperative.guard():
             l = L3()
             ret = l()
-            sys.stderr.write('%s\n' % ret._numpy())
-
-            for p in l.parameters():
-                sys.stderr.write('%s\n' % p.name)
+            self.assertTrue(np.allclose(ret._numpy(), 0.8 * np.ones([2, 2])))
 
 
 if __name__ == '__main__':
