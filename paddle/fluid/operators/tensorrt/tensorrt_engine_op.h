@@ -31,37 +31,6 @@ namespace paddle {
 
 namespace operators {
 
-using FluidDT = framework::proto::VarType_Type;
-using TRT_DT = nvinfer1::DataType;
-
-namespace {  // NOLINT
-
-TRT_DT FluidDataType2TRT(FluidDT type) {
-  switch (type) {
-    case FluidDT::VarType_Type_FP32:
-      return TRT_DT::kFLOAT;
-    case FluidDT::VarType_Type_INT32:
-      return TRT_DT::kINT32;
-    default:
-      return TRT_DT::kINT32;
-  }
-  PADDLE_THROW("unkown type");
-  return TRT_DT::kINT32;
-}
-
-nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t> &shape) {
-  PADDLE_ENFORCE_GT(shape.size(), 1UL,
-                    "TensorRT' tensor input requires at least 2 dimensions");
-  PADDLE_ENFORCE_LE(shape.size(), 4UL,
-                    "TensorRT' tensor input requires at most 4 dimensions");
-  PADDLE_ENFORCE(shape.size() == 4UL || shape.size() == 2UL);
-  if (shape.size() == 4UL)
-    return nvinfer1::DimsCHW(shape[1], shape[2], shape[3]);
-  return nvinfer1::DimsCHW(shape[1], 1, 1);
-}
-
-}  // namespace // NOLINT
-
 using inference::Singleton;
 using inference::tensorrt::TensorRTEngine;
 using inference::tensorrt::TRTInt8Calibrator;
@@ -161,7 +130,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             new TensorRTEngine(max_batch_size_, workspace_size_, enable_int8_,
                                calib_res->calib_.get()));
         VLOG(3) << "start the calib trt engine thread";
-        Prepare(scope, calib_res->engine_.get());
+        PrepareTRTEngine(scope, calib_res->engine_.get());
       }));
     }
 
@@ -259,7 +228,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       trt_engine_.reset(new TensorRTEngine(max_batch_size_, workspace_size_,
                                            enable_int8_, calibrator_.get()));
       if (true) {
-        Prepare(scope, trt_engine_.get());
+        PrepareTRTEngine(scope, trt_engine_.get());
       } else {
         // create static engine
       }
@@ -267,49 +236,21 @@ class TensorRTEngineOp : public framework::OperatorBase {
     return trt_engine_.get();
   }
 
-  void Prepare(const framework::Scope &scope, TensorRTEngine *engine) const {
+  void PrepareTRTEngine(const framework::Scope &scope,
+                        TensorRTEngine *engine) const {
     LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
                  "kernel etc). This process may cost a lot of time.";
-    framework::proto::BlockDesc block_desc;
-    block_desc.ParseFromString(Attr<std::string>("subgraph"));
-    framework::BlockDesc block(nullptr /*programdesc*/, &block_desc);
+    framework::proto::BlockDesc block_proto;
+    block_proto.ParseFromString(Attr<std::string>("subgraph"));
+    framework::BlockDesc block_desc(nullptr, &block_proto);
 
-    engine->InitNetwork();
-
-    VLOG(4) << "parsed var size " << block.AllVars().size();
-    std::vector<std::string> output_maps =
+    std::vector<std::string> inputs = Inputs("Xs");
+    std::vector<std::string> outputs =
         Attr<std::vector<std::string>>("output_name_mapping");
 
-    // Add inputs
-    VLOG(4) << "declare inputs";
-    for (auto &input : Inputs("Xs")) {
-      if (param_names_.count(input)) continue;
-      VLOG(4) << "declare input " << input;
-
-      auto &t =
-          inference::analysis::GetFromScope<framework::LoDTensor>(scope, input);
-      auto t_shape = framework::vectorize(t.dims());
-
-      auto *var = block.FindVar(input);
-      // TensorRT engine need to create parameters. The parameter's description
-      // should be set in
-      PADDLE_ENFORCE(var, "no variable called %s", input);
-      PADDLE_ENFORCE_EQ(var->GetType(), FluidDT::VarType_Type_LOD_TENSOR,
-                        "TensorRT engine only takes LoDTensor as input");
-      engine->DeclareInput(
-          input, FluidDataType2TRT(
-                     var->Proto()->type().lod_tensor().tensor().data_type()),
-          Vec2TRT_Dims(t_shape));
-    }
-
     inference::Singleton<inference::tensorrt::OpConverter>::Global()
-        .ConvertBlock(block_desc, param_names_, scope, engine);
-
-    // Add outputs
-    for (auto &output : output_maps) {
-      engine->DeclareOutput(output);
-    }
-    engine->FreezeNetwork();
+        .ConvertBlockToTRTEngine(&block_desc, scope, inputs, param_names_,
+                                 outputs, engine);
   }
 };
 
