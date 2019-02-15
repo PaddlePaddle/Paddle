@@ -14,8 +14,6 @@
 
 #include <algorithm>
 #include <set>
-#include <string>
-#include <vector>
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/inference/analysis/helper.h"
@@ -42,7 +40,6 @@ void RenameAndGetOutputs(
     std::unordered_map<std::string, std::string> *output_name_map);
 
 std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
-
     std::unique_ptr<framework::ir::Graph> graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph.get());
 
@@ -55,9 +52,16 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
                       Get<int>("min_subgraph_size") /*min subgraph size*/);
   fuser();
 
+  std::vector<std::string> graph_param_names =
+      ExtractParameters(graph->Nodes());
+  // those parameter already exist in trt, and should not have another copy in
+  // fluid.
+  std::vector<std::string> repetitive_params;
+
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !Agent(node).subgraph()->empty()) {
-      CreateTensorRTOp(node, graph.get());
+      CreateTensorRTOp(node, graph.get(), graph_param_names,
+                       &repetitive_params);
 
       std::unordered_set<const Node *> nodes2remove(
           Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
@@ -72,6 +76,8 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
     }
   }
   framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
+  graph->Set(framework::ir::kRepetitiveParamAttr,
+             new std::vector<std::string>(repetitive_params));
 
   return graph;
 }
@@ -89,8 +95,10 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
   return engine_key;
 }
 
-void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
-                                            Graph *graph) const {
+void TensorRtSubgraphPass::CreateTensorRTOp(
+    framework::ir::Node *node, Graph *graph,
+    const std::vector<std::string> &graph_params,
+    std::vector<std::string> *repetitive_params) const {
   auto *op_desc = node->Op();
   auto &subgraph = *Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
@@ -124,10 +132,17 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   // is unique.
   std::set<std::string> input_names;
   std::set<std::string> input_names_with_id;
+  std::vector<std::string> params;
+
+  // The node->inputs containes input tensors and parameters.
   for (auto *x : node->inputs) {
     input_names.insert(x->Name());
     input_names_with_id.insert(x->Name() + std::to_string(x->id()));
+    if (std::count(graph_params.begin(), graph_params.end(), x->Name()) > 0) {
+      params.push_back(x->Name());
+    }
   }
+
   std::set<std::string> output_names;
   std::set<std::string> output_names_with_id;
   for (auto *x : node->outputs) {
@@ -161,6 +176,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
     PADDLE_ENFORCE(output_name_map.count(name) != 0);
     output_mapping.push_back(output_name_map[name]);
   }
+  PADDLE_ENFORCE(!output_mapping.empty());
 
   auto *vars = block_desc.Proto()->mutable_vars();
   for (framework::ir::Node *node : graph->Nodes()) {
@@ -172,22 +188,21 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
                  "the block has no var-desc");
 
+  // Set attrs
+  op_desc->SetType("tensorrt_engine");
   op_desc->SetInput(
       "Xs", std::vector<std::string>(input_names.begin(), input_names.end()));
 
   op_desc->SetOutput(
       "Ys", std::vector<std::string>(output_names.begin(), output_names.end()));
-  op_desc->SetType("tensorrt_engine");
 
-  PADDLE_ENFORCE(!output_mapping.empty());
   op_desc->SetBlockAttr("sub_block", new_block);
   SetAttr(op_desc->Proto(), "subgraph",
           block_desc.Proto()->SerializeAsString());
-  // Set attrs
   SetAttr(op_desc->Proto(), "max_batch_size", Get<int>("max_batch_size"));
   SetAttr(op_desc->Proto(), "workspace_size", Get<int>("workspace_size"));
-  SetAttr(op_desc->Proto(), "parameters", ExtractParameters(graph->Nodes()));
   SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
+  SetAttr(op_desc->Proto(), "parameters", params);
 
   auto enable_int8 = Get<bool>("enable_int8");
   auto engine_key =
@@ -200,6 +215,11 @@ void TensorRtSubgraphPass::CreateTensorRTOp(framework::ir::Node *node,
 
   SetAttr(op_desc->Proto(), "enable_int8", enable_int8);
   SetAttr(op_desc->Proto(), "engine_key", engine_key);
+
+  if (!(enable_int8 && calibration_data.size() == 0)) {
+    std::copy(params.begin(), params.end(),
+              std::back_inserter(*repetitive_params));
+  }
 }
 
 std::vector<std::string> ExtractParameters(
@@ -211,7 +231,7 @@ std::vector<std::string> ExtractParameters(
   for (const auto &node : nodes) {
     if (!node->IsOp()) continue;
     std::string op_type = node->Op()->Type();
-    if (op_type == "feed") {
+    if (op_type == "feed" || op_type == "fetch") {
       std::vector<std::string> output_names = node->Op()->OutputArgumentNames();
       std::copy(output_names.begin(), output_names.end(),
                 std::back_inserter(feed_outputs));
