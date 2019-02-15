@@ -543,14 +543,14 @@ class UniformPruneStrategy(PruneStrategy):
             context.eval_graph.numel_params()) / model_size)))
         logger.info('Pruned flops: {:.2f}'.format(1 - (float(
             context.eval_graph.flops()) / flops)))
-        #        metric = self._eval_graph(context)
-        #        logger.info('Pruned metric: {:.2f}'.format(metric-self.metric))
+        metric = self._eval_graph(context)
+        logger.info('Metric after pruning: {:.2f}'.format(metric))
         logger.info(
             '------------------UniformPruneStrategy.on_compression_begin finish--------------------------------'
         )
 
 
-class SensitivePruneStrategy(Strategy):
+class SensitivePruneStrategy(PruneStrategy):
     def __init__(self,
                  pruner=None,
                  start_epoch=0,
@@ -560,25 +560,16 @@ class SensitivePruneStrategy(Strategy):
                  metric_name=None,
                  pruned_params='conv.*_weights',
                  sensitivities_file='./vgg11_sensitivities.data',
-                 sensitivities={},
-                 uniform=False):
-        super(SensitivePruneStrategy, self).__init__(start_epoch, end_epoch)
-        self.pruner = pruner
+                 sensitivities={}):
+        super(SensitivePruneStrategy, self).__init__(pruner, start_epoch,
+                                                     end_epoch, target_ratio,
+                                                     metric_name, pruned_params)
         self.delta_rate = delta_rate
-        self.target_ratio = target_ratio
-        self.metric_name = metric_name
-        self.pruned_params = pruned_params
         self.pruned_list = []
         self.sensitivities = sensitivities
         self.sensitivities_file = sensitivities_file
         self.backup = {}
         self.param_shape_backup = {}
-        self.uniform = uniform
-
-    def _eval_graph(self, context):
-        results, names = context.run_eval_graph()
-        metric = np.mean(results[names.index(self.metric_name)])
-        return metric
 
     def _save_sensitivities(self):
         with open(self.sensitivities_file, 'wb') as f:
@@ -630,8 +621,6 @@ class SensitivePruneStrategy(Strategy):
                     'loss': [],
                     'size': param.shape[0]
                 }
-        if self.uniform:
-            return
 
         self.metric = None
 
@@ -699,8 +688,9 @@ class SensitivePruneStrategy(Strategy):
         max_loss = 0.
         coefficients = {}
         for param in self.sensitivities:
-            losses = np.array(self.sensitivities[param]['loss'])
-            precents = np.array(self.sensitivities[param]['pruned_percent'])
+            losses = np.array([0] * 5 + self.sensitivities[param]['loss'])
+            precents = np.array([0] * 5 + self.sensitivities[param][
+                'pruned_percent'])
             coefficients[param] = slove_coefficient(precents, losses)
             loss = np.max(losses)
             max_loss = np.max([max_loss, loss])
@@ -751,404 +741,6 @@ class SensitivePruneStrategy(Strategy):
                 min_loss = loss
         return self.sensitivities.keys(), ratios
 
-    def _prune_parameter_by_ratio(self,
-                                  scope,
-                                  params,
-                                  ratio,
-                                  place,
-                                  lazy=False,
-                                  only_graph=False):
-        """
-        Only support for pruning in axis 0 by ratio.
-        """
-        if params[0].name in self.pruned_list[0]:
-            return
-        param_t = scope.find_var(params[0].name).get_tensor()
-        pruned_idx = self.pruner.cal_pruned_idx(
-            params[0].name, np.array(param_t), ratio, axis=0)
-        for param in params:
-            param_t = scope.find_var(param.name).get_tensor()
-            if lazy:
-                self.backup[param.name] = copy.deepcopy(np.array(param_t))
-            pruned_param = self.pruner.prune_tensor(
-                np.array(param_t), pruned_idx, pruned_axis=0, lazy=lazy)
-            if not only_graph:
-                param_t.set(pruned_param, place)
-            ori_shape = param.shape
-            if param.name not in self.param_shape_backup:
-                self.param_shape_backup[param.name] = copy.deepcopy(param.shape)
-            new_shape = list(param.shape)
-            new_shape[0] = pruned_param.shape[0]
-            param.desc.set_shape(new_shape)
-            logger.debug(
-                '|----------------------------------------+----+------------------------------+------------------------------|'
-            )
-            logger.debug('|{:^40}|{:^4}|{:^30}|{:^30}|'.format(
-                param.name, 0, ori_shape, param.shape))
-            self.pruned_list[0].append(param.name)
-        return pruned_idx
-
-    def _prune_parameter_by_idx(self,
-                                scope,
-                                params,
-                                pruned_idx,
-                                pruned_axis,
-                                place,
-                                lazy=False,
-                                only_graph=False):
-        if params[0].name in self.pruned_list[pruned_axis]:
-            return
-        for param in params:
-            param_t = scope.find_var(param.name).get_tensor()
-            if lazy:
-                self.backup[param.name] = copy.deepcopy(np.array(param_t))
-            pruned_param = self.pruner.prune_tensor(
-                np.array(param_t), pruned_idx, pruned_axis, lazy=lazy)
-            if not only_graph:
-                param_t.set(pruned_param, place)
-            ori_shape = param.shape
-            if param.name not in self.param_shape_backup:
-                self.param_shape_backup[param.name] = copy.deepcopy(param.shape)
-            new_shape = list(param.shape)
-            new_shape[pruned_axis] = pruned_param.shape[pruned_axis]
-            param.desc.set_shape(new_shape)
-            logger.debug(
-                '|----------------------------------------+----+------------------------------+------------------------------|'
-            )
-            logger.debug('|{:^40}|{:^4}|{:^30}|{:^30}|'.format(
-                param.name, pruned_axis, ori_shape, param.shape))
-            self.pruned_list[pruned_axis].append(param.name)
-
-    def _inputs(self, op):
-        names = []
-        for name in [op.input(name) for name in op.input_names]:
-            if isinstance(name, list):
-                names += name
-            else:
-                names.append(name)
-        return names
-
-    def _outputs(self, op):
-        names = []
-        for name in [op.output(name) for name in op.output_names]:
-            if isinstance(name, list):
-                names += name
-            else:
-                names.append(name)
-        return names
-
-    def _forward_search_related_op(self, graph, param):
-        visited = {}
-        for op in graph.ops():
-            visited[op.idx] = False
-        stack = []
-        for op in graph.ops():
-            if (not op.type.endswith('_grad')) and (
-                    param.name in self._inputs(op)):
-                stack.append(op)
-        visit_path = []
-        while len(stack) > 0:
-            top_op = stack[len(stack) - 1]
-            if visited[top_op.idx] == False:
-                visit_path.append(top_op)
-                visited[top_op.idx] = True
-            next_ops = None
-            if top_op.type == "conv2d" and param.name not in self._inputs(
-                    top_op):
-                next_ops = None
-            elif top_op.type == "mul":
-                next_ops = None
-            else:
-                next_ops = self._get_next_unvisited_op(graph, visited, top_op)
-            if next_ops == None:
-                stack.pop()
-            else:
-                stack += next_ops
-        return visit_path
-
-    def _get_next_unvisited_op(self, graph, visited, top_op):
-        next_ops = []
-        for out_name in self._outputs(top_op):
-            for op in graph.ops():
-                if (out_name in self._inputs(op)) and (
-                        visited[op.idx] == False) and (
-                            not op.type.endswith('_grad')):
-                    next_ops.append(op)
-        return next_ops if len(next_ops) > 0 else None
-
-    def _get_accumulator(self, graph, param):
-        params = []
-        for op in graph.get_ops_by_param(param):
-            if op.type in OPTIMIZER_OPS:
-                for out_var in self._outputs(op):
-                    out_var = graph.get_var(out_var)
-                    if out_var.persistable and out_var.name != param.name:
-                        params.append(out_var)
-        return params
-
-    def _forward_pruning_ralated_params(self,
-                                        graph,
-                                        scope,
-                                        param,
-                                        place,
-                                        ratio=None,
-                                        pruned_idxs=None,
-                                        lazy=False,
-                                        only_graph=False):
-        if param.name in self.pruned_list[0]:
-            return
-        related_ops = self._forward_search_related_op(graph, param)
-
-        if ratio is None:
-            assert pruned_idxs is not None
-            self._prune_parameter_by_idx(
-                scope, [param] + self._get_accumulator(graph, param),
-                pruned_idxs,
-                pruned_axis=0,
-                place=place,
-                lazy=lazy,
-                only_graph=only_graph)
-
-        else:
-            pruned_idxs = self._prune_parameter_by_ratio(
-                scope, [param] + self._get_accumulator(graph, param),
-                ratio,
-                place,
-                lazy=lazy,
-                only_graph=only_graph)
-        corrected_idxs = pruned_idxs[:]
-
-        for idx, op in enumerate(related_ops):
-
-            if op.type == "conv2d" and (param.name not in self._inputs(op)):
-                for param_name in self._inputs(op):
-                    if isinstance(graph.get_var(param_name), Parameter):
-                        conv_param = graph.get_var(param_name)
-                        self._prune_parameter_by_idx(
-                            scope, [conv_param] + self._get_accumulator(
-                                graph, conv_param),
-                            corrected_idxs,
-                            pruned_axis=1,
-                            place=place,
-                            lazy=lazy,
-                            only_graph=only_graph)
-            if op.type == "depthwise_conv2d":
-                for param_name in self._inputs(op):
-                    if isinstance(graph.get_var(param_name), Parameter):
-                        conv_param = graph.get_var(param_name)
-                        self._prune_parameter_by_idx(
-                            scope, [conv_param] + self._get_accumulator(
-                                graph, conv_param),
-                            corrected_idxs,
-                            pruned_axis=0,
-                            place=place,
-                            lazy=lazy,
-                            only_graph=only_graph)
-            elif op.type == "elementwise_add":
-                # pruning bias
-                for param_name in self._inputs(op):
-                    if isinstance(graph.get_var(param_name), Parameter):
-                        bias_param = graph.get_var(param_name)
-                        self._prune_parameter_by_idx(
-                            scope, [bias_param] + self._get_accumulator(
-                                graph, bias_param),
-                            pruned_idxs,
-                            pruned_axis=0,
-                            place=place,
-                            lazy=lazy,
-                            only_graph=only_graph)
-            elif op.type == "mul":  # pruning fc layer
-                fc_input = None
-                fc_param = None
-                for i in self._inputs(op):
-                    i_var = graph.get_var(i)
-                    if isinstance(i_var, Parameter):
-                        fc_param = i_var
-                    else:
-                        fc_input = i_var
-
-                idx = []
-                feature_map_size = fc_input.shape[2] * fc_input.shape[3]
-                range_idx = np.array(range(feature_map_size))
-                for i in corrected_idxs:
-                    idx += list(range_idx + i * feature_map_size)
-                corrected_idxs = idx
-                self._prune_parameter_by_idx(
-                    scope, [fc_param] + self._get_accumulator(graph, fc_param),
-                    corrected_idxs,
-                    pruned_axis=0,
-                    place=place,
-                    lazy=lazy,
-                    only_graph=only_graph)
-
-            elif op.type == "concat":
-                concat_inputs = self._inputs(op)
-                last_op = related_ops[idx - 1]
-                for out_name in self._outputs(last_op):
-                    if out_name in concat_inputs:
-                        concat_idx = concat_inputs.index(out_name)
-                offset = 0
-                for ci in range(concat_idx):
-                    offset += graph.get_var(concat_inputs[ci]).shape[1]
-                corrected_idxs = [x + offset for x in pruned_idxs]
-            elif op.type == "batch_norm":
-                bn_inputs = self._inputs(op)
-                mean = graph.get_var(bn_inputs[2])
-                variance = graph.get_var(bn_inputs[3])
-                alpha = graph.get_var(bn_inputs[0])
-                beta = graph.get_var(bn_inputs[1])
-                self._prune_parameter_by_idx(
-                    scope, [mean] + self._get_accumulator(graph, mean),
-                    corrected_idxs,
-                    pruned_axis=0,
-                    place=place,
-                    lazy=lazy,
-                    only_graph=only_graph)
-                self._prune_parameter_by_idx(
-                    scope, [variance] + self._get_accumulator(graph, variance),
-                    corrected_idxs,
-                    pruned_axis=0,
-                    place=place,
-                    lazy=lazy,
-                    only_graph=only_graph)
-                self._prune_parameter_by_idx(
-                    scope, [alpha] + self._get_accumulator(graph, alpha),
-                    corrected_idxs,
-                    pruned_axis=0,
-                    place=place,
-                    lazy=lazy,
-                    only_graph=only_graph)
-                self._prune_parameter_by_idx(
-                    scope, [beta] + self._get_accumulator(graph, beta),
-                    corrected_idxs,
-                    pruned_axis=0,
-                    place=place,
-                    lazy=lazy,
-                    only_graph=only_graph)
-
-    def _prune_parameters(self,
-                          graph,
-                          scope,
-                          params,
-                          ratios,
-                          place,
-                          lazy=False,
-                          only_graph=False):
-        """
-        Pruning parameters.
-        """
-        logger.debug('\n################################')
-        logger.debug('#       pruning parameters       #')
-        logger.debug('################################\n')
-        logger.debug(
-            '|----------------------------------------+----+------------------------------+------------------------------|'
-        )
-        logger.debug('|{:^40}|{:^4}|{:^30}|{:^30}|'.format('parameter', 'axis',
-                                                           'from', 'to'))
-
-        self.pruned_list = [[], []]
-        for param, ratio in zip(params, ratios):
-            param = graph.get_var(param)
-
-            self._forward_pruning_ralated_params(
-                graph,
-                scope,
-                param,
-                place,
-                ratio=ratio,
-                lazy=lazy,
-                only_graph=only_graph)
-            ops = graph.get_ops_by_param(param)
-            for op in ops:
-                if op.type == 'conv2d':
-                    brother_ops = self._seach_brother_ops(graph, op)
-                    for broher in brother_ops:
-                        for p in graph.get_param_by_op(broher):
-                            self._forward_pruning_ralated_params(
-                                graph,
-                                scope,
-                                p,
-                                place,
-                                ratio=ratio,
-                                lazy=lazy,
-                                only_graph=only_graph)
-        logger.debug(
-            '|----------------------------------------+----+------------------------------+------------------------------|'
-        )
-
-    def _conv_op_name(self, op):
-        return op.input('Filter')
-
-    def _is_bwd_op(self, op):
-        if (op.type in OPTIMIZER_OPS) or op.type.endswith('_grad'):
-            return True
-
-    def _seach_brother_ops(self, graph, op_node):
-        """
-        Args:
-            graph: The graph to be searched.
-            op_node: The start node for searching.
-        """
-        visited = [op_node.idx]
-        stack = []
-        brothers = []
-        for op in graph.next_ops(op_node):
-            if (op.type != 'conv2d') and (op.type != 'fc') and (
-                    not self._is_bwd_op(op)):
-                stack.append(op)
-                visited.append(op.idx)
-        while len(stack) > 0:
-            top_op = stack.pop()
-            for parent in graph.pre_ops(top_op):
-                if parent.idx not in visited and (not self._is_bwd_op(parent)):
-                    if ((parent.type == 'conv2d') or (parent.type == 'fc')):
-                        brothers.append(parent)
-                    else:
-                        stack.append(parent)
-                    visited.append(parent.idx)
-
-            for child in graph.next_ops(top_op):
-                if (child.type != 'conv2d') and (child.type != 'fc') and (
-                        child.idx not in visited) and (
-                            not self._is_bwd_op(child)):
-                    stack.append(child)
-                    visited.append(child.idx)
-        return brothers
-
-    def _is_optimizer_op(self, op):
-        if op.type in OPTIMIZER_OPS:
-            return True
-
-    def _prune_graph(self, graph, target_graph):
-        count = 1
-        logger.debug(
-            '|----+----------------------------------------+------------------------------+------------------------------|'
-        )
-        logger.debug('|{:^4}|{:^40}|{:^30}|{:^30}|'.format('id', 'parammeter',
-                                                           'from', 'to'))
-        for param in target_graph.all_parameters():
-            var = graph.get_var(param.name)
-            ori_shape = var.shape
-            var.desc.set_shape(param.shape)
-            logger.debug(
-                '|----+----------------------------------------+------------------------------+------------------------------|'
-            )
-            logger.debug('|{:^4}|{:^40}|{:^30}|{:^30}|'.format(
-                count, param.name, ori_shape, param.shape))
-            count += 1
-        logger.debug(
-            '|----+----------------------------------------+------------------------------+------------------------------|'
-        )
-
-    def _update_depthwise_conv(self, graph):
-        for op in graph.all_ops():
-            if op.type == 'depthwise_conv2d':
-                op.desc._set_attr('groups',
-                                  graph.get_var(op.input('Filter')[0]).shape[0])
-                logger.debug('input shape: {:30} filter shape: {:30}'.format(
-                    graph.get_var(op.input('Input')[0]).shape,
-                    graph.get_var(op.input('Filter')[0]).shape))
-
     def on_compression_begin(self, context):
         self._compute_sensitivities(context)
         params, ratios = self._get_best_ratios(context)
@@ -1171,8 +763,8 @@ class SensitivePruneStrategy(Strategy):
             context.eval_graph.numel_params()) / model_size)))
         logger.info('Pruned flops: {:.2f}'.format(1 - (float(
             context.eval_graph.flops()) / flops)))
-        #        metric = self._eval_graph(context)
-        #        logger.info('Metric after pruning: {:.2f}'.format(metric))
+        metric = self._eval_graph(context)
+        logger.info('Metric after pruning: {:.2f}'.format(metric))
         logger.info(
             '------------------SensitivePruneStrategy.on_compression_begin finish--------------------------------'
         )
