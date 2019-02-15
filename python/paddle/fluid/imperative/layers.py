@@ -36,12 +36,33 @@ class Layer(core.Layer):
 
     def parameters(self, include_sublayers=True):
         """Returns a list of Parameters from current and sub-layers.
+
+        Args:
+            include_sublayers: If true, also include the parameters from
+            sublayers.
+
+        Returns a list of Parameters.
         """
         ret = [p for p in self._parameters.values()]
         if include_sublayers:
             for l in self._sub_layers.values():
                 for p in l.parameters(include_sublayers):
                     ret.append(p)
+        return ret
+
+    def sublayers(self, include_sublayers=True):
+        """Returns a list of sub layers.
+
+        Args:
+            include_sublayers: If true, also include the layers from sublayers.
+
+        Returns a list of sub layers.
+        """
+        ret = [l for l in self._sub_layers.values()]
+        if include_sublayers:
+            for l in self._sub_layers.values():
+                for sub_l in l.sublayers(include_sublayers):
+                    ret.append(sub_l)
         return ret
 
     def clear_gradients(self):
@@ -64,6 +85,36 @@ class Layer(core.Layer):
 
     def backward(self, *inputs):
         raise ValueError("Layer shouldn't implement backward")
+
+    def add_sublayer(self, name, sublayer):
+        """Adds a sub Layer instance.
+
+          Added sublayer can be access like self.name.
+
+        Args:
+            name: name of this sublayer.
+            sublayer: an instance of Layer.
+        Returns:
+            the sublayer passed in.
+        """
+        assert isinstance(sublayer, core.Layer)
+        self._sub_layers[name] = sublayer
+        return sublayer
+
+    def add_parameter(self, name, parameter):
+        """Adds a Parameter instance.
+
+          Added parameter can be access like self.name.
+
+        Args:
+            name: name of this sublayer.
+            parameter: an instance of Parameter.
+        Returns:
+            the parameter passed in.
+        """
+        assert isinstance(parameter, framework.Parameter)
+        self._parameters[name] = parameter
+        return parameter
 
     def __getattr__(self, name):
         if name in self._parameters:
