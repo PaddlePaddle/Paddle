@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import os
+import tempfile
 import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.profiler as profiler
@@ -25,10 +26,8 @@ import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
 
 class TestProfiler(unittest.TestCase):
-    def net_profiler(self,
-                     state,
-                     profile_path='/tmp/profile',
-                     use_parallel_executor=False):
+    def net_profiler(self, state, use_parallel_executor=False):
+        profile_path = os.path.join(tempfile.gettempdir(), "profile")
         open(profile_path, "w").write("")
         startup_program = fluid.Program()
         main_program = fluid.Program()
