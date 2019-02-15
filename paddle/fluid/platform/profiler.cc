@@ -446,24 +446,24 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
   }
   std::cout << std::endl;
 }
-// print the memory infomation
+// print the memory information
 void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
                       const size_t name_width, const size_t data_width) {
   VLOG(1) << "\n";
 
+  VLOG(1) << "Place: ";
   for (size_t i = 0; i < events_table.size(); ++i) {
-    std::string place = "Unknown";
     Place a;
     if (is_cpu_place(events_table[i].place)) {
-      place = "CPU";
+      VLOG(1) << "CPU";
     } else if (is_gpu_place(events_table[i].place)) {
-      place = "GPU";
+      VLOG(1) << "GPU";
+      VLOG(1) << boost::get<platform::CUDAPlace>(events_table[i].place)
+                     .GetDeviceId();
     } else {
-      place = "CUDAPinnedPlace";
+      VLOG(1) << "CUDAPinnedPlace";
     }
-    VLOG(1) << "Place: " << place;
-    if ("GPU" == place) VLOG(1) << get_gpu_id(events_table[i].place);
-    VLOG(3) << "\n";
+    VLOG(1) << "\n";
     VLOG(1) << "Memory unit: MB\n";
     // Output events table
     VLOG(1) << "Event"
