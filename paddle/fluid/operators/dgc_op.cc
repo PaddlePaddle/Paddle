@@ -31,10 +31,10 @@ class DGCOp : public framework::OperatorWithKernel {
                    "Input(Grad) of DGCop should not be null.");
     // PADDLE_ENFORCE(ctx->HasInput("ratio"),
     //              "Input(ratio) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("current_step"), 
-            "Input(current_step) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("rampup_step"), 
-            "Input(rampup_step) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("current_step"),
+                   "Input(current_step) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("rampup_step"),
+                   "Input(rampup_step) of DGCop should not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("U_out"),
                    "Output(U_out) of DGCop should not be null.");
@@ -44,7 +44,8 @@ class DGCOp : public framework::OperatorWithKernel {
                    "Output(EncodeGrad) of DGCop should not be null.");
 
     /*
-    std::vector<framework::InferShapeVarPtr> ratio_var_ptrs = ctx->GetInputVarPtrs("ratio");
+    std::vector<framework::InferShapeVarPtr> ratio_var_ptrs =
+    ctx->GetInputVarPtrs("ratio");
     PADDLE_ENFORCE(ratio_var_ptrs.size() == 1);
     auto ratio_var = boost::get<framework::Variable *>(ratio_var_ptrs[0])
     auto ratio_tensor = ratio_var->Get<framework::Tensor>();
@@ -63,10 +64,10 @@ class DGCOp : public framework::OperatorWithKernel {
     VLOG(10) << "set EncodeGrad dims:" << framework::DDim{2 * k};
     ctx->ShareLoD("Grad", "EncodeGrad");
     */
-    
+
     // int buf_size = get_buffer_size(k);
     PADDLE_ENFORCE(ctx->HasOutput("Encoded_buf"),
-                  "Output(Encoded_buf) of DGCop should not be null.");
+                   "Output(Encoded_buf) of DGCop should not be null.");
   }
 };
 
@@ -102,17 +103,8 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<float>("m",
                    "(float, 0.9) "
-                   "The momentum of learning rate.").SetDefault(0.9);
-
-    /*
-    AddAttr<float>("current_step",
-                   "(float, 0.0)"
-                   "Current steps in all steps").SetDefault(0.0);
-
-    AddAttr<float>("rampup_step",
-                   "(float, 0.0)"
-                   "Sparsity rampup(warmup) steps").SetDefault(0.0);
-                   */
+                   "The momentum of learning rate.")
+        .SetDefault(0.9);
 
     AddComment(R"DOC(
     Please see appendix D of https://arxiv.org/abs/1712.01887.pdf

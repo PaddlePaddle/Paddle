@@ -169,9 +169,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   bool is_forwarding = true;
   bool insert_collection_ops = NeedCollectiveOps();
 
-  if(strategy_.enable_dgc_ 
-          && strategy_.trainers_endpoints_.size() > 1){
-     VLOG(1) << "set dgc mode";
+  if (strategy_.enable_dgc_ && strategy_.trainers_endpoints_.size() > 1) {
+    VLOG(1) << "set dgc mode";
   }
 
   for (ir::Node *node : sorted_ops) {
@@ -207,6 +206,13 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
                   OpProtoAndCheckerMaker::OpRoleVarAttrName()));
           PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
 
+          std::unordered_map<std::string, VarDesc *> block_vars;
+          for (auto *var : result.GetProgram().Block(0).AllVars()) {
+            block_vars.emplace(var->Name(), var);
+          }
+
+          CreateIncrementOp(&result, places_.size(), block_vars);
+          CreateRampUpVarHandle(&result, places_.size(), block_vars);
           for (size_t i = 0; i < backward_vars.size(); i += 2) {
             auto &p_name = backward_vars[i];
             auto &grad_name = backward_vars[i + 1];
@@ -459,13 +465,15 @@ std::unique_ptr<framework::VarDesc> CreateDGCVarDesc(
 std::unique_ptr<framework::OpDesc> CreateDGCOpDesc(
     const std::string &u_name, const std::string &v_name,
     const std::string &grad_name, const std::string &encoded_grad_name,
-    const std::string& buf_name, float m = 0.9) {
+    const std::string &buf_name, float m = 0.9) {
   std::unique_ptr<framework::OpDesc> desc(new framework::OpDesc);
   desc->SetType("dgc");
 
   desc->SetAttr("m", Attribute(m));
-  desc->SetInput("current_step", std::vector<std::string>({"__g_dgc_counter__"}));
-  desc->SetInput("rampup_step", std::vector<std::string>({"__g_rampup_step__"}));
+  desc->SetInput("current_step",
+                 std::vector<std::string>({"__g_dgc_counter__"}));
+  desc->SetInput("rampup_step",
+                 std::vector<std::string>({"__g_rampup_step__"}));
 
   desc->SetInput("U", std::vector<std::string>({u_name}));
   desc->SetInput("V", std::vector<std::string>({v_name}));
@@ -479,6 +487,95 @@ std::unique_ptr<framework::OpDesc> CreateDGCOpDesc(
   return desc;
 }
 
+std::unique_ptr<framework::OpDesc> CreateIncrementOpDesc(
+    const std::string &counter_name) {
+  std::unique_ptr<framework::OpDesc> desc(new framework::OpDesc);
+  desc->SetType("increment");
+
+  float step = 1.0;
+  desc->SetAttr("step", Attribute(step));
+  desc->SetInput("X", std::vector<std::string>({counter_name}));
+  desc->SetOutput("Out", std::vector<std::string>({counter_name}));
+
+  return desc;
+}
+
+void MultiDevSSAGraphBuilderBase::CreateRampUpVarHandle(
+    ir::Graph *graph, size_t num_places,
+    const std::unordered_map<std::string, VarDesc *> &block_vars) const {
+  auto var_name = "__g_rampup_step__";
+  for (size_t i = 0; i < num_places; ++i) {
+    auto place = places_[i];
+    // auto scope = local_scopes_[i];
+
+    // add input
+    std::vector<std::string> names{var_name};
+    for (auto name : names) {
+      VLOG(10) << "try to find var:" << name;
+      auto it = block_vars.find(name);
+      if (it == block_vars.end())
+        PADDLE_ENFORCE(false, "%s not find in block_vars", name);
+      auto var_desc = it->second;
+
+      auto var_node = graph->CreateVarNode(var_desc);
+      auto var_handle = new VarHandle(var_node, 0, i, name, place);
+      VLOG(7) << "CreateIncrement add input " << name
+              << ", handle:" << var_handle->DebugString();
+
+      auto &name_vars = graph->Get<GraphVars>(kGraphVars).at(i)[name];
+      name_vars.emplace_back(var_handle);
+    }
+  }
+}
+void MultiDevSSAGraphBuilderBase::CreateIncrementOp(
+    ir::Graph *graph, size_t num_places,
+    const std::unordered_map<std::string, VarDesc *> &block_vars) const {
+  auto var_name = "__g_dgc_counter__";
+  auto op_desc = CreateIncrementOpDesc(var_name);
+
+  for (size_t i = 0; i < num_places; ++i) {
+    auto place = places_[i];
+    auto scope = local_scopes_[i];
+
+    // add op handle
+    auto op_node = graph->CreateOpNode(op_desc.get());
+    auto op_handle = new ComputationOpHandle(op_node, scope, place, i);
+    graph->Get<GraphOps>(kGraphOps).emplace_back(op_handle);
+
+    // add input
+    std::vector<std::string> names{var_name};
+    for (auto name : names) {
+      VLOG(10) << "try to find var:" << name;
+      auto it = block_vars.find(name);
+      if (it == block_vars.end())
+        PADDLE_ENFORCE(false, "%s not find in block_vars", name);
+      auto var_desc = it->second;
+
+      auto var_node = graph->CreateVarNode(var_desc);
+      auto var_handle = new VarHandle(var_node, 0, i, name, place);
+      op_handle->AddInput(var_handle);
+      VLOG(7) << "CreateIncrement add input " << name
+              << ", handle:" << var_handle->DebugString();
+
+      auto &name_vars = graph->Get<GraphVars>(kGraphVars).at(i)[name];
+      name_vars.emplace_back(var_handle);
+    }
+
+    // add output
+    auto &out_vars = graph->Get<GraphVars>(kGraphVars)[i][var_name];
+    auto out_var_h = new VarHandle(
+        graph->CreateEmptyNode(var_name, ir::Node::Type::kVariable),
+        out_vars.size(), i, var_name, place);
+    out_vars.emplace_back(out_var_h);
+    op_handle->AddOutput(out_var_h);
+    op_handle->SetDeviceContext(
+        place, platform::DeviceContextPool::Instance().Get(place));
+
+    VLOG(7) << "CreateIncrement add output " << var_name
+            << ", handle:" << out_var_h->DebugString();
+  }
+}
+
 void DistSSAGraphBuilder::CreateDGCOp(ir::Graph *graph, size_t num_places,
                                       const std::string &p_name,
                                       const std::string &grad_name,
@@ -488,15 +585,16 @@ void DistSSAGraphBuilder::CreateDGCOp(ir::Graph *graph, size_t num_places,
   auto v_name = p_name + "__dgc_v__";
   // auto ratio_name = "ratio__dgc__";
   auto buf_name = p_name + "__dgc_buf__";
+  auto counter_name = "__g_dgc_counter__";
+  auto step_name = "__g_rampup_step__";
 
   auto dgc_op_desc =
       CreateDGCOpDesc(u_name, v_name, grad_name, encoded_grad_name, buf_name);
 
-  VLOG(10) << "CreateDGCOp u_name:" << u_name 
-      << ", v_name:" << v_name 
-      << ", grad_name:" << grad_name
-      << ", encoded_grad_name:" << encoded_grad_name ;
-      // << ", ratio_name:" << ratio_name;
+  VLOG(10) << "CreateDGCOp u_name:" << u_name << ", v_name:" << v_name
+           << ", grad_name:" << grad_name
+           << ", encoded_grad_name:" << encoded_grad_name;
+  // << ", ratio_name:" << ratio_name;
 
   std::unordered_map<std::string, VarDesc *> block_vars;
   // var nodes for each var name, will have multiple versions in SSA
@@ -546,41 +644,53 @@ void DistSSAGraphBuilder::CreateDGCOp(ir::Graph *graph, size_t num_places,
       name_vars.emplace_back(var_handle);
     }
 
-    // Add output Encoded_grad
     {
-    auto out_var_desc =
-        CreateDGCVarDesc(all_vars_, grad_name, encoded_grad_name);
-    auto &out_vars = graph->Get<GraphVars>(kGraphVars)[i][encoded_grad_name];
-    auto out_var_h =
-        new VarHandle(graph->CreateVarNode(out_var_desc.get()), out_vars.size(),
-                      i, encoded_grad_name, place);
-    out_vars.emplace_back(out_var_h);
-    op_handle->AddOutput(out_var_h);
-    op_handle->SetDeviceContext(
-        place, platform::DeviceContextPool::Instance().Get(place));
-
-    VLOG(7) << "CreateDGCop add output " << encoded_grad_name
-            << ", handle:" << out_var_h->DebugString();
+      // counter_name, step_name};
+      std::vector<std::string> names{counter_name, step_name};
+      for (auto name : names) {
+        auto &all = graph->Get<GraphVars>(kGraphVars).at(i);
+        auto iter = all.find(name);
+        if (iter == all.end()) {
+          LOG(FATAL) << "not find:" << name;
+        }
+        auto &name_vars = iter->second;
+        op_handle->AddInput(name_vars.back());
+      }
     }
 
+    // Add output Encoded_grad
+    {
+      auto out_var_desc =
+          CreateDGCVarDesc(all_vars_, grad_name, encoded_grad_name);
+      auto &out_vars = graph->Get<GraphVars>(kGraphVars)[i][encoded_grad_name];
+      auto out_var_h =
+          new VarHandle(graph->CreateVarNode(out_var_desc.get()),
+                        out_vars.size(), i, encoded_grad_name, place);
+      out_vars.emplace_back(out_var_h);
+      op_handle->AddOutput(out_var_h);
+      op_handle->SetDeviceContext(
+          place, platform::DeviceContextPool::Instance().Get(place));
+
+      VLOG(7) << "CreateDGCop add output " << encoded_grad_name
+              << ", handle:" << out_var_h->DebugString();
+    }
 
     // Add output Encoded_buf
     {
-    auto it = block_vars.find(buf_name);
-    if (it == block_vars.end())
+      auto it = block_vars.find(buf_name);
+      if (it == block_vars.end())
         PADDLE_ENFORCE(false, "%s not find in block_vars", buf_name);
-    auto buf_var_desc = it->second;
-    auto &out_vars = graph->Get<GraphVars>(kGraphVars)[i][buf_name];
-    auto out_var_h =
-        new VarHandle(graph->CreateVarNode(buf_var_desc), out_vars.size(),
-                      i, buf_name, place);
-    out_vars.emplace_back(out_var_h);
-    op_handle->AddOutput(out_var_h);
-    op_handle->SetDeviceContext(
-        place, platform::DeviceContextPool::Instance().Get(place));
+      auto buf_var_desc = it->second;
+      auto &out_vars = graph->Get<GraphVars>(kGraphVars)[i][buf_name];
+      auto out_var_h = new VarHandle(graph->CreateVarNode(buf_var_desc),
+                                     out_vars.size(), i, buf_name, place);
+      out_vars.emplace_back(out_var_h);
+      op_handle->AddOutput(out_var_h);
+      op_handle->SetDeviceContext(
+          place, platform::DeviceContextPool::Instance().Get(place));
 
-    VLOG(7) << "CreateDGCop add output " << buf_name
-            << ", handle:" << out_var_h->DebugString();
+      VLOG(7) << "CreateDGCop add output " << buf_name
+              << ", handle:" << out_var_h->DebugString();
     }
   }
 }
@@ -1087,11 +1197,11 @@ bool DistSSAGraphBuilder::IfCreateDGCOp(const std::string &grad_name) const {
 
   if (numel < 4096 || grad_desc->GetDataType() != proto::VarType::FP32) {
     VLOG(3) << "skip DGCOP because numel:" << numel
-              << ", datatype:" << grad_desc->GetDataType();
+            << ", datatype:" << grad_desc->GetDataType();
     return false;
-  }else{
+  } else {
     VLOG(3) << "add DGCOp numel:" << numel
-              << ", datatype:" << grad_desc->GetDataType();
+            << ", datatype:" << grad_desc->GetDataType();
   }
 
   return true;

@@ -48,6 +48,7 @@ from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
 from .details import delete_ops, find_op_by_output_arg
 from ..distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.layers.nn import autoincreased_step_counter
+from paddle.fluid import program_guard
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
@@ -226,10 +227,15 @@ class DistributeTranspiler(object):
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
 
-    def _create_dgc_vars(self, start_program, main_program, var_name, var_shape, 
-                         dtype =core.VarDesc.VarType.FP32,  
+    def _create_dgc_vars(self,
+                         start_program,
+                         main_program,
+                         var_name,
+                         var_shape,
+                         dtype=core.VarDesc.VarType.FP32,
                          t_type=core.VarDesc.VarType.LOD_TENSOR,
-                         init_value=0.0):
+                         init_value=0.0,
+                         force_cpu=False):
         var = start_program.global_block().create_var(
             name=var_name,
             shape=var_shape,
@@ -253,9 +259,10 @@ class DistributeTranspiler(object):
                 "shape": var_shape,
                 "dtype": dtype,
                 "value": init_value,
-                'force_cpu': False
+                'force_cpu': force_cpu
             },
             stop_gradient=True)
+        return var
 
     def _add_dgc_vars(self, start_program, main_program):
         main_program._enable_dgc = True
@@ -274,21 +281,49 @@ class DistributeTranspiler(object):
 
             names = [u_name, v_name]
             for var_name in names:
-                self._create_dgc_vars(start_program, main_program, var_name, var_shape=param_var.shape)
+                self._create_dgc_vars(
+                    start_program,
+                    main_program,
+                    var_name,
+                    var_shape=param_var.shape)
 
             buf_var_name = param_var.name + "__dgc_buf__"
             # FIXME(gongwb): get_buffer_size
-            buf_var_shape=[2*256*128]
-            self._create_dgc_vars(start_program, main_program, buf_var_name, var_shape=buf_var_shape)
+            buf_var_shape = [2 * 256 * 128]
+            self._create_dgc_vars(
+                start_program,
+                main_program,
+                buf_var_name,
+                var_shape=buf_var_shape)
 
-        global_step = autoincreased_step_counter(counter_name='__g_dgc_counter__', begin=0, step=1)
+        counter_var_name = "__g_dgc_counter__"
+        counter_var_shape = [1]
+        count_var = self._create_dgc_vars(
+            start_program,
+            main_program,
+            counter_var_name,
+            var_shape=counter_var_shape,
+            force_cpu=True)
+        """
+        main_program.global_block()._prepend_op(
+            type='increment',
+            inputs={'X': count_var},
+            outputs={'Out': count_var},
+            attrs={'step': 1.0},
+            stop_gradient=True)
+        #with program_guard(main_program, start_program):
+        #    autoincreased_step_counter(counter_name=counter_var_name, begin=0, step=1)
+        """
 
         rampup_var_name = "__g_rampup_step__"
-        rampup_var_shape=[1]
-        self._create_dgc_vars(start_program, main_program, rampup_var_name,
-                            var_shape=rampup_var_shape, 
-                            init_value=self.config.rampup_step*1.0)
-
+        rampup_var_shape = [1]
+        self._create_dgc_vars(
+            start_program,
+            main_program,
+            rampup_var_name,
+            var_shape=rampup_var_shape,
+            init_value=self.config.rampup_step * 1.0,
+            force_cpu=True)
 
     def _transpile_nccl2(self,
                          trainer_id,
