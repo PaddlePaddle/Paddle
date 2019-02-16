@@ -324,6 +324,8 @@ class DistributeTranspiler(object):
             var_shape=rampup_var_shape,
             init_value=self.config.rampup_step * 1.0,
             force_cpu=True)
+        # Note: don't delete this
+        print("set DGC rampup_step:", self.config.rampup_step)
 
     def _transpile_nccl2(self,
                          trainer_id,

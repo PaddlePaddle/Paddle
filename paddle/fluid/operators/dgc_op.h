@@ -58,8 +58,8 @@ class DGCOpKernel : public framework::OpKernel<T> {
     float ratio = 1 - get_period_sparcity(static_cast<float>(*current_step),
                                           static_cast<float>(*rampup_step));
     int k = static_cast<int>(g->numel() * ratio);
-    VLOG(10) << "rampup_step:" << rampup_step
-             << ", current_step:" << current_step << ", ratio:" << ratio
+    VLOG(10) << "rampup_step:" << *rampup_step
+             << ", current_step:" << *current_step << ", ratio:" << ratio
              << ", k:" << k;
 
     auto u_out = ctx.Output<framework::Tensor>("U_out");
