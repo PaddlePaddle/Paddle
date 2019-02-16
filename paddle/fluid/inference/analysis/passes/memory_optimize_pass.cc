@@ -18,6 +18,7 @@
 #include <limits>
 #include <map>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -168,7 +169,11 @@ bool FindSuitableTensorToReuse(
     if (!cluster->count(candidate)) continue;
 
     size_t space = space_table.at(candidate);
-    size_t space_diff = std::abs<size_t>(space - space_required);
+    PADDLE_ENFORCE(
+        space <= std::numeric_limits<std::make_signed<size_t>::type>::max(),
+        "space overload");
+    size_t space_diff =
+        std::abs((std::make_signed<size_t>::type)space - space_required);
     if (space_diff < best_fit.second) {
       best_fit.first = candidate;
       best_fit.second = space_diff;

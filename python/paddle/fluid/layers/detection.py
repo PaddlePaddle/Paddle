@@ -397,10 +397,10 @@ def box_coder(prior_box,
                              input is image feature map, they are close to 
                              the origin of the coordinate system. [xmax, ymax]
                              is the right bottom coordinate of the anchor box.       
-        prior_box_var(Variable|list): prior_box_var supports two types of input. 
-                              One is variable with shape [M, 4] holds M group.
-                              The other one is list consist of 4 elements 
-                              shared by all boxes. 
+        prior_box_var(Variable|list|None): prior_box_var supports two types 
+                              of input. One is variable with shape [M, 4] 
+                              holds M group. The other one is list consist of 
+                              4 elements shared by all boxes. 
         target_box(Variable): This input can be a 2-D LoDTensor with shape 
                               [N, 4] when code_type is 'encode_center_size'. 
                               This input also can be a 3-D Tensor with shape 

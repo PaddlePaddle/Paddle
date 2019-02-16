@@ -2930,6 +2930,7 @@ def batch_norm(input,
             "momentum": momentum,
             "epsilon": epsilon,
             "is_test": is_test,
+            "data_layout": data_layout,
             "use_mkldnn": False,
             "fuse_with_relu": fuse_with_relu,
             "use_global_stats": use_global_stats
@@ -3235,7 +3236,7 @@ def group_norm(input,
     # create output
     mean_out = helper.create_variable(dtype=dtype, stop_gradient=True)
     variance_out = helper.create_variable(dtype=dtype, stop_gradient=True)
-    group_norm_out = helper.create_variable(dtype)
+    group_norm_out = helper.create_variable(dtype=dtype)
 
     helper.append_op(
         type="group_norm",
