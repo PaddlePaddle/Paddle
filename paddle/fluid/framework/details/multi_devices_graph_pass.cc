@@ -55,6 +55,9 @@ void PolishGraphToSupportDataHazards(ir::Graph *graph) {
       if (name_pair.second.size() <= 1) {
         continue;
       }
+      VLOG(10) << "name_pair name:" << name_pair.first
+          << ", second size:" << name_pair.second.size();
+
       auto it_new = name_pair.second.rbegin();
       auto it_old = name_pair.second.rbegin();
       ++it_old;
@@ -68,6 +71,7 @@ void PolishGraphToSupportDataHazards(ir::Graph *graph) {
             // Read Write is the same op.
             continue;
           }
+          VLOG(10) << "read_op:" << read_op->DebugString();
           bool has_dep = false;
           for (auto *r_out : read_op->Outputs()) {
             for (auto *w_in : write_op->Inputs()) {
@@ -171,8 +175,15 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
 
   if (strategy_.enable_dgc_ && strategy_.trainers_endpoints_.size() > 1) {
     VLOG(1) << "set dgc mode";
-  }
+    std::unordered_map<std::string, VarDesc *> block_vars;
+    for (auto *var : result.GetProgram().Block(0).AllVars()) {
+        block_vars.emplace(var->Name(), var);
+    }
 
+    CreateIncrementOp(&result, places_.size(), block_vars);
+    CreateRampUpVarHandle(&result, places_.size(), block_vars);
+  }
+  
   for (ir::Node *node : sorted_ops) {
     if (DealWithSpecialOp(&result, node)) {
       continue;
@@ -206,19 +217,12 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
                   OpProtoAndCheckerMaker::OpRoleVarAttrName()));
           PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
 
-          std::unordered_map<std::string, VarDesc *> block_vars;
-          for (auto *var : result.GetProgram().Block(0).AllVars()) {
-            block_vars.emplace(var->Name(), var);
-          }
-
-          CreateIncrementOp(&result, places_.size(), block_vars);
-          CreateRampUpVarHandle(&result, places_.size(), block_vars);
           for (size_t i = 0; i < backward_vars.size(); i += 2) {
-            auto &p_name = backward_vars[i];
-            auto &grad_name = backward_vars[i + 1];
-            VLOG(10) << "Bcast " << grad_name << " for parameter " << p_name;
+              auto &p_name = backward_vars[i];
+              auto &grad_name = backward_vars[i + 1];
+              VLOG(10) << "Bcast " << grad_name << " for parameter " << p_name;
 
-            InsertCollectiveOp(&result, p_name, grad_name);
+              InsertCollectiveOp(&result, p_name, grad_name);
           }
         } catch (boost::bad_get e) {
         }
@@ -519,7 +523,7 @@ void MultiDevSSAGraphBuilderBase::CreateRampUpVarHandle(
 
       auto var_node = graph->CreateVarNode(var_desc);
       auto var_handle = new VarHandle(var_node, 0, i, name, place);
-      VLOG(7) << "CreateIncrement add input " << name
+      VLOG(7) << "CreateRampUpVarHandle add var_handele " << name
               << ", handle:" << var_handle->DebugString();
 
       auto &name_vars = graph->Get<GraphVars>(kGraphVars).at(i)[name];
@@ -535,6 +539,7 @@ void MultiDevSSAGraphBuilderBase::CreateIncrementOp(
 
   for (size_t i = 0; i < num_places; ++i) {
     auto place = places_[i];
+    // auto place = platform::CPUPlace();
     auto scope = local_scopes_[i];
 
     // add op handle
@@ -568,8 +573,9 @@ void MultiDevSSAGraphBuilderBase::CreateIncrementOp(
         out_vars.size(), i, var_name, place);
     out_vars.emplace_back(out_var_h);
     op_handle->AddOutput(out_var_h);
+
     op_handle->SetDeviceContext(
-        place, platform::DeviceContextPool::Instance().Get(place));
+         place, platform::DeviceContextPool::Instance().Get(place));
 
     VLOG(7) << "CreateIncrement add output " << var_name
             << ", handle:" << out_var_h->DebugString();

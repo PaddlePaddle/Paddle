@@ -69,6 +69,17 @@ class DGCOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Encoded_buf"),
                    "Output(Encoded_buf) of DGCop should not be null.");
   }
+ protected:
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override{
+      if(var_name == "__g_dgc_counter__" || var_name == "__g_rampup_step__"){
+          VLOG(10) << "var_name:" << var_name << " need not to transform";
+          return expected_kernel_type;
+      }
+
+      return  framework::OperatorWithKernel::GetKernelTypeForVar(var_name, tensor, expected_kernel_type); 
+  }
 };
 
 /*

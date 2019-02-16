@@ -48,11 +48,13 @@ class DGCOpKernel : public framework::OpKernel<T> {
     float m = ctx.Attr<float>("m");
 
     auto current_step_tensor = ctx.Input<framework::Tensor>("current_step");
-    auto rampup_step_tensor = ctx.Input<framework::Tensor>("ramup_step");
-    VLOG(10) << "current_step_tensor:" << current_step_tensor
-             << ", rampup_step_tensor:" << rampup_step_tensor;
+    auto rampup_step_tensor = ctx.Input<framework::Tensor>("rampup_step");
     const float* current_step = current_step_tensor->data<float>();
     const float* rampup_step = rampup_step_tensor->data<float>();
+    VLOG(10) << "current_step_tensor:" << current_step_tensor
+             << ", rampup_step_tensor:" << rampup_step_tensor
+             << ", current_step:" << current_step
+             << ", rampup_step:" << rampup_step;
     float ratio = 1 - get_period_sparcity(static_cast<float>(*current_step),
                                           static_cast<float>(*rampup_step));
     int k = static_cast<int>(g->numel() * ratio);
