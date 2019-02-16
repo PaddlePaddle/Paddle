@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
 namespace framework {
@@ -28,6 +27,7 @@ class IdentityAssignOpCleanPass : public FusePassBase {
                          ->NewNode("assign_op")
                          ->assert_is_op("assign");
     patterns::CleanIdentityOp(&detector, assign_op, "assign", graph.get());
+    return graph;
   }
 
  private:
