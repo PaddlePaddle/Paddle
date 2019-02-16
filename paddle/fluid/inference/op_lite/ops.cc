@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/inference/op_lite/ops.h"
 #include <string>
+#include "paddle/fluid/inference/op_lite/activation_op.h"
+#include "paddle/fluid/inference/op_lite/fc_op.h"
 
 namespace paddle {
 namespace inference {
@@ -22,6 +24,9 @@ namespace op_lite {
 LiteOpRegistry::LiteOpRegistry() {
   creators_.emplace("fc", []() -> std::unique_ptr<OpLite> {
     return std::unique_ptr<OpLite>(new FC);
+  });
+  creators_.emplace("relu", []() -> std::unique_ptr<OpLite> {
+    return std::unique_ptr<OpLite>(new ReLU);
   });
 }
 

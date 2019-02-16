@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/inference/analysis/dot.h"
 
@@ -30,6 +31,17 @@ namespace paddle {
 namespace framework {
 namespace ir {
 class PDPattern;
+
+// Link two ir::Nodes from each other.
+#define IR_NODE_LINK_TO(a, b) \
+  a->outputs.push_back(b);    \
+  b->inputs.push_back(a);
+
+// Set the out_var as the output of the op
+#define IR_OP_VAR_LINK(op, out_var) \
+  op->outputs.push_back(out_var);   \
+  out_var->inputs.clear();          \
+  out_var->inputs.push_back(op);
 
 // Some basic terminologies:
 //   - PDPattern: a pattern defined as a data flow graph.
@@ -784,22 +796,22 @@ struct TransposeFlattenConcat : public PatternBase {
 // remove the operator such as
 //  - scale_op with scale=1
 //  - assign op
-void CleanIdentityOp(GraphPatternDetecter* pattern, PDNode* identity_op,
-                     const std::string& op_name, Graph* graph) {
-  auto pre_op = detector.mutable_pattern()->NewNode("pre_op")->assert_is_op();
-  auto identity_in = detector.mutable_pattern()
+static void CleanIdentityOp(GraphPatternDetector* detector, PDNode* identity_op,
+                            const std::string& op_name, Graph* graph) {
+  auto pre_op = detector->mutable_pattern()->NewNode("pre_op")->assert_is_op();
+  auto identity_in = detector->mutable_pattern()
                          ->NewNode("identity_in")
                          ->assert_is_op_input(op_name)
                          ->AsIntermediate();
   auto identity_out =
-      detector.mutable_pattern()
+      detector->mutable_pattern()
           ->NewNode("identity_out")
           ->assert_is_op_output(op_name)
           // scale's output var should has only one consumer, or it can't be
           // removed.
-          ->assert_more([](Node* x) { return x->outputs.size() == 1UL; })
+          ->assert_more([](Node* x) { return x->outputs.size() == 1UL; });
 
-              pre_op->LinksTo({identity_in});
+  pre_op->LinksTo({identity_in});
   identity_op->LinksFrom({identity_in}).LinksTo({identity_out});
 
   GraphPatternDetector::handle_t handler = [&](
@@ -826,21 +838,10 @@ void CleanIdentityOp(GraphPatternDetecter* pattern, PDNode* identity_op,
     IR_NODE_LINK_TO(pre_op_var, identity_out_var);
   };
 
-  detector(graph.get(), handler);
+  (*detector)(graph, handler);
 }
 
 }  // namespace patterns
-
-// Link two ir::Nodes from each other.
-#define IR_NODE_LINK_TO(a, b) \
-  a->outputs.push_back(b);    \
-  b->inputs.push_back(a);
-
-// Set the out_var as the output of the op
-#define IR_OP_VAR_LINK(op, out_var) \
-  op->outputs.push_back(out_var);   \
-  out_var->inputs.clear();          \
-  out_var->inputs.push_back(op);
 
 }  // namespace ir
 }  // namespace framework

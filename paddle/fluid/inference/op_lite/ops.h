@@ -19,8 +19,10 @@
  */
 #pragma once
 
+#include <functional>
+#include <memory>
 #include <string>
-#include "paddle/fluid/inference/op_lite/fc_op.h"
+#include "paddle/fluid/inference/op_lite/op_lite.h"
 
 namespace paddle {
 namespace inference {

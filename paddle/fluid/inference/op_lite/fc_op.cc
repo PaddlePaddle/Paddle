@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/inference/op_lite/fc_op.h"
 #include <vector>
-#include "fc_op.h"
 #include "paddle/fluid/inference/op_lite/op_lite.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
 
