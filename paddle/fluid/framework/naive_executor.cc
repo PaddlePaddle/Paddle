@@ -114,16 +114,17 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
                             op_desc->Output("Out")[0]);
       continue;
     }
+
+    gears_.emplace_back();
+    gears_.back().name = op_desc->Type();
     if ((!FLAGS_global_with_gpu) && FLAGS_global_use_lite_op &&
         inference::op_lite::LiteOpRegistry::Global().Has(op_desc->Type())) {
       LOG(INFO) << "create lite op " << op_desc->Type();
-      gears_.emplace_back();
       gears_.back().lite_op =
           inference::op_lite::LiteOpRegistry::Global().Create(op_desc->Type());
       gears_.back().lite_op->Build(*op_desc, scope);
     } else {
       LOG(INFO) << "create old op " << op_desc->Type();
-      gears_.emplace_back();
       gears_.back().op = OpRegistry::CreateOp(*op_desc);
     }
   }
