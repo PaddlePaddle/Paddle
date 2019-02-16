@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/inference/op_lite/ops.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -50,19 +51,24 @@ void NaiveExecutor::Run() {
                              "setting the cmake flag ON_INFER=ON if you are "
                              "running Paddle Inference";
 #endif  // PADDLE_ON_INFERENCE
+  //inference::Timer timer;
+  //timer.tic();
   for (auto &gear : gears_) {
-    if (gear.op) {
-      VLOG(4) << std::this_thread::get_id() << " run "
-              << gear.op->DebugStringEx(scope_) << " on scope " << scope_;
-      gear.op->SetIsCalledByExecutor(false);
-      gear.op->Run(*scope_, place_);
-    } else {
-      PADDLE_ENFORCE(gear.lite_op->CheckShape());
-      PADDLE_ENFORCE(gear.lite_op->InferShape());
-      VLOG(3) << "running lite op " << gear.lite_op->DebugString();
-      PADDLE_ENFORCE(gear.lite_op->Run());
-    }
+    //for (int i = 0; i < 1000; i++) {
+      if (gear.op) {
+        VLOG(4) << std::this_thread::get_id() << " run "
+                << gear.op->DebugStringEx(scope_) << " on scope " << scope_;
+        gear.op->SetIsCalledByExecutor(false);
+        gear.op->Run(*scope_, place_);
+      } else {
+        PADDLE_ENFORCE(gear.lite_op->CheckShape());
+        PADDLE_ENFORCE(gear.lite_op->InferShape());
+        VLOG(3) << "running lite op " << gear.lite_op->DebugString();
+        PADDLE_ENFORCE(gear.lite_op->Run());
+      }
+    //}
   }
+  //LOG(INFO) << "op " << gear.name << " takes " << timer.toc();
 }
 
 void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,

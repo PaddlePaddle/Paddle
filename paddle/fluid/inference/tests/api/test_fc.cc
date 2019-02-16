@@ -1,3 +1,4 @@
+#include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 #include "time.h"
@@ -7,11 +8,11 @@ using namespace paddle;
 DEFINE_string(model, "/home/chunwei/project2/models/fc/fluid_checkpoint", "");
 
 TEST(test, main) {
-  contrib::AnalysisConfig config;
+  FLAGS_global_use_lite_op = true;
+  AnalysisConfig config;
   config.SetModel(FLAGS_model);
-  config.SwitchIrOptim(false);
-  config.SwitchIrDebug(true);
-  config.pass_builder()->TurnOnDebug();
+  config.SwitchIrOptim(true);
+  config.SwitchIrDebug(false);
 
   auto predictor = CreatePaddlePredictor(config);
 
@@ -30,8 +31,41 @@ TEST(test, main) {
 
   inference::Timer timer;
   timer.tic();
-  for (int i = 0; i < 1000; i++) {
+  for (int i = 0; i < FLAGS_repeat; i++) {
     ASSERT_TRUE(predictor->Run(inputs, &outputs));
   }
-  LOG(INFO) << "latency " << timer.toc() / 1000 / FLAGS_batch_size;
+  LOG(INFO) << "Run latency " << timer.toc() / FLAGS_repeat;
+}
+
+TEST(test, zero) {
+  FLAGS_global_use_lite_op = true;
+  AnalysisConfig config;
+  config.SetModel(FLAGS_model);
+  config.SwitchIrOptim(true);
+  config.SwitchIrDebug(false);
+  config.SwitchUseFeedFetchOps(false);
+
+  auto predictor = CreatePaddlePredictor(config);
+
+  LOG(INFO) << "batch_size " << FLAGS_batch_size;
+  // prepare input data
+  auto input_tensor = predictor->GetInputTensor("x");
+  input_tensor->Reshape({FLAGS_batch_size, 210});
+  auto* input_data = input_tensor->mutable_data<float>(PaddlePlace::kCPU);
+  for (int i = 0; i < 210; i++) {
+    input_data[i] = rand() / RAND_MAX;
+  }
+
+  // zerocopy run
+
+  inference::Timer timer;
+  timer.tic();
+  for (int i = 0; i < FLAGS_repeat; i++) {
+    predictor->ZeroCopyRun();
+  }
+
+  LOG(INFO) << "zero-copy run " << timer.toc() / FLAGS_repeat;
+
+  // get output
+  // ...
 }
