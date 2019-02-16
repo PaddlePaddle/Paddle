@@ -38,6 +38,7 @@ class NaiveExecutor {
   struct Gear {
     std::unique_ptr<OperatorBase> op;
     std::unique_ptr<inference::op_lite::OpLite> lite_op;
+    std::string name;
   };
 
   explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
