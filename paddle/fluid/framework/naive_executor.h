@@ -23,6 +23,7 @@
 #include "paddle/fluid/platform/device_context.h"
 
 DECLARE_bool(global_with_gpu);
+DECLARE_bool(global_use_lite_op);
 
 namespace paddle {
 namespace framework {
