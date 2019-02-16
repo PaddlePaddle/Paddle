@@ -781,6 +781,54 @@ struct TransposeFlattenConcat : public PatternBase {
   }
 };
 
+// remove the operator such as
+//  - scale_op with scale=1
+//  - assign op
+void CleanIdentityOp(GraphPatternDetecter* detector, PDNode* identity_op,
+                     const std::string& op_name, Graph* graph) {
+  auto pre_op = detector->mutable_pattern()->NewNode("pre_op")->assert_is_op();
+  auto identity_in = detector->mutable_pattern()
+                         ->NewNode("identity_in")
+                         ->assert_is_op_input(op_name)
+                         ->AsIntermediate();
+  auto identity_out =
+      detector->mutable_pattern()
+          ->NewNode("identity_out")
+          ->assert_is_op_output(op_name)
+          // scale's output var should has only one consumer, or it can't be
+          // removed.
+          ->assert_more([](Node* x) { return x->outputs.size() == 1UL; })
+
+              pre_op->LinksTo({identity_in});
+  identity_op->LinksFrom({identity_in}).LinksTo({identity_out});
+
+  GraphPatternDetector::handle_t handler = [&](
+      const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
+    Node* identity_op_var = subgraph.at(identity_op);
+    Node* identity_in_var = subgraph.at(identity_in);
+    Node* identity_out_var = subgraph.at(identity_out);
+    Node* pre_op_var = subgraph.at(pre_op);
+    // Link pre_op directly to scale_out
+    const std::string identity_in_name = identity_in_var->Name();
+    const std::string identity_out_name = identity_out_var->Name();
+    // Remove links in graph
+    GraphSafeRemoveNodes(graph, {identity_in_var, identity_op_var});
+    // Modify proto message
+    auto* pre_op_desc = pre_op_var->Op();
+    for (auto& parameter : *pre_op_desc->Proto()->mutable_outputs()) {
+      auto* arguments = parameter.mutable_arguments();
+      auto it =
+          std::find(arguments->begin(), arguments->end(), identity_in_name);
+      PADDLE_ENFORCE(it != arguments->end());
+      *it = identity_out_name;
+    }
+
+    IR_NODE_LINK_TO(pre_op_var, identity_out_var);
+  };
+
+  (*detector)(graph.get(), handler);
+}
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.
