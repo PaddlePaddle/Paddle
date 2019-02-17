@@ -222,7 +222,7 @@ void Conv2DOpMaker::Make() {
       .SetDefault(4096);
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
-                "convolution, whether enable exhaustive search ",
+                "convolution, whether enable exhaustive search "
                 "for cuDNN convolution or not, defalut is False.")
       .SetDefault(false);
   AddComment(R"DOC(
@@ -341,7 +341,7 @@ void Conv3DOpMaker::Make() {
       .SetDefault(4096);
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
-                "convolution, whether enable exhaustive search ",
+                "convolution, whether enable exhaustive search "
                 "for cuDNN convolution or not, defalut is False.")
       .SetDefault(false);
   AddComment(R"DOC(

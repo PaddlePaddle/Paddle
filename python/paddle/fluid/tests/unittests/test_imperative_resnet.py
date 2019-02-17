@@ -21,7 +21,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.imperative.nn import Conv2D, Pool2D, BatchNorm, FC
 from paddle.fluid.imperative.base import to_variable
 from test_imperative_base import new_program_scope
@@ -173,11 +172,13 @@ class ResNet(fluid.imperative.Layer):
         for block in range(len(depth)):
             shortcut = False
             for i in range(depth[block]):
-                bottleneck_block = BottleneckBlock(
-                    num_channels=num_channels,
-                    num_filters=num_filters[block],
-                    stride=2 if i == 0 and block != 0 else 1,
-                    shortcut=shortcut)
+                bottleneck_block = self.add_sublayer(
+                    'bb_%d_%d' % (block, i),
+                    BottleneckBlock(
+                        num_channels=num_channels,
+                        num_filters=num_filters[block],
+                        stride=2 if i == 0 and block != 0 else 1,
+                        shortcut=shortcut))
                 num_channels = bottleneck_block._num_channels_out
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
@@ -223,8 +224,7 @@ class TestImperativeResnet(unittest.TestCase):
                 batch_size=batch_size)
 
             dy_param_init_value = {}
-            for param in fluid.default_main_program().global_block(
-            ).all_parameters():
+            for param in resnet.parameters():
                 dy_param_init_value[param.name] = param._numpy()
 
             for batch_id, data in enumerate(train_reader()):
@@ -247,16 +247,14 @@ class TestImperativeResnet(unittest.TestCase):
                 dy_out = avg_loss._numpy()
 
                 if batch_id == 0:
-                    for param in fluid.default_main_program().global_block(
-                    ).all_parameters():
+                    for param in resnet.parameters():
                         if param.name not in dy_param_init_value:
                             dy_param_init_value[param.name] = param._numpy()
 
                 avg_loss._backward()
 
                 dy_grad_value = {}
-                for param in fluid.default_main_program().global_block(
-                ).all_parameters():
+                for param in resnet.parameters():
                     if not param.stop_gradient:
                         np_array = np.array(param._ivar._grad_ivar().value()
                                             .get_tensor())
@@ -267,8 +265,7 @@ class TestImperativeResnet(unittest.TestCase):
                 resnet.clear_gradients()
 
                 dy_param_value = {}
-                for param in fluid.default_main_program().global_block(
-                ).all_parameters():
+                for param in resnet.parameters():
                     dy_param_value[param.name] = param._numpy()
 
         with new_program_scope():
@@ -349,6 +346,7 @@ class TestImperativeResnet(unittest.TestCase):
         self.assertTrue(np.allclose(static_out, dy_out))
 
         self.assertEqual(len(dy_param_init_value), len(static_param_init_value))
+
         for key, value in six.iteritems(static_param_init_value):
             self.assertTrue(np.allclose(value, dy_param_init_value[key]))
             self.assertTrue(np.isfinite(value.all()))

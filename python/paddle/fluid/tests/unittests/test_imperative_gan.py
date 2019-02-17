@@ -33,9 +33,6 @@ class Discriminator(fluid.imperative.Layer):
         self._fc1 = FC(size=32, act='elu', name="d_fc1")
         self._fc2 = FC(size=1, name="d_fc2")
 
-    def parameters(self):
-        return self._fc1.parameters() + self._fc2.parameters()
-
     def forward(self, inputs):
         x = self._fc1(inputs)
         return self._fc2(x)
@@ -47,10 +44,6 @@ class Generator(fluid.imperative.Layer):
         self._fc1 = FC(size=64, act='elu', name="g_fc1")
         self._fc2 = FC(size=64, act='elu', name="g_fc2")
         self._fc3 = FC(size=1, name="g_fc3")
-
-    def parameters(self):
-        return self._fc1.parameters() + self._fc2.parameters(
-        ) + self._fc3.parameters()
 
     def forward(self, inputs):
         x = self._fc1(inputs)
