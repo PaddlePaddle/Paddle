@@ -88,7 +88,11 @@ cc_library(timer SRCS timer.cc)
 cc_test(timer_test SRCS timer_test.cc DEPS timer)
 
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
-cc_library(profiler SRCS profiler.cc DEPS device_context device_tracer)
+if(WITH_GPU)
+    nv_library(profiler SRCS profiler.cc profiler.cu DEPS device_context device_tracer)
+else()
+    cc_library(profiler SRCS profiler.cc DEPS device_context device_tracer)
+endif()
 cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 
 nv_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)

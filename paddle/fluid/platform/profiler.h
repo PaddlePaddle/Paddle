@@ -138,5 +138,9 @@ bool ShouldSendProfileState();
 void SetProfileListener();
 int64_t ListenerId();
 
+#ifdef PADDLE_WITH_CUDA
+void DummyKernelAndEvent();
+#endif
+
 }  // namespace platform
 }  // namespace paddle

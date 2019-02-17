@@ -121,18 +121,6 @@ double Event::CudaElapsedMs(const Event& e) const {
 #endif
 }
 
-#ifdef PADDLE_WITH_CUDA
-static void ForEachDevice(std::function<void(int)> func) {
-  auto original_device = GetCurrentDeviceId();
-  int count = GetCUDADeviceCount();
-  for (int i = 0; i < count; i++) {
-    SetDeviceId(i);
-    func(i);
-  }
-  SetDeviceId(original_device);
-}
-#endif
-
 inline EventList& GetEventList() {
   if (!g_event_list) {
     std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
@@ -210,6 +198,15 @@ RecordBlock::~RecordBlock() {
   ClearCurBlock();
 }
 
+static void BuildVar(const std::string& param_name,
+                     std::initializer_list<const char*> arguments,
+                     paddle::framework::proto::OpDesc::Var* var) {
+  var->set_parameter(param_name);
+  for (auto& arg_name : arguments) {
+    *var->mutable_arguments()->Add() = arg_name;
+  }
+}
+
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE(state != ProfilerState::kDisabled,
                  "Can't enable profiling, since the input state is ",
@@ -223,16 +220,11 @@ void EnableProfiler(ProfilerState state) {
   should_send_profile_state = true;
   GetDeviceTracer()->Enable();
 #ifdef PADDLE_WITH_CUDA
-  if (g_state == ProfilerState::kCUDA || g_state == ProfilerState::kAll) {
+  if (g_state == ProfilerState::kCUDA || g_state == ProfilerState::kAll ||
+      g_state == ProfilerState::kCPU) {
     // Generate some dummy events first to reduce the startup overhead.
-    for (int i = 0; i < 5; i++) {
-      ForEachDevice([](int d) {
-        DeviceContext* dev_ctx = new CUDADeviceContext(CUDAPlace(d));
-        Mark("_cuda_startup_");
-        dev_ctx->Wait();
-        delete dev_ctx;
-      });
-    }
+    DummyKernelAndEvent();
+    GetDeviceTracer()->Reset();
   }
 #endif
   // Mark the profiling start.
