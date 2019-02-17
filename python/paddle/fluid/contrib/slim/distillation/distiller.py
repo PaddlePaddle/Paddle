@@ -45,7 +45,7 @@ class FSPDistiller(object):
         if len(pair) == 2 and pair[1] != None:
             pairs.append(pair)
             sizes.append(pre_size)
-        return pairs, sizes
+        return pairs
 
     def distiller_graph(self, student, teachers, optimizer, place):
         """
@@ -105,7 +105,7 @@ class FSPDistillerPass(object):
             ret_graph.out_nodes['loss'] = loss.name
         return ret_graph
 
-    def fsp_matrix(self, fea_map_0, fea_map_1):
+    def _fsp_matrix(self, fea_map_0, fea_map_1):
         a_channel = fea_map_0.shape[1]
         b_channel = fea_map_1.shape[1]
         h = fea_map_0.shape[2]
