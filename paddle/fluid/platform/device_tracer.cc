@@ -437,10 +437,9 @@ class DeviceTracerImpl : public DeviceTracer {
     }
     VLOG(1) << "MemRecord event miss: " << miss << " find: " << find;
     std::ofstream profile_f;
-    profile_f.open(profile_path, std::ios::out | std::ios::trunc);
-    std::string profile_str;
-    profile_pb.SerializeToString(&profile_str);
-    profile_f << profile_str;
+    profile_f.open(profile_path,
+                   std::ios::out | std::ios::trunc | std::ios::binary);
+    profile_pb.SerializeToOstream(&profile_f);
     profile_f.close();
     return profile_pb;
   }
