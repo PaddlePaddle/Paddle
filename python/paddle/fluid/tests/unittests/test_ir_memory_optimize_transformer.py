@@ -14,9 +14,10 @@
 
 import os
 import unittest
-os.environ['FLAGS_eager_delete_tensor_gb'] = "0.0"
-os.environ['FLAGS_fast_eager_deletion_mode'] = True
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
+os.environ['FLAGS_eager_delete_tensor_gb'] = "0.0"
 os.environ[
     'RECORDIO_FILENAME'] = '/tmp/ir_memory_optimize_transformer.wmt16.recordio'
 
