@@ -4,7 +4,7 @@
 # and libcudnn.so.x in paddle/scripts/docker/build.sh
 FROM nvidia/cuda:8.0-cudnn7-devel-ubuntu16.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
-
+test ci trigger
 ARG UBUNTU_MIRROR
 RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com/ubuntu#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
 
