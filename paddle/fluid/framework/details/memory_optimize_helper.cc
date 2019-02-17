@@ -268,10 +268,15 @@ bool OrderedSet::Has(ir::Node* var) const {
   return false;
 }
 
+void OrderedSet::Erase(const std::string& var) {
+  PADDLE_ENFORCE(mark_table_.count(var));
+  nodes_.erase(mark_table_[var]);
+  mark_table_.erase(var);
+}
+
 void OrderedSet::Erase(ir::Node* var) {
-  PADDLE_ENFORCE(mark_table_.count(var->Name()));
-  nodes_.erase(mark_table_[var->Name()]);
-  mark_table_.erase(var->Name());
+  PADDLE_ENFORCE(var != nullptr);
+  Erase(var->Name());
 }
 
 std::string OrderedSet::ToString() const {
@@ -509,7 +514,9 @@ ir::Node* ControlFlowGraph::GetNodeByName(const std::string& name,
   for (auto* node : ops_) {
     if (node == op) break;
     for (auto& output : node->outputs) {
-      if (output->Name() == name) {
+      PADDLE_ENFORCE((output != nullptr && output->IsVar()),
+                     "Output is empty!");
+      if (output->Var() && output->Name() == name) {
         found_node = output;
       }
     }

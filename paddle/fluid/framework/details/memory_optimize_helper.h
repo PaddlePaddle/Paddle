@@ -55,6 +55,7 @@ class OrderedSet {
 
   void Insert(ir::Node* var);
   void Erase(ir::Node* var);
+  void Erase(const std::string& var);
   bool Has(ir::Node* var) const;
   void Clear() {
     mark_table_.clear();

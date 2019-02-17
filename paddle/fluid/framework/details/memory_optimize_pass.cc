@@ -69,7 +69,7 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
     }
 
     for (auto& var : op->outputs) {
-      if (skip_set_.count(var->Name())) {
+      if (var->IsVar() && !var->IsCtrlVar() && skip_set_.count(var->Name())) {
         VLOG(3) << "Skip set contains variable of " << var->Name()
                 << "disable reuse on it. skipped";
         continue;
@@ -77,8 +77,8 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
       if (NodeCanReused(var) && cfg_->Use(op).count(var->Name()) == 0) {
         ir::Node* cache = pool_.FindBestFitNode(var);
         while (cache != nullptr && var->Name() == cache->Name()) {
-          VLOG(3) << "The same cache variable is cascade reused." << var->Name()
-                  << " is re-filled to the pool after"
+          VLOG(3) << "The same cache variable is cascade reused. "
+                  << var->Name() << " is re-filled to the pool after"
                   << "the reused op is finished. Current op can not "
                   << "replace it again. Skip this candidate.";
           cache = pool_.FindNextBestFitNode(var, cache);
@@ -107,11 +107,13 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
           //
           // CFG Graph store the liveness information, when reuse happens
           // we also need to update the variable liveness.
-          cfg_->RenameVarInCFGGraph(var->Name(), cache->Name(), idx);
-          RenameVarInGraphDesc(var->Name(), cache->Name(), idx);
-          RenameVarInGraphNode(var->Name(), cache->Name(), idx, graph.get());
+          const std::string var_name = var->Name();
+          const std::string cache_name = cache->Name();
 
-          pool_.Erase(cache);
+          cfg_->RenameVarInCFGGraph(var_name, cache_name, idx);
+          RenameVarInGraphDesc(var_name, cache_name, idx);
+          RenameVarInGraphNode(var_name, cache_name, idx, graph.get());
+          pool_.Erase(cache_name);
         }
       }
     }
@@ -119,7 +121,7 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
     for (auto var : cfg_->LiveIn(op)) {
       if (cfg_->LiveOut(op).count(var) == 0) {
         ir::Node* var_node = cfg_->GetNodeByName(var, op);
-        if (var_node == nullptr) continue;
+        if (var_node == nullptr || var_node->IsCtrlVar()) continue;
         if (NodeCanReused(var_node) && !pool_.Has(var_node)) {
           pool_.Insert(var_node);
         }
@@ -275,8 +277,7 @@ void MemoryOptimizePass::RenameVarInGraphNode(const std::string& var,
     // redirect the input to the latest version of cache_var
     for (auto* node : op->inputs) {
       if (node->Name() == var) {
-        ir::Node* cache_node = graph->CreateVarNode(var_desc.get());
-        var_nodes_[cache_var].emplace_back(cache_node);
+        ir::Node* cache_node = var_nodes_[cache_var].back();
 
         // swap node to cache_node
         cache_node->outputs.insert(cache_node->outputs.end(),
@@ -285,11 +286,15 @@ void MemoryOptimizePass::RenameVarInGraphNode(const std::string& var,
         auto* prev_op = node->inputs[0];
         std::replace(prev_op->outputs.begin(), prev_op->outputs.end(), node,
                      cache_node);
-        cache_node->inputs.emplace_back(prev_op);
         for (auto* next_op : node->outputs) {
           std::replace(next_op->inputs.begin(), next_op->inputs.end(), node,
                        cache_node);
         }
+
+        // erase unused node
+        auto& nodes = var_nodes_.at(var);
+        nodes.erase(std::remove(nodes.begin(), nodes.end(), node), nodes.end());
+        graph->RemoveNode(node);
       }
     }
 
@@ -309,15 +314,14 @@ void MemoryOptimizePass::RenameVarInGraphNode(const std::string& var,
           std::replace(next_op->inputs.begin(), next_op->inputs.end(), node,
                        cache_node);
         }
+
+        // erase unused node
+        auto& nodes = var_nodes_.at(var);
+        nodes.erase(std::remove(nodes.begin(), nodes.end(), node), nodes.end());
+        graph->RemoveNode(node);
       }
     }
   }
-
-  // release node of unused var in graph
-  for (auto* node : var_nodes_[var]) {
-    graph->RemoveNode(node);
-  }
-  var_nodes_.at(var).clear();
 }
 
 }  // namespace details
