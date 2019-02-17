@@ -147,8 +147,6 @@ set(GPU_COMMON_FLAGS
     -Wno-error=unused-function  # Warnings in Numpy Header.
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
-endif(NOT WIN32)
 
 if (APPLE)
     # On Mac OS X build fat binaries with x86_64 architectures by default.
