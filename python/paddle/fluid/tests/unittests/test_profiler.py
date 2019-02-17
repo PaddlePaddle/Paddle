@@ -28,7 +28,7 @@ import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 class TestProfiler(unittest.TestCase):
     def net_profiler(self, state, use_parallel_executor=False):
         profile_path = os.path.join(tempfile.gettempdir(), "profile")
-        open(profile_path, "w").write("")
+        # open(profile_path, "w").write("")
         startup_program = fluid.Program()
         main_program = fluid.Program()
 
