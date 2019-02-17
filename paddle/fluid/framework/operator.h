@@ -508,6 +508,12 @@ class OperatorWithKernel : public OperatorBase {
   void TransferInplaceVarsBack(const Scope& scope,
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
+
+  // Cache the kernel function in inference mode to save the overhead, and make
+  // the execution simpler.
+ private:
+  mutable OpKernelFunc* kernel_func_{nullptr};
+  mutable std::unique_ptr<OpKernelType> kernel_type_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

@@ -56,24 +56,10 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
-    auto *cache_var = ctx.InputVar("Cache");
-    if (!cache_var) {
-      // The RAW type cache variable wouldn't be created and broadcasted on
-      // multi-devices before the first running.
-      // use parent scope to make cache persistable
-      auto *scope = const_cast<framework::Scope *>(ctx.scope().parent());
-      auto cache_var_name = ctx.Inputs("Cache")[0];
-      cache_var = scope->Var(cache_var_name);
-    }
+
     CudnnRNNCache *cudnn_rnn_cache = nullptr;
-    if (cache_var->IsInitialized()) {
-      // const_cast is usually bad.
-      cudnn_rnn_cache = const_cast<framework::Variable *>(cache_var)
-                            ->GetMutable<CudnnRNNCache>();
-    } else {
-      // const_cast is usually bad.
-      cudnn_rnn_cache = const_cast<framework::Variable *>(cache_var)
-                            ->GetMutable<CudnnRNNCache>();
+
+    auto init_cudnn_rnn_cache = [&](CudnnRNNCache *cudnn_rnn_cache) {
       std::random_device rnd;
       int seed = ctx.Attr<int>("seed");
       if (seed == -1) {
@@ -85,7 +71,42 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
       cudnn_rnn_cache->init(handle, ctx.GetPlace(), max_len, batch_size,
                             input_size, hidden_size, num_layers, dropout_prob,
                             is_bidirec, seed, input_w_numel);
+    };
+
+#ifndef PADDLE_ON_INFERENCE  // on non-inference mode
+    auto *cache_var = ctx.InputVar("Cache");
+    if (!cache_var) {
+      // The RAW type cache variable wouldn't be created and broadcasted on
+      // multi-devices before the first running.
+      // use parent scope to make cache persistable
+      auto *scope = const_cast<framework::Scope *>(ctx.scope().parent());
+      auto cache_var_name = ctx.Inputs("Cache")[0];
+      cache_var = scope->Var(cache_var_name);
     }
+
+    if (cache_var->IsInitialized()) {
+      // const_cast is usually bad.
+      cudnn_rnn_cache = const_cast<framework::Variable *>(cache_var)
+                            ->GetMutable<CudnnRNNCache>();
+    } else {
+      // const_cast is usually bad.
+      cudnn_rnn_cache = const_cast<framework::Variable *>(cache_var)
+                            ->GetMutable<CudnnRNNCache>();
+
+      init_cudnn_rnn_cache(cudnn_rnn_cache);
+    }
+
+#else  // on inference mode.
+    if (!cudnn_rnn_cache_) {
+      LOG_FIRST_N(INFO, 5) << "create new cached CUDNN RNN cache";
+      cudnn_rnn_cache_.reset(new CudnnRNNCache);
+      cudnn_rnn_cache = cudnn_rnn_cache_.get();
+      init_cudnn_rnn_cache(cudnn_rnn_cache);
+    } else {
+      LOG_FIRST_N(INFO, 5) << "use cached CUDNN RNN cache";
+    }
+
+#endif
 
     auto run_seq_len = x->dims()[0];
 
@@ -113,6 +134,13 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
           cudnn_rnn_cache->reserve_size_));
     }
   }
+
+#ifdef PADDLE_ON_INFERENCE
+  // To make the scope more clear, and to make sure this cache is allocated for
+  // thread each, we make it a member.
+ private:
+  mutable std::unique_ptr<CudnnRNNCache> cudnn_rnn_cache_;
+#endif
 };
 
 template <typename T>
