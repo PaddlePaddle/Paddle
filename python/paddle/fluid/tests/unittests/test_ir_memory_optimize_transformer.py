@@ -22,6 +22,7 @@ os.environ[
     'RECORDIO_FILENAME'] = '/tmp/ir_memory_optimize_transformer.wmt16.recordio'
 
 from test_parallel_executor_transformer import TestTransformer
+from test_parallel_executor_transformer import transformer
 
 
 # NOTE(dzhwinter): test diferent strategy colisions.
