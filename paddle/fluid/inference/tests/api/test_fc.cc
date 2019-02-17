@@ -8,7 +8,6 @@ using namespace paddle;
 DEFINE_string(model, "/home/chunwei/project2/models/fc/fluid_checkpoint", "");
 
 TEST(test, naive) {
-  FLAGS_global_use_lite_op = false;
   AnalysisConfig config;
   config.SetModel(FLAGS_model);
   config.SwitchIrOptim(false);
@@ -39,10 +38,9 @@ TEST(test, naive) {
 }
 
 TEST(test, main_old) {
-  FLAGS_global_use_lite_op = false;
   AnalysisConfig config;
   config.SetModel(FLAGS_model);
-  config.SwitchIrOptim(true);
+  config.SwitchIrOptim(false);
   config.SwitchIrDebug(false);
 
   auto predictor = CreatePaddlePredictor(config);
@@ -72,7 +70,6 @@ TEST(test, main_old) {
 
 
 TEST(test, main) {
-  FLAGS_global_use_lite_op = true;
   AnalysisConfig config;
   config.SetModel(FLAGS_model);
   config.SwitchIrOptim(true);
@@ -102,10 +99,9 @@ TEST(test, main) {
 }
 
 TEST(test, zero) {
-  FLAGS_global_use_lite_op = true;
   AnalysisConfig config;
   config.SetModel(FLAGS_model);
-  config.SwitchIrOptim(true);
+  config.SwitchIrOptim(false);
   config.SwitchIrDebug(false);
   config.SwitchUseFeedFetchOps(false);
 

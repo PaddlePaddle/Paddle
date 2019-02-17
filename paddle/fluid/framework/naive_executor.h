@@ -19,11 +19,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/inference/op_lite/op_lite.h"
 #include "paddle/fluid/platform/device_context.h"
-
-DECLARE_bool(global_with_gpu);
-DECLARE_bool(global_use_lite_op);
 
 namespace paddle {
 namespace framework {
@@ -34,22 +30,7 @@ namespace framework {
  */
 class NaiveExecutor {
  public:
-  // Either one should be set, and will be executed.
-  struct Gear {
-    std::unique_ptr<OperatorBase> op;
-    std::unique_ptr<inference::op_lite::OpLite> lite_op;
-    std::string name;
-    double timer{0.}; // ms
-    size_t run_times{0};
-  };
-
   explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
-
-  ~NaiveExecutor() {
-      for (auto& gear : gears_) {
-          LOG(INFO) << "gear " << gear.name << " ave latency " << gear.timer/gear.run_times;
-      }
-  }
 
   // Create child scope.
   // Create variables.
@@ -71,14 +52,16 @@ class NaiveExecutor {
 
   Scope* scope() { return scope_; }
 
+  void CleanFeedFetchOps();
+
  protected:
   void CreateOps(const ProgramDesc& desc, int block_id,
-                 bool with_feed_fetch_ops, framework::Scope* scope = nullptr);
+                 bool with_feed_fetch_ops);
 
  private:
   const platform::Place place_;
   // Catch the required resource to avoid recreate.
-  std::vector<Gear> gears_;
+  std::vector<std::unique_ptr<OperatorBase>> ops_;
   Scope* scope_;
 };
 
