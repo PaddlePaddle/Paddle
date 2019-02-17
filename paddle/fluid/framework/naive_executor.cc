@@ -51,10 +51,10 @@ void NaiveExecutor::Run() {
                              "setting the cmake flag ON_INFER=ON if you are "
                              "running Paddle Inference";
 #endif  // PADDLE_ON_INFERENCE
-  //inference::Timer timer;
+  inference::Timer timer;
   //timer.tic();
   for (auto &gear : gears_) {
-    //for (int i = 0; i < 1000; i++) {
+      timer.tic();
       if (gear.op) {
         VLOG(4) << std::this_thread::get_id() << " run "
                 << gear.op->DebugStringEx(scope_) << " on scope " << scope_;
@@ -66,7 +66,8 @@ void NaiveExecutor::Run() {
         VLOG(3) << "running lite op " << gear.lite_op->DebugString();
         PADDLE_ENFORCE(gear.lite_op->Run());
       }
-    //}
+      gear.timer += timer.toc();
+      ++gear.run_times;
   }
   //LOG(INFO) << "op " << gear.name << " takes " << timer.toc();
 }

@@ -39,9 +39,17 @@ class NaiveExecutor {
     std::unique_ptr<OperatorBase> op;
     std::unique_ptr<inference::op_lite::OpLite> lite_op;
     std::string name;
+    double timer{0.}; // ms
+    size_t run_times{0};
   };
 
   explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
+
+  ~NaiveExecutor() {
+      for (auto& gear : gears_) {
+          LOG(INFO) << "gear " << gear.name << " ave latency " << gear.timer/gear.run_times;
+      }
+  }
 
   // Create child scope.
   // Create variables.
