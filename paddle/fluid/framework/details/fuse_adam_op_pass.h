@@ -32,7 +32,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
 
   virtual const std::vector<std::string> GetAuxiliaryVarNames() const;
 
-  // Fuse Adam Ops and Scale Ops
+  // Fuse Adam Ops and Scale Ops which are used to update "Beta1Pow", "Beta2Pow"
   virtual void FuseOptimizerOps(
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,

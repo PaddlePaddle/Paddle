@@ -563,8 +563,7 @@ bool MultiDevSSAGraphBuilderBase::IsScaleLossOp(ir::Node *node) const {
          boost::get<int>(
              node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
              (static_cast<int>(OpRole::kBackward) |
-              static_cast<int>(
-                  OpRole::kLoss));  // If loss_var is empty. This is test mode
+              static_cast<int>(OpRole::kLoss));
 }
 
 bool MultiDevSSAGraphBuilderBase::IsSparseGradient(

@@ -43,6 +43,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
  public:
   explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy)
       : ir::PassBuilder(), strategy_(strategy) {
+    bool fuse_gradients = false;
     // Add a graph viz pass to record a graph.
     if (!strategy_.debug_graphviz_path_.empty()) {
       auto viz_pass = AppendPass("graph_viz_pass");
@@ -83,11 +84,17 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (strategy.fuse_all_reduce_ops_) {
       VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
       AppendPass("alloc_continuous_space_for_grad_pass");
+      fuse_gradients = true;
     }
 
     if (strategy.fuse_all_optimizer_ops_) {
-      VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
-      AppendPass("alloc_continuous_space_for_grad_pass");
+      if (!fuse_gradients) {
+        VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
+        AppendPass("alloc_continuous_space_for_grad_pass");
+      }
+      // NOTE: fuse_all_xx_ops will count the number of xx operator first,
+      // if the number is zero, fuse_all_reduce_ops will do nothing.
+      // Currently, only one type of optimization algorithm can be fused.
       VLOG(10) << "Add fuse_adam_op_pass";
       AppendPass("fuse_adam_op_pass");
       VLOG(10) << "Add fuse_sgd_op_pass";
@@ -126,8 +133,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendMultiDevPass(strategy);
 
     if (strategy.fuse_all_reduce_ops_) {
-      PADDLE_ENFORCE(strategy.reduce_ ==
-                     BuildStrategy::ReduceStrategy::kAllReduce);
+      PADDLE_ENFORCE(fuse_gradients, "The gradients space should be fused.");
+      // NOTE: fuse_all_reduce_ops will count the number of all_reduce operator
+      // first, if the number is zero, fuse_all_reduce_ops will do nothing.
       VLOG(10) << "Add fuse_all_reduce_op_pass";
       AppendPass("fuse_all_reduce_op_pass");
     }

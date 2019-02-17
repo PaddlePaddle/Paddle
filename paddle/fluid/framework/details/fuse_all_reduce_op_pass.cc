@@ -46,9 +46,6 @@ class FuseAllReduceOpPass : public ir::Pass {
       grads.insert(p_g.second);
     }
 
-    // find all reduce op
-    // the gradient doesn't have sparse type
-    //
     size_t num_place = places.size();
     std::vector<std::string> all_reduce_grads;
     std::vector<ir::Node *> all_reduce_ops;
@@ -61,22 +58,28 @@ class FuseAllReduceOpPass : public ir::Pass {
             dynamic_cast<AllReduceOpHandle *>(&node->Wrapper<OpHandleBase>());
         if (all_reduce_op_handle) {
           auto inputs = DynamicCast<VarHandle>(all_reduce_op_handle->Inputs());
-          PADDLE_ENFORCE_EQ(all_reduce_op_handle->NoDummyInputSize(),
-                            num_place);
-          // TODO(zcd): The inputs' name should be the same.
-
+          PADDLE_ENFORCE_EQ(inputs.size(), num_place);
+          // The inputs' name should be the same.
+          for (size_t i = 1; i < inputs.size(); ++i) {
+            PADDLE_ENFORCE_EQ(inputs[i]->name(), inputs[0]->name(),
+                              "The input name should be the same.");
+          }
           PADDLE_ENFORCE_NE(grads.count(inputs.at(0)->name()), 0);
           all_reduce_ops.emplace_back(node);
           all_reduce_grads.emplace_back(inputs.at(0)->name());
         }
       }
     }
+
     VLOG(10) << "Find all_reduce_ops: " << all_reduce_ops.size();
     if (all_reduce_ops.size() == 0) {
       return std::move(graph);
     }
 
-    PADDLE_ENFORCE_EQ(all_reduce_ops.size(), grads.size());
+    PADDLE_ENFORCE_EQ(all_reduce_ops.size(), grads.size(),
+                      "The number of all_reduce OpHandle is not equal to the "
+                      "number of grads. Maybe some gradients are sparse type, "
+                      "it is not supported currently.");
     VLOG(10) << "Insert fused_all_reduce";
 
     std::vector<VarHandleBase *> inputs;
