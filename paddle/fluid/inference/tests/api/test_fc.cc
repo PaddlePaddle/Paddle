@@ -34,6 +34,7 @@ TEST(test, naive) {
   for (int i = 0; i < FLAGS_repeat; i++) {
     ASSERT_TRUE(predictor->Run(inputs, &outputs));
   }
+  LOG(INFO) << "output: " << static_cast<float*>(outputs.front().data.data())[0];
   LOG(INFO) << "Naive Run latency " << timer.toc() / FLAGS_repeat;
 }
 
@@ -65,6 +66,8 @@ TEST(test, main_old) {
     ASSERT_TRUE(predictor->Run(inputs, &outputs));
   }
   LOG(INFO) << "Run old latency " << timer.toc() / FLAGS_repeat;
+
+  LOG(INFO) << "output: " << static_cast<float*>(outputs.front().data.data())[0];
 }
 
 
@@ -124,7 +127,6 @@ TEST(test, zero) {
   for (int i = 0; i < FLAGS_repeat; i++) {
     predictor->ZeroCopyRun();
   }
-
   LOG(INFO) << "zero-copy run " << timer.toc() / FLAGS_repeat;
 
   // get output
