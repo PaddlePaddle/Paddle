@@ -47,10 +47,8 @@ class FuseAllReduceOpPass : public ir::Pass {
     }
 
     size_t num_place = places.size();
-    std::vector<std::string> all_reduce_grads;
-    std::vector<ir::Node *> all_reduce_ops;
+    std::unordered_map<std::string, ir::Node *> all_reduce_ops;
     all_reduce_ops.reserve(grads.size());
-    all_reduce_grads.reserve(grads.size());
     for (auto &node : result.Nodes()) {
       if (node->IsOp()) {
         PADDLE_ENFORCE(node->IsWrappedBy<OpHandleBase>());
@@ -60,13 +58,13 @@ class FuseAllReduceOpPass : public ir::Pass {
           auto inputs = DynamicCast<VarHandle>(all_reduce_op_handle->Inputs());
           PADDLE_ENFORCE_EQ(inputs.size(), num_place);
           // The inputs' name should be the same.
+          auto &grad_name = inputs[0]->name();
           for (size_t i = 1; i < inputs.size(); ++i) {
-            PADDLE_ENFORCE_EQ(inputs[i]->name(), inputs[0]->name(),
+            PADDLE_ENFORCE_EQ(inputs[i]->name(), grad_name,
                               "The input name should be the same.");
           }
-          PADDLE_ENFORCE_NE(grads.count(inputs.at(0)->name()), 0);
-          all_reduce_ops.emplace_back(node);
-          all_reduce_grads.emplace_back(inputs.at(0)->name());
+          PADDLE_ENFORCE_NE(grads.count(grad_name), 0);
+          all_reduce_ops.emplace(grad_name, node);
         }
       }
     }
@@ -82,6 +80,36 @@ class FuseAllReduceOpPass : public ir::Pass {
                       "it is not supported currently.");
     VLOG(10) << "Insert fused_all_reduce";
 
+    auto &group_grads_params =
+        graph->Get<GroupGradsAndParams>(kGroupGradsAndParams);
+
+    for (auto &group_g_p : group_grads_params) {
+      size_t group_size = group_g_p.size();
+      PADDLE_ENFORCE_GT(group_size, 0);
+      std::vector<ir::Node *> group_all_reduce_ops;
+      group_all_reduce_ops.reserve(group_size);
+      for (auto &g_p : group_g_p) {
+        group_all_reduce_ops.emplace_back(all_reduce_ops.at(g_p.first));
+      }
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+      InsertFusedAllReduce(places, local_scopes, group_size,
+                           group_all_reduce_ops, nccl_ctxs, &result);
+#else
+      InsertFusedAllReduce(places, local_scopes, group_size,
+                           group_all_reduce_ops, &result);
+#endif
+    }
+    return std::move(graph);
+  }
+
+  void InsertFusedAllReduce(const std::vector<platform::Place> &places,
+                            const std::vector<Scope *> &local_scopes,
+                            const size_t num_of_all_reduce,
+                            const std::vector<ir::Node *> &all_reduce_ops,
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+                            const platform::NCCLContextMap *nccl_ctxs,
+#endif
+                            ir::Graph *result) const {
     std::vector<VarHandleBase *> inputs;
     std::vector<VarHandleBase *> outputs;
     for (auto &op : all_reduce_ops) {
@@ -89,30 +117,28 @@ class FuseAllReduceOpPass : public ir::Pass {
       inputs.insert(inputs.end(), op_handle.Inputs().begin(),
                     op_handle.Inputs().end());
       // Remove output
-      std::for_each(op_handle.Inputs().begin(), op_handle.Inputs().end(),
-                    [&op_handle](VarHandleBase *var_handle) {
-                      var_handle->RemoveOutput(&op_handle, op_handle.Node());
-                    });
+      for_each(op_handle.Inputs().begin(), op_handle.Inputs().end(),
+               [&op_handle](VarHandleBase *var_handle) {
+                 var_handle->RemoveOutput(&op_handle, op_handle.Node());
+               });
 
       outputs.insert(outputs.end(), op_handle.Outputs().begin(),
                      op_handle.Outputs().end());
       // Remove Input
-      std::for_each(
+      for_each(
           op_handle.Outputs().begin(), op_handle.Outputs().end(),
           [](VarHandleBase *var_handle) { var_handle->ClearGeneratedOp(); });
 
-      result.RemoveNode(op_handle.Node());
+      result->RemoveNode(op_handle.Node());
     }
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     CreateFusedAllReduceOp(inputs, outputs, num_of_all_reduce, places,
-                           local_scopes, nccl_ctxs, &result);
+                           local_scopes, nccl_ctxs, result);
 #else
     CreateFusedAllReduceOp(inputs, outputs, num_of_all_reduce, places,
-                           local_scopes, &result);
+                           local_scopes, result);
 #endif
-
-    return std::move(graph);
   }
 
  private:

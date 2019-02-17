@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/details/fuse_optimizer_op_pass.h"
 #include <algorithm>
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -29,17 +28,15 @@ std::unique_ptr<ir::Graph> FuseOptimizerOpPass::ApplyImpl(
   const std::vector<std::string> aux_var_names = GetAuxiliaryVarNames();
 
   // Step 1: Get the specified op and auxiliary variables.
+  std::vector<ir::Node *> topo_nodes = ir::TopologySortOperations(result);
   std::unordered_map<std::string, std::vector<std::string>> aux_var_set;
   std::vector<ir::Node *> opt_ops;
-  for (ir::Node *node : result.Nodes()) {
-    if (node->IsOp()) {
-      GetSpecifiedOpsAndVars(fuse_op_type, aux_var_names, node, &opt_ops,
-                             &aux_var_set);
-    }
+  for (auto &node : topo_nodes) {
+    GetSpecifiedOpsAndVars(fuse_op_type, aux_var_names, node, &opt_ops,
+                           &aux_var_set);
   }
 
   VLOG(10) << "Find " << fuse_op_type << " operators: " << opt_ops.size();
-
   if (opt_ops.size() == 0) {
     return std::move(graph);
   }
@@ -62,7 +59,7 @@ std::unique_ptr<ir::Graph> FuseOptimizerOpPass::ApplyImpl(
 
   std::unordered_map<std::string, std::string> fused_vars_name;
   fused_vars_name.reserve(aux_var_names.size() + 1);
-  const std::string prefix(kGradVarSuffix);
+  const std::string prefix(kFusedVarNamePrefix);
   for (auto &var_name : aux_var_names) {
     auto fused_var_name = prefix + "_" + fuse_op_type + "_" + var_name;
     fused_vars_name.emplace(var_name, fused_var_name);
@@ -71,7 +68,10 @@ std::unique_ptr<ir::Graph> FuseOptimizerOpPass::ApplyImpl(
 
   // Step 3: Sort the parameters and auxiliary variables according
   // to parameters' name to make variables' name correspond correctly.
-  SortVarsName(aux_var_names[0], &aux_var_set, &opt_ops);
+  PADDLE_ENFORCE(result.Has(kParamsAndGrads), "Does't find kParamsAndGrads.");
+  auto &params_grads = result.Get<ParamsAndGrads>(kParamsAndGrads);
+  PADDLE_ENFORCE_EQ(params_grads.size(), aux_var_set.begin()->second.size());
+  SortVarsName(params_grads, &aux_var_set, &opt_ops);
 
   // Step 4: Alloc continuous space for Moment1, Moment2, Beta1Pow, Beta2Pow
   // of all the optimizer ops separately.
@@ -109,20 +109,28 @@ std::unique_ptr<ir::Graph> FuseOptimizerOpPass::ApplyImpl(
 }
 
 void FuseOptimizerOpPass::SortVarsName(
-    const std::string &str,
+    const std::vector<std::pair<std::string, std::string>> &params_grads,
     std::unordered_map<std::string, std::vector<std::string>> *aux_vars_set,
     std::vector<ir::Node *> *ops) const {
-  auto &param_vec = aux_vars_set->at(str);
+  PADDLE_ENFORCE_NE(aux_vars_set->count("Param"), 0);
+  auto &param_vec = aux_vars_set->at("Param");
+
   std::vector<size_t> param_sort_idx;
   param_sort_idx.reserve(param_vec.size());
   for (size_t i = 0; i < param_vec.size(); ++i) {
     param_sort_idx.emplace_back(i);
   }
-
   std::sort(param_sort_idx.begin(), param_sort_idx.end(),
             [&param_vec](size_t a, size_t b) -> bool {
               return param_vec[a] < param_vec[b];
             });
+
+  //  for (auto &p_g : params_grads) {
+  //    auto iter = std::find(param_vec.begin(), param_vec.end(), p_g.first);
+  //    PADDLE_ENFORCE(iter != param_vec.end());
+  //    auto idx = std::distance(param_vec.begin(), iter);
+  //    param_sort_idx.emplace_back(idx);
+  //  }
 
   for (auto &aux_vars : *aux_vars_set) {
     std::vector<std::string> sorted_vars;
@@ -131,6 +139,12 @@ void FuseOptimizerOpPass::SortVarsName(
       sorted_vars.emplace_back(aux_vars.second.at(param_sort_idx[i]));
     }
     std::swap(aux_vars.second, sorted_vars);
+
+    std::stringstream out;
+    for (auto &var_name : aux_vars.second) {
+      out << var_name << " ";
+    }
+    VLOG(10) << aux_vars.first << ": " << out.str();
   }
 
   std::vector<ir::Node *> sorted_ops;

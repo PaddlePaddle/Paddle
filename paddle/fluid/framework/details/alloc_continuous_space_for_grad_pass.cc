@@ -31,34 +31,41 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override {
     ir::Graph& result = *graph;
+
     if (result.Has(kParamsAndGrads)) {
       VLOG(10) << kParamsAndGrads << " is reset.";
       result.Erase(kParamsAndGrads);
     }
     result.Set(kParamsAndGrads, new ParamsAndGrads);
 
+    if (result.Has(kGroupGradsAndParams)) {
+      VLOG(10) << kGroupGradsAndParams << " is reset.";
+      result.Erase(kGroupGradsAndParams);
+    }
+    result.Set(kGroupGradsAndParams, new GroupGradsAndParams);
+
+    // NOTE: The operator nodes should be in topology order.
+    std::vector<ir::Node*> topo_nodes = ir::TopologySortOperations(result);
+    auto& params_grads = result.Get<ParamsAndGrads>(kParamsAndGrads);
+    for (auto& node : topo_nodes) {
+      RecordParamsAndGrads(node, &params_grads);
+    }
+
     // Record parameters and gradients
     std::unordered_map<std::string, ir::Node*> vars;
     for (ir::Node* node : result.Nodes()) {
-      if (node->IsVar()) {
-        if (node->Var()) {
-          // Note: The graph may have the same name node. For example, parameter
-          // is the input of operator and it also is the output of optimizer;
-          vars.emplace(node->Var()->Name(), node);
-        }
-      } else {
-        GetTrainingGradVarName(node, &result);
+      if (node->IsVar() && node->Var()) {
+        // Note: The graph may have the same name node. For example, parameter
+        // is the input of operator and it also is the output of optimizer;
+        vars.emplace(node->Var()->Name(), node);
       }
     }
 
     // Note: Sort the parameters and gradient variables according
     // to parameters' name to make variables' name correspond correctly.
-    auto& params_grads = result.Get<ParamsAndGrads>(kParamsAndGrads);
-    std::sort(params_grads.begin(), params_grads.end(),
-              [](const std::pair<std::string, std::string>& a,
-                 const std::pair<std::string, std::string>& b) -> bool {
-                return a.first < b.first;
-              });
+    auto& group_params_grads =
+        result.Get<GroupGradsAndParams>(kGroupGradsAndParams);
+    ResortParamsAndGrads(vars, &params_grads, &group_params_grads);
 
     // Set Gradients as Persistable to prevent this var becoming reusable.
     auto dtype = static_cast<proto::VarType::Type>(0);
@@ -89,7 +96,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     }
 
     // Create the fused variable name.
-    const std::string prefix(kGradVarSuffix);
+    const std::string prefix(kFusedVarNamePrefix);
     auto fused_var_name = prefix + "_GRAD";
     if (!result.Has(kFusedVars)) {
       result.Set(kFusedVars, new FusedVars);
@@ -112,6 +119,42 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     return std::move(graph);
   }
 
+  void ResortParamsAndGrads(
+      const std::unordered_map<std::string, ir::Node*>& var_nodes,
+      ParamsAndGrads* params_grads,
+      GroupGradsAndParams* group_params_grads) const {
+    // TODO(zcd): The sort should be removed.
+    std::sort(params_grads->begin(), params_grads->end(),
+              [](const std::pair<std::string, std::string>& a,
+                 const std::pair<std::string, std::string>& b) -> bool {
+                return a.first < b.first;
+              });
+
+    // group_size
+    const size_t group_size = 3;
+    size_t groups = (params_grads->size() + group_size) / group_size;
+    group_params_grads->reserve(groups);
+
+    size_t j = 0;
+    for (size_t i = 0; i < groups; ++i) {
+      group_params_grads->emplace_back();
+      auto& group_p_g = group_params_grads->back();
+      group_p_g.reserve(group_size);
+      VLOG(10) << "Group:" << i;
+      std::stringstream out;
+      while (j < params_grads->size()) {
+        group_p_g.emplace_back(
+            std::make_pair(params_grads->at(j).second /*grad*/,
+                           params_grads->at(j).first /*param*/));
+        out << params_grads->at(j).second << "[" << params_grads->at(j).first
+            << "]  ";
+        ++j;
+        if (j % group_size == 0) break;
+      }
+      VLOG(10) << out.str();
+    }
+  }
+
  private:
   bool IsSupportedVarType(const proto::VarType::Type& type) const {
     // Current only support LOD_TENSOR.
@@ -129,7 +172,8 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     op_desc->SetOutput("FusedOutput", {fused_var_name});
   }
 
-  void GetTrainingGradVarName(ir::Node* node, ir::Graph* result) const {
+  void RecordParamsAndGrads(ir::Node* node,
+                            ParamsAndGrads* params_grads) const {
     try {
       bool is_bk_op =
           static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
@@ -147,9 +191,9 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       for (size_t i = 0; i < backward_vars.size(); i += 2) {
         VLOG(10) << "Trainable parameter: " << backward_vars[i]
                  << ", gradient: " << backward_vars[i + 1];
-        result->Get<ParamsAndGrads>(kParamsAndGrads)
-            .emplace_back(std::make_pair(backward_vars[i] /*param*/,
-                                         backward_vars[i + 1] /*grad*/));
+
+        params_grads->emplace_back(std::make_pair(
+            backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/));
       }
     } catch (boost::bad_get e) {
     }

@@ -60,6 +60,10 @@ constexpr char kNCCLCtxs[] = "nccl_ctxs";
 typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;
 constexpr char kParamsAndGrads[] = "params_grads";
 
+typedef std::vector<std::vector<std::pair<std::string, std::string>>>
+    GroupGradsAndParams;
+constexpr char kGroupGradsAndParams[] = "group_grads_params";
+
 constexpr char kLossVarName[] = "loss_var_name";
 constexpr char kPlaces[] = "places";
 constexpr char kLocalScopes[] = "local_scopes";

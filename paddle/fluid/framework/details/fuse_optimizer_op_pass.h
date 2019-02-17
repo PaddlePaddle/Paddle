@@ -33,7 +33,7 @@ class FuseOptimizerOpPass : public ir::Pass {
 
  protected:
   virtual void SortVarsName(
-      const std::string &str,
+      const std::vector<std::pair<std::string, std::string>> &params_grads,
       std::unordered_map<std::string, std::vector<std::string>> *aux_var_set,
       std::vector<ir::Node *> *ops) const;
 
