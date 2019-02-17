@@ -1,5 +1,5 @@
 # PaddlePaddle
-test-ci release trigger
+test-ci develop trigger
 
 English | [简体中文](./README_cn.md)
 
