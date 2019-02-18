@@ -64,6 +64,8 @@ std::mutex profiler_mem;  // record memory mutex
 static std::list<std::shared_ptr<MemEventList>> g_all_mem_event_lists;
 static thread_local std::shared_ptr<MemEventList> g_mem_event_list;
 static std::mutex g_all_mem_event_lists_mutex;
+static thread_local int32_t g_mem_thread_id;
+static uint32_t g_mem_next_thread_id = 0;
 
 struct EventList {
   constexpr static size_t kMB = 1024 * 1024;
@@ -191,17 +193,19 @@ static void ForEachDevice(std::function<void(int)> func) {
 #endif
 
 MemEvent::MemEvent(EventType type, uint64_t start_ns, uint64_t end_ns,
-                   size_t bytes, Place place)
+                   size_t bytes, Place place, int64_t thread_id)
     : type_(type),
       start_ns_(start_ns),
       end_ns_(end_ns),
       bytes_(bytes),
-      place_(place) {}
+      place_(place),
+      thread_id_(thread_id) {}
 
 inline MemEventList& GetMemEventList() {
   if (!g_mem_event_list) {
     std::lock_guard<std::mutex> guard(g_all_mem_event_lists_mutex);
     g_mem_event_list = std::make_shared<MemEventList>();
+    g_mem_thread_id = g_mem_next_thread_id++;
     g_all_mem_event_lists.emplace_front(g_mem_event_list);
   }
   return *g_mem_event_list;
@@ -210,13 +214,13 @@ inline MemEventList& GetMemEventList() {
 void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
                   Place place) {
   GetMemEventList().Record(EventType::kPushRange, start_ns, end_ns, bytes,
-                           place);
+                           place, g_mem_thread_id);
 }
 
 void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
                  Place place) {
-  GetMemEventList().Record(EventType::kPopRange, start_ns, end_ns, bytes,
-                           place);
+  GetMemEventList().Record(EventType::kPopRange, start_ns, end_ns, bytes, place,
+                           g_mem_thread_id);
 }
 
 inline EventList& GetEventList() {
@@ -284,7 +288,8 @@ void RecordMemEvent::DelRecordMem() {
   end_ns_ = PosixInNsec();
   PushMemEvent(start_ns_, end_ns_, bytes_, place_);
   if (tracer) {
-    tracer->AddMemInfoRecord(start_ns_, end_ns_, bytes_, place_);
+    tracer->AddMemInfoRecord(start_ns_, end_ns_, bytes_, place_,
+                             g_mem_thread_id);
   }
   PopMemEvent(start_ns_, end_ns_, bytes_, place_);
 }
@@ -457,9 +462,10 @@ void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
     if (is_cpu_place(events_table[i].place)) {
       VLOG(1) << "CPU";
     } else if (is_gpu_place(events_table[i].place)) {
-      VLOG(1) << "GPU";
-      VLOG(1) << boost::get<platform::CUDAPlace>(events_table[i].place)
-                     .GetDeviceId();
+      VLOG(1) << "GPU:"
+              << boost::get<platform::CUDAPlace>(events_table[i].place)
+                     .GetDeviceId()
+              << "\n";
     } else {
       VLOG(1) << "CUDAPinnedPlace";
     }

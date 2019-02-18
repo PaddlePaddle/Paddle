@@ -25,9 +25,8 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/platform/device_context.h"
-
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace platform {
@@ -227,14 +226,14 @@ class DeviceTracerImpl : public DeviceTracer {
   }
 
   void AddMemInfoRecord(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                        Place place) {
+                        Place place, int64_t thread_id) {
     if (0 == start_ns || 0 == end_ns) {
       VLOG(3) << "Cannot be traced\n";
       return;
     }
     std::lock_guard<std::mutex> l(trace_mu_);
-    mem_info_record_.emplace_back(MemInfoRecord{start_ns, end_ns, bytes,
-                                                place});
+    mem_info_record_.emplace_back(
+        MemInfoRecord{start_ns, end_ns, bytes, place, thread_id});
   }
 
   void AddKernelRecords(std::string name, uint64_t start, uint64_t end,

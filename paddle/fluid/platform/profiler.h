@@ -59,15 +59,14 @@ class Event {
 class MemEvent {
  public:
   MemEvent(EventType type, uint64_t start_ns, uint64_t end_ns, size_t bytes,
-           Place place);
+           Place place, int64_t thread_t);
 
   const EventType& type() const { return type_; }
-
   uint64_t start_ns() const { return start_ns_; }
   uint64_t end_ns() const { return end_ns_; }
-
   size_t bytes() const { return bytes_; }
   Place place() const { return place_; }
+  int64_t thread_id() const { return thread_id_; }
 
  private:
   EventType type_;
@@ -75,6 +74,7 @@ class MemEvent {
   uint64_t end_ns_ = 0;
   size_t bytes_;
   Place place_;
+  int64_t thread_id_;
 };
 
 void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
