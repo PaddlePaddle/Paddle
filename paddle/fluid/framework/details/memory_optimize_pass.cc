@@ -128,7 +128,7 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
       }
     }
   }
-  graph->ResolveHazard(var_nodes_);
+  // graph->ResolveHazard(var_nodes_);
 
   return graph;
 }
@@ -320,6 +320,32 @@ void MemoryOptimizePass::RenameVarInGraphNode(const std::string& var,
         nodes.erase(std::remove(nodes.begin(), nodes.end(), node), nodes.end());
         graph->RemoveNode(node);
       }
+    }
+  }
+}
+
+void MemoryOptimizePass::ClearControlDepVars(ir::Graph* graph) const {
+  for (auto& op : graph->Nodes()) {
+    if (!op->IsOp()) continue;
+    {
+      auto& nodes = op->inputs;
+      nodes.erase(
+          std::remove_if(nodes.begin(), nodes.end(),
+                         [&](ir::Node* var) { return var->IsCtrlVar(); }),
+          nodes.end());
+    }
+    {
+      auto& nodes = op->outputs;
+      nodes.erase(
+          std::remove_if(nodes.begin(), nodes.end(),
+                         [&](ir::Node* var) { return var->IsCtrlVar(); }),
+          nodes.end());
+    }
+  }
+
+  for (auto& node : graph->Nodes()) {
+    if (node->IsCtrlVar()) {
+      graph->RemoveNode(node);
     }
   }
 }
