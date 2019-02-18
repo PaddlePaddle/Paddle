@@ -123,13 +123,6 @@ class TensorPrintOp : public framework::OperatorBase {
                 const framework::VariableNameMap &outputs,
                 const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-
-  TensorPrintOp(const TensorPrintOp &o)
-      : framework::OperatorBase(
-            static_cast<const framework::OperatorBase &>(o)) {
-    PADDLE_THROW("Not implemented.");
-  }
-
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
