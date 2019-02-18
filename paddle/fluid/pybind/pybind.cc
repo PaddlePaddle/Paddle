@@ -399,9 +399,9 @@ PYBIND11_MODULE(core, m) {
            py::arg("recursive_sequence_lengths"), R"DOC(
            Set LoD of the LoDTensor according to recursive sequence length.
 
-           For example, if recursive_sequence_lengths=[2, 3], meaning that
+           For example, if recursive_sequence_lengths=[[2, 3]], meaning that
            there are two sequences with length 2 and 3 respectively, the 
-           corresponding lod would be [0, 2, 2+3], i.e, [0, 2, 5].  
+           corresponding lod would be [[0, 2, 2+3]], i.e, [[0, 2, 5]].  
 
            Args:
                 recursive_sequence_lengths (List[List[int]]): sequence lengths. 
