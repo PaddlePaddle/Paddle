@@ -19,7 +19,10 @@ limitations under the License. */
 #include <set>
 #include <unordered_set>
 #include "glog/logging.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/string/printf.h"
 
 DECLARE_bool(benchmark);
@@ -118,14 +121,14 @@ Variable* Scope::FindVarRemoveRef(const std::string& name) const {
     var = it->second.get();
     if (var_refs_[name].fetch_sub(1)) {
       // Tensor, TensorArray, SelectedRows
-      if (IsType<LoDTensor>()) {
-        var->GetMutable<LoDTensor>->clear();
-      } else if (IsType<SelectedRows>()) {
-        var->GetMutable<SelectedRows>->mutable_value->clear();
-      } else if (IsType<LoDTensorArray>()) {
+      if (var->IsType<LoDTensor>()) {
+        var->GetMutable<LoDTensor>()->clear();
+      } else if (var->IsType<SelectedRows>()) {
+        var->GetMutable<SelectedRows>()->mutable_value()->clear();
+      } else if (var->IsType<LoDTensorArray>()) {
         auto* tensor_arr = var->GetMutable<LoDTensorArray>();
-        for(auto& t : tensor_arr) {
-          t->clear();
+        for (auto& t : *tensor_arr) {
+          t.clear();
         }
       }
     }
