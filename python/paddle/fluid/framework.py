@@ -306,6 +306,10 @@ class Variable(object):
 
         if name is None:
             name = unique_name.generate('_generated_var')
+        #  print("create var", name)
+        #  import sys
+        #  sys.stdout.flush()
+
         is_new_var = False
         name = cpt.to_text(name)
         self.desc = self.block.desc.find_var(cpt.to_bytes(name))
@@ -383,7 +387,7 @@ class Variable(object):
         if _in_imperative_mode():
             self._ivar = kwargs.get("ivar", None)
             if not self._ivar:
-                self._ivar = core.VarBase()
+                self._ivar = core.VarBase(name, stop_gradient)
             self._ivar.desc = self.desc
             self._ivar.stop_gradient = stop_gradient
 
@@ -1269,7 +1273,8 @@ class Block(object):
         return var
 
     def _remove_var(self, name):
-        self._sync_with_cpp()
+        if not _in_imperative_mode():
+            self._sync_with_cpp()
         self.desc._remove_var(cpt.to_bytes(name))
         del self.vars[name]
 
@@ -1353,7 +1358,8 @@ class Block(object):
         Returns:
             None
         """
-        self._sync_with_cpp()
+        if not _in_imperative_mode():
+            self._sync_with_cpp()
         self.desc._remove_op(index, index + 1)
         del self.ops[index]
 

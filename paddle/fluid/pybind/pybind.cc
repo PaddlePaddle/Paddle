@@ -137,7 +137,7 @@ PYBIND11_MODULE(core, m) {
 
   py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
       // .def(py::init<>())
-      .def(py::init<bool>(), py::arg("stop_gradient") = false)
+      .def(py::init<std::string, bool>(), py::arg("stop_gradient") = false, py::arg("name") = "")
       .def("_run_backward",
            [](imperative::VarBase &self) { self.RunBackward(); })
       .def("_grad_name", &imperative::VarBase::GradName)
