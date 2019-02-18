@@ -19,6 +19,8 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
+#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 #include "paddle/fluid/string/pretty_log.h"
 
@@ -83,7 +85,8 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
 }
 
 std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
-                              const std::set<std::string> &engine_outputs) {
+                              const std::set<std::string> &engine_outputs,
+                              const std::string &predictor_id) {
   std::string engine_hash_key = "";
   for (auto name : engine_inputs) {
     engine_hash_key += name;
@@ -91,6 +94,7 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
   for (auto name : engine_outputs) {
     engine_hash_key += name;
   }
+  engine_hash_key += predictor_id;
   auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
   return engine_key;
 }
@@ -205,8 +209,9 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   SetAttr(op_desc->Proto(), "parameters", params);
 
   auto enable_int8 = Get<bool>("enable_int8");
-  auto engine_key =
-      GenerateEngineKey(input_names_with_id, output_names_with_id);
+  int predictor_id = Get<int>("predictor_id");
+  auto engine_key = GenerateEngineKey(input_names_with_id, output_names_with_id,
+                                      std::to_string(predictor_id));
 
   // Get "" when there is no cached calibration table data.
   std::string calibration_data = GetTrtCalibTableData(
@@ -215,10 +220,53 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
 
   SetAttr(op_desc->Proto(), "enable_int8", enable_int8);
   SetAttr(op_desc->Proto(), "engine_key", engine_key);
+  SetAttr(op_desc->Proto(), "engine_serialized_data", std::string(""));
+  SetAttr(op_desc->Proto(), "engine_serialized_data_path",
+          GetTrtEngineSerializedPath(Get<std::string>("model_opt_cache_dir"),
+                                     engine_key));
 
-  if (!(enable_int8 && calibration_data.size() == 0)) {
+  std::unique_ptr<tensorrt::TRTInt8Calibrator> calibrator;
+  if (enable_int8 && calibration_data.size() != 0) {
+    calibrator.reset(new tensorrt::TRTInt8Calibrator(calibration_data));
+  }
+
+  // When in int8 mode and calibration_mode, the program just produce the
+  // calibration table data.
+  bool calibration_mode = (enable_int8 && calibration_data.size() == 0);
+  if (!calibration_mode) {
     std::copy(params.begin(), params.end(),
               std::back_inserter(*repetitive_params));
+    std::string trt_engine_serialized_data = GetTrtEngineSerializedData(
+        Get<std::string>("model_opt_cache_dir"), engine_key);
+
+    tensorrt::TensorRTEngine *trt_engine =
+        inference::Singleton<tensorrt::TRTEngineManager>::Global().Create(
+            Get<int>("max_batch_size"), Get<int>("workspace_size"), enable_int8,
+            calibrator.get(), engine_key);
+    if (trt_engine_serialized_data.size() == 0) {
+      LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
+                   "kernel etc). This process may cost a lot of time.";
+      auto *scope = param_scope();
+      framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
+      std::unordered_set<std::string> param_set(params.begin(), params.end());
+      inference::Singleton<inference::tensorrt::OpConverter>::Global()
+          .ConvertBlockToTRTEngine(
+              &block_desc_temp, *scope,
+              std::vector<std::string>(input_names.begin(), input_names.end()),
+              param_set, output_mapping, trt_engine);
+      nvinfer1::IHostMemory *serialized_engine_data = trt_engine->Serialize();
+      trt_engine_serialized_data =
+          std::string((const char *)serialized_engine_data->data(),
+                      serialized_engine_data->size());
+      // SaveTrtEngineSerializedDataToFile(GetTrtEngineSerializedPath(Get<std::string>("model_opt_cache_dir"),
+      // engine_key),
+      //                  trt_engine_serialized_data);
+    } else {
+      trt_engine->Deserialize(trt_engine_serialized_data);
+    }
+
+    SetAttr(op_desc->Proto(), "engine_serialized_data",
+            trt_engine_serialized_data);
   }
 }
 
