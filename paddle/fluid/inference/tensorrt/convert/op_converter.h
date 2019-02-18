@@ -143,6 +143,7 @@ class OpConverter {
     }
   }
 
+  // The scope  here should be inited with the parameter vars.
   void ConvertBlockToTRTEngine(
       framework::BlockDesc* block_desc, const framework::Scope& scope,
       const std::vector<std::string>& inputs,
@@ -151,18 +152,16 @@ class OpConverter {
     engine->InitNetwork();
     for (auto& input : inputs) {
       if (parameters.count(input)) continue;
-      auto& t =
-          inference::analysis::GetFromScope<framework::LoDTensor>(scope, input);
-      auto t_shape = framework::vectorize(t.dims());
-
       auto* var = block_desc->FindVar(input);
       PADDLE_ENFORCE(var, "no variable called %s", input);
       PADDLE_ENFORCE_EQ(var->GetType(), FluidDT::VarType_Type_LOD_TENSOR,
                         "TensorRT engine only takes LoDTensor as input");
+      auto var_shape = var->GetShape();
+
       engine->DeclareInput(
           input, FluidDataType2TRT(
                      var->Proto()->type().lod_tensor().tensor().data_type()),
-          Vec2TRT_Dims(t_shape));
+          Vec2TRT_Dims(var_shape));
     }
     framework::proto::BlockDesc* block_proto = block_desc->Proto();
     ConvertBlock(*block_proto, parameters, scope, engine);
