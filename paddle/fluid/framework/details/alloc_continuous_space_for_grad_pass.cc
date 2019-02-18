@@ -132,7 +132,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
 
     // group_size
     const size_t group_size = 3;
-    size_t groups = (params_grads->size() + group_size) / group_size;
+    size_t groups = (params_grads.size() + group_size - 1) / group_size;
     group_params_grads->reserve(groups);
 
     size_t j = 0;
