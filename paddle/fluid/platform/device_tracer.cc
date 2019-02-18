@@ -548,8 +548,6 @@ void initCuptiCbidStr() {
   called = true;
 #define REGISTER_RUNTIME_CBID_STR(cbid) \
   runtime_cbid_str[CUPTI_RUNTIME_TRACE_CBID_##cbid] = #cbid
-#define REGISTER_DRIVER_CBID_STR(cbid) \
-  driver_cbid_str[CUPTI_DRIVER_TRACE_CBID_##cbid] = #cbid
 
   REGISTER_RUNTIME_CBID_STR(cudaBindTexture_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaDeviceGetAttribute_v5000);
@@ -591,7 +589,6 @@ void initCuptiCbidStr() {
   REGISTER_RUNTIME_CBID_STR(cudaUnbindTexture_v3020);
 
 #undef REGISTER_RUNTIME_CBID_STR
-#undef REGISTER_DRIVER_CBID_STR
 }
 }  // namespace
 #endif  // PADDLE_WITH_CUPTI
