@@ -70,6 +70,8 @@ extern void* mklml_dso_handle;
   __macro(cblas_ddot);              \
   __macro(cblas_sasum);             \
   __macro(cblas_dasum);             \
+  __macro(cblas_isamax);            \
+  __macro(cblas_idamax);            \
   __macro(cblas_sscal);             \
   __macro(cblas_dscal);             \
   __macro(vsAdd);                   \

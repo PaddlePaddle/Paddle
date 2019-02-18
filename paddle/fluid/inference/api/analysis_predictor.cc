@@ -47,7 +47,6 @@ DECLARE_bool(profile);
 
 namespace paddle {
 
-using contrib::AnalysisConfig;
 using inference::Singleton;
 #if PADDLE_WITH_TENSORRT
 using inference::tensorrt::TRTInt8Calibrator;
@@ -59,7 +58,8 @@ namespace {
 bool IsPersistable(const framework::VarDesc *var) {
   if (var->Persistable() &&
       var->GetType() != framework::proto::VarType::FEED_MINIBATCH &&
-      var->GetType() != framework::proto::VarType::FETCH_LIST) {
+      var->GetType() != framework::proto::VarType::FETCH_LIST &&
+      var->GetType() != framework::proto::VarType::RAW) {
     return true;
   }
   return false;
@@ -421,7 +421,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   if (!dynamic_cast<AnalysisPredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }
-  return std::move(predictor);
+  return predictor;
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {
@@ -731,10 +731,10 @@ std::string AnalysisPredictor::GetSeriazlizedProgram() const {
 }
 
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<contrib::AnalysisConfig>(
-    const contrib::AnalysisConfig &config) {
-  return CreatePaddlePredictor<contrib::AnalysisConfig,
-                               PaddleEngineKind::kAnalysis>(config);
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
+    const AnalysisConfig &config) {
+  return CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+      config);
 }
 
 }  // namespace paddle

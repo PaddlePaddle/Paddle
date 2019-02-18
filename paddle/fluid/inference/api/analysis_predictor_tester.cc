@@ -24,7 +24,6 @@
 DEFINE_string(dirname, "", "dirname to tests.");
 
 namespace paddle {
-using contrib::AnalysisConfig;
 
 TEST(AnalysisPredictor, analysis_off) {
   AnalysisConfig config;
@@ -197,7 +196,7 @@ TEST(AnalysisPredictor, memory_optim) {
   AnalysisConfig config(FLAGS_dirname);
   config.DisableGpu();
   config.EnableMemoryOptim(true);
-  config.pass_builder()->TurnOnDebug();
+  config.SwitchIrDebug();
 
   auto native_predictor =
       CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
