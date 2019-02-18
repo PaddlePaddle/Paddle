@@ -81,6 +81,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set(
           "model_opt_cache_dir",
           new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
+      pass->Set("predictor_id", new int(argument->predictor_id()));
     }
 
     pre_pass = pass_name;

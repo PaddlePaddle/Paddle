@@ -104,6 +104,34 @@ class TensorRTEngine {
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
+
+  nvinfer1::IHostMemory* Serialize() {
+    PADDLE_ENFORCE(infer_engine_ != nullptr,
+                   "You should build engine first and then serialize");
+    ihost_memory_.reset(infer_engine_->serialize());
+    return ihost_memory_.get();
+  }
+
+  void Deserialize(const std::string& engine_serialized_data) {
+    infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
+    infer_engine_.reset(
+        runtime->deserializeCudaEngine(engine_serialized_data.c_str(),
+                                       engine_serialized_data.size(), nullptr));
+    PADDLE_ENFORCE(infer_engine_ != nullptr,
+                   "build cuda engine failed when deserialize engine info.!");
+    infer_context_.reset(infer_engine_->createExecutionContext());
+  }
+
+  void Deserialize(const nvinfer1::IHostMemory* engine_serialized_data) {
+    infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
+    infer_engine_.reset(runtime->deserializeCudaEngine(
+        engine_serialized_data->data(), engine_serialized_data->size(),
+        nullptr));
+    PADDLE_ENFORCE(infer_engine_ != nullptr,
+                   "build cuda engine failed when deserialize engine info.!");
+    infer_context_.reset(infer_engine_->createExecutionContext());
+  }
+
   void SetRuntimeBatch(size_t batch_size);
   int GetRuntimeBatch();
   nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
@@ -154,11 +182,11 @@ class TensorRTEngine {
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
   infer_ptr<nvinfer1::IExecutionContext> infer_context_;
+  infer_ptr<nvinfer1::IHostMemory> ihost_memory_;
 };  // class TensorRTEngine
 
 // Add an layer__ into engine__ with args ARGS.
 // For example:
-//   TRT_ENGINE_ADD_LAYER(xxx, FullyConnected, input, dim, weights, bias)
 //
 // Reference
 // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#charRNN_define_network
@@ -169,6 +197,43 @@ class TensorRTEngine {
 // library add new layer supports.
 #define TRT_ENGINE_ADD_LAYER(engine__, layer__, ARGS...) \
   engine__->network()->add##layer__(ARGS);
+
+/*
+ * Helper to control the TensorRT engine's creation and deletion.
+ */
+class TRTEngineManager {
+ public:
+  bool HasEngine(const std::string& name) const {
+    if (engines_.count(name) == 0) return false;
+    return engines_.at(name).get() != nullptr;
+  }
+
+  // Get an engine called `name`.
+  TensorRTEngine* Get(const std::string& name) const {
+    return engines_.at(name).get();
+  }
+
+  // Create or get an engine called `name`
+  TensorRTEngine* Create(int max_batch, int max_workspace, bool enable_int8,
+                         TRTInt8Calibrator* calibrator,
+                         const std::string& engine_name) {
+    std::unique_lock<std::mutex> lk(mut_);
+    auto* p =
+        new TensorRTEngine(max_batch, max_workspace, enable_int8, calibrator);
+    engines_[engine_name].reset(p);
+    return p;
+  }
+
+  void DeleteALL() {
+    for (auto& item : engines_) {
+      item.second.reset(nullptr);
+    }
+  }
+
+ private:
+  std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
+  std::mutex mut_;
+};
 
 }  // namespace tensorrt
 }  // namespace inference

@@ -217,6 +217,35 @@ static std::string GetTrtCalibTableData(const std::string &model_opt_cache_dir,
   return "";
 }
 
+static std::string GetTrtEngineSerializedPath(const std::string &model_root,
+                                              const std::string &engine_key) {
+  return model_root + "/trt_serialized_" + engine_key;
+}
+
+static std::string GetTrtEngineSerializedData(
+    const std::string &model_opt_cache_dir, const std::string &engine_key) {
+  std::string trt_serialized_path =
+      GetTrtEngineSerializedPath(model_opt_cache_dir, engine_key);
+  if (FileExists(trt_serialized_path)) {
+    VLOG(3) << "Trt serialized file: " << trt_serialized_path
+            << "is found here";
+    std::ifstream infile(trt_serialized_path, std::ios::in);
+    std::stringstream buffer;
+    buffer << infile.rdbuf();
+    std::string trt_engine_serialized_data(buffer.str());
+    return trt_engine_serialized_data;
+  }
+  return "";
+}
+
+static void SaveTrtEngineSerializedDataToFile(
+    const std::string &trt_serialized_path,
+    const std::string &engine_serialized_data) {
+  std::ofstream outfile(trt_serialized_path);
+  outfile << engine_serialized_data;
+  outfile.close();
+}
+
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
