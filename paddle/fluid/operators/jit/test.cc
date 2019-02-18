@@ -292,6 +292,63 @@ struct TestFuncWithRefer<jit::MatMulTuples<T>, std::vector<T>, std::vector<T>,
   }
 };
 
+template <typename T>
+struct TestFuncWithRefer<jit::LayerNormTuples<T>, std::vector<T>,
+                         std::vector<T>, std::vector<T>, std::vector<T>,
+                         std::vector<T>, std::vector<T>, int, float, int> {
+  void operator()(const typename jit::LayerNormTuples<T>::func_type tgt,
+                  std::vector<T>& x, std::vector<T>& outref,  // NOLINT
+                  std::vector<T>& mean, std::vector<T>& var,  // NOLINT
+                  const std::vector<T>& scale, const std::vector<T>& bias,
+                  int left, const float epsilon, int right) {
+    EXPECT_TRUE(tgt != nullptr);
+    EXPECT_EQ(x.size(), static_cast<size_t>(left * right));
+    EXPECT_EQ(outref.size(), static_cast<size_t>(left * right));
+    EXPECT_EQ(mean.size(), static_cast<size_t>(left));
+    EXPECT_EQ(var.size(), static_cast<size_t>(left));
+    EXPECT_EQ(scale.size(), static_cast<size_t>(right));
+    EXPECT_EQ(bias.size(), static_cast<size_t>(right));
+    std::vector<T> outtgt(outref.size());
+    const T* scale_data = scale.data();
+    const T* bias_data = bias.data();
+    T* x_data = x.data();
+    T* mean_data = mean.data();
+    T* var_data = var.data();
+    T* outref_data = outref.data();
+    T* outtgt_data = outtgt.data();
+
+    tgt(x_data, outtgt_data, mean_data, var_data, scale_data, bias_data, left,
+        epsilon, right);
+    ExpectEQ<T>(outtgt_data, outref_data, left * right);
+  }
+};
+
+template <typename T>
+struct TestFuncWithRefer<jit::CRFDecodingTuples<T>, int, std::vector<T>,
+                         std::vector<T>, std::vector<T>, std::vector<int>,
+                         int> {
+  void operator()(const typename jit::CRFDecodingTuples<T>::func_type tgt,
+                  const int seq_len, const std::vector<T>& x,
+                  const std::vector<T>& w, std::vector<T>& alpharef,  // NOLINT
+                  std::vector<int>& trackref, int tag_num) {          // NOLINT
+    constexpr int state_trans_base_idx = 2;
+    EXPECT_TRUE(tgt != nullptr);
+    EXPECT_EQ(x.size(), static_cast<size_t>(seq_len * tag_num));
+    EXPECT_EQ(w.size(),
+              static_cast<size_t>((tag_num + state_trans_base_idx) * tag_num));
+    EXPECT_EQ(alpharef.size(), static_cast<size_t>(seq_len * tag_num));
+    EXPECT_EQ(trackref.size(), static_cast<size_t>(seq_len * tag_num));
+    std::vector<T> alphatgt(alpharef.size());
+    std::vector<int> tracktgt(trackref.size());
+
+    memcpy(trackref.data(), tracktgt.data(), tag_num * sizeof(int));
+    tgt(seq_len, (const T*)x.data(), (const T*)w.data(), alphatgt.data(),
+        tracktgt.data(), tag_num);
+    ExpectEQ<T>(alpharef.data(), alphatgt.data(), seq_len * tag_num);
+    ExpectEQ<int>(trackref.data(), tracktgt.data(), seq_len * tag_num);
+  }
+};
+
 template <jit::KernelType KT, typename KernelTuples, typename PlaceType,
           typename... Args>
 void TestAllImpls(const typename KernelTuples::attr_type& attr, Args... args) {
@@ -640,6 +697,71 @@ void TestNCHW16CMulNCKernel() {
   }
 }
 
+template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+void TestLayerNormKernel() {
+  VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
+  const T epsilon = 9.99999975e-06;
+  for (int n : {1, 2, 10}) {
+    for (int x_dim_0 : {1, 9, 17, 50}) {
+      int left = n * x_dim_0;
+      for (int x_dim_1 : TestSizes()) {
+        int right = x_dim_1;
+        auto ref = jit::GetRefer<KT, jit::LayerNormTuples<T>>();
+        EXPECT_TRUE(ref != nullptr);
+        int sz = left * right;
+        std::vector<T> x(sz), mean(left), var(left), scale(right), bias(right),
+            outref(sz);
+        RandomVec<T>(sz, x.data(), -2.f, 2.f);
+        RandomVec<T>(left, mean.data(), -2.f, 2.f);
+        RandomVec<T>(left, var.data(), -2.f, 2.f);
+        RandomVec<T>(right, scale.data(), -2.f, 2.f);
+        RandomVec<T>(right, bias.data(), -2.f, 2.f);
+
+        const T* scale_data = scale.data();
+        const T* bias_data = bias.data();
+        T* x_data = x.data();
+        T* mean_data = mean.data();
+        T* var_data = var.data();
+        T* outref_data = outref.data();
+
+        ref(x_data, outref_data, mean_data, var_data, scale_data, bias_data,
+            left, epsilon, right);
+
+        TestAllImpls<KT, jit::LayerNormTuples<T>, PlaceType, std::vector<T>,
+                     std::vector<T>, std::vector<T>, std::vector<T>,
+                     std::vector<T>, std::vector<T>, int, float>(
+            right, x, outref, mean, var, scale, bias, left, epsilon, right);
+      }
+    }
+  }
+}
+
+template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+void TestCRFDecodingKernel() {
+  VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
+  constexpr int state_trans_base_idx = 2;
+  for (int seq_len : {1, 11, 17, 50}) {
+    for (int tag_num : TestSizes()) {
+      auto ref = jit::GetRefer<KT, jit::CRFDecodingTuples<T>>();
+      EXPECT_TRUE(ref != nullptr);
+      int x_sz = seq_len * tag_num;
+      int w_sz = (tag_num + state_trans_base_idx) * tag_num;
+      std::vector<T> x(x_sz), w(w_sz), alpharef(x_sz);
+      std::vector<int> trackref(x_sz);
+      RandomVec<T>(x_sz, x.data(), -2.f, 2.f);
+      RandomVec<T>(w_sz, w.data(), -2.f, 2.f);
+
+      ref(seq_len, (const T*)x.data(), (const T*)w.data(), alpharef.data(),
+          trackref.data(), tag_num);
+
+      TestAllImpls<KT, jit::CRFDecodingTuples<T>, PlaceType, int,
+                   std::vector<T>, std::vector<T>, std::vector<T>,
+                   std::vector<int>, int>(tag_num, seq_len, x, w, alpharef,
+                                          trackref, tag_num);
+    }
+  }
+}
+
 // XYZNTuple
 TEST(JITKernel, kVMul) {
   TestXYZNKernel<jit::kVMul, float, CPUPlace>();
@@ -761,7 +883,16 @@ TEST(JITKernel, kNCHW16CMulNC) {
   TestNCHW16CMulNCKernel<jit::kNCHW16CMulNC, double, CPUPlace>();
 }
 
-// TODO(yihua/TJ): add crf decoding and layer norm unit tests
+TEST(JITKernel, kLayerNorm) {
+  TestLayerNormKernel<jit::kLayerNorm, float, paddle::platform::CPUPlace>();
+  TestLayerNormKernel<jit::kLayerNorm, double, paddle::platform::CPUPlace>();
+}
+
+TEST(JITKernel, kCRFDecoding) {
+  TestCRFDecodingKernel<jit::kCRFDecoding, float, paddle::platform::CPUPlace>();
+  TestCRFDecodingKernel<jit::kCRFDecoding, double,
+                        paddle::platform::CPUPlace>();
+}
 
 TEST(JITKernel, pool) {
   // TODO(TJ): add some test
