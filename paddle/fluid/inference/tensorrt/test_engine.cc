@@ -191,9 +191,8 @@ TEST_F(TensorRTEngineTest, test_pool2d) {
 
   std::vector<void *> buffers(2);  // TRT binded inputs
   nvinfer1::PoolingType pool_t = nvinfer1::PoolingType::kAVERAGE;
-  auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling,
-                                          *const_cast<nvinfer1::ITensor *>(x),
-                                          pool_t, nvinfer1::DimsHW{2, 2});
+  auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *x, pool_t,
+                                          nvinfer1::DimsHW{2, 2});
 
   PADDLE_ENFORCE(pool_layer != nullptr);
   pool_layer->setStride(nvinfer1::DimsHW{1, 1});

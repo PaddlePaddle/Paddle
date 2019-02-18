@@ -99,6 +99,10 @@ struct Argument {
  private:                                                                 \
   unique_ptr_t field__##_;
 
+  // Each predictor has an unique id.
+  // For now, this attr will help us to get the right
+  // trt_engine for each trt_engine_op for each predictor when using trt.
+  DECL_ARGUMENT_FIELD(predictor_id, PredictorID, int);
   // Model path
   DECL_ARGUMENT_FIELD(model_dir, ModelDir, std::string);
   // Model specified with program and parameters files.
