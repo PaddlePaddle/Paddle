@@ -534,8 +534,6 @@ class TestDistBase(unittest.TestCase):
         # print log
         sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
         sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
-        # sys.stderr.write('trainer 0 stdout: %s\n' % tr0_out)
-        # sys.stderr.write('trainer 1 stdout: %s\n' % tr1_out)
 
         return pickle.loads(tr0_out), pickle.loads(tr1_out)
 
