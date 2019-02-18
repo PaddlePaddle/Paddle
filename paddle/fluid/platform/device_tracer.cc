@@ -550,6 +550,7 @@ void initCuptiCbidStr() {
   runtime_cbid_str[CUPTI_RUNTIME_TRACE_CBID_##cbid] = #cbid
 
   REGISTER_RUNTIME_CBID_STR(cudaBindTexture_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaConfigureCall_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaDeviceGetAttribute_v5000);
   REGISTER_RUNTIME_CBID_STR(cudaDeviceGetStreamPriorityRange_v5050);
   REGISTER_RUNTIME_CBID_STR(cudaDeviceSynchronize_v3020);
@@ -565,6 +566,7 @@ void initCuptiCbidStr() {
   REGISTER_RUNTIME_CBID_STR(cudaGetDeviceCount_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaGetDeviceProperties_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaGetDevice_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaGetErrorString_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaGetLastError_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaHostAlloc_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaHostGetDevicePointer_v3020);
@@ -587,6 +589,10 @@ void initCuptiCbidStr() {
   REGISTER_RUNTIME_CBID_STR(cudaStreamSynchronize_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaStreamWaitEvent_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaUnbindTexture_v3020);
+#if CUDA_VERSION >= 9000
+  REGISTER_RUNTIME_CBID_STR(cudaLaunchCooperativeKernel_v9000);
+  REGISTER_RUNTIME_CBID_STR(cudaLaunchCooperativeKernelMultiDevice_v9000);
+#endif
 
 #undef REGISTER_RUNTIME_CBID_STR
 }
