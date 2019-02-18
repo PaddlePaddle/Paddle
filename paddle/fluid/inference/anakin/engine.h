@@ -44,10 +44,6 @@ template <typename TargetT, anakin::Precision PrecisionType,
           anakin::OpRunType RunType = anakin::OpRunType::ASYNC>
 class AnakinEngine : public EngineBase {
  public:
-  // using attrs_t = std::map<std::string, attr_t>;
-  // static bool IsOpSupported(const std::string &op_type, const attrs_t
-  // &attrs);
-
   void DeclareInputs(const std::vector<std::string> &inputs);
   void DeclareOutputs(const std::vector<std::string> &outputs);
 
