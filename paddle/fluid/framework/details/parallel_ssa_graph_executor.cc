@@ -86,7 +86,8 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
       pool_(places.size() >= 2 ? new ::ThreadPool(places.size()) : nullptr),
       places_(std::move(places)),
       main_prog_(main_prog),
-      // TODO(Yancey1989): copy graphs is not safely since it deleted the attrs.
+      // TODO(Yancey1989): Copying graphs is not safely since it deleted the
+      // attrs.
       graphs_(SeparateMultiDevicesGraph(std::move(graph))) {
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 
