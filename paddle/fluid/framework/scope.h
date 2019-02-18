@@ -70,6 +70,12 @@ class Scope {
   /// Caller doesn't own the returned Variable.
   Variable* FindVar(const std::string& name) const;
 
+  // Find var with Reference increase
+  Variable* FindVarWithRef(const std::string& name) const;
+
+  // Find var with Reference decrease
+  Variable* FindVarRemoveRef(const std::string& name) const;
+
   /// Find a variable in the current scope.
   /// Return nullptr if cannot find.
   /// Caller doesn't own the returned Variable.
@@ -109,6 +115,7 @@ class Scope {
 
   mutable std::unordered_map<std::string, std::unique_ptr<Variable>, KeyHasher>
       vars_;
+  mutable std::unordered_map<std::string, std::atomic<int>> var_refs_;
 
  private:
   // Call Scope::NewScope for a sub-scope.

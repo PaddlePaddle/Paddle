@@ -95,9 +95,12 @@ class RuntimeContext {
   RuntimeContext(const VariableValueMap& invars,
                  const VariableValueMap& outvars)
       : inputs(invars), outputs(outvars) {}
+  virtual ~RuntimeContext();
 
   VariableValueMap inputs;
   VariableValueMap outputs;
+
+  DISABLE_COPY_AND_ASSIGN(RuntimeContext);
 };
 
 /**
@@ -176,6 +179,8 @@ class OperatorBase {
   AttributeMap attrs_;
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
+  // own runtime context
+  std::unique_ptr<RuntimeContext> runtime_ctx_;
 
  private:
   void GenerateTemporaryNames();

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <algorithm>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
@@ -34,6 +35,7 @@ DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
+DEFINE_bool(reference_count, false, "tensor by reference count. default off");
 
 namespace paddle {
 namespace framework {
@@ -144,19 +146,36 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 RuntimeContext::RuntimeContext(const VariableNameMap& innames,
                                const VariableNameMap& outnames,
                                const Scope& scope) {
-  for (auto& var_name_item : innames) {
-    std::vector<Variable*>& input_vars = inputs[var_name_item.first];
-    input_vars.reserve(var_name_item.second.size());
-    for (auto& var_name : var_name_item.second) {
-      input_vars.push_back(scope.FindVar(var_name));
+  using NamedPair = std::pair<std::string, std::vector<std::string>>;
+  auto find_var_and_increase_ref_count = [&](const NamedPair& name,
+                                             VariableValueMap& values) {
+    std::vector<Variable*>& vars = values[name.first];
+    vars.reserve(name.second.size());
+    for (auto& var_name : name.second) {
+      if (FLAGS_reference_count) {
+        vars.push_back(scope.FindVarWithRef(var_name));
+      } else {
+        vars.push_back(scope.FindVar(var_name));
+      }
     }
-  }
-  for (auto& var_name_item : outnames) {
-    std::vector<Variable*>& output_vars = outputs[var_name_item.first];
-    output_vars.reserve(var_name_item.second.size());
-    for (auto& var_name : var_name_item.second) {
-      output_vars.push_back(scope.FindVar(var_name));
-    }
+  };
+
+  std::for_each(innames.begin(), innames.end(), [&](const NamedPair& name) {
+    find_var_and_increase_ref_count(name, inputs);
+  });
+  std::for_each(innames.begin(), innames.end(), [&](const NamedPair& name) {
+    find_var_and_increase_ref_count(name, outputs);
+  });
+}
+
+~RuntimeContext::RuntimeContext() {
+  auto decrease_ref_count = [&](const std::string& name) {
+    scope.FindVarRemoveRef(name);
+  };
+
+  if (FLAGS_reference_count) {
+    std::for_each(input_vars.begin(), input_vars.end(), decrease_ref_count);
+    std::for_each(output_vars.begin(), output_vars.end(), decrease_ref_count);
   }
 }
 
@@ -182,7 +201,13 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       platform::RecordEvent record_event(Type(), pool.Get(place));
       RunImpl(scope, place);
     } else {
-      RunImpl(scope, place);
+      if (FLAGS_reference_count) {
+        OperatorBase::runtime_ctx_->reset(
+            new RuntimeContext(Inputs(), Outputs(), scope));
+        RunImpl(scope, place);
+      } else {
+        RunImpl(scope, place);
+      }
     }
 
     VLOG(3) << place << " " << DebugStringEx(&scope);
@@ -908,7 +933,7 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
-  RuntimeContext ctx(Inputs(), Outputs(), scope);
+  auto& ctx = *OpKernelBase::runtime_ctx_;
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 

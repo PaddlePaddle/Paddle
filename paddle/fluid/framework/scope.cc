@@ -97,6 +97,39 @@ Variable* Scope::FindVar(const std::string& name) const {
   return FindVarInternal(name);
 }
 
+Variable* Scope::FindVarWithRef(const std::string& name) const {
+  SCOPE_VARS_WRITER_LOCK
+  Variable* var = nullptr;
+  auto it = vars_.find(name);
+  if (it != vars_.end()) {
+    var = it->second.get();
+    var_refs_[name].fetch_add(1);
+  } else if (parent_ != nullptr) {
+    var = parent_->FindVarWithRef(name);
+  }
+  return var;
+}
+
+Variable* Scope::FindVarRemoveRef(const std::string& name) const {
+  SCOPE_VARS_WRITER_LOCK
+  Variable* var = nullptr;
+  auto it = vars_.find(name);
+  if (it != vars_.end()) {
+    var = it->second.get();
+    if (var_refs_[name].fetch_sub(1)) {
+      try {
+        // Tensor, TensorArray, SelectedRows
+        vars_[name]->clear();
+      } catch (...) {
+        // do nothing
+      }
+    }
+  } else if (parent_ != nullptr) {
+    var = parent_->FindVarWithRef(name);
+  }
+  return var;
+}
+
 Variable* Scope::FindLocalVar(const std::string& name) const {
   SCOPE_VARS_READER_LOCK
   return FindVarLocally(name);
