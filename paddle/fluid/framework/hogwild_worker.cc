@@ -15,9 +15,18 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/lodtensor_printer.h"
 
 namespace paddle {
 namespace framework {
+
+void HogwildWorker::Initialize(const TrainerDesc& desc) {
+  fetch_var_names_.resize(desc.fetch_var_names_size());
+  for (size_t i = 0; i < desc.fetch_var_names_size(); ++i) {
+    fetch_var_names_[i] = desc.fetch_var_names(i);
+  }
+  batch_cnt_per_print_ = static_cast<int>(desc.batch_per_print());
+}
 
 void HogwildWorker::CreateThreadOperators(const ProgramDesc& program) {
   auto& block = program.Block(0);
@@ -126,6 +135,17 @@ void HogwildWorker::TrainFiles() {
 
     ++batch_cnt;
     thread_scope_->DropKids();
+  }
+}
+
+void HogwildWorker::PrintFetchVars(int batch_cnt) {
+  if (thread_id_ == 0) {
+    if (batch_cnt > 0 && batch_cnt % batch_cnt_per_print_ == 0) {
+      int fetch_var_num = fetch_var_names_.size();
+      for (int i = 0; i < fetch_var_num; ++i) {
+        platform::PrintVar(thread_scope_, fetch_var_names_[i], "None");
+      }
+    }
   }
 }
 

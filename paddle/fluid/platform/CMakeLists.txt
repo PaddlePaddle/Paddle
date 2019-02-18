@@ -90,6 +90,9 @@ nv_test(transform_test SRCS transform_test.cu DEPS memory place device_context)
 cc_library(timer SRCS timer.cc)
 cc_test(timer_test SRCS timer_test.cc DEPS timer)
 
+cc_library(lodtensor_printer SRCS lodtensor_printer.cc)
+cc_test(lodtensor_printer SRCS lodtensor_printer.cc DEPS lodtensor_printer)
+
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
 if(WITH_GPU)
     nv_library(profiler SRCS profiler.cc profiler.cu DEPS device_tracer gpu_info enforce)
