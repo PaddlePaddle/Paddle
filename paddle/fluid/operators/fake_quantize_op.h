@@ -120,7 +120,6 @@ class FakeQuantizeMovingAverageAbsMaxKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
     auto* in_scale = context.Input<framework::Tensor>("InScale");
-
     auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
