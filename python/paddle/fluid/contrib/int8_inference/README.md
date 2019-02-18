@@ -63,10 +63,10 @@ Notes:
 ## 4. How to reproduce the results
 * Small dataset
 ```bash
-python python/paddle/fluid/contrib/tests/test_calibration.py
+FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/tests/test_calibration.py
 ```
 
 * Full dataset
 ```bash
-DATASET=full python python/paddle/fluid/contrib/tests/test_calibration.py
+FLAGS_use_mkldnn=true DATASET=full python python/paddle/fluid/contrib/tests/test_calibration.py
 ```

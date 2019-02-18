@@ -75,16 +75,6 @@ class SimpleLSTMRNN(fluid.imperative.Layer):
             self.hidden_array.append(pre_hidden)
             self.cell_array.append(pre_cell)
 
-    def parameters(self):
-        parameters = list()
-        for param in self.weight_1_arr:
-            parameters.append(param)
-        for param in self.weight_2_arr:
-            parameters.append(param)
-        for bias in self.bias_arr:
-            parameters.append(bias)
-        return parameters
-
     def forward(self, input_embedding, init_hidden=None, init_cell=None):
         res = []
         for index in range(self._num_steps):
@@ -176,12 +166,6 @@ class PtbModel(fluid.imperative.Layer):
 
     def _build_once(self, input, label, init_hidden, init_cell):
         pass
-
-    def parameters(self):
-        parameters = self.simple_lstm_rnn.parameters() + [
-            self.softmax_weight, self.softmax_bias
-        ] + self.embedding.parameters()
-        return parameters
 
     def forward(self, input, label, init_hidden, init_cell):
 
