@@ -172,6 +172,11 @@ struct NodeComparator {
   bool operator()(ir::Node* lhs, ir::Node* rhs) const {
     auto* lhs_desc = FindVarDescInBlock(lhs);
     auto* rhs_desc = FindVarDescInBlock(rhs);
+    // match data type
+    if (lhs_desc->GetDataType() != rhs_desc->GetDataType()) {
+      return false;
+    }
+    // match shape
     auto lhs_shape = lhs_desc->GetShape();
     auto rhs_shape = rhs_desc->GetShape();
     if ((lhs_shape[0] == -1 && rhs_shape[0] == -1) ||
