@@ -26,7 +26,7 @@
 namespace paddle {
 namespace framework {
 namespace details {
-struct ComputationOpHandle : public OpHandleBase {
+class ComputationOpHandle : public OpHandleBase {
  public:
   ComputationOpHandle(ir::Node *node, Scope *scope, platform::Place place,
                       size_t scope_idx);

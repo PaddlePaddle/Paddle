@@ -333,6 +333,18 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.allclose(dy_out, static_out))
         self.assertTrue(np.allclose(dy_grad, static_grad))
 
+        params = mlp.parameters(True)
+        self.assertEqual("FC_0.w_0", params[0].name)
+        self.assertEqual("FC_0.b_0", params[1].name)
+        self.assertEqual("FC_1.w_0", params[2].name)
+        self.assertEqual("FC_1.b_0", params[3].name)
+        self.assertEqual(len(params), 4)
+
+        sublayers = mlp.sublayers(True)
+        self.assertEqual(mlp._fc1, sublayers[0])
+        self.assertEqual(mlp._fc2, sublayers[1])
+        self.assertEqual(len(sublayers), 2)
+
     def test_rnn(self):
         np_inp = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0],
                            [10.0, 11.0, 12.0]])
