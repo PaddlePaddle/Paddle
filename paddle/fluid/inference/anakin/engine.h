@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <boost/variant.hpp>
 #include <memory>
 #include <set>
 #include <string>
@@ -36,9 +35,6 @@ class Graph;
 namespace paddle {
 namespace inference {
 namespace anakin {
-
-// using shape_t = std::vector<int>;
-// using attr_t = boost::variant<bool, int, float, std::vector<int>>;
 
 enum class DataType;
 enum class Place;
@@ -75,7 +71,7 @@ class AnakinEngine : public EngineBase {
   void FreezeNetwork();
 
   void Execute(const std::vector<Tensor *> &inputs,
-               std::vector<Tensor *> *outputs);
+               const std::vector<Tensor *> &outputs);
 
  private:
   AnakinEngine(const AnakinEngine &);
@@ -84,8 +80,6 @@ class AnakinEngine : public EngineBase {
 
   std::unique_ptr<AnakinNetT> engine_;
   std::unique_ptr<AnakinGraphT> graph_;
-  // std::unique_ptr<anakin::Net<TargetT, PrecisionType, RunType>> engine_;
-  // std::unique_ptr<anakin::Graph<TargetT, PrecisionType>> graph_;
 
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;

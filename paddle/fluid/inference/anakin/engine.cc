@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/anakin/engine.h"
+#include <cstring>
 
 namespace paddle {
 namespace inference {
@@ -41,14 +42,52 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::DeclareOutputs(
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
-    const std::vector<Tensor *> &inputs, std::vector<Tensor *> *outputs) {
+    const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs) {
   for (auto input : inputs) {
-    //
-  }
-  auto anakin_inputs = engine_->get_in_list();
+    auto name = input->name();
+    auto anakin_input = engine_->get_in(name);
+    PADDLE_ENFORCE(anakin_input->shape().size() == input.size());
+    auto sum = std::accumulate(input.shape().begin(), input.shape().end(), 1,
+                               std::multiplies<int>());
+    if (sum > anakin_input->shape().count()) {
+      graph_->Reshape(input->name(), input->shape());
+      engine_->reset(new AnakinNetT(graph_, true));
+      anakin_input = engine_->get_in(name);
+    }
 
-  auto anakin_outputs = engine_->get_out_list();
+    anakin::saber::Shape tmp_shape;
+    std::for_each(input->shape().begin(), input->shape().end(),
+                  [&shape](int d) { tmp_shape.push_back(d); });
+    anakin_input->reshape(tmp_shape);
+    auto *data = anakin_input->mutable_data();
+#ifdef PADDLE_WITH_CUDA
+    if (std::is_same<anakin::saber::NV, TargetT>::value) {
+      // if (cudaMemcpy(data, input->mutable_data<float>(Place::kGpu)))
+    }
+#endif
+    if (std::is_same<anakin::saber::X86, TargetT>::value) {
+      std::memcpy(data, input->mutable_data<float>(Place::kCpu),
+                  anakin_input->valid_size() * sizeof(float));
+    }
+  }
+
   engine_->prediction();
+  for (auto *output : outputs) {
+    auto *tensor = engine_->get_out(output->name());
+    std::vector<int> shape;
+    auto left = tensor->valid_shape().begin();
+    auto right = tensor->valid_shape().end();
+    std::for_each(left, right, [&shape](int d)[shape.push_back(d);]);
+    output->Resize(shape);
+#ifdef PADDLE_WITH_CUDA
+#endif
+    if (std::is_same<anakin::saber::X86>::value) {
+      auto *output_data =
+          output->data(Place::kCpu, tensor->valid_size() * sizeof<float>);
+      std::memcpy(output_data, tensor->mutable_data(),
+                  tensor->valid_size() * sizeof(float);)
+    }
+  }
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -57,12 +96,6 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::AddOp(
     const std::vector<std::string> &inputs,
     const std::vector<std::string> &outputs) {
   PADDLE_ENFORCE(graph_->AddOp(name, type, inputs, outputs), "Add operation.");
-}
-
-template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-void AnakinEngine<TargetT, PrecisionType, RunType>::AddVar(
-    const std::string &id, DataType dtype, const std::vector<int> &shape) {
-  //
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -100,6 +133,5 @@ const std::string &Tensor::name() const { return name_; }
 DataType Tensor::dtype() const { return dtype_; }
 
 const std::vector<int> &shape() const { return shape_; }
-}
 }
 }
