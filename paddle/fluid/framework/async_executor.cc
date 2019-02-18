@@ -93,7 +93,6 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   trainer->Finalize();
   VLOG(3) << "Drop current scope kids";
   root_scope_->DropKids();
-
   return;
 }
 

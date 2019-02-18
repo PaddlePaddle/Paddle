@@ -57,8 +57,14 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   for (size_t i = 0; i < param_.skip_ops_size(); ++i) {
     skip_ops_[i] = param_.skip_ops(i);
   }
-  skip_ops_.resize(param_.skip_ops_size());
 
+  fetch_var_names_.resize(desc.fetch_var_names_size());
+  for (size_t i = 0; i < desc.fetch_var_names_size(); ++i) {
+    fetch_var_names_[i] = desc.fetch_var_names(i);
+  }
+
+  batch_cnt_per_print_ = static_cast<int>(desc.batch_per_print());
+  skip_ops_.resize(param_.skip_ops_size());
   fleet_ptr_ = FleetWrapper::GetInstance();
 }
 
