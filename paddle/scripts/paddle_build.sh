@@ -125,8 +125,6 @@ function cmake_gen() {
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
-            pip uninstall -y protobuf
-            pip install -r ${PADDLE_ROOT}/python/requirements.txt
             if [ "$1" == "cp27-cp27m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs4/lib:}
                 export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
@@ -168,6 +166,9 @@ function cmake_gen() {
                 pip3.7 uninstall -y protobuf
                 pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
            fi
+        else
+            pip uninstall -y protobuf
+            pip install -r ${PADDLE_ROOT}/python/requirements.txt
         fi
     fi
 
