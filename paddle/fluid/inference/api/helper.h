@@ -50,6 +50,11 @@ class Timer {
   }
 };
 
+static int GetUniqueId() {
+  static int id = 0;
+  return id++;
+}
+
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
   pieces->clear();

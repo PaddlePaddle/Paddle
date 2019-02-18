@@ -41,13 +41,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
  private:
   std::vector<std::string> input_names_;
   std::unordered_set<std::string> param_names_;
-  mutable std::unique_ptr<TensorRTEngine> trt_engine_;
+  mutable TensorRTEngine *trt_engine_;
   int max_batch_size_;
   int workspace_size_;
   std::unique_ptr<TRTInt8Calibrator> calibrator_;
   bool enable_int8_;
   std::string calibration_data_;
   std::string engine_key_;
+  std::string engine_serialized_data_;
   bool calibration_mode_;
 
  public:
@@ -62,6 +63,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
     enable_int8_ = Attr<bool>("enable_int8");
     calibration_data_ = Attr<std::string>("calibration_data");
     engine_key_ = Attr<std::string>("engine_key");
+    engine_serialized_data_ = Attr<std::string>("engine_serialized_data");
+    trt_engine_ = nullptr;
 
     auto params = Attr<std::vector<std::string>>("parameters");
     for (const auto &param : params) {
@@ -78,7 +81,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
     // we will create an engine here.
     if (!calibration_mode_) {
-      // trt_engine_.reset();
+      if (inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+              .HasEngine(engine_key_)) {
+        trt_engine_ = inference::Singleton<
+                          inference::tensorrt::TRTEngineManager>::Global()
+                          .Get(engine_key_);
+      }
     }
   }
 
@@ -99,7 +107,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       RunCalibration(scope, dev_place);
       return;
     }
-    auto trt_engine = GetEngine(scope, dev_place);
+    auto *trt_engine = GetEngine(scope, dev_place);
     RunTrt(scope, dev_place, trt_engine);
   }
 
@@ -158,7 +166,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
 
-    // auto *engine = trt_engine_.get();
     PADDLE_ENFORCE(!input_names_.empty(), "should pass more than one inputs");
 
     std::vector<std::string> output_maps =
@@ -192,8 +199,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
     int output_index = 0;
     VLOG(4) << "TensorRT Engine Op Outputs:";
     for (const auto &y : Outputs("Ys")) {
-      nvinfer1::ITensor *trt_t = engine->GetITensor(output_maps[output_index]);
-      auto dims = trt_t->getDimensions();
+      const int bind_index =
+          engine->engine()->getBindingIndex(output_maps[output_index].c_str());
+      auto dims = engine->engine()->getBindingDimensions(bind_index);
       // Use the output ITensor's dims to reshape the Fluid Tensor.
       // The ITensor doesn't contain the batch size dim.
       std::vector<int> ddim;
@@ -206,8 +214,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
       fluid_t->Resize(framework::make_ddim(ddim));
 
-      const int bind_index =
-          engine->engine()->getBindingIndex(output_maps[output_index].c_str());
       PADDLE_ENFORCE(bind_index < num_bindings,
                      "The bind index should be less than num_bindings");
       buffers[bind_index] = static_cast<void *>(fluid_t->mutable_data<float>(
@@ -224,16 +230,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
   TensorRTEngine *GetEngine(const framework::Scope &scope,
                             const platform::Place &dev_place) const {
-    if (trt_engine_.get() == nullptr) {
-      trt_engine_.reset(new TensorRTEngine(max_batch_size_, workspace_size_,
-                                           enable_int8_, calibrator_.get()));
-      if (true) {
-        PrepareTRTEngine(scope, trt_engine_.get());
-      } else {
-        // create static engine
-      }
+    if (trt_engine_ == nullptr) {
+      trt_engine_ =
+          inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+              .Create(max_batch_size_, workspace_size_, enable_int8_,
+                      calibrator_.get(), engine_key_);
+      PrepareTRTEngine(scope, trt_engine_);
     }
-    return trt_engine_.get();
+    return trt_engine_;
   }
 
   void PrepareTRTEngine(const framework::Scope &scope,
