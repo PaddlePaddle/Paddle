@@ -46,6 +46,7 @@ namespace details {
 std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   auto nodes = graph->Nodes();
+  ClearControlDepVars(graph.get());
   CollectSkipVarsSet(nodes);
 
   cfg_.reset(new details::ControlFlowGraph(*graph));
@@ -128,7 +129,7 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
       }
     }
   }
-  // graph->ResolveHazard(var_nodes_);
+  graph->ResolveHazard(var_nodes_);
 
   return graph;
 }
