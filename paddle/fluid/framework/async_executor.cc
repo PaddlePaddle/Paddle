@@ -155,7 +155,6 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   VLOG(3) << "start to run from files in async_executor";
   VLOG(3) << "Drop current scope kids";
   root_scope_->DropKids();
-
   return;
 }
 
