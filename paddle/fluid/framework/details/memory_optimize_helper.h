@@ -55,6 +55,7 @@ class OrderedSet {
 
   void Insert(ir::Node* var);
   void Erase(ir::Node* var);
+  void Erase(const std::string& var);
   bool Has(ir::Node* var) const;
   void Clear() {
     mark_table_.clear();
@@ -62,6 +63,7 @@ class OrderedSet {
   }
   // find the bestfit shape node block with var.
   ir::Node* FindBestFitNode(ir::Node* var) const;
+  ir::Node* FindNextBestFitNode(ir::Node* var, ir::Node* prev) const;
   // map store non-const iterator, can not promise const
   int GetNodeIndexInPool(ir::Node* var);
   // pool all node to string
