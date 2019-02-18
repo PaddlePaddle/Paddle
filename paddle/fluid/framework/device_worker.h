@@ -95,6 +95,7 @@ class DeviceWorker {
   virtual void Initialize(const TrainerDesc& desc) = 0;
   virtual void SetDeviceIndex(int tid) = 0;
   virtual void TrainFiles() = 0;
+  virtual void PrintFetchVars(int batch_cnt) = 0;
   virtual void TrainFilesWithProfiler() = 0;
   virtual void CreateDeviceResource(const ProgramDesc& main_prog) = 0;
   // will make this zero copy in the future
@@ -118,6 +119,7 @@ class CPUWorkerBase : public DeviceWorker {
   virtual void SetDeviceIndex(int tid) { thread_id_ = tid; }
   virtual void TrainFiles() = 0;
   virtual void TrainFilesWithProfiler() {}
+  virtual void PrintFetchVars(int batch_cnt) {}
   virtual void CreateDeviceResource(const ProgramDesc& main_prog) {}
 
  protected:
@@ -128,9 +130,10 @@ class HogwildWorker : public CPUWorkerBase {
  public:
   HogwildWorker() {}
   virtual ~HogwildWorker() {}
-  virtual void Initialize(const TrainerDesc& desc) {}
+  virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
+  virtual void PrintFetchVars(int batch_cnt);
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
   virtual void BindingDataFeedMemory();
 
@@ -142,6 +145,7 @@ class HogwildWorker : public CPUWorkerBase {
   Scope* thread_scope_;
   std::vector<std::string> fetch_var_names_;
   std::vector<std::vector<float>> fetch_values_;
+  int batch_cnt_per_print_;
 };
 
 class DownpourWorker : public HogwildWorker {
