@@ -185,6 +185,7 @@ __all__ = [
     'teacher_student_sigmoid_loss',
     'huber_loss',
     'tree_conv',
+    'pixel_shuffle'
 ]
 
 kIgnoreIndex = -100
@@ -10339,3 +10340,45 @@ def tree_conv(nodes_vector,
     else:
         pre_activation = out
     return helper.append_activation(pre_activation)
+def pixel_shuffle(input, upscale_factor):
+    """
+    ** Pixel Shuffle Layer**
+
+    This layer rearrange elements in a tensor of shape :math:`(*, C \\times r^2, H, W)`
+    to a tensor of shape :math:`(C, H \\times r, W \\times r)`.
+    This is useful for implementing efficient sub-pixel convolution
+     with a stride of :math:`1/r`.
+
+    please refer to the paper: `Real-Time Single Image and Video Super-Resolution Using an Efficient Sub-Pixel Convolutional Neural Network`_
+    by Shi et. al (2016) for more details.
+
+    .. code-block:: text
+        
+        Given a 4-D tensor with the shape:
+            input.shape = [1, 9, 4, 4]
+        Given upscale_factor:
+            upscale_factor= 3
+        output shape is:
+            [1, 1, 12, 12]
+    
+    Args:
+        input(Variable): The input tensor variable.
+        upscale_factor(int): factor to increase spatial resolution by
+
+    Returns:
+        Out(Variable): the pixel shuffle result is a tensor variable with the same shape and the same type as the input.
+
+    Raises:
+        ValueError: If the square of upscale_factor cannot divide the channels of input.
+
+    Examples:
+        .. code-block:: python
+
+        input = fluid.layers.data(shape=[9,4,4])
+        output = fluid.layers.pixel_shuffle(input=input, upscale_factor=3)
+
+    """
+    n,c,h,w = input.shape
+    if n % (upscale_factor**2) != 0:
+        raise ValueError("the square of upscale_factor must divide the channels of input")
+    return reshape(input=input, shape=[n, c//(upscale_factor**2), h*upscale_factor, w*upscale_factor])
