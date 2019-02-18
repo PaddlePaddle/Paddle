@@ -225,9 +225,6 @@ class FC(layers.Layer):
             act=act,
             name=name)
 
-    def parameters(self):
-        return [self._w, self._b]
-
     def _build_once(self, input):
         input_shape = input.shape
         param_shape = [
@@ -477,9 +474,6 @@ class Embedding(layers.Layer):
             shape=self._size,
             dtype=self._dtype,
             is_bias=False)
-
-    def parameters(self):
-        return [self._w]
 
     def forward(self, input):
         out = self._helper.create_variable_for_type_inference(self._dtype)

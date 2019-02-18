@@ -107,6 +107,52 @@ TEST(OrderedSet, Normal) {
     ASSERT_EQ(pool.GetNodeIndexInPool(cache), 5);  // match  4:[5,2]
   }
 }
+
+TEST(OrderedSet, FindBestFitNode) {
+  OrderedSet pool;
+  std::vector<std::unique_ptr<ir::Node>> nodes;
+  ProgramDesc prog;
+  BlockDesc* block_desc = prog.MutableBlock(0);
+  auto* op_desc = block_desc->AppendOp();
+  op_desc->SetType("dummy");
+  std::unique_ptr<ir::Node> op = ir::CreateNodeForTest(op_desc);
+
+  {
+    auto desc = block_desc->Var("a");
+    desc->SetShape({128, 128});
+    std::unique_ptr<ir::Node> node = ir::CreateNodeForTest(desc);
+    node->inputs.emplace_back(op.get());
+    nodes.emplace_back(std::move(node));
+  }
+  {
+    auto desc = block_desc->Var("b");
+    desc->SetShape({128, 129});
+    std::unique_ptr<ir::Node> node = ir::CreateNodeForTest(desc);
+    node->inputs.emplace_back(op.get());
+    nodes.emplace_back(std::move(node));
+  }
+  {
+    auto desc = block_desc->Var("c");
+    desc->SetShape({128, 128});
+    std::unique_ptr<ir::Node> node = ir::CreateNodeForTest(desc);
+    node->inputs.emplace_back(op.get());
+    nodes.emplace_back(std::move(node));
+  }
+
+  for (auto& node : nodes) {
+    pool.Insert(node.get());
+  }
+
+  // FindNextBestFitNode
+  auto* n = nodes[0].get();
+  auto* cache = pool.FindBestFitNode(n);
+  PADDLE_ENFORCE(cache->Name() == "a");
+  cache = pool.FindNextBestFitNode(n, cache);
+  PADDLE_ENFORCE(cache->Name() == "c");
+  cache = pool.FindNextBestFitNode(n, cache);
+  PADDLE_ENFORCE(cache->Name() == "b");
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
