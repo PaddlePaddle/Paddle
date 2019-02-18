@@ -13,10 +13,8 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
-import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_elementwise_add_op import TestElementwiseAddOp, TestElementwiseAddOp_broadcast_0
 
 if __name__ == '__main__':
