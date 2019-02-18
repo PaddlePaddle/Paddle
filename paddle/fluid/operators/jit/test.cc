@@ -625,7 +625,7 @@ void TestEmbSeqPoolKernel() {
     const T* table_data = table.data();
     for (auto type : pool_types) {
       for (int idx_w : {1, 2, 10, 16}) {
-        for (int idx_h : {1, 2, 10, 16}) {
+        for (int idx_h : {1, 2, 9, 13, 16}) {
           auto ref = jit::GetRefer<KT, jit::EmbSeqPoolTuples<T>>();
           EXPECT_TRUE(ref != nullptr);
           std::vector<int64_t> idx(idx_h * idx_w);
