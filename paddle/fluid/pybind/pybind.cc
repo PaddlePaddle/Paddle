@@ -829,8 +829,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
-  m.def("get_pass", [](const py::bytes &binary_str) {
-    std::string pass_type(binary_str);
+  m.def("get_pass", [](const std::string &pass_type) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_type);
     return std::shared_ptr<framework::ir::Pass>(std::move(pass));
   });
@@ -838,10 +837,9 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
       .def("has", &ir::Pass::Has)
-      .def("set",
-           [](ir::Pass &self, const std::string &attr_name,
-              const ProgramDesc &attr) {
-             return self.Set(attr_name, new ProgramDesc(attr));
+      .def("set_not_owned",
+           [](ir::Pass &self, const std::string &attr_name, ProgramDesc &attr) {
+             self.SetNotOwned<ProgramDesc>(attr_name, &attr);
            })
       .def(
           "set",
@@ -850,7 +848,6 @@ All parameter, weight, gradient are variables in Paddle.
           })
       .def("set", [](ir::Pass &self, const std::string &name,
                      int val) { self.Set<const int>(name, new int(val)); })
-      .def("get_program", &ir::Pass::Get<ProgramDesc>)
       .def("type", &ir::Pass::Type)
       .def("apply", [](ir::Pass &self, std::shared_ptr<ir::Graph> graph) {
         std::unique_ptr<ir::Graph> origin_graph(graph.get());
