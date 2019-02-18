@@ -14,17 +14,13 @@
 from __future__ import print_function
 
 import unittest
-from paddle.fluid.tests.unittests.test_mean_op import TestMeanOp, TestFP16MeanOp
+from paddle.fluid.tests.unittests.test_mean_op import TestMeanOp
 
 
 class TestNGRAPHMeanOp(TestMeanOp):
     def setUp(self):
         super(TestNGRAPHMeanOp, self).setUp()
-
-
-class TestNGRAPHFP16MeanOp(TestFP16MeanOp):
-    def setUp(self):
-        super(TestNGRAPHFP16MeanOp, self).setUp()
+        self._cpu_only = True
 
 
 if __name__ == "__main__":
