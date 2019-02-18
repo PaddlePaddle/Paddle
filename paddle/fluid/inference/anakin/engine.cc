@@ -28,23 +28,26 @@ AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine()
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-bool AnakinEngine<TargetT, PrecisionType, RunType>::IsOpSupported(
-    const std::string &op_type, const attrs_t &attrs) {
-  return true;
+void AnakinEngine<TargetT, PrecisionType, RunType>::DeclareInputs(
+    const std::vector<std::string>> &inputs) {
+  inputs_ = std::sort(inputs.begin(), inputs.end());
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-void AnakinEngine<TargetT, PrecisionType, RunType>::DeclareInput(
-    const std::string &name, const Tensor *tensor, const attrs_t &attrs) {
-  inputs_.insert({name, tensor});
+void AnakinEngine<TargetT, PrecisionType, RunType>::DeclareOutputs(
+    const std::vector<std::string> &outputs) {
+  outputs_ = std::sort(outputs_.begin(), outputs_.end());
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-void AnakinEngine<TargetT, PrecisionType, RunType>::DeclareOutput(
-    const std::string &name, const Tensor *tensor, const attrs_t &attrs) {}
+void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
+    const std::vector<Tensor *> &inputs, std::vector<Tensor *> *outputs) {
+  for (auto input : inputs) {
+    //
+  }
+  auto anakin_inputs = engine_->get_in_list();
 
-template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(int batch_size) {
+  auto anakin_outputs = engine_->get_out_list();
   engine_->prediction();
 }
 
@@ -58,7 +61,7 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::AddOp(
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::AddVar(
-    const std::string &id, DataType dtype, const shape_t &shape) {
+    const std::string &id, DataType dtype, const std::vector<int> &shape) {
   //
 }
 
@@ -66,6 +69,14 @@ template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::FreezeNetwork() {
   PADDLE_ENFORCE(graph_->Freeze(), "Freeze anakin subgraph.");
   PADDLE_ENFORCE(graph_->Optimize(), "Graph optimization.");
+
+  std::vector<std::string> inputs = graph_->get_ins();
+  std::sort(inputs.begin(), inputs.end());
+  PADDLE_ENFORCE(inputs_ == inputs);
+
+  std::vector<std::string> outputs = graph_->get_outs();
+  std::sort(outputs.begin(), outputs.end());
+  PADDLE_ENFORCE(outputs_ == outputs);
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -79,6 +90,16 @@ AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine(
     const AnakinEngine<TargetT, PrecisionType, RunType> &engine) {
   engine_ = std::move(engine->engine_->Clone());
 }
+
+void Tensor::Resize(const std::vector<int> &shape) { shape_ = shape; }
+
+void Tensor::SetName(const std::string &name) { name_ = name; }
+
+const std::string &Tensor::name() const { return name_; }
+
+DataType Tensor::dtype() const { return dtype_; }
+
+const std::vector<int> &shape() const { return shape_; }
 }
 }
 }

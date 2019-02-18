@@ -16,6 +16,7 @@
 
 #include <boost/variant.hpp>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 #include "framework/core/types.h"
@@ -36,8 +37,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-using shape_t = std::vector<int>;
-using attr_t = boost::variant<bool, int, float, std::vector<int>>;
+// using shape_t = std::vector<int>;
+// using attr_t = boost::variant<bool, int, float, std::vector<int>>;
 
 enum class DataType;
 enum class Place;
@@ -47,14 +48,12 @@ template <typename TargetT, anakin::Precision PrecisionType,
           anakin::OpRunType RunType = anakin::OpRunType::ASYNC>
 class AnakinEngine : public EngineBase {
  public:
-  using attrs_t = std::map<std::string, attr_t>;
+  // using attrs_t = std::map<std::string, attr_t>;
+  // static bool IsOpSupported(const std::string &op_type, const attrs_t
+  // &attrs);
 
-  static bool IsOpSupported(const std::string &op_type, const attrs_t &attrs);
-
-  void DeclareInput(const std::string &id, const Tensor *tensor,
-                    const attrs_t &attrs);
-  void DeclareOutput(const std::string &id, const Tensor *tensor,
-                     const attrs_t &attrs);
+  void DeclareInputs(const std::vector<std::string> &inputs);
+  void DeclareOutputs(const std::vector<std::string> &outputs);
 
   void AddOp(const std::string &name, const std::string &type,
              const std::vector<std::string> &inputs,
@@ -62,41 +61,39 @@ class AnakinEngine : public EngineBase {
 
   template <typename AttrType>
   void AddOpAttr(const std::string &op_name, const std::string &attr_name,
-                 const attr_t &attr_value) {
-    PADDLE_ENFORCE(
-        graph_->AddOp(op_name, attr_name, boost::get<AttrType>(attr_value)),
-        "Add operation's attribution.");
+                 const AttrType &attr_value) {
+    PADDLE_ENFORCE(graph_->AddOp(op_name, attr_name, attr_value),
+                   "Add operation's attribution.");
   }
 
-  void AddVar(const std::string &id, DataType dtype, const shape_t &shape);
+  void AddVar(const std::string &id, DataType dtype,
+              const std::vector<int> &shape);
   Tensor *AddWeight(const std::string &id, const Tensor &v);
 
   std::unique_ptr<AnakinEngine> Clone();
 
   void FreezeNetwork();
 
-  void Execute(int batch_size = 0);
+  void Execute(const std::vector<Tensor *> &inputs,
+               std::vector<Tensor *> *outputs);
 
  private:
   AnakinEngine(const AnakinEngine &);
-  using AnakinNet = anakin::Net<TargetT, PrecisionType, RunType>;
-  using AnakinGraph = anakin::Graph<TargetT, PrecisionType>;
+  using AnakinNetT = anakin::Net<TargetT, PrecisionType, RunType>;
+  using AnakinGraphT = anakin::Graph<TargetT, PrecisionType>;
 
-  std::unique_ptr<AnakinNet> engine_;
-  std::unique_ptr<AnakinGraph> graph_;
+  std::unique_ptr<AnakinNetT> engine_;
+  std::unique_ptr<AnakinGraphT> graph_;
   // std::unique_ptr<anakin::Net<TargetT, PrecisionType, RunType>> engine_;
   // std::unique_ptr<anakin::Graph<TargetT, PrecisionType>> graph_;
 
-  std::map<std::string, Tensor *> inputs_;
-  std::map<std::string, Tensor *> outputs_;
+  std::vector<std::string> inputs_;
+  std::vector<std::string> outputs_;
 };
-
-enum class DataType { kUnk, kFloat32, kFloat64, kInt32 };
-enum class Place { kCpu, kGpu };
 
 class Tensor {
  public:
-  void Resize(const shape_t &shape);
+  void Resize(const std::vector<int> &shape);
   void SetName(const std::string &name);
   const std::string &name() const;
   template <typename T>
@@ -106,13 +103,16 @@ class Tensor {
   T *data(Place *place, size_t size) const;
 
   DataType dtype() const;
-  const shape_t &shape() const;
+  const std::vector<int> &shape() const;
 
  private:
   std::string name_;
-  shape_t shape_;
+  std::vector<int> shape_;
   void *data_;
 };
+
+enum class DataType { kUnk, kFloat32, kFloat64, kInt32 };
+enum class Place { kCpu, kGpu };
 
 template class AnakinEngine<anakin::saber::NV, anakin::Precision::FP32>;
 template class AnakinEngine<anakin::saber::X86, anakin::Precision::FP32>;
