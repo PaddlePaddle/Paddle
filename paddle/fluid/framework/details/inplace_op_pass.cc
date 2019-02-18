@@ -171,16 +171,15 @@ void InplacePass::InplaceModifyDesc(const std::string& var,
   }
 }
 
-const SSANodePair InplacePass::TryInplaceModifyVar(const std::string& var,
-                                                   const std::string& cache_var,
-                                                   const size_t& idx,
-                                                   ir::Graph* graph) const {
+const NodeSwapQueue InplacePass::TryInplaceModifyVar(
+    const std::string& var, const std::string& cache_var, const size_t& idx,
+    ir::Graph* graph) const {
   PADDLE_ENFORCE(var_nodes_[var].size() >= 1 &&
                  var_nodes_[var].at(0)->Var() != nullptr);
   std::unique_ptr<VarDesc> var_desc(new VarDesc(*var_nodes_[var].at(0)->Var()));
   var_desc->SetName(cache_var);
 
-  SSANodePair swap_nodes;
+  NodeSwapQueue swap_nodes;
 
   for (size_t i = idx; i < view_.AllOps().size(); ++i) {
     auto* op = view_.AllOps()[i];
@@ -230,7 +229,7 @@ const SSANodePair InplacePass::TryInplaceModifyVar(const std::string& var,
   return swap_nodes;
 }
 
-void InplacePass::CommitModify(const SSANodePair& swap_nodes,
+void InplacePass::CommitModify(const NodeSwapQueue& swap_nodes,
                                ir::Graph* graph) const {
   for (auto& pair : swap_nodes) {
     auto *node = pair.first, *cache_node = pair.second;
@@ -245,7 +244,7 @@ void InplacePass::CommitModify(const SSANodePair& swap_nodes,
   }
 }
 
-void InplacePass::WithdrawModify(const SSANodePair& nodes,
+void InplacePass::WithdrawModify(const NodeSwapQueue& nodes,
                                  ir::Graph* graph) const {
   for (auto& pair : nodes) {
     auto *node = pair.first, *cache_node = pair.second;
