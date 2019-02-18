@@ -1368,9 +1368,9 @@ class FtrlOptimizer(Optimizer):
 
     Args:
         learning_rate (float|Variable): global learning rate.
-        l1 (float):
-        l2 (float):
-        lr_power (float):
+        l1 (float): L1 regularization strength.
+        l2 (float): L2 regularization strength.
+        lr_power (float): Learning Rate Power.
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
