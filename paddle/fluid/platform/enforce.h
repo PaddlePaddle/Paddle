@@ -233,9 +233,11 @@ inline void throw_on_error(ncclResult_t stat, const std::string& msg) {
 #endif  // __APPLE__ and windows
 #endif  // PADDLE_WITH_CUDA
 
-#define PADDLE_THROW(...)                  \
-  throw ::paddle::platform::EnforceNotMet( \
-      ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__)
+#define PADDLE_THROW(...)                                            \
+  do {                                                               \
+    throw ::paddle::platform::EnforceNotMet(                         \
+        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
+  } while (0)
 
 #define PADDLE_ENFORCE(COND, ...)                                         \
   do {                                                                    \
@@ -270,23 +272,25 @@ inline void throw_on_error(ncclResult_t stat, const std::string& msg) {
  *    extra messages is also supported, for example:
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
-#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                  \
-  do {                                                       \
-    if (UNLIKELY(nullptr == (__VAL))) {                      \
-      PADDLE_THROW(#__VAL " should not be null\n%s",         \
-                   paddle::string::Sprintf("" __VA_ARGS__)); \
-    }                                                        \
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                 \
+  do {                                                      \
+    if (UNLIKELY(nullptr == (__VAL))) {                     \
+      PADDLE_THROW(#__VAL " should not be null\n%s",        \
+                   ::paddle::string::Sprintf(__VA_ARGS__)); \
+    }                                                       \
   } while (0)
 
 #define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...)  \
   do {                                                                  \
-    if (UNLIKELY(!((__VAL0)__CMP(__VAL1)))) {                           \
+    auto __cond1__ = (__VAL0);                                          \
+    auto __cond2__ = (__VAL1);                                          \
+    if (UNLIKELY(!((__cond1__)__CMP(__cond2__)))) {                     \
       PADDLE_THROW("Enforce failed. Expected %s " #__CMP                \
                    " %s, but received %s:%s " #__INV_CMP " %s:%s.\n%s", \
                    #__VAL0, #__VAL1, #__VAL0,                           \
-                   paddle::string::to_string(__VAL0), #__VAL1,          \
-                   paddle::string::to_string(__VAL1),                   \
-                   paddle::string::Sprintf("" __VA_ARGS__));            \
+                   ::paddle::string::to_string(__cond1__), #__VAL1,     \
+                   ::paddle::string::to_string(__cond2__),              \
+                   ::paddle::string::Sprintf(__VA_ARGS__));             \
     }                                                                   \
   } while (0)
 
