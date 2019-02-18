@@ -46,7 +46,7 @@ void BuildBatchNormNode(
 
   PADDLE_ENFORCE(
       data_layout == "NHWC" || data_layout == "NCHW" || data_layout == "NC",
-      "The BatchNorm operator supports only NHWC data format");
+      "The BatchNorm operator only supports NHWC/NCHW/NC data format");
 
   if (data_layout == "NHWC") {
     x = paddle::platform::Nhwc2Nchw(x);
@@ -116,7 +116,7 @@ void BuildBatchNormGradNode(
                     "BN grap input and delta size needs to be equal");
   PADDLE_ENFORCE(
       data_layout == "NHWC" || data_layout == "NCHW" || data_layout == "NC",
-      "The BatchNormGrad operator supports only NHWC data format");
+      "The BatchNorm operator only supports NHWC/NCHW/NC data format");
 
   if (x_shape.size() == 2) {
     x = std::make_shared<ngraph::op::Reshape>(
