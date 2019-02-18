@@ -221,7 +221,6 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
    * Only variables should be the leaves of graph.
    */
   AddOutputToLeafOps(&result);
-  // result.Erase(kGraphOps);
   return graph;
 }
 

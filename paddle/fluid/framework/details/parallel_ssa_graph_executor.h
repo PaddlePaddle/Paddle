@@ -28,16 +28,13 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
-    const std::vector<platform::Place> &places,
-    std::unique_ptr<ir::Graph> graph);
-
 class ParallelSSAGraphExecutor : public SSAGraphExecutor {
  public:
   ParallelSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,
                            const std::vector<platform::Place> &places,
-                           std::vector<std::unique_ptr<ir::Graph>> &&graphs);
+                           const framework::ProgramDesc &main_prog,
+                           std::unique_ptr<ir::Graph> &&graph);
   ~ParallelSSAGraphExecutor() final = default;
 
   const ir::Graph &Graph() const override { return *graphs_[0]; }
@@ -45,10 +42,14 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
 
  private:
+  std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
+      std::unique_ptr<ir::Graph> &&graph);
+
   ExecutionStrategy strategy_;
   std::vector<Scope *> local_scopes_;
   std::unique_ptr<::ThreadPool> pool_{nullptr};
   std::vector<platform::Place> places_;
+  framework::ProgramDesc main_prog_;
   std::vector<std::unique_ptr<ir::Graph>> graphs_;
 
   std::vector<std::unique_ptr<details::ThreadedSSAGraphExecutor>> executors_;
