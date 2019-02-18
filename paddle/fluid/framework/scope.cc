@@ -117,11 +117,16 @@ Variable* Scope::FindVarRemoveRef(const std::string& name) const {
   if (it != vars_.end()) {
     var = it->second.get();
     if (var_refs_[name].fetch_sub(1)) {
-      try {
-        // Tensor, TensorArray, SelectedRows
-        vars_[name]->clear();
-      } catch (...) {
-        // do nothing
+      // Tensor, TensorArray, SelectedRows
+      if (IsType<LoDTensor>()) {
+        var->GetMutable<LoDTensor>->clear();
+      } else if (IsType<SelectedRows>()) {
+        var->GetMutable<SelectedRows>->mutable_value->clear();
+      } else if (IsType<LoDTensorArray>()) {
+        auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+        for(auto& t : tensor_arr) {
+          t->clear();
+        }
       }
     }
   } else if (parent_ != nullptr) {
