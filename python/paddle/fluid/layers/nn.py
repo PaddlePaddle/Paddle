@@ -8710,13 +8710,15 @@ def slice(input, axes, starts, ends):
 @templatedoc()
 def shape(input):
     """
-    ${comment}
+    **Shape Layer**
+
+    Return the shape of the input.
 
     Args:
-        input (Variable): ${input_comment}
+        input (Variable): The input variable.
 
     Returns:
-        out (Variable): ${out_comment}
+        out (Variable): The shape of the input variable.
 
     Examples:
         .. code-block:: python
