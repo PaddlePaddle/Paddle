@@ -75,8 +75,8 @@ def YOLOv3Loss(x, gtbox, gtlabel, attrs):
     mask_num = len(anchor_mask)
     class_num = attrs["class_num"]
     ignore_thresh = attrs['ignore_thresh']
-    downsample = attrs['downsample']
-    input_size = downsample * h
+    downsample_ratio = attrs['downsample_ratio']
+    input_size = downsample_ratio * h
     x = x.reshape((n, mask_num, 5 + class_num, h, w)).transpose((0, 1, 3, 4, 2))
     loss = np.zeros((n)).astype('float32')
 
@@ -85,10 +85,6 @@ def YOLOv3Loss(x, gtbox, gtlabel, attrs):
     grid_y = np.tile(np.arange(h).reshape((h, 1)), (1, w))
     pred_box[:, :, :, :, 0] = (grid_x + sigmoid(pred_box[:, :, :, :, 0])) / w
     pred_box[:, :, :, :, 1] = (grid_y + sigmoid(pred_box[:, :, :, :, 1])) / h
-
-    x[:, :, :, :, 5:] = np.where(x[:, :, :, :, 5:] < -0.5, x[:, :, :, :, 5:],
-                                 np.ones_like(x[:, :, :, :, 5:]) * 1.0 /
-                                 class_num)
 
     mask_anchors = []
     for m in anchor_mask:
@@ -176,7 +172,7 @@ class TestYolov3LossOp(OpTest):
             "anchor_mask": self.anchor_mask,
             "class_num": self.class_num,
             "ignore_thresh": self.ignore_thresh,
-            "downsample": self.downsample,
+            "downsample_ratio": self.downsample_ratio,
         }
 
         self.inputs = {
@@ -208,7 +204,7 @@ class TestYolov3LossOp(OpTest):
         self.anchor_mask = [1, 2]
         self.class_num = 5
         self.ignore_thresh = 0.5
-        self.downsample = 32
+        self.downsample_ratio = 32
         self.x_shape = (3, len(self.anchor_mask) * (5 + self.class_num), 5, 5)
         self.gtbox_shape = (3, 5, 4)
 

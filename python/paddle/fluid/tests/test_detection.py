@@ -478,8 +478,15 @@ class TestYoloDetection(unittest.TestCase):
             gtlabel = layers.data(name='gtlabel', shape=[10], dtype='int32')
             loss = layers.yolov3_loss(x, gtbox, gtlabel, [10, 13, 30, 13],
                                       [0, 1], 10, 0.7, 32)
-
             self.assertIsNotNone(loss)
+
+    def test_yolo_box(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
+            boxes, scores = layers.yolo_box(x, [10, 13, 30, 13], 10, 0.01, 32)
+            self.assertIsNotNone(boxes)
+            self.assertIsNotNone(scores)
 
 
 class TestBoxClip(unittest.TestCase):
