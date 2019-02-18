@@ -324,14 +324,19 @@ class DeviceTracerImpl : public DeviceTracer {
       auto *event = profile_pb.add_mem_events();
       if (is_gpu_place(r.place)) {
         event->set_place(proto::MemEvent::CUDAPlace);
+        event->set_device_id(0);
       } else if (is_cpu_place(r.place)) {
         event->set_place(proto::MemEvent::CPUPlace);
+        event->set_device_id(
+            boost::get<platform::CUDAPlace>(r.place).GetDeviceId());
       } else {
         event->set_place(proto::MemEvent::CUDAPinnedPlace);
+        event->set_device_id(0);
       }
       event->set_start_ns(r.start_ns);
       event->set_end_ns(r.end_ns);
       event->set_bytes(r.bytes);
+      event->set_thread_id(r.thread_id);
     }
     std::ofstream profile_f;
     profile_f.open(profile_path, std::ios::out | std::ios::trunc);

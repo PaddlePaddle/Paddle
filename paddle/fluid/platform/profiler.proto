@@ -44,6 +44,7 @@ message MemEvent {
   optional uint64 bytes = 3;
   optional Place place = 4;
   optional uint64 thread_id = 5;
+  optional uint32 device_id = 6;
 }
 
 message Profile {

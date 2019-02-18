@@ -462,14 +462,13 @@ void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
     if (is_cpu_place(events_table[i].place)) {
       VLOG(1) << "CPU";
     } else if (is_gpu_place(events_table[i].place)) {
-      VLOG(1) << "GPU:"
+      VLOG(1) << "GPU"
               << boost::get<platform::CUDAPlace>(events_table[i].place)
                      .GetDeviceId()
               << "\n";
     } else {
       VLOG(1) << "CUDAPinnedPlace";
     }
-    VLOG(1) << "\n";
     VLOG(1) << "Memory unit: MB\n";
     // Output events table
     VLOG(1) << "Event"

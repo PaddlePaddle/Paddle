@@ -59,8 +59,7 @@ class Event {
 class MemEvent {
  public:
   MemEvent(EventType type, uint64_t start_ns, uint64_t end_ns, size_t bytes,
-           Place place, int64_t thread_t);
-
+           Place place, int64_t thread_id);
   const EventType& type() const { return type_; }
   uint64_t start_ns() const { return start_ns_; }
   uint64_t end_ns() const { return end_ns_; }
