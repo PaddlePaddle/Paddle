@@ -23,13 +23,13 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "glog/logging.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/platform/cupti_cbid_str.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 
@@ -52,6 +52,8 @@ namespace {
 // TODO(panyx0718): Revisit the buffer size here.
 uint64_t kBufSize = 32 * 1024;
 uint64_t kAlignSize = 8;
+std::unordered_map<CUpti_CallbackId, std::string> runtime_cbid_str,
+    driver_cbid_str;
 
 #define ALIGN_BUFFER(buffer, align)                                 \
   (((uintptr_t)(buffer) & ((align)-1))                              \
@@ -101,17 +103,17 @@ std::string MemcpyKind(CUpti_ActivityMemcpyKind kind) {
 }
 
 std::string DriverKind(CUpti_CallbackId cbid) {
-  if (static_cast<size_t>(cbid) >= driver_cbid_str.size())
+  auto iter = driver_cbid_str.find(cbid);
+  if (iter == driver_cbid_str.end())
     return "Driver API " + std::to_string(cbid);
-  // remove the "CUPTI_DRIVER_TRACE_CBID_" prefix
-  return driver_cbid_str[cbid].substr(24);
+  return iter->second;
 }
 
 std::string RuntimeKind(CUpti_CallbackId cbid) {
-  if (static_cast<size_t>(cbid) >= runtime_cbid_str.size())
+  auto iter = runtime_cbid_str.find(cbid);
+  if (iter == runtime_cbid_str.end())
     return "Runtime API " + std::to_string(cbid);
-  // remove the "CUPTI_RUNTIME_TRACE_CBID_" prefix
-  return runtime_cbid_str[cbid].substr(25);
+  return iter->second;
 }
 
 void EnableActivity() {
@@ -236,13 +238,20 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
   }
   free(buffer);
 }
+
+void initCuptiCbidStr();
+
 }  // namespace
 
 #endif  // PADDLE_WITH_CUPTI
 
 class DeviceTracerImpl : public DeviceTracer {
  public:
-  DeviceTracerImpl() : enabled_(false) {}
+  DeviceTracerImpl() : enabled_(false) {
+#ifdef PADDLE_WITH_CUPTI
+    initCuptiCbidStr();
+#endif
+  }
 
   void AddAnnotation(uint32_t id, Event *event) {
     thread_local std::forward_list<std::pair<uint32_t, Event *>>
@@ -529,6 +538,63 @@ int32_t GetThreadIdFromSystemThreadId(uint32_t id) {
   // return origin id if no event is recorded in this thread.
   return static_cast<int32_t>(id);
 }
+
+#ifdef PADDLE_WITH_CUPTI
+namespace {
+
+void initCuptiCbidStr() {
+  static bool called = false;
+  if (called) return;
+  called = true;
+#define REGISTER_RUNTIME_CBID_STR(cbid) \
+  runtime_cbid_str[CUPTI_RUNTIME_TRACE_CBID_##cbid] = #cbid
+#define REGISTER_DRIVER_CBID_STR(cbid) \
+  driver_cbid_str[CUPTI_DRIVER_TRACE_CBID_##cbid] = #cbid
+
+  REGISTER_RUNTIME_CBID_STR(cudaBindTexture_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaDeviceGetAttribute_v5000);
+  REGISTER_RUNTIME_CBID_STR(cudaDeviceGetStreamPriorityRange_v5050);
+  REGISTER_RUNTIME_CBID_STR(cudaDeviceSynchronize_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaDriverGetVersion_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaEventCreateWithFlags_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaEventDestroy_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaEventDestroy_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaEventQuery_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaEventRecord_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaFreeHost_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaFree_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaFuncGetAttributes_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaGetDeviceCount_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaGetDeviceProperties_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaGetDevice_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaGetLastError_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaHostAlloc_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaHostGetDevicePointer_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaLaunchKernel_v7000);
+  REGISTER_RUNTIME_CBID_STR(cudaMallocHost_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaMalloc_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaMemcpyAsync_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaMemcpy_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaMemsetAsync_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaMemset_v3020);
+  REGISTER_RUNTIME_CBID_STR(
+      cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags_v7000);
+  REGISTER_RUNTIME_CBID_STR(cudaPeekAtLastError_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaRuntimeGetVersion_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaSetDevice_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaStreamCreate_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaStreamCreateWithFlags_v5000);
+  REGISTER_RUNTIME_CBID_STR(cudaStreamCreateWithPriority_v5050);
+  REGISTER_RUNTIME_CBID_STR(cudaStreamDestroy_v5050);
+  REGISTER_RUNTIME_CBID_STR(cudaStreamSynchronize_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaStreamWaitEvent_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaUnbindTexture_v3020);
+
+#undef REGISTER_RUNTIME_CBID_STR
+#undef REGISTER_DRIVER_CBID_STR
+}
+}  // namespace
+#endif  // PADDLE_WITH_CUPTI
 
 }  // namespace platform
 }  // namespace paddle

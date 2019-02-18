@@ -198,15 +198,6 @@ RecordBlock::~RecordBlock() {
   ClearCurBlock();
 }
 
-static void BuildVar(const std::string& param_name,
-                     std::initializer_list<const char*> arguments,
-                     paddle::framework::proto::OpDesc::Var* var) {
-  var->set_parameter(param_name);
-  for (auto& arg_name : arguments) {
-    *var->mutable_arguments()->Add() = arg_name;
-  }
-}
-
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE(state != ProfilerState::kDisabled,
                  "Can't enable profiling, since the input state is ",

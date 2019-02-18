@@ -28,7 +28,7 @@ import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 class TestProfiler(unittest.TestCase):
     def net_profiler(self, state, use_parallel_executor=False):
         profile_path = os.path.join(tempfile.gettempdir(), "profile")
-        # open(profile_path, "w").write("")
+        open(profile_path, "w").write("")
         startup_program = fluid.Program()
         main_program = fluid.Program()
 
@@ -100,6 +100,10 @@ class TestProfiler(unittest.TestCase):
                     raise Exception(
                         "Kernel %s missing event. Has this kernel been recorded by RecordEvent?"
                         % event.name)
+            elif event.type == profiler_pb2.Event.CPU and (
+                    event.name.startswith("Driver API") or
+                    event.name.startswith("Runtime API")):
+                print("Warning: unregister", event.name)
 
     def test_cpu_profiler(self):
         self.net_profiler('CPU')
