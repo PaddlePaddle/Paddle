@@ -101,7 +101,7 @@ class MNIST(fluid.imperative.Layer):
 class TestImperativeMnist(unittest.TestCase):
     def test_mnist_float32(self):
         seed = 90
-        batch_num = 2
+        batch_num = 100000
         with fluid.imperative.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -125,85 +125,109 @@ class TestImperativeMnist(unittest.TestCase):
                 label = to_variable(y_data)
                 label._stop_gradient = True
 
+                print("forward start")
+
                 cost = mnist(img)
                 loss = fluid.layers.cross_entropy(cost, label)
                 avg_loss = fluid.layers.mean(loss)
-                dy_out = avg_loss._numpy()
+                #  dy_out = avg_loss._numpy()
+                print("forward end")
 
-                if batch_id == 0:
-                    for param in fluid.default_main_program().global_block(
-                    ).all_parameters():
-                        dy_param_init_value[param.name] = param._numpy()
+                #  if batch_id == 0:
+                    #  for param in fluid.default_main_program().global_block(
+                    #  ).all_parameters():
+                        #  dy_param_init_value[param.name] = param._numpy()
 
                 avg_loss._backward()
+
+                print("backward end")
+
                 sgd.minimize(avg_loss)
+
+                print("sgd end")
+
                 mnist.clear_gradients()
-                dy_param_value = {}
-                for param in fluid.default_main_program().global_block(
-                ).all_parameters():
-                    dy_param_value[param.name] = param._numpy()
 
-        with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+                import gc
+                for name, var in fluid.default_main_program().global_block().vars.items():
+                    if not var.persistable:
+                        fluid.default_main_program().global_block()._remove_var(name)
+                        #  var._ivar._clear_values()
+                for op in fluid.default_main_program().global_block().ops:
+                    fluid.default_main_program().global_block()._remove_op(op.idx)
 
-            exe = fluid.Executor(fluid.CPUPlace(
-            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+                assert len(gc.get_referrers(avg_loss)) == 1
 
-            mnist = MNIST()
-            sgd = SGDOptimizer(learning_rate=1e-3)
-            train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=128)
+                print("clear end")
+                print("ivar ref ", gc.get_referrers(gc.get_referrers(avg_loss._ivar)[0])[0].__class__.__name__)
+                print("ivar ref ", gc.get_referrers(gc.get_referrers(avg_loss._ivar)[1])[0].__class__.__name__)
 
-            img = fluid.layers.data(
-                name='pixel', shape=[1, 28, 28], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            cost = mnist(img)
-            loss = fluid.layers.cross_entropy(cost, label)
-            avg_loss = fluid.layers.mean(loss)
-            sgd.minimize(avg_loss)
+                #  dy_param_value = {}
+                #  for param in fluid.default_main_program().global_block(
+                #  ).all_parameters():
+                    #  dy_param_value[param.name] = param._numpy()
 
-            # initialize params and fetch them
-            static_param_init_value = {}
-            static_param_name_list = []
-            for param in fluid.default_startup_program().global_block(
-            ).all_parameters():
-                static_param_name_list.append(param.name)
+        #  with new_program_scope():
+            #  fluid.default_startup_program().random_seed = seed
+            #  fluid.default_main_program().random_seed = seed
 
-            out = exe.run(fluid.default_startup_program(),
-                          fetch_list=static_param_name_list)
+            #  exe = fluid.Executor(fluid.CPUPlace(
+            #  ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            for i in range(len(static_param_name_list)):
-                static_param_init_value[static_param_name_list[i]] = out[i]
+            #  mnist = MNIST()
+            #  sgd = SGDOptimizer(learning_rate=1e-3)
+            #  train_reader = paddle.batch(
+                #  paddle.dataset.mnist.train(), batch_size=128)
 
-            for batch_id, data in enumerate(train_reader()):
-                if batch_id >= batch_num:
-                    break
+            #  img = fluid.layers.data(
+                #  name='pixel', shape=[1, 28, 28], dtype='float32')
+            #  label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            #  cost = mnist(img)
+            #  loss = fluid.layers.cross_entropy(cost, label)
+            #  avg_loss = fluid.layers.mean(loss)
+            #  sgd.minimize(avg_loss)
 
-                static_x_data = np.array(
-                    [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
-                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                    [128, 1])
+            #  # initialize params and fetch them
+            #  static_param_init_value = {}
+            #  static_param_name_list = []
+            #  for param in fluid.default_startup_program().global_block(
+            #  ).all_parameters():
+                #  static_param_name_list.append(param.name)
 
-                fetch_list = [avg_loss.name]
-                fetch_list.extend(static_param_name_list)
-                out = exe.run(fluid.default_main_program(),
-                              feed={"pixel": static_x_data,
-                                    "label": y_data},
-                              fetch_list=fetch_list)
+            #  out = exe.run(fluid.default_startup_program(),
+                          #  fetch_list=static_param_name_list)
 
-                static_param_value = {}
-                static_out = out[0]
-                for i in range(1, len(out)):
-                    static_param_value[static_param_name_list[i - 1]] = out[i]
+            #  for i in range(len(static_param_name_list)):
+                #  static_param_init_value[static_param_name_list[i]] = out[i]
 
-        for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
+            #  for batch_id, data in enumerate(train_reader()):
+                #  if batch_id >= batch_num:
+                    #  break
 
-        self.assertTrue(np.allclose(static_out, dy_out))
+                #  static_x_data = np.array(
+                    #  [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
+                #  y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                    #  [128, 1])
 
-        for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key]))
+                #  fetch_list = [avg_loss.name]
+                #  fetch_list.extend(static_param_name_list)
+                #  out = exe.run(fluid.default_main_program(),
+                              #  feed={"pixel": static_x_data,
+                                    #  "label": y_data},
+                              #  fetch_list=fetch_list)
+
+                #  static_param_value = {}
+                #  static_out = out[0]
+                #  for i in range(1, len(out)):
+                    #  static_param_value[static_param_name_list[i - 1]] = out[i]
+
+        #  for key, value in six.iteritems(static_param_init_value):
+            #  self.assertTrue(np.allclose(value, dy_param_init_value[key]))
+
+        #  self.assertTrue(np.allclose(static_out, dy_out))
+
+        #  for key, value in six.iteritems(static_param_value):
+            #  self.assertTrue(np.allclose(value, dy_param_value[key]))
 
 
 if __name__ == '__main__':
