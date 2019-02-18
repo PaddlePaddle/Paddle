@@ -53,7 +53,6 @@ void EmbSeqPoolJitCode::genCode() {
     xor_(reg_idx_w_i_in_byte, reg_idx_w_i_in_byte);
     mov(reg_ptr_dst_i, reg_ptr_param_dst);
     add(reg_ptr_dst_i, acc_num_regs * block_size);
-    add(param_tbl, acc_num_regs * block_size);
 
     L(l_next_idx_w);
     {
@@ -113,8 +112,10 @@ void EmbSeqPoolJitCode::genCode() {
       cmp(reg_idx_w_i_in_byte, reg_idx_width_in_byte);
       jl(l_next_idx_w, T_NEAR);
     }  // end of idx w
+
     acc_num_regs += num_regs;
-  }  // end of groups
+    add(param_tbl, num_regs * block_size);  // do not use acc_num_regs
+  }                                         // end of groups
   postCode();
 }
 

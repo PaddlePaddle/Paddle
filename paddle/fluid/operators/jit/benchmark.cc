@@ -312,7 +312,7 @@ void BenchEmbSeqPoolKernel() {
     const T* table_data = table.data<T>();
     for (auto type : pool_types) {
       for (int idx_w : {1, 2, 10, 16}) {
-        for (int idx_h : {1, 2, 10, 16}) {
+        for (int idx_h : {1, 2, 9, 13, 16}) {
           int64_t out_w = tbl_w * idx_w;
           jit::emb_seq_pool_attr_t attr(tbl_h, tbl_w, idx_h, idx_w, out_w,
                                         type);
