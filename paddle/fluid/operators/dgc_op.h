@@ -46,6 +46,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto v = ctx.Input<framework::Tensor>("V");
     auto g = ctx.Input<framework::Tensor>("Grad");
     float m = ctx.Attr<float>("m");
+    bool use_nesterov = ctx.Attr<bool>("use_nesterov");
 
     auto current_step_tensor = ctx.Input<framework::Tensor>("current_step");
     auto rampup_step_tensor = ctx.Input<framework::Tensor>("rampup_step");
@@ -67,17 +68,29 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto encode_grad_out = ctx.Output<framework::Tensor>("EncodeGrad");
 
     // FIXME(gognwb): use cublas.
-    // u = m * u + g
     auto u_out_e = framework::EigenVector<T>::Flatten(*u_out);
     auto u_e = framework::EigenVector<T>::Flatten(*u);
     auto g_e = framework::EigenVector<T>::Flatten(*g);
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto& eigen_ctx = *dev_ctx.eigen_device();
-    u_out_e.device(eigen_ctx) = m * u_e + g_e;
+    if(use_nesterov){
+        // u = m * (u + g)
+        u_out_e.device(eigen_ctx) = m * (u_e + g_e);
 
-    // v = u + v
-    ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-        ctx, u, v, 0, AddFunctor<T>(), v_out);
+        // v = u + v + g
+        ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
+                ctx, u, v, 0, AddFunctor<T>(), v_out);
+
+        ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
+                ctx, g, v, 0, AddFunctor<T>(), v_out);
+    }else{
+        // u = m * u + g
+        u_out_e.device(eigen_ctx) = m * u_e + g_e;
+
+        // v = u + v
+        ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
+                ctx, u, v, 0, AddFunctor<T>(), v_out);
+    }
 
     T* v_out_data = v_out->mutable_data<T>(ctx.GetPlace());
     T* u_out_data = u_out->mutable_data<T>(ctx.GetPlace());

@@ -118,6 +118,12 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
                    "The momentum of learning rate.")
         .SetDefault(0.9);
 
+    AddAttr<bool>("use_nesterov",
+                   "(bool, true)"
+                   "The momentum of learning rate.")
+        .SetDefault(true);
+
+
     AddComment(R"DOC(
     Please see appendix D of https://arxiv.org/abs/1712.01887.pdf
 )DOC");
