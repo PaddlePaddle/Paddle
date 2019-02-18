@@ -47,12 +47,26 @@ template <typename DeviceContext, typename T>
 class MatMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+    using framework::Tensor;
     auto &x =
-        detail::Ref(context.Input<framework::Tensor>("X"), "Cannot find X");
+        detail::Ref(context.Input<Tensor>("X"), "Cannot find X");
     auto &y =
-        detail::Ref(context.Input<framework::Tensor>("Y"), "Cannot find Y");
+        detail::Ref(context.Input<Tensor>("Y"), "Cannot find Y");
     auto *out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
+
+    T beta;
+    if(context.HasInput("Bias")) {
+      auto* bias = context.Input<Tensor>("Bias");
+      out->ShareDataWith(*bias);
+      beta = T(1.0);
+    } else {
+      out->mutable_data<T>(context.GetPlace());
+      beta = T(0);
+    }
+
+    int LDX = context.Attr<int>("LDX");
+    int LDY = context.Attr<int>("LDY");
+    int LDOut = context.Attr<int>("LDOut");
 
     auto blas = math::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = math::CreateMatrixDescriptor(
@@ -60,7 +74,12 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto mat_dim_b = math::CreateMatrixDescriptor(
         ColumnMatrixFromVector(y.dims()), 0, context.Attr<bool>("transpose_Y"));
     auto scale = static_cast<T>(context.Attr<float>("alpha"));
-    blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+    if(LDX == LDY && LDY == LDOut && LDOut == 0) {
+      blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, beta);
+    } else {
+      blas.MatMul(x, mat_dim_a, LDX, y, mat_dim_b, LDY, scale, out, LDOut,
+                  beta);
+    }
   }
 };
 
@@ -327,6 +346,7 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The first input of MatMul op");
     AddInput("Y", "The second input of MatMul op");
+    AddInput("Bias", "The bias input of MatMul op").AsDispensable();
     AddOutput("Out", "The output of MatMul op");
     AddAttr<bool>("transpose_X",
                   R"DOC(If true, use the transpose of `X`.
@@ -337,6 +357,9 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(false);
     AddAttr<float>("alpha", "The scale of Out").SetDefault(1.0f);
+    AddAttr<int>("LDX", "The leading dimension of X").SetDefault(0);
+    AddAttr<int>("LDY", "The leading dimension of Y").SetDefault(0);
+    AddAttr<int>("LDOut", "The leading dimension of Output").SetDefault(0);
     AddComment(R"DOC(
 MatMul Operator.
 

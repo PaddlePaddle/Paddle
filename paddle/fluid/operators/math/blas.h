@@ -177,9 +177,20 @@ class Blas {
                    int batchCount, int64_t strideA, int64_t strideB) const;
 
   template <typename T>
+  void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
+                   int K, T alpha, const T *A, int lda, const T *B, int ldb,
+                   T beta, T *C, int ldc, int batchCount, int64_t strideA,
+                   int64_t strideB) const;
+
+  template <typename T>
   void MatMul(const framework::Tensor& mat_a, const MatDescriptor& dim_a,
               const framework::Tensor& mat_b, const MatDescriptor& dim_b,
               T alpha, framework::Tensor* mat_out, T beta) const;
+
+  template <typename T>
+  void MatMul(const framework::Tensor& mat_a, const MatDescriptor& dim_a, int lda,
+              const framework::Tensor& mat_b, const MatDescriptor& dim_b, int ldb,
+              T alpha, framework::Tensor* mat_out, int ldc, T beta) const;
 
   template <typename T>
   void VINV(int n, const T* a, T* y) const;
