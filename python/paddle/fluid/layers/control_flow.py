@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-import contextlib
+from ..wrapped_decorator import signature_safe_contextmanager
 
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import assign, fill_constant
@@ -1532,7 +1532,7 @@ class DynamicRNN(object):
             outputs={'Out': [x_reordered]})
         return shrink_memory(x_reordered, self.step_idx, self.lod_rank_table)
 
-    @contextlib.contextmanager
+    @signature_safe_contextmanager
     def block(self):
         """
         The block for user to define operators in RNN. See the class docstring
