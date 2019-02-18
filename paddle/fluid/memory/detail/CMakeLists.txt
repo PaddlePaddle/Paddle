@@ -9,3 +9,7 @@ endif(${WITH_GPU})
 cc_test(system_allocator_test SRCS system_allocator_test.cc DEPS system_allocator)
 
 cc_library(buddy_allocator SRCS buddy_allocator.cc DEPS memory_block system_allocator glog)
+
+cc_library(bud_allocator SRCS bud_allocator.cc DEPS system_allocator glog)
+
+cc_test(bud_allocator_test SRCS bud_allocator_test.cc DEPS bud_allocator system_allocator)
