@@ -48,7 +48,6 @@ class MemoryOptimizePass : public ir::Pass {
   void RenameVarInGraphNode(const std::string& var,
                             const std::string& cache_var, size_t idx,
                             ir::Graph* graph) const;
-  void ClearControlDepVars(ir::Graph* graph) const;
 
   void SubGraphOptimize(OpDesc* op_desc) const;
   // 1. scan op with subblock and collect the output/input vars.
