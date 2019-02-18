@@ -18,6 +18,7 @@ limitations under the License. */
 #include <atomic>
 #include <string>
 #include <tuple>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -94,11 +95,12 @@ class RuntimeContext {
 
   RuntimeContext(const VariableValueMap& invars,
                  const VariableValueMap& outvars)
-      : inputs(invars), outputs(outvars) {}
+    : inputs(invars), outputs(outvars), scope_(nullptr) {}
   virtual ~RuntimeContext();
 
   VariableValueMap inputs;
   VariableValueMap outputs;
+  const Scope* scope_;
 
   DISABLE_COPY_AND_ASSIGN(RuntimeContext);
 };

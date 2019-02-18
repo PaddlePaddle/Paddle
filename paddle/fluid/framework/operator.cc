@@ -145,7 +145,7 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 
 RuntimeContext::RuntimeContext(const VariableNameMap& innames,
                                const VariableNameMap& outnames,
-                               const Scope& scope) {
+                               const Scope& scope) : scope_(&scope) {
   using NamedPair = std::pair<std::string, std::vector<std::string>>;
   auto find_var_and_increase_ref_count = [&](const NamedPair& name,
                                              VariableValueMap& values) {
@@ -163,19 +163,23 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
   std::for_each(innames.begin(), innames.end(), [&](const NamedPair& name) {
     find_var_and_increase_ref_count(name, inputs);
   });
-  std::for_each(innames.begin(), innames.end(), [&](const NamedPair& name) {
+  std::for_each(outnames.begin(), outnames.end(), [&](const NamedPair& name) {
     find_var_and_increase_ref_count(name, outputs);
   });
 }
 
-~RuntimeContext::RuntimeContext() {
+RuntimeContext::~RuntimeContext() {
   auto decrease_ref_count = [&](const std::string& name) {
-    scope.FindVarRemoveRef(name);
+    scope_->FindVarRemoveRef(name);
   };
 
   if (FLAGS_reference_count) {
-    std::for_each(input_vars.begin(), input_vars.end(), decrease_ref_count);
-    std::for_each(output_vars.begin(), output_vars.end(), decrease_ref_count);
+    std::for_each(inputs.begin(), inputs.end(), [&](const std::pair<std::string, std::vector<Variable*>>& val){
+        decrease_ref_count(val.first);
+      });
+    std::for_each(outputs.begin(), outputs.end(), [&](const std::pair<std::string, std::vector<Variable*>>& val){
+        decrease_ref_count(val.first);
+      });
   }
 }
 
@@ -202,7 +206,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       RunImpl(scope, place);
     } else {
       if (FLAGS_reference_count) {
-        OperatorBase::runtime_ctx_->reset(
+        OperatorBase::runtime_ctx_.reset(
             new RuntimeContext(Inputs(), Outputs(), scope));
         RunImpl(scope, place);
       } else {
@@ -933,7 +937,7 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
-  auto& ctx = *OpKernelBase::runtime_ctx_;
+  auto& ctx = *OperatorBase::runtime_ctx_;
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
