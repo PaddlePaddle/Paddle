@@ -305,21 +305,11 @@ ParallelExecutor::ParallelExecutor(
 
   if (build_strategy.enable_parallel_graph_) {
 #ifdef PADDLE_WITH_CUDA
-    auto parallel_graph =
-        details::SeparateMultiDevicesGraph(member_->places_, std::move(graph));
-    auto seq_allreduce_pass =
-        ir::PassRegistry::Instance().Get("all_reduce_deps_pass");
-    seq_allreduce_pass->Erase(details::kAllOpDescs);
-    seq_allreduce_pass->Set<const std::vector<OpDesc *>>(
-        details::kAllOpDescs,
-        new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
-    for (size_t i = 0; i < parallel_graph.size(); ++i) {
-      parallel_graph[i] =
-          seq_allreduce_pass->Apply(std::move(parallel_graph[i]));
-    }
+    // TODO(Yancey1989): Remove passing in the main_program when
+    // allreduce_seq_pass doesn't need it as the attr.
     member_->executor_.reset(new details::ParallelSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, member_->places_,
-        std::move(parallel_graph)));
+        exec_strategy, member_->local_scopes_, member_->places_, main_program,
+        std::move(graph)));
 #else
     PADDLE_THROW(
         "Paddle should be compiled with CUDA for ParallelGraph Execution.");

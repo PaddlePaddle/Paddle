@@ -26,6 +26,11 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+namespace details {
+constexpr char kAllOpDescs[] = "all_op_descs";
+}  //  namespace details
+
 namespace ir {
 
 /*

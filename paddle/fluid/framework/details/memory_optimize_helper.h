@@ -29,8 +29,6 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-constexpr char kAllOpDescs[] = "all_op_descs";
-
 std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph);
 
 // NOTE(dzh): A ordered set for node reuse in memory optimize.
