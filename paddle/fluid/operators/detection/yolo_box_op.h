@@ -32,12 +32,15 @@ static inline T sigmoid(T x) {
 template <typename T>
 static inline Box<T> GetYoloBox(const T* x, std::vector<int> anchors, int i,
                                 int j, int an_idx, int grid_size,
-                                int input_size, int index, int stride) {
+                                int input_size, int index, int stride,
+                                int img_height, int img_width) {
   Box<T> b;
-  b.x = (i + sigmoid<T>(x[index])) * input_size / grid_size;
-  b.y = (j + sigmoid<T>(x[index + stride])) * input_size / grid_size;
-  b.w = std::exp(x[index + 2 * stride]) * anchors[2 * an_idx];
-  b.h = std::exp(x[index + 3 * stride]) * anchors[2 * an_idx + 1];
+  b.x = (i + sigmoid<T>(x[index])) * img_width / grid_size;
+  b.y = (j + sigmoid<T>(x[index + stride])) * img_height / grid_size;
+  b.w = std::exp(x[index + 2 * stride]) * anchors[2 * an_idx] * img_width /
+        input_size;
+  b.h = std::exp(x[index + 3 * stride]) * anchors[2 * an_idx + 1] * img_height /
+        input_size;
   return b;
 }
 
@@ -69,6 +72,7 @@ class YoloBoxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("X");
+    auto* imgsize = ctx.Input<Tensor>("ImgSize");
     auto* boxes = ctx.Output<Tensor>("Boxes");
     auto* scores = ctx.Output<Tensor>("Scores");
     auto anchors = ctx.Attr<std::vector<int>>("anchors");
@@ -87,6 +91,7 @@ class YoloBoxKernel : public framework::OpKernel<T> {
     const int an_stride = (class_num + 5) * stride;
 
     const T* input_data = input->data<T>();
+    const int* imgsize_data = imgsize->data<int>();
     T* boxes_data = boxes->mutable_data<T>({n, box_num, 4}, ctx.GetPlace());
     memset(boxes_data, 0, boxes->numel() * sizeof(T));
     T* scores_data =
@@ -94,6 +99,9 @@ class YoloBoxKernel : public framework::OpKernel<T> {
     memset(scores_data, 0, scores->numel() * sizeof(T));
 
     for (int i = 0; i < n; i++) {
+      int img_height = imgsize_data[2 * i];
+      int img_width = imgsize_data[2 * i + 1];
+
       for (int j = 0; j < an_num; j++) {
         for (int k = 0; k < h; k++) {
           for (int l = 0; l < w; l++) {
@@ -106,8 +114,9 @@ class YoloBoxKernel : public framework::OpKernel<T> {
 
             int box_idx =
                 GetEntryIndex(i, j, k * w + l, an_num, an_stride, stride, 0);
-            Box<T> pred = GetYoloBox(input_data, anchors, l, k, j, h,
-                                     input_size, box_idx, stride);
+            Box<T> pred =
+                GetYoloBox(input_data, anchors, l, k, j, h, input_size, box_idx,
+                           stride, img_height, img_width);
             box_idx = (i * box_num + j * stride + k * w + l) * 4;
             CalcDetectionBox<T>(boxes_data, pred, box_idx);
 
