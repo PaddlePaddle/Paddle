@@ -291,7 +291,9 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
         continue;
       }
     }
+    VLOG(3) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(std::move(graph));
+    VLOG(3) << "Finish Apply Pass " << pass->Type();
   }
   return graph;
 }

@@ -2930,6 +2930,7 @@ def batch_norm(input,
             "momentum": momentum,
             "epsilon": epsilon,
             "is_test": is_test,
+            "data_layout": data_layout,
             "use_mkldnn": False,
             "fuse_with_relu": fuse_with_relu,
             "use_global_stats": use_global_stats
@@ -3235,7 +3236,7 @@ def group_norm(input,
     # create output
     mean_out = helper.create_variable(dtype=dtype, stop_gradient=True)
     variance_out = helper.create_variable(dtype=dtype, stop_gradient=True)
-    group_norm_out = helper.create_variable(dtype)
+    group_norm_out = helper.create_variable(dtype=dtype)
 
     helper.append_op(
         type="group_norm",
@@ -5935,13 +5936,10 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                                 than :attr:`shape`.
         act (str): The non-linear activation to be applied to the reshaped tensor
                    variable.
-        inplace(bool): Must use :attr:`False` if :attr:`x` is used in multiple
-                       operators. If this flag is set :attr:`True`, reuse input
-                       :attr:`x` to reshape, which will change the shape of
-                       tensor variable :attr:`x` and might cause errors when
-                       :attr:`x` is used in multiple operators. If :attr:`False`,
-                       preserve the shape :attr:`x` and create a new output tensor
-                       variable whose data is copied from input x but reshaped.
+        inplace(bool): If ``inplace`` is `True`, the input and output of ``layers.reshape``
+                       are the same variable, otherwise, the input and output of
+                       ``layers.reshape`` are different variables. Note that if :attr:`x`
+                       is more than one layer's input, ``inplace`` must be :attr:`False`.
         name (str): The name of this layer. It is optional.
 
     Returns:
@@ -8333,6 +8331,46 @@ def stack(x, axis=0):
     :math:`[d_0, d_1, ..., d_{axis}=len(x), ..., d_{n-1}]`.
     If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x[0])+1`.
     If :code:`axis` is None, it would be replaced with 0.
+
+    For Example:
+
+    .. code-block:: text
+
+        Case 1:
+          Input:
+            x[0].data = [ [1.0 , 2.0 ] ]
+            x[0].dims = [1, 2]
+            x[1].data = [ [3.0 , 4.0 ] ]
+            x[1].dims = [1, 2]
+            x[2].data = [ [5.0 , 6.0 ] ]
+            x[2].dims = [1, 2]
+
+          Attrs:
+            axis = 0
+
+          Output:
+            Out.data =[ [ [1.0, 2.0] ],
+                        [ [3.0, 4.0] ],
+                        [ [5.0, 6.0] ] ]
+            Out.dims = [3, 1, 2]
+
+        Case 2:
+          Given
+            x[0].data = [ [1.0 , 2.0 ] ]
+            x[0].dims = [1, 2]
+            x[1].data = [ [3.0 , 4.0 ] ]
+            x[1].dims = [1, 2]
+            x[2].data = [ [5.0 , 6.0 ] ]
+            x[2].dims = [1, 2]
+
+          Attrs:
+            axis = 1 or axis = -2
+
+          Output:
+            Out.data =[ [ [1.0, 2.0]
+                          [3.0, 4.0]
+                          [5.0, 6.0] ] ]
+            Out.dims = [1, 3, 2]
 
     Args:
         x (Variable|list(Variable)|tuple(Variable)): Input variables.

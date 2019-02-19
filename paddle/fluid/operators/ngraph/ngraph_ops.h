@@ -22,8 +22,11 @@ limitations under the License. */
 #pragma once
 
 #include "ops/accuracy_op.h"
+#include "ops/activation_op.h"
+#include "ops/batch_norm_op.h"
 #include "ops/binary_unary_op.h"
 #include "ops/conv2d_op.h"
+#include "ops/cross_entropy_op.h"
 #include "ops/elementwise_add_op.h"
 #include "ops/fill_constant_op.h"
 #include "ops/mean_op.h"
@@ -31,4 +34,5 @@ limitations under the License. */
 #include "ops/pool2d_op.h"
 #include "ops/scale_op.h"
 #include "ops/softmax_op.h"
+#include "ops/sum_op.h"
 #include "ops/top_k_op.h"
