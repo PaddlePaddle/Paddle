@@ -20,15 +20,44 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-static __global__ void GenDensityPriorBox(
-    const int height, const int width, const int im_height, const int im_width,
-    const T offset, const T step_width, const T step_height,
-    const int num_priors, const T* ratios_shift, bool is_clip, const T var_xmin,
-    const T var_ymin, const T var_xmax, const T var_ymax, T* out, T* var) {
-  int gidx = blockIdx.x * blockDim.x + threadIdx.x;
-  int gidy = blockIdx.y * blockDim.y + threadIdx.y;
-  int step_x = blockDim.x * gridDim.x;
-  int step_y = blockDim.y * gridDim.y;
+__global__ void KeYoloBoxFw(const T* input, const int* imgsize, T* boxes,
+                            T* scores, const float conf_thresh,
+                            std::vector<int> anchors, const int h, const in w,
+                            const int an_num, const int class_num,
+                            const int box_num, const int input_size) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  for (; tid < box_num; tid += stride) {
+    int grid_num = h * w;
+    int i = tid / box_num;
+    int j = (tid % box_num) / grid_num;
+    int k = (tid % grid_num) / w;
+    int l = tid % w;
+
+    int an_stride = an_num * grid_num;
+    int img_height = imgsize[2 * i];
+    int img_width = imgsize[2 * i + 1];
+
+    int obj_idx =
+        GetEntryIndex(i, j, k * w + l, an_num, an_stride, grid_num, 4);
+    T conf = sigmoid<T>(input[obj_idx]);
+    if (conf < conf_thresh) {
+      continue;
+    }
+
+    int box_idx =
+        GetEntryIndex(i, j, k * w + l, an_num, an_stride, grid_num, 0);
+    Box<T> pred = GetYoloBox<T>(input, anchors, l, k, j, h, input_size, box_idx,
+                                grid_num, img_height, img_width);
+    box_idx = (i * box_num + j * grid_num + k * w + l) * 4;
+    CalcDetectionBox<T>(boxes, pred, box_idx);
+
+    int label_idx =
+        GetEntryIndex(i, j, k * w + l, an_num, an_stride, grid_num, 5);
+    int score_idx = (i * box_num + j * stride + k * w + l) * class_num;
+    CalcLabelScore<T>(scores, input, label_idx, score_idx, class_num, conf,
+                      grid_num);
+  }
 }
 
 template <typename T>
@@ -36,6 +65,7 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("Input");
+    auto* img_size = ctx.Input<Tensor>("ImgSize");
     auto* boxes = ctx.Output<Tensor>("Boxes");
     auto* scores = ctx.Output<Tensor>("Scores");
 
@@ -51,14 +81,16 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     const int an_num = anchors.size() / 2;
     int input_size = downsample_ratio * h;
 
-    const int stride = h * w;
-    const int an_stride = (class_num + 5) * stride;
-
     const T* input_data = input->data<T>();
-    T* boxes_data = boxes->mutable_data<T>({n}, ctx.GetPlace());
-    memset(loss_data, 0, boxes->numel() * sizeof(T));
-    T* scores_data = scores->mutable_data<T>({n}, ctx.GetPlace());
+    const int* imgsize_data = imgsize->data<int>();
+    T* boxes_data = boxes->mutable_data<T>({n, box_num, 4}, ctx.GetPlace());
+    memset(boxes_data, 0, boxes->numel() * sizeof(T));
+    T* scores_data =
+        scores->mutable_data<T>({n, box_num, class_num}, ctx.GetPlace());
     memset(scores_data, 0, scores->numel() * sizeof(T));
+
+    int grid_dim = (n * box_num + 512 - 1) / 512;
+    grid_dim = grid_dim > 8 ? 8 : grid_dim;
   }
 };  // namespace operators
 

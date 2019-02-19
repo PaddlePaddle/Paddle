@@ -30,10 +30,10 @@ static inline T sigmoid(T x) {
 }
 
 template <typename T>
-static inline Box<T> GetYoloBox(const T* x, std::vector<int> anchors, int i,
-                                int j, int an_idx, int grid_size,
-                                int input_size, int index, int stride,
-                                int img_height, int img_width) {
+HOSTDEVICE inline Box<T> GetYoloBox(const T* x, std::vector<int> anchors, int i,
+                                    int j, int an_idx, int grid_size,
+                                    int input_size, int index, int stride,
+                                    int img_height, int img_width) {
   Box<T> b;
   b.x = (i + sigmoid<T>(x[index])) * img_width / grid_size;
   b.y = (j + sigmoid<T>(x[index + stride])) * img_height / grid_size;
@@ -44,13 +44,15 @@ static inline Box<T> GetYoloBox(const T* x, std::vector<int> anchors, int i,
   return b;
 }
 
-static inline int GetEntryIndex(int batch, int an_idx, int hw_idx, int an_num,
-                                int an_stride, int stride, int entry) {
+HOSTDEVICE inline int GetEntryIndex(int batch, int an_idx, int hw_idx,
+                                    int an_num, int an_stride, int stride,
+                                    int entry) {
   return (batch * an_num + an_idx) * an_stride + entry * stride + hw_idx;
 }
 
 template <typename T>
-static inline void CalcDetectionBox(T* boxes, Box<T> pred, const int box_idx) {
+HOSTDEVICE inline void CalcDetectionBox(T* boxes, Box<T> pred,
+                                        const int box_idx) {
   boxes[box_idx] = pred.x - pred.w / 2;
   boxes[box_idx + 1] = pred.y - pred.h / 2;
   boxes[box_idx + 2] = pred.x + pred.w / 2;
@@ -58,10 +60,10 @@ static inline void CalcDetectionBox(T* boxes, Box<T> pred, const int box_idx) {
 }
 
 template <typename T>
-static inline void CalcLabelScore(T* scores, const T* input,
-                                  const int label_idx, const int score_idx,
-                                  const int class_num, const T conf,
-                                  const int stride) {
+HOSTDEVICE inline void CalcLabelScore(T* scores, const T* input,
+                                      const int label_idx, const int score_idx,
+                                      const int class_num, const T conf,
+                                      const int stride) {
   for (int i = 0; i < class_num; i++) {
     scores[score_idx + i] = conf * sigmoid<T>(input[label_idx + i * stride]);
   }
@@ -115,8 +117,8 @@ class YoloBoxKernel : public framework::OpKernel<T> {
             int box_idx =
                 GetEntryIndex(i, j, k * w + l, an_num, an_stride, stride, 0);
             Box<T> pred =
-                GetYoloBox(input_data, anchors, l, k, j, h, input_size, box_idx,
-                           stride, img_height, img_width);
+                GetYoloBox<T>(input_data, anchors, l, k, j, h, input_size,
+                              box_idx, stride, img_height, img_width);
             box_idx = (i * box_num + j * stride + k * w + l) * 4;
             CalcDetectionBox<T>(boxes_data, pred, box_idx);
 
