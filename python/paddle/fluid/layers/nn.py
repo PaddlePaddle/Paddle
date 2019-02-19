@@ -5054,7 +5054,7 @@ def nce(input,
         sampler="uniform",
         custom_dist=None,
         seed=0,
-        is_sparse=False):
+        is_sparse=True):
     """
     ${comment}
 
@@ -5263,7 +5263,7 @@ def hsigmoid(input,
              path_table=None,
              path_code=None,
              is_custom=False,
-             is_sparse=False):
+             is_sparse=True):
     """
     The hierarchical sigmoid operator is used to accelerate the training
     process of language model. This operator organizes the classes into a

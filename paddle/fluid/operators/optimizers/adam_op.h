@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 #include <math.h>  // for sqrt in CPU and CUDA
 #include <Eigen/Dense>
-#include <cstdint>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
@@ -83,11 +82,8 @@ struct AdamFunctor<T, GPUAdam> {
     // Calculation
     lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
 
-    mom1 = beta1_ * mom1 < FLT_MIN ? (1 - beta1_) * g
-                                   : beta1_ * mom1 + (1 - beta1_) * g;
-    mom2 = beta2_ * mom2 < FLT_MIN ? (1 - beta2_) * g * g
-                                   : beta2_ * mom2 + (1 - beta2_) * g * g;
-
+    mom1 = beta1_ * mom1 + (1 - beta1_) * g;
+    mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
     p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
 
     // Write back to global memory
@@ -132,34 +128,33 @@ struct AdamFunctor<T, CPUAdam> {
         param_(param),
         param_out_(param_out) {}
 
-  inline HOSTDEVICE void adam_update(size_t i, T g) const {
-    // The following code is the same as dense
-    T mom1 = moment1_[i];
-    T mom2 = moment2_[i];
+  void operator()(size_t numel) const {
+    Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> g{
+        grad_, static_cast<Eigen::Index>(numel)};
+    Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> mom1{
+        moment1_, static_cast<Eigen::Index>(numel)};
+    Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> mom2{
+        moment2_, static_cast<Eigen::Index>(numel)};
+    Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> param{
+        param_, static_cast<Eigen::Index>(numel)};
+
+    Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> param_out{
+        param_out_, static_cast<Eigen::Index>(numel)};
+    Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> moment1_out{
+        moment1_out_, static_cast<Eigen::Index>(numel)};
+    Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> moment2_out{
+        moment2_out_, static_cast<Eigen::Index>(numel)};
+
     T lr = *lr_;
     T beta1_pow = *beta1_pow_;
     T beta2_pow = *beta2_pow_;
-    T p = param_[i];
 
     // Calculation
     lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
 
-    mom1 = beta1_ * mom1 < FLT_MIN ? (1 - beta1_) * g
-                                   : beta1_ * mom1 + (1 - beta1_) * g;
-    mom2 = beta2_ * mom2 < FLT_MIN ? (1 - beta2_) * g * g
-                                   : beta2_ * mom2 + (1 - beta2_) * g * g;
-
-    p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
-
-    // Write back to global memory
-    moment1_out_[i] = mom1;
-    moment2_out_[i] = mom2;
-    param_out_[i] = p;
-  }
-
-  inline HOSTDEVICE void operator()(size_t i) const {
-    T g = grad_[i];
-    adam_update(i, g);
+    moment1_out = beta1_ * mom1 + (1 - beta1_) * g;
+    moment2_out = beta2_ * mom2 + (1 - beta2_) * g * g;
+    param_out = param - lr * (moment1_out / (moment2_out.sqrt() + epsilon_));
   }
 };
 
@@ -223,11 +218,8 @@ struct SparseAdamFunctor<T, GPUAdam> {
     // Calculation
     lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
 
-    mom1 = beta1_ * mom1 < FLT_MIN ? (1 - beta1_) * g
-                                   : beta1_ * mom1 + (1 - beta1_) * g;
-    mom2 = beta2_ * mom2 < FLT_MIN ? (1 - beta2_) * g * g
-                                   : beta2_ * mom2 + (1 - beta2_) * g * g;
-
+    mom1 = beta1_ * mom1 + (1 - beta1_) * g;
+    mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
     p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
 
     // Write back to global memory
@@ -303,11 +295,8 @@ struct SparseAdamFunctor<T, CPUAdam> {
     // Calculation
     lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
 
-    mom1 = beta1_ * mom1 < FLT_MIN ? (1 - beta1_) * g
-                                   : beta1_ * mom1 + (1 - beta1_) * g;
-    mom2 = beta2_ * mom2 < FLT_MIN ? (1 - beta2_) * g * g
-                                   : beta2_ * mom2 + (1 - beta2_) * g * g;
-
+    mom1 = beta1_ * mom1 + (1 - beta1_) * g;
+    mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
     p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
 
     // Write back to global memory
@@ -337,8 +326,8 @@ struct SparseAdamFunctor<T, CPUAdam> {
           T mom2 = moment2_[i * row_numel_ + k];
           T p = param_[i * row_numel_ + k];
 
-          mom1 = beta1_ * mom1 < FLT_MIN ? 0 : beta1_ * mom1;
-          mom2 = beta2_ * mom2 < FLT_MIN ? 0 : beta2_ * mom2;
+          mom1 = beta1_ * mom1;
+          mom2 = beta2_ * mom2;
 
           p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
           // Write back to global memory
@@ -404,11 +393,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
             lr.template data<T>(), grad.template data<T>(),
             param.template data<T>(),
             param_out.template mutable_data<T>(ctx.GetPlace()));
-
-        platform::ForRange<DeviceContext> for_range(
-            static_cast<const DeviceContext&>(ctx.device_context()),
-            param.numel());
-        for_range(functor);
+        functor(param.numel());
       } else if (platform::is_gpu_place(ctx.GetPlace())) {
         AdamFunctor<T, GPUAdam> functor(
             beta1, beta2, epsilon, beta1_pow.template data<T>(),
