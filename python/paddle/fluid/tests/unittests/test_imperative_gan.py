@@ -28,10 +28,10 @@ from paddle.fluid.imperative.base import to_variable
 
 
 class Discriminator(fluid.imperative.Layer):
-    def __init__(self):
-        super(Discriminator, self).__init__()
-        self._fc1 = FC(size=32, act='elu', name="d_fc1")
-        self._fc2 = FC(size=1, name="d_fc2")
+    def __init__(self, name_scope):
+        super(Discriminator, self).__init__(name_scope)
+        self._fc1 = FC(self.full_name(), size=32, act='elu')
+        self._fc2 = FC(self.full_name(), size=1)
 
     def forward(self, inputs):
         x = self._fc1(inputs)
@@ -39,11 +39,11 @@ class Discriminator(fluid.imperative.Layer):
 
 
 class Generator(fluid.imperative.Layer):
-    def __init__(self):
-        super(Generator, self).__init__()
-        self._fc1 = FC(size=64, act='elu', name="g_fc1")
-        self._fc2 = FC(size=64, act='elu', name="g_fc2")
-        self._fc3 = FC(size=1, name="g_fc3")
+    def __init__(self, name_scope):
+        super(Generator, self).__init__(name_scope)
+        self._fc1 = FC(self.full_name(), size=64, act='elu')
+        self._fc2 = FC(self.full_name(), size=64, act='elu')
+        self._fc3 = FC(self.full_name(), size=1)
 
     def forward(self, inputs):
         x = self._fc1(inputs)
@@ -65,8 +65,8 @@ class TestImperativeMnist(unittest.TestCase):
         scope = fluid.core.Scope()
         with new_program_scope(
                 main=discriminate_p, startup=startup, scope=scope):
-            discriminator = Discriminator()
-            generator = Generator()
+            discriminator = Discriminator("d")
+            generator = Generator("g")
 
             img = fluid.layers.data(
                 name="img", shape=[2, 1], append_batch_size=False)
@@ -93,8 +93,8 @@ class TestImperativeMnist(unittest.TestCase):
             sgd.minimize(d_loss)
 
         with new_program_scope(main=generate_p, startup=startup, scope=scope):
-            discriminator = Discriminator()
-            generator = Generator()
+            discriminator = Discriminator("d")
+            generator = Generator("g")
 
             noise = fluid.layers.data(
                 name="noise", shape=[2, 2], append_batch_size=False)
@@ -134,8 +134,8 @@ class TestImperativeMnist(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            discriminator = Discriminator()
-            generator = Generator()
+            discriminator = Discriminator("d")
+            generator = Generator("g")
             sgd = SGDOptimizer(learning_rate=1e-3)
 
             d_real = discriminator(to_variable(np.ones([2, 1], np.float32)))
