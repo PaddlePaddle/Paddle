@@ -13,35 +13,30 @@
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T>
-struct Box {
-  T x, y, w, h;
-};
 
 template <typename T>
-static inline T sigmoid(T x) {
+HOSTDEVICE inline T sigmoid(T x) {
   return 1.0 / (1.0 + std::exp(-x));
 }
 
 template <typename T>
-HOSTDEVICE inline Box<T> GetYoloBox(const T* x, std::vector<int> anchors, int i,
+HOSTDEVICE inline void GetYoloBox(T* box, const T* x, const int* anchors, int i,
                                     int j, int an_idx, int grid_size,
                                     int input_size, int index, int stride,
                                     int img_height, int img_width) {
-  Box<T> b;
-  b.x = (i + sigmoid<T>(x[index])) * img_width / grid_size;
-  b.y = (j + sigmoid<T>(x[index + stride])) * img_height / grid_size;
-  b.w = std::exp(x[index + 2 * stride]) * anchors[2 * an_idx] * img_width /
+  box[0] = (i + sigmoid<T>(x[index])) * img_width / grid_size;
+  box[1] = (j + sigmoid<T>(x[index + stride])) * img_height / grid_size;
+  box[2] = std::exp(x[index + 2 * stride]) * anchors[2 * an_idx] * img_width /
         input_size;
-  b.h = std::exp(x[index + 3 * stride]) * anchors[2 * an_idx + 1] * img_height /
+  box[3] = std::exp(x[index + 3 * stride]) * anchors[2 * an_idx + 1] * img_height /
         input_size;
-  return b;
 }
 
 HOSTDEVICE inline int GetEntryIndex(int batch, int an_idx, int hw_idx,
@@ -51,12 +46,12 @@ HOSTDEVICE inline int GetEntryIndex(int batch, int an_idx, int hw_idx,
 }
 
 template <typename T>
-HOSTDEVICE inline void CalcDetectionBox(T* boxes, Box<T> pred,
+HOSTDEVICE inline void CalcDetectionBox(T* boxes, T* box,
                                         const int box_idx) {
-  boxes[box_idx] = pred.x - pred.w / 2;
-  boxes[box_idx + 1] = pred.y - pred.h / 2;
-  boxes[box_idx + 2] = pred.x + pred.w / 2;
-  boxes[box_idx + 3] = pred.y + pred.h / 2;
+  boxes[box_idx] = box[0] - box[2] / 2;
+  boxes[box_idx + 1] = box[1] - box[3] / 2;
+  boxes[box_idx + 2] = box[0] + box[2] / 2;
+  boxes[box_idx + 3] = box[1] + box[3] / 2;
 }
 
 template <typename T>
@@ -92,6 +87,9 @@ class YoloBoxKernel : public framework::OpKernel<T> {
     const int stride = h * w;
     const int an_stride = (class_num + 5) * stride;
 
+    int anchors_[anchors.size()];
+    std::copy(anchors.begin(), anchors.end(), anchors_);
+
     const T* input_data = input->data<T>();
     const int* imgsize_data = imgsize->data<int>();
     T* boxes_data = boxes->mutable_data<T>({n, box_num, 4}, ctx.GetPlace());
@@ -100,6 +98,7 @@ class YoloBoxKernel : public framework::OpKernel<T> {
         scores->mutable_data<T>({n, box_num, class_num}, ctx.GetPlace());
     memset(scores_data, 0, scores->numel() * sizeof(T));
 
+    T box[4];
     for (int i = 0; i < n; i++) {
       int img_height = imgsize_data[2 * i];
       int img_width = imgsize_data[2 * i + 1];
@@ -116,11 +115,10 @@ class YoloBoxKernel : public framework::OpKernel<T> {
 
             int box_idx =
                 GetEntryIndex(i, j, k * w + l, an_num, an_stride, stride, 0);
-            Box<T> pred =
-                GetYoloBox<T>(input_data, anchors, l, k, j, h, input_size,
-                              box_idx, stride, img_height, img_width);
+	    GetYoloBox<T>(box, input_data, anchors_, l, k, j, h, input_size,
+		          box_idx, stride, img_height, img_width);
             box_idx = (i * box_num + j * stride + k * w + l) * 4;
-            CalcDetectionBox<T>(boxes_data, pred, box_idx);
+            CalcDetectionBox<T>(boxes_data, box, box_idx);
 
             int label_idx =
                 GetEntryIndex(i, j, k * w + l, an_num, an_stride, stride, 5);

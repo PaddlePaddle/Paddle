@@ -93,16 +93,17 @@ class TestYoloBoxOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+	place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3)
 
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
         an_num = int(len(self.anchors) // 2)
-        self.batch_size = 3
+        self.batch_size = 1
         self.class_num = 2
         self.conf_thresh = 0.5
         self.downsample = 32
-        self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 5, 5)
+        self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 2, 2)
         self.imgsize_shape = (self.batch_size, 2)
 
 
