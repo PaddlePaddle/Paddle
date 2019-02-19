@@ -8744,18 +8744,17 @@ def slice(input, axes, starts, ends):
     return out
 
 
-@templatedoc()
 def shape(input):
     """
     **Shape Layer**
 
-    Return the shape of the input.
+    Get the shape of the input.
 
     Args:
         input (Variable): The input variable.
 
     Returns:
-        out (Variable): The shape of the input variable.
+        Variable: The shape of the input variable.
 
     Examples:
         .. code-block:: python
