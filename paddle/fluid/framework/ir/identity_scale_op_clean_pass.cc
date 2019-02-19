@@ -38,9 +38,13 @@ std::unique_ptr<ir::Graph> IdentityScaleOpCleanPass::ApplyImpl(
                       ->assert_is_op("scale")
                       ->assert_op_attr<float>("scale", 1.)
                       ->assert_op_attr<float>("bias", 0.);
-  auto scale_out = detector.mutable_pattern()
-                       ->NewNode("scale_out")
-                       ->assert_is_op_output("scale");
+  auto scale_out =
+      detector.mutable_pattern()
+          ->NewNode("scale_out")
+          ->assert_is_op_output("scale")
+          // scale's output var should has only one consumer, or it can't be
+          // removed.
+          ->assert_more([](Node* x) { return x->outputs.size() == 1UL; });
 
   pre_op->LinksTo({scale_in});
   scale_op->LinksFrom({scale_in}).LinksTo({scale_out});
