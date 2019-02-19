@@ -32,8 +32,9 @@ ParallelSSAGraphExecutor::SeparateMultiDevicesGraph(
     g->Set(kGraphDepVars, new GraphDepVars);
     g->Set(kGraphOps, new GraphOps);
   }
+  auto op_handles = ir::FilterByNodeWrapper<OpHandleBase>(*graph);
 
-  for (auto &op : graph->Get<GraphOps>(kGraphOps)) {
+  for (auto &op : op_handles) {
     auto &dev_ctx = op->DeviceContext();
     auto &p = dev_ctx.begin()->first;
     int dev_id = boost::get<platform::CUDAPlace>(p).device;
