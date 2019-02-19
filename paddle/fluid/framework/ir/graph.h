@@ -142,7 +142,7 @@ class Graph {
     // TODO(panyx0718): control var name should be really unique.
     const std::string name = string::Sprintf(
         "%s@%llu", static_cast<const char *>(ir::Node::kControlDepVarName),
-        node_set_.size());
+        num_node_created_);
     auto *x = AddNode(new ir::Node(name, ir::Node::Type::kVariable));
     x->SetId(num_node_created_++);
     return x;

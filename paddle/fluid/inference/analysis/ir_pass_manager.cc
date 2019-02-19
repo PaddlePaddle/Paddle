@@ -101,7 +101,7 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
     }
     graph = pass->Apply(std::move(graph));
   }
-  return std::move(graph);
+  return graph;
 }
 
 framework::proto::ProgramDesc IRPassManager::AcquireProgram(
