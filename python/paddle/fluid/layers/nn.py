@@ -5852,8 +5852,8 @@ def sampled_softmax_with_cross_entropy(logits,
         inputs={
             'Logits': logits,
             'Labels': label,
-            'CustomSamples': custom_samples,
-            'CustomProbabilities': custom_probabilities
+            'CustomizedSamples': customized_samples,
+            'CustomizedProbabilities': customized_probabilities
         },
         outputs={
             'Samples': samples,
