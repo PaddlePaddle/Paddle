@@ -15,7 +15,6 @@ cmake .. -DWITH_AVX=OFF \
          -DWITH_GPU=ON \
          -DWITH_TESTING=ON \
          -DWITH_PROFILER=ON \
-         -DWITH_FLUID_ONLY=ON
 make -j `nproc`
 pip install -U "$WHEEL_PATH/$(ls $WHEEL_PATH)"
 
