@@ -22,14 +22,14 @@ using Tensor = framework::Tensor;
 
 template <typename T>
 __global__ void KeYoloBoxFw(const T* input, const int* imgsize, T* boxes,
-                            T* scores, const float conf_thresh,
-                            const int* anchors, const int h, const int w,
+                            T* scores, const float conf_thresh, const int* anchors, 
+			    const int n, const int h, const int w,
                             const int an_num, const int class_num,
                             const int box_num, int input_size) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   T box[4];
-  for (; tid < box_num; tid += stride) {
+  for (; tid < n * box_num; tid += stride) {
     int grid_num = h * w;
     int i = tid / box_num;
     int j = (tid % box_num) / grid_num;
@@ -99,12 +99,12 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     set_zero(dev_ctx, boxes, static_cast<T>(0));
     set_zero(dev_ctx, scores, static_cast<T>(0));
 
-    int grid_dim = (n * box_num + 4 - 1) / 4;
-    grid_dim = grid_dim > 2 ? 2 : grid_dim;
+    int grid_dim = (n * box_num + 512 - 1) / 512;
+    grid_dim = grid_dim > 8 ? 8 : grid_dim;
 
-    KeYoloBoxFw<T><<<grid_dim, 4, 0, ctx.cuda_device_context().stream()>>>(
+    KeYoloBoxFw<T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
 	input_data, imgsize_data, boxes_data, scores_data, conf_thresh, 
-	anchors_data, h, w, an_num, class_num, n * box_num, input_size);	
+	anchors_data, n, h, w, an_num, class_num, box_num, input_size);	
   }
 };
 
