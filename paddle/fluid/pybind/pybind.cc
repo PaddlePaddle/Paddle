@@ -373,7 +373,13 @@ PYBIND11_MODULE(core, m) {
              PADDLE_ENFORCE(CheckLoD(new_lod, vectorize(self.dims()).front()),
                             "the provided lod info is invalid");
              self.set_lod(new_lod);
-           })
+           },
+           py::arg("lod"), R"DOC(
+           Set LoD of the LoDTensor.
+
+           Args:
+               lod (List[List[int]]): the lod to be set.
+           )DOC")
       .def("set_recursive_sequence_lengths",
            [](LoDTensor &self, const std::vector<std::vector<size_t>>
                                    &recursive_sequence_lengths) {
@@ -389,7 +395,17 @@ PYBIND11_MODULE(core, m) {
                  CheckLoD(new_offset_lod, vectorize(self.dims()).front()),
                  "the provided recursive_sequence_lengths info is invalid");
              self.set_lod(new_offset_lod);
-           })
+           },
+           py::arg("recursive_sequence_lengths"), R"DOC(
+           Set LoD of the LoDTensor according to recursive sequence length.
+
+           For example, if recursive_sequence_lengths=[[2, 3]], meaning that
+           there are two sequences with length 2 and 3 respectively, the 
+           corresponding lod would be [[0, 2, 2+3]], i.e, [[0, 2, 5]].  
+
+           Args:
+                recursive_sequence_lengths (List[List[int]]): sequence lengths. 
+           )DOC")
       .def("lod",
            [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
              // output the offset-based lod info
@@ -398,7 +414,13 @@ PYBIND11_MODULE(core, m) {
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
              return new_lod;
-           })
+           },
+           R"DOC(
+           Return the LoD of the LoDTensor.
+
+           Returns:
+               out (List[List[int]]): the lod of the LoDTensor.
+           )DOC")
       // Set above comments of set_lod.
       .def("recursive_sequence_lengths",
            [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
@@ -408,12 +430,25 @@ PYBIND11_MODULE(core, m) {
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
              return new_lod;
-           })
-      .def("has_valid_recursive_sequence_lengths", [](LoDTensor &self) -> bool {
-        // Check that the lod info is valid and match the outermost
-        // dimension of the LoDTensor data
-        return CheckLoD(self.lod(), vectorize(self.dims()).front());
-      });
+           },
+           R"DOC(
+           Return the sequence length of the LoDTensor corresponding to LoD.
+
+           Returns:
+               out (List[List[int]): the sequence lengths. 
+           )DOC")
+      .def("has_valid_recursive_sequence_lengths",
+           [](LoDTensor &self) -> bool {
+             // Check that the lod info is valid and match the outermost
+             // dimension of the LoDTensor data
+             return CheckLoD(self.lod(), vectorize(self.dims()).front());
+           },
+           R"DOC(
+           Check whether the lod of the LoDTensor is valid.
+
+           Returns:
+               out (bool): whether the lod is valid.
+           )DOC");
 
   py::class_<SelectedRows>(m, "SelectedRows")
       .def("__init__",
@@ -549,11 +584,45 @@ All parameter, weight, gradient are variables in Paddle.
            [](Scope &self, const std::string &name) -> Variable * {
              return self.Var(name);
            },
+           py::arg("name"),
+           R"DOC(
+           Find or create variable named :code:`name` in the current scope. 
+
+           If the variable named :code:`name` does not exist in the 
+           current scope, the variable would be created. Otherwise,
+           return the existing variable. 
+
+           Args:
+               name (str): the variable name.  
+          
+           Returns:
+               out (core.Variable): the found or created variable. 
+           )DOC",
            py::return_value_policy::reference)
-      .def("find_var", &Scope::FindVar, py::return_value_policy::reference)
+      .def("find_var", &Scope::FindVar, py::arg("name"),
+           R"DOC(
+           Find variable named :code:`name` in the current scope or 
+           its parent scope. Return None if not found.
+        
+           Args:
+               name (str): the variable name.
+            
+           Returns:
+               out (core.Variable|None): the found variable or None.   
+           )DOC",
+           py::return_value_policy::reference)
       .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
+           R"DOC(
+           Create a new sub-scope of the current scope.
+
+           Returns:
+               out (core._Scope): the created sub-scope.
+           )DOC",
            py::return_value_policy::reference)
-      .def("drop_kids", &Scope::DropKids);
+      .def("drop_kids", &Scope::DropKids,
+           R"DOC(
+           Delete all sub-scopes of the current scope.
+           )DOC");
 
   m.def("Scope",
         []() -> Scope * {
@@ -561,6 +630,12 @@ All parameter, weight, gradient are variables in Paddle.
           ScopePool::Instance().Insert(std::unique_ptr<Scope>(s));
           return s;
         },
+        R"DOC(
+        Create a new scope.
+        
+        Returns:
+            out (core._Scope): the created scope.
+        )DOC",
         py::return_value_policy::reference);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
@@ -789,11 +864,13 @@ All parameter, weight, gradient are variables in Paddle.
              self[i].ShareDataWith(t);
              self[i].set_lod(t.lod());
            })
-      .def("append", [](LoDTensorArray &self, const LoDTensor &t) {
-        self.emplace_back();
-        self.back().ShareDataWith(t);
-        self.back().set_lod(t.lod());
-      });
+      .def("append",
+           [](LoDTensorArray &self, const LoDTensor &t) {
+             self.emplace_back();
+             self.back().ShareDataWith(t);
+             self.back().set_lod(t.lod());
+           },
+           py::arg("tensor"), "Append a LoDensor to LoDTensorArray.");
 
   m.def("IsInplace",
         [](std::string op) -> bool { return operators::IsInplace(op); });
