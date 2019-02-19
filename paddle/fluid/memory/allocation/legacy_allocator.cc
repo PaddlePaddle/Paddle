@@ -383,7 +383,7 @@ void LegacyMemMonitor::Minus(const int &device, const size_t &size) {
 uint64_t LegacyMemMonitor::GetMemUsage(const int &device) const {
   return gpu_mem_info_.find(device) == gpu_mem_info_.end()
              ? 0
-             : gpu_mem_info_.find(device)->second->GetPeakUsage();
+             : gpu_mem_info_.at(device)->GetPeakUsage();
 }
 
 void LegacyMemMonitor::PrintMemUsage() {
