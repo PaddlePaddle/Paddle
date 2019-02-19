@@ -234,7 +234,13 @@ TEST(ENFORCE_USER_DEFINED_CLASS, EQ) {
 
 TEST(ENFORCE_USER_DEFINED_CLASS, NE) {
   Dims a{{1, 2, 3, 4}}, b{{5, 6, 7, 8}};
-  ASSERT_THROW(PADDLE_ENFORCE_EQ(a, b), paddle::platform::EnforceNotMet);
+  bool caught_exception = false;
+  try {
+    PADDLE_ENFORCE_EQ(a, b);
+  } catch (paddle::platform::EnforceNotMet&) {
+    caught_exception = true;
+  }
+  EXPECT_TRUE(caught_exception);
 }
 
 TEST(EOF_EXCEPTION, THROW_EOF) {
