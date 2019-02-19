@@ -322,10 +322,10 @@ class DeviceTracerImpl : public DeviceTracer {
     }
     for (const MemInfoRecord &r : mem_info_record_) {
       auto *event = profile_pb.add_mem_events();
-      if (is_gpu_place(r.place)) {
+      if (is_cpu_place(r.place)) {
         event->set_place(proto::MemEvent::CUDAPlace);
         event->set_device_id(0);
-      } else if (is_cpu_place(r.place)) {
+      } else if (is_gpu_place(r.place)) {
         event->set_place(proto::MemEvent::CPUPlace);
         event->set_device_id(
             boost::get<platform::CUDAPlace>(r.place).GetDeviceId());

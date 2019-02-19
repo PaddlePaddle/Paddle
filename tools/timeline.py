@@ -96,15 +96,15 @@ class _ChromeTraceFormatter(object):
         self._events.append(event)
 
     def emit_counter(self, category, name, pid, timestamp, counter, value):
-        """
+        """Emits a record for a single counter.
 
         Args:
-            :param category:
-            :param pid:
-            :param timestamp:
-            :param counter:
-            :param value:
-            :return:
+            category: The event category as string
+            name: The event name as string
+            pid: Identifier of the process generating this event as integer
+            timestamp: The timestamps of this event as long integer
+            counter: Name of the counter as string
+            value: Value of the counter as integer
         """
         event = self._create_event('C', name, category, pid, 0, timestamp)
         event['args'] = {counter: value}
@@ -197,11 +197,13 @@ class Timeline(object):
         cpu_involved = False
         gpu_involved = False
         cudapin_involved = False
-        profiler_begin = 0
-        profiler_end = 0
+
         for k, profile_pb in six.iteritems(self._profile_dict):
             mem_list = []
             cnt = 0
+            max_pid = 0
+            begin_profiler = 0
+            end_profiler = 0
             for mevent in profile_pb.mem_events:
                 crt_info = dict()
                 crt_info['time'] = mevent.start_ns
@@ -217,19 +219,21 @@ class Timeline(object):
                     cudapin_involved = True
                 crt_info['place'] = place
                 pid = self._devices[(k, mevent.device_id, place)]
+                max_pid = max(max_pid, pid)
                 crt_info['pid'] = pid
                 crt_info['device_id'] = mevent.device_id
                 mem_list.append(crt_info)
                 crt_info = dict()
                 crt_info['place'] = place
                 crt_info['pid'] = pid
+                max_pid = max(max_pid, pid)
                 crt_info['device_id'] = mevent.device_id
                 crt_info['time'] = mevent.end_ns
                 crt_info['size'] = -mevent.bytes
                 mem_list.append(crt_info)
             mem_list.sort(key=lambda tmp: (tmp.get('time', 0)))
-            profiler_begin = min(profiler_begin, mem_list[0]['time'])
-            profiler_end = max(profiler_end, mem_list[-1]['time'])
+            begin_profiler = min(begin_profiler, mem_list[0]['time'])
+            end_profiler = max(end_profiler, mem_list[-1]['time'])
             i = 0
             total_size = 0
             while i < len(mem_list):
@@ -245,24 +249,23 @@ class Timeline(object):
                 i += 1
             cnt += 1
         if not cpu_involved:
-            cpu_pid = self._devices[(k, profile_pb.mem_events.device_id, "CPU")]
             self._chrome_trace.emit_counter("CPU Memory ",
-                                            str(cnt), cpu_pid, profiler_begin,
+                                            str(cnt), max_pid, end_profiler,
                                             str(cnt), 0)
             cnt += 1
+            max_pid += 1
         if not gpu_involved:
-            gpu_pid = self._devices[(k, profile_pb.mem_events.device_id, "GPU")]
-            self._chrome_trace.emit_counter("Memory",
-                                            str(cnt), gpu_pid, profiler_begin,
+            self._chrome_trace.emit_counter("GPU Memory ",
+                                            str(cnt), max_pid, end_profiler,
                                             str(cnt), 0)
             cnt += 1
+            max_pid += 1
         if not cudapin_involved:
-            cudapin_pid = self._devices[(k, profile_pb.mem_events.device_id,
-                                         "CUDAPinnedPlace")]
-            self._chrome_trace.emit_counter("Memory",
-                                            str(cnt), cudapin_pid,
-                                            profiler_begin, str(cnt), 0)
+            self._chrome_trace.emit_counter("CUDAPinnedPlace Memory",
+                                            str(cnt), max_pid, end_profiler,
+                                            str(cnt), 0)
             cnt += 1
+            max_pid += 1
 
     def generate_chrome_trace(self):
         self._allocate_pids()

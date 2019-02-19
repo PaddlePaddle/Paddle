@@ -500,7 +500,8 @@ void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
             << "\tMinimum"
             << "\n";
     VLOG(1) << "Memory"
-            << "\t0\t0\t0\t0\n";
+            << "\t0\t0\t0\t0\t0\n";
+    VLOG(1) << "\n";
   }
   if (!gpu_involved) {
     VLOG(1) << "Place: GPU\n";
@@ -513,7 +514,8 @@ void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
             << "\tMinimum"
             << "\n";
     VLOG(1) << "Memory"
-            << "\t0\t0\t0\t0\n";
+            << "\t0\t0\t0\t0\t0\n";
+    VLOG(1) << "\n";
   }
   if (!cudapin_involved) {
     VLOG(1) << "Place: CUDAPinnedPlace\n";
@@ -527,6 +529,7 @@ void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
             << "\n";
     VLOG(1) << "Memory"
             << "\t0\t0\t0\t0\n";
+    VLOG(1) << "\n";
   }
 }
 
