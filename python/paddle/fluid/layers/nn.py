@@ -659,20 +659,20 @@ def lstm(input,
 def dynamic_lstmp(input,
                   size,
                   proj_size,
-                  h_0=None,
-                  c_0=None,
                   param_attr=None,
                   bias_attr=None,
                   use_peepholes=True,
-                  cell_clip=None,
-                  proj_clip=None,
                   is_reverse=False,
                   gate_activation='sigmoid',
                   cell_activation='tanh',
                   candidate_activation='tanh',
-                  proj_activation='identity',
+                  proj_activation='tanh',
                   dtype='float32',
-                  name=None):
+                  name=None,
+                  h_0=None,
+                  c_0=None,
+                  cell_clip=None,
+                  proj_clip=None):
     """
     **Dynamic LSTMP Layer**
 
@@ -740,12 +740,6 @@ def dynamic_lstmp(input,
                          mini-batch, D is the hidden size.
         size(int): 4 * hidden size.
         proj_size(int): The size of projection output.
-        h_0(Variable): The initial hidden state is an optional input, default is zero.
-                       This is a tensor with shape (N x D), where N is the
-                       batch size and D is the projection size.
-        c_0(Variable): The initial cell state is an optional input, default is zero.
-                       This is a tensor with shape (N x D), where N is the
-                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
                                hidden-hidden weight and projection weight.
 
@@ -780,11 +774,6 @@ def dynamic_lstmp(input,
                               the bias is initialized zero. Default: None.
         use_peepholes(bool): Whether to enable diagonal/peephole connections,
                              default `True`.
-        cell_clip(float): If provided the cell state is clipped
-                             by this value prior to the cell output activation.
-        proj_clip(float): If `num_proj > 0` and `proj_clip` is
-                            provided, then the projected values are clipped elementwise to within
-                            `[-proj_clip, proj_clip]`.
         is_reverse(bool): Whether to compute reversed LSTM, default `False`.
         gate_activation(str): The activation for input gate, forget gate and
                               output gate. Choices = ["sigmoid", "tanh", "relu",
@@ -796,10 +785,21 @@ def dynamic_lstmp(input,
                               default "tanh".
         proj_activation(str): The activation for projection output.
                               Choices = ["sigmoid", "tanh", "relu", "identity"],
-                              default "identity".
+                              default "tanh".
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
+        h_0(Variable): The initial hidden state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size and D is the projection size.
+        c_0(Variable): The initial cell state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
+        cell_clip(float): If provided the cell state is clipped
+                             by this value prior to the cell output activation.
+        proj_clip(float): If `num_proj > 0` and `proj_clip` is
+                            provided, then the projected values are clipped elementwise to within
+                            `[-proj_clip, proj_clip]`.
 
     Returns:
         tuple: A tuple of two output variable: the projection of hidden state, \
