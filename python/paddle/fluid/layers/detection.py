@@ -611,12 +611,19 @@ def yolov3_loss(x,
 
 
 @templatedoc(op_type="yolo_box")
-def yolo_box(x, anchors, class_num, conf_thresh, downsample_ratio, name=None):
+def yolo_box(x,
+             img_size,
+             anchors,
+             class_num,
+             conf_thresh,
+             downsample_ratio,
+             name=None):
     """
     ${comment}
 
     Args:
         x (Variable): ${x_comment}
+        img_size (Variable): ${img_size_comment}
         anchors (list|tuple): ${anchors_comment}
         class_num (int): ${class_num_comment}
         conf_thresh (float): ${conf_thresh_comment}
@@ -643,16 +650,17 @@ def yolo_box(x, anchors, class_num, conf_thresh, downsample_ratio, name=None):
     helper = LayerHelper('yolo_box', **locals())
 
     if not isinstance(x, Variable):
-        raise TypeError("Input x of yolov3_loss must be Variable")
+        raise TypeError("Input x of yolo_box must be Variable")
+    if not isinstance(img_size, Variable):
+        raise TypeError("Input img_size of yolo_box must be Variable")
     if not isinstance(anchors, list) and not isinstance(anchors, tuple):
-        raise TypeError("Attr anchors of yolov3_loss must be list or tuple")
+        raise TypeError("Attr anchors of yolo_box must be list or tuple")
     if not isinstance(anchor_mask, list) and not isinstance(anchor_mask, tuple):
-        raise TypeError("Attr anchor_mask of yolov3_loss must be list or tuple")
+        raise TypeError("Attr anchor_mask of yolo_box must be list or tuple")
     if not isinstance(class_num, int):
-        raise TypeError("Attr class_num of yolov3_loss must be an integer")
+        raise TypeError("Attr class_num of yolo_box must be an integer")
     if not isinstance(conf_thresh, float):
-        raise TypeError(
-            "Attr ignore_thresh of yolov3_loss must be a float number")
+        raise TypeError("Attr ignore_thresh of yolo_box must be a float number")
 
     boxes = helper.create_variable_for_type_inference(dtype=x.dtype)
     scores = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -666,7 +674,10 @@ def yolo_box(x, anchors, class_num, conf_thresh, downsample_ratio, name=None):
 
     helper.append_op(
         type='yolo_box',
-        inputs={"X": x, },
+        inputs={
+            "X": x,
+            "ImgSize": img_size,
+        },
         outputs={
             'Boxes': boxes,
             'Scores': scores,
