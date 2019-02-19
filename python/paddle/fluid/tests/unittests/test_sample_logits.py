@@ -61,8 +61,8 @@ def take_along_axis1(array, index):
     return out
 
 
-def sample_prob(sampler, num_samples, label):
-    batch_size, num_true = label.shape
+def sample_prob(sampler, num_samples, labels):
+    batch_size, num_true = labels.shape
     num_sampled_classes = num_samples + num_true
 
     samples = np.zeros((batch_size, num_sampled_classes), dtype=np.int64)
@@ -74,8 +74,8 @@ def sample_prob(sampler, num_samples, label):
     j = 0
     while j < num_true:
         for i in range(batch_size):
-            samples[i, j] = label[i, j]
-            probabilities[i, j] = sampler.probability(label[i, j])
+            samples[i, j] = labels[i, j]
+            probabilities[i, j] = sampler.probability(labels[i, j])
         j += 1
     while j < num_sampled_classes:
         v = sampler.sample()
@@ -103,33 +103,30 @@ def compute_remove_accidental_hits(sampled_logits, samples, num_true):
 
 
 def sample_logits(logits,
-                  label,
+                  labels,
                   num_samples,
                   seed,
                   remove_accidental_hits,
-                  use_custom_samples,
-                  custom_samples=None,
-                  custom_probabilities=None):
+                  use_customized_samples,
+                  customized_samples=None,
+                  customized_probabilities=None):
     batch_size, num_classes = logits.shape
-    num_true = label.shape[1]
+    num_true = labels.shape[1]
     num_sampled_classes = num_true + num_samples
 
-    if use_custom_samples:
-        samples = custom_samples
-        probabilities = custom_probabilities
+    if use_customized_samples:
+        samples = customized_samples
+        probabilities = customized_probabilities
     else:
         sampler = LogUniformSampler(num_classes, seed)
-        samples, probabilities = sample_prob(sampler, num_samples, label)
+        samples, probabilities = sample_prob(sampler, num_samples, labels)
     sampled_logits = take_along_axis1(logits, samples)
 
-    #print(samples)
-    #print(probabilities)
-    #print(sampled_logits)
     if remove_accidental_hits:
         compute_remove_accidental_hits(sampled_logits, samples, num_true)
     sampled_logits -= np.log(probabilities)
-    sampled_label = np.tile(np.arange(num_true), (batch_size, 1))
-    return (sampled_logits, samples, sampled_label, probabilities)
+    sampled_labels = np.tile(np.arange(num_true), (batch_size, 1))
+    return (sampled_logits, samples, sampled_labels, probabilities)
 
 
 class TestSampleLogitsOp(OpTest):
@@ -138,51 +135,51 @@ class TestSampleLogitsOp(OpTest):
     in python and just test the non-random part.
     '''
 
-    def generate_data(self, logits, label, num_samples, seed,
-                      remove_accidental_hits, use_custom_samples,
-                      custom_samples, custom_probabilities):
+    def generate_data(self, logits, labels, num_samples, seed,
+                      remove_accidental_hits, use_customized_samples,
+                      customized_samples, customized_probabilities):
         self.attrs = {
             'num_samples': num_samples,
-            'use_custom_samples': use_custom_samples,
+            'use_customized_samples': use_customized_samples,
             'remove_accidental_hits': remove_accidental_hits,
             'seed': seed
         }
         self.inputs = {
             'Logits': logits,
-            'Label': label,
-            'CustomSamples': custom_samples,
-            'CustomProbabilities': custom_probabilities
+            'Labels': labels,
+            'CustomizedSamples': customized_samples,
+            'CustomizedProbabilities': customized_probabilities
         }
 
     def set_data(self, batch_size, num_classes, num_true, num_samples, seed,
                  remove_accidental_hits):
         logits = np.random.randn(batch_size, num_classes)
-        label = np.stack([
+        labels = np.stack([
             np.random.choice(
                 range(0, num_classes), num_true, replace=False)
             for _ in range(batch_size)
         ])
         sampler = LogUniformSampler(num_classes, seed)
-        custom_samples, custom_probabilities = \
-            sample_prob(sampler, num_samples, label)
-        use_custom_samples = True
+        customized_samples, customized_probabilities = \
+            sample_prob(sampler, num_samples, labels)
+        use_customized_samples = True
         remove_accidental_hits = remove_accidental_hits
-        self.generate_data(logits, label, num_samples, seed,
-                           remove_accidental_hits, use_custom_samples,
-                           custom_samples, custom_probabilities)
+        self.generate_data(logits, labels, num_samples, seed,
+                           remove_accidental_hits, use_customized_samples,
+                           customized_samples, customized_probabilities)
 
     def compute(self):
-        out = sample_logits(self.inputs["Logits"], self.inputs["Label"],
+        out = sample_logits(self.inputs["Logits"], self.inputs["Labels"],
                             self.attrs["num_samples"], self.attrs["seed"],
                             self.attrs["remove_accidental_hits"],
-                            self.attrs["use_custom_samples"],
-                            self.inputs["CustomSamples"],
-                            self.inputs["CustomProbabilities"])
+                            self.attrs["use_customized_samples"],
+                            self.inputs["CustomizedSamples"],
+                            self.inputs["CustomizedProbabilities"])
 
         self.outputs = {
             'SampledLogits': out[0],
             'Samples': out[1],
-            'SampledLabel': out[2],
+            'SampledLabels': out[2],
             'Probabilities': out[3]
         }
 
@@ -255,29 +252,29 @@ class TestSampleLogitsOpV2(OpTest):
     in C++ and copied to python and just test the non-random part.
     '''
 
-    def generate_data(self, logits, label, num_samples, seed,
-                      remove_accidental_hits, use_custom_samples):
+    def generate_data(self, logits, labels, num_samples, seed,
+                      remove_accidental_hits, use_customized_samples):
         self.attrs = {
             'num_samples': num_samples,
-            'use_custom_samples': use_custom_samples,
+            'use_customized_samples': use_customized_samples,
             'remove_accidental_hits': remove_accidental_hits,
             'seed': seed
         }
-        self.inputs = {'Logits': logits, 'Label': label.astype(np.int64)}
+        self.inputs = {'Logits': logits, 'Labels': labels.astype(np.int64)}
 
     def set_data(self, num_classes, num_samples, seed, remove_accidental_hits):
-        label = np.array([[6, 12, 15, 5, 1], [0, 9, 4, 1, 10],
-                          [0, 2, 10, 16, 13], [14, 4, 7, 2, 1],
-                          [3, 18, 11, 8, 14]])
-        batch_size, num_true = label.shape
-        use_custom_samples = False
+        labels = np.array([[6, 12, 15, 5, 1], [0, 9, 4, 1, 10],
+                           [0, 2, 10, 16, 13], [14, 4, 7, 2, 1],
+                           [3, 18, 11, 8, 14]])
+        batch_size, num_true = labels.shape
+        use_customized_samples = False
 
         num_sampled_classes = num_samples + num_true
         logits = np.random.randn(batch_size, num_classes)
 
         remove_accidental_hits = remove_accidental_hits
-        self.generate_data(logits, label, num_samples, seed,
-                           remove_accidental_hits, use_custom_samples)
+        self.generate_data(logits, labels, num_samples, seed,
+                           remove_accidental_hits, use_customized_samples)
 
         # python and c++ use different random generator
         # use fetched samples from c++ for python code
@@ -302,7 +299,7 @@ class TestSampleLogitsOpV2(OpTest):
         self.probabilities = probabilities
 
     def compute(self):
-        out = sample_logits(self.inputs["Logits"], self.inputs["Label"],
+        out = sample_logits(self.inputs["Logits"], self.inputs["Labels"],
                             self.attrs["num_samples"], self.attrs["seed"],
                             self.attrs["remove_accidental_hits"], True,
                             self.fetched_samples.astype(np.int64),
@@ -310,7 +307,7 @@ class TestSampleLogitsOpV2(OpTest):
         self.outputs = {
             'SampledLogits': out[0],
             'Samples': out[1],
-            'SampledLabel': out[2],
+            'SampledLabels': out[2],
             'Probabilities': out[3]
         }
 
@@ -339,18 +336,18 @@ class TestSampleLogitsOpV3(OpTest):
     in C++ and copied to python and just test the non-random part.
     '''
 
-    def generate_data(self, logits, label, num_samples, seed,
-                      remove_accidental_hits, use_custom_samples):
+    def generate_data(self, logits, labels, num_samples, seed,
+                      remove_accidental_hits, use_customized_samples):
         self.attrs = {
             'num_samples': num_samples,
-            'use_custom_samples': use_custom_samples,
+            'use_customized_samples': use_customized_samples,
             'remove_accidental_hits': remove_accidental_hits,
             'seed': seed
         }
-        self.inputs = {'Logits': logits, 'Label': label.astype(np.int64)}
+        self.inputs = {'Logits': logits, 'Labels': labels.astype(np.int64)}
 
     def set_data(self, num_classes, num_samples, seed, remove_accidental_hits):
-        label = [52, 2, 2, 17, 96, 2, 17, 96, 37, 2]
+        labels = [52, 2, 2, 17, 96, 2, 17, 96, 37, 2]
         samples = [
             3, 12, 74, 28, 1, 79, 2, 42, 8, 13, 0, 18, 88, 49, 14, 46, 39, 57,
             26, 75, 9, 50, 16, 66, 6, 23, 5, 11, 17, 54, 35, 20, 53, 10, 47, 80,
@@ -359,19 +356,19 @@ class TestSampleLogitsOpV3(OpTest):
             63, 81, 59, 48, 91, 68, 72, 61, 52, 86
         ]
 
-        self.fetched_samples = np.array([[x] + samples for x in label])
+        self.fetched_samples = np.array([[x] + samples for x in labels])
         fectched_num_tries = 323
 
-        label = self.fetched_samples[:, 0:1]
-        batch_size, num_true = label.shape
-        use_custom_samples = False
+        labels = self.fetched_samples[:, 0:1]
+        batch_size, num_true = labels.shape
+        use_customized_samples = False
 
         num_sampled_classes = num_samples + num_true
         logits = np.random.randn(batch_size, num_classes)
 
         remove_accidental_hits = remove_accidental_hits
-        self.generate_data(logits, label, num_samples, seed,
-                           remove_accidental_hits, use_custom_samples)
+        self.generate_data(logits, labels, num_samples, seed,
+                           remove_accidental_hits, use_customized_samples)
 
         # python and c++ use different random generator
         # use fetched samples from c++ for python code
@@ -388,7 +385,7 @@ class TestSampleLogitsOpV3(OpTest):
         self.probabilities = probabilities
 
     def compute(self):
-        out = sample_logits(self.inputs["Logits"], self.inputs["Label"],
+        out = sample_logits(self.inputs["Logits"], self.inputs["Labels"],
                             self.attrs["num_samples"], self.attrs["seed"],
                             self.attrs["remove_accidental_hits"], True,
                             self.fetched_samples.astype(np.int64),
@@ -396,7 +393,7 @@ class TestSampleLogitsOpV3(OpTest):
         self.outputs = {
             'SampledLogits': out[0],
             'Samples': out[1],
-            'SampledLabel': out[2],
+            'SampledLabels': out[2],
             'Probabilities': out[3]
         }
 

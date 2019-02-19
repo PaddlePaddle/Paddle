@@ -5771,9 +5771,9 @@ def sampled_softmax_with_cross_entropy(logits,
                                        num_samples,
                                        num_true=1,
                                        remove_accidental_hits=True,
-                                       use_custom_samples=False,
-                                       custom_samples=None,
-                                       custom_probabilities=None,
+                                       use_customized_samples=False,
+                                       customized_samples=None,
+                                       customized_probabilities=None,
                                        seed=0):
     """
     **Sampled Softmax With Cross Entropy Operator.**
@@ -5789,7 +5789,7 @@ def sampled_softmax_with_cross_entropy(logits,
     
     For examples with T true labels (T >= 1), we assume that each true label has
     a probability of 1/T. For each sample, S samples are generated using a
-    log uniform distribution. True labels are concatenated with hese samples to
+    log uniform distribution. True labels are concatenated with these samples to
     form T + S samples for each example. So, assume the shape of logits is
     [N x K], the shape for samples is [N x (T+S)]. For each sampled label, a 
     probability is calculated, which corresponds to the Q(y|x) in 
@@ -5798,7 +5798,7 @@ def sampled_softmax_with_cross_entropy(logits,
     Logits are sampled according to the sampled labels. Then if 
     remove_accidental_hits is True, if a sample[i, j] accidentally hits true 
     labels, then the corresponding sampled_logits[i, j] is minus by 1e20 to 
-    make its softmax result close to zero. Then samled logits are subtracted by
+    make its softmax result close to zero. Then sampled logits are subtracted by
     logQ(y|x), these sampled logits and re-indexed labels are used to compute 
     a softmax with cross entropy.
 
@@ -5816,13 +5816,15 @@ def sampled_softmax_with_cross_entropy(logits,
             accidentally hits true labels, then the corresponding 
             sampled_logits[i, j] is minus by 1e20 to make its softmax result 
             close to zero. Default is True.
-        use_custom_samples (bool): Whether to use custom samples and probabities to sample
+        use_customized_samples (bool): Whether to use custom samples and probabities to sample
             logits.
-        custom_samples (Variable): User defined samples, which is a 1-D tensor with shape [S]. S is the num_samples. 
-        custom_probabilities (Variable): User defined probabilities of samples, a 1-D tensor which has the same shape with custom_samples.
+        customized_samples (Variable): User defined samples, which is a 2-D tensor
+            with shape [N, T + S]. S is the num_samples, and T is the number of true 
+            labels per example. 
+        customized_probabilities (Variable): User defined probabilities of samples, 
+            a 2-D tensor which has the same shape with customized_samples.
         seed (int): The random seed for generating random number, which is used
             in the process of sampling. Default is 0.
-
 
     Returns:
         Variable: Return the cross entropy loss which is a 2-D tensor with shape
@@ -5849,18 +5851,18 @@ def sampled_softmax_with_cross_entropy(logits,
         type='sample_logits',
         inputs={
             'Logits': logits,
-            'Label': label,
+            'Labels': label,
             'CustomSamples': custom_samples,
             'CustomProbabilities': custom_probabilities
         },
         outputs={
             'Samples': samples,
             'Probabilities': probabilities,
-            'SampledLabel': sampled_label,
+            'SampledLabels': sampled_label,
             'SampledLogits': sampled_logits
         },
         attrs={
-            'use_custom_samples': use_custom_samples,
+            'use_customized_samples': use_customized_samples,
             'uniq': True,
             'remove_accidental_hits': remove_accidental_hits,
             'num_samples': num_samples,
