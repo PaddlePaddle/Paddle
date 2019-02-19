@@ -54,7 +54,6 @@ option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
 option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
-option(WITH_RDMA        "Compile PaddlePaddle with RDMA support"        OFF)
 option(WITH_TIMER       "Compile PaddlePaddle with stats timer"         OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
 option(WITH_JEMALLOC    "Compile PaddlePaddle with jemalloc"            OFF)
@@ -224,7 +223,6 @@ include(generic)            # simplify cmake module
 include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
-include(rdma)               # set rdma libraries
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
 include(inference_lib)      # add paddle fluid inference libraries
