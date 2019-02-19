@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <set>
 #include <string>
@@ -69,22 +70,25 @@ class AnakinEngine : public EngineBase {
   std::vector<Tensor> Execute(const std::vector<Tensor *> &inputs);
 
  private:
-  AnakinEngine(const AnakinEngine &);
   using AnakinNetT = anakin::Net<TargetT, PrecisionType, RunType>;
   using AnakinGraphT = anakin::Graph<TargetT, PrecisionType>;
-
   std::unique_ptr<AnakinNetT> engine_;
   std::unique_ptr<AnakinGraphT> graph_;
-
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
 };
 
-class Tensor {
+class Tensor final {
  public:
   Tensor() = default;
   ~Tensor();
-  void Reshape(const std::vector<int> &shape) { shape_ = shape; }
+  void Resize(const std::vector<int> &shape) { shape_ = shape; }
+  /*void Reshape(const std::vector<int> &shape) {
+    shape_ = shape;
+    size_ = std::accumulate(shape_.begin(), shape_.end(), 1,
+                            std::multiplies<int>());
+  }*/
+  int size() const { return size_; }
   const std::vector<int> &shape() const { return shape_; }
   void SetName(const std::string &name) { name_ = name; }
   const std::string &name() const { return name_; }
@@ -95,19 +99,18 @@ class Tensor {
 
   template <typename T>
   T *mutable_data(Place place) {
-#ifdef PADDLE_WITH_CUDA
-    if (place == Place::kGpu) {
-      if (place == place_) {
-        return static_cast<T *>(data);
-      } else {
-        //
-      }
-    }
-#endif
+    place_ = place;
+    return static_cast<T *>(data_);
   }
 
+  /*template <typename T>
+      T *data(Place *place, size_t *size) const {
+          *place = place_;
+      }*/
   template <typename T>
-  T *data(Place place, size_t size) const;
+  const T *data() const {
+    return static_cast<const T *>(data);
+  }
 
  private:
   std::string name_;
@@ -118,7 +121,7 @@ class Tensor {
 };
 
 enum class DataType { kUnk, kFloat32, kFloat64, kInt32 };
-enum class Place { kCpu, kGpu };
+enum class Place { kCpu, kGpu, kUnk };
 
 template class AnakinEngine<anakin::saber::NV, anakin::Precision::FP32>;
 template class AnakinEngine<anakin::saber::X86, anakin::Precision::FP32>;

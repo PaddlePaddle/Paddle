@@ -49,9 +49,10 @@ std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     auto name = input->name();
     auto anakin_input = engine_->get_in(name);
     PADDLE_ENFORCE(anakin_input->shape().size() == input->shape().size());
-    auto sum = std::accumulate(input->shape().begin(), input->shape().end(), 1,
-                               std::multiplies<int>());
-    if (sum > anakin_input->shape().count()) {
+    auto input_size =
+        std::accumulate(input->shape().begin(), input->shape().end(), 1,
+                        std::multiplies<int>());
+    if (input_size > anakin_input->shape().count()) {
       graph_->Reshape(input->name(), input->shape());
       engine_->reset(new AnakinNetT(graph_, true));
       anakin_input = engine_->get_in(name);
@@ -60,20 +61,25 @@ std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     anakin::saber::Shape tmp_shape;
     std::copy(input->shape().begin(), input->shape().end(), tmp_shape.begin());
     anakin_input->reshape(tmp_shape);
-    auto *data = anakin_input->mutable_data();
 #ifdef PADDLE_WITH_CUDA
     if (std::is_same<anakin::saber::NV, TargetT>::value) {
-      // TODO
-      // if (cudaMemcpy(data, input->mutable_data<float>(Place::kGpu)))
+      cudaMemcpy(anakin_input->mutable_data(), input->data<float>(),
+                 inpt->size() * sizeof(float), cudaMemcpyHostToDevice);
     }
 #endif
     if (std::is_same<anakin::saber::X86, TargetT>::value) {
-      std::memcpy(data, input->mutable_data<float>(Place::kCpu),
-                  anakin_input->valid_size() * sizeof(float));
+      std::memcpy(anakin_input->mutable_data(), input->data<float>(),
+                  input->size() * sizeof(float));
     }
   }
 
+#ifdef PADDLE_WITH_CUDA
+  cudaDeviceSynchronize();
+#endif
   engine_->prediction();
+#ifdef PADDLE_WITH_CUDA
+  cudaDeviceSynchronize();
+#endif
 
   std::vector<Tensor> outputs;
   for (auto name : outputs_) {
@@ -85,12 +91,14 @@ std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     output.Reshape(shape);
 #ifdef PADDLE_WITH_CUDA
     if (std::is_same<TargetT, anakin::saber::NV>::value) {
-      // TODO
+      auto *data = output.mutable_data(Place::kGpu);
+      PADDLE_ENFORCE(cudaMemcpy(data, anakin_out->mutable_data(),
+                                anakin_out->valid_size() * sizeof(float),
+                                cudaMemcpyDeviceToHost));
     }
 #endif
     if (std::is_same<TargetT, anakin::saber::X86>::value) {
-      auto *data = anakin_out->data(Place::kCpu,
-                                    anakin_out->valid_size() * sizeof<float>);
+      auto *data = output.mutable_data(Place::kCpu);
       std::memcpy(data, anakin_out->mutable_data(),
                   anakin_out->valid_size() * sizeof<float>);
     }
@@ -125,13 +133,9 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::FreezeNetwork() {
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 std::unique_ptr<AnakinEngine<TargetT, PrecisionType, RunType>>
 AnakinEngine<TargetT, PrecisionType, RunType>::Clone() {
-  return new AnakinEngine(*this);
-}
-
-template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine(
-    const AnakinEngine<TargetT, PrecisionType, RunType> &engine) {
-  engine_ = std::move(engine->engine_->Clone());
+  auto *engine = new AnakinEngine();
+  engine->engine_ = std::move(engine_->Clone());
+  return std::unique_ptr<AnakinEngine>(engine);
 }
 
 }  // namespace anakin
