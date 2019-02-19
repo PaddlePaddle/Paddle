@@ -302,6 +302,37 @@ void BenchSeqPoolKernel() {
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
+void BenchEmbSeqPoolKernel() {
+  std::vector<jit::SeqPoolType> pool_types = {jit::SeqPoolType::kSum};
+  int64_t tbl_h = 1e4;
+  for (int tbl_w : {10, 16, 256}) {
+    Tensor table;
+    table.Resize({tbl_h, tbl_w});
+    RandomVec<T>(tbl_h * tbl_w, table.mutable_data<T>(PlaceType()), -2.f, 2.f);
+    const T* table_data = table.data<T>();
+    for (auto type : pool_types) {
+      for (int idx_w : {1, 2, 10, 16}) {
+        for (int idx_h : {1, 2, 9, 13, 16}) {
+          int64_t out_w = tbl_w * idx_w;
+          jit::emb_seq_pool_attr_t attr(tbl_h, tbl_w, idx_h, idx_w, out_w,
+                                        type);
+          Tensor idx, out;
+          idx.Resize({idx_h, idx_w});
+          out.Resize({out_w});
+          RandomVec<int64_t>(idx_h * idx_w,
+                             idx.mutable_data<int64_t>(PlaceType()), 0,
+                             tbl_h - 1);
+          const int64_t* idx_data = idx.data<int64_t>();
+          T* o_data = out.mutable_data<T>(PlaceType());
+          BenchAllImpls<KT, jit::EmbSeqPoolTuples<T>, PlaceType>(
+              attr, table_data, idx_data, o_data, &attr);
+        }
+      }
+    }
+  }
+}
+
+template <jit::KernelType KT, typename T, typename PlaceType>
 void BenchMatMulKernel() {
   for (int m : {1, 2, 3, 4}) {
     for (int n : TestSizes()) {
@@ -440,6 +471,11 @@ BENCH_FP32_CPU(kGRUHtPart2) { BenchGRUKernel<jit::kGRUHtPart2, T, CPUPlace>(); }
 
 // seq pool function
 BENCH_FP32_CPU(kSeqPool) { BenchSeqPoolKernel<jit::kSeqPool, T, CPUPlace>(); }
+
+// embedding seq pool function
+BENCH_FP32_CPU(kEmbSeqPool) {
+  BenchEmbSeqPoolKernel<jit::kEmbSeqPool, T, CPUPlace>();
+}
 
 // matmul
 BENCH_FP32_CPU(kMatMul) { BenchMatMulKernel<jit::kMatMul, T, CPUPlace>(); }
