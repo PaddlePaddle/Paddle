@@ -20,18 +20,9 @@ if(WITH_DSO)
     add_definitions(-DPADDLE_USE_DSO)
 endif(WITH_DSO)
 
-if(WITH_ARM_FP16)
-    add_definitions(-DPADDLE_ARM_FP16)
-    add_definitions("-march=armv8.2-a+fp16+simd")
-endif(WITH_ARM_FP16)
-
 if(WITH_TESTING)
     add_definitions(-DPADDLE_WITH_TESTING)
 endif(WITH_TESTING)
-
-if(EIGEN_USE_THREADS)
-    add_definitions(-DEIGEN_USE_THREADS)
-endif(EIGEN_USE_THREADS)
 
 if(NOT WITH_PROFILER)
     add_definitions(-DPADDLE_DISABLE_PROFILER)
