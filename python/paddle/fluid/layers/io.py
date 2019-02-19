@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-import contextlib
+from ..wrapped_decorator import signature_safe_contextmanager
 import multiprocessing
 import os
 import six
@@ -56,7 +56,10 @@ def data(name,
 
     Args:
        name(str): The name/alias of the function
-       shape(list): Tuple declaring the shape.
+       shape(list): Tuple declaring the shape. If :code:`append_batch_size` is 
+                    True and there is no -1 inside :code:`shape`, it should be 
+                    considered as the shape of the each sample. Otherwise, it
+                    should be considered as the shape of the batched data.  
        append_batch_size(bool):
           1. If true, it prepends -1 to the shape.
             For example if shape=[1], the resulting shape is [-1, 1].
@@ -484,7 +487,7 @@ def _py_reader(capacity,
                name=None,
                use_double_buffer=True,
                feed_list=None):
-    use_cuda_pinned_place = use_double_buffer and core.is_compiled_with_cuda()
+
     if feed_list is not None:
         if not isinstance(feed_list, list):
             raise TypeError("feed_list should be a list of Variable"
@@ -565,10 +568,7 @@ def _py_reader(capacity,
                 for item in tensors:
                     if not isinstance(item, core.LoDTensor):
                         tmp = core.LoDTensor()
-                        if use_cuda_pinned_place:
-                            tmp.set(item, core.CUDAPinnedPlace())
-                        else:
-                            tmp.set(item, core.CPUPlace())
+                        tmp.set(item, core.CPUPlace())
                         item = tmp
 
                     array.append(item)
@@ -1119,7 +1119,7 @@ class Preprocessor(object):
     def _is_completed(self):
         return self.sub_block and self.source_var_names and self.sink_var_names
 
-    @contextlib.contextmanager
+    @signature_safe_contextmanager
     def block(self):
         self.status = Preprocessor.IN_SUB_BLOCK
         self.sub_block = self.main_prog._create_block()

@@ -37,7 +37,7 @@ default_envs = {
 GPUS = 8
 
 
-def start_procs(gpus, cmd, log_dir):
+def start_procs(gpus, entrypoint, entrypoint_args, log_dir):
     procs = []
     log_fns = []
     os.system("mkdir -p %s" % log_dir)
@@ -73,12 +73,11 @@ def start_procs(gpus, cmd, log_dir):
             "PADDLE_TRAINER_ENDPOINTS": all_nodes_devices_endpoints
         })
 
-        print("starting process ", i, cmd, curr_env)
+        print("starting process ", i, entrypoint, entrypoint_args, curr_env)
         fn = open("%s/workerlog.%d" % (log_dir, i), "w")
         log_fns.append(fn)
-        procs.append(
-            subprocess.Popen(
-                cmd.strip().split(" "), stdout=fn, stderr=fn, env=curr_env))
+        cmd = [sys.executable, "-u", entrypoint] + entrypoint_args
+        procs.append(subprocess.Popen(cmd, stdout=fn, stderr=fn, env=curr_env))
 
     for i in range(gpus):
         try:
@@ -89,7 +88,8 @@ def start_procs(gpus, cmd, log_dir):
             pass
 
 
-def main():
+def parse_args():
+
     parser = argparse.ArgumentParser(
         description='''start paddle training using multi-process mode.
 NOTE: your train program ***must*** run as distributed nccl2 mode,
@@ -109,20 +109,26 @@ POD_IP (current node ip address, not needed for local training)
         default=8,
         help='start number of processes for every gpu')
     parser.add_argument(
-        '--cmd',
-        type=str,
-        default="",
-        help='command to run for each process, e.g. python train.py --lr 0.1')
-    parser.add_argument(
         '--log_dir',
         type=str,
         default="mylog",
         help='directory to put logs per process.')
-    args = parser.parse_args()
-    if args.cmd == "":
-        parser.print_help()
-        exit(0)
-    start_procs(args.gpus, args.cmd, args.log_dir)
+    parser.add_argument(
+        'entrypoint_script',
+        type=str,
+        help="The entrypoint script to be launched in parallel,"
+        "followed by all the arguments for each process,"
+        "e.g. train.py --lr 0.1")
+    parser.add_argument('entrypoint_args', nargs=argparse.REMAINDER)
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+
+    # launch multiple training process
+    start_procs(args.gpus, args.entrypoint_script, args.entrypoint_args,
+                args.log_dir)
 
 
 if __name__ == "__main__":
