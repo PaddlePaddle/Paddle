@@ -20,10 +20,6 @@ if(WITH_DSO)
     add_definitions(-DPADDLE_USE_DSO)
 endif(WITH_DSO)
 
-if(WITH_DOUBLE)
-    add_definitions(-DPADDLE_TYPE_DOUBLE)
-endif(WITH_DOUBLE)
-
 if(WITH_ARM_FP16)
     add_definitions(-DPADDLE_ARM_FP16)
     add_definitions("-march=armv8.2-a+fp16+simd")
