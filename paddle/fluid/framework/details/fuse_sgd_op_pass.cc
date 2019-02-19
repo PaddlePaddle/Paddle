@@ -39,7 +39,7 @@ void FuseSgdOpPass::FuseSgdOps(
     const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
     const std::unordered_map<std::string, std::string> &fused_vars_name,
     const std::vector<ir::Node *> &sgd_ops, ir::Graph *graph) const {
-  PADDLE_ENFORCE_GT(sgd_ops.size(), 0);
+  PADDLE_ENFORCE_GT(sgd_ops.size(), static_cast<size_t>(0));
 
   // NOTE: fused_var is only exist in scope, so the graph doesn't have fused_var
   // node.
@@ -49,11 +49,12 @@ void FuseSgdOpPass::FuseSgdOps(
   // Add reset_dim, only fuse the scale ops
   VLOG(10) << "Insert sgd to graph ";
   // Add fused scale
-  OpDesc Sgd_desc;
+  OpDesc Sgd_desc(sgd_ops[0]->Op()->Block());
   Sgd_desc.SetType("sgd");
   Sgd_desc.SetInput("Param", {fused_vars_name.at("Param")});
   Sgd_desc.SetInput("Grad", {fused_vars_name.at("Grad")});
   Sgd_desc.SetOutput("ParamOut", {fused_vars_name.at("Param")});
+
   // TODO(zcd): The LearningRate, Beta1Pow, Beta2Pow should be equal.
   Sgd_desc.SetInput("LearningRate", sgd_ops[0]->Op()->Input("LearningRate"));
 

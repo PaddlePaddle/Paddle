@@ -191,7 +191,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       auto backward_vars =
           boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
               OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
+      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, static_cast<size_t>(0));
 
       for (size_t i = 0; i < backward_vars.size(); i += 2) {
         VLOG(10) << "Trainable parameter: " << backward_vars[i]
