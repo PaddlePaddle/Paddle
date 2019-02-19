@@ -35,7 +35,6 @@ class YoloBoxOp : public framework::OperatorWithKernel {
     auto anchors = ctx->Attrs().Get<std::vector<int>>("anchors");
     int anchor_num = anchors.size() / 2;
     auto class_num = ctx->Attrs().Get<int>("class_num");
-    auto conf_thresh = ctx->Attrs().Get<float>("conf_thresh");
 
     PADDLE_ENFORCE_EQ(dim_x.size(), 4, "Input(X) should be a 4-D tensor.");
     PADDLE_ENFORCE_EQ(
