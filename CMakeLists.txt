@@ -219,37 +219,10 @@ include(inference_lib)      # add paddle fluid inference libraries
 
 include_directories("${PADDLE_SOURCE_DIR}")
 
-set(EXTERNAL_LIBS
-    gflags
-    glog
-    ${CBLAS_LIBRARIES}
-    protobuf
-    zlib
-    ${PYTHON_LIBRARIES}
-)
-
-if(WITH_PSLIB)
-    list(APPEND EXTERNAL_LIBS pslib)
-    list(APPEND EXTERNAL_LIBS pslib_brpc)
-    list(APPEND EXTERNAL_LIBS libmct)
-endif(WITH_PSLIB)
-
 if(WITH_AMD_GPU)
     find_package(HIP)
     include(hip)
 endif(WITH_AMD_GPU)
-
-if(WITH_MKLML)
-    list(APPEND EXTERNAL_LIBS ${MKLML_IOMP_LIB})
-endif()
-
-if(WITH_LIBXSMM)
-    list(APPEND EXTERNAL_LIBS ${LIBXSMM_LIBS})
-endif()
-
-if(WITH_MKLDNN)
-    list(APPEND EXTERNAL_LIBS ${MKLDNN_LIB})
-endif()
 
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 
