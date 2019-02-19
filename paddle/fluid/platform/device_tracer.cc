@@ -49,11 +49,19 @@ DeviceTracer *tracer = nullptr;
 #ifdef PADDLE_WITH_CUPTI
 
 namespace {
-// TODO(panyx0718): Revisit the buffer size here.
-uint64_t kBufSize = 32 * 1024;
+// Best performance: the same size with CUPTI device buffer size(8M)
+uint64_t kBufSize = 1024 * 1024 * 8;
 uint64_t kAlignSize = 8;
 std::unordered_map<CUpti_CallbackId, std::string> runtime_cbid_str,
     driver_cbid_str;
+
+void PrintCuptiHint() {
+  static bool showed = false;
+  if (showed) return;
+  showed = true;
+  LOG(WARNING) << "Invalid timestamp occured. Please try increasing the "
+                  "FLAGS_multiple_of_cupti_buffer_size.";
+}
 
 #define ALIGN_BUFFER(buffer, align)                                 \
   (((uintptr_t)(buffer) & ((align)-1))                              \
@@ -140,15 +148,15 @@ void DisableActivity() {
   CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMCPY));
   CUPTI_CALL(
       dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
-  CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_DEVICE));
+  // CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_DEVICE));
   // Disable all other activity record kinds.
-  CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_CONTEXT));
+  // CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_CONTEXT));
   CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_DRIVER));
   CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
-  CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMSET));
-  CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_NAME));
-  CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MARKER));
-  CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_OVERHEAD));
+  // CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMSET));
+  // CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_NAME));
+  // CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MARKER));
+  // CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_OVERHEAD));
 }
 
 void CUPTIAPI bufferRequested(uint8_t **buffer, size_t *size,
@@ -284,8 +292,9 @@ class DeviceTracerImpl : public DeviceTracer {
                      uint64_t end_ns, int64_t device_id, int64_t stream_id,
                      uint32_t correlation_id, uint64_t bytes) {
     // 0 means timestamp information could not be collected for the kernel.
-    if (start_ns == 0 || end_ns == 0) {
+    if (start_ns == 0 || end_ns == 0 || start_ns == end_ns) {
       VLOG(3) << name << " cannot be traced";
+      PrintCuptiHint();
       return;
     }
     // NOTE(liangdun): lock is not needed, only one thread call this function.
@@ -298,8 +307,9 @@ class DeviceTracerImpl : public DeviceTracer {
                         int64_t device_id, int64_t stream_id,
                         uint32_t correlation_id) {
     // 0 means timestamp information could not be collected for the kernel.
-    if (start == 0 || end == 0) {
+    if (start == 0 || end == 0 || start == end) {
       VLOG(3) << correlation_id << " cannot be traced";
+      PrintCuptiHint();
       return;
     }
     // NOTE(liangdun): lock is not needed, only one thread call this function.
@@ -372,8 +382,9 @@ class DeviceTracerImpl : public DeviceTracer {
       for (auto &tmp : correlations_pairs)
         for (auto &pair : tmp) correlations_[pair.first] = pair.second;
     for (const KernelRecord &r : kernel_records_) {
-      if (correlations_.find(r.correlation_id) != correlations_.end()) {
-        Event *e = correlations_.at(r.correlation_id);
+      auto c = correlations_.find(r.correlation_id);
+      if (c != correlations_.end() && c->second != nullptr) {
+        Event *e = c->second;
         e->AddCudaElapsedTime(r.start_ns, r.end_ns);
       }
     }
@@ -400,7 +411,7 @@ class DeviceTracerImpl : public DeviceTracer {
       auto *event = profile_pb.add_events();
       event->set_type(proto::Event::GPUKernel);
       auto c = correlations_.find(r.correlation_id);
-      if (c != correlations_.end()) {
+      if (c != correlations_.end() && c->second != nullptr) {
         event->set_name(c->second->name());
         event->set_detail_info(r.name);
         find++;

@@ -198,11 +198,19 @@ RecordBlock::~RecordBlock() {
   ClearCurBlock();
 }
 
+void SynchronizeAllDevice() {
+  int count = GetCUDADeviceCount();
+  for (int i = 0; i < count; i++) {
+    SetDeviceId(i);
+    PADDLE_ENFORCE(cudaDeviceSynchronize());
+  }
+}
+
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE(state != ProfilerState::kDisabled,
                  "Can't enable profiling, since the input state is ",
                  "ProfilerState::kDisabled");
-
+  SynchronizeAllDevice();
   std::lock_guard<std::mutex> l(profiler_mu);
   if (state == g_state) {
     return;
@@ -223,6 +231,7 @@ void EnableProfiler(ProfilerState state) {
 }
 
 void ResetProfiler() {
+  SynchronizeAllDevice();
   GetDeviceTracer()->Reset();
   std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
   for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
@@ -450,6 +459,7 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
 
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path) {
+  SynchronizeAllDevice();
   std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled) return;
   // Mark the profiling stop.
