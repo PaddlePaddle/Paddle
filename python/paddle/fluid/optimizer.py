@@ -663,7 +663,7 @@ class AdagradOptimizer(Optimizer):
                  epsilon=1.0e-6,
                  regularization=None,
                  name=None,
-                 initial_accumulator_value=0.1):
+                 initial_accumulator_value=0.0):
         assert learning_rate is not None
         assert epsilon is not None
         super(AdagradOptimizer, self).__init__(
