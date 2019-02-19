@@ -454,7 +454,7 @@ function PipLinuxInstall(){
               exit 1
             fi
         else
-          echo  paddlepaddle whl包下载失败
+          echo paddlepaddle whl包下载失败
           exit 1
         fi
     fi
