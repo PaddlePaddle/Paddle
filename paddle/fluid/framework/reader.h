@@ -54,6 +54,7 @@ class ReaderBase {
 
  private:
   friend class DecoratedReader;
+  friend class MultiDecoratedReader;
   // These methods can be only invoked inside DecoratedReader to record the
   // decorating chain.
   void InsertDecoratedReader(
@@ -62,15 +63,20 @@ class ReaderBase {
   std::vector<std::weak_ptr<ReaderBase>> decorated_readers_;
 };
 
-class DecoratedReader : public ReaderBase,
+class DecoratedReaderBase : public ReaderBase {
+ public:
+  virtual void RegisterDecorateChain() = 0;
+};
+
+class DecoratedReader : public DecoratedReaderBase,
                         public std::enable_shared_from_this<DecoratedReader> {
  public:
   explicit DecoratedReader(const std::shared_ptr<ReaderBase>& reader)
-      : ReaderBase(), reader_(reader) {
+      : DecoratedReaderBase(), reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
   }
 
-  void RegisterDecorateChain() {
+  void RegisterDecorateChain() final {
     reader_->InsertDecoratedReader(shared_from_this());
   }
 
@@ -82,6 +88,41 @@ class DecoratedReader : public ReaderBase,
   void StartImpl() override { reader_->Start(); }
 
   std::shared_ptr<ReaderBase> reader_;
+};
+
+class MultiDecoratedReader
+    : public DecoratedReaderBase,
+      public std::enable_shared_from_this<MultiDecoratedReader> {
+ public:
+  explicit MultiDecoratedReader(
+      const std::vector<std::shared_ptr<ReaderBase>>& readers)
+      : readers_(readers) {
+    PADDLE_ENFORCE(!readers_.empty());
+    for (auto& r : readers_) {
+      PADDLE_ENFORCE_NOT_NULL(r);
+    }
+  }
+
+  void RegisterDecorateChain() final {
+    for (auto& r : readers_) {
+      r->InsertDecoratedReader(shared_from_this());
+    }
+  }
+
+ protected:
+  void ShutdownImpl() override {
+    for (auto& r : readers_) {
+      r->Shutdown();
+    }
+  }
+
+  void StartImpl() override {
+    for (auto& r : readers_) {
+      r->Start();
+    }
+  }
+
+  std::vector<std::shared_ptr<ReaderBase>> readers_;
 };
 
 // FileReader is just a conceptual class.
@@ -132,8 +173,10 @@ class ReaderHolder {
 };
 
 template <typename T, typename... ARGS>
-inline std::shared_ptr<DecoratedReader> MakeDecoratedReader(ARGS&&... args) {
-  std::shared_ptr<DecoratedReader> reader(new T(std::forward<ARGS>(args)...));
+inline std::shared_ptr<DecoratedReaderBase> MakeDecoratedReader(
+    ARGS&&... args) {
+  std::shared_ptr<DecoratedReaderBase> reader(
+      new T(std::forward<ARGS>(args)...));
   reader->RegisterDecorateChain();
   return reader;
 }

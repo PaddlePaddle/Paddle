@@ -26,6 +26,7 @@ import six
 
 import numpy as np
 import subprocess
+import multiprocessing
 
 from .. import compat as cpt
 from .proto import framework_pb2
@@ -63,6 +64,9 @@ __all__ = [
     'default_main_program',
     'program_guard',
     'name_scope',
+    'cuda_places',
+    'cpu_places',
+    'cuda_pinned_places',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -85,6 +89,38 @@ def _imperative_tracer():
 
 def _current_expected_place():
     return _imperative_current_expected_place_
+
+
+def _cpu_num():
+    return int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+
+
+def cuda_places(device_ids=None):
+    assert core.is_compiled_with_cuda(), \
+        "Not compiled with CUDA"
+    if device_ids is None:
+        gpus_env = os.getenv("FLAGS_selected_gpus")
+        if gpus_env:
+            device_ids = [int(s) for s in gpus_env.split(",")]
+        else:
+            device_ids = six.moves.range(core.get_cuda_device_count())
+    elif not isinstance(device_ids, (list, tuple)):
+        device_ids = [device_ids]
+    return [core.CUDAPlace(dev_id) for dev_id in device_ids]
+
+
+def cpu_places(device_count=None):
+    if device_count is None:
+        device_count = _cpu_num()
+    return [core.CPUPlace()] * device_count
+
+
+def cuda_pinned_places(device_count=None):
+    assert core.is_compiled_with_cuda(), \
+        "Not compiled with CUDA"
+    if device_count is None:
+        device_count = _cpu_num()
+    return [core.cuda_pinned_places()] * device_count
 
 
 class NameScope(object):

@@ -17,6 +17,7 @@ import os
 import six
 import sys
 from .. import compat as cpt
+from .framework import cuda_places, cpu_places
 
 from . import core
 
@@ -78,7 +79,8 @@ class CompiledProgram(object):
                            loss_name=None,
                            build_strategy=None,
                            exec_strategy=None,
-                           share_vars_from=None):
+                           share_vars_from=None,
+                           places=None):
         """Configs the program to run in data parallel way.
 
         Args:
@@ -97,6 +99,12 @@ class CompiledProgram(object):
                 will share variables from `share_vars_from`. `share_vars_from`
                 must be run by the executor before this CompiledProgram so that
                 vars are ready.
+            places(list(CUDAPlace)|list(CPUPlace)|None): If provide, only compile
+                program in the given places. Otherwise, the places used when compiled 
+                is determined by the Executor, and the places used are controlled 
+                by environment variables: FLAGS_selected_gpus or CUDA_VISIBLE_DEVICES
+                if using GPU; or CPU_NUM if using CPU.  
+
         Returns:
             self
         """
@@ -110,6 +118,12 @@ class CompiledProgram(object):
             self._exec_strategy = ExecutionStrategy()
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
+        if places is not None:
+            if not isinstance(places, (list, tuple)):
+                places = [places]
+            self._places = [_place_obj(p) for p in places]
+        else:
+            self._places = None
         return self
 
     def with_inference_optimize(self, config):
@@ -148,19 +162,16 @@ class CompiledProgram(object):
             self._local_scopes = []
 
         self._exec_strategy.use_cuda = isinstance(self._place, core.CUDAPlace)
-        if self._exec_strategy.use_cuda:
-            gpus_env = os.getenv("FLAGS_selected_gpus")
-            if gpus_env:
-                gpus = [int(s) for s in gpus_env.split(",")]
-            else:
-                gpus = [
-                    i for i in six.moves.range(core.get_cuda_device_count())
-                ]
-            self._places = [core.CUDAPlace(i) for i in gpus]
+        has_set_place = (self._places is not None)
+        if has_set_place:
+            desire_place = _place_obj(self._place)
+            for p in self._places:
+                assert p._type() == desire_place._type(), \
+                    "Place type not match. You may set the wrong type of places"
         else:
-            cpu_num = int(
-                os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-            self._places = [core.CPUPlace() for _ in six.moves.range(cpu_num)]
+            places = cuda_places(
+            ) if self._exec_strategy.use_cuda else cpu_places()
+            self._places = [_place_obj(p) for p in places]
         assert self._places, "no place for execution"
 
         if self._exec_strategy.num_threads == 0:
@@ -169,9 +180,7 @@ class CompiledProgram(object):
                 # performance. Worth tunning for other models in the future.
                 self._exec_strategy.num_threads = len(self._places) * 4
             else:
-                cpu_num = int(
-                    os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-                self._exec_strategy.num_threads = cpu_num * 2
+                self._exec_strategy.num_threads = len(self._places) * 2
 
         trainers_endpoints = self._program._trainers_endpoints
 
@@ -217,7 +226,7 @@ class CompiledProgram(object):
         if self._compiled:
             if scope and self._scope != scope:
                 raise ValueError("Cannot compile with different scope")
-            if place and self._place != place:
+            if place and not self._place._equals(place):
                 raise ValueError("Cannot compile with different place")
             return self
         self._compiled = True
