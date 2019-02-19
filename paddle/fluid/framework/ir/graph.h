@@ -28,6 +28,9 @@ namespace paddle {
 namespace framework {
 
 namespace details {
+
+// This attr is not recommended, because the graph should not dependence
+// the program once it is built.
 constexpr char kAllOpDescs[] = "all_op_descs";
 }  //  namespace details
 

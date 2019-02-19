@@ -44,12 +44,6 @@ const char kGraphVars[] = "vars";
 typedef std::unordered_set<VarHandleBase *> GraphDepVars;
 const char kGraphDepVars[] = "dep_vars";
 
-// TODO(panyx0718): Clean this up as well.
-// all operators. NOTE that even we use a vector here, the operators is
-// unordered.
-typedef std::vector<OpHandleBase *> GraphOps;
-const char kGraphOps[] = "ops";
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

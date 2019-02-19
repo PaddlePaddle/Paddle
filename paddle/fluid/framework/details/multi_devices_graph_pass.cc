@@ -36,6 +36,11 @@ namespace framework {
 namespace details {
 
 namespace {
+// TODO(panyx0718): Clean this up as well.
+// all operators. NOTE that even we use a vector here, the operators is
+// unordered.
+typedef std::vector<OpHandleBase *> GraphOps;
+const char kGraphOps[] = "ops";
 
 bool OpHaveRole(const ir::Node &node, const framework::OpRole &role) {
   return boost::get<int>(
@@ -221,6 +226,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
    * Only variables should be the leaves of graph.
    */
   AddOutputToLeafOps(&result);
+  result.Erase(kGraphOps);
   return graph;
 }
 
