@@ -99,11 +99,11 @@ class TestYoloBoxOp(OpTest):
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
         an_num = int(len(self.anchors) // 2)
-        self.batch_size = 1
+        self.batch_size = 32
         self.class_num = 2
         self.conf_thresh = 0.5
         self.downsample = 32
-        self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 2, 2)
+        self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 13, 13)
         self.imgsize_shape = (self.batch_size, 2)
 
 
