@@ -63,7 +63,7 @@ std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
                         std::multiplies<int>());
     if (input_size > anakin_input->shape().count()) {
       graph_->Reshape(input->name(), input->shape());
-      engine_->reset(new NetT(graph_, true));
+      engine_.reset(new NetT(*graph_, true));
       anakin_input = engine_->get_in(name);
     }
 
@@ -139,15 +139,20 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::FreezeNetwork() {
   PADDLE_ENFORCE(outputs_ == outputs);
 }
 
+/*
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(int batch_size) {}
+
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::Build(
-    const DescType &paddle_model) {}
+    const EngineBase::DescType &paddle_model) {}
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 paddle::inference::Buffer &
 AnakinEngine<TargetT, PrecisionType, RunType>::buffer(const std::string &name) {
   return paddle::inference::Buffer();
 }
+*/
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 std::unique_ptr<AnakinEngine<TargetT, PrecisionType, RunType>>

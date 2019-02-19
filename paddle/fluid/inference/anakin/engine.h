@@ -46,7 +46,7 @@ class Tensor;
 
 template <typename TargetT, ::anakin::Precision PrecisionType,
           ::anakin::OpRunType RunType = ::anakin::OpRunType::ASYNC>
-class AnakinEngine : public EngineBase {
+class AnakinEngine /*: public EngineBase */ {
  public:
   AnakinEngine();
   void DeclareInputs(const std::vector<std::string> &inputs);
@@ -113,7 +113,7 @@ class Tensor final {
       }*/
   template <typename T>
   const T *data() const {
-    return static_cast<const T *>(data);
+    return static_cast<const T *>(data_);
   }
 
  private:
