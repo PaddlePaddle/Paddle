@@ -722,12 +722,6 @@ EOF
 EOF
     fi
 
-    if [[ ${WITH_GOLANG:-OFF} == "ON" ]]; then
-        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
-        ADD go/cmd/pserver/pserver /usr/bin/
-        ADD go/cmd/master/master /usr/bin/
-EOF
-    fi
     cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # default command shows the paddle version and exit
     CMD [${CMD}]
