@@ -15,36 +15,45 @@
 #include "paddle/fluid/inference/anakin/engine.h"
 #include <algorithm>
 #include <cstring>
+#include "framework/core/net/net.h"
+#include "framework/graph/graph.h"
+
+using anakin::Precision;
+using anakin::OpRunType;
+template <typename T, Precision P, OpRunType O>
+using AnakinNetT = anakin::Net<T, P, O>;
+
+template <typename T, Precision P>
+using AnakinGraphT = anakin::graph::Graph<T, P>;
 
 namespace paddle {
 namespace inference {
 namespace anakin {
-using anakin::Precision;
-using anakin::OpRunType;
-
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine()
-    : graph_(new Graph<TargetT, PrecisionType>()),
-      engine_(new Net<TargetT, PrecisionType, RunType>()) {
+    : graph_(new AnakinGraphT<TargetT, PrecisionType>()),
+      engine_(new AnakinNetT<TargetT, PrecisionType, RunType>()) {
   engine_->init(*graph_);
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::DeclareInputs(
-    const std::vector<std::string>> &inputs) {
-  inputs_ = std::sort(inputs.begin(), inputs.end());
+    const std::vector<std::string> &inputs) {
+  inputs_ = inputs;
+  std::sort(inputs_.begin(), inputs_.end());
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::DeclareOutputs(
     const std::vector<std::string> &outputs) {
-  outputs_ = std::sort(outputs_.begin(), outputs_.end());
+  outputs_ = outputs;
+  std::sort(outputs_.begin(), outputs_.end());
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     const std::vector<Tensor *> &inputs) {
-  PADDLE_ENFORCE(outputs.empty() == false);
+  PADDLE_ENFORCE(inputs.empty() == false);
   for (auto input : inputs) {
     auto name = input->name();
     auto anakin_input = engine_->get_in(name);
@@ -54,20 +63,20 @@ std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
                         std::multiplies<int>());
     if (input_size > anakin_input->shape().count()) {
       graph_->Reshape(input->name(), input->shape());
-      engine_->reset(new AnakinNetT(graph_, true));
+      engine_->reset(new NetT(graph_, true));
       anakin_input = engine_->get_in(name);
     }
 
-    anakin::saber::Shape tmp_shape;
+    ::anakin::saber::Shape tmp_shape;
     std::copy(input->shape().begin(), input->shape().end(), tmp_shape.begin());
     anakin_input->reshape(tmp_shape);
 #ifdef PADDLE_WITH_CUDA
-    if (std::is_same<anakin::saber::NV, TargetT>::value) {
+    if (std::is_same<TargetT, ::anakin::saber::NV>::value) {
       cudaMemcpy(anakin_input->mutable_data(), input->data<float>(),
-                 inpt->size() * sizeof(float), cudaMemcpyHostToDevice);
+                 input->size() * sizeof(float), cudaMemcpyHostToDevice);
     }
 #endif
-    if (std::is_same<anakin::saber::X86, TargetT>::value) {
+    if (std::is_same<TargetT, ::anakin::saber::X86>::value) {
       std::memcpy(anakin_input->mutable_data(), input->data<float>(),
                   input->size() * sizeof(float));
     }
@@ -88,19 +97,19 @@ std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     auto valid_shape = anakin_out->valid_shape();
     std::copy(valid_shape.begin(), valid_shape.end(), shape.begin());
     Tensor output;
-    output.Reshape(shape);
+    output.Resize(shape);
 #ifdef PADDLE_WITH_CUDA
-    if (std::is_same<TargetT, anakin::saber::NV>::value) {
-      auto *data = output.mutable_data(Place::kGpu);
+    if (std::is_same<TargetT, ::anakin::saber::NV>::value) {
+      auto *data = output.mutable_data<float>(Place::kGpu);
       PADDLE_ENFORCE(cudaMemcpy(data, anakin_out->mutable_data(),
                                 anakin_out->valid_size() * sizeof(float),
                                 cudaMemcpyDeviceToHost));
     }
 #endif
-    if (std::is_same<TargetT, anakin::saber::X86>::value) {
-      auto *data = output.mutable_data(Place::kCpu);
+    if (std::is_same<TargetT, ::anakin::saber::X86>::value) {
+      auto *data = output.mutable_data<float>(Place::kCpu);
       std::memcpy(data, anakin_out->mutable_data(),
-                  anakin_out->valid_size() * sizeof<float>);
+                  anakin_out->valid_size() * sizeof(float));
     }
     outputs.push_back(output);
   }
@@ -128,6 +137,16 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::FreezeNetwork() {
   std::vector<std::string> outputs = graph_->get_outs();
   std::sort(outputs.begin(), outputs.end());
   PADDLE_ENFORCE(outputs_ == outputs);
+}
+
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+void AnakinEngine<TargetT, PrecisionType, RunType>::Build(
+    const DescType &paddle_model) {}
+
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+paddle::inference::Buffer &
+AnakinEngine<TargetT, PrecisionType, RunType>::buffer(const std::string &name) {
+  return paddle::inference::Buffer();
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>

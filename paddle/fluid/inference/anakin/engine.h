@@ -26,12 +26,15 @@
 #include "saber/saber_types.h"
 
 namespace anakin {
+
 template <typename Ttype, Precision Ptype, OpRunType RunType>
 class Net;
 
+namespace graph {
 template <typename Ttype, Precision Ptype>
 class Graph;
-}
+}  // namespace graph
+}  // namespace anakin
 
 namespace paddle {
 namespace inference {
@@ -41,10 +44,11 @@ enum class DataType;
 enum class Place;
 class Tensor;
 
-template <typename TargetT, anakin::Precision PrecisionType,
-          anakin::OpRunType RunType = anakin::OpRunType::ASYNC>
+template <typename TargetT, ::anakin::Precision PrecisionType,
+          ::anakin::OpRunType RunType = ::anakin::OpRunType::ASYNC>
 class AnakinEngine : public EngineBase {
  public:
+  AnakinEngine();
   void DeclareInputs(const std::vector<std::string> &inputs);
   void DeclareOutputs(const std::vector<std::string> &outputs);
 
@@ -70,10 +74,10 @@ class AnakinEngine : public EngineBase {
   std::vector<Tensor> Execute(const std::vector<Tensor *> &inputs);
 
  private:
-  using AnakinNetT = anakin::Net<TargetT, PrecisionType, RunType>;
-  using AnakinGraphT = anakin::Graph<TargetT, PrecisionType>;
-  std::unique_ptr<AnakinNetT> engine_;
-  std::unique_ptr<AnakinGraphT> graph_;
+  using NetT = ::anakin::Net<TargetT, PrecisionType, RunType>;
+  using GraphT = ::anakin::graph::Graph<TargetT, PrecisionType>;
+  std::unique_ptr<GraphT> graph_;
+  std::unique_ptr<NetT> engine_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
 };
@@ -117,14 +121,15 @@ class Tensor final {
   std::vector<int> shape_;
   Place place_;
   DataType dtype_;
+  int size_;
   void *data_;
 };
 
 enum class DataType { kUnk, kFloat32, kFloat64, kInt32 };
 enum class Place { kCpu, kGpu, kUnk };
 
-template class AnakinEngine<anakin::saber::NV, anakin::Precision::FP32>;
-template class AnakinEngine<anakin::saber::X86, anakin::Precision::FP32>;
+template class AnakinEngine<::anakin::saber::NV, ::anakin::Precision::FP32>;
+template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
