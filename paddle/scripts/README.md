@@ -71,7 +71,6 @@ Users can specify the following Docker build arguments with either "ON" or "OFF"
 | `WITH_STYLE_CHECK` | ON | Check the code style when building. |
 | `PYTHON_ABI` | "" | Build for different python ABI support, can be cp27-cp27m or cp27-cp27mu |
 | `RUN_TEST` | OFF | Run unit test immediently after the build. |
-| `WITH_DOC` | OFF | Build docs after build binaries. |
 | `WOBOQ` | OFF | Generate WOBOQ code viewer under `build/woboq_out` |
 
 ## Docker Images
