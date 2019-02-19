@@ -555,7 +555,8 @@ class OpProtoHolder(object):
         return {
             core.op_proto_and_checker_maker.kOpRoleAttrName(),
             core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
-            core.op_proto_and_checker_maker.kOpNameScopeAttrName()
+            core.op_proto_and_checker_maker.kOpNameScopeAttrName(),
+            core.op_proto_and_checker_maker.kOpCreationCallstackAttrName()
         }
 
 

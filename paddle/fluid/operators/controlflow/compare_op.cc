@@ -51,6 +51,11 @@ class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                                   comment.type));
     AddInput("Y", string::Sprintf("the right hand operand of %s operator",
                                   comment.type));
+    AddAttr<int>(
+        "axis",
+        "The start dimension index for broadcasting Y onto X. [default -1]")
+        .SetDefault(-1)
+        .EqualGreaterThan(-1);
     AddAttr<bool>("force_cpu",
                   "Force fill output variable to cpu "
                   "memory. Otherwise, fill output variable to the running "
@@ -64,11 +69,6 @@ N-dim tensor. X and Y could be any type.  The each element of the Out tensor is
 calculated by $%s$
 )DOC",
                                comment.equation));
-    AddAttr<int>(
-        "axis",
-        "The start dimension index for broadcasting Y onto X. [default -1]")
-        .SetDefault(-1)
-        .EqualGreaterThan(-1);
   }
 };
 
