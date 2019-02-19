@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import contextlib
+from ..wrapped_decorator import signature_safe_contextmanager
 import numpy as np
 
 from paddle.fluid import core
@@ -24,7 +24,7 @@ def enabled():
     return framework._in_imperative_mode()
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def guard(place=None):
     train = framework.Program()
     startup = framework.Program()

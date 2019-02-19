@@ -97,30 +97,7 @@ class PassStrategy : public PaddlePassBuilder {
  */
 class CpuPassStrategy : public PassStrategy {
  public:
-  CpuPassStrategy() : PassStrategy({}) {
-    // NOTE the large fusions should be located in the front, so that they will
-    // not be damaged by smaller ones.
-    passes_.assign({
-        "infer_clean_graph_pass",         //
-        "attention_lstm_fuse_pass",       //
-        "seqpool_concat_fuse_pass",       //
-        "seqconv_eltadd_relu_fuse_pass",  //
-        // "embedding_fc_lstm_fuse_pass", //
-        "fc_lstm_fuse_pass",             //
-        "mul_lstm_fuse_pass",            //
-        "fc_gru_fuse_pass",              //
-        "mul_gru_fuse_pass",             //
-        "seq_concat_fc_fuse_pass",       //
-        "fc_fuse_pass",                  //
-        "repeated_fc_relu_fuse_pass",    //
-        "squared_mat_sub_fuse_pass",     //
-        "conv_bn_fuse_pass",             //
-        "conv_eltwiseadd_bn_fuse_pass",  //
-        "is_test_pass",                  //
-        "identity_scale_op_clean_pass",  //
-    });
-    use_gpu_ = false;
-  }
+  CpuPassStrategy();
 
   explicit CpuPassStrategy(const CpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {}
@@ -153,27 +130,7 @@ class CpuPassStrategy : public PassStrategy {
  */
 class GpuPassStrategy : public PassStrategy {
  public:
-  GpuPassStrategy() : PassStrategy({}) {
-    passes_.assign({
-      "infer_clean_graph_pass",                        //
-          "identity_scale_op_clean_pass",              //
-          "conv_affine_channel_fuse_pass",             //
-          "conv_eltwiseadd_affine_channel_fuse_pass",  //
-          "conv_bn_fuse_pass",                         //
-#if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
-                           // guaranteed at least v7
-          "conv_elementwise_add_act_fuse_pass",   //
-          "conv_elementwise_add2_act_fuse_pass",  //
-          "conv_elementwise_add_fuse_pass",       //
-#endif
-    });
-
-    for (int i = 6; i >= 3; i--) {
-      passes_.push_back("transpose_flatten" + std::to_string(i) +
-                        "_concat_fuse_pass");
-    }
-    use_gpu_ = true;
-  }
+  GpuPassStrategy();
 
   explicit GpuPassStrategy(const GpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
