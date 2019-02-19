@@ -58,7 +58,6 @@ option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools" 
 option(WITH_JEMALLOC    "Compile PaddlePaddle with jemalloc"            OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
-option(WITH_FLUID_ONLY  "Compile PaddlePaddle fluid only"               OFF)
 option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(WITH_PSLIB       "Compile with pslib support"                    OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
@@ -95,8 +94,6 @@ endif()
 if (WIN32)
     set(WITH_DISTRIBUTE OFF CACHE STRING
             "Disable DISTRIBUTE when compiling for Windows" FORCE)
-    set(WITH_FLUID_ONLY ON CACHE STRING
-            "Enable FLUID_ONLY when compiling for Windows" FORCE)
 endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING

@@ -34,7 +34,6 @@ function start_build_docker() {
         -e PADDLE_FRACTION_GPU_MEMORY_TO_USE=0.15 \
         -e CUDA_VISIBLE_DEVICES=0,1 \
         -e WITH_DISTRIBUTE=ON \
-        -e WITH_FLUID_ONLY=ON \
         -e RUN_TEST=ON
 EOL
     )
