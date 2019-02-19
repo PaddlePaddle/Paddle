@@ -194,7 +194,8 @@ void MemoryOptimizePass::SubGraphOptimize(OpDesc* op_desc) const {
           // effect. Because it is a single op in graph. No need to
           // update the ir nodes.
           sub_op_desc->Rename(var->Name(), cache->Name());
-          if (sub_op_desc->Block()->HasVar(var->Name())) {
+          if (sub_op_desc->Block() != nullptr &&
+              sub_op_desc->Block()->HasVar(var->Name())) {
             sub_op_desc->Block()->RemoveVar(var->Name());
           }
         }
