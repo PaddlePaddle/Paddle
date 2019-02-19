@@ -207,7 +207,7 @@ framework::LoDTensor& VarBase::GradValue() {
 
 std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
   if (grad_op_descs_.empty() && backward_id_ <= 0) {
-    LOG(WARNING) << "op with no grad: " << op_desc_->Type();
+    VLOG(3) << "op with no grad: " << op_desc_->Type();
     return {};
   }
 

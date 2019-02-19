@@ -37,7 +37,7 @@ using paddle::framework::Tensor;
           "(bool, default false) Set to true for inference only, false " \
           "for training. Some layers may run faster when this is true.") \
           .SetDefault(false);                                            \
-      AddComment(#OP_COMMENT);                                           \
+      AddComment(OP_COMMENT);                                            \
     }                                                                    \
   }
 
@@ -124,7 +124,7 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
 UNUSED constexpr char SigmoidDoc[] = R"DOC(
 Sigmoid Activation Operator
 
-$$out = \frac{1}{1 + e^{-x}}$$
+$$out = \\frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
@@ -187,14 +187,14 @@ $out = |x|$
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Activation Operator.
 
-$out = ceil(x)$
+$out = \left \lceil x \right \rceil$
 
 )DOC";
 
 UNUSED constexpr char FloorDoc[] = R"DOC(
 Floor Activation Operator.
 
-$out = floor(x)$
+$out = \left \lfloor x \right \rfloor$
 
 )DOC";
 
@@ -252,7 +252,7 @@ $out = \ln(1 + e^{x})$
 UNUSED constexpr char SoftsignDoc[] = R"DOC(
 Softsign Activation Operator.
 
-$$out = \frac{x}{1 + |x|}$$
+$$out = \\frac{x}{1 + \|x\|}$$
 
 )DOC";
 

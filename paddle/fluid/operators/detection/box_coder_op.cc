@@ -38,20 +38,12 @@ class BoxCoderOp : public framework::OperatorWithKernel {
                         "The shape of PriorBox is [N, 4]");
       if (ctx->HasInput("PriorBoxVar")) {
         auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");
-        PADDLE_ENFORCE(
-            prior_box_var_dims.size() == 1 || prior_box_var_dims.size() == 2,
-            "Input(PriorBoxVar) of BoxCoderOp should be 1 or 2.");
-        if (prior_box_var_dims.size() == 1) {
-          PADDLE_ENFORCE_EQ(
-              prior_box_var_dims[0], 4,
-              "The 1st dimension of Input(PriorBoxVar) should be 4"
-              "when the rank is 1.");
-        } else {
-          PADDLE_ENFORCE_EQ(
-              prior_box_dims, prior_box_var_dims,
-              "The dimension of Input(PriorBoxVar) should be equal to"
-              "the dimension of Input(PriorBox when the rank is 2.)");
-        }
+        PADDLE_ENFORCE(prior_box_var_dims.size() == 2,
+                       "Input(PriorBoxVar) of BoxCoderOp should be 2.");
+        PADDLE_ENFORCE_EQ(
+            prior_box_dims, prior_box_var_dims,
+            "The dimension of Input(PriorBoxVar) should be equal to"
+            "the dimension of Input(PriorBox) when the rank is 2.");
       }
     }
 
