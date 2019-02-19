@@ -25,7 +25,7 @@ def sigmoid(x):
     return 1.0 / (1.0 + np.exp(-1.0 * x))
 
 
-def YoloBox(x, attrs):
+def YoloBox(x, img_size, attrs):
     n, c, h, w = x.shape
     anchors = attrs['anchors']
     an_num = int(len(anchors) // 2)
@@ -56,15 +56,14 @@ def YoloBox(x, attrs):
     pred_box = pred_box * (pred_conf > 0.).astype('float32')
 
     pred_box = pred_box.reshape((n, -1, 4))
-    pred_box[:, :, :
-             2], pred_box[:, :, 2:
-                          4] = pred_box[:, :, :
-                                        2] - pred_box[:, :, 2:
-                                                      4] / 2., pred_box[:, :, :
-                                                                        2] + pred_box[:, :,
-                                                                                      2:
-                                                                                      4] / 2.0
-    pred_box = pred_box * input_size
+    pred_box[:, :, :2], pred_box[:, :, 2:4] = \
+        pred_box[:, :, :2] - pred_box[:, :, 2:4] / 2., \
+        pred_box[:, :, :2] + pred_box[:, :, 2:4] / 2.0
+    # pred_box = pred_box * input_size
+    pred_box[:, :, 0] = pred_box[:, :, 0] * img_size[:, 1][:, np.newaxis]
+    pred_box[:, :, 1] = pred_box[:, :, 1] * img_size[:, 0][:, np.newaxis]
+    pred_box[:, :, 2] = pred_box[:, :, 2] * img_size[:, 1][:, np.newaxis]
+    pred_box[:, :, 3] = pred_box[:, :, 3] * img_size[:, 0][:, np.newaxis]
 
     return pred_box, pred_score.reshape((n, -1, class_num))
 
@@ -74,6 +73,7 @@ class TestYoloBoxOp(OpTest):
         self.initTestCase()
         self.op_type = 'yolo_box'
         x = np.random.random(self.x_shape).astype('float32')
+        img_size = np.random.randint(10, 20, self.imgsize_shape).astype('int32')
 
         self.attrs = {
             "anchors": self.anchors,
@@ -82,8 +82,11 @@ class TestYoloBoxOp(OpTest):
             "downsample": self.downsample,
         }
 
-        self.inputs = {'X': x, }
-        boxes, scores = YoloBox(x, self.attrs)
+        self.inputs = {
+            'X': x,
+            'ImgSize': img_size,
+        }
+        boxes, scores = YoloBox(x, img_size, self.attrs)
         self.outputs = {
             "Boxes": boxes,
             "Scores": scores,
@@ -95,10 +98,12 @@ class TestYoloBoxOp(OpTest):
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
         an_num = int(len(self.anchors) // 2)
+        self.batch_size = 3
         self.class_num = 2
         self.conf_thresh = 0.5
         self.downsample = 32
-        self.x_shape = (3, an_num * (5 + self.class_num), 5, 5)
+        self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 5, 5)
+        self.imgsize_shape = (self.batch_size, 2)
 
 
 if __name__ == "__main__":

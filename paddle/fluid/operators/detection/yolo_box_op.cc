@@ -23,12 +23,15 @@ class YoloBoxOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of YoloBoxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("ImgSize"),
+                   "Input(ImgSize) of YoloBoxOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Boxes"),
                    "Output(Boxes) of YoloBoxOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Scores"),
                    "Output(Scores) of YoloBoxOp should not be null.");
 
     auto dim_x = ctx->GetInputDim("X");
+    auto dim_imgsize = ctx->GetInputDim("ImgSize");
     auto anchors = ctx->Attrs().Get<std::vector<int>>("anchors");
     int anchor_num = anchors.size() / 2;
     auto class_num = ctx->Attrs().Get<int>("class_num");
@@ -39,6 +42,12 @@ class YoloBoxOp : public framework::OperatorWithKernel {
         dim_x[1], anchor_num * (5 + class_num),
         "Input(X) dim[1] should be equal to (anchor_mask_number * (5 "
         "+ class_num)).");
+    PADDLE_ENFORCE_EQ(dim_imgsize.size(), 2,
+                      "Input(ImgSize) should be a 2-D tensor.");
+    PADDLE_ENFORCE_EQ(
+        dim_imgsize[0], dim_x[0],
+        "Input(ImgSize) dim[0] and Input(X) dim[0] should be same.");
+    PADDLE_ENFORCE_EQ(dim_imgsize[1], 2, "Input(ImgSize) dim[1] should be 2.");
     PADDLE_ENFORCE_GT(anchors.size(), 0,
                       "Attr(anchors) length should be greater then 0.");
     PADDLE_ENFORCE_EQ(anchors.size() % 2, 0,
@@ -72,6 +81,11 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
              "box locations, confidence score and classification one-hot"
              "keys of each anchor box. Generally, X should be the output"
              "of YOLOv3 network.");
+    AddInput("ImgSize",
+             "The image size tensor of YoloBox operator, "
+             "This is a 2-D tensor with shape of [N, 2]. This tensor holds"
+             "height and width of each input image using for resize output"
+             "box in input image scale.");
     AddOutput("Boxes",
               "The output tensor of detection boxes of YoloBox operator, "
               "This is a 3-D tensor with shape of [N, M, 4], N is the"
