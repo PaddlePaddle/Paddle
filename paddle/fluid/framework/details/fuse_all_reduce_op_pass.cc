@@ -63,7 +63,7 @@ class FuseAllReduceOpPass : public ir::Pass {
             PADDLE_ENFORCE_EQ(inputs[i]->name(), grad_name,
                               "The input name should be the same.");
           }
-          PADDLE_ENFORCE_NE(grads.count(grad_name), 0);
+          PADDLE_ENFORCE_NE(grads.count(grad_name), static_cast<size_t>(0));
           all_reduce_ops.emplace(grad_name, node);
         }
       }
@@ -85,7 +85,7 @@ class FuseAllReduceOpPass : public ir::Pass {
 
     for (auto &group_g_p : group_grads_params) {
       size_t group_size = group_g_p.size();
-      PADDLE_ENFORCE_GT(group_size, 0);
+      PADDLE_ENFORCE_GT(group_size, static_cast<size_t>(0));
       std::vector<ir::Node *> group_all_reduce_ops;
       group_all_reduce_ops.reserve(group_size);
       for (auto &g_p : group_g_p) {

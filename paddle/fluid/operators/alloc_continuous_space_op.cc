@@ -32,7 +32,7 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
     auto &out_var_names = context.Outputs("Output");
 
     auto &in_vars = context.MultiInputVar("Input");
-    PADDLE_ENFORCE_GT(in_var_names.size(), 0);
+    PADDLE_ENFORCE_GT(in_var_names.size(), static_cast<size_t>(0));
     PADDLE_ENFORCE_EQ(in_var_names.size(), out_var_names.size());
 
     for (size_t i = 0; i < in_var_names.size(); ++i) {

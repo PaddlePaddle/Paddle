@@ -32,17 +32,8 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       std::unique_ptr<ir::Graph> graph) const override {
     ir::Graph& result = *graph;
 
-    if (result.Has(kParamsAndGrads)) {
-      VLOG(10) << kParamsAndGrads << " is reset.";
-      result.Erase(kParamsAndGrads);
-    }
-    result.Set(kParamsAndGrads, new ParamsAndGrads);
-
-    if (result.Has(kGroupGradsAndParams)) {
-      VLOG(10) << kGroupGradsAndParams << " is reset.";
-      result.Erase(kGroupGradsAndParams);
-    }
-    result.Set(kGroupGradsAndParams, new GroupGradsAndParams);
+    ResetAttribute<ParamsAndGrads>(kParamsAndGrads, &result);
+    ResetAttribute<GroupGradsAndParams>(kGroupGradsAndParams, &result);
 
     // NOTE: The operator nodes should be in topology order.
     std::vector<ir::Node*> topo_nodes = ir::TopologySortOperations(result);
@@ -65,7 +56,8 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     // to parameters' name to make variables' name correspond correctly.
     auto& group_params_grads =
         result.Get<GroupGradsAndParams>(kGroupGradsAndParams);
-    ResortParamsAndGrads(vars, &params_grads, &group_params_grads);
+    SortParamsAndGrads(vars, &params_grads);
+    SetGroupGradsAndParams(vars, params_grads, &group_params_grads);
 
     // Set Gradients as Persistable to prevent this var becoming reusable.
     auto dtype = static_cast<proto::VarType::Type>(0);
@@ -119,17 +111,30 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     return std::move(graph);
   }
 
-  void ResortParamsAndGrads(
+  template <typename AttrType>
+  void ResetAttribute(const std::string& attr_name, ir::Graph* graph) const {
+    if (graph->Has(attr_name)) {
+      VLOG(10) << attr_name << " is reset.";
+      graph->Erase(attr_name);
+    }
+    graph->Set(attr_name, new AttrType);
+  }
+
+  void SortParamsAndGrads(
       const std::unordered_map<std::string, ir::Node*>& var_nodes,
-      ParamsAndGrads* params_grads,
-      GroupGradsAndParams* group_params_grads) const {
+      ParamsAndGrads* params_grads) const {
     // TODO(zcd): The sort should be removed.
     std::sort(params_grads->begin(), params_grads->end(),
               [](const std::pair<std::string, std::string>& a,
                  const std::pair<std::string, std::string>& b) -> bool {
                 return a.first < b.first;
               });
+  }
 
+  void SetGroupGradsAndParams(
+      const std::unordered_map<std::string, ir::Node*>& var_nodes,
+      const ParamsAndGrads& params_grads,
+      GroupGradsAndParams* group_params_grads) const {
     // group_size
     const size_t group_size = 3;
     size_t groups = (params_grads.size() + group_size - 1) / group_size;
@@ -142,11 +147,11 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       group_p_g.reserve(group_size);
       VLOG(10) << "Group:" << i;
       std::stringstream out;
-      while (j < params_grads->size()) {
+      while (j < params_grads.size()) {
         group_p_g.emplace_back(
-            std::make_pair(params_grads->at(j).second /*grad*/,
-                           params_grads->at(j).first /*param*/));
-        out << params_grads->at(j).second << "[" << params_grads->at(j).first
+            std::make_pair(params_grads.at(j).second /*grad*/,
+                           params_grads.at(j).first /*param*/));
+        out << params_grads.at(j).second << "[" << params_grads.at(j).first
             << "]  ";
         ++j;
         if (j % group_size == 0) break;

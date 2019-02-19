@@ -43,7 +43,7 @@ void FuseAdamOpPass::FuseAdamOps(
     const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
     const std::unordered_map<std::string, std::string> &fused_vars_name,
     const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const {
-  PADDLE_ENFORCE_GT(adam_ops.size(), 0);
+  PADDLE_ENFORCE_GT(adam_ops.size(), static_cast<size_t>(0));
 
   // Check attributions
   // NOTE: If new attribution is added, the following code maybe need change.

@@ -112,7 +112,7 @@ void FuseOptimizerOpPass::SortVarsName(
     const std::vector<std::pair<std::string, std::string>> &params_grads,
     std::unordered_map<std::string, std::vector<std::string>> *aux_vars_set,
     std::vector<ir::Node *> *ops) const {
-  PADDLE_ENFORCE_NE(aux_vars_set->count("Param"), 0);
+  PADDLE_ENFORCE_NE(aux_vars_set->count("Param"), static_cast<size_t>(0));
   auto &param_vec = aux_vars_set->at("Param");
 
   std::vector<size_t> param_sort_idx;
@@ -164,7 +164,7 @@ void FuseOptimizerOpPass::GetSpecifiedOpsAndVars(
 
   for (auto &var_n : aux_vars_name) {
     auto arg_names = node->Op()->Input(var_n);
-    PADDLE_ENFORCE_EQ(arg_names.size(), 1);
+    PADDLE_ENFORCE_EQ(arg_names.size(), static_cast<size_t>(1));
     (*aux_args_name)[var_n].emplace_back(arg_names[0]);
   }
   ops->emplace_back(node);

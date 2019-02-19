@@ -37,7 +37,7 @@ class AllocContinuousSpaceForGradKernel : public framework::OperatorBase {
     auto &grad_var_names = Outputs("Gradients");
     auto fused_var_name = Output("FusedOutput");
 
-    PADDLE_ENFORCE_GT(param_var_names.size(), 0);
+    PADDLE_ENFORCE_GT(param_var_names.size(), static_cast<size_t>(0));
     PADDLE_ENFORCE_EQ(param_var_names.size(), grad_var_names.size());
 
     size_t mem_size = 0;
