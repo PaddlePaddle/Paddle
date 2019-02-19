@@ -42,8 +42,9 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::DeclareOutputs(
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
-    const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs) {
+std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
+    const std::vector<Tensor *> &inputs) {
+  PADDLE_ENFORCE(outputs.empty() == false);
   for (auto input : inputs) {
     auto name = input->name();
     auto anakin_input = engine_->get_in(name);
@@ -73,22 +74,30 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
   }
 
   engine_->prediction();
-  for (auto *output : outputs) {
-    auto *tensor = engine_->get_out(output->name());
+
+  std::vector<Tensor> outputs;
+  for (auto name : outputs_) {
+    auto *anakin_out = engine_->get_out(name);
     std::vector<int> shape;
-    auto valid_shape = tensor->valid_shape();
+    auto valid_shape = anakin_out->valid_shape();
     std::copy(valid_shape.begin(), valid_shape.end(), shape.begin());
-    output->Resize(shape);
+    Tensor output;
+    output.Reshape(shape);
 #ifdef PADDLE_WITH_CUDA
-// TODO
-#endif
-    if (std::is_same<anakin::saber::X86>::value) {
-      auto *output_data =
-          output->data(Place::kCpu, tensor->valid_size() * sizeof<float>);
-      std::memcpy(output_data, tensor->mutable_data(),
-                  tensor->valid_size() * sizeof(float);)
+    if (std::is_same<TargetT, anakin::saber::NV>::value) {
+      // TODO
     }
+#endif
+    if (std::is_same<TargetT, anakin::saber::X86>::value) {
+      auto *data = anakin_out->data(Place::kCpu,
+                                    anakin_out->valid_size() * sizeof<float>);
+      std::memcpy(data, anakin_out->mutable_data(),
+                  anakin_out->valid_size() * sizeof<float>);
+    }
+    outputs.push_back(output);
   }
+
+  return outputs;
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -125,14 +134,6 @@ AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine(
   engine_ = std::move(engine->engine_->Clone());
 }
 
-void Tensor::Resize(const std::vector<int> &shape) { shape_ = shape; }
-
-void Tensor::SetName(const std::string &name) { name_ = name; }
-
-const std::string &Tensor::name() const { return name_; }
-
-DataType Tensor::dtype() const { return dtype_; }
-
-const std::vector<int> &shape() const { return shape_; }
-}
-}
+}  // namespace anakin
+}  // namespace inference
+}  // namespace paddle

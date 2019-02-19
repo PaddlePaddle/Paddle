@@ -66,8 +66,7 @@ class AnakinEngine : public EngineBase {
 
   void FreezeNetwork();
 
-  void Execute(const std::vector<Tensor *> &inputs,
-               const std::vector<Tensor *> &outputs);
+  std::vector<Tensor> Execute(const std::vector<Tensor *> &inputs);
 
  private:
   AnakinEngine(const AnakinEngine &);
@@ -83,21 +82,38 @@ class AnakinEngine : public EngineBase {
 
 class Tensor {
  public:
-  void Resize(const std::vector<int> &shape);
-  void SetName(const std::string &name);
-  const std::string &name() const;
-  template <typename T>
-  T *mutable_data(Place place);
+  Tensor() = default;
+  ~Tensor();
+  void Reshape(const std::vector<int> &shape) { shape_ = shape; }
+  const std::vector<int> &shape() const { return shape_; }
+  void SetName(const std::string &name) { name_ = name; }
+  const std::string &name() const { return name_; }
+  void SetPlace(const Place place) { place_ = place; }
+  Place place() const { return place_; }
+  void SetDataType(const DataType dtype) { dtype_ = dtype; }
+  DataType dtype() const { return dtype_; }
 
   template <typename T>
-  T *data(Place *place, size_t size) const;
+  T *mutable_data(Place place) {
+#ifdef PADDLE_WITH_CUDA
+    if (place == Place::kGpu) {
+      if (place == place_) {
+        return static_cast<T *>(data);
+      } else {
+        //
+      }
+    }
+#endif
+  }
 
-  DataType dtype() const;
-  const std::vector<int> &shape() const;
+  template <typename T>
+  T *data(Place place, size_t size) const;
 
  private:
   std::string name_;
   std::vector<int> shape_;
+  Place place_;
+  DataType dtype_;
   void *data_;
 };
 
