@@ -235,7 +235,9 @@ void MemoryOptimizePass::RenameVarInGraphDesc(const std::string& var,
     auto* op_desc = op->Op();
     op_desc->RenameInput(var, cache_var);
     op_desc->RenameOutput(var, cache_var);
-    if (op_desc->Block()->HasVar(var)) op_desc->Block()->RemoveVar(var);
+    if (op_desc->Block() != nullptr && op_desc->Block()->HasVar(var)) {
+      op_desc->Block()->RemoveVar(var);
+    }
     op_desc->Flush();
   }
 }
