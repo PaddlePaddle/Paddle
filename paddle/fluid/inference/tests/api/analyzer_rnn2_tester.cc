@@ -59,9 +59,10 @@ struct DataRecord {
     int num_lines = 0;
     result_data.clear();
     while (std::getline(file, line)) {
-      num_lines++;
       std::vector<std::string> data;
       split(line, ':', &data);
+      if (data.size() < 2) continue;
+      num_lines++;
       if (num_lines % 2) {  // feature
         std::vector<std::string> feature_data;
         split(data[1], ' ', &feature_data);

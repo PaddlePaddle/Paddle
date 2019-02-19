@@ -41,6 +41,7 @@ struct DataRecord {
       num_lines++;
       std::vector<std::string> data;
       split(line, ';', &data);
+      if (data.size() < 2) continue;
       std::vector<int64_t> words_ids;
       split_to_int64(data[1], ' ', &words_ids);
       datasets.emplace_back(words_ids);
