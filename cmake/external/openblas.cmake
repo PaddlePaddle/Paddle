@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-IF(USE_EIGEN_FOR_BLAS)
-    return()
-ENDIF(USE_EIGEN_FOR_BLAS)
-
 INCLUDE(cblas)
 
 IF(NOT ${CBLAS_FOUND})
