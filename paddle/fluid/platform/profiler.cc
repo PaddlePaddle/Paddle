@@ -455,19 +455,24 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
 void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
                       const size_t name_width, const size_t data_width) {
   VLOG(1) << "\n";
-
-  VLOG(1) << "Place: ";
+  bool cpu_involved = false;
+  bool gpu_involved = false;
+  bool cudapin_involved = false;
   for (size_t i = 0; i < events_table.size(); ++i) {
+    VLOG(1) << "Place: ";
     Place a;
     if (is_cpu_place(events_table[i].place)) {
       VLOG(1) << "CPU";
+      cpu_involved = true;
     } else if (is_gpu_place(events_table[i].place)) {
-      VLOG(1) << "GPU"
+      VLOG(1) << "GPU:"
               << boost::get<platform::CUDAPlace>(events_table[i].place)
                      .GetDeviceId()
               << "\n";
+      gpu_involved = true;
     } else {
       VLOG(1) << "CUDAPinnedPlace";
+      cudapin_involved = true;
     }
     VLOG(1) << "Memory unit: MB\n";
     // Output events table
@@ -484,6 +489,45 @@ void PrintMemProfiler(const std::vector<MemEventItem>& events_table,
             << "\t" << events_table[i].min << "\n";
   }
   VLOG(1) << "\n";
+  if (!cpu_involved) {
+    VLOG(1) << "Place: CPU\n";
+    VLOG(1) << "Memory unit: MB\n";
+    VLOG(1) << "Event"
+            << "\tPeak"
+            << "\tValley"
+            << "\tAverage"
+            << "\tMaximum"
+            << "\tMinimum"
+            << "\n";
+    VLOG(1) << "Memory"
+            << "\t0\t0\t0\t0\n";
+  }
+  if (!gpu_involved) {
+    VLOG(1) << "Place: GPU\n";
+    VLOG(1) << "Memory unit: MB\n";
+    VLOG(1) << "Event"
+            << "\tPeak"
+            << "\tValley"
+            << "\tAverage"
+            << "\tMaximum"
+            << "\tMinimum"
+            << "\n";
+    VLOG(1) << "Memory"
+            << "\t0\t0\t0\t0\n";
+  }
+  if (!cudapin_involved) {
+    VLOG(1) << "Place: CUDAPinnedPlace\n";
+    VLOG(1) << "Memory unit: MB\n";
+    VLOG(1) << "Event"
+            << "\tPeak"
+            << "\tValley"
+            << "\tAverage"
+            << "\tMaximum"
+            << "\tMinimum"
+            << "\n";
+    VLOG(1) << "Memory"
+            << "\t0\t0\t0\t0\n";
+  }
 }
 
 struct MemResult {
