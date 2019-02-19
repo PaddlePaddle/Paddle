@@ -16,6 +16,7 @@
 
 #include <cmath>
 #include <limits>
+#include <string>
 #include "paddle/fluid/operators/jit/helper.h"
 #include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -414,6 +415,37 @@ void Softmax(const T* x, T* y, int n, int bs = 1) {
   }
 }
 
+// embedding seq pool
+// table is a matrix with (tbl_h, tbl_w)
+// idx is a matrix with (idx_h, idx_w)
+// output is a vector with length tbl_w * idx_w
+template <typename T>
+void EmbSeqPool(const T* table, const int64_t* idx, T* out,
+                const emb_seq_pool_attr_t* attr) {
+  PADDLE_ENFORCE_EQ(attr->table_width * attr->index_width, attr->out_width);
+
+  auto check_idx_value_valid = [&](int64_t i) {
+    PADDLE_ENFORCE_LT(idx[i], attr->table_height, "idx value: %d, i: %d",
+                      idx[i], i);
+    PADDLE_ENFORCE_GE(idx[i], 0, "idx value: %d, i: %d", idx[i], i);
+  };
+
+  for (int64_t w = 0; w != attr->index_width; ++w) {
+    check_idx_value_valid(w);
+    std::memcpy(out + w * attr->table_width, table + idx[w] * attr->table_width,
+                attr->table_width * sizeof(T));
+  }
+
+  for (int64_t h = 1; h < attr->index_height; ++h) {
+    for (int64_t w = 0; w < attr->index_width; ++w) {
+      int64_t i = h * attr->index_width + w;
+      check_idx_value_valid(i);
+      VAdd(table + idx[i] * attr->table_width, out + w * attr->table_width,
+           out + w * attr->table_width, attr->table_width);
+    }
+  }
+}
+
 #define DECLARE_REFER_KERNEL(name, tuples)             \
   template <typename T>                                \
   class name##Kernel : public ReferKernel<tuples<T>> { \
@@ -461,6 +493,8 @@ DECLARE_REFER_KERNEL(HMax, XRNTuples);
 DECLARE_REFER_KERNEL(HSum, XRNTuples);
 
 DECLARE_REFER_KERNEL(Softmax, SoftmaxTuples);
+
+DECLARE_REFER_KERNEL(EmbSeqPool, EmbSeqPoolTuples);
 
 #undef DECLARE_REFER_KERNEL
 
