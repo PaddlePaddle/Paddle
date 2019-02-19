@@ -506,9 +506,9 @@ class While(object):
     while loop control flow.
 
     Args:
-        cond (Variable): condition used to compare.
+        cond(Variable): condition used to compare.
         is_test(bool): A flag indicating whether execution is in test phase.
-        name (str): The name of this layer.
+        name(str): The name of this layer.
 
     Examples:
           .. code-block:: python
@@ -589,7 +589,8 @@ class While(object):
 
 
 def lod_rank_table(x, level=0):
-    """LoD Rank Table Operator. Given an input variable **x** and a level number
+    """
+    LoD Rank Table Operator. Given an input variable **x** and a level number
     of LoD, this layer creates a LodRankTable object. A LoDRankTable object
     contains a list of bi-element tuples. Each tuple consists of an index and
     a length, both of which are int type. Refering to specified level of LoD,
@@ -883,10 +884,8 @@ def less_than(x, y, force_cpu=None, cond=None, **ignored):
     return cond
 
 
-def equal(x, y, cond=None, **ignored):
+def equal(x, y, cond=None):
     """
-    **equal**
-
     This layer returns the truth value of :math:`x == y` elementwise.
 
     Args:
@@ -1458,7 +1457,6 @@ class DynamicRNN(object):
 
         Returns:
             The current timestep in the input sequence.
-
         """
         self._assert_in_rnn_block_("step_input")
         if not isinstance(x, Variable):
@@ -1535,8 +1533,7 @@ class DynamicRNN(object):
     @signature_safe_contextmanager
     def block(self):
         """
-        The block for user to define operators in RNN. See the class docstring
-        for more details.
+        The block for user to define operators in RNN.
         """
         if self.status != DynamicRNN.BEFORE_RNN:
             raise ValueError("rnn.block() can only be invoke once")
@@ -1640,8 +1637,7 @@ class DynamicRNN(object):
             dtype(str|numpy.dtype): The data type of the initialized memory.
 
         Returns:
-            the memory variable.
-
+            The memory variable.
         """
         self._assert_in_rnn_block_('memory')
         self._init_zero_idx_()
@@ -1740,7 +1736,7 @@ class DynamicRNN(object):
 
     def output(self, *outputs):
         """
-        mark the RNN output variables.
+        Mark the RNN output variables.
 
         Args:
             outputs: The output variables.
