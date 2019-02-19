@@ -29,10 +29,6 @@ if(WITH_TESTING)
     add_definitions(-DPADDLE_WITH_TESTING)
 endif(WITH_TESTING)
 
-if(NOT WITH_TIMER)
-    add_definitions(-DPADDLE_DISABLE_TIMER)
-endif(NOT WITH_TIMER)
-
 if(EIGEN_USE_THREADS)
     add_definitions(-DEIGEN_USE_THREADS)
 endif(EIGEN_USE_THREADS)
