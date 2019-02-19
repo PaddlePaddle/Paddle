@@ -66,10 +66,6 @@ if(WIN32)
   endif(NOT MSVC)
 endif(WIN32)
 
-if(NOT WITH_GOLANG)
-    add_definitions(-DPADDLE_WITHOUT_GOLANG)
-endif(NOT WITH_GOLANG)
-
 if(WITH_PSLIB)
     add_definitions(-DPADDLE_WITH_PSLIB)
 endif()
@@ -158,55 +154,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SIMD_FLAG}")
 if(WITH_DISTRIBUTE)
   add_definitions(-DPADDLE_WITH_DISTRIBUTE)
 endif()
-
-if(WITH_GOLANG)
-  # we need to symlink Paddle directory into GOPATH. If we
-  # don't do it and we have code that depends on Paddle, go
-  # get ./... will download a new Paddle repo from Github,
-  # without the changes in our current Paddle repo that we
-  # want to build.
-  set(GOPATH "${CMAKE_CURRENT_BINARY_DIR}/go")
-  file(MAKE_DIRECTORY ${GOPATH})
-  set(PADDLE_IN_GOPATH "${GOPATH}/src/github.com/PaddlePaddle/Paddle")
-  file(MAKE_DIRECTORY "${PADDLE_IN_GOPATH}")
-  set(PADDLE_GO_PATH "${CMAKE_SOURCE_DIR}/go")
-
-  add_custom_target(go_path)
-  add_custom_command(TARGET go_path
-    # Symlink Paddle directory into GOPATH
-    COMMAND mkdir -p ${PADDLE_IN_GOPATH}
-    COMMAND rm -rf ${PADDLE_IN_GOPATH}
-    COMMAND ln -sf ${CMAKE_SOURCE_DIR} ${PADDLE_IN_GOPATH}
-    # Automatically get all dependencies specified in the source code
-    # We can't run `go get -d ./...` for every target, because
-    # multiple `go get` can not run concurrently, but make need to be
-    # able to run with multiple jobs.
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  )
-
-  if (GLIDE_INSTALL)
-    if(EXISTS $ENV{GOPATH}/bin/glide)
-      set(GLIDE "$ENV{GOPATH}/bin/glide")
-    else()
-      message(FATAL_ERROR "no glide executeble found: $ENV{GOPATH}/bin/glide")
-    endif()
-
-    # this command will only run when the file it depends is missing
-    # or has changed, or the output is missing.
-    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/glide
-      COMMAND env GOPATH=${GOPATH} ${GLIDE} install
-      COMMAND touch ${CMAKE_BINARY_DIR}/glide
-      DEPENDS ${PADDLE_SOURCE_DIR}/go/glide.lock
-      WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go"
-      )
-
-    # depends on the custom command which outputs
-    # ${CMAKE_BINARY_DIR}/glide, the custom command does not need to
-    # run every time this target is built.
-    add_custom_target(go_vendor DEPENDS ${CMAKE_BINARY_DIR}/glide go_path)
-  endif()
-
-endif(WITH_GOLANG)
 
 if(WITH_GRPC)
     add_definitions(-DPADDLE_WITH_GRPC)

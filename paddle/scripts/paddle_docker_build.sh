@@ -26,7 +26,6 @@ function start_build_docker() {
         -e WITH_GPU=ON \
         -e CUDA_ARCH_NAME=Auto \
         -e WITH_AVX=ON \
-        -e WITH_GOLANG=OFF \
         -e WITH_TESTING=ON \
         -e WITH_COVERAGE=ON \
         -e COVERALLS_UPLOAD=ON \
