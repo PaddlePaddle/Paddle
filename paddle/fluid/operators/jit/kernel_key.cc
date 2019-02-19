@@ -56,6 +56,11 @@ size_t JitCodeKey<matmul_attr_t>(const matmul_attr_t& attr) {
   return (key << shift * 2) + ((static_cast<size_t>(attr.n)) << shift) + attr.k;
 }
 
+template <>
+size_t JitCodeKey<emb_seq_pool_attr_t>(const emb_seq_pool_attr_t& attr) {
+  return attr.table_width;
+}
+
 }  // namespace jit
 }  // namespace operators
 }  // namespace paddle
