@@ -312,6 +312,10 @@ class LSTMGradKernel : public framework::OpKernel<T> {
         lstm_grad.prev_state_grad = c0_g ? ordered_c0_g.data<T>() : nullptr;
       }
 
+      // lstm_value.output_value not used in bp, set to nullptr
+      // lstm_grad.state_active_grad not used in bp, set to nullptr
+      lstm_value.output_value = nullptr;
+      lstm_grad.state_active_grad = nullptr;
       int cur_batch_size = bend - bstart;
       T cell_clip = 0.0;
       math::LstmUnitGradFunctor<DeviceContext, T>::compute(
