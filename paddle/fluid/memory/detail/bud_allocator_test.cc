@@ -34,7 +34,30 @@ TEST(BudAllocator, GetLevel) {
   ASSERT_EQ(9, BudAllocator::GetLevel(513));
 }
 
-TEST(BudAllocator, AllocateAndFree) {
+TEST(BudAllocator, CPUAllocateAndFree) {
+  auto allocator = new BudAllocator(
+      std::unique_ptr<detail::SystemAllocator>(new detail::CPUAllocator()));
+  allocator->InitBySize(5000);
+  ASSERT_EQ(1, allocator->NumOfBlocks());
+  ASSERT_EQ(8192, allocator->FreeSize());
+
+  auto ptr1 = allocator->Alloc(300);
+  ASSERT_EQ(5, allocator->NumOfBlocks());
+
+  auto ptr2 = allocator->Alloc(200);
+  ASSERT_EQ(6, allocator->NumOfBlocks());
+  ASSERT_EQ(7424, allocator->FreeSize());
+
+  allocator->Free(ptr1);
+  ASSERT_EQ(6, allocator->NumOfBlocks());
+
+  allocator->Free(ptr2);
+  ASSERT_EQ(1, allocator->NumOfBlocks());
+  ASSERT_EQ(8192, allocator->FreeSize());
+}
+
+#ifdef PADDLE_WITH_CUDA
+TEST(BudAllocator, GPUAllocateAndFree) {
   auto allocator = new BudAllocator(
       std::unique_ptr<detail::SystemAllocator>(new detail::GPUAllocator(0)));
   allocator->InitBySize(5000);
@@ -55,6 +78,7 @@ TEST(BudAllocator, AllocateAndFree) {
   ASSERT_EQ(1, allocator->NumOfBlocks());
   ASSERT_EQ(8192, allocator->FreeSize());
 }
+#endif
 
 }  // namespace detail
 }  // namespace memory
