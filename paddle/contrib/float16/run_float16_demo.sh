@@ -14,7 +14,6 @@ cmake .. -DWITH_AVX=OFF \
          -DWITH_MKL=OFF \
          -DWITH_GPU=ON \
          -DWITH_TESTING=ON \
-         -DWITH_TIMER=ON \
          -DWITH_PROFILER=ON \
          -DWITH_FLUID_ONLY=ON
 make -j `nproc`
