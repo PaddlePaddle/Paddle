@@ -49,7 +49,7 @@ DEFINE_bool(
     "If this option turns on, only these op in whitelist can be inplaced."
     "If it turns off, all of the running op can be candidate of inplaced op."
     "Such as scale, elementwise_add"
-    "By default, it's turned on");
+    "By default, it's turned off");
 
 DECLARE_string(memory_optimize_debug);
 
