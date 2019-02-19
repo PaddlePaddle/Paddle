@@ -150,24 +150,25 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
     VLOG(3) << "Enter SampleLogitsKernel";
     // get necessary inputs
     const Tensor* logits = context.Input<Tensor>("Logits");
-    const Tensor* label = context.Input<Tensor>("Label");
+    const Tensor* labels = context.Input<Tensor>("Labels");
 
     // get necessary outputs
     Tensor* samples = context.Output<Tensor>("Samples");
     Tensor* probabilities = context.Output<Tensor>("Probabilities");
     Tensor* sampled_logits = context.Output<Tensor>("SampledLogits");
-    Tensor* sampled_label = context.Output<Tensor>("SampledLabel");
+    Tensor* sampled_labels = context.Output<Tensor>("SampledLabels");
 
     // shapes
     const auto batch_size = logits->dims()[0];
     const auto num_classes = logits->dims()[1];
-    const auto label_dim = label->dims();
-    const auto num_true = label_dim[1];
+    const auto labels_dim = labels->dims();
+    const auto num_true = labels_dim[1];
     const auto samples_dim = samples->dims();
 
     // attrs
     const auto num_samples = context.Attr<int>("num_samples");
-    const bool use_custom_samples = context.Attr<bool>("use_custom_samples");
+    const bool use_customized_samples =
+        context.Attr<bool>("use_customized_samples");
     const bool remove_accidental_hits =
         context.Attr<bool>("remove_accidental_hits");
 
@@ -177,18 +178,21 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
 
     // UNDERSTAND: allocate memories for temporaries
     sampled_logits->mutable_data<T>(samples_dim, context.GetPlace());
-    auto sampled_label_data =
-        sampled_label->mutable_data<int64_t>(label_dim, context.GetPlace());
-    for (int i = 0; i < batch_size; ++i)
-      for (int j = 0; j < num_true; ++j)
-        sampled_label_data[i * num_true + j] = j;
+    auto sampled_labels_data =
+        sampled_labels->mutable_data<int64_t>(labels_dim, context.GetPlace());
+    for (int i = 0; i < batch_size; ++i) {
+      for (int j = 0; j < num_true; ++j) {
+        sampled_labels_data[i * num_true + j] = j;
+      }
+    }
 
-    if (use_custom_samples) {
-      const Tensor* custom_samples = context.Input<Tensor>("CustomSamples");
-      const Tensor* custom_probabilities =
-          context.Input<Tensor>("CustomProbabilities");
-      samples->ShareDataWith(*custom_samples);
-      probabilities->ShareDataWith(*custom_probabilities);
+    if (use_customized_samples) {
+      const Tensor* customized_samples =
+          context.Input<Tensor>("CustomizedSamples");
+      const Tensor* customized_probabilities =
+          context.Input<Tensor>("CustomizedProbabilities");
+      samples->ShareDataWith(*customized_samples);
+      probabilities->ShareDataWith(*customized_probabilities);
     } else {
       samples->mutable_data<int64_t>(context.GetPlace());
       probabilities->mutable_data<T>(samples_dim, context.GetPlace());
@@ -197,7 +201,7 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
       auto sampler_with_prob =
           math::SampleWithProb<platform::CPUDeviceContext, T>();
       sampler_with_prob(dev_ctx, math::LogUniformSampler(num_classes, seed),
-                        num_samples, label, samples, probabilities);
+                        num_samples, labels, samples, probabilities);
     }
 
     // UNDERSTAND: gather sampled logits and remove accidental hits if needed
