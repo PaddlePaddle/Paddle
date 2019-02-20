@@ -82,9 +82,10 @@ class ConfigFactory(object):
                 if key == 'compress_pass':
                     self.compress_pass['strategies'] = []
                     self.compress_pass['epoch'] = key_values[key]['epoch']
-                    for name in key_values[key]['strategies']:
-                        strategy = self.instance(name)
-                        self.compress_pass['strategies'].append(strategy)
+                    if 'strategies' in key_values[key]:
+                        for name in key_values[key]['strategies']:
+                            strategy = self.instance(name)
+                            self.compress_pass['strategies'].append(strategy)
 
                 if key == 'include':
                     for config_file in key_values[key]:
