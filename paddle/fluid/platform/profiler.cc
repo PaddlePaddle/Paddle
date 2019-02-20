@@ -199,11 +199,13 @@ RecordBlock::~RecordBlock() {
 }
 
 void SynchronizeAllDevice() {
+#ifdef PADDLE_WITH_CUDA
   int count = GetCUDADeviceCount();
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
     PADDLE_ENFORCE(cudaDeviceSynchronize());
   }
+#endif
 }
 
 void EnableProfiler(ProfilerState state) {
