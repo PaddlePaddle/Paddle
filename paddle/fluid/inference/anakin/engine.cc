@@ -29,6 +29,7 @@ using AnakinGraphT = anakin::graph::Graph<T, P>;
 namespace paddle {
 namespace inference {
 namespace anakin {
+
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine()
     : graph_(new AnakinGraphT<TargetT, PrecisionType>()),
@@ -48,6 +49,14 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::DeclareOutputs(
     const std::vector<std::string> &outputs) {
   outputs_ = outputs;
   std::sort(outputs_.begin(), outputs_.end());
+}
+
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+void AnakinEngine<TargetT, PrecisionType, RunType>::AddOp(
+    const std::string &name, const std::string &type,
+    const std::vector<std::string> &inputs,
+    const std::vector<std::string> &outputs) {
+  PADDLE_ENFORCE(graph_->AddOp(name, type, inputs, outputs), "Add operation.");
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -123,14 +132,6 @@ std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-void AnakinEngine<TargetT, PrecisionType, RunType>::AddOp(
-    const std::string &name, const std::string &type,
-    const std::vector<std::string> &inputs,
-    const std::vector<std::string> &outputs) {
-  PADDLE_ENFORCE(graph_->AddOp(name, type, inputs, outputs), "Add operation.");
-}
-
-template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::FreezeNetwork() {
   PADDLE_ENFORCE(graph_->Freeze(), "Freeze anakin subgraph.");
   PADDLE_ENFORCE(graph_->Optimize(), "Graph optimization.");
@@ -143,21 +144,6 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::FreezeNetwork() {
   std::sort(outputs.begin(), outputs.end());
   PADDLE_ENFORCE(outputs_ == outputs);
 }
-
-/*
-template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(int batch_size) {}
-
-template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-void AnakinEngine<TargetT, PrecisionType, RunType>::Build(
-    const EngineBase::DescType &paddle_model) {}
-
-template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-paddle::inference::Buffer &
-AnakinEngine<TargetT, PrecisionType, RunType>::buffer(const std::string &name) {
-  return paddle::inference::Buffer();
-}
-*/
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 std::unique_ptr<AnakinEngine<TargetT, PrecisionType, RunType>>

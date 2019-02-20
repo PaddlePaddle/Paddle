@@ -44,6 +44,15 @@ TEST_F(TestAnakinEngine, DeclareInputs) {
   engine_->DeclareInputs(inputs);
 }
 
+TEST_F(TestAnakinEngine, Execute) {
+  std::vector<std::string> input{"x"};
+  std::vector<std::string> output{"y"};
+  engine_->AddOp("op1", "Dense", input, output);
+  std::vector<int> kernel_size{3, 1};
+  engine_->AddOpAttr<const std::vector<int>&>("op1", "kernel_size", kernel_size);
+  //engine_->AddOpAttr<bool>("op1", "bias_term", false);
+}
+
 /*
 TEST_F(TensorRTEngineTest, test_conv2d) {
   // Weight in CPU memory.

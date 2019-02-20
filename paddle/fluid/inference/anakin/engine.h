@@ -18,6 +18,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <type_traits>
 #include <vector>
 #include "framework/core/types.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -56,10 +57,10 @@ class AnakinEngine /*: public EngineBase */ {
              const std::vector<std::string> &inputs,
              const std::vector<std::string> &outputs);
 
-  template <typename AttrType>
+  template <typename T>
   void AddOpAttr(const std::string &op_name, const std::string &attr_name,
-                 const AttrType &attr_value) {
-    PADDLE_ENFORCE(graph_->AddOp(op_name, attr_name, attr_value),
+                 const T &attr_value) {
+    PADDLE_ENFORCE(graph_->AddOpAttr<typename std::remove_cv<T>::type>(op_name, attr_name, attr_value),
                    "Add operation's attribution.");
   }
 
@@ -151,7 +152,7 @@ class Tensor final {
 };
 
 template class AnakinEngine<::anakin::saber::NV, ::anakin::Precision::FP32>;
-template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
+// template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
