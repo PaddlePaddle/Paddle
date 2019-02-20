@@ -135,7 +135,6 @@ include(external/openblas)  # download, build, install openblas
 include(external/mkldnn)    # download, build, install mkldnn
 include(external/ngraph)    # download, build, install nGraph
 include(external/boost)     # download boost
-include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
