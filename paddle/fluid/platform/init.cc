@@ -91,7 +91,7 @@ void InitCupti() {
     PADDLE_ENFORCE(!platform::dynload::cuptiActivityGetAttribute( \
         attr, &attrValueSize, &attrValue));                       \
     attrValue *= FLAGS_multiple_of_cupti_buffer_size;             \
-    VLOG(1) << "Set " #attr " " << attrValue << " byte";          \
+    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";     \
     PADDLE_ENFORCE(!platform::dynload::cuptiActivitySetAttribute( \
         attr, &attrValueSize, &attrValue));                       \
   }
@@ -104,7 +104,7 @@ void InitCupti() {
 
 void InitDevices(bool init_p2p) {
   // CUPTI attribute should be set before any CUDA context is created (see CUPTI
-  // documentation).
+  // documentation about CUpti_ActivityAttribute).
   InitCupti();
   /*Init all available devices by default */
   std::vector<int> devices;
