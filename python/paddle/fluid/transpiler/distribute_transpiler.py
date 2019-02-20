@@ -1021,6 +1021,7 @@ class DistributeTranspiler(object):
         slice_vars = self.param_var_mapping[orig_var_name]
 
         orig_dim1_flatten = 1
+
         if len(slice_vars[0].shape) >= 2:
             orig_dim1_flatten = reduce(lambda x, y: x * y,
                                        slice_vars[0].shape[1:])
