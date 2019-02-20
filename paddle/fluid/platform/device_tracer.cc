@@ -45,6 +45,15 @@ std::map<uint32_t, int32_t> system_thread_id_map;
 
 std::once_flag tracer_once_flag;
 DeviceTracer *tracer = nullptr;
+
+void PrintCuptiHint() {
+  static bool showed = false;
+  if (showed) return;
+  showed = true;
+  LOG(WARNING) << "Invalid timestamp occured. Please try increasing the "
+                  "FLAGS_multiple_of_cupti_buffer_size.";
+}
+
 }  // namespace
 #ifdef PADDLE_WITH_CUPTI
 
@@ -54,14 +63,6 @@ uint64_t kBufSize = 1024 * 1024 * 8;
 uint64_t kAlignSize = 8;
 std::unordered_map<CUpti_CallbackId, std::string> runtime_cbid_str,
     driver_cbid_str;
-
-void PrintCuptiHint() {
-  static bool showed = false;
-  if (showed) return;
-  showed = true;
-  LOG(WARNING) << "Invalid timestamp occured. Please try increasing the "
-                  "FLAGS_multiple_of_cupti_buffer_size.";
-}
 
 #define ALIGN_BUFFER(buffer, align)                                 \
   (((uintptr_t)(buffer) & ((align)-1))                              \
