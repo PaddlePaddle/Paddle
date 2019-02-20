@@ -122,6 +122,22 @@ def auc(input,
             # network is a binary classification model and label the ground truth
             prediction = network(image, is_infer=True)
             auc_out=fluid.layers.auc(input=prediction, label=label)
+
+    Note: The return is a global cumulative value of auc. If you want to set global 
+    auc to 0 in training, you can refer to the following example, where auc_status 
+    is the auc related status record variable.
+
+    Examples:
+
+        .. code-block:: python
+
+           def set_zero(var_name):
+               param = inference_scope.var(var_name).get_tensor()
+               param_array = np.zeros(param._get_dims()).astype("int64")
+               param.set(param_array, place)
+
+           for auc_state in auc_states:
+               set_zero(auc_state.name)
     """
     helper = LayerHelper("auc", **locals())
     auc_out = helper.create_variable_for_type_inference(dtype="float64")
