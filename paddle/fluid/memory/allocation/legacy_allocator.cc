@@ -330,25 +330,30 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 
 namespace allocation {
 LegacyMemMonitor GPUMemMonitor;
-std::mutex mem_profiler;
 
 Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
-  std::lock_guard<std::mutex> l(mem_profiler);
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
-  Allocation *tmp_alloc = new Allocation(ptr, size, place_);
-  platform::RecordMemEvent tmp_record;
-  record_mem.insert({tmp_alloc, tmp_record});
-  record_mem[tmp_alloc].InitRecordMem(size, place_);
-  return tmp_alloc;
+  if (platform::IsProfileEnabled()) {
+    Allocation *tmp_alloc = new Allocation(ptr, size, place_);
+    platform::RecordMemEvent tmp_record;
+    record_mem.insert({tmp_alloc, tmp_record});
+    record_mem[tmp_alloc].InitRecordMem(size, place_);
+    return tmp_alloc;
+  } else {
+    return new Allocation(ptr, size, place_);
+  }
 }
 
 void LegacyAllocator::Free(Allocation *allocation) {
-  std::lock_guard<std::mutex> l(mem_profiler);
   boost::apply_visitor(
       legacy::FreeVisitor(allocation->ptr(), allocation->size()),
       allocation->place());
-  record_mem[allocation].DelRecordMem();
-  record_mem.erase(allocation);
+  if (platform::IsProfileEnabled()) {
+    record_mem[allocation].DelRecordMem();
+    record_mem.erase(allocation);
+  } else {
+    delete allocation;
+  }
 }
 
 bool MemInfo::Add(const size_t &size) {
