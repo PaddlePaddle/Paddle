@@ -21,7 +21,7 @@ function(CheckCompilerCXX11Flag)
             if (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.3)
                 message(FATAL_ERROR "Unsupported Clang version. Clang >= 3.3 required.")
             endif()
-        endif()   
+        endif()
     endif()
 endfunction()
 
@@ -147,6 +147,7 @@ set(GPU_COMMON_FLAGS
     -Wno-error=unused-function  # Warnings in Numpy Header.
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
 endif(NOT WIN32)
 
 if (APPLE)
