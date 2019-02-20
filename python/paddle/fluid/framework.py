@@ -1188,6 +1188,15 @@ class Block(object):
         else:
             raise ValueError("Var {0} is not found recursively".format(name))
 
+    def _clear_block(self):
+        self.desc._clear_block()
+
+        for name, var in self.vars.items():
+            if not var.persistable:
+                del self.vars[name]
+
+        self.ops.clear()
+
     def all_parameters(self):
         return list(self.iter_parameters())
 
@@ -1273,8 +1282,7 @@ class Block(object):
         return var
 
     def _remove_var(self, name):
-        if not _in_imperative_mode():
-            self._sync_with_cpp()
+        self._sync_with_cpp()
         self.desc._remove_var(cpt.to_bytes(name))
         del self.vars[name]
 
@@ -1358,8 +1366,7 @@ class Block(object):
         Returns:
             None
         """
-        if not _in_imperative_mode():
-            self._sync_with_cpp()
+        self._sync_with_cpp()
         self.desc._remove_op(index, index + 1)
         del self.ops[index]
 

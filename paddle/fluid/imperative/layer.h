@@ -103,7 +103,9 @@ class OpBase;
  */
 class VarBase {
  public:
-  VarBase(std::string name) : VarBase(new framework::Variable(), new VarBase(name + "XGRAD", true), name) {}
+  explicit VarBase(std::string name)
+      : VarBase(new framework::Variable(), new VarBase(name + "XGRAD", true),
+                name) {}
 
   // Owns `var` and `grad`
   VarBase(framework::Variable* var, VarBase* grad, std::string name)
@@ -113,7 +115,7 @@ class VarBase {
         stop_gradient_(false),
         pre_op_(nullptr),
         pre_op_out_idx_(-1),
-        name_(name) { LOG(ERROR) << "create " << name; }
+        name_(name) {}
 
   explicit VarBase(std::string name, bool stop_gradient)
       : var_desc_(nullptr),
@@ -122,11 +124,9 @@ class VarBase {
         stop_gradient_(stop_gradient),
         pre_op_(nullptr),
         pre_op_out_idx_(-1),
-        name_(name) { LOG(ERROR) << "create " << name;  }
+        name_(name) {}
 
   virtual ~VarBase() {
-    LOG(ERROR) << "delete " << name_;
-
     if (var_) {
       delete var_;
     }
