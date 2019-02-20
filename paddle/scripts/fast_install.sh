@@ -322,7 +322,7 @@ function checkLinuxPython(){
     while true
       do
         read -p "没有找到默认的python版本,请输入要安装的python路径:"  python_path
-        python_path=`python_path -V`
+        python_path=`$python_path -V`
         if [ "$python_path" != "" ];then
           break
         else
