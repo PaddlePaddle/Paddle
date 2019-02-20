@@ -70,15 +70,20 @@ std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     ::anakin::saber::Shape tmp_shape;
     std::copy(input->shape().begin(), input->shape().end(), tmp_shape.begin());
     anakin_input->reshape(tmp_shape);
+    Place input_place;
+    float *input_data = input->data<float>(&input_place, &input_size);
 #ifdef PADDLE_WITH_CUDA
     if (std::is_same<TargetT, ::anakin::saber::NV>::value) {
-      cudaMemcpy(anakin_input->mutable_data(), input->data<float>(),
-                 input->size() * sizeof(float), cudaMemcpyHostToDevice);
+      if (input_place == Place::kCpu) {
+        cudaMemcpy(anakin_input->mutable_data(), input_data, input_size,
+                   cudaMemcpyHostToDevice);
+      } else {
+        // anakin_input->mutable_data();
+      }
     }
 #endif
     if (std::is_same<TargetT, ::anakin::saber::X86>::value) {
-      std::memcpy(anakin_input->mutable_data(), input->data<float>(),
-                  input->size() * sizeof(float));
+      std::memcpy(anakin_input->mutable_data(), input_data, input_size);
     }
   }
 
@@ -97,7 +102,7 @@ std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     auto valid_shape = anakin_out->valid_shape();
     std::copy(valid_shape.begin(), valid_shape.end(), shape.begin());
     Tensor output;
-    output.Resize(shape);
+    output.Reshape(shape);
 #ifdef PADDLE_WITH_CUDA
     if (std::is_same<TargetT, ::anakin::saber::NV>::value) {
       auto *data = output.mutable_data<float>(Place::kGpu);
@@ -161,6 +166,18 @@ AnakinEngine<TargetT, PrecisionType, RunType>::Clone() {
   engine->engine_ = std::move(engine_->Clone());
   return std::unique_ptr<AnakinEngine>(engine);
 }
+
+void Tensor::Reshape(const std::vector<int> &shape) { shape_ = shape; }
+
+const std::vector<int> &Tensor::shape() const { return shape_; }
+
+void Tensor::SetName(const std::string &name) { name_ = name; }
+
+const std::string &Tensor::name() const { return name_; }
+
+void Tensor::SetDataType(const DataType dtype) { dtype_ = dtype; }
+
+DataType Tensor::dtype() const { return dtype_; }
 
 }  // namespace anakin
 }  // namespace inference

@@ -27,11 +27,11 @@
 
 namespace anakin {
 
-template <typename Ttype, Precision Ptype, OpRunType RunType>
+template <typename, Precision, OpRunType>
 class Net;
 
 namespace graph {
-template <typename Ttype, Precision Ptype>
+template <typename, Precision>
 class Graph;
 }  // namespace graph
 }  // namespace anakin
@@ -82,38 +82,58 @@ class AnakinEngine /*: public EngineBase */ {
   std::vector<std::string> outputs_;
 };
 
+enum class DataType { kUnk, kFloat32, kFloat64, kInt32 };
+enum class Place { kCpu, kGpu, kUnk };
+
 class Tensor final {
  public:
   Tensor() = default;
   ~Tensor();
-  void Resize(const std::vector<int> &shape) { shape_ = shape; }
-  /*void Reshape(const std::vector<int> &shape) {
-    shape_ = shape;
-    size_ = std::accumulate(shape_.begin(), shape_.end(), 1,
-                            std::multiplies<int>());
-  }*/
-  int size() const { return size_; }
-  const std::vector<int> &shape() const { return shape_; }
-  void SetName(const std::string &name) { name_ = name; }
-  const std::string &name() const { return name_; }
-  void SetPlace(const Place place) { place_ = place; }
-  Place place() const { return place_; }
-  void SetDataType(const DataType dtype) { dtype_ = dtype; }
-  DataType dtype() const { return dtype_; }
+  void Reshape(const std::vector<int> &shape);
+  const std::vector<int> &shape() const;
+  void SetName(const std::string &name);
+  const std::string &name() const;
+  void SetDataType(const DataType dtype);
+  DataType dtype() const;
 
   template <typename T>
   T *mutable_data(Place place) {
+    auto length = std::accumulate(shape_.begin(), shape_.end(), 1,
+                                  std::multiplies<int>()) *
+                  sizeof(T);
+    if (place_ == Place::kCpu && place == Place::kCpu) {
+      if (length_ < length) {
+        length_ = length;
+        delete[] static_cast<char *>(data_);
+        data_ = new char[length_];
+      }
+      return static_cast<T *>(data_);
+    }
+
+#ifdef PADDLE_WITH_CUDA
+    if (place == Place::kCpu) {
+      cudaFree(data_);
+      data_ = new char[length];
+    } else if (place_ == Place::kCpu) {
+      delete[] static_cast<char *>(data_);
+      cudaMalloc((void **)&data_, length);
+    } else {
+      if (length_ < length) {
+        length_ = length;
+        cudaFree(data_);
+        cudaMalloc((void **)&data_, length);
+      }
+    }
+#endif
     place_ = place;
     return static_cast<T *>(data_);
   }
 
-  /*template <typename T>
-      T *data(Place *place, size_t *size) const {
-          *place = place_;
-      }*/
   template <typename T>
-  const T *data() const {
-    return static_cast<const T *>(data_);
+  T *data(Place *place, int *size) const {
+    *place = place_;
+    *size = length_;
+    return static_cast<T *>(data_);
   }
 
  private:
@@ -121,12 +141,9 @@ class Tensor final {
   std::vector<int> shape_;
   Place place_;
   DataType dtype_;
-  int size_;
-  void *data_;
+  int length_{0};
+  void *data_{nullptr};
 };
-
-enum class DataType { kUnk, kFloat32, kFloat64, kInt32 };
-enum class Place { kCpu, kGpu, kUnk };
 
 template class AnakinEngine<::anakin::saber::NV, ::anakin::Precision::FP32>;
 template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
