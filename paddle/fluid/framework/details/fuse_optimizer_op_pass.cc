@@ -117,20 +117,13 @@ void FuseOptimizerOpPass::SortVarsName(
 
   std::vector<size_t> param_sort_idx;
   param_sort_idx.reserve(param_vec.size());
-  for (size_t i = 0; i < param_vec.size(); ++i) {
-    param_sort_idx.emplace_back(i);
-  }
-  std::sort(param_sort_idx.begin(), param_sort_idx.end(),
-            [&param_vec](size_t a, size_t b) -> bool {
-              return param_vec[a] < param_vec[b];
-            });
 
-  //  for (auto &p_g : params_grads) {
-  //    auto iter = std::find(param_vec.begin(), param_vec.end(), p_g.first);
-  //    PADDLE_ENFORCE(iter != param_vec.end());
-  //    auto idx = std::distance(param_vec.begin(), iter);
-  //    param_sort_idx.emplace_back(idx);
-  //  }
+  for (auto &p_g : params_grads) {
+    auto iter = std::find(param_vec.begin(), param_vec.end(), p_g.first);
+    PADDLE_ENFORCE(iter != param_vec.end());
+    auto idx = std::distance(param_vec.begin(), iter);
+    param_sort_idx.emplace_back(idx);
+  }
 
   for (auto &aux_vars : *aux_vars_set) {
     std::vector<std::string> sorted_vars;

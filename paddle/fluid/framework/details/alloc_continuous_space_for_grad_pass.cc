@@ -124,11 +124,11 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       const std::unordered_map<std::string, ir::Node*>& var_nodes,
       ParamsAndGrads* params_grads) const {
     // TODO(zcd): The sort should be removed.
-    std::sort(params_grads->begin(), params_grads->end(),
-              [](const std::pair<std::string, std::string>& a,
-                 const std::pair<std::string, std::string>& b) -> bool {
-                return a.first < b.first;
-              });
+    //    std::sort(params_grads->begin(), params_grads->end(),
+    //              [](const std::pair<std::string, std::string>& a,
+    //                 const std::pair<std::string, std::string>& b) -> bool {
+    //                return a.first < b.first;
+    //              });
   }
 
   void SetGroupGradsAndParams(
