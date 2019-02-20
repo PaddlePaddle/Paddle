@@ -31,9 +31,17 @@ IF(APPLE)
     return()
 ENDIF()
 
-MESSAGE(STATUS "Set ${MKLDNN_INSTALL_DIR}/lib to runtime path")
+# Introduce variables:
+# * CMAKE_INSTALL_LIBDIR
+INCLUDE(GNUInstallDirs)
+SET(LIBDIR "lib")
+if(CMAKE_INSTALL_LIBDIR MATCHES ".*lib64$")
+  SET(LIBDIR "lib64")
+endif()
+
+MESSAGE(STATUS "Set ${MKLDNN_INSTALL_DIR}/l${LIBDIR} to runtime path")
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLDNN_INSTALL_DIR}/lib")
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLDNN_INSTALL_DIR}/${LIBDIR}")
 
 INCLUDE_DIRECTORIES(${MKLDNN_INC_DIR}) # For MKLDNN code to include internal headers.
 
@@ -58,7 +66,7 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DEPENDS             ${MKLDNN_DEPENDS}
     GIT_REPOSITORY      "https://github.com/intel/mkl-dnn.git"
-    GIT_TAG             "830a10059a018cd2634d94195140cf2d8790a75a"
+    GIT_TAG             "08bd90cca77683dd5d1c98068cea8b92ed05784d"
     PREFIX              ${MKLDNN_SOURCES_DIR}
     UPDATE_COMMAND      ""
     CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -79,9 +87,9 @@ ExternalProject_Add(
                         -DMKLROOT:PATH=${MKLML_ROOT}
 )
 if(WIN32)
-    SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/lib/mkldnn.lib" CACHE FILEPATH "mkldnn library." FORCE)
+    SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/${LIBDIR}/mkldnn.lib" CACHE FILEPATH "mkldnn library." FORCE)
 else(WIN32)
-    SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/lib/libmkldnn.so" CACHE FILEPATH "mkldnn library." FORCE)
+    SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/${LIBDIR}/libmkldnn.so" CACHE FILEPATH "mkldnn library." FORCE)
 endif(WIN32)
 
 ADD_LIBRARY(shared_mkldnn SHARED IMPORTED GLOBAL)
