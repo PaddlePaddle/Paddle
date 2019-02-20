@@ -20,7 +20,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-inline float get_period_sparcity(float cur_step, float rampup_steps) {
+inline float get_period_sparcity(const std::vector<float>& sparsity,
+                                 float cur_step, float rampup_steps) {
   if (static_cast<int>(cur_step) <= 0) {
     return 0.75;
   }
@@ -47,6 +48,9 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto g = ctx.Input<framework::Tensor>("Grad");
     float m = ctx.Attr<float>("m");
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
+    auto sparsity = ctx.Attr<std::vector<float>>("sparsity");
+    VLOG(10) << "m:" << m << ", use_nesterov:" << use_nesterov
+             << ", sparsity:" << sparsity.size();
 
     auto current_step_tensor = ctx.Input<framework::Tensor>("current_step");
     auto rampup_step_tensor = ctx.Input<framework::Tensor>("rampup_step");
@@ -56,8 +60,9 @@ class DGCOpKernel : public framework::OpKernel<T> {
              << ", rampup_step_tensor:" << rampup_step_tensor
              << ", current_step:" << current_step
              << ", rampup_step:" << rampup_step;
-    float ratio = 1 - get_period_sparcity(static_cast<float>(*current_step),
-                                          static_cast<float>(*rampup_step));
+    float ratio =
+        1 - get_period_sparcity(sparsity, static_cast<float>(*current_step),
+                                static_cast<float>(*rampup_step));
     int k = static_cast<int>(g->numel() * ratio);
     VLOG(10) << "rampup_step:" << *rampup_step
              << ", current_step:" << *current_step << ", ratio:" << ratio
@@ -73,23 +78,23 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto g_e = framework::EigenVector<T>::Flatten(*g);
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto& eigen_ctx = *dev_ctx.eigen_device();
-    if(use_nesterov){
-        // u = m * (u + g)
-        u_out_e.device(eigen_ctx) = m * (u_e + g_e);
+    if (use_nesterov) {
+      // u = m * (u + g)
+      u_out_e.device(eigen_ctx) = m * (u_e + g_e);
 
-        // v = u + v + g
-        ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-                ctx, u, v, 0, AddFunctor<T>(), v_out);
+      // v = u + v + g
+      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
+          ctx, u, v, 0, AddFunctor<T>(), v_out);
 
-        ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-                ctx, g, v, 0, AddFunctor<T>(), v_out);
-    }else{
-        // u = m * u + g
-        u_out_e.device(eigen_ctx) = m * u_e + g_e;
+      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
+          ctx, g, v, 0, AddFunctor<T>(), v_out);
+    } else {
+      // u = m * u + g
+      u_out_e.device(eigen_ctx) = m * u_e + g_e;
 
-        // v = u + v
-        ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-                ctx, u, v, 0, AddFunctor<T>(), v_out);
+      // v = u + v
+      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
+          ctx, u, v, 0, AddFunctor<T>(), v_out);
     }
 
     T* v_out_data = v_out->mutable_data<T>(ctx.GetPlace());
@@ -97,27 +102,15 @@ class DGCOpKernel : public framework::OpKernel<T> {
     T* encode_grad_out_data = encode_grad_out->mutable_data<T>(
         framework::DDim{2 * k}, ctx.GetPlace());
 
-    auto buf_out = ctx.Output<framework::Tensor>("Encoded_buf");
-    void* buf = static_cast<void*>(buf_out->mutable_data<T>(ctx.GetPlace()));
-    PADDLE_ENFORCE(k_select(v_out_data, static_cast<int>(v_out->numel()),
-                            static_cast<void*>(encode_grad_out_data), buf, k, 0,
-                            dev_ctx.stream(), u_out_data));
-
-    // PADDLE_ENFORCE(k_select(v_out_data, static_cast<int>(v_out->numel()),
-    // static_cast<void*>(encode_grad_out_data), k, dev_ctx.stream()));
-
-    /*
     int buf_size = get_buffer_size(k) * sizeof(T);
     auto& allocator = platform::DeviceTemporaryAllocator::Instance().Get(
         ctx.GetPlace(), dev_ctx.stream());
     auto tmp_ious_data = allocator.Allocate(buf_size);
     void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
-    k_select(v_out_data,
-        static_cast<int>(v_out->numel()),
-        static_cast<void*>(encode_grad_out_data),
-        buf, k, 0, dev_ctx.stream(), u_out_data);
-    */
+    PADDLE_ENFORCE(k_select(v_out_data, static_cast<int>(v_out->numel()),
+                            static_cast<void*>(encode_grad_out_data), buf, k, 0,
+                            dev_ctx.stream(), u_out_data));
   }
 };
 }  // namespace operators
