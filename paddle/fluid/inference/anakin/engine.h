@@ -88,7 +88,12 @@ enum class Place { kCpu, kGpu, kUnk };
 class Tensor final {
  public:
   Tensor() = default;
-  ~Tensor();
+  ~Tensor() {
+    if (length_ > 0) {
+      delete[] static_cast<char *>(data_);
+      data_ = nullptr;
+    }
+  }
   void Reshape(const std::vector<int> &shape);
   const std::vector<int> &shape() const;
   void SetName(const std::string &name);
@@ -98,9 +103,9 @@ class Tensor final {
 
   template <typename T>
   T *mutable_data(Place place) {
-    auto length = std::accumulate(shape_.begin(), shape_.end(), 1,
-                                  std::multiplies<int>()) *
-                  sizeof(T);
+    int length = std::accumulate(shape_.begin(), shape_.end(), 1,
+                                 std::multiplies<int>()) *
+                 sizeof(T);
     if (place_ == Place::kCpu && place == Place::kCpu) {
       if (length_ < length) {
         length_ = length;
