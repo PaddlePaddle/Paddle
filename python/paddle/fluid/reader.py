@@ -69,28 +69,31 @@ class PyReader(object):
 
         class Iterator(object):
             def __init__(self, reader):
-                self._reader = reader
+                self._reader = reader._reader
+                self._reset = reader._reset
 
             def __iter__(self):
                 return self
 
             def next(self):
-                ret = self._reader._reader.read_next()
+                ret = self._reader.read_next()
                 if len(ret):
                     return ret
                 else:
-                    self._reader._restart_reader()
-                    self._reader._reader.reset()
+                    self._reset()
                     raise StopIteration
 
         return Iterator(self)
 
-    def _restart_reader(self):
+    def _reset(self):
         if not self._exited:
             for q in self._queues:
                 q.close()
 
+        if self._thread:
             self._thread.join()
+
+        self._reader.reset()
 
         def __thread_main__():
             queue_num = len(self._queues)
@@ -138,4 +141,4 @@ class PyReader(object):
         assert self._tensor_reader is None, \
             "Cannot reset the data source of PyReader"
         self._tensor_reader = reader
-        self._restart_reader()
+        self._reset()
