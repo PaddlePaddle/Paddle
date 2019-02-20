@@ -1187,6 +1187,10 @@ All parameter, weight, gradient are variables in Paddle.
             return self.fuse_all_optimizer_ops_;
           },
           [](BuildStrategy &self, bool b) { self.fuse_all_optimizer_ops_ = b; })
+      .def_property(
+          "fuse_parameters_pass",
+          [](const BuildStrategy &self) { return self.fuse_parameters_pass_; },
+          [](BuildStrategy &self, bool b) { self.fuse_parameters_pass_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);

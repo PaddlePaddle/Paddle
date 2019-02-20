@@ -43,6 +43,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   use_ir_memory_optimize=True,
                                   enable_inplace=True,
                                   fuse_elewise_add_act_ops=False,
+                                  fuse_parameters=False,
                                   fuse_all_reduce_ops=False,
                                   fuse_all_optimizer_ops=False,
                                   fuse_relu_depthwise_conv=False,
@@ -88,6 +89,7 @@ class TestParallelExecutorBase(unittest.TestCase):
         # Use ir graph memory optimization after inplace pass is the correct way.
         build_strategy.enable_inplace = False if memory_opt else enable_inplace
         build_strategy.enable_sequential_execution = enable_sequential_execution
+        build_strategy.fuse_parameters_pass = fuse_parameters
 
         if use_cuda and core.is_compiled_with_cuda():
             build_strategy.remove_unnecessary_lock = True

@@ -57,6 +57,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("sequential_execution_pass");
     }
 
+    if (strategy.fuse_parameters_pass_) {
+      VLOG(10) << "Add fuse_parameters_pass";
+      AppendPass("fuse_parameters_pass");
+    }
+
     // Add op fusion.
     if (strategy.fuse_relu_depthwise_conv_) {
       VLOG(10) << "Add fuse_relu_depthwise_conv_pass";
@@ -322,3 +327,4 @@ USE_PASS(graph_to_program_pass);
 USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
+USE_PASS(fuse_parameters_pass);
