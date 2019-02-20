@@ -147,8 +147,7 @@ void PopEvent(const std::string& name) {
 RecordEvent::RecordEvent(const std::string& name)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
   if (g_state == ProfilerState::kDisabled) return;
-  // lock is not needed
-  // std::lock_guard<std::mutex> l(profiler_mu);
+  // lock is not needed, the code below is thread-safe
 
   is_enabled_ = true;
   name_ = name;
@@ -159,8 +158,7 @@ RecordEvent::RecordEvent(const std::string& name)
 
 RecordEvent::~RecordEvent() {
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
-  // lock is not needed
-  // std::lock_guard<std::mutex> l(profiler_mu);
+  // lock is not needed, the code below is thread-safe
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
     tracer->AddCPURecords(CurAnnotationName(), start_ns_, PosixInNsec(),
@@ -178,7 +176,7 @@ RecordRPCEvent::RecordRPCEvent(const std::string& name) {
 
 RecordBlock::RecordBlock(int block_id)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
-  // std::lock_guard<std::mutex> l(profiler_mu);
+  // lock is not needed, the code below is thread-safe
   if (g_state == ProfilerState::kDisabled) return;
   is_enabled_ = true;
   SetCurBlock(block_id);
@@ -186,7 +184,7 @@ RecordBlock::RecordBlock(int block_id)
 }
 
 RecordBlock::~RecordBlock() {
-  // std::lock_guard<std::mutex> l(profiler_mu);
+  // lock is not needed, the code below is thread-safe
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {

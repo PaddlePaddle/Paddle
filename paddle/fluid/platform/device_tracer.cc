@@ -58,7 +58,8 @@ void PrintCuptiHint() {
 #ifdef PADDLE_WITH_CUPTI
 
 namespace {
-// Best performance: the same size with CUPTI device buffer size(8M)
+// The experimental best performance is
+// the same size with CUPTI device buffer size(8M)
 uint64_t kBufSize = 1024 * 1024 * 8;
 uint64_t kAlignSize = 8;
 std::unordered_map<CUpti_CallbackId, std::string> runtime_cbid_str,
@@ -243,6 +244,7 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
         dynload::cuptiActivityGetNumDroppedRecords(ctx, streamId, &dropped));
     if (dropped != 0) {
       fprintf(stderr, "Dropped %u activity records\n", (unsigned int)dropped);
+      PrintCuptiHint();
     }
   }
   free(buffer);
@@ -299,7 +301,6 @@ class DeviceTracerImpl : public DeviceTracer {
       return;
     }
     // NOTE(liangdun): lock is not needed, only one thread call this function.
-    // std::lock_guard<std::mutex> l(trace_mu_);
     mem_records_.push_front(MemRecord{name, start_ns, end_ns, device_id,
                                       stream_id, correlation_id, bytes});
   }
@@ -314,7 +315,6 @@ class DeviceTracerImpl : public DeviceTracer {
       return;
     }
     // NOTE(liangdun): lock is not needed, only one thread call this function.
-    // std::lock_guard<std::mutex> l(trace_mu_);
     kernel_records_.push_front(
         KernelRecord{name, start, end, device_id, stream_id, correlation_id});
   }
@@ -417,7 +417,7 @@ class DeviceTracerImpl : public DeviceTracer {
         event->set_detail_info(r.name);
         find++;
       } else {
-        VLOG(100) << "Missing Kernel Event: " + r.name;
+        VLOG(10) << "Missing Kernel Event: " + r.name;
         miss++;
         event->set_name(r.name);
       }
