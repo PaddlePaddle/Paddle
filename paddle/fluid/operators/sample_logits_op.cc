@@ -69,7 +69,7 @@ class SampleLogitsOpMaker : public framework::OpProtoAndCheckerMaker {
         "SampledLabels",
         "(Tensor, default: Tensor<int64>), A 2-D tensor. The sampled labels"
         "with shape [N, NT]. The tonsor contains hard labels as input to "
-        " softmax op, that is 0, 1, …, NT-1 because of the first NT elements"
+        " softmax op, that is 0, 1, ..., NT-1 because of the first NT elements"
         " of Sampels are positive lables.");
     AddAttr<bool>(
         "use_customized_samples",
