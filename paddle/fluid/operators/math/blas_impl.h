@@ -635,14 +635,18 @@ void Blas<DeviceContext>::VINV(int n, const T *a, T *y) const {
 #endif
 }
 
-#ifdef PADDLE_WITH_MKLML
 template <>
 template <typename T>
 void Blas<platform::CPUDeviceContext>::VMERF(int n, const T *a, T *y,
                                              int64_t mode) const {
+#ifdef PADDLE_WITH_MKLML
   CBlas<T>::VMERF(n, a, y, mode);
-}
+#else
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::erf(a[i]);
+  }
 #endif
+}
 
 }  // namespace math
 }  // namespace operators
