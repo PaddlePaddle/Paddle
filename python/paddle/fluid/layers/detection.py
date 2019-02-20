@@ -655,8 +655,6 @@ def yolo_box(x,
         raise TypeError("Input img_size of yolo_box must be Variable")
     if not isinstance(anchors, list) and not isinstance(anchors, tuple):
         raise TypeError("Attr anchors of yolo_box must be list or tuple")
-    if not isinstance(anchor_mask, list) and not isinstance(anchor_mask, tuple):
-        raise TypeError("Attr anchor_mask of yolo_box must be list or tuple")
     if not isinstance(class_num, int):
         raise TypeError("Attr class_num of yolo_box must be an integer")
     if not isinstance(conf_thresh, float):
@@ -668,7 +666,7 @@ def yolo_box(x,
     attrs = {
         "anchors": anchors,
         "class_num": class_num,
-        "conf_thresh": ignore_thresh,
+        "conf_thresh": conf_thresh,
         "downsample_ratio": downsample_ratio,
     }
 
