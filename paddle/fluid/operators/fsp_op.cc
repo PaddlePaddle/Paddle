@@ -102,5 +102,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(fsp, ops::FSPOp, ops::FSPOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(fsp_grad, ops::FSPOpGrad);
-REGISTER_OP_CPU_KERNEL(fsp, ops::CPUFSPOpKernel<float>);
-REGISTER_OP_CPU_KERNEL(fsp_grad, ops::CPUFSPGradOpKernel<float>);
+REGISTER_OP_CPU_KERNEL(
+    fsp, ops::FSPOpKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    fsp_grad, ops::FSPGradOpKernel<paddle::platform::CPUDeviceContext, float>);
