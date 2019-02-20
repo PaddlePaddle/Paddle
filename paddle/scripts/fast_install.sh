@@ -325,12 +325,14 @@ function checkLinuxPython(){
         python_path=`python_path -V`
         if [ "$python_path" != "" ];then
           break
+        else
+          echo "输入路径有误,未找到pyrhon"
         fi
     done
   fi
 
   python_version=`$python_path -V 2>&1|awk -F '[ .]' '{print $2$3}'`
-  pip_version=`python -m pip -V|awk -F '[ .]' '{print $2}'`
+  pip_version=`$python_path -m pip -V|awk -F '[ .]' '{print $2}'`
   while true
     do
       read -p "
@@ -409,7 +411,7 @@ function PipLinuxInstall(){
   wheel_cpu_develop="http://paddle-wheel.bj.bcebos.com/latest-cpu-${AVX}-${math}/paddlepaddle-latest-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
   wheel_gpu_develop="http://paddle-wheel.bj.bcebos.com/latest-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-latest-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
 
-    if [[ "$paddle_version" == "2" ]];then
+  if [[ "$paddle_version" == "2" ]];then
     if [[ "$GPU" == "gpu" ]];then
         if [[ ${AVX} == "avx" ]];then
           rm -rf `echo $wheel_gpu_release|awk -F '/' '{print $NF}'`
