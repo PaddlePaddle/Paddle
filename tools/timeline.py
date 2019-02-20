@@ -178,21 +178,21 @@ class Timeline(object):
                         self._chrome_trace.emit_pid(
                             "memory usage on %s:cudapinnedplace:%d" %
                             (k, mevent.device_id), pid)
-                # if (k, 0, "CPU") not in self._devices:
-                #     pid = self._allocate_pid()
-                #     self._devices[(k, 0, "CPU")] = pid
-                #     self._chrome_trace.emit_pid("memory usage on %s:cpu:%d" %
-                #                                 (k, 0), pid)
-                # if (k, 0, "GPU") not in self._devices:
-                #     pid = self._allocate_pid()
-                #     self._devices[(k, 0, "GPU")] = pid
-                #     self._chrome_trace.emit_pid("memory usage on %s:gpu:%d" %
-                #                                 (k, 0), pid)
-                # if (k, 0, "CUDAPinnedPlace") not in self._devices:
-                #     pid = self._allocate_pid()
-                #     self._devices[(k, 0, "CUDAPinnedPlace")] = pid
-                #     self._chrome_trace.emit_pid("memory usage on %s:cudapinnedplace:%d" %
-                #                                 (k, 0), pid)
+                if (k, 0, "CPU") not in self._devices:
+                    pid = self._allocate_pid()
+                    self._devices[(k, 0, "CPU")] = pid
+                    self._chrome_trace.emit_pid("memory usage on %s:cpu:%d" %
+                                                (k, 0), pid)
+                if (k, 0, "GPU") not in self._devices:
+                    pid = self._allocate_pid()
+                    self._devices[(k, 0, "GPU")] = pid
+                    self._chrome_trace.emit_pid("memory usage on %s:gpu:%d" %
+                                                (k, 0), pid)
+                if (k, 0, "CUDAPinnedPlace") not in self._devices:
+                    pid = self._allocate_pid()
+                    self._devices[(k, 0, "CUDAPinnedPlace")] = pid
+                    self._chrome_trace.emit_pid(
+                        "memory usage on %s:cudapinnedplace:%d" % (k, 0), pid)
 
     def _allocate_events(self):
         for k, profile_pb in six.iteritems(self._profile_dict):
@@ -262,21 +262,24 @@ class Timeline(object):
                     str(cnt), total_size)
                 i += 1
             cnt += 1
-            # if not cpu_involved:
-            #     self._chrome_trace.emit_counter("CPU Memory ", str(cnt),
-            #                                     self._devices[(k, 0, "CPU")], end_profiler,
-            #                                     str(cnt), 0)
-            #     cnt += 1
-            # if not gpu_involved:
-            #     self._chrome_trace.emit_counter("GPU Memory ", str(cnt),
-            #                                     self._devices[(k, 0, "GPU")], end_profiler,
-            #                                     str(cnt), 0)
-            #     cnt += 1
-            # if not cudapin_involved:
-            #     self._chrome_trace.emit_counter("CUDAPinnedPlace Memory", str(cnt),
-            #                                     self._devices[(k, 0, "CUDAPinnedPlace")], end_profiler,
-            #                                     str(cnt), 0)
-            #     cnt += 1
+            if not cpu_involved:
+                self._chrome_trace.emit_counter(
+                    "CPU Memory ",
+                    str(cnt), self._devices[(k, 0, "CPU")], end_profiler,
+                    str(cnt), 0)
+                cnt += 1
+            if not gpu_involved:
+                self._chrome_trace.emit_counter(
+                    "GPU Memory ",
+                    str(cnt), self._devices[(k, 0, "GPU")], end_profiler,
+                    str(cnt), 0)
+                cnt += 1
+            if not cudapin_involved:
+                self._chrome_trace.emit_counter(
+                    "CUDAPinnedPlace Memory",
+                    str(cnt), self._devices[(k, 0, "CUDAPinnedPlace")],
+                    end_profiler, str(cnt), 0)
+                cnt += 1
 
     def generate_chrome_trace(self):
         self._allocate_pids()
