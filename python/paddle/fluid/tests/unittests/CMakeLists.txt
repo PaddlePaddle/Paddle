@@ -109,12 +109,11 @@ set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer SERIAL)
 if(NOT APPLE)
     py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        # change the timeout from 600 to 1200, because in debug mode, this test need more time.
-        set_tests_properties(test_image_classification_resnet PROPERTIES TIMEOUT 1200)
-    endif()
 endif()
-
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    # change the timeout from 600 to 1200, because in debug mode, this test need more time.
+    set_tests_properties(test_parallel_executor_seresnext PROPERTIES TIMEOUT 1200)
+endif()
 
 if (WITH_NGRAPH)
     add_subdirectory(ngraph)
