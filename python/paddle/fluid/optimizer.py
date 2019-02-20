@@ -649,6 +649,7 @@ class AdagradOptimizer(Optimizer):
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
+        initial_accumulator_value (float): Initial value for moment accumulator.
 
     Examples:
         .. code-block:: python
