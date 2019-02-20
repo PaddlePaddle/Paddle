@@ -20,6 +20,7 @@ import sys
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.imperative.nn import Conv2D, Pool2D, FC
 from test_imperative_base import new_program_scope
@@ -31,9 +32,6 @@ class Discriminator(fluid.imperative.Layer):
         super(Discriminator, self).__init__()
         self._fc1 = FC(size=32, act='elu', name="d_fc1")
         self._fc2 = FC(size=1, name="d_fc2")
-
-    def parameters(self):
-        return self._fc1.parameters() + self._fc2.parameters()
 
     def forward(self, inputs):
         x = self._fc1(inputs)
@@ -47,10 +45,6 @@ class Generator(fluid.imperative.Layer):
         self._fc2 = FC(size=64, act='elu', name="g_fc2")
         self._fc3 = FC(size=1, name="g_fc3")
 
-    def parameters(self):
-        return self._fc1.parameters() + self._fc2.parameters(
-        ) + self._fc3.parameters()
-
     def forward(self, inputs):
         x = self._fc1(inputs)
         x = self._fc2(x)
@@ -58,7 +52,7 @@ class Generator(fluid.imperative.Layer):
 
 
 class TestImperativeMnist(unittest.TestCase):
-    def test_mnist_cpu_float32(self):
+    def test_gan_float32(self):
         seed = 90
 
         startup = fluid.Program()
@@ -115,7 +109,8 @@ class TestImperativeMnist(unittest.TestCase):
             sgd = SGDOptimizer(learning_rate=1e-3)
             sgd.minimize(g_loss)
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = fluid.Executor(fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0))
         static_params = dict()
         with fluid.scope_guard(scope):
             img = np.ones([2, 1], np.float32)

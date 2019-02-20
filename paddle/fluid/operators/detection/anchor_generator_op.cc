@@ -85,7 +85,7 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
         " For instance, the anchor size of 64 means the area of this anchor "
         "equals to 64**2.")
         .AddCustomChecker([](const std::vector<float>& anchor_sizes) {
-          PADDLE_ENFORCE_GT(anchor_sizes.size(), 0,
+          PADDLE_ENFORCE_GT(anchor_sizes.size(), 0UL,
                             "Size of anchor_sizes must be at least 1.");
           for (size_t i = 0; i < anchor_sizes.size(); ++i) {
             PADDLE_ENFORCE_GT(anchor_sizes[i], 0.0,
@@ -103,7 +103,7 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "(vector<float>) List of variances to be used "
                                 "in box regression deltas")
         .AddCustomChecker([](const std::vector<float>& variances) {
-          PADDLE_ENFORCE_EQ(variances.size(), 4,
+          PADDLE_ENFORCE_EQ(variances.size(), 4UL,
                             "Must and only provide 4 variance.");
           for (size_t i = 0; i < variances.size(); ++i) {
             PADDLE_ENFORCE_GT(variances[i], 0.0,
@@ -117,7 +117,7 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(std::vector<float>(2, 16.0))
         .AddCustomChecker([](const std::vector<float>& stride) {
           PADDLE_ENFORCE_EQ(
-              stride.size(), 2,
+              stride.size(), 2UL,
               "Must and only provide 2 stride for width and height.");
           for (size_t i = 0; i < stride.size(); ++i) {
             PADDLE_ENFORCE_GT(stride[i], 0.0,

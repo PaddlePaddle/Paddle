@@ -216,19 +216,18 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
     out_datas.push_back(
         static_cast<void*>(output_data + (oc0 + oc1 + oc2) * h * w));
 
-    auto temp_allocation =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
-            workspace_size_in_bytes);
-    void* cudnn_workspace = temp_allocation->ptr();
-
     for (int i = 0; i < 4; ++i) {
-      CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBiasActivationForward(
-          handle, &alpha, in_desc[i], in_datas[i], filter_desc[i],
-          static_cast<const void*>(filters[i]->data<T>()), conv_desc[i],
-          algo[i], cudnn_workspace, workspace_size_in_bytes, &beta, out_desc[i],
-          out_datas[i], bias_desc[i],
-          static_cast<const void*>(bias[i]->data<T>()), cudnn_act_desc,
-          out_desc[i], out_datas[i]));
+      auto func = [&](void* cudnn_workspace) {
+        CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBiasActivationForward(
+            handle, &alpha, in_desc[i], in_datas[i], filter_desc[i],
+            static_cast<const void*>(filters[i]->data<T>()), conv_desc[i],
+            algo[i], cudnn_workspace, workspace_size_in_bytes, &beta,
+            out_desc[i], out_datas[i], bias_desc[i],
+            static_cast<const void*>(bias[i]->data<T>()), cudnn_act_desc,
+            out_desc[i], out_datas[i]));
+      };
+      auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+      workspace_handle.RunFunc(func, workspace_size_in_bytes);
     }
 
     cudnnTensorDescriptor_t x_desc;

@@ -174,6 +174,14 @@ class CompiledProgram(object):
                 self._exec_strategy.num_threads = cpu_num * 2
 
         trainers_endpoints = self._program._trainers_endpoints
+
+        # FIXME(dzhwinter): enable_inplace should be after memory_optimize
+        # if turn on python memory optimize, turn off the inplace_pass.
+        if self._build_strategy.memory_optimize is None:
+            self._build_strategy.memory_optimize = False if main._is_mem_optimized else True
+        if self._build_strategy.enable_inplace is None:
+            self._build_strategy.enable_inplace = False if main._is_mem_optimized else True
+
         if self._build_strategy.num_trainers > 1 and trainers_endpoints:
             assert self._build_strategy.num_trainers == len(
                 trainers_endpoints), "num_trainers == len(end_points)"

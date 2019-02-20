@@ -1,6 +1,6 @@
 cc_library(ir_graph_build_pass SRCS ir_graph_build_pass.cc DEPS analysis_pass argument ir_pass_manager)
 cc_library(ir_analysis_pass SRCS ir_analysis_pass.cc DEPS analysis_pass argument ir_pass_manager)
-cc_library(memory_optim_pass SRCS memory_optimize_pass.cc DEPS analysis_pass)
+cc_library(memory_optim_pass SRCS memory_optimize_pass.cc DEPS analysis_pass zero_copy_tensor)
 cc_library(ir_params_sync_among_devices_pass SRCS ir_params_sync_among_devices_pass.cc DEPS analysis_pass argument ir_pass_manager)
 cc_library(ir_graph_to_program_pass SRCS ir_graph_to_program_pass.cc DEPS analysis_pass graph_to_program_pass)
 

@@ -27,30 +27,50 @@ namespace operators {
 
 class RecvOp : public framework::OperatorBase {
  public:
-  RecvOp(const std::string& type, const framework::VariableNameMap& inputs,
-         const framework::VariableNameMap& outputs,
-         const framework::AttributeMap& attrs)
+  RecvOp(const std::string &type, const framework::VariableNameMap &inputs,
+         const framework::VariableNameMap &outputs,
+         const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
-    auto outs = Outputs("Out");
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
+    std::vector<std::string> varnames =
+        Attr<std::vector<std::string>>("varnames");
     int sync_mode = Attr<int>("sync_mode");
+    auto outs = Outputs("Out");
+    bool with_barrier = Attr<bool>("with_barrier");
 
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &ctx = *pool.Get(place);
 
-    distributed::RPCClient* rpc_client =
+    distributed::RPCClient *rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(
             Attr<int>("trainer_id"));
 
-    std::vector<distributed::VarHandlePtr> rets;
-    for (size_t i = 0; i < outs.size(); i++) {
-      VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
-      rets.push_back(rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i]));
-    }
-    if (sync_mode) {
+    if (with_barrier) {
+      std::vector<distributed::VarHandlePtr> rets;
+      for (size_t i = 0; i < outs.size(); i++) {
+        std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
+        VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
+                << varname << " and with AsyncGetVar";
+        rets.push_back(
+            rpc_client->AsyncGetVar(epmap[i], ctx, scope, varname, outs[i]));
+      }
+      if (sync_mode) {
+        for (size_t i = 0; i < rets.size(); i++) {
+          PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+        }
+      }
+    } else {
+      std::vector<distributed::VarHandlePtr> rets;
+      for (size_t i = 0; i < outs.size(); i++) {
+        std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
+        VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
+                << varname << " and with AsyncGetVarNoBarrier";
+        rets.push_back(rpc_client->AsyncGetVarNoBarrier(epmap[i], ctx, scope,
+                                                        varname, outs[i]));
+      }
       for (size_t i = 0; i < rets.size(); i++) {
         PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
       }
@@ -79,12 +99,23 @@ This operator can get variables from server side.
                  "(int, default 0)"
                  "sync recv or async recv.")
         .SetDefault(0);
+    AddAttr<bool>("with_barrier",
+                  "(bool, default True) if with_barrier=False, will use "
+                  "AsyncGetVarNoBarrier get variable from pserver immediately")
+        .SetDefault(true);
+    AddAttr<std::vector<std::string>>(
+        "varnames",
+        "(string vector, default {}) "
+        "sometimes we need to put received var in another name "
+        "for example: we need var named 'moment_1@127.0.0.1:1001', "
+        "and it real name on parameter server is 'moment_1'. ")
+        .SetDefault({});
   }
 };
 
 class RecvOpShapeInference : public framework::InferShapeBase {
  public:
-  void operator()(framework::InferShapeContext* ctx) const override {}
+  void operator()(framework::InferShapeContext *ctx) const override {}
 };
 
 }  // namespace operators

@@ -17,7 +17,7 @@ from __future__ import print_function
 import os
 import multiprocessing
 import numpy as np
-import contextlib
+from .wrapped_decorator import signature_safe_contextmanager
 import six
 from .framework import Program, default_main_program, Variable
 from . import core
@@ -49,7 +49,7 @@ def _switch_scope(scope):
     return ex
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def scope_guard(scope):
     """
     Change the global/default scope instance by Python `with` statement. All
