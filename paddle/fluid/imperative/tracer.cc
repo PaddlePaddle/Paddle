@@ -66,16 +66,38 @@ platform::Place GetExpectedPlace(platform::Place place, VarBasePtrMap inputs) {
   return result;
 }
 
+// framework::BlockDesc* InferShapeAndVarType(OpBase* op, const VarBasePtrMap&
+// inputs, const VarBasePtrMap& outputs) {
+// std::unique_ptr<BlockDesc> block(new BlockDesc());
+
+// // construct op desc
+// op->op_desc_ = block.AppendOp();
+
+// // construct op inputs and outputs
+// // for
+// //
+// for (auto it = )
+// op->op_desc_->SetInput()
+
+// op->op_desc_->InferShape(*block);
+// op->op_desc_->InferVarType(block.get());
+
+// return block.release();
+// }
+
 void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
                    const VarBasePtrMap& outputs, framework::BlockDesc* block,
                    const platform::Place expected_place,
                    const bool stop_gradient) {
   std::map<std::string, VarBase*> vars;
 
+  // framework::BlockDesc* block = InferShapeAndVarType(op, inputs, outputs);
+
   framework::OpDesc* op_desc = op->op_desc_;
   VLOG(3) << "tracer tracing " << op_desc->Type();
   op_desc->InferShape(*block);
   op_desc->InferVarType(block);
+
   std::unique_ptr<framework::OperatorBase> op_base =
       framework::OpRegistry::CreateOp(*op_desc);
 
@@ -92,7 +114,7 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
 
       invars.emplace_back(inp->var_);
       vars[inp->var_desc_->Name()] = inp;
-      if (inp->PreOp()) {
+      if (inp->PreOp() && !inp->IsStopGradient()) {
         op->pre_ops_[it.first].push_back(inp->PreOp());
         op->pre_ops_out_idx_[it.first].push_back(inp->PreOpOutIdx());
       } else {
@@ -202,7 +224,7 @@ std::vector<VarBase*> Tracer::PyTrace(OpBase* op,
   op->input_vars_[PyLayer::kFwdInp] = inputs;
   op->output_vars_[PyLayer::kFwdOut] = PyLayer::Apply(op->forward_id_, inputs);
   for (VarBase* inp : inputs) {
-    if (inp->PreOp()) {
+    if (inp->PreOp() && !inp->IsStopGradient()) {
       op->pre_ops_[PyLayer::kFwdInp].push_back(inp->PreOp());
       op->pre_ops_out_idx_[PyLayer::kFwdInp].push_back(inp->PreOpOutIdx());
     } else {
