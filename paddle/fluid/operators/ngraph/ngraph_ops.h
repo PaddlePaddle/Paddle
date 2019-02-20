@@ -30,6 +30,7 @@ limitations under the License. */
 #include "ops/elementwise_add_op.h"
 #include "ops/fill_constant_op.h"
 #include "ops/mean_op.h"
+#include "ops/momentum_op.h"
 #include "ops/mul_op.h"
 #include "ops/pool2d_op.h"
 #include "ops/scale_op.h"
