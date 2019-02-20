@@ -305,7 +305,7 @@ function checkPythonVirtualenv(){
 
     if [ "$?" == 0 ];then
       use_virtualenv=
-      python_path=python
+      python_path=`which python`
       break
     else
       echo "创建虚环境失败,请检查环境"
