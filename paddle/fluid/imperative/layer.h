@@ -64,8 +64,9 @@ class PreparedOp {
 
     framework::OperatorWithKernel::OpKernelMap& kernels = kernels_iter->second;
 
-    auto expected_kernel_key = op.GetExpectedKernelType(
-        framework::ExecutionContext(op, framework::Scope(), *dev_ctx, ctx));
+    auto expected_kernel_key =
+        op.GetExpectedKernelType(framework::ExecutionContext(
+            op, framework::Scope(), *dev_ctx, ctx, nullptr));
     VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
     auto kernel_iter = kernels.find(expected_kernel_key);

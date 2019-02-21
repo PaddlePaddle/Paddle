@@ -921,7 +921,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   OpKernelMap& kernels = kernels_iter->second;
 
   auto expected_kernel_key = this->GetExpectedKernelType(
-      ExecutionContext(*this, scope, *dev_ctx, ctx));
+      ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
@@ -938,6 +938,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (kernel_iter == kernels.end()) {
     PADDLE_THROW("op %s does not have kernel for %s", type_,
                  KernelTypeToString(expected_kernel_key));
+  }
+
+  auto config_iter = kernel_configs_map_.find(expected_kernel_key);
+  std::vector<KernelConfig>* kernel_configs = nullptr;
+  if (config_iter != kernel_configs_map_.end()) {
+    kernel_configs = &(config_iter->second);
   }
 
   // do data transformScope &transfer_scope;
@@ -957,7 +963,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
-  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx, ctx));
+  kernel_iter->second(
+      ExecutionContext(*this, exec_scope, *dev_ctx, ctx, kernel_configs));
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.

@@ -139,7 +139,7 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   PreparedOp prepared_op = PreparedOp::Prepare(ctx, *op_kernel, op->place_);
   prepared_op.op.RuntimeInferShape(scope, op->place_, ctx);
   prepared_op.func(framework::ExecutionContext(
-      prepared_op.op, scope, *prepared_op.dev_ctx, prepared_op.ctx));
+      prepared_op.op, scope, *prepared_op.dev_ctx, prepared_op.ctx, nullptr));
 
   if (!stop_gradient) {
     std::unique_ptr<std::unordered_map<std::string, std::string>> grad_to_var(
