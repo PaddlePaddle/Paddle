@@ -30,8 +30,6 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static constexpr char kAllOpDescs[] = "all_op_descs";
-
 VarHandle* GetValidInput(const OpHandleBase* a) {
   for (auto p : a->Inputs()) {
     VarHandle* b = dynamic_cast<VarHandle*>(p);
