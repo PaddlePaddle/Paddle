@@ -14,6 +14,7 @@
 
 from ....core import CPUPlace
 from .... import io
+from .... import profiler
 from ....data_feeder import DataFeeder
 from ..graph import get_executor, ImitationGraph
 from config import ConfigFactory
@@ -71,18 +72,20 @@ class Context(object):
     def run_eval_graph(self):
         assert self.eval_graph is not None
         assert self.eval_reader is not None
+        eval_graph = self.eval_graph.clone(for_test=True)
         self.executor = get_executor(self.eval_graph, self.place, parallel=True)
         results = []
         batch_id = 0
         s_time = time.time()
         for data in self.eval_reader():
-            result = self.executor.run(self.eval_graph, data=data)
+            result = self.executor.run(eval_graph, data=data)
+            result = [np.mean(r) for r in result]
             results.append(result)
             if batch_id % 20 == 0:
                 e_time = time.time()
                 print("time: {}s; batch[{}] eval: {}={}".format(
                     e_time - s_time, batch_id,
-                    self.eval_graph.out_nodes.keys(), list(result)))
+                    self.eval_graph.out_nodes.keys(), result))
                 s_time = time.time()
             batch_id += 1
         result = np.mean(np.array(results), axis=0)
@@ -193,12 +196,13 @@ class CompressPass(object):
         if context.train_graph is None:
             print("train_graph is None; Please config train_graph_pass.")
             return
+#        with profiler.profiler('GPU', 'total'):
         for data in context.train_reader():
             for strategy in self.strategies:
                 strategy.on_batch_begin(context)
             feed = None
             results = self.executor.run(context.train_graph, data=data)
-            results = [float(result) for result in results]
+            results = [float(np.mean(result)) for result in results]
             if context.batch_id % 20 == 0:
                 logger.info("epoch:{}; batch_id:{}; {} = {}".format(
                     context.epoch_id, context.batch_id,
@@ -212,8 +216,9 @@ class CompressPass(object):
 
     def _eval(self, context):
         results, names = context.run_eval_graph()
-        logger.info("epoch:{}; batch_id:{}; eval results: {}={}".format(
-            context.epoch_id, context.batch_id, names, results))
+
+#        logger.info("epoch:{}; batch_id:{}; eval results: {}={}".format(
+#            context.epoch_id, context.batch_id, names, results))
 
     def run(self):
 
@@ -228,7 +233,8 @@ class CompressPass(object):
 
         self._load_checkpoint(context)
 
-        self.executor = get_executor(self.train_graph, self.place)
+        self.executor = get_executor(
+            self.train_graph, self.place, parallel=True)
         context.put('executor', self.executor)
 
         if self.teacher_graphs:
