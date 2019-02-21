@@ -21,17 +21,36 @@ from op_test import OpTest
 from paddle.fluid import core
 
 
+def spectral_norm(weight, u, v, dim, power_iters, eps):
+    h = w = 1
+    for i, d in enumerate(weight.shape):
+        if i <= dim:
+            h *= d
+        else:
+            w *= d
+    weight_mat = weight.reshape((h, w))
+
+    u = u.reshape((h, 1))
+    v = v.reshape((w, 1))
+    for i in range(power_iters):
+        v = np.matmul(weight_mat.T, u)
+        v_norm = np.sqrt((v * v).sum())
+        v = v / (v_norm + eps)
+        u = np.matmul(weight_mat, v)
+        u_norm = np.sqrt((u * u).sum())
+        u = u / (u_norm + eps)
+
+    sigma = (u * np.matmul(weight_mat, v)).sum()
+    return (weight_mat / sigma).reshape(weight.shape)
+
+
 class TestSpectralNormOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'spectral_norm'
-        # weight = np.random.random(self.weight_shape).astype('float32')
-        # u = np.random.random(self.u_shape).astype('float32')
-        # v = np.random.random(self.u_shape).astype('float32')
-        weight = np.ones(self.weight_shape).astype('float32')
-        weight[1, :] = 2.
-        u = np.ones(self.u_shape).astype('float32')
-        v = np.ones(self.v_shape).astype('float32')
+        weight = np.random.random(self.weight_shape).astype('float32')
+        u = np.random.random(self.u_shape).astype('float32')
+        v = np.random.random(self.v_shape).astype('float32')
 
         self.attrs = {
             "dim": self.dim,
@@ -45,8 +64,9 @@ class TestSpectralNormOp(OpTest):
             "V": v,
         }
 
-        output = weight
-        self.outputs = {"Out": weight, }
+        output = spectral_norm(weight, u, v, self.dim, self.power_iters,
+                               self.eps)
+        self.outputs = {"Out": output}
 
     def test_check_output(self):
         self.check_output()
@@ -56,7 +76,7 @@ class TestSpectralNormOp(OpTest):
         self.u_shape = (2, )
         self.v_shape = (3, )
         self.dim = 0
-        self.power_iters = 1
+        self.power_iters = 2
         self.eps = 1e-12
 
 
