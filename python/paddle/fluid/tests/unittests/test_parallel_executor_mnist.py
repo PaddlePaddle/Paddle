@@ -28,14 +28,13 @@ def simple_fc_net(use_feed):
     img = fluid.layers.data(name='image', shape=[784], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     hidden = img
-    with profiler.profiler('CPU', 'total', '/tmp/profile') as prof:
-        for _ in range(4):
-            hidden = fluid.layers.fc(
-                hidden,
-                size=200,
-                act='tanh',
-                bias_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=1.0)))
+    for _ in range(4):
+        hidden = fluid.layers.fc(
+            hidden,
+            size=200,
+            act='tanh',
+            bias_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=1.0)))
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = fluid.layers.mean(loss)

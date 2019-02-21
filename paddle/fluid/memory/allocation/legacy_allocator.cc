@@ -330,9 +330,11 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 
 namespace allocation {
 LegacyMemMonitor GPUMemMonitor;
+static std::mutex mem;
 
 Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
+  std::lock_guard<std::mutex> guard(mem);
   if (platform::IsProfileEnabled()) {
     Allocation *tmp_alloc = new Allocation(ptr, size, place_);
     platform::RecordMemEvent tmp_record;
@@ -348,6 +350,7 @@ void LegacyAllocator::Free(Allocation *allocation) {
   boost::apply_visitor(
       legacy::FreeVisitor(allocation->ptr(), allocation->size()),
       allocation->place());
+  std::lock_guard<std::mutex> guard(mem);
   if (platform::IsProfileEnabled()) {
     record_mem[allocation].DelRecordMem();
     record_mem.erase(allocation);

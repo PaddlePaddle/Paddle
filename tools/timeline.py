@@ -132,6 +132,7 @@ class Timeline(object):
         self._profile_dict = profile_dict
         self._pid = 0
         self._devices = dict()
+        self._mem_devices = dict()
         self._chrome_trace = _ChromeTraceFormatter()
 
     def _allocate_pid(self):
@@ -156,28 +157,33 @@ class Timeline(object):
                                                     (k, event.device_id), pid)
             for mevent in profile_pb.mem_events:
                 if mevent.place == profiler_pb2.MemEvent.CUDAPlace:
-                    if (k, mevent.device_id, "GPU") not in self._devices:
+                    if (k, mevent.device_id, "GPU", mevent.thread_id
+                        ) not in self._mem_devices:
                         pid = self._allocate_pid()
-                        self._devices[(k, mevent.device_id, "GPU")] = pid
+                        self._mem_devices[(k, mevent.device_id, "GPU",
+                                           mevent.thread_id)] = pid
                         self._chrome_trace.emit_pid(
-                            "memory usage on %s:gpu:%d" % (k, mevent.device_id),
-                            pid)
+                            "memory usage on %s:gpu:%d on thread %d" %
+                            (k, mevent.device_id, mevent.thread_id), pid)
                 elif mevent.place == profiler_pb2.MemEvent.CPUPlace:
-                    if (k, mevent.device_id, "CPU") not in self._devices:
+                    if (k, mevent.device_id, "CPU", mevent.thread_id
+                        ) not in self._mem_devices:
                         pid = self._allocate_pid()
-                        self._devices[(k, mevent.device_id, "CPU")] = pid
+                        self._mem_devices[(k, mevent.device_id, "CPU",
+                                           mevent.thread_id)] = pid
                         self._chrome_trace.emit_pid(
-                            "memory usage on %s:cpu:%d" % (k, mevent.device_id),
-                            pid)
+                            "memory usage on %s:cpu:%d on thread %d" %
+                            (k, mevent.device_id, mevent.thread_id), pid)
                 elif mevent.place == profiler_pb2.MemEvent.CUDAPinnedPlace:
                     if (k, mevent.device_id, "CUDAPinnedPlace"
-                        ) not in self._devices:
+                        ) not in self._mem_devices:
                         pid = self._allocate_pid()
-                        self._device[(k, mevent.device_id,
-                                      "CUDAPinnedPlace")] = pid
+                        self._mem_device[(k, mevent.device_id,
+                                          "CUDAPinnedPlace",
+                                          mevent.thread_id)] = pid
                         self._chrome_trace.emit_pid(
-                            "memory usage on %s:cudapinnedplace:%d" %
-                            (k, mevent.device_id), pid)
+                            "memory usage on %s:cudapinnedplace:%d on thread %d"
+                            % (k, mevent.device_id, mevent.thread_id), pid)
                 if (k, 0, "CPU") not in self._devices:
                     pid = self._allocate_pid()
                     self._devices[(k, 0, "CPU")] = pid
@@ -234,7 +240,8 @@ class Timeline(object):
                     place = "CUDAPinnedPlace"
                     cudapin_involved = True
                 crt_info['place'] = place
-                pid = self._devices[(k, mevent.device_id, place)]
+                pid = self._mem_devices[(k, mevent.device_id, place,
+                                         mevent.thread_id)]
                 crt_info['pid'] = pid
                 crt_info['device_id'] = mevent.device_id
                 mem_list.append(crt_info)
@@ -247,7 +254,6 @@ class Timeline(object):
                 mem_list.append(crt_info)
                 end_profiler = max(end_profiler, crt_info['time'])
             mem_list.sort(key=lambda tmp: (tmp.get('time', 0)))
-            # end_profiler = max(end_profiler, mem_list[-1]['time'])
             i = 0
             total_size = 0
             while i < len(mem_list):
