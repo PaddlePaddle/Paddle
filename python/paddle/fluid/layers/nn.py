@@ -3348,15 +3348,35 @@ def group_norm(input,
 
 
 @templatedoc()
-def spectral_norm(weight,
-                  dim=0,
-                  power_iters=1,
-                  eps=1e-12,
-                  u_attr=None,
-                  v_attr=None,
-                  name=None):
+def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     """
     **Spectral Normalization Layer**
+
+    This layer calculate the spectral normalize value of weight parameters of
+    fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
+    Parameters. Calculations are showed as followings.
+
+    .. code-block:: text
+
+        Step 1:
+        Generate vector u in shape of [h], and v in shape of [w].
+        While h is the attr:`dim`th dimension of the input weights,
+        and w is the product result of remain dimensions.
+
+        Step 2:
+        While attr:`power_iters` is a positive interger, do following
+        iteration calculations with u and v for attr:`power_iters`
+        round.
+            \mathbf{v} = \mathbf{W}^{T} \mathbf{u}
+            \mathbf{v} = \frac{\mathbf{v}}{\|\mathbf{v}\|_2}
+            \mathbf{u} = \mathbf{W}^{T} \mathbf{v}
+            \mathbf{u} = \frac{\mathbf{u}}{\|\mathbf{u}\|_2}
+
+        Step 3:
+        Calculate \sigma{W} and scale weight values.
+            \sigma{\mathbf{W}} = \mathbf{u}^{T} \mathbf{W} \mathbf{v}
+            \mathbf{W} := \frac{\mathbf{W}}{\sigma{\mathbf{W}}}
+                
 
     Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
 
@@ -3364,12 +3384,6 @@ def spectral_norm(weight,
         weight(${weight_type}): ${weight_comment}
         dim(${dim_type}): ${dim_comment}
         eps(${eps_type}): ${eps_comment}
-        u_attr(ParamAttr|None): The parameter attribute for vector u in 
-            spectral calculatings, set None to use default attribute, which
-            generates random values in normal distribution N(0, 1). Default: None.
-        v_attr(ParamAttr|None): The parameter attribute for vector v in 
-            spectral calculatings, set None to use default attribute, which
-            generates random values in normal distribution N(0, 1). Default: None.
         name (str): The name of this layer. It is optional.
 
     Returns:
@@ -3382,43 +3396,43 @@ def spectral_norm(weight,
         >>> x = fluid.layers.spectral_norm(weight=data, dim=1, power_iters=2)
     """
     helper = LayerHelper('spectral_norm', **locals())
-    dtype = helper.input_dtype()
+    dtype = weight.dtype
 
     # create intput and parameters
     inputs = {'Weight': weight}
-    input_shape = input.shape
-    if data_layout != 'NCHW':
-        raise ValueError("unsupported data layout:" + data_layout)
-    param_shape = [input_shape[1]]
-    if param_attr:
-        scale = helper.create_parameter(
-            attr=helper.param_attr,
-            shape=param_shape,
-            dtype=dtype,
-            default_initializer=Constant(1.0))
-        inputs['Scale'] = scale
-    if bias_attr:
-        bias = helper.create_parameter(
-            attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
-        inputs['Bias'] = bias
+    input_shape = weight.shape
+    h = input_shape[dim]
+    w = np.prod(input_shape) // h
+
+    u = helper.create_parameter(
+        attr=ParamAttr(),
+        shape=[h],
+        dtype=dtype,
+        default_initializer=Normal(0., 1.))
+    u.stop_gradient = True
+    inputs['U'] = u
+    v = helper.create_parameter(
+        attr=ParamAttr(),
+        shape=[w],
+        dtype=dtype,
+        default_initializer=Normal(0., 1.))
+    inputs['V'] = v
+    v.stop_gradient = True
 
     # create output
-    mean_out = helper.create_variable(dtype=dtype, stop_gradient=True)
-    variance_out = helper.create_variable(dtype=dtype, stop_gradient=True)
-    group_norm_out = helper.create_variable(dtype=dtype)
+    out = helper.create_variable(dtype=dtype)
 
     helper.append_op(
-        type="group_norm",
+        type="spectral_norm",
         inputs=inputs,
-        outputs={
-            "Y": group_norm_out,
-            "Mean": mean_out,
-            "Variance": variance_out,
-        },
-        attrs={"epsilon": epsilon,
-               "groups": groups})
+        outputs={"Out": out, },
+        attrs={
+            "dim": dim,
+            "power_iters": power_iters,
+            "eps": eps,
+        })
 
-    return helper.append_activation(group_norm_out)
+    return out
 
 
 def conv2d_transpose(input,
