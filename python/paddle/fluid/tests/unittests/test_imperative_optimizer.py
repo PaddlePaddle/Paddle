@@ -102,7 +102,6 @@ class TestImperativeMnist(unittest.TestCase):
     def test_mnist_float32(self):
         seed = 90
         epoch_num = 1
-        batch_num = 200
         with fluid.imperative.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -205,12 +204,16 @@ class TestImperativeMnist(unittest.TestCase):
         self.assertTrue(np.allclose(dy_x_data.all(), static_x_data.all()))
 
         for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
+            if not np.allclose(value, dy_param_init_value[key]):
+                print(key, value, dy_param_value[key])
+            #  self.assertTrue(np.allclose(value, dy_param_init_value[key]))
 
         self.assertTrue(np.allclose(static_out, dy_out))
 
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-6))
+            if not np.allclose(value, dy_param_value[key], atol=1e-6):
+                print(key, value, dy_param_value[key])
+            #  self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
 
 
 if __name__ == '__main__':
