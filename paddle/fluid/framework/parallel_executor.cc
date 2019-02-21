@@ -21,8 +21,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph.h"
 
-#include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/all_reduce_deps_pass.h"
+#include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/parallel_ssa_graph_executor.h"
@@ -260,6 +260,7 @@ ParallelExecutor::ParallelExecutor(
   // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
   // ncclOp
   std::unique_ptr<ir::Graph> graph;
+  std::vector<std::unique_ptr<ir::Graph>> graphs;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   graph = build_strategy.Apply(main_program, member_->places_, loss_var_name,
                                member_->local_scopes_, member_->nranks_,
@@ -273,10 +274,9 @@ ParallelExecutor::ParallelExecutor(
       graphs.push_back(std::move(graph));
     }
   } else {
-    std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
-        main_program, member_->places_, loss_var_name, member_->local_scopes_,
-        member_->nranks_, member_->use_cuda_);
-    graphs.push_back(std::move(graph));
+    graph = build_strategy.Apply(main_program, member_->places_, loss_var_name,
+                                 member_->local_scopes_, member_->nranks_,
+                                 member_->use_cuda_);
   }
 #endif
   auto max_memory_size = GetEagerDeletionThreshold();
