@@ -184,12 +184,125 @@ class OperatorBase {
                        const platform::Place& place) const = 0;
 };
 
+template <typename TAlgorithm>
+class AlgorithmsCache {
+ public:
+  AlgorithmsCache() : search_times_(0) { hash_.clear(); }
+  // Caches the best algorithm for a given
+  // combination of tensor dimensions & compute data type.
+  TAlgorithm GetAlgorithm(
+      const std::vector<int64_t>& dims1, const std::vector<int64_t>& dims2,
+      const std::vector<int>& strides, const std::vector<int>& paddings,
+      const std::vector<int>& dilations,
+      int algorithmFlags,  // can set for different data type
+      std::function<TAlgorithm()> gen_func);
+
+  TAlgorithm GetAlgorithm(int64_t area, int search_times, int algorithmFlags,
+                          std::function<TAlgorithm()> gen_func);
+
+ private:
+  std::unordered_map<int64_t, TAlgorithm> hash_;
+  std::mutex mutex_;
+
+  int search_times_;
+};
+
+template <typename TAlgorithm>
+TAlgorithm framework::AlgorithmsCache<TAlgorithm>::GetAlgorithm(
+    const std::vector<int64_t>& dims1, const std::vector<int64_t>& dims2,
+    const std::vector<int>& strides, const std::vector<int>& paddings,
+    const std::vector<int>& dilations, int algorithmFlags,
+    std::function<TAlgorithm()> gen_func) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  int64_t seed = 0;
+  // Hash all of the inputs, use to try and look up a previously
+  // discovered algorithm, or fall back to generating a new one.
+  std::hash<int64_t> hashFn;
+  // do hash like boost
+  // https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
+  for (const auto num : dims1) {
+    seed ^= hashFn(num) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  }
+
+  for (const auto num : dims2) {
+    seed ^= hashFn(num) + 0x9e3779b9 + (seed << 6) + (seed >> 2) + 1;
+  }
+
+  for (const auto num : strides) {
+    seed ^= hashFn(static_cast<int64_t>(num)) + 0x9e3779b9 + (seed << 6) +
+            (seed >> 2) + 2;
+  }
+
+  for (const auto num : paddings) {
+    seed ^= hashFn(static_cast<int64_t>(num)) + 0x9e3779b9 + (seed << 6) +
+            (seed >> 2) + 3;
+  }
+
+  for (const auto num : dilations) {
+    seed ^= hashFn(static_cast<int64_t>(num)) + 0x9e3779b9 + (seed << 6) +
+            (seed >> 2) + 4;
+  }
+
+  seed ^= hashFn(static_cast<int64_t>(algorithmFlags)) + 0x9e3779b9 +
+          (seed << 6) + (seed >> 2) + 5;
+
+  if (seed == 0) return gen_func();
+
+  if (hash_.find(seed) == hash_.end()) {
+    TAlgorithm value = gen_func();
+    hash_[seed] = value;
+  }
+  return hash_[seed];
+}
+
+template <typename TAlgorithm>
+TAlgorithm AlgorithmsCache<TAlgorithm>::GetAlgorithm(
+    int64_t area, int search_times, int algorithmFlags,
+    std::function<TAlgorithm()> gen_func) {
+  if (hash_.find(area) != hash_.end()) {
+    return hash_[area];
+  }
+  if (search_times_ < search_times) {
+    auto algo = gen_func();
+    hash_[area] = algo;
+    ++search_times_;
+    return algo;
+  }
+  TAlgorithm algo;
+  int64_t min = static_cast<uint64_t>(INT_MAX);
+  for (const auto& m : hash_) {
+    if (m.first < min) {
+      min = m.first;
+      algo = m.second;
+    }
+  }
+  return algo;
+}
+
+#ifdef PADDLE_WITH_CUDA
+using KernelConfig = boost::variant<
+    std::shared_ptr<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>,
+    std::shared_ptr<AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>,
+    std::shared_ptr<AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>>;
+#else
+using KernelConfig = boost::variant<boost::blank>;
+#endif
+
+using OpKernelConfigsMap =
+    std::unordered_map<OpKernelType, std::vector<KernelConfig>,
+                       OpKernelType::Hash>;
+
 class ExecutionContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
                    const platform::DeviceContext& device_context,
-                   const RuntimeContext& ctx)
-      : op_(op), scope_(scope), device_context_(device_context), ctx_(ctx) {}
+                   const RuntimeContext& ctx,
+                   std::vector<KernelConfig>* configs)
+      : op_(op),
+        scope_(scope),
+        device_context_(device_context),
+        ctx_(ctx),
+        kernel_configs_(configs) {}
 
   const OperatorBase& op() const { return op_; }
 
@@ -398,11 +511,20 @@ class ExecutionContext {
     return temp_tensor;
   }
 
+  template <typename T>
+  T& GetKernelConfig(int idx) const {
+    PADDLE_ENFORCE(kernel_configs_ && kernel_configs_->size() > idx,
+                   "%s selected kernel doesn't have kernel config %lu <= %d",
+                   op_.Type().c_str(), kernel_configs_->size(), idx);
+    return *boost::get<std::shared_ptr<T>>(kernel_configs_->at(idx));
+  }
+
  private:
   const OperatorBase& op_;
   const Scope& scope_;
   const platform::DeviceContext& device_context_;
   const RuntimeContext& ctx_;
+  mutable std::vector<KernelConfig>* kernel_configs_;
 };
 
 template <>
@@ -508,6 +630,9 @@ class OperatorWithKernel : public OperatorBase {
   void TransferInplaceVarsBack(const Scope& scope,
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
+
+ protected:
+  mutable OpKernelConfigsMap kernel_configs_map_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);
