@@ -357,7 +357,11 @@ class ControlFlowGraph(object):
                                                      is_forward).dtype()
                         if x_dtype != cache_dtype:
                             if PRINT_LOG:
+<<<<<<< HEAD
                                 print("x_dtype and cache_dtype are different")
+=======
+                                print("x_dtype and cache_dtype are different!")
+>>>>>>> 4b3f9e5c61d687ea90e6599bf9494df92ed088fb
                             continue
 
                         if not compare_shape(x_shape, cache_shape, level):

@@ -13,18 +13,31 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/memory_optimize_helper.h"
+<<<<<<< HEAD
+=======
+#include <algorithm>
+>>>>>>> 4b3f9e5c61d687ea90e6599bf9494df92ed088fb
 #include <deque>
 #include <functional>
-#include <iostream>
+#include <iterator>
 #include <numeric>
 #include <sstream>
 #include <string>
 #include "paddle/fluid/framework/var_desc.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/gpu_info.h"
+#endif  // PADDLE_WITH_CUDA
+>>>>>>> 4b3f9e5c61d687ea90e6599bf9494df92ed088fb
 
 namespace paddle {
 namespace framework {
 namespace details {
 using paddle::framework::VarDesc;
+<<<<<<< HEAD
 
 std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph) {
   PADDLE_ENFORCE(graph.Has(kAllOpDescs),
@@ -114,6 +127,97 @@ std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph) {
   return ret;
 }
 
+=======
+
+std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph) {
+  PADDLE_ENFORCE(graph.Has(kAllOpDescs),
+                 "Graph has no attribute of kAllOpDescs.");
+  // 1. get op desc order
+  auto& op_descs = graph.Get<const std::vector<OpDesc*>>(kAllOpDescs);
+
+  // 2. topology sort order
+  auto nodes = graph.Nodes();
+  std::deque<ir::Node*> ops;
+  FilterVariables(nodes, [&](ir::Node* op) {
+    if (op->IsOp() && op->Op() != nullptr) {
+      ops.emplace_back(op);
+    }
+  });
+  std::unordered_map<ir::Node*, size_t> op_deps;
+  std::list<ir::Node*> ready_ops;
+  std::unordered_map<ir::Node*, std::unordered_set<ir::Node*>> pending_ops;
+
+  for (auto* op : ops) {
+    std::unordered_set<ir::Node*> preceding_op;
+    for (auto* in : op->inputs) {
+      if (in->inputs.empty()) continue;
+      PADDLE_ENFORCE(in->inputs.size() == 1 && in->inputs[0]->IsOp());
+      preceding_op.emplace(in->inputs[0]);
+      pending_ops[in->inputs[0]].emplace(op);
+    }
+    op_deps[op] = preceding_op.size();
+    if (preceding_op.empty()) {
+      ready_ops.emplace_back(op);
+    }
+  }
+
+  // 3. generated op list based desc order and the topology order
+  std::vector<ir::Node*> ret;
+  std::list<OpDesc*> op_descs_list(op_descs.begin(), op_descs.end());
+
+  auto update_by_found_node = [&](ir::Node* found_node) {
+    for (auto* pending_op : pending_ops[found_node]) {
+      if (--op_deps[pending_op] == 0) {
+        ready_ops.emplace_back(pending_op);
+      }
+    }
+    ready_ops.remove(found_node);
+    ret.emplace_back(found_node);
+  };
+
+  while (!ready_ops.empty()) {
+    bool all_of_ready_op_unmatched = true;
+    for (auto it = op_descs_list.begin(); it != op_descs_list.end();) {
+      auto op_desc = *it;
+      ir::Node* found_node = nullptr;
+      for (auto* op : ready_ops) {
+        if (IsSameDesc(op->Op(), op_desc)) {
+          found_node = op;
+          break;
+        }
+      }
+
+      // 3.1 op desc deleted by other pass
+      if (found_node == nullptr) {
+        ++it;
+        continue;
+      } else {
+        all_of_ready_op_unmatched = false;
+        it = op_descs_list.erase(it);
+      }
+      update_by_found_node(found_node);
+    }
+
+    // 3.2 op descs are added by other pass
+    // preceding op non empty means some new op descs are
+    // created, but not contained in return node list.
+    // these new op desc may depend on each other.
+    std::list<ir::Node*> prev_ready_ops(ready_ops);
+    if (all_of_ready_op_unmatched) {
+      for (auto op : prev_ready_ops) {
+        update_by_found_node(op);
+      }
+    }
+  }
+
+  PADDLE_ENFORCE(std::all_of(
+      op_deps.begin(), op_deps.end(),
+      [&](const std::pair<ir::Node*, size_t>& p) { return p.second == 0; }));
+
+  return ret;
+}
+
+>>>>>>> 4b3f9e5c61d687ea90e6599bf9494df92ed088fb
 size_t NodeSize(const VarDesc& node) {
   auto shape = node.GetShape();
   int size =
@@ -166,6 +270,11 @@ struct NodeComparator {
   bool operator()(ir::Node* lhs, ir::Node* rhs) const {
     auto* lhs_desc = FindVarDescInBlock(lhs);
     auto* rhs_desc = FindVarDescInBlock(rhs);
+    // match data type
+    if (lhs_desc->GetDataType() != rhs_desc->GetDataType()) {
+      return false;
+    }
+    // match shape
     auto lhs_shape = lhs_desc->GetShape();
     auto rhs_shape = rhs_desc->GetShape();
     if ((lhs_shape[0] == -1 && rhs_shape[0] == -1) ||
@@ -230,6 +339,30 @@ ir::Node* OrderedSet::FindBestFitNode(ir::Node* var) const {
   return found_node;
 }
 
+<<<<<<< HEAD
+=======
+ir::Node* OrderedSet::FindNextBestFitNode(ir::Node* var, ir::Node* prev) const {
+  ir::Node* found_node = nullptr;
+  NodeComparator functor;
+  auto it =
+      std::find_if(nodes_.begin(), nodes_.end(), [&](const NodeVector& v) {
+        if (v.front() == prev)
+          return true;
+        else
+          return false;
+      });
+  PADDLE_ENFORCE(it != nodes_.end(), "Not found previous in node list!");
+  for (it = std::next(it); it != nodes_.end(); ++it) {
+    auto& candidate = it->front();
+    if (functor(var, candidate)) {
+      found_node = candidate;
+      break;
+    }
+  }
+  return found_node;
+}
+
+>>>>>>> 4b3f9e5c61d687ea90e6599bf9494df92ed088fb
 bool OrderedSet::Has(ir::Node* var) const {
   if (mark_table_.count(var->Name())) {
     auto& node_in_samename = mark_table_.at(var->Name());
@@ -241,12 +374,26 @@ bool OrderedSet::Has(ir::Node* var) const {
   return false;
 }
 
+<<<<<<< HEAD
 void OrderedSet::Erase(ir::Node* var) {
   PADDLE_ENFORCE(mark_table_.count(var->Name()));
   nodes_.erase(mark_table_[var->Name()]);
   mark_table_.erase(var->Name());
 }
 
+=======
+void OrderedSet::Erase(const std::string& var) {
+  PADDLE_ENFORCE(mark_table_.count(var));
+  nodes_.erase(mark_table_[var]);
+  mark_table_.erase(var);
+}
+
+void OrderedSet::Erase(ir::Node* var) {
+  PADDLE_ENFORCE(var != nullptr);
+  Erase(var->Name());
+}
+
+>>>>>>> 4b3f9e5c61d687ea90e6599bf9494df92ed088fb
 std::string OrderedSet::ToString() const {
   std::stringstream ss;
   for (auto it = nodes_.begin(); it != nodes_.end(); ++it) {
@@ -274,14 +421,42 @@ bool NodeCanReused(ir::Node* node) {
   return flag;
 }
 
+int MinChunkSize() {
+  int size{0};
+#ifdef PADDLE_WITH_CUDA
+  size = platform::GpuMinChunkSize();
+#else
+  size = platform::CpuMinChunkSize();
+#endif  // PADDLE_WITH_CUDA
+  return size;
+}
+
 bool NodeCanReused(const VarDesc& node) {
   auto type = node.GetType();
+<<<<<<< HEAD
+=======
+  // only these types holds bulk of gpu memory
+>>>>>>> 4b3f9e5c61d687ea90e6599bf9494df92ed088fb
   if (!(type == proto::VarType::LOD_TENSOR ||
         type == proto::VarType::SELECTED_ROWS ||
         type == proto::VarType::LOD_TENSOR_ARRAY)) {
     return false;
   }
+<<<<<<< HEAD
   if (node.Persistable() || node.GetShape().empty()) {
+=======
+  // persistable variable is parameter
+  if (node.Persistable()) {
+    return false;
+  }
+  // shape < min_chunk_size is meaningless.
+  // further more, fetched loss always has size = 1
+  // which should not be reused.
+  auto shape = node.GetShape();
+  int size = std::abs(
+      std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>()));
+  if (shape.empty() || size < MinChunkSize()) {
+>>>>>>> 4b3f9e5c61d687ea90e6599bf9494df92ed088fb
     return false;
   }
   // vars can be @EMPTY@, @LR_DECAY_REUSE_ID@. For example, while_grad
@@ -461,7 +636,13 @@ ir::Node* ControlFlowGraph::GetNodeByName(const std::string& name,
   for (auto* node : ops_) {
     if (node == op) break;
     for (auto& output : node->outputs) {
+<<<<<<< HEAD
       if (output->Name() == name) {
+=======
+      PADDLE_ENFORCE((output != nullptr && output->IsVar()),
+                     "Output is empty!");
+      if (output->Var() && output->Name() == name) {
+>>>>>>> 4b3f9e5c61d687ea90e6599bf9494df92ed088fb
         found_node = output;
       }
     }

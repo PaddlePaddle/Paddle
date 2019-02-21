@@ -16,8 +16,11 @@ from __future__ import print_function
 
 import collections
 from collections import defaultdict
+<<<<<<< HEAD
 from collections import Iterable
 import contextlib
+=======
+>>>>>>> 4b3f9e5c61d687ea90e6599bf9494df92ed088fb
 from .wrapped_decorator import signature_safe_contextmanager
 import os
 import re
@@ -557,7 +560,8 @@ class OpProtoHolder(object):
         return {
             core.op_proto_and_checker_maker.kOpRoleAttrName(),
             core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
-            core.op_proto_and_checker_maker.kOpNameScopeAttrName()
+            core.op_proto_and_checker_maker.kOpNameScopeAttrName(),
+            core.op_proto_and_checker_maker.kOpCreationCallstackAttrName()
         }
 
 
