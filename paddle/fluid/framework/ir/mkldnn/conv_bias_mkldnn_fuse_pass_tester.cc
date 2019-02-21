@@ -76,8 +76,7 @@ TEST(ConvBiasFusePass, basic) {
   Scope scope;
   // Init scope, as it is used in pass
   exe.CreateVariables(prog, 0, true, &scope);
-  graph->Set(kParamScopeAttr, new framework::Scope*(
-                    const_cast<framework::Scope*>(&scope)));
+  graph->Set(kParamScopeAttr, new framework::Scope*(&scope));
 
   auto pass = PassRegistry::Instance().Get("conv_bias_mkldnn_fuse_pass");
 
