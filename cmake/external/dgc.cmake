@@ -28,9 +28,9 @@ ExternalProject_Add(
     SOURCE_DIR "${DGC_SOURCES_DIR}"
     CONFIGURE_COMMAND ""
     BUILD_COMMAND cd collective && make -j
-    INSTALL_COMMAND mkdir -p ${DGC_INSTALL_DIR}/lib/  ${DGC_INCLUDE_DIR}
+    INSTALL_COMMAND mkdir -p ${DGC_INSTALL_DIR}/lib/  ${DGC_INCLUDE_DIR}/dgc
         && cp ${DGC_SOURCES_DIR}/collective/build/lib/libdgc.a ${DGC_LIBRARIES}
-        && cp ${DGC_SOURCES_DIR}/collective/build/include/dgc.h ${DGC_INCLUDE_DIR}/
+        && cp ${DGC_SOURCES_DIR}/collective/build/include/dgc.h ${DGC_INCLUDE_DIR}/dgc/
     BUILD_IN_SOURCE 1
 )
 

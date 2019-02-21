@@ -130,9 +130,9 @@ void AllReduceOpHandle::_RunImplEncoded() {
              << ", dtype:" << dtype << ", out_tensor_buf:" << out_tensor_buf;
 
     all_reduce_calls.emplace_back([=] {
-      sparseAllGReduce(in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel,
-                       static_cast<ncclDataType_t>(dtype), ncclSum, comm,
-                       stream);
+      paddle::communication::dgc::sparseAllGReduce(
+          in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel,
+          static_cast<ncclDataType_t>(dtype), ncclSum, comm, stream);
     });
   }
 
@@ -225,9 +225,9 @@ void AllReduceOpHandle::_RunImpl() {
   std::vector<const LoDTensor *> lod_tensors;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto *s = local_scopes_[i];
-    auto &local_scope = s->FindVar(kLocalExecScopeName)->Get<Scope *>();
+    auto &local_scope = *s->FindVar(kLocalExecScopeName)->Get<Scope *>();
     auto &lod_tensor =
-        local_scope->FindVar(in_var_handles[i]->name())->Get<LoDTensor>();
+        local_scope.FindVar(in_var_handles[i]->name())->Get<LoDTensor>();
     lod_tensors.emplace_back(&lod_tensor);
     VLOG(10) << "place:" << i << ", input_name:" << in_var_handles[i]->name()
              << ", out_name:" << out_var_handles[i]->name();
@@ -287,7 +287,6 @@ void AllReduceOpHandle::_RunImpl() {
         auto &nccl_ctx = nccl_ctxs_->at(dev_id);
         auto stream = nccl_ctx.stream();
         cudaStreamSynchronize(stream);
-        // nccl_ctx.Wait();
       }
     }
 

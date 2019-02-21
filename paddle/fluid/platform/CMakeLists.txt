@@ -46,8 +46,9 @@ cc_test(cpu_helper_test SRCS cpu_helper_test.cc DEPS cpu_helper)
 
 IF(WITH_GPU)
     set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
+    set(dgc_deps dgc)
 ELSE()
-    set(GPU_CTX_DEPS)
+    set(dgc_deps)
 ENDIF()
 
 IF(WITH_MKLDNN)
@@ -68,7 +69,8 @@ ENDIF()
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc ${STREAM_CALLBACK_DEPS}
-    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}  temp_allocator)
+    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
+    temp_allocator ${dgc_deps})
 
 if(WIN32)
     if(WITH_GPU AND NOT WITH_DSO)

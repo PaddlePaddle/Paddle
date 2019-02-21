@@ -82,8 +82,8 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     PADDLE_ENFORCE(i0 != nullptr && i1 != nullptr, "%s convert to %s error",
                    op1->DebugString(), op2->DebugString());
 
-    auto l_it = vars.find(i0_name);
-    auto r_it = vars.find(i1_name);
+    auto l_it = vars.find(i0->name);
+    auto r_it = vars.find(i1->name);
 
     PADDLE_ENFORCE(l_it != vars.end() && r_it != vars.end(),
                    "can't find var's name %s and %s in opdesc", i0_name,
