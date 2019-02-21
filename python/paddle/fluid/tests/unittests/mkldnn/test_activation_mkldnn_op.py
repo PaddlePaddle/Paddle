@@ -110,9 +110,9 @@ class TestMKLDNNReluPrimitivesAlreadyExist(unittest.TestCase):
         out = np.abs(x)
 
         out_grad = np.random.random_sample(x.shape).astype(np.float32)
-        x_grad = out_grad * np.sign(x) # Abs grad calculation
+        x_grad = out_grad * np.sign(x)  # Abs grad calculation
 
-        var_dict = {'x':x, 'out':out, 'out@GRAD':out_grad, 'x@GRAD':x_grad}
+        var_dict = {'x': x, 'out': out, 'out@GRAD': out_grad, 'x@GRAD': x_grad}
         var_names = list(var_dict.keys())
         ground_truth = {name: var_dict[name] for name in var_names}
 
@@ -121,14 +121,12 @@ class TestMKLDNNReluPrimitivesAlreadyExist(unittest.TestCase):
             block = program.global_block()
             for name in ground_truth:
                 block.create_var(
-                    name=name,
-                    dtype='float32',
-                    shape=ground_truth[name].shape)
-            
+                    name=name, dtype='float32', shape=ground_truth[name].shape)
+
             relu_op = block.append_op(
                 type="abs",
-                inputs={"X": block.var('x'),},
-                outputs={"Out": block.var('out') },
+                inputs={"X": block.var('x'), },
+                outputs={"Out": block.var('out')},
                 attrs={"use_mkldnn": True})
 
             # Generate backward op_desc
@@ -146,11 +144,13 @@ class TestMKLDNNReluPrimitivesAlreadyExist(unittest.TestCase):
                 grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
             exe = fluid.Executor(place)
-            
+
             # Do at least 2 iterations
             for i in range(2):
-                out = exe.run(program,
-                    feed={name: var_dict[name] for name in ['x', 'out@GRAD']},
+                out = exe.run(
+                    program,
+                    feed={name: var_dict[name]
+                          for name in ['x', 'out@GRAD']},
                     fetch_list=['x@GRAD'])
 
             self.__assert_close(x_grad, out[0], "x@GRAD")
