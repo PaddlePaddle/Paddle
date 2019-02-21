@@ -77,9 +77,6 @@ struct BuildStrategy {
   bool fuse_relu_depthwise_conv_{false};
 
   bool memory_optimize_{false};
-
-  bool memory_early_delete_{false};
-
   // TODO(dzhwinter):
   // make enable_inplace, memory_optimize_
   // memory_early_delete_ true by default
