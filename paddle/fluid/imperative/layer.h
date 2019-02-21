@@ -103,28 +103,24 @@ class OpBase;
  */
 class VarBase {
  public:
-  explicit VarBase(std::string name)
-      : VarBase(new framework::Variable(), new VarBase(name + "XGRAD", true),
-                name) {}
+  VarBase() : VarBase(new framework::Variable(), new VarBase(true)) {}
 
   // Owns `var` and `grad`
-  VarBase(framework::Variable* var, VarBase* grad, std::string name)
+  VarBase(framework::Variable* var, VarBase* grad)
       : var_desc_(nullptr),
         var_(var),
         grads_(grad),
         stop_gradient_(false),
         pre_op_(nullptr),
-        pre_op_out_idx_(-1),
-        name_(name) {}
+        pre_op_out_idx_(-1) {}
 
-  explicit VarBase(std::string name, bool stop_gradient)
+  explicit VarBase(bool stop_gradient)
       : var_desc_(nullptr),
         var_(new framework::Variable()),
-        grads_(stop_gradient ? nullptr : new VarBase(name + "XGRAD", true)),
+        grads_(stop_gradient ? nullptr : new VarBase(true)),
         stop_gradient_(stop_gradient),
         pre_op_(nullptr),
-        pre_op_out_idx_(-1),
-        name_(name) {}
+        pre_op_out_idx_(-1) {}
 
   virtual ~VarBase() {
     if (var_) {
@@ -187,7 +183,6 @@ class VarBase {
   OpBase* pre_op_;
   std::string pre_op_out_name_;
   int pre_op_out_idx_;
-  std::string name_;
 };
 
 /* The wrapper for OpDesc which holds a OpDesc and a OpDesc of its
