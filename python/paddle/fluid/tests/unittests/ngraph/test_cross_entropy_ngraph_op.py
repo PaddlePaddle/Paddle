@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
-from paddle.fluid.tests.unittests.test_softmax_op import TestSoftmaxOp
+from paddle.fluid.tests.unittests.test_cross_entropy_op import TestCrossEntropyOp, TestCrossEntropyOp2, TestCrossEntropyOp3, TestCrossEntropyOp4, TestCrossEntropyOp5, TestCrossEntropyOp6, TestCrossEntropyOp7
 
 if __name__ == "__main__":
     unittest.main()

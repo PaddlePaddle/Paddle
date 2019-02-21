@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
-import unittest
-from paddle.fluid.tests.unittests.test_softmax_op import TestSoftmaxOp
 
-if __name__ == "__main__":
+import unittest
+from paddle.fluid.tests.unittests.test_momentum_op import TestMomentumOp1, TestMomentumOp2, TestLarsMomentumOp, TestSparseMomentumOp, TestSparseMomentumOp2
+
+if __name__ == '__main__':
     unittest.main()
