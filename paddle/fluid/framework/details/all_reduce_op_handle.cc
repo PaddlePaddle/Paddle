@@ -75,7 +75,7 @@ void AllReduceOpHandle::_RunImplEncoded() {
       "The NoDummyInputSize and NoDummyOutputSize should be equal.");
 
   std::vector<const LoDTensor *> ins;
-  std::vector<const LoDTensor *> outs;
+  std::vector<LoDTensor *> outs;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto &local_scope =
         local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
@@ -83,9 +83,9 @@ void AllReduceOpHandle::_RunImplEncoded() {
         local_scope->FindVar(in_var_handles[i]->name())->Get<LoDTensor>();
     ins.emplace_back(&in);
 
-    auto &out =
-        local_scope->FindVar(out_var_handles[i]->name())->Get<LoDTensor>();
-    outs.emplace_back(&out);
+    auto *out = local_scope->FindVar(out_var_handles[i]->name())
+                    ->GetMutable<LoDTensor>();
+    outs.emplace_back(out);
   }
 
   PADDLE_ENFORCE(platform::is_gpu_place(ins[0]->place()));
@@ -104,7 +104,7 @@ void AllReduceOpHandle::_RunImplEncoded() {
     void *in_tensor_buf = const_cast<void *>(in.data<void>());
 
     auto &out = *outs[i];
-    void *out_tensor_buf = const_cast<void *>(out.data<void>());
+    float *out_tensor_buf = out.data<float>();
 
     dtype = (dtype == -1) ? platform::ToNCCLDataType(in.type()) : dtype;
     in_numel = (in_numel == 0) ? static_cast<size_t>(in.numel()) : in_numel;
@@ -131,8 +131,8 @@ void AllReduceOpHandle::_RunImplEncoded() {
 
     all_reduce_calls.emplace_back([=] {
       paddle::communication::dgc::sparseAllGReduce(
-          in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel,
-          static_cast<ncclDataType_t>(dtype), ncclSum, comm, stream);
+          static_cast<void *>(in_tensor_buf), gather_buff, k, out_tensor_buf,
+          out_numel, comm, stream);
     });
   }
 
