@@ -21,8 +21,6 @@ import argparse
 import time
 import tensorflow as tf
 
-import paddle.v2 as paddle
-
 
 def parse_args():
     parser = argparse.ArgumentParser("LSTM model benchmark.")

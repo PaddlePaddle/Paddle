@@ -153,7 +153,7 @@ void ReduceOpHandle::RunImpl() {
   {
     auto out_var_handles = DynamicCast<VarHandle>(outputs_);
 
-    PADDLE_ENFORCE_EQ(out_var_handles.size(), 1,
+    PADDLE_ENFORCE_EQ(out_var_handles.size(), 1UL,
                       "The number of output should be one.");
     out_var_handle = out_var_handles.front();
   }
