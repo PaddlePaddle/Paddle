@@ -174,6 +174,7 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
   int CreateDistTrainOp(ir::Graph *result, ir::Node *node) const;
 
   mutable std::vector<std::unordered_set<std::string>> bcast_var_name_set_;
+  mutable bool need_broadcast_var_{false};
 };
 
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder();
