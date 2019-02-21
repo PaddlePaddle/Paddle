@@ -136,7 +136,7 @@ void EnableActivity() {
   CUPTI_CALL(dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_DRIVER));
   CUPTI_CALL(dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
   // We don't track these activities for now.
-  // CUPTI_CALL(dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMSET));
+  CUPTI_CALL(dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMSET));
   // CUPTI_CALL(dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_OVERHEAD));
   // CUPTI_CALL(dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_DEVICE));
   // CUPTI_CALL(dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CONTEXT));
@@ -155,7 +155,7 @@ void DisableActivity() {
   // CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_CONTEXT));
   CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_DRIVER));
   CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
-  // CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMSET));
+  CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMSET));
   // CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_NAME));
   // CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MARKER));
   // CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_OVERHEAD));
@@ -210,6 +210,14 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
                     static_cast<CUpti_ActivityMemcpyKind>(memcpy->copyKind)),
                 memcpy->start, memcpy->end, memcpy->deviceId, memcpy->streamId,
                 memcpy->correlationId, memcpy->bytes);
+            break;
+          }
+          case CUPTI_ACTIVITY_KIND_MEMSET: {
+            auto *memset =
+                reinterpret_cast<const CUpti_ActivityMemset *>(record);
+            tracer->AddKernelRecords("MEMSET", memset->start, memset->end,
+                                     memset->deviceId, memset->streamId,
+                                     memset->correlationId);
             break;
           }
           case CUPTI_ACTIVITY_KIND_DRIVER: {
@@ -348,6 +356,8 @@ class DeviceTracerImpl : public DeviceTracer {
     const std::vector<int> cbids {
       CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020,
           CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020,
+          CUPTI_RUNTIME_TRACE_CBID_cudaMemset_v3020,
+          CUPTI_RUNTIME_TRACE_CBID_cudaMemsetAsync_v3020,
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020,
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000
 #if CUDA_VERSION >= 9000
