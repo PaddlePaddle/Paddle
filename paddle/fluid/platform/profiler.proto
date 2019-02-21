@@ -31,6 +31,7 @@ message Event {
   optional int64 sub_device_id = 6;
 
   optional MemCopy memcopy = 7;
+  optional string detail_info = 9;
 }
 
 message Profile {
