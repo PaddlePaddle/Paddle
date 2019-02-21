@@ -22,12 +22,10 @@ namespace operators {
 
 inline float get_period_sparcity(const std::vector<float>& sparsity,
                                  float cur_step, float rampup_steps) {
-  if (static_cast<int>(cur_step) <= 0) {
-    return 0.75;
-  }
+  PADDLE_ENFORCE(static_cast<int>(cur_step) >= 0);
 
-  std::vector<float> a({0.75, 0.9375, 0.984375, 0.996, 0.999});
   float rate = cur_step / rampup_steps;
+
   int idx = static_cast<int>(rate / 0.2);
   if (idx >= a.size()) {
     return 0.999;
@@ -46,27 +44,43 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto u = ctx.Input<framework::Tensor>("U");
     auto v = ctx.Input<framework::Tensor>("V");
     auto g = ctx.Input<framework::Tensor>("Grad");
+
+    // attrs
     float m = ctx.Attr<float>("m");
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
     auto sparsity = ctx.Attr<std::vector<float>>("sparsity");
-    VLOG(10) << "m:" << m << ", use_nesterov:" << use_nesterov
-             << ", sparsity:" << sparsity.size();
+    auto rampup_begin_step = ctx.Attr<float>("rampup_begin_step");
+    auto rampup_step = ctx.Attr<float>("rampup_step");
 
+    // current step
     auto current_step_tensor = ctx.Input<framework::Tensor>("current_step");
-    auto rampup_step_tensor = ctx.Input<framework::Tensor>("rampup_step");
     const float* current_step = current_step_tensor->data<float>();
-    const float* rampup_step = rampup_step_tensor->data<float>();
+
+    if (*current_step < rampup_begin_step) {
+      auto encode_grad_out = ctx.Output<framework::Tensor>("EncodeGrad");
+      out->ShareDataWith(*g);
+      return;
+    }
+
+    float ratio =
+        1 - get_period_sparcity(sparsity, static_cast<float>(*current_step),
+                                rampup_step);
+    int k = static_cast<int>(g->numel() * ratio);
+
+    VLOG(10) << "m:" << m << ", use_nesterov:" << use_nesterov
+             << ", sparsity:" << sparsity.size()
+             << ", rampup_begin_step:" << rampup_begin_step;
+    << ", rampup_step:" << rampup_step << ",  current_step:" << *current_step
+    << ", ratio:" << ratio << ", k:" << k;
+
+    // auto rampup_step_tensor = ctx.Input<framework::Tensor>("rampup_step");
+    // const float* rampup_step = rampup_step_tensor->data<float>();
+    /*
     VLOG(10) << "current_step_tensor:" << current_step_tensor
              << ", rampup_step_tensor:" << rampup_step_tensor
              << ", current_step:" << current_step
              << ", rampup_step:" << rampup_step;
-    float ratio =
-        1 - get_period_sparcity(sparsity, static_cast<float>(*current_step),
-                                static_cast<float>(*rampup_step));
-    int k = static_cast<int>(g->numel() * ratio);
-    VLOG(10) << "rampup_step:" << *rampup_step
-             << ", current_step:" << *current_step << ", ratio:" << ratio
-             << ", k:" << k;
+    */
 
     auto u_out = ctx.Output<framework::Tensor>("U_out");
     auto v_out = ctx.Output<framework::Tensor>("V_out");

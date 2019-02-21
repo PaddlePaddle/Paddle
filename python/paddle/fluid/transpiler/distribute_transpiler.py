@@ -158,7 +158,7 @@ class DistributeTranspilerConfig(object):
     mode = "pserver"
     print_log = False
     wait_port = True
-    enable_dgc = False
+    #enable_dgc = False
     rampup_step = 0
 
 
@@ -265,7 +265,7 @@ class DistributeTranspiler(object):
         return var
 
     def _add_dgc_vars(self, start_program, main_program):
-        main_program._enable_dgc = True
+        #main_program._enable_dgc = True
 
         _, params_grads = self._get_optimize_pass()
         for param_var, grad_var in params_grads:
@@ -418,9 +418,10 @@ class DistributeTranspiler(object):
         self.origin_program = program
         self.startup_program = startup_program
         self.origin_startup_program = self.startup_program.clone()
-
+        """
         if self.config.enable_dgc and self.config.mode != "nccl2":
             raise ValueError("enable_dgc should used under nccl mode!")
+        """
 
         if self.config.mode == "nccl2":
             assert (isinstance(trainers, str))
@@ -431,9 +432,11 @@ class DistributeTranspiler(object):
                 current_endpoint,
                 startup_program=startup_program,
                 wait_port=self.config.wait_port)
+            """
             if self.config.enable_dgc:
                 self._add_dgc_vars(
                     start_program=self.startup_program, main_program=program)
+            """
             return
 
         self.trainer_num = trainers

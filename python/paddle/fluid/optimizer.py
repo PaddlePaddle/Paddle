@@ -70,6 +70,7 @@ class Optimizer(object):
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
+        self._enable_dgc = False
 
     def _create_global_learning_rate(self):
         lr = self._global_learning_rate()
@@ -129,8 +130,8 @@ class Optimizer(object):
         """
         pass
 
-    def _create_param_grad_accmulators(self, block, param_and_grad):
-        pass
+    #def _create_param_grad_accmulators(self, block, param_and_grad):
+    #    pass
 
     def _finish_update(self, block, parameters_and_grads):
         """Finish any custom updates needed
@@ -224,7 +225,7 @@ class Optimizer(object):
         self.helper = LayerHelper(self.__class__.__name__)
         self._create_accumulators(global_block,
                                   [p[0] for p in parameters_and_grads])
-        self._create_param_grad_accmulators(global_block, param_and_grads)
+        #self._create_param_grad_accmulators(global_block, param_and_grads)
         self._create_global_learning_rate()
 
         optimize_ops = []
@@ -286,6 +287,9 @@ class Optimizer(object):
                     },
                     outputs={"ParamOut": param_and_grad[0]})
         return new_param_grads, (table_param, table_grad), sgd_op
+
+    def _append_dgc_ops(self, param_and_grad):
+        pass
 
     def backward(self,
                  loss,
@@ -406,6 +410,8 @@ class Optimizer(object):
             with program_guard(program, startup_program):
                 params_grads = self.backward(loss, startup_program,
                                              parameter_list, no_grad_set)
+                if (self._enable_dgc):
+                    self._append_dgc_ops(paras_and_grads)
                 optimize_ops = self.apply_gradients(params_grads)
 
         return optimize_ops, params_grads
@@ -544,77 +550,110 @@ class MomentumOptimizer(Optimizer):
 
 
 class DGCOptmizer(Opimizer):
-    def __init__(
-            self,
-            learning_rate,
-            momentum,
-            rampup_begin_step=0,
-            #rampup_end_step=-1,
-            sparsity=[0.75, 0.9375, 0.984375, 0.996, 0.999],
-            use_nesterov=False,
-            regularization=None,
-            name=None):
+    def __init__(self,
+                 learning_rate,
+                 momentum,
+                 ramup_step,
+                 rampup_begin_step=0,
+                 sparsity=[0.75, 0.9375, 0.984375, 0.996, 0.999],
+                 use_nesterov=False,
+                 regularization=None,
+                 name=None):
+        self._enable_dgc = True
+
+        self._rampup_step = rampup_step
+        self._rampup_step_var = None
+
         self._rampup_begin_step = rampup_begin_step
-        #self._rampup_end_step = rampup_end_step
+        self._rampup_begin_step_var = None
+
         self._global_step_var = None
+
+        #self._dgc_vars={};
+
         self.momentum = MomentumOptimizer(learning_rate, momentum, use_nesterov,
                                           regularization, name)
 
-    def _create_accumulators(self, block, parameters):
-        self.momentum._create_accumulators(block, parameters)
+    def _add_auto_increment_var(counter_name, begin, step=1):
+        helper = LayerHelper('global_step_counter')
+        counter, is_new_var = helper.create_or_get_global_variable(
+            name=counter_name, dtype='float32', shape=[1], persistable=True)
+        if is_new_var:
+            helper.set_variable_initializer(
+                counter,
+                initializer=Constant(
+                    value=float(begin), force_cpu=True))
+            helper.main_program.global_block()._prepend_op(
+                type='increment',
+                inputs={'X': [counter]},
+                outputs={'Out': [counter]},
+                attrs={'step': float(step)},
+                stop_gradient=True)
+            counter.stop_gradient = True
 
-    def _create_param_grad_accmulators(self, block, param_and_grads):
+        return counter
+
+    def _append_dgc_ops(self, param_and_grads):
         start_program = default_start_program()
         main_program = default_main_program()
 
-        for param, grad in parameters:
-            var_numel = reduce(lambda x, y: x * y, param.shape)
+        for param_var, grad_var in param_and_grads:
+            var_numel = reduce(lambda x, y: x * y, param_var.shape)
             if var_numel < 4096 or \
-                param.type == core.VarDesc.VarType.SELECTED_ROWS  or \
-                grad.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
-                    param.dtype != core.VarDesc.VarType.FP32 :
+                param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
+                grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
+                    param_var.dtype != core.VarDesc.VarType.FP32 :
                 continue
 
-            self._add_accumulator(param.name + "__dgc_u__", param)
-            self._add_accumulator(param.name + "__dgc_v__", param)
+            u_var = tensor.create_global_var(
+                shape=param_var.shape,
+                dtype=param_var.dtype,
+                persistable=True,
+                name=param_var.name + "__dgc_u__",
+                value=0.0)
+            v_var = tensor.create_global_var(
+                shape=param_var.shape,
+                dtype=param_var.dtype,
+                persistable=True,
+                name=param_var.name + "__dgc_v__",
+                value=0.0)
+
+            self._dgc_op(param_and_grad[1], u_var, v_var)
 
         # step counter
-        global_step = nn.autoincreased_step_counter(
-            counter_name='__g_dgc_counter__', begin=begin, step=1)
-        self._global_step_var = tensor.cast(global_step, 'float32')
+        self._global_step_var = self._add_auto_increment_var(
+            counter_name='__g_dgc_counter__',
+            begin=self._rampup_begin_step,
+            step=1)
 
-        # the begin step
-        self._rampup_begin_step_var = tensor.create_global_var(
+        self._rampup_step_var = tensor.create_global_var(
             shape=[1],
-            value=self._rampup_begin_step,
-            dtype='float32',
+            dtype=param_var.dtype,
             persistable=True,
-            name="__g_dgc_begin_rampup_step__")
+            name='__g_rampup_step__',
+            value=self._rampup_step * 1.0,
+            foce_cpu=True)
+
+        # Note: don't delete this
+        print("set DGC rampup_begin_step:", self._rampup_begin_step,
+              ", sparsity:", self._sparsity, ", rampup_step:",
+              self._rampup_step)
+
+    def _create_accumulators(self, block, parameters):
+        return self.momentum._create_accumulators(block, parameters)
 
     def _append_optimize_op(self, block, param_and_grad):
-        grad_var = param_and_grad[1]
-
-        with control_flow.Switch() as switch:
-            with switch.case(
-                    layers.less_than(self._rampup_begin_step,
-                                     self._global_step_var)):
-                encode_grad_var = self._dgc_op(parm_and_grad)
-                tensor.assign(input=encode_grad_var, output=grad_var)
-
-        # momentum op
         return self.momentum._append_optimize_op(block, param_and_grad)
 
-    def _dgc_op(self, param_and_grad):
+    def _dgc_op(self, grad_var, u_var, v_var):
         # insert dgc op
-        u_name = param_and_grad[0].name + "__dgc_u__"
-        v_name = param_and_grad[0].name + "__dgc_v__"
+        #u_name = param_and_grad[0].name + "__dgc_u__"
+        #v_name = param_and_grad[0].name + "__dgc_v__"
 
-        grad_var = param_and_grad[1]
-        u_var = _get_accumulator(u_name, param_and_grad[0])
-        v_var = _get_accumulator(v_name, param_and_grad[0])
-
-        encode_grad_name = param_and_grad[0].name + "__dgc__"
-        tensor.create_global_var(encode_grad_name)
+        #grad_var = param_and_grad[1]
+        #u_var =  self._dgc_vars[u_name] 
+        #v_var =  self._dgc_vars[v_name]
+        #assert u_var is not None and v_var is not None
 
         dgc_op = block.append_op(
             type="dgc",
@@ -622,22 +661,20 @@ class DGCOptmizer(Opimizer):
                 "U": u_var,
                 "V": v_var,
                 "Grad": grad_var,
-                "global_step": self._global_step
+                "global_step": self._global_step_var
             },
-            outputs={
-                "U_out": u_var,
-                "V_out": v_var,
-                "EncodeGrad": encode_grad_var,
-            },
+            outputs={"U_out": u_var,
+                     "V_out": v_var,
+                     "EncodeGrad": grad_var},
             attrs={
                 "m": self._momentum,
                 "sparsity": self._sparsity,
                 "use_nesterov": self._use_nesterov,
-                "rampup_begin_step": self._rampup_begin_step,
+                "rampup_begin_step": float(self._rampup_begin_step),
             },
             stop_gradient=True)
 
-        return encode_grad_var
+        #return encode_grad_var
 
 
 class LarsMomentumOptimizer(Optimizer):

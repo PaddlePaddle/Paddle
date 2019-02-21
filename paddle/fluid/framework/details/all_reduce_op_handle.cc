@@ -130,14 +130,14 @@ void AllReduceOpHandle::_RunImplEncoded() {
              << ", dtype:" << dtype << ", out_tensor_buf:" << out_tensor_buf;
 
     all_reduce_calls.emplace_back([=] {
-sparseAllGReduce(in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel,
-                 static_cast<ncclDataType_t>(dtype), ncclSum, comm,
-                 stream);
-            /*
-      PADDLE_ENFORCE(platform::dynload::ncclAllGather(
-          in_tensor_buf, gather_buff, in_numel * sizeof(float), ncclChar, comm,
-          stream));
-          */
+      sparseAllGReduce(in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel,
+                       static_cast<ncclDataType_t>(dtype), ncclSum, comm,
+                       stream);
+      /*
+PADDLE_ENFORCE(platform::dynload::ncclAllGather(
+    in_tensor_buf, gather_buff, in_numel * sizeof(float), ncclChar, comm,
+    stream));
+    */
     });
   }
 
@@ -175,8 +175,36 @@ sparseAllGReduce(in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel,
 }
 #endif
 
+bool AllReduceOpHandle::check_global_step() {
+  auto counter_name = "__g_dgc_counter__";
+  auto step_name = "__g_rampup_step__";
+  PADDLE_ENFORCE(local_scopes_.size() > 0);
+
+  auto *scope = local_scopes_[i];
+  auto &local_scope = scope->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  auto count_var = local_scope->FindVar(counter_name);
+  auto step_var = local_scope->FindVar(step_name);
+  if (count_var == nullptr || step_var == nullptr) {
+    PADDLE_ENFORCE(false, "not find count_var:%s or step_var:%s", counter_name,
+                   step_var);
+  }
+
+  auto count = *count_var->Get<Tensor>()->data();
+  auto step = *step_var->Get<Tensor>()->data();
+  if (count < step) {
+    return false;
+  }
+
+  return true;
+}
+
 void AllReduceOpHandle::RunImpl() {
   if (!is_encoded_) {
+    _RunImpl();
+    return;
+  }
+
+  if (!check_global_step()) {
     _RunImpl();
     return;
   }

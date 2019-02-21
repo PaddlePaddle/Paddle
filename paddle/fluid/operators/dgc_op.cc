@@ -24,17 +24,15 @@ class DGCOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("U"), "Input(U) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("V"), "Input(V) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grad"),
                    "Input(Grad) of DGCop should not be null.");
-    // PADDLE_ENFORCE(ctx->HasInput("ratio"),
-    //              "Input(ratio) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("current_step"),
                    "Input(current_step) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("rampup_step"),
-                   "Input(rampup_step) of DGCop should not be null.");
+    // PADDLE_ENFORCE(ctx->HasInput("rampup_step"),
+    //              "Input(rampup_step) of DGCop should not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("U_out"),
                    "Output(U_out) of DGCop should not be null.");
@@ -43,56 +41,24 @@ class DGCOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("EncodeGrad"),
                    "Output(EncodeGrad) of DGCop should not be null.");
 
-    /*
-    std::vector<framework::InferShapeVarPtr> ratio_var_ptrs =
-    ctx->GetInputVarPtrs("ratio");
-    PADDLE_ENFORCE(ratio_var_ptrs.size() == 1);
-    auto ratio_var = boost::get<framework::Variable *>(ratio_var_ptrs[0])
-    auto ratio_tensor = ratio_var->Get<framework::Tensor>();
-    float ratio = 1 - *ratio_tensor->data<T>();
-    PADDLE_ENFORCE(ratio > 0.0009 && ratio < 1.0,
-                   "ratio of dgc must in range [0.0009, 1.0]");
-    VLOG(10) << "reserved ratio:" << ratio;
-    */
-
-    /*
-    auto dim = ctx->GetInputDim("Grad");
-    int k = static_cast<int>(framework::product(dim) * ratio);
-
-    FIXME(gongwb): need not set output dims?
-    ctx->SetOutputDim("EncodeGrad", framework::DDim{2 * k});
-    VLOG(10) << "set EncodeGrad dims:" << framework::DDim{2 * k};
-    ctx->ShareLoD("Grad", "EncodeGrad");
-    */
-
-    // int buf_size = get_buffer_size(k);
-    PADDLE_ENFORCE(ctx->HasOutput("Encoded_buf"),
-                   "Output(Encoded_buf) of DGCop should not be null.");
+    // PADDLE_ENFORCE(ctx->HasOutput("Encoded_buf"),
+    // "Output(Encoded_buf) of DGCop should not be null.");
   }
+
  protected:
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override{
-      VLOG(10) << "dgc inputs for kerneltype:" << var_name;
-      if(var_name == "current_step" || var_name == "rampup_step"){
-          VLOG(10) << "var_name:" << var_name << " need not to transform";
-          return expected_kernel_type;
-      }
+      const framework::OpKernelType& expected_kernel_type) const override {
+    VLOG(10) << "dgc inputs for kerneltype:" << var_name;
+    if (var_name == "current_step" || var_name == "rampup_step") {
+      VLOG(10) << "var_name:" << var_name << " need not to transform";
+      return expected_kernel_type;
+    }
 
-      return  framework::OperatorWithKernel::GetKernelTypeForVar(var_name, tensor, expected_kernel_type); 
+    return framework::OperatorWithKernel::GetKernelTypeForVar(
+        var_name, tensor, expected_kernel_type);
   }
 };
-
-/*
-class DGCOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
- public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    return std::unordered_map<std::string, std::string>{
-        {"Grad", "EncodeGrad"}};
-  }
-};
-*/
 
 class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -101,7 +67,7 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("V", "(Tensor) Middle tensor of DGC");
     AddInput("Grad", "(Tensor) Input gradient");
     AddInput("current_step", "(Tensor) Current step.");
-    AddInput("rampup_step", "(Tensor) Ramping up step.");
+    // AddInput("rampup_step", "(Tensor) Ramping up step.");
 
     AddOutput("U_out",
               "(Tensor) "
@@ -119,12 +85,24 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0.9);
 
     AddAttr<bool>("use_nesterov",
-                   "(bool, true)"
-                   "The momentum of learning rate.")
+                  "(bool, true)"
+                  "The momentum of learning rate.")
         .SetDefault(true);
 
+    AddAttr<std::vector<float>>("sparsity",
+                                "(vecotr, float)"
+                                "The period sparsity of k_select.")
 
-    AddComment(R"DOC(
+        AddAttr<float>("rampup_begin_step",
+                       "(float, 0.0)"
+                       "The period when begin k_select.")
+            .SetDefault(0.0);
+
+    AddAttr<float>("rampup_step",
+                   "(float, 0.0)"
+                   "The period when begin k_select.")
+
+        AddComment(R"DOC(
     Please see appendix D of https://arxiv.org/abs/1712.01887.pdf
 )DOC");
   }
