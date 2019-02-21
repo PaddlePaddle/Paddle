@@ -410,6 +410,8 @@ class Optimizer(object):
             with program_guard(program, startup_program):
                 params_grads = self.backward(loss, startup_program,
                                              parameter_list, no_grad_set)
+                # Note: since we can't use all_reduce_op now,
+                #  dgc_op should be the last op of one grad.
                 if (self._enable_dgc):
                     self._append_dgc_ops(paras_and_grads)
                 optimize_ops = self.apply_gradients(params_grads)
@@ -549,7 +551,7 @@ class MomentumOptimizer(Optimizer):
         return momentum_op
 
 
-class DGCOptmizer(Opimizer):
+class DGCOptmizer(MomentumOptimizer):
     def __init__(self,
                  learning_rate,
                  momentum,
@@ -569,9 +571,7 @@ class DGCOptmizer(Opimizer):
 
         self._global_step_var = None
 
-        #self._dgc_vars={};
-
-        self.momentum = MomentumOptimizer(learning_rate, momentum, use_nesterov,
+        super(DGCOptmizer, self).__init__(learning_rate, momentum, use_nesterov,
                                           regularization, name)
 
     def _add_auto_increment_var(counter_name, begin, step=1):
@@ -639,22 +639,7 @@ class DGCOptmizer(Opimizer):
               ", sparsity:", self._sparsity, ", rampup_step:",
               self._rampup_step)
 
-    def _create_accumulators(self, block, parameters):
-        return self.momentum._create_accumulators(block, parameters)
-
-    def _append_optimize_op(self, block, param_and_grad):
-        return self.momentum._append_optimize_op(block, param_and_grad)
-
     def _dgc_op(self, grad_var, u_var, v_var):
-        # insert dgc op
-        #u_name = param_and_grad[0].name + "__dgc_u__"
-        #v_name = param_and_grad[0].name + "__dgc_v__"
-
-        #grad_var = param_and_grad[1]
-        #u_var =  self._dgc_vars[u_name] 
-        #v_var =  self._dgc_vars[v_name]
-        #assert u_var is not None and v_var is not None
-
         dgc_op = block.append_op(
             type="dgc",
             inputs={
@@ -673,8 +658,8 @@ class DGCOptmizer(Opimizer):
                 "rampup_begin_step": float(self._rampup_begin_step),
             },
             stop_gradient=True)
-
-        #return encode_grad_var
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        dgc_op._set_attr(op_role_attr_name, backward)
 
 
 class LarsMomentumOptimizer(Optimizer):

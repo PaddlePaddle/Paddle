@@ -57,7 +57,7 @@ struct AllReduceOpHandle : public OpHandleBase {
   const platform::NCCLContextMap *nccl_ctxs_;
   bool is_encoded_{false};
   int ranks_{-1};
-  bool check_global_step();
+  bool IsEncoded();
 #endif
 };
 

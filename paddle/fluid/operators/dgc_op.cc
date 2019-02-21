@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <string>
-
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/dgc_op.h"
+#include <string>
+#include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -91,18 +91,18 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<std::vector<float>>("sparsity",
                                 "(vecotr, float)"
-                                "The period sparsity of k_select.")
+                                "The period sparsity of k_select.");
 
-        AddAttr<float>("rampup_begin_step",
-                       "(float, 0.0)"
-                       "The period when begin k_select.")
-            .SetDefault(0.0);
+    AddAttr<float>("rampup_begin_step",
+                   "(float, 0.0)"
+                   "The period when begin k_select.")
+        .SetDefault(0.0);
 
     AddAttr<float>("rampup_step",
                    "(float, 0.0)"
-                   "The period when begin k_select.")
+                   "The period when begin k_select.");
 
-        AddComment(R"DOC(
+    AddComment(R"DOC(
     Please see appendix D of https://arxiv.org/abs/1712.01887.pdf
 )DOC");
   }

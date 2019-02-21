@@ -175,12 +175,15 @@ PADDLE_ENFORCE(platform::dynload::ncclAllGather(
 }
 #endif
 
-bool AllReduceOpHandle::check_global_step() {
+bool AllReduceOpHandle::IsEncoded() {
+  if (!is_encoded_) {
+    return false;
+  }
   auto counter_name = "__g_dgc_counter__";
   auto step_name = "__g_rampup_step__";
   PADDLE_ENFORCE(local_scopes_.size() > 0);
 
-  auto *scope = local_scopes_[i];
+  auto *scope = local_scopes_[0];
   auto &local_scope = scope->FindVar(kLocalExecScopeName)->Get<Scope *>();
   auto count_var = local_scope->FindVar(counter_name);
   auto step_var = local_scope->FindVar(step_name);
@@ -199,12 +202,7 @@ bool AllReduceOpHandle::check_global_step() {
 }
 
 void AllReduceOpHandle::RunImpl() {
-  if (!is_encoded_) {
-    _RunImpl();
-    return;
-  }
-
-  if (!check_global_step()) {
+  if (!IsEncoded()) {
     _RunImpl();
     return;
   }

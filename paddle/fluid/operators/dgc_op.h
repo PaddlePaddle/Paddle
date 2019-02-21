@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/k_select/k_select.h"
@@ -26,13 +27,13 @@ inline float get_period_sparcity(const std::vector<float>& sparsity,
 
   float rate = cur_step / rampup_steps;
 
-  int idx = static_cast<int>(rate / 0.2);
-  if (idx >= a.size()) {
+  size_t idx = static_cast<int>(rate / 0.2);
+  if (idx >= sparsity.size()) {
     return 0.999;
   }
 
-  PADDLE_ENFORCE(idx >= 0 && idx < a.size());
-  return a[idx];
+  PADDLE_ENFORCE(idx < sparsity.size());
+  return sparsity[idx];
 }
 
 template <typename DeviceContext, typename T>
@@ -58,7 +59,9 @@ class DGCOpKernel : public framework::OpKernel<T> {
 
     if (*current_step < rampup_begin_step) {
       auto encode_grad_out = ctx.Output<framework::Tensor>("EncodeGrad");
-      out->ShareDataWith(*g);
+      encode_grad_out->ShareDataWith(*g);
+      VLOG(10) << "current_step:" << current_step
+               << " < rampup_step:" << rampup_step << " so does't use dgc";
       return;
     }
 
@@ -69,24 +72,16 @@ class DGCOpKernel : public framework::OpKernel<T> {
 
     VLOG(10) << "m:" << m << ", use_nesterov:" << use_nesterov
              << ", sparsity:" << sparsity.size()
-             << ", rampup_begin_step:" << rampup_begin_step;
-    << ", rampup_step:" << rampup_step << ",  current_step:" << *current_step
-    << ", ratio:" << ratio << ", k:" << k;
-
-    // auto rampup_step_tensor = ctx.Input<framework::Tensor>("rampup_step");
-    // const float* rampup_step = rampup_step_tensor->data<float>();
-    /*
-    VLOG(10) << "current_step_tensor:" << current_step_tensor
-             << ", rampup_step_tensor:" << rampup_step_tensor
-             << ", current_step:" << current_step
-             << ", rampup_step:" << rampup_step;
-    */
+             << ", rampup_begin_step:" << rampup_begin_step
+             << ", rampup_step:" << rampup_step
+             << ",  current_step:" << *current_step << ", ratio:" << ratio
+             << ", k:" << k;
 
     auto u_out = ctx.Output<framework::Tensor>("U_out");
     auto v_out = ctx.Output<framework::Tensor>("V_out");
     auto encode_grad_out = ctx.Output<framework::Tensor>("EncodeGrad");
 
-    // FIXME(gognwb): use cublas.
+    // FIXME(gongwb): use cublas.
     auto u_out_e = framework::EigenVector<T>::Flatten(*u_out);
     auto u_e = framework::EigenVector<T>::Flatten(*u);
     auto g_e = framework::EigenVector<T>::Flatten(*g);
