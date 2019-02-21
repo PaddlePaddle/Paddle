@@ -94,7 +94,7 @@ We provide [English](http://paddlepaddle.org/documentation/docs/en/1.3/beginners
 
    Our new API enables much shorter programs.
 
-- [How to Contribute](http://paddlepaddle.org/documentation/docs/en/develop/advanced_usage/development/contribute_to_paddle/index_en.html)
+- [How to Contribute](http://paddlepaddle.org/documentation/docs/en/1.3/advanced_usage/development/contribute_to_paddle/index_en.html)
 
    We appreciate your contributions!
 
