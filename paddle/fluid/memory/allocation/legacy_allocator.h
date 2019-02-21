@@ -79,6 +79,7 @@ class LegacyAllocator : public Allocator {
 
  private:
   platform::Place place_;
+  static std::mutex mem;
 };
 
 }  // namespace allocation
