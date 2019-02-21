@@ -115,7 +115,8 @@ double Event::CudaElapsedMs(const Event& e) const {
 #ifdef PADDLE_WITH_CUPTI
   return gpu_ns_ / 1000000.0;
 #else
-  PADDLE_THROW("CUDA CUPTI is not enabled");
+  LOG_FIRST_N(WARNING, 1) << "CUDA CUPTI is not enabled";
+  return 0;
 #endif
 }
 
