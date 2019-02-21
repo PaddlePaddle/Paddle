@@ -171,9 +171,7 @@ void TestInference(const std::string& dirname,
   // Enable the profiler
   paddle::platform::EnableProfiler(state);
   {
-    paddle::platform::RecordEvent record_event(
-        "init_program",
-        paddle::platform::DeviceContextPool::Instance().Get(place));
+    paddle::platform::RecordEvent record_event("init_program");
     inference_program = InitProgram(&executor, scope, dirname, is_combined);
   }
 
@@ -230,9 +228,7 @@ void TestInference(const std::string& dirname,
 
     // Run repeat times to profile the performance
     for (int i = 0; i < repeat; ++i) {
-      paddle::platform::RecordEvent record_event(
-          "run_inference",
-          paddle::platform::DeviceContextPool::Instance().Get(place));
+      paddle::platform::RecordEvent record_event("run_inference");
 
       if (PrepareContext) {
         // Note: if you change the inference_program, you need to call
