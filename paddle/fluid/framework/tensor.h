@@ -63,7 +63,8 @@ class Tensor {
     return mem_pd_;
   }
 
-  inline void set_mkldnn_prim_desc(mkldnn::memory::primitive_desc& mem_pd) {
+  inline void set_mkldnn_prim_desc(
+      const mkldnn::memory::primitive_desc& mem_pd) {
     // Internally MKL-DNN is just copying (increasing reference counter)
     // to shared_ptr. So asignment should be quite cheap
     mem_pd_ = mem_pd;

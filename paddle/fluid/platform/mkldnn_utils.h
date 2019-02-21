@@ -16,10 +16,7 @@ limitations under the License. */
 #include <mkldnn.h>
 #include <string>
 
-#ifdef PADDLE_WITH_MKLDNN
-
 namespace paddle {
-
 namespace platform {
 
 inline mkldnn::memory::primitive_desc create_prim_desc_from_dims(
@@ -62,11 +59,11 @@ inline mkldnn::memory::primitive_desc create_prim_desc_from_format(
   auto md = mkldnn::memory::desc({ltz}, data_type, format);
   auto& pool = platform::DeviceContextPool::Instance();
   auto place = paddle::platform::CPUPlace();
-  auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(place));
+  auto dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(place));
+  PADDLE_ENFORCE_NOT_NULL(dev_ctx, "Could not get valid device");
   auto& cpu_engine = dev_ctx->GetEngine();
   return mkldnn::memory::primitive_desc(md, cpu_engine);
 }
 
 }  // namespace platform
 }  // namespace paddle
-#endif

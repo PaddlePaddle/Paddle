@@ -65,9 +65,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // Transpose did change logical dimensions of Tensor, but reorder does not.
     // Reorder does change only physical layout eg. format , strides
     // so we need to create new primitive descriptor with changed logical layout
-    // so
-    // it match output shape
-
+    // so it match output shape
     auto output_mem_pd = paddle::platform::create_prim_desc_from_dims(
         paddle::framework::vectorize2int(output->dims()),
         mkldnn::memory::format::blocked);
@@ -128,9 +126,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // Transpose did change logical dimensions of Tensor, but reorder does not.
     // Reorder does change only physical layout eg. format , strides
     // so we need to create new primitive descriptor with changed logical layout
-    // so
-    // it match output shape
-
+    // so it match output shape
     auto x_grad_mem_pd = paddle::platform::create_prim_desc_from_dims(
         paddle::framework::vectorize2int(x_grad->dims()),
         mkldnn::memory::format::blocked);
