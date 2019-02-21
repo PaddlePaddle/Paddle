@@ -9899,37 +9899,19 @@ def huber_loss(input, label, delta):
 
 def fsp_matrix(x, y):
     """
-    Huber loss is a loss function used in robust.
-    Huber loss can evaluate the fitness of input to label.
-    Different from MSE loss, Huber loss is more robust for outliers.
-
-    When the difference between input and label is large than delta
-    .. math::
-
-        huber\_loss = delta * (label - input) - 0.5 * delta * delta
-
-    When the difference between input and label is less than delta
-    .. math::
-
-        huber\_loss = 0.5 * (label - input) * (label - input)
-
-
+    Calculate the fsp matrix.
     Args:
-        input (Variable): This input is a probability computed by the previous operator.
-                          The first dimension is batch size, and the last dimension is 1.
-        label (Variable): The groud truth whose first dimension is batch size
-                          and last dimension is 1.
-        delta (float): The parameter of huber loss, which controls
-                       the range of outliers
+        x (Variable): The feature map with shape [batch_size, channel, height, width].
+        y (Variable): The feature map with shape [batch_size, channel, height, width].
 
     Returns:
-        huber\_loss (Variable): The huber loss with shape [batch_size, 1].
+        fsp matrix (Variable): The huber loss with shape [batch_size, 1].
 
     Examples:
         .. code-block:: python
-
-            predictions = fluid.layers.softmax(x)
-            loss = fluid.layers.huber_loss(input=predictions, label=label, 1.0)
+            feature_map_0 = fluid.layers.conv2d(x)
+            feature_map_1 = fluid.layers.conv2d(feature_map_0)
+            loss = fluid.layers.fsp_matrix(feature_map_0, feature_map_1)
     """
     helper = LayerHelper('fsp_matrix', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype(
