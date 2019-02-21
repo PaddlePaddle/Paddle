@@ -33,18 +33,33 @@ class SpectralNormOp : public framework::OperatorWithKernel {
                    "Output(Out) of SpectralNormOp should not be null.");
 
     auto dim_weight = ctx->GetInputDim("Weight");
-    auto weight_dimsize = dim_weight.size();
-    PADDLE_ENFORCE(weight_dimsize >= 2 && weight_dimsize <= 5,
-                   "The size of dims of Input(Weights) can only be 2, 3,"
+    auto rank_weight = dim_weight.size();
+    PADDLE_ENFORCE(rank_weight >= 2 && rank_weight <= 5,
+                   "The rank of Input(Weights) can only be 2, 3,"
                    "4, 5 for fc, conv1d, conv2d, conv3d layers.");
 
     int dim = ctx->Attrs().Get<int>("dim");
     int power_iters = ctx->Attrs().Get<int>("power_iters");
-    PADDLE_ENFORCE(dim >= 0 && dim < weight_dimsize - 1,
-                   "Attr(dim) should be larger equal 0 and less then the"
-                   "size of dims of Input(Weights) - 1,");
+    PADDLE_ENFORCE(dim == 0 || dim == 1, "Attr(dim) can only be 0 or 1");
     PADDLE_ENFORCE(power_iters >= 0,
                    "Attr(power_iters) should be larger equal then 0");
+
+    int h = dim_weight[dim];
+    int w = 1;
+    for (int i = 0; i < rank_weight; i++) {
+      if (i != dim) {
+        w *= dim_weight[i];
+      }
+    }
+    auto dim_u = ctx->GetInputDim("U");
+    auto dim_v = ctx->GetInputDim("V");
+    PADDLE_ENFORCE_EQ(dim_u[0], h,
+                      "Input(U) dims[0] should be equal to "
+                      "Input(Weight) dims[Attr(dim)]");
+    PADDLE_ENFORCE_EQ(
+        dim_v[0], w,
+        "Input(V) dims[0] should be equal to "
+        "the product of Input(Weight) dims except dims[Attr(dim)]");
 
     ctx->SetOutputDim("Out", dim_weight);
     ctx->ShareLoD("Weight", /*->*/ "Out");
