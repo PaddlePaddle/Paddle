@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from .... import layers
+from .... import optimizer
 from .... import Executor
 from .... import Program
 from .... import program_guard
+from .... import regularizer
 
 __all__ = ['FSPDistiller']
 
@@ -81,7 +83,8 @@ class FSPDistillerPass(object):
         self.place = place
 
     def apply(self, graph):
-        ret_graph = graph.clone()
+        #        ret_graph = graph.clone()
+        ret_graph = graph
         startup_program = Program()
         with program_guard(ret_graph.program, startup_program):
             losses = []
@@ -92,11 +95,21 @@ class FSPDistillerPass(object):
                 t_pair_start = ret_graph.get_var(t_pair[0])
                 t_pair_end = ret_graph.get_var(t_pair[1])
                 t_fsp_matrix = self._fsp_matrix(t_pair_start, t_pair_end)
-                l2_loss = layers.mean(
+                #                layers.Print(t_fsp_matrix, summarize=10)
+                l2_loss = layers.reduce_mean(
                     layers.square(s_fsp_matrix - t_fsp_matrix))
                 losses.append(l2_loss)
             loss = layers.sum(losses)
-            self.optimizer.minimize(loss)
+
+            distiller_optimizer = optimizer.Momentum(
+                momentum=0.9,
+                learning_rate=layers.piecewise_decay(
+                    boundaries=[66666, 66666 * 2],
+                    values=[0.001, 0.0001, 0.00001]),
+                regularization=regularizer.L2Decay(4e-5))
+
+            #            self.optimizer.minimize(loss)
+            distiller_optimizer.minimize(loss)
 
             exe = Executor(self.place)
             # init variable created when append backward ops. Such as leaning rate
@@ -106,16 +119,4 @@ class FSPDistillerPass(object):
         return ret_graph
 
     def _fsp_matrix(self, fea_map_0, fea_map_1):
-        a_channel = fea_map_0.shape[1]
-        b_channel = fea_map_1.shape[1]
-        h = fea_map_0.shape[2]
-        w = fea_map_0.shape[3]
-        tmp_0 = layers.transpose(fea_map_0, perm=[0, 2, 3, 1])
-        tmp_0 = layers.reshape(tmp_0, [-1, h * w, 1, a_channel])
-        tmp_0 = layers.expand(tmp_0, expand_times=[1, 1, b_channel, 1])
-        tmp_0 = layers.transpose(tmp_0, perm=[0, 1, 3, 2])
-
-        tmp_1 = layers.transpose(fea_map_1, perm=[0, 2, 3, 1])
-        tmp_1 = layers.reshape(tmp_1, [-1, h * w, 1, b_channel])
-        tmp_1 = layers.expand(tmp_1, expand_times=[1, 1, a_channel, 1])
-        return layers.reduce_mean(tmp_0 * tmp_1, dim=1)
+        return layers.fsp_matrix(fea_map_0, fea_map_1)
