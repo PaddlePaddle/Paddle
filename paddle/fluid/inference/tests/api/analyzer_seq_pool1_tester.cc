@@ -40,7 +40,7 @@ struct DataRecord {
   size_t batch_iter{0}, num_samples;  // total number of samples
 
   DataRecord() = default;
-  explicit DataRecord(const std::string &path, int batch_size = 1) {
+  explicit DataRecord(const std::string &path, size_t batch_size = 1) {
     Load(path);
     Prepare(batch_size);
   }
@@ -66,13 +66,13 @@ struct DataRecord {
     PADDLE_ENFORCE_GT(num_samples, 0UL);
   }
 
-  void Prepare(int bs) {
+  void Prepare(size_t bs) {
     for (auto it = datasets.begin(); it != datasets.end(); ++it) {
       PADDLE_ENFORCE_EQ(it->second.size(), num_samples,
                         "size of each slot should be equal");
     }
     size_t num_batches = num_samples / bs;
-    EXPECT_GT(num_batches, 0);
+    EXPECT_GT(num_batches, size_t{0});
     batched_data.resize(num_batches);
     for (auto &one_batch : batched_data) {
       one_batch.resize(datasets.size());
@@ -85,7 +85,7 @@ struct DataRecord {
         slot.lod[0] = 0;
         auto &lod = slot.lod;
         auto &datas = it->second;
-        for (int k = 0; k < bs; ++k) {
+        for (size_t k = 0; k < bs; ++k) {
           size_t id = k + batch_iter * bs;
           std::copy(datas[id].begin(), datas[id].end(),
                     std::back_inserter(slot.data[k]));
