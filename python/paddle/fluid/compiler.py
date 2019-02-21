@@ -220,7 +220,7 @@ class CompiledProgram(object):
         if self._compiled:
             if scope and self._scope != scope:
                 raise ValueError("Cannot compile with different scope")
-            if place and self._place != place:
+            if place and not self._place._equals(place):
                 raise ValueError("Cannot compile with different place")
             return self
         self._compiled = True
