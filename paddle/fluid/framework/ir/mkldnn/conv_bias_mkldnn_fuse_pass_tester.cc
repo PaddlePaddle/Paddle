@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,7 +33,10 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetAttr("name", name);
     op->SetInput("Input", {inputs[0]});
     op->SetInput("Filter", {inputs[1]});
-    op->SetInput("Bias", {});
+    if (inputs.size() > 2)
+      op->SetInput("Bias", {inputs[2]});
+    else
+      op->SetInput("Bias", {});
   } else if (type == "elementwise_add") {
     op->SetAttr("use_mkldnn", true);
     op->SetInput("X", {inputs[0]});
@@ -46,36 +49,54 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 
 // (c, weights)->conv->f
 // (f)->elementwise_add->g
-ProgramDesc BuildProgramDesc() {
+ProgramDesc BuildProgramDesc(bool convWithExistingBias) {
   ProgramDesc prog;
-  for (auto& v :
-       std::vector<std::string>({"c", "weights", "f", "bias", "g"})) {
+  std::vector<std::string> nodes{"c", "weights", "f", "eltwise_bias", "g"};
+  if (convWithExistingBias) nodes.push_back("conv_bias");
+  for (auto& v : nodes) {
     auto* var = prog.MutableBlock(0)->Var(v);
     var->SetType(proto::VarType::LOD_TENSOR);
-    if (v == "weights" || v == "bias") {
+    if (v == "weights" || v == "conv_bias" || v == "eltwise_bias") {
       var->SetPersistable(true);
     }
   }
 
   // conv+bias, both with MKL-DNN
-  SetOp(&prog, "conv2d", "conv",
-        std::vector<std::string>({"c", "weights"}),
-        std::vector<std::string>({"f"}));
+  if (convWithExistingBias) {
+    SetOp(&prog, "conv2d", "conv",
+          std::vector<std::string>({"c", "weights", "conv_bias"}),
+          std::vector<std::string>({"f"}));
+  } else {
+    SetOp(&prog, "conv2d", "conv", std::vector<std::string>({"c", "weights"}),
+          std::vector<std::string>({"f"}));
+  }
   SetOp(&prog, "elementwise_add", "eltwise",
-        std::vector<std::string>({"f", "bias"}),
+        std::vector<std::string>({"f", "eltwise_bias"}),
         std::vector<std::string>({"g"}));
 
   return prog;
 }
 
-TEST(ConvBiasFusePass, basic) {
-  auto prog = BuildProgramDesc();
-  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
+                      const char* var_name) {
+  auto x = scope->Var(var_name);
+  auto tensor = x->GetMutable<LoDTensor>();
+  tensor->mutable_data(place, proto::VarType::FP32,
+                       ::paddle::memory::Allocator::kDefault, 1);
+}
 
-  NaiveExecutor exe{paddle::platform::CPUPlace()};
+void MainTest(bool convWithExistingBias) {
+  auto prog = BuildProgramDesc(convWithExistingBias);
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
   Scope scope;
   // Init scope, as it is used in pass
   exe.CreateVariables(prog, 0, true, &scope);
+  if (convWithExistingBias) {
+    InitTensorHolder(&scope, place, "conv_bias");
+    InitTensorHolder(&scope, place, "eltwise_bias");
+  }
   graph->Set(kParamScopeAttr, new framework::Scope*(&scope));
 
   auto pass = PassRegistry::Instance().Get("conv_bias_mkldnn_fuse_pass");
@@ -102,8 +123,8 @@ TEST(ConvBiasFusePass, basic) {
       auto op_name = boost::get<std::string>(op->GetAttr("name"));
       if (op_name == "conv") {
         auto input_names = op->InputNames();
-        ASSERT_TRUE(std::find(input_names.begin(), input_names.end(), "Bias")
-                    != input_names.end());
+        ASSERT_TRUE(std::find(input_names.begin(), input_names.end(), "Bias") !=
+                    input_names.end());
         auto bias = boost::get<std::vector<std::string>>(op->Input("Bias"));
         if (bias.size()) {
           ++conv_bias_count;
@@ -112,6 +133,15 @@ TEST(ConvBiasFusePass, basic) {
     }
   }
   EXPECT_EQ(conv_bias_count, 1);
+}
+
+TEST(ConvBiasFusePass, bias_free_conv) { MainTest(false); }
+
+TEST(ConvBiasFusePass, conv_with_existing_bias) { MainTest(true); }
+
+TEST(ConvBiasFusePass, conv3d) {
+  Conv3DBiasFusePass pass;
+  ASSERT_TRUE(pass.is_conv3d());
 }
 
 }  // namespace ir
