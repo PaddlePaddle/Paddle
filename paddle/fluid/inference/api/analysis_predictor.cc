@@ -726,7 +726,7 @@ bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
   return need;
 }
 
-std::string AnalysisPredictor::GetSeriazlizedProgram() const {
+std::string AnalysisPredictor::GetSerializedProgram() const {
   return inference_program_->Proto()->SerializeAsString();
 }
 
