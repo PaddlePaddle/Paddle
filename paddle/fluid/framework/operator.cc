@@ -177,9 +177,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     // in concurrency scenerio. Here use an `if` to fix this issue.
     // Please not remove the `if`, ask @Superjomn if there are any concern.
     if (platform::IsProfileEnabled()) {
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
-      platform::RecordEvent record_event(Type(), pool.Get(place));
+      platform::RecordEvent record_event(Type());
       RunImpl(scope, place);
     } else {
       RunImpl(scope, place);
