@@ -19,6 +19,9 @@
 #include <vector>
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/reader.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/gpu_info.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -59,6 +62,11 @@ class BufferedReader : public framework::DecoratedReader {
   std::vector<TensorVec> cpu_buffer_;
   std::vector<TensorVec> gpu_buffer_;
   size_t prev_pos_{-1UL};
+#ifdef PADDLE_WITH_CUDA
+  cudaStream_t stream;
+  cudaStream_t compute_stream;
+  std::vector<cudaEvent_t> events;
+#endif
 };
 
 }  // namespace reader

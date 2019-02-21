@@ -52,8 +52,8 @@ cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_
 
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.
-    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml zero_copy_tensor_dummy)
-    cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber zero_copy_tensor_dummy)
+    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml zero_copy_tensor_dummy device_context)
+    cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber zero_copy_tensor_dummy device_context)
     function(anakin_target target_name)
       target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
     endfunction()
