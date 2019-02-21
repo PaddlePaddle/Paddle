@@ -46,8 +46,6 @@ void BuildFillConstantNode(
     ng_dtype = ngraph::element::i64;
   } else if (data_type == paddle::framework::proto::VarType::INT32) {
     ng_dtype = ngraph::element::i32;
-  } else if (data_type == paddle::framework::proto::VarType::BOOL) {
-    ng_dtype = ngraph::element::boolean;
   } else {
     PADDLE_THROW("unsupported data type: %s", data_type);
   }

@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import numpy as np
 import random
@@ -374,6 +375,9 @@ class OpTest(unittest.TestCase):
                 return []
         places = [fluid.CPUPlace()]
         cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
+        use_ngraph = bool(os.getenv("FLAGS_use_ngraph", False))
+        if use_ngraph:
+            cpu_only = True
         if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type)\
            and not cpu_only:
             places.append(core.CUDAPlace(0))

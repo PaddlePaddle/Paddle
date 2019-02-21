@@ -654,6 +654,7 @@ class AdagradOptimizer(Optimizer):
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
+        initial_accumulator_value (float): Initial value for moment accumulator.
 
     Examples:
         .. code-block:: python
@@ -667,7 +668,8 @@ class AdagradOptimizer(Optimizer):
                  learning_rate,
                  epsilon=1.0e-6,
                  regularization=None,
-                 name=None):
+                 name=None,
+                 initial_accumulator_value=0.0):
         assert learning_rate is not None
         assert epsilon is not None
         super(AdagradOptimizer, self).__init__(
@@ -676,6 +678,7 @@ class AdagradOptimizer(Optimizer):
             name=name)
         self.type = "adagrad"
         self._epsilon = epsilon
+        self.initial_accumulator_value = initial_accumulator_value
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -688,6 +691,16 @@ class AdagradOptimizer(Optimizer):
 
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
+        startup_block = framework.default_startup_program().global_block()
+        startup_block.append_op(
+            type='fill_constant',
+            inputs={},
+            outputs={'Out': [moment_acc]},
+            attrs={
+                'dtype': moment_acc.dtype,
+                'value': self.initial_accumulator_value,
+                'shape': moment_acc.shape,
+            })
 
         with framework.name_scope("adagrad_optimizer"):
             # Create the adagrad optimizer op
@@ -1377,9 +1390,9 @@ class FtrlOptimizer(Optimizer):
 
     Args:
         learning_rate (float|Variable): global learning rate.
-        l1 (float):
-        l2 (float):
-        lr_power (float):
+        l1 (float): L1 regularization strength.
+        l2 (float): L2 regularization strength.
+        lr_power (float): Learning Rate Power.
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
