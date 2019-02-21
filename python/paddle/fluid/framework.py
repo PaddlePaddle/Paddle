@@ -1754,6 +1754,39 @@ class IrVarNode(IrNode):
             "The node variable description cannot be None."
         return self.node.var().persistable()
 
+    def type(self):
+        """
+        Return the variable type.
+
+        Returns:
+            core.VarDesc.VarType: the variable type.
+        """
+        assert self.node.var() is not None, \
+            "The node variable description cannot be None."
+        return self.node.var().type()
+
+    def dtype(self):
+        """
+        Return the variable data type.
+
+        Returns:
+            core.VarDesc.VarType: the variable data type.
+        """
+        assert self.node.var() is not None, \
+            "The node variable description cannot be None."
+        return self.node.var().dtype()
+
+    def shape(self):
+        """
+        Return the variable shape.
+
+        Returns:
+            list: the variable shape.
+        """
+        assert self.node.var() is not None, \
+            "The node variable description cannot be None."
+        return self.node.var().shape()
+
     @property
     def inputs(self):
         """
@@ -1803,6 +1836,45 @@ class IrOpNode(IrNode):
         assert self.node.op() is not None, \
             "The node operator description cannot be None."
         self.node.op()._rename_input(old_input_name, new_input_name)
+
+    def input(self, name):
+        """
+        Get the argument name list by the parameter name for input.
+
+        Args:
+            name(str): the parameter name.
+
+        Returns:
+            list(str): the argument name list.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        return self.node.op().input(name)
+
+    def output(self, name):
+        """
+        Get the argument name list by the parameter name for output.
+
+        Args:
+            name(str): the parameter name.
+
+        Returns:
+            list(str): the argument name list.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        return self.node.op().output(name)
+
+    def set_type(self, new_type):
+        """
+        Change the operator type into new type.
+
+        Args:
+            new_type(str): new operator type to be set.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        return self.node.op().set_type(new_type)
 
     @property
     def inputs(self):
