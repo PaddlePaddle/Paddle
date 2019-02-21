@@ -128,8 +128,7 @@ TEST(Analyzer_Pyramid_DNN, profile) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(&cfg, input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
@@ -162,8 +161,7 @@ TEST(Analyzer_Pyramid_DNN, compare) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(
-      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+  CompareNativeAndAnalysis(&cfg, input_slots_all);
 }
 
 // Compare Deterministic result
@@ -173,8 +171,7 @@ TEST(Analyzer_Pyramid_DNN, compare_determine) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                       input_slots_all);
+  CompareDeterministic(&cfg, input_slots_all);
 }
 
 }  // namespace inference

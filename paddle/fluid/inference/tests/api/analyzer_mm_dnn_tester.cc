@@ -104,8 +104,7 @@ void profile(bool use_mkldnn = false) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(&cfg, input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     PADDLE_ENFORCE_EQ(outputs.size(), 2UL);
@@ -149,8 +148,7 @@ void compare(bool use_mkldnn = false) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(
-      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+  CompareNativeAndAnalysis(&cfg, input_slots_all);
 }
 
 TEST(Analyzer_MM_DNN, compare) { compare(); }
@@ -165,8 +163,7 @@ TEST(Analyzer_MM_DNN, compare_determine) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                       input_slots_all);
+  CompareDeterministic(&cfg, input_slots_all);
 }
 
 }  // namespace inference

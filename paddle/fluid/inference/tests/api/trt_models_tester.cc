@@ -80,13 +80,11 @@ void profile(std::string model_dir, bool use_analysis, bool use_tensorrt) {
     config.pass_builder()->TurnOnDebug();
     SetConfig<AnalysisConfig>(&config, model_dir, true, use_tensorrt,
                               FLAGS_batch_size);
-    TestPrediction(reinterpret_cast<PaddlePredictor::Config*>(&config),
-                   inputs_all, &outputs, FLAGS_num_threads, true);
+    TestPrediction(&config, inputs_all, &outputs, FLAGS_num_threads, true);
   } else {
     NativeConfig config;
     SetConfig<NativeConfig>(&config, model_dir, true, false);
-    TestPrediction(reinterpret_cast<PaddlePredictor::Config*>(&config),
-                   inputs_all, &outputs, FLAGS_num_threads, false);
+    TestPrediction(&config, inputs_all, &outputs, FLAGS_num_threads, false);
   }
 }
 
@@ -102,17 +100,14 @@ void compare(std::string model_dir, bool use_tensorrt) {
   AnalysisConfig analysis_config;
   SetConfig<AnalysisConfig>(&analysis_config, model_dir, true, use_tensorrt,
                             FLAGS_batch_size);
-  CompareNativeAndAnalysis(
-      reinterpret_cast<const PaddlePredictor::Config*>(&analysis_config),
-      inputs_all);
+  CompareNativeAndAnalysis(&analysis_config, inputs_all);
 }
 
 void compare_continuous_input(std::string model_dir, bool use_tensorrt) {
   AnalysisConfig analysis_config;
   SetConfig<AnalysisConfig>(&analysis_config, model_dir, true, use_tensorrt,
                             FLAGS_batch_size);
-  auto config =
-      reinterpret_cast<const PaddlePredictor::Config*>(&analysis_config);
+  auto config = &analysis_config;
   auto native_pred = CreateTestPredictor(config, false);
   auto analysis_pred = CreateTestPredictor(config, true);
   for (int i = 0; i < 100; i++) {

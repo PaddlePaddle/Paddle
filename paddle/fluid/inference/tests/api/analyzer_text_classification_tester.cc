@@ -74,8 +74,7 @@ TEST(Analyzer_Text_Classification, profile) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(&cfg, input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1) {
     // Get output
@@ -103,8 +102,7 @@ TEST(Analyzer_Text_Classification, compare) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(
-      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+  CompareNativeAndAnalysis(&cfg, input_slots_all);
 }
 
 // Compare Deterministic result
@@ -114,8 +112,7 @@ TEST(Analyzer_Text_Classification, compare_determine) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                       input_slots_all);
+  CompareDeterministic(&cfg, input_slots_all);
 }
 
 TEST(Analyzer_Text_Classification, compare_against_embedding_fc_lstm_fused) {
@@ -126,8 +123,7 @@ TEST(Analyzer_Text_Classification, compare_against_embedding_fc_lstm_fused) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(
-      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+  CompareNativeAndAnalysis(&cfg, input_slots_all);
 }
 
 }  // namespace inference

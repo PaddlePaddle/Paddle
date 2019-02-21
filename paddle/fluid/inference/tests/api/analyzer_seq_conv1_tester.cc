@@ -114,8 +114,7 @@ TEST(Analyzer_seq_conv1, profile) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(&cfg, input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
@@ -153,8 +152,7 @@ TEST(Analyzer_seq_conv1, compare) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(
-      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+  CompareNativeAndAnalysis(&cfg, input_slots_all);
 }
 
 // Compare Deterministic result
@@ -164,8 +162,7 @@ TEST(Analyzer_seq_conv1, compare_determine) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                       input_slots_all);
+  CompareDeterministic(&cfg, input_slots_all);
 }
 
 }  // namespace inference

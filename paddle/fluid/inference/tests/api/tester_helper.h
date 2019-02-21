@@ -56,14 +56,14 @@ DECLARE_int32(paddle_num_threads);
 namespace paddle {
 namespace inference {
 
-void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
-  const auto *analysis_config =
-      reinterpret_cast<const AnalysisConfig *>(config);
-  if (use_analysis) {
-    LOG(INFO) << *analysis_config;
+template <typename T>
+void PrintConfig(const T *config, bool use_analysis) {
+  bool use_native = !use_analysis;
+  if (use_native) {
+    LOG(INFO) << config->ToNativeConfig();
     return;
   }
-  LOG(INFO) << analysis_config->ToNativeConfig();
+  LOG(INFO) << *config;
 }
 
 void CompareResult(const std::vector<PaddleTensor> &outputs,
@@ -99,15 +99,15 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
   }
 }
 
-std::unique_ptr<PaddlePredictor> CreateTestPredictor(
-    const PaddlePredictor::Config *config, bool use_analysis = true) {
-  const auto *analysis_config =
-      reinterpret_cast<const AnalysisConfig *>(config);
-  if (use_analysis) {
-    return CreatePaddlePredictor<AnalysisConfig>(*analysis_config);
+template <class T>
+std::unique_ptr<PaddlePredictor> CreateTestPredictor(const T *config,
+                                                     bool use_analysis = true) {
+  bool use_native = !use_analysis;
+  if (use_native) {
+    auto native_config = config->ToNativeConfig();
+    return CreatePaddlePredictor<NativeConfig>(native_config);
   }
-  auto native_config = analysis_config->ToNativeConfig();
-  return CreatePaddlePredictor<NativeConfig>(native_config);
+  return CreatePaddlePredictor<T>(*config);
 }
 
 size_t GetSize(const PaddleTensor &out) { return VecReduceToInt(out.shape); }
@@ -196,9 +196,9 @@ void GetInputPerBatch(const std::vector<std::vector<int64_t>> &in,
   }
 }
 
+template <class T>
 void TestOneThreadPrediction(
-    const PaddlePredictor::Config *config,
-    const std::vector<std::vector<PaddleTensor>> &inputs,
+    const T *config, const std::vector<std::vector<PaddleTensor>> &inputs,
     std::vector<PaddleTensor> *outputs, bool use_analysis = true) {
   int batch_size = FLAGS_batch_size;
   int num_times = FLAGS_repeat;
@@ -244,9 +244,9 @@ void TestOneThreadPrediction(
   }
 }
 
+template <class T>
 void TestMultiThreadPrediction(
-    const PaddlePredictor::Config *config,
-    const std::vector<std::vector<PaddleTensor>> &inputs,
+    const T *config, const std::vector<std::vector<PaddleTensor>> &inputs,
     std::vector<PaddleTensor> *outputs, int num_threads,
     bool use_analysis = true) {
   int batch_size = FLAGS_batch_size;
@@ -304,7 +304,8 @@ void TestMultiThreadPrediction(
   }
 }
 
-void TestPrediction(const PaddlePredictor::Config *config,
+template <class T>
+void TestPrediction(const T *config,
                     const std::vector<std::vector<PaddleTensor>> &inputs,
                     std::vector<PaddleTensor> *outputs, int num_threads,
                     bool use_analysis = FLAGS_use_analysis) {
@@ -317,9 +318,9 @@ void TestPrediction(const PaddlePredictor::Config *config,
   }
 }
 
+template <class T>
 void CompareDeterministic(
-    const PaddlePredictor::Config *config,
-    const std::vector<std::vector<PaddleTensor>> &inputs) {
+    const T *config, const std::vector<std::vector<PaddleTensor>> &inputs) {
   int batch_size = FLAGS_batch_size;
   int num_times = FLAGS_repeat;
   auto predictor = CreateTestPredictor(config, FLAGS_use_analysis);
@@ -336,9 +337,9 @@ void CompareDeterministic(
   }
 }
 
+template <typename T>
 void CompareNativeAndAnalysis(
-    const PaddlePredictor::Config *config,
-    const std::vector<std::vector<PaddleTensor>> &inputs) {
+    const T *config, const std::vector<std::vector<PaddleTensor>> &inputs) {
   PrintConfig(config, true);
   std::vector<PaddleTensor> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);

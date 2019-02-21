@@ -170,8 +170,7 @@ void profile(bool use_mkldnn = false) {
   std::vector<PaddleTensor> outputs;
   std::vector<std::vector<PaddleTensor>> inputs;
   LoadInputData(&inputs);
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),
-                 inputs, &outputs, FLAGS_num_threads);
+  TestPrediction(&config, inputs, &outputs, FLAGS_num_threads);
 }
 
 TEST(Analyzer_bert, profile) { profile(); }
@@ -200,8 +199,7 @@ void compare(bool use_mkldnn = false) {
 
   std::vector<std::vector<PaddleTensor>> inputs;
   LoadInputData(&inputs);
-  CompareNativeAndAnalysis(
-      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), inputs);
+  CompareNativeAndAnalysis(&cfg, inputs);
 }
 
 TEST(Analyzer_bert, compare) { compare(); }
@@ -216,8 +214,7 @@ TEST(Analyzer_bert, compare_determine) {
 
   std::vector<std::vector<PaddleTensor>> inputs;
   LoadInputData(&inputs);
-  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                       inputs);
+  CompareDeterministic(&cfg, inputs);
 }
 }  // namespace inference
 }  // namespace paddle

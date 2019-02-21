@@ -230,8 +230,7 @@ TEST(Analyzer_rnn1, profile) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(&cfg, input_slots_all, &outputs, FLAGS_num_threads);
 }
 
 // Check the fuse status
@@ -258,8 +257,7 @@ TEST(Analyzer_rnn1, compare) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(
-      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+  CompareNativeAndAnalysis(&cfg, input_slots_all);
 }
 
 // Compare Deterministic result
@@ -269,8 +267,7 @@ TEST(Analyzer_rnn1, compare_determine) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                       input_slots_all);
+  CompareDeterministic(&cfg, input_slots_all);
 }
 
 // Test Multi-Thread.
@@ -281,8 +278,7 @@ TEST(Analyzer_rnn1, multi_thread) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, 2 /* multi_thread */);
+  TestPrediction(&cfg, input_slots_all, &outputs, 2 /* multi_thread */);
 }
 
 // Validate that the AnalysisPredictor + ZeroCopyTensor really works by testing
