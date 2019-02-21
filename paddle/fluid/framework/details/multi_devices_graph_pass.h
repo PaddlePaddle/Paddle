@@ -93,14 +93,6 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
   void CreateOpHandleIOs(ir::Graph *result, ir::Node *node,
                          size_t device_id) const;
 
-  void CreateIncrementOp(
-      ir::Graph *graph, size_t num_places,
-      const std::unordered_map<std::string, VarDesc *> &block_vars) const;
-
-  void CreateRampUpVarHandle(
-      ir::Graph *graph, size_t num_places,
-      const std::unordered_map<std::string, VarDesc *> &block_vars) const;
-
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   mutable platform::NCCLContextMap *nccl_ctxs_;
 #endif
@@ -185,16 +177,7 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
   mutable std::vector<std::unordered_set<std::string>> bcast_var_name_set_;
   mutable bool need_broadcast_var_{false};
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  void CreateDGCOp(ir::Graph *graph, size_t num_places,
-                   const std::string &p_name, const std::string &grad_name,
-                   const std::string &encoded_grad_name, float m = 0.9,
-                   float ratio = 0.001) const;
-
-// void CreateIncrementOp(ir::Graph *graph,
-// const std::unordered_map<std::string, VarDesc *>& block_vars);
-#endif
-  bool IfCreateDGCOp(const std::string &grad_name) const;
+  bool IsEncoded(const std::string &p_name) const;
 };
 
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder();

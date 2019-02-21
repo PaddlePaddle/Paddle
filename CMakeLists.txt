@@ -196,6 +196,9 @@ include(configure)          # add paddle env configuration
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)
+
+    message(STATUS "add dgc lib.")
+    include(external/dgc)
 endif()
 if(WITH_MKL OR WITH_MKLML)
     include(external/anakin)

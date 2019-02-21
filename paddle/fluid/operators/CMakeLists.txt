@@ -19,10 +19,6 @@ add_subdirectory(reduce_ops)
 add_subdirectory(sequence_ops)
 add_subdirectory(jit)
 
-if (WITH_GPU)
-    add_subdirectory(k_select)
-endif()
-
 if(WITH_DISTRIBUTE)
     add_subdirectory(distributed)
     add_subdirectory(distributed_ops)
@@ -67,14 +63,7 @@ else()
 endif()
 
 if (WITH_GPU)
-    find_library(SPARSE_ALLREDUCE NAMES sparse PATHS "/root/gitlab.com/nccl-ags/build/lib")
-    if(NOT SPARSE_ALLREDUCE)
-        message(FATAL_ERROR "sparse_allreduce library not found")
-    endif()
-    ADD_LIBRARY(sparse_allreduce STATIC IMPORTED GLOBAL)
-    SET_PROPERTY(TARGET sparse_allreduce PROPERTY IMPORTED_LOCATION ${SPARSE_ALLREDUCE})
-
-    op_library(dgc_op DEPS k_select sparse_allreduce)
+    op_library(dgc_op DEPS dgc)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(dgc);\n")
 endif()
 

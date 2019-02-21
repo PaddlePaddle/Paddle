@@ -20,7 +20,7 @@
 #include "paddle/fluid/platform/profiler.h"
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include "sparse.h"
+#include "dgc/dgc.h"
 #endif
 
 // asynchronous nccl allreduce or synchronous issue:
@@ -133,11 +133,6 @@ void AllReduceOpHandle::_RunImplEncoded() {
       sparseAllGReduce(in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel,
                        static_cast<ncclDataType_t>(dtype), ncclSum, comm,
                        stream);
-      /*
-PADDLE_ENFORCE(platform::dynload::ncclAllGather(
-    in_tensor_buf, gather_buff, in_numel * sizeof(float), ncclChar, comm,
-    stream));
-    */
     });
   }
 
@@ -192,8 +187,8 @@ bool AllReduceOpHandle::IsEncoded() {
                    step_var);
   }
 
-  auto count = *count_var->Get<Tensor>()->data();
-  auto step = *step_var->Get<Tensor>()->data();
+  float count = *count_var->Get<Tensor>().data<float>();
+  float step = *step_var->Get<Tensor>().data<float>();
   if (count < step) {
     return false;
   }

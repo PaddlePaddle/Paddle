@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
+#include "dgc/dgc.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-#include "paddle/fluid/operators/k_select/k_select.h"
 
 namespace paddle {
 namespace operators {
