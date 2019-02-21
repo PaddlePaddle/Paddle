@@ -219,7 +219,7 @@ void ThreadedSSAGraphExecutor::RunOp(
       VLOG(10) << op << " " << op->Name() << " Done ";
       running_ops_--;
       ready_var_q->Extend(op->Outputs());
-      VLOG(10) << op << " " << op->Name() << "Signal posted";
+      VLOG(10) << op << " " << op->Name() << " Signal posted";
     } catch (...) {
       exception_holder_.Catch(std::current_exception());
     }
