@@ -89,7 +89,6 @@ SET_PROPERTY(TARGET shared_mkldnn PROPERTY IMPORTED_LOCATION ${MKLDNN_LIB})
 ADD_DEPENDENCIES(shared_mkldnn ${MKLDNN_PROJECT})
 MESSAGE(STATUS "MKLDNN library: ${MKLDNN_LIB}")
 add_definitions(-DPADDLE_WITH_MKLDNN)
-LIST(APPEND external_project_dependencies shared_mkldnn)
 
 # generate a static dummy target to track mkldnn dependencies
 # for cc_library(xxx SRCS xxx.c DEPS mkldnn)
