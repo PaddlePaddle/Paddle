@@ -75,7 +75,7 @@ pip install paddlepaddle-gpu==1.3.0.post85
 
 ## Installation
 
-It is recommended to read [this doc](http://paddlepaddle.org/documentation/docs/zh/1.3/beginners_guide/install/index_cn.html) on our website.
+It is recommended to read [this doc](http://paddlepaddle.org/documentation/docs/en/1.3/beginners_guide/index_en.html) on our website.
 
 ## Documentation
 
