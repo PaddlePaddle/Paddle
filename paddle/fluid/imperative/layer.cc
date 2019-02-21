@@ -175,7 +175,7 @@ std::unique_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
   PADDLE_ENFORCE(var_->IsInitialized(),
                  "Variable must be initialized when getting numpy tensor");
 
-  std::unique_ptr<VarBase> new_var(new VarBase("NewVarBase"));
+  std::unique_ptr<VarBase> new_var(new VarBase());
   framework::LoDTensor* tensor =
       new_var->var_->GetMutable<framework::LoDTensor>();
   tensor->Resize(var_->Get<framework::LoDTensor>().dims());
@@ -303,7 +303,7 @@ std::vector<VarBase*> PyLayer::Apply(int func_id,
   std::vector<Variable*> outvars = CallPythonFunc(py_funcs_[func_id], invars);
   std::vector<VarBase*> ret;
   for (Variable* v : outvars) {
-    ret.push_back(new VarBase(v, new VarBase("PYLAYER_XGRAD", true), ""));
+    ret.push_back(new VarBase(v, new VarBase(true)));
   }
   return ret;
 }
