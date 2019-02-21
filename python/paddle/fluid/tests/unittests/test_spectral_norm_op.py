@@ -44,13 +44,13 @@ def spectral_norm(weight, u, v, dim, power_iters, eps):
     return (weight_mat / sigma).reshape(weight.shape)
 
 
-class TestSpectralNormOp(OpTest):
+class TestSpectralNormOpNoGrad(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'spectral_norm'
         weight = np.random.random(self.weight_shape).astype('float32')
-        u = np.random.random(self.u_shape).astype('float32')
-        v = np.random.random(self.v_shape).astype('float32')
+        u = np.random.normal(0., 1., self.u_shape).astype('float32')
+        v = np.random.normal(0., 1., self.v_shape).astype('float32')
 
         self.attrs = {
             "dim": self.dim,
@@ -76,7 +76,44 @@ class TestSpectralNormOp(OpTest):
         self.u_shape = (2, )
         self.v_shape = (3, )
         self.dim = 0
-        self.power_iters = 2
+        self.power_iters = 5
+        self.eps = 1e-12
+
+
+class TestSpectralNormOpNoGrad2(TestSpectralNormOpNoGrad):
+    def initTestCase(self):
+        self.weight_shape = (2, 3, 3, 3)
+        self.u_shape = (6, )
+        self.v_shape = (9, )
+        self.dim = 1
+        self.power_iters = 10
+        self.eps = 1e-12
+
+
+class TestSpectralNormOp(TestSpectralNormOpNoGrad):
+    def test_check_grad_ignore_uv(self):
+        self.check_grad(
+            ['Weight'],
+            'Out',
+            no_grad_set=set(["U", "V"]),
+            max_relative_error=0.1)
+
+    def initTestCase(self):
+        self.weight_shape = (2, 3)
+        self.u_shape = (2, )
+        self.v_shape = (3, )
+        self.dim = 0
+        self.power_iters = 0
+        self.eps = 1e-12
+
+
+class TestSpectralNormOp2(TestSpectralNormOp):
+    def initTestCase(self):
+        self.weight_shape = (2, 3, 3, 3)
+        self.u_shape = (6, )
+        self.v_shape = (9, )
+        self.dim = 1
+        self.power_iters = 0
         self.eps = 1e-12
 
 

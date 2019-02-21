@@ -27,18 +27,18 @@ using Array1 = Eigen::DSizes<int64_t, 1>;
 using Array2 = Eigen::DSizes<int64_t, 2>;
 using IndexPair = Eigen::IndexPair<int>;
 
-static inline void ResizeWeight(Tensor* weight_mat, const int dim) {
-  auto weight_dims = weight_mat->dims();
-  int h = 1;
-  int w = 1;
+static inline void CalcMatrixShape(const Tensor& weight, const int dim, int* h,
+                                   int* w) {
+  auto weight_dims = weight.dims();
+  *h = 1;
+  *w = 1;
   for (int i = 0; i < weight_dims.size(); i++) {
     if (i <= dim) {
-      h *= weight_dims[i];
+      *h *= weight_dims[i];
     } else {
-      w *= weight_dims[i];
+      *w *= weight_dims[i];
     }
   }
-  *weight_mat = weight_mat->Resize({h, w});
 }
 
 template <typename DeviceContext, typename T>
@@ -55,42 +55,27 @@ static inline void CalcMatrixSigmaAndNormWeight(
   const int h = weight->dims()[0];
   const int w = weight->dims()[1];
 
-  // LOG(ERROR) << "weight: " << weight_t;
-  // LOG(ERROR) << "weight_trans: " << weight_trans_t;
   for (int i = 0; i < power_iters; i++) {
-    // v_t.device(place) = weight_trans_t.contract(u_t, product_dims);
     blas.MatMul(*weight, true, *u, false, T(1), v, T(0));
-    // LOG(ERROR) << "iter v: " << v_t;
     auto v_t_norm =
         v_t.square().sum().sqrt().eval().reshape(Array1(1)).broadcast(
             Array1(w));
-    // LOG(ERROR) << "iter v_norm: " << v_t_norm;
     v_t.device(place) = v_t / (v_t_norm + v_t_norm.constant(eps));
-    // LOG(ERROR) << "iter norm v: " << v_t;
-    // u_t.device(place) = weight_t.contract(v_t, product_dims);
     blas.MatMul(*weight, false, *v, false, T(1), u, T(0));
-    // LOG(ERROR) << "iter u: " << u_t;
     auto u_t_norm =
         u_t.square().sum().sqrt().eval().reshape(Array1(1)).broadcast(
             Array1(h));
     u_t.device(place) = u_t / (u_t_norm + u_t_norm.constant(eps));
-    // LOG(ERROR) << "iter norm u: " << u_t;
   }
-  // LOG(ERROR) << "h" << h << "w" << w;
-  // LOG(ERROR) << "u: " << u_t;
-  // LOG(ERROR) << "v: " << v_t;
   Tensor weight_v;
   weight_v.mutable_data<T>({h, 1}, ctx.GetPlace());
   blas.MatMul(*weight, false, *v, false, T(1), &weight_v, T(0));
   auto weight_v_t = EigenTensor<T, 2>::From(weight_v);
-  // LOG(ERROR) << "weight_v: " << weight_v_t;
   sigma_t.device(place) = (u_t * weight_v_t)
                               .sum()
                               .eval()
                               .reshape(Array2(1, 1))
                               .broadcast(Array2(h, w));
-  // LOG(ERROR) << "weight: " << weight_t;
-  // LOG(ERROR) << "sigma: " << sigma_t;
   weight_t.device(place) = weight_t / sigma_t;
 }
 
@@ -107,29 +92,78 @@ class SpectralNormKernel : public framework::OpKernel<T> {
     int power_iters = ctx.Attr<int>("power_iters");
     float eps = ctx.Attr<float>("eps");
 
-    const int h = weight->dims()[0];
-    const int w = weight->dims()[1];
-
     Tensor weight_mat;
+    int h, w;
+    CalcMatrixShape(*weight, dim, &h, &w);
     TensorCopySync(*weight, ctx.GetPlace(), &weight_mat);
-    ResizeWeight(&weight_mat, dim);
+    weight_mat = weight_mat.Resize({h, w});
 
     Tensor sigma;
-    sigma.mutable_data<T>(weight->dims(), ctx.GetPlace());
+    sigma.mutable_data<T>(weight_mat.dims(), ctx.GetPlace());
     Tensor uu, vv;
     TensorCopySync(*u, ctx.GetPlace(), &uu);
     TensorCopySync(*v, ctx.GetPlace(), &vv);
     CalcMatrixSigmaAndNormWeight<DeviceContext, T>(
         &sigma, &(uu.Resize({h, 1})), &(vv.Resize({w, 1})), &weight_mat,
         power_iters, eps, ctx);
-    TensorCopySync(weight_mat, ctx.GetPlace(), out);
+    TensorCopySync(weight_mat.Resize(out->dims()), ctx.GetPlace(), out);
   }
 };
 
 template <typename DeviceContext, typename T>
 class SpectralNormGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {}
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto weight = ctx.Input<Tensor>("Weight");
+    auto u = ctx.Input<Tensor>("U");
+    auto v = ctx.Input<Tensor>("V");
+    auto out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto weight_grad = ctx.Output<Tensor>(framework::GradVarName("Weight"));
+
+    int dim = ctx.Attr<int>("dim");
+    int power_iters = ctx.Attr<int>("power_iters");
+    float eps = ctx.Attr<float>("eps");
+
+    Tensor weight_mat, out_grad_mat;
+    int h, w;
+    CalcMatrixShape(*weight, dim, &h, &w);
+    TensorCopySync(*weight, ctx.GetPlace(), &weight_mat);
+    TensorCopySync(*out_grad, ctx.GetPlace(), &out_grad_mat);
+    weight_mat = weight_mat.Resize({h, w});
+    out_grad_mat = out_grad_mat.Resize({h, w});
+
+    Tensor sigma;
+    sigma.mutable_data<T>(weight_mat.dims(), ctx.GetPlace());
+    Tensor uu, vv;
+    TensorCopySync(*u, ctx.GetPlace(), &uu);
+    TensorCopySync(*v, ctx.GetPlace(), &vv);
+    CalcMatrixSigmaAndNormWeight<DeviceContext, T>(
+        &sigma, &(uu.Resize({h, 1})), &(vv.Resize({w, 1})), &weight_mat,
+        power_iters, eps, ctx);
+
+    Tensor uv;
+    uv.mutable_data<T>({h, w}, ctx.GetPlace());
+    blas.MatMul(uu.Resize({h, 1}), false, vv.Resize({w, 1}), false, T(1), &uv,
+                T(0));
+
+    Tensor weight_grad_mat, ones;
+    weight_grad_mat.mutable_data<T>({h, w}, ctx.GetPlace());
+    ones.mutable_data<T>({h, w}, ctx.GetPlace());
+    auto weight_grad_mat_t = EigenTensor<T, 2>::From(weight_grad_mat);
+    auto weight_mat_t = EigenTensor<T, 2>::From(weight_mat);
+    auto out_grad_mat_t = EigenTensor<T, 2>::From(out_grad_mat);
+    auto sigma_t = EigenTensor<T, 2>::From(sigma);
+    auto uv_t = EigenTensor<T, 2>::From(uv);
+    auto ones_t = EigenTensor<T, 2>::From(ones).setConstant((T)1);
+    weight_mat_t.device(place) =
+        weight_mat_t.sum().eval().reshape(Array2(1, 1)).broadcast(Array2(h, w));
+    weight_grad_mat_t.device(place) =
+        out_grad_mat_t * (ones_t - uv_t * weight_mat_t) / sigma_t;
+    TensorCopySync(weight_grad_mat.Resize(weight_grad->dims()), ctx.GetPlace(),
+                   weight_grad);
+  }
 };
 
 }  // namespace operators
