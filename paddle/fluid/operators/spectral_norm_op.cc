@@ -109,10 +109,32 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1e-12);
 
     AddComment(R"DOC(
-          This operator samples input X to given output shape by using specified
+          This layer calculate the spectral normalize value of weight of
+          fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
+          tensor.
 
-          
+          Spectral normalization stabilizes the training of critis in GANs
+          (Generative Adversarial Networks). This layers rescaling weight tensor
+          wiht spectral normalize value.
 
+          For spectral normalization calculations, we rescaling weight
+          tensor with \sigma, while \sigma{\mathbf{W}} is
+
+            \sigma(\mathbf{W}) = \max_{\mathbf{h}: \mathbf{h} \ne 0} \dfrac{\|\mathbf{W} \mathbf{h}\|_2}{\|\mathbf{h}\|_2}
+
+          We calculate \sigma{\mathbf{W}} through power iterations as
+
+            \mathbf{v} = \mathbf{W}^{T} \mathbf{u}
+            \mathbf{v} = \frac{\mathbf{v}}{\|\mathbf{v}\|_2}
+            \mathbf{u} = \mathbf{W}^{T} \mathbf{v}
+            \mathbf{u} = \frac{\mathbf{u}}{\|\mathbf{u}\|_2}
+
+          And \sigma should be
+
+            \sigma{\mathbf{W}} = \mathbf{u}^{T} \mathbf{W} \mathbf{v}
+
+          For details of spectral normalization, please refer to paper: 
+          `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
          )DOC");
   }
 };
