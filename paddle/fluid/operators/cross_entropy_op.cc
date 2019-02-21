@@ -36,7 +36,7 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
                       framework::slice_ddim(label_dims, 0, rank - 1),
                       "Input(X) and Input(Label) shall have the same shape "
                       "except the last dimension.");
-    if (ctx->Attrs().Get<bool>("soft_label")) {
+    if (ctx->Attrs().Get<bool>("soft_label") && ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(x_dims[rank - 1], label_dims[rank - 1],
                         "If Attr(soft_label) == true, the last dimension of "
                         "Input(X) and Input(Label) should be equal.");
