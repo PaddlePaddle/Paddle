@@ -22,13 +22,17 @@ from paddle.fluid import core
 
 
 def spectral_norm(weight, u, v, dim, power_iters, eps):
-    h = w = 1
-    for i, d in enumerate(weight.shape):
-        if i <= dim:
-            h *= d
-        else:
-            w *= d
-    weight_mat = weight.reshape((h, w))
+    shape = weight.shape
+    weight_mat = weight.copy()
+    h = shape[dim]
+    w = np.prod(shape) // h
+    if dim != 0:
+        perm = [dim] + [d for d in range(len(shape)) if d != dim]
+        weight_mat = weight_mat.transpose(perm)
+        real_shape = weight_mat.shape
+    else:
+        real_shape = shape
+    weight_mat = weight_mat.reshape((h, w))
 
     u = u.reshape((h, 1))
     v = v.reshape((w, 1))
@@ -41,7 +45,7 @@ def spectral_norm(weight, u, v, dim, power_iters, eps):
         u = u / (u_norm + eps)
 
     sigma = (u * np.matmul(weight_mat, v)).sum()
-    return (weight_mat / sigma).reshape(weight.shape)
+    return weight / sigma
 
 
 class TestSpectralNormOpNoGrad(OpTest):
@@ -83,8 +87,8 @@ class TestSpectralNormOpNoGrad(OpTest):
 class TestSpectralNormOpNoGrad2(TestSpectralNormOpNoGrad):
     def initTestCase(self):
         self.weight_shape = (2, 3, 3, 3)
-        self.u_shape = (6, )
-        self.v_shape = (9, )
+        self.u_shape = (3, )
+        self.v_shape = (18, )
         self.dim = 1
         self.power_iters = 10
         self.eps = 1e-12
@@ -110,8 +114,8 @@ class TestSpectralNormOp(TestSpectralNormOpNoGrad):
 class TestSpectralNormOp2(TestSpectralNormOp):
     def initTestCase(self):
         self.weight_shape = (2, 3, 3, 3)
-        self.u_shape = (6, )
-        self.v_shape = (9, )
+        self.u_shape = (3, )
+        self.v_shape = (18, )
         self.dim = 1
         self.power_iters = 0
         self.eps = 1e-12
