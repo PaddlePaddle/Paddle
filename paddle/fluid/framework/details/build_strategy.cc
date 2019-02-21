@@ -249,6 +249,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
     graph = pass->Apply(std::move(graph));
     VLOG(3) << "Finish Apply Pass " << pass->Type();
   }
+  VLOG(3) << "All Passes Applied";
   return graph;
 }
 

@@ -259,14 +259,15 @@ ParallelExecutor::ParallelExecutor(
 
   // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
   // ncclOp
-  std::unique_ptr<ir::Graph> graph;
   std::vector<std::unique_ptr<ir::Graph>> graphs;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  graph = build_strategy.Apply(main_program, member_->places_, loss_var_name,
-                               member_->local_scopes_, member_->nranks_,
-                               member_->use_cuda_, member_->nccl_ctxs_.get());
+  std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
+      main_program, member_->places_, loss_var_name, member_->local_scopes_,
+      member_->nranks_, member_->use_cuda_, member_->nccl_ctxs_.get());
+  graphs.push_back(std::move(graph));
 #else
   if (build_strategy.async_mode_ && !build_strategy.is_distribution_) {
+    VLOG(3) << "use local async mode";
     for (size_t i = 0; i < member_->places_.size(); ++i) {
       std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
           main_program, {member_->places_[i]}, loss_var_name,
@@ -274,39 +275,44 @@ ParallelExecutor::ParallelExecutor(
       graphs.push_back(std::move(graph));
     }
   } else {
-    graph = build_strategy.Apply(main_program, member_->places_, loss_var_name,
-                                 member_->local_scopes_, member_->nranks_,
-                                 member_->use_cuda_);
+    std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
+        main_program, member_->places_, loss_var_name, member_->local_scopes_,
+        member_->nranks_, member_->use_cuda_);
+    graphs.push_back(std::move(graph));
   }
 #endif
   auto max_memory_size = GetEagerDeletionThreshold();
   VLOG(10) << "Eager Deletion Threshold "
            << static_cast<float>(max_memory_size) / (1 << 30);
   if (max_memory_size >= 0) {
-    graph = member_->PrepareGCAndRefCnts(std::move(graph),
-                                         static_cast<size_t>(max_memory_size));
+    for (size_t i = 0; i < graphs.size(); ++i) {
+      graphs[i] = member_->PrepareGCAndRefCnts(
+          std::move(graphs[i]), static_cast<size_t>(max_memory_size));
+    }
   }
 
   // Step 3. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
   std::vector<details::VariableInfo> var_infos;
-  for (auto &node : graph->Nodes()) {
-    if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
-      var_infos.emplace_back();
-      var_infos.back().name_ = node->Var()->Name();
-      var_infos.back().type_ = node->Var()->GetType();
-      var_infos.back().persistable_ = node->Var()->Persistable();
+  for (auto &graph : graphs) {
+    for (auto &node : graph->Nodes()) {
+      if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
+        var_infos.emplace_back();
+        var_infos.back().name_ = node->Var()->Name();
+        var_infos.back().type_ = node->Var()->GetType();
+        var_infos.back().persistable_ = node->Var()->Persistable();
+      }
     }
   }
 
   // If the loss_var_name is given, the number of graph should be only one.
   if (loss_var_name.size()) {
-    size_t graph_num = ir::GraphNum(*graph);
+    size_t graph_num = ir::GraphNum(*graphs[0]);
     if (graph_num > 1) {
       LOG(WARNING)
           << "The number of graph should be only one, "
              "but the current graph has "
-          << ir::GraphNum(*graph)
+          << ir::GraphNum(*graphs[0])
           << " sub_graphs. If you want to see the nodes of the "
              "sub_graphs, you should use 'FLAGS_print_sub_graph_dir' "
              "to specify the output dir. NOTES: if you not do training, "
@@ -326,7 +332,7 @@ ParallelExecutor::ParallelExecutor(
     // allreduce_seq_pass doesn't need it as the attr.
     member_->executor_.reset(new details::ParallelSSAGraphExecutor(
         exec_strategy, member_->local_scopes_, member_->places_, main_program,
-        std::move(graph)));
+        std::move(graphs[0])));
 #else
     PADDLE_THROW(
         "Paddle should be compiled with CUDA for ParallelGraph Execution.");
@@ -336,12 +342,12 @@ ParallelExecutor::ParallelExecutor(
       VLOG(3) << "use ThreadedSSAGraphExecutor";
       member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
           exec_strategy, member_->local_scopes_, member_->places_,
-          std::move(graph)));
+          std::move(graphs[0])));
     } else {
       VLOG(3) << "use FastThreadedSSAGraphExecutor";
       member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
           exec_strategy, member_->local_scopes_, member_->places_,
-          std::move(graph)));
+          std::move(graphs[0])));
     }
   }
 
