@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/imperative/tracer.h"
 
+#include <set>
+
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -66,10 +68,11 @@ platform::Place GetExpectedPlace(platform::Place place, VarBasePtrMap inputs) {
   return result;
 }
 
-void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
-                   const VarBasePtrMap& outputs, framework::BlockDesc* block,
-                   const platform::Place expected_place,
-                   const bool stop_gradient) {
+std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
+                                    const VarBasePtrMap& outputs,
+                                    framework::BlockDesc* block,
+                                    const platform::Place expected_place,
+                                    const bool stop_gradient) {
   std::map<std::string, VarBase*> vars;
 
   framework::OpDesc* op_desc = op->op_desc_;
@@ -142,6 +145,8 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   prepared_op.func(framework::ExecutionContext(
       prepared_op.op, scope, *prepared_op.dev_ctx, prepared_op.ctx));
 
+  std::set<std::string> grad_deps_var;
+
   if (!stop_gradient) {
     std::unique_ptr<std::unordered_map<std::string, std::string>> grad_to_var(
         new std::unordered_map<std::string, std::string>());
@@ -161,6 +166,7 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
             PADDLE_ENFORCE(fwd_var_it != vars.end());
             // Forward inputs or outputs.
             grad_in_vars.push_back(fwd_var_it->second->var_);
+            grad_deps_var.insert(it.first);
           } else {
             VarBase* var = vars[var_it->second];
             if (!var->grads_->var_->IsInitialized()) {
@@ -194,6 +200,7 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   }
 
   op->block_ = block;
+  return grad_deps_var;
 }
 
 std::vector<VarBase*> Tracer::PyTrace(OpBase* op,
