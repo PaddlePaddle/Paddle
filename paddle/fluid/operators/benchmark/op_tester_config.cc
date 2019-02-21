@@ -84,8 +84,8 @@ void OpTesterConfig::Init(std::istream& is) {
       is >> sep;
       if (sep == "op_type" || sep == "op_type:") {
         is >> op_type;
-      } else if (sep == "use_gpu" || sep == "use_gpu:") {
-        is >> use_gpu;
+      } else if (sep == "device_id" || sep == "device_id:") {
+        is >> device_id;
       } else if (sep == "repeat" || sep == "repeat:") {
         is >> repeat;
       } else if (sep == "profile" || sep == "profile:") {

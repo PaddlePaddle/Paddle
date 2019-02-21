@@ -20,121 +20,36 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/pybind/pybind.h"
 
 namespace paddle {
 namespace operators {
 namespace benchmark {
 
-DEFINE_string(filename, "", "Path of op config file.");
-
-static bool Has(const std::vector<std::string> &vec, const std::string &e) {
-  for (auto &i : vec) {
-    if (i == e) {
-      return true;
-    }
-  }
-  return false;
-}
-
-void OpTester::Init(const std::string &type, const VarShapeMap &input_shapes) {
-  auto &op_desc_info = framework::OpInfoMap::Instance();
-  // Initialize the OpDesc
-  if (op_desc_info.Has(type)) {
-    type_ = type;
-    op_desc_.SetType(type);
-    std::vector<std::string> input_names = GetOpProtoInputNames();
-    for (auto &item : input_shapes) {
-      std::string name = item.first;
-      if (!Has(input_names, name) || item.second.size() < 1) {
-        LOG(FATAL) << "The shape of input \"" << item.first
-                   << "\" is not correctlly provided";
-      }
-
-      std::string var_name = type + "." + name;
-      framework::VarDesc *var = Var(var_name);
-      // Need to support more type
-      var->SetType(framework::proto::VarType::LOD_TENSOR);
-      var->SetPersistable(false);
-      var->SetDataType(framework::proto::VarType::FP32);
-      var->SetShape((item.second)[0]);
-
-      op_desc_.SetInput(name, {var_name});
-      inputs_.push_back(var_name);
-    }
-    std::vector<std::string> output_names = GetOpProtoOutputNames();
-    for (auto &name : output_names) {
-      std::string var_name = type + "." + name;
-      framework::VarDesc *var = Var(var_name);
-      // Need to support more type
-      var->SetType(framework::proto::VarType::LOD_TENSOR);
-      var->SetPersistable(false);
-      var->SetDataType(framework::proto::VarType::FP32);
-
-      op_desc_.SetOutput(name, {var_name});
-      outputs_.push_back(var_name);
-    }
-  } else {
-    LOG(FATAL) << "Op \"" << type << "\" is not registered.";
-  }
-
-  if (/* use_gpu */ false) {
-    place_ = paddle::platform::CUDAPlace(0);
-  } else {
-    place_ = paddle::platform::CPUPlace();
-  }
-
-  framework::InitDevices(false);
-  scope_.reset(new paddle::framework::Scope());
-
-  op_ = framework::OpRegistry::CreateOp(op_desc_);
-  CreateVariables(scope_.get());
-}
+DEFINE_string(op_config_list, "", "Path of op config file.");
 
 void OpTester::Init(const std::string &filename) {
-  config_ = OpTesterConfig(filename);
+  Init(OpTesterConfig(filename));
+}
+
+void OpTester::Init(const OpTesterConfig &config) {
+  config_ = config;
 
   auto &op_desc_info = framework::OpInfoMap::Instance();
   // Initialize the OpDesc
   if (op_desc_info.Has(config_.op_type)) {
     type_ = config_.op_type;
     op_desc_.SetType(config_.op_type);
-    std::vector<std::string> input_names = GetOpProtoInputNames();
-    for (auto &name : input_names) {
-      const OpInputConfig *input = config_.GetInput(name);
-      if (input == nullptr) {
-        LOG(FATAL) << "Donot correctlly provide input " << name;
-      }
 
-      std::string var_name = config_.op_type + "." + name;
-      framework::VarDesc *var = Var(var_name);
-      // Need to support more type
-      var->SetType(framework::proto::VarType::LOD_TENSOR);
-      var->SetPersistable(false);
-      var->SetDataType(framework::proto::VarType::FP32);
-      var->SetShape(input->dims);
-
-      op_desc_.SetInput(name, {var_name});
-      inputs_.push_back(var_name);
-    }
-    std::vector<std::string> output_names = GetOpProtoOutputNames();
-    for (auto &name : output_names) {
-      std::string var_name = config_.op_type + "." + name;
-      framework::VarDesc *var = Var(var_name);
-      // Need to support more type
-      var->SetType(framework::proto::VarType::LOD_TENSOR);
-      var->SetPersistable(false);
-      var->SetDataType(framework::proto::VarType::FP32);
-
-      op_desc_.SetOutput(name, {var_name});
-      outputs_.push_back(var_name);
-    }
+    CreateInputVarDesc();
+    CreateOutputVarDesc();
   } else {
     LOG(FATAL) << "Op \"" << config_.op_type << "\" is not registered.";
   }
 
-  if (config_.use_gpu) {
-    place_ = paddle::platform::CUDAPlace(0);
+  if (config_.device_id >= 0) {
+    place_ = paddle::platform::CUDAPlace(config_.device_id);
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -154,37 +69,34 @@ void OpTester::Run() {
   // Warm up
   RunImpl();
 
+  platform::Timer timer;
   if (config_.profile) {
     if (platform::is_cpu_place(place_)) {
       platform::EnableProfiler(platform::ProfilerState::kCPU);
     } else {
 #ifdef PADDLE_WITH_CUDA
       platform::EnableProfiler(platform::ProfilerState::kAll);
-      // The default device_id of paddle::platform::CUDAPlace is 0.
-      // Users can get the device_id using:
-      //   int device_id = place.GetDeviceId();
-      platform::SetDeviceId(0);
+      platform::SetDeviceId(config_.device_id);
 #else
       PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
 #endif
     }
 
-    Timer timer;
-    timer.tic();
+    timer.Start();
     for (int i = config_.repeat; i > 0; --i) {
       RunImpl();
     }
-    config_.runtime = timer.toc() / config_.repeat;
+    timer.Pause();
     platform::DisableProfiler(platform::EventSortingKey::kDefault,
                               "op_tester_profiler");
   } else {
-    Timer timer;
-    timer.tic();
+    timer.Start();
     for (int i = config_.repeat; i > 0; --i) {
       RunImpl();
     }
-    config_.runtime = timer.toc() / config_.repeat;
+    timer.Pause();
   }
+  config_.runtime = timer.ElapsedMS() / config_.repeat;
   LOG(INFO) << "=== Run " << config_.repeat
             << " times, latency: " << config_.runtime << " ms ===";
 }
@@ -215,6 +127,43 @@ std::vector<std::string> OpTester::GetOpProtoOutputNames() {
     output_names.push_back(output.name());
   }
   return output_names;
+}
+
+void OpTester::CreateInputVarDesc() {
+  std::vector<std::string> input_names = GetOpProtoInputNames();
+  for (auto &name : input_names) {
+    const OpInputConfig *input = config_.GetInput(name);
+    if (input == nullptr) {
+      LOG(FATAL) << "The input " << name << " of op " << config_.op_type
+                 << " is not correctlly provided.";
+    }
+
+    std::string var_name = config_.op_type + "." + name;
+    framework::VarDesc *var = Var(var_name);
+    // Need to support more type
+    var->SetType(framework::proto::VarType::LOD_TENSOR);
+    var->SetPersistable(false);
+    var->SetDataType(framework::proto::VarType::FP32);
+    var->SetShape(input->dims);
+
+    op_desc_.SetInput(name, {var_name});
+    inputs_.push_back(var_name);
+  }
+}
+
+void OpTester::CreateOutputVarDesc() {
+  std::vector<std::string> output_names = GetOpProtoOutputNames();
+  for (auto &name : output_names) {
+    std::string var_name = config_.op_type + "." + name;
+    framework::VarDesc *var = Var(var_name);
+    // Need to support more type
+    var->SetType(framework::proto::VarType::LOD_TENSOR);
+    var->SetPersistable(false);
+    var->SetDataType(framework::proto::VarType::FP32);
+
+    op_desc_.SetOutput(name, {var_name});
+    outputs_.push_back(var_name);
+  }
 }
 
 framework::VarDesc *OpTester::Var(const std::string &name) {
@@ -334,13 +283,17 @@ std::string OpTester::DebugString() {
 
 TEST(op_tester, base) {
   OpTester tester;
-  if (!FLAGS_filename.empty()) {
-    tester.Init(FLAGS_filename);
+  if (!FLAGS_op_config_list.empty()) {
+    tester.Init(FLAGS_op_config_list);
   } else {
-    VarShapeMap input_shapes;
-    input_shapes["X"] = {{64, 64}};
-    input_shapes["Y"] = {{64, 1}};
-    tester.Init("elementwise_add", input_shapes);
+    OpTesterConfig config;
+    config.op_type = "elementwise_add";
+    config.inputs.resize(2);
+    config.inputs[0].name = "X";
+    config.inputs[0].dims = {64, 64};
+    config.inputs[1].name = "Y";
+    config.inputs[1].dims = {64, 1};
+    tester.Init(config);
   }
   tester.Run();
 }

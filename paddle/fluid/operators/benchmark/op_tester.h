@@ -25,15 +25,12 @@ namespace paddle {
 namespace operators {
 namespace benchmark {
 
-using VarShapeMap =
-    std::unordered_map<std::string, std::vector<std::vector<int64_t>>>;
-
 class OpTester {
  public:
   OpTester() {}
 
-  void Init(const std::string &type, const VarShapeMap &input_shapes);
   void Init(const std::string &filename);
+  void Init(const OpTesterConfig &config);
 
   void Run();
 
@@ -42,6 +39,9 @@ class OpTester {
  private:
   std::vector<std::string> GetOpProtoInputNames();
   std::vector<std::string> GetOpProtoOutputNames();
+
+  void CreateInputVarDesc();
+  void CreateOutputVarDesc();
 
   framework::VarDesc *Var(const std::string &name);
   void CreateVariables(framework::Scope *scope);
