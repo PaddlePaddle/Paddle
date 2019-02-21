@@ -26,7 +26,7 @@ add_subdirectory(details)
 proto_library(framework_proto SRCS framework.proto)
 proto_library(async_executor_proto SRCS data_feed.proto)
 
-cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce lib_any)
+cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
@@ -108,7 +108,7 @@ cc_test(data_layout_transform_test SRCS data_layout_transform_test.cc DEPS data_
 cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor
         framework_proto selected_rows data_device_transform data_type_transform data_layout_transform)
 
-cc_library(attribute SRCS attribute.cc DEPS framework_proto boost lib_any)
+cc_library(attribute SRCS attribute.cc DEPS framework_proto boost)
 cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
 device_context)
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute glog)
