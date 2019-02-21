@@ -28,17 +28,17 @@ class Event {
  public:
   // The DeviceContext is used to get the cuda stream.
   // If CPU profiling mode, can pass nullptr.
-  Event(EventType type, std::string name, uint32_t thread_id,
-        const DeviceContext* dev_ctx);
+  Event(EventType type, std::string name, uint32_t thread_id);
 
   const EventType& type() const;
   std::string name() const { return name_; }
   uint32_t thread_id() const { return thread_id_; }
-  bool has_cuda() const { return has_cuda_; }
 
 #ifdef PADDLE_WITH_CUDA
+#ifndef PADDLE_WITH_CUPTI
   cudaEvent_t event() const { return event_; }
   int device() const { return device_; }
+#endif
 #endif
 
   double CpuElapsedMs(const Event& e) const;
@@ -49,10 +49,20 @@ class Event {
   std::string name_;
   uint32_t thread_id_;
   int64_t cpu_ns_;
-  bool has_cuda_;
 #ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUPTI
+  int64_t gpu_ns_ = 0;
+
+ public:
+  void AddCudaElapsedTime(int64_t start_ns, int64_t end_ns) {
+    gpu_ns_ += end_ns - start_ns;
+  }
+
+ private:
+#else
   cudaEvent_t event_ = nullptr;
   int device_ = -1;
+#endif
 #endif
 };
 
@@ -63,22 +73,19 @@ enum ProfilerState {
   kAll,       // Profile both CPU and GPU. (Currently experimental).
 };
 
-void Mark(const std::string& name, const DeviceContext* dev_ctx);
+void Mark(const std::string& name);
 
-void PushEvent(const std::string& name, const DeviceContext* dev_ctx);
+Event* PushEvent(const std::string& name);
 
-void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
+void PopEvent(const std::string& name);
 
 struct RecordEvent {
-  // dev_ctx can be set to nullptr if device is cpu.
-  RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
+  explicit RecordEvent(const std::string& name);
 
   ~RecordEvent();
 
   bool is_enabled_;
   uint64_t start_ns_;
-  // The device context is used by Event to get the current cuda stream.
-  const DeviceContext* dev_ctx_;
   // Event name
   std::string name_;
   // Need to distinguish name by op type, block_id, program_id and perhaps
@@ -88,8 +95,7 @@ struct RecordEvent {
 
 class RecordRPCEvent {
  public:
-  // dev_ctx can be set to nullptr if device is cpu.
-  RecordRPCEvent(const std::string& name, const DeviceContext* dev_ctx);
+  explicit RecordRPCEvent(const std::string& name);
   ~RecordRPCEvent() {}
 
  private:
@@ -131,6 +137,10 @@ bool ShouldSendProfileState();
 // Mark current process as PS by assigning a lister id.
 void SetProfileListener();
 int64_t ListenerId();
+
+#ifdef PADDLE_WITH_CUDA
+void DummyKernelAndEvent();
+#endif
 
 }  // namespace platform
 }  // namespace paddle

@@ -37,7 +37,7 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
 FeedFetchList ThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   std::unique_ptr<platform::RecordEvent> event(
-      new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare", nullptr));
+      new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare"));
   std::unordered_map<OpHandleBase *, size_t> pending_ops;
   std::unordered_set<VarHandleBase *> pending_vars;
   auto ready_vars = std::make_shared<BlockingQueue<VarHandleBase *>>();
