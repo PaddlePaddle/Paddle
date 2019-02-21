@@ -21,8 +21,8 @@
 #include <utility>
 #include <vector>
 
+#include <ThreadPool.h>  // ThreadPool in thrird party
 #include <functional>
-#include "ThreadPool.h"  // ThreadPool in thrird party
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
