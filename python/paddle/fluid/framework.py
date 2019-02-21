@@ -1195,7 +1195,7 @@ class Block(object):
             if not var.persistable:
                 del self.vars[name]
 
-        self.ops.clear()
+        del self.ops[:]
 
     def all_parameters(self):
         return list(self.iter_parameters())
