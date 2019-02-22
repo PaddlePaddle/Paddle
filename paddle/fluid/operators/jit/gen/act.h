@@ -268,7 +268,7 @@ class VActJitCode : public VActFunc {
     this->genCode();
   }
 
-  const char* name() const override {
+  std::string name() const override {
     std::string base = "VActJitCode";
     switch (type_) {
       case operand_type::RELU:
@@ -292,7 +292,7 @@ class VActJitCode : public VActFunc {
       default:
         break;
     }
-    return base.c_str();
+    return base;
   }
   void genCode() override;
 

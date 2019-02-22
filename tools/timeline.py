@@ -131,8 +131,12 @@ class Timeline(object):
                     if (k, event.device_id, "CPU") not in self._devices:
                         pid = self._allocate_pid()
                         self._devices[(k, event.device_id, "CPU")] = pid
-                        self._chrome_trace.emit_pid("%s:cpu:block:%d" %
-                                                    (k, event.device_id), pid)
+                        # -1 device id represents CUDA api call
+                        if event.device_id == -1:
+                            self._chrome_trace.emit_pid("%s:cuda_api" % k, pid)
+                        else:
+                            self._chrome_trace.emit_pid(
+                                "%s:cpu:block:%d" % (k, event.device_id), pid)
                 elif event.type == profiler_pb2.Event.GPUKernel:
                     if (k, event.device_id, "GPUKernel") not in self._devices:
                         pid = self._allocate_pid()
@@ -150,7 +154,9 @@ class Timeline(object):
                 pid = self._devices[(k, event.device_id, type)]
                 args = {'name': event.name}
                 if event.memcopy.bytes > 0:
-                    args = {'mem_bytes': event.memcopy.bytes}
+                    args['mem_bytes'] = event.memcopy.bytes
+                if event.detail_info:
+                    args['detail_info'] = event.detail_info
                 # TODO(panyx0718): Chrome tracing only handles ms. However, some
                 # ops takes micro-seconds. Hence, we keep the ns here.
                 self._chrome_trace.emit_region(
@@ -173,7 +179,7 @@ if args.timeline_path:
 profile_paths = profile_path.split(',')
 profile_dict = dict()
 if len(profile_paths) == 1:
-    with open(profile_path, 'r') as f:
+    with open(profile_path, 'rb') as f:
         profile_s = f.read()
         profile_pb = profiler_pb2.Profile()
         profile_pb.ParseFromString(profile_s)
@@ -181,7 +187,7 @@ if len(profile_paths) == 1:
 else:
     for profile_path in profile_paths:
         k, v = profile_path.split('=')
-        with open(v, 'r') as f:
+        with open(v, 'rb') as f:
             profile_s = f.read()
             profile_pb = profiler_pb2.Profile()
             profile_pb.ParseFromString(profile_s)
