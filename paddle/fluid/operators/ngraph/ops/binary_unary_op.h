@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include "ngraph/ngraph.hpp"
+#include "paddle/fluid/operators/ngraph/ops/op_bridge.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
 
 namespace paddle {
@@ -47,3 +48,7 @@ static void BuildUnaryNode(
 }  // namespace ngraphs
 }  // namespace operators
 }  // namespace paddle
+
+REGISTER_NG_OP(relu, BuildUnaryNode<ngraph::op::Relu>);
+REGISTER_NG_OP(tanh, BuildUnaryNode<ngraph::op::Tanh>);
+REGISTER_NG_OP(sigmoid, BuildUnaryNode<ngraph::op::Sigmoid>);
