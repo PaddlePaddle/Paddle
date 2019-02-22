@@ -97,3 +97,4 @@ if (WITH_PYTHON)
 endif()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
+add_subdirectory(benchmark)
