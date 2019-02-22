@@ -925,18 +925,20 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
 }
 
 void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
-  // only GPU reduce mode need to broadcast parameters to each device.
-  if (UseGPU()) {
-    if (need_broadcast_var_ ||
+  // broad cast received parameters when training in parameter server mode.
+  if (need_broadcast_var_) {
+    // cpu reduce mode did not need to broadcast received parameters.
+    if (!UseGPU() &&
         strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
-      if (strategy_.fuse_broadcast_op_) {
-        CreateFusedBroadcastOp(result, bcast_var_name_set_);
-      } else {
-        for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {
-          auto &to_bcast_set = bcast_var_name_set_[dev_id];
-          for (auto &bcast_name : to_bcast_set) {
-            CreateBroadcastOp(result, bcast_name, dev_id);
-          }
+      return;
+    }
+    if (strategy_.fuse_broadcast_op_) {
+      CreateFusedBroadcastOp(result, bcast_var_name_set_);
+    } else {
+      for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {
+        auto &to_bcast_set = bcast_var_name_set_[dev_id];
+        for (auto &bcast_name : to_bcast_set) {
+          CreateBroadcastOp(result, bcast_name, dev_id);
         }
       }
     }
