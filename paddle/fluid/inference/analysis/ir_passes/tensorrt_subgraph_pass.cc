@@ -242,7 +242,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     tensorrt::TensorRTEngine *trt_engine =
         inference::Singleton<tensorrt::TRTEngineManager>::Global().Create(
             Get<int>("max_batch_size"), Get<int>("workspace_size"), enable_int8,
-            calibrator.get(), engine_key);
+            calibrator.get(), engine_key, Get<int>("gpu_device_id"));
     if (trt_engine_serialized_data.size() == 0) {
       LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
                    "kernel etc). This process may cost a lot of time.";
@@ -258,13 +258,16 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       trt_engine_serialized_data =
           std::string((const char *)serialized_engine_data->data(),
                       serialized_engine_data->size());
-      // SaveTrtEngineSerializedDataToFile(GetTrtEngineSerializedPath(Get<std::string>("model_opt_cache_dir"),
-      // engine_key),
-      //                  trt_engine_serialized_data);
+      SaveTrtEngineSerializedDataToFile(
+          GetTrtEngineSerializedPath(Get<std::string>("model_opt_cache_dir"),
+                                     engine_key),
+          trt_engine_serialized_data);
     } else {
+      LOG(INFO) << "Load TRT Engine from optimized serialized data : "
+                << GetTrtEngineSerializedPath(
+                       Get<std::string>("model_opt_cache_dir"), engine_key);
       trt_engine->Deserialize(trt_engine_serialized_data);
     }
-
     SetAttr(op_desc->Proto(), "engine_serialized_data",
             trt_engine_serialized_data);
   }

@@ -79,7 +79,8 @@ class TRTConvertValidation {
         if_add_batch_(if_add_batch),
         max_batch_size_(max_batch_size) {
     PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_), 0);
-    engine_.reset(new TensorRTEngine(max_batch_size, workspace_size));
+    engine_.reset(
+        new TensorRTEngine(max_batch_size, workspace_size, false, nullptr, 0));
     engine_->InitNetwork();
   }
 
@@ -114,13 +115,12 @@ class TRTConvertValidation {
   }
 
   void DeclVar(const std::string& name, const std::vector<int> dim_vec) {
-    platform::CUDAPlace place;
-    platform::CUDADeviceContext ctx(place);
+    platform::CUDADeviceContext ctx(place_);
 
     auto* x = scope_.Var(name);
     auto* x_tensor = x->GetMutable<framework::LoDTensor>();
     x_tensor->Resize(framework::make_ddim(dim_vec));
-    RandomizeTensor(x_tensor, place, ctx);
+    RandomizeTensor(x_tensor, place_, ctx);
   }
   // Declare a variable in a fluid Scope.
   void DeclVar(const std::string& name, const nvinfer1::Dims& dims,
@@ -155,9 +155,8 @@ class TRTConvertValidation {
                std::unordered_set<std::string> neglected_output = {}) {
     // Execute Fluid Op
     PADDLE_ENFORCE_LE(batch_size, max_batch_size_);
-    platform::CUDAPlace place;
-    platform::CUDADeviceContext ctx(place);
-    op_->Run(scope_, place);
+    platform::CUDADeviceContext ctx(place_);
+    op_->Run(scope_, place_);
 
     std::vector<std::string> input_output_names;
 
@@ -188,7 +187,7 @@ class TRTConvertValidation {
       auto* tensor = var->GetMutable<framework::LoDTensor>();
       const int bind_index = engine_->engine()->getBindingIndex(name.c_str());
       buffers[bind_index] =
-          static_cast<void*>(tensor->mutable_data<float>(place));
+          static_cast<void*>(tensor->mutable_data<float>(place_));
     }
 
     // Execute TRT.
@@ -220,6 +219,7 @@ class TRTConvertValidation {
   framework::Scope& scope() { return scope_; }
 
  private:
+  platform::CUDAPlace place_;
   std::unique_ptr<TensorRTEngine> engine_;
   cudaStream_t stream_;
   std::unique_ptr<framework::OperatorBase> op_;

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
-
 #include <cstring>
+#include <string>
 #include <type_traits>
 #include <vector>
 #include "paddle/fluid/platform/enforce.h"
