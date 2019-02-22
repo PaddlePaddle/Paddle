@@ -612,7 +612,7 @@ class DGCOptimizer(MomentumOptimizer):
         for param_var, grad_var in param_and_grads:
             #print("prepare  dgc_ops:", param_var.name)
             var_numel = reduce(lambda x, y: x * y, param_var.shape)
-            if var_numel < 4096 or \
+            if var_numel < 16384 or \
                 param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
                 grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
                     param_var.dtype != core.VarDesc.VarType.FP32 :

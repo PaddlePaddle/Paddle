@@ -138,13 +138,13 @@ void AllReduceOpHandle::_RunImplEncoded() {
              << ", out_tensor_buf:" << out_tensor_buf << ", comm:" << comm
              << ", gather_buff:" << gather_buff;
 
-    /*
-  all_reduce_calls.emplace_back([=] {
-    paddle::communication::dgc::sparseAllGReduce(
-        static_cast<void *>(in_tensor_buf), gather_buff, k, out_tensor_buf,
-        out_numel, comm, stream);
-  });
-        */
+    ///*
+    all_reduce_calls.emplace_back([=] {
+      paddle::communication::dgc::sparseAllGReduce(
+          static_cast<void *>(in_tensor_buf), gather_buff, k, out_tensor_buf,
+          out_numel, comm, stream);
+    });
+    //*/
   }
 
   this->RunAndRecordEvent([&] {
