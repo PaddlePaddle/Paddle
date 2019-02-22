@@ -29,9 +29,6 @@ def spectral_norm(weight, u, v, dim, power_iters, eps):
     if dim != 0:
         perm = [dim] + [d for d in range(len(shape)) if d != dim]
         weight_mat = weight_mat.transpose(perm)
-        real_shape = weight_mat.shape
-    else:
-        real_shape = shape
     weight_mat = weight_mat.reshape((h, w))
 
     u = u.reshape((h, 1))
