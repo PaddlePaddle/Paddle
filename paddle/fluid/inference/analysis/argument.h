@@ -23,12 +23,15 @@
 
 #pragma once
 
+#include <map>
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
+#include "paddle/fluid/inference/api/paddle_quantizer_config.h"
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
@@ -123,6 +126,15 @@ struct Argument {
   // Pass a set of op types to enable its mkldnn kernel
   DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types, MKLDNNEnabledOpTypes,
                       std::unordered_set<std::string>);
+
+  // A set of op types to enable their quantized kernels
+  DECL_ARGUMENT_FIELD(quantize_enabled_op_types, QuantizeEnabledOpTypes,
+                      std::unordered_set<std::string>);
+
+  // Scales for variables to be quantized
+  using VarQuantMaxAndScale =
+      std::map<std::string, std::pair<QuantMax, framework::LoDTensor>>;
+  DECL_ARGUMENT_FIELD(quant_var_scales, QuantVarScales, VarQuantMaxAndScale);
 
   // Passed from config.
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);

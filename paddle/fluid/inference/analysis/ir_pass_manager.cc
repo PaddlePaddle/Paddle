@@ -61,6 +61,17 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new std::unordered_set<std::string>(
                     argument->mkldnn_enabled_op_types()));
     }
+    if (pass_name == "cpu_quantize_placement_pass") {
+      pass->Set("quantize_enabled_op_types",
+                new std::unordered_set<std::string>(
+                    argument->quantize_enabled_op_types()));
+    }
+    if (pass_name == "cpu_quantize_pass") {
+      using VarQuantMaxAndScale =
+          std::map<std::string, std::pair<QuantMax, framework::LoDTensor>>;
+      pass->Set("quant_var_scales",
+                new VarQuantMaxAndScale(argument->quant_var_scales()));
+    }
 
     if (pass_name == "tensorrt_subgraph_pass") {
       pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));

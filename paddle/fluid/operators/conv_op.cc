@@ -177,6 +177,8 @@ void Conv2DOpMaker::Make() {
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<bool>("use_quantizer", "(bool, default false) Only used on CPU")
+      .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<bool>("fuse_residual_connection",

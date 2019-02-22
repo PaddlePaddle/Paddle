@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,27 +12,27 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/mkldnn/mkldnn_placement_pass.h"
+#include "paddle/fluid/framework/ir/cpu_quantize_placement_pass.h"
 #include <string>
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> MKLDNNPlacementPass::ApplyImpl(
+std::unique_ptr<ir::Graph> CPUQuantizePlacementPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  VLOG(3) << "Applies MKL-DNN placement strategy.";
+  VLOG(3) << "Marks operators which are to be quantized.";
   const auto& op_types_list =
-      Get<std::unordered_set<std::string>>("mkldnn_enabled_op_types");
+      Get<std::unordered_set<std::string>>("quantize_enabled_op_types");
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       auto* op = n->Op();
-      if (op->HasAttr("use_mkldnn") || op->HasProtoAttr("use_mkldnn")) {
+      if (op->HasAttr("use_quantizer") || op->HasProtoAttr("use_quantizer")) {
         if (op_types_list.empty()) {
-          op->SetAttr("use_mkldnn", true);
+          op->SetAttr("use_quantizer", true);
         } else if (std::find(op_types_list.begin(), op_types_list.end(),
                              n->Name()) != op_types_list.end()) {
-          op->SetAttr("use_mkldnn", true);
+          op->SetAttr("use_quantizer", true);
         }
       }
     }
@@ -44,5 +44,6 @@ std::unique_ptr<ir::Graph> MKLDNNPlacementPass::ApplyImpl(
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(mkldnn_placement_pass, paddle::framework::ir::MKLDNNPlacementPass)
-    .RequirePassAttr("mkldnn_enabled_op_types");
+REGISTER_PASS(cpu_quantize_placement_pass,
+              paddle::framework::ir::CPUQuantizePlacementPass)
+    .RequirePassAttr("quantize_enabled_op_types");
