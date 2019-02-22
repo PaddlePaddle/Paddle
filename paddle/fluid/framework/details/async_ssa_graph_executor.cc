@@ -29,6 +29,7 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
       graphs_(std::move(graphs)) {
   VLOG(3) << "build AsyncSSAGraphExecutor";
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
+  PADDLE_ENFORCE_EQ(graphs_.size, local_scopes_.size());
 
   // set the correct size of thread pool to each device.
   strategy_.num_threads_ = strategy_.num_threads_ < places_.size()
