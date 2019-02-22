@@ -72,6 +72,7 @@ class OpDesc {
   std::vector<std::string> AttrNames() const;
 
   void SetAttr(const std::string &name, const Attribute &v);
+  void RemoveAttr(const std::string &name);
 
   void SetBlockAttr(const std::string &name, BlockDesc *block);
 

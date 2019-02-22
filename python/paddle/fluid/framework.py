@@ -885,6 +885,9 @@ class Operator(object):
         """
         self._update_desc_attr(name, val)
 
+    def _remove_attr(self, name):
+        self.desc.remove_attr(name)
+
     def _update_desc_attr(self, name, val):
         """
         Update the value of desc's attribute by attribute's name.

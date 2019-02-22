@@ -633,8 +633,6 @@ class DGCOptimizer(MomentumOptimizer):
                 name=param_var.name + "__dgc_v__",
                 value=0.0)
 
-            self._dgc_op(param_var, grad_var, u_var, v_var)
-
             # del back oprolevarname
             op_maker = core.op_proto_and_checker_maker
             backward = core.op_proto_and_checker_maker.OpRole.Backward
@@ -642,13 +640,22 @@ class DGCOptimizer(MomentumOptimizer):
                 if not self._is_the_backward_op(op):
                     continue
 
-                var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName]
+                var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName()]
                 if param_var.name not in var_attr:
                     continue
 
                 print("find param:", param_var.name, " in ", op.type)
+                #print(op_maker.kOpRoleVarAttrName(), var_attr)
+                #print(op)
+                #print(op_maker.kOpRoleVarAttrName)
                 var_attr.remove(param_var.name)
                 var_attr.remove(grad_var.name)
+                if len(var_attr) > 1:
+                    op._set_attr(op_maker.kOpRoleVarAttrName(), var_attr)
+                else:
+                    op._remove_attr(op_maker.kOpRoleVarAttrName())
+
+            self._dgc_op(param_var, grad_var, u_var, v_var)
 
         # Note: don't delete this
         print("set DGC rampup_begin_step:", self._rampup_begin_step,
@@ -658,8 +665,8 @@ class DGCOptimizer(MomentumOptimizer):
     def _is_the_backward_op(self, op):
         op_maker = core.op_proto_and_checker_maker
         backward = core.op_proto_and_checker_maker.OpRole.Backward
-        if op_maker.kOpRoleVarAttrName in op.attr_names and \
-                int(op.all_attrs()[op_maker.kOpRoleAttrName]) == int(backward):
+        if op_maker.kOpRoleVarAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(backward):
             return True
         return False
 
@@ -685,10 +692,10 @@ class DGCOptimizer(MomentumOptimizer):
                 "rampup_step": float(self._rampup_step)
             },
             stop_gradient=True)
-        backward = core.op_proto_and_checker_maker.OpRole.Backward
-        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
-        dgc_op._set_attr(op_role_attr_name, backward)
-        dgc_op._set_attr(op_maker.kOpRoleAttrName(),
+
+        backward = op_maker.OpRole.Backward
+        dgc_op._set_attr(op_maker.kOpRoleAttrName(), backward)
+        dgc_op._set_attr(op_maker.kOpRoleVarAttrName(),
                          [param_var.name, grad_var.name])
 
 

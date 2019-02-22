@@ -313,6 +313,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
     velocity_out->mutable_data<T>(ctx.GetPlace());
 
     auto* grad_var = ctx.InputVar("Grad");
+    // VLOG(10) << "momentum grad_var name:" << grad_var.
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto grad = ctx.Input<framework::Tensor>("Grad");
       if (platform::is_cpu_place(ctx.GetPlace())) {

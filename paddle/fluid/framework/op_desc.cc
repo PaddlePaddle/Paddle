@@ -372,6 +372,11 @@ std::vector<std::string> OpDesc::AttrNames() const {
   return retv;
 }
 
+void OpDesc::RemoveAttr(const std::string &name) {
+  attrs_.erase(name);
+  need_update_ = true;
+}
+
 void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   // NOTICE(minqiyang): pybind11 will take the empty list in python as
   // the std::vector<int> type in C++; so we have to change the attr's type
