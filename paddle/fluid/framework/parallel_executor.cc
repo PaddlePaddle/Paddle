@@ -261,10 +261,21 @@ ParallelExecutor::ParallelExecutor(
   // ncclOp
   std::vector<std::unique_ptr<ir::Graph>> graphs;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
-      main_program, member_->places_, loss_var_name, member_->local_scopes_,
-      member_->nranks_, member_->use_cuda_, member_->nccl_ctxs_.get());
-  graphs.push_back(std::move(graph));
+  if (build_strategy.async_mode_ && !build_strategy.is_distribution_) {
+    VLOG(3) << "use local async mode";
+    for (size_t i = 0; i < member_->places_.size(); ++i) {
+      std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
+          main_program, {member_->places_[i]}, loss_var_name,
+          {member_->local_scopes_[i]}, member_->nranks_, member_->use_cuda_,
+          member_->nccl_ctxs_.get());
+      graphs.push_back(std::move(graph));
+    }
+  } else {
+    std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
+        main_program, member_->places_, loss_var_name, member_->local_scopes_,
+        member_->nranks_, member_->use_cuda_, member_->nccl_ctxs_.get());
+    graphs.push_back(std::move(graph));
+  }
 #else
   if (build_strategy.async_mode_ && !build_strategy.is_distribution_) {
     VLOG(3) << "use local async mode";
