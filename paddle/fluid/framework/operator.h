@@ -222,12 +222,7 @@ class ExecutionContext {
     if (it == ctx_.inputs.end()) {
       return {};
     }
-    std::vector<const Variable*> res;
-    res.reserve(it->second.size());
-    std::transform(it->second.begin(), it->second.end(),
-                   std::back_inserter(res),
-                   [this](Variable* var) { return var; });
-    return res;
+    return {it->second.begin(), it->second.end()};
   }
 
   std::vector<Variable*> MultiOutputVar(const std::string& name) const {

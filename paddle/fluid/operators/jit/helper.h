@@ -118,6 +118,35 @@ typename KernelTuples::func_type Get(
   return GetRefer<KT, KernelTuples>();
 }
 
+template <KernelType KT, typename KernelTuples, typename PlaceType>
+class KernelFuncs {
+ public:
+  KernelFuncs() = default;
+  static KernelFuncs& Cache() {
+    static thread_local KernelFuncs<KT, KernelTuples, PlaceType> g_func_cache;
+    return g_func_cache;
+  }
+
+  bool Has(int key) const { return funcs_.find(key) != funcs_.end(); }
+
+  void Insert(int key, typename KernelTuples::func_type func) {
+    funcs_.emplace(key, func);
+  }
+
+  typename KernelTuples::func_type At(int key) {
+    if (Has(key)) {
+      return funcs_.at(key);
+    }
+    auto func = Get<KT, KernelTuples, PlaceType>(key);
+    Insert(key, func);
+    return func;
+  }
+
+ private:
+  std::unordered_map<int, typename KernelTuples::func_type> funcs_;
+  DISABLE_COPY_AND_ASSIGN(KernelFuncs);
+};
+
 const char* to_string(KernelType kt);
 const char* to_string(SeqPoolType kt);
 
@@ -130,16 +159,36 @@ inline std::ostream& operator<<(std::ostream& os, const lstm_attr_t& attr) {
      << (attr.use_peephole ? "True" : "False") << "]";
   return os;
 }
+
 inline std::ostream& operator<<(std::ostream& os, const gru_attr_t& attr) {
   os << "dim_size[" << attr.d << "],act_gate[" << to_string(attr.act_gate)
      << "],act_cand[" << to_string(attr.act_cand) << "]";
   return os;
 }
+
 inline std::ostream& operator<<(std::ostream& os, const seq_pool_attr_t& attr) {
   os << "height_size[" << attr.h << "],width_size[" << attr.w << "],pool_type["
      << to_string(attr.type) << "]";
   return os;
 }
+
+inline std::ostream& operator<<(std::ostream& os,
+                                const emb_seq_pool_attr_t& attr) {
+  os << "table_height[" << attr.table_height << "],table_width["
+     << attr.table_width << "],index_height[" << attr.index_height
+     << "],index_width[" << attr.index_width << "],output_width["
+     << attr.out_width << "],pool_type[" << to_string(attr.pool_type) << "]";
+  return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const matmul_attr_t& attr) {
+  os << "M[" << attr.m << "],N[" << attr.n << "],K[" << attr.k << "]";
+  return os;
+}
+
+// expose the method to pack matmul weight
+template <typename T>
+void pack_weights(const T* src, T* dst, int n, int k);
 
 }  // namespace jit
 }  // namespace operators

@@ -146,6 +146,12 @@ class ParallelExecutor(object):
         # step4: get main_program, scope, local_scopes
         main = main_program if main_program \
             else framework.default_main_program()
+        # FIXME(dzhwinter): enable_inplace should be after memory_optimize
+        # if turn on python memory optimize, turn off the inplace_pass.
+        if build_strategy.memory_optimize is None:
+            build_strategy.memory_optimize = False if main._is_mem_optimized else True
+        if build_strategy.enable_inplace is None:
+            build_strategy.enable_inplace = False if main._is_mem_optimized else True
         scope = scope if scope is not None else executor.global_scope()
 
         if share_vars_from and not isinstance(share_vars_from,
@@ -159,7 +165,7 @@ class ParallelExecutor(object):
         trainers_endpoints = main._trainers_endpoints
         if num_trainers > 1 and trainers_endpoints:
             assert num_trainers == len(
-                trainers_endpoints), "num_trainers == len(end_points)"
+                trainers_endpoints), "num_trainers == len(endpoints)"
             build_strategy.trainers_endpoints = trainers_endpoints
 
         # step6: get persistable_vars, places. persistable_vars

@@ -137,7 +137,9 @@ void ListenAndServOp::RunSyncLoop(
   while (true) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
+    VLOG(3) << "wait all clients to send gradient";
     rpc_service_->SetCond(distributed::kRequestSend);
+    VLOG(3) << "wait all clients to send send_barrier";
     rpc_service_->WaitBarrier(distributed::kRequestSend);
 
     if (rpc_service_->IsExit()) {
@@ -168,12 +170,16 @@ void ListenAndServOp::RunSyncLoop(
     }
     ParallelExecuteBlocks(parallel_blkids, executor, optimize_prepared, program,
                           recv_scope);
-    VLOG(2) << "run all blocks spent " << GetTimestamp() - ts << "(ms)";
+    VLOG(3) << "run all blocks spent " << GetTimestamp() - ts << "(ms)";
 
+    VLOG(3) << "ResetReceivedVars";
     ResetReceivedVars(recv_scope, dev_ctx, rpc_service_->NeedResetAllVars());
 
+    VLOG(3) << "wait all clients to get parameters back";
     rpc_service_->SetCond(distributed::kRequestGet);
+    VLOG(3) << "wait all clients to send fetch_barrier";
     rpc_service_->WaitBarrier(distributed::kRequestGet);
+    VLOG(3) << "ResetBarrierCounter";
     rpc_service_->ResetBarrierCounter();
   }  // while(true)
 }
