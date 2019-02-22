@@ -917,7 +917,7 @@ bool DistSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
   auto u_name = p_name + "__dgc_u__";
   auto it = all_vars_.find(u_name);
   if (it == all_vars_.end()) {
-    VLOG(10) << "can't find u_name, so it's not encoded";
+    VLOG(10) << "can't find u_name, so it's not encoded:" << u_name;
     return false;
   }
 

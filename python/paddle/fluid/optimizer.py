@@ -17,7 +17,7 @@ from __future__ import print_function
 from collections import defaultdict
 from contextlib import contextmanager
 
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_start_program
+from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 
 from . import framework
@@ -31,13 +31,15 @@ from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
 from .imperative import base as imperative_base
+from paddle.fluid import core
+from paddle.fluid.layers import tensor
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
     'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer'
+    'LarsMomentumOptimizer', 'DGCOptimizer'
 ]
 
 
@@ -70,7 +72,6 @@ class Optimizer(object):
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
-        self._enable_dgc = False
 
     def _create_global_learning_rate(self):
         lr = self._global_learning_rate()
@@ -412,8 +413,7 @@ class Optimizer(object):
                                              parameter_list, no_grad_set)
                 # Note: since we can't use all_reduce_op now,
                 #  dgc_op should be the last op of one grad.
-                if (self._enable_dgc):
-                    self._append_dgc_ops(paras_and_grads)
+                self._append_dgc_ops(params_grads)
                 optimize_ops = self.apply_gradients(params_grads)
 
         return optimize_ops, params_grads
@@ -551,18 +551,17 @@ class MomentumOptimizer(Optimizer):
         return momentum_op
 
 
-class DGCOptmizer(MomentumOptimizer):
+class DGCOptimizer(MomentumOptimizer):
     def __init__(self,
                  learning_rate,
                  momentum,
-                 ramup_step,
+                 rampup_step,
                  rampup_begin_step=0,
                  sparsity=[0.75, 0.9375, 0.984375, 0.996, 0.999],
                  use_nesterov=False,
                  regularization=None,
                  name=None):
-        self._enable_dgc = True
-
+        self._sparsity = sparsity
         self._rampup_step = rampup_step
         self._rampup_step_var = None
 
@@ -571,10 +570,10 @@ class DGCOptmizer(MomentumOptimizer):
 
         self._global_step_var = None
 
-        super(DGCOptmizer, self).__init__(learning_rate, momentum, use_nesterov,
-                                          regularization, name)
+        super(DGCOptimizer, self).__init__(learning_rate, momentum,
+                                           use_nesterov, regularization, name)
 
-    def _add_auto_increment_var(counter_name, begin, step=1):
+    def _add_auto_increment_var(self, counter_name, begin, step=1):
         helper = LayerHelper('global_step_counter')
         counter, is_new_var = helper.create_or_get_global_variable(
             name=counter_name, dtype='float32', shape=[1], persistable=True)
@@ -594,16 +593,32 @@ class DGCOptmizer(MomentumOptimizer):
         return counter
 
     def _append_dgc_ops(self, param_and_grads):
-        start_program = default_start_program()
+        start_program = default_startup_program()
         main_program = default_main_program()
 
+        # step counter
+        self._global_step_var = self._add_auto_increment_var(
+            counter_name='__g_dgc_counter__', begin=self._rampup_begin_step)
+
+        # rampup step var
+        self._rampup_step_var = tensor.create_global_var(
+            shape=[1],
+            dtype=core.VarDesc.VarType.FP32,
+            persistable=True,
+            name='__g_rampup_step__',
+            value=self._rampup_step * 1.0,
+            force_cpu=True)
+
         for param_var, grad_var in param_and_grads:
+            print("prepare  dgc_ops:", param_var.name)
             var_numel = reduce(lambda x, y: x * y, param_var.shape)
             if var_numel < 4096 or \
                 param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
                 grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
                     param_var.dtype != core.VarDesc.VarType.FP32 :
                 continue
+
+            print("create u,v of ", param_var.name)
 
             u_var = tensor.create_global_var(
                 shape=param_var.shape,
@@ -618,21 +633,7 @@ class DGCOptmizer(MomentumOptimizer):
                 name=param_var.name + "__dgc_v__",
                 value=0.0)
 
-            self._dgc_op(param_and_grad[1], u_var, v_var)
-
-        # step counter
-        self._global_step_var = self._add_auto_increment_var(
-            counter_name='__g_dgc_counter__',
-            begin=self._rampup_begin_step,
-            step=1)
-
-        self._rampup_step_var = tensor.create_global_var(
-            shape=[1],
-            dtype=param_var.dtype,
-            persistable=True,
-            name='__g_rampup_step__',
-            value=self._rampup_step * 1.0,
-            foce_cpu=True)
+            self._dgc_op(grad_var, u_var, v_var)
 
         # Note: don't delete this
         print("set DGC rampup_begin_step:", self._rampup_begin_step,
@@ -640,13 +641,14 @@ class DGCOptmizer(MomentumOptimizer):
               self._rampup_step)
 
     def _dgc_op(self, grad_var, u_var, v_var):
+        block = framework.default_main_program().global_block()
         dgc_op = block.append_op(
             type="dgc",
             inputs={
                 "U": u_var,
                 "V": v_var,
                 "Grad": grad_var,
-                "global_step": self._global_step_var
+                "current_step": self._global_step_var
             },
             outputs={"U_out": u_var,
                      "V_out": v_var,
@@ -656,9 +658,11 @@ class DGCOptmizer(MomentumOptimizer):
                 "sparsity": self._sparsity,
                 "use_nesterov": self._use_nesterov,
                 "rampup_begin_step": float(self._rampup_begin_step),
+                "rampup_step": float(self._rampup_step),
             },
             stop_gradient=True)
         backward = core.op_proto_and_checker_maker.OpRole.Backward
+        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
         dgc_op._set_attr(op_role_attr_name, backward)
 
 
