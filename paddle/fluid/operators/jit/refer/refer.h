@@ -446,6 +446,36 @@ void EmbSeqPool(const T* table, const int64_t* idx, T* out,
   }
 }
 
+// SGD algorithm:
+// lr is pointor of learning rate scalar
+// param is an input matrix with (param_h, param_w)
+// grad is an input matrix with (grad_h, grad_w), here grad_w == param_w
+// selected_rows is a vectot<int64_t> with size selected_rows_size( <= grad_h )
+// out is an output matrix with (param_h, param_w)
+//
+// support both regular and sparse grad
+// regular SGD: out[:] = param[:] - lr[0] * grad[:];
+// sparse SGD: out[rows[i]][:] = param[rows[i]][:] - lr[0] * grad[i][:]
+//
+// Note: when use sparse SGD, and if out != param,
+// the out rows which are not selected have not beed changed, which maybe empty
+template <typename T>
+void Sgd(const T* lr, const T* param, const T* grad, const int64_t* rows,
+         T* out, const sgd_attr_t* attr) {
+  PADDLE_ENFORCE_EQ(attr->param_width, attr->grad_width);
+  PADDLE_ENFORCE_LE(attr->selected_rows_size, attr->grad_height);
+  for (int64_t i = 0; i < attr->selected_rows_size; ++i) {
+    auto h_idx = rows[i];
+    PADDLE_ENFORCE_LT(h_idx, attr->param_height);
+    PADDLE_ENFORCE_GE(h_idx, 0);
+    for (int64_t j = 0; j < attr->grad_width; ++j) {
+      out[h_idx * attr->grad_width + j] =
+          param[h_idx * attr->grad_width + j] -
+          lr[0] * grad[i * attr->grad_width + j];
+    }
+  }
+}
+
 #define DECLARE_REFER_KERNEL(name, tuples)             \
   template <typename T>                                \
   class name##Kernel : public ReferKernel<tuples<T>> { \
@@ -495,6 +525,8 @@ DECLARE_REFER_KERNEL(HSum, XRNTuples);
 DECLARE_REFER_KERNEL(Softmax, SoftmaxTuples);
 
 DECLARE_REFER_KERNEL(EmbSeqPool, EmbSeqPoolTuples);
+
+DECLARE_REFER_KERNEL(Sgd, SgdTuples);
 
 #undef DECLARE_REFER_KERNEL
 
