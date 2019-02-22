@@ -52,11 +52,6 @@ class MKLDNNActivationKernel
                    "Wrong layout/format set for Input x tensor");
 
     Functor functor;
-
-    auto attrs = functor.GetAttrs();
-    for (auto &attr : attrs) {
-      *attr.second = ctx.Attr<float>(attr.first);
-    }
     functor(ctx);
   }
 };
@@ -76,11 +71,6 @@ class MKLDNNActivationGradKernel
         "is_test attribute should be set to False in training phase.");
 
     Functor functor;
-
-    auto attrs = functor.GetAttrs();
-    for (auto &attr : attrs) {
-      *attr.second = ctx.Attr<float>(attr.first);
-    }
     functor(ctx);
   }
 };
