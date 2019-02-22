@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/group_norm_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -102,8 +103,8 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     // check input
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of GroupNormOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"),
+                   "Input(Y) of GroupNormOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Mean"),
                    "Input(Mean) of GroupNormOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Variance"),
@@ -113,7 +114,7 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
 
     // check output
     if (ctx->HasOutput(framework::GradVarName("X"))) {
-      ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+      ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Y"));
     }
     if (ctx->HasOutput(framework::GradVarName("Scale"))) {
       ctx->SetOutputDim(framework::GradVarName("Scale"),
@@ -145,13 +146,72 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class GroupNormGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *op = new framework::OpDesc();
+    op->SetType("group_norm_grad");
+    op->SetInput("Scale", Input("Scale"));
+    op->SetInput("Bias", Input("Bias"));
+    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
+    op->SetInput("Y", Output("Y"));
+    op->SetInput("Mean", Output("Mean"));
+    op->SetInput("Variance", Output("Variance"));
+
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+    op->SetOutput(framework::GradVarName("Scale"), InputGrad("Scale"));
+
+    op->SetAttrMap(Attrs());
+
+    return std::unique_ptr<framework::OpDesc>(op);
+  }
+};
+
+class GroupNormInplaceInToOut : public framework::InplaceInToOut {
+ public:
+  using InplaceInToOut::InplaceInToOut;
+
+ protected:
+  std::unordered_map<std::string, std::string> Apply(
+      const framework::OpDesc &op_desc,
+      framework::BlockDesc *block) const override {
+    return {{"X", "Y"}};
+  }
+};
+
+class GroupNormGradInplaceInToOut : public framework::InplaceInToOut {
+ public:
+  using InplaceInToOut::InplaceInToOut;
+
+ protected:
+  std::unordered_map<std::string, std::string> Apply(
+      const framework::OpDesc &op_desc,
+      framework::BlockDesc *block) const override {
+    return {{framework::GradVarName("Y"), framework::GradVarName("X")}};
+  }
+};
+
+class GroupNormOpInferVarType
+    : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return {{"X", /*->*/ "Y"}};
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(group_norm, ops::GroupNormOp, ops::GroupNormOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp);
+                  ops::GroupNormOpInferVarType, ops::GroupNormGradMaker,
+                  ops::GroupNormInplaceInToOut);
+REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp,
+                  ops::GroupNormGradInplaceInToOut);
 REGISTER_OP_CPU_KERNEL(
     group_norm, ops::GroupNormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GroupNormKernel<paddle::platform::CPUDeviceContext, double>);

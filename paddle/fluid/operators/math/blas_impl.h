@@ -118,6 +118,11 @@ struct CBlas<float> {
   static void VPOW(ARGS... args) {
     platform::dynload::vsPowx(args...);
   }
+
+  template <typename... ARGS>
+  static void VINV(ARGS... args) {
+    platform::dynload::vsInv(args...);
+  }
 };
 
 template <>
@@ -212,6 +217,11 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void VPOW(ARGS... args) {
     platform::dynload::vdPowx(args...);
+  }
+
+  template <typename... ARGS>
+  static void VINV(ARGS... args) {
+    platform::dynload::vdInv(args...);
   }
 };
 
@@ -602,6 +612,17 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
         dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
         dim_a.stride_, dim_b.stride_);
   }
+}
+template <typename DeviceContext>
+template <typename T>
+void Blas<DeviceContext>::VINV(int n, const T *a, T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VINV(n, a, y);
+#else
+  for (int i = 0; i < n; ++i) {
+    y[i] = 1.0 / a[i];
+  }
+#endif
 }
 
 }  // namespace math

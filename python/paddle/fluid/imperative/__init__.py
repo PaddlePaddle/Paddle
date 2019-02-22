@@ -20,6 +20,10 @@ from .base import *
 from . import layers
 from .layers import *
 
+from . import nn
+from .nn import *
+
 __all__ = []
 __all__ += layers.__all__
 __all__ += base.__all__
+__all__ += nn.__all__

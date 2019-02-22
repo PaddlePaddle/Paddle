@@ -30,8 +30,9 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
     PADDLE_THROW(
-        "'Place' is not supported, Please re-compile with WITH_GPU "
-        "option");
+        "Place %s is not supported, Please re-compile with WITH_GPU "
+        "option",
+        place);
   }
   return it->second.get().get();
 }
@@ -83,6 +84,47 @@ DeviceContextPool::DeviceContextPool(
 #endif
     }
   }
+}
+
+DeviceTemporaryAllocator* DeviceTemporaryAllocator::allocators = nullptr;
+
+#ifdef PADDLE_WITH_CUDA
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const platform::Place& place, const cudaStream_t& stream) {
+  PADDLE_ENFORCE(platform::is_gpu_place(place));
+  auto place_stream = std::make_pair(place, stream);
+  std::unique_lock<std::mutex> lock(mtx_);
+  auto it = device_allocator_.find(place_stream);
+  if (it == device_allocator_.end()) {
+    auto tmp_allocator = new TemporaryAllocator(place);
+    tmp_allocator->SetCallback([stream]() {
+      PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+      PADDLE_ENFORCE(cudaGetLastError());
+    });
+    device_allocator_[place_stream].reset(tmp_allocator);
+    return *tmp_allocator;
+  } else {
+    return *it->second;
+  }
+}
+
+template <>
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const platform::CUDADeviceContext& dev_ctx) {
+  return Get(dev_ctx.GetPlace(), dev_ctx.stream());
+}
+#endif
+
+template <>
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const platform::CPUDeviceContext& dev_ctx) {
+  return cpu_allocator_;
+}
+
+platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
+    const platform::Place& place) {
+  PADDLE_ENFORCE(platform::is_cpu_place(place), "You should pass CPUPlace");
+  return cpu_allocator_;
 }
 
 CPUDeviceContext::CPUDeviceContext() {
@@ -202,8 +244,15 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
-  PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
-  PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
+  cublas_handle_.reset(new CublasHandleHolder(stream_, CUBLAS_DEFAULT_MATH));
+
+  if (TensorCoreAvailable()) {
+#if CUDA_VERSION >= 9000
+    cublas_tensor_core_handle_.reset(
+        new CublasHandleHolder(stream_, CUBLAS_TENSOR_OP_MATH));
+#endif
+  }
+
   if (dynload::HasCUDNN()) {
     cudnn_holder_.reset(new CudnnHolder(&stream_, place));
   }
@@ -213,10 +262,11 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
 
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: " << place_.device
                           << ", CUDA Capability: " << compute_capability_
-                          << ", Driver Version: " << driver_version_ / 1000
+                          << ", Driver API Version: " << driver_version_ / 1000
                           << "." << (driver_version_ % 100) / 10
-                          << ", Runtime Version: " << runtime_version_ / 1000
-                          << "." << (runtime_version_ % 100) / 10;
+                          << ", Runtime API Version: "
+                          << runtime_version_ / 1000 << "."
+                          << (runtime_version_ % 100) / 10;
   size_t cudnn_dso_ver = dynload::cudnnGetVersion();
   LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
                           << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."
@@ -241,7 +291,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     if (dynload::HasCUDNN()) {
       auto local_cudnn_version = cudnn_dso_ver / 100;
       auto compile_cudnn_version = CUDNN_VERSION / 100;
-      if (local_cuda_version < compile_cuda_version) {
+      if (local_cudnn_version < static_cast<size_t>(compile_cudnn_version)) {
         LOG_FIRST_N(WARNING, 1)
             << "WARNING: device: " << place_.device
             << ". The installed Paddle is compiled with CUDNN "
@@ -262,7 +312,8 @@ CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
   Wait();
   WaitStreamCallback();
-  PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
+  cublas_handle_.reset();
+  cublas_tensor_core_handle_.reset();
   eigen_stream_.reset();
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
@@ -271,8 +322,12 @@ CUDADeviceContext::~CUDADeviceContext() {
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const {
-  PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
-  PADDLE_ENFORCE(cudaGetLastError());
+  auto& allocator =
+      DeviceTemporaryAllocator::Instance().Get<CUDADeviceContext>(*this);
+  allocator.Release([this]() {
+    PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
+    PADDLE_ENFORCE(cudaGetLastError());
+  });
 }
 
 int CUDADeviceContext::GetComputeCapability() const {
@@ -287,8 +342,8 @@ Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
 
-cublasHandle_t CUDADeviceContext::cublas_handle() const {
-  return cublas_handle_;
+bool CUDADeviceContext::tensor_core_available() const {
+  return cublas_tensor_core_handle_ != nullptr;
 }
 
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const {

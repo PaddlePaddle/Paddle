@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-import contextlib
+from ..wrapped_decorator import signature_safe_contextmanager
 import multiprocessing
 import os
 import six
@@ -56,7 +56,10 @@ def data(name,
 
     Args:
        name(str): The name/alias of the function
-       shape(list): Tuple declaring the shape.
+       shape(list): Tuple declaring the shape. If :code:`append_batch_size` is 
+                    True and there is no -1 inside :code:`shape`, it should be 
+                    considered as the shape of the each sample. Otherwise, it
+                    should be considered as the shape of the batched data.  
        append_batch_size(bool):
           1. If true, it prepends -1 to the shape.
             For example if shape=[1], the resulting shape is [-1, 1].
@@ -523,7 +526,7 @@ def _py_reader(capacity,
         double_buffer_name = "_".join([name, "double_buffer"])
 
     var = global_scope().var(queue_name)
-    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, shapes)
+    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity)
 
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=reader_name)
@@ -949,12 +952,11 @@ def shuffle(reader, buffer_size):
     is determined by argument buf_size.
 
     Args:
-        param reader: the original reader whose output will be shuffled.
-        type reader: callable
-        param buf_size: shuffle buffer size.
-        type buf_size: int
-        return: the new reader whose output is shuffled.
-        rtype: callable
+        reader(callable): the original reader whose output will be shuffled.
+        buf_size(int): shuffle buffer size.
+
+    Returns:
+        callable: the new reader whose output is shuffled.
     """
     return __create_unshared_decorated_reader__(
         'create_shuffle_reader', reader, {'buffer_size': int(buffer_size)})
@@ -1117,7 +1119,7 @@ class Preprocessor(object):
     def _is_completed(self):
         return self.sub_block and self.source_var_names and self.sink_var_names
 
-    @contextlib.contextmanager
+    @signature_safe_contextmanager
     def block(self):
         self.status = Preprocessor.IN_SUB_BLOCK
         self.sub_block = self.main_prog._create_block()

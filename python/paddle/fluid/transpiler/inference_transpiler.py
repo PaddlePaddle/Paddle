@@ -57,7 +57,7 @@ class InferenceTranspiler(object):
             raise TypeError("place should be as CPUPlace/CUDAPlace type")
         if scope is None:
             scope = global_scope()
-        if not isinstance(scope, core.Scope):
+        if not isinstance(scope, core._Scope):
             raise TypeError("scope should be as Scope type or None")
         use_mkldnn = bool(os.getenv("FLAGS_use_mkldnn", False))
 

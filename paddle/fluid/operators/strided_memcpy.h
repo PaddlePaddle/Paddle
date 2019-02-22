@@ -40,7 +40,7 @@ inline void StridedMemcpy(const platform::DeviceContext& dev_ctx, const T* src,
                           const framework::DDim& dst_stride, T* dst) {
   paddle::operators::detail::StridedCopyDimVisitor<T> func(
       dev_ctx, src, src_stride, dst_stride, dst);
-  boost::apply_visitor(func, dst_dim);
+  dst_dim.apply_visitor(func);
 }
 
 // Strided numel memory copy from src to dst by the specified axis

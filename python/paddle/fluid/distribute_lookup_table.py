@@ -15,12 +15,52 @@
 LOOKUP_TABLE_TYPE = "lookup_table"
 
 
+def find_distributed_lookup_table_inputs(program, table_name):
+    """
+    Find input variable of distribute lookup table in program.
+    We only support one distribute table now.
+    Args:
+    program(Program): given program, locate distributed lookup table
+    table_name(str): given table name that is found beforehand
+    Returns:
+    inputs
+    """
+    local_vars = program.current_block().vars
+    inputs = []
+    for op in program.global_block().ops:
+        if op.type == LOOKUP_TABLE_TYPE:
+            if table_name == op.input("W")[0]:
+                inputs.extend([local_vars[name] for name in op.input("Ids")])
+    return inputs
+
+
+def find_distributed_lookup_table_outputs(program, table_name):
+    """
+    Find output variable of distribute lookup table in program.
+    We only support one distribute table now.
+    Args:
+    program(Program): given program, locate distributed lookup table
+    table_name(str): given table name that is found beforehand
+    Returns:
+    outputs
+    """
+    local_vars = program.current_block().vars
+    outputs = []
+    for op in program.global_block().ops:
+        if op.type == LOOKUP_TABLE_TYPE:
+            if table_name == op.input("W")[0]:
+                outputs.extend([local_vars[name] for name in op.output("Out")])
+    return outputs
+
+
 def find_distributed_lookup_table(program):
     """
     Find distribute lookup table in program.
     We only support one distribute table now.
-    :param program:
-    :return: table_name or None
+    Args:
+    program(Program): given program, locate distributed lookup table
+    Returns:
+    table_name or None
     """
     table_name = None
 

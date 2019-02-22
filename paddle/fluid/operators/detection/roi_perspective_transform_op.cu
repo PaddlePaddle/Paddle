@@ -35,12 +35,12 @@ namespace operators {
 
 template <typename T>
 __device__ bool GT_E(T a, T b) {
-  return (a > b) || fabs(a - b) < 1e-4;
+  return (a > b) || Eigen::numext::abs(a - b) < 1e-4;
 }
 
 template <typename T>
 __device__ bool LT_E(T a, T b) {
-  return (a < b) || fabs(a - b) < 1e-4;
+  return (a < b) || Eigen::numext::abs(a - b) < 1e-4;
 }
 
 template <typename T>

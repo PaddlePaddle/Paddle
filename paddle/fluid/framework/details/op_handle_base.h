@@ -25,7 +25,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-constexpr char kLocalExecScopeName[] = "@LCOAL_SCOPE@";
+constexpr char kLocalExecScopeName[] = "@LOCAL_SCOPE@";
 
 // Wraps ir::Node and provide helper utilities.
 // It's responsible for populating necessary fields of ir::Node.
@@ -69,6 +69,9 @@ class OpHandleBase {
   const platform::DeviceContext *DeviceContext(platform::Place place) {
     auto it = dev_ctxes_.find(place);
     return it != dev_ctxes_.end() ? it->second : nullptr;
+  }
+  const std::map<platform::Place, platform::DeviceContext *> &DeviceContext() {
+    return dev_ctxes_;
   }
 
   void SetDeviceContext(platform::Place place, platform::DeviceContext *ctx_) {

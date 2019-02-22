@@ -33,9 +33,15 @@ void ZeroCopyTensor::Reshape(const std::vector<int> &shape) {
   tensor->Resize(framework::make_ddim(shape));
 }
 
+#define EAGER_GET_TENSOR    \
+  if (!tensor_) {           \
+    tensor_ = FindTensor(); \
+  }                         \
+  auto *tensor = static_cast<framework::LoDTensor *>(tensor_);
+
 template <typename T>
 T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
-  auto *tensor = static_cast<framework::LoDTensor *>(FindTensor());
+  EAGER_GET_TENSOR;
   switch (static_cast<int>(place)) {
     case static_cast<int>(PaddlePlace::kCPU): {
       return tensor->mutable_data<T>(platform::CPUPlace());
@@ -52,7 +58,7 @@ T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
 
 template <typename T>
 T *ZeroCopyTensor::data(PaddlePlace *place, int *size) const {
-  auto *tensor = static_cast<framework::LoDTensor *>(FindTensor());
+  EAGER_GET_TENSOR;
   auto *res = tensor->data<T>();
 
   if (platform::is_cpu_place(tensor->place())) {
@@ -87,13 +93,13 @@ void *ZeroCopyTensor::FindTensor() const {
 }
 
 std::vector<int64_t> ZeroCopyTensor::shape() const {
-  auto *tensor = static_cast<framework::LoDTensor *>(FindTensor());
-  PADDLE_ENFORCE(tensor, "not found tensor called %s in the scope", name_);
+  EAGER_GET_TENSOR;
+  PADDLE_ENFORCE(tensor_, "not found tensor called %s in the scope", name_);
   return framework::vectorize(tensor->dims());
 }
 
 void ZeroCopyTensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
-  auto *tensor = static_cast<framework::LoDTensor *>(FindTensor());
+  EAGER_GET_TENSOR;
   framework::LoD lod;
   for (auto &level : x) {
     lod.emplace_back(level);
@@ -102,8 +108,8 @@ void ZeroCopyTensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
 }
 
 std::vector<std::vector<size_t>> ZeroCopyTensor::lod() const {
+  EAGER_GET_TENSOR;
   std::vector<std::vector<size_t>> res;
-  auto *tensor = static_cast<framework::LoDTensor *>(FindTensor());
   for (auto &level : tensor->lod()) {
     res.emplace_back(level);
   }

@@ -120,6 +120,7 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   ClearFetchOp(graph_.get(), &fetch_ops);
   return fetches;
 }
+
 void FastThreadedSSAGraphExecutor::RunOpAsync(
     std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
     OpHandleBase *op,

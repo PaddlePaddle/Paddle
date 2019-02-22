@@ -16,6 +16,7 @@ limitations under the License. */
 #include <thrust/reduce.h>
 #include "paddle/fluid/operators/metrics/accuracy_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
@@ -94,6 +95,7 @@ class AccuracyOpCUDAKernel : public framework::OpKernel<T> {
 
 // FIXME(typhoonzero): types of T is for inference data.
 // label data is always int64
-REGISTER_OP_CUDA_KERNEL(accuracy,
-                        paddle::operators::AccuracyOpCUDAKernel<float>,
-                        paddle::operators::AccuracyOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    accuracy, paddle::operators::AccuracyOpCUDAKernel<float>,
+    paddle::operators::AccuracyOpCUDAKernel<double>,
+    paddle::operators::AccuracyOpCUDAKernel<paddle::platform::float16>);

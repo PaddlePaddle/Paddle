@@ -33,7 +33,7 @@ void DeQuantOpMaker::Make() {
   AddInput("Input", "input data");
   AddOutput("Output", "output data");
   AddAttr<float>("Scale", "scale data").SetDefault({1.0f});
-  AddComment(R"DOC(This op will quantize data from INT8 to FP32)DOC");
+  AddComment(R"DOC(This op will dequantize data from INT8 to FP32)DOC");
 }
 
 }  // namespace operators

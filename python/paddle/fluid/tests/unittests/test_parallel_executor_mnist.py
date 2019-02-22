@@ -74,7 +74,11 @@ class TestMNIST(TestParallelExecutorBase):
         label = np.ones(shape=[32, 1], dtype='int64')
         return img, label
 
-    def _compare_reduce_and_allreduce(self, model, use_cuda):
+    def _compare_reduce_and_allreduce(self,
+                                      model,
+                                      use_cuda,
+                                      delta1=1e-6,
+                                      delta2=1e-4):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
@@ -86,6 +90,7 @@ class TestMNIST(TestParallelExecutorBase):
                        "label": label},
             use_cuda=use_cuda,
             use_reduce=False)
+
         reduce_first_loss, reduce_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
@@ -94,9 +99,9 @@ class TestMNIST(TestParallelExecutorBase):
             use_reduce=True)
 
         for loss in zip(all_reduce_first_loss, reduce_first_loss):
-            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
+            self.assertAlmostEqual(loss[0], loss[1], delta=delta1)
         for loss in zip(all_reduce_last_loss, reduce_last_loss):
-            self.assertAlmostEqual(loss[0], loss[1], delta=1e-4)
+            self.assertAlmostEqual(loss[0], loss[1], delta=delta2)
 
     # simple_fc
     def check_simple_fc_convergence(self, use_cuda, use_reduce=False):
@@ -173,8 +178,9 @@ class TestMNIST(TestParallelExecutorBase):
                 self.check_batchnorm_fc_convergence(use_cuda, use_fast_executor)
 
     def test_batchnorm_fc_with_new_strategy(self):
-        # FIXME(zcd): close this test temporally.
-        # self._compare_reduce_and_allreduce(fc_with_batchnorm, True)
+        # NOTE: the computation result of nccl_reduce is non-deterministic,
+        # related issue: https://github.com/NVIDIA/nccl/issues/157
+        self._compare_reduce_and_allreduce(fc_with_batchnorm, True, 1e-5, 1e-2)
         self._compare_reduce_and_allreduce(fc_with_batchnorm, False)
 
 

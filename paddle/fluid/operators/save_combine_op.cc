@@ -49,7 +49,7 @@ class SaveCombineOp : public framework::OperatorBase {
     }
 
     MkDirRecursively(DirName(filename).c_str());
-    std::ofstream fout(filename);
+    std::ofstream fout(filename, std::ios::binary);
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
                    filename);
 

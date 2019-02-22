@@ -56,28 +56,34 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     }
   }
   std::vector<framework::LoDTensor> fetch_data;
-  std::exception_ptr eptr;
+  std::exception_ptr eptr = nullptr;
   try {
     fetch_data = underlying_executor_->Run(fetch_tensors);
   } catch (...) {
     eptr = std::current_exception();
   }
 
-  platform::RecordEvent e("ScopeBufferedSSAGraphExecutorAfterRun", nullptr);
-  drop_scope_counter_ += 1;
+  platform::RecordEvent e("ScopeBufferedSSAGraphExecutorAfterRun");
+  ++drop_scope_counter_;
 
-  if (!fetch_tensors.empty() ||
-      drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
-    drop_scope_counter_ = 0;
-    // Wait All computational streams
-    for (auto p : places_) {
-      platform::DeviceContextPool::Instance().Get(p)->Wait();
+  bool stream_end = false;
+  if (!fetch_tensors.empty()) {
+    WaitComputationalStreams();
+    stream_end = true;
+  }
+
+  if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
+    if (!stream_end) {
+      WaitComputationalStreams();
     }
+
     for (auto &scope : local_scopes_) {
       auto &local_scope =
           *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
       scope->DeleteScope(local_scope);
     }
+
+    drop_scope_counter_ = 0;
   }
   if (eptr) {
     std::rethrow_exception(eptr);

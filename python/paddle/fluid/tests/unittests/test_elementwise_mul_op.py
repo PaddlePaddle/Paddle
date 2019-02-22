@@ -135,5 +135,10 @@ class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
         }
 
 
+class TestElementwiseMulOpFp16(ElementwiseMulOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
 if __name__ == '__main__':
     unittest.main()

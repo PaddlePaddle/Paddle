@@ -235,7 +235,6 @@ class DistSeResneXt2x2(TestDistRunnerBase):
 
         bd = [step * e for e in epochs]
         base_lr = 0.1
-        lr = []
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
 
         optimizer = fluid.optimizer.Momentum(

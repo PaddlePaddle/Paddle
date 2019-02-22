@@ -14,8 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/optimizers/momentum_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     momentum, ops::MomentumOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MomentumOpKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::MomentumOpKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::MomentumOpKernel<paddle::platform::CUDADeviceContext,
+                          paddle::platform::float16>);

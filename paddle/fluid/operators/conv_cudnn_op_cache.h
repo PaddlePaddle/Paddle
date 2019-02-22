@@ -19,6 +19,10 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/platform/cudnn_helper.h"
 
+DECLARE_uint64(conv_workspace_size_limit);
+DECLARE_bool(cudnn_exhaustive_search);
+DECLARE_int64(cudnn_exhaustive_search_times);
+
 namespace paddle {
 namespace operators {
 
@@ -45,6 +49,7 @@ static constexpr size_t kNUM_CUDNN_BWD_DATA_ALGS = 5;
 template <typename TAlgorithm>
 class AlgorithmsCache {
  public:
+  AlgorithmsCache() : search_times_(0) { hash_.clear(); }
   // Caches the best algorithm for a given
   // combination of tensor dimensions & compute data type.
   TAlgorithm GetAlgorithm(
@@ -54,9 +59,14 @@ class AlgorithmsCache {
       int algorithmFlags,  // can set for different data type
       std::function<TAlgorithm()> gen_func);
 
+  TAlgorithm GetAlgorithm(int64_t area, int search_times, int algorithmFlags,
+                          std::function<TAlgorithm()> gen_func);
+
  private:
   std::unordered_map<int64_t, TAlgorithm> hash_;
   std::mutex mutex_;
+
+  int search_times_;
 };
 
 template <typename TAlgorithm>
@@ -105,6 +115,30 @@ TAlgorithm AlgorithmsCache<TAlgorithm>::GetAlgorithm(
     hash_[seed] = value;
   }
   return hash_[seed];
+}
+
+template <typename TAlgorithm>
+TAlgorithm AlgorithmsCache<TAlgorithm>::GetAlgorithm(
+    int64_t area, int search_times, int algorithmFlags,
+    std::function<TAlgorithm()> gen_func) {
+  if (hash_.find(area) != hash_.end()) {
+    return hash_[area];
+  }
+  if (search_times_ < search_times) {
+    auto algo = gen_func();
+    hash_[area] = algo;
+    ++search_times_;
+    return algo;
+  }
+  TAlgorithm algo;
+  int64_t min = static_cast<uint64_t>(INT_MAX);
+  for (const auto& m : hash_) {
+    if (m.first < min) {
+      min = m.first;
+      algo = m.second;
+    }
+  }
+  return algo;
 }
 
 }  // namespace operators

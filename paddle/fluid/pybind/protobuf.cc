@@ -228,7 +228,7 @@ void BindBlockDesc(pybind11::module *m) {
 
 void BindVarDsec(pybind11::module *m) {
   pybind11::class_<pd::VarDesc> var_desc(*m, "VarDesc", "");
-  var_desc
+  var_desc.def(pybind11::init<const std::string &>())
       .def("name", &pd::VarDesc::Name, pybind11::return_value_policy::reference)
       .def("set_name", &pd::VarDesc::SetName)
       .def("set_shape", &pd::VarDesc::SetShape)
@@ -328,7 +328,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("infer_var_type", &pd::OpDesc::InferVarType)
       .def("set_is_target", &pd::OpDesc::SetIsTarget)
       .def("serialize_to_string", SerializeMessage<pd::OpDesc>)
-      .def("block", &pd::OpDesc::Block,
+      .def("block", [](pd::OpDesc &self) { return self.Block(); },
            pybind11::return_value_policy::reference);
 }
 

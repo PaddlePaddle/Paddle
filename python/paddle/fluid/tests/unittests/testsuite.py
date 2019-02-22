@@ -137,9 +137,9 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
     var_dict = {}
     for var_proto in proto_list:
         var_name = str(var_proto.name)
+        if (var_name not in np_list) and var_proto.dispensable:
+            continue
         if is_input:
-            if (var_name not in np_list) and var_proto.dispensable:
-                continue
             assert (var_name in np_list) or (var_proto.dispensable), \
                 "Missing {} as input".format(var_name)
         if var_proto.duplicable:

@@ -19,7 +19,6 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -75,6 +74,8 @@ class NativePaddlePredictor : public PaddlePredictor {
   // Do not use unique_ptr, use parent scope to delete
   framework::Scope *sub_scope_{nullptr};
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;
+  // A mutex to make Clone thread safe.
+  std::mutex clone_mutex_;
 };
 
 }  // namespace paddle

@@ -64,6 +64,7 @@ bool DataFeed::PickOneFile(std::string* filename) {
     return false;
   }
   *filename = filelist_[file_idx_++];
+  LOG(ERROR) << "pick file:" << *filename;
   return true;
 }
 

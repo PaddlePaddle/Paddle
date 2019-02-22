@@ -37,8 +37,16 @@ class TopkKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
     auto* indices = ctx.Output<Tensor>("Indices");
-    // k is determined by Attr
-    const size_t k = static_cast<int>(ctx.Attr<int>("k"));
+
+    size_t k = static_cast<int>(ctx.Attr<int>("k"));
+    auto* k_t = ctx.Input<Tensor>("K");
+    if (k_t) {
+      k = k_t->data<int>()[0];
+      framework::DDim output_dims = output->dims();
+      output_dims[output_dims.size() - 1] = k;
+      output->Resize(output_dims);
+      indices->Resize(output_dims);
+    }
 
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
     int64_t* indices_data = indices->mutable_data<int64_t>(ctx.GetPlace());

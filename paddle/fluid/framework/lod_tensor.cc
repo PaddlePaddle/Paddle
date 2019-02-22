@@ -54,13 +54,14 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
 
 std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
   if (!platform::is_cpu_place(t.place())) {
-    LoDTensor tt;
-    framework::TensorCopy(t, platform::CPUPlace(), &tt);
+    LoDTensor cpu_tensor;
+    cpu_tensor.set_lod(t.lod());
+    framework::TensorCopy(t, platform::CPUPlace(), &cpu_tensor);
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(t.place());
     dev_ctx.Wait();
 
-    os << tt;
+    os << cpu_tensor;
     return os;
   }
 
@@ -157,13 +158,8 @@ bool CheckLoD(const LoD &in, int tensor_height) {
     if (level.size() < 2) return false;
     // check: the first offset(the begin offset) of each level should be 0.
     if (level.front() != 0) return false;
-    // check: all the offsets in a level should be ascending(no same items
-    // allows).
-    if (!std::is_sorted(level.begin(), level.begin(), [](size_t a, size_t b) {
-          if (a < b) return true;
-          return false;
-        })) {
-      LOG(INFO) << "ascending error";
+    // check: all the offsets in a level should be ascending(allow same items)
+    if (!std::is_sorted(level.begin(), level.end())) {
       return false;
     }
   }

@@ -19,7 +19,7 @@ namespace paddle {
 namespace platform {
 
 #if CUDA_VERSION >= 10000
-static void CUDART_CB StreamCallbackFunc(void *user_data);
+static void CUDART_CB StreamCallbackFunc(void *user_data)
 #else
 static void CUDART_CB StreamCallbackFunc(cudaStream_t stream,
                                          cudaError_t status, void *user_data)

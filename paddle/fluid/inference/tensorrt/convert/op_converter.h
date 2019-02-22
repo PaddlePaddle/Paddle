@@ -103,6 +103,7 @@ class OpConverter {
   void ConvertBlock(const framework::proto::BlockDesc& block,
                     const std::unordered_set<std::string>& parameters,
                     const framework::Scope& scope, TensorRTEngine* engine) {
+    std::unique_lock<std::mutex> lk(mut_);
     for (int i = 0; i < block.ops_size(); i++) {
       const auto& op = block.ops(i);
       ConvertOp(op, parameters, scope, engine);
@@ -125,6 +126,7 @@ class OpConverter {
   std::unordered_map<std::string, OpConverter*> converters_;
   // fluid inference scope
   framework::Scope* scope_{nullptr};
+  std::mutex mut_;
 };
 
 }  // namespace tensorrt

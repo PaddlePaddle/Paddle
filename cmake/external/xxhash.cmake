@@ -56,7 +56,12 @@ else()
 endif()
 
 if (WIN32)
-  set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/xxhash.lib")
+  IF(NOT EXISTS "${XXHASH_INSTALL_DIR}/lib/libxxhash.lib")
+    add_custom_command(TARGET extern_xxhash POST_BUILD
+            COMMAND cmake -E copy ${XXHASH_INSTALL_DIR}/lib/xxhash.lib ${XXHASH_INSTALL_DIR}/lib/libxxhash.lib
+            )
+  ENDIF()
+  set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/libxxhash.lib")
 else()
   set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/libxxhash.a")
 endif ()
@@ -66,14 +71,3 @@ add_library(xxhash STATIC IMPORTED GLOBAL)
 set_property(TARGET xxhash PROPERTY IMPORTED_LOCATION ${XXHASH_LIBRARIES})
 include_directories(${XXHASH_INCLUDE_DIR})
 add_dependencies(xxhash extern_xxhash)
-
-LIST(APPEND external_project_dependencies xxhash)
-
-IF(WITH_C_API)
-  INSTALL(DIRECTORY ${XXHASH_INCLUDE_DIR} DESTINATION third_party/xxhash)
-  IF(ANDROID)
-    INSTALL(FILES ${XXHASH_LIBRARIES} DESTINATION third_party/xxhash/lib/${ANDROID_ABI})
-  ELSE()
-    INSTALL(FILES ${XXHASH_LIBRARIES} DESTINATION third_party/xxhash/lib)
-  ENDIF()
-ENDIF()

@@ -34,7 +34,7 @@ extern void* warpctc_dso_handle;
 #define DYNAMIC_LOAD_WARPCTC_WRAP(__name)                                      \
   struct DynLoad__##__name {                                                   \
     template <typename... Args>                                                \
-    auto operator()(Args... args) -> decltype(__name(args...)) {               \
+    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {           \
       using warpctcFunc = decltype(&::__name);                                 \
       std::call_once(warpctc_dso_flag, []() {                                  \
         warpctc_dso_handle = paddle::platform::dynload::GetWarpCTCDsoHandle(); \

@@ -29,7 +29,7 @@ class TestGetTensorFromSelectedRows(unittest.TestCase):
 
     def check_with_place(self, place):
         scope = core.Scope()
-        x_rows = [0, 5, 5, 4, 20]
+        x_rows = [0, 5, 5, 4, 19]
         height = 20
         row_numel = 2
 

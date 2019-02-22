@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
+from paddle.fluid import compiler
 import paddle.fluid.core as core
 import numpy as np
 import threading
@@ -188,18 +189,18 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
-            startup_exe = fluid.Executor(place)
-            startup_exe.run(startup_program)
+            exe = fluid.Executor(place)
+            exe.run(startup_program)
 
+            train_cp = compiler.CompiledProgram(main_program)
             if use_parallel_executor:
-                main_exe = fluid.ParallelExecutor(use_cuda, loss_name=loss.name)
+                train_cp = train_cp.with_data_parallel(loss_name=loss.name)
                 if use_cuda:
                     self.batch_size_times = core.get_cuda_device_count()
                 else:
                     self.batch_size_times = int(
                         os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
             else:
-                main_exe = startup_exe
                 self.batch_size_times = 1
 
             reader = self.tensor_reader(use_decorate_paddle_reader)
@@ -209,16 +210,23 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
             else:
                 thread = threading.Thread(
                     target=feed_data, args=(feed_queue, reader))
+                thread.daemon = True
                 thread.start()
 
             self.outputs = []
             for _ in range(self.iterations):
-                fetches = main_exe.run(fetch_list=[in_data.name, label.name])
+                fetches = exe.run(train_cp,
+                                  fetch_list=[in_data.name, label.name])
                 fetches = [as_numpy(fetch) for fetch in fetches]
                 self.outputs.append(fetches)
 
             feed_queue.close()
             self.validate()
+            if use_decorate_paddle_reader:
+                py_reader.exited = True
+                py_reader.thread.join()
+            else:
+                thread.join()
 
     def validate(self):
         self.assertEqual(len(self.inputs), len(self.outputs))

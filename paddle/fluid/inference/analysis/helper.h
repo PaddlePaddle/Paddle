@@ -17,6 +17,7 @@ limitations under the License. */
 #include <sys/stat.h>
 #include <cstdio>
 #include <fstream>
+#include <set>
 #include <string>
 #include <typeindex>
 #include <unordered_map>
@@ -27,6 +28,18 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/port.h"
+
+#ifdef _WIN32
+#include <direct.h>
+#include <io.h>
+#define GCC_ATTRIBUTE(attr__)
+#define MKDIR(path) _mkdir(path)
+#else
+#include <unistd.h>
+#define GCC_ATTRIBUTE(attr__) __attribute__((attr__));
+#define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
+#endif
+#define __SHOULD_USE_RESULT__ GCC_ATTRIBUTE(warn_unused_result)
 
 namespace paddle {
 namespace inference {
@@ -154,6 +167,54 @@ static bool PathExists(const std::string &path) {
     }
   }
   return false;
+}
+
+static std::string GetDirRoot(const std::string &path) {
+  char sep = '/';
+
+#ifdef _WIN32
+  sep = '\\';
+#endif
+
+  size_t i = path.rfind(sep, path.length());
+  if (i != std::string::npos) {
+    return (path.substr(0, i));
+  }
+  return path;
+}
+
+static std::string GetOrCreateModelOptCacheDir(const std::string &model_root) {
+  std::string opt_cache_dir = model_root + "/_opt_cache/";
+  if (!PathExists(opt_cache_dir)) {
+    PADDLE_ENFORCE(MKDIR(opt_cache_dir.c_str()) != -1,
+                   "Can not create optimize cache directory: %s, Make sure you "
+                   "have permission to write",
+                   opt_cache_dir);
+  }
+  return opt_cache_dir;
+}
+
+static std::string GetTrtCalibPath(const std::string &model_root,
+                                   const std::string &engine_key) {
+  return model_root + "/trt_calib_" + engine_key;
+}
+
+// If there is no calib table data file in model_opt_cache_dir, return "".
+static std::string GetTrtCalibTableData(const std::string &model_opt_cache_dir,
+                                        const std::string &engine_key,
+                                        bool enable_int8) {
+  std::string trt_calib_table_path =
+      GetTrtCalibPath(model_opt_cache_dir, engine_key);
+  if (enable_int8 && FileExists(trt_calib_table_path)) {
+    VLOG(3) << "Calibration table file: " << trt_calib_table_path
+            << "is found here";
+    std::ifstream infile(trt_calib_table_path, std::ios::in);
+    std::stringstream buffer;
+    buffer << infile.rdbuf();
+    std::string calibration_data(buffer.str());
+    return calibration_data;
+  }
+  return "";
 }
 
 }  // namespace analysis
