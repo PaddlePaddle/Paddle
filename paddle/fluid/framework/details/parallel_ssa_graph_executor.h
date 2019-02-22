@@ -46,7 +46,6 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<Scope *> local_scopes_;
   std::unique_ptr<::ThreadPool> pool_{nullptr};
   std::vector<platform::Place> places_;
-  framework::ProgramDesc main_prog_;
   std::vector<std::unique_ptr<ir::Graph>> graphs_;
 
   std::vector<std::unique_ptr<details::ThreadedSSAGraphExecutor>> executors_;

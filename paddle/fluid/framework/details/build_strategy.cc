@@ -183,7 +183,6 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
   // Create a default one if not finalized by user.
   CreatePassesFromStrategy(false);
 
-  std::vector<OpDesc *> all_ops = graph->OriginProgram().Block(0).AllOps();
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
@@ -201,33 +200,12 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Erase("nccl_ctxs");
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
-    } else if (pass->Type() == "memory_optimize_pass") {
-      if (graph->Has(kAllOpDescs)) {
-        graph->Erase(kAllOpDescs);
-      }
-
-      graph->SetNotOwned<const std::vector<OpDesc *>>(kAllOpDescs, &all_ops);
-
-      pass->Erase(kAllOpDescs);
-      pass->SetNotOwned<const std::vector<OpDesc *>>(kAllOpDescs, &all_ops);
-
     } else if (pass->Type() == "sequential_execution_pass") {
       LOG(INFO) << "set enable_sequential_execution:"
                 << enable_sequential_execution_;
-
-      pass->Erase(kAllOpDescs);
-      pass->SetNotOwned<const std::vector<OpDesc *>>(kAllOpDescs, &all_ops);
     } else if (pass->Type() == "all_reduce_deps_pass") {
       LOG(INFO) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
                 << ", num_trainers:" << num_trainers_;
-
-      pass->Erase(kAllOpDescs);
-      pass->SetNotOwned<const std::vector<OpDesc *>>(kAllOpDescs, &all_ops);
-    } else if (pass->Type() == "inplace_pass") {
-      if (graph->Has(kAllOpDescs)) {
-        graph->Erase(kAllOpDescs);
-      }
-      graph->SetNotOwned<const std::vector<OpDesc *>>(kAllOpDescs, &all_ops);
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
       if (!use_cuda) {
         LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
