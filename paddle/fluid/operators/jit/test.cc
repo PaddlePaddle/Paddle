@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
 #include <random>
 #include <string>
 #include <vector>
@@ -36,13 +37,13 @@ void RandomVec(const int n, T* a, const T lower = static_cast<T>(-20.f),
 }
 
 template <typename T>
-void ExpectEQ(const T* target, const T* refer, int n) {
+void ExpectEQ(const T* target, const T* refer, size_t n) {
   if (std::is_floating_point<T>::value) {
-    for (int i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i) {
       EXPECT_NEAR(target[i], refer[i], FLAGS_acc);
     }
   } else {
-    for (int i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i) {
       EXPECT_EQ(target[i], refer[i]);
     }
   }
@@ -293,6 +294,45 @@ struct TestFuncWithRefer<jit::EmbSeqPoolTuples<T>, std::vector<T>,
     T* o_data = out.data();
     tgt(table_data, idx_data, o_data, &attr);
     ExpectEQ<T>(o_data, oref_data, o_w);
+  }
+};
+
+template <typename T>
+struct TestFuncWithRefer<jit::SgdTuples<T>, T, std::vector<T>, std::vector<T>,
+                         std::vector<int64_t>, std::vector<T>,
+                         typename jit::SgdTuples<T>::attr_type> {
+  void operator()(const typename jit::SgdTuples<T>::func_type tgt, const T lr,
+                  const std::vector<T>& param, const std::vector<T>& grad,
+                  const std::vector<int64_t>& rows, const std::vector<T>& oref,
+                  const typename jit::SgdTuples<T>::attr_type& attr) {
+    EXPECT_TRUE(tgt != nullptr);
+    EXPECT_EQ(param.size(),
+              static_cast<size_t>(attr.param_height * attr.param_width));
+    EXPECT_EQ(grad.size(),
+              static_cast<size_t>(attr.grad_height * attr.grad_width));
+    EXPECT_EQ(rows.size(), static_cast<size_t>(attr.selected_rows_size));
+    EXPECT_EQ(param.size(), oref.size());
+    const T* param_data = param.data();
+    const T* grad_data = grad.data();
+    const int64_t* rows_data = rows.data();
+    const T* oref_data = oref.data();
+
+    std::vector<T> out(oref.size());
+    T* o_data = out.data();
+    tgt(&lr, param_data, grad_data, rows_data, o_data, &attr);
+    // only the selected rows should be equal
+    for (size_t i = 0; i < rows.size(); ++i) {
+      ExpectEQ<T>(o_data + rows[i] * attr.grad_width,
+                  oref_data + rows[i] * attr.grad_width, attr.grad_width);
+    }
+
+    // inplace
+    std::copy(param.begin(), param.end(), out.begin());
+    tgt(&lr, o_data, grad_data, rows_data, o_data, &attr);
+    for (size_t i = 0; i < rows.size(); ++i) {
+      ExpectEQ<T>(o_data + rows[i] * attr.grad_width,
+                  oref_data + rows[i] * attr.grad_width, attr.grad_width);
+    }
   }
 };
 
@@ -705,6 +745,60 @@ void TestEmbSeqPoolKernel() {
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
+void TestSgdKernel() {
+  VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
+  const T lr = 0.1;
+  auto UnDuplicatedRandomVec = [](int n, const int64_t lower,
+                                  const int64_t upper) -> std::vector<int64_t> {
+    PADDLE_ENFORCE_LE(static_cast<size_t>(upper - lower), n - 1);
+    PADDLE_ENFORCE_GT(n, 0);
+    std::vector<int64_t> all, out;
+    for (int i = 0; i < n; ++i) {
+      all.push_back(i);
+    }
+    std::random_shuffle(all.begin(), all.end());
+    out.insert(out.begin(), all.begin(), all.begin() + n);
+    return out;
+  };
+  for (int param_h : {1, 10}) {
+    for (int grad_w : TestSizes()) {
+      std::vector<T> param(param_h * grad_w);
+      std::vector<T> param_out(param_h * grad_w);
+      RandomVec<T>(param_h * grad_w, param.data(), -2.f, 2.f);
+      const T* param_data = param.data();
+      T* out_data = param_out.data();
+      for (int rows_size = 1; rows_size <= param_h; ++rows_size) {
+        std::vector<T> grad(rows_size * grad_w);
+        std::vector<int64_t> rows =
+            UnDuplicatedRandomVec(rows_size, 0, rows_size - 1);
+        RandomVec<T>(rows_size * grad_w, grad.data(), -2.f, 2.f);
+        const int64_t* rows_data = rows.data();
+        const T* grad_data = grad.data();
+        auto ref = jit::GetRefer<KT, jit::SgdTuples<T>>();
+        EXPECT_TRUE(ref != nullptr);
+        jit::sgd_attr_t attr(param_h, grad_w, rows_size, grad_w, rows_size);
+        ref(&lr, param_data, grad_data, rows_data, out_data, &attr);
+
+        // inplace test
+        std::vector<T> inp(param.size());
+        std::copy(param.begin(), param.end(), inp.begin());
+        T* inp_data = inp.data();
+        ref(&lr, inp_data, grad_data, rows_data, inp_data, &attr);
+        // only the selected rows should be equal
+        for (int i = 0; i < rows_size; ++i) {
+          ExpectEQ<T>(inp_data + rows[i] * grad_w, out_data + rows[i] * grad_w,
+                      grad_w);
+        }
+
+        TestAllImpls<KT, jit::SgdTuples<T>, PlaceType, T, std::vector<T>,
+                     std::vector<T>, std::vector<int64_t>, std::vector<T>>(
+            attr, lr, param, grad, rows, param_out, attr);
+      }
+    }
+  }
+}
+
+template <jit::KernelType KT, typename T, typename PlaceType>
 void TestNCHW16CMulNCKernel() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   const int n = 3, c = 16 * 4, h = 10, w = 10;
@@ -941,6 +1035,11 @@ TEST(JITKernel, kSoftmax) {
 TEST(JITKernel, kEmbSeqPool) {
   TestEmbSeqPoolKernel<jit::kEmbSeqPool, float, CPUPlace>();
   TestEmbSeqPoolKernel<jit::kEmbSeqPool, double, CPUPlace>();
+}
+
+TEST(JITKernel, kSgd) {
+  TestSgdKernel<jit::kSgd, float, CPUPlace>();
+  TestSgdKernel<jit::kSgd, double, CPUPlace>();
 }
 
 TEST(JITKernel, kNCHW16CMulNC) {
