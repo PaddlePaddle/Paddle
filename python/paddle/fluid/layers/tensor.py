@@ -567,7 +567,7 @@ def ones(shape, dtype, force_cpu=False):
     It also sets *stop_gradient* to True.
 
     Args:
-        shape(tuple|list|None): Shape of output tensor
+        shape(tuple|list): Shape of output tensor
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
 
     Returns:
@@ -578,6 +578,10 @@ def ones(shape, dtype, force_cpu=False):
 
           data = fluid.layers.ones(shape=[1], dtype='int64')
     """
+    assert isinstance(shape, list) or isinstance(
+        shape, tuple), "The shape's type should be list or tuple."
+    assert reduce(lambda x, y: x * y,
+                  shape) > 0, "The shape is invalid: %s." % (str(shape))
     return fill_constant(value=1.0, **locals())
 
 
