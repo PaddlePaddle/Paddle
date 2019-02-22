@@ -267,7 +267,7 @@ Example:
        hend &= hstart + ksize[0] \\
        wstart &= j * strides[1] - paddings[1] \\
        wend &= wstart + ksize[1] \\
-       Output(i ,j) &= \\frac{sum(Input[hstart:hend, wstart:wend])}{ksize[0] * ksize[1]}
+       Output(i ,j) &= \frac{sum(Input[hstart:hend, wstart:wend])}{ksize[0] * ksize[1]}
 
   For exclusive = true:
 
@@ -277,7 +277,7 @@ Example:
        hend &= min(H, hstart + ksize[0]) \\
        wstart &= max(0, j * strides[1] - paddings[1]) \\
        wend &= min(W, wstart + ksize[1]) \\
-       Output(i ,j) &= \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
+       Output(i ,j) &= \frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
 
   For adaptive = true:
 
@@ -287,7 +287,7 @@ Example:
        hend &= ceil((i + 1) * H_{in} / H_{out}) \\
        wstart &= floor(j * W_{in} / W_{out}) \\
        wend &= ceil((j + 1) * W_{in} / W_{out}) \\
-       Output(i ,j) &= \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
+       Output(i ,j) &= \frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
 )DOC");
 }
 
@@ -426,7 +426,7 @@ Example:
       hend &= hstart + ksize[1] \\
       wstart &= k * strides[2] - paddings[2] \\
       wend &= wstart + ksize[2] \\
-      Output(i ,j, k) &= \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{ksize[0] * ksize[1] * ksize[2]}
+      Output(i ,j, k) &= \frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{ksize[0] * ksize[1] * ksize[2]}
 
   For exclusive = true:
 
@@ -437,7 +437,7 @@ Example:
       hend &= min(H, hstart + ksize[1]) \\
       wstart &= max(0, k * strides[2] - paddings[2]) \\
       wend &= min(W, wstart + ksize[2]) \\
-      Output(i ,j, k) &= \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
+      Output(i ,j, k) &= \frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
 
   For adaptive = true:
 
@@ -449,7 +449,7 @@ Example:
       hend &= ceil((j + 1) * H_{in} / H_{out}) \\
       wstart &= floor(k * W_{in} / W_{out}) \\
       wend &= ceil((k + 1) * W_{in} / W_{out}) \\
-      Output(i ,j, k) &= \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
+      Output(i ,j, k) &= \frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
 
 )DOC");
 }
