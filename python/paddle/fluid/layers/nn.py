@@ -10354,8 +10354,8 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
   takes the similarity matrix of anchor and positive as logits.
 
   Args:
-    anchor(Variable): embedding vector for the anchor image. shape=[batch_size, embedding_dims]
-    positive(Variable): embedding vector for the positive image. shape=[batch_size, embedding_dims]
+    anchor(Variable): 2-D tensor, embedding vector for the anchor image. shape=[batch_size, embedding_dims]
+    positive(Variable): 2-D tensor, embedding vector for the positive image. shape=[batch_size, embedding_dims]
     labels(Varieble): 1-D tensor. shape=[batch_size]
     l2_res(float32): L2 regularization term on embedding vector, default: 0.02
 
