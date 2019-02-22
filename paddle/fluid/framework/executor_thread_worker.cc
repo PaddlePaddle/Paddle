@@ -13,12 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/executor_thread_worker.h"
+#include <stdio_ext.h>
 #include <algorithm>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 
 #include "gflags/gflags.h"
+#include "paddle/fluid/framework/common/fs.h"
+#include "paddle/fluid/framework/common/shell.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
@@ -244,6 +247,8 @@ void ExecutorThreadWorker::TrainFilesWithTimer() {
   platform::SetNumThreads(1);
   SetDevice();
   thread_reader_->Start();
+  exit(0);
+  /*
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
   for (auto& op : ops_) {
@@ -287,13 +292,14 @@ void ExecutorThreadWorker::TrainFilesWithTimer() {
     }
     timeline.Start();
   }
+  */
 }
 
 void ExecutorThreadWorker::TrainFiles() {
   platform::SetNumThreads(1);
 
   // todo: configurable
-  SetDevice();
+  // SetDevice();
 
   int fetch_var_num = fetch_var_names_.size();
   fetch_values_.clear();
