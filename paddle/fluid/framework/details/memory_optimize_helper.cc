@@ -129,7 +129,13 @@ size_t NodeSize(const VarDesc& node) {
 }
 
 size_t NodeSize(ir::Node* n) {
-  auto* desc = FindVarDescInBlock(n);
+  VarDesc* desc = nullptr;
+  // some op do not have block pointer
+  if (n->inputs[0]->Op() != nullptr) {
+    desc = FindVarDescInBlock(n);
+  } else {
+    desc = n->Var();
+  }
   return NodeSize(*desc);
 }
 
