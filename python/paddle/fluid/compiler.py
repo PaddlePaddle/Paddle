@@ -198,7 +198,6 @@ class CompiledProgram(object):
         if self._build_strategy.enable_inplace is None:
             self._build_strategy.enable_inplace = False if self._program and self._program._is_mem_optimized else True
 
-
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
         if self._program and self._build_strategy.num_trainers > 1 and \
@@ -219,26 +218,13 @@ class CompiledProgram(object):
 
         places = list(map(_place_obj, self._places))
 
-        # FIXME(Yancey1989): parallel graph mode get better performance
-        # in GPU allreduce distributed training. Need an elegant way to
-        # choice the execution strategy.
-        enable_parallel_graph = \
-            core._enable_parallel_graph_execution(self._graph,
-                                                  self._exec_strategy,
-                                                  self._build_strategy) and \
-            self._program  # only supported if compile program not graph.
-
-        self._pe_graphs = [self._graph]
-        if enable_parallel_graph:
-            for _ in range(len(places) - 1):
-                self._pe_graphs.append(core.Graph(self._program_desc))
-
-        return core.ParallelExecutor(
+        pe = core.ParallelExecutor(
             places,
-            set(self._persistable_vars), self._pe_graphs,
+            set(self._persistable_vars),
             cpt.to_text(self._loss_name)
             if self._loss_name else six.u(''), self._scope, self._local_scopes,
-            self._exec_strategy, self._build_strategy)
+            self._exec_strategy, self._build_strategy, self._graph)
+        return pe
 
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)
