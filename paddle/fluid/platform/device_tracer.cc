@@ -530,7 +530,7 @@ class DeviceTracerImpl : public DeviceTracer {
   std::forward_list<KernelRecord> kernel_records_;
   std::forward_list<MemRecord> mem_records_;
   std::forward_list<std::forward_list<CPURecord>> cpu_records_;
-  std::forward_list<MemInfoRecord> mem_info_record_;
+  std::vector<MemInfoRecord> mem_info_record_;
   std::forward_list<std::forward_list<std::pair<uint32_t, Event *>>>
       correlations_pairs;
   std::unordered_map<uint32_t, Event *> correlations_;
