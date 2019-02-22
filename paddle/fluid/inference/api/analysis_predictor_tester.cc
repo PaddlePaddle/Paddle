@@ -214,8 +214,8 @@ TEST(AnalysisPredictor, memory_optim) {
   {
     // The first predictor help to cache the memory optimize strategy.
     auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
-    LOG(INFO) << "serialized program: " << predictor->GetSeriazlizedProgram();
-    ASSERT_FALSE(predictor->GetSeriazlizedProgram().empty());
+    LOG(INFO) << "serialized program: " << predictor->GetSerializedProgram();
+    ASSERT_FALSE(predictor->GetSerializedProgram().empty());
 
     // Run several times to check the parameters are not reused by mistake.
     for (int i = 0; i < 5; i++) {
