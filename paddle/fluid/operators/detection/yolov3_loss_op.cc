@@ -156,8 +156,8 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
          second(channel) dimension, apart from 4 box location coordinates x, y, w, h, 
          also includes confidence score of the box and class one-hot key of each anchor box.
 
-         Assume the 4 location coordinates is :math:`t_x, t_y, t_w, t_h`, the box predictions
-         should be following:
+         Assume the 4 location coordinates are :math:`t_x, t_y, t_w, t_h`, the box predictions
+         should be as follows:
 
          $$
          b_x = \\sigma(t_x) + c_x
@@ -172,12 +172,12 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
          b_h = p_h e^{t_h}
          $$
 
-         In the equaltion above, :math:`c_x, c_y` is the left top corner of current grid
+         In the equation above, :math:`c_x, c_y` is the left top corner of current grid
          and :math:`p_w, p_h` is specified by anchors.
 
          As for confidence score, it is the logistic regression value of IoU between
          anchor boxes and ground truth boxes, the score of the anchor box which has 
-         the max IoU should be 1, and if the anchor box has IoU bigger then ignore 
+         the max IoU should be 1, and if the anchor box has IoU bigger than ignore 
          thresh, the confidence score loss of this anchor box will be ignored.
 
          Therefore, the yolov3 loss consist of three major parts, box location loss,
@@ -192,13 +192,13 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
 
          In order to trade off box coordinate losses between big boxes and small 
          boxes, box coordinate losses will be mutiplied by scale weight, which is
-         calculated as follow.
+         calculated as follows.
 
          $$
          weight_{box} = 2.0 - t_w * t_h
          $$
 
-         Final loss will be represented as follow.
+         Final loss will be represented as follows.
 
          $$
          loss = (loss_{xy} + loss_{wh}) * weight_{box}
