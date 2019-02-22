@@ -668,7 +668,11 @@ def dynamic_lstmp(input,
                   candidate_activation='tanh',
                   proj_activation='tanh',
                   dtype='float32',
-                  name=None):
+                  name=None,
+                  h_0=None,
+                  c_0=None,
+                  cell_clip=None,
+                  proj_clip=None):
     """
     **Dynamic LSTMP Layer**
 
@@ -785,6 +789,17 @@ def dynamic_lstmp(input,
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
+        h_0(Variable): The initial hidden state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size and D is the projection size.
+        c_0(Variable): The initial cell state is an optional input, default is zero.
+                       This is a tensor with shape (N x D), where N is the
+                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
+        cell_clip(float): If provided the cell state is clipped
+                             by this value prior to the cell output activation.
+        proj_clip(float): If `num_proj > 0` and `proj_clip` is
+                            provided, then the projected values are clipped elementwise to within
+                            `[-proj_clip, proj_clip]`.
 
     Returns:
         tuple: A tuple of two output variable: the projection of hidden state, \
@@ -831,25 +846,41 @@ def dynamic_lstmp(input,
     batch_hidden = helper.create_variable_for_type_inference(dtype)
     batch_gate = helper.create_variable_for_type_inference(dtype)
     batch_cell_pre_act = helper.create_variable_for_type_inference(dtype)
+    inputs = {
+        'Input': input,
+        'Weight': weight,
+        'ProjWeight': proj_weight,
+        'Bias': bias
+    }
+    batch_size = input.shape[0]
+    if h_0:
+        assert h_0.shape == (batch_size, proj_size), \
+            'The shape of h0 should be (batch_size, %d)' % proj_size
+        inputs['H0'] = h_0
+    if c_0:
+        assert c_0.shape == (batch_size, size), \
+            'The shape of c0 should be (batch_size, %d)' % size
+        inputs['C0'] = c_0
+
+    if cell_clip:
+        assert cell_clip >= 0, "cell_clip should not be negtive."
+    if proj_clip:
+        assert proj_clip >= 0, "proj_clip should not be negtive."
 
     helper.append_op(
         type='lstmp',
-        inputs={
-            'Input': input,
-            'Weight': weight,
-            'ProjWeight': proj_weight,
-            'Bias': bias
-        },
+        inputs=inputs,
         outputs={
             'Projection': projection,
             'Cell': cell,
-            'OrderedP0': ordered_proj0,
             'BatchHidden': batch_hidden,
             'BatchGate': batch_gate,
             'BatchCellPreAct': batch_cell_pre_act
         },
         attrs={
             'use_peepholes': use_peepholes,
+            'cell_clip': cell_clip,
+            'proj_clip': proj_clip,
             'is_reverse': is_reverse,
             'gate_activation': gate_activation,
             'cell_activation': cell_activation,
