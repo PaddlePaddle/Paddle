@@ -74,7 +74,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   void SetMkldnnThreadID(int tid);
 
-  std::string GetSeriazlizedProgram() const override;
+  std::string GetSerializedProgram() const override;
 
  protected:
   // For memory optimization.
