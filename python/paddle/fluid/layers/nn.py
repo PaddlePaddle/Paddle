@@ -2600,7 +2600,27 @@ def adaptive_pool2d(input,
                     require_index=False,
                     name=None):
     """
-    ${comment}
+    **Adaptive Pool2d Operator**
+    The adaptive_pool2d operation calculates the output based on the input, pool_size,
+    pool_type parameters. Input(X) and output(Out) are in NCHW format, where N is batch
+    size, C is the number of channels, H is the height of the feature, and W is
+    the width of the feature. Parameters(pool_size) should contain two elements which
+    represent height and width, respectively. Also the H and W dimensions of output(Out)
+    is same as Parameter(pool_size).
+
+    For average adaptive pool2d:
+
+    ..  math::
+
+       hstart &= floor(i * H_{in} / H_{out})
+
+       hend &= ceil((i + 1) * H_{in} / H_{out})
+
+       wstart &= floor(j * W_{in} / W_{out})
+
+       wend &= ceil((j + 1) * W_{in} / W_{out})
+
+       Output(i ,j) &= \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
 
     Args:
         input (Variable): The input tensor of pooling operator. The format of
@@ -2610,8 +2630,8 @@ def adaptive_pool2d(input,
         pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
         pool_type: ${pooling_type_comment}
-        require_index (bool): If true, the index of max pooling point along with outputs.
-            it cannot be set in average pooling type.
+        require_index (bool): If true, the index of max pooling point will be returned along
+            with outputs. It cannot be set in average pooling type.
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
 
@@ -2692,18 +2712,42 @@ def adaptive_pool3d(input,
                     require_index=False,
                     name=None):
     """
-    ${comment}
+    **Adaptive Pool3d Operator**
+    The adaptive_pool3d operation calculates the output based on the input, pool_size,
+    pool_type parameters. Input(X) and output(Out) are in NCDHW format, where N is batch
+    size, C is the number of channels, D is the depth of the feature, H is the height of
+    the feature, and W is the width of the feature. Parameters(pool_size) should contain
+    three elements which represent height and width, respectively. Also the D, H and W
+    dimensions of output(Out) is same as Parameter(pool_size).
+
+    For average adaptive pool3d:
+
+    ..  math::
+
+      dstart &= floor(i * D_{in} / D_{out})
+
+      dend &= ceil((i + 1) * D_{in} / D_{out})
+
+      hstart &= floor(j * H_{in} / H_{out})
+
+      hend &= ceil((j + 1) * H_{in} / H_{out})
+
+      wstart &= floor(k * W_{in} / W_{out})
+
+      wend &= ceil((k + 1) * W_{in} / W_{out})
+
+      Output(i ,j, k) &= \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
 
     Args:
         input (Variable): The input tensor of pooling operator. The format of
-                          input tensor is NCHW, where N is batch size, C is
-                          the number of channels, H is the height of the
-                          feature, and W is the width of the feature.
+                          input tensor is NCDHW, where N is batch size, C is
+                          the number of channels, D is the depth of the feature,
+                          H is the height of the feature, and W is the width of the feature.
         pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain two integers, (Depth, Height, Width).
+            it must contain three integers, (Depth, Height, Width).
         pool_type: ${pooling_type_comment}
-        require_index (bool): If true, the index of max pooling point along with outputs.
-            it cannot be set in average pooling type.
+        require_index (bool): If true, the index of max pooling point will be returned along
+            with outputs. It cannot be set in average pooling type.
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
 
@@ -2740,7 +2784,7 @@ def adaptive_pool3d(input,
               name='data', shape=[3, 32, 32], dtype='float32')
           pool_out, mask = fluid.layers.adaptive_pool3d(
                             input=data,
-                            pool_size=[3, 3],
+                            pool_size=[3, 3, 3],
                             pool_type='avg')
     """
     if pool_type not in ["max", "avg"]:
