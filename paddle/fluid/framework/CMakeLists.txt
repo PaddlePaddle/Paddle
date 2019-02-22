@@ -22,7 +22,7 @@ endfunction()
 
 add_subdirectory(ir)
 add_subdirectory(details)
-add_subdirectory(common)
+add_subdirectory(io)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(async_executor_proto SRCS data_feed.proto)

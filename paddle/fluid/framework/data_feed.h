@@ -21,12 +21,12 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
-#include "paddle/fluid/framework/common/ps_string.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -115,6 +115,7 @@ class DataFeed {
   bool finish_init_;
   static bool finish_set_filelist_;
   bool finish_start_;
+  std::string pipe_command_;
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.
@@ -154,7 +155,7 @@ class PrivateQueueDataFeed : public DataFeed {
   std::ifstream file_;
   std::shared_ptr<FILE> fp_;
   size_t queue_size_;
-  LineFileReader reader_;
+  string::LineFileReader reader_;
   // The queue for store parsed data
   std::unique_ptr<paddle::operators::reader::BlockingQueue<T>> queue_;
 };

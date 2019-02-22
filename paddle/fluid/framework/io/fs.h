@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 #include "glog/logging.h"
-#include "paddle/fluid/framework/common/ps_string.h"
-#include "paddle/fluid/framework/common/shell.h"
+#include "paddle/fluid/framework/io/shell.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
