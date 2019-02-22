@@ -26,8 +26,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle_analysis_config.h"  // NOLINT
-#include "paddle_api.h"              // NOLINT
+#include "paddle_analysis_config.h"   // NOLINT
+#include "paddle_api.h"               // NOLINT
+#include "paddle_quantizer_config.h"  // NOLINT
 #ifdef WITH_ANAKIN
 #include "paddle_anakin_config.h"  // NOLINT
 #endif

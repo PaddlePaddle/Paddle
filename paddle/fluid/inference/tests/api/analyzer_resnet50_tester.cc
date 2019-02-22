@@ -94,6 +94,25 @@ TEST(Analyzer_resnet50, compare_determine) {
                        input_slots_all);
 }
 
+TEST(Analyzer_resnet50, quantization) {
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  auto warmup_data =
+      std::make_shared<std::vector<PaddleTensor>>(input_slots_all[0]);
+
+  AnalysisConfig cfg;
+  SetConfig(static_cast<AnalysisConfig *>(&cfg));
+  cfg.EnableMKLDNN();
+  cfg.EnableQuantizer();
+  cfg.quantizer_config()->SetWarmupData(warmup_data);
+  cfg.quantizer_config()->SetWarmupBatchSize(
+      warmup_data->front().shape.front());
+  cfg.quantizer_config()->SetEnabledOpTypes({"conv2d", "pool2d"});
+
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
+
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

@@ -212,6 +212,10 @@ void Pool2dOpMaker::Make() {
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<bool>("use_quantizer", "(bool, default false) Only used on CPU")
+      .SetDefault(false);
+  AddAttr<bool>("quantized", "(bool, default false) Only used on CPU")
+      .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
+#include <map>
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -55,14 +57,20 @@ void IRPassManager::CreatePasses(Argument *argument,
                                   ".dot";
       pass->Set("graph_viz_path", new std::string(std::move(dot_file_path)));
       pass_num++;
-    }
-    if (pass_name == "mkldnn_placement_pass") {
+    } else if (pass_name == "mkldnn_placement_pass") {
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(
                     argument->mkldnn_enabled_op_types()));
-    }
-
-    if (pass_name == "tensorrt_subgraph_pass") {
+    } else if (pass_name == "cpu_quantize_placement_pass") {
+      pass->Set("quantize_enabled_op_types",
+                new std::unordered_set<std::string>(
+                    argument->quantize_enabled_op_types()));
+    } else if (pass_name == "cpu_quantize_pass") {
+      using VarQuantMaxAndScale =
+          std::map<std::string, std::pair<QuantMax, framework::LoDTensor>>;
+      pass->Set("quant_var_scales",
+                new VarQuantMaxAndScale(argument->quant_var_scales()));
+    } else if (pass_name == "tensorrt_subgraph_pass") {
       pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
       pass->Set("min_subgraph_size",
