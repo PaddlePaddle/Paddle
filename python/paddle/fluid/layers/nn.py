@@ -185,6 +185,7 @@ __all__ = [
     'teacher_student_sigmoid_loss',
     'huber_loss',
     'tree_conv',
+    'npair_loss',
 ]
 
 kIgnoreIndex = -100
@@ -10340,3 +10341,51 @@ def tree_conv(nodes_vector,
     else:
         pre_activation = out
     return helper.append_activation(pre_activation)
+
+
+def npair_loss(anchor, positive, labels, l2_reg=0.002):
+    '''
+  **Npair Loss Layer**
+  
+  see http://www.nec-labs.com/uploads/images/Department-Images/MediaAnalytics/papers/nips16_npairmetriclearning.pdf
+
+  Npair loss requires paired data. Npair loss has two parts, the first part is L2 
+  regularizer on the embedding vector, the second part is cross entropy loss which
+  takes the similarity matrix of anchor and positive as logits.
+
+  Args:
+    anchor(Variable): embedding vector for the anchor image. shape=[batch_size, embedding_dims]
+    positive(Variable): embedding vector for the positive image. shape=[batch_size, embedding_dims]
+    labels(Varieble): 1-D tensor. shape=[batch_size]
+    l2_res(float32): L2 regularization term on embedding vector, default: 0.02
+
+  Returns:
+    npair loss(Variable): return npair loss, shape=[1]
+
+  Examples:
+    .. code-block:: python
+
+       npair_loss = fluid.layers.npair_loss(anchor, positive, labels, l2_reg)
+  '''
+
+    batch_size = labels.shape[0]
+
+    labels = reshape(labels, shape=[batch_size, 1], inplace=True)
+    labels = expand(labels, expand_times=[1, batch_size])
+
+    from .control_flow import equal
+    from .ops import square
+
+    labels = equal(labels, transpose(labels, perm=[1, 0])).astype('float32')
+    labels = labels / reduce_sum(labels, dim=1, keep_dim=True)
+
+    l2loss = reduce_mean(reduce_sum(square(anchor), 1)) \
+             + reduce_mean(reduce_sum(square(positive), 1))
+
+    similarity_matrix = matmul(
+        anchor, positive, transpose_x=False, transpose_y=True)
+    softmax_value = softmax(similarity_matrix)
+    cross_entropy = -1 * reduce_sum(labels * log(softmax_value), 0)
+    celoss = reduce_mean(cross_entropy)
+
+    return l2loss * 0.25 * l2_reg + celoss
