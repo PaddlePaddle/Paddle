@@ -260,14 +260,19 @@ Example:
        $$
 
   For exclusive = false:
+
   ..  math::
+
        hstart &= i * strides[0] - paddings[0] \\
        hend &= hstart + ksize[0] \\
        wstart &= j * strides[1] - paddings[1] \\
        wend &= wstart + ksize[1] \\
        Output(i ,j) &= \\frac{sum(Input[hstart:hend, wstart:wend])}{ksize[0] * ksize[1]}
+
   For exclusive = true:
+
   ..  math::
+
        hstart &= max(0, i * strides[0] - paddings[0]) \\
        hend &= min(H, hstart + ksize[0]) \\
        wstart &= max(0, j * strides[1] - paddings[1]) \\
@@ -275,7 +280,9 @@ Example:
        Output(i ,j) &= \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
 
   For adaptive = true:
+
   ..  math::
+
        hstart &= floor(i * H_{in} / H_{out}) \\
        hend &= ceil((i + 1) * H_{in} / H_{out}) \\
        wstart &= floor(j * W_{in} / W_{out}) \\
@@ -410,7 +417,9 @@ Example:
        $$
 
   For exclusive = false:
+
   ..  math::
+
       dstart &= i * strides[0] - paddings[0] \\
       dend &= dstart + ksize[0] \\
       hstart &= j * strides[1] - paddings[1] \\
@@ -418,8 +427,11 @@ Example:
       wstart &= k * strides[2] - paddings[2] \\
       wend &= wstart + ksize[2] \\
       Output(i ,j, k) &= \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{ksize[0] * ksize[1] * ksize[2]}
+
   For exclusive = true:
+
   ..  math::
+
       dstart &= max(0, i * strides[0] - paddings[0]) \\
       dend &= min(D, dstart + ksize[0]) \\
       hend &= min(H, hstart + ksize[1]) \\
@@ -428,7 +440,9 @@ Example:
       Output(i ,j, k) &= \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
 
   For adaptive = true:
+
   ..  math::
+
       dstart &= floor(i * D_{in} / D_{out}) \\
       dend &= ceil((i + 1) * D_{in} / D_{out}) \\
       hstart &= floor(j * H_{in} / H_{out}) \\
