@@ -26,6 +26,14 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+namespace details {
+
+// This attr is not recommended, because the graph should not dependence
+// the program once it is built.
+constexpr char kAllOpDescs[] = "all_op_descs";
+}  //  namespace details
+
 namespace ir {
 
 /*
@@ -168,10 +176,13 @@ class Graph {
     return ret;
   }
 
-  void RemoveNode(ir::Node *node) {
+  std::unique_ptr<ir::Node> RemoveNode(ir::Node *node) {
     PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
-    node_set_.erase(node);
+    std::unique_ptr<ir::Node> ret;
+    ret.reset(nodes_.at(node).release());
     nodes_.erase(node);
+    node_set_.erase(node);
+    return ret;
   }
 
   // NOTE low performance, but simple and secure.
@@ -184,13 +195,6 @@ class Graph {
     return nullptr;
   }
 
-  void ResolveHazard(
-      const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
-
- private:
-  std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
-      const ProgramDesc &program);
-
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
     PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
@@ -198,6 +202,13 @@ class Graph {
     node_set_.insert(node);
     return node;
   }
+
+  void ResolveHazard(
+      const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
+
+ private:
+  std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
+      const ProgramDesc &program);
 
   // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc program_;

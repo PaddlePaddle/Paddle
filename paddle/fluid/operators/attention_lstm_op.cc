@@ -293,7 +293,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
       int len = x_lod[0][i + 1] - x_lod[0][i];
       max_seq_len = max_seq_len < len ? len : max_seq_len;
     }
-    PADDLE_ENFORCE_EQ(x_lod.size(), 1, "Input(X)'s lod size must be 1.");
+    PADDLE_ENFORCE_EQ(x_lod.size(), 1UL, "Input(X)'s lod size must be 1.");
     PADDLE_ENFORCE_EQ(c0->dims()[0], N, "C0 dims should be %d x %d.", N, D);
     fc_out->Resize({max_seq_len, 1});
 

@@ -392,7 +392,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
   VLOG(3) << "create AnalysisConfig";
   if (config.use_gpu()) {
-    // 1. GPU memeroy
+    // 1. GPU memory
     PADDLE_ENFORCE_GT(config.memory_pool_init_size_mb(), 0.f);
     PADDLE_ENFORCE_GE(config.gpu_device_id(), 0, "Invalid device id %d",
                       config.gpu_device_id());
@@ -726,7 +726,7 @@ bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
   return need;
 }
 
-std::string AnalysisPredictor::GetSeriazlizedProgram() const {
+std::string AnalysisPredictor::GetSerializedProgram() const {
   return inference_program_->Proto()->SerializeAsString();
 }
 
