@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
@@ -59,12 +60,13 @@ class TensorRTEngine {
   };
 
   TensorRTEngine(int max_batch, int max_workspace, bool enable_int8 = false,
-                 TRTInt8Calibrator* calibrator = nullptr,
+                 TRTInt8Calibrator* calibrator = nullptr, int device_id = 0,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
         enable_int8_(enable_int8),
         calibrator_(calibrator),
+        device_id_(device_id),
         logger_(logger) {}
 
   ~TensorRTEngine() {}
@@ -78,6 +80,7 @@ class TensorRTEngine {
   // Initialize the inference network, so that TensorRT layers can add to this
   // network.
   void InitNetwork() {
+    freshDeviceId();
     infer_builder_.reset(createInferBuilder(&logger_));
     infer_network_.reset(infer_builder_->createNetwork());
   }
@@ -113,20 +116,11 @@ class TensorRTEngine {
   }
 
   void Deserialize(const std::string& engine_serialized_data) {
-    infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
-    infer_engine_.reset(
-        runtime->deserializeCudaEngine(engine_serialized_data.c_str(),
-                                       engine_serialized_data.size(), nullptr));
-    PADDLE_ENFORCE(infer_engine_ != nullptr,
-                   "build cuda engine failed when deserialize engine info.!");
-    infer_context_.reset(infer_engine_->createExecutionContext());
-  }
-
-  void Deserialize(const nvinfer1::IHostMemory* engine_serialized_data) {
+    freshDeviceId();
     infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
     infer_engine_.reset(runtime->deserializeCudaEngine(
-        engine_serialized_data->data(), engine_serialized_data->size(),
-        nullptr));
+        engine_serialized_data.c_str(), engine_serialized_data.size(),
+        &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
     PADDLE_ENFORCE(infer_engine_ != nullptr,
                    "build cuda engine failed when deserialize engine info.!");
     infer_context_.reset(infer_engine_->createExecutionContext());
@@ -134,6 +128,7 @@ class TensorRTEngine {
 
   void SetRuntimeBatch(size_t batch_size);
   int GetRuntimeBatch();
+  int GetDeviceId() { return device_id_; }
   nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
                                     int num_inputs, plugin::PluginTensorRT*);
 
@@ -146,6 +141,11 @@ class TensorRTEngine {
       weight_map;
 
  private:
+  // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
+  // ensure that the thread is associated with the correct device by calling
+  // freshDeviceId().
+  void freshDeviceId();
+
   // the max batch size
   int max_batch_;
   // the runtime batch size
@@ -158,6 +158,7 @@ class TensorRTEngine {
   // batch size of the current data, will be updated each Executation.
   int batch_size_{-1};
 
+  int device_id_;
   nvinfer1::ILogger& logger_;
 
   // max data size for the buffers.
@@ -216,10 +217,10 @@ class TRTEngineManager {
   // Create or get an engine called `name`
   TensorRTEngine* Create(int max_batch, int max_workspace, bool enable_int8,
                          TRTInt8Calibrator* calibrator,
-                         const std::string& engine_name) {
+                         const std::string& engine_name, int device_id = 0) {
     std::unique_lock<std::mutex> lk(mut_);
-    auto* p =
-        new TensorRTEngine(max_batch, max_workspace, enable_int8, calibrator);
+    auto* p = new TensorRTEngine(max_batch, max_workspace, enable_int8,
+                                 calibrator, device_id);
     engines_[engine_name].reset(p);
     return p;
   }
