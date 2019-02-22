@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -46,6 +47,25 @@ static std::string gethash(const memory::dims& input_dims,
   };
   return dims2str(input_dims) + dims2str(ksize) + dims2str(strides) +
          dims2str(paddings) + std::to_string(dt) + pooling_type + suffix;
+}
+
+std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
+                      const memory::dims& input_dims,
+                      const std::string& pooling_type,
+                      const std::vector<int>& ksize,
+                      const std::vector<int>& strides,
+                      const std::vector<int>& paddings,
+                      const memory::data_type& dt) {
+  std::string key;
+  key.reserve(platform::MKLDNNHandler::MaxKeyLength);
+  platform::MKLDNNHandler::AppendKeyDims(&key, input_dims);
+  platform::MKLDNNHandler::AppendKey(&key, pooling_type);
+  platform::MKLDNNHandler::AppendKeyVec(&key, ksize);
+  platform::MKLDNNHandler::AppendKeyVec(&key, strides);
+  platform::MKLDNNHandler::AppendKeyVec(&key, paddings);
+  platform::MKLDNNHandler::AppendKey(&key, std::to_string(dt));
+  platform::MKLDNNHandler::AppendKey(&key, ctx.op().Output("Out"));
+  return key;
 }
 
 static inline int ComputeCeiledOutput(int input_size, int kernel_size,
@@ -114,8 +134,8 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     mkldnn::memory::data_type dt =
         paddle::framework::ToMKLDNNDataType(input->type());
-    const std::string key = gethash(src_tz, pooling_type, ksize, strides,
-                                    paddings, dt, ctx.op().Output("Out"));
+    const std::string key =
+        CreateKey(ctx, src_tz, pooling_type, ksize, strides, paddings, dt);
     const std::string key_pool_p = key + "@pool_p";
     const std::string key_pool_pd = key + "@pool_pd";
     const std::string key_pool_src_mem_p = key + "@pool_src_mem_p";
