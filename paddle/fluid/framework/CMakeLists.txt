@@ -23,11 +23,9 @@ endfunction()
 
 add_subdirectory(ir)
 add_subdirectory(details)
-<<<<<<< HEAD
 add_subdirectory(fleet)
-=======
 add_subdirectory(common)
->>>>>>> add fs_local_open example
+add_subdirectory(io)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(async_executor_proto SRCS data_feed.proto)

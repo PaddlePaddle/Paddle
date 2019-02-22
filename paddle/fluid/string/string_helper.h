@@ -23,7 +23,7 @@
 #include "glog/logging.h"
 
 namespace paddle {
-namespace framework {
+namespace string {
 
 inline size_t count_spaces(const char* s) {
   size_t count = 0;
@@ -234,5 +234,5 @@ class LineFileReader {
   size_t _buf_size = 0;
   size_t _length = 0;
 };
-}  // end namespace framework
+}  // end namespace string
 }  // end namespace paddle
