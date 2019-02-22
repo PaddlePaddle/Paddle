@@ -41,9 +41,9 @@ std::shared_ptr<FILE> shell_fopen(const std::string& path,
 // Mostly copy from CPython code
 static int close_open_fds_internal() {
   struct linux_dirent {
-    int64 d_ino = 0;
+    long d_ino = 0;  // NOLINT
     off_t d_off;
-    uint16 d_reclen = 0;
+    unsigned short d_reclen = 0;  // NOLINT
     char d_name[256];
   };
 
