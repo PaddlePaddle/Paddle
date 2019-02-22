@@ -20,7 +20,7 @@ namespace framework {
 namespace details {
 
 std::vector<std::unique_ptr<ir::Graph>>
-ParallelSSAGraphExecutor::SeparateMultiDevicesGraph(ir::Graph* graph) {
+ParallelSSAGraphExecutor::SeparateMultiDevicesGraph(ir::Graph *graph) {
   std::vector<std::unique_ptr<ir::Graph>> graphs;
   graphs.reserve(places_.size());
   for (size_t i = 0; i < places_.size(); ++i) {
@@ -76,13 +76,12 @@ ParallelSSAGraphExecutor::SeparateMultiDevicesGraph(ir::Graph* graph) {
 
 ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
-    const framework::ProgramDesc &main_prog, ir::Graph* graph)
+    const std::vector<platform::Place> &places, ir::Graph *graph)
     : strategy_(std::move(strategy)),
       local_scopes_(std::move(local_scopes)),
       pool_(places.size() >= 2 ? new ::ThreadPool(places.size()) : nullptr),
       places_(std::move(places)),
-      main_prog_(main_prog),
+      main_prog_(graph->OriginProgram()),
       // TODO(Yancey1989): Copying graphs is not safely since it deleted the
       // attrs.
       graphs_(SeparateMultiDevicesGraph(graph)) {

@@ -206,8 +206,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
         graph->Erase(kAllOpDescs);
       }
 
-      graph->SetNotOwned<const std::vector<OpDesc *>>(kAllOpDescs,
-                                                      &all_ops);  // take ownership
+      graph->SetNotOwned<const std::vector<OpDesc *>>(kAllOpDescs, &all_ops);
 
       pass->Erase(kAllOpDescs);
       pass->SetNotOwned<const std::vector<OpDesc *>>(kAllOpDescs, &all_ops);
