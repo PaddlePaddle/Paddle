@@ -935,8 +935,7 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
     // 3. CPU && AllReduce: AllReduce all gradient to each thread. Need to
     // broadcast received parameters to other scope.
     // 4. CPU && Reduce: because all parameters share the same memory, did not
-    // broadcast
-    //     received parameters.
+    // broadcast received parameters.
     if (!UseGPU() &&
         strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
       return;
