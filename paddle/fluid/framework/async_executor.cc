@@ -18,8 +18,6 @@ limitations under the License. */
 #include "google/protobuf/text_format.h"
 
 #include "gflags/gflags.h"
-#include "paddle/fluid/framework/common/fs.h"
-#include "paddle/fluid/framework/common/shell.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/executor_thread_worker.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"

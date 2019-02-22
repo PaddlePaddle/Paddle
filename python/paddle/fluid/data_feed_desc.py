@@ -114,6 +114,24 @@ class DataFeedDesc(object):
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
                 name]].is_dense = True
 
+    def set_pipe_command(self, pipe_command):
+        """
+        Pipeline command will be set with this function. In IO runtime, 
+        pipeline command will be executed given user provided input raw
+        files.
+
+        Example:
+            >>> data_feed = fluid.DataFeedDesc('data.proto')
+            >>> data_feed.set_pipe_command('awk -F '\t' '{print $2}'')
+
+        Args:
+            pipe_command: a command string of shell command
+        
+        Note:
+            Default is cat, i.e., cat user's input file list to data feed
+        """
+        self.proto_desc.pipe_command = pipe_command
+
     def set_use_slots(self, use_slots_name):
         """
         Set if a specific slot will be used for training. A dataset shall
