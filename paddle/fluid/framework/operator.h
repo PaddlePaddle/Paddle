@@ -202,8 +202,6 @@ class AlgorithmsCache {
 
  private:
   std::unordered_map<int64_t, TAlgorithm> hash_;
-  std::mutex mutex_;
-
   int search_times_;
 };
 
@@ -213,7 +211,6 @@ TAlgorithm framework::AlgorithmsCache<TAlgorithm>::GetAlgorithm(
     const std::vector<int>& strides, const std::vector<int>& paddings,
     const std::vector<int>& dilations, int algorithmFlags,
     std::function<TAlgorithm()> gen_func) {
-  std::lock_guard<std::mutex> lock(mutex_);
   int64_t seed = 0;
   // Hash all of the inputs, use to try and look up a previously
   // discovered algorithm, or fall back to generating a new one.
