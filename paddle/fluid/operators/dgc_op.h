@@ -123,9 +123,15 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto tmp_ious_data = allocator.Allocate(buf_size);
     void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
+    VLOG(10) << "v_out_data:" << v_out_data << ", u_out_data:" << u_out_data
+             << ", buf:" << buf
+             << ", encode_grad_out_data:" << encode_grad_out_data;
+
+    /*
     PADDLE_ENFORCE(paddle::communication::dgc::k_select(
         static_cast<void*>(encode_grad_out_data), k, v_out_data,
         static_cast<int>(v_out->numel()), buf, dev_ctx.stream(), u_out_data));
+    */
   }
 };
 }  // namespace operators
