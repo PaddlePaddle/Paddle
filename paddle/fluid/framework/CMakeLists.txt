@@ -23,11 +23,9 @@ endfunction()
 
 add_subdirectory(ir)
 add_subdirectory(details)
-<<<<<<< HEAD
 add_subdirectory(fleet)
-=======
 add_subdirectory(common)
->>>>>>> add fs_local_open example
+add_subdirectory(io)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(async_executor_proto SRCS data_feed.proto)
@@ -173,7 +171,6 @@ else()
   set(NGRAPH_EXE_DEPS)
 endif()
 
-<<<<<<< HEAD
 if(WITH_DISTRIBUTE)
   cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog
     lod_rank_table feed_fetch_method sendrecvop_rpc  ${GLOB_DISTRIBUTE_DEPS} graph_to_program_pass variable_helper ${NGRAPH_EXE_DEPS})

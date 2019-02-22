@@ -12,15 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/data_feed.h"
 #include <stdio_ext.h>
+#include "gflags/gflags.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
-
-#include "common/fs.h"
-#include "common/shell.h"
-#include "gflags/gflags.h"
-#include "paddle/fluid/framework/data_feed.h"
+#include "io/fs.h"
+#include "io/shell.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 
@@ -94,24 +93,8 @@ void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
 template <typename T>
 bool PrivateQueueDataFeed<T>::Start() {
   CheckSetFileList();
-  std::string filename;
-  if (PickOneFile(&filename)) {
-    int err_no = 0;
-    std::string pipeline_cmd = "cat";
-
-    std::string path =
-        "/home/users/dongdaxiang/pslib_ctr/local/data_mod/part-00012";
-    fp_ = fs_open_read(path, &err_no, pipeline_cmd);
-    __fsetlocking(&*fp_, FSETLOCKING_BYCALLER);
-    thread_local LineFileReader reader;
-    while (reader.getline(&*(fp_.get()))) {
-      LOG(ERROR) << "read a line";
-    }
-
-    read_thread_ = std::thread(&PrivateQueueDataFeed::ReadThread, this);
-    read_thread_.detach();
-  }
-  queue_->Close();
+  read_thread_ = std::thread(&PrivateQueueDataFeed::ReadThread, this);
+  read_thread_.detach();
 
   finish_start_ = true;
   return true;
@@ -119,10 +102,18 @@ bool PrivateQueueDataFeed<T>::Start() {
 
 template <typename T>
 void PrivateQueueDataFeed<T>::ReadThread() {
-  T instance;
-  while (ParseOneInstanceFromPipe(&instance)) {
-    queue_->Send(instance);
+  std::string filename;
+  while (PickOneFile(&filename)) {
+    int err_no = 0;
+    fp_ = fs_open_read(filename, &err_no, pipe_command_);
+    __fsetlocking(&*fp_, FSETLOCKING_BYCALLER);
+    thread_local string::LineFileReader reader;
+    T instance;
+    while (ParseOneInstanceFromPipe(&instance)) {
+      queue_->Send(instance);
+    }
   }
+  queue_->Close();
 }
 
 template <typename T>
@@ -177,15 +168,26 @@ void MultiSlotDataFeed::Init(
     }
   }
   feed_vec_.resize(use_slots_.size());
+  pipe_command_ = data_feed_desc.pipe_command();
   finish_init_ = true;
 }
 
 void MultiSlotDataFeed::ReadThread() {
-  LOG(ERROR) << "Haha";
-  std::vector<MultiSlotType> instance;
-  while (ParseOneInstanceFromPipe(&instance)) {
-    queue_->Send(instance);
+  std::string filename;
+  while (PickOneFile(&filename)) {
+    int err_no = 0;
+    fp_ = fs_open_read(filename, &err_no, pipe_command_);
+    __fsetlocking(&*fp_, FSETLOCKING_BYCALLER);
+    thread_local string::LineFileReader reader;
+    std::vector<MultiSlotType> instance;
+    int ins_num = 0;
+    while (ParseOneInstanceFromPipe(&instance)) {
+      ins_num++;
+      queue_->Send(instance);
+    }
+    LOG(ERROR) << "filename: " << filename << " inst num: " << ins_num;
   }
+  queue_->Close();
 }
 
 bool MultiSlotDataFeed::CheckFile(const char* filename) {
@@ -301,26 +303,32 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
 
 bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
     std::vector<MultiSlotType>* instance) {
-  LOG(ERROR) << "hehe";
-  thread_local LineFileReader reader;
+  thread_local string::LineFileReader reader;
+  /*
   while (reader.getline(&*(fp_.get()))) {
-    /*
+  */
+  /*
     const char* str = reader.get();
     std::string line = std::string(str);
     LOG(ERROR) << line;
-    */
+  */
+  /*
     LOG(ERROR) << "read a line";
   }
-  return true;
-  /*
-  if (!reader.getline(fp_.get())) {
+  */
+
+  if (!reader.getline(&*(fp_.get()))) {
     return false;
   } else {
     // std::string& line = reader_.get();
     // const char* str = line.c_str();
+
+    int use_slots_num = use_slots_.size();
+    instance->resize(use_slots_num);
+
     const char* str = reader.get();
     std::string line = std::string(str);
-    LOG(ERROR) << line;
+    // LOG(ERROR) << line;
     char* endptr = const_cast<char*>(str);
     int pos = 0;
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
@@ -355,7 +363,6 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
     }
     return true;
   }
-  */
 }
 
 bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {

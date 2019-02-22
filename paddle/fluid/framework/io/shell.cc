@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/common/shell.h"
+#include "paddle/fluid/framework/io/shell.h"
 
 namespace paddle {
 namespace framework {
@@ -282,7 +282,7 @@ std::string shell_get_command_output(const std::string& cmd) {
   do {
     err_no = 0;
     std::shared_ptr<FILE> pipe = shell_popen(cmd, "r", &err_no);
-    LineFileReader reader;
+    string::LineFileReader reader;
 
     if (reader.getdelim(&*pipe, 0)) {
       pipe = nullptr;
@@ -294,5 +294,5 @@ std::string shell_get_command_output(const std::string& cmd) {
 
   return "";
 }
-}  // namespace framework
-}  // namespace paddle
+}  // end namespace framework
+}  // end namespace paddle
