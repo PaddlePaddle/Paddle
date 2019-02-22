@@ -427,7 +427,7 @@ paddle.fluid.optimizer.MomentumOptimizer.__init__ ArgSpec(args=['self', 'learnin
 paddle.fluid.optimizer.MomentumOptimizer.apply_gradients ArgSpec(args=['self', 'params_grads'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.optimizer.MomentumOptimizer.backward ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set', 'callbacks'], varargs=None, keywords=None, defaults=(None, None, None, None))
 paddle.fluid.optimizer.MomentumOptimizer.minimize ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set'], varargs=None, keywords=None, defaults=(None, None, None))
-paddle.fluid.optimizer.AdagradOptimizer.__init__ ArgSpec(args=['self', 'learning_rate', 'epsilon', 'regularization', 'name'], varargs=None, keywords=None, defaults=(1e-06, None, None))
+paddle.fluid.optimizer.AdagradOptimizer.__init__ ArgSpec(args=['self', 'learning_rate', 'epsilon', 'regularization', 'name', 'initial_accumulator_value'], varargs=None, keywords=None, defaults=(1e-06, None, None, 0.0))
 paddle.fluid.optimizer.AdagradOptimizer.apply_gradients ArgSpec(args=['self', 'params_grads'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.optimizer.AdagradOptimizer.backward ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set', 'callbacks'], varargs=None, keywords=None, defaults=(None, None, None, None))
 paddle.fluid.optimizer.AdagradOptimizer.minimize ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set'], varargs=None, keywords=None, defaults=(None, None, None))
