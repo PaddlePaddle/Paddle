@@ -22,6 +22,7 @@ endfunction()
 
 add_subdirectory(ir)
 add_subdirectory(details)
+add_subdirectory(common)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(async_executor_proto SRCS data_feed.proto)
@@ -182,9 +183,9 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         fast_threaded_ssa_graph_executor variable_helper)
 
 if(WITH_PSLIB)
-    cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc executor_thread_worker.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto variable_helper pslib_brpc pslib timer)
+    cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc executor_thread_worker.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto variable_helper pslib_brpc pslib timer fs shell)
 else()
-    cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc executor_thread_worker.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto variable_helper timer)
+    cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc executor_thread_worker.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass async_executor_proto variable_helper timer fs shell)
 endif(WITH_PSLIB)
 
 
