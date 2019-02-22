@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/platform/profiler.h"
+
 #include <algorithm>
 #include <iomanip>
 #include <limits>
@@ -27,7 +29,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/port.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 
 DEFINE_bool(enable_rpc_profiler, false, "Enable rpc profiler or not.");
@@ -66,12 +67,13 @@ struct EventList {
       ((kEventSize + kEventAlign - 1) / kEventAlign * kEventAlign);
 
   template <typename... Args>
-  void Record(Args&&... args) {
+  Event* Record(Args&&... args) {
     if (event_blocks.empty() || event_blocks.front().size() == kNumBlock) {
       event_blocks.emplace_front();
       event_blocks.front().reserve(kNumBlock);
     }
     event_blocks.front().emplace_back(std::forward<Args>(args)...);
+    return &event_blocks.front().back();
   }
 
   std::vector<Event> Reduce() {
@@ -98,21 +100,8 @@ inline uint64_t GetTimeInNsec() {
       .count();
 }
 
-Event::Event(EventType type, std::string name, uint32_t thread_id,
-             const DeviceContext* dev_ctx)
-    : type_(type), name_(name), thread_id_(thread_id), has_cuda_(false) {
-#ifdef PADDLE_WITH_CUDA
-  has_cuda_ = dev_ctx ? platform::is_gpu_place(dev_ctx->GetPlace()) : false;
-  if (has_cuda_) {
-    auto* cuda_dev_ctx = static_cast<const CUDADeviceContext*>(dev_ctx);
-    PADDLE_ENFORCE(cudaSetDevice(
-        boost::get<platform::CUDAPlace>(cuda_dev_ctx->GetPlace()).device));
-    PADDLE_ENFORCE(cudaGetDevice(&device_));
-    PADDLE_ENFORCE(cudaEventCreate(&event_));
-    auto stream = cuda_dev_ctx->stream();
-    PADDLE_ENFORCE(cudaEventRecord(event_, stream));
-  }
-#endif
+Event::Event(EventType type, std::string name, uint32_t thread_id)
+    : type_(type), name_(name), thread_id_(thread_id) {
   cpu_ns_ = GetTimeInNsec();
 }
 
@@ -123,31 +112,13 @@ double Event::CpuElapsedMs(const Event& e) const {
 }
 
 double Event::CudaElapsedMs(const Event& e) const {
-#ifdef PADDLE_WITH_CUDA
-  if (!has_cuda_) return 0.0;
-  PADDLE_ENFORCE(e.has_cuda() && has_cuda());
-  PADDLE_ENFORCE(e.device() == device());
-  PADDLE_ENFORCE(cudaEventSynchronize(event_));
-  PADDLE_ENFORCE(cudaEventSynchronize(e.event()));
-  float ms;
-  PADDLE_ENFORCE(cudaEventElapsedTime(&ms, event_, e.event()));
-  return ms;
+#ifdef PADDLE_WITH_CUPTI
+  return gpu_ns_ / 1000000.0;
 #else
-  PADDLE_THROW("CUDA is not enabled");
+  LOG_FIRST_N(WARNING, 1) << "CUDA CUPTI is not enabled";
+  return 0;
 #endif
 }
-
-#ifdef PADDLE_WITH_CUDA
-static void ForEachDevice(std::function<void(int)> func) {
-  auto original_device = GetCurrentDeviceId();
-  int count = GetCUDADeviceCount();
-  for (int i = 0; i < count; i++) {
-    SetDeviceId(i);
-    func(i);
-  }
-  SetDeviceId(original_device);
-}
-#endif
 
 inline EventList& GetEventList() {
   if (!g_event_list) {
@@ -155,57 +126,56 @@ inline EventList& GetEventList() {
     g_event_list = std::make_shared<EventList>();
     g_thread_id = g_next_thread_id++;
     g_all_event_lists.emplace_front(g_event_list);
+    RecoreCurThreadId(g_thread_id);
   }
   return *g_event_list;
 }
 
-void Mark(const std::string& name, const DeviceContext* dev_ctx) {
-  GetEventList().Record(EventType::kMark, name, g_thread_id, dev_ctx);
+void Mark(const std::string& name) {
+  GetEventList().Record(EventType::kMark, name, g_thread_id);
 }
 
-void PushEvent(const std::string& name, const DeviceContext* dev_ctx) {
-  GetEventList().Record(EventType::kPushRange, name, g_thread_id, dev_ctx);
+Event* PushEvent(const std::string& name) {
+  return GetEventList().Record(EventType::kPushRange, name, g_thread_id);
 }
 
-void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
-  GetEventList().Record(EventType::kPopRange, name, g_thread_id, dev_ctx);
+void PopEvent(const std::string& name) {
+  GetEventList().Record(EventType::kPopRange, name, g_thread_id);
 }
 
-RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
+RecordEvent::RecordEvent(const std::string& name)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
   if (g_state == ProfilerState::kDisabled) return;
-  std::lock_guard<std::mutex> l(profiler_mu);
+  // lock is not needed, the code below is thread-safe
 
   is_enabled_ = true;
-  dev_ctx_ = dev_ctx;
   name_ = name;
-  PushEvent(name_, dev_ctx_);
+  Event* e = PushEvent(name_);
   // Maybe need the same push/pop behavior.
-  SetCurAnnotation(name_);
+  SetCurAnnotation(e);
 }
 
 RecordEvent::~RecordEvent() {
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
-  std::lock_guard<std::mutex> l(profiler_mu);
+  // lock is not needed, the code below is thread-safe
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
-    tracer->AddCPURecords(CurAnnotation(), start_ns_, PosixInNsec(),
+    tracer->AddCPURecords(CurAnnotationName(), start_ns_, PosixInNsec(),
                           BlockDepth(), g_thread_id);
   }
   ClearCurAnnotation();
-  PopEvent(name_, dev_ctx_);
+  PopEvent(name_);
 }
 
-RecordRPCEvent::RecordRPCEvent(const std::string& name,
-                               const DeviceContext* dev_ctx) {
+RecordRPCEvent::RecordRPCEvent(const std::string& name) {
   if (FLAGS_enable_rpc_profiler) {
-    event_.reset(new platform::RecordEvent(name, dev_ctx));
+    event_.reset(new platform::RecordEvent(name));
   }
 }
 
 RecordBlock::RecordBlock(int block_id)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
-  std::lock_guard<std::mutex> l(profiler_mu);
+  // lock is not needed, the code below is thread-safe
   if (g_state == ProfilerState::kDisabled) return;
   is_enabled_ = true;
   SetCurBlock(block_id);
@@ -213,7 +183,7 @@ RecordBlock::RecordBlock(int block_id)
 }
 
 RecordBlock::~RecordBlock() {
-  std::lock_guard<std::mutex> l(profiler_mu);
+  // lock is not needed, the code below is thread-safe
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
@@ -225,11 +195,21 @@ RecordBlock::~RecordBlock() {
   ClearCurBlock();
 }
 
+void SynchronizeAllDevice() {
+#ifdef PADDLE_WITH_CUDA
+  int count = GetCUDADeviceCount();
+  for (int i = 0; i < count; i++) {
+    SetDeviceId(i);
+    PADDLE_ENFORCE(cudaDeviceSynchronize());
+  }
+#endif
+}
+
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE(state != ProfilerState::kDisabled,
                  "Can't enable profiling, since the input state is ",
                  "ProfilerState::kDisabled");
-
+  SynchronizeAllDevice();
   std::lock_guard<std::mutex> l(profiler_mu);
   if (state == g_state) {
     return;
@@ -238,23 +218,20 @@ void EnableProfiler(ProfilerState state) {
   should_send_profile_state = true;
   GetDeviceTracer()->Enable();
 #ifdef PADDLE_WITH_CUDA
-  if (g_state == ProfilerState::kCUDA) {
+  if (g_state == ProfilerState::kCUDA || g_state == ProfilerState::kAll ||
+      g_state == ProfilerState::kCPU) {
     // Generate some dummy events first to reduce the startup overhead.
-    for (int i = 0; i < 5; i++) {
-      ForEachDevice([](int d) {
-        DeviceContext* dev_ctx = new CUDADeviceContext(CUDAPlace(d));
-        Mark("_cuda_startup_", dev_ctx);
-        dev_ctx->Wait();
-        delete dev_ctx;
-      });
-    }
+    DummyKernelAndEvent();
+    GetDeviceTracer()->Reset();
   }
 #endif
   // Mark the profiling start.
-  Mark("_start_profiler_", nullptr);
+  Mark("_start_profiler_");
 }
 
 void ResetProfiler() {
+  SynchronizeAllDevice();
+  GetDeviceTracer()->Reset();
   std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
   for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
        ++it) {
@@ -481,20 +458,23 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
 
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path) {
+  SynchronizeAllDevice();
   std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled) return;
   // Mark the profiling stop.
-  Mark("_stop_profiler_", nullptr);
+  Mark("_stop_profiler_");
+
+  DeviceTracer* tracer = GetDeviceTracer();
+  if (tracer->IsEnabled()) {
+    tracer->Disable();
+    tracer->GenProfile(profile_path);
+    tracer->GenEventKernelCudaElapsedTime();
+  }
 
   std::vector<std::vector<Event>> all_events = GetAllEvents();
   ParseEvents(all_events, true, sorted_key);
   ParseEvents(all_events, false, sorted_key);
   ResetProfiler();
-  DeviceTracer* tracer = GetDeviceTracer();
-  if (tracer->IsEnabled()) {
-    tracer->Disable();
-    tracer->GenProfile(profile_path);
-  }
   g_state = ProfilerState::kDisabled;
   should_send_profile_state = true;
 }

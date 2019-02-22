@@ -70,4 +70,3 @@ ExternalProject_Add(
 ADD_LIBRARY(pslib_brpc SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET pslib_brpc PROPERTY IMPORTED_LOCATION ${PSLIB_BRPC_LIB})
 ADD_DEPENDENCIES(pslib_brpc ${PSLIB_BRPC_PROJECT})
-LIST(APPEND external_project_dependencies pslib_brpc)
