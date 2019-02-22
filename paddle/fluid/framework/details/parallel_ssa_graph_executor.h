@@ -31,8 +31,7 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
   ParallelSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,
                            const std::vector<platform::Place> &places,
-                           const framework::ProgramDesc &main_prog,
-                           ir::Graph* graph);
+                           ir::Graph *graph);
   ~ParallelSSAGraphExecutor() final = default;
 
   const ir::Graph &Graph() const override { return *graphs_[0]; }
@@ -41,7 +40,7 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
 
  private:
   std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
-      ir::Graph* graph);
+      ir::Graph *graph);
 
   ExecutionStrategy strategy_;
   std::vector<Scope *> local_scopes_;
