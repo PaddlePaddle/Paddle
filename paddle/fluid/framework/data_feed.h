@@ -21,6 +21,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
+#include "paddle/fluid/framework/common/ps_string.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/reader.h"
@@ -136,6 +137,7 @@ class PrivateQueueDataFeed : public DataFeed {
   virtual void SetQueueSize(int queue_size);
   // The reading and parsing method called in the ReadThread.
   virtual bool ParseOneInstance(T* instance) = 0;
+  virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
   // This function is used to put instance to vec_ins
   virtual void AddInstanceToInsVec(T* vec_ins, const T& instance,
                                    int index) = 0;
@@ -150,7 +152,9 @@ class PrivateQueueDataFeed : public DataFeed {
   //     ifstream one line and one line parse: 6034 ms
   //     fread one buffer and one buffer parse: 7097 ms
   std::ifstream file_;
+  std::shared_ptr<FILE> fp_;
   size_t queue_size_;
+  LineFileReader reader_;
   // The queue for store parsed data
   std::unique_ptr<paddle::operators::reader::BlockingQueue<T>> queue_;
 };
@@ -228,12 +232,15 @@ class MultiSlotDataFeed
   virtual ~MultiSlotDataFeed() {}
   virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc);
   virtual bool CheckFile(const char* filename);
+  // virtual void ReadThread();
 
  protected:
+  virtual void ReadThread();
   virtual void AddInstanceToInsVec(std::vector<MultiSlotType>* vec_ins,
                                    const std::vector<MultiSlotType>& instance,
                                    int index);
   virtual bool ParseOneInstance(std::vector<MultiSlotType>* instance);
+  virtual bool ParseOneInstanceFromPipe(std::vector<MultiSlotType>* instance);
   virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);
 
  private:
