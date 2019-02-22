@@ -601,6 +601,8 @@ void initCuptiCbidStr() {
   REGISTER_RUNTIME_CBID_STR(cudaStreamSynchronize_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaStreamWaitEvent_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaUnbindTexture_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaSetupArgument_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaLaunch_v3020);
 #if CUDA_VERSION >= 9000
   REGISTER_RUNTIME_CBID_STR(cudaLaunchCooperativeKernel_v9000);
   REGISTER_RUNTIME_CBID_STR(cudaLaunchCooperativeKernelMultiDevice_v9000);

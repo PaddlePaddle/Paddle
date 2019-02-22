@@ -117,7 +117,16 @@ struct RecordBlock {
 std::vector<std::vector<Event>> GetAllEvents();
 
 // Candidate keys to sort the profiling report
-enum EventSortingKey { kDefault, kCalls, kTotal, kMin, kMax, kAve };
+enum EventSortingKey {
+  kDefault,
+  kCalls,
+  kTotal,
+  kMin,
+  kMax,
+  kAve,
+  kCPUTime,
+  kGPUTime
+};
 
 // Enable the profiling function.
 void EnableProfiler(ProfilerState state);
