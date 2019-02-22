@@ -196,6 +196,7 @@ class OpBase {
       : op_desc_(nullptr),
         forward_id_(-1),
         backward_id_(-1),
+        trace_id_(-1),
         place_(platform::CPUPlace()) {}
 
   virtual ~OpBase() {
@@ -216,6 +217,7 @@ class OpBase {
   // Note: each fwd op corresponds to a vector of bwd ops.
   std::vector<framework::OpDesc*> grad_op_descs_;
   int backward_id_;
+  int trace_id_;
 
   platform::Place place_;
 
