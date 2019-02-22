@@ -139,7 +139,7 @@ void ReduceOpHandle::GatherSelectedRows(
 #endif
 
 void ReduceOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
+  platform::RecordEvent record_event(Name());
 
   if (places_.size() == 1) return;
   // the input and output may have dummy var.
@@ -153,7 +153,7 @@ void ReduceOpHandle::RunImpl() {
   {
     auto out_var_handles = DynamicCast<VarHandle>(outputs_);
 
-    PADDLE_ENFORCE_EQ(out_var_handles.size(), 1,
+    PADDLE_ENFORCE_EQ(out_var_handles.size(), 1UL,
                       "The number of output should be one.");
     out_var_handle = out_var_handles.front();
   }
