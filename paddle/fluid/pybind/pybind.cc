@@ -193,6 +193,16 @@ PYBIND11_MODULE(core, m) {
             }
           },
           py::return_value_policy::reference)
+      .def_property("_trace_id",
+                    [](const imperative::OpBase &self) {
+                      pybind11::gil_scoped_release release;
+                      return self.trace_id_;
+                    },
+                    [](imperative::OpBase &self, int trace_id) {
+                      pybind11::gil_scoped_release release;
+                      self.trace_id_ = trace_id;
+                    },
+                    py::return_value_policy::reference)
       .def_property(
           "forward_id",
           [](const imperative::OpBase &self) { return self.forward_id_; },
