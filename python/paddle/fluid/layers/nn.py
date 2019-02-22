@@ -6655,56 +6655,58 @@ def image_resize(input,
 
     Example:
 
-      For scale:
-      
-        if align_corners = True && out_size > 1 :
+    .. code-block:: text
 
-          scale_factor = (in_size-1.0)/(out_size-1.0)
-        
-        else:
+        For scale:
           
-          scale_factor = float(in_size/out_size)
-        
-      
-      Nearest neighbor interpolation:
-      
-      if:
-          align_corners = False
+            if align_corners = True && out_size > 1 :
 
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
-
-          H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
-          W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
-
-      else:
-          align_corners = True
-
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
-
-          H_out = round(H_{in} * scale_{factor})
-          W_out = round(W_{in} * scale_{factor})
-
-      Bilinear interpolation:
-
-      if:
-          align_corners = False , align_mode = 0
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+            
+            else:
+              
+              scale_factor = float(in_size/out_size)
+            
           
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
+        Nearest neighbor interpolation:
           
-          H_out = (H_{in}+0.5) * scale_{factor} - 0.5
-          W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+          if:
+              align_corners = False
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = floor (H_{in} * scale_{factor})
+              W_out = floor (W_{in} * scale_{factor})
+
+          else:
+              align_corners = True
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = round(H_{in} * scale_{factor})
+              W_out = round(W_{in} * scale_{factor})
+
+        Bilinear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
 
-      else:
-       
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
+          else:
+           
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
 
-          H_out = H_{in} * scale_{factor}
-          W_out = W_{in} * scale_{factor}
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
 
     For details of nearest neighbor interpolation, please refer to Wikipedia: 
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
@@ -6865,35 +6867,37 @@ def resize_bilinear(input,
 
     Example:
 
-      For scale:
-      
-        if align_corners = True && out_size > 1 :
+    .. code-block:: text
 
-          scale_factor = (in_size-1.0)/(out_size-1.0)
-        
-        else:
+        For scale:
           
-          scale_factor = float(in_size/out_size)     
+            if align_corners = True && out_size > 1 :
 
-    Bilinear interpolation:
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+            
+            else:
+              
+              scale_factor = float(in_size/out_size)     
 
-      if:
-          align_corners = False , align_mode = 0
-          
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
-          
-          H_out = (H_{in}+0.5) * scale_{factor} - 0.5
-          W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+        Bilinear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
 
-      else:
+          else:
 
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
 
-          H_out = H_{in} * scale_{factor}
-          W_out = W_{in} * scale_{factor}
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
 
 
 
@@ -6951,36 +6955,38 @@ def resize_nearest(input,
 
     Example:
 
-      For scale:
-      
-        if align_corners = True && out_size > 1 :
+    .. code-block:: text
 
-          scale_factor = (in_size-1.0)/(out_size-1.0)
-        
-        else:
+        For scale:
           
-          scale_factor = float(in_size/out_size)
-        
-      
-      Nearest neighbor interpolation:
-      
-      if:
-          align_corners = False
+            if align_corners = True && out_size > 1 :
 
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+            
+            else:
+              
+              scale_factor = float(in_size/out_size)
+            
+          
+        Nearest neighbor interpolation:
+          
+          if:
+              align_corners = False
 
-          H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
-          W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
 
-      else:
-          align_corners = True
+              H_out = floor(H_{in} * scale_{factor})
+              W_out = floor(W_{in} * scale_{factor})
 
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
+          else:
+              align_corners = True
 
-          H_out = round(H_{in} * scale_{factor})
-          W_out = round(W_{in} * scale_{factor})
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = round(H_{in} * scale_{factor})
+              W_out = round(W_{in} * scale_{factor})
 
 
     For details of nearest neighbor interpolation, please refer to Wikipedia:
