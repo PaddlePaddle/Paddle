@@ -44,7 +44,7 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   weight_tensor->Resize(Y_t->dims());
   TensorCopySync((*Y_t), cpu_place, weight_tensor.get());
 
-  auto* weight_data = weight_tensor->mutable_data<float>(platform::CPUPlace());
+  auto* weight_data = weight_tensor->mutable_data<float>(cpu_place);
 
   PADDLE_ENFORCE_EQ(weight_tensor->dims().size(), 4UL);
   const int n_output = weight_tensor->dims()[0];
