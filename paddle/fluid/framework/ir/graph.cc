@@ -77,7 +77,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
     }
   }
   Set<const std::vector<OpDesc *>>(
-      details::kAllOpDescs,
+      details::kStaleProgramOpDescs,
       new std::vector<OpDesc *>(program.Block(0).AllOps()));
   return var_nodes;
 }
