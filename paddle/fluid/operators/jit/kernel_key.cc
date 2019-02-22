@@ -61,6 +61,11 @@ size_t JitCodeKey<emb_seq_pool_attr_t>(const emb_seq_pool_attr_t& attr) {
   return attr.table_width;
 }
 
+template <>
+size_t JitCodeKey<sgd_attr_t>(const sgd_attr_t& attr) {
+  return attr.grad_width;
+}
+
 }  // namespace jit
 }  // namespace operators
 }  // namespace paddle
