@@ -223,8 +223,7 @@ class TestImperativeResnet(unittest.TestCase):
                 batch_size=batch_size)
 
             dy_param_init_value = {}
-            for param in fluid.default_main_program().global_block(
-            ).all_parameters():
+            for param in resnet.parameters():
                 dy_param_init_value[param.name] = param._numpy()
 
             for batch_id, data in enumerate(train_reader()):
@@ -247,16 +246,14 @@ class TestImperativeResnet(unittest.TestCase):
                 dy_out = avg_loss._numpy()
 
                 if batch_id == 0:
-                    for param in fluid.default_main_program().global_block(
-                    ).all_parameters():
+                    for param in resnet.parameters():
                         if param.name not in dy_param_init_value:
                             dy_param_init_value[param.name] = param._numpy()
 
                 avg_loss._backward()
 
                 dy_grad_value = {}
-                for param in fluid.default_main_program().global_block(
-                ).all_parameters():
+                for param in resnet.parameters():
                     if not param.stop_gradient:
                         np_array = np.array(param._ivar._grad_ivar().value()
                                             .get_tensor())
@@ -269,8 +266,7 @@ class TestImperativeResnet(unittest.TestCase):
                 fluid.default_main_program().global_block()._clear_block()
 
                 dy_param_value = {}
-                for param in fluid.default_main_program().global_block(
-                ).all_parameters():
+                for param in resnet.parameters():
                     dy_param_value[param.name] = param._numpy()
 
         with new_program_scope():
@@ -302,11 +298,9 @@ class TestImperativeResnet(unittest.TestCase):
             static_param_init_value = {}
             static_param_name_list = []
             static_grad_name_list = []
-            for param in fluid.default_startup_program().global_block(
-            ).all_parameters():
+            for param in resnet.parameters():
                 static_param_name_list.append(param.name)
-            for param in fluid.default_main_program().global_block(
-            ).all_parameters():
+            for param in resnet.parameters():
                 if not param.stop_gradient:
                     static_grad_name_list.append(param.name +
                                                  core.grad_var_suffix())

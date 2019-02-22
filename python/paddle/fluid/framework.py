@@ -382,6 +382,8 @@ class Variable(object):
             if not self._ivar:
                 self._ivar = core.VarBase(stop_gradient)
             self._ivar.desc = self.desc
+            if persistable:
+                self.block.vars[name] = self
         else:
             self.block.vars[name] = self
         self.op = None
@@ -1188,11 +1190,11 @@ class Block(object):
             raise ValueError("Var {0} is not found recursively".format(name))
 
     def _clear_block(self):
+        # TODO(minqiyang): move this to backward_hooks
         self.desc._clear_block()
 
         for name in self.vars.keys():
-            if not self.vars[name].persistable:
-                del self.vars[name]
+            assert self.vars[name].persistable
 
         del self.ops[:]
 
@@ -1341,11 +1343,8 @@ class Block(object):
         backward_refs = _imperative_tracer().trace(
             op.iop, op.inputs, op.outputs, self.desc,
             _imperative_current_expected_place_, stop_gradient)
-        print("backward_refs", backward_refs)
-        import sys
-        sys.stdout.flush()
 
-        # TODO(minqiyang): support backward hooks to eager remove backward_refs
+        # TODO(minqiyang): support backward_hooks to eager remove backward_refs
         op.backward_refs = defaultdict(list)
         for k, v in six.iteritems(op.inputs):
             if k in backward_refs:
