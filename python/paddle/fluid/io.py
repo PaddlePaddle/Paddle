@@ -766,7 +766,10 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                     dtype=slice_var.dtype,
                     persistable=True)
 
-                dim1_flatten = reduce(lambda x, y: x * y, slice.shape[1:])
+                dim1_flatten = 1
+                if len(slice.shape) >= 2:
+                    dim1_flatten = reduce(lambda x, y: x * y, slice.shape[1:])
+
                 start = int(offset / dim1_flatten)
                 end = int(offset / dim1_flatten + slice.shape[0])
 
