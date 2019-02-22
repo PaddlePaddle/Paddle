@@ -254,9 +254,11 @@ struct EventItem {
   std::string name;
   int calls;
   double total_time;
-  double min_time;
   double max_time;
   double ave_time;
+  double min_time;
+  double cpu_time;
+  double gpu_time;
   float ratio;
 };
 
@@ -290,8 +292,12 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
   // Output events table
   std::cout.setf(std::ios::left);
   std::cout << std::setw(name_width) << "Event" << std::setw(data_width)
-            << "Calls" << std::setw(data_width) << "Total"
-            << std::setw(data_width) << "Min." << std::setw(data_width)
+            << "Calls" << std::setw(data_width) << "Total";
+  if (g_state == ProfilerState::kAll) {
+    std::cout << std::setw(data_width * 2) << "CPU Time (Ratio)"
+              << std::setw(data_width * 2) << "GPU Time (Ratio)";
+  }
+  std::cout << std::setw(data_width) << "Min." << std::setw(data_width)
             << "Max." << std::setw(data_width) << "Ave."
             << std::setw(data_width) << "Ratio." << std::endl;
   for (size_t i = 0; i < events_table.size(); ++i) {
@@ -299,8 +305,18 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
       const EventItem& event_item = events_table[i][j];
       std::cout << std::setw(name_width) << event_item.name
                 << std::setw(data_width) << event_item.calls
-                << std::setw(data_width) << event_item.total_time
-                << std::setw(data_width) << event_item.min_time
+                << std::setw(data_width) << event_item.total_time;
+      if (g_state == ProfilerState::kAll) {
+        std::cout << std::setw(data_width * 2)
+                  << string::Sprintf(
+                         "%f (%f)", event_item.cpu_time,
+                         (event_item.cpu_time / event_item.total_time))
+                  << std::setw(data_width * 2)
+                  << string::Sprintf(
+                         "%f (%f)", event_item.gpu_time,
+                         (event_item.gpu_time / event_item.total_time));
+      }
+      std::cout << std::setw(data_width) << event_item.min_time
                 << std::setw(data_width) << event_item.max_time
                 << std::setw(data_width) << event_item.ave_time
                 << std::setw(data_width) << event_item.ratio << std::endl;
@@ -349,6 +365,18 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
         return a.ave_time > b.ave_time;
       };
       break;
+    case EventSortingKey::kGPUTime:
+      sorted_domain = "average time";
+      sorted_func = [](const EventItem& a, const EventItem& b) {
+        return a.gpu_time > b.gpu_time;
+      };
+      break;
+    case EventSortingKey::kCPUTime:
+      sorted_domain = "average time";
+      sorted_func = [](const EventItem& a, const EventItem& b) {
+        return a.cpu_time > b.cpu_time;
+      };
+      break;
     default:
       sorted_domain = "event first end time";
   }
@@ -387,10 +415,17 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
         }
 
         if (rit != pushed_events.rend()) {
-          double event_time = (g_state == ProfilerState::kCUDA ||
-                               g_state == ProfilerState::kAll)
-                                  ? rit->CudaElapsedMs((*analyze_events)[i][j])
-                                  : rit->CpuElapsedMs((*analyze_events)[i][j]);
+          double event_time = 0;
+          double gpu_time = rit->CudaElapsedMs((*analyze_events)[i][j]);
+          double cpu_time = rit->CpuElapsedMs((*analyze_events)[i][j]);
+          if (g_state == ProfilerState::kCUDA) {
+            event_time = gpu_time;
+          } else if (g_state == ProfilerState::kCPU) {
+            event_time = cpu_time;
+          } else {
+            event_time = gpu_time + cpu_time;
+          }
+
           total += event_time;
 
           std::string event_name;
@@ -407,7 +442,7 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
             event_idx[event_name] = event_items.size();
             EventItem event_item = {event_name, 1,          event_time,
                                     event_time, event_time, event_time,
-                                    0.};
+                                    gpu_time,   cpu_time,   0.};
             event_items.push_back(event_item);
           } else {
             int index = event_idx[event_name];
@@ -420,6 +455,8 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
             // max time
             event_items[index].max_time =
                 std::max(event_time, event_items[index].max_time);
+            event_items[index].gpu_time += gpu_time;
+            event_items[index].cpu_time += cpu_time;
           }
 
           // remove the push marker from the list
