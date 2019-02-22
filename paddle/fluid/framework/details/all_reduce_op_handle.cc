@@ -76,6 +76,7 @@ void AllReduceOpHandle::_RunImplEncoded() {
 
   std::vector<const LoDTensor *> ins;
   std::vector<LoDTensor *> outs;
+  int k = -1;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto &local_scope =
         local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
@@ -86,6 +87,10 @@ void AllReduceOpHandle::_RunImplEncoded() {
     auto *out = local_scope->FindVar(out_var_handles[i]->name())
                     ->GetMutable<LoDTensor>();
     outs.emplace_back(out);
+
+    if (k < 0) {
+      k = GetKValue(in_var_handles[i]->name());
+    }
   }
 
   PADDLE_ENFORCE(platform::is_gpu_place(ins[0]->place()));
@@ -98,6 +103,7 @@ void AllReduceOpHandle::_RunImplEncoded() {
   PADDLE_ENFORCE(ranks_ > 1);
   std::vector<std::function<void()>> all_reduce_calls;
   std::vector<memory::allocation::AllocationPtr> ptrs;
+
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto &place = places_[i];
     auto &in = *ins[i];
@@ -109,7 +115,7 @@ void AllReduceOpHandle::_RunImplEncoded() {
     dtype = (dtype == -1) ? platform::ToNCCLDataType(in.type()) : dtype;
     in_numel = (in_numel == 0) ? static_cast<size_t>(in.numel()) : in_numel;
     PADDLE_ENFORCE(in_numel % 2 == 0);
-    size_t k = in_numel / 2;
+    // size_t k = in_numel / 2;
     out_numel = (out_numel == 0) ? static_cast<size_t>(out.numel()) : out_numel;
 
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
@@ -119,7 +125,7 @@ void AllReduceOpHandle::_RunImplEncoded() {
 
     auto &allocator =
         platform::DeviceTemporaryAllocator::Instance().Get(place, stream);
-    int buf_size = ranks_ * in_numel * sizeof(float);
+    int buf_size = ranks_ * 2 * k * sizeof(float);
     auto tmp_ious_data = allocator.Allocate(buf_size);
     void *gather_buff = reinterpret_cast<void *>(tmp_ious_data->ptr());
     ptrs.emplace_back(std::move(tmp_ious_data));
@@ -170,12 +176,24 @@ void AllReduceOpHandle::_RunImplEncoded() {
 }
 #endif
 
+int AllReduceOpHandle::GetKValue(const std::string &grad_name) {
+  auto var_name = grad_name + "__dgc_k__";
+  PADDLE_ENFORCE(local_scopes_.size() > 0);
+
+  auto *scope = local_scopes_[0];
+  auto &local_scope = scope->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  auto var = local_scope->FindVar(var_name);
+  PADDLE_ENFORCE_NOT_NULL(var);
+  auto tensor = var->Get<LoDTensor>().data<float>();
+  return *tensor;
+}
+
 bool AllReduceOpHandle::IsEncoded() {
   if (!is_encoded_) {
     return false;
   }
   auto counter_name = "__g_dgc_counter__";
-  auto step_name = "__g_rampup_step__";
+  auto step_name = "__g_rampup_begin_step__";
   PADDLE_ENFORCE(local_scopes_.size() > 0);
 
   auto *scope = local_scopes_[0];
@@ -190,6 +208,9 @@ bool AllReduceOpHandle::IsEncoded() {
   float count = *count_var->Get<LoDTensor>().data<float>();
   float step = *step_var->Get<LoDTensor>().data<float>();
   if (count < step) {
+    VLOG(10) << "in all_reduce currentstep:" << count
+             << " < rampup_begin_step:" << step
+             << " so not use sparse all reduce";
     return false;
   }
 

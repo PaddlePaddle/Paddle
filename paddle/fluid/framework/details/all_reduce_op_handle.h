@@ -58,6 +58,7 @@ struct AllReduceOpHandle : public OpHandleBase {
   bool is_encoded_{false};
   int ranks_{-1};
   bool IsEncoded();
+  int GetKValue(const std::string &grad_name);
 #endif
 };
 

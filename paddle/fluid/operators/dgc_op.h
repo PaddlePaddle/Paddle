@@ -57,11 +57,12 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto current_step_tensor = ctx.Input<framework::Tensor>("current_step");
     const float* current_step = current_step_tensor->data<float>();
 
-    if (*current_step < rampup_begin_step) {
-      auto encode_grad_out = ctx.Output<framework::Tensor>("EncodeGrad");
-      encode_grad_out->ShareDataWith(*g);
-      VLOG(10) << "current_step:" << current_step
-               << " < rampup_step:" << rampup_step << " so does't use dgc";
+    if (static_cast<int>(*current_step) < static_cast<int>(rampup_begin_step)) {
+      // auto encode_grad_out = ctx.Output<framework::Tensor>("EncodeGrad");
+      // encode_grad_out->ShareDataWith(*g);
+      VLOG(10) << "current_step:" << *current_step
+               << " < rampup_begin_step:" << rampup_begin_step
+               << " so does't use dgc";
       return;
     }
 
@@ -71,11 +72,14 @@ class DGCOpKernel : public framework::OpKernel<T> {
     int k = static_cast<int>(g->numel() * ratio);
 
     VLOG(10) << "m:" << m << ", use_nesterov:" << use_nesterov
-             << ", sparsity:" << sparsity.size()
              << ", rampup_begin_step:" << rampup_begin_step
              << ", rampup_step:" << rampup_step
              << ",  current_step:" << *current_step << ", ratio:" << ratio
              << ", k:" << k;
+
+    auto k_out = ctx.Output<framework::Tensor>("k");
+    T* k_out_data = k_out->data<T>();
+    *k_out_data = k;
 
     auto u_out = ctx.Output<framework::Tensor>("U_out");
     auto v_out = ctx.Output<framework::Tensor>("V_out");
@@ -108,8 +112,10 @@ class DGCOpKernel : public framework::OpKernel<T> {
 
     T* v_out_data = v_out->mutable_data<T>(ctx.GetPlace());
     T* u_out_data = u_out->mutable_data<T>(ctx.GetPlace());
-    T* encode_grad_out_data = encode_grad_out->mutable_data<T>(
-        framework::DDim{2 * k}, ctx.GetPlace());
+    // T* encode_grad_out_data = encode_grad_out->mutable_data<T>(
+    //   framework::DDim{2 * k}, ctx.GetPlace());
+    PADDLE_ENFORCE(encode_grad_out->numel() >= (2 * k));
+    T* encode_grad_out_data = encode_grad_out->mutable_data<T>(ctx.GetPlace());
 
     int buf_size = paddle::communication::dgc::get_buffer_size(k);
     auto& allocator = platform::DeviceTemporaryAllocator::Instance().Get(

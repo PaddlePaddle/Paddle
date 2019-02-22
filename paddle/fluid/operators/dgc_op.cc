@@ -38,6 +38,8 @@ class DGCOp : public framework::OperatorWithKernel {
                    "Output(U_out) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("V_out"),
                    "Output(V_out) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("k"),
+                   "Output(k) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("EncodeGrad"),
                    "Output(EncodeGrad) of DGCop should not be null.");
 
@@ -50,7 +52,8 @@ class DGCOp : public framework::OperatorWithKernel {
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     VLOG(10) << "dgc inputs for kerneltype:" << var_name;
-    if (var_name == "current_step" || var_name == "rampup_step") {
+    if (var_name == "current_step" || var_name == "rampup_step" ||
+        var_name == "k") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
       return expected_kernel_type;
     }
@@ -78,6 +81,9 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("EncodeGrad",
               "(Tensor) "
               "Output encoded gradient");
+    AddOutput("k",
+              "(Tensor) "
+              "Output top-k value");
 
     AddAttr<float>("m",
                    "(float, 0.9) "
