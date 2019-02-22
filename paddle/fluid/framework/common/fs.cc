@@ -63,15 +63,14 @@ static std::shared_ptr<FILE> fs_open_internal(const std::string& path,
   if (buffer_size > 0) {
     char* buffer = new char[buffer_size];
     CHECK_EQ(0, setvbuf(&*fp, buffer, _IOFBF, buffer_size));
-    fp = {&*fp,
-          [ fp, buffer ] reinterpret_cast<FILE*> mutable {CHECK(fp.unique());
-    fp = nullptr;
-    delete[] buffer;
+    fp = {&*fp, [fp, buffer](FILE*) mutable {  // NOLINT
+            CHECK(fp.unique());                // NOLINT
+            fp = nullptr;
+            delete[] buffer;
+          }};
   }
-};
-}
 
-return fp;
+  return fp;
 }
 
 static bool fs_begin_with_internal(const std::string& path,
