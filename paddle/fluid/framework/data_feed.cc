@@ -12,10 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <stdio_ext.h>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 
+#include "common/fs.h"
+#include "common/shell.h"
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
@@ -64,7 +67,7 @@ bool DataFeed::PickOneFile(std::string* filename) {
     return false;
   }
   *filename = filelist_[file_idx_++];
-  LOG(ERROR) << "pick file:" << *filename;
+  // LOG(ERROR) << "pick file:" << *filename;
   return true;
 }
 
@@ -91,8 +94,24 @@ void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
 template <typename T>
 bool PrivateQueueDataFeed<T>::Start() {
   CheckSetFileList();
-  read_thread_ = std::thread(&PrivateQueueDataFeed::ReadThread, this);
-  read_thread_.detach();
+  std::string filename;
+  while (PickOneFile(&filename)) {
+    int err_no = 0;
+    std::string pipeline_cmd = "cat";
+
+    std::string path =
+        "/home/users/dongdaxiang/pslib_ctr/local/data_mod/part-00012";
+    fp_ = fs_open_read(path, &err_no, pipeline_cmd);
+    __fsetlocking(&*fp_, FSETLOCKING_BYCALLER);
+    thread_local LineFileReader reader;
+    while (reader.getline(&*(fp_.get()))) {
+      LOG(ERROR) << "read a line";
+    }
+
+    read_thread_ = std::thread(&PrivateQueueDataFeed::ReadThread, this);
+    read_thread_.detach();
+  }
+  queue_->Close();
 
   finish_start_ = true;
   return true;
@@ -100,17 +119,10 @@ bool PrivateQueueDataFeed<T>::Start() {
 
 template <typename T>
 void PrivateQueueDataFeed<T>::ReadThread() {
-  std::string filename;
-  while (PickOneFile(&filename)) {
-    file_.open(filename.c_str());  // is_text_feed
-    PADDLE_ENFORCE(file_.good(), "Open file<%s> fail.", filename.c_str());
-    T instance;
-    while (ParseOneInstance(&instance)) {
-      queue_->Send(instance);
-    }
-    file_.close();
+  T instance;
+  while (ParseOneInstanceFromPipe(&instance)) {
+    queue_->Send(instance);
   }
-  queue_->Close();
 }
 
 template <typename T>
@@ -166,6 +178,14 @@ void MultiSlotDataFeed::Init(
   }
   feed_vec_.resize(use_slots_.size());
   finish_init_ = true;
+}
+
+void MultiSlotDataFeed::ReadThread() {
+  LOG(ERROR) << "Haha";
+  std::vector<MultiSlotType> instance;
+  while (ParseOneInstanceFromPipe(&instance)) {
+    queue_->Send(instance);
+  }
 }
 
 bool MultiSlotDataFeed::CheckFile(const char* filename) {
@@ -277,6 +297,65 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
   VLOG(3) << "instances cout: " << instance_cout;
   VLOG(3) << "The file format is correct";
   return true;
+}
+
+bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
+    std::vector<MultiSlotType>* instance) {
+  LOG(ERROR) << "hehe";
+  thread_local LineFileReader reader;
+  while (reader.getline(&*(fp_.get()))) {
+    /*
+    const char* str = reader.get();
+    std::string line = std::string(str);
+    LOG(ERROR) << line;
+    */
+    LOG(ERROR) << "read a line";
+  }
+  return true;
+  /*
+  if (!reader.getline(fp_.get())) {
+    return false;
+  } else {
+    // std::string& line = reader_.get();
+    // const char* str = line.c_str();
+    const char* str = reader.get();
+    std::string line = std::string(str);
+    LOG(ERROR) << line;
+    char* endptr = const_cast<char*>(str);
+    int pos = 0;
+    for (size_t i = 0; i < use_slots_index_.size(); ++i) {
+      int idx = use_slots_index_[i];
+      int num = strtol(&str[pos], &endptr, 10);
+      PADDLE_ENFORCE(
+          num,
+          "The number of ids can not be zero, you need padding "
+          "it in data generator; or if there is something wrong with "
+          "the data, please check if the data contains unresolvable "
+          "characters.\nplease check this error line: %s",
+          str);
+      if (idx != -1) {
+        (*instance)[idx].Init(all_slots_type_[i]);
+        if ((*instance)[idx].GetType()[0] == 'f') {  // float
+          for (int j = 0; j < num; ++j) {
+            float feasign = strtof(endptr, &endptr);
+            (*instance)[idx].AddValue(feasign);
+          }
+        } else if ((*instance)[idx].GetType()[0] == 'u') {  // uint64
+          for (int j = 0; j < num; ++j) {
+            uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
+            (*instance)[idx].AddValue(feasign);
+          }
+        }
+        pos = endptr - str;
+      } else {
+        for (int j = 0; j <= num; ++j) {
+          pos = line.find_first_of(' ', pos + 1);
+        }
+      }
+    }
+    return true;
+  }
+  */
 }
 
 bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
