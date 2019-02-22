@@ -610,7 +610,7 @@ class DGCOptimizer(MomentumOptimizer):
             force_cpu=True)
 
         for param_var, grad_var in param_and_grads:
-            print("prepare  dgc_ops:", param_var.name)
+            #print("prepare  dgc_ops:", param_var.name)
             var_numel = reduce(lambda x, y: x * y, param_var.shape)
             if var_numel < 4096 or \
                 param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
@@ -618,7 +618,7 @@ class DGCOptimizer(MomentumOptimizer):
                     param_var.dtype != core.VarDesc.VarType.FP32 :
                 continue
 
-            print("create u,v of ", param_var.name)
+            #print("create u,v of ", param_var.name)
 
             u_var = tensor.create_global_var(
                 shape=param_var.shape,
@@ -633,15 +633,39 @@ class DGCOptimizer(MomentumOptimizer):
                 name=param_var.name + "__dgc_v__",
                 value=0.0)
 
-            self._dgc_op(grad_var, u_var, v_var)
+            self._dgc_op(param_var, grad_var, u_var, v_var)
+
+            # del back oprolevarname
+            op_maker = core.op_proto_and_checker_maker
+            backward = core.op_proto_and_checker_maker.OpRole.Backward
+            for op in main_program.global_block().ops:
+                if not self._is_the_backward_op(op):
+                    continue
+
+                var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName]
+                if param_var.name not in var_attr:
+                    continue
+
+                print("find param:", param_var.name, " in ", op.type)
+                var_attr.remove(param_var.name)
+                var_attr.remove(grad_var.name)
 
         # Note: don't delete this
         print("set DGC rampup_begin_step:", self._rampup_begin_step,
               ", sparsity:", self._sparsity, ", rampup_step:",
               self._rampup_step)
 
-    def _dgc_op(self, grad_var, u_var, v_var):
+    def _is_the_backward_op(self, op):
+        op_maker = core.op_proto_and_checker_maker
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        if op_maker.kOpRoleVarAttrName in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName]) == int(backward):
+            return True
+        return False
+
+    def _dgc_op(self, param_var, grad_var, u_var, v_var):
         block = framework.default_main_program().global_block()
+        op_maker = core.op_proto_and_checker_maker
         dgc_op = block.append_op(
             type="dgc",
             inputs={
@@ -658,12 +682,14 @@ class DGCOptimizer(MomentumOptimizer):
                 "sparsity": self._sparsity,
                 "use_nesterov": self._use_nesterov,
                 "rampup_begin_step": float(self._rampup_begin_step),
-                "rampup_step": float(self._rampup_step),
+                "rampup_step": float(self._rampup_step)
             },
             stop_gradient=True)
         backward = core.op_proto_and_checker_maker.OpRole.Backward
         op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
         dgc_op._set_attr(op_role_attr_name, backward)
+        dgc_op._set_attr(op_maker.kOpRoleAttrName(),
+                         [param_var.name, grad_var.name])
 
 
 class LarsMomentumOptimizer(Optimizer):

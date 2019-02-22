@@ -199,11 +199,15 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
                                 static_cast<int>(OpRole::kBackward));
           if (!is_bk_op) continue;
 
+          if (!node->Op()->HasAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()))
+            continue;
+
           // Currently, we assume that once gradient is generated, it can be
           // broadcast, and each gradient is only broadcast once.
           auto backward_vars =
               boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
                   OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+          if (backward_vars.size() == 0) continue;
           PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
 
           for (size_t i = 0; i < backward_vars.size(); i += 2) {

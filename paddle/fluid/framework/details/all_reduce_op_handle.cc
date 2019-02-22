@@ -187,8 +187,8 @@ bool AllReduceOpHandle::IsEncoded() {
                    step_var);
   }
 
-  float count = *count_var->Get<Tensor>().data<float>();
-  float step = *step_var->Get<Tensor>().data<float>();
+  float count = *count_var->Get<LoDTensor>().data<float>();
+  float step = *step_var->Get<LoDTensor>().data<float>();
   if (count < step) {
     return false;
   }
