@@ -88,14 +88,12 @@ static std::vector<std::vector<int>> NgraphOpIntervals(
   int pivot = left;
   while (pivot < right) {
     auto op_type = ops.at(pivot)->Type();
-    if (NgraphBridge::NG_NODE_MAP.find(op_type) ==
-        NgraphBridge::NG_NODE_MAP.end()) {
+    if (NgraphBridge::isRegister(op_type)) {
       ++pivot;
     } else {
       int start = pivot, end = start;
       while (pivot < right &&
-             (NgraphBridge::NG_NODE_MAP.find(ops.at(pivot)->Type()) !=
-              NgraphBridge::NG_NODE_MAP.end())) {
+             (!NgraphBridge::isRegister(ops.at(pivot)->Type()))) {
         ++pivot;
         ++end;
       }
