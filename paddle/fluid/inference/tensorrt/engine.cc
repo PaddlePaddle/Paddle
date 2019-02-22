@@ -34,6 +34,7 @@ void TensorRTEngine::Build(const DescType &paddle_model) {
 
 void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
                              cudaStream_t stream) {
+  freshDeviceId();
   batch_size_ = batch_size;
   infer_context_->enqueue(batch_size, buffers->data(), stream, nullptr);
   cudaStreamSynchronize(stream);
@@ -41,6 +42,7 @@ void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
 }
 
 void TensorRTEngine::FreezeNetwork() {
+  freshDeviceId();
   VLOG(3) << "TRT to freeze network";
   PADDLE_ENFORCE(infer_builder_ != nullptr,
                  "Call InitNetwork first to initialize network.");
@@ -138,6 +140,13 @@ nvinfer1::IPluginLayer *TensorRTEngine::AddPlugin(
     plugin::PluginTensorRT *plugin) {
   owned_plugin_.emplace_back(plugin);
   return infer_network_.get()->addPluginExt(inputs, num_inputs, *plugin);
+}
+
+void TensorRTEngine::freshDeviceId() {
+  int count;
+  cudaGetDeviceCount(&count);
+  PADDLE_ENFORCE_LT(device_id_, count);
+  cudaSetDevice(device_id_);
 }
 
 }  // namespace tensorrt

@@ -134,9 +134,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
       calib_res->calib_.reset(new TRTInt8Calibrator(
           calib_buffers, runtime_batch, engine_key_, dev_place));
       calib_res->thr_.reset(new std::thread([&]() {
-        calib_res->engine_.reset(
-            new TensorRTEngine(max_batch_size_, workspace_size_, enable_int8_,
-                               calib_res->calib_.get()));
+        calib_res->engine_.reset(new TensorRTEngine(
+            max_batch_size_, workspace_size_, enable_int8_,
+            calib_res->calib_.get(),
+            boost::get<platform::CUDAPlace>(dev_place).device));
         VLOG(3) << "start the calib trt engine thread";
         PrepareTRTEngine(scope, calib_res->engine_.get());
       }));
@@ -234,7 +235,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
       trt_engine_ =
           inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
               .Create(max_batch_size_, workspace_size_, enable_int8_,
-                      calibrator_.get(), engine_key_);
+                      calibrator_.get(), engine_key_,
+                      boost::get<platform::CUDAPlace>(dev_place).device);
       PrepareTRTEngine(scope, trt_engine_);
     }
     return trt_engine_;
