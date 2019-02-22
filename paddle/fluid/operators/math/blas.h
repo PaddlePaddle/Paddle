@@ -184,9 +184,6 @@ class Blas {
   template <typename T>
   void VINV(int n, const T* a, T* y) const;
 
-  template <typename T>
-  void VMERF(int n, const T* a, T* y, int64_t mode) const;
-
  private:
   const DeviceContext& context_;
 };
@@ -291,11 +288,6 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void VINV(ARGS... args) const {
     Base()->template VINV<T>(args...);
-  }
-
-  template <typename... ARGS>
-  void VMERF(ARGS... args) const {
-    Base()->template VMERF<T>(args...);
   }
 
  private:
