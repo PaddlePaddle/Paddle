@@ -95,7 +95,7 @@ template <typename T>
 bool PrivateQueueDataFeed<T>::Start() {
   CheckSetFileList();
   std::string filename;
-  while (PickOneFile(&filename)) {
+  if (PickOneFile(&filename)) {
     int err_no = 0;
     std::string pipeline_cmd = "cat";
 
