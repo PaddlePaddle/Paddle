@@ -81,7 +81,6 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
       local_scopes_(std::move(local_scopes)),
       pool_(places.size() >= 2 ? new ::ThreadPool(places.size()) : nullptr),
       places_(std::move(places)),
-      main_prog_(graph->OriginProgram()),
       // TODO(Yancey1989): Copying graphs is not safely since it deleted the
       // attrs.
       graphs_(SeparateMultiDevicesGraph(graph)) {
@@ -89,10 +88,6 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
 
   auto seq_allreduce_pass =
       ir::PassRegistry::Instance().Get("all_reduce_deps_pass");
-  seq_allreduce_pass->Erase(details::kAllOpDescs);
-  seq_allreduce_pass->Set<const std::vector<OpDesc *>>(
-      details::kAllOpDescs,
-      new std::vector<OpDesc *>(main_prog_.Block(0).AllOps()));
   for (size_t i = 0; i < graphs_.size(); ++i) {
     graphs_[i] = seq_allreduce_pass->Apply(std::move(graphs_[i]));
   }

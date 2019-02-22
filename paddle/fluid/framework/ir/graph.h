@@ -195,12 +195,6 @@ class Graph {
     return nullptr;
   }
 
-  // Returns reference to the original program.
-  // WARN: After a series of passes, the current graph can be quite
-  // different from OriginProgram. Caller shouldn't assume much from
-  // the returned OriginProgram.
-  const ProgramDesc &OriginProgram() const { return program_; }
-
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
     PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
