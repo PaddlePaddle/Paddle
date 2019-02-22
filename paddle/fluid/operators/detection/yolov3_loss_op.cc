@@ -144,30 +144,36 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
                    "The ignore threshold to ignore confidence loss.")
         .SetDefault(0.7);
     AddComment(R"DOC(
-         This operator generate yolov3 loss by given predict result and ground
+         This operator generates yolov3 loss based on given predict result and ground
          truth boxes.
          
          The output of previous network is in shape [N, C, H, W], while H and W
-         should be the same, specify the grid size, each grid point predict given
-         number boxes, this given number is specified by anchors, it should be 
-         half anchors length, which following will be represented as S. In the 
-         second dimention(the channel dimention), C should be S * (class_num + 5),
-         class_num is the box categoriy number of source dataset(such as coco), 
-         so in the second dimention, stores 4 box location coordinates x, y, w, h 
-         and confidence score of the box and class one-hot key of each anchor box.
+         should be the same, H and W specify the grid size, each grid point predict 
+         given number boxes, this given number, which following will be represented as S,
+         is specified by the number of anchors, In the second dimension(the channel
+         dimension), C should be equal to S * (class_num + 5), class_num is the object 
+         category number of source dataset(such as 80 in coco dataset), so in the 
+         second(channel) dimension, apart from 4 box location coordinates x, y, w, h, 
+         also includes confidence score of the box and class one-hot key of each anchor box.
 
-         While the 4 location coordinates if $$tx, ty, tw, th$$, the box predictions
-         correspnd to:
+         Assume the 4 location coordinates is :math:`t_x, t_y, t_w, t_h`, the box predictions
+         should be following:
 
          $$
-         b_x = \sigma(t_x) + c_x
-         b_y = \sigma(t_y) + c_y
+         b_x = \\sigma(t_x) + c_x
+         $$
+         $$
+         b_y = \\sigma(t_y) + c_y
+         $$
+         $$
          b_w = p_w e^{t_w}
+         $$
+         $$
          b_h = p_h e^{t_h}
          $$
 
-         While $$c_x, c_y$$ is the left top corner of current grid and $$p_w, p_h$$
-         is specified by anchors.
+         In the equaltion above, :math:`c_x, c_y` is the left top corner of current grid
+         and :math:`p_w, p_h` is specified by anchors.
 
          As for confidence score, it is the logistic regression value of IoU between
          anchor boxes and ground truth boxes, the score of the anchor box which has 
