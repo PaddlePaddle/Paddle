@@ -22,6 +22,7 @@
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "dgc/dgc.h"
+#include "sparse.h"
 #endif
 
 // asynchronous nccl allreduce or synchronous issue:
@@ -139,23 +140,21 @@ void AllReduceOpHandle::_RunImplEncoded() {
              << ", out_tensor_buf:" << out_tensor_buf << ", comm:" << comm
              << ", gather_buff:" << gather_buff;
 
-    int dst[16];
-    platform::GpuMemcpySync(static_cast<void *>(dst),
-                            static_cast<void *>(in_tensor_buf), 16 * 4,
-                            cudaMemcpyDeviceToHost);
-    printf("GpuMemcpySync ");
-    for (int i = 0; i < 16; i++) {
-      printf("%d:%d ", i, dst[i]);
-    }
-    printf("\n");
-
     ///*
+    all_reduce_calls.emplace_back([=] {
+      sparseAllGReduce(in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel,
+                       static_cast<ncclDataType_t>(dtype), ncclSum, comm,
+                       stream);
+    });
+    //*/
+
+    /*
     all_reduce_calls.emplace_back([=] {
       paddle::communication::dgc::sparseAllGReduce(
           static_cast<void *>(in_tensor_buf), gather_buff, k, out_tensor_buf,
           out_numel, comm, stream);
     });
-    //*/
+    */
   }
 
   this->RunAndRecordEvent([&] {
