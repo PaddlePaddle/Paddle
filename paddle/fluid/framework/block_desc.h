@@ -97,7 +97,7 @@ class BlockDesc {
 
   std::vector<OpDesc *> AllOps() const;
 
-  void ClearBlock();
+  void Clear();
 
   size_t OpSize() const { return ops_.size(); }
 
