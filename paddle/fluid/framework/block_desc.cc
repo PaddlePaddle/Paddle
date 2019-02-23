@@ -163,7 +163,7 @@ std::vector<OpDesc *> BlockDesc::AllOps() const {
   return res;
 }
 
-void BlockDesc::ClearBlock() {
+void BlockDesc::Clear() {
   // clear all ops
   ops_.clear();
 
