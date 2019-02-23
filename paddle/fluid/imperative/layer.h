@@ -150,9 +150,32 @@ class VarBase {
     }
   }
 
-  void RunBackward();
+  void RunBackward() {
+    if (!pre_op_) return;
 
-  void ClearGradient();
+    VLOG(3) << "start backward";
+    auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
+    operators::math::set_constant(
+        *(platform::DeviceContextPool::Instance().Get(
+            var_->GetMutable<framework::LoDTensor>()->place())),
+        grads_t, 1.0);
+
+    PADDLE_ENFORCE(
+        grads_ ==
+        pre_op_->output_vars_[pre_op_out_name_][pre_op_out_idx_]->grads_);
+    Autograd().RunBackward(this);
+  }
+
+  void ClearGradient() {
+    VLOG(1) << "clear gradient of " << var_desc_->Name();
+    if (grads_ && grads_->var_ && grads_->var_->IsInitialized()) {
+      auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
+      operators::math::set_constant(
+          *(platform::DeviceContextPool::Instance().Get(
+              grads_->var_->Get<framework::LoDTensor>().place())),
+          grads_t, 0.0);
+    }
+  }
 
   framework::LoDTensor& GradValue();
 

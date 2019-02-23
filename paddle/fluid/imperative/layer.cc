@@ -205,33 +205,6 @@ framework::LoDTensor& VarBase::GradValue() {
   return *(grads_->var_->GetMutable<framework::LoDTensor>());
 }
 
-void VarBase::ClearGradient() {
-  VLOG(1) << "clear gradient of " << var_desc_->Name();
-  if (grads_ && grads_->var_ && grads_->var_->IsInitialized()) {
-    auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
-    operators::math::set_constant(
-        *(platform::DeviceContextPool::Instance().Get(
-            grads_->var_->Get<framework::LoDTensor>().place())),
-        grads_t, 0.0);
-  }
-}
-
-void VarBase::RunBackward() {
-  if (!pre_op_) return;
-
-  VLOG(3) << "start backward";
-  auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
-  operators::math::set_constant(
-      *(platform::DeviceContextPool::Instance().Get(
-          var_->GetMutable<framework::LoDTensor>()->place())),
-      grads_t, 1.0);
-
-  PADDLE_ENFORCE(
-      grads_ ==
-      pre_op_->output_vars_[pre_op_out_name_][pre_op_out_idx_]->grads_);
-  Autograd().RunBackward(this);
-}
-
 std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
   if (grad_op_descs_.empty() && backward_id_ <= 0) {
     VLOG(3) << "op with no grad: " << op_desc_->Type();

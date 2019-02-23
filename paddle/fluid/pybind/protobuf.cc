@@ -189,8 +189,7 @@ void BindBlockDesc(pybind11::module *m) {
              return self.HasVar(name);
            },
            pybind11::return_value_policy::reference)
-      .def("_clear_block",
-           [](pd::BlockDesc &self) { return self.ClearBlock(); },
+      .def("_clear_block", [](pd::BlockDesc &self) { return self.Clear(); },
            pybind11::return_value_policy::reference)
       .def("_rename_var",
            [](pd::BlockDesc &self, const pybind11::bytes &byte_name,
