@@ -28,10 +28,7 @@ namespace anakin {
 
 class TestAnakinEngine : public ::testing::Test {
  protected:
-  void SetUp() override {
-    engine_ = std::unique_ptr<AnakinNvEngineT>(new AnakinNvEngineT());
-  }
-
+  void SetUp() override;
   void TearDown() override {}
 
  protected:
@@ -39,18 +36,28 @@ class TestAnakinEngine : public ::testing::Test {
   std::unique_ptr<AnakinNvEngineT> engine_{nullptr};
 };
 
-TEST_F(TestAnakinEngine, DeclareInputs) {
-  std::vector<std::string> inputs{"x", "y"};
-  engine_->DeclareInputs(inputs);
+void TestAnakinEngine::SetUp() {
+  engine_.reset(new AnakinEngine<NV, Precision::FP32>());
+  engine_->DeclareInputs({"x"});
+  engine_->DeclareOutputs({"y"});
 }
 
 TEST_F(TestAnakinEngine, Execute) {
-  std::vector<std::string> input{"x"};
-  std::vector<std::string> output{"y"};
-  engine_->AddOp("op1", "Dense", input, output);
-  std::vector<int> kernel_size{3, 1};
-  engine_->AddOpAttr<const std::vector<int>&>("op1", "kernel_size", kernel_size);
-  //engine_->AddOpAttr<bool>("op1", "bias_term", false);
+  engine_->AddOp("op1", "Dense", {"x"}, {"y"});
+  engine_->AddOpAttr("op1", "out_dim", 100);
+  engine_->AddOpAttr("op1", "bias_term", false);
+  engine_->AddOpAttr("op1", "axis", 2);
+  std::vector<int> shape = {1, 1, 3, 100};
+  ::anakin::saber::Shape tmp_shape(shape);
+  ::anakin::saber::Tensor<::anakin::saber::NV> weight1(tmp_shape);
+  // engine_->AddOpAttr("op1", "weight_1", weight1);
+  // engine_->AddOpAttr("op1", "Inputs")
+  engine_->FreezeNetwork();
+
+  // graph.Freeze();
+  // graph.FreezeNetwork();
+  // Tensor t;
+  // auto outputs = engine_->Execute({&t});
 }
 
 /*

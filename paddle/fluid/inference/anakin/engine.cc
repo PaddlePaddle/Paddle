@@ -33,8 +33,14 @@ namespace anakin {
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine()
     : graph_(new AnakinGraphT<TargetT, PrecisionType>()),
-      engine_(new AnakinNetT<TargetT, PrecisionType, RunType>()) {
-  engine_->init(*graph_);
+      engine_(new AnakinNetT<TargetT, PrecisionType, RunType>()) {}
+
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+AnakinEngine<TargetT, PrecisionType, RunType>::~AnakinEngine() {
+  if (graph_) {
+    delete graph_;
+    graph_ = nullptr;
+  }
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -87,7 +93,8 @@ std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
         cudaMemcpy(anakin_input->mutable_data(), input_data, input_size,
                    cudaMemcpyHostToDevice);
       } else {
-        // anakin_input->mutable_data();
+        /*decltype(*anakin_input) tmp_anakin_tensor(input_data, );
+        cudaMemcpy(anakin_input->mutable_data(), input_data, input_size, );*/
       }
     }
 #endif
@@ -143,6 +150,7 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::FreezeNetwork() {
   std::vector<std::string> outputs = graph_->get_outs();
   std::sort(outputs.begin(), outputs.end());
   PADDLE_ENFORCE(outputs_ == outputs);
+  engine_->init(*graph_);
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -165,6 +173,7 @@ void Tensor::SetDataType(const DataType dtype) { dtype_ = dtype; }
 
 DataType Tensor::dtype() const { return dtype_; }
 
+template class AnakinEngine<::anakin::saber::NV, ::anakin::Precision::FP32>;
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

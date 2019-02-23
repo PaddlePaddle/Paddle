@@ -18,7 +18,6 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <type_traits>
 #include <vector>
 #include "framework/core/types.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -50,6 +49,7 @@ template <typename TargetT, ::anakin::Precision PrecisionType,
 class AnakinEngine /*: public EngineBase */ {
  public:
   AnakinEngine();
+  ~AnakinEngine();
   void DeclareInputs(const std::vector<std::string> &inputs);
   void DeclareOutputs(const std::vector<std::string> &outputs);
 
@@ -60,7 +60,7 @@ class AnakinEngine /*: public EngineBase */ {
   template <typename T>
   void AddOpAttr(const std::string &op_name, const std::string &attr_name,
                  const T &attr_value) {
-    PADDLE_ENFORCE(graph_->AddOpAttr<typename std::remove_cv<T>::type>(op_name, attr_name, attr_value),
+    PADDLE_ENFORCE(graph_->AddOpAttr(op_name, attr_name, attr_value),
                    "Add operation's attribution.");
   }
 
@@ -69,15 +69,15 @@ class AnakinEngine /*: public EngineBase */ {
   Tensor *AddWeight(const std::string &id, const Tensor &v);
 
   std::unique_ptr<AnakinEngine> Clone();
-
   void FreezeNetwork();
-
   std::vector<Tensor> Execute(const std::vector<Tensor *> &inputs);
 
  private:
   using NetT = ::anakin::Net<TargetT, PrecisionType, RunType>;
   using GraphT = ::anakin::graph::Graph<TargetT, PrecisionType>;
-  std::unique_ptr<GraphT> graph_;
+  // std::unique_ptr<GraphT> graph_;
+  // std::shared_ptr<GraphT> graph_;
+  GraphT *graph_{nullptr};
   std::unique_ptr<NetT> engine_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
@@ -118,10 +118,15 @@ class Tensor final {
 
 #ifdef PADDLE_WITH_CUDA
     if (place == Place::kCpu) {
-      cudaFree(data_);
+      if (data_) {
+        cudaFree(data_);
+      }
       data_ = new char[length];
-    } else if (place_ == Place::kCpu) {
-      delete[] static_cast<char *>(data_);
+    } else if (place == Place::kGpu) {
+      if (data_) {
+        delete[] static_cast<char *>(data_);
+        data_ = nullptr;
+      }
       cudaMalloc((void **)&data_, length);
     } else {
       if (length_ < length) {
@@ -151,7 +156,6 @@ class Tensor final {
   void *data_{nullptr};
 };
 
-template class AnakinEngine<::anakin::saber::NV, ::anakin::Precision::FP32>;
 // template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
 }  // namespace anakin
 }  // namespace inference
