@@ -225,7 +225,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
       std::static_pointer_cast<mkldnn::memory>(dev_ctx.GetBlob(key_src_mem));
   PADDLE_ENFORCE(src_memory != nullptr,
                  "Fail to find src_memory in device context");
-  src_memory->set_data_handle(*p_src_data.get());
+  src_memory->set_data_handle(*p_src_data);
 
   std::shared_ptr<memory> diff_src_memory;
 
