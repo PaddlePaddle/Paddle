@@ -255,32 +255,5 @@ std::string GenScopeTreeDebugInfo(Scope* root) {
   return os.str();
 }
 
-std::string GenParentScopeTreeDebugInfo(Scope* leaf) {
-  std::stringstream os;
-
-  if (!leaf) return "";
-
-  // level traversal
-  std::vector<const Scope*> scopes;
-  const Scope* current_scope = leaf;
-
-  while (current_scope != nullptr) {
-    scopes.push_back(current_scope);
-    current_scope = current_scope->parent();
-  }
-
-  os << "\n--------------GenParentScopeTreeDebugInfo--------------\n";
-
-  for (int i = scopes.size() - 1; i >= 0; --i) {
-    os << "=======level [" << i << "]=======\n";
-    os << scopes[i] << ":\n";
-    for (auto& var : scopes[i]->LocalVarNames()) {
-      os << "  - " << var << "\n";
-    }
-  }
-
-  return os.str();
-}
-
 }  // namespace framework
 }  // namespace paddle
