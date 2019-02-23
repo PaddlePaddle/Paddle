@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
@@ -137,6 +138,16 @@ void AllReduceOpHandle::_RunImplEncoded() {
              << ", in_tensor_buf:" << in_tensor_buf
              << ", out_tensor_buf:" << out_tensor_buf << ", comm:" << comm
              << ", gather_buff:" << gather_buff;
+
+    int dst[16];
+    platform::GpuMemcpySync(static_cast<void *>(dst),
+                            static_cast<void *>(in_tensor_buf), 16 * 4,
+                            cudaMemcpyDeviceToHost);
+    printf("GpuMemcpySync ");
+    for (int i = 0; i < 16; i++) {
+      printf("%d:%d ", i, dst[i]);
+    }
+    printf("\n");
 
     ///*
     all_reduce_calls.emplace_back([=] {
