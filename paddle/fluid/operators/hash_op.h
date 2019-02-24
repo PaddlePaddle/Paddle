@@ -17,6 +17,7 @@ limitations under the License. */
 extern "C" {
 #include <xxhash.h>
 }
+#include <libdivide.h>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -42,12 +43,17 @@ class HashKerel : public framework::OpKernel<T> {
     auto seq_length = in_dims[0];
     auto last_dim = in_dims[in_dims.size() - 1];
     auto* input = in_t->data<T>();
+    const int hsize = sizeof(int) * last_dim;
     for (int idx = 0; idx < seq_length; ++idx) {
       for (int ihash = 0; ihash != num_hash; ++ihash) {
-        output[idx * num_hash + ihash] =
-            XXH64(input, sizeof(int) * last_dim, ihash) % mod_by;
+        output[idx * num_hash + ihash] = XXH64(input, hsize, ihash);
       }
       input += last_dim;
+    }
+
+    libdivide::divider<T> fast_d(static_cast<T>(mod_by));
+    for (int idx = 0; idx < seq_length * num_hash; ++idx) {
+      output[idx] = output[idx] - (output[idx] / fast_d) * mod_by;
     }
   }
 };

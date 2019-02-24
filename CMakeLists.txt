@@ -145,6 +145,7 @@ include(external/dlpack)
 include(external/snappy)    # download snappy
 include(external/snappystream) # download snappystream
 include(external/warpctc)   # download, build, install warpctc
+include(external/libdivide) # download libdivide package
 
 if (NOT WIN32)
 # there is no official support of nccl, cupti in windows
