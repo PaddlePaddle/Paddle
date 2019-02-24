@@ -17,54 +17,11 @@ limitations under the License. */
 #include <list>
 #include <string>
 #include <vector>
-#include "paddle/fluid/platform/device_context.h"
-
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/event.h"
+#include "paddle/fluid/platform/gpu_info.h"
 namespace paddle {
 namespace platform {
-
-enum EventType { kMark, kPushRange, kPopRange };
-
-class Event {
- public:
-  // The DeviceContext is used to get the cuda stream.
-  // If CPU profiling mode, can pass nullptr.
-  Event(EventType type, std::string name, uint32_t thread_id);
-
-  const EventType& type() const;
-  std::string name() const { return name_; }
-  uint32_t thread_id() const { return thread_id_; }
-
-#ifdef PADDLE_WITH_CUDA
-#ifndef PADDLE_WITH_CUPTI
-  cudaEvent_t event() const { return event_; }
-  int device() const { return device_; }
-#endif
-#endif
-
-  double CpuElapsedMs(const Event& e) const;
-  double CudaElapsedMs(const Event& e) const;
-
- private:
-  EventType type_;
-  std::string name_;
-  uint32_t thread_id_;
-  int64_t cpu_ns_;
-#ifdef PADDLE_WITH_CUDA
-#ifdef PADDLE_WITH_CUPTI
-  int64_t gpu_ns_ = 0;
-
- public:
-  void AddCudaElapsedTime(int64_t start_ns, int64_t end_ns) {
-    gpu_ns_ += end_ns - start_ns;
-  }
-
- private:
-#else
-  cudaEvent_t event_ = nullptr;
-  int device_ = -1;
-#endif
-#endif
-};
 
 enum ProfilerState {
   kDisabled,  // disabled state
