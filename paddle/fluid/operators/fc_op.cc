@@ -47,7 +47,7 @@ void FCOp::InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE(in_dims.size() == 2 || in_dims.size() == 4,
                    "Fully Connected input should be 2-D or 4-D tensor.");
   }
-  PADDLE_ENFORCE_EQ(w_dims.size(), 2UL,
+  PADDLE_ENFORCE_EQ(w_dims.size(), 2,
                     "Fully Connected input should be 2-D tensor.");
   int in_num_col_dims = ctx->Attrs().Get<int>("in_num_col_dims");
   PADDLE_ENFORCE_GT(

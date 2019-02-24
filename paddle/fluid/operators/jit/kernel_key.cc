@@ -49,6 +49,18 @@ size_t JitCodeKey<seq_pool_attr_t>(const seq_pool_attr_t& attr) {
   return (key << pool_type_shift) + static_cast<int>(attr.type);
 }
 
+template <>
+size_t JitCodeKey<matmul_attr_t>(const matmul_attr_t& attr) {
+  size_t key = attr.m;
+  constexpr int shift = 21;
+  return (key << shift * 2) + ((static_cast<size_t>(attr.n)) << shift) + attr.k;
+}
+
+template <>
+size_t JitCodeKey<emb_seq_pool_attr_t>(const emb_seq_pool_attr_t& attr) {
+  return attr.table_width;
+}
+
 }  // namespace jit
 }  // namespace operators
 }  // namespace paddle

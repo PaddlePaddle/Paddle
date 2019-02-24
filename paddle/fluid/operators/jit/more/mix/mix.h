@@ -26,6 +26,7 @@ using T = float;
 
 void VSigmoid(const T* x, T* y, int n);
 void VTanh(const T* x, T* y, int n);
+void Softmax(const T* x, T* y, int n, int bs);
 
 void LSTMCtHt(lstm_t* step, const lstm_attr_t* attr);
 void LSTMC1H1(lstm_t* step, const lstm_attr_t* attr);
@@ -44,6 +45,9 @@ void GRUHtPart2(gru_t* step, const gru_attr_t* attr);
 // XYN
 DECLARE_MORE_KERNEL(VSigmoid, XYNTuples);
 DECLARE_MORE_KERNEL(VTanh, XYNTuples);
+
+// XRN
+DECLARE_MORE_KERNEL(Softmax, SoftmaxTuples);
 
 DECLARE_MORE_KERNEL(LSTMCtHt, LSTMTuples);
 DECLARE_MORE_KERNEL(LSTMC1H1, LSTMTuples);

@@ -74,5 +74,3 @@ add_dependencies(anakin_shared extern_anakin)
 add_library(anakin_saber SHARED IMPORTED GLOBAL)
 set_property(TARGET anakin_saber PROPERTY IMPORTED_LOCATION ${ANAKIN_SABER_LIB})
 add_dependencies(anakin_saber extern_anakin)
-
-list(APPEND external_project_dependencies anakin_shared anakin_saber)

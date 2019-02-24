@@ -1,4 +1,7 @@
 cc_library(subgraph_detector SRCS subgraph_detector.cc DEPS proto_desc)
+if(WITH_TESTING)
+  add_dependencies(subgraph_detector gtest)
+endif()
 
 if (WITH_GPU AND TENSORRT_FOUND)
   cc_library(tensorrt_subgraph_pass SRCS tensorrt_subgraph_pass.cc DEPS subgraph_detector tensorrt_op_teller)
