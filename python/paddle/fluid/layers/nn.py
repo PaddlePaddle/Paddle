@@ -2534,8 +2534,7 @@ def pool3d(input,
            name=None,
            exclusive=True):
     """
-    This function adds the operator for pooling in 3-dimensions, using the
-    pooling configurations mentioned in input parameters.
+    ${comment}
 
     Args:
         input (Variable): The input tensor of pooling operator. The format of
