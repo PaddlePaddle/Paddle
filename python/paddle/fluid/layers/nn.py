@@ -2522,6 +2522,7 @@ def pool2d(input,
     return pool_out
 
 
+@templatedoc()
 def pool3d(input,
            pool_size=-1,
            pool_type="max",
@@ -2537,7 +2538,11 @@ def pool3d(input,
     pooling configurations mentioned in input parameters.
 
     Args:
-        input (Variable): ${input_comment}
+        input (Variable): The input tensor of pooling operator. The format of
+                          input tensor is NCDHW, where N is batch size, C is
+                          the number of channels, D is the depth of the feature,
+                          H is the height of the feature, and W is the width
+                          of the feature.
         pool_size (int): ${ksize_comment}
         pool_type (str): ${pooling_type_comment}
         pool_stride (int): stride of the pooling layer.
