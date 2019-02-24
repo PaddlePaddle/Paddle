@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "ngraph/ngraph.hpp"
+#include "paddle/fluid/operators/ngraph/ops/op_bridge.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
 
 namespace paddle {
@@ -233,3 +234,6 @@ void BuildConv2dGradNode(
 }  // namespace ngraphs
 }  // namespace operators
 }  // namespace paddle
+
+REGISTER_NG_OP(conv2d, BuildConv2dNode);
+REGISTER_NG_OP(conv2d_grad, BuildConv2dGradNode);

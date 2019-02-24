@@ -34,9 +34,11 @@ namespace details {
 static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
   // Should fix the allreduce op order if scheduling
   // them in multiple threads or processes to avoid hang.
+  // NOTE: ParallelGraph would execute this pass on each graph, so
+  // don't need to append it here.
   return (!strategy.enable_sequential_execution_ &&
-          strategy.num_trainers_ > 1) ||
-         strategy.enable_parallel_graph_;
+          strategy.num_trainers_ > 1) &&
+         !strategy.enable_parallel_graph_;
 }
 
 class ParallelExecutorPassBuilder : public ir::PassBuilder {

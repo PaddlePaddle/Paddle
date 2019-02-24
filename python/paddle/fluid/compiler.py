@@ -19,6 +19,7 @@ import sys
 from .. import compat as cpt
 
 from . import core
+from . import framework
 
 __all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
 
@@ -110,6 +111,8 @@ class CompiledProgram(object):
             self._exec_strategy = ExecutionStrategy()
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
+        self._build_strategy.is_distribution = framework.is_pserver_mode(
+            self._program)
         return self
 
     def with_inference_optimize(self, config):
@@ -178,9 +181,9 @@ class CompiledProgram(object):
         # FIXME(dzhwinter): enable_inplace should be after memory_optimize
         # if turn on python memory optimize, turn off the inplace_pass.
         if self._build_strategy.memory_optimize is None:
-            self._build_strategy.memory_optimize = False if main._is_mem_optimized else True
+            self._build_strategy.memory_optimize = False if self._program._is_mem_optimized else True
         if self._build_strategy.enable_inplace is None:
-            self._build_strategy.enable_inplace = False if main._is_mem_optimized else True
+            self._build_strategy.enable_inplace = False if self._program._is_mem_optimized else True
 
         if self._build_strategy.num_trainers > 1 and trainers_endpoints:
             assert self._build_strategy.num_trainers == len(
@@ -220,7 +223,7 @@ class CompiledProgram(object):
         if self._compiled:
             if scope and self._scope != scope:
                 raise ValueError("Cannot compile with different scope")
-            if place and self._place != place:
+            if place and not self._place._equals(place):
                 raise ValueError("Cannot compile with different place")
             return self
         self._compiled = True

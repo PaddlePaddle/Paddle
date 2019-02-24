@@ -1,16 +1,16 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License. */
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include <random>
 #include <string>
@@ -259,7 +259,7 @@ struct TestFuncWithRefer<jit::SeqPoolTuples<T>, std::vector<T>, std::vector<T>,
                   const std::vector<T>& x, const std::vector<T>& yref,
                   const typename jit::SeqPoolTuples<T>::attr_type& attr) {
     EXPECT_TRUE(tgt != nullptr);
-    EXPECT_EQ(x.size() % yref.size(), 0);
+    EXPECT_EQ(x.size() % yref.size(), static_cast<size_t>(0));
     int w = yref.size();
     std::vector<T> y(w);
     const T* x_data = x.data();

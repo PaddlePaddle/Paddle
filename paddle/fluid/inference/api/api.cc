@@ -92,7 +92,7 @@ void PaddleBuf::Reset(void *data, size_t length) {
 
 void PaddleBuf::Free() {
   if (memory_owned_ && data_) {
-    PADDLE_ENFORCE_GT(length_, 0);
+    PADDLE_ENFORCE_GT(length_, 0UL);
     free(static_cast<char *>(data_));
     data_ = nullptr;
     length_ = 0;
