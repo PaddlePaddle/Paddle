@@ -2542,8 +2542,11 @@ def pool3d(input,
                           the number of channels, D is the depth of the feature,
                           H is the height of the feature, and W is the width
                           of the feature.
-        pool_size (int): ${ksize_comment}
-        pool_type (str): ${pooling_type_comment}
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size 
+            is a tuple or list, it must contain three integers, 
+            (pool_size_Depth, pool_size_Height, pool_size_Width).
+            Otherwise, the pool kernel size will be the cube of an int.
+        pool_type (string): ${pooling_type_comment}
         pool_stride (int): stride of the pooling layer.
         pool_padding (int): padding size.
         global_pooling (bool): ${global_pooling_comment}

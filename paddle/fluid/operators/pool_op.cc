@@ -204,7 +204,7 @@ void Pool2dOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>(
       "ceil_mode",
-      "(bool, default false) Wether to use the ceil function to calculate "
+      "(bool, default false) Whether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
       "the floor function will be used.")
       .SetDefault(false);
@@ -333,7 +333,7 @@ void Pool3dOpMaker::Make() {
   AddAttr<bool>(
       "global_pooling",
       "(bool, default false) Whether to use the global pooling. "
-      "If global_pooling = true, ksize and paddings wille be ignored.")
+      "If global_pooling = true, ksize and paddings will be ignored.")
       .SetDefault(false);
   AddAttr<std::vector<int>>(
       "strides",
@@ -368,7 +368,7 @@ void Pool3dOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>(
       "ceil_mode",
-      "(bool, default false) Wether to use the ceil function to calculate "
+      "(bool, default false) Whether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
       "the floor function will be used.")
       .SetDefault(false);
