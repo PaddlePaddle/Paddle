@@ -55,6 +55,9 @@ else()
   )
 endif()
 
+# To support line compile, install xxhash.c also
+FILE(COPY ${XXHASH_SOURCE_DIR}/src/extern_xxhash/xxhash.c DESTINATION ${XXHASH_INCLUDE_DIR})
+
 if (WIN32)
   IF(NOT EXISTS "${XXHASH_INSTALL_DIR}/lib/libxxhash.lib")
     add_custom_command(TARGET extern_xxhash POST_BUILD
