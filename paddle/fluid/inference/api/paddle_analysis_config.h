@@ -29,11 +29,6 @@
 namespace paddle {
 
 class AnalysisPredictor;
-// ==
-//
-// -----------------------------------------------------------------------------------
-// NOTE: The following APIs are not mature yet, we are still working on them.
-namespace contrib {
 
 // NOTE WIP, not stable yet.
 struct AnalysisConfig {
@@ -145,9 +140,12 @@ struct AnalysisConfig {
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
 
-  /** Control whther to debug IR graph analysis phase.
+  /** \brief Control whether to debug IR graph analysis phase.
+   *
+   * This will generate DOT files for visualizing the computation graph after
+   * each analysis pass applied.
    */
-  void SwitchIrDebug(int x = true) { ir_debug_ = x; }
+  void SwitchIrDebug(int x = true);
 
   /** Turn on MKLDNN.
    */
@@ -214,12 +212,12 @@ struct AnalysisConfig {
   std::string prog_file_;
   std::string params_file_;
 
-  // GPU releated.
+  // GPU related.
   bool use_gpu_{false};
   int device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
 
-  // TensorRT releated.
+  // TensorRT related.
   bool use_tensorrt_{false};
   // For workspace_size, refer it from here:
   // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
@@ -260,5 +258,4 @@ struct AnalysisConfig {
   mutable std::unique_ptr<PassStrategy> pass_builder_;
 };
 
-}  // namespace contrib
 }  // namespace paddle

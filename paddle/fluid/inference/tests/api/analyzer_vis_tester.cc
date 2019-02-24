@@ -20,7 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 namespace analysis {
-using contrib::AnalysisConfig;
 
 struct Record {
   std::vector<float> data;

@@ -36,7 +36,7 @@ namespace demo {
  */
 void Main() {
   std::unique_ptr<PaddlePredictor> predictor;
-  paddle::contrib::AnalysisConfig config;
+  paddle::AnalysisConfig config;
   config.EnableUseGpu(100, 0);
   config.SetModel(FLAGS_modeldir + "/__model__",
                   FLAGS_modeldir + "/__params__");
