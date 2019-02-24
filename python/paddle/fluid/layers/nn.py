@@ -2473,7 +2473,7 @@ def pool2d(input,
 
           data = fluid.layers.data(
               name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d = fluid.layers.pool2d(
+          pool2d = fluid.layers.pool2d(
                             input=data,
                             pool_size=2,
                             pool_type='max',
@@ -2559,6 +2559,19 @@ def pool3d(input,
 
     Returns:
         Variable: output of pool3d layer.
+
+    Examples:
+
+        .. code-block:: python
+
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32, 32], dtype='float32')
+          pool3d = fluid.layers.pool3d(
+                            input=data,
+                            pool_size=2,
+                            pool_type='max',
+                            pool_stride=1,
+                            global_pooling=False)
     """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
