@@ -13,14 +13,19 @@
 # limitations under the License.
 
 import collections
+import numpy as np
+import six
+from ..... import compat as cpt
 from .... import core
 from ....framework import IrGraph
 from ....framework import Program
-from ....framework import Variable
 from ....initializer import Constant
 from .... import unique_name
 
-__all__ = ['QuantizationTransformPass']
+__all__ = [
+    'QuantizationTransformPass', 'QuantizationFreezePass', 'ConvertToInt8Pass',
+    'TransformForMobilePass'
+]
 
 
 class QuantizationTransformPass(object):
@@ -35,7 +40,13 @@ class QuantizationTransformPass(object):
         """
         Convert and rewrite the IrGraph according to weight and
         activation quantization type.
+
         Args:
+            scope(fluid.Scope): When activation use 'range_abs_max' as the quantize
+            type, this pass will create some new parameters. The scope is used to
+            initialize these new parameters.
+            program_exe(fluid.Executor): program_exe is used to initialize new
+            parameters described above.
             weight_bits (int): quantization bit number for weights,
                 the bias is not quantized.
             activation_bits (int): quantization bit number for activation.
@@ -49,6 +60,7 @@ class QuantizationTransformPass(object):
                 support 'abs_max'. The 'range_abs_max' usually is not used for
                 weight, since weights are fixed once the model is well trained.
             window_size (int): the window size for 'range_abs_max' quantization.
+
         Examples:
         .. code-block:: python
             # The original graph will be rewrite.
@@ -88,31 +100,35 @@ class QuantizationTransformPass(object):
         self._quantizable_grad_ops = [
             '%s_grad' % (op) for op in self._quantizable_ops
         ]
-        self._fake_quant_op_types = [
-            'fake_quantize_abs_max', 'fake_quantize_range_abs_max'
-        ]
-        self._fake_dequant_op_types = ['fake_dequantize_max_abs']
         self._is_test = None
         self._global_step = None
 
     def apply(self, graph):
+        """
+        Quantize the graph for training process. According to weight and
+        activation quantization type, the graph will be added some fake
+        quantize operators and fake dequantize operators.
+
+        Args:
+            graph(IrGraph): the applied graph.
+        """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
         self._need_initialized.clear()
         self._is_test = graph.is_test()
         # marked the variable which has been dequantized.
         dequantized_vars = collections.OrderedDict()
-        params = [p.name() for p in graph.all_parameters()]
+        persistable_vars = [p.name() for p in graph.all_persistable_vars()]
 
         def _transform_forward(graph, op):
             for var_node in op.inputs:
                 if var_node.name() in dequantized_vars:
                     dequant_var_node = dequantized_vars[var_node.name()]
                 else:
-                    quant_bits = self._weight_bits if var_node.name() in params \
+                    quant_bits = self._weight_bits if var_node.name() in persistable_vars \
                     else self._activation_bits
                     quant_type = self._weight_quantize_type if var_node.name() \
-                        in params else self._activation_quantize_type
+                        in persistable_vars else self._activation_quantize_type
                     quant_var_node, scale_var_node = self._insert_quant_op(
                         graph, var_node, quant_bits, quant_type)
                     dequant_var_node = self._insert_dequant_op(
@@ -150,9 +166,14 @@ class QuantizationTransformPass(object):
             assert self._program_exe is not None, \
             'The program_exe cannot be set None when activation_quantize_type equals to range_abs_max.'
             init_program = Program()
-            for var_desc, initializer in self._need_initialized.iteritems():
-                var = Variable(init_program.global_block())
-                var._set_desc(var_desc)
+            for var_desc, initializer in six.iteritems(self._need_initialized):
+                var = init_program.global_block().create_var(
+                    name=var_desc.name(),
+                    shape=var_desc.shape(),
+                    dtype=var_desc.dtype(),
+                    type=var_desc.type(),
+                    lod_level=var_desc.lod_level(),
+                    persistable=var_desc.persistable())
                 initializer(var, init_program.global_block())
             self._program_exe.run(program=init_program, scope=self._scope)
 
@@ -161,7 +182,7 @@ class QuantizationTransformPass(object):
     def _create_global_step(self, graph):
         if self._weight_quantize_type == 'range_abs_max' or \
                 self._activation_quantize_type == 'range_abs_max':
-            counter_name = '@STEP_COUNTER@'
+            counter_name = cpt.to_text('@STEP_COUNTER@')
             for node in graph.all_vars():
                 if node.name() == counter_name:
                     self._global_step = node
@@ -175,9 +196,14 @@ class QuantizationTransformPass(object):
                     Constant(value=0, force_cpu=True)
                 global_step_out = graph.create_var_node_from_desc(
                     global_step_in.var())
+                # The attribute of `op_role` is needed by ParallelExecutor.
                 increment_op = graph.create_op_node(
                     op_type='increment',
-                    attrs={'step': 1.0},
+                    attrs={
+                        'step': 1.0,
+                        'op_role':
+                        core.op_proto_and_checker_maker.OpRole.Forward
+                    },
                     inputs={'X': global_step_in},
                     outputs={'Out': global_step_out})
                 graph.link_to(global_step_in, increment_op)
@@ -212,7 +238,10 @@ class QuantizationTransformPass(object):
             var_dtype=var_node.var().dtype())
         quant_op_node = graph.create_op_node(
             op_type='fake_quantize_abs_max',
-            attrs={'bit_length': quant_bits},
+            attrs={
+                'bit_length': quant_bits,
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+            },
             inputs={'X': var_node},
             outputs={'Out': quant_var_node,
                      'OutScale': scale_var_node})
@@ -257,7 +286,8 @@ class QuantizationTransformPass(object):
         attrs = {
             'window_size': self._window_size,
             'bit_length': quant_bits,
-            'is_test': self._is_test
+            'is_test': self._is_test,
+            'op_role': core.op_proto_and_checker_maker.OpRole.Forward
         }
         quant_op_node = graph.create_op_node(
             op_type='fake_quantize_range_abs_max',
@@ -290,7 +320,10 @@ class QuantizationTransformPass(object):
         max_range = (1 << (quant_bits - 1)) - 1
         dequant_op_node = graph.create_op_node(
             op_type='fake_dequantize_max_abs',
-            attrs={'max_range': float(max_range)},
+            attrs={
+                'max_range': float(max_range),
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+            },
             inputs={'X': var_node,
                     'Scale': scale_var_node},
             outputs={'Out': dequant_var_node})
@@ -316,3 +349,330 @@ class QuantizationTransformPass(object):
         Return the scale name of quantized variable for the input `var_name`.
         """
         return "%s.scale" % (var_name)
+
+
+class QuantizationFreezePass(object):
+    """
+    The freeze pass is used to adjust the quantize operator order, for example:
+        1) `activation -> quant -> dequant -> conv2d` will be freezed into
+        `activation -> quant -> conv2d -> dequant`
+        2) `weight -> quant -> dequant -> conv2d` will be freezed into `weight -> conv2d`,
+        and weight will be sacled offline.
+
+    Args:
+        scope(fluid.Scope): scope is used to get the weight tensor values.
+        place(fluid.CPUPlace|fluid.CUDAPlace): place is used to restore the weight tensors.
+        weight_bits (int): quantization bit number for weights.
+        activation_bits (int): quantization bit number for activation.
+        weight_quantize_type (str): quantization type for weights, support 'abs_max'.
+        The 'range_abs_max' usually is not used for weight, since weights are fixed once the
+        model is well trained.
+    """
+
+    def __init__(self,
+                 scope,
+                 place,
+                 weight_bits=8,
+                 activation_bits=8,
+                 weight_quantize_type='abs_max'):
+        assert scope is not None, \
+            'The scope cannot be set None.'
+        assert place is not None, \
+            'The place cannot be set None.'
+        self._scope = scope
+        self._place = place
+        self._weight_bits = weight_bits
+        self._activation_bits = activation_bits
+        self._weight_quantize_type = weight_quantize_type
+        self._quantizable_ops = ['conv2d', 'depthwise_conv2d', 'mul']
+        self._fake_quant_op_names = [
+            'fake_quantize_abs_max', 'fake_quantize_range_abs_max'
+        ]
+        self._fake_dequant_op_names = ['fake_dequantize_max_abs']
+        self._op_input_rename_map = collections.OrderedDict()
+        self._op_output_rename_map = collections.OrderedDict()
+        self._var_scale_map = collections.OrderedDict()
+
+    def apply(self, graph):
+        """
+        Adjust quantize/dequantize operators order for the inference process.
+
+        Args:
+            graph(IrGraph): the applied graph.
+        """
+        persistable_vars = [p.name() for p in graph.all_persistable_vars()]
+        ops = graph.all_ops()
+        for op_node in ops:
+            op_name = op_node.name()
+            if op_name in self._fake_quant_op_names:
+                input_arg_name = op_node.op().input('X')[0]
+                if input_arg_name in persistable_vars:
+                    if self._weight_quantize_type == 'abs_max':
+                        param = self._load_var(input_arg_name)
+                        scale_v = np.max(np.abs(param))
+                    else:
+                        scale_v = self._load_var(op_node.op().output('OutScale')
+                                                 [0])[0]
+                    self._var_scale_map[input_arg_name] = scale_v
+                else:
+                    scale_v = graph.var_node(op_node.op().output('OutScale')[0])
+                    self._var_scale_map[input_arg_name] = scale_v
+                if input_arg_name in persistable_vars:
+                    self._remove_fake_quant_and_dequant_op(graph, op_node)
+                    # quantize weight and restore
+                    param_v = self._load_var(input_arg_name)
+                    quantized_param_v = self._quant(param_v, scale_v,
+                                                    self._weight_bits)
+                    self._restore_var(input_arg_name, quantized_param_v)
+
+        ops = graph.all_ops()
+        for op_node in ops:
+            op_name = op_node.name()
+            if op_name in self._fake_dequant_op_names:
+                self._remove_fake_quant_and_dequant_op(graph, op_node)
+
+        ops = graph.all_ops()
+        for op_node in ops:
+            op_name = op_node.name()
+            if op_name in self._quantizable_ops:
+                self._insert_post_dequant_op(graph, op_node)
+
+        for op_node in ops:
+            # insert dequant_op after fc/conv, need to rename inputs of the followed ops
+            for var_node in op_node.inputs:
+                name = var_node.name()
+                if name in self._op_output_rename_map:
+                    old_in = graph.var_node(name)
+                    new_in = self._op_output_rename_map[name]
+                    graph.update_input_link(old_in, new_in, op_node)
+
+        # remove the unused var node in the graph
+        self._remove_unused_var_nodes(graph)
+        return graph
+
+    def _remove_fake_quant_and_dequant_op(self, graph, op_node):
+        k = op_node.op().output('Out')[0]
+        v = op_node.op().input('X')[0]
+        if v not in self._op_input_rename_map:
+            self._op_input_rename_map[k] = v
+        else:
+            self._op_input_rename_map[k] = self._op_input_rename_map[v]
+        graph.safe_remove_nodes(op_node)
+
+    def _insert_post_dequant_op(self, graph, op_node):
+        max_range = None
+        scale_var_node = None
+        persistable_vars = [p.name() for p in graph.all_persistable_vars()]
+        for var_node in op_node.inputs:
+            name = var_node.name()
+            if name in self._op_input_rename_map:
+                old_in = graph.var_node(name)
+                new_in = graph.var_node(self._op_input_rename_map[name])
+                new_in.clear_outputs()
+                graph.update_input_link(old_in, new_in, op_node)
+            original_var_name = self._original_var_name(name)
+            scale_v = self._var_scale_map[original_var_name]
+            if original_var_name in persistable_vars:
+                param_range = (1 << (self._weight_bits - 1)) - 1
+                act_range = (1 << (self._activation_bits - 1)) - 1
+                assert self._is_float(
+                    scale_v), 'The scale of parameter %s is not a float.' % (
+                        original_var_name)
+                max_range = param_range * act_range / scale_v
+            else:
+                assert isinstance(scale_v, core.Node)
+                scale_var_node = self._var_scale_map[original_var_name]
+
+        if len(op_node.outputs) != 1:
+            raise ValueError("Only support one output, but op %s has"
+                             " more than one output." % (op_node.name()))
+
+        output_var_node = op_node.outputs[0]
+        dequant_var_node = graph.create_var_node(
+            name=self._dequantized_var_name(output_var_node.name()),
+            var_type=output_var_node.var().type(),
+            shape=output_var_node.var().shape(),
+            var_dtype=output_var_node.var().dtype())
+        dequant_op_node = graph.create_op_node(
+            op_type='fake_dequantize_max_abs',
+            attrs={
+                'max_range': float(max_range),
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+            },
+            inputs={'X': output_var_node,
+                    'Scale': scale_var_node},
+            outputs={'Out': dequant_var_node})
+        graph.link_to(output_var_node, dequant_op_node)
+        graph.link_to(scale_var_node, dequant_op_node)
+        graph.link_to(dequant_op_node, dequant_var_node)
+        self._op_output_rename_map[output_var_node.name()] = dequant_var_node
+        return dequant_var_node
+
+    def _load_var(self, name):
+        return np.array(self._scope.find_var(name).get_tensor())
+
+    def _restore_var(self, name, array):
+        tensor = self._scope.find_var(name).get_tensor()
+        tensor.set(array, self._place)
+
+    def _remove_unused_var_nodes(self, graph):
+        all_used_vars = set()
+        ops = graph.all_ops()
+        for op_node in ops:
+            for input_node in op_node.inputs:
+                all_used_vars.add(input_node)
+            for output_node in op_node.outputs:
+                all_used_vars.add(output_node)
+
+        all_unused_vars = graph.all_vars() - all_used_vars
+        graph.safe_remove_nodes(all_unused_vars)
+
+    def _original_var_name(self, var_name):
+        """
+        Return the original variable name.
+        """
+        if var_name.endswith('.quantized.dequantized'):
+            return var_name[:-len('.quantized.dequantized')]
+        if var_name.endswith('.quantized'):
+            return var_name[:-len('.quantized')]
+        if var_name.endswith('.dequantized'):
+            return var_name[:-len('.dequantized')]
+        if var_name.endswith('.scale'):
+            return var_name[:-len('.scale')]
+        else:
+            return var_name
+
+    def _dequantized_var_name(self, var_name):
+        """
+        Return dequantized variable name for the input `var_name`.
+        """
+        return "%s.dequantized" % (var_name)
+
+    def _is_float(self, v):
+        return isinstance(v, float) or isinstance(v, np.float32) \
+            or isinstance(v, np.float64)
+
+    def _quant(self, x, scale, num_bits):
+        return np.round(x / scale * ((1 << (num_bits - 1)) - 1))
+
+
+class ConvertToInt8Pass(object):
+    """
+    Convert the weights into int8_t type.
+
+    Args:
+        scope(fluid.Scope): scope is used to get the weight tensor values.
+        place(fluid.CPUPlace|fluid.CUDAPlace): place is used to restore the
+        8bits weight tensors.
+    """
+
+    def __init__(self, scope, place):
+        assert scope is not None, \
+            'The scope cannot be set None.'
+        assert place is not None, \
+            'The place cannot be set None.'
+        self._scope = scope
+        self._place = place
+        self._quantizable_ops = ['conv2d', 'depthwise_conv2d', 'mul']
+
+    def apply(self, graph):
+        """
+        Convert weights' tpye of the graph. After that, the data type of the
+        graph weigths is int8_t.
+
+        Args:
+            graph(IrGraph): the applied graph.
+        """
+        persistable_vars = [p.name() for p in graph.all_persistable_vars()]
+        ops = graph.all_ops()
+        input_map = {}
+        for op_node in ops:
+            op_name = op_node.name()
+            if op_name in self._quantizable_ops:
+                for var_node in op_node.inputs:
+                    name = var_node.name()
+                    if name in persistable_vars:
+                        if name not in input_map:
+                            int8_var_node = self._convert_to_int8(graph,
+                                                                  var_node)
+                            input_map[name] = int8_var_node
+                        graph.update_input_link(var_node, input_map[name],
+                                                op_node)
+
+        # remove the unused var node in the graph
+        self._remove_unused_var_nodes(graph)
+        return graph
+
+    def _convert_to_int8(self, graph, var_node):
+        int8_var_node_name = var_node.name() + ".int8"
+        int8_var_node = graph.create_param_node(
+            name=cpt.to_text(int8_var_node_name),
+            var_type=var_node.var().type(),
+            shape=var_node.var().shape(),
+            var_dtype=core.VarDesc.VarType.INT8)
+        array = self._load_var(var_node.name())
+        self._scope.var(int8_var_node_name)
+        self._store_var(int8_var_node_name, array, np.int8)
+        return int8_var_node
+
+    def _load_var(self, name):
+        return np.array(self._scope.find_var(name).get_tensor())
+
+    def _store_var(self, name, array, dtype):
+        tensor = self._scope.find_var(name).get_tensor()
+        tensor.set(array.astype(dtype), self._place)
+
+    def _remove_unused_var_nodes(self, graph):
+        all_used_vars = set()
+        ops = graph.all_ops()
+        for op_node in ops:
+            for input_node in op_node.inputs:
+                all_used_vars.add(input_node)
+            for output_node in op_node.outputs:
+                all_used_vars.add(output_node)
+
+        all_unused_vars = graph.all_vars() - all_used_vars
+        graph.safe_remove_nodes(all_unused_vars)
+
+
+class TransformForMobilePass(object):
+    """
+    This pass is used to convert the freezed graph for paddle-mobile execution.
+    """
+
+    def __init__(self):
+        self._fake_quant_op_names = [
+            'fake_quantize_abs_max', 'fake_quantize_range_abs_max'
+        ]
+        self._fake_dequant_op_names = ['fake_dequantize_max_abs']
+
+    def apply(self, graph):
+        """
+        Because paddle-mobile use `quantize` an `dequantize` as the names of
+        quantize operator and dequantize operator, the `apply` function just
+        realize this logic.
+
+        Args:
+            graph(IrGraph): the graph will be transformed.
+        """
+        ops = graph.all_ops()
+        for op_node in ops:
+            name = op_node.name()
+            if name in self._fake_quant_op_names:
+                op_node.op().set_type('quantize')
+                quant_node = graph.create_op_node_from_desc(op_node.op())
+                for input_node in op_node.inputs:
+                    graph.link_to(input_node, quant_node)
+                for output_node in op_node.outputs:
+                    graph.link_to(quant_node, output_node)
+                graph.safe_remove_nodes(op_node)
+            if name in self._fake_dequant_op_names:
+                op_node.op().set_type('dequantize')
+                dequant_node = graph.create_op_node_from_desc(op_node.op())
+                for input_node in op_node.inputs:
+                    graph.link_to(input_node, dequant_node)
+                for output_node in op_node.outputs:
+                    graph.link_to(dequant_node, output_node)
+                graph.safe_remove_nodes(op_node)
+
+        return graph

@@ -70,6 +70,9 @@ class OpHandleBase {
     auto it = dev_ctxes_.find(place);
     return it != dev_ctxes_.end() ? it->second : nullptr;
   }
+  const std::map<platform::Place, platform::DeviceContext *> &DeviceContext() {
+    return dev_ctxes_;
+  }
 
   void SetDeviceContext(platform::Place place, platform::DeviceContext *ctx_) {
     dev_ctxes_[place] = ctx_;

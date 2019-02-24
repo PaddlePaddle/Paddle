@@ -41,13 +41,15 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     auto selected_ids = context.Output<framework::LoDTensor>("selected_ids");
     auto selected_scores =
         context.Output<framework::LoDTensor>("selected_scores");
+    auto* parent_idx = context.Output<framework::Tensor>("parent_idx");
     PADDLE_ENFORCE_NOT_NULL(selected_ids);
     PADDLE_ENFORCE_NOT_NULL(selected_scores);
+    PADDLE_ENFORCE_NOT_NULL(parent_idx);
 
     math::BeamSearchFunctor<DeviceContext, T> alg;
     alg(context.template device_context<DeviceContext>(), pre_ids, pre_scores,
-        ids, scores, selected_ids, selected_scores, level, beam_size, end_id,
-        is_accumulated);
+        ids, scores, selected_ids, selected_scores, parent_idx, level,
+        beam_size, end_id, is_accumulated);
   }
 };
 
