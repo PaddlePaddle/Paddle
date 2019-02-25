@@ -39,7 +39,7 @@ void FusionSeqPoolConcatOp::InferShape(
 
   // The output height should be confirmed in Compute,
   // since input lod is not accessible here.
-  PADDLE_ENFORCE_EQ(ins_dims[0].size(), 2UL,
+  PADDLE_ENFORCE_EQ(ins_dims[0].size(), 2,
                     "The dims size of first input should be 2.");
   ctx->SetOutputDim("Out", {-1, ins_dims[0][axis] * static_cast<int>(n)});
 }

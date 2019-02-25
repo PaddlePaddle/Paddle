@@ -545,15 +545,16 @@ def yolov3_loss(x,
         TypeError: Attr ignore_thresh of yolov3_loss must be a float number
 
     Examples:
-    .. code-block:: python
+      .. code-block:: python
 
-        x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
-        gtbox = fluid.layers.data(name='gtbox', shape=[6, 5], dtype='float32')
-        gtlabel = fluid.layers.data(name='gtlabel', shape=[6, 1], dtype='int32')
-        anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
-        anchors = [0, 1, 2]
-        loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80, anchors=anchors, 
-                                        ignore_thresh=0.5, downsample_ratio=32)
+          x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
+          gtbox = fluid.layers.data(name='gtbox', shape=[6, 5], dtype='float32')
+          gtlabel = fluid.layers.data(name='gtlabel', shape=[6, 1], dtype='int32')
+          anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
+          anchor_mask = [0, 1, 2]
+          loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, gtlabel=gtlabel, anchors=anchors, 
+                                          anchor_mask=anchor_mask, class_num=80,
+                                          ignore_thresh=0.7, downsample_ratio=32)
     """
     helper = LayerHelper('yolov3_loss', **locals())
 
