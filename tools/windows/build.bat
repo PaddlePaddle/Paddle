@@ -43,8 +43,10 @@ if "%WITH_AVX%"=="ON" (
 )
 if %errorlevel% NEQ 0 GOTO END
 
-mkdir third_party\install
-xcopy /s /e /y /c win\Release\third_party\ third_party\
+cd /d build_%PYTHONV%_%PLAT%_%BLAS%_%INS%
+
+REM xcopy /s /e /y /c win\Release\third_party\ third_party\
+"c:\Program Files\7-Zip\7z.exe" x  d:\third_party.rar -aoa -o.
 if %errorlevel% NEQ 0 GOTO END
 
 REM start the cmake process to generate the windows projects
