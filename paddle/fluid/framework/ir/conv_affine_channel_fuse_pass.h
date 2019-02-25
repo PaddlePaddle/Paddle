@@ -31,7 +31,8 @@ class ConvAffineChannelFusePass : public FusePassBase {
   virtual ~ConvAffineChannelFusePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  std::unique_ptr<ir::Graph> ApplyImpl(
+      std::unique_ptr<ir::Graph> graph) const override;
   const std::string name_scope_{"conv_affine_channel_fuse"};
 };
 
@@ -40,7 +41,8 @@ class ConvEltwiseAddAffineChannelFusePass : public FusePassBase {
   virtual ~ConvEltwiseAddAffineChannelFusePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  std::unique_ptr<ir::Graph> ApplyImpl(
+      std::unique_ptr<ir::Graph> graph) const override;
   const std::string name_scope_{"conv_eltwiseadd_affine_channel_fuse"};
 };
 
