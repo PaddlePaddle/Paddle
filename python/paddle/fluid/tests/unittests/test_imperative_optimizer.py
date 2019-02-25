@@ -28,6 +28,7 @@ from test_imperative_base import new_program_scope
 
 class SimpleImgConvPool(fluid.imperative.Layer):
     def __init__(self,
+                 name_scope,
                  num_channels,
                  num_filters,
                  filter_size,
@@ -44,9 +45,10 @@ class SimpleImgConvPool(fluid.imperative.Layer):
                  use_cudnn=False,
                  param_attr=None,
                  bias_attr=None):
-        super(SimpleImgConvPool, self).__init__()
+        super(SimpleImgConvPool, self).__init__(name_scope)
 
         self._conv2d = Conv2D(
+            self.full_name(),
             num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
@@ -59,6 +61,7 @@ class SimpleImgConvPool(fluid.imperative.Layer):
             use_cudnn=use_cudnn)
 
         self._pool2d = Pool2D(
+            self.full_name(),
             pool_size=pool_size,
             pool_type=pool_type,
             pool_stride=pool_stride,
@@ -73,19 +76,20 @@ class SimpleImgConvPool(fluid.imperative.Layer):
 
 
 class MNIST(fluid.imperative.Layer):
-    def __init__(self, param_attr=None, bias_attr=None):
-        super(MNIST, self).__init__()
+    def __init__(self, name_scope, param_attr=None, bias_attr=None):
+        super(MNIST, self).__init__(name_scope)
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
-            1, 20, 5, 2, 2, act="relu")
+            self.full_name(), 1, 20, 5, 2, 2, act="relu")
 
         self._simple_img_conv_pool_2 = SimpleImgConvPool(
-            20, 50, 5, 2, 2, act="relu")
+            self.full_name(), 20, 50, 5, 2, 2, act="relu")
 
         pool_2_shape = 50 * 4 * 4
         SIZE = 10
         scale = (2.0 / (pool_2_shape**2 * SIZE))**0.5
-        self._fc = FC(10,
+        self._fc = FC(self.full_name(),
+                      10,
                       param_attr=fluid.param_attr.ParamAttr(
                           initializer=fluid.initializer.NormalInitializer(
                               loc=0.0, scale=scale)),
@@ -106,7 +110,7 @@ class TestImperativeMnist(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            mnist = MNIST()
+            mnist = MNIST("mnist")
             sgd = SGDOptimizer(learning_rate=1e-3)
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128)
@@ -150,7 +154,7 @@ class TestImperativeMnist(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            mnist = MNIST()
+            mnist = MNIST("mnist")
             sgd = SGDOptimizer(learning_rate=1e-3)
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128)

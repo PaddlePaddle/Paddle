@@ -16,7 +16,7 @@ from __future__ import print_function
 
 from . import framework
 import numpy as np
-import contextlib
+from .wrapped_decorator import signature_safe_contextmanager
 from .core import VarDesc
 from . import unique_name
 
@@ -49,7 +49,7 @@ def force_init_on_cpu():
     return _force_init_on_cpu_
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def init_on_cpu():
     """
     Force the variable to be inited on CPU.

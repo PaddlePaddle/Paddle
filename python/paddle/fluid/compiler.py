@@ -35,15 +35,6 @@ def _place_obj(place):
     return p
 
 
-def _is_pserver_mode(main_program):
-    main = main_program if main_program \
-        else framework.default_main_program()
-    for op in main.global_block().ops:
-        if op.type in ["send", "recv"]:
-            return True
-    return False
-
-
 class CompiledProgram(object):
     """
     Compiles a Program for execution.
@@ -120,8 +111,8 @@ class CompiledProgram(object):
             self._exec_strategy = ExecutionStrategy()
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
-        self._build_strategy.is_distribution = _is_pserver_mode(
-            self._program) or self._build_strategy.num_trainers > 1
+        self._build_strategy.is_distribution = framework.is_pserver_mode(
+            self._program)
         return self
 
     def with_inference_optimize(self, config):
@@ -189,7 +180,10 @@ class CompiledProgram(object):
 
         # FIXME(dzhwinter): enable_inplace should be after memory_optimize
         # if turn on python memory optimize, turn off the inplace_pass.
-        self._build_strategy.enable_inplace = False if self._program._is_mem_optimized else True
+        if self._build_strategy.memory_optimize is None:
+            self._build_strategy.memory_optimize = False if self._program._is_mem_optimized else True
+        if self._build_strategy.enable_inplace is None:
+            self._build_strategy.enable_inplace = False if self._program._is_mem_optimized else True
 
         if self._build_strategy.num_trainers > 1 and trainers_endpoints:
             assert self._build_strategy.num_trainers == len(
@@ -229,7 +223,7 @@ class CompiledProgram(object):
         if self._compiled:
             if scope and self._scope != scope:
                 raise ValueError("Cannot compile with different scope")
-            if place and self._place != place:
+            if place and not self._place._equals(place):
                 raise ValueError("Cannot compile with different place")
             return self
         self._compiled = True
