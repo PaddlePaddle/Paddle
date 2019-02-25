@@ -30,30 +30,50 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto &in_var_names = context.Inputs("Input");
     auto &out_var_names = context.Outputs("Output");
-
     auto &in_vars = context.MultiInputVar("Input");
+    auto out_vars = context.MultiOutputVar("Output");
+
     PADDLE_ENFORCE_GT(in_var_names.size(), static_cast<size_t>(0));
     PADDLE_ENFORCE_EQ(in_var_names.size(), out_var_names.size());
 
     for (size_t i = 0; i < in_var_names.size(); ++i) {
-      PADDLE_ENFORCE_EQ(in_var_names[i], out_var_names[i]);
-      // Only support LoDTensor,
+      // Only support LoDTensor
+      PADDLE_ENFORCE_NOT_NULL(in_vars[i], "%s should not be nullptr,",
+                              in_var_names[i]);
+      PADDLE_ENFORCE_NOT_NULL(out_vars[i], "%s should not be nullptr,",
+                              out_var_names[i]);
       PADDLE_ENFORCE(in_vars[i]->IsType<framework::LoDTensor>());
+      PADDLE_ENFORCE(out_vars[i]->IsType<framework::LoDTensor>());
     }
 
-    auto out_tensors = context.MultiOutput<framework::LoDTensor>("Output");
-    PADDLE_ENFORCE_EQ(in_var_names.size(), out_tensors.size());
+    auto in_tensors = context.MultiInput<framework::LoDTensor>("Input");
 
+    if (context.Attr<bool>("check_name")) {
+      for (size_t i = 0; i < in_var_names.size(); ++i) {
+        PADDLE_ENFORCE_EQ(in_var_names[i], out_var_names[i]);
+      }
+    } else {
+      // Init the output as input
+      for (size_t i = 0; i < in_tensors.size(); ++i) {
+        out_vars[i]->GetMutable<framework::LoDTensor>()->Resize(
+            in_tensors[i]->dims());
+      }
+    }
+
+    auto &dev_ctx = context.template device_context<DeviceContext>();
+
+    // Get mem_size and dtype
     size_t mem_size = 0;
     auto dtype = kDefaultDtype;
-    GetMemSizeAndDtype(out_tensors, out_var_names, &mem_size, &dtype);
+    GetMemSizeAndDtype(in_tensors, in_var_names, &mem_size, &dtype);
 
+    // Alloc the continuous space
     auto fused_tensor = context.Output<framework::LoDTensor>("FusedOutput");
     fused_tensor->Resize(framework::make_ddim({static_cast<int64_t>(mem_size)}))
         .mutable_data(context.GetPlace(), dtype);
 
-    auto &dev_ctx = context.template device_context<DeviceContext>();
-
+    // Init the continuous space
+    auto out_tensors = context.MultiOutput<framework::LoDTensor>("Output");
     int64_t offset = 0;
     if (context.Attr<bool>("copy_data")) {
       for (size_t i = 0; i < in_var_names.size(); ++i) {
@@ -63,12 +83,13 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
         framework::TensorCopy(*out_tensors[i], context.GetPlace(), dev_ctx,
                               &sub_tensor);
       }
-    } else {
+    } else if (context.Attr<bool>("set_constant")) {
       math::SetConstant<DeviceContext, T> set_constant;
       set_constant(dev_ctx, fused_tensor,
                    static_cast<T>(context.Attr<float>("constant")));
     }
 
+    // Make the outputs point to the continuous space.
     offset = 0;
     for (size_t i = 0; i < out_tensors.size(); ++i) {
       int64_t len = out_tensors[i]->numel();
@@ -77,14 +98,14 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
           ->ShareDataWith(fused_tensor->Slice(offset, offset + len))
           .Resize(dim);
       offset += len;
-      VLOG(10) << "alloc_space_for_vars: output(" << in_var_names[i]
+      VLOG(10) << "alloc_space_for_vars: output(" << out_var_names[i]
                << ") ,dim:(" << dim << ")"
                << " Address: " << out_tensors[i]->data<void>();
     }
   }
 
   void GetMemSizeAndDtype(
-      const std::vector<framework::LoDTensor *> &lod_tensors,
+      const std::vector<const framework::LoDTensor *> &lod_tensors,
       const std::vector<std::string> var_names, size_t *mem_size,
       framework::proto::VarType::Type *dtype) const {
     PADDLE_ENFORCE_EQ(lod_tensors.size(), var_names.size());
@@ -113,6 +134,7 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
 class AllocContinuousSpaceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+
   void InferShape(framework::InferShapeContext *ctx) const override {}
 };
 
@@ -123,7 +145,9 @@ class AllocContinuousSpaceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Output", "A set of variables.").AsDuplicable();
     AddOutput("FusedOutput", "");
     AddAttr<bool>("copy_data", ".").SetDefault(false);
+    AddAttr<bool>("set_constant", ".").SetDefault(false);
     AddAttr<float>("constant", ".").SetDefault(0.0);
+    AddAttr<bool>("check_name", ".").SetDefault(false);
     AddComment(R"DOC(
 )DOC");
   }

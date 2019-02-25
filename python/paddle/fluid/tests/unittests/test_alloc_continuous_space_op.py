@@ -27,9 +27,10 @@ class TestAllocContinuousSpace(OpTest):
         attrs = self.init_attr()
         self.copy_data = attrs["copy_data"]
         self.constant = attrs["constant"]
+        self.set_constant = attrs["set_constant"]
         self.Inputs = self.init_input()
-        self.FusedOutput = self.init_output(self.Inputs, self.constant,
-                                            self.copy_data)
+        self.FusedOutput = self.init_output(self.Inputs, self.set_constant,
+                                            self.constant)
         self.inputs = {'Input': self.Inputs}
         self.attrs = attrs
         self.outputs = {'Output': self.Inputs, 'FusedOutput': self.FusedOutput}
@@ -48,12 +49,12 @@ class TestAllocContinuousSpace(OpTest):
         return inputs
 
     def init_attr(self):
-        return {"copy_data": True, "constant": 0.0}
+        return {"copy_data": True, "set_constant": False, "constant": 0.0}
 
-    def init_output(self, input_list, constant, copy_data):
+    def init_output(self, input_list, set_constant, constant):
         inputs = [input[1].flatten() for input in input_list]
         output = np.concatenate(inputs)
-        if not copy_data:
+        if set_constant:
             output = np.ones((len(output))) * constant
         return output
 
@@ -63,7 +64,7 @@ class TestAllocContinuousSpace(OpTest):
 
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
     def init_attr(self):
-        return {"copy_data": False, "constant": 0.5}
+        return {"copy_data": False, "set_constant": True, "constant": 0.5}
 
     def test_check_output(self):
         self.check_output(no_check_set=["Output"])
