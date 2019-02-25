@@ -118,16 +118,19 @@ class Autograd {
     while (!ready.empty()) {
       OpBase* ready_op = ready.front();
       ready.pop_front();
+      LOG(ERROR) << "ApplyGrad Start";
       std::map<std::string, std::vector<VarBase*>> input_grads =
           ready_op->ApplyGrad();
 
       for (auto it : input_grads) {
         const std::vector<VarBase*>& ingrads = it.second;
+        LOG(ERROR) << "XX";
         for (size_t i = 0; i < ingrads.size(); ++i) {
           if (!ingrads[i]) continue;
           if (ready_op->input_vars_[it.first][i]->IsStopGradient()) {
             continue;
           }
+          LOG(ERROR) << "XX";
           OpBase* pre_op = ready_op->pre_ops_[it.first][i];
           if (!pre_op) continue;
 
@@ -137,8 +140,13 @@ class Autograd {
           if (pre_op_ready) {
             ready.push_back(pre_op);
           }
+          LOG(ERROR) << "XX";
         }
       }
+
+      ready_op->InvokeBackwardHooks();
+
+      LOG(ERROR) << "ApplyGrad End";
     }
   }
 
@@ -221,8 +229,10 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
             grad_input_vars_[0][framework::GradVarName(PyLayer::kFwdInp)]);
   } else {
     grad_outputs.resize(grad_op_descs_.size());
+    LOG(ERROR) << "ApplyGrad " << grad_op_descs_.size();
     for (size_t k = 0; k < grad_op_descs_.size(); ++k) {
       framework::OpDesc* grad_op_desc = grad_op_descs_[k];
+      LOG(ERROR) << "op grad " << grad_op_desc->Type();
       VLOG(3) << "op grad " << grad_op_desc->Type();
       for (auto it : grad_output_vars_[k]) {
         auto& outputs = grad_outputs[k][it.first];
@@ -234,11 +244,15 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
         }
       }
 
+      LOG(ERROR) << "op grad " << grad_op_desc->Type();
+
       framework::RuntimeContext ctx(grad_input_vars_[k], grad_outputs[k]);
 
       // No need to do compile time infer shape here.
       // grad_op_desc_->InferShape(*block_);
       grad_op_desc->InferVarType(block_);
+
+      LOG(ERROR) << "op grad " << grad_op_desc->Type();
 
       std::unique_ptr<framework::OperatorBase> opbase =
           framework::OpRegistry::CreateOp(*grad_op_desc);
@@ -252,6 +266,8 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
       p.func(framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx));
     }
   }
+
+  LOG(ERROR) << "delete grad start ";
 
   for (size_t k = 0; k < grad_output_vars_.size(); ++k) {
     for (auto it : grad_output_vars_[k]) {
@@ -269,6 +285,24 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
   }
 
   return input_vars_;
+}
+
+void OpBase::InvokeBackwardHooks() {
+  LOG(ERROR) << "call backward start ";
+
+  // call backward hooks
+  for (py::object& callable : backward_hooks_) {
+    callable(this);
+  }
+
+  LOG(ERROR) << "call backward end ";
+}
+
+void OpBase::RegisterBackwardHooks(const py::object& callable) {
+  LOG(ERROR) << "Register backward hooks " << trace_id_;
+
+  // TODO(minqiyang): check the callable format
+  backward_hooks_.push_back(callable);
 }
 
 void VarBase::RunBackward() {

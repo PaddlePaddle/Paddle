@@ -169,6 +169,18 @@ PYBIND11_MODULE(core, m) {
            py::return_value_policy::take_ownership)
       .def("value", [](const imperative::VarBase &self) { return self.var_; },
            py::return_value_policy::reference)
+      .def_property("name",
+                    [](const imperative::VarBase &self) { return self.name_; },
+                    [](imperative::VarBase &self, const std::string &name) {
+                      self.name_ = name;
+                      LOG(ERROR) << "create ivar name " << self.name_;
+                    })
+      .def_property("block",
+                    [](const imperative::VarBase &self) { return self.block_; },
+                    [](imperative::VarBase &self, framework::BlockDesc *block) {
+                      self.block_ = block;
+                    },
+                    py::return_value_policy::reference)
       .def_property(
           "desc",
           [](const imperative::VarBase &self) { return self.var_desc_; },
@@ -185,6 +197,10 @@ PYBIND11_MODULE(core, m) {
 
   py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
       .def(py::init<>())
+      .def("register_backward_hooks",
+           [](imperative::OpBase &self, const py::object &callable) {
+             self.RegisterBackwardHooks(callable);
+           })
       .def_property(
           "desc", [](const imperative::OpBase &self) { return self.op_desc_; },
           [](imperative::OpBase &self, framework::OpDesc *op_desc) {
@@ -415,11 +431,11 @@ PYBIND11_MODULE(core, m) {
            Set LoD of the LoDTensor according to recursive sequence length.
 
            For example, if recursive_sequence_lengths=[[2, 3]], meaning that
-           there are two sequences with length 2 and 3 respectively, the 
-           corresponding lod would be [[0, 2, 2+3]], i.e, [[0, 2, 5]].  
+           there are two sequences with length 2 and 3 respectively, the
+           corresponding lod would be [[0, 2, 2+3]], i.e, [[0, 2, 5]].
 
            Args:
-                recursive_sequence_lengths (List[List[int]]): sequence lengths. 
+                recursive_sequence_lengths (List[List[int]]): sequence lengths.
            )DOC")
       .def("lod",
            [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
@@ -450,7 +466,7 @@ PYBIND11_MODULE(core, m) {
            Return the sequence length of the LoDTensor corresponding to LoD.
 
            Returns:
-               out (List[List[int]): the sequence lengths. 
+               out (List[List[int]): the sequence lengths.
            )DOC")
       .def("has_valid_recursive_sequence_lengths",
            [](LoDTensor &self) -> bool {
@@ -601,29 +617,29 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::arg("name"),
            R"DOC(
-           Find or create variable named :code:`name` in the current scope. 
+           Find or create variable named :code:`name` in the current scope.
 
-           If the variable named :code:`name` does not exist in the 
+           If the variable named :code:`name` does not exist in the
            current scope, the variable would be created. Otherwise,
-           return the existing variable. 
+           return the existing variable.
 
            Args:
-               name (str): the variable name.  
-          
+               name (str): the variable name.
+
            Returns:
-               out (core.Variable): the found or created variable. 
+               out (core.Variable): the found or created variable.
            )DOC",
            py::return_value_policy::reference)
       .def("find_var", &Scope::FindVar, py::arg("name"),
            R"DOC(
-           Find variable named :code:`name` in the current scope or 
+           Find variable named :code:`name` in the current scope or
            its parent scope. Return None if not found.
-        
+
            Args:
                name (str): the variable name.
-            
+
            Returns:
-               out (core.Variable|None): the found variable or None.   
+               out (core.Variable|None): the found variable or None.
            )DOC",
            py::return_value_policy::reference)
       .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
@@ -647,7 +663,7 @@ All parameter, weight, gradient are variables in Paddle.
         },
         R"DOC(
         Create a new scope.
-        
+
         Returns:
             out (core._Scope): the created scope.
         )DOC",
