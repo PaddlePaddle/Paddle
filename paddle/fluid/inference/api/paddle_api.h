@@ -248,7 +248,7 @@ class PaddlePredictor {
   /** \brief Get the serialized model program that executes in inference phase.
    * Its data type is ProgramDesc, which is a protobuf message.
    */
-  virtual std::string GetSeriazlizedProgram() const {
+  virtual std::string GetSerializedProgram() const {
     assert(false);  // Force raise error.
     return "NotImplemented";
   }
