@@ -259,13 +259,6 @@ function check_style() {
     	eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
     fi
 
-    # set up go environment for running gometalinter
-    mkdir -p $GOPATH/src/github.com/PaddlePaddle/
-    ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
-    mkdir -p ./build/go
-    cp go/glide.* build/go
-    cd build/go; glide install; cd -
-
     export PATH=/usr/bin:$PATH
     pre-commit install
     clang-format --version
