@@ -59,7 +59,7 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
 #endif
 
 void FusedAllReduceOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
+  platform::RecordEvent record_event(Name());
 
   VLOG(4) << this->DebugString();
 

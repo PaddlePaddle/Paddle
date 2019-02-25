@@ -172,6 +172,7 @@ void FuseOptimizerOpPass::AppendAllocContinuousSpace(
   op_desc->SetOutput("Output", args);
   op_desc->SetOutput("FusedOutput", {out_arg});
   op_desc->SetAttr("copy_data", copy_data);
+  op_desc->SetAttr("check_name", true);
 }
 
 void FuseOptimizerOpPass::InserInputAndOutputForOptOps(
