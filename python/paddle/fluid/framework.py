@@ -1640,25 +1640,25 @@ class IrNode(object):
         Args:
             node_id(int): the given node id.
         """
-        self.node.inputs_remove(node_id)
+        self.node.remove_input(node_id)
 
-    def inputs_remove(self, ir_node):
+    def remove_input(self, node):
         """
         Remove a node from inputs.
 
         Args:
-            ir_node(IrNode): the node being removed.
+            node(IrNode): the node being removed.
         """
-        self.node.inputs_remove(ir_node.node)
+        self.node.remove_input(node.node)
 
-    def inputs_append(self, ir_node):
+    def append_input(self, node):
         """
         Append a node in inputs.
 
         Args:
-            ir_node(IrNode): the node being appended.
+            node(IrNode): the node being appended.
         """
-        self.node.inputs_append(ir_node.node)
+        self.node.append_input(node.node)
 
     def clear_outputs(self):
         """
@@ -1667,32 +1667,32 @@ class IrNode(object):
         """
         self.node.clear_outputs()
 
-    def outputs_remove_by_id(self, node_id):
+    def remove_output_by_id(self, node_id):
         """
         Remove a node from outputs by the given node id.
 
         Args:
             node_id(int): the given node id.
         """
-        self.node.outputs_remove(node_id)
+        self.node.remove_output(node_id)
 
-    def outputs_remove(self, ir_node):
+    def remove_output(self, node):
         """
         Remove a node from outputs.
 
         Args:
-            ir_node(IrNode): the node being removed.
+            node(IrNode): the node being removed.
         """
-        self.node.outputs_remove(ir_node.node)
+        self.node.remove_output(node.node)
 
-    def outputs_append(self, ir_node):
+    def append_output(self, node):
         """
         Append a node in outputs.
 
         Args:
-            ir_node(IrNode): the node being appended.
+            node(IrNode): the node being appended.
         """
-        self.node.outputs_append(ir_node.node)
+        self.node.append_output(node.node)
 
     @property
     def inputs(self):
@@ -2116,10 +2116,10 @@ class IrGraph(object):
         assert old_input_node.node in self.graph.nodes() and new_input_node.node in \
         self.graph.nodes() and op_node.node in self.graph.nodes(), \
         'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
-        old_input_node.outputs_remove(op_node)
-        op_node.inputs_remove(old_input_node)
-        new_input_node.outputs_append(op_node)
-        op_node.inputs_append(new_input_node)
+        old_input_node.remove_output(op_node)
+        op_node.remove_input(old_input_node)
+        new_input_node.append_output(op_node)
+        op_node.append_input(new_input_node)
         op_node.rename_input(old_input_node.name(), new_input_node.name())
 
     def link_to(self, node_in, node_out):
@@ -2132,8 +2132,8 @@ class IrGraph(object):
         """
         assert node_in.node in self.graph.nodes() and node_out.node in self.graph.nodes(), \
             'The two arguments(node_in&node_out) must be in the graph nodes.'
-        node_in.outputs_append(node_out)
-        node_out.inputs_append(node_in)
+        node_in.append_output(node_out)
+        node_out.append_input(node_in)
 
     def safe_remove_nodes(self, remove_nodes):
         """
