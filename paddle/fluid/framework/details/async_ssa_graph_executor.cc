@@ -20,8 +20,7 @@ namespace details {
 
 AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
-    ir::Graph* graph)
+    const std::vector<platform::Place> &places, ir::Graph *graph)
     : strategy_(std::move(strategy)),
       local_scopes_(std::move(local_scopes)),
       pool_(places.size() >= 2 ? new ::ThreadPool(places.size()) : nullptr),
