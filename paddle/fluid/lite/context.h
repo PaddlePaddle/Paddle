@@ -55,7 +55,8 @@ class OpContext final {
   explicit OpContext(TargetType target)
       : targets_(std::vector<TargetType>({target})) {}
   // @param target valid target.
-  explicit OpContext(const std::vector<TargetType>& target) : targets_(target) {}
+  explicit OpContext(const std::vector<TargetType>& target)
+      : targets_(target) {}
 
   const std::vector<TargetType>& target() const { return targets_; }
 

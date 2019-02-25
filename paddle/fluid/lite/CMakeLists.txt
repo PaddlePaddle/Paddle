@@ -2,6 +2,7 @@ cc_library(executor_lite SRCS executor.cc)
 cc_library(op_lite SRCS op_lite.cc)
 cc_library(memory_lite SRCS memory.cc)
 cc_library(tensor_lite SRCS tensor.cc DEPS memory_lite)
+cc_library(variable_lite SRCS variable.cc)
 cc_library(op_registry_lite SRCS op_registry.cc)
 
 add_subdirectory(x86)
