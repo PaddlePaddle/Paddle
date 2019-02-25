@@ -286,8 +286,6 @@ class TestImperativeResnet(unittest.TestCase):
                 optimizer.minimize(avg_loss)
                 resnet.clear_gradients()
 
-                fluid.default_main_program().global_block()._clear_block()
-
                 dy_param_value = {}
                 for param in resnet.parameters():
                     dy_param_value[param.name] = param._numpy()
