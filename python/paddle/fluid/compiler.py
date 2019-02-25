@@ -20,6 +20,7 @@ from .. import compat as cpt
 from .framework import cuda_places, cpu_places
 
 from . import core
+from . import framework
 
 __all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
 
@@ -124,6 +125,8 @@ class CompiledProgram(object):
             self._places = [_place_obj(p) for p in places]
         else:
             self._places = None
+        self._build_strategy.is_distribution = framework.is_pserver_mode(
+            self._program)
         return self
 
     def with_inference_optimize(self, config):
