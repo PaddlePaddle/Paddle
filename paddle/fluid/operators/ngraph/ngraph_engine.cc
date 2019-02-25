@@ -16,7 +16,10 @@ limitations under the License. */
 
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/block_desc.h"
@@ -483,7 +486,8 @@ void NgraphEngine::Run(const framework::Scope& scope,
     }
   }
 
-  backend_->call(backend_->compile(ngraph_function_), t_out, t_in);
+  auto handle = backend_->compile(ngraph_function_);
+  handle->call_with_validate(t_out, t_in);
 }  // NgraphEngine::Run
 }  // namespace operators
 }  // namespace paddle
