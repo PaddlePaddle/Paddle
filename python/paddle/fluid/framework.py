@@ -390,11 +390,11 @@ class Variable(object):
         if _in_imperative_mode():
             # record vars in tracer rather than blocks
             self._ivar = kwargs.get("ivar", None)
-            self._ivar.block = block.desc
-            self._ivar.name = name
             if not self._ivar:
                 self._ivar = core.VarBase(stop_gradient)
             self._ivar.desc = self.desc
+            self._ivar.block = block.desc
+            self._ivar.name = name
             if persistable:
                 self.block.vars[name] = self
         else:

@@ -33,7 +33,7 @@ class Layer : public imperative::Layer {
   }
 };
 
-class PyOpBase : public imperative::OpBase {
+class PYBIND11_HIDDEN PyOpBase : public imperative::OpBase {
  public:
   using imperative::OpBase::OpBase;  // Inherit constructors
 };
