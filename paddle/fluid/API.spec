@@ -304,7 +304,7 @@ paddle.fluid.layers.reciprocal ArgSpec(args=['x', 'name'], varargs=None, keyword
 paddle.fluid.layers.square ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.layers.softplus ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.layers.softsign ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,))
-paddle.fluid.layers.uniform_random ArgSpec(args=['shape', 'dtype', 'min', 'max', 'seed'], varargs=None, keywords=None, defaults=(None, None, None, None))
+paddle.fluid.layers.uniform_random ArgSpec(args=['shape', 'dtype', 'min', 'max', 'seed'], varargs=None, keywords=None, defaults=('float32', -1.0, 1.0, 0))
 paddle.fluid.layers.hard_shrink ArgSpec(args=['x', 'threshold'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.layers.cumsum ArgSpec(args=['x', 'axis', 'exclusive', 'reverse'], varargs=None, keywords=None, defaults=(None, None, None))
 paddle.fluid.layers.thresholded_relu ArgSpec(args=['x', 'threshold'], varargs=None, keywords=None, defaults=(None,))
