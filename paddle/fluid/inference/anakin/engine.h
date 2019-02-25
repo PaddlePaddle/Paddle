@@ -48,7 +48,7 @@ template <typename TargetT, ::anakin::Precision PrecisionType,
           ::anakin::OpRunType RunType = ::anakin::OpRunType::ASYNC>
 class AnakinEngine /*: public EngineBase */ {
  public:
-  AnakinEngine(bool need_summary=false);
+  AnakinEngine(bool need_summary = false);
   ~AnakinEngine();
   void Init();
   void DeclareInputs(const std::vector<std::string> &inputs);
@@ -70,6 +70,8 @@ class AnakinEngine /*: public EngineBase */ {
   Tensor *AddWeight(const std::string &id, const Tensor &v);
 
   std::unique_ptr<AnakinEngine> Clone();
+  void Freeze();
+  void Optimize();
   void FreezeNetwork();
   std::vector<Tensor> Execute(const std::vector<Tensor *> &inputs);
   // std::vector<framework::LoDTensor> Execute(
@@ -79,8 +81,8 @@ class AnakinEngine /*: public EngineBase */ {
   using NetT = ::anakin::Net<TargetT, PrecisionType, RunType>;
   using GraphT = ::anakin::graph::Graph<TargetT, PrecisionType>;
   // std::unique_ptr<GraphT> graph_;
-  // std::shared_ptr<GraphT> graph_;
-  GraphT *graph_{nullptr};
+  // GraphT *graph_{nullptr};
+  std::unique_ptr<GraphT> graph_;
   std::unique_ptr<NetT> net_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;

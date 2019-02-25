@@ -33,7 +33,7 @@ using AnakinNvEngine =
 
 class OpConverter {
  public:
-  OpConverter() {}
+  OpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
                           const framework::Scope &scope) = 0;

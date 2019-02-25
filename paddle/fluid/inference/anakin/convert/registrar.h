@@ -55,7 +55,8 @@ template <typename T, typename... Args>
 class Registrar {
  public:
   Registrar(const std::string &name, Args... args) {
-    std::shared_ptr<OpConverter> converter = std::make_shared<T>(args...);
+    std::shared_ptr<OpConverter> converter =
+        std::make_shared<T>(std::move(args)...);
     Register::instance()->RegisterFn(name, [converter]() { return converter; });
   }
 };

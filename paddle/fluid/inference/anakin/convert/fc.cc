@@ -26,9 +26,10 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class FcOpConverter : OpConverter {
+class FcOpConverter : public OpConverter {
  public:
-  FcOpConverter() {}
+  // FcOpConverter(const std::string &op_name): OpConverter(op_name) {}
+  FcOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
                           const framework::Scope &scope);

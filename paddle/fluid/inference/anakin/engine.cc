@@ -37,12 +37,7 @@ AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine(bool need_summary)
       net_(new AnakinNetT<TargetT, PrecisionType, RunType>(need_summary)) {}
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-AnakinEngine<TargetT, PrecisionType, RunType>::~AnakinEngine() {
-  if (graph_) {
-    delete graph_;
-    graph_ = nullptr;
-  }
-}
+AnakinEngine<TargetT, PrecisionType, RunType>::~AnakinEngine() {}
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::Init() {
@@ -147,6 +142,16 @@ std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
   }
 
   return outputs;
+}
+
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+void AnakinEngine<TargetT, PrecisionType, RunType>::Freeze() {
+  PADDLE_ENFORCE(graph_->Freeze(), "Freeze anakin subgraph.");
+}
+
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+void AnakinEngine<TargetT, PrecisionType, RunType>::Optimize() {
+  PADDLE_ENFORCE(graph_->Optimize(), "Graph optimization.");
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
