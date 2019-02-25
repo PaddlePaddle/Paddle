@@ -136,7 +136,7 @@ class CompiledProgram(object):
         Returns:
             self
         """
-        assert not self._is_data_parallel, "Cannot compile both data parallel and inference."
+        assert not self._is_data_parallel, "Cannot compile both data parallel and inference"
         assert not self._is_inference, "Already compiled with inference"
 
         assert any([
@@ -218,13 +218,12 @@ class CompiledProgram(object):
 
         places = list(map(_place_obj, self._places))
 
-        pe = core.ParallelExecutor(
+        return core.ParallelExecutor(
             places,
             set(self._persistable_vars),
             cpt.to_text(self._loss_name)
             if self._loss_name else six.u(''), self._scope, self._local_scopes,
             self._exec_strategy, self._build_strategy, self._graph)
-        return pe
 
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)
