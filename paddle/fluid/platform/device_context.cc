@@ -241,6 +241,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   multi_process_ = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
+  PADDLE_ENFORCE(cudaStreamCreate(&copy_stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
@@ -317,6 +318,7 @@ CUDADeviceContext::~CUDADeviceContext() {
   eigen_stream_.reset();
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
+  PADDLE_ENFORCE(cudaStreamDestroy(copy_stream_));
 }
 
 Place CUDADeviceContext::GetPlace() const { return place_; }
@@ -328,6 +330,11 @@ void CUDADeviceContext::Wait() const {
     PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
     PADDLE_ENFORCE(cudaGetLastError());
   });
+}
+
+void CUDADeviceContext::WaitCopy() const {
+  PADDLE_ENFORCE(cudaStreamSynchronize(copy_stream_));
+  PADDLE_ENFORCE(cudaGetLastError());
 }
 
 int CUDADeviceContext::GetComputeCapability() const {
@@ -355,6 +362,8 @@ CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
 }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
+
+cudaStream_t CUDADeviceContext::copy_stream() const { return copy_stream_; }
 
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
