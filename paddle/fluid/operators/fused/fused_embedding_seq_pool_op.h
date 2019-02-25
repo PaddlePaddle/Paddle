@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
@@ -37,32 +38,25 @@ struct EmbeddingVSumFunctor {
                   const LoDTensor *table_t, const LoDTensor *ids_t,
                   LoDTensor *output_t) {
     auto *table = table_t->data<T>();
-    int64_t row_number = table_t->dims()[0];
-    int64_t row_width = table_t->dims()[1];
-    int64_t last_dim = output_t->dims()[1];
+    int64_t table_height = table_t->dims()[0];
+    int64_t table_width = table_t->dims()[1];
+    int64_t out_width = output_t->dims()[1];
     const int64_t *ids = ids_t->data<int64_t>();
     auto ids_lod = ids_t->lod()[0];
-    int64_t ids_count = ids_t->numel() / ids_lod.back();
-
+    int64_t idx_width = ids_t->numel() / ids_lod.back();
     auto *output = output_t->mutable_data<T>(context.GetPlace());
 
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-    for (int64_t i = 0; i != ids_lod.size() - 1; ++i) {
-      size_t begin = ids_lod[i] * ids_count;
-      for (int64_t j = 0; j != ids_count; ++j) {
-        PADDLE_ENFORCE_LT(ids[begin], row_number);
-        PADDLE_ENFORCE_GE(ids[begin], 0, "ids %d", i);
-        blas.VCOPY(row_width, table + ids[begin + j] * row_width,
-                   output + i * last_dim + j * row_width);
-      }
+    PADDLE_ENFORCE_LE(table_width * idx_width, out_width);
+    PADDLE_ENFORCE_GT(ids_lod.size(), 1UL);
 
-      for (int64_t r = (ids_lod[i] + 1) * ids_count;
-           r < ids_lod[i + 1] * ids_count; ++r) {
-        PADDLE_ENFORCE_LT(ids[r], row_number);
-        PADDLE_ENFORCE_GE(ids[r], 0, "ids %d", i);
-        blas.AXPY(row_width, 1., table + ids[r] * row_width,
-                  output + i * last_dim + (r % ids_count) * row_width);
-      }
+    jit::emb_seq_pool_attr_t attr(table_height, table_width, 0, idx_width,
+                                  out_width, jit::SeqPoolType::kSum);
+    for (size_t i = 0; i != ids_lod.size() - 1; ++i) {
+      attr.index_height = ids_lod[i + 1] - ids_lod[i];
+      auto emb_seqpool = jit::Get<jit::kEmbSeqPool, jit::EmbSeqPoolTuples<T>,
+                                  platform::CPUPlace>(attr);
+      emb_seqpool(table, ids + ids_lod[i] * idx_width, output + i * out_width,
+                  &attr);
     }
   }
 };

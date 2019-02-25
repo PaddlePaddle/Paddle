@@ -36,6 +36,7 @@ DEFINE_bool(init_allocated_mem, false,
             "that initializing the allocated memory with a small value "
             "during unit testing.");
 DECLARE_double(fraction_of_gpu_memory_to_use);
+DECLARE_bool(benchmark);
 
 namespace paddle {
 namespace memory {
@@ -198,7 +199,7 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
                << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
     platform::SetDeviceId(cur_dev);
   } else {
-    if (VLOG_IS_ON(3)) {
+    if (FLAGS_benchmark) {
       allocation::GPUMemMonitor.Add(place.device, size);
     }
     if (FLAGS_init_allocated_mem) {
@@ -216,7 +217,7 @@ void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p,
                                size_t size) {
 #ifdef PADDLE_WITH_CUDA
   GetGPUBuddyAllocator(place.device)->Free(p);
-  if (VLOG_IS_ON(3)) {
+  if (FLAGS_benchmark) {
     allocation::GPUMemMonitor.Minus(place.device, size);
   }
 #else
@@ -257,7 +258,7 @@ void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
   void *ptr = buddy_allocator->Alloc(size);
 
   if (ptr == nullptr) {
-    LOG(WARNING) << "cudaMallocHost Cannot allocate " << size
+    LOG(WARNING) << "cudaHostAlloc Cannot allocate " << size
                  << " bytes in CUDAPinnedPlace";
   }
   if (FLAGS_init_allocated_mem) {
@@ -355,7 +356,7 @@ void MemInfo::Minus(const size_t &size) {
   usage_ -= size;
 }
 
-uint64_t MemInfo::GetPeakUsage() { return peak_usage_; }
+uint64_t MemInfo::GetPeakUsage() const { return peak_usage_; }
 
 LegacyMemMonitor::~LegacyMemMonitor() {
   for (auto &item : gpu_mem_info_) delete item.second;
@@ -379,10 +380,10 @@ void LegacyMemMonitor::Minus(const int &device, const size_t &size) {
   gpu_mem_info_[device]->Minus(size);
 }
 
-uint64_t LegacyMemMonitor::GetMemUsage(const int &device) {
+uint64_t LegacyMemMonitor::GetMemUsage(const int &device) const {
   return gpu_mem_info_.find(device) == gpu_mem_info_.end()
              ? 0
-             : gpu_mem_info_[device]->GetPeakUsage();
+             : gpu_mem_info_.at(device)->GetPeakUsage();
 }
 
 void LegacyMemMonitor::PrintMemUsage() {

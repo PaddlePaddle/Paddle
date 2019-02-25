@@ -34,9 +34,11 @@ namespace details {
 static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
   // Should fix the allreduce op order if scheduling
   // them in multiple threads or processes to avoid hang.
+  // NOTE: ParallelGraph would execute this pass on each graph, so
+  // don't need to append it here.
   return (!strategy.enable_sequential_execution_ &&
-          strategy.num_trainers_ > 1) ||
-         strategy.enable_parallel_graph_;
+          strategy.num_trainers_ > 1) &&
+         !strategy.enable_parallel_graph_;
 }
 
 class ParallelExecutorPassBuilder : public ir::PassBuilder {
@@ -133,15 +135,15 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   void AppendMultiDevPass(const BuildStrategy &strategy) {
     ir::Pass *multi_devices_pass;
     if (strategy_.is_distribution_) {
-      VLOG(3) << "dist train mode";
+      VLOG(3) << "multi device parameter server mode";
       multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
     } else {
       if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
-        VLOG(3) << "allreduce mode";
+        VLOG(3) << "multi devices collective mode with allreduce";
         multi_devices_pass =
             AppendPass("allreduce_mode_multi_devices_pass").get();
       } else if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
-        VLOG(3) << "reduce mode";
+        VLOG(3) << "multi deivces collective mode with reduce";
         multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
       } else {
         PADDLE_THROW("Unknown reduce strategy.");
@@ -211,8 +213,6 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
           new std::vector<OpDesc *>(main_program.Block(0).AllOps());
       graph->Set<const std::vector<OpDesc *>>(kAllOpDescs,
                                               all_op_descs);  // take ownership
-      graph->Set<GraphNodePool>(kGraphNodePool,
-                                new GraphNodePool);  // take ownership
 
       pass->Erase(kAllOpDescs);
       pass->SetNotOwned<const std::vector<OpDesc *>>(kAllOpDescs, all_op_descs);
@@ -247,7 +247,9 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
         continue;
       }
     }
+    VLOG(3) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(std::move(graph));
+    VLOG(3) << "Finish Apply Pass " << pass->Type();
   }
   return graph;
 }

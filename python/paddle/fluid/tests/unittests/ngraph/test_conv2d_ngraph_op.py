@@ -15,38 +15,7 @@
 from __future__ import print_function
 
 import unittest
-from paddle.fluid.tests.unittests.test_conv2d_op import *
-
-
-class TestNGRAPH(TestConv2dOp):
-    def init_kernel_type(self):
-        super(TestNGRAPH, self).init_kernel_type()
-
-
-class TestNGRAPHWithPad(TestWithPad):
-    def init_kernel_type(self):
-        super(TestNGRAPHWithPad, self).init_kernel_type()
-
-
-class TestNGRAPHWithStride(TestWithStride):
-    def init_kernel_type(self):
-        super(TestNGRAPHWithStride, self).init_kernel_type()
-
-
-class TestNGRAPHWithGroup(TestWithGroup):
-    def init_kernel_type(self):
-        super(TestNGRAPHWithGroup, self).init_kernel_type()
-
-
-class TestNGRAPHWith1x1(TestWith1x1):
-    def init_kernel_type(self):
-        super(TestNGRAPHWith1x1, self).init_kernel_type()
-
-
-class TestNGRAPHWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
-    def init_kernel_type(self):
-        super(TestNGRAPHWithInput1x1Filter1x1, self).init_kernel_type()
-
+from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride, TestWithGroup, TestWith1x1, TestWithInput1x1Filter1x1
 
 if __name__ == '__main__':
     unittest.main()

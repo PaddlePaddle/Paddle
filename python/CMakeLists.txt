@@ -4,18 +4,6 @@ set(PY_FILES paddle/__init__.py
   ${UTILS_PY_FILES}
   ${FLUID_PY_FILES})
 
-set(MKL_SHARED_LIBS "")
-set(MKL_DEPENDS "")
-if(WITH_MKLML)
-  list(APPEND MKL_SHARED_LIBS ${MKLML_LIB} ${MKLML_IOMP_LIB})
-  list(APPEND MKL_DEPENDS mklml)
-endif()
-
-if(WITH_MKLDNN)
-  list(APPEND MKL_SHARED_LIBS "${MKLDNN_SHARED_LIB}")
-  list(APPEND MKL_DEPENDS mkldnn mkldnn_shared_lib)
-endif()
-
 if(WITH_GPU)
   SET(PACKAGE_NAME "paddlepaddle-gpu")
 else()
@@ -42,7 +30,7 @@ IF(WIN32)
             COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
             COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
             COMMAND ${CMAKE_COMMAND} -E remove_directory ${PADDLE_PYTHON_BUILD_DIR}/lib-python
-            DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
+            DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES})
 ELSE(WIN32)
 	add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
 		COMMAND touch stub.cc
@@ -51,11 +39,10 @@ ELSE(WIN32)
 		COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
 		COMMAND ${CMAKE_COMMAND} -E remove_directory ${PADDLE_PYTHON_BUILD_DIR}/lib-python
 		COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_PYTHON_BUILD_DIR}/lib* ${PADDLE_PYTHON_BUILD_DIR}/lib-python
-		DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
+		DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES})
 ENDIF()
 
-set(paddle_python_deps ${PADDLE_PYTHON_BUILD_DIR}/.timestamp ${MKL_DEPENDS} ${external_project_dependencies})
-add_custom_target(paddle_python ALL DEPENDS ${paddle_python_deps})
+add_custom_target(paddle_python ALL DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
 
@@ -64,6 +51,7 @@ if (WITH_TESTING)
   add_subdirectory(paddle/dataset/tests)
   add_subdirectory(paddle/fluid/tests)
   add_subdirectory(paddle/fluid/contrib/tests)
+  add_subdirectory(paddle/fluid/contrib/slim/tests)
 endif()
 install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}
     DESTINATION opt/paddle/share/wheels
