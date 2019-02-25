@@ -904,6 +904,16 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
 }
 
+std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
+    const OpKernelType& key) const {
+  auto config_iter = kernel_configs_map_.find(key);
+  std::vector<KernelConfig>* kernel_configs = nullptr;
+  if (config_iter != kernel_configs_map_.end()) {
+    kernel_configs = &(config_iter->second);
+  }
+  return kernel_configs;
+}
+
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   RuntimeContext ctx(Inputs(), Outputs(), scope);
@@ -940,11 +950,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                  KernelTypeToString(expected_kernel_key));
   }
 
-  auto config_iter = kernel_configs_map_.find(expected_kernel_key);
-  std::vector<KernelConfig>* kernel_configs = nullptr;
-  if (config_iter != kernel_configs_map_.end()) {
-    kernel_configs = &(config_iter->second);
-  }
+  std::vector<KernelConfig>* kernel_configs =
+      GetKernelConfig(expected_kernel_key);
 
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
