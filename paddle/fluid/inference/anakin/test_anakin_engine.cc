@@ -37,7 +37,7 @@ class TestAnakinEngine : public ::testing::Test {
 };
 
 void TestAnakinEngine::SetUp() {
-  engine_.reset(new AnakinEngine<NV, Precision::FP32>());
+  engine_.reset(new AnakinEngine<NV, Precision::FP32>(true));
   engine_->DeclareInputs({"x"});
   engine_->DeclareOutputs({"y"});
 }
@@ -49,15 +49,17 @@ TEST_F(TestAnakinEngine, Execute) {
   engine_->AddOpAttr("op1", "axis", 2);
   std::vector<int> shape = {1, 1, 3, 100};
   ::anakin::saber::Shape tmp_shape(shape);
-  ::anakin::saber::Tensor<::anakin::saber::NV> weight1(tmp_shape);
-  // engine_->AddOpAttr("op1", "weight_1", weight1);
-  // engine_->AddOpAttr("op1", "Inputs")
+  //::anakin::saber::Tensor<::anakin::saber::NV> weight1(tmp_shape);
+  ::anakin::PBlock<::anakin::saber::NV> weight1(tmp_shape);
+  engine_->AddOpAttr("op1", "weight_1", weight1);
+  // engine_->AddOpAttr("op1", "Inputs");
+  ::anakin::PTuple<int> input_shape = {1, 1, 1, 3};
+  // engine_->AddOpAttr<::anakin::PTuple<int>>("x", "input_shape", {1, 1, 1,
+  // 3});
   engine_->FreezeNetwork();
+  engine_->AddOpAttr("x", "input_shape", input_shape);
+  engine_->Init();
 
-  // graph.Freeze();
-  // graph.FreezeNetwork();
-  // Tensor t;
-  // auto outputs = engine_->Execute({&t});
 }
 
 /*

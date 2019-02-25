@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 #include "framework/core/types.h"
-#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "saber/saber_types.h"
@@ -48,8 +48,9 @@ template <typename TargetT, ::anakin::Precision PrecisionType,
           ::anakin::OpRunType RunType = ::anakin::OpRunType::ASYNC>
 class AnakinEngine /*: public EngineBase */ {
  public:
-  AnakinEngine();
+  AnakinEngine(bool need_summary=false);
   ~AnakinEngine();
+  void Init();
   void DeclareInputs(const std::vector<std::string> &inputs);
   void DeclareOutputs(const std::vector<std::string> &outputs);
 
@@ -71,6 +72,8 @@ class AnakinEngine /*: public EngineBase */ {
   std::unique_ptr<AnakinEngine> Clone();
   void FreezeNetwork();
   std::vector<Tensor> Execute(const std::vector<Tensor *> &inputs);
+  // std::vector<framework::LoDTensor> Execute(
+  //    const std::vector<framework::LoDTensor *> &inputs);
 
  private:
   using NetT = ::anakin::Net<TargetT, PrecisionType, RunType>;
@@ -78,7 +81,7 @@ class AnakinEngine /*: public EngineBase */ {
   // std::unique_ptr<GraphT> graph_;
   // std::shared_ptr<GraphT> graph_;
   GraphT *graph_{nullptr};
-  std::unique_ptr<NetT> engine_;
+  std::unique_ptr<NetT> net_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
 };
@@ -91,8 +94,16 @@ class Tensor final {
   Tensor() = default;
   ~Tensor() {
     if (length_ > 0) {
-      delete[] static_cast<char *>(data_);
-      data_ = nullptr;
+      if (place_ == Place::kCpu) {
+        if (data_) {
+          delete[] static_cast<char *>(data_);
+          data_ = nullptr;
+        }
+      } else if (place_ == Place::kGpu) {
+        if (data_) {
+          cudaFree(data_);
+        }
+      }
     }
   }
   void Reshape(const std::vector<int> &shape);
@@ -110,7 +121,9 @@ class Tensor final {
     if (place_ == Place::kCpu && place == Place::kCpu) {
       if (length_ < length) {
         length_ = length;
-        delete[] static_cast<char *>(data_);
+        if (data_) {
+          delete[] static_cast<char *>(data_);
+        }
         data_ = new char[length_];
       }
       return static_cast<T *>(data_);
@@ -127,11 +140,16 @@ class Tensor final {
         delete[] static_cast<char *>(data_);
         data_ = nullptr;
       }
-      cudaMalloc((void **)&data_, length);
+      if (cudaMalloc((void **)&data_, length) != cudaSuccess) {
+        LOG(ERROR) << "cudaMalloc not success";
+        return nullptr;
+      }
     } else {
       if (length_ < length) {
         length_ = length;
-        cudaFree(data_);
+        if (data_) {
+          cudaFree(data_);
+        }
         cudaMalloc((void **)&data_, length);
       }
     }
@@ -142,6 +160,8 @@ class Tensor final {
 
   template <typename T>
   T *data(Place *place, int *size) const {
+    PADDLE_ENFORCE_NOT_NULL(place);
+    PADDLE_ENFORCE_NOT_NULL(size);
     *place = place_;
     *size = length_;
     return static_cast<T *>(data_);
@@ -150,13 +170,14 @@ class Tensor final {
  private:
   std::string name_;
   std::vector<int> shape_;
-  Place place_;
+  Place place_{Place::kCpu};
   DataType dtype_;
   int length_{0};
   void *data_{nullptr};
 };
 
-// template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
+// template class AnakinEngine<::anakin::saber::X86,
+// ::anakin::Precision::FP32>;
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
