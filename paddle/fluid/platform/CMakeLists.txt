@@ -36,7 +36,7 @@ cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
 
 nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce)
 
-cc_library(place SRCS place.cc DEPS enforce boost lib_any)
+cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
 add_subdirectory(dynload)
@@ -87,8 +87,12 @@ nv_test(transform_test SRCS transform_test.cu DEPS memory place device_context)
 cc_library(timer SRCS timer.cc)
 cc_test(timer_test SRCS timer_test.cc DEPS timer)
 
-cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
-cc_library(profiler SRCS profiler.cc DEPS device_context device_tracer)
+cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto device_context ${GPU_CTX_DEPS})
+if(WITH_GPU)
+    nv_library(profiler SRCS profiler.cc profiler.cu DEPS device_context device_tracer)
+else()
+    cc_library(profiler SRCS profiler.cc DEPS device_context device_tracer)
+endif()
 cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 
 nv_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)

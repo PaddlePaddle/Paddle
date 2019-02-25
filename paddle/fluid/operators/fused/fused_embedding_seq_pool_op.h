@@ -47,10 +47,11 @@ struct EmbeddingVSumFunctor {
     auto *output = output_t->mutable_data<T>(context.GetPlace());
 
     PADDLE_ENFORCE_LE(table_width * idx_width, out_width);
+    PADDLE_ENFORCE_GT(ids_lod.size(), 1UL);
 
     jit::emb_seq_pool_attr_t attr(table_height, table_width, 0, idx_width,
                                   out_width, jit::SeqPoolType::kSum);
-    for (int64_t i = 0; i != ids_lod.size() - 1; ++i) {
+    for (size_t i = 0; i != ids_lod.size() - 1; ++i) {
       attr.index_height = ids_lod[i + 1] - ids_lod[i];
       auto emb_seqpool = jit::Get<jit::kEmbSeqPool, jit::EmbSeqPoolTuples<T>,
                                   platform::CPUPlace>(attr);
