@@ -43,10 +43,8 @@ if "%WITH_AVX%"=="ON" (
 )
 if %errorlevel% NEQ 0 GOTO END
 
-REM apply the snappy_stream and openblas pre-built package
-git clone https://github.com/wopeizl/Paddle_deps
 mkdir third_party\install
-xcopy /s /e /y win\Release\third_party\install third_party\install
+xcopy /s /e /y win\Release\third_party\ third_party\
 if %errorlevel% NEQ 0 GOTO END
 
 REM start the cmake process to generate the windows projects

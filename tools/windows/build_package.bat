@@ -5,6 +5,10 @@ set source_path=%SOURCE_PATH%
 cd /d %source_path%
 if %errorlevel% NEQ 0 GOTO END
 
+REM apply the snappy_stream and openblas pre-built package
+git clone https://github.com/wopeizl/Paddle_deps
+if %errorlevel% NEQ 0 GOTO END
+
 set "release_dir=%source_path%\paddle_release"
 mkdir %release_dir%
 
