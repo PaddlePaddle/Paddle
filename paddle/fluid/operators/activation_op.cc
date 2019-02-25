@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
 #include <string>
-#include "paddle/fluid/operators/mkldnn_activation_op.h"
+#include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
 
 namespace paddle {
@@ -37,7 +37,7 @@ using paddle::framework::Tensor;
           "(bool, default false) Set to true for inference only, false " \
           "for training. Some layers may run faster when this is true.") \
           .SetDefault(false);                                            \
-      AddComment(#OP_COMMENT);                                           \
+      AddComment(OP_COMMENT);                                            \
     }                                                                    \
   }
 
@@ -124,7 +124,7 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
 UNUSED constexpr char SigmoidDoc[] = R"DOC(
 Sigmoid Activation Operator
 
-$$out = \frac{1}{1 + e^{-x}}$$
+$$out = \\frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
@@ -187,14 +187,14 @@ $out = |x|$
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Activation Operator.
 
-$out = ceil(x)$
+$out = \left \lceil x \right \rceil$
 
 )DOC";
 
 UNUSED constexpr char FloorDoc[] = R"DOC(
 Floor Activation Operator.
 
-$out = floor(x)$
+$out = \left \lfloor x \right \rfloor$
 
 )DOC";
 
@@ -252,7 +252,7 @@ $out = \ln(1 + e^{x})$
 UNUSED constexpr char SoftsignDoc[] = R"DOC(
 Softsign Activation Operator.
 
-$$out = \frac{x}{1 + |x|}$$
+$$out = \\frac{x}{1 + \|x\|}$$
 
 )DOC";
 
@@ -547,12 +547,14 @@ namespace ops = paddle::operators;
   __macro(Swish, swish);             \
   __macro(ThresholdedRelu, thresholded_relu);
 
-#define REGISTER_INPLACE_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)        \
-  REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp, \
-                    ::paddle::operators::OP_NAME##OpMaker,          \
-                    ::paddle::operators::ActivationOpInferVarType,  \
-                    ::paddle::operators::OP_NAME##GradMaker);       \
-  REGISTER_OPERATOR(KERNEL_TYPE##_grad, ::paddle::operators::ActivationOpGrad)
+#define REGISTER_INPLACE_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)                   \
+  REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp,            \
+                    ::paddle::operators::OP_NAME##OpMaker,                     \
+                    ::paddle::operators::ActivationOpInferVarType,             \
+                    ::paddle::operators::OP_NAME##GradMaker,                   \
+                    ::paddle::framework::SingleOpInplaceInToOut);              \
+  REGISTER_OPERATOR(KERNEL_TYPE##_grad, ::paddle::operators::ActivationOpGrad, \
+                    ::paddle::framework::SingleOpInplaceInToOut)
 
 #define REGISTER_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)                    \
   REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp,     \
