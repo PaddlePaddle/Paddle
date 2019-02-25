@@ -30,6 +30,8 @@ using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using ScopedActivationDescriptor = platform::ScopedActivationDescriptor;
 using DataLayout = platform::DataLayout;
+using framework::AlgorithmsCache;
+
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 
@@ -139,38 +141,21 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         }
         return fwd_perf_stat[0].algo;
       };
-      AlgorithmsCache<cudnnConvolutionFwdAlgo_t>* algo_cache = nullptr;
+      AlgorithmsCache<cudnnConvolutionFwdAlgo_t>& algo_cache =
+          ctx.GetKernelConfig<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>(0);
       int search_times = ctx.Attr<int>("search_times");
       search_times = std::max(
           static_cast<int>(FLAGS_cudnn_exhaustive_search_times), search_times);
+      // TODO(dangqingqing): Unify this if-else.
       if (search_times > 0) {
         // The searched algo will be cached by `search_times` times for
         // different input dimension. For other dimensions, select the algo
         // of closest area.
-        auto var_name = ctx.Inputs("AlgoCache")[0];
-        algo_cache =
-            ctx.scope()
-                .FindVar(var_name)
-                ->GetMutable<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>();
-        algo = algo_cache->GetAlgorithm(x_dims[2] * x_dims[3], search_times, 0,
-                                        search_func);
+        algo = algo_cache.GetAlgorithm(x_dims[2] * x_dims[3], search_times, 0,
+                                       search_func);
       } else {
-        // Cache searched algo in Var(kCUDNNFwdAlgoCache).
-        // all conv ops use the same kCUDNNFwdAlgoCache variable.
-        if (ctx.scope().FindVar(kCUDNNFwdAlgoCache)) {
-          algo_cache =
-              ctx.scope()
-                  .FindVar(kCUDNNFwdAlgoCache)
-                  ->GetMutable<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>();
-        } else {
-          // TODO(qingqing) remove const_cast
-          algo_cache =
-              const_cast<framework::Scope*>(ctx.scope().parent())
-                  ->Var(kCUDNNFwdAlgoCache)
-                  ->GetMutable<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>();
-        }
-        algo = algo_cache->GetAlgorithm(x_dims, f_dims, strides, paddings,
-                                        dilations, 0, search_func);
+        algo = algo_cache.GetAlgorithm(x_dims, f_dims, strides, paddings,
+                                       dilations, 0, search_func);
       }
       VLOG(3) << "choose algo " << algo;
     }
