@@ -217,6 +217,11 @@ ParallelExecutor::ParallelExecutor(
     }
   }
 
+  if (build_strategy.async_mode_) {
+    PADDLE_ENFORCE(!member_->use_cuda_,
+                   "gpu mode does not support async_mode_ now!");
+  }
+
   // FIXME(Yancey1989): parallel graph mode get better performance
   // in GPU allreduce distributed training. Need an elegant way to
   // choice the execution strategy.
