@@ -47,7 +47,6 @@ DECLARE_bool(profile);
 
 namespace paddle {
 
-using contrib::AnalysisConfig;
 using inference::Singleton;
 #if PADDLE_WITH_TENSORRT
 using inference::tensorrt::TRTInt8Calibrator;
@@ -59,7 +58,8 @@ namespace {
 bool IsPersistable(const framework::VarDesc *var) {
   if (var->Persistable() &&
       var->GetType() != framework::proto::VarType::FEED_MINIBATCH &&
-      var->GetType() != framework::proto::VarType::FETCH_LIST) {
+      var->GetType() != framework::proto::VarType::FETCH_LIST &&
+      var->GetType() != framework::proto::VarType::RAW) {
     return true;
   }
   return false;
@@ -123,6 +123,15 @@ bool AnalysisPredictor::PrepareProgram(
   if (!program) {
     if (!LoadProgramDesc()) return false;
 
+    // If not cloned, the parameters should be loaded.
+    // If config_.ir_optim() is True, parameters is loaded in
+    // OptimizeInferenceProgram(), but other persistable variables
+    // (like RAW type var) are not created in scope.
+    // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
+    // still need to create other persistable variables.
+    // So in both case, create persistable variables at first.
+    executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
+
     // Optimize the program, and load parameters and modify them in the
     // scope_.
     // This will change the scope_ address.
@@ -130,15 +139,6 @@ bool AnalysisPredictor::PrepareProgram(
       status_ir_optim_enabled_ = true;
       OptimizeInferenceProgram();
     } else {
-      // If the parent_scope is passed, we assert that the persistable variables
-      // are already created, so just create the no persistable variables.
-
-      // If not cloned, the parameters should be loaded
-      // OptimizeInferenceProgram.
-      // So in both cases, just the local variables are needed to load, not the
-      // parematers.
-      executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
-
       // Load parameters
       LOG(INFO) << "load parameters ";
       LoadParameters();
@@ -376,7 +376,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
-  argument_.SetScopeNotOwned(const_cast<framework::Scope *>(scope_.get()));
+  argument_.SetScopeNotOwned(scope_.get());
   Analyzer().Run(&argument_);
 
   PADDLE_ENFORCE(argument_.scope_valid());
@@ -392,7 +392,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
   VLOG(3) << "create AnalysisConfig";
   if (config.use_gpu()) {
-    // 1. GPU memeroy
+    // 1. GPU memory
     PADDLE_ENFORCE_GT(config.memory_pool_init_size_mb(), 0.f);
     PADDLE_ENFORCE_GE(config.gpu_device_id(), 0, "Invalid device id %d",
                       config.gpu_device_id());
@@ -421,7 +421,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   if (!dynamic_cast<AnalysisPredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }
-  return std::move(predictor);
+  return predictor;
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {
@@ -726,11 +726,15 @@ bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
   return need;
 }
 
+std::string AnalysisPredictor::GetSerializedProgram() const {
+  return inference_program_->Proto()->SerializeAsString();
+}
+
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<contrib::AnalysisConfig>(
-    const contrib::AnalysisConfig &config) {
-  return CreatePaddlePredictor<contrib::AnalysisConfig,
-                               PaddleEngineKind::kAnalysis>(config);
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
+    const AnalysisConfig &config) {
+  return CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+      config);
 }
 
 }  // namespace paddle
