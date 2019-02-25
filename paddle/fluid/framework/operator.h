@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -184,12 +185,30 @@ class OperatorBase {
                        const platform::Place& place) const = 0;
 };
 
+#ifdef PADDLE_WITH_CUDA
+using KernelConfig = boost::variant<
+    std::shared_ptr<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>,
+    std::shared_ptr<AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>,
+    std::shared_ptr<AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>>;
+#else
+using KernelConfig = boost::variant<boost::blank>;
+#endif
+
+using OpKernelConfigsMap =
+    std::unordered_map<OpKernelType, std::vector<KernelConfig>,
+                       OpKernelType::Hash>;
+
 class ExecutionContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
                    const platform::DeviceContext& device_context,
-                   const RuntimeContext& ctx)
-      : op_(op), scope_(scope), device_context_(device_context), ctx_(ctx) {}
+                   const RuntimeContext& ctx,
+                   std::vector<KernelConfig>* configs)
+      : op_(op),
+        scope_(scope),
+        device_context_(device_context),
+        ctx_(ctx),
+        kernel_configs_(configs) {}
 
   const OperatorBase& op() const { return op_; }
 
@@ -398,11 +417,20 @@ class ExecutionContext {
     return temp_tensor;
   }
 
+  template <typename T>
+  T& GetKernelConfig(int idx) const {
+    PADDLE_ENFORCE(kernel_configs_ && kernel_configs_->size() > idx,
+                   "%s selected kernel doesn't have kernel config %lu <= %d",
+                   op_.Type().c_str(), kernel_configs_->size(), idx);
+    return *boost::get<std::shared_ptr<T>>(kernel_configs_->at(idx));
+  }
+
  private:
   const OperatorBase& op_;
   const Scope& scope_;
   const platform::DeviceContext& device_context_;
   const RuntimeContext& ctx_;
+  mutable std::vector<KernelConfig>* kernel_configs_;
 };
 
 template <>
@@ -483,6 +511,8 @@ class OperatorWithKernel : public OperatorBase {
 
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
 
+  std::vector<KernelConfig>* GetKernelConfig(const OpKernelType& key) const;
+
  protected:
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
@@ -508,6 +538,9 @@ class OperatorWithKernel : public OperatorBase {
   void TransferInplaceVarsBack(const Scope& scope,
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
+
+ protected:
+  mutable OpKernelConfigsMap kernel_configs_map_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);
