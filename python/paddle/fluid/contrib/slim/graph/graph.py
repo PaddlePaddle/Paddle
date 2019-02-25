@@ -14,18 +14,26 @@
 
 import collections
 from collections import OrderedDict
+from .... import io
 from ....framework import Program
 from ....framework import Parameter
 from ....framework import Variable
 from ....executor import Executor
 import copy
 from collections import Iterable
-from ....io import save_inference_model, load_inference_model
+from ....io import save_inference_model, load_inference_model, save_persistables
 import numpy as np
 
 __all__ = [
-    'Graph', 'ImitationGraph', 'IRGraph', 'save_inference_graph_model',
-    'load_inference_graph_model'
+    'Graph',
+    'ImitationGraph',
+    'IRGraph',
+    'save_inference_graph_model',
+    'load_inference_graph_model',
+    'load_persistables',
+    'save_persistables',
+    'update_depthwise_conv',
+    'update_param_shape',
 ]
 
 
@@ -343,6 +351,30 @@ class ImitationGraph(Graph):
 
 class IRGraph(Graph):
     pass
+
+
+def save_persistables(graph, path, exe):
+    io.save_persistables(exe.exe, path, main_program=graph.program)
+
+
+def load_persistables(graph, path, exe):
+    io.load_persistables(exe.exe, path, main_program=graph.program)
+    update_param_shape(graph)
+    update_depthwise_conv(graph)
+
+
+def update_param_shape(graph):
+    for param in graph.all_parameters():
+        tensor_shape = np.array(graph.scope.find_var(param.name).get_tensor(
+        )).shape
+        param.desc.set_shape(tensor_shape)
+
+
+def update_depthwise_conv(graph):
+    for op in graph.all_ops():
+        if op.type == 'depthwise_conv2d':
+            op.desc._set_attr('groups',
+                              graph.get_var(op.input('Filter')[0]).shape[0])
 
 
 def save_inference_graph_model(dirname,
