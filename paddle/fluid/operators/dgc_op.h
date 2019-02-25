@@ -17,6 +17,7 @@ limitations under the License. */
 #include "dgc/dgc.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
+#include "paddle/fluid/operators/k_select/k_select.h"
 
 namespace paddle {
 namespace operators {
@@ -127,14 +128,18 @@ class DGCOpKernel : public framework::OpKernel<T> {
              << ", buf:" << buf
              << ", encode_grad_out_data:" << encode_grad_out_data;
 
-    ///*
+    PADDLE_ENFORCE(k_select(v_out_data, static_cast<int>(v_out->numel()),
+                            static_cast<void*>(encode_grad_out_data), buf, k, 0,
+                            dev_ctx.stream(), u_out_data));
+
+    /*
     if (!paddle::communication::dgc::k_select(
             static_cast<void*>(encode_grad_out_data), k, v_out_data,
             static_cast<int>(v_out->numel()), buf, dev_ctx.stream(),
             u_out_data)) {
       LOG(FATAL) << "v_out numel:" << v_out->numel();
     }
-    //*/
+    */
   }
 };
 }  // namespace operators

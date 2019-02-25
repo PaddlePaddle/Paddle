@@ -70,7 +70,8 @@ if (WITH_GPU)
     ADD_LIBRARY(sparse_allreduce STATIC IMPORTED GLOBAL)
     SET_PROPERTY(TARGET sparse_allreduce PROPERTY IMPORTED_LOCATION ${SPARSE_ALLREDUCE})
 
-    op_library(dgc_op DEPS dgc sparse_allreduce)
+    add_subdirectory(k_select)
+    op_library(dgc_op DEPS dgc k_select sparse_allreduce)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(dgc);\n")
 endif()
 

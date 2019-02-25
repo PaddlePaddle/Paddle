@@ -504,8 +504,11 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
     root_block.desc.append_op().copy_from(op_desc)
 
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
+    #print("block_no_grad_set:", block_no_grad_set)
     op_path = _find_op_path_(root_block, [loss], [], block_no_grad_set)
+    #print("op_path:", op_path)
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
+    #print("no_grad_dict:", no_grad_dict)
 
     _append_backward_ops_(root_block, op_path, root_block, no_grad_dict,
                           grad_to_var, callbacks)

@@ -104,7 +104,7 @@ void AllReduceOpHandle::_RunImplEncoded() {
   size_t out_numel = 0;
   PADDLE_ENFORCE(ranks_ > 1);
   std::vector<std::function<void()>> all_reduce_calls;
-  std::vector<memory::allocation::AllocationPtr> ptrs;
+  // std::vector<memory::allocation::AllocationPtr> ptrs;
 
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto &place = places_[i];
@@ -127,10 +127,18 @@ void AllReduceOpHandle::_RunImplEncoded() {
 
     auto &allocator =
         platform::DeviceTemporaryAllocator::Instance().Get(place, stream);
-    int buf_size = ranks_ * 2 * k * sizeof(float);
+    int encode_size = 2 * k * sizeof(float);
+    int buf_size = ranks_ * encode_size;
     auto tmp_ious_data = allocator.Allocate(buf_size);
     void *gather_buff = reinterpret_cast<void *>(tmp_ious_data->ptr());
-    ptrs.emplace_back(std::move(tmp_ious_data));
+    // ptrs.emplace_back(std::move(tmp_ious_data));
+
+    auto encode_data = allocator.Allocate(encode_size);
+    void *encode_data_buf = reinterpret_cast<void *>(encode_data->ptr());
+
+    cudaMemcpyAsync(encode_data_buf, in_tensor_buf, encode_size,
+                    cudaMemcpyDeviceToDevice, stream);
+    cudaMemsetAsync(in_tensor_buf, 0, in_numel * sizeof(dtype), stream);
 
     VLOG(10) << "in_numel:" << in_numel << ", out_numel:" << out_numel
              << ", ranks:" << ranks_ << ", gather_buf size:" << buf_size
@@ -142,9 +150,9 @@ void AllReduceOpHandle::_RunImplEncoded() {
 
     ///*
     all_reduce_calls.emplace_back([=] {
-      sparseAllGReduce(in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel,
-                       static_cast<ncclDataType_t>(dtype), ncclSum, comm,
-                       stream);
+      sparseAllGReduce(encode_data_buf, gather_buff, k, out_tensor_buf,
+                       out_numel, static_cast<ncclDataType_t>(dtype), ncclSum,
+                       comm, stream);
     });
     //*/
 
@@ -222,7 +230,7 @@ bool AllReduceOpHandle::IsEncoded() {
 
   float count = *count_var->Get<LoDTensor>().data<float>();
   float step = *step_var->Get<LoDTensor>().data<float>();
-  if (count < step) {
+  if (static_cast<int>(count) < static_cast<int>(step)) {
     VLOG(10) << "in all_reduce currentstep:" << count
              << " < rampup_begin_step:" << step
              << " so not use sparse all reduce";

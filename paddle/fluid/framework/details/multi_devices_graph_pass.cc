@@ -209,7 +209,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
           for (size_t i = 0; i < backward_vars.size(); i += 2) {
             auto &p_name = backward_vars[i];
             auto &grad_name = backward_vars[i + 1];
-            VLOG(10) << "Bcast " << grad_name << " for parameter " << p_name;
+            VLOG(10) << "Bcast " << grad_name << " for parameter " << p_name
+                     << " op_type " << node->Op()->Type();
 
             InsertCollectiveOp(&result, p_name, grad_name);
           }
