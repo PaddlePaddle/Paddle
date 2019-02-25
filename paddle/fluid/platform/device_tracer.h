@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/platform/dynload/cupti.h"
+#include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/profiler.pb.h"
 
@@ -31,8 +32,6 @@ inline uint64_t PosixInNsec() {
   gettimeofday(&tv, nullptr);
   return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
 }
-
-class Event;
 
 // DeviceTracer performs the following tasks:
 // 1. Register cuda callbacks for various events: kernel, memcpy, etc.
