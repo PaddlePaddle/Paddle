@@ -1633,7 +1633,7 @@ class IrNode(object):
         """
         self.node.clear_inputs()
 
-    def inputs_remove_by_id(self, node_id):
+    def remove_input_by_id(self, node_id):
         """
         Remove a node from inputs by the given node id.
 
@@ -1875,6 +1875,34 @@ class IrOpNode(IrNode):
         assert self.node.op() is not None, \
             "The node operator description cannot be None."
         return self.node.op().set_type(new_type)
+
+    def set_attr(self, name, val):
+        """
+        Set the value of attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(bool|int|str|float|list): the value of the attribute.
+        """
+        self._update_desc_attr(name, val)
+
+    def _update_desc_attr(self, name, val):
+        """
+        Update the value of the op desc's attribute by attribute's name.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        desc = self.node.op()
+        if isinstance(val, Block):
+            desc.set_block_attr(name, val.desc)
+        elif isinstance(val, list) and val and \
+            all(isinstance(v, Block) for v in val):
+            desc.set_blocks_attr(name, [v.desc for v in val])
+        elif isinstance(val, core.BlockDesc) or \
+            isinstance(val, core.ProgramDesc):
+            desc.set_serialized_attr(name, val.serialize_to_string())
+        else:
+            desc._set_attr(name, val)
 
     @property
     def inputs(self):
