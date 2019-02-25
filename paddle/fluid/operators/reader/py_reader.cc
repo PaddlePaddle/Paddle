@@ -36,43 +36,6 @@ void PyReader::Shutdown() { queue_->Close(); }
 
 void PyReader::Start() { queue_->ReOpen(); }
 
-MultiQueuePyReader::MultiQueuePyReader(
-    const std::vector<std::shared_ptr<LoDTensorBlockingQueue>>& queues)
-    : queues_(queues) {
-  PADDLE_ENFORCE(!queues_.empty());
-  for (auto& q : queues_) {
-    PADDLE_ENFORCE_NOT_NULL(q);
-  }
-}
-
-void MultiQueuePyReader::ReadNext(std::vector<framework::LoDTensor>* out) {
-  auto idx = read_out_idx_.fetch_add(1) % queues_.size();
-  for (size_t i = 0; i < queues_.size(); ++i) {
-    *out = queues_[idx]->Pop();
-    if (!out->empty()) return;
-    idx = (idx + 1) % queues_.size();
-  }
-}
-
-MultiQueuePyReader::~MultiQueuePyReader() {
-  for (auto& q : queues_) {
-    q->Close();
-  }
-}
-
-void MultiQueuePyReader::Shutdown() {
-  for (auto& q : queues_) {
-    q->Close();
-  }
-  read_out_idx_.store(0, std::memory_order::memory_order_seq_cst);
-}
-
-void MultiQueuePyReader::Start() {
-  for (auto& q : queues_) {
-    q->ReOpen();
-  }
-}
-
 }  // namespace reader
 }  // namespace operators
 }  // namespace paddle

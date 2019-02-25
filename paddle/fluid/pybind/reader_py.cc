@@ -17,7 +17,6 @@
 #include <vector>
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
-#include "paddle/fluid/operators/reader/compose_reader.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
 #include "pybind11/stl.h"
@@ -82,7 +81,6 @@ class MultiDeviceFeedReader {
   void Reset() {
     Shutdown();
     Start();
-
     ReadAsync();
   }
 
@@ -117,14 +115,14 @@ class MultiDeviceFeedReader {
     }
   }
 
+  std::shared_ptr<operators::reader::LoDTensorBlockingQueue> queue_;
   std::vector<std::string> names_;
   std::unique_ptr<::ThreadPool> pool_;
 
-  std::shared_ptr<operators::reader::LoDTensorBlockingQueue> queue_;
   std::vector<std::unique_ptr<framework::ReaderHolder>> readers_;
+
   std::vector<std::future<bool>> futures_;
   std::vector<std::vector<framework::LoDTensor>> ret_;
-  bool drop_last_;
 };
 
 namespace py = pybind11;
@@ -150,7 +148,7 @@ void BindReader(py::module *module) {
            const std::vector<std::string> &names,
            const std::vector<platform::Place> &dst_places,
            bool use_double_buffer) {
-          return new MultiDeviceFeedReader(queues, names, dst_places,
+          return new MultiDeviceFeedReader(queue, names, dst_places,
                                            use_double_buffer);
         },
         py::return_value_policy::take_ownership);

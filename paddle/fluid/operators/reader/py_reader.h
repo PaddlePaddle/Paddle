@@ -39,24 +39,6 @@ class PyReader : public framework::FileReader {
   std::shared_ptr<LoDTensorBlockingQueue> queue_;
 };
 
-class MultiQueuePyReader : public framework::FileReader {
- public:
-  explicit MultiQueuePyReader(
-      const std::vector<std::shared_ptr<LoDTensorBlockingQueue>>& queues);
-
-  void ReadNext(std::vector<framework::LoDTensor>* out) override;
-
-  ~MultiQueuePyReader();
-
-  void Shutdown() override;
-
-  void Start() override;
-
- private:
-  std::vector<std::shared_ptr<LoDTensorBlockingQueue>> queues_;
-  std::atomic<size_t> read_out_idx_{0};
-};
-
 }  // namespace reader
 }  // namespace operators
 }  // namespace paddle

@@ -547,11 +547,6 @@ All parameter, weight, gradient are variables in Paddle.
   using LoDTensorBlockingQueueHolder =
       ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
 
-  using LockFreeLoDTensorBlockingQueue =
-      ::paddle::operators::reader::LockFreeLoDTensorBlockingQueue;
-  using LockFreeLoDTensorBlockingQueueHolder =
-      ::paddle::operators::reader::LockFreeLoDTensorBlockingQueueHolder;
-
   py::class_<LoDTensorBlockingQueue, std::shared_ptr<LoDTensorBlockingQueue>>(
       m, "LoDTensorBlockingQueue", "")
       .def("push",
@@ -565,34 +560,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def("close", &LoDTensorBlockingQueue::Close)
       .def("is_closed", &LoDTensorBlockingQueue::IsClosed);
 
-  py::class_<LockFreeLoDTensorBlockingQueue,
-             std::shared_ptr<LockFreeLoDTensorBlockingQueue>>(
-      m, "LockFreeLoDTensorBlockingQueue", "")
-      .def("push",
-           [](LockFreeLoDTensorBlockingQueue &self,
-              std::vector<framework::LoDTensor> &lod_tensor_vec) {
-             pybind11::gil_scoped_release release;
-             return self.Push(std::move(lod_tensor_vec));
-           })
-      .def("size", &LockFreeLoDTensorBlockingQueue::Size)
-      .def("capacity", &LockFreeLoDTensorBlockingQueue::Cap)
-      .def("close", &LockFreeLoDTensorBlockingQueue::Close)
-      .def("is_closed", &LockFreeLoDTensorBlockingQueue::IsClosed);
-
   m.def("init_lod_tensor_blocking_queue",
         [](Variable &var,
            size_t capacity) -> std::shared_ptr<LoDTensorBlockingQueue> {
           auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
           holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
-          return holder->GetQueue();
-        },
-        py::return_value_policy::copy);
-
-  m.def("init_lock_free_lod_tensor_blocking_queue",
-        [](Variable &var,
-           size_t capacity) -> std::shared_ptr<LockFreeLoDTensorBlockingQueue> {
-          auto *holder = var.GetMutable<LockFreeLoDTensorBlockingQueueHolder>();
-          holder->InitOnce(capacity);
           return holder->GetQueue();
         },
         py::return_value_policy::copy);
@@ -777,8 +749,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::CUDAPlace, platform::CUDAPinnedPlace>)
-      .def("gpu_device_id",
-           [](platform::CUDAPlace &self) { return self.device; })
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")

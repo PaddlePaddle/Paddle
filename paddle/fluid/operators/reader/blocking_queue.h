@@ -114,11 +114,6 @@ class BlockingQueue {
     return queue_.size();
   }
 
-  void Clear() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    queue_.clear();
-  }
-
  private:
   size_t capacity_;
   bool speed_test_mode_;

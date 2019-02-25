@@ -31,35 +31,22 @@ def random_reader():
         yield image, label
 
 
-def simple_fc_net(places, use_legacy_py_reader, lock_free=False):
+def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
     startup_prog = fluid.Program()
     main_prog = fluid.Program()
     startup_prog.random_seed = 1
     main_prog.random_seed = 1
-    reader = paddle.batch(random_reader, batch_size=BATCH_SIZE)
 
     with fluid.unique_name.guard():
         with fluid.program_guard(main_prog, startup_prog):
-            if not use_legacy_py_reader:
-                image = fluid.layers.data(
-                    name='image', shape=[784], dtype='float32')
-                label = fluid.layers.data(
-                    name='label', shape=[1], dtype='int64')
-                py_reader = fluid.io.PyReader(
-                    feed_list=[image, label],
-                    places=places,
-                    capacity=4,
-                    multi_queue=False)
-                py_reader.set_numpy_reader(reader)
-            else:
-                py_reader = fluid.layers.py_reader(
-                    capacity=4,
-                    shapes=[(-1, 784), (-1, 1)],
-                    dtypes=['float32', 'int64'],
-                    lock_free=lock_free)
-                image, label = fluid.layers.read_file(py_reader)
-                py_reader.decorate_paddle_reader(reader)
-
+            image = fluid.layers.data(
+                name='image', shape=[784], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            py_reader = fluid.io.PyReader(
+                feed_list=[image, label],
+                capacity=4,
+                iterable=not use_legacy_py_reader,
+                use_double_buffer=use_double_buffer)
             hidden = image
             for hidden_size in [10, 20, 30]:
                 hidden = fluid.layers.fc(
@@ -82,11 +69,19 @@ def simple_fc_net(places, use_legacy_py_reader, lock_free=False):
 
 
 class TestBase(unittest.TestCase):
-    def run_main(self, use_legacy_py_reader, with_data_parallel, places):
+    def run_main(self, use_legacy_py_reader, with_data_parallel, places,
+                 use_double_buffer):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             startup_prog, main_prog, py_reader, loss = simple_fc_net(
-                places, use_legacy_py_reader)
+                places, use_legacy_py_reader, use_double_buffer)
+
+            reader = paddle.batch(random_reader, batch_size=BATCH_SIZE)
+
+            ps = places if use_double_buffer else fluid.cpu_places(len(places))
+            py_reader.decorate_paddle_reader(
+                reader, places=ps if py_reader.iterable else None)
+
             exe = fluid.Executor(place=places[0])
             exe.run(startup_prog)
 
@@ -98,7 +93,7 @@ class TestBase(unittest.TestCase):
             step = 0
             step_list = []
             start_t = time.time()
-            if use_legacy_py_reader:
+            if not py_reader.iterable:
                 for _ in six.moves.range(EPOCH_NUM):
                     step = 0
                     py_reader.start()
@@ -107,12 +102,9 @@ class TestBase(unittest.TestCase):
                             L, = exe.run(program=prog,
                                          fetch_list=[loss],
                                          use_program_cache=True)
-                            # print('runned', step, py_reader.queue.is_closed(), py_reader.queue.size())
                             step += 1
                         except fluid.core.EOFException:
-                            # print('try to reset')
                             py_reader.reset()
-                            # print('reseted')
                             break
                     step_list.append(step)
             else:
@@ -125,8 +117,8 @@ class TestBase(unittest.TestCase):
                             label = item['label']
                             assert image.shape() == [BATCH_SIZE, 784]
                             assert label.shape() == [BATCH_SIZE, 1]
-                            assert image._place()._equals(places[i])
-                            assert label._place()._equals(places[i])
+                            assert image._place()._equals(ps[i])
+                            assert label._place()._equals(ps[i])
                         L, = exe.run(program=prog,
                                      feed=d,
                                      fetch_list=[loss],
@@ -138,7 +130,7 @@ class TestBase(unittest.TestCase):
             scope._remove_from_pool()
             return ret
 
-    def prepare_places(self, with_data_parallel, with_cpu=False, with_gpu=True):
+    def prepare_places(self, with_data_parallel, with_cpu=True, with_gpu=True):
         places = []
         if with_cpu:
             places.append([fluid.CPUPlace()])
@@ -156,21 +148,13 @@ class TestBase(unittest.TestCase):
     def test_main(self):
         for with_data_parallel in [True, False]:
             for p in self.prepare_places(with_data_parallel):
-                t = []
-                for use_legacy_py_reader in [
-                        False
-                ]:  #[True, False]:  #[False, True]:
-                    print(p, use_legacy_py_reader)
-                    ret = self.run_main(
-                        use_legacy_py_reader=use_legacy_py_reader,
-                        with_data_parallel=with_data_parallel,
-                        places=p)
-                    ret['legacy'] = use_legacy_py_reader
-                    ret['data_parallel'] = with_data_parallel
-                    ret['places'] = p
-                    t.append([ret['step'], ])  #, ret['places']])
-
-                print(t)
+                for use_double_buffer in [False, True]:
+                    for use_legacy_py_reader in [False, True]:
+                        ret = self.run_main(
+                            use_legacy_py_reader=use_legacy_py_reader,
+                            with_data_parallel=with_data_parallel,
+                            places=p,
+                            use_double_buffer=use_double_buffer)
 
 
 if __name__ == '__main__':

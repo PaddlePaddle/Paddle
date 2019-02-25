@@ -18,7 +18,6 @@ function(reader_library TARGET_NAME)
 endfunction()
 
 cc_library(py_reader SRCS py_reader.cc DEPS reader)
-cc_library(compose_reader SRCS compose_reader.cc DEPS reader)
 cc_library(buffered_reader SRCS buffered_reader.cc DEPS reader simple_threadpool)
 
 reader_library(open_files_op SRCS open_files_op.cc DEPS buffered_reader)
@@ -41,7 +40,7 @@ cc_test(reader_blocking_queue_test SRCS reader_blocking_queue_test.cc)
 # Export local libraries to parent
 # set(READER_LIBRARY ${LOCAL_READER_LIBS} PARENT_SCOPE)
 
-op_library(read_op DEPS py_reader compose_reader buffered_reader)
+op_library(read_op DEPS py_reader buffered_reader)
 
 foreach(src ${LOCAL_READER_LIBS})
     set(OP_LIBRARY ${src} ${OP_LIBRARY} CACHE INTERNAL "op libs")
