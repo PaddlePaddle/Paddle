@@ -142,7 +142,7 @@ struct SequenceExpandFunctor<platform::CUDADeviceContext, T> {
     int num_copys =
         ExpandByMemoryCopy<T>(context, x, out, x_lod, ref_lod, false);
     // Sometimes direct copies will be faster, this maybe need deeply analysis.
-    if (num_copys < 10) {
+    if (num_copys < 5) {
       ExpandByMemoryCopy<T>(context, x, out, x_lod, ref_lod, true);
     } else {
       int x_item_length = x.numel() / x.dims()[0];
