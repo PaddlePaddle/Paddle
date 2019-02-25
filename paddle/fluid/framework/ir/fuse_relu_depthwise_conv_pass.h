@@ -32,7 +32,8 @@ class FuseReluDepthwiseConvPass : public FusePassBase {
   virtual ~FuseReluDepthwiseConvPass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  std::unique_ptr<ir::Graph> ApplyImpl(
+      std::unique_ptr<ir::Graph> graph) const override;
   std::unique_ptr<ir::Graph> FuseReluDepthwiseConv(
       std::unique_ptr<ir::Graph> graph, bool only_forward) const;
 };
