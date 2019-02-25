@@ -18,24 +18,33 @@ from .... import layers
 import numpy as np
 import copy
 import re
+import logging
+import sys
 
 __all__ = ['FSPDistillationStrategy']
+
+FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
+logging.basicConfig(level=logging.INFO, format=FORMAT, stream=sys.stdout)
+logger = logging.getLogger(__name__)
 
 
 class FSPDistillationStrategy(Strategy):
     def __init__(self, distiller=None, start_epoch=0, end_epoch=10):
         super(FSPDistillationStrategy, self).__init__(start_epoch, end_epoch)
         self.distiller = distiller
-        self.train_graph_backup = None
 
     def on_epoch_begin(self, context):
         if self.start_epoch == context.epoch_id:
-            self.train_graph_backup = context.train_graph
+            logger.info('FSPDistillationStrategy::on_epoch_begin.')
             graph = self.distiller.distiller_graph(
-                context.eval_graph, context.teacher_graphs, context.optimizer,
-                context.place)
-            context.train_graph = graph
+                context.train_graph, context.teacher_graphs,
+                context.distiller_optimizer, context.place)
+            context.optimize_graph = graph
+            logger.info('FSPDistillationStrategy set optimize_graph.')
 
     def on_epoch_end(self, context):
         if context.epoch_id == (self.end_epoch - 1):
-            context.train_graph = self.train_graph_backup
+            logger.info('FSPDistillationStrategy::on_epoch_end.')
+            context.optimize_graph = None
+            logger.info(
+                'FSPDistillationStrategy set context.optimize_graph to None.')

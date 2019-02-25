@@ -50,7 +50,8 @@ class Context(object):
                  eval_graph=None,
                  eval_reader=None,
                  teacher_graphs=None,
-                 optimizer=None):
+                 train_optimizer=None,
+                 distiller_optimizer=None):
         # The total number of epoches to be trained.
         self.epoch = 0
         # Current epoch
@@ -67,33 +68,35 @@ class Context(object):
         self.eval_reader = eval_reader
         self.executor = None
         self.teacher_graphs = teacher_graphs
-        self.optimizer = optimizer
+        self.train_optimizer = train_optimizer
+        self.distiller_optimizer = distiller_optimizer
+        self.optimize_graph = None
 
     def run_eval_graph(self):
+        logger.info(
+            '--------------------------Running evaluation----------------------')
         assert self.eval_graph is not None
         assert self.eval_reader is not None
         eval_graph = self.eval_graph.clone(for_test=True)
-        self.executor = get_executor(self.eval_graph, self.place, parallel=True)
+        executor = get_executor(eval_graph, self.place, parallel=True)
         results = []
         batch_id = 0
-        s_time = time.time()
         for data in self.eval_reader():
-            result = self.executor.run(eval_graph, data=data)
+            result = executor.run(eval_graph, data=data)
             result = [np.mean(r) for r in result]
             results.append(result)
             if batch_id % 20 == 0:
-                e_time = time.time()
-                print("time: {}s; batch[{}] eval: {}={}".format(
-                    e_time - s_time, batch_id,
-                    self.eval_graph.out_nodes.keys(), result))
-                s_time = time.time()
+                logger.info("batch-{}; {}={}".format(
+                    batch_id, eval_graph.out_nodes.keys(), result))
             batch_id += 1
         result = np.mean(np.array(results), axis=0)
-        print("final eval result: {}={}".format(self.eval_graph.out_nodes.keys(
+        logger.info("Final eval result: {}={}".format(eval_graph.out_nodes.keys(
         ), result))
         if not isinstance(result, Iterable):
             result = [result]
-        return result, self.eval_graph.out_nodes.keys()
+        logger.info(
+            '--------------------------Finish evaluation----------------------')
+        return result, eval_graph.out_nodes.keys()
 
     def put(self, key, value):
         self.k_v[key] = value
@@ -128,8 +131,8 @@ class CompressPass(object):
                  eval_feed_list=None,
                  eval_fetch_list=None,
                  teacher_programs=[],
-                 optimizer=None,
-                 model_save_dir='./checkpoints'):
+                 train_optimizer=None,
+                 distiller_optimizer=None):
         self.strategies = []
         self.epoch = 0
         self.place = CPUPlace() if place is None else place
@@ -150,10 +153,13 @@ class CompressPass(object):
             self.teacher_graphs.append(ImitationGraph(teacher, scope=scope))
 
         self.checkpoint = None
-        self.model_save_dir = model_save_dir
+        self.model_save_dir = './checkpoints/'
         self.eval_epoch = 1
 
-        self.optimizer = optimizer
+        self.train_optimizer = train_optimizer
+        self.distiller_optimizer = distiller_optimizer
+
+        self.init_epoch = 0
 
     def add_strategy(self, strategy):
         """
@@ -169,6 +175,10 @@ class CompressPass(object):
         self.epoch = factory.compress_pass['epoch']
         for strategy in factory.compress_pass['strategies']:
             self.add_strategy(strategy)
+        if 'init_epoch' in factory.compress_pass:
+            self.init_epoch = factory.compress_pass['init_epoch']
+        if 'model_save_dir' in factory.compress_pass:
+            self.model_save_dir = factory.compress_pass['model_save_dir']
 
     def _load_checkpoint(self, context):
         if self.checkpoint:
@@ -190,35 +200,52 @@ class CompressPass(object):
             exe = get_executor(context.train_graph, context.place, False)
             io.save_persistables(
                 exe.exe, model_path, main_program=context.train_graph.program)
-            print('Saved checkpoint to: {}'.format(model_path))
+            logger.info('Saved checkpoint to: {}'.format(model_path))
 
     def _train_one_epoch(self, context):
         if context.train_graph is None:
-            print("train_graph is None; Please config train_graph_pass.")
+            logger.error("train_graph is None; Please config train_graph_pass.")
             return
-#        with profiler.profiler('GPU', 'total'):
+
+        if not context.optimize_graph:
+            if context.train_optimizer:
+                context.optimize_graph = context.train_graph.get_optimize_graph(
+                    context.train_optimizer)
+            else:
+                context.optimize_graph = context.train_graph
+        current_lr = np.array(
+            context.optimize_graph.scope.find_var('learning_rate').get_tensor(
+            ))[0]
+        logger.info(
+            '-----------------------Trainng one epoch; current lr: {}-----------------------'.
+            format(current_lr))
+
+        executor = get_executor(
+            context.optimize_graph, self.place, parallel=True)
+
+        #        with profiler.profiler('GPU', 'total'):
         for data in context.train_reader():
             for strategy in self.strategies:
                 strategy.on_batch_begin(context)
             feed = None
-            results = self.executor.run(context.train_graph, data=data)
+            results = executor.run(context.optimize_graph, data=data)
             results = [float(np.mean(result)) for result in results]
             if context.batch_id % 20 == 0:
                 logger.info("epoch:{}; batch_id:{}; {} = {}".format(
                     context.epoch_id, context.batch_id,
-                    context.train_graph.out_nodes.keys(), results))
+                    context.optimize_graph.out_nodes.keys(
+                    ), [round(r, 3) for r in results]))
             for strategy in self.strategies:
                 strategy.on_batch_end(context)
             context.batch_id += 1
-        context.epoch_id += 1
         context.batch_id = 0
         self._save_checkpoint(context)
+        logger.info(
+            '-----------------------Finish training one epoch-----------------------'
+        )
 
     def _eval(self, context):
         results, names = context.run_eval_graph()
-
-#        logger.info("epoch:{}; batch_id:{}; eval results: {}={}".format(
-#            context.epoch_id, context.batch_id, names, results))
 
     def run(self):
 
@@ -229,7 +256,8 @@ class CompressPass(object):
             eval_graph=self.eval_graph,
             eval_reader=self.eval_reader,
             teacher_graphs=self.teacher_graphs,
-            optimizer=self.optimizer)
+            train_optimizer=self.train_optimizer,
+            distiller_optimizer=self.distiller_optimizer)
 
         self._load_checkpoint(context)
 
@@ -243,8 +271,9 @@ class CompressPass(object):
         for strategy in self.strategies:
             strategy.on_compression_begin(context)
 
-        for epoch in range(self.epoch):
-
+        for epoch in range(self.init_epoch, self.epoch):
+            context.epoch_id = epoch
+            print('context.epoch_id: {}'.format(context.epoch_id))
             for strategy in self.strategies:
                 strategy.on_epoch_begin(context)
 
@@ -255,7 +284,6 @@ class CompressPass(object):
 
             if self.eval_epoch and epoch % self.eval_epoch == 0:
                 self._eval(context)
-
         for strategy in self.strategies:
             strategy.on_compression_end(context)
 
