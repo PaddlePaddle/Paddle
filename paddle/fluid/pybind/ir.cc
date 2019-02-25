@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pybind/ir.h"
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -115,7 +116,7 @@ void BindNode(py::module *m) {
       .def("is_var", &Node::IsVar)
       .def("is_ctrl_var", &Node::IsCtrlVar)
       .def("clear_inputs", [](Node &self) { self.inputs.clear(); })
-      .def("inputs_remove",
+      .def("remove_input",
            [](Node &self, int node_id) {
              auto pos = std::find_if(
                  self.inputs.begin(), self.inputs.end(),
@@ -124,7 +125,7 @@ void BindNode(py::module *m) {
                self.inputs.erase(pos);
              }
            })
-      .def("inputs_remove",
+      .def("remove_input",
            [](Node &self, Node &node) {
              auto pos =
                  std::find(self.inputs.begin(), self.inputs.end(), &node);
@@ -132,10 +133,10 @@ void BindNode(py::module *m) {
                self.inputs.erase(pos);
              }
            })
-      .def("inputs_append",
+      .def("append_input",
            [](Node &self, Node &node) { self.inputs.push_back(&node); })
       .def("clear_outputs", [](Node &self) { self.outputs.clear(); })
-      .def("outputs_remove",
+      .def("remove_output",
            [](Node &self, int node_id) {
              auto pos = std::find_if(
                  self.outputs.begin(), self.outputs.end(),
@@ -144,7 +145,7 @@ void BindNode(py::module *m) {
                self.outputs.erase(pos);
              }
            })
-      .def("outputs_remove",
+      .def("remove_output",
            [](Node &self, Node &node) {
              auto pos =
                  std::find(self.outputs.begin(), self.outputs.end(), &node);
@@ -152,7 +153,7 @@ void BindNode(py::module *m) {
                self.outputs.erase(pos);
              }
            })
-      .def("outputs_append",
+      .def("append_output",
            [](Node &self, Node &node) { self.outputs.push_back(&node); })
       .def_readwrite("inputs", &Node::inputs)
       .def_readwrite("outputs", &Node::outputs);
