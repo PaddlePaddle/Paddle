@@ -19,6 +19,7 @@ import sys
 from .. import compat as cpt
 
 from . import core
+from . import framework
 
 __all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
 
@@ -110,6 +111,8 @@ class CompiledProgram(object):
             self._exec_strategy = ExecutionStrategy()
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
+        self._build_strategy.is_distribution = framework.is_pserver_mode(
+            self._program)
         return self
 
     def with_inference_optimize(self, config):

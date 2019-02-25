@@ -160,7 +160,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
       auto get_selected_row = [&](size_t i) -> const SelectedRows& {
         if (i == 0 && in0) {
-          return *in0.get();
+          return *in0;
         } else {
           return in_vars[i]->Get<SelectedRows>();
         }
