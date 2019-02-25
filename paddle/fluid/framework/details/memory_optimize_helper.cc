@@ -33,10 +33,10 @@ namespace details {
 using paddle::framework::VarDesc;
 
 std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph) {
-  PADDLE_ENFORCE(graph.Has(kAllOpDescs),
-                 "Graph has no attribute of kAllOpDescs.");
+  PADDLE_ENFORCE(graph.Has(kStaleProgramOpDescs),
+                 "Graph has no attribute of kStaleProgramOpDescs.");
   // 1. get op desc order
-  auto& op_descs = graph.Get<const std::vector<OpDesc*>>(kAllOpDescs);
+  auto& op_descs = graph.Get<const std::vector<OpDesc*>>(kStaleProgramOpDescs);
 
   // 2. topology sort order
   auto nodes = graph.Nodes();
