@@ -81,6 +81,9 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("EncodeGrad",
               "(Tensor) "
               "Output encoded gradient");
+    AddOutput("Grad_out",
+              "(Tensor) "
+              "Output grad gradient");
     AddOutput("k",
               "(Tensor) "
               "Output top-k value");

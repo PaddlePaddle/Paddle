@@ -641,6 +641,14 @@ class DGCOptimizer(MomentumOptimizer):
                 value=0.0,
                 force_cpu=True)
 
+            encoded_var = tensor.create_global_var(
+                shape=[1],
+                dtype=param_var.dtype,
+                persistable=True,
+                name=grad_var.name + "__dgc_encoded__",
+                value=0.0,
+                force_cpu=False)
+
             # del back oprolevarname
             op_maker = core.op_proto_and_checker_maker
             backward = core.op_proto_and_checker_maker.OpRole.Backward
@@ -663,7 +671,7 @@ class DGCOptimizer(MomentumOptimizer):
                 else:
                     op._remove_attr(op_maker.kOpRoleVarAttrName())
 
-            self._dgc_op(param_var, grad_var, u_var, v_var, k_var)
+            self._dgc_op(param_var, grad_var, u_var, v_var, k_var, encoded_var)
 
         # Note: don't delete this
         print("set DGC rampup_begin_step:", self._rampup_begin_step,
@@ -678,7 +686,7 @@ class DGCOptimizer(MomentumOptimizer):
             return True
         return False
 
-    def _dgc_op(self, param_var, grad_var, u_var, v_var, k_var):
+    def _dgc_op(self, param_var, grad_var, u_var, v_var, k_var, encoded_var):
         block = framework.default_main_program().global_block()
         op_maker = core.op_proto_and_checker_maker
         dgc_op = block.append_op(
@@ -692,8 +700,9 @@ class DGCOptimizer(MomentumOptimizer):
             outputs={
                 "U_out": u_var,
                 "V_out": v_var,
-                "EncodeGrad": grad_var,
-                "k": k_var
+                "EncodeGrad": encoded_var,
+                "k": k_var,
+                "Grad_out": grad_var
             },
             attrs={
                 "m": self._momentum,

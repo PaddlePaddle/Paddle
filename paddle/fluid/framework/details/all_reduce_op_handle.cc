@@ -82,8 +82,10 @@ void AllReduceOpHandle::_RunImplEncoded() {
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto &local_scope =
         local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
-    auto &in =
-        local_scope->FindVar(in_var_handles[i]->name())->Get<LoDTensor>();
+    auto encode_var_name = in_var_handles[i]->name() + "__dgc_encoded__";
+    auto* in_var = local_scope->FindVar(encode_var_name);
+    PADDLE_ENFORCE_NOT_NULL(in_var);
+    auto &in = in_var->Get<LoDTensor>();
     ins.emplace_back(&in);
 
     auto *out = local_scope->FindVar(out_var_handles[i]->name())
@@ -118,6 +120,7 @@ void AllReduceOpHandle::_RunImplEncoded() {
     in_numel = (in_numel == 0) ? static_cast<size_t>(in.numel()) : in_numel;
     PADDLE_ENFORCE(in_numel % 2 == 0);
     // size_t k = in_numel / 2;
+    PADDLE_ENFORCE(in_numel / 2 == static_cast<size_t>(k));
     out_numel = (out_numel == 0) ? static_cast<size_t>(out.numel()) : out_numel;
 
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
@@ -133,12 +136,14 @@ void AllReduceOpHandle::_RunImplEncoded() {
     void *gather_buff = reinterpret_cast<void *>(tmp_ious_data->ptr());
     // ptrs.emplace_back(std::move(tmp_ious_data));
 
+    /*
     auto encode_data = allocator.Allocate(encode_size);
     void *encode_data_buf = reinterpret_cast<void *>(encode_data->ptr());
 
     cudaMemcpyAsync(encode_data_buf, in_tensor_buf, encode_size,
                     cudaMemcpyDeviceToDevice, stream);
     cudaMemsetAsync(in_tensor_buf, 0, in_numel * sizeof(dtype), stream);
+    */
 
     VLOG(10) << "in_numel:" << in_numel << ", out_numel:" << out_numel
              << ", ranks:" << ranks_ << ", gather_buf size:" << buf_size
@@ -148,21 +153,21 @@ void AllReduceOpHandle::_RunImplEncoded() {
              << ", out_tensor_buf:" << out_tensor_buf << ", comm:" << comm
              << ", gather_buff:" << gather_buff;
 
-    ///*
+    /*
     all_reduce_calls.emplace_back([=] {
-      sparseAllGReduce(encode_data_buf, gather_buff, k, out_tensor_buf,
+      sparseAllGReduce(in_tensor_buf, gather_buff, k, out_tensor_buf,
                        out_numel, static_cast<ncclDataType_t>(dtype), ncclSum,
                        comm, stream);
     });
-    //*/
+    */
 
-    /*
+    //*
     all_reduce_calls.emplace_back([=] {
       paddle::communication::dgc::sparseAllGReduce(
           static_cast<void *>(in_tensor_buf), gather_buff, k, out_tensor_buf,
           out_numel, comm, stream);
     });
-    */
+    //*/
   }
 
   this->RunAndRecordEvent([&] {
