@@ -101,7 +101,8 @@ void BindGraph(py::module *m) {
            [](Graph &self, Node &node) { return self.RemoveNode(&node); })
       .def("retrieve_node", &Graph::RetrieveNode,
            return_value_policy::reference)
-      .def("resolve_hazard", &Graph::ResolveHazard);
+      .def("resolve_hazard", &Graph::ResolveHazard)
+      .def("origin_program_desc", &Graph::OriginProgram);
 }
 
 void BindNode(py::module *m) {
