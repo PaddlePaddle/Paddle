@@ -142,8 +142,6 @@ class TestImperativeMnist(unittest.TestCase):
                     sgd.minimize(avg_loss)
                     mnist.clear_gradients()
 
-                    fluid.default_main_program().global_block()._clear_block()
-
                     dy_param_value = {}
                     for param in mnist.parameters():
                         dy_param_value[param.name] = param._numpy()
