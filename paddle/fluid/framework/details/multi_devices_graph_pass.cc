@@ -937,9 +937,21 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
 }
 
 void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
-  if (need_broadcast_var_ ||
-      (UseGPU() &&
-       strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce)) {
+  // broad cast received parameters when training in parameter server mode.
+  if (need_broadcast_var_) {
+    // There are 4 conditions:
+    // 1. GPU && Reduce: Reduce gradient then broadcast gradient to other GPUS.
+    // Need to broadcast received parameters to other GPU.
+    // 2. GPU && AllReduce: AllReduce all graident to each GPU. Need to
+    // broadcast received parameters to other GPU.
+    // 3. CPU && AllReduce: AllReduce all gradient to each thread. Need to
+    // broadcast received parameters to other scope.
+    // 4. CPU && Reduce: because all parameters share the same memory, did not
+    // broadcast received parameters.
+    if (!UseGPU() &&
+        strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
+      return;
+    }
     if (strategy_.fuse_broadcast_op_) {
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
