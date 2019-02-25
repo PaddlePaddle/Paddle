@@ -31,7 +31,7 @@ def random_reader():
         yield image, label
 
 
-def simple_fc_net(places, use_legacy_py_reader):
+def simple_fc_net(places, use_legacy_py_reader, lock_free=False):
     startup_prog = fluid.Program()
     main_prog = fluid.Program()
     startup_prog.random_seed = 1
@@ -55,7 +55,8 @@ def simple_fc_net(places, use_legacy_py_reader):
                 py_reader = fluid.layers.py_reader(
                     capacity=4,
                     shapes=[(-1, 784), (-1, 1)],
-                    dtypes=['float32', 'int64'])
+                    dtypes=['float32', 'int64'],
+                    lock_free=lock_free)
                 image, label = fluid.layers.read_file(py_reader)
                 py_reader.decorate_paddle_reader(reader)
 
@@ -82,7 +83,8 @@ def simple_fc_net(places, use_legacy_py_reader):
 
 class TestBase(unittest.TestCase):
     def run_main(self, use_legacy_py_reader, with_data_parallel, places):
-        with fluid.scope_guard(fluid.Scope()):
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
             startup_prog, main_prog, py_reader, loss = simple_fc_net(
                 places, use_legacy_py_reader)
             exe = fluid.Executor(place=places[0])
@@ -94,21 +96,29 @@ class TestBase(unittest.TestCase):
                     loss_name=loss.name, places=places)
 
             step = 0
+            step_list = []
             start_t = time.time()
             if use_legacy_py_reader:
                 for _ in six.moves.range(EPOCH_NUM):
+                    step = 0
                     py_reader.start()
                     while True:
                         try:
-                            L, = exe.run(program=prog, fetch_list=[loss])
+                            L, = exe.run(program=prog,
+                                         fetch_list=[loss],
+                                         use_program_cache=True)
+                            # print('runned', step, py_reader.queue.is_closed(), py_reader.queue.size())
                             step += 1
                         except fluid.core.EOFException:
+                            # print('try to reset')
                             py_reader.reset()
+                            # print('reseted')
                             break
+                    step_list.append(step)
             else:
                 for _ in six.moves.range(EPOCH_NUM):
+                    step = 0
                     for d in py_reader():
-                        '''
                         assert len(d) == len(places)
                         for i, item in enumerate(d):
                             image = item['image']
@@ -117,18 +127,25 @@ class TestBase(unittest.TestCase):
                             assert label.shape() == [BATCH_SIZE, 1]
                             assert image._place()._equals(places[i])
                             assert label._place()._equals(places[i])
-                        '''
-                        L, = exe.run(program=prog, feed=d, fetch_list=[loss])
+                        L, = exe.run(program=prog,
+                                     feed=d,
+                                     fetch_list=[loss],
+                                     use_program_cache=True)
                         step += 1
+                    step_list.append(step)
             end_t = time.time()
-            return {"time": end_t - start_t, "step": step}
+            ret = {"time": end_t - start_t, "step": step_list}
+            scope._remove_from_pool()
+            return ret
 
-    def prepare_places(self, with_data_parallel):
-        places = [[fluid.CPUPlace()], ]
-        if with_data_parallel:
-            places.append([fluid.CPUPlace()] * 2)
+    def prepare_places(self, with_data_parallel, with_cpu=False, with_gpu=True):
+        places = []
+        if with_cpu:
+            places.append([fluid.CPUPlace()])
+            if with_data_parallel:
+                places.append([fluid.CPUPlace()] * 2)
 
-        if fluid.core.is_compiled_with_cuda():
+        if with_gpu and fluid.core.is_compiled_with_cuda():
             tmp = fluid.cuda_places()
             assert len(tmp) > 0, "no gpu detected"
             if with_data_parallel:
@@ -140,7 +157,10 @@ class TestBase(unittest.TestCase):
         for with_data_parallel in [True, False]:
             for p in self.prepare_places(with_data_parallel):
                 t = []
-                for use_legacy_py_reader in [False, True]:
+                for use_legacy_py_reader in [
+                        False
+                ]:  #[True, False]:  #[False, True]:
+                    print(p, use_legacy_py_reader)
                     ret = self.run_main(
                         use_legacy_py_reader=use_legacy_py_reader,
                         with_data_parallel=with_data_parallel,
@@ -148,7 +168,7 @@ class TestBase(unittest.TestCase):
                     ret['legacy'] = use_legacy_py_reader
                     ret['data_parallel'] = with_data_parallel
                     ret['places'] = p
-                    t.append(ret)
+                    t.append([ret['step'], ])  #, ret['places']])
 
                 print(t)
 
