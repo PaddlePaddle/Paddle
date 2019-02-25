@@ -76,6 +76,8 @@ std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     const std::vector<Tensor *> &inputs) {
   PADDLE_ENFORCE(inputs.empty() == false);
   for (auto input : inputs) {
+    //::anakin::PBlock<::anakin::saber::NV> input_shape = input->shape();
+    //graph_->AddOpAttr<::anakin::PBlock<::anakin::saber::NV>>(input->name(), "input_shape", input_shape);
     auto name = input->name();
     auto anakin_input = net_->get_in(name);
     PADDLE_ENFORCE(anakin_input->shape().size() == input->shape().size());

@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include <string>
 #include <vector>
 #include "framework/core/types.h"
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
-#include "paddle/fluid/inference/anakin/registrar.h"
+#include "paddle/fluid/inference/anakin/convert/registrar.h"
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "saber/saber_types.h"
@@ -35,20 +33,16 @@ class FcOpConverter : OpConverter {
                           const framework::Scope &scope);
   void ConvertOp(const framework::proto::OpDesc &op,
                  const std::unordered_set<std::string> &parameters,
-                 const framework::Scope &scope, AnakinEngine *engine);
-  virtual FcOpConverter() {}
-  AnakinEngine *engine_{nullptr};
+                 const framework::Scope &scope, AnakinNvEngine *engine);
+  virtual ~FcOpConverter() {}
 
  private:
-  std::unordered_map<std::string, OpConvert *> converters_;
-  framework::Scope *scope_{nullptr};
-  std::mutex mutex_;
 };
 
 void FcOpConverter::ConvertOp(const framework::proto::OpDesc &op,
                               const std::unordered_set<std::string> &parameters,
                               const framework::Scope &scope,
-                              AnakinEngine *engine) {
+                              AnakinNvEngine *engine) {
   framework::OpDesc op_desc(op, nullptr);
   auto *Y_v = scope.FindVar(op_desc.Input("Y").front());
   PADDLE_ENFORCE_NOT_NULL(Y_v);

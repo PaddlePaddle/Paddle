@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include <string>
 #include <vector>
 #include "framework/core/types.h"
-#include "paddle/fluid/inference/anakin/registrar.h"
+#include "paddle/fluid/inference/anakin/convert/registrar.h"
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "saber/saber_types.h"
@@ -34,14 +32,10 @@ class ActivationConverter {
                           const framework::Scope &scope);
   void ConvertOp(const framework::proto::OpDesc &op,
                  const std::unordered_set<std::string> &parameters,
-                 const framework::Scope &scope, AnakinEngine *engine);
-  virtual ActivationConverter() {}
-  AnakinEngine *engine_{nullptr};
+                 const framework::Scope &scope, AnakinNvEngine *engine);
+  virtual ~ActivationConverter() {}
 
  private:
-  std::unordered_map<std::string, OpConvert *> converters_;
-  framework::Scope *scope_{nullptr};
-  std::mutex mutex_;
 };
 
 static Registrar<ActivationConverter> registrar_fc("fc");
