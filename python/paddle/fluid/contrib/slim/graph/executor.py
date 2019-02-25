@@ -59,12 +59,15 @@ class ImitationGraphExecutor(GraphExecutor):
         fetch_list = fetches if fetches else graph.out_nodes.values()
         #        print "fetch_list: %s" % (fetch_list, )
         if self.exe is None:
+            strategy = parallel_executor.ExecutionStrategy()
+            strategy.num_threads = 1
             self.exe = parallel_executor.ParallelExecutor(
                 use_cuda=True,
                 loss_name=graph.out_nodes['cost']
                 if 'cost' in graph.out_nodes else None,
                 main_program=graph.program,
-                scope=graph.scope)
+                scope=graph.scope,
+                exec_strategy=strategy)
         if self.parallel:
             results = self.exe.run(feed=feed, fetch_list=fetch_list)
         else:

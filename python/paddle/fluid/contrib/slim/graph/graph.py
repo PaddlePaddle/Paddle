@@ -16,6 +16,7 @@ import collections
 from collections import OrderedDict
 from .... import io
 from ....framework import Program
+from ....framework import program_guard
 from ....framework import Parameter
 from ....framework import Variable
 from ....executor import Executor
@@ -347,6 +348,17 @@ class ImitationGraph(Graph):
         for param in self.all_parameters():
             ret += np.product(param.shape)
         return ret
+
+    def get_optimize_graph(self, optimizer):
+        graph = self.clone()
+        with program_guard(main_program=graph.program):
+            if 'loss' in graph.out_nodes:
+                loss = graph.get_var('loss')
+                optimizer.minimize(loss)
+            elif 'cost' in graph.out_nodes:
+                cost = graph.get_var('cost')
+                optimizer.minimize(cost)
+        return graph
 
 
 class IRGraph(Graph):

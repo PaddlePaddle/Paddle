@@ -23,9 +23,13 @@ __all__ = ['FSPDistiller']
 
 
 class FSPDistiller(object):
-    def __init__(self, student_pairs=None, teacher_pairs=None):
+    def __init__(self,
+                 student_pairs=None,
+                 teacher_pairs=None,
+                 distillation_loss_weight=1):
         self.student_pairs = student_pairs
         self.teacher_pairs = teacher_pairs
+        self.distillation_loss_weight = distillation_loss_weight
 
     def _feature_map_pairs(self, graph):
         pairs = []
@@ -65,7 +69,8 @@ class FSPDistiller(object):
             self.teacher_pairs = self._feature_map_pairs(teacher)
         # step 2: add fsp loss and backward ops
         distiller_pass = FSPDistillerPass(self.student_pairs,
-                                          self.teacher_pairs, optimizer, place)
+                                          self.teacher_pairs, optimizer, place,
+                                          self.distillation_loss_weight)
         dis_graph = distiller_pass.apply(graph)
         return dis_graph
 
@@ -76,10 +81,16 @@ class FSPDistillerPass(object):
     by adding fsp loss and backward operators.
     '''
 
-    def __init__(self, s_pairs, t_pairs, optimizer, place):
+    def __init__(self,
+                 s_pairs,
+                 t_pairs,
+                 distiller_optimizer,
+                 place,
+                 distillation_loss_weight=1):
         self.s_pairs = s_pairs
         self.t_pairs = t_pairs
-        self.optimizer = optimizer
+        self.distillation_loss_weight = distillation_loss_weight
+        self.distiller_optimizer = distiller_optimizer
         self.place = place
 
     def apply(self, graph):
@@ -99,23 +110,27 @@ class FSPDistillerPass(object):
                 l2_loss = layers.reduce_mean(
                     layers.square(s_fsp_matrix - t_fsp_matrix))
                 losses.append(l2_loss)
-            loss = layers.sum(losses)
+            distillation_loss = layers.sum(
+                losses) * self.distillation_loss_weight
+            student_loss = ret_graph.get_var(ret_graph.out_nodes['cost'])
+            loss = distillation_loss + student_loss
 
-            distiller_optimizer = optimizer.Momentum(
-                momentum=0.9,
-                learning_rate=layers.piecewise_decay(
-                    boundaries=[66666, 66666 * 2],
-                    values=[0.001, 0.0001, 0.00001]),
-                regularization=regularizer.L2Decay(4e-5))
+            #            distiller_optimizer = optimizer.Momentum(
+            #                momentum=0.9,
+            #                learning_rate=layers.piecewise_decay(
+            #                    boundaries=[66666, 66666 * 2],
+            #                    values=[0.001, 0.0001, 0.00001]),
+            #                regularization=regularizer.L2Decay(4e-5))
 
-            #            self.optimizer.minimize(loss)
-            distiller_optimizer.minimize(loss)
+            self.distiller_optimizer.minimize(loss)
 
             exe = Executor(self.place)
             # init variable created when append backward ops. Such as leaning rate
             # and accumulators in some optimizer.
             exe.run(startup_program, scope=ret_graph.scope)
-            ret_graph.out_nodes['loss'] = loss.name
+            ret_graph.out_nodes['distillation_loss'] = distillation_loss.name
+            ret_graph.out_nodes['student_loss'] = student_loss.name
+            ret_graph.out_nodes['cost'] = loss.name
         return ret_graph
 
     def _fsp_matrix(self, fea_map_0, fea_map_1):
