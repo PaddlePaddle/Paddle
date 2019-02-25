@@ -123,6 +123,15 @@ def cuda_pinned_places(device_count=None):
     return [core.cuda_pinned_places()] * device_count
 
 
+def is_pserver_mode(main_program):
+    main = main_program if main_program \
+        else default_main_program()
+    for op in main.global_block().ops:
+        if op.type in ["send", "recv"]:
+            return True
+    return False
+
+
 class NameScope(object):
     def __init__(self, name="", parent=None):
         self._children = dict()
@@ -759,7 +768,6 @@ class Operator(object):
                 self._update_desc_attr(attr_name, attr_val)
 
         self.desc.check_attrs()
-
         if self._has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
