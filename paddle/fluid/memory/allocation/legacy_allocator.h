@@ -27,20 +27,20 @@ namespace allocation {
 class MemInfo {
  public:
   MemInfo() : usage_(0), peak_usage_(0) {}
-  MemInfo(const MemInfo &) = delete;
-  MemInfo &operator=(const MemInfo &) = delete;
 
   // return a flag to indicate current operation will create a peak point or not
   bool Add(const size_t &);
   void Minus(const size_t &);
 
-  uint64_t GetPeakUsage();
+  uint64_t GetPeakUsage() const;
 
  private:
   /* current memory usage*/
   uint64_t usage_;
   uint64_t peak_usage_;
   std::mutex mutex_;
+
+  DISABLE_COPY_AND_ASSIGN(MemInfo);
 };
 
 class LegacyMemMonitor {
@@ -56,11 +56,11 @@ class LegacyMemMonitor {
   void Add(const int &, const size_t &);
   void Minus(const int &, const size_t &);
 
-  uint64_t GetMemUsage(const int &);
+  uint64_t GetMemUsage(const int &) const;
 
   void PrintMemUsage();
 
- protected:
+ private:
   MemUsage gpu_mem_info_;
 };
 

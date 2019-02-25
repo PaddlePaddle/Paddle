@@ -262,28 +262,37 @@ Example:
   For exclusive = false:
        $$
        hstart = i * strides[0] - paddings[0]
+       $$
+       $$
        hend = hstart + ksize[0]
+       $$
+       $$
        wstart = j * strides[1] - paddings[1]
+       $$
+       $$
        wend = wstart + ksize[1]
+       $$
+       $$
        Output(i ,j) = \\frac{sum(Input[hstart:hend, wstart:wend])}{ksize[0] * ksize[1]}
        $$
+
   For exclusive = true:
        $$
        hstart = max(0, i * strides[0] - paddings[0])
+       $$
+       $$
        hend = min(H, hstart + ksize[0])
+       $$
+       $$
        wstart = max(0, j * strides[1] - paddings[1])
+       $$
+       $$
        wend = min(W, wstart + ksize[1])
+       $$
+       $$
        Output(i ,j) = \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
        $$
 
-  For adaptive = true:
-      $$
-      hstart = floor(i * H_{in} / H_{out})
-      hend = ceil((i + 1) * H_{in} / H_{out})
-      wstart = floor(j * W_{in} / W_{out})
-      wend = ceil((j + 1) * W_{in} / W_{out})
-      Output(i ,j) = \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
-      $$
 )DOC");
 }
 
@@ -392,48 +401,68 @@ Example:
   Output:
        Out shape: $(N, C, D_{out}, H_{out}, W_{out})$
   For ceil_mode = false:
-  $$
-       D_{out} = \frac{(D_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\
-       H_{out} = \frac{(H_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1 \\
-       W_{out} = \frac{(W_{in} - ksize[2] + 2 * paddings[2])}{strides[2]} + 1
-  $$
+       $$
+       D_{out} = \\frac{(D_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1
+       $$
+       $$
+       H_{out} = \\frac{(H_{in} - ksize[1] + 2 * paddings[1])}{strides[2]} + 1
+       $$
+       $$
+       W_{out} = \\frac{(W_{in} - ksize[2] + 2 * paddings[2])}{strides[2]} + 1
+       $$
   For ceil_mode = true:
-  $$
-       D_{out} = \frac{(D_{in} - ksize[0] + 2 * paddings[0] + strides[0] -1)}{strides[0]} + 1 \\
-       H_{out} = \frac{(H_{in} - ksize[1] + 2 * paddings[1] + strides[1] -1)}{strides[1]} + 1 \\
-       W_{out} = \frac{(W_{in} - ksize[2] + 2 * paddings[2] + strides[2] -1)}{strides[2]} + 1
-  $$
-  For exclusive = false:
-  $$
-  dstart = i * strides[0] - paddings[0]
-  dend = dstart + ksize[0]
-  hstart = j * strides[1] - paddings[1]
-  hend = hstart + ksize[1]
-  wstart = k * strides[2] - paddings[2]
-  wend = wstart + ksize[2]
-  Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{ksize[0] * ksize[1] * ksize[2]}
-  $$
-  For exclusive = true:
-  $$
-  dstart = max(0, i * strides[0] - paddings[0])
-  dend = min(D, dstart + ksize[0])
-  hstart = max(0, j * strides[1] - paddings[1])
-  hend = min(H, hstart + ksize[1])
-  wstart = max(0, k * strides[2] - paddings[2])
-  wend = min(W, wstart + ksize[2])
-  Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
-  $$
+       $$
+       D_{out} = \\frac{(D_{in} - ksize[0] + 2 * paddings[0] + strides[0] -1)}{strides[0]} + 1
+       $$
+       $$
+       H_{out} = \\frac{(H_{in} - ksize[1] + 2 * paddings[1] + strides[1] -1)}{strides[1]} + 1
+       $$
+       $$
+       W_{out} = \\frac{(W_{in} - ksize[2] + 2 * paddings[2] + strides[2] -1)}{strides[2]} + 1
+       $$
 
-  For adaptive = true:
-  $$
-  dstart = floor(i * D_{in} / D_{out})
-  dend = ceil((i + 1) * D_{in} / D_{out})
-  hstart = floor(j * H_{in} / H_{out})
-  hend = ceil((j + 1) * H_{in} / H_{out})
-  wstart = floor(k * W_{in} / W_{out})
-  wend = ceil((k + 1) * W_{in} / W_{out})
-  Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
-  $$
+  For exclusive = false:
+       $$
+       dstart = i * strides[0] - paddings[0]
+       $$
+       $$
+       dend = dstart + ksize[0]
+       $$
+       $$
+       hstart = j * strides[1] - paddings[1]
+       $$
+       $$
+       hend = hstart + ksize[1]
+       $$
+       $$
+       wstart = k * strides[2] - paddings[2]
+       $$
+       $$
+       wend = wstart + ksize[2]
+       $$
+       $$
+       Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{ksize[0] * ksize[1] * ksize[2]}
+       $$
+
+  For exclusive = true:
+       $$
+       dstart = max(0, i * strides[0] - paddings[0])
+       $$
+       $$
+       dend = min(D, dstart + ksize[0])
+       $$
+       $$
+       hend = min(H, hstart + ksize[1])
+       $$
+       $$
+       wstart = max(0, k * strides[2] - paddings[2])
+       $$
+       $$
+       wend = min(W, wstart + ksize[2])
+       $$
+       $$
+       Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
+       $$
 
 )DOC");
 }

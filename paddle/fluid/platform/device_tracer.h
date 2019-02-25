@@ -32,6 +32,8 @@ inline uint64_t PosixInNsec() {
   return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
 }
 
+class Event;
+
 // DeviceTracer performs the following tasks:
 // 1. Register cuda callbacks for various events: kernel, memcpy, etc.
 // 2. Collect cuda statistics: start/end ts, memory, etc.
@@ -68,11 +70,13 @@ class DeviceTracer {
   virtual void Enable() = 0;
   // Needs to be called once after use.
   virtual void Disable() = 0;
+  // Needs to be called once before reuse.
+  virtual void Reset() = 0;
 
   // Add a pair to correlate internal cuda id with high level
-  // annotation (string). So cuda statistics can be represented by
+  // annotation event(with string). So cuda statistics can be represented by
   // human-readable annotations.
-  virtual void AddAnnotation(uint64_t id, const std::string& anno) = 0;
+  virtual void AddAnnotation(uint32_t id, Event* event) = 0;
 
   virtual void AddMemRecords(const std::string& name, uint64_t start_ns,
                              uint64_t end_ns, int64_t device_id,
@@ -92,6 +96,9 @@ class DeviceTracer {
   // Generate a proto after done (Disabled).
   virtual proto::Profile GenProfile(const std::string& profile_path) = 0;
 
+  // generate kernel elapsed time into Event
+  virtual void GenEventKernelCudaElapsedTime() = 0;
+
   virtual bool IsEnabled() = 0;
 };
 
@@ -99,14 +106,19 @@ class DeviceTracer {
 DeviceTracer* GetDeviceTracer();
 
 // Set a name for the cuda kernel operation being launched by the thread.
-void SetCurAnnotation(const std::string& anno);
+void SetCurAnnotation(Event* event);
 // Clear the name after the operation is done.
 void ClearCurAnnotation();
 // Current name of the operation being run in the thread.
-std::string CurAnnotation();
+std::string CurAnnotationName();
+Event* CurAnnotation();
 
 void SetCurBlock(int block_id);
 void ClearCurBlock();
 int BlockDepth();
+
+// Set current thread id, so we can map the system thread id to thread id.
+void RecoreCurThreadId(int32_t id);
+int32_t GetThreadIdFromSystemThreadId(uint32_t id);
 }  // namespace platform
 }  // namespace paddle
