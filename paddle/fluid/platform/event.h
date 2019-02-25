@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <string>
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/gpu_info.h"
+#include <cuda_runtime.h>
 #endif
 
 namespace paddle {
