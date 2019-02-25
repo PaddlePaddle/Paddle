@@ -31,12 +31,6 @@ namespace framework {
 class Scope;
 namespace details {
 
-constexpr char kLossVarName[] = "loss_var_name";
-constexpr char kPlaces[] = "places";
-constexpr char kLocalScopes[] = "local_scopes";
-constexpr char kStrategy[] = "strategy";
-constexpr char kNRanks[] = "nranks";
-
 class MultiDevSSAGraphBuilderBase : public ir::Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
@@ -44,18 +38,20 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   virtual void Init() const;
 
+  virtual void CheckGraph(const ir::Graph &graph) const;
+
   virtual std::vector<ir::Node *> SortOperations(const ir::Graph &graph) const;
 
   virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const = 0;
 
-  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const = 0;
+  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
 
   virtual void InsertPostprocessOps(ir::Graph *result) const = 0;
 
   bool UseGPU() const;
 
-  bool NeedCollectiveOps() const;
+  bool NeedCollectiveOps(const std::vector<ir::Node *> &nodes) const;
 
   bool IsScaleLossOp(ir::Node *node) const;
 
@@ -99,6 +95,7 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
   mutable std::string loss_var_name_;
   mutable std::vector<platform::Place> places_;
   mutable std::vector<Scope *> local_scopes_;
+  mutable bool need_collection_ops_{false};
 
   mutable BuildStrategy strategy_;
   mutable std::unordered_map<std::string, VarDesc *> all_vars_;
@@ -108,10 +105,6 @@ class AllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
  protected:
   virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const;
-
-  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const {
-    return false;
-  }
 
   virtual void InsertPostprocessOps(ir::Graph *result) const {}
 };
