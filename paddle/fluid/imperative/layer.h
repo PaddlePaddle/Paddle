@@ -44,8 +44,13 @@ class PreparedOp {
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
              framework::OperatorWithKernel::OpKernelFunc func,
-             platform::DeviceContext* dev_ctx)
-      : op(op), ctx(ctx), func(func), dev_ctx(dev_ctx) {}
+             platform::DeviceContext* dev_ctx,
+             std::vector<framework::KernelConfig>* kernel_configs)
+      : op(op),
+        ctx(ctx),
+        func(func),
+        dev_ctx(dev_ctx),
+        kernel_configs(kernel_configs) {}
 
   static PreparedOp Prepare(const framework::RuntimeContext& ctx,
                             const framework::OperatorWithKernel& op,
@@ -84,7 +89,9 @@ class PreparedOp {
       PADDLE_THROW("op %s does not have kernel for %s", op.Type(),
                    KernelTypeToString(expected_kernel_key));
     }
-    return PreparedOp(op, ctx, kernel_iter->second, dev_ctx);
+    std::vector<framework::KernelConfig>* kernel_configs =
+        op.GetKernelConfig(expected_kernel_key);
+    return PreparedOp(op, ctx, kernel_iter->second, dev_ctx, kernel_configs);
   }
 
   inline platform::DeviceContext* GetDeviceContext() const { return dev_ctx; }
@@ -93,6 +100,7 @@ class PreparedOp {
   const framework::RuntimeContext& ctx;
   framework::OperatorWithKernel::OpKernelFunc func;
   platform::DeviceContext* dev_ctx;
+  std::vector<framework::KernelConfig>* kernel_configs;
 };
 
 class OpBase;
