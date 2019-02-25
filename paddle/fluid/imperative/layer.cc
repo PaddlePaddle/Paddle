@@ -271,6 +271,22 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
   return input_vars_;
 }
 
+void VarBase::RunBackward() {
+  if (!pre_op_) return;
+
+  VLOG(3) << "start backward";
+  auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
+  operators::math::set_constant(
+      *(platform::DeviceContextPool::Instance().Get(
+          var_->GetMutable<framework::LoDTensor>()->place())),
+      grads_t, 1.0);
+
+  PADDLE_ENFORCE(
+      grads_ ==
+      pre_op_->output_vars_[pre_op_out_name_][pre_op_out_idx_]->grads_);
+  Autograd().RunBackward(this);
+}
+
 void PyLayer::RegisterFunc(int func_id, const py::object& py_func) {
   py_funcs_[func_id] = py_func;
 }
