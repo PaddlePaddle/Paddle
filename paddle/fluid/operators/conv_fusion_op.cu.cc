@@ -154,8 +154,6 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         algo = algo_cache.GetAlgorithm(x_dims[2] * x_dims[3], search_times, 0,
                                        search_func);
       } else {
-        // Cache searched algo in Var(kCUDNNFwdAlgoCache).
-        // all conv ops use the same kCUDNNFwdAlgoCache variable.
         algo = algo_cache.GetAlgorithm(x_dims, f_dims, strides, paddings,
                                        dilations, 0, search_func);
       }
