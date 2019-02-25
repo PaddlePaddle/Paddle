@@ -33,7 +33,6 @@ using paddle::PaddlePredictor;
 using paddle::NativeConfig;
 using paddle::NativePaddlePredictor;
 using paddle::AnalysisPredictor;
-using paddle::contrib::AnalysisConfig;
 
 static void BindPaddleDType(py::module *m);
 static void BindPaddleBuf(py::module *m);
@@ -75,12 +74,12 @@ void BindPaddleBuf(py::module *m) {
       .def(py::init([](std::vector<float> &data) {
         auto buf = PaddleBuf(data.size() * sizeof(float));
         std::memcpy(buf.data(), static_cast<void *>(data.data()), buf.length());
-        return std::move(buf);
+        return buf;
       }))
       .def(py::init([](std::vector<int64_t> &data) {
         auto buf = PaddleBuf(data.size() * sizeof(int64_t));
         std::memcpy(buf.data(), static_cast<void *>(data.data()), buf.length());
-        return std::move(buf);
+        return buf;
       }))
       .def("resize", &PaddleBuf::Resize)
       .def("reset",
