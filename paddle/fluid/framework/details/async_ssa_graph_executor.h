@@ -29,7 +29,7 @@ class AsyncSSAGraphExecutor : public SSAGraphExecutor {
   AsyncSSAGraphExecutor(const ExecutionStrategy &strategy,
                         const std::vector<Scope *> &local_scopes,
                         const std::vector<platform::Place> &places,
-                        std::unique_ptr<ir::Graph> &&graph);
+                        ir::Graph *graph);
   ~AsyncSSAGraphExecutor() final = default;
   const ir::Graph &Graph() const override { return *graph_; }
 
@@ -40,7 +40,7 @@ class AsyncSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<Scope *> local_scopes_;
   std::unique_ptr<::ThreadPool> pool_{nullptr};
   std::vector<platform::Place> places_;
-  std::unique_ptr<ir::Graph> graph_;
+  ir::Graph *graph_;
 
   std::vector<std::unique_ptr<details::ThreadedSSAGraphExecutor>> executors_;
   ExceptionHolder exception_holder_;

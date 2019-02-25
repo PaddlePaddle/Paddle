@@ -269,25 +269,26 @@ ParallelExecutor::ParallelExecutor(
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   if (build_strategy.async_mode_ && !build_strategy.is_distribution_) {
     VLOG(3) << "use local async mode";
-    temp_owned_graph =
-        build_strategy.Apply(std::move(temp_owned_graph), {member_->places_[0]}, loss_var_name,
-                             {member_->local_scopes_[0]}, member_->nranks_,
-                             member_->use_cuda_, member_->nccl_ctxs_.get());
+    temp_owned_graph = build_strategy.Apply(
+        std::move(temp_owned_graph), {member_->places_[0]}, loss_var_name,
+        {member_->local_scopes_[0]}, member_->nranks_, member_->use_cuda_,
+        member_->nccl_ctxs_.get());
   } else {
-    temp_owned_graph = build_strategy.Apply(std::move(temp_owned_graph), member_->places_, loss_var_name,
-                                 member_->local_scopes_, member_->nranks_,
-                                 member_->use_cuda_, member_->nccl_ctxs_.get());
+    temp_owned_graph = build_strategy.Apply(
+        std::move(temp_owned_graph), member_->places_, loss_var_name,
+        member_->local_scopes_, member_->nranks_, member_->use_cuda_,
+        member_->nccl_ctxs_.get());
   }
 #else
   if (build_strategy.async_mode_ && !build_strategy.is_distribution_) {
     VLOG(3) << "use local async mode";
-    temp_owned_graph = build_strategy.Apply(std::move(temp_owned_graph), {member_->places_[0]},
-                                 loss_var_name, {member_->local_scopes_[0]},
-                                 member_->nranks_, member_->use_cuda_);
+    temp_owned_graph = build_strategy.Apply(
+        std::move(temp_owned_graph), {member_->places_[0]}, loss_var_name,
+        {member_->local_scopes_[0]}, member_->nranks_, member_->use_cuda_);
   } else {
-    temp_owned_graph = build_strategy.Apply(std::move(temp_owned_graph), member_->places_, loss_var_name,
-                                 member_->local_scopes_, member_->nranks_,
-                                 member_->use_cuda_);
+    temp_owned_graph = build_strategy.Apply(
+        std::move(temp_owned_graph), member_->places_, loss_var_name,
+        member_->local_scopes_, member_->nranks_, member_->use_cuda_);
   }
 
 #endif
@@ -333,8 +334,7 @@ ParallelExecutor::ParallelExecutor(
   if (build_strategy.async_mode_ && !build_strategy.is_distribution_) {
     VLOG(3) << "use AsyncSSAGraphExecutor";
     member_->executor_.reset(new details::AsyncSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, member_->places_,
-        graph));
+        exec_strategy, member_->local_scopes_, member_->places_, graph));
   } else if (build_strategy.enable_parallel_graph_) {
     VLOG(3) << "use ParallelSSAGraphExecutor";
 #ifdef PADDLE_WITH_CUDA
