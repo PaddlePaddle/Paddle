@@ -134,7 +134,7 @@ we add another label(z') to original.
         label = {-2, -1, [0, 2]}
         when z' is not exist, clk = 0 : label = -2;
         when z' is not exist, clk = 1 : label = -1;
-        when z' is exist    , clk = 0 : label = 0 + z';
+        when z' is exist , clk = 0 : label = 0 + z';
         when z' is exist    , clk = 1 : label = 1 + z';
 
 )DOC");
