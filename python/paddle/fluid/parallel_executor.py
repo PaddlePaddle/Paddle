@@ -29,15 +29,6 @@ ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 
-def _is_pserver_mode(main_program):
-    main = main_program if main_program \
-        else framework.default_main_program()
-    for op in main.global_block().ops:
-        if op.type in ["send", "recv"]:
-            return True
-    return False
-
-
 class ParallelExecutor(object):
     """
     ParallelExecutor is designed for data parallelism, which focuses on distributing
@@ -140,12 +131,18 @@ class ParallelExecutor(object):
         # FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
         # num_trainers is 1, so the current fields of build_strategy doesn't tell if
         # it's distributed model.
-        build_strategy.is_distribution = _is_pserver_mode(
+        build_strategy.is_distribution = framework.is_pserver_mode(
             main_program) or num_trainers > 1
 
         # step4: get main_program, scope, local_scopes
         main = main_program if main_program \
             else framework.default_main_program()
+        # FIXME(dzhwinter): enable_inplace should be after memory_optimize
+        # if turn on python memory optimize, turn off the inplace_pass.
+        if build_strategy.memory_optimize is None:
+            build_strategy.memory_optimize = False if main._is_mem_optimized else True
+        if build_strategy.enable_inplace is None:
+            build_strategy.enable_inplace = False if main._is_mem_optimized else True
         scope = scope if scope is not None else executor.global_scope()
 
         if share_vars_from and not isinstance(share_vars_from,
@@ -159,7 +156,7 @@ class ParallelExecutor(object):
         trainers_endpoints = main._trainers_endpoints
         if num_trainers > 1 and trainers_endpoints:
             assert num_trainers == len(
-                trainers_endpoints), "num_trainers == len(end_points)"
+                trainers_endpoints), "num_trainers == len(endpoints)"
             build_strategy.trainers_endpoints = trainers_endpoints
 
         # step6: get persistable_vars, places. persistable_vars
