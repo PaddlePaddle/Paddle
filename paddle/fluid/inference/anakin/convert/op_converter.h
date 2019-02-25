@@ -18,6 +18,8 @@
 #include <unordered_set>
 #include <vector>
 #include "framework/core/types.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/anakin/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "saber/saber_types.h"
@@ -26,7 +28,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-using AnakinNvEngine = AnakinEngine<::anakin::saber::NV, ::anakin::Precision::FP32>;
+using AnakinNvEngine =
+    AnakinEngine<::anakin::saber::NV, ::anakin::Precision::FP32>;
 
 class OpConverter {
  public:
@@ -37,15 +40,15 @@ class OpConverter {
   void ConvertOp(const framework::proto::OpDesc &op,
                  const std::unordered_set<std::string> &parameters,
                  const framework::Scope &scope, AnakinNvEngine *engine) {
-    framework::OpDesc op_desc(op, nullptr);
-    OpConverter *it = nullptr;
+    // framework::OpDesc op_desc(op, nullptr);
+    // OpConverter *it = nullptr;
   }
 
   void ConvertBlock(const framework::proto::BlockDesc &block,
                     const std::unordered_set<std::string> &parameters,
                     const framework::Scope &scope, AnakinNvEngine *engine) {
     std::unique_lock<std::mutex> lock(mutex_);
-    for (auto i = 0; i < block.op_size(); i++) {
+    for (auto i = 0; i < block.ops_size(); i++) {
       auto &op = block.ops(i);
       ConvertOp(op, parameters, scope, engine);
     }
@@ -60,7 +63,7 @@ class OpConverter {
   std::unordered_map<std::string, OpConverter *> converters_;
   framework::Scope *scope_{nullptr};
   std::mutex mutex_;
-}
+};
 
 }  // namespace anakin
 }  // namespace inference

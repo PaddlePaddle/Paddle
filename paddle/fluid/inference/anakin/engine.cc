@@ -46,7 +46,7 @@ AnakinEngine<TargetT, PrecisionType, RunType>::~AnakinEngine() {
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::Init() {
-    net_->init(*graph_);
+  net_->init(*graph_);
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -76,8 +76,9 @@ std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     const std::vector<Tensor *> &inputs) {
   PADDLE_ENFORCE(inputs.empty() == false);
   for (auto input : inputs) {
-    //::anakin::PBlock<::anakin::saber::NV> input_shape = input->shape();
-    //graph_->AddOpAttr<::anakin::PBlock<::anakin::saber::NV>>(input->name(), "input_shape", input_shape);
+    ::anakin::saber::Shape input_shape(input->shape());
+    graph_->AddOpAttr<::anakin::PBlock<::anakin::saber::NV>>(
+        input->name(), "input_shape", input_shape);
     auto name = input->name();
     auto anakin_input = net_->get_in(name);
     PADDLE_ENFORCE(anakin_input->shape().size() == input->shape().size());
@@ -109,7 +110,8 @@ std::vector<Tensor> AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     if (std::is_same<TargetT, ::anakin::saber::X86>::value) {
       std::memcpy(anakin_input->mutable_data(), input_data, input_size);
     }
-    //graph_->AddOpAttr<::anakin::PTuple<int>>(input->name(), "input_shape", input->shape());
+    // graph_->AddOpAttr<::anakin::PTuple<int>>(input->name(), "input_shape",
+    // input->shape());
   }
 
 #ifdef PADDLE_WITH_CUDA

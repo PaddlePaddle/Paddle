@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 #include "framework/core/types.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #include "paddle/fluid/inference/anakin/convert/registrar.h"
 #include "paddle/fluid/inference/engine.h"
@@ -46,10 +47,11 @@ void FcOpConverter::ConvertOp(const framework::proto::OpDesc &op,
   framework::OpDesc op_desc(op, nullptr);
   auto *Y_v = scope.FindVar(op_desc.Input("Y").front());
   PADDLE_ENFORCE_NOT_NULL(Y_v);
-  auto *Y_t = Y_v.GetMutable<framework::LoDTensor>();
+  auto *Y_t = Y_v->GetMutable<framework::LoDTensor>();
+  PADDLE_ENFORCE_NOT_NULL(Y_t);
   platform::CPUPlace cpu_place;
-  framwork::LoDTensor weight_tensor;
-  weight_tensor.Resize(Y_t->dims());
+  // framwork::LoDTensor weight_tensor;
+  // weight_tensor.Resize(Y_t->dims());
   auto op_name = op.attrs(0).name();
 
   engine->AddOp(op_name, "dense", op_desc.Input("X"), op_desc.Output("Out"));
@@ -63,7 +65,7 @@ void FcOpConverter::ConvertOp(const framework::proto::OpDesc &op,
 
   // engine->AddOp();
   // engine->AddOpAttr();
-}
+};
 
 static Registrar<FcOpConverter> registrar_fc("fc");
 

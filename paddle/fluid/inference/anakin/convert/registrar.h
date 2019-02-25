@@ -31,7 +31,7 @@ class Register {
   std::shared_ptr<OpConverter> Create(const std::string &name);
   static Register *instance();
   void RegisterFn(const std::string &name,
-                  std::functional<std::shared_ptr<OpConverter>()> fn) {
+                  std::function<std::shared_ptr<OpConverter>()> fn) {
     registry_[name] = fn;
   }
 
@@ -54,10 +54,9 @@ Register *Register::instance() {
 template <typename T, typename... Args>
 class Registrar {
  public:
-  Registrar(const std::string &name, Args &&... args) {
-    std::shared_ptr<OpConverter> converter =
-        std::make_shared<T>(std::move(args)...);
-    Register::instance()->RegisterFn(name, [converter]() { return converter; };)
+  Registrar(const std::string &name, Args... args) {
+    std::shared_ptr<OpConverter> converter = std::make_shared<T>(args...);
+    Register::instance()->RegisterFn(name, [converter]() { return converter; });
   }
 };
 
