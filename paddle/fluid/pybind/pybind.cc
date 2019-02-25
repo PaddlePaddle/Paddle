@@ -546,24 +546,53 @@ All parameter, weight, gradient are variables in Paddle.
       ::paddle::operators::reader::LoDTensorBlockingQueue;
   using LoDTensorBlockingQueueHolder =
       ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
+
+  using LockFreeLoDTensorBlockingQueue =
+      ::paddle::operators::reader::LockFreeLoDTensorBlockingQueue;
+  using LockFreeLoDTensorBlockingQueueHolder =
+      ::paddle::operators::reader::LockFreeLoDTensorBlockingQueueHolder;
+
   py::class_<LoDTensorBlockingQueue, std::shared_ptr<LoDTensorBlockingQueue>>(
       m, "LoDTensorBlockingQueue", "")
       .def("push",
            [](LoDTensorBlockingQueue &self,
-              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+              std::vector<framework::LoDTensor> &lod_tensor_vec) {
              pybind11::gil_scoped_release release;
-             return self.Push(lod_tensor_vec);
+             return self.Push(std::move(lod_tensor_vec));
            })
       .def("size", &LoDTensorBlockingQueue::Size)
       .def("capacity", &LoDTensorBlockingQueue::Cap)
       .def("close", &LoDTensorBlockingQueue::Close)
       .def("is_closed", &LoDTensorBlockingQueue::IsClosed);
 
+  py::class_<LockFreeLoDTensorBlockingQueue,
+             std::shared_ptr<LockFreeLoDTensorBlockingQueue>>(
+      m, "LockFreeLoDTensorBlockingQueue", "")
+      .def("push",
+           [](LockFreeLoDTensorBlockingQueue &self,
+              std::vector<framework::LoDTensor> &lod_tensor_vec) {
+             pybind11::gil_scoped_release release;
+             return self.Push(std::move(lod_tensor_vec));
+           })
+      .def("size", &LockFreeLoDTensorBlockingQueue::Size)
+      .def("capacity", &LockFreeLoDTensorBlockingQueue::Cap)
+      .def("close", &LockFreeLoDTensorBlockingQueue::Close)
+      .def("is_closed", &LockFreeLoDTensorBlockingQueue::IsClosed);
+
   m.def("init_lod_tensor_blocking_queue",
         [](Variable &var,
            size_t capacity) -> std::shared_ptr<LoDTensorBlockingQueue> {
           auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
           holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
+          return holder->GetQueue();
+        },
+        py::return_value_policy::copy);
+
+  m.def("init_lock_free_lod_tensor_blocking_queue",
+        [](Variable &var,
+           size_t capacity) -> std::shared_ptr<LockFreeLoDTensorBlockingQueue> {
+          auto *holder = var.GetMutable<LockFreeLoDTensorBlockingQueueHolder>();
+          holder->InitOnce(capacity);
           return holder->GetQueue();
         },
         py::return_value_policy::copy);

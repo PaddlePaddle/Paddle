@@ -17,6 +17,7 @@ import six
 import threading
 from .framework import Program, Variable, program_guard
 from .data_feeder import DataFeeder
+import paddle.reader.decorator as decorator
 
 __all__ = ['PyReader']
 
@@ -36,8 +37,8 @@ def _convert_places(places):
     return ret
 
 
-class PyReader(object):
-    def __init__(self, feed_list, places, capacity, multi_queue=True):
+class PyReader(Reader):
+    def __init__(self, feed_list, places, capacity):
         self._tensor_reader = None
         self._thread = None
 
@@ -53,15 +54,11 @@ class PyReader(object):
 
         self._queue_capacity = capacity
 
-        queue_num = len(self._places) if multi_queue else 1
-        for _ in six.moves.range(queue_num):
-            self._queues.append(
-                core.init_lod_tensor_blocking_queue(core.Variable(),
-                                                    self._queue_capacity))
+        self.queue = core.init_lod_tensor_blocking_queue(core.Variable(),
+                                                         self._queue_capacity)
 
-        self._reader = core.create_py_reader(self._queues, self._var_names,
+        self._reader = core.create_py_reader(self._queue, self._var_names,
                                              self._places, self._drop_last)
-        self._exited = True
 
     def __call__(self):
         assert self._tensor_reader is not None, \
@@ -77,7 +74,7 @@ class PyReader(object):
 
             def next(self):
                 ret = self._reader.read_next()
-                if len(ret):
+                if ret:
                     return ret
                 else:
                     self._reset()
@@ -86,18 +83,11 @@ class PyReader(object):
         return Iterator(self)
 
     def _reset(self):
-        if not self._exited:
-            for q in self._queues:
-                q.close()
-
         if self._thread:
+            self._reader.reset()
             self._thread.join()
 
-        self._reader.reset()
-
         def __thread_main__():
-            queue_num = len(self._queues)
-            idx = 0
             for tensors in self._tensor_reader():
                 array = core.LoDTensorArray()
                 for item in tensors:
@@ -108,19 +98,13 @@ class PyReader(object):
 
                     array.append(item)
 
-                if not self._queues[idx].push(array):
+                if not self.queue.push(array):
                     break
 
-                idx = (idx + 1) % queue_num
-
-            for q in self._queues:
-                q.close()
-
-            self._exited = True
+            self.queue.close()
 
         self._thread = threading.Thread(target=__thread_main__)
         self._thread.daemon = True
-        self._exited = False
         self._thread.start()
 
     def set_numpy_reader(self, reader):
