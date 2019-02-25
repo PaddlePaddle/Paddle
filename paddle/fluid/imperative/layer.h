@@ -123,7 +123,8 @@ class VarBase {
 
  private:
   VarBase(framework::Variable* var, VarBase* grad, bool stop_gradient)
-      : var_desc_(nullptr),
+      : name_(),
+        var_desc_(nullptr),
         var_(var),
         grads_(grad),
         block_(nullptr),
@@ -133,7 +134,7 @@ class VarBase {
 
  public:
   virtual ~VarBase() {
-    LOG(ERROR) << "remove var " << name_;
+    LOG(ERROR) << "remove var " << name_.c_str();
 
     if (block_) {
       block_->RemoveVar(name_);
@@ -191,6 +192,7 @@ class VarBase {
     return string::Sprintf("%s@IGrad", var_desc_->Name());
   }
 
+  std::string name_;
   framework::VarDesc* var_desc_;
 
   framework::Variable* var_;
@@ -203,20 +205,20 @@ class VarBase {
   OpBase* pre_op_;
   std::string pre_op_out_name_;
   int pre_op_out_idx_;
-  std::string name_;
 };
 
 /* The wrapper for OpDesc which holds a OpDesc and a OpDesc of its
  * gradient. This object should be managed totally by Python intepreter.
  */
-class OpBase {
+class PYBIND11_HIDDEN OpBase {
  public:
   OpBase()
       : op_desc_(nullptr),
         forward_id_(-1),
         backward_id_(-1),
         trace_id_(-1),
-        place_(platform::CPUPlace()) {}
+        place_(platform::CPUPlace()),
+        backward_hooks_() {}
 
   virtual ~OpBase() {
     for (framework::OpDesc* desc : grad_op_descs_) {
@@ -226,11 +228,17 @@ class OpBase {
     LOG(ERROR) << "remove op " << op_desc_->Type() << " id " << trace_id_;
 
     if (block_) {
-      block_->RemoveOp(trace_id_, trace_id_ + 1);
+      block_->RemoveOpInternal(op_desc_);
     }
+
+    LOG(ERROR) << "remove op end " << trace_id_;
   }
 
   std::map<std::string, std::vector<VarBase*>> ApplyGrad();
+
+  void RegisterBackwardHooks(const py::object& callable);
+
+  void InvokeBackwardHooks();
 
   // One of `op_desc_` or `forward_id_` is set, not both.
   // For pure python PyLayer, use `forward_id_`, otherwise, use op_desc_.
@@ -257,6 +265,8 @@ class OpBase {
   std::vector<framework::VariableValueMap> grad_output_vars_;
 
   framework::BlockDesc* block_;
+
+  std::vector<py::object> backward_hooks_;
 };
 
 class Layer {
