@@ -118,13 +118,11 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
       }
     }
     // fill the pool
-    for (auto var : cfg_->LiveIn(op)) {
-      if (cfg_->LiveOut(op).count(var) == 0) {
-        ir::Node* var_node = cfg_->GetNodeByName(var, op);
-        if (var_node == nullptr || var_node->IsCtrlVar()) continue;
-        if (NodeCanReused(var_node) && !pool_.Has(var_node)) {
-          pool_.Insert(var_node);
-        }
+    for (auto& var : cfg_->Unlived(op)) {
+      ir::Node* var_node = cfg_->GetNodeByName(var, op);
+      if (var_node == nullptr || var_node->IsCtrlVar()) continue;
+      if (NodeCanReused(var_node) && !pool_.Has(var_node)) {
+        pool_.Insert(var_node);
       }
     }
   }
