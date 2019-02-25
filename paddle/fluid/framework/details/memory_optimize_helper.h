@@ -92,10 +92,11 @@ class ControlFlowGraph {
   void RenameVarInCFGGraph(const std::string& old_node,
                            const std::string& new_node, int begin_idx);
 
-  const std::set<std::string> LiveIn(ir::Node* op) const;
-  const std::set<std::string> LiveOut(ir::Node* op) const;
-  const std::set<std::string> Use(ir::Node* op) const;
-  const std::vector<ir::Node*> Ops() const;
+  const std::set<std::string>& LiveIn(ir::Node* op) const;
+  const std::set<std::string>& LiveOut(ir::Node* op) const;
+  const std::set<std::string>& Use(ir::Node* op) const;
+  const std::set<std::string>& Unlived(ir::Node* op) const;
+  const std::vector<ir::Node*>& Ops() const;
   std::vector<ir::Node*>& Ops();
 
   // for ssa-graph nodes
@@ -117,6 +118,7 @@ class ControlFlowGraph {
   VarSetMap live_out_;
   VarSetMap uses_;  // op inputs
   VarSetMap defs_;  // op outputs
+  std::unordered_map<ir::Node*, std::set<std::string>> unlived_vars_;
 
   std::vector<ir::Node*> ops_;  // op sequence by topology sort
 };
