@@ -43,8 +43,8 @@ if "%WITH_AVX%"=="ON" (
 )
 if %errorlevel% NEQ 0 GOTO END
 
-mkdir build_%PYTHONV%_%PLAT%_%BLAS%_%INS%
-cd /d build_%PYTHONV%_%PLAT%_%BLAS%_%INS%
+mkdir build_%PLAT%_%BLAS%_%INS%
+cd /d build_%PLAT%_%BLAS%_%INS%
 
 REM xcopy /s /e /y /c win\Release\third_party\ third_party\
 "c:\Program Files\7-Zip\7z.exe" x  d:\third_party.rar -aoa -o.
