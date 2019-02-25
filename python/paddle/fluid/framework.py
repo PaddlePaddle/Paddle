@@ -390,6 +390,8 @@ class Variable(object):
         if _in_imperative_mode():
             # record vars in tracer rather than blocks
             self._ivar = kwargs.get("ivar", None)
+            self._ivar.block = block.desc
+            self._ivar.name = name
             if not self._ivar:
                 self._ivar = core.VarBase(stop_gradient)
             self._ivar.desc = self.desc
@@ -1199,15 +1201,6 @@ class Block(object):
             return var
         else:
             raise ValueError("Var {0} is not found recursively".format(name))
-
-    def _clear_block(self):
-        assert _in_imperative_mode()
-
-        # TODO(minqiyang): move this to Variable and Operator's __del__
-        self.desc._clear_block()
-
-        assert len(self.vars) == 0
-        assert len(self.ops) == 0
 
     def all_parameters(self):
         return list(self.iter_parameters())
