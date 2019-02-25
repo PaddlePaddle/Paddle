@@ -19,7 +19,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/event.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/gpu_info.h"
+#endif
 namespace paddle {
 namespace platform {
 
