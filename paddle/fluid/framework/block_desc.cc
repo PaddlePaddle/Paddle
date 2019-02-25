@@ -155,6 +155,14 @@ void BlockDesc::RemoveOp(size_t s, size_t e) {
   ops_.erase(ops_.begin() + s, ops_.begin() + e);
 }
 
+void BlockDesc::RemoveOpInternal(const OpDesc *op_desc) {
+  for (auto it = ops_.begin(); it != ops_.end(); ++it) {
+    if (it->get() == op_desc) {
+      ops_.erase(it);
+    }
+  }
+}
+
 std::vector<OpDesc *> BlockDesc::AllOps() const {
   std::vector<OpDesc *> res;
   for (const auto &op : ops_) {
