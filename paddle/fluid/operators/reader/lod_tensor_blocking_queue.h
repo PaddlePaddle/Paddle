@@ -21,6 +21,8 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/framework/blockingconcurrentqueue.h"
+
 
 namespace paddle {
 namespace operators {
@@ -33,36 +35,42 @@ class LoDTensorBlockingQueue {
 
  private:
   explicit LoDTensorBlockingQueue(size_t capacity, bool speed_test_mode = false)
-      : queue_(capacity, speed_test_mode) {}
+      : queue_(capacity), capacity_(capacity) {}
 
  public:
   bool Push(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
-    return queue_.Send(lod_tensor_vec);
+    return queue_.enqueue(lod_tensor_vec);
   }
 
   bool Push(std::vector<framework::LoDTensor>&& lod_tensor_vec) {
-    return queue_.Send(std::move(lod_tensor_vec));
+    return queue_.enqueue(std::move(lod_tensor_vec));
   }
 
   std::vector<framework::LoDTensor> Pop(bool* ok = nullptr) {
     std::vector<framework::LoDTensor> lod_tensor_vec;
-    bool success = queue_.Receive(&lod_tensor_vec);
+    queue_.wait_dequeue(lod_tensor_vec);
+    bool success = true;
     if (ok != nullptr) *ok = success;
     return lod_tensor_vec;
   }
 
-  inline size_t Cap() const { return queue_.Cap(); }
+  inline size_t Cap() const { return capacity_; }
 
-  inline size_t Size() const { return queue_.Size(); }
+  inline size_t Size() const { return queue_.size_approx(); }
 
-  inline void ReOpen() { queue_.ReOpen(); }
+  inline void ReOpen() { closed = true; }
 
-  inline void Close() { queue_.Close(); }
+  inline void Close() {
+    closed = false;
+  }
 
-  inline bool IsClosed() const { return queue_.IsClosed(); }
+  inline bool IsClosed() const { return closed; }
 
  private:
-  BlockingQueue<std::vector<framework::LoDTensor>> queue_;
+//  BlockingQueue<std::vector<framework::LoDTensor>> queue_;
+  size_t capacity_;
+  bool closed = false;
+  moodycamel::BlockingConcurrentQueue<std::vector<framework::LoDTensor>> queue_;
 };
 
 class LoDTensorBlockingQueueHolder {
