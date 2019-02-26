@@ -49,14 +49,20 @@ void FcOpConverter::operator()(const framework::proto::OpDesc &op,
   auto *y_v = scope.FindVar(op_desc.Input("Y").front());
   PADDLE_ENFORCE_NOT_NULL(y_v);
   auto *y_t = y_v->GetMutable<framework::LoDTensor>();
+
+  auto shape = framework::vectorize2int(y_t->dims());
+  ::anakin::saber::Shape anakin_shape(shape);
+
   PADDLE_ENFORCE_NOT_NULL(y_t);
   framework::LoDTensor weight;
   weight.Resize(y_t->dims());
-  platform::CPUPlace place;
-  TensorCopySync(*y_t, place, &weight);
-  auto *weight_data = weight.mutable_data<float>(platform::CPUPlace());
+  TensorCopySync(*y_t, platform::CUDAPlace(), &weight);
+
+  auto *weight_data = weight.mutable_data<float>(platform::CUDAPlace());
   PADDLE_ENFORCE_EQ(weight.dims().size(), 2UL);
   auto n_output = weight.dims()[1];  // out_dim
+
+  engine->AddOpAttr(x_name, "out_dim", n_output);
 
   PADDLE_ENFORCE_NOT_NULL(weight_data);
   PADDLE_ENFORCE(n_output > 0);

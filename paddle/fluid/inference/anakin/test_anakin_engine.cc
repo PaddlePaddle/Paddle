@@ -15,13 +15,21 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include <map>
+
 #include "framework/core/net/net.h"
 #include "framework/graph/graph.h"
+#include "framework/graph/graph_global_mem.h"
 #include "paddle/fluid/inference/anakin/engine.h"
 
+using anakin::graph::GraphGlobalMem;
+using anakin::AK_FLOAT;
 using anakin::Precision;
 using anakin::saber::NV;
 using anakin::saber::X86;
+using anakin::saber::Shape;
+using anakin::PBlock;
+using anakin::PTuple;
 namespace paddle {
 namespace inference {
 namespace anakin {
@@ -38,91 +46,96 @@ class TestAnakinEngine : public ::testing::Test {
 
 void TestAnakinEngine::SetUp() {
   engine_.reset(new AnakinEngine<NV, Precision::FP32>(true));
-  engine_->DeclareInputs({"x"});
-  engine_->DeclareOutputs({"y"});
 }
 
 TEST_F(TestAnakinEngine, Execute) {
   engine_->AddOp("op1", "Dense", {"x"}, {"y"});
-  engine_->AddOpAttr("op1", "out_dim", 100);
+  engine_->AddOpAttr("op1", "out_dim", 2);
   engine_->AddOpAttr("op1", "bias_term", false);
-  engine_->AddOpAttr("op1", "axis", 2);
-  std::vector<int> shape = {1, 1, 3, 100};
-  ::anakin::saber::Shape tmp_shape(shape);
-  //::anakin::saber::Tensor<::anakin::saber::NV> weight1(tmp_shape);
-  ::anakin::PBlock<::anakin::saber::NV> weight1(tmp_shape);
-  engine_->AddOpAttr("op1", "weight_1", weight1);
-  // engine_->AddOpAttr("op1", "Inputs");
-  ::anakin::PTuple<int> input_shape = {1, 1, 1, 3};
+  engine_->AddOpAttr("op1", "axis", 1);
+  std::vector<int> shape = {1, 1, 1, 2};
+  Shape tmp_shape(shape);
+  //PBlock<NV> weight1(tmp_shape);
+  auto *weight1 = GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(tmp_shape);
+  //auto *weight1 = new PBlock<NV>(tmp_shape, AK_FLOAT);
+
+  float *cpu_data = static_cast<float *>(weight1->h_tensor().mutable_data());
+  cpu_data[0] = 2.;
+  weight1->d_tensor().set_shape(tmp_shape);
+  weight1->d_tensor().copy_from(weight1->h_tensor());
+  engine_->AddOpAttr("op1", "weight_1", *weight1);
+
   engine_->Freeze();
-  engine_->AddOpAttr("x", "input_shape", input_shape);
+  //PTuple<int> input_shape = {1};
+  //engine_->AddOpAttr("x", "input_shape", input_shape);
+  engine_->SetInputShape("x", {1, 1, 1, 1});
   engine_->Optimize();
   engine_->InitGraph();
+  framework::LoDTensor x;
+  framework::LoDTensor y;
+  x.Resize({1, 1, 1, 1});
+  y.Resize({1, 1, 1, 2});
+  auto *x_data = x.mutable_data<float>(platform::CUDAPlace());
+  float x_data_cpu[] = {1.};
+  cudaMemcpy(x_data, x_data_cpu, sizeof(float), cudaMemcpyHostToDevice);
+
+  std::map<std::string, framework::LoDTensor *> inputs = {{"x", &x}};
+  auto *y_data = y.mutable_data<float>(platform::CUDAPlace());
+  std::map<std::string, framework::LoDTensor *> outputs = {{"y", &y}};
+
+  engine_->Execute(inputs, outputs);
+  auto *y_data_gpu = y_data;
+  float y_data_cpu[2];
+  cudaMemcpy(y_data_cpu, y_data_gpu, sizeof(float) * 2, cudaMemcpyDeviceToHost);
+  LOG(INFO) << "output value: " << y_data_cpu[0] << ", " << y_data_cpu[1];
 }
 
 /*
-TEST_F(TensorRTEngineTest, test_conv2d) {
-  // Weight in CPU memory.
-  float raw_weight[9] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
-  float raw_bias[1] = {0};
+TEST_F(TestAnakinEngine, Execute1) {
+    std::unique_ptr<AnakinNvEngineT> engine(new AnakinEngine<NV, Precision::FP32>(true));
+    engine->AddOp("op1", "Dense", {"x"}, {"y"});
+    engine->AddOpAttr("op1", "out_dim", 2);
+    engine->AddOpAttr("op1", "bias_term", false);
+    // axis M * K 
+    engine->AddOpAttr("op1", "axis", 3);
+    std::vector<int> shape = {1, 1, 3, 2};
+    ::anakin::saber::Shape tmp_shape(shape);
 
-  TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, 9);
-  TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, 1);
-  auto* x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
-                                  nvinfer1::Dims3{1, 3, 3});
-  auto* conv_layer =
-      TRT_ENGINE_ADD_LAYER(engine_, Convolution, *x, 1, nvinfer1::DimsHW{3, 3},
-                           weight.get(), bias.get());
-  PADDLE_ENFORCE(conv_layer != nullptr);
-  conv_layer->setStride(nvinfer1::DimsHW{1, 1});
-  conv_layer->setPadding(nvinfer1::DimsHW{1, 1});
+    ::anakin::PBlock<::anakin::saber::NV> weight1(tmp_shape);
+    float *cpu_data = static_cast<float *>(weight1.h_tensor().mutable_data());
+    for (int i = 0; i < 2 * 3; i++) {
+        cpu_data[i] = i + 1;
+    }
+    weight1.d_tensor().set_shape(tmp_shape);
+    weight1.d_tensor().copy_from(weight1.h_tensor());
+    engine->AddOpAttr("op1", "weight_1", weight1);
 
-  engine_->DeclareOutput(conv_layer, 0, "y");
-  engine_->FreezeNetwork();
-  ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
+    ::anakin::PTuple<int> input_shape = {1, 1, 1, 3};
+  //PTuple<int> input_shape = {1};
+  //engine->AddOpAttr("x", "input_shape", input_shape);
+  engine->Freeze();
+  engine->SetInputShape("x", {1, 1, 1, 3});
+  engine->Optimize();
+  engine->InitGraph();
+  framework::LoDTensor x;
+  framework::LoDTensor y;
+  x.Resize({1, 1, 1, 1});
+  y.Resize({1, 1, 1, 2});
+  auto *x_data = x.mutable_data<float>(platform::CUDAPlace());
+  float x_data_cpu[] = {1.};
+  cudaMemcpy(x_data, x_data_cpu, sizeof(float), cudaMemcpyHostToDevice);
 
-  float x_v[18] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-                   1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
-  engine_->SetInputFromCPU("x", reinterpret_cast<void*>(&x_v),
-                           18 * sizeof(float));
-  engine_->Execute(2);
-
-  LOG(INFO) << "to get output";
-  float* y_cpu = new float[18];
-  engine_->GetOutputInCPU("y", &y_cpu[0], 18 * sizeof(float));
-  ASSERT_EQ(y_cpu[0], 4.0);
-  ASSERT_EQ(y_cpu[1], 6.0);
-}
-
-TEST_F(TensorRTEngineTest, test_pool2d) {
-  // Weight in CPU memory.
-  auto* x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
-                                  nvinfer1::Dims3{1, 2, 2});
-
-  nvinfer1::PoolingType pool_t = nvinfer1::PoolingType::kAVERAGE;
-  auto* pool_layer =
-      TRT_ENGINE_ADD_LAYER(engine_, Pooling, *const_cast<nvinfer1::ITensor*>(x),
-                           pool_t, nvinfer1::DimsHW{2, 2});
-
-  PADDLE_ENFORCE(pool_layer != nullptr);
-  pool_layer->setStride(nvinfer1::DimsHW{1, 1});
-  pool_layer->setPadding(nvinfer1::DimsHW{0, 0});
-
-  engine_->DeclareOutput(pool_layer, 0, "y");
-  engine_->FreezeNetwork();
-  ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
-
-  float x_v[8] = {1.0, 2.0, 5.0, 0.0, 2.0, 3.0, 5.0, 10.0};
-  engine_->SetInputFromCPU("x", reinterpret_cast<void*>(&x_v),
-                           8 * sizeof(float));
-  engine_->Execute(2);
-
-  LOG(INFO) << "to get output";
-  float* y_cpu = new float[2];
-  engine_->GetOutputInCPU("y", &y_cpu[0], 2 * sizeof(float));
-
-  ASSERT_EQ(y_cpu[0], 2.0);
-  ASSERT_EQ(y_cpu[1], 5.0);
+  std::map<std::string, framework::LoDTensor *> inputs = {{"x", &x}};
+  auto *y_data = y.mutable_data<float>(platform::CUDAPlace());
+  if (y_data == nullptr) {}
+  std::map<std::string, framework::LoDTensor *> outputs = {{"y", &y}};
+  //ASSERT_EQ(inputs.size(), 4);
+  //ASSERT_EQ(outputs.size(), 4);
+  engine->Execute(inputs, outputs);
+  auto *y_data_gpu = y.data<float>();
+  float y_data_cpu;
+  cudaMemcpy(&y_data_cpu, y_data_gpu, sizeof(float), cudaMemcpyDeviceToHost);
+  LOG(INFO) << "output value: " << y_data_cpu;
 }
 */
 

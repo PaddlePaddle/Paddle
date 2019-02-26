@@ -41,6 +41,11 @@ template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 AnakinEngine<TargetT, PrecisionType, RunType>::~AnakinEngine() {}
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+void AnakinEngine<TargetT, PrecisionType, RunType>::SetInputShape(const std::string &name, std::vector<int> shape) {
+  graph_->AddOpAttr<::anakin::PTuple<int>>(name, "input_shape", std::move(shape));
+}
+
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::InitGraph() {
   net_->init(*graph_);
 }
@@ -62,11 +67,9 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     auto *data = tensor->data<float>();
     auto shape = framework::vectorize2int(tensor->dims());
     ::anakin::saber::Shape anakin_shape(shape);
-    graph_->AddOpAttr<::anakin::PBlock<::anakin::saber::NV>>(
-        input.first, "input_shape", anakin_shape);
-    auto anakin_input = net_->get_in(input.first);
-    ::anakin::saber::Tensor<::anakin::saber::NV> tmp_anakin_tensor(
-        data, ::anakin::saber::NV(), 0, anakin_shape);
+    auto *anakin_input = net_->get_in(input.first);
+    ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(
+        data, TargetT(), 0, anakin_shape);
     anakin_input->share_from(tmp_anakin_tensor);
   }
 
@@ -75,10 +78,9 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     auto *data = tensor->data<float>();
     auto shape = framework::vectorize2int(tensor->dims());
     ::anakin::saber::Shape anakin_shape(shape);
-
-    auto anakin_output = net_->get_out(output.first);
-    ::anakin::saber::Tensor<::anakin::saber::NV> tmp_anakin_tensor(
-        data, ::anakin::saber::NV(), 0, anakin_shape);
+    auto *anakin_output = net_->get_out(output.first);
+    ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(
+        data, TargetT(), 0, anakin_shape);
     anakin_output->share_from(tmp_anakin_tensor);
   }
   net_->prediction();

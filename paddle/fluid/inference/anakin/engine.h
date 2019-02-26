@@ -47,6 +47,7 @@ class AnakinEngine {
   AnakinEngine(bool need_summary = false);
   ~AnakinEngine();
   void InitGraph();
+  void SetInputShape(const std::string &name, std::vector<int> shape);
   void AddOp(const std::string &name, const std::string &type,
              const std::vector<std::string> &inputs,
              const std::vector<std::string> &outputs);
