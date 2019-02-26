@@ -52,7 +52,7 @@ __global__ void KeYoloBoxFw(const T* input, const int* imgsize, T* boxes,
     GetYoloBox<T>(box, input, anchors, l, k, j, h, input_size, box_idx,
                                 grid_num, img_height, img_width);
     box_idx = (i * box_num + j * grid_num + k * w + l) * 4;
-    CalcDetectionBox<T>(boxes, box, box_idx);
+    CalcDetectionBox<T>(boxes, box, box_idx, img_height, img_width);
 
     int label_idx =
         GetEntryIndex(i, j, k * w + l, an_num, an_stride, grid_num, 5);
