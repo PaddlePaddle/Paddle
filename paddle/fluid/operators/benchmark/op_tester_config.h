@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <istream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace paddle {
@@ -26,19 +27,27 @@ struct OpInputConfig {
   OpInputConfig() {}
   explicit OpInputConfig(std::istream& is);
 
+  void ParseDims(std::istream& is);
+  void ParseLoD(std::istream& is);
+
   std::string name;
   std::vector<int64_t> dims;
+  std::vector<std::vector<size_t>> lod;
 };
 
 struct OpTesterConfig {
   OpTesterConfig() {}
   explicit OpTesterConfig(const std::string& filename);
-  void Init(std::istream& is);
+
+  bool Init(std::istream& is);
+
+  bool ParseAttrs(std::istream& is);
 
   const OpInputConfig* GetInput(const std::string& name);
 
   std::string op_type;
   std::vector<OpInputConfig> inputs;
+  std::unordered_map<std::string, std::string> attrs;
   int device_id{-1};  // CPU: -1
   int repeat{1};
   int profile{0};
