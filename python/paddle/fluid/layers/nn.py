@@ -2473,7 +2473,7 @@ def pool2d(input,
 
           data = fluid.layers.data(
               name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d = fluid.layers.pool2d(
+          pool2d = fluid.layers.pool2d(
                             input=data,
                             pool_size=2,
                             pool_type='max',
@@ -2522,6 +2522,7 @@ def pool2d(input,
     return pool_out
 
 
+@templatedoc()
 def pool3d(input,
            pool_size=-1,
            pool_type="max",
@@ -2533,13 +2534,19 @@ def pool3d(input,
            name=None,
            exclusive=True):
     """
-    This function adds the operator for pooling in 3-dimensions, using the
-    pooling configurations mentioned in input parameters.
+    ${comment}
 
     Args:
-        input (Variable): ${input_comment}
-        pool_size (int): ${ksize_comment}
-        pool_type (str): ${pooling_type_comment}
+        input (Variable): The input tensor of pooling operator. The format of
+                          input tensor is NCDHW, where N is batch size, C is
+                          the number of channels, D is the depth of the feature,
+                          H is the height of the feature, and W is the width
+                          of the feature.
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size 
+            is a tuple or list, it must contain three integers, 
+            (pool_size_Depth, pool_size_Height, pool_size_Width).
+            Otherwise, the pool kernel size will be the cube of an int.
+        pool_type (string): ${pooling_type_comment}
         pool_stride (int): stride of the pooling layer.
         pool_padding (int): padding size.
         global_pooling (bool): ${global_pooling_comment}
@@ -2552,6 +2559,19 @@ def pool3d(input,
 
     Returns:
         Variable: output of pool3d layer.
+
+    Examples:
+
+        .. code-block:: python
+
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32, 32], dtype='float32')
+          pool3d = fluid.layers.pool3d(
+                            input=data,
+                            pool_size=2,
+                            pool_type='max',
+                            pool_stride=1,
+                            global_pooling=False)
     """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
@@ -5921,6 +5941,8 @@ def sampled_softmax_with_cross_entropy(logits,
     sampled_logits \
         = helper.create_variable_for_type_inference(dtype=logits.dtype)
     sampled_label = helper.create_variable_for_type_inference(dtype='int64')
+    sampled_softlabel = helper.create_variable_for_type_inference(
+        dtype=logits.dtype)
 
     helper.append_op(
         type='sample_logits',
@@ -5946,13 +5968,19 @@ def sampled_softmax_with_cross_entropy(logits,
     loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
     softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
     helper.append_op(
+        type='one_hot',
+        inputs={'X': sampled_label},
+        attrs={'depth': num_samples + 1},
+        outputs={'Out': sampled_softlabel})
+
+    helper.append_op(
         type='softmax_with_cross_entropy',
         inputs={'Logits': sampled_logits,
-                'Label': sampled_label},
+                'Label': sampled_softlabel},
         outputs={'Softmax': softmax,
                  'Loss': loss},
         attrs={
-            'soft_label': False,
+            'soft_label': True,
             'ignore_index': False,
             'numeric_stable_mode': False
         })

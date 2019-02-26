@@ -57,8 +57,7 @@ class OpTester {
   std::string type_;
   framework::OpDesc op_desc_;
   std::unordered_map<std::string, std::unique_ptr<framework::VarDesc>> vars_;
-  std::vector<std::string> inputs_;
-  std::vector<std::string> outputs_;
+  std::unordered_map<std::string, std::vector<std::vector<size_t>>> input_lods_;
   std::unique_ptr<framework::OperatorBase> op_;
   platform::Place place_;
   std::unique_ptr<framework::Scope> scope_;
