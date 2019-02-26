@@ -17,12 +17,11 @@
 #include <memory>
 #include <vector>
 
+#include "paddle/fluid/framework/blockingconcurrentqueue.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/framework/blockingconcurrentqueue.h"
-
 
 namespace paddle {
 namespace operators {
@@ -60,17 +59,15 @@ class LoDTensorBlockingQueue {
 
   inline void ReOpen() { closed = true; }
 
-  inline void Close() {
-    closed = false;
-  }
+  inline void Close() { closed = false; }
 
   inline bool IsClosed() const { return closed; }
 
  private:
-//  BlockingQueue<std::vector<framework::LoDTensor>> queue_;
+  //  BlockingQueue<std::vector<framework::LoDTensor>> queue_;
+  moodycamel::BlockingConcurrentQueue<std::vector<framework::LoDTensor>> queue_;
   size_t capacity_;
   bool closed = false;
-  moodycamel::BlockingConcurrentQueue<std::vector<framework::LoDTensor>> queue_;
 };
 
 class LoDTensorBlockingQueueHolder {
