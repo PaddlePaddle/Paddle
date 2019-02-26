@@ -17,7 +17,7 @@ INCLUDE(ExternalProject)
 SET(DGC_SOURCES_DIR "${THIRD_PARTY_PATH}/dgc")
 SET(DGC_INSTALL_DIR "${THIRD_PARTY_PATH}/install/dgc")
 SET(DGC_INCLUDE_DIR "${DGC_INSTALL_DIR}/include" CACHE PATH "dgc include directory." FORCE)
-SET(DGC_LIBRARIES "${DGC_INSTALL_DIR}/lib/libdgc.a" CACHE FILEPATH "dgc library." FORCE)
+SET(DGC_LIBRARIES "${DGC_INSTALL_DIR}/lib/libdgc.so" CACHE FILEPATH "dgc library." FORCE)
 INCLUDE_DIRECTORIES(${DGC_INCLUDE_DIR})
 
 ExternalProject_Add(
@@ -27,14 +27,14 @@ ExternalProject_Add(
     GIT_TAG develop
     SOURCE_DIR "${DGC_SOURCES_DIR}"
     CONFIGURE_COMMAND ""
-    BUILD_COMMAND cd collective && make -j
+    BUILD_COMMAND cd collective && make -j src.lib
     INSTALL_COMMAND mkdir -p ${DGC_INSTALL_DIR}/lib/  ${DGC_INCLUDE_DIR}/dgc
-        && cp ${DGC_SOURCES_DIR}/collective/build/lib/libdgc.a ${DGC_LIBRARIES}
+        && cp ${DGC_SOURCES_DIR}/collective/build/lib/libdgc.so ${DGC_LIBRARIES}
         && cp ${DGC_SOURCES_DIR}/collective/build/include/dgc.h ${DGC_INCLUDE_DIR}/dgc/
     BUILD_IN_SOURCE 1
 )
 
-ADD_LIBRARY(dgc STATIC IMPORTED GLOBAL)
+ADD_LIBRARY(dgc SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET dgc PROPERTY IMPORTED_LOCATION ${DGC_LIBRARIES})
 ADD_DEPENDENCIES(dgc extern_dgc)
 
