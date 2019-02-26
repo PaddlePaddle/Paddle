@@ -155,6 +155,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
 
     op->grad_input_vars_.resize(op->grad_op_descs_.size());
     op->grad_output_vars_.resize(op->grad_op_descs_.size());
+
     for (size_t i = 0; i < op->grad_op_descs_.size(); ++i) {
       framework::OpDesc* grad_op_desc = op->grad_op_descs_[i];
       for (auto it : grad_op_desc->Inputs()) {
@@ -167,7 +168,6 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
             PADDLE_ENFORCE(fwd_var_it != vars.end());
             // Forward inputs or outputs.
             grad_in_vars.push_back(fwd_var_it->second->var_);
-            vars_saved_for_backward.insert(it.first);
           } else {
             VarBase* var = vars[var_it->second];
             if (!var->grads_->var_->IsInitialized()) {
@@ -177,6 +177,8 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
             // Douts.
             grad_in_vars.push_back(var->grads_->var_);
           }
+
+          vars_saved_for_backward.insert(it.first);
         }
       }
 

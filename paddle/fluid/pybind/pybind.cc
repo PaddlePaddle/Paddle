@@ -173,7 +173,6 @@ PYBIND11_MODULE(core, m) {
                     [](const imperative::VarBase &self) { return self.name_; },
                     [](imperative::VarBase &self, const std::string &name) {
                       self.name_ = name;
-                      LOG(ERROR) << "create ivar name " << self.name_;
                     })
       .def_property("block",
                     [](const imperative::VarBase &self) { return self.block_; },
