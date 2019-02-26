@@ -2473,7 +2473,7 @@ def pool2d(input,
 
           data = fluid.layers.data(
               name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d = fluid.layers.pool2d(
+          pool2d = fluid.layers.pool2d(
                             input=data,
                             pool_size=2,
                             pool_type='max',
@@ -2522,6 +2522,7 @@ def pool2d(input,
     return pool_out
 
 
+@templatedoc()
 def pool3d(input,
            pool_size=-1,
            pool_type="max",
@@ -2533,13 +2534,19 @@ def pool3d(input,
            name=None,
            exclusive=True):
     """
-    This function adds the operator for pooling in 3-dimensions, using the
-    pooling configurations mentioned in input parameters.
+    ${comment}
 
     Args:
-        input (Variable): ${input_comment}
-        pool_size (int): ${ksize_comment}
-        pool_type (str): ${pooling_type_comment}
+        input (Variable): The input tensor of pooling operator. The format of
+                          input tensor is NCDHW, where N is batch size, C is
+                          the number of channels, D is the depth of the feature,
+                          H is the height of the feature, and W is the width
+                          of the feature.
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size 
+            is a tuple or list, it must contain three integers, 
+            (pool_size_Depth, pool_size_Height, pool_size_Width).
+            Otherwise, the pool kernel size will be the cube of an int.
+        pool_type (string): ${pooling_type_comment}
         pool_stride (int): stride of the pooling layer.
         pool_padding (int): padding size.
         global_pooling (bool): ${global_pooling_comment}
@@ -2552,6 +2559,19 @@ def pool3d(input,
 
     Returns:
         Variable: output of pool3d layer.
+
+    Examples:
+
+        .. code-block:: python
+
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32, 32], dtype='float32')
+          pool3d = fluid.layers.pool3d(
+                            input=data,
+                            pool_size=2,
+                            pool_type='max',
+                            pool_stride=1,
+                            global_pooling=False)
     """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
@@ -3021,7 +3041,6 @@ def data_norm(input,
               param_attr=None,
               data_layout='NCHW',
               in_place=False,
-              use_mkldnn=False,
               name=None,
               moving_mean_name=None,
               moving_variance_name=None,
@@ -3055,7 +3074,6 @@ def data_norm(input,
         param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
         data_layout(string, default NCHW): NCHW|NHWC
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
-        use_mkldnn(bool, Default false): ${use_mkldnn_comment}
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
@@ -3136,8 +3154,7 @@ def data_norm(input,
         outputs={"Y": data_norm_out,
                  "Means": means,
                  "Scales": scales},
-        attrs={"epsilon": epsilon,
-               "use_mkldnn": use_mkldnn})
+        attrs={"epsilon": epsilon})
 
     return helper.append_activation(data_norm_out)
 
@@ -9925,6 +9942,7 @@ def teacher_student_sigmoid_loss(input,
 
     Examples:
         .. code-block:: python
+
           cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
     """
     helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
