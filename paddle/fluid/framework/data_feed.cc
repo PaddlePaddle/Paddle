@@ -177,6 +177,7 @@ void MultiSlotDataFeed::ReadThread() {
   while (PickOneFile(&filename)) {
     int err_no = 0;
     fp_ = fs_open_read(filename, &err_no, pipe_command_);
+    CHECK(fp_ != nullptr);
     __fsetlocking(&*fp_, FSETLOCKING_BYCALLER);
     thread_local string::LineFileReader reader;
     std::vector<MultiSlotType> instance;
@@ -185,7 +186,7 @@ void MultiSlotDataFeed::ReadThread() {
       ins_num++;
       queue_->Send(instance);
     }
-    LOG(ERROR) << "filename: " << filename << " inst num: " << ins_num;
+    VLOG(3) << "filename: " << filename << " inst num: " << ins_num;
   }
   queue_->Close();
 }
@@ -304,31 +305,16 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
 bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
     std::vector<MultiSlotType>* instance) {
   thread_local string::LineFileReader reader;
-  /*
-  while (reader.getline(&*(fp_.get()))) {
-  */
-  /*
-    const char* str = reader.get();
-    std::string line = std::string(str);
-    LOG(ERROR) << line;
-  */
-  /*
-    LOG(ERROR) << "read a line";
-  }
-  */
 
   if (!reader.getline(&*(fp_.get()))) {
     return false;
   } else {
-    // std::string& line = reader_.get();
-    // const char* str = line.c_str();
-
     int use_slots_num = use_slots_.size();
     instance->resize(use_slots_num);
 
     const char* str = reader.get();
     std::string line = std::string(str);
-    // LOG(ERROR) << line;
+    VLOG(3) << line;
     char* endptr = const_cast<char*>(str);
     int pos = 0;
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
@@ -357,7 +343,10 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
         pos = endptr - str;
       } else {
         for (int j = 0; j <= num; ++j) {
-          pos = line.find_first_of(' ', pos + 1);
+          // pos = line.find_first_of(' ', pos + 1);
+          while (line[pos + 1] != ' ') {
+            pos++;
+          }
         }
       }
     }
