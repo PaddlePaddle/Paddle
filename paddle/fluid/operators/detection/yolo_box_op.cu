@@ -22,9 +22,9 @@ using Tensor = framework::Tensor;
 
 template <typename T>
 __global__ void KeYoloBoxFw(const T* input, const int* imgsize, T* boxes,
-                            T* scores, const float conf_thresh, const int* anchors, 
-			    const int n, const int h, const int w,
-                            const int an_num, const int class_num,
+                            T* scores, const float conf_thresh,
+                            const int* anchors, const int n, const int h,
+                            const int w, const int an_num, const int class_num,
                             const int box_num, int input_size) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -50,7 +50,7 @@ __global__ void KeYoloBoxFw(const T* input, const int* imgsize, T* boxes,
     int box_idx =
         GetEntryIndex(i, j, k * w + l, an_num, an_stride, grid_num, 0);
     GetYoloBox<T>(box, input, anchors, l, k, j, h, input_size, box_idx,
-                                grid_num, img_height, img_width);
+                  grid_num, img_height, img_width);
     box_idx = (i * box_num + j * grid_num + k * w + l) * 4;
     CalcDetectionBox<T>(boxes, box, box_idx, img_height, img_width);
 
@@ -84,7 +84,8 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     int input_size = downsample_ratio * h;
 
     Tensor anchors_t, cpu_anchors_t;
-    auto cpu_anchors_data = cpu_anchors_t.mutable_data<int>({an_num*2}, platform::CPUPlace());
+    auto cpu_anchors_data =
+        cpu_anchors_t.mutable_data<int>({an_num * 2}, platform::CPUPlace());
     std::copy(anchors.begin(), anchors.end(), cpu_anchors_data);
     TensorCopySync(cpu_anchors_t, ctx.GetPlace(), &anchors_t);
     auto anchors_data = anchors_t.data<int>();
@@ -103,8 +104,8 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     grid_dim = grid_dim > 8 ? 8 : grid_dim;
 
     KeYoloBoxFw<T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
-	input_data, imgsize_data, boxes_data, scores_data, conf_thresh, 
-	anchors_data, n, h, w, an_num, class_num, box_num, input_size);	
+        input_data, imgsize_data, boxes_data, scores_data, conf_thresh,
+        anchors_data, n, h, w, an_num, class_num, box_num, input_size);
   }
 };
 
@@ -112,6 +113,5 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(yolo_box,
-                        ops::YoloBoxOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(yolo_box, ops::YoloBoxOpCUDAKernel<float>,
                         ops::YoloBoxOpCUDAKernel<double>);
