@@ -117,7 +117,7 @@ class TestIrMemOptBase(BuildIrMemOptBase):
         self.network = None
 
     def test_network(self):
-        if self.network is None:
+        if self.network is None or not core.is_compiled_with_cuda():
             return
 
         baseline_first_loss, baseline_last_loss = None, None
@@ -139,7 +139,12 @@ class TestIrMemOptBase(BuildIrMemOptBase):
                                 self.network,
                                 use_cuda=use_cuda,
                                 memory_opt=use_python_mem_opt)
-                            self.assertAlmostEquals(np.mean(baseline_last_loss),
-                                                    np.mean(cur_last_loss), delta=1e-2)
-                            self.assertAlmostEquals(np.mean(baseline_first_loss),
-                                                    np.mean(cur_first_loss), delta=1e-2)
+
+                            self.assertAlmostEquals(
+                                np.mean(baseline_last_loss),
+                                np.mean(cur_last_loss),
+                                delta=1e-2)
+                            self.assertAlmostEquals(
+                                np.mean(baseline_first_loss),
+                                np.mean(cur_first_loss),
+                                delta=1e-2)
