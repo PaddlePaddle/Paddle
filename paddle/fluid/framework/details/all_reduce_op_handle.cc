@@ -23,7 +23,7 @@
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "dgc/dgc.h"
-#include "sparse.h"
+//#include "sparse.h"
 #endif
 
 // asynchronous nccl allreduce or synchronous issue:
