@@ -24,6 +24,10 @@ __all__ = ['Tracer']
 
 
 def release_op(op):
+    import gc
+    assert len(
+        gc.get_referrers(framework._imperative_tracer()._ops[
+            op._trace_id])) == 1
     del framework._imperative_tracer()._ops[op._trace_id]
 
 
@@ -41,7 +45,6 @@ class Tracer(core.Tracer):
     def trace_op(self, op, stop_gradient=False):
         # record op's trace id
         op.iop._trace_id = self._trace_id
-        self._trace_id += 1
 
         # trace op and save it
         backward_refs = self.trace(op.iop, op.inputs, op.outputs, op.block.desc,
@@ -49,6 +52,7 @@ class Tracer(core.Tracer):
                                    stop_gradient)
 
         if not stop_gradient:
+            self._trace_id += 1
             self._ops[op.iop._trace_id] = op
 
             # register backward hooks and variables if needed
