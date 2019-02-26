@@ -125,8 +125,6 @@ class VarBase {
 
  public:
   virtual ~VarBase() {
-    LOG(ERROR) << "remove var " << name_.c_str();
-
     if (block_) {
       block_->RemoveVar(name_);
     }
@@ -216,13 +214,9 @@ class PYBIND11_HIDDEN OpBase {
       delete desc;
     }
 
-    LOG(ERROR) << "remove op " << op_desc_->Type() << " id " << trace_id_;
-
     if (block_) {
       block_->RemoveOpInternal(op_desc_);
     }
-
-    LOG(ERROR) << "remove op end " << trace_id_;
   }
 
   std::map<std::string, std::vector<VarBase*>> ApplyGrad();
