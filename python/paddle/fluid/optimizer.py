@@ -559,6 +559,8 @@ class DGCOptimizer(MomentumOptimizer):
                  rampup_begin_step=0,
                  sparsity=[0.75, 0.9375, 0.984375, 0.996, 0.999],
                  use_nesterov=False,
+                 local_grad_clip_norm=None,
+                 num_trainers=None,
                  regularization=None,
                  name=None):
         self._sparsity = sparsity
@@ -569,6 +571,17 @@ class DGCOptimizer(MomentumOptimizer):
         self._rampup_begin_step_var = None
 
         self._global_step_var = None
+        self._local_grad_clip_norm = None
+        self._clip_norm = None
+
+        if local_grad_clip_norm is not None:
+            assert isinstance(num_trainers, int)
+            assert isinstance(local_grad_clip_norm, float)
+            assert num_trainers > 0
+
+            self._local_grad_clip_norm = local_grad_clip_norm
+            self._num_trainers = num_trainers
+            self._clip_norm = local_grad_clip_norm / (num_trainers * num_trainers)
 
         super(DGCOptimizer, self).__init__(learning_rate, momentum,
                                            use_nesterov, regularization, name)
@@ -637,7 +650,7 @@ class DGCOptimizer(MomentumOptimizer):
                 shape=[1],
                 dtype=param_var.dtype,
                 persistable=True,
-                name=grad_var.name + "__dgc_k__",
+                name=param_var.name + "__dgc_k__",
                 value=0.0,
                 force_cpu=True)
 
@@ -645,7 +658,7 @@ class DGCOptimizer(MomentumOptimizer):
                 shape=[1],
                 dtype=param_var.dtype,
                 persistable=True,
-                name=grad_var.name + "__dgc_encoded__",
+                name=param_var.name + "__dgc_encoded__",
                 value=0.0,
                 force_cpu=False)
 
@@ -660,7 +673,7 @@ class DGCOptimizer(MomentumOptimizer):
                 if param_var.name not in var_attr:
                     continue
 
-                print("find param:", param_var.name, " in ", op.type)
+                #print("find param:", param_var.name, " in ", op.type)
                 #print(op_maker.kOpRoleVarAttrName(), var_attr)
                 #print(op)
                 #print(op_maker.kOpRoleVarAttrName)
@@ -671,12 +684,19 @@ class DGCOptimizer(MomentumOptimizer):
                 else:
                     op._remove_attr(op_maker.kOpRoleVarAttrName())
 
-            self._dgc_op(param_var, grad_var, u_var, v_var, k_var, encoded_var)
+            clip_var = grad_var
+            if self._local_grad_clip_norm is not None:
+                clip_var = self._append_clip_norm(grad_var, self._clip_norm)
+                print("clip_var name:", clip_var.name, 
+                          ", grad_var name:", grad_var.name)
+            self._dgc_op(param_var, clip_var, grad_var, u_var, v_var, k_var, encoded_var)
 
         # Note: don't delete this
         print("set DGC rampup_begin_step:", self._rampup_begin_step,
-              ", sparsity:", self._sparsity, ", rampup_step:",
-              self._rampup_step)
+              ", sparsity:", self._sparsity, 
+              ", rampup_step:", self._rampup_step, 
+              ", local_clip_norm:", self._local_grad_clip_norm, 
+              ", clip_norm:", self._clip_norm)
 
     def _is_the_backward_op(self, op):
         op_maker = core.op_proto_and_checker_maker
@@ -686,7 +706,11 @@ class DGCOptimizer(MomentumOptimizer):
             return True
         return False
 
-    def _dgc_op(self, param_var, grad_var, u_var, v_var, k_var, encoded_var):
+    def _append_clip_norm(self, grad_var, clip_norm):
+        with grad_var.block.program._backward_role_guard():
+            return layers.clip_by_norm(x=grad_var, max_norm=clip_norm, name=grad_var.name+"@DGC")
+
+    def _dgc_op(self, param_var, clip_var, grad_var, u_var, v_var, k_var, encoded_var):
         block = framework.default_main_program().global_block()
         op_maker = core.op_proto_and_checker_maker
         dgc_op = block.append_op(
@@ -694,7 +718,7 @@ class DGCOptimizer(MomentumOptimizer):
             inputs={
                 "U": u_var,
                 "V": v_var,
-                "Grad": grad_var,
+                "Grad": clip_var,
                 "current_step": self._global_step_var
             },
             outputs={

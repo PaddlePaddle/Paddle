@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -82,7 +83,9 @@ void AllReduceOpHandle::_RunImplEncoded() {
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto &local_scope =
         local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
-    auto encode_var_name = in_var_handles[i]->name() + "__dgc_encoded__";
+    auto original_name = paddle::framework::GradOriginalVarName(in_var_handles[i]->name());
+    auto encode_var_name = original_name + "__dgc_encoded__";
+    VLOG(10) << "encode_var_name:" << encode_var_name;
     auto* in_var = local_scope->FindVar(encode_var_name);
     PADDLE_ENFORCE_NOT_NULL(in_var);
     auto &in = in_var->Get<LoDTensor>();
@@ -106,7 +109,6 @@ void AllReduceOpHandle::_RunImplEncoded() {
   size_t out_numel = 0;
   PADDLE_ENFORCE(ranks_ > 1);
   std::vector<std::function<void()>> all_reduce_calls;
-  // std::vector<memory::allocation::AllocationPtr> ptrs;
 
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto &place = places_[i];
@@ -134,16 +136,6 @@ void AllReduceOpHandle::_RunImplEncoded() {
     int buf_size = ranks_ * encode_size;
     auto tmp_ious_data = allocator.Allocate(buf_size);
     void *gather_buff = reinterpret_cast<void *>(tmp_ious_data->ptr());
-    // ptrs.emplace_back(std::move(tmp_ious_data));
-
-    /*
-    auto encode_data = allocator.Allocate(encode_size);
-    void *encode_data_buf = reinterpret_cast<void *>(encode_data->ptr());
-
-    cudaMemcpyAsync(encode_data_buf, in_tensor_buf, encode_size,
-                    cudaMemcpyDeviceToDevice, stream);
-    cudaMemsetAsync(in_tensor_buf, 0, in_numel * sizeof(dtype), stream);
-    */
 
     VLOG(10) << "in_numel:" << in_numel << ", out_numel:" << out_numel
              << ", ranks:" << ranks_ << ", gather_buf size:" << buf_size
@@ -153,21 +145,21 @@ void AllReduceOpHandle::_RunImplEncoded() {
              << ", out_tensor_buf:" << out_tensor_buf << ", comm:" << comm
              << ", gather_buff:" << gather_buff;
 
-    /*
+    ///*
     all_reduce_calls.emplace_back([=] {
       sparseAllGReduce(in_tensor_buf, gather_buff, k, out_tensor_buf,
                        out_numel, static_cast<ncclDataType_t>(dtype), ncclSum,
                        comm, stream);
     });
-    */
+    //*/
 
-    //*
+    /*
     all_reduce_calls.emplace_back([=] {
       paddle::communication::dgc::sparseAllGReduce(
           static_cast<void *>(in_tensor_buf), gather_buff, k, out_tensor_buf,
           out_numel, comm, stream);
     });
-    //*/
+    */
   }
 
   this->RunAndRecordEvent([&] {
@@ -205,7 +197,8 @@ void AllReduceOpHandle::_RunImplEncoded() {
 #endif
 
 int AllReduceOpHandle::GetKValue(const std::string &grad_name) {
-  auto var_name = grad_name + "__dgc_k__";
+  auto original_name = paddle::framework::GradOriginalVarName(grad_name);
+  auto var_name = original_name + "__dgc_k__";
   PADDLE_ENFORCE(local_scopes_.size() > 0);
 
   auto *scope = local_scopes_[0];

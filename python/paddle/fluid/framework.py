@@ -1767,6 +1767,15 @@ class Program(object):
         self._op_role_var = [var_name]
 
     @contextlib.contextmanager
+    def _backward_role_guard(self):
+        tmp_role = self._current_role
+
+        OpRole = core.op_proto_and_checker_maker.OpRole
+        self._current_role = OpRole.Backward
+        yield
+        self._current_role = tmp_role
+
+    @contextlib.contextmanager
     def _optimized_guard(self, param_and_grads):
         """
         A with guard to set :code:`Optimization` :code:`OpRole` and
