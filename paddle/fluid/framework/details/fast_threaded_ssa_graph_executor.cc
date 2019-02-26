@@ -24,12 +24,11 @@ namespace details {
 
 FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
-    std::unique_ptr<ir::Graph> &&graph)
+    const std::vector<platform::Place> &places, ir::Graph *graph)
     : strategy_(strategy),
       local_scopes_(local_scopes),
       places_(places),
-      graph_(std::move(graph)),
+      graph_(graph),
       pool_(strategy.num_threads_),
       prepare_pool_(1),  // add one more thread for generate op_deps
       fetch_ctxs_(places) {
@@ -110,14 +109,14 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
         }
       }
       if (exception_.IsCaught()) {
-        ClearFetchOp(graph_.get(), &fetch_ops);
+        ClearFetchOp(graph_, &fetch_ops);
         exception_.ReThrow();
       }
     }
     num_complete += num_comp;
   }
   // Wait FetchOps.
-  ClearFetchOp(graph_.get(), &fetch_ops);
+  ClearFetchOp(graph_, &fetch_ops);
   return fetches;
 }
 
