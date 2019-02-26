@@ -198,8 +198,7 @@ def fc(input,
        bias_attr=None,
        act=None,
        is_test=False,
-       name=None,
-       use_cudnn=False):
+       name=None):
     """
     **Fully Connected Layer**
 
@@ -249,8 +248,6 @@ def fc(input,
         act (str, default None): Activation to be applied to the output of this layer.
         is_test(bool): A flag indicating whether execution is in test phase.
         name (str, default None): The name of this layer.
-        use_cudnn(bool, default False): The activation op use cudnn or not. Only relu, relu6, sigmoid, sofmax
-            support cudnn.
 
     Returns:
         Variable: The transformation result.
