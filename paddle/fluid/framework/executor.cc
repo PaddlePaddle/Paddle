@@ -451,7 +451,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       // the sub scopes it created should not be dropped immediately, because
       // while_grad_op will use some variables created during while_op run, so
       // we need to keep the kids and wait for the outer executor to drop them.
-      Async([scope] { scope->DropKids(); });
+      scope->DropKids();
     }
   }
 }
