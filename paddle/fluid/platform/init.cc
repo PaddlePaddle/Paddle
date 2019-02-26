@@ -21,8 +21,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/string/split.h"
 #ifdef PADDLE_WITH_CUDA
-#include "dgc/dgc.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#include "dgc/dgc.h"
 #endif
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
@@ -172,8 +174,10 @@ void InitGLOG(const std::string &prog_name) {
 #endif
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 void InitDGC() { PADDLE_ENFORCE(paddle::communication::dgc::dynloadNcclLib()); }
+#else
+void InitDGC(){}
 #endif
 
 }  // namespace framework

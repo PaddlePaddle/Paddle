@@ -131,8 +131,6 @@ class Optimizer(object):
         """
         pass
 
-    #def _create_param_grad_accmulators(self, block, param_and_grad):
-    #    pass
 
     def _finish_update(self, block, parameters_and_grads):
         """Finish any custom updates needed
@@ -226,7 +224,6 @@ class Optimizer(object):
         self.helper = LayerHelper(self.__class__.__name__)
         self._create_accumulators(global_block,
                                   [p[0] for p in parameters_and_grads])
-        #self._create_param_grad_accmulators(global_block, param_and_grads)
         self._create_global_learning_rate()
 
         optimize_ops = []
