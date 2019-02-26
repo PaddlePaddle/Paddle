@@ -42,31 +42,31 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("RestoreIndex", {1, -1});
   }
 protected:
-    framework::OpKernelType GetExpectedKernelType(
-            const framework::ExecutionContext& ctx) const override {
-        auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("FpnRois"));
-        return framework::OpKernelType(data_type, platform::CPUPlace());
-    }
+  framework::OpKernelType GetExpectedKernelType(
+          const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("FpnRois"));
+    return framework::OpKernelType(data_type, platform::CPUPlace());
+  }
 };
 
 class DistributeFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-      AddInput("FpnRois",
-               "(LoDTensor) The rois at all levels in shape (-1, 4)");
-      AddOutput("MultiFpnRois",
-                "(LoDTensor) Output with distribute operator").AsDuplicable();
-      AddOutput("RestoreIndex", "(Tensor) An array of positive number which is "
-                                "used to restore the order of FpnRois");
-      AddAttr<int>("min_level", "The lowest level of FPN layer where the"
-                                " proposals come from");
-      AddAttr<int>("max_level", "The highest level of FPN layer where the"
-                                " proposals come from");
-      AddAttr<int>("refer_level", "The referring level of FPN layer with"
-                                  " specified scale");
-      AddAttr<int>("refer_scale", "The referring scale of FPN layer with"
-                                  " specified level");
-      AddComment(R"DOC(
+    AddInput("FpnRois",
+             "(LoDTensor) The rois at all levels in shape (-1, 4)");
+    AddOutput("MultiFpnRois",
+              "(LoDTensor) Output with distribute operator").AsDuplicable();
+    AddOutput("RestoreIndex", "(Tensor) An array of positive number which is "
+                              "used to restore the order of FpnRois");
+    AddAttr<int>("min_level", "The lowest level of FPN layer where the"
+                              " proposals come from");
+    AddAttr<int>("max_level", "The highest level of FPN layer where the"
+                              " proposals come from");
+    AddAttr<int>("refer_level", "The referring level of FPN layer with"
+                                " specified scale");
+    AddAttr<int>("refer_scale", "The referring scale of FPN layer with"
+                                " specified level");
+    AddComment(R"DOC(
 This operator distribute all proposals into different fpn level,
  with respect to scale of the proposals, the referring scale and
  the referring level. Besides, to restore the order of proposals,
