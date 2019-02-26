@@ -19,6 +19,7 @@ import unittest
 import time
 import math
 import multiprocessing
+import numpy as np
 
 import paddle
 import paddle.fluid.core as core
@@ -63,18 +64,18 @@ class BuildIrMemOptBase(unittest.TestCase):
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
         cost = network(data, label, len(word_dict))
-        optimizer = fluid.optimizer.Adam(learning_rate=0.2)
+        optimizer = fluid.optimizer.Adam(learning_rate=0.001)
         optimizer.minimize(cost)
         if memory_opt:
-            fluid.memory_optimize(main)
+            fluid.memory_optimize(fluid.default_main_program())
 
         # execution
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
         reader = feeder.decorate_reader(train_reader, multi_devices=True)
         exe = fluid.Executor(place)
-        fluid.default_startup_program().random_seed = 1
-        fluid.default_main_program().random_seed = 1
+        fluid.default_startup_program().random_seed = 100
+        fluid.default_main_program().random_seed = 100
         exe.run(fluid.default_startup_program())
 
         train_cp = compiler.CompiledProgram(fluid.default_main_program())
@@ -84,30 +85,30 @@ class BuildIrMemOptBase(unittest.TestCase):
         begin = time.time()
         first_loss, last_loss = None, None
         step_id = 0
-        custom_iter = getattr(self, "iter")
+        custom_iter = getattr(self, "iter", None)
         if not custom_iter == None:
             iter = custom_iter
         for data in reader():
             ret = exe.run(train_cp, feed=data, fetch_list=fetch_list)
             print(ret)
             step_id += 1
-            if step_id == 0:
-                first_loss = res[0]
+            if step_id == 1:
+                first_loss = ret[0]
             if step_id == iter:
-                last_loss = res[0]
+                last_loss = ret[0]
                 break
         end = time.time()
 
         print("%.4f Instance per second" % (
             (batch_size * iter) / (end - begin)))
 
+        print(first_loss, last_loss)
         avg_last_loss_val = np.array(last_loss).mean()
         avg_first_loss_val = np.array(first_loss).mean()
         if math.isnan(float(avg_last_loss_val)) or math.isnan(
                 float(avg_first_loss_val)):
             sys.exit("got NaN loss, training failed.")
 
-        print(first_loss, last_loss)
         return first_loss, last_loss
 
 
@@ -128,7 +129,7 @@ class TestIrMemOptBase(BuildIrMemOptBase):
                            not use_python_mem_opt))
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
                     with fluid.scope_guard(core.Scope()):
-                        if use_cuda is False and use_python_mem_opt is False:
+                        if use_cuda is True and use_python_mem_opt is True:
                             baseline_first_loss, baseline_last_loss = self.check_network_convergence(
                                 self.network,
                                 use_cuda=use_cuda,
@@ -138,8 +139,7 @@ class TestIrMemOptBase(BuildIrMemOptBase):
                                 self.network,
                                 use_cuda=use_cuda,
                                 memory_opt=use_python_mem_opt)
-                            for loss in zip(baseline_first_loss,
-                                            cur_first_loss):
-                                self.assertAlmostEqual(loss[0], loss[1], 1e-5)
-                            for loss in zip(baseline_last_loss, cur_last_loss):
-                                self.assertAlmostEqual(loss[0], loss[1], 1e-5)
+                            self.assertAlmostEquals(baseline_last_loss,
+                                                    cur_last_loss, 1e-2)
+                            self.assertAlmostEquals(baseline_first_loss,
+                                                    cur_first_loss, 1e-2)
