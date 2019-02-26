@@ -35,7 +35,10 @@ class PyReader : public framework::FileReader {
 
   ~PyReader() { queue_->Close(); }
 
-  void Shutdown() override { queue_->Close(); }
+  void Shutdown() override {
+    VLOG(3) << "PyReader shutdown!";
+    queue_->Close();
+  }
 
   void Start() override { queue_->ReOpen(); }
 

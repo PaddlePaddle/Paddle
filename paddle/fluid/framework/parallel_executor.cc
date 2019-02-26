@@ -188,7 +188,7 @@ ParallelExecutor::ParallelExecutor(
     const std::string &loss_var_name, Scope *scope,
     const std::vector<Scope *> &local_scopes,
     const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
-    ir::Graph *graph)
+    std::vector<ir::Graph *> graphs)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
@@ -222,6 +222,8 @@ ParallelExecutor::ParallelExecutor(
     PADDLE_ENFORCE(!member_->use_cuda_,
                    "gpu mode does not support async_mode_ now!");
   }
+
+  ir::Graph *graph = graphs[0];
   std::unique_ptr<ir::Graph> temp_owned_graph(graph);
 
   // FIXME(Yancey1989): parallel graph mode get better performance
@@ -262,17 +264,26 @@ ParallelExecutor::ParallelExecutor(
   if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
     BCastParamsToDevices(bcast_vars);
   }
-// Startup Program has been run. All local scopes has correct parameters.
+  // Startup Program has been run. All local scopes has correct parameters.
 
-// Step 2. Convert main_program to SSA form and dependency graph. Also, insert
-// ncclOp
+  // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
+  // ncclOp
+  std::vector<ir::Graph *> async_graphs(places.size());
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   if (build_strategy.async_mode_ && !build_strategy.is_distribution_) {
     VLOG(3) << "use local async mode";
-    temp_owned_graph = build_strategy.Apply(
-        std::move(temp_owned_graph), {member_->places_[0]}, loss_var_name,
-        {member_->local_scopes_[0]}, member_->nranks_, member_->use_cuda_,
-        member_->nccl_ctxs_.get());
+    temp_owned_graph =
+        build_strategy.Apply(std::move(temp_owned_graph), {member_->places_[0]},
+                             loss_var_name, {member_->local_scopes_[0]}, 1,
+                             member_->use_cuda_, member_->nccl_ctxs_.get());
+    for (int i = 1; i < member_->places_.size(); ++i) {
+      std::unique_ptr<ir::Graph> temp_graph(graphs[i]);
+      temp_graph =
+          build_strategy.Apply(std::move(temp_graph), {member_->places_[i]},
+                               loss_var_name, {member_->local_scopes_[i]}, 1,
+                               member_->use_cuda_, member_->nccl_ctxs_.get());
+      async_graphs[i] = temp_graph.release();
+    }
   } else {
     temp_owned_graph = build_strategy.Apply(
         std::move(temp_owned_graph), member_->places_, loss_var_name,
@@ -284,7 +295,14 @@ ParallelExecutor::ParallelExecutor(
     VLOG(3) << "use local async mode";
     temp_owned_graph = build_strategy.Apply(
         std::move(temp_owned_graph), {member_->places_[0]}, loss_var_name,
-        {member_->local_scopes_[0]}, member_->nranks_, member_->use_cuda_);
+        {member_->local_scopes_[0]}, 1, member_->use_cuda_);
+    for (int i = 1; i < member_->places_.size(); ++i) {
+      std::unique_ptr<ir::Graph> temp_graph(graphs[i]);
+      temp_graph = build_strategy.Apply(
+          std::move(temp_graph), {member_->places_[i]}, loss_var_name,
+          {member_->local_scopes_[i]}, 1, member_->use_cuda_);
+      async_graphs[i] = temp_graph.release();
+    }
   } else {
     temp_owned_graph = build_strategy.Apply(
         std::move(temp_owned_graph), member_->places_, loss_var_name,
@@ -303,6 +321,8 @@ ParallelExecutor::ParallelExecutor(
   } else {
     graph = temp_owned_graph.release();
   }
+
+  async_graphs[0] = graph;
 
   // Step 3. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
@@ -334,7 +354,7 @@ ParallelExecutor::ParallelExecutor(
   if (build_strategy.async_mode_ && !build_strategy.is_distribution_) {
     VLOG(3) << "use AsyncSSAGraphExecutor";
     member_->executor_.reset(new details::AsyncSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, member_->places_, graph));
+        exec_strategy, member_->local_scopes_, member_->places_, async_graphs));
   } else if (build_strategy.enable_parallel_graph_) {
     VLOG(3) << "use ParallelSSAGraphExecutor";
 #ifdef PADDLE_WITH_CUDA

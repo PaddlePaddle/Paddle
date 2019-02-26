@@ -20,12 +20,12 @@ namespace details {
 
 AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places, ir::Graph *graph)
+    const std::vector<platform::Place> &places, std::vector<ir::Graph *> graphs)
     : strategy_(std::move(strategy)),
       local_scopes_(std::move(local_scopes)),
       pool_(places.size() >= 2 ? new ::ThreadPool(places.size()) : nullptr),
       places_(std::move(places)),
-      graph_(graph) {
+      graphs_(std::move(graphs)) {
   VLOG(3) << "build AsyncSSAGraphExecutor";
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 
@@ -37,7 +37,7 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
           << " to run the operators of the graph on each device.";
   for (size_t i = 0; i < places.size(); ++i) {
     executors_.emplace_back(new details::ThreadedSSAGraphExecutor(
-        strategy_, {local_scopes_[i]}, {places_[i]}, graph_));
+        strategy_, {local_scopes_[i]}, {places_[i]}, graphs_[i]));
   }
 }
 
