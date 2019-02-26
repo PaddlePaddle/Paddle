@@ -41,7 +41,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
  private:
   std::vector<std::string> input_names_;
   std::unordered_set<std::string> param_names_;
-  mutable TensorRTEngine *trt_engine_;
+  mutable std::unique_ptr<TensorRTEngine> trt_engine_;
   int max_batch_size_;
   int workspace_size_;
   std::unique_ptr<TRTInt8Calibrator> calibrator_;
@@ -64,7 +64,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
     calibration_data_ = Attr<std::string>("calibration_data");
     engine_key_ = Attr<std::string>("engine_key");
     engine_serialized_data_ = Attr<std::string>("engine_serialized_data");
-    trt_engine_ = nullptr;
 
     auto params = Attr<std::vector<std::string>>("parameters");
     for (const auto &param : params) {
@@ -77,16 +76,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
     VLOG(4) << "calibration_mode: " << calibration_mode_;
     if (enable_int8_ && calibration_data_.size()) {
       calibrator_.reset(new TRTInt8Calibrator(calibration_data_));
-    }
-
-    // we will create an engine here.
-    if (!calibration_mode_) {
-      if (inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-              .HasEngine(engine_key_)) {
-        trt_engine_ = inference::Singleton<
-                          inference::tensorrt::TRTEngineManager>::Global()
-                          .Get(engine_key_);
-      }
     }
   }
 
@@ -231,15 +220,17 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
   TensorRTEngine *GetEngine(const framework::Scope &scope,
                             const platform::Place &dev_place) const {
-    if (trt_engine_ == nullptr) {
-      trt_engine_ =
-          inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-              .Create(max_batch_size_, workspace_size_, enable_int8_,
-                      calibrator_.get(), engine_key_,
-                      boost::get<platform::CUDAPlace>(dev_place).device);
-      PrepareTRTEngine(scope, trt_engine_);
+    if (trt_engine_.get() == nullptr) {
+      trt_engine_.reset(new inference::tensorrt::TensorRTEngine(
+          max_batch_size_, workspace_size_, enable_int8_, calibrator_.get(),
+          boost::get<platform::CUDAPlace>(dev_place).device));
+      if (engine_serialized_data_.size() > 0) {
+        trt_engine_->Deserialize(engine_serialized_data_);
+      } else {
+        PrepareTRTEngine(scope, trt_engine_.get());
+      }
     }
-    return trt_engine_;
+    return trt_engine_.get();
   }
 
   void PrepareTRTEngine(const framework::Scope &scope,
