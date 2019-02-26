@@ -49,7 +49,8 @@ class FcOpLite : public OpLite {
 
   std::string DebugString() const override { return "fc"; }
 
-  void StaticPickKernel(const std::vector<OpTarget>& valid_targets) override {}
+  void StaticPickKernel(const std::vector<TargetType>& valid_targets) override {
+  }
 
  private:
   mutable FcParam param_;

@@ -13,3 +13,47 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/scope.h"
+#include "scope.h"
+
+namespace paddle {
+namespace lite {
+
+Scope::~Scope() {}
+
+Scope &Scope::NewScope() const {
+  kids_.push_back(new Scope);
+  kids_.back()->parent_ = this;
+  return *kids_.back();
+}
+
+Variable *Scope::Var(const std::string &name) {
+  auto *var = FindVar(name);
+  if (var) return var;
+
+  // create a new variable.
+  vars_.emplace(name, std::unique_ptr<Variable>(new Variable));
+  return vars_[name].get();
+}
+
+Variable *Scope::FindVar(const std::string &name) const {
+  Variable *var{nullptr};
+  var = FindLocalVar(name);
+  const Scope *cur_scope = this;
+  while (!var && cur_scope->parent()) {
+    cur_scope = cur_scope->parent();
+    var = cur_scope->FindLocalVar(name);
+  }
+
+  return var;
+}
+
+Variable *Scope::FindLocalVar(const std::string &name) const {
+  auto it = vars_.find(name);
+  if (it != vars_.end()) {
+    return it->second.get();
+  }
+  return nullptr;
+}
+
+}  // namespace lite
+}  // namespace paddle

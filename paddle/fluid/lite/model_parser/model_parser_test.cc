@@ -12,39 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include <list>
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <utility>
-#include <vector>
-#include "paddle/fluid/lite/variable.h"
+#include "paddle/fluid/lite/model_parser/model_parser.h"
+#include <gtest/gtest.h>
 
 namespace paddle {
 namespace lite {
 
-class Scope final {
- public:
-  Scope() {}
-  ~Scope();
-
-  Scope& NewScope() const;
-
-  Variable* Var(const std::string& name);
-
-  Variable* FindVar(const std::string& name) const;
-
-  Variable* FindLocalVar(const std::string& name) const;
-
-  const Scope* parent() const { return parent_; }
-
- private:
-  // Scope in `kids_` are owned by this class.
-  mutable std::list<Scope*> kids_;
-  const Scope* parent_{nullptr};
-  std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
-};
+TEST(ModelParser, LoadProgram) {
+  auto program = LoadProgram(
+      "/home/chunwei/project2/models/fc/fluid_checkpoint/__model__");
+}
 
 }  // namespace lite
 }  // namespace paddle

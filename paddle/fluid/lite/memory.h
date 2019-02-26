@@ -19,7 +19,7 @@
 namespace paddle {
 namespace lite {
 
-void* TargetMalloc(TargetType target, size_t size) {
+static void* TargetMalloc(TargetType target, size_t size) {
   void* data{nullptr};
   switch (static_cast<int>(target)) {
     case static_cast<int>(TargetType::kX86):
@@ -40,7 +40,7 @@ void* TargetMalloc(TargetType target, size_t size) {
   return data;
 }
 
-void TargetFree(TargetType target, void* data) {
+static void TargetFree(TargetType target, void* data) {
   switch (static_cast<int>(target)) {
     case static_cast<int>(TargetType::kX86):
       TargetWrapper<TARGET(kX86)>::Free(data);
@@ -59,6 +59,7 @@ void TargetFree(TargetType target, void* data) {
 // Memory buffer manager.
 class Buffer {
  public:
+  Buffer() = default;
   Buffer(TargetType target, size_t size) : space_(size), target_(target) {}
 
   void* data() const { return data_; }

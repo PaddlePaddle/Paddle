@@ -64,9 +64,10 @@ class OpLite : public Registry {
                      framework::Scope *scope) = 0;
   virtual std::string DebugString() const = 0;
 
-  virtual void StaticPickKernel(const std::vector<OpTarget> &valid_targets) = 0;
+  virtual void StaticPickKernel(
+      const std::vector<TargetType> &valid_targets) = 0;
 
-  void PickBestKernel(const std::vector<OpTarget> &valid_places,
+  void PickBestKernel(const std::vector<TargetType> &valid_places,
                       KernelStrategy kernel_strategy = KernelStrategy::kStatic);
 
   // Create all the kernels for the valid targets.

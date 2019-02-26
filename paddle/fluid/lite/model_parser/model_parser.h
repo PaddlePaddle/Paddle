@@ -15,15 +15,22 @@
 // This file contains model format related operations, such as load a model,
 // parse an operator definitions and so on.
 
+#include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {
 namespace lite {
 
-void LoadProgram(const std::string& path);
+// Read a __model__ file.
+std::unique_ptr<framework::proto::ProgramDesc> LoadProgram(
+    const std::string& path);
+
+// Read a single file containing all the parameters.
 void LoadParams(const std::string& path);
 
+// Read a model and files of parameters.
 void LoadModel(const std::string& model_dir);
 
 }  // namespace lite

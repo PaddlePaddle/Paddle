@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/lite/tensor.h"
 #include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {
@@ -21,17 +22,23 @@ namespace lite {
 class Variable {
  public:
   template <typename T>
-  T& Get() {
-    return blob_;
+  const T& Get() {
+    return blob_.get<T>();
   }
 
   template <typename T>
   T* GetMutable() {
-    return any_cast<T>(&blob_);
+    blob_.set<T>();
+    return &blob_.get<T>();
+  }
+
+  template <typename T>
+  bool IsType() {
+    return blob_.type() == typeid(T).hash_code();
   }
 
  private:
-  any blob_;
+  variant<int, float, std::string, Tensor> blob_;
 };
 
 }  // namespace lite

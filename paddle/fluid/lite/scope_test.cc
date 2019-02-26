@@ -12,39 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include <list>
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <utility>
-#include <vector>
-#include "paddle/fluid/lite/variable.h"
+#include "paddle/fluid/lite/scope.h"
+#include <gtest/gtest.h>
 
 namespace paddle {
 namespace lite {
 
-class Scope final {
- public:
-  Scope() {}
-  ~Scope();
+TEST(Scope, Var) {
+  Scope scope;
+  auto* x = scope.Var("x");
+  *x->GetMutable<int>() = 100;
 
-  Scope& NewScope() const;
+  ASSERT_EQ(x->Get<int>(), 100);
+}
 
-  Variable* Var(const std::string& name);
-
-  Variable* FindVar(const std::string& name) const;
-
-  Variable* FindLocalVar(const std::string& name) const;
-
-  const Scope* parent() const { return parent_; }
-
- private:
-  // Scope in `kids_` are owned by this class.
-  mutable std::list<Scope*> kids_;
-  const Scope* parent_{nullptr};
-  std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
-};
+TEST(Scope, FindVar) {
+  Scope scope;
+  ASSERT_FALSE(scope.FindVar("x"));
+  scope.Var("x");
+  ASSERT_TRUE(scope.FindVar("x"));
+}
 
 }  // namespace lite
 }  // namespace paddle

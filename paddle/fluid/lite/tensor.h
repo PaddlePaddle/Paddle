@@ -37,25 +37,28 @@ class EventTree {
   std::vector<event_t> children_;
 };
 
-using DDim = std::vector<int>;
-DDim SliceDims(const DDim& dims, int begin, int end) {
+using DDim = std::vector<int64_t>;
+static DDim SliceDims(const DDim& dims, int begin, int end) {
   return DDim(dims.begin() + begin, dims.begin() + end - 1);
 }
 
-int product(const DDim& dims) {
+static int product(const DDim& dims) {
   return std::accumulate(dims.begin(), dims.end(), 1,
                          [](int a, int b) { return a * b; });
 }
 
-DDim flatten_to_2d(const DDim& dims, int col) {
+static DDim flatten_to_2d(const DDim& dims, int col) {
   return DDim({product(SliceDims(dims, 0, col)),
                product(SliceDims(dims, col, dims.size()))});
 }
+
+using LoD = std::vector<std::vector<size_t>>;
 
 // A light-weight tensor implementation.
 class Tensor {
  public:
   void SyncEventTree();
+  Tensor() = default;
 
   template <typename T>
   const T* data() const {
@@ -65,6 +68,9 @@ class Tensor {
   void Resize(const DDim& ddim) { dims_ = ddim; }
 
   const DDim& dims() const { return dims_; }
+
+  const LoD& lod() { return lod_; }
+  LoD* mutable_lod() { return &lod_; }
 
   template <typename T>
   T* mutable_data() {
@@ -78,6 +84,7 @@ class Tensor {
   TargetType target_{TargetType::kHost};
   DDim dims_;
   Buffer buffer_;
+  LoD lod_;
 };
 
 }  // namespace lite
