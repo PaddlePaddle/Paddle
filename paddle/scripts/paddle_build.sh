@@ -87,7 +87,6 @@ function cmake_gen() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.5/include/python3.5m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/libpython3.5m.dylib"
-                WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
                 pip3.5 uninstall -y protobuf
                 pip3.5 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
@@ -101,7 +100,6 @@ function cmake_gen() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib"
-                WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
                 pip3.6 uninstall -y protobuf
                 pip3.6 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
@@ -115,7 +113,6 @@ function cmake_gen() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib"
-                WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
                 pip3.7 uninstall -y protobuf
                 pip3.7 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
@@ -202,7 +199,6 @@ function cmake_gen() {
         -DWITH_TESTING=${WITH_TESTING:-ON}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
@@ -235,7 +231,6 @@ EOF
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
-        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
@@ -398,9 +393,7 @@ EOF
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
 
-        if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
-            paddle version
-        fi
+        paddle version
 
         if [ "$1" == "cp27-cp27m" ]; then
             pip uninstall -y paddlepaddle
@@ -451,6 +444,7 @@ function assert_api_spec_approvals() {
                "paddle/fluid/framework/ir/node.h"
                "paddle/fluid/framework/ir/graph.h"
                "paddle/fluid/framework/framework.proto"
+               "python/paddle/fluid/compiler.py"
                "paddle/fluid/operators/distributed/send_recv.proto.in")
     for API_FILE in ${API_FILES[*]}; do
       API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" || true`
@@ -555,7 +549,6 @@ EOF
         -DCMAKE_BUILD_TYPE=Release \
         -DWITH_GPU=OFF \
         -DWITH_MKL=OFF \
-        -DWITH_FLUID_ONLY=ON
 
     local LIB_TYPE=$1
     case $LIB_TYPE in
@@ -631,13 +624,8 @@ EOF
         NCCL_DEPS="true"
     fi
 
-    if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]]; then
-        PADDLE_VERSION="paddle version"
-        CMD='"paddle", "version"'
-    else
-        PADDLE_VERSION="true"
-        CMD='"true"'
-    fi
+    PADDLE_VERSION="paddle version"
+    CMD='"paddle", "version"'
 
     if [ "$1" == "cp35-cp35m" ]; then
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -722,12 +710,6 @@ EOF
 EOF
     fi
 
-    if [[ ${WITH_GOLANG:-OFF} == "ON" ]]; then
-        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
-        ADD go/cmd/pserver/pserver /usr/bin/
-        ADD go/cmd/master/master /usr/bin/
-EOF
-    fi
     cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # default command shows the paddle version and exit
     CMD [${CMD}]

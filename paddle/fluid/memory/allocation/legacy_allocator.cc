@@ -356,7 +356,7 @@ void MemInfo::Minus(const size_t &size) {
   usage_ -= size;
 }
 
-uint64_t MemInfo::GetPeakUsage() { return peak_usage_; }
+uint64_t MemInfo::GetPeakUsage() const { return peak_usage_; }
 
 LegacyMemMonitor::~LegacyMemMonitor() {
   for (auto &item : gpu_mem_info_) delete item.second;
@@ -380,10 +380,10 @@ void LegacyMemMonitor::Minus(const int &device, const size_t &size) {
   gpu_mem_info_[device]->Minus(size);
 }
 
-uint64_t LegacyMemMonitor::GetMemUsage(const int &device) {
+uint64_t LegacyMemMonitor::GetMemUsage(const int &device) const {
   return gpu_mem_info_.find(device) == gpu_mem_info_.end()
              ? 0
-             : gpu_mem_info_[device]->GetPeakUsage();
+             : gpu_mem_info_.at(device)->GetPeakUsage();
 }
 
 void LegacyMemMonitor::PrintMemUsage() {
