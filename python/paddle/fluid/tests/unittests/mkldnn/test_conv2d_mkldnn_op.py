@@ -67,27 +67,30 @@ class TestConv2dMKLDNNBiasResidualOp(TestConv2dOp):
     def setUp(self):
         TestConv2dOp.setUp(self)
         output = self.outputs['Output']
-        if self.fuse_bias is True and self.bias_size is not None:
-            bias = np.random.random(self.bias_size).astype(self.dtype)
+        if hasattr(self, "fuse_bias"):
+            if self.fuse_bias and hasattr(self, "bias_size"):
+                bias = np.random.random(self.bias_size).astype(self.dtype)
+                output = conv2d_bias_forward_naive(output, bias)
+                output = output.astype(self.dtype)
+                self.inputs['Bias'] = OpTest.np_dtype_to_fluid_dtype(bias)
 
-            output = conv2d_bias_forward_naive(output, bias)
-            self.inputs['Bias'] = OpTest.np_dtype_to_fluid_dtype(bias)
+        if hasattr(self, "fuse_residual"):
+            if self.fuse_residual and hasattr(self, "input_residual_size"):
+                input_residual = np.random.random(
+                    self.input_residual_size).astype(self.dtype)
+                output = conv_2d_residual_naive(output, input_residual)
+                output = output.astype(self.dtype)
 
-        if self.fuse_residual is True:
-            input_residual = np.random.random(self.input_residual_size).astype(
-                self.dtype)
-            output = conv_2d_residual_naive(output, input_residual)
-            output = output.astype(self.dtype)
-
-            self.attrs['fuse_residual_connection'] = self.fuse_residual
-            self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
-                input_residual)
+                self.attrs['fuse_residual_connection'] = self.fuse_residual
+                self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
+                    input_residual)
 
         self.outputs['Output'] = output
 
 
 class TestMKLDNNFuseReluBiasResidual(TestConv2dMKLDNNBiasResidualOp):
     def init_test_case(self):
+        # TestConv2dMKLDNNBiasResidualOp.init_test_case(self)
         self.fuse_bias = True
         self.fuse_residual = True
         self.fuse_relu_before_depthwise_conv = True
@@ -131,26 +134,10 @@ class TestWithPadWithBias(TestConv2dMKLDNNBiasResidualOp):
 
 class TestWithStride(TestConv2dMKLDNNBiasResidualOp):
     def init_test_case(self):
+        TestConv2dMKLDNNBiasResidualOp.init_test_case(self)
         self.pad = [1, 1]
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
-        self.fuse_bias = True
-        self.bias_size = [6]
-        self.fuse_residual = True
-        self.input_residual_size = [2, 6, 3, 3]
-        self.fuse_relu_before_depthwise_conv = True
-
-    def test_check_grad(self):
-        pass
-
-    def test_check_grad_no_filter(self):
-        pass
-
-    def test_check_grad_no_input(self):
-        pass
 
 
 class TestWithGroup(TestConv2dMKLDNNBiasResidualOp):
@@ -181,12 +168,6 @@ class TestWithInput1x1Filter1x1(TestConv2dMKLDNNBiasResidualOp):
     def init_group(self):
         self.groups = 3
 
-
-# Please Don't remove the following code.
-# Currently, CI use cudnn V5.0 which not support dilation conv.
-# class TestCUDNNWithDilation(TestWithDilation):
-#     def init_op_type(self):
-#         self.op_type = "conv_cudnn"
 
 if __name__ == '__main__':
     unittest.main()
