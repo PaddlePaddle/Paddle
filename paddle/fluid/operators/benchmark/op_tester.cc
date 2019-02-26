@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/benchmark/op_tester.h"
+#include <fstream>
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -28,6 +29,7 @@ namespace operators {
 namespace benchmark {
 
 DEFINE_string(op_config_list, "", "Path of op config file.");
+DEFINE_int32(specified_config_id, -1, "Test the specified op config.");
 
 void OpTester::Init(const std::string &filename) {
   Init(OpTesterConfig(filename));
@@ -147,7 +149,7 @@ void OpTester::CreateInputVarDesc() {
     var->SetShape(input->dims);
 
     op_desc_.SetInput(name, {var_name});
-    inputs_.push_back(var_name);
+    input_lods_[var_name] = input->lod;
   }
 }
 
@@ -162,7 +164,6 @@ void OpTester::CreateOutputVarDesc() {
     var->SetDataType(framework::proto::VarType::FP32);
 
     op_desc_.SetOutput(name, {var_name});
-    outputs_.push_back(var_name);
   }
 }
 
@@ -218,16 +219,26 @@ void OpTester::CreateVariables(framework::Scope *scope) {
     }
   }
 
-  // Allocate memory for input tensor
-  for (auto &name : inputs_) {
-    VLOG(3) << "Allocate memory for tensor " << name;
-    auto &var_desc = vars_[name];
+  for (auto &item : input_lods_) {
+    // Allocate memory for input tensor
+    auto &var_name = item.first;
+    VLOG(3) << "Allocate memory for tensor " << var_name;
+
+    auto &var_desc = vars_[var_name];
     std::vector<int64_t> shape = var_desc->GetShape();
 
-    auto *var = scope->Var(name);
+    auto *var = scope->Var(var_name);
     auto *tensor = var->GetMutable<framework::LoDTensor>();
     SetupTensor<float>(tensor, shape, static_cast<float>(0.0),
                        static_cast<float>(1.0));
+
+    VLOG(3) << "Set lod for tensor " << var_name;
+    std::vector<std::vector<size_t>> &lod_vec = item.second;
+    framework::LoD lod;
+    for (size_t i = 0; i < lod_vec.size(); ++i) {
+      lod.push_back(lod_vec[i]);
+    }
+    tensor->set_lod(lod);
   }
 }
 
@@ -282,10 +293,32 @@ std::string OpTester::DebugString() {
 }
 
 TEST(op_tester, base) {
-  OpTester tester;
   if (!FLAGS_op_config_list.empty()) {
-    tester.Init(FLAGS_op_config_list);
+    std::ifstream fin(FLAGS_op_config_list, std::ios::in | std::ios::binary);
+    PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s",
+                   FLAGS_op_config_list.c_str());
+    std::vector<OpTesterConfig> op_configs;
+    while (!fin.eof()) {
+      OpTesterConfig config;
+      bool result = config.Init(fin);
+      if (result) {
+        op_configs.push_back(config);
+      }
+    }
+    if (FLAGS_specified_config_id >= 0 &&
+        FLAGS_specified_config_id < static_cast<int>(op_configs.size())) {
+      OpTester tester;
+      tester.Init(op_configs[FLAGS_specified_config_id]);
+      tester.Run();
+    } else {
+      for (size_t i = 0; i < op_configs.size(); ++i) {
+        OpTester tester;
+        tester.Init(op_configs[i]);
+        tester.Run();
+      }
+    }
   } else {
+    OpTester tester;
     OpTesterConfig config;
     config.op_type = "elementwise_add";
     config.inputs.resize(2);
@@ -294,8 +327,8 @@ TEST(op_tester, base) {
     config.inputs[1].name = "Y";
     config.inputs[1].dims = {64, 1};
     tester.Init(config);
+    tester.Run();
   }
-  tester.Run();
 }
 
 }  // namespace benchmark
