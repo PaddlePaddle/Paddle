@@ -56,7 +56,6 @@ class FakeQuantizeAbsMaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
-
     auto* out = context.Output<framework::Tensor>("Out");
     auto* out_scale = context.Output<framework::Tensor>("OutScale");
     T* out_s = out_scale->mutable_data<T>(context.GetPlace());
