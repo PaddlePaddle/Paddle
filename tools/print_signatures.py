@@ -47,8 +47,8 @@ def visit_member(parent_name, member):
     elif callable(member):
         try:
             doc = ('document', md5(member.__doc__))
-            s = inspect.getargspec(member)
-            all = (s, doc)
+            args = inspect.getargspec(member)
+            all = (args, doc)
             member_dict[cur_name] = all
         except TypeError:  # special for PyBind method
             member_dict[cur_name] = "  ".join([
