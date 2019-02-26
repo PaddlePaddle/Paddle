@@ -32,8 +32,6 @@ class Scope;
 namespace details {
 
 constexpr char kLossVarName[] = "loss_var_name";
-constexpr char kPlaces[] = "places";
-constexpr char kLocalScopes[] = "local_scopes";
 constexpr char kStrategy[] = "strategy";
 constexpr char kNRanks[] = "nranks";
 

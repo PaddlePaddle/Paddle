@@ -995,7 +995,7 @@ static int MultiDevSSAGraphBuilderRegister(const std::string &builder_mode) {
 REGISTER_MULTI_DEVICES_PASS(reduce_mode_multi_devices_pass,
                             paddle::framework::details::ReduceSSAGraphBuilder);
 REGISTER_MULTI_DEVICES_PASS(
-    allreduce_mode_multi_devices_pass,
+    all_reduce_mode_multi_devices_pass,
     paddle::framework::details::AllReduceSSAGraphBuilder);
 REGISTER_MULTI_DEVICES_PASS(dist_multi_devices_pass,
                             paddle::framework::details::DistSSAGraphBuilder);

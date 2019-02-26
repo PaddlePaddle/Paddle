@@ -74,7 +74,11 @@ struct BuildStrategy {
 
   bool fuse_elewise_add_act_ops_{false};
 
+  bool fuse_all_optimizer_ops_{false};
+
   bool fuse_relu_depthwise_conv_{false};
+
+  bool fuse_parameters_pass_{false};
 
   bool memory_optimize_{false};
   // TODO(dzhwinter):

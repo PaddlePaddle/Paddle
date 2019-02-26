@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/details/op_handle_base.h"
@@ -38,11 +39,25 @@ namespace details {
 // `std::vector<VarHandle*>` is the version of varaibles.
 typedef std::vector<std::unordered_map<std::string, std::vector<VarHandle *>>>
     GraphVars;
-const char kGraphVars[] = "vars";
+constexpr char kGraphVars[] = "vars";
+
+constexpr char kPlaces[] = "places";
+constexpr char kLocalScopes[] = "local_scopes";
+constexpr char kNCCLCtxs[] = "nccl_ctxs";
 
 // aux variables to represent dependency. Useful to resolve data hazard.
 typedef std::unordered_set<VarHandleBase *> GraphDepVars;
-const char kGraphDepVars[] = "dep_vars";
+constexpr char kGraphDepVars[] = "dep_vars";
+
+typedef std::unordered_set<std::string> FusedVars;
+constexpr char kFusedVars[] = "fused_vars";
+constexpr char kFusedVarNamePrefix[] = "@FUSEDVAR@";
+
+typedef std::string FusedOptType;
+constexpr char kFusedOptType[] = "fused_opt_type";
+
+typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;
+constexpr char kParamsAndGrads[] = "params_grads";
 
 }  // namespace details
 }  // namespace framework
