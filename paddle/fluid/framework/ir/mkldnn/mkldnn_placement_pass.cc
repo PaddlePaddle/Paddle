@@ -24,7 +24,9 @@ void MKLDNNPlacementPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Applies MKL-DNN placement strategy.";
   const auto& op_types_list =
       Get<std::unordered_set<std::string>>("mkldnn_enabled_op_types");
-  graph->Set<bool>("use_mkldnn", new bool(true));
+  if (!graph->Has("use_mkldnn")) {
+    graph->Set<bool>("use_mkldnn", new bool(true));
+  }
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       auto* op = n->Op();
