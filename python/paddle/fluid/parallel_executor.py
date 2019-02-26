@@ -177,12 +177,17 @@ class ParallelExecutor(object):
 
         # step7: init ParallelExecutor
         # ParallelExecutor API will be deprecated, don't support parallel graph.
-        self._graph = core.Graph(main.desc)
+        self._graphs = []
+        if build_strategy.async_mode:
+            for _ in range(cpu_num):
+                self._graphs.append(core.Graph(main.desc))
+        else:
+            self._graphs.append(core.Graph(main.desc))
 
         self.executor = core.ParallelExecutor(
             places, persistable_vars,
             cpt.to_text(loss_name) if loss_name else six.u(''), scope,
-            local_scopes, exec_strategy, build_strategy, self._graph)
+            local_scopes, exec_strategy, build_strategy, self._graphs)
 
         self.scope = scope
 
