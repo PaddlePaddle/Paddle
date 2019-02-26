@@ -59,11 +59,18 @@ def YoloBox(x, img_size, attrs):
     pred_box[:, :, :2], pred_box[:, :, 2:4] = \
         pred_box[:, :, :2] - pred_box[:, :, 2:4] / 2., \
         pred_box[:, :, :2] + pred_box[:, :, 2:4] / 2.0
-    # pred_box = pred_box * input_size
     pred_box[:, :, 0] = pred_box[:, :, 0] * img_size[:, 1][:, np.newaxis]
     pred_box[:, :, 1] = pred_box[:, :, 1] * img_size[:, 0][:, np.newaxis]
     pred_box[:, :, 2] = pred_box[:, :, 2] * img_size[:, 1][:, np.newaxis]
     pred_box[:, :, 3] = pred_box[:, :, 3] * img_size[:, 0][:, np.newaxis]
+
+    for i in range(len(pred_box)):
+        pred_box[i, :, 0] = np.clip(pred_box[i, :, 0], 0, np.inf)
+        pred_box[i, :, 1] = np.clip(pred_box[i, :, 1], 0, np.inf)
+        pred_box[i, :, 2] = np.clip(pred_box[i, :, 2], -np.inf,
+                                    img_size[i, 1] - 1)
+        pred_box[i, :, 3] = np.clip(pred_box[i, :, 3], -np.inf,
+                                    img_size[i, 0] - 1)
 
     return pred_box, pred_score.reshape((n, -1, class_num))
 
@@ -93,8 +100,7 @@ class TestYoloBoxOp(OpTest):
         }
 
     def test_check_output(self):
-	place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3)
+        self.check_output()
 
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
