@@ -531,8 +531,7 @@ def _py_reader(capacity,
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=reader_name)
     startup_blk.append_op(
-        type='create_py_reader'
-        if not lock_free else 'create_lock_free_py_reader',
+        type='create_py_reader',
         inputs={'blocking_queue': [queue_name]},
         outputs={'Out': [startup_var]},
         attrs={
