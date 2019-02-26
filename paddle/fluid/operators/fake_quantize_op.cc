@@ -31,7 +31,7 @@ template <typename T>
 struct FindAbsMaxFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx, const T* in,
                   const int num, T* out) {
-    *out = *(std::max_element(in + 0, in + num, Compare<T>()));
+    *out = std::abs(*(std::max_element(in + 0, in + num, Compare<T>())));
   }
 };
 
