@@ -121,7 +121,7 @@ class TestIrMemOptBase(BuildIrMemOptBase):
             return
 
         baseline_first_loss, baseline_last_loss = None, None
-        for use_cuda in [True, False]:
+        for use_cuda in [True]:
             for use_python_mem_opt in [True, False]:
                 print(
                     'network: {}, use_cuda: {}, use_python_mem_opt: {}, use_ir_mem_opt : {}'.
