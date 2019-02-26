@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/imperative/tracer.h"
 
+#include <set>
+
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -66,16 +68,18 @@ platform::Place GetExpectedPlace(platform::Place place, VarBasePtrMap inputs) {
   return result;
 }
 
-void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
-                   const VarBasePtrMap& outputs, framework::BlockDesc* block,
-                   const platform::Place expected_place,
-                   const bool stop_gradient) {
+std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
+                                    const VarBasePtrMap& outputs,
+                                    framework::BlockDesc* block,
+                                    const platform::Place expected_place,
+                                    const bool stop_gradient) {
   std::map<std::string, VarBase*> vars;
 
   framework::OpDesc* op_desc = op->op_desc_;
   VLOG(3) << "tracer tracing " << op_desc->Type();
   op_desc->InferShape(*block);
   op_desc->InferVarType(block);
+
   std::unique_ptr<framework::OperatorBase> op_base =
       framework::OpRegistry::CreateOp(*op_desc);
 
@@ -92,7 +96,7 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
 
       invars.emplace_back(inp->var_);
       vars[inp->var_desc_->Name()] = inp;
-      if (inp->PreOp()) {
+      if (inp->PreOp() && !inp->IsStopGradient()) {
         op->pre_ops_[it.first].push_back(inp->PreOp());
         op->pre_ops_out_idx_[it.first].push_back(inp->PreOpOutIdx());
       } else {
@@ -138,8 +142,11 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   op->place_ = GetExpectedPlace(expected_place, inputs);
   PreparedOp prepared_op = PreparedOp::Prepare(ctx, *op_kernel, op->place_);
   prepared_op.op.RuntimeInferShape(scope, op->place_, ctx);
-  prepared_op.func(framework::ExecutionContext(
-      prepared_op.op, scope, *prepared_op.dev_ctx, prepared_op.ctx));
+  prepared_op.func(
+      framework::ExecutionContext(prepared_op.op, scope, *prepared_op.dev_ctx,
+                                  prepared_op.ctx, prepared_op.kernel_configs));
+
+  std::set<std::string> vars_saved_for_backward;
 
   if (!stop_gradient) {
     std::unique_ptr<std::unordered_map<std::string, std::string>> grad_to_var(
@@ -160,6 +167,7 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
             PADDLE_ENFORCE(fwd_var_it != vars.end());
             // Forward inputs or outputs.
             grad_in_vars.push_back(fwd_var_it->second->var_);
+            vars_saved_for_backward.insert(it.first);
           } else {
             VarBase* var = vars[var_it->second];
             if (!var->grads_->var_->IsInitialized()) {
@@ -193,6 +201,7 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   }
 
   op->block_ = block;
+  return vars_saved_for_backward;
 }
 
 std::vector<VarBase*> Tracer::PyTrace(OpBase* op,
@@ -202,7 +211,7 @@ std::vector<VarBase*> Tracer::PyTrace(OpBase* op,
   op->input_vars_[PyLayer::kFwdInp] = inputs;
   op->output_vars_[PyLayer::kFwdOut] = PyLayer::Apply(op->forward_id_, inputs);
   for (VarBase* inp : inputs) {
-    if (inp->PreOp()) {
+    if (inp->PreOp() && !inp->IsStopGradient()) {
       op->pre_ops_[PyLayer::kFwdInp].push_back(inp->PreOp());
       op->pre_ops_out_idx_[PyLayer::kFwdInp].push_back(inp->PreOpOutIdx());
     } else {
