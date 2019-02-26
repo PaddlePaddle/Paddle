@@ -20,8 +20,6 @@ import collections
 from .. import unique_name
 from paddle.fluid import core
 from paddle.fluid import framework
-from paddle.fluid.imperative import base
-
 __all__ = ['Layer', 'PyLayer']
 
 
@@ -39,10 +37,14 @@ class Layer(core.Layer):
     def __init__(self, name_scope, dtype=core.VarDesc.VarType.FP32):
         self._full_name = unique_name.generate(name_scope + "/" +
                                                self.__class__.__name__)
+        print("current full name is: {}".format(self._full_name))
         self._built = False
         self._dtype = dtype
         self._parameters = collections.OrderedDict()
         self._sub_layers = collections.OrderedDict()
+        from ..layer_helper import LayerHelper
+        self._helper = LayerHelper(
+            layer_type='base_layer', name=self._full_name, imperative_mode=True)
 
     def full_name(self):
         """Full name for this layers.

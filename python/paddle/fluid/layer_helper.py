@@ -22,7 +22,7 @@ import numpy as np
 
 from .framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating, _in_imperative_mode
 from . import unique_name
-from paddle.fluid.imperative import base as imperative_base
+from imperative import base as imperative_base
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
@@ -33,12 +33,64 @@ class LayerHelper(object):
     def __init__(self, layer_type, **kwargs):
         self.kwargs = kwargs
         self.layer_type = layer_type
+        self._act = self.kwargs.get('act', None)
+        self._use_cudnn = self.kwargs.get('use_cudnn', None)
+        self._use_mkldnn = self.kwargs.get('use_mkldnn', None)
+        self._param_attr = ParamAttr._to_attr(
+            self.kwargs.get('param_attr', None))
+        self._bias_attr = ParamAttr._to_attr(self.kwargs.get('bias_attr', None))
+        self._param_name = None
+        self._input_param = []
         name = self.kwargs.get('name', None)
         # TODO(panyx0718, minqiyang): imperative mode
         # can not use both `layer_type` and `name`. Deprecate LayerHelper
         # and write a Helper for imperative mode.
         if name is None:
             self.kwargs['name'] = unique_name.generate(self.layer_type)
+
+    @property
+    def param_name(self):
+        return self._param_name
+
+    @param_name.setter
+    def param_name(self, pname):
+        self._param_name = pname
+
+    @property
+    def input_param(self):
+        return self._input_param
+
+    @input_param.setter
+    def input_param(self, input):
+        assert isinstance(input, [])
+        self._input_param = input
+
+    @property
+    def act(self):
+        return self._act
+
+    @act.setter
+    def act(self, activation):
+        assert (isinstance(activation, str) or (activation is None))
+        self._act = activation
+
+    @property
+    def use_cudnn(self):
+        return self._use_cudnn
+
+    @use_cudnn.setter
+    def use_cudnn(self, mode):
+        assert isinstance(mode, bool)
+        self._use_cudnn = mode
+
+    @property
+    def use_mkldnn(self):
+        return self._use_mkldnn
+
+    @use_mkldnn.setter
+    def use_mkldnn(self, mode):
+        assert isinstance(mode, bool)
+        self._use_mkldnn = mode
 
     @property
     def name(self):
@@ -59,7 +111,11 @@ class LayerHelper(object):
         return self.main_program.current_block().append_op(*args, **kwargs)
 
     def multiple_input(self, input_param_name='input'):
-        inputs = self.kwargs.get(input_param_name, [])
+        input = []
+        if len(self._input_param) == 0:
+            inputs = self.kwargs.get(input_param_name, [])
+        else:
+            inputs = self._input_param
         ret = []
         if isinstance(inputs, list) or isinstance(inputs, tuple):
             for inp in inputs:
@@ -76,14 +132,28 @@ class LayerHelper(object):
 
     @property
     def param_attr(self):
-        return ParamAttr._to_attr(self.kwargs.get('param_attr', None))
+        return self._param_attr
+
+    @param_attr.setter
+    def param_attr(self, attr):
+        if isinstance(attr, ParamAttr) or (attr is None):
+            self._param_attr = ParamAttr._to_attr(attr)
+        else:
+            TypeError("attr should be either None or ParamAttr")
 
     @property
     def bias_attr(self):
-        return ParamAttr._to_attr(self.kwargs.get('bias_attr', None))
+        return self._bias_attr
+
+    @bias_attr.setter
+    def bias_attr(self, attr):
+        if isinstance(attr, ParamAttr) or (attr is None):
+            self._bias_attr = ParamAttr._to_attr(attr)
+        else:
+            TypeError("attr should be either None or ParamAttr")
 
     def multiple_param_attr(self, length):
-        param_attr = self.param_attr
+        param_attr = self._param_attr
         if isinstance(param_attr, ParamAttr):
             param_attr = [param_attr]
 
@@ -297,6 +367,8 @@ class LayerHelper(object):
                          default_initializer=None):
         # Deepcopy the attr so that parameters can be shared in program
         attr = copy.deepcopy(attr)
+        if attr is None:
+            attr = self._param_attr
         assert isinstance(attr, ParamAttr)
         suffix = 'b' if is_bias else 'w'
         if attr.name is None:
@@ -419,7 +491,7 @@ class LayerHelper(object):
         dimensions and added to input_var to get the output
         """
         size = list(input_var.shape[dim_start:dim_end])
-        bias_attr = self.bias_attr
+        bias_attr = self._bias_attr
         if not bias_attr:
             return input_var
 
@@ -435,7 +507,7 @@ class LayerHelper(object):
         return tmp
 
     def append_activation(self, input_var):
-        act = self.kwargs.get('act', None)
+        act = self._act
         if act is None:
             return input_var
         if isinstance(act, six.string_types):
@@ -443,11 +515,12 @@ class LayerHelper(object):
         else:
             raise TypeError(str(act) + " should be unicode or str")
 
-        if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
-            act['use_cudnn'] = self.kwargs.get('use_cudnn')
-        if 'use_mkldnn' in self.kwargs:
-            act['use_mkldnn'] = self.kwargs.get('use_mkldnn')
+        if (self.use_cudnn is not None) and self.use_cudnn:
+            act['use_cudnn'] = self.use_cudnn
+        if self.use_mkldnn is not None:
+            act['use_mkldnn'] = self.use_mkldnn
         act_type = act.pop('type')
+
         tmp = input_var
         # NOTE(dzhwinter): some activation support inplace compution.
         # NOTE(minqiyang): currently, we don't support inplace in imperative mode
@@ -470,7 +543,11 @@ class LayerHelper(object):
             return Constant()
 
     def is_instance(self, param_name, cls):
-        param = self.kwargs.get(param_name, None)
+        param = None
+        if self._param_name is None:
+            param = self.kwargs.get(param_name, None)
+        else:
+            param = self._param_name
         if not isinstance(param, cls):
             raise TypeError("The input {0} parameter of method {1} must be {2}",
                             param_name, self.layer_type, cls.__name__)

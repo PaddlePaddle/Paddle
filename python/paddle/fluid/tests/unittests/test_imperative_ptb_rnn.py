@@ -41,8 +41,8 @@ class SimpleLSTMRNN(fluid.imperative.Layer):
         self._dropout = dropout
         self._input = None
         self._num_steps = num_steps
-        from paddle.fluid.layer_helper import LayerHelper
-        self._helper = LayerHelper('SimpleLSTMRNN', act="tanh")
+        # from paddle.fluid.layer_helper import LayerHelper
+        # self._helper = LayerHelper('SimpleLSTMRNN', act="tanh")
 
     def _build_once(self, input_embedding, init_hidden=None, init_cell=None):
         self.weight_1_arr = []
@@ -145,8 +145,8 @@ class PtbModel(fluid.imperative.Layer):
         self.num_layers = num_layers
         self.num_steps = num_steps
         self.dropout = dropout
-        from paddle.fluid.layer_helper import LayerHelper
-        self._helper = LayerHelper('PtbModel', act="tanh")
+        # from paddle.fluid.layer_helper import LayerHelper
+        # self._helper = LayerHelper('PtbModel', act="tanh")
         self.simple_lstm_rnn = SimpleLSTMRNN(
             self.full_name(),
             hidden_size,

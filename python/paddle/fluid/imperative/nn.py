@@ -44,14 +44,9 @@ class Conv2D(layers.Layer):
         super(Conv2D, self).__init__(name_scope, dtype=dtype)
 
         # TODO(minqiyang): Move this to the top.
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(
-            self.full_name(),
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            dtype=dtype,
-            act=act)
-
+        self._helper.param_attr = param_attr
+        self._helper.bias_attr = bias_attr
+        self._helper.act = act
         self._groups = groups
         self._stride = utils.convert_to_list(stride, 2, 'stride')
         self._padding = utils.convert_to_list(padding, 2, 'padding')
@@ -167,9 +162,6 @@ class Pool2D(layers.Layer):
 
         super(Pool2D, self).__init__(name_scope, dtype=dtype)
 
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(self.full_name(), dtype=dtype)
-
         self._pool_type = pool_type
         self._pool_size = utils.convert_to_list(pool_size, 2, 'pool_size')
         self._pool_padding = utils.convert_to_list(pool_padding, 2,
@@ -216,12 +208,9 @@ class FC(layers.Layer):
         self._size = size
         self._num_flatten_dims = num_flatten_dims
         self._dtype = dtype
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(
-            self.full_name(),
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            act=act)
+        self._helper.param_attr = param_attr
+        self._helper.bias_attr = bias_attr
+        self._helper.act = act
 
     def _build_once(self, input):
         input_shape = input.shape
@@ -300,13 +289,9 @@ class BatchNorm(layers.Layer):
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
 
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(
-            self.full_name(),
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            act=act)
-
+        self._helper.param_attr = param_attr
+        self._helper.bias_attr = bias_attr
+        self._helper.act = act
         if dtype == core.VarDesc.VarType.FP16:
             self._dtype = core.VarDesc.VarType.FP32
         else:
@@ -466,8 +451,7 @@ class Embedding(layers.Layer):
         if self._remote_prefetch:
             assert self._is_sparse is True and self._is_distributed is False
 
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(self.full_name(), param_attr=param_attr)
+        self._helper.param_attr = param_attr
         self._w = self._helper.create_parameter(
             attr=self._param_attr,
             shape=self._size,
