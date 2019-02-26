@@ -47,11 +47,12 @@ class LoDTensorBlockingQueue {
 
   std::vector<framework::LoDTensor> Pop(bool* ok = nullptr) {
     std::vector<framework::LoDTensor> lod_tensor_vec;
-    bool success = false;
-    if (!closed) {
-      queue_.wait_dequeue(lod_tensor_vec);
-      success = true;
+    while (!queue_.wait_dequeue_timed(lod_tensor_vec, 1000)) {
+      if (queue_.is_closed()) {
+        break;
+      }
     }
+    bool success = true;
     if (ok != nullptr) *ok = success;
     return lod_tensor_vec;
   }
@@ -60,17 +61,16 @@ class LoDTensorBlockingQueue {
 
   inline size_t Size() const { return queue_.size_approx(); }
 
-  inline void ReOpen() { closed = false; }
+  inline void ReOpen() { queue_.open(); }
 
-  inline void Close() { closed = true; }
+  inline void Close() { queue_.close(); }
 
-  inline bool IsClosed() const { return closed; }
+  inline bool IsClosed() const { return queue_.is_closed(); }
 
  private:
-  //  BlockingQueue<std::vector<framework::LoDTensor>> queue_;
+  // BlockingQueue<std::vector<framework::LoDTensor>> queue_;
   moodycamel::BlockingConcurrentQueue<std::vector<framework::LoDTensor>> queue_;
   size_t capacity_;
-  bool closed = false;
 };
 
 class LoDTensorBlockingQueueHolder {

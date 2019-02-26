@@ -9,6 +9,7 @@
 #include <cerrno>
 #include <chrono>
 #include <ctime>
+#include <iostream>
 #include <memory>
 #include <type_traits>
 #include "concurrentqueue.h"
@@ -726,6 +727,9 @@ class BlockingConcurrentQueue {
   inline void wait_dequeue(U& item) {
     sema->wait();
     while (!inner.try_dequeue(item)) {
+      if (closed && size_approx() == 0) {
+        break;
+      }
       continue;
     }
   }
@@ -918,6 +922,12 @@ class BlockingConcurrentQueue {
   // Thread-safe.
   inline size_t size_approx() const { return (size_t)sema->availableApprox(); }
 
+  inline void close() { closed = true; }
+
+  inline void open() { closed = false; }
+
+  inline bool is_closed() const { return closed; }
+
   // Returns true if the underlying atomic variables used by
   // the queue are lock-free (they should be on most platforms).
   // Thread-safe.
@@ -947,6 +957,7 @@ class BlockingConcurrentQueue {
  private:
   ConcurrentQueue inner;
   std::unique_ptr<LightweightSemaphore, void (*)(LightweightSemaphore*)> sema;
+  bool closed = false;
 };
 
 template <typename T, typename Traits>
