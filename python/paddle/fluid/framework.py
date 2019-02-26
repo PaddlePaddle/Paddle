@@ -723,7 +723,9 @@ class Operator(object):
                 out_arg_names = []
                 for arg in out_args:
                     out_arg_names.append(cpt.to_text(arg.name))
-                    arg.op = self
+                    # TODO(minqiyang): could we remove variable's op in static mode?
+                    if not _in_imperative_mode():
+                        arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
         if op_attrs is not None:
