@@ -25,7 +25,8 @@ inline const T* Tensor::data() const {
   check_memory_size();
   bool valid =
       std::is_same<T, void>::value || type_ == DataTypeTrait<T>::DataType;
-  PADDLE_ENFORCE(valid, "Tensor holds the wrong type, it holds %d", type_);
+  PADDLE_ENFORCE(valid, "Tensor holds the wrong type, it holds %d",
+                 DataTypeToString(type_));
 
   return reinterpret_cast<const T*>(
       reinterpret_cast<uintptr_t>(holder_->ptr()) + offset_);

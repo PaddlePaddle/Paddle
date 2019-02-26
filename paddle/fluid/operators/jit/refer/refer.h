@@ -16,6 +16,7 @@
 
 #include <cmath>
 #include <limits>
+#include <string>
 #include "paddle/fluid/operators/jit/helper.h"
 #include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -80,6 +81,13 @@ template <typename T>
 inline void VIdentity(const T* x, T* y, int n) {
   for (int i = 0; i < n; ++i) {
     y[i] = x[i];
+  }
+}
+
+template <typename T>
+inline void VSquare(const T* x, T* y, int n) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = x[i] * x[i];
   }
 }
 
@@ -354,6 +362,90 @@ void SeqPool(const T* x, T* y, const seq_pool_attr_t* attr) {
   }
 }
 
+// A(M,K) * B(K,N) = C(M,N)
+template <typename T>
+void MatMul(const T* A, const T* B, T* C, const matmul_attr_t* attr) {
+  int M = attr->m;
+  int N = attr->n;
+  int K = attr->k;
+  for (int m = 0; m < M; ++m) {
+    const T* pa = A + m * K;
+    T* pc = C + m * N;
+    for (int n = 0; n < N; ++n) {
+      const T* pb = B + n;
+      pc[n] = pa[0] * pb[0];
+      for (int k = 1; k < K; ++k) {
+        pc[n] += pa[k] * pb[k * N];
+      }
+    }
+  }
+}
+
+template <typename T>
+void HMax(const T* x, T* res, int n) {
+  res[0] = x[0];
+  for (int i = 1; i < n; ++i) {
+    res[0] = res[0] < x[i] ? x[i] : res[0];
+  }
+}
+
+template <typename T>
+void HSum(const T* x, T* res, int n) {
+  res[0] = x[0];
+  for (int i = 1; i < n; ++i) {
+    res[0] += x[i];
+  }
+}
+
+// y = e^(x - max(x))
+// y = y / sum(y)
+template <typename T>
+void Softmax(const T* x, T* y, int n, int bs = 1) {
+  for (int i = 0; i < bs; ++i) {
+    T scalar;
+    HMax(x, &scalar, n);
+    scalar = static_cast<T>(0) - scalar;
+    VAddBias(&scalar, x, y, n);  // x - max
+    VExp(y, y, n);
+    HSum(y, &scalar, n);
+    scalar = static_cast<T>(1) / scalar;
+    VScal(&scalar, y, y, n);
+    x += n;
+    y += n;
+  }
+}
+
+// embedding seq pool
+// table is a matrix with (tbl_h, tbl_w)
+// idx is a matrix with (idx_h, idx_w)
+// output is a vector with length tbl_w * idx_w
+template <typename T>
+void EmbSeqPool(const T* table, const int64_t* idx, T* out,
+                const emb_seq_pool_attr_t* attr) {
+  PADDLE_ENFORCE_EQ(attr->table_width * attr->index_width, attr->out_width);
+
+  auto check_idx_value_valid = [&](int64_t i) {
+    PADDLE_ENFORCE_LT(idx[i], attr->table_height, "idx value: %d, i: %d",
+                      idx[i], i);
+    PADDLE_ENFORCE_GE(idx[i], 0, "idx value: %d, i: %d", idx[i], i);
+  };
+
+  for (int64_t w = 0; w != attr->index_width; ++w) {
+    check_idx_value_valid(w);
+    std::memcpy(out + w * attr->table_width, table + idx[w] * attr->table_width,
+                attr->table_width * sizeof(T));
+  }
+
+  for (int64_t h = 1; h < attr->index_height; ++h) {
+    for (int64_t w = 0; w < attr->index_width; ++w) {
+      int64_t i = h * attr->index_width + w;
+      check_idx_value_valid(i);
+      VAdd(table + idx[i] * attr->table_width, out + w * attr->table_width,
+           out + w * attr->table_width, attr->table_width);
+    }
+  }
+}
+
 #define DECLARE_REFER_KERNEL(name, tuples)             \
   template <typename T>                                \
   class name##Kernel : public ReferKernel<tuples<T>> { \
@@ -377,6 +469,7 @@ DECLARE_REFER_KERNEL(VIdentity, XYNTuples);
 DECLARE_REFER_KERNEL(VExp, XYNTuples);
 DECLARE_REFER_KERNEL(VSigmoid, XYNTuples);
 DECLARE_REFER_KERNEL(VTanh, XYNTuples);
+DECLARE_REFER_KERNEL(VSquare, XYNTuples);
 
 // lstm_t*, const lstm_attr_t*
 DECLARE_REFER_KERNEL(LSTMCtHt, LSTMTuples);
@@ -393,6 +486,15 @@ DECLARE_REFER_KERNEL(LayerNorm, LayerNormTuples);
 DECLARE_REFER_KERNEL(NCHW16CMulNC, NCHW16CMulNCTuples);
 
 DECLARE_REFER_KERNEL(SeqPool, SeqPoolTuples);
+
+DECLARE_REFER_KERNEL(MatMul, MatMulTuples);
+
+DECLARE_REFER_KERNEL(HMax, XRNTuples);
+DECLARE_REFER_KERNEL(HSum, XRNTuples);
+
+DECLARE_REFER_KERNEL(Softmax, SoftmaxTuples);
+
+DECLARE_REFER_KERNEL(EmbSeqPool, EmbSeqPoolTuples);
 
 #undef DECLARE_REFER_KERNEL
 

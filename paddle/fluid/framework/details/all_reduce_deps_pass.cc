@@ -30,8 +30,6 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static constexpr char kAllOpDescs[] = "all_op_descs";
-
 VarHandle* GetValidInput(const OpHandleBase* a) {
   for (auto p : a->Inputs()) {
     VarHandle* b = dynamic_cast<VarHandle*>(p);
@@ -52,7 +50,7 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
   std::unordered_map<std::string, int> vars;
   // TODO(gongwb): use graph topology sort to find the order of operators.
   //               Note that must assert topology sort is stable
-  auto& ops = Get<const std::vector<OpDesc*>>(kAllOpDescs);
+  auto& ops = graph->Get<const std::vector<OpDesc*>>(kStaleProgramOpDescs);
   for (auto* op_desc : ops) {
     auto outputs = op_desc->Outputs();
     for (auto& o_it : outputs) {
@@ -82,13 +80,13 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     PADDLE_ENFORCE(i0 != nullptr && i1 != nullptr, "%s convert to %s error",
                    op1->DebugString(), op2->DebugString());
 
-    auto l_it = vars.find(i0->name_);
-    auto r_it = vars.find(i1->name_);
+    auto l_it = vars.find(i0->name());
+    auto r_it = vars.find(i1->name());
 
     if (l_it->second < r_it->second) return true;
 
     if (l_it->second == r_it->second) {
-      return i0->name_ < i1->name_;
+      return i0->name() < i1->name();
     }
 
     return false;
@@ -122,4 +120,4 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
 
 REGISTER_PASS(all_reduce_deps_pass,
               paddle::framework::details::AllReduceDepsPass)
-    .RequirePassAttr(paddle::framework::details::kAllOpDescs);
+    .RequireGraphAttr(paddle::framework::details::kStaleProgramOpDescs);

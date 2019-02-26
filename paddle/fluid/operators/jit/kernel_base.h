@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #pragma once
+#include <cstdint>
 #include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -22,26 +23,33 @@ namespace jit {
 
 typedef enum {
   kNone = 0,
-  kVMul = 1,
-  kVAdd = 2,
-  kVAddRelu,
-  kVSub,
-  kVScal,
-  kVAddBias,
-  kVRelu,
-  kVIdentity,
-  kVExp,
-  kVSigmoid,
-  kVTanh,
-  kLSTMCtHt,
-  kLSTMC1H1,
+  // sort by alphabet
+  kCRFDecoding = 1,
+  kEmbSeqPool = 2,
   kGRUH1,
   kGRUHtPart1,
   kGRUHtPart2,
-  kCRFDecoding,
+  kHSum,  // horizontal max
+  kHMax,  // horizontal sum
+  kLSTMCtHt,
+  kLSTMC1H1,
   kLayerNorm,
+  kMatMul,
   kNCHW16CMulNC,
   kSeqPool,
+  kSoftmax,
+  kVAdd,
+  kVAddBias,
+  kVAddRelu,
+  kVExp,
+  kVIdentity,
+  kVMul,
+  kVRelu,
+  kVScal,
+  kVSigmoid,
+  kVSquare,
+  kVSub,
+  kVTanh,
 } KernelType;
 
 typedef enum {
@@ -67,6 +75,10 @@ struct XYNTuples {
   typedef int attr_type;
   typedef void (*func_type)(const T*, T*, int);
 };
+
+// x, return and int
+template <typename T>
+struct XRNTuples : public XYNTuples<T> {};
 
 typedef struct {
   void* gates;  // gates: x_ch, x_ih, x_fh, x_oh
@@ -135,6 +147,47 @@ struct SeqPoolTuples {
   typedef void (*func_type)(const T*, T*, const seq_pool_attr_t*);
 };
 
+typedef struct emb_seq_pool_attr_s {
+  int64_t table_height, table_width;
+  int64_t index_height, index_width;
+  int64_t out_width;
+  SeqPoolType pool_type;
+  emb_seq_pool_attr_s() = default;
+  explicit emb_seq_pool_attr_s(int64_t tbl_height, int64_t tbl_width,
+                               int64_t idx_height, int64_t idx_width,
+                               int64_t output_width,
+                               SeqPoolType seqpool_type = SeqPoolType::kSum)
+      : table_height(tbl_height),
+        table_width(tbl_width),
+        index_height(idx_height),
+        index_width(idx_width),
+        out_width(output_width),
+        pool_type(seqpool_type) {}
+} emb_seq_pool_attr_t;
+
+template <typename T>
+struct EmbSeqPoolTuples {
+  typedef T data_type;
+  typedef emb_seq_pool_attr_t attr_type;
+  typedef void (*func_type)(const T*, const int64_t*, T*,
+                            const emb_seq_pool_attr_t*);
+};
+
+typedef struct matmul_attr_s {
+  int m, n, k;
+  void* packed_weight{nullptr};
+  matmul_attr_s() = default;
+  explicit matmul_attr_s(int m_, int n_, int k_, void* packed_weight_ = nullptr)
+      : m(m_), n(n_), k(k_), packed_weight(packed_weight_) {}
+} matmul_attr_t;
+
+template <typename T>
+struct MatMulTuples {
+  typedef T data_type;
+  typedef matmul_attr_t attr_type;
+  typedef void (*func_type)(const T*, const T*, T*, const matmul_attr_t*);
+};
+
 template <typename T>
 struct CRFDecodingTuples {
   typedef T data_type;
@@ -148,6 +201,13 @@ struct LayerNormTuples {
   typedef int attr_type;
   typedef void (*func_type)(T*, T*, T*, T*, const T*, const T*, int,
                             const float, int);
+};
+
+template <typename T>
+struct SoftmaxTuples {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const T*, T*, int, int);
 };
 
 // nChw16c = nChw16c .* NC

@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(MOBILE_INFERENCE)
-    return()
-ENDIF()
-
 INCLUDE(ExternalProject)
 
 SET(WARPCTC_SOURCES_DIR ${THIRD_PARTY_PATH}/warpctc)
@@ -87,5 +83,3 @@ INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include wa
 ADD_LIBRARY(warpctc SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET warpctc PROPERTY IMPORTED_LOCATION ${WARPCTC_LIBRARIES})
 ADD_DEPENDENCIES(warpctc extern_warpctc)
-
-LIST(APPEND external_project_dependencies warpctc)

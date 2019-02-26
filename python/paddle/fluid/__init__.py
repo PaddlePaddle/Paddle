@@ -56,6 +56,8 @@ from . import unique_name
 from . import recordio_writer
 from . import parallel_executor
 from .parallel_executor import *
+from . import compiler
+from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 
 Tensor = LoDTensor
@@ -63,7 +65,7 @@ Tensor = LoDTensor
 __all__ = framework.__all__ + executor.__all__ + \
     trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-    data_feed_desc.__all__ + async_executor.__all__ + [
+    data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__ + [
         'io',
         'initializer',
         'layers',
@@ -129,7 +131,8 @@ def __bootstrap__():
         'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
         'allocator_strategy', 'reader_queue_speed_test_mode',
         'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir',
-        'enable_parallel_graph'
+        'inner_op_parallelism', 'enable_parallel_graph',
+        'multiple_of_cupti_buffer_size'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -156,9 +159,9 @@ def __bootstrap__():
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
             'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
             'sync_nccl_allreduce', 'limit_of_tmp_allocation',
-            'times_excess_than_required_tmp_allocation'
+            'times_excess_than_required_tmp_allocation',
+            'enable_inplace_whitelist'
         ]
-
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])

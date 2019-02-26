@@ -68,7 +68,8 @@ class TestNCE(OpTest):
         weight = np.random.randn(num_classes, dim).astype(np.float32)
         bias = np.random.randn(num_classes).astype(np.float32)
         sample_weight = np.random.randn(batch_size).astype(np.float32)
-        labels = np.random.randint(0, num_classes, (batch_size, num_true_class))
+        labels = np.random.randint(0, num_classes,
+                                   (batch_size, num_true_class)).astype("int64")
         self.attrs = {
             'num_total_classes': num_classes,
             'num_neg_samples': num_neg_samples,
