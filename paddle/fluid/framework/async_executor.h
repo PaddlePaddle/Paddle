@@ -20,6 +20,7 @@ limitations under the License. */
 #include <mutex>   // NOLINT
 #include <random>  // local_random_engine
 #include <set>
+#include <string>
 #include <thread>  // NOLINT
 #include <typeinfo>
 #include <vector>
