@@ -158,8 +158,9 @@ class Autograd {
       for (auto it : candidate->pre_ops_) {
         for (OpBase* pre_op : it.second) {
           if (!pre_op) continue;
-          VLOG(5) << "op dep " << candidate->op_desc_->Type() << " <---- "
-                  << it.first << " <---- " << pre_op->op_desc_->Type();
+          VLOG(5) << "op dep " << candidate->op_desc_->Type() << " "
+                  << candidate->trace_id_ << " <---- " << it.first << " <---- "
+                  << pre_op->op_desc_->Type() << " " << pre_op->trace_id_;
           if (visited.find(pre_op) == visited.end()) {
             visited.insert(pre_op);
             queue.push_back(pre_op);

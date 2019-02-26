@@ -159,6 +159,7 @@ void BlockDesc::RemoveOpInternal(const OpDesc *op_desc) {
   for (auto it = ops_.begin(); it != ops_.end(); ++it) {
     if (it->get() == op_desc) {
       ops_.erase(it);
+      break;
     }
   }
 }
