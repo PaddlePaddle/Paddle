@@ -47,8 +47,11 @@ class LoDTensorBlockingQueue {
 
   std::vector<framework::LoDTensor> Pop(bool* ok = nullptr) {
     std::vector<framework::LoDTensor> lod_tensor_vec;
-    queue_.wait_dequeue(lod_tensor_vec);
-    bool success = true;
+    bool success = false;
+    if (!closed) {
+      queue_.wait_dequeue(lod_tensor_vec);
+      success = true;
+    }
     if (ok != nullptr) *ok = success;
     return lod_tensor_vec;
   }
@@ -57,9 +60,9 @@ class LoDTensorBlockingQueue {
 
   inline size_t Size() const { return queue_.size_approx(); }
 
-  inline void ReOpen() { closed = true; }
+  inline void ReOpen() { closed = false; }
 
-  inline void Close() { closed = false; }
+  inline void Close() { closed = true; }
 
   inline bool IsClosed() const { return closed; }
 
