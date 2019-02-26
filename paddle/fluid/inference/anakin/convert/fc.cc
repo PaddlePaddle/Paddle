@@ -28,45 +28,49 @@ namespace anakin {
 
 class FcOpConverter : public OpConverter {
  public:
-  // FcOpConverter(const std::string &op_name): OpConverter(op_name) {}
   FcOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
                           const framework::Scope &scope);
-  void ConvertOp(const framework::proto::OpDesc &op,
-                 const std::unordered_set<std::string> &parameters,
-                 const framework::Scope &scope, AnakinNvEngine *engine);
   virtual ~FcOpConverter() {}
 
  private:
 };
 
-void FcOpConverter::ConvertOp(const framework::proto::OpDesc &op,
-                              const std::unordered_set<std::string> &parameters,
-                              const framework::Scope &scope,
-                              AnakinNvEngine *engine) {
+void FcOpConverter::operator()(const framework::proto::OpDesc &op,
+                               const framework::Scope &scope) {
   framework::OpDesc op_desc(op, nullptr);
-  auto *Y_v = scope.FindVar(op_desc.Input("Y").front());
-  PADDLE_ENFORCE_NOT_NULL(Y_v);
-  auto *Y_t = Y_v->GetMutable<framework::LoDTensor>();
-  PADDLE_ENFORCE_NOT_NULL(Y_t);
-  platform::CPUPlace cpu_place;
-  // framwork::LoDTensor weight_tensor;
-  // weight_tensor.Resize(Y_t->dims());
-  auto op_name = op.attrs(0).name();
+  PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Out").size(), 1);
 
-  engine->AddOp(op_name, "dense", op_desc.Input("X"), op_desc.Output("Out"));
-  // engine->AddOpAttr(op_name, "out_dim", )
-  // engine->AddOpAttr(op_name, "bias_term", false);
-  // engine->AddOpAttr(op_name, "axis", );
-  // std::vector<int> shape = {1, 1, 3, 100};
-  //::anakin::saber::Shape tmp_shape{shape};
-  //::anakin::saber::Tensor<::anakin::saber::NV> weight1(tmp_shape);
-  // engine->AddOpAttr(op_name, "weight_1", weight1);
+  auto x_name = op_desc.Input("X").front();
+  PADDLE_ENFORCE(x_name.size() > 0);
+  auto *y_v = scope.FindVar(op_desc.Input("Y").front());
+  PADDLE_ENFORCE_NOT_NULL(y_v);
+  auto *y_t = y_v->GetMutable<framework::LoDTensor>();
+  PADDLE_ENFORCE_NOT_NULL(y_t);
+  framework::LoDTensor weight;
+  weight.Resize(y_t->dims());
+  platform::CPUPlace place;
+  TensorCopySync(*y_t, place, &weight);
+  auto *weight_data = weight.mutable_data<float>(platform::CPUPlace());
+  PADDLE_ENFORCE_EQ(weight.dims().size(), 2UL);
+  auto n_output = weight.dims()[1];  // out_dim
 
-  // engine->AddOp();
-  // engine->AddOpAttr();
-};
+  PADDLE_ENFORCE_NOT_NULL(weight_data);
+  PADDLE_ENFORCE(n_output > 0);
+
+  /*
+  std::unique_ptr<framework::Tensor> tmp(new framework::LoDTensor());
+  tmp->Resize(weight.dims());
+
+  std::memcpy(tmp->mutable_data<float>(platform::CPUPlace()), weight,
+  y_t->dims()[0] * y_t->dims()[1] * sizeof(float));
+  ::anakin::saber::Shape tmp_shape(shape);
+  ::anakin::PBlock<::anakin::saber::NV> weight1(tmp_shape);
+  */
+}
 
 static Registrar<FcOpConverter> registrar_fc("fc");
 

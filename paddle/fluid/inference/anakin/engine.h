@@ -40,20 +40,13 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-enum class DataType;
-enum class Place;
-class Tensor;
-
 template <typename TargetT, ::anakin::Precision PrecisionType,
           ::anakin::OpRunType RunType = ::anakin::OpRunType::ASYNC>
-class AnakinEngine /*: public EngineBase */ {
+class AnakinEngine {
  public:
   AnakinEngine(bool need_summary = false);
   ~AnakinEngine();
-  void Init();
-  void DeclareInputs(const std::vector<std::string> &inputs);
-  void DeclareOutputs(const std::vector<std::string> &outputs);
-
+  void InitGraph();
   void AddOp(const std::string &name, const std::string &type,
              const std::vector<std::string> &inputs,
              const std::vector<std::string> &outputs);
@@ -65,121 +58,19 @@ class AnakinEngine /*: public EngineBase */ {
                    "Add operation's attribution.");
   }
 
-  void AddVar(const std::string &id, DataType dtype,
-              const std::vector<int> &shape);
-  Tensor *AddWeight(const std::string &id, const Tensor &v);
-
   std::unique_ptr<AnakinEngine> Clone();
   void Freeze();
   void Optimize();
-  void FreezeNetwork();
-  std::vector<Tensor> Execute(const std::vector<Tensor *> &inputs);
-  // std::vector<framework::LoDTensor> Execute(
-  //    const std::vector<framework::LoDTensor *> &inputs);
+  void Execute(const std::map<std::string, framework::LoDTensor *> &inputs,
+               const std::map<std::string, framework::LoDTensor *> &outputs);
 
  private:
   using NetT = ::anakin::Net<TargetT, PrecisionType, RunType>;
   using GraphT = ::anakin::graph::Graph<TargetT, PrecisionType>;
-  // std::unique_ptr<GraphT> graph_;
-  // GraphT *graph_{nullptr};
   std::unique_ptr<GraphT> graph_;
   std::unique_ptr<NetT> net_;
-  std::vector<std::string> inputs_;
-  std::vector<std::string> outputs_;
 };
 
-enum class DataType { kUnk, kFloat32, kFloat64, kInt32 };
-enum class Place { kCpu, kGpu, kUnk };
-
-class Tensor final {
- public:
-  Tensor() = default;
-  ~Tensor() {
-    if (length_ > 0) {
-      if (place_ == Place::kCpu) {
-        if (data_) {
-          delete[] static_cast<char *>(data_);
-          data_ = nullptr;
-        }
-      } else if (place_ == Place::kGpu) {
-        if (data_) {
-          cudaFree(data_);
-        }
-      }
-    }
-  }
-  void Reshape(const std::vector<int> &shape);
-  const std::vector<int> &shape() const;
-  void SetName(const std::string &name);
-  const std::string &name() const;
-  void SetDataType(const DataType dtype);
-  DataType dtype() const;
-
-  template <typename T>
-  T *mutable_data(Place place) {
-    int length = std::accumulate(shape_.begin(), shape_.end(), 1,
-                                 std::multiplies<int>()) *
-                 sizeof(T);
-    if (place_ == Place::kCpu && place == Place::kCpu) {
-      if (length_ < length) {
-        length_ = length;
-        if (data_) {
-          delete[] static_cast<char *>(data_);
-        }
-        data_ = new char[length_];
-      }
-      return static_cast<T *>(data_);
-    }
-
-#ifdef PADDLE_WITH_CUDA
-    if (place == Place::kCpu) {
-      if (data_) {
-        cudaFree(data_);
-      }
-      data_ = new char[length];
-    } else if (place == Place::kGpu) {
-      if (data_) {
-        delete[] static_cast<char *>(data_);
-        data_ = nullptr;
-      }
-      if (cudaMalloc((void **)&data_, length) != cudaSuccess) {
-        LOG(ERROR) << "cudaMalloc not success";
-        return nullptr;
-      }
-    } else {
-      if (length_ < length) {
-        length_ = length;
-        if (data_) {
-          cudaFree(data_);
-        }
-        cudaMalloc((void **)&data_, length);
-      }
-    }
-#endif
-    place_ = place;
-    return static_cast<T *>(data_);
-  }
-
-  template <typename T>
-  T *data(Place *place, int *size) const {
-    PADDLE_ENFORCE_NOT_NULL(place);
-    PADDLE_ENFORCE_NOT_NULL(size);
-    *place = place_;
-    *size = length_;
-    return static_cast<T *>(data_);
-  }
-
- private:
-  std::string name_;
-  std::vector<int> shape_;
-  Place place_{Place::kCpu};
-  DataType dtype_;
-  int length_{0};
-  void *data_{nullptr};
-};
-
-// template class AnakinEngine<::anakin::saber::X86,
-// ::anakin::Precision::FP32>;
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

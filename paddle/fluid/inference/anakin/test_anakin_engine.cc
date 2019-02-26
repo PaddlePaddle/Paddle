@@ -54,12 +54,10 @@ TEST_F(TestAnakinEngine, Execute) {
   engine_->AddOpAttr("op1", "weight_1", weight1);
   // engine_->AddOpAttr("op1", "Inputs");
   ::anakin::PTuple<int> input_shape = {1, 1, 1, 3};
-  // engine_->AddOpAttr<::anakin::PTuple<int>>("x", "input_shape", {1, 1, 1,
-  // 3});
-  engine_->FreezeNetwork();
+  engine_->Freeze();
   engine_->AddOpAttr("x", "input_shape", input_shape);
-  engine_->Init();
-
+  engine_->Optimize();
+  engine_->InitGraph();
 }
 
 /*
