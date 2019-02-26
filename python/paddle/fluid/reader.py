@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import core
+from . import core
 import six
 import threading
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program
 from .executor import global_scope
 from .data_feeder import DataFeeder
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
-import unique_name
+from .unique_name import UniqueNameGenerator
 
 __all__ = ['PyReader']
 
@@ -40,7 +40,7 @@ def _convert_places(places):
 
 
 class PyReader(object):
-    unique_name_generator = unique_name.UniqueNameGenerator()
+    unique_name_generator = UniqueNameGenerator()
 
     def __init__(self,
                  feed_list,
@@ -272,7 +272,7 @@ class PyReader(object):
         Set the data source of the PyReader object. 
 
         The provided :code:`reader` should be a Python generator,
-        which yields numpy-typed batched data. 
+        which yields list(numpy.ndarray) typed batched data. 
         
         :code:`places` must be set when the PyReader object is iterable.
 
@@ -298,7 +298,7 @@ class PyReader(object):
         Set the data source of the PyReader object.
 
         The provided :code:`reader` should be a Python generator,
-        which yields LoDTensor-typed batched data.
+        which yields numpy.ndarray-typed or LoDTensor-typed batched data.
 
         :code:`places` must be set when the PyReader object is iterable.
 
