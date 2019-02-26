@@ -49,6 +49,8 @@ class BuildIrMemOptBase(unittest.TestCase):
                 'Skip use_parallel_executor=True because Paddle comes without parallel support on windows'
             )
             return
+        fluid.default_startup_program().random_seed = 100
+        fluid.default_main_program().random_seed = 100
         batch_size = 32
         batch_size *= fluid.core.get_cuda_device_count() if use_cuda else int(
             os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
@@ -74,8 +76,6 @@ class BuildIrMemOptBase(unittest.TestCase):
         feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
         reader = feeder.decorate_reader(train_reader, multi_devices=True)
         exe = fluid.Executor(place)
-        fluid.default_startup_program().random_seed = 100
-        fluid.default_main_program().random_seed = 100
         exe.run(fluid.default_startup_program())
 
         train_cp = compiler.CompiledProgram(fluid.default_main_program())
@@ -139,7 +139,7 @@ class TestIrMemOptBase(BuildIrMemOptBase):
                                 self.network,
                                 use_cuda=use_cuda,
                                 memory_opt=use_python_mem_opt)
-                            self.assertAlmostEquals(baseline_last_loss,
-                                                    cur_last_loss, 1e-2)
-                            self.assertAlmostEquals(baseline_first_loss,
-                                                    cur_first_loss, 1e-2)
+                            self.assertAlmostEquals(np.mean(baseline_last_loss),
+                                                    np.mean(cur_last_loss), delta=1e-2)
+                            self.assertAlmostEquals(np.mean(baseline_first_loss),
+                                                    np.mean(cur_first_loss), delta=1e-2)
