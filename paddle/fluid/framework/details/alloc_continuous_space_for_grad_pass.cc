@@ -64,7 +64,8 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     }
 
     // Note: Sort the parameters and gradient variables according
-    // to parameters' name to make variables' name correspond correctly.
+    // to parameters' name to make the order of variables consistently with
+    // other passes.
     SortParamsAndGrads(vars, &params_grads);
 
     // Set Gradients as Persistable to prevent this var becoming reusable.
@@ -91,11 +92,11 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       result.Set(kFusedVars, new FusedVars);
     }
     const std::string prefix(kFusedVarNamePrefix);
+    // The fused_var_name should not exist in scope.
     auto fused_var_name = prefix + "@GRAD@" + params_grads.begin()->second;
     auto &fused_var_set = result.Get<FusedVars>(kFusedVars);
     PADDLE_ENFORCE_EQ(fused_var_set.count(fused_var_name), 0);
     fused_var_set.insert(fused_var_name);
-
     InitFusedVarsAndAllocSpaceForVars(places, local_scopes, vars,
                                       fused_var_name, params_grads);
 
@@ -116,8 +117,8 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       ParamsAndGrads *params_grads) const {
     // TODO(zcd): The sort should be removed.
     //    std::sort(params_grads->begin(), params_grads->end(),
-    //              [](const std::pair<std::string, std::string>& a,
-    //                 const std::pair<std::string, std::string>& b) -> bool {
+    //              [](const std::pair<std::string, std::string> &a,
+    //                 const std::pair<std::string, std::string> &b) -> bool {
     //                return a.first < b.first;
     //              });
   }
@@ -174,22 +175,20 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       const ParamsAndGrads &params_grads) const {
     // Init Gradients and FusedVars
     VLOG(10) << "Init FusedVars.";
-
+    // Alloc parameters and auxiliary vars in the respective scope.
     size_t idx = local_scopes.size();
     for (auto iter = local_scopes.rbegin(); iter != local_scopes.rend();
          ++iter, --idx) {
       auto &scope = *iter;
       VLOG(10) << "Find var in scope " << idx << " " << fused_var_name;
-      Variable *var = scope->FindVar(fused_var_name);
-      if (var) {
-        PADDLE_THROW("%s has exist in scope[%d]", fused_var_name, idx);
-      }
+      PADDLE_ENFORCE(scope->FindVar(fused_var_name) == nullptr,
+                     "%s has exist in scope[%d]", fused_var_name, idx);
       scope->Var(fused_var_name)->GetMutable<LoDTensor>();
     }
 
     VLOG(10) << "Init Gradients.";
     for (auto iter = local_scopes.rbegin(); iter != local_scopes.rend();
-         ++iter, --idx) {
+         ++iter) {
       auto &scope = *iter;
       for (auto &p_g : params_grads) {
         auto var_iter = vars.find(p_g.second);
@@ -217,9 +216,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     for (size_t i = 0; i < local_scopes.size(); ++i) {
       for (auto &op_desc : program_desc.Block(0).AllOps()) {
         auto op = OpRegistry::CreateOp(*op_desc);
-        VLOG(4) << op->DebugStringEx(local_scopes[i]);
         op->Run(*local_scopes[i], places[i]);
-        VLOG(3) << op->DebugStringEx(local_scopes[i]);
       }
     }
   }

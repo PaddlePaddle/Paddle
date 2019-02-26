@@ -100,7 +100,6 @@ class TestSimpleNet(unittest.TestCase):
         build_strategy = fluid.BuildStrategy()
         build_strategy.enable_inplace = False
         build_strategy.fuse_parameters_pass = fuse_parameter
-        # build_strategy.enable_sequential_execution = 1
 
         mult_graph = compiler.CompiledProgram(main).with_data_parallel(
             loss_name=loss_name if loss_name is not None else "",
@@ -136,42 +135,12 @@ class TestSimpleNet(unittest.TestCase):
             loss_name=output[0].name if optimizer else None)
         return res
 
-    def test_forward(self):
+    def check_result(self, model, opt_alg=fluid.optimizer.Adam):
         img, label = init_data()
 
         def _run_with_fuse_parameter(fuse_parameter):
             return self.run_model(
-                fc_with_batchnorm,
-                use_cuda,
-                feed={"image": img,
-                      "label": label},
-                fuse_parameter=fuse_parameter)
-
-        for use_cuda in [True, False]:
-            if use_cuda and not core.is_compiled_with_cuda():
-                continue
-            output = _run_with_fuse_parameter(False)
-            output2 = _run_with_fuse_parameter(True)
-            for output in zip(output, output2):
-                if not (output[0] == output[1]).all():
-                    print(output[0])
-                    print(output[1])
-                    assert (
-                        output[0] == output[1]).all(), "There have some diff."
-
-    def test_model(self):
-        img, label = init_data()
-
-        def _sgd_optimizer(learning_rate=1e-1):
-            return fluid.optimizer.SGD(learning_rate=learning_rate)
-
-        opt_alg = _sgd_optimizer
-
-        # opt_alg = fluid.optimizer.Adam
-
-        def _run_with_fuse_parameter(fuse_parameter):
-            return self.run_model(
-                fc_with_batchnorm,
+                model,
                 use_cuda,
                 feed={"image": img,
                       "label": label},
@@ -190,6 +159,17 @@ class TestSimpleNet(unittest.TestCase):
                     print(output[1])
                     assert (
                         output[0] == output[1]).all(), "There have some diff "
+
+    def test_with_adam_optimize(self):
+        self.check_result(simple_fc_net)
+        self.check_result(fc_with_batchnorm)
+
+    def test_with_sgd_optimize(self):
+        def _sgd_optimizer(learning_rate=1e-2):
+            return fluid.optimizer.SGD(learning_rate=learning_rate)
+
+        self.check_result(simple_fc_net, opt_alg=_sgd_optimizer)
+        self.check_result(fc_with_batchnorm, opt_alg=_sgd_optimizer)
 
 
 if __name__ == '__main__':

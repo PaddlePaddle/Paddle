@@ -87,6 +87,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 
     if (strategy.fuse_all_optimizer_ops_) {
+      if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
+        PADDLE_THROW(
+            "Currently, fuse_all_optimizer_ops only works under AllReduce "
+            "mode.");
+      }
       VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
       AppendPass("alloc_continuous_space_for_grad_pass");
       // NOTE: fuse_all_xx_ops will count the number of xx operator first,

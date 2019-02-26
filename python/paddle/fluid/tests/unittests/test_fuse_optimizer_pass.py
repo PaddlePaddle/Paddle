@@ -97,7 +97,6 @@ class TestFuseAdamOps(TestParallelExecutorBase):
                        "label": label},
             use_cuda=use_cuda,
             fuse_all_optimizer_ops=True,
-            # fuse_parameters=True,
             memory_opt=False,
             optimizer=optimizer)
 
@@ -117,7 +116,7 @@ class TestFuseAdamOps(TestParallelExecutorBase):
 
 
 class TestFuseSGDOps(TestFuseAdamOps):
-    def sgd_optimizer(self, learning_rate=1e-2):
+    def sgd_optimizer(self, learning_rate=1e-4):
         return fluid.optimizer.SGD(learning_rate=learning_rate)
 
     def test_simple_fc_with_fuse_op(self):

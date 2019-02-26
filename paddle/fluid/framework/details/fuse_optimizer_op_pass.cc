@@ -113,16 +113,16 @@ void FuseOptimizerOpPass::InitFusedVarsAndAllocSpaceForVars(
         &aux_var_set,
     const std::unordered_map<std::string, std::string> &fused_vars_name) const {
   VLOG(10) << "Init FusedVars.";
-  // NOTE: Because of Scope's inheritance structure, we should traverse
-  // backwards.
-  VLOG(10) << "number of scope: " << local_scopes.size()
-           << ", number of place:" << places.size();
-  for (auto iter = local_scopes.rbegin(); iter != local_scopes.rend(); ++iter) {
+  // Alloc parameters and auxiliary vars in the respective scope.
+  size_t idx = local_scopes.size();
+  for (auto iter = local_scopes.rbegin(); iter != local_scopes.rend();
+       ++iter, --idx) {
     auto &scope = *iter;
     for (auto &var_name : aux_var_names) {
       auto fused_var_name = fused_vars_name.at(var_name);
       VLOG(10) << "Init " << fused_var_name;
-      PADDLE_ENFORCE(scope->FindVar(fused_var_name) == nullptr);
+      PADDLE_ENFORCE(scope->FindVar(fused_var_name) == nullptr,
+                     "%s has exist in scope[%d]", fused_var_name, idx);
       scope->Var(fused_var_name)->GetMutable<LoDTensor>();
     }
   }
@@ -138,9 +138,7 @@ void FuseOptimizerOpPass::InitFusedVarsAndAllocSpaceForVars(
   for (size_t i = 0; i < local_scopes.size(); ++i) {
     for (auto &op_desc : global_block->AllOps()) {
       auto op = OpRegistry::CreateOp(*op_desc);
-      VLOG(4) << op->DebugStringEx(local_scopes[i]);
       op->Run(*local_scopes[i], places[i]);
-      VLOG(3) << op->DebugStringEx(local_scopes[i]);
     }
   }
 }
