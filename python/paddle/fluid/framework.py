@@ -96,6 +96,27 @@ def _cpu_num():
 
 
 def cuda_places(device_ids=None):
+    '''
+    Create a list of :code:`fluid.CUDAPlace` objects.
+
+    If :code:`device_ids` is None, environment variable of
+    :code:`FLAGS_selected_gpus` would be checked first. If
+    :code:`FLAGS_selected_gpus=0,1,2`, the returned list would
+    be [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
+    If :code:`FLAGS_selected_gpus` is not set, all visible
+    gpu places would be returned.  
+
+    If :code:`device_ids` is not None, it should be the device
+    ids of gpus. For example, if :code:`device_ids=[0,1,2]`, 
+    the returned list would be 
+    [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
+    
+    Args: 
+        device_ids (None|list(int)|tuple(int)): gpu device id list.
+
+    Returns:
+        out (list(fluid.CUDAPlace)): gpu place list.
+    '''
     assert core.is_compiled_with_cuda(), \
         "Not compiled with CUDA"
     if device_ids is None:
@@ -110,12 +131,40 @@ def cuda_places(device_ids=None):
 
 
 def cpu_places(device_count=None):
+    '''
+    Create a list of :code:`fluid.CPUPlace` objects.
+    
+    If :code:`device_count` is None, the device count would
+    be determined by environment variable :code:`CPU_NUM`. 
+    If :code:`CPU_NUM` is not set, the device count would
+    be determined by :code:`multiprocessing.cpu_count()`. 
+
+    Args:
+        device_count (None|int): device number.
+
+    Returns:
+        out (list(fluid.CPUPlace)): cpu place list.
+    '''
     if device_count is None:
         device_count = _cpu_num()
     return [core.CPUPlace()] * device_count
 
 
 def cuda_pinned_places(device_count=None):
+    '''
+    Create a list of :code:`fluid.CUDAPinnedPlace` objects.
+
+    If :code:`device_count` is None, the device count would
+    be determined by environment variable :code:`CPU_NUM`. 
+    If :code:`CPU_NUM` is not set, the device count would
+    be determined by :code:`multiprocessing.cpu_count()`. 
+
+    Args:
+        device_count (None|int): device number.
+
+    Returns:
+        out (list(fluid.CUDAPinnedPlace)): cuda pinned place list.
+    '''
     assert core.is_compiled_with_cuda(), \
         "Not compiled with CUDA"
     if device_count is None:
