@@ -68,6 +68,7 @@ class DataFeedDesc(object):
 
     def __init__(self, proto_file):
         self.proto_desc = data_feed_pb2.DataFeedDesc()
+        self.proto_desc.pipe_command = "cat"
         with open(proto_file, 'r') as f:
             text_format.Parse(f.read(), self.proto_desc)
         if self.proto_desc.name == "MultiSlotDataFeed":
@@ -113,24 +114,6 @@ class DataFeedDesc(object):
         for name in dense_slots_name:
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
                 name]].is_dense = True
-
-    def set_pipe_command(self, pipe_command):
-        """
-        Pipeline command will be set with this function. In IO runtime, 
-        pipeline command will be executed given user provided input raw
-        files.
-
-        Example:
-            >>> data_feed = fluid.DataFeedDesc('data.proto')
-            >>> data_feed.set_pipe_command('awk -F '\t' '{print $2}'')
-
-        Args:
-            pipe_command: a command string of shell command
-        
-        Note:
-            Default is cat, i.e., cat user's input file list to data feed
-        """
-        self.proto_desc.pipe_command = pipe_command
 
     def set_use_slots(self, use_slots_name):
         """
