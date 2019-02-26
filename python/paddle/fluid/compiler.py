@@ -17,8 +17,10 @@ import os
 import six
 import sys
 from .. import compat as cpt
+from . import framework
 
 from . import core
+from . import framework
 
 __all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
 
@@ -36,7 +38,7 @@ def _place_obj(place):
 
 class CompiledProgram(object):
     """
-    Compiles a Program for execution.
+    Compiles to Graph for execution.
 
     1. Users first create the program with layers.
     2. Optionally, users use CompiledProgram to optimize the program before run.
@@ -51,7 +53,7 @@ class CompiledProgram(object):
 
     Example:
         .. code-block:: python
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(startup)
             compiled_prog = compiler.CompiledProgram(main).with_data_parallel(
@@ -62,11 +64,25 @@ class CompiledProgram(object):
                                      fetch_list=[loss.name])
 
     Args:
-        program: Program instance that contains the model logic.
+        program_or_graph (Graph|Program): If it's Program, it will be first
+            lowered to a graph for further optimizations. If it's a graph
+            (potentially optimized before), it will be directly used for
+            further optimizations. Note: graph is only supported when compiled
+            with with_data_parallel option.
     """
 
-    def __init__(self, program):
-        self._program = program
+    def __init__(self, program_or_graph):
+        if isinstance(program_or_graph, core.Graph):
+            self._graph = program_or_graph
+            self._program = None
+        elif isinstance(program_or_graph, framework.Program):
+            self._graph = core.Graph(program_or_graph.desc)
+            self._program = program_or_graph
+        else:
+            raise ValueError("Wrong program_to_graph type: %s" %
+                             type(program_or_graph))
+
+        self._program_desc = self._graph.origin_program_desc()
         self._scope = None
         self._place = None
         self._executor = None
@@ -101,6 +117,7 @@ class CompiledProgram(object):
             self
         """
         assert not self._is_data_parallel, "Already compiled with parallel."
+        assert not self._is_inference, "Cannot compile both data parallel and inference"
         self._is_data_parallel = True
         self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
@@ -110,6 +127,8 @@ class CompiledProgram(object):
             self._exec_strategy = ExecutionStrategy()
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
+        self._build_strategy.is_distribution = framework.is_pserver_mode(
+            self._program)
         return self
 
     def with_inference_optimize(self, config):
@@ -120,11 +139,13 @@ class CompiledProgram(object):
         Returns:
             self
         """
+        assert not self._is_data_parallel, "Cannot compile both data parallel and inference"
+        assert not self._is_inference, "Already compiled with inference"
+
         assert any([
             isinstance(config, InferNativeConfig),
             isinstance(config, InferAnalysisConfig)
         ])
-        self._is_data_parallel = False
         self._is_inference = True
         self._infer_config = config
         return self
@@ -173,37 +194,41 @@ class CompiledProgram(object):
                     os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
                 self._exec_strategy.num_threads = cpu_num * 2
 
-        trainers_endpoints = self._program._trainers_endpoints
-
         # FIXME(dzhwinter): enable_inplace should be after memory_optimize
         # if turn on python memory optimize, turn off the inplace_pass.
         if self._build_strategy.memory_optimize is None:
-            self._build_strategy.memory_optimize = False if self._program._is_mem_optimized else True
+            self._build_strategy.memory_optimize = False if self._program and self._program._is_mem_optimized else True
         if self._build_strategy.enable_inplace is None:
-            self._build_strategy.enable_inplace = False if self._program._is_mem_optimized else True
+            self._build_strategy.enable_inplace = False if self._program and self._program._is_mem_optimized else True
 
-        if self._build_strategy.num_trainers > 1 and trainers_endpoints:
+        # TODO(wuyi): trainer endpoings should be passed in through
+        # build_strategy, not program.xxx.
+        if self._program and self._build_strategy.num_trainers > 1 and \
+                self._program._trainers_endpoints:
+            tps = self._program._trainers_endpoints
+
             assert self._build_strategy.num_trainers == len(
-                trainers_endpoints), "num_trainers == len(end_points)"
-            self._build_strategy.trainers_endpoints = trainers_endpoints
+                tps), "num_trainers == len(end_points)"
+            self._build_strategy.trainers_endpoints = tps
 
-        self._persistable_vars = set([
-            cpt.to_text(v.name)
-            for v in [
-                var for var in self._program.list_vars()
-                if var.persistable and var.type != core.VarDesc.VarType.RAW
-            ]
-        ])
+        self._persistable_vars = []
+        for block_id in range(self._program_desc.num_blocks()):
+            bdesc = self._program_desc.block(block_id)
+            self._persistable_vars.extend([
+                cpt.to_text(v.name()) for v in bdesc.all_vars()
+                if v.persistable() and v.type() != core.VarDesc.VarType.RAW
+            ])
 
         places = list(map(_place_obj, self._places))
+
         return core.ParallelExecutor(
-            places, self._persistable_vars, self._program.desc,
+            places,
+            set(self._persistable_vars),
             cpt.to_text(self._loss_name)
             if self._loss_name else six.u(''), self._scope, self._local_scopes,
-            self._exec_strategy, self._build_strategy)
+            self._exec_strategy, self._build_strategy, self._graph)
 
     def _compile_inference(self):
-        assert self._is_data_parallel is False
         return core.create_paddle_predictor(self._infer_config)
 
     def _compile(self, scope, place):
