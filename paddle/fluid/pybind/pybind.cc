@@ -551,9 +551,9 @@ All parameter, weight, gradient are variables in Paddle.
       m, "LoDTensorBlockingQueue", "")
       .def("push",
            [](LoDTensorBlockingQueue &self,
-              std::vector<framework::LoDTensor> &lod_tensor_vec) {
+              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
              pybind11::gil_scoped_release release;
-             return self.Push(std::move(lod_tensor_vec));
+             return self.Push(lod_tensor_vec);
            })
       .def("size", &LoDTensorBlockingQueue::Size)
       .def("capacity", &LoDTensorBlockingQueue::Cap)
@@ -994,6 +994,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
 
   // -- python binds for parallel executor.
+
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
   py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
     ExecutionStrategy allows the user to more preciously control how to run
@@ -1231,9 +1232,9 @@ All parameter, weight, gradient are variables in Paddle.
                 cannot be updated after being finalized.)DOC");
 
   pe.def(py::init<const std::vector<platform::Place> &,
-                  const std::unordered_set<std::string> &, const ProgramDesc &,
-                  const std::string &, Scope *, std::vector<Scope *> &,
-                  const ExecutionStrategy &, const BuildStrategy &>())
+                  const std::unordered_set<std::string> &, const std::string &,
+                  Scope *, std::vector<Scope *> &, const ExecutionStrategy &,
+                  const BuildStrategy &, ir::Graph *>())
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
       // We still cannot get local_scope from this vector, since the element
       // of vec<Scope*> will be freed by Python GC. We can only return Scope*
