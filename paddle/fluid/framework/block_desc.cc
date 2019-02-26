@@ -163,6 +163,20 @@ std::vector<OpDesc *> BlockDesc::AllOps() const {
   return res;
 }
 
+void BlockDesc::Clear() {
+  // clear all ops
+  ops_.clear();
+
+  // clear all vars which are not persistable
+  for (auto it = vars_.begin(); it != vars_.end();) {
+    if (it->second->Persistable()) {
+      ++it;
+    } else {
+      vars_.erase(it++);
+    }
+  }
+}
+
 void BlockDesc::Flush() {
   for (auto &op_desc : ops_) {
     op_desc->Flush();
