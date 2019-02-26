@@ -24,6 +24,13 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+// Some trt base classes lack of the destructor.
+// We use a assisted class to fix this.
+struct DeleteHelper {
+ protected:
+  virtual ~DeleteHelper() {}
+};
+
 template <typename T>
 inline void SerializeValue(void** buffer, T const& value);
 
