@@ -17,7 +17,6 @@
 #include "framework/core/types.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
-#include "paddle/fluid/inference/anakin/convert/registrar.h"
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "saber/saber_types.h"
@@ -26,19 +25,20 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class FcOpConverter : public OpConverter {
+class FcOpConverter : public AnakinOpConverter {
  public:
   FcOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
-                          const framework::Scope &scope);
+                          const framework::Scope &scope,
+                          bool test_mode) override;
   virtual ~FcOpConverter() {}
 
  private:
 };
 
 void FcOpConverter::operator()(const framework::proto::OpDesc &op,
-                               const framework::Scope &scope) {
+                               const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);
@@ -51,9 +51,12 @@ void FcOpConverter::operator()(const framework::proto::OpDesc &op,
   auto *y_t = y_v->GetMutable<framework::LoDTensor>();
 
   auto shape = framework::vectorize2int(y_t->dims());
+  std::cout << shape[0] << std::endl;
+  /*
   ::anakin::saber::Shape anakin_shape(shape);
 
   PADDLE_ENFORCE_NOT_NULL(y_t);
+
   framework::LoDTensor weight;
   weight.Resize(y_t->dims());
   TensorCopySync(*y_t, platform::CUDAPlace(), &weight);
@@ -66,6 +69,7 @@ void FcOpConverter::operator()(const framework::proto::OpDesc &op,
 
   PADDLE_ENFORCE_NOT_NULL(weight_data);
   PADDLE_ENFORCE(n_output > 0);
+  */
 
   /*
   std::unique_ptr<framework::Tensor> tmp(new framework::LoDTensor());
@@ -78,8 +82,7 @@ void FcOpConverter::operator()(const framework::proto::OpDesc &op,
   */
 }
 
-static Registrar<FcOpConverter> registrar_fc("fc");
-
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
+REGISTER_ANAKIN_OP_CONVERTER(fc, FcOpConverter);

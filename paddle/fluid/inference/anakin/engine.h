@@ -19,10 +19,13 @@
 #include <set>
 #include <string>
 #include <vector>
-#include "framework/core/types.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+
+#include "framework/core/net/net.h"
+#include "framework/core/types.h"
+#include "framework/graph/graph.h"
 #include "saber/saber_types.h"
 
 namespace anakin {

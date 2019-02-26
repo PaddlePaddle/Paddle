@@ -19,6 +19,7 @@
 #include <vector>
 #include "framework/core/types.h"
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/anakin/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
@@ -31,17 +32,35 @@ namespace anakin {
 using AnakinNvEngine =
     AnakinEngine<::anakin::saber::NV, ::anakin::Precision::FP32>;
 
-class OpConverter {
+class AnakinOpConverter {
  public:
-  OpConverter() = default;
+  AnakinOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
-                          const framework::Scope &scope) = 0;
+                          const framework::Scope &scope, bool test_mode){};
   void ConvertOp(const framework::proto::OpDesc &op,
                  const std::unordered_set<std::string> &parameters,
-                 const framework::Scope &scope, AnakinNvEngine *engine) {
-    // framework::OpDesc op_desc(op, nullptr);
-    // OpConverter *it = nullptr;
+                 const framework::Scope &scope, AnakinNvEngine *engine,
+                 bool test_mode = false) {
+    framework::OpDesc op_desc(op, nullptr);
+    std::string op_type = op_desc.Type();
+    AnakinOpConverter *it = nullptr;
+
+    if (op_type == "mul") {
+      PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL);
+      std::string Y = op_desc.Input("Y")[0];
+      std::cout << Y << parameters.count(Y) << std::endl;
+      if (parameters.count(Y)) {
+        it = Registry<AnakinOpConverter>::Lookup("fc");
+      }
+    }
+
+    if (!it) {
+      it = Registry<AnakinOpConverter>::Lookup(op_type);
+    }
+    PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]", op_type);
+    it->SetEngine(engine);
+    (*it)(op, scope, test_mode);
   }
 
   void ConvertBlock(const framework::proto::BlockDesc &block,
@@ -54,13 +73,14 @@ class OpConverter {
     }
   }
   void SetEngine(AnakinNvEngine *engine) { engine_ = engine; }
-  virtual ~OpConverter() {}
+  virtual ~AnakinOpConverter() {}
 
  protected:
+  bool test_mode_;
   AnakinNvEngine *engine_{nullptr};
 
  private:
-  std::unordered_map<std::string, OpConverter *> converters_;
+  std::unordered_map<std::string, AnakinOpConverter *> converters_;
   framework::Scope *scope_{nullptr};
   std::mutex mutex_;
 };
@@ -68,3 +88,23 @@ class OpConverter {
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
+
+#define REGISTER_ANAKIN_OP_CONVERTER(op_type__, Converter__)                \
+  struct anakin_##op_type__##_converter                                     \
+      : public ::paddle::framework::Registrar {                             \
+    anakin_##op_type__##_converter() {                                      \
+      ::paddle::inference::                                                 \
+          Registry<paddle::inference::anakin::AnakinOpConverter>::Register< \
+              ::paddle::inference::anakin::Converter__>(#op_type__);        \
+    }                                                                       \
+  };                                                                        \
+  anakin_##op_type__##_converter anakin_##op_type__##_converter__;          \
+  int TouchConverterRegister_anakin_##op_type__() {                         \
+    anakin_##op_type__##_converter__.Touch();                               \
+    return 0;                                                               \
+  }
+
+#define USE_ANAKIN_CONVERTER(op_type__)                                    \
+  extern int TouchConverterRegister_##op_type__();                         \
+  static int use_op_converter_anakin_##op_type__ __attribute__((unused)) = \
+      TouchConverterRegister_anakin_##op_type__();

@@ -15,8 +15,6 @@
 #include "paddle/fluid/inference/anakin/engine.h"
 #include <algorithm>
 #include <cstring>
-#include "framework/core/net/net.h"
-#include "framework/graph/graph.h"
 #include "paddle/fluid/framework/ddim.h"
 
 using anakin::Precision;
@@ -41,8 +39,10 @@ template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 AnakinEngine<TargetT, PrecisionType, RunType>::~AnakinEngine() {}
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-void AnakinEngine<TargetT, PrecisionType, RunType>::SetInputShape(const std::string &name, std::vector<int> shape) {
-  graph_->AddOpAttr<::anakin::PTuple<int>>(name, "input_shape", std::move(shape));
+void AnakinEngine<TargetT, PrecisionType, RunType>::SetInputShape(
+    const std::string &name, std::vector<int> shape) {
+  graph_->AddOpAttr<::anakin::PTuple<int>>(name, "input_shape",
+                                           std::move(shape));
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -68,8 +68,8 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     auto shape = framework::vectorize2int(tensor->dims());
     ::anakin::saber::Shape anakin_shape(shape);
     auto *anakin_input = net_->get_in(input.first);
-    ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(
-        data, TargetT(), 0, anakin_shape);
+    ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
+                                                       anakin_shape);
     anakin_input->share_from(tmp_anakin_tensor);
   }
 
@@ -79,8 +79,8 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     auto shape = framework::vectorize2int(tensor->dims());
     ::anakin::saber::Shape anakin_shape(shape);
     auto *anakin_output = net_->get_out(output.first);
-    ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(
-        data, TargetT(), 0, anakin_shape);
+    ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
+                                                       anakin_shape);
     anakin_output->share_from(tmp_anakin_tensor);
   }
   net_->prediction();
