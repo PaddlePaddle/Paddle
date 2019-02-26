@@ -31,7 +31,8 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-class PluginFactoryTensorRT : public nvinfer1::IPluginFactory {
+class PluginFactoryTensorRT : public nvinfer1::IPluginFactory,
+                              public DeleteHelper {
  public:
   // Deserialization method
   PluginTensorRT* createPlugin(const char* layer_name, const void* serial_data,

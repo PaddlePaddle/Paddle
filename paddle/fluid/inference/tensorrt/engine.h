@@ -199,43 +199,6 @@ class TensorRTEngine {
 #define TRT_ENGINE_ADD_LAYER(engine__, layer__, ARGS...) \
   engine__->network()->add##layer__(ARGS);
 
-/*
- * Helper to control the TensorRT engine's creation and deletion.
- */
-class TRTEngineManager {
- public:
-  bool HasEngine(const std::string& name) const {
-    if (engines_.count(name) == 0) return false;
-    return engines_.at(name).get() != nullptr;
-  }
-
-  // Get an engine called `name`.
-  TensorRTEngine* Get(const std::string& name) const {
-    return engines_.at(name).get();
-  }
-
-  // Create or get an engine called `name`
-  TensorRTEngine* Create(int max_batch, int max_workspace, bool enable_int8,
-                         TRTInt8Calibrator* calibrator,
-                         const std::string& engine_name, int device_id = 0) {
-    std::unique_lock<std::mutex> lk(mut_);
-    auto* p = new TensorRTEngine(max_batch, max_workspace, enable_int8,
-                                 calibrator, device_id);
-    engines_[engine_name].reset(p);
-    return p;
-  }
-
-  void DeleteALL() {
-    for (auto& item : engines_) {
-      item.second.reset(nullptr);
-    }
-  }
-
- private:
-  std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
-  std::mutex mut_;
-};
-
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

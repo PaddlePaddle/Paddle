@@ -342,7 +342,6 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
       config_.static_memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
-  argument_.SetPredictorID(predictor_id_);
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {

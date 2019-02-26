@@ -209,9 +209,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   SetAttr(op_desc->Proto(), "parameters", params);
 
   auto enable_int8 = Get<bool>("enable_int8");
-  int predictor_id = Get<int>("predictor_id");
   auto engine_key = GenerateEngineKey(input_names_with_id, output_names_with_id,
-                                      std::to_string(predictor_id));
+                                      std::to_string(0));
 
   // Get "" when there is no cached calibration table data.
   std::string calibration_data = GetTrtCalibTableData(
@@ -221,9 +220,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   SetAttr(op_desc->Proto(), "enable_int8", enable_int8);
   SetAttr(op_desc->Proto(), "engine_key", engine_key);
   SetAttr(op_desc->Proto(), "engine_serialized_data", std::string(""));
-  SetAttr(op_desc->Proto(), "engine_serialized_data_path",
-          GetTrtEngineSerializedPath(Get<std::string>("model_opt_cache_dir"),
-                                     engine_key));
 
   std::unique_ptr<tensorrt::TRTInt8Calibrator> calibrator;
   if (enable_int8 && calibration_data.size() != 0) {
@@ -239,13 +235,13 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     std::string trt_engine_serialized_data = GetTrtEngineSerializedData(
         Get<std::string>("model_opt_cache_dir"), engine_key);
 
-    tensorrt::TensorRTEngine *trt_engine =
-        inference::Singleton<tensorrt::TRTEngineManager>::Global().Create(
-            Get<int>("max_batch_size"), Get<int>("workspace_size"), enable_int8,
-            calibrator.get(), engine_key, Get<int>("gpu_device_id"));
     if (trt_engine_serialized_data.size() == 0) {
       LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
                    "kernel etc). This process may cost a lot of time.";
+      std::unique_ptr<tensorrt::TensorRTEngine> trt_engine(
+          new tensorrt::TensorRTEngine(
+              Get<int>("max_batch_size"), Get<int>("workspace_size"),
+              enable_int8, calibrator.get(), Get<int>("gpu_device_id")));
       auto *scope = param_scope();
       framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
       std::unordered_set<std::string> param_set(params.begin(), params.end());
@@ -253,7 +249,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
           .ConvertBlockToTRTEngine(
               &block_desc_temp, *scope,
               std::vector<std::string>(input_names.begin(), input_names.end()),
-              param_set, output_mapping, trt_engine);
+              param_set, output_mapping, trt_engine.get());
       nvinfer1::IHostMemory *serialized_engine_data = trt_engine->Serialize();
       trt_engine_serialized_data =
           std::string((const char *)serialized_engine_data->data(),
@@ -263,11 +259,11 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                                      engine_key),
           trt_engine_serialized_data);
     } else {
-      LOG(INFO) << "Load TRT Engine from optimized serialized data : "
+      LOG(INFO) << "Load TRT Optimized Info from "
                 << GetTrtEngineSerializedPath(
                        Get<std::string>("model_opt_cache_dir"), engine_key);
-      trt_engine->Deserialize(trt_engine_serialized_data);
     }
+
     SetAttr(op_desc->Proto(), "engine_serialized_data",
             trt_engine_serialized_data);
   }
