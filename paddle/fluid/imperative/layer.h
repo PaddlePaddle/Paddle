@@ -114,23 +114,23 @@ class VarBase {
  public:
   VarBase() : VarBase(new framework::Variable(), new VarBase(true)) {}
 
-  // Owns `var` and `grad`
+  explicit VarBase(bool stop_gradient)
+      : VarBase(new framework::Variable(),
+                stop_gradient ? nullptr : new VarBase(true), stop_gradient) {}
+
   VarBase(framework::Variable* var, VarBase* grad)
+      : VarBase(var, grad, false) {}
+
+ private:
+  VarBase(framework::Variable* var, VarBase* grad, bool stop_gradient)
       : var_desc_(nullptr),
         var_(var),
         grads_(grad),
-        stop_gradient_(false),
-        pre_op_(nullptr),
-        pre_op_out_idx_(-1) {}
-
-  explicit VarBase(bool stop_gradient)
-      : var_desc_(nullptr),
-        var_(new framework::Variable()),
-        grads_(stop_gradient ? nullptr : new VarBase(true)),
         stop_gradient_(stop_gradient),
         pre_op_(nullptr),
         pre_op_out_idx_(-1) {}
 
+ public:
   virtual ~VarBase() {
     if (var_) {
       delete var_;
@@ -141,11 +141,13 @@ class VarBase {
     }
   }
 
-  OpBase* PreOp() const { return pre_op_; }
-  int PreOpOutIdx() const { return pre_op_out_idx_; }
+  inline OpBase* PreOp() const { return pre_op_; }
+  inline int PreOpOutIdx() const { return pre_op_out_idx_; }
 
-  void SetStopGradient(bool stop_gradient) { stop_gradient_ = stop_gradient; }
-  bool IsStopGradient() const { return stop_gradient_; }
+  inline void SetStopGradient(bool stop_gradient) {
+    stop_gradient_ = stop_gradient;
+  }
+  inline bool IsStopGradient() const { return stop_gradient_; }
 
   void RunBackward();
 
