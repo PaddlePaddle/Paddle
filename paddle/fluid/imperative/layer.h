@@ -234,8 +234,10 @@ class PYBIND11_HIDDEN OpBase {
     }
 
     // remove op desc from block desc
-    if (block_) {
-      block_->RemoveOpInternal(op_desc_);
+    if (op_desc_) {
+      if (block_) {
+        block_->RemoveOpInternal(op_desc_);
+      }
     }
 
     // release resource
