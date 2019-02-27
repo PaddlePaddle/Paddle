@@ -988,12 +988,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   kernel_iter->second(
       ExecutionContext(*this, exec_scope, *dev_ctx, ctx, kernel_configs));
 
-  if (FLAGS_benchmark && platform::is_gpu_place(place)) {
-    auto device = boost::get<platform::CUDAPlace>(place).device;
-    after_mem_cost =
-        memory::allocation::GPUMemMonitor.GetCurrentMemUsage(device);
-  }
-
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
     TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
@@ -1004,6 +998,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx->Wait();
 
     auto device = boost::get<platform::CUDAPlace>(place).device;
+    after_mem_cost =
+      memory::allocation::GPUMemMonitor.GetCurrentMemUsage(device);
     VLOG(3) << "op : " << type_ << " Device : " << device
             << " Peak Memory Usage : "
             << ((after_mem_cost - init_mem_cost) >> 20) << " MiB";
