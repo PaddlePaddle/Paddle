@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/anakin/engine.h"
+#include "paddle/fluid/inference/anakin/convert/registrar.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "saber/saber_types.h"
 
@@ -44,19 +45,22 @@ class AnakinOpConverter {
                  bool test_mode = false) {
     framework::OpDesc op_desc(op, nullptr);
     std::string op_type = op_desc.Type();
-    AnakinOpConverter *it = nullptr;
+    //AnakinOpConverter *it = nullptr;
+    std::shared_ptr<AnakinOpConverter> it{nullptr};
 
     if (op_type == "mul") {
       PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL);
       std::string Y = op_desc.Input("Y")[0];
       std::cout << Y << parameters.count(Y) << std::endl;
       if (parameters.count(Y)) {
-        it = Registry<AnakinOpConverter>::Lookup("fc");
+        //it = Registry<AnakinOpConverter>::Lookup("fc");
+        it = Register::instance()->Create("fc");
       }
     }
 
     if (!it) {
-      it = Registry<AnakinOpConverter>::Lookup(op_type);
+      //it = Registry<AnakinOpConverter>::Lookup(op_type);
+      it = Register::instance()->Create(op_type);
     }
     PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]", op_type);
     it->SetEngine(engine);
@@ -105,6 +109,6 @@ class AnakinOpConverter {
   }
 
 #define USE_ANAKIN_CONVERTER(op_type__)                                    \
-  extern int TouchConverterRegister_##op_type__();                         \
+  extern int TouchConverterRegister_anakin_##op_type__();                  \
   static int use_op_converter_anakin_##op_type__ __attribute__((unused)) = \
       TouchConverterRegister_anakin_##op_type__();

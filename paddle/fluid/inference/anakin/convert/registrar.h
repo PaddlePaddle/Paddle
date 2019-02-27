@@ -23,24 +23,24 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class OpConverter;
+class AnakinOpConverter;
 
 class Register {
  public:
   Register() = default;
-  std::shared_ptr<OpConverter> Create(const std::string &name);
+  std::shared_ptr<AnakinOpConverter> Create(const std::string &name);
   static Register *instance();
   void RegisterFn(const std::string &name,
-                  std::function<std::shared_ptr<OpConverter>()> fn) {
+                  std::function<std::shared_ptr<AnakinOpConverter>()> fn) {
     registry_[name] = fn;
   }
 
  private:
-  std::map<std::string, std::function<std::shared_ptr<OpConverter>()>>
+  std::map<std::string, std::function<std::shared_ptr<AnakinOpConverter>()>>
       registry_;
 };
 
-std::shared_ptr<OpConverter> Register::Create(const std::string &name) {
+std::shared_ptr<AnakinOpConverter> Register::Create(const std::string &name) {
   auto it = registry_.find(name);
   if (it == registry_.end()) return nullptr;
   return it->second();
@@ -55,7 +55,7 @@ template <typename T, typename... Args>
 class Registrar {
  public:
   Registrar(const std::string &name, Args... args) {
-    std::shared_ptr<OpConverter> converter =
+    std::shared_ptr<AnakinOpConverter> converter =
         std::make_shared<T>(std::move(args)...);
     Register::instance()->RegisterFn(name, [converter]() { return converter; });
   }

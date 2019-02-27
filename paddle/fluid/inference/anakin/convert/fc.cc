@@ -82,7 +82,10 @@ void FcOpConverter::operator()(const framework::proto::OpDesc &op,
   */
 }
 
+static Registrar<FcOpConverter> register_anakin_fc_op_converter("fc");
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
-REGISTER_ANAKIN_OP_CONVERTER(fc, FcOpConverter);
+
+//REGISTER_ANAKIN_OP_CONVERTER(fc, FcOpConverter);
