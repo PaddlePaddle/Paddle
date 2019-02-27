@@ -65,7 +65,6 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("V", "(Tensor) Middle tensor of DGC");
     AddInput("Grad", "(Tensor) Input gradient");
     AddInput("current_step", "(Tensor) Current step.");
-    // AddInput("rampup_step", "(Tensor) Ramping up step.");
 
     AddOutput("U_out",
               "(Tensor) "

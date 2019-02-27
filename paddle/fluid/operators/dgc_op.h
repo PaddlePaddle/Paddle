@@ -58,8 +58,6 @@ class DGCOpKernel : public framework::OpKernel<T> {
     const float* current_step = current_step_tensor->data<float>();
 
     if (static_cast<int>(*current_step) < static_cast<int>(rampup_begin_step)) {
-      // auto encode_grad_out = ctx.Output<framework::Tensor>("EncodeGrad");
-      // encode_grad_out->ShareDataWith(*g);
       VLOG(10) << "current_step:" << *current_step
                << " < rampup_begin_step:" << rampup_begin_step
                << " so does't use dgc";

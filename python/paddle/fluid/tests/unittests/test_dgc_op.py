@@ -21,12 +21,12 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 
-g_array_size = 10240
+g_array_size = 102400
 
 
 class TestDGCOp(unittest.TestCase):
-    def setup(self, place, g_array_size=10240):
-        size = g_array_size
+    def setup(self, place, array_size=g_array_size):
+        size = array_size
         np.random.seed(5)  # fix seed
 
         self.scope = fluid.global_scope()
@@ -34,24 +34,23 @@ class TestDGCOp(unittest.TestCase):
         print("place:", place)
 
         # numpy data
-        # input: U, V, Grad, GradLocal
+        # inputs: U, V, Grad, current_step
         self.u_name = "U"
-        #self.u = np.zeros(shape=[size], dtype='float32')
         self.u = np.random.random(size).astype("float32")
 
         self.v_name = "V"
-        #self.v = np.zeros(shape=[size], dtype='float32')
         self.v = np.random.random(size).astype("float32")
 
         self.grad_name = "Grad"
         self.grad = np.random.random(size).astype("float32")
 
-        #self.grad_local_name = "GradLocal"
-        #self.grad_local = np.zeros(shape=[size], dtype='float32')
+        self.current_step_name = "current_step"
+        self.current_step = np.full((1), 0.0).astype("float32")
 
         # output: U_out, V_out, EncodeGrad, GradLocal_out
         self.encode_grad_name = "EncodeGrad"
-        #self.encode_grad=np.zeros(shape=[size], dtype='float32')
+        self.k_name = "k"
+        self.k = np.full((1), 0.0).astype("float32")
 
         # scope data 
         self.u_tensor = self.scope.var(self.u_name).get_tensor()
@@ -63,12 +62,15 @@ class TestDGCOp(unittest.TestCase):
         self.grad_tensor = self.scope.var(self.grad_name).get_tensor()
         self.grad_tensor.set(self.grad, place)
 
-        #self.grad_local_tensor = self.scope.var(self.grad_local_name).get_tensor()
-        #self.grad_local_tensor.set(self.grad_local, place)
-
         self.encode_grad_tensor = self.scope.var(
             self.encode_grad_name).get_tensor()
-        #self.encode_grad_tensor.set(self.encode_grad, place)
+
+        self.current_step_tensor = self.scope.var(
+            self.current_step_name).get_tensor()
+        self.current_step_tensor.set(self.current_step, core.CPUPlace())
+
+        self.k_tensor = self.scope.var(self.k_name).get_tensor()
+        self.k_tensor.set(self.k, core.CPUPlace())
 
     def check(self, actual_t, expect_t, place, out_name, atol=1e-5):
         self.assertTrue(
@@ -79,17 +81,26 @@ class TestDGCOp(unittest.TestCase):
 
     def test_run_and_check(self):
         self.setup(place=core.CUDAPlace(0))
-        #print("data size:", len(g_chunk))
         kwargs = {
+            # inputs
             'U': self.u_name,
             'V': self.v_name,
             'Grad': self.grad_name,
-            #'GradLocal': self.grad_local_name,
+            'current_step': self.current_step_name,
+
+            # outputs
             'U_out': self.u_name,
             'V_out': self.v_name,
             'EncodeGrad': self.encode_grad_name,
+            'Grad_out': self.grad_name,
+            'k': self.k_name,
+
+            # attrs
             'm': 0.9,
-            'ratio': 0.001
+            'sparsity': [0.75, 0.9375, 0.984375, 0.996, 0.999],
+            'use_nesterov': True,
+            'rampup_begin_step': float(0.0),
+            'rampup_step': float(10.0),
         }
 
         dgc_op = Operator('dgc', **kwargs)
@@ -99,31 +110,33 @@ class TestDGCOp(unittest.TestCase):
 
         u_out = np.array(self.u_tensor)
         v_out = np.array(self.v_tensor)
-        #grad_local_out = np.array(self.grad_local_tensor)
+        grad_out = np.array(self.grad_tensor)
         encode_grad_out = np.array(self.encode_grad_tensor)
+        k = int(np.array(self.k_tensor)[0])
 
         print("u_out:", u_out[0:20])
         print("v_out:", v_out[0:20])
-        #print("grad_local:", grad_local_out[0:20])
         print("encode_grad_out:", encode_grad_out)
+        print("k_out:", k)
 
-        k = int(g_array_size * 0.001)
+        self.assertEqual(k, int(g_array_size * 0.25))
+
         index = encode_grad_out[0:k].view(dtype=np.int32)
         value = encode_grad_out[k:2 * k]
 
         acl = 1e-7
 
         for i in range(0, k):
-            print("idx:", i, "pos:", index[i], "value:", value[i])
+            #print("idx:", i, "pos:", index[i], "value:", value[i])
             self.assertAlmostEqual(u_out[index[i]], 0.0)
             self.assertAlmostEqual(v_out[index[i]], 0.0)
 
         a_min = np.amin(value)
-        # print("a_min:", a_min)
         dangling = [x for x in v_out if x > a_min]
-        print("dangling:", dangling)
-        self.assertTrue(len(dangling) == 0)
+        #print("dangling:", dangling)
+        #self.assertTrue(len(dangling) == 0)
 
 
 if __name__ == "__main__":
+    core.init_dgc()
     unittest.main()
