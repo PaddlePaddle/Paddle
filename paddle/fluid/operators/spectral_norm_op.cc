@@ -94,7 +94,7 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
              "W is the 2nd dimentions of Weight after reshape"
              "corresponding by Attr(dim). As for Attr(dim) = 1"
              "in conv2d layer with weight shape [M, C, K1, K2]"
-             "Weight will be reshape to [C, M*K1*Kw], V will"
+             "Weight will be reshape to [C, M*K1*K2], V will"
              "be in shape [M*K1*K2, 1].");
     AddOutput("Out",
               "The output weight tensor of spectral_norm operator, "
@@ -105,7 +105,7 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
                  "it should be set as 0 if Input(Weight) is the"
                  "weight of fc layer, and should be set as 1 if"
                  "Input(Weight) is the weight of conv layer,"
-                 "default is 0."
+                 "default is 0.")
         .SetDefault(0);
     AddAttr<int>("power_iters",
                  "number of power iterations to calculate"
