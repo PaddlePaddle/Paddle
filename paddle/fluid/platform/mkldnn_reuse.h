@@ -271,7 +271,6 @@ class MKLDNNHandler {
     AppendKey(key, suffix);
   }
 
- protected:
   static void AppendKeyDims(std::string* key,
                             const mkldnn::memory::dims& dims) {
     for (unsigned int i = 0; i < dims.size(); i++) {
@@ -289,6 +288,7 @@ class MKLDNNHandler {
     key->append(s);
   }
 
+ protected:
   static std::string dims2str(const mkldnn::memory::dims& operand_dims) {
     std::string dstr = "";
     for (size_t i = 0; i < operand_dims.size(); ++i) {
@@ -302,6 +302,9 @@ class MKLDNNHandler {
   mkldnn::engine engine_;
   std::string key_;
   bool is_reusing_;
+
+ public:
+  static constexpr int MaxKeyLength = 256;
 };
 
 class TransposeMKLDNNHandler : public MKLDNNHandler {
