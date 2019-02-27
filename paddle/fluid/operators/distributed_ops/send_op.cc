@@ -50,7 +50,7 @@ class SendOp : public framework::OperatorBase {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(place);
-      auto exe_ctx = framework::ExecutionContext(*this, scope, *dev_ctx, ctx);
+      auto exe_ctx = framework::ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr);
       auto send_functor = distributed::ParameterSend<float>();
       send_functor(ins[0], send_varnames, epmap, height_sections, exe_ctx,
                    scope, static_cast<bool>(sync_send));
