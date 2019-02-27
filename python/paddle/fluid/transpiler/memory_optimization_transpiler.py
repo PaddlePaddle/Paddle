@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import six
+import sys
 from collections import defaultdict, MutableSet
 from .. import core
 from ... import compat as cpt
@@ -509,6 +510,7 @@ def memory_optimize(input_program,
     Returns:
         None
     """
+    sys.stderr.write('memory_optimize is deprecated.\n')
 
     def to_name_str(var):
         if isinstance(var, Variable):
