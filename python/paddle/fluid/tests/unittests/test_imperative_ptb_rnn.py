@@ -41,15 +41,13 @@ class SimpleLSTMRNN(fluid.imperative.Layer):
         self._dropout = dropout
         self._input = None
         self._num_steps = num_steps
-        # from paddle.fluid.layer_helper import LayerHelper
-        # self._helper = LayerHelper('SimpleLSTMRNN', act="tanh")
+        self.cell_array = []
+        self.hidden_array = []
 
     def _build_once(self, input_embedding, init_hidden=None, init_cell=None):
         self.weight_1_arr = []
         self.weight_2_arr = []
         self.bias_arr = []
-        self.hidden_array = []
-        self.cell_array = []
         self.mask_array = []
 
         for i in range(self._num_layers):
@@ -71,6 +69,11 @@ class SimpleLSTMRNN(fluid.imperative.Layer):
                 default_initializer=fluid.initializer.Constant(0.0))
             self.bias_arr.append(bias_1)
 
+    def forward(self, input_embedding, init_hidden=None, init_cell=None):
+        self.cell_array = []
+        self.hidden_array = []
+
+        for i in range(self._num_layers):
             pre_hidden = fluid.layers.slice(
                 init_hidden, axes=[0], starts=[i], ends=[i + 1])
             pre_cell = fluid.layers.slice(
@@ -82,7 +85,6 @@ class SimpleLSTMRNN(fluid.imperative.Layer):
             self.hidden_array.append(pre_hidden)
             self.cell_array.append(pre_cell)
 
-    def forward(self, input_embedding, init_hidden=None, init_cell=None):
         res = []
         for index in range(self._num_steps):
             self._input = fluid.layers.slice(
@@ -145,8 +147,7 @@ class PtbModel(fluid.imperative.Layer):
         self.num_layers = num_layers
         self.num_steps = num_steps
         self.dropout = dropout
-        # from paddle.fluid.layer_helper import LayerHelper
-        # self._helper = LayerHelper('PtbModel', act="tanh")
+        self._helper.act = "tanh"
         self.simple_lstm_rnn = SimpleLSTMRNN(
             self.full_name(),
             hidden_size,
@@ -180,7 +181,6 @@ class PtbModel(fluid.imperative.Layer):
         pass
 
     def forward(self, input, label, init_hidden, init_cell):
-
         init_h = fluid.layers.reshape(
             init_hidden, shape=[self.num_layers, -1, self.hidden_size])
 
