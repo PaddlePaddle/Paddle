@@ -313,9 +313,11 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
     """
     Applies cosine decay to the learning rate.
 
-    when training a model, it is oftem recommended to lower the learning rate as the
+    when training a model, it is often recommended to lower the learning rate as the
     training progresses. By using this function, the learning rate will be decayed by
     following cosine decay strategy.
+
+    decayed_lr = learning_rate * 0.5 * (math.cos(epoch * math.pi / epochs) + 1)
     
     Args:
         learning_rate(Variable|float): The initial learning rate.
