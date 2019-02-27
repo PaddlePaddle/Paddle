@@ -86,6 +86,14 @@ bool IsCompiledWithCUDA() {
 #endif
 }
 
+bool IsCompiledWithMKLDNN() {
+#ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithBrpc() {
 #ifndef PADDLE_WITH_DISTRIBUTE
   return false;
@@ -873,6 +881,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
 #ifdef PADDLE_WITH_CUDA
