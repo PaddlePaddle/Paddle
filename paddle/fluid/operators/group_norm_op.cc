@@ -170,13 +170,48 @@ class GroupNormGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+class GroupNormInplaceInToOut : public framework::InplaceInToOut {
+ public:
+  using InplaceInToOut::InplaceInToOut;
+
+ protected:
+  std::unordered_map<std::string, std::string> Apply(
+      const framework::OpDesc &op_desc,
+      framework::BlockDesc *block) const override {
+    return {{"X", "Y"}};
+  }
+};
+
+class GroupNormGradInplaceInToOut : public framework::InplaceInToOut {
+ public:
+  using InplaceInToOut::InplaceInToOut;
+
+ protected:
+  std::unordered_map<std::string, std::string> Apply(
+      const framework::OpDesc &op_desc,
+      framework::BlockDesc *block) const override {
+    return {{framework::GradVarName("Y"), framework::GradVarName("X")}};
+  }
+};
+
+class GroupNormOpInferVarType
+    : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return {{"X", /*->*/ "Y"}};
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(group_norm, ops::GroupNormOp, ops::GroupNormOpMaker,
-                  ops::GroupNormGradMaker);
-REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp);
+                  ops::GroupNormOpInferVarType, ops::GroupNormGradMaker,
+                  ops::GroupNormInplaceInToOut);
+REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp,
+                  ops::GroupNormGradInplaceInToOut);
 REGISTER_OP_CPU_KERNEL(
     group_norm, ops::GroupNormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GroupNormKernel<paddle::platform::CPUDeviceContext, double>);

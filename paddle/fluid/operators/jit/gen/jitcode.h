@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <string>
 #include <type_traits>
 #include "paddle/fluid/operators/jit/gen_base.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -59,7 +60,7 @@ typedef enum {
 } operand_type;
 
 #define DECLARE_JIT_CODE(codename) \
-  const char* name() const override { return #codename; }
+  std::string name() const override { return #codename; }
 
 class JitCode : public GenBase, public Xbyak::CodeGenerator {
  public:
@@ -68,7 +69,6 @@ class JitCode : public GenBase, public Xbyak::CodeGenerator {
             (code_size % 4096 != 0 ? (code_size / 4096 + 1) * 4096 : code_size),
             code_ptr) {}
 
-  virtual const char* name() const = 0;
   virtual void genCode() = 0;
 
   size_t getSize() const override { return CodeGenerator::getSize(); }

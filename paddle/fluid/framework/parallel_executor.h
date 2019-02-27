@@ -46,11 +46,11 @@ class ParallelExecutor {
  public:
   explicit ParallelExecutor(const std::vector<platform::Place> &places,
                             const std::unordered_set<std::string> &bcast_vars,
-                            const ProgramDesc &main_program,
                             const std::string &loss_var_name, Scope *scope,
                             const std::vector<Scope *> &local_scopes,
                             const ExecutionStrategy &exec_strategy,
-                            const BuildStrategy &build_strategy);
+                            const BuildStrategy &build_strategy,
+                            ir::Graph *graph);
 
   ~ParallelExecutor();
 
@@ -71,7 +71,7 @@ class ParallelExecutor {
 
  private:
   void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;
-  bool EnableParallelGraphExecution(const ProgramDesc &main_program,
+  bool EnableParallelGraphExecution(const ir::Graph &graph,
                                     const ExecutionStrategy &exec_strategy,
                                     const BuildStrategy &build_strategy) const;
 
