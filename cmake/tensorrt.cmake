@@ -33,6 +33,5 @@ if(TENSORRT_FOUND)
     message(STATUS "Current TensorRT header is ${TENSORRT_INCLUDE_DIR}/NvInfer.h. "
         "Current TensorRT version is v${TENSORRT_MAJOR_VERSION}. ")
     include_directories(${TENSORRT_INCLUDE_DIR})
-    list(APPEND EXTERNAL_LIBS ${TENSORRT_LIBRARY})
     add_definitions(-DPADDLE_WITH_TENSORRT)
 endif()

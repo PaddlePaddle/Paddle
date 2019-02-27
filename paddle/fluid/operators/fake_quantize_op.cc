@@ -21,26 +21,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVectorArrayMap =
-    Eigen::TensorMap<Eigen::Tensor<T, 1, MajorType, IndexType>>;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using ConstEigenVectorArrayMap =
-    Eigen::TensorMap<const Eigen::Tensor<T, 1, MajorType, IndexType>>;
+template <typename T>
+struct Compare {
+ public:
+  bool operator()(const T a, const T b) { return (std::abs(a) < std::abs(b)); }
+};
 
 template <typename T>
 struct FindAbsMaxFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx, const T* in,
                   const int num, T* out) {
-    Eigen::DSizes<Eigen::DenseIndex, 1> idim(num);
-    Eigen::DSizes<Eigen::DenseIndex, 1> odim(1);
-    Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor>> in_e(in, idim);
-    Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor>> out_e(out, odim);
-
-    out_e = in_e.abs().maximum();
+    *out = std::abs(*(std::max_element(in + 0, in + num, Compare<T>())));
   }
 };
 
@@ -55,10 +46,8 @@ struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
     platform::Transform<platform::CPUDeviceContext> trans;
     trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
           out->mutable_data<T>(ctx.GetPlace()), ClipFunctor<T>(-s, s));
-    auto in_e = framework::EigenVector<T>::Flatten(in);
     auto out_e = framework::EigenVector<T>::Flatten(*out);
-
-    out_e.device(*ctx.eigen_device()) = (bin_cnt / s * in_e).round();
+    out_e.device(*ctx.eigen_device()) = (bin_cnt / s * out_e).round();
   }
 };
 

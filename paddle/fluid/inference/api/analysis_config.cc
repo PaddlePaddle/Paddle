@@ -89,7 +89,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(params_file_);
   CP_MEMBER(model_from_memory_);  // the memory model reuses prog_file_ and
                                   // params_file_ fields.
-  // Gpu releated.
+  // Gpu related.
   CP_MEMBER(use_gpu_);
   CP_MEMBER(device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
@@ -97,13 +97,13 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(enable_memory_optim_);
   CP_MEMBER(static_memory_optim_);
   CP_MEMBER(static_memory_optim_force_update_);
-  // TensorRT releated.
+  // TensorRT related.
   CP_MEMBER(use_tensorrt_);
   CP_MEMBER(tensorrt_workspace_size_);
   CP_MEMBER(tensorrt_max_batchsize_);
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
-  // MKLDNN releated.
+  // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
 
