@@ -254,8 +254,13 @@ ParallelExecutor::ParallelExecutor(
     PADDLE_THROW("Not compiled with CUDA");
 #endif
   }
-  if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
-    BCastParamsToDevices(bcast_vars);
+  // broadcast parameters from device 0 to othats:
+  // 1. multiple devices for one process
+  // 2. one devices for one process
+
+  if ((member_->local_scopes_.size() != 1 && local_scopes.empty()) ||
+      build_strategy.num_trainers_ > 1) {
+    BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
   }
 // Startup Program has been run. All local scopes has correct parameters.
 
@@ -338,7 +343,7 @@ ParallelExecutor::ParallelExecutor(
 }
 
 void ParallelExecutor::BCastParamsToDevices(
-    const std::unordered_set<std::string> &vars) const {
+    const std::unordered_set<std::string> &vars, int trainer_id) const {
   // the initializing bcast, all vars would be bcast from device(0).
   for (auto &var : vars) {
     framework::Variable *main_var = member_->local_scopes_[0]->FindVar(var);
@@ -362,7 +367,7 @@ void ParallelExecutor::BCastParamsToDevices(
         auto place = member_->places_[i];
         void *buffer;
 
-        if (i == 0) {
+        if (i == 0 && trainer_id == 0) {
           buffer = const_cast<void *>(main_tensor.data<void>());
         } else {
           auto local_scope = member_->local_scopes_[i];

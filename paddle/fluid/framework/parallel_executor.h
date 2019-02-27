@@ -70,7 +70,8 @@ class ParallelExecutor {
            const std::string &fetched_var_name);
 
  private:
-  void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;
+  void BCastParamsToDevices(const std::unordered_set<std::string> &vars,
+                            int trainer_id = 0) const;
   bool EnableParallelGraphExecution(const ir::Graph &graph,
                                     const ExecutionStrategy &exec_strategy,
                                     const BuildStrategy &build_strategy) const;
