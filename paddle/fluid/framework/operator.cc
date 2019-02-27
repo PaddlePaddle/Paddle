@@ -27,6 +27,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
@@ -953,6 +955,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::vector<KernelConfig>* kernel_configs =
       GetKernelConfig(expected_kernel_key);
 
+  uint64_t init_mem_cost = 0UL, prev_mem_cost = 0UL, after_mem_cost = 0UL;
+  if (FLAGS_benchmark) {
+    init_mem_cost =
+        memory::allocation::GPUMemMonitor.GetCurrentMemUsage(device);
+  }
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
   auto* transfer_scope =
@@ -970,8 +977,19 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
+  if (FLAGS_benchmark) {
+    // get mem usage contains global mutex, which hurt performance badly.
+    prev_mem_cost =
+        memory::allocation::GPUMemMonitor.GetCurrentMemUsage(device);
+  }
+
   kernel_iter->second(
       ExecutionContext(*this, exec_scope, *dev_ctx, ctx, kernel_configs));
+
+  if (FLAGS_benchmark) {
+    after_mem_cost =
+        memory::allocation::GPUMemMonitor.GetCurrentMemUsage(device);
+  }
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
@@ -981,6 +999,16 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
+    VLOG(3) << "op : " << type_ << " Device : " << device
+            << " Peak Memory Usage : " << (after_mem_cost - init_mem_cost >> 20)
+            << " MiB";
+    // print op mem cost in details
+    VLOG(4) << "op Infer : " << type_ << " Device : " << device
+            << " Peak Memory Usage : " << (prev_mem_cost - init_mem_cost >> 20)
+            << " MiB";
+    VLOG(4) << "op Kernel : " << type_ << " Device : " << device
+            << " Peak Memory Usage : " << (after_mem_cost - prev_mem_cost >> 20)
+            << " MiB";
   }
 
   if (FLAGS_check_nan_inf) {

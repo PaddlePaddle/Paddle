@@ -33,6 +33,7 @@ class MemInfo {
   void Minus(const size_t &);
 
   uint64_t GetPeakUsage() const;
+  uint64_t GetUsage() const;
 
  private:
   /* current memory usage*/
@@ -56,6 +57,7 @@ class LegacyMemMonitor {
   void Add(const int &, const size_t &);
   void Minus(const int &, const size_t &);
 
+  uint64_t GetCurrentMemUsage(const int &) const;
   uint64_t GetMemUsage(const int &) const;
 
   void PrintMemUsage();
