@@ -17,7 +17,7 @@ import six
 import threading
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program
 from .executor import global_scope
-from .data_feeder import DataFeeder
+from .data_feeder import DataFeeder, BatchedTensorProvider
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
 
@@ -46,7 +46,7 @@ class PyReader(object):
                  feed_list,
                  capacity,
                  use_double_buffer=True,
-                 iterable=True):
+                 iterable=False):
         """
         Create a reader object for data feeding in Python. 
         Data would be prefetched using Python thread and be pushed
@@ -269,6 +269,54 @@ class PyReader(object):
         self._thread.daemon = True
         self._thread.start()
 
+    def decorate_sample_generator(self,
+                                  sample_generator,
+                                  batch_size,
+                                  drop_last=True,
+                                  places=None):
+        '''
+        Set the data source of the PyReader object.
+        
+        The provided :code:`sample_generator` should be a Python generator,
+        which yields numpy.ndarray typed data of each sample.
+
+        :code:`places` must be set when the PyReader object is iterable.
+
+        If all inputs have no lods, this method is faster than 
+        :code:`decorate_paddle_reader(paddle.batch(sample_generator, ...))` .
+
+        Args:
+            sample_generator (generator): Python generator that yields
+                numpy.ndarray-typed sample data.
+            batch_size (int): batch size. Must be larger than 0.
+            drop_last (bool): Whether to drop the last batch when sample number
+                is less than batch_size. 
+            places (None|list(CUDAPlace)|list(CPUPlace)): place list. Must
+                be provided when PyReader is iterable.
+        '''
+        assert batch_size > 0, "batch_size must be larger than 0"
+        has_lod = False
+        for f in self._feed_list:
+            if f.lod_level != 0:
+                has_lod = True
+                break
+
+        if has_lod:
+            self.decorate_paddle_reader(
+                paddle.batch(
+                    sample_generator,
+                    batch_size=batch_size,
+                    drop_last=drop_last),
+                places=places)
+        else:
+            reader = BatchedTensorProvider(
+                feed_list=self._feed_list,
+                place=core.CPUPlace(),
+                batch_size=batch_size,
+                generator=sample_generator,
+                drop_last=drop_last)
+            self.decorate_tensor_provider(reader, places=places)
+
     def decorate_paddle_reader(self, reader, places=None):
         '''
         Set the data source of the PyReader object. 
@@ -279,8 +327,10 @@ class PyReader(object):
         :code:`places` must be set when the PyReader object is iterable.
 
         Args:
-            reader (generator): Python generator that yields numpy-typed
-                batched data. 
+            reader (generator): Python generator that yields 
+                list(numpy.ndarray)-typed batched data. 
+            places (None|list(CUDAPlace)|list(CPUPlace)): place list. Must
+                be provided when PyReader is iterable.
         '''
         assert self._tensor_reader is None, \
             "Cannot reset the data source of PyReader"
@@ -307,6 +357,8 @@ class PyReader(object):
         Args:
             reader (generator): Python generator that yields LoDTensor-typed
                 batched data.
+			places (None|list(CUDAPlace)|list(CPUPlace)): place list. Must
+                be provided when PyReader is iterable.
         '''
         assert self._tensor_reader is None, \
             "Cannot reset the data source of PyReader"

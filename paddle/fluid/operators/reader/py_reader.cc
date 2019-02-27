@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reader/py_reader.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {

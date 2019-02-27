@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/reader_py.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"

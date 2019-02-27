@@ -16,6 +16,7 @@
 
 #include <condition_variable>  // NOLINT
 #include <deque>
+#include <utility>
 
 #include "paddle/fluid/platform/enforce.h"
 
