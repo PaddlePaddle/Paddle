@@ -13,9 +13,12 @@
 // limitations under the License.
 
 #pragma once
-#include <paddle/fluid/framework/ir/fuse_pass_base.h>
+#include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
