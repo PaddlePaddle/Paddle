@@ -28,9 +28,6 @@ os.environ[
 from test_parallel_executor_transformer import transformer, ModelHyperParams, transformer_model, transformer, prepare_batch_input
 from parallel_executor_test_base import TestParallelExecutorBase
 
-# disable temporarily because of timeout.
-sys.exit(0)
-
 
 # NOTE(dzhwinter): test diferent strategy colisions.
 # open the eager delete tensor strategy by default.
