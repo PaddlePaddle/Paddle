@@ -177,9 +177,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     // in concurrency scenerio. Here use an `if` to fix this issue.
     // Please not remove the `if`, ask @Superjomn if there are any concern.
     if (platform::IsProfileEnabled()) {
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
-      platform::RecordEvent record_event(Type(), pool.Get(place));
+      platform::RecordEvent record_event(Type());
       RunImpl(scope, place);
     } else {
       RunImpl(scope, place);
@@ -906,6 +904,16 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
 }
 
+std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
+    const OpKernelType& key) const {
+  auto config_iter = kernel_configs_map_.find(key);
+  std::vector<KernelConfig>* kernel_configs = nullptr;
+  if (config_iter != kernel_configs_map_.end()) {
+    kernel_configs = &(config_iter->second);
+  }
+  return kernel_configs;
+}
+
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   RuntimeContext ctx(Inputs(), Outputs(), scope);
@@ -923,7 +931,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   OpKernelMap& kernels = kernels_iter->second;
 
   auto expected_kernel_key = this->GetExpectedKernelType(
-      ExecutionContext(*this, scope, *dev_ctx, ctx));
+      ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
@@ -942,6 +950,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                  KernelTypeToString(expected_kernel_key));
   }
 
+  std::vector<KernelConfig>* kernel_configs =
+      GetKernelConfig(expected_kernel_key);
+
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
   auto* transfer_scope =
@@ -959,7 +970,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
-  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx, ctx));
+  kernel_iter->second(
+      ExecutionContext(*this, exec_scope, *dev_ctx, ctx, kernel_configs));
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
@@ -989,11 +1001,14 @@ void OperatorWithKernel::TransferInplaceVarsBack(
     const Scope& transfer_scope) const {
   for (auto& var_name : inplace_vars) {
     VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
+    auto* origin_var = scope.FindVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(origin_var, "The var[%s] should not be nullptr.",
+                            var_name);
     auto* original_tensor =
-        GetMutableLoDTensorOrSelectedRowsValueFromVar(scope.FindVar(var_name));
+        GetMutableLoDTensorOrSelectedRowsValueFromVar(origin_var);
     auto* var = transfer_scope.FindVar(var_name);
-    PADDLE_ENFORCE(var != nullptr, "The var[%s] should not be nullptr",
-                   var_name);
+    PADDLE_ENFORCE_NOT_NULL(var, "The var[%s] should not be nullptr.",
+                            var_name);
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
     original_tensor->ShareDataWith(*transformed_tensor);
   }

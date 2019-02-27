@@ -291,7 +291,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     if (dynload::HasCUDNN()) {
       auto local_cudnn_version = cudnn_dso_ver / 100;
       auto compile_cudnn_version = CUDNN_VERSION / 100;
-      if (local_cudnn_version < compile_cudnn_version) {
+      if (local_cudnn_version < static_cast<size_t>(compile_cudnn_version)) {
         LOG_FIRST_N(WARNING, 1)
             << "WARNING: device: " << place_.device
             << ". The installed Paddle is compiled with CUDNN "
@@ -394,7 +394,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
 
   int tid = platform::get_cur_thread_id();
 
-  std::lock_guard<std::mutex> lock(*p_mutex_.get());
+  std::lock_guard<std::mutex> lock(*p_mutex_);
 
   // Find KeyBlob for current thread
   auto map_it = pMap->find(tid);
@@ -427,7 +427,7 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
 
   int tid = platform::get_cur_thread_id();
 
-  std::lock_guard<std::mutex> lock(*p_mutex_.get());
+  std::lock_guard<std::mutex> lock(*p_mutex_);
 
   // Find KeyBlob for current thread firstly
   auto map_it = pMap->find(tid);

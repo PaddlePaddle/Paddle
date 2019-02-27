@@ -96,12 +96,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
-    PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
-                       input->format() != memory::format::format_undef,
-                   "Wrong layout/format set for Input tensor");
-    PADDLE_ENFORCE(filter->layout() == DataLayout::kMKLDNN &&
-                       filter->format() != memory::format::format_undef,
-                   "Wrong layout/format set for Filter tensor");
+    PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN);
+    PADDLE_ENFORCE(filter->layout() == DataLayout::kMKLDNN);
     PADDLE_ENFORCE(input->dims().size() == 4 || input->dims().size() == 5,
                    "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
     PADDLE_ENFORCE(filter->dims().size() == 4 || filter->dims().size() == 5,
@@ -148,14 +144,19 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     std::vector<primitive> pipeline;
 
-    auto src_format = input->format();
-    mkldnn::memory::format weights_format =
-        GetWeightsFormat(filter->format(), g, is_conv3d);
-
-    auto user_src_md = platform::MKLDNNMemDesc(
-        {src_tz}, platform::MKLDNNGetDataType<T>(), src_format);
-    auto user_weights_md = platform::MKLDNNMemDesc(
-        {weights_tz}, platform::MKLDNNGetDataType<T>(), weights_format);
+    // For convolution with groups we need to recreate primitive descriptor
+    // as Paddle tensor is not having group dims while mkldnn treats
+    // group as another dimensions
+    mkldnn::memory::primitive_desc user_weights_mpd =
+        filter->get_mkldnn_prim_desc();
+    if (g > 1) {
+      mkldnn::memory::format weights_format =
+          GetWeightsFormat(filter->format(), g, is_conv3d);
+      auto user_weights_md = platform::MKLDNNMemDesc(
+          {weights_tz}, platform::MKLDNNGetDataType<T>(), weights_format);
+      user_weights_mpd =
+          mkldnn::memory::primitive_desc(user_weights_md, mkldnn_engine);
+    }
 
     /* create memory descriptor for convolution without specified format
      * ('any') which lets a primitive (convolution in this case) choose
@@ -165,7 +166,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto chosen_memory_format =
         platform::data_format_to_memory_format(data_format);
 
-    weights_format = mkldnn::memory::format::any;
+    mkldnn::memory::format weights_format = mkldnn::memory::format::any;
     // Check the format for user's special output
     if (chosen_memory_format != mkldnn::memory::format::any) {
       if (is_conv3d) {
@@ -205,10 +206,10 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     platform::ConvMKLDNNHandler handler(conv_pd, dev_ctx, mkldnn_engine, key);
 
     // create mkldnn memory from input tensors (data/weights)
-    auto user_src_memory_p =
-        handler.AcquireSrcMemory(user_src_md, to_void_cast<T>(input_data));
+    auto user_src_memory_p = handler.AcquireSrcMemory(
+        input->get_mkldnn_prim_desc(), to_void_cast<T>(input_data));
     auto user_weights_memory_p = handler.AcquireWeightsMemory(
-        user_weights_md, to_void_cast<T>(filter_data));
+        user_weights_mpd, to_void_cast<T>(filter_data));
 
     // create reorder primitive if the input format is not the preferred one
     auto src_memory_p =
@@ -281,8 +282,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     pipeline.push_back(*conv_p);
     stream(stream::kind::eager).submit(pipeline).wait();
 
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(GetMKLDNNFormat(*dst_memory_p));
+    output->set_mkldnn_prim_desc(dst_memory_p->get_primitive_desc());
   }
   void ComputeINT8(const paddle::framework::ExecutionContext& ctx) const {
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -947,8 +947,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       // push primitive to stream and wait until it's executed
       pipeline.push_back(*conv_bwd_weights_p);
 
-      filter_grad->set_layout(DataLayout::kMKLDNN);
-      filter_grad->set_format(GetMKLDNNFormat(*diff_weights_memory_p));
+      auto filter_grad_mpd = diff_weights_memory_p->get_primitive_desc();
+      filter_grad->set_mkldnn_prim_desc(filter_grad_mpd);
     }
 
     if (input_grad) {
@@ -971,8 +971,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
       pipeline.push_back(*conv_bwd_data_p);
 
-      input_grad->set_layout(DataLayout::kMKLDNN);
-      input_grad->set_format(GetMKLDNNFormat(*diff_src_memory_p));
+      input_grad->set_mkldnn_prim_desc(diff_src_memory_p->get_primitive_desc());
     }
     stream(stream::kind::eager).submit(pipeline).wait();
   }
@@ -990,12 +989,12 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, U8,
-                                    ops::kConvMKLDNNFP32,
+                                    ops::kConvMKLDNNINT8,
                                     ops::ConvMKLDNNOpKernel<uint8_t, float>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, S8,
-                                    ops::kConvMKLDNNFP32,
+                                    ops::kConvMKLDNNINT8,
                                     ops::ConvMKLDNNOpKernel<int8_t, float>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad, MKLDNN,

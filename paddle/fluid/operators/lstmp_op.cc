@@ -73,12 +73,6 @@ class LSTMPOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE(ctx->HasInput("C0"),
                      "Input(C0) of LSTMP operator should not be null after "
                      "Input(H0) provided.");
-      auto h_dims = ctx->GetInputDim("H0");
-      auto c_dims = ctx->GetInputDim("C0");
-      PADDLE_ENFORCE(h_dims == c_dims,
-                     "The dimension of Input(H0) and Input(C0) "
-                     "should be the same.");
-      ctx->SetOutputDim("OrderedP0", {h_dims[0], proj_dims[1]});
     }
 
     auto b_dims = ctx->GetInputDim("Bias");
@@ -180,11 +174,6 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
               "This LoDTensor is obtained in the forward and used in the "
               "backward.")
         .AsIntermediate();
-    AddOutput("OrderedP0",
-              "(Tensor) the projection of the initial hidden state "
-              "H0. This is a tensor with shape (N x P), where N is the "
-              "batch size and P is the hidden size.")
-        .AsIntermediate();
     AddAttr<bool>("use_peepholes",
                   "(bool, defalut: True) "
                   "whether to enable diagonal/peephole connections.")
@@ -193,6 +182,16 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, defalut: False) "
                   "whether to compute reversed LSTMP.")
         .SetDefault(false);
+    AddAttr<float>("cell_clip",
+                   "(float, defalut: 0.0) "
+                   "Clip for Tensor for cell state tensor when clip value is "
+                   "greater than 0.0")
+        .SetDefault(0.0);
+    AddAttr<float>("proj_clip",
+                   "(float, defalut: 0.0) "
+                   "Clip for Tensor for projection tensor when clip value is "
+                   "greater than 0.0")
+        .SetDefault(0.0);
     AddAttr<std::string>(
         "gate_activation",
         "(string, default: sigmoid)"

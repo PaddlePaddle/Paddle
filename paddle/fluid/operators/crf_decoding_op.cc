@@ -84,12 +84,12 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
                    "Output(ViterbiPath) should be not null.");
 
     auto emission_dims = ctx->GetInputDim("Emission");
-    PADDLE_ENFORCE_EQ(emission_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(emission_dims.size(), 2,
                       "The Input(Emission) should be a 2-D tensor.");
     PADDLE_ENFORCE(emission_dims[0], "An empty mini-batch is not allowed.");
 
     auto transition_dims = ctx->GetInputDim("Transition");
-    PADDLE_ENFORCE_EQ(transition_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(transition_dims.size(), 2,
                       "The Input(Transition) should be a 2-D tensor.");
     PADDLE_ENFORCE_EQ(
         transition_dims[0] - 2, transition_dims[1],
