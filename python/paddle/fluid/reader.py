@@ -123,7 +123,6 @@ class PyReader(object):
         self._use_double_buffer = use_double_buffer
         self._capacity = capacity
         self._feed_list = feed_list
-        self._scope = global_scope()
         if not self._iterable:
             self._init_non_iterable()
 
@@ -153,7 +152,7 @@ class PyReader(object):
         reader_name = PyReader.unique_name_generator('create_py_reader')
         double_buffer_name = PyReader.unique_name_generator('double_buffer')
 
-        var = self._scope.var(queue_name)
+        var = global_scope().var(queue_name)
         self._queue = core.init_lod_tensor_blocking_queue(var, self._capacity)
 
         startup_blk = default_startup_program().current_block()
@@ -214,6 +213,9 @@ class PyReader(object):
 
             def __iter__(self):
                 return self
+
+            def __next__(self):
+                return self.next()
 
             def next(self):
                 ret = self._reader.read_next()
