@@ -15,6 +15,7 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
 #include <vector>
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"

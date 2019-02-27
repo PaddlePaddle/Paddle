@@ -15,6 +15,7 @@
 #pragma once
 
 #include <list>
+#include <memory>
 #include <queue>
 #include <vector>
 #include "ThreadPool.h"
