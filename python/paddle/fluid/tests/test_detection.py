@@ -504,5 +504,21 @@ class TestMulticlassNMS(unittest.TestCase):
             self.assertIsNotNone(output)
 
 
+class TestDistributeFpnProposals(unittest.TestCase):
+    def test_distribute_fpn_proposals(self):
+        program = Program()
+        with program_guard(program):
+            fpn_rois = fluid.layers.data(
+                name='data', shape=[4], dtype='float32', lod_level=1)
+            multi_rois, restore_ind = layers.distribute_fpn_proposals(
+                fpn_rois=fpn_rois,
+                min_level=2,
+                max_level=5,
+                refer_level=4,
+                refer_scale=224)
+            self.assertIsNotNone(multi_rois)
+            self.assertIsNotNone(restore_ind)
+
+
 if __name__ == '__main__':
     unittest.main()
