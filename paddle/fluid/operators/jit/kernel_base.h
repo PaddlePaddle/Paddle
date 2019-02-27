@@ -46,6 +46,7 @@ typedef enum {
   kVMul,
   kVRelu,
   kVScal,
+  kSgd,
   kVSigmoid,
   kVSquare,
   kVSub,
@@ -171,6 +172,28 @@ struct EmbSeqPoolTuples {
   typedef emb_seq_pool_attr_t attr_type;
   typedef void (*func_type)(const T*, const int64_t*, T*,
                             const emb_seq_pool_attr_t*);
+};
+
+typedef struct sgd_attr_s {
+  int64_t param_height, param_width;
+  int64_t grad_height, grad_width;
+  int64_t selected_rows_size;
+  sgd_attr_s() = default;
+  explicit sgd_attr_s(int64_t param_h, int64_t param_w, int64_t grad_h,
+                      int64_t grad_w, int64_t selected_rows_sz)
+      : param_height(param_h),
+        param_width(param_w),
+        grad_height(grad_h),
+        grad_width(grad_w),
+        selected_rows_size(selected_rows_sz) {}
+} sgd_attr_t;
+
+template <typename T>
+struct SgdTuples {
+  typedef T data_type;
+  typedef sgd_attr_t attr_type;
+  typedef void (*func_type)(const T*, const T*, const T*, const int64_t*, T*,
+                            const sgd_attr_t*);
 };
 
 typedef struct matmul_attr_s {
