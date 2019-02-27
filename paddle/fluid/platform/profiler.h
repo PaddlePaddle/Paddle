@@ -25,6 +25,31 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+class MemEvent {
+ public:
+  MemEvent(EventType type, uint64_t start_ns, uint64_t end_ns, size_t bytes,
+           Place place, int64_t thread_id);
+  const EventType& type() const { return type_; }
+  uint64_t start_ns() const { return start_ns_; }
+  uint64_t end_ns() const { return end_ns_; }
+  size_t bytes() const { return bytes_; }
+  Place place() const { return place_; }
+  int64_t thread_id() const { return thread_id_; }
+
+ private:
+  EventType type_;
+  uint64_t start_ns_ = 0;
+  uint64_t end_ns_ = 0;
+  size_t bytes_;
+  Place place_;
+  int64_t thread_id_;
+};
+
+void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                  Place place);
+
+void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes, Place place);
+
 enum ProfilerState {
   kDisabled,  // disabled state
   kCPU,       // CPU profiling state
@@ -50,6 +75,19 @@ struct RecordEvent {
   // Need to distinguish name by op type, block_id, program_id and perhaps
   // different kernel invocations within an op.
   std::string full_name_;
+};
+
+struct RecordMemEvent {
+  RecordMemEvent();
+  void InitRecordMem(size_t bytes, Place place);
+  void DelRecordMem();
+  ~RecordMemEvent() {}
+
+  bool is_enabled_;
+  uint64_t start_ns_;
+  uint64_t end_ns_;
+  size_t bytes_;
+  Place place_;
 };
 
 class RecordRPCEvent {

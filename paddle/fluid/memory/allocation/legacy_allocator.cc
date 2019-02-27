@@ -26,6 +26,7 @@
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
 
@@ -328,19 +329,33 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 }  // namespace legacy
 
 namespace allocation {
-
 LegacyMemMonitor GPUMemMonitor;
 
 Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
-  return new Allocation(ptr, size, place_);
+  if (platform::IsProfileEnabled()) {
+    std::lock_guard<std::mutex> guard(mem);
+    Allocation *tmp_alloc = new Allocation(ptr, size, place_);
+    platform::RecordMemEvent tmp_record;
+    record_mem.insert({tmp_alloc, tmp_record});
+    record_mem[tmp_alloc].InitRecordMem(size, place_);
+    return tmp_alloc;
+  } else {
+    return new Allocation(ptr, size, place_);
+  }
 }
 
 void LegacyAllocator::Free(Allocation *allocation) {
   boost::apply_visitor(
       legacy::FreeVisitor(allocation->ptr(), allocation->size()),
       allocation->place());
-  delete allocation;
+  if (platform::IsProfileEnabled()) {
+    std::lock_guard<std::mutex> guard(mem);
+    record_mem[allocation].DelRecordMem();
+    record_mem.erase(allocation);
+  } else {
+    delete allocation;
+  }
 }
 
 bool MemInfo::Add(const size_t &size) {

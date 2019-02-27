@@ -21,6 +21,7 @@ import paddle.fluid.core as core
 import os
 import paddle.fluid as fluid
 from parallel_executor_test_base import TestParallelExecutorBase
+import paddle.fluid.profiler as profiler
 
 
 def simple_fc_net(use_feed):

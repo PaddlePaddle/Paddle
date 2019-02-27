@@ -30,6 +30,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 
@@ -313,6 +314,17 @@ class DeviceTracerImpl : public DeviceTracer {
                                       stream_id, correlation_id, bytes});
   }
 
+  void AddMemInfoRecord(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                        Place place, int64_t thread_id) {
+    if (0 == start_ns || 0 == end_ns) {
+      VLOG(3) << "Cannot be traced\n";
+      return;
+    }
+    std::lock_guard<std::mutex> l(trace_mu_);
+    mem_info_record_.emplace_back(
+        MemInfoRecord{start_ns, end_ns, bytes, place, thread_id});
+  }
+
   void AddKernelRecords(std::string name, uint64_t start, uint64_t end,
                         int64_t device_id, int64_t stream_id,
                         uint32_t correlation_id) {
@@ -466,6 +478,24 @@ class DeviceTracerImpl : public DeviceTracer {
       event->set_device_id(r.device_id);
       event->mutable_memcopy()->set_bytes(r.bytes);
     }
+    for (const MemInfoRecord &r : mem_info_record_) {
+      auto *event = profile_pb.add_mem_events();
+      if (is_cpu_place(r.place)) {
+        event->set_place(proto::MemEvent::CPUPlace);
+        event->set_device_id(0);
+      } else if (is_gpu_place(r.place)) {
+        event->set_place(proto::MemEvent::CUDAPlace);
+        event->set_device_id(
+            boost::get<platform::CUDAPlace>(r.place).GetDeviceId());
+      } else {
+        event->set_place(proto::MemEvent::CUDAPinnedPlace);
+        event->set_device_id(0);
+      }
+      event->set_start_ns(r.start_ns);
+      event->set_end_ns(r.end_ns);
+      event->set_bytes(r.bytes);
+      event->set_thread_id(r.thread_id);
+    }
     VLOG(1) << "MemRecord event miss: " << miss << " find: " << find;
     std::ofstream profile_f;
     profile_f.open(profile_path,
@@ -510,6 +540,7 @@ class DeviceTracerImpl : public DeviceTracer {
   std::forward_list<KernelRecord> kernel_records_;
   std::forward_list<MemRecord> mem_records_;
   std::forward_list<std::forward_list<CPURecord>> cpu_records_;
+  std::vector<MemInfoRecord> mem_info_record_;
   std::forward_list<std::forward_list<std::pair<uint32_t, Event *>>>
       correlations_pairs;
   std::unordered_map<uint32_t, Event *> correlations_;
