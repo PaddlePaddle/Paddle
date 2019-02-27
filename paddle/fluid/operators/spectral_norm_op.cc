@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserve.
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
@@ -84,20 +84,28 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
              "The weight_u tensor of spectral_norm operator, "
              "This can be a 1-D tensor in shape [H, 1],"
              "H is the 1st dimentions of Weight after reshape"
-             "corresponding by Attr(dim).");
+             "corresponding by Attr(dim). As for Attr(dim) = 1"
+             "in conv2d layer with weight shape [M, C, K1, K2]"
+             "Weight will be reshape to [C, M*K1*Kw], U will"
+             "be in shape [C, 1].");
     AddInput("V",
-             "The weight_u tensor of spectral_norm operator, "
+             "The weight_v tensor of spectral_norm operator, "
              "This can be a 1-D tensor in shape [W, 1],"
              "W is the 2nd dimentions of Weight after reshape"
-             "corresponding by Attr(dim).");
+             "corresponding by Attr(dim). As for Attr(dim) = 1"
+             "in conv2d layer with weight shape [M, C, K1, K2]"
+             "Weight will be reshape to [C, M*K1*Kw], V will"
+             "be in shape [M*K1*K2, 1].");
     AddOutput("Out",
               "The output weight tensor of spectral_norm operator, "
               "This tensor is in same shape with Input(Weight).");
 
     AddAttr<int>("dim",
                  "dimension corresponding to number of outputs,"
-                 "default 0 for fc layer, and 1 for conv1d, conv2d, conv3d"
-                 "layers")
+                 "it should be set as 0 if Input(Weight) is the"
+                 "weight of fc layer, and should be set as 1 if"
+                 "Input(Weight) is the weight of conv layer,"
+                 "default is 0."
         .SetDefault(0);
     AddAttr<int>("power_iters",
                  "number of power iterations to calculate"
@@ -109,13 +117,13 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1e-12);
 
     AddComment(R"DOC(
-          This layer calculate the spectral normalize value of weight of
+          This layer calculates the spectral normalize value of weight of
           fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
           tensor.
 
-          Spectral normalization stabilizes the training of critis in GANs
-          (Generative Adversarial Networks). This layers rescaling weight tensor
-          wiht spectral normalize value.
+          Spectral normalization stabilizes the training of critic in GANs
+          (Generative Adversarial Networks). This layer rescaling weight tensor
+          with spectral normalize value.
 
           For spectral normalization calculations, we rescaling weight
           tensor with \sigma, while \sigma{\mathbf{W}} is
