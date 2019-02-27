@@ -621,15 +621,12 @@ class DGCOptimizer(MomentumOptimizer):
             force_cpu=True)
 
         for param_var, grad_var in param_and_grads:
-            #print("prepare  dgc_ops:", param_var.name)
             var_numel = reduce(lambda x, y: x * y, param_var.shape)
             if var_numel < 16384 or \
                 param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
                 grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
                     param_var.dtype != core.VarDesc.VarType.FP32 :
                 continue
-
-            #print("create u,v of ", param_var.name)
 
             u_var = tensor.create_global_var(
                 shape=param_var.shape,
@@ -671,10 +668,6 @@ class DGCOptimizer(MomentumOptimizer):
                 if param_var.name not in var_attr:
                     continue
 
-                #print("find param:", param_var.name, " in ", op.type)
-                #print(op_maker.kOpRoleVarAttrName(), var_attr)
-                #print(op)
-                #print(op_maker.kOpRoleVarAttrName)
                 var_attr.remove(param_var.name)
                 var_attr.remove(grad_var.name)
                 if len(var_attr) > 1:
@@ -685,8 +678,6 @@ class DGCOptimizer(MomentumOptimizer):
             clip_var = grad_var
             if self._local_grad_clip_norm is not None:
                 clip_var = self._append_clip_norm(grad_var, self._clip_norm)
-                print("clip_var name:", clip_var.name, ", grad_var name:",
-                      grad_var.name)
             self._dgc_op(param_var, clip_var, grad_var, u_var, v_var, k_var,
                          encoded_var)
 
