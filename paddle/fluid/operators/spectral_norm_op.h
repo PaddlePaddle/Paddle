@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserve.
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
@@ -73,11 +73,13 @@ static inline void CalcMatrixSigmaAndNormWeight(
   const int w = weight->dims()[1];
 
   for (int i = 0; i < power_iters; i++) {
+    // V = W^T * U / ||W^T * U||_2 
     blas.MatMul(*weight, true, *u, false, T(1), v, T(0));
     auto v_t_norm =
         v_t.square().sum().sqrt().eval().reshape(Array1(1)).broadcast(
             Array1(w));
     v_t.device(place) = v_t / (v_t_norm + v_t_norm.constant(eps));
+    // U = W^T * V / ||W^T * V||_2 
     blas.MatMul(*weight, false, *v, false, T(1), u, T(0));
     auto u_t_norm =
         u_t.square().sum().sqrt().eval().reshape(Array1(1)).broadcast(
