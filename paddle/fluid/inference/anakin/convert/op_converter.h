@@ -44,7 +44,6 @@ class AnakinOpConverter {
                  bool test_mode = false) {
     framework::OpDesc op_desc(op, nullptr);
     std::string op_type = op_desc.Type();
-    // AnakinOpConverter *it = nullptr;
     std::shared_ptr<AnakinOpConverter> it{nullptr};
 
     if (op_type == "mul") {
@@ -57,7 +56,6 @@ class AnakinOpConverter {
     }
 
     if (!it) {
-      // it = Registry<AnakinOpConverter>::Lookup(op_type);
       it = OpRegister::instance()->Get(op_type);
     }
     PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]", op_type);

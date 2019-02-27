@@ -24,10 +24,7 @@ namespace anakin {
 TEST(fc_op, test) {
   auto it = OpRegister::instance()->Get("fc");
   ASSERT_TRUE(it != nullptr);
-  // Registrar<FcOpConverter> register_fc("fc");
-  // auto fc = std::make_shared<FcOpConverter>();
 
-  return;
   std::unordered_set<std::string> parameters({"mul_y"});
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, scope);
