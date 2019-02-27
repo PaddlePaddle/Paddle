@@ -15,7 +15,6 @@
 import contextlib
 import unittest
 import numpy as np
-import sys
 
 import paddle.fluid as fluid
 from paddle.fluid import core
@@ -24,8 +23,8 @@ from test_imperative_base import new_program_scope
 
 
 class MyLayer(fluid.imperative.Layer):
-    def __init__(self):
-        super(MyLayer, self).__init__()
+    def __init__(self, name_scope):
+        super(MyLayer, self).__init__(name_scope)
 
     def forward(self, inputs):
         x = fluid.layers.relu(inputs)
@@ -50,12 +49,14 @@ class MyPyLayer(fluid.imperative.PyLayer):
 
 
 class MLP(fluid.imperative.Layer):
-    def __init__(self):
-        super(MLP, self).__init__()
-        self._fc1 = FC(3,
+    def __init__(self, name_scope):
+        super(MLP, self).__init__(name_scope)
+        self._fc1 = FC(self.full_name(),
+                       3,
                        fluid.ParamAttr(
                            initializer=fluid.initializer.Constant(value=0.1)))
-        self._fc2 = FC(4,
+        self._fc2 = FC(self.full_name(),
+                       4,
                        fluid.ParamAttr(
                            initializer=fluid.initializer.Constant(value=0.1)))
 
@@ -67,8 +68,9 @@ class MLP(fluid.imperative.Layer):
 
 
 class SimpleRNNCell(fluid.imperative.Layer):
-    def __init__(self, step_input_size, hidden_size, output_size, param_attr):
-        super(SimpleRNNCell, self).__init__()
+    def __init__(self, name_scope, step_input_size, hidden_size, output_size,
+                 param_attr):
+        super(SimpleRNNCell, self).__init__(name_scope)
         self.step_input_size = step_input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
@@ -158,10 +160,11 @@ class SimpleRNNCell(fluid.imperative.Layer):
 
 
 class SimpleRNN(fluid.imperative.Layer):
-    def __init__(self):
-        super(SimpleRNN, self).__init__()
+    def __init__(self, name_scope):
+        super(SimpleRNN, self).__init__(name_scope)
         self.seq_len = 4
         self._cell = SimpleRNNCell(
+            self.full_name(),
             3,
             3,
             3,
@@ -205,7 +208,7 @@ class TestImperative(unittest.TestCase):
         with fluid.imperative.guard():
             cl = core.Layer()
             cl.forward([])
-            l = fluid.imperative.Layer()
+            l = fluid.imperative.Layer("l")
             self.assertRaises(NotImplementedError, l.forward, [])
 
     def test_pylayer_func_id(self):
@@ -281,7 +284,7 @@ class TestImperative(unittest.TestCase):
         np_inp = np.array([1.0, 2.0, -1.0], dtype=np.float32)
         with fluid.imperative.guard():
             var_inp = fluid.imperative.base.to_variable(np_inp)
-            l = MyLayer()
+            l = MyLayer("my_layer")
             x = l(var_inp)[0]
             self.assertIsNotNone(x)
             dy_out = x._numpy()
@@ -291,7 +294,7 @@ class TestImperative(unittest.TestCase):
         with new_program_scope():
             inp = fluid.layers.data(
                 name="inp", shape=[3], append_batch_size=False)
-            l = MyLayer()
+            l = MyLayer("my_layer")
             x = l(inp)[0]
             param_grads = fluid.backward.append_backward(
                 x, parameter_list=[l._x_for_debug.name])[0]
@@ -309,7 +312,7 @@ class TestImperative(unittest.TestCase):
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
         with fluid.imperative.guard():
             var_inp = fluid.imperative.base.to_variable(np_inp)
-            mlp = MLP()
+            mlp = MLP("mlp")
             out = mlp(var_inp)
             dy_out = out._numpy()
             out._backward()
@@ -318,7 +321,7 @@ class TestImperative(unittest.TestCase):
         with new_program_scope():
             inp = fluid.layers.data(
                 name="inp", shape=[2, 2], append_batch_size=False)
-            mlp = MLP()
+            mlp = MLP("mlp")
             out = mlp(inp)
             param_grads = fluid.backward.append_backward(
                 out, parameter_list=[mlp._fc1._w.name])[0]
@@ -334,10 +337,10 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.allclose(dy_grad, static_grad))
 
         params = mlp.parameters(True)
-        self.assertEqual("FC_0.w_0", params[0].name)
-        self.assertEqual("FC_0.b_0", params[1].name)
-        self.assertEqual("FC_1.w_0", params[2].name)
-        self.assertEqual("FC_1.b_0", params[3].name)
+        self.assertEqual("mlp/MLP_0/FC_0_0.w_0", params[0].name)
+        self.assertEqual("mlp/MLP_0/FC_0_0.b_0", params[1].name)
+        self.assertEqual("mlp/MLP_0/FC_1_0.w_0", params[2].name)
+        self.assertEqual("mlp/MLP_0/FC_1_0.b_0", params[3].name)
         self.assertEqual(len(params), 4)
 
         sublayers = mlp.sublayers(True)
@@ -353,7 +356,7 @@ class TestImperative(unittest.TestCase):
         with fluid.imperative.guard():
             var_inp = fluid.imperative.base.to_variable(np_inp)
             var_inp = fluid.layers.reshape(var_inp, shape=[1, 4, 3])
-            simple_rnn = SimpleRNN()
+            simple_rnn = SimpleRNN("simple_rnn")
             outs, pre_hiddens = simple_rnn.forward(var_inp)
             dy_out = outs[3]._numpy()
             outs[3]._backward()
@@ -364,7 +367,7 @@ class TestImperative(unittest.TestCase):
         with new_program_scope():
             inp = fluid.layers.data(
                 name="inp", shape=[1, 4, 3], append_batch_size=False)
-            simple_rnn = SimpleRNN()
+            simple_rnn = SimpleRNN("simple_rnn")
             outs, pre_hiddens = simple_rnn(inp)
             param_grads = fluid.backward.append_backward(outs[3])
             exe = fluid.Executor(fluid.CPUPlace())
