@@ -51,7 +51,7 @@ class SimpleLSTMRNN(fluid.imperative.Layer):
         self.mask_array = []
 
         for i in range(self._num_layers):
-            weight_1 = self._helper.create_parameter(
+            weight_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
                     initializer=fluid.initializer.UniformInitializer(
                         low=-self._init_scale, high=self._init_scale)),
@@ -60,7 +60,7 @@ class SimpleLSTMRNN(fluid.imperative.Layer):
                 default_initializer=fluid.initializer.UniformInitializer(
                     low=-self._init_scale, high=self._init_scale))
             self.weight_1_arr.append(weight_1)
-            bias_1 = self._helper.create_parameter(
+            bias_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
                     initializer=fluid.initializer.UniformInitializer(
                         low=-self._init_scale, high=self._init_scale)),
@@ -140,14 +140,13 @@ class PtbModel(fluid.imperative.Layer):
                  num_steps=20,
                  init_scale=0.1,
                  dropout=None):
-        super(PtbModel, self).__init__(name_scope)
+        super(PtbModel, self).__init__(name_scope, act="tanh")
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
         self.num_layers = num_layers
         self.num_steps = num_steps
         self.dropout = dropout
-        self._helper.act = "tanh"
         self.simple_lstm_rnn = SimpleLSTMRNN(
             self.full_name(),
             hidden_size,
@@ -164,13 +163,13 @@ class PtbModel(fluid.imperative.Layer):
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale)))
-        self.softmax_weight = self._helper.create_parameter(
+        self.softmax_weight = self.create_parameter(
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype="float32",
             default_initializer=fluid.initializer.UniformInitializer(
                 low=-self.init_scale, high=self.init_scale))
-        self.softmax_bias = self._helper.create_parameter(
+        self.softmax_bias = self.create_parameter(
             attr=fluid.ParamAttr(),
             shape=[self.vocab_size],
             dtype="float32",

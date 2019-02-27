@@ -19,7 +19,9 @@ import numpy as np
 import collections
 from .. import unique_name
 from paddle.fluid import core
+from ..layer_helper import LayerHelper
 from paddle.fluid import framework
+
 __all__ = ['Layer', 'PyLayer']
 
 
@@ -34,16 +36,30 @@ class Layer(core.Layer):
         dtype: data type for the variables in the layer.
     """
 
-    def __init__(self, name_scope, dtype=core.VarDesc.VarType.FP32):
+    def __init__(self,
+                 name_scope,
+                 dtype=core.VarDesc.VarType.FP32,
+                 act=None,
+                 use_cudnn=None,
+                 use_mkldnn=None,
+                 param_attr=None,
+                 bias_attr=None,
+                 **kwargs):
         self._full_name = unique_name.generate(name_scope + "/" +
                                                self.__class__.__name__)
         self._built = False
         self._dtype = dtype
         self._parameters = collections.OrderedDict()
         self._sub_layers = collections.OrderedDict()
-        from ..layer_helper import LayerHelper
+
         self._helper = LayerHelper(
-            layer_type='base_layer', name=self._full_name, imperative_mode=True)
+            layer_type=self._full_name,
+            act=act,
+            use_cudnn=use_cudnn,
+            use_mkldnn=use_mkldnn,
+            param_attr=param_attr,
+            bias_attr=bias_attr,
+            **kwargs)
 
     def full_name(self):
         """Full name for this layers.
@@ -53,6 +69,44 @@ class Layer(core.Layer):
         Returns full name of this name.
         """
         return self._full_name
+
+    @property
+    def param_attr(self):
+        return self._helper.param_attr
+
+    @property
+    def bias_attr(self):
+        return self._helper.bias_attr
+
+    def create_parameter(self,
+                         attr,
+                         shape,
+                         dtype,
+                         is_bias=False,
+                         default_initializer=None):
+        return self._helper.create_parameter(attr, shape, dtype, is_bias,
+                                             default_initializer)
+
+    def get_parameter(self, name):
+        return self._helper.get_parameter(name)
+
+    def create_variable_for_type_inference(self, dtype, stop_gradient=False):
+        return self._helper.create_variable_for_type_inference(dtype,
+                                                               stop_gradient)
+
+    def create_variable(self, *args, **kwargs):
+        return self._helper.main_program.current_block().create_var(*args,
+                                                                    **kwargs)
+
+    def append_bias_op(self, input_var, dim_start=1, dim_end=None):
+        return self._helper.append_bias_op(input_var, dim_start, dim_end)
+
+    def append_activation(self, input_var):
+        return self._helper.append_activation(input_var)
+
+    def append_op(self, *args, **kwargs):
+        return self._helper.main_program.current_block().append_op(*args,
+                                                                   **kwargs)
 
     def parameters(self, include_sublayers=True):
         """Returns a list of Parameters from current and sub-layers.
