@@ -235,17 +235,12 @@ class PYBIND11_HIDDEN OpBase {
         backward_hooks_() {}
 
   virtual ~OpBase() {
+    // TODO(minqiyang): remove op_desc from block_desc in tracer
+    //
     // reset all output vars' pre op
     for (auto iter : output_vars_) {
       for (VarBase* var : iter.second) {
         var->ResetPreOp(this);
-      }
-    }
-
-    // remove op desc from block desc
-    if (op_desc_) {
-      if (block_) {
-        block_->RemoveOpInternal(op_desc_);
       }
     }
 
