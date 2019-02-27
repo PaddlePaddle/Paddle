@@ -55,7 +55,7 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   std::vector<FetchOpHandle *> fetch_ops;
 
   for (auto &fetch_var_name : fetch_tensors) {
-    for (auto &var_map : graph_->Get<details::GraphVars>("vars")) {
+    for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
         fetched_vars[fetch_var_name].push_back(*it->second.rbegin());
