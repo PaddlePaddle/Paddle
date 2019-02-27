@@ -74,9 +74,7 @@ void FuseAdamOpPass::FuseAdamOps(
   // NOTE: fused_var is only exist in scope, so the graph doesn't have fused_var
   // node.
 
-  // Add reset_dim, only fuse the scale ops
   VLOG(10) << "Insert adam to graph ";
-  // Add fused scale
   OpDesc adam_desc(adam_ops[0]->Op()->Block());
   adam_desc.SetType("adam");
   adam_desc.SetInput("Param", {fused_vars_name.at("Param")});
@@ -97,7 +95,6 @@ void FuseAdamOpPass::FuseAdamOps(
   adam_desc.SetAttr("lazy_mode", lazy_mode);
   adam_desc.SetAttr("min_row_size_to_use_multithread",
                     min_row_size_to_use_multithread);
-  // NOTE: multi_devices_pass requires that every op should have a role.
   adam_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
 
   // TODO(zcd): Prune LearningRate Node's output
@@ -168,7 +165,6 @@ void FuseAdamOpPass::FuseScaleOps(const std::vector<std::string> &beta_name,
   scale_desc.SetAttr("scale", scale);
   scale_desc.SetAttr("bias", bias);
   scale_desc.SetAttr("bias_after_scale", bias_after_scale);
-  // NOTE: multi_devices_pass requires that every op should have a role.
   scale_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
   auto scale_node = graph->CreateOpNode(&scale_desc);
 

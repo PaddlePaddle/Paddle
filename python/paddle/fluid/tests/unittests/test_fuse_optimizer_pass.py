@@ -75,7 +75,7 @@ class TestFuseAdamOps(TestParallelExecutorBase):
         label = np.ones(shape=[32, 1], dtype='int64')
         return img, label
 
-    def _compare_fuse_all_reduce_ops(self,
+    def _compare_fused_optimizer_ops(self,
                                      model,
                                      use_cuda,
                                      random_data=True,
@@ -89,7 +89,7 @@ class TestFuseAdamOps(TestParallelExecutorBase):
                        "label": label},
             use_cuda=use_cuda,
             fuse_all_optimizer_ops=False,
-            memory_opt=False,
+            memory_opt=False,  # avoid the gradient's name changed in Python side.
             optimizer=optimizer)
         fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
             model,
@@ -97,7 +97,7 @@ class TestFuseAdamOps(TestParallelExecutorBase):
                        "label": label},
             use_cuda=use_cuda,
             fuse_all_optimizer_ops=True,
-            memory_opt=False,
+            memory_opt=False,  # avoid the gradient's name changed in Python side.
             optimizer=optimizer)
 
         for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
@@ -106,13 +106,12 @@ class TestFuseAdamOps(TestParallelExecutorBase):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
 
     def test_simple_fc_with_fuse_op(self):
-        self._compare_fuse_all_reduce_ops(simple_fc_net, True)
-        self._compare_fuse_all_reduce_ops(simple_fc_net, False)
+        self._compare_fused_optimizer_ops(simple_fc_net, True)
+        self._compare_fused_optimizer_ops(simple_fc_net, False)
 
     def test_batchnorm_fc_with_fuse_op(self):
-        pass
-        # self._compare_fuse_all_reduce_ops(fc_with_batchnorm, True)
-        # self._compare_fuse_all_reduce_ops(fc_with_batchnorm, False)
+        # self._compare_fused_optimizer_ops(fc_with_batchnorm, True)
+        self._compare_fused_optimizer_ops(fc_with_batchnorm, False)
 
 
 class TestFuseSGDOps(TestFuseAdamOps):
@@ -120,15 +119,15 @@ class TestFuseSGDOps(TestFuseAdamOps):
         return fluid.optimizer.SGD(learning_rate=learning_rate)
 
     def test_simple_fc_with_fuse_op(self):
-        self._compare_fuse_all_reduce_ops(
+        self._compare_fused_optimizer_ops(
             simple_fc_net, True, optimizer=self.sgd_optimizer)
-        self._compare_fuse_all_reduce_ops(
+        self._compare_fused_optimizer_ops(
             simple_fc_net, False, optimizer=self.sgd_optimizer)
 
     def test_batchnorm_fc_with_fuse_op(self):
-        self._compare_fuse_all_reduce_ops(
+        self._compare_fused_optimizer_ops(
             fc_with_batchnorm, True, optimizer=self.sgd_optimizer)
-        self._compare_fuse_all_reduce_ops(
+        self._compare_fused_optimizer_ops(
             fc_with_batchnorm, False, optimizer=self.sgd_optimizer)
 
 

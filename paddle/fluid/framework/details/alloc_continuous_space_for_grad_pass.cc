@@ -64,7 +64,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     }
 
     // Note: Sort the parameters and gradient variables according
-    // to parameters' name to make the order of variables consistently with
+    // to parameters' info to make the order of variables consistently with
     // other passes.
     SortParamsAndGrads(vars, &params_grads);
 
@@ -87,16 +87,22 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       PADDLE_ENFORCE_EQ(ele_dtype, dtype);
     }
 
-    // Create the fused variable name.
+    // Create a FusedVars Set to avoid duplicating names for fused_var in other
+    // pass.
     if (!result.Has(kFusedVars)) {
       result.Set(kFusedVars, new FusedVars);
     }
+    if (!result.Has(kFusedGrads)) {
+      result.Set(kFusedGrads, new FusedGrads);
+    }
+    // the fused_var_name should be unique.
     const std::string prefix(kFusedVarNamePrefix);
-    // The fused_var_name should not exist in scope.
     auto fused_var_name = prefix + "@GRAD@" + params_grads.begin()->second;
+    result.Get<FusedGrads>(kFusedGrads) = fused_var_name;
     auto &fused_var_set = result.Get<FusedVars>(kFusedVars);
     PADDLE_ENFORCE_EQ(fused_var_set.count(fused_var_name), 0);
     fused_var_set.insert(fused_var_name);
+
     InitFusedVarsAndAllocSpaceForVars(places, local_scopes, vars,
                                       fused_var_name, params_grads);
 
@@ -173,7 +179,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       const std::unordered_map<std::string, ir::Node *> &vars,
       const std::string &fused_var_name,
       const ParamsAndGrads &params_grads) const {
-    // Init Gradients and FusedVars
+    // Init Gradients and FusedVars.
     VLOG(10) << "Init FusedVars.";
     // Alloc parameters and auxiliary vars in the respective scope.
     size_t idx = local_scopes.size();
@@ -200,7 +206,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       }
     }
 
-    //
+    // Alloc continuous space for vars.
     std::vector<std::string> grads_name;
     std::vector<std::string> params_name;
     grads_name.reserve(params_grads.size());

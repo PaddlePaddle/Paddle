@@ -64,6 +64,7 @@ std::unique_ptr<ir::Graph> FuseOptimizerOpPass::ApplyImpl(
   fused_vars_name.reserve(aux_var_names.size() + 1);
   auto &fused_var_set = result.Get<FusedVars>(kFusedVars);
   const std::string prefix(kFusedVarNamePrefix);
+  // NOTE: the fused_var_name should be unique.
   for (auto &var_name : aux_var_names) {
     auto fused_var_name = prefix + "_" + fuse_op_type + "_" + var_name + "_" +
                           aux_var_set[var_name][0];
@@ -75,7 +76,12 @@ std::unique_ptr<ir::Graph> FuseOptimizerOpPass::ApplyImpl(
 
   // Step 3: Get the fused Gradient's name
   auto &params_grads = result.Get<ParamsAndGrads>(kParamsAndGrads);
-  auto fused_grad = prefix + "@GRAD@" + params_grads.begin()->second;
+  if (!result.Has(kFusedGrads)) {
+    PADDLE_THROW(
+        "The alloc_continuous_space_for_grad_pass should be called before this "
+        "pass.");
+  }
+  auto fused_grad = result.Get<FusedGrads>(kFusedGrads);
   auto &fused_vars = result.Get<FusedVars>(kFusedVars);
   auto iter = std::find(fused_vars.begin(), fused_vars.end(), fused_grad);
   VLOG(10) << fused_grad;
@@ -87,7 +93,7 @@ std::unique_ptr<ir::Graph> FuseOptimizerOpPass::ApplyImpl(
   // to parameters' name to make variables' name correspond correctly.
   PADDLE_ENFORCE(result.Has(kParamsAndGrads), "Does't find kParamsAndGrads.");
   PADDLE_ENFORCE_EQ(params_grads.size(), aux_var_set.begin()->second.size());
-  SortVarsName(params_grads, &aux_var_set, &opt_ops);
+  SortParametersAndAuxVars(params_grads, &aux_var_set, &opt_ops);
 
   // Step 5: Alloc continuous space for Parameters and AuxiliaryVar(e.g.
   // Moment1, Moment2, Beta1Pow, Beta2Pow) of all the optimizer ops separately.
@@ -143,7 +149,7 @@ void FuseOptimizerOpPass::InitFusedVarsAndAllocSpaceForVars(
   }
 }
 
-void FuseOptimizerOpPass::SortVarsName(
+void FuseOptimizerOpPass::SortParametersAndAuxVars(
     const std::vector<std::pair<std::string, std::string>> &params_grads,
     std::unordered_map<std::string, std::vector<std::string>> *aux_vars_set,
     std::vector<ir::Node *> *ops) const {

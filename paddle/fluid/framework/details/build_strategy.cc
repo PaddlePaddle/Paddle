@@ -58,13 +58,13 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("sequential_execution_pass");
     }
 
-    if (strategy.fuse_parameters_pass_) {
+    if (strategy_.fuse_parameters_pass_) {
       VLOG(10) << "Add fuse_parameters_pass";
       AppendPass("fuse_parameters_pass");
     }
 
     // Add op fusion.
-    if (strategy.fuse_relu_depthwise_conv_) {
+    if (strategy_.fuse_relu_depthwise_conv_) {
       VLOG(10) << "Add fuse_relu_depthwise_conv_pass";
       AppendPass("fuse_relu_depthwise_conv_pass");
     }
@@ -81,13 +81,13 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("inplace_pass");
     }
 
-    if (strategy.fuse_elewise_add_act_ops_) {
+    if (strategy_.fuse_elewise_add_act_ops_) {
       VLOG(10) << "Add fuse_elewise_add_act_pass";
       AppendPass("fuse_elewise_add_act_pass");
     }
 
-    if (strategy.fuse_all_optimizer_ops_) {
-      if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
+    if (strategy_.fuse_all_optimizer_ops_) {
+      if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
         PADDLE_THROW(
             "Currently, fuse_all_optimizer_ops only works under AllReduce "
             "mode.");
@@ -104,10 +104,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 
     // Add a graph viz pass to record a graph.
-    if (!strategy.debug_graphviz_path_.empty()) {
+    if (!strategy_.debug_graphviz_path_.empty()) {
       auto viz_pass = AppendPass("graph_viz_pass");
       const std::string graph_path = string::Sprintf(
-          "%s%s", strategy.debug_graphviz_path_.c_str(), "_fused_graph");
+          "%s%s", strategy_.debug_graphviz_path_.c_str(), "_fused_graph");
       viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
     }
 
@@ -127,12 +127,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // the de-fact IR, any reuse on Graph is meaningless.
     // A side-effect of that, memory optimize cannot forsee the fetched vars
     // , so fetchlist should be set persistable before call the Run interface.
-    if (strategy.memory_optimize_) {
+    if (strategy_.memory_optimize_) {
       VLOG(10) << "Add memory_optimize_pass";
       AppendPass("memory_optimize_pass");
     }
 
-    AppendMultiDevPass(strategy);
+    AppendMultiDevPass();
 
     // Add a graph print pass to record a graph with device info.
     if (!strategy_.debug_graphviz_path_.empty()) {
@@ -149,7 +149,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // Verify that the graph is correct for multi-device executor.
     AppendPass("multi_devices_check_pass");
 
-    if (SeqOnlyAllReduceOps(strategy)) {
+    if (SeqOnlyAllReduceOps(strategy_)) {
       VLOG(10) << "Add all_reduce_deps_pass";
       AppendPass("all_reduce_deps_pass");
     }
@@ -161,17 +161,17 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   }
 
   // Convert graph to run on multi-devices.
-  void AppendMultiDevPass(const BuildStrategy &strategy) {
+  void AppendMultiDevPass() {
     ir::Pass *multi_devices_pass = nullptr;
     if (strategy_.is_distribution_) {
       VLOG(10) << "Add dist_multi_devices_pass";
       multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
     } else {
-      if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
+      if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
         VLOG(10) << "Add all_reduce_mode_multi_devices_pass";
         multi_devices_pass =
             AppendPass("all_reduce_mode_multi_devices_pass").get();
-      } else if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
+      } else if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
         VLOG(10) << "Add reduce_mode_multi_devices_pass";
         multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
       } else {

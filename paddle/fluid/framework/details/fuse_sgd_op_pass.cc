@@ -46,7 +46,6 @@ void FuseSgdOpPass::FuseSgdOps(
 
   int op_role = boost::get<int>(
       sgd_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
-  // Add reset_dim, only fuse the scale ops
   VLOG(10) << "Insert sgd to graph ";
   // Add fused scale
   OpDesc Sgd_desc(sgd_ops[0]->Op()->Block());

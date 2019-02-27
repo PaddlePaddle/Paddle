@@ -32,7 +32,7 @@ class FuseOptimizerOpPass : public ir::Pass {
       std::unique_ptr<ir::Graph> graph) const override;
 
  protected:
-  virtual void SortVarsName(
+  virtual void SortParametersAndAuxVars(
       const std::vector<std::pair<std::string, std::string>> &params_grads,
       std::unordered_map<std::string, std::vector<std::string>> *aux_var_set,
       std::vector<ir::Node *> *ops) const;
