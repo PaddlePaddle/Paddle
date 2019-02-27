@@ -15,6 +15,8 @@
 #include "paddle/fluid/inference/anakin/engine.h"
 #include <algorithm>
 #include <cstring>
+#include <map>
+#include <utility>
 #include "paddle/fluid/framework/ddim.h"
 
 using anakin::Precision;

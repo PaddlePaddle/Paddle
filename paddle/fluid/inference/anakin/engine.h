@@ -15,8 +15,8 @@
 #pragma once
 
 #include <algorithm>
+#include <map>
 #include <memory>
-#include <set>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -47,7 +47,7 @@ template <typename TargetT, ::anakin::Precision PrecisionType,
           ::anakin::OpRunType RunType = ::anakin::OpRunType::ASYNC>
 class AnakinEngine {
  public:
-  AnakinEngine(bool need_summary = false);
+  explicit AnakinEngine(bool need_summary = false);
   ~AnakinEngine();
   void InitGraph();
   void SetInputShape(const std::string &name, std::vector<int> shape);

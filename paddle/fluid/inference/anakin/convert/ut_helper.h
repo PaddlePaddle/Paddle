@@ -14,8 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -79,7 +81,7 @@ class AnakinConvertValidation {
   AnakinConvertValidation() = delete;
 
   AnakinConvertValidation(const std::unordered_set<std::string>& parameters,
-                          framework::Scope& scope)
+                          const framework::Scope& scope)
       : parameters_(parameters), scope_(scope), place_(0) {
     PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_), 0);
     engine_.reset(new AnakinEngine<NV, Precision::FP32>(true));
@@ -123,9 +125,8 @@ class AnakinConvertValidation {
                                                                         input);
       auto t_shape = framework::vectorize2int(t.dims());
       engine_->SetInputShape(input, t_shape);
-      engine_->Optimize();
-      engine_->InitGraph();
     }
+    engine_->Optimize();
   }
 
   // We use the set 'neglected_output' here, because some Ops like batch norm,
@@ -141,7 +142,7 @@ class AnakinConvertValidation {
       if (neglected_output.count(output)) continue;
       std::vector<float> fluid_out;
       auto* var = scope_.FindVar(output);
-      auto tensor = var->GetMutable<framework::LoDTensor>();
+      auto* tensor = var->GetMutable<framework::LoDTensor>();
       framework::TensorToVector(*tensor, ctx, &fluid_out);
 
       size_t fluid_out_size = fluid_out.size();

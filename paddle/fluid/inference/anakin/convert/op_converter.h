@@ -14,7 +14,9 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include "framework/core/types.h"
 #include "paddle/fluid/framework/block_desc.h"
@@ -37,7 +39,7 @@ class AnakinOpConverter {
   AnakinOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
-                          const framework::Scope &scope, bool test_mode){};
+                          const framework::Scope &scope, bool test_mode) {}
   void ConvertOp(const framework::proto::OpDesc &op,
                  const std::unordered_set<std::string> &parameters,
                  const framework::Scope &scope, AnakinNvEngine *engine,

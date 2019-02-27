@@ -86,7 +86,7 @@ void TestAnakinEngine::SetUp() {
                cudaMemcpyDeviceToHost);
     LOG(INFO) << "output value: " << y_data_cpu[0] << ", " << y_data_cpu[1];
   }
-
+}
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
