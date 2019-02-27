@@ -681,12 +681,6 @@ class DGCOptimizer(MomentumOptimizer):
             self._dgc_op(param_var, clip_var, grad_var, u_var, v_var, k_var,
                          encoded_var)
 
-        # Note: don't delete this
-        print("set DGC rampup_begin_step:", self._rampup_begin_step,
-              ", sparsity:", self._sparsity, ", rampup_step:",
-              self._rampup_step, ", local_clip_norm:",
-              self._local_grad_clip_norm, ", clip_norm:", self._clip_norm)
-
     def _is_the_backward_op(self, op):
         op_maker = core.op_proto_and_checker_maker
         backward = core.op_proto_and_checker_maker.OpRole.Backward

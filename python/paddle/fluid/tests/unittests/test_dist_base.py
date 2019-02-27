@@ -33,7 +33,7 @@ DEFAULT_BATCH_SIZE = 2
 
 
 class TestDistRunnerBase(object):
-    def get_model(self, batch_size=DEFAULT_BATCH_SIZE, lr=0.1):
+    def get_model(self, batch_size=DEFAULT_BATCH_SIZE, lr=0.1, use_dgc=False):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 
@@ -77,7 +77,7 @@ class TestDistRunnerBase(object):
     def run_trainer(self, args):
         self.lr = args.lr
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
-            self.get_model(batch_size=args.batch_size)
+            self.get_model(batch_size=args.batch_size, use_dgc=args.use_dgc)
 
         if args.mem_opt:
             fluid.memory_optimize(fluid.default_main_program(), skip_grads=True)
@@ -187,6 +187,7 @@ def runtime_main(test_class):
     parser.add_argument('--sync_mode', action='store_true')
     parser.add_argument('--mem_opt', action='store_true')
     parser.add_argument('--use_cuda', action='store_true')
+    parser.add_argument('--use_dgc', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument('--dc_asgd', action='store_true')
     parser.add_argument(
@@ -217,6 +218,7 @@ class TestDistBase(unittest.TestCase):
     def _after_setup_config(self):
         if self._enforce_place == "CPU":
             self.__use_cuda = False
+            self._use_dgc = False
         elif self._enforce_place == "GPU":
             self.__use_cuda = True
         else:
@@ -224,6 +226,10 @@ class TestDistBase(unittest.TestCase):
                 self.__use_cuda = True
             else:
                 self.__use_cuda = False
+                self._use_dgc = False
+
+        if self._use_reduce:
+            assert not self._use_dgc
 
     def setUp(self):
         self._trainers = 2
@@ -240,6 +246,7 @@ class TestDistBase(unittest.TestCase):
         self._use_reader_alloc = True
         self._nccl2_mode = False
         self._lr = 0.001
+        self._use_dgc = False
         self._setup_config()
         self._after_setup_config()
 
@@ -465,6 +472,10 @@ class TestDistBase(unittest.TestCase):
         else:
             env0 = {'CPU_NUM': '1'}
             env1 = {'CPU_NUM': '1'}
+
+        if self._use_dgc:
+            tr0_cmd += " --use_dgc"
+            tr1_cmd += " --use_dgc"
 
         env0.update(envs)
         env1.update(envs)
