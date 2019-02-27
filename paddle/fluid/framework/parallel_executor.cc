@@ -254,14 +254,16 @@ ParallelExecutor::ParallelExecutor(
     PADDLE_THROW("Not compiled with CUDA");
 #endif
   }
-  // broadcast parameters from device 0 to othats:
-  // 1. multiple devices for one process
-  // 2. one devices for one process
-
-  if ((member_->local_scopes_.size() != 1 && local_scopes.empty()) ||
-      build_strategy.num_trainers_ > 1) {
+  // broadcast parameters from device 0 to others:
+  // 1. multiple trainer instances
+  // 2. one trainer with multiple devices
+  if (build_strategy.num_trainers_ > 1) {
     BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
+  } else {
+    if (member_->local_scopes_.size() > 1UL)
+      BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
   }
+
 // Startup Program has been run. All local scopes has correct parameters.
 
 // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
