@@ -25,9 +25,7 @@ inline float get_period_sparcity(const std::vector<float>& sparsity,
                                  float cur_step, float rampup_steps) {
   PADDLE_ENFORCE(static_cast<int>(cur_step) >= 0);
 
-  float rate = cur_step / rampup_steps;
-
-  size_t idx = static_cast<int>(rate / 0.2);
+  size_t idx = static_cast<int>(cur_step * sparsity.size() / rampup_steps);
   if (idx >= sparsity.size()) {
     return 0.999;
   }
@@ -67,6 +65,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
     float ratio =
         1 - get_period_sparcity(sparsity, static_cast<float>(*current_step),
                                 rampup_step);
+    PADDLE_ENFORCE(ratio > 0.0 && ratio < 1.0);
     int k = static_cast<int>(g->numel() * ratio);
 
     VLOG(10) << "m:" << m << ", use_nesterov:" << use_nesterov

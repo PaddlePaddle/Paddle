@@ -149,6 +149,7 @@ package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + 
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 if '${WITH_GPU}' == 'ON' and not '${WIN32}':
     shutil.copy('${DGC_LIBRARIES}', libs_path)
+    package_data['paddle.libs'] += ['libdgc.so']
 
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)
