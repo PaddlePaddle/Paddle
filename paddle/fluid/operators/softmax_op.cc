@@ -37,6 +37,13 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SoftmaxOp should not be null.");
 
+    auto dim_x = ctx->GetInputDim("X");
+    auto rank_x = dim_x.size();
+    auto axis = ctx->Attrs().Get<int>("axis");
+    PADDLE_ENFORCE(axis >= -1 && axis < rank_x,
+                   "Attr(axis) value should larger equal then -1"
+                   "and less then the rank of Input(X)");
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -80,6 +87,10 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input tensor of softmax, "
              "whose last dimension is the input_feature_dimensions.");
     AddOutput("Out", "The normalized values with the same shape as X.");
+    AddAttr<int>("axis",
+                 "The dimension of Input(x) to perform softmax,"
+                 "default -1 for last dimension")
+        .SetDefault(-1);
     AddAttr<bool>(
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")

@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/fluid/operators/transpose_op.h"
 
 namespace paddle {
 namespace operators {
@@ -22,18 +24,58 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
+static inline void TransposeAxisToEnd(const Tensor& x, const Tensor& out,
+                                      Tensor* x_trans, Tensor* out_trans,
+                                      const int axis, std::vector<int> perm,
+                                      const framework::ExecutionContext& ctx) {
+  auto dim_x = x.dims();
+  int rank = dim_x.size();
+
+  if (axis == -1 || axis == rank - 1) {
+    *x_trans = x;
+    *out_trans = out;
+    return;
+  }
+
+  auto& dev_ctx = ctx.template device_context<DeviceContext>();
+  std::vector<int> shape;
+  for (int i = 0; i < rank - 1; i++) {
+    if (i == axis) {
+      perm.push_back(rank - 1);
+      shape.push_back(dim_x[rank - 1]);
+    } else {
+      perm.push_back(i);
+      shape.push_back(dim_x[i]);
+    }
+  }
+  perm.push_back(axis);
+  shape.push_back(dim_x[axis]);
+
+  x_trans->mutable_data<T>(framework::make_ddim(shape), ctx.GetPlace());
+  out_trans->mutable_data<T>(framework::make_ddim(shape), ctx.GetPlace());
+  TransCompute<DeviceContext, T>(rank, dev_ctx, x, x_trans, perm);
+  TransCompute<DeviceContext, T>(rank, dev_ctx, out, out_trans, perm);
+}
+
+template <typename DeviceContext, typename T>
 class SoftmaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<Tensor>("X");
     auto* Out = context.Output<Tensor>("Out");
+    const int axis = context.Attr<int>("axis");
 
     // allocate memory on device.
     Out->mutable_data<T>(context.GetPlace());
 
+    Tensor X_trans, Out_trans;
+    std::vector<int> perm;
+    TransposeAxisToEnd<DeviceContext, T>(*X, *Out, &X_trans, &Out_trans, axis,
+                                         perm, context);
+
     int rank = X->dims().size();
-    Tensor X_2d = framework::ReshapeToMatrix(*X, rank - 1);
-    Tensor Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
+    Tensor X_2d = framework::ReshapeToMatrix(X_trans, rank - 1);
+    Tensor Out_2d = framework::ReshapeToMatrix(Out_trans, rank - 1);
 
 #ifdef PADDLE_ON_INFERENCE
     math::SoftmaxFunctor<DeviceContext, T, true>()(
@@ -42,6 +84,11 @@ class SoftmaxKernel : public framework::OpKernel<T> {
     math::SoftmaxFunctor<DeviceContext, T, false>()(
         context.template device_context<DeviceContext>(), &X_2d, &Out_2d);
 #endif
+
+    if (axis != -1 && axis != rank - 1) {
+      auto& dev_ctx = context.template device_context<DeviceContext>();
+      TransCompute<DeviceContext, T>(rank, dev_ctx, Out_trans, Out, perm);
+    }
   }
 };
 
