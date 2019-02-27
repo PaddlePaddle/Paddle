@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
+#include "glog/logging.h"
+
 namespace paddle {
 namespace platform {
 
@@ -322,32 +324,21 @@ CUDADeviceContext::~CUDADeviceContext() {
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const {
-  /*
-auto& allocator =
-    DeviceTemporaryAllocator::Instance().Get<CUDADeviceContext>(*this);
-allocator.Release([this]() {
-  PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
-  PADDLE_ENFORCE(cudaGetLastError());
-});
-*/
   cudaError_t e_sync = cudaStreamSynchronize(stream_);
   if (e_sync != 0) {
-    VLOG(10) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
+    LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync)
+               << " errno:" << e_sync;
   }
 
   cudaError_t e_get = cudaGetLastError();
   if (e_get != 0) {
-    VLOG(10) << "cudaGetLastError  " << cudaGetErrorString(e_get)
-             << " errno:" << e_get;
-    exit(-1);
+    LOG(FATAL) << "cudaGetLastError  " << cudaGetErrorString(e_get)
+               << " errno:" << e_get;
   }
 
   auto& allocator =
       DeviceTemporaryAllocator::Instance().Get<CUDADeviceContext>(*this);
-  allocator.Release([this]() {
-    PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
-    PADDLE_ENFORCE(cudaGetLastError());
-  });
+  allocator.Release([this]() {});
 }
 
 int CUDADeviceContext::GetComputeCapability() const {

@@ -17,7 +17,6 @@ limitations under the License. */
 #include "dgc/dgc.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-//#include "paddle/fluid/operators/k_select/k_select.h"
 
 namespace paddle {
 namespace operators {
@@ -114,9 +113,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
     T* v_out_data = v_out->mutable_data<T>(ctx.GetPlace());
     T* u_out_data = u_out->mutable_data<T>(ctx.GetPlace());
     T* encode_grad_out_data = encode_grad_out->mutable_data<T>(
-       framework::DDim{2 * k}, ctx.GetPlace());
-    // PADDLE_ENFORCE(encode_grad_out->numel() >= (2 * k));
-    // T* encode_grad_out_data = encode_grad_out->mutable_data<T>(ctx.GetPlace());
+        framework::DDim{2 * k}, ctx.GetPlace());
 
     int buf_size = paddle::communication::dgc::get_buffer_size(k);
     auto& allocator = platform::DeviceTemporaryAllocator::Instance().Get(
@@ -128,24 +125,16 @@ class DGCOpKernel : public framework::OpKernel<T> {
              << ", buf:" << buf
              << ", encode_grad_out_data:" << encode_grad_out_data;
 
-    /*
-    PADDLE_ENFORCE(k_select(v_out_data, static_cast<int>(v_out->numel()),
-                            static_cast<void*>(encode_grad_out_data), buf, k, 0,
-                            dev_ctx.stream(), u_out_data));
-    */
-    ///*
     if (!paddle::communication::dgc::k_select(
             static_cast<void*>(encode_grad_out_data), k, v_out_data,
             static_cast<int>(v_out->numel()), buf, dev_ctx.stream(),
             u_out_data)) {
       LOG(FATAL) << "v_out numel:" << v_out->numel();
     }
-    //*/
 
     auto grad_out = ctx.Output<framework::Tensor>("Grad_out");
     math::SetConstant<DeviceContext, T> tset;
     tset(dev_ctx, grad_out, static_cast<T>(0));
-
   }
 };
 }  // namespace operators

@@ -131,7 +131,6 @@ class Optimizer(object):
         """
         pass
 
-
     def _finish_update(self, block, parameters_and_grads):
         """Finish any custom updates needed
            before completing an optimization step
@@ -578,7 +577,8 @@ class DGCOptimizer(MomentumOptimizer):
 
             self._local_grad_clip_norm = local_grad_clip_norm
             self._num_trainers = num_trainers
-            self._clip_norm = local_grad_clip_norm / (num_trainers * num_trainers)
+            self._clip_norm = local_grad_clip_norm / (num_trainers *
+                                                      num_trainers)
 
         super(DGCOptimizer, self).__init__(learning_rate, momentum,
                                            use_nesterov, regularization, name)
@@ -605,6 +605,7 @@ class DGCOptimizer(MomentumOptimizer):
     def _append_dgc_ops(self, param_and_grads):
         start_program = default_startup_program()
         main_program = default_main_program()
+        main_program._enable_dgc = True
 
         # step counter
         self._global_step_var = self._add_auto_increment_var(
@@ -684,16 +685,16 @@ class DGCOptimizer(MomentumOptimizer):
             clip_var = grad_var
             if self._local_grad_clip_norm is not None:
                 clip_var = self._append_clip_norm(grad_var, self._clip_norm)
-                print("clip_var name:", clip_var.name, 
-                          ", grad_var name:", grad_var.name)
-            self._dgc_op(param_var, clip_var, grad_var, u_var, v_var, k_var, encoded_var)
+                print("clip_var name:", clip_var.name, ", grad_var name:",
+                      grad_var.name)
+            self._dgc_op(param_var, clip_var, grad_var, u_var, v_var, k_var,
+                         encoded_var)
 
         # Note: don't delete this
         print("set DGC rampup_begin_step:", self._rampup_begin_step,
-              ", sparsity:", self._sparsity, 
-              ", rampup_step:", self._rampup_step, 
-              ", local_clip_norm:", self._local_grad_clip_norm, 
-              ", clip_norm:", self._clip_norm)
+              ", sparsity:", self._sparsity, ", rampup_step:",
+              self._rampup_step, ", local_clip_norm:",
+              self._local_grad_clip_norm, ", clip_norm:", self._clip_norm)
 
     def _is_the_backward_op(self, op):
         op_maker = core.op_proto_and_checker_maker
@@ -705,9 +706,11 @@ class DGCOptimizer(MomentumOptimizer):
 
     def _append_clip_norm(self, grad_var, clip_norm):
         with grad_var.block.program._backward_role_guard():
-            return layers.clip_by_norm(x=grad_var, max_norm=clip_norm, name=grad_var.name+"@DGC")
+            return layers.clip_by_norm(
+                x=grad_var, max_norm=clip_norm, name=grad_var.name + "@DGC")
 
-    def _dgc_op(self, param_var, clip_var, grad_var, u_var, v_var, k_var, encoded_var):
+    def _dgc_op(self, param_var, clip_var, grad_var, u_var, v_var, k_var,
+                encoded_var):
         block = framework.default_main_program().global_block()
         op_maker = core.op_proto_and_checker_maker
         dgc_op = block.append_op(

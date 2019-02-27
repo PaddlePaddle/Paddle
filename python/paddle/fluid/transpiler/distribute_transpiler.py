@@ -158,8 +158,6 @@ class DistributeTranspilerConfig(object):
     mode = "pserver"
     print_log = False
     wait_port = True
-    #enable_dgc = False
-    rampup_step = 0
 
 
 class DistributeTranspiler(object):
@@ -226,106 +224,6 @@ class DistributeTranspiler(object):
             PRINT_LOG = True
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
-
-    def _create_dgc_vars(self,
-                         start_program,
-                         main_program,
-                         var_name,
-                         var_shape,
-                         dtype=core.VarDesc.VarType.FP32,
-                         t_type=core.VarDesc.VarType.LOD_TENSOR,
-                         init_value=0.0,
-                         force_cpu=False):
-        var = start_program.global_block().create_var(
-            name=var_name,
-            shape=var_shape,
-            dtype=dtype,
-            type=t_type,
-            stop_gradient=True,
-            persistable=True)
-
-        main_program.global_block().create_var(
-            name=var_name,
-            shape=var_shape,
-            dtype=dtype,
-            type=t_type,
-            stop_gradient=True,
-            persistable=True)
-
-        start_program.global_block().append_op(
-            type="fill_constant",
-            outputs={"Out": var},
-            attrs={
-                "shape": var_shape,
-                "dtype": dtype,
-                "value": init_value,
-                'force_cpu': force_cpu
-            },
-            stop_gradient=True)
-        return var
-
-    def _add_dgc_vars(self, start_program, main_program):
-        #main_program._enable_dgc = True
-
-        _, params_grads = self._get_optimize_pass()
-        for param_var, grad_var in params_grads:
-            var_numel = reduce(lambda x, y: x * y, param_var.shape)
-            if var_numel < 4096 or \
-                param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
-                grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
-                    param_var.dtype != core.VarDesc.VarType.FP32 :
-                continue
-
-            u_name = param_var.name + "__dgc_u__"
-            v_name = param_var.name + "__dgc_v__"
-
-            names = [u_name, v_name]
-            for var_name in names:
-                self._create_dgc_vars(
-                    start_program,
-                    main_program,
-                    var_name,
-                    var_shape=param_var.shape)
-
-            buf_var_name = param_var.name + "__dgc_buf__"
-            # FIXME(gongwb): get_buffer_size
-            buf_var_shape = [2 * 256 * 128]
-            self._create_dgc_vars(
-                start_program,
-                main_program,
-                buf_var_name,
-                var_shape=buf_var_shape)
-
-        counter_var_name = "__g_dgc_counter__"
-        counter_var_shape = [1]
-        count_var = self._create_dgc_vars(
-            start_program,
-            main_program,
-            counter_var_name,
-            var_shape=counter_var_shape,
-            force_cpu=True)
-        """
-        main_program.global_block()._prepend_op(
-            type='increment',
-            inputs={'X': count_var},
-            outputs={'Out': count_var},
-            attrs={'step': 1.0},
-            stop_gradient=True)
-        #with program_guard(main_program, start_program):
-        #    autoincreased_step_counter(counter_name=counter_var_name, begin=0, step=1)
-        """
-
-        rampup_var_name = "__g_rampup_step__"
-        rampup_var_shape = [1]
-        self._create_dgc_vars(
-            start_program,
-            main_program,
-            rampup_var_name,
-            var_shape=rampup_var_shape,
-            init_value=self.config.rampup_step * 1.0,
-            force_cpu=True)
-        # Note: don't delete this
-        print("set DGC rampup_step:", self.config.rampup_step)
 
     def _transpile_nccl2(self,
                          trainer_id,
@@ -418,10 +316,6 @@ class DistributeTranspiler(object):
         self.origin_program = program
         self.startup_program = startup_program
         self.origin_startup_program = self.startup_program.clone()
-        """
-        if self.config.enable_dgc and self.config.mode != "nccl2":
-            raise ValueError("enable_dgc should used under nccl mode!")
-        """
 
         if self.config.mode == "nccl2":
             assert (isinstance(trainers, str))
@@ -432,11 +326,6 @@ class DistributeTranspiler(object):
                 current_endpoint,
                 startup_program=startup_program,
                 wait_port=self.config.wait_port)
-            """
-            if self.config.enable_dgc:
-                self._add_dgc_vars(
-                    start_program=self.startup_program, main_program=program)
-            """
             return
 
         self.trainer_num = trainers

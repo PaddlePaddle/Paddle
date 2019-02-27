@@ -23,7 +23,6 @@
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "dgc/dgc.h"
-//#include "sparse.h"
 #endif
 
 // asynchronous nccl allreduce or synchronous issue:
@@ -83,10 +82,11 @@ void AllReduceOpHandle::_RunImplEncoded() {
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto &local_scope =
         local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
-    auto original_name = paddle::framework::GradOriginalVarName(in_var_handles[i]->name());
+    auto original_name =
+        paddle::framework::GradOriginalVarName(in_var_handles[i]->name());
     auto encode_var_name = original_name + "__dgc_encoded__";
     VLOG(10) << "encode_var_name:" << encode_var_name;
-    auto* in_var = local_scope->FindVar(encode_var_name);
+    auto *in_var = local_scope->FindVar(encode_var_name);
     PADDLE_ENFORCE_NOT_NULL(in_var);
     auto &in = in_var->Get<LoDTensor>();
     ins.emplace_back(&in);
@@ -121,7 +121,6 @@ void AllReduceOpHandle::_RunImplEncoded() {
     dtype = (dtype == -1) ? platform::ToNCCLDataType(in.type()) : dtype;
     in_numel = (in_numel == 0) ? static_cast<size_t>(in.numel()) : in_numel;
     PADDLE_ENFORCE(in_numel % 2 == 0);
-    // size_t k = in_numel / 2;
     PADDLE_ENFORCE(in_numel / 2 == static_cast<size_t>(k));
     out_numel = (out_numel == 0) ? static_cast<size_t>(out.numel()) : out_numel;
 
@@ -145,21 +144,11 @@ void AllReduceOpHandle::_RunImplEncoded() {
              << ", out_tensor_buf:" << out_tensor_buf << ", comm:" << comm
              << ", gather_buff:" << gather_buff;
 
-    /*
-    all_reduce_calls.emplace_back([=] {
-      sparseAllGReduce(in_tensor_buf, gather_buff, k, out_tensor_buf,
-                       out_numel, static_cast<ncclDataType_t>(dtype), ncclSum,
-                       comm, stream);
-    });
-    */
-
-    ///*
     all_reduce_calls.emplace_back([=] {
       paddle::communication::dgc::sparseAllGReduce(
           static_cast<void *>(in_tensor_buf), gather_buff, k, out_tensor_buf,
           out_numel, comm, stream);
     });
-    //*/
   }
 
   this->RunAndRecordEvent([&] {
@@ -179,7 +168,6 @@ void AllReduceOpHandle::_RunImplEncoded() {
       int dev_id = boost::get<platform::CUDAPlace>(p).device;
       auto &nccl_ctx = nccl_ctxs_->at(dev_id);
       auto stream = nccl_ctx.stream();
-      // cudaStreamSynchronize(stream);
       cudaError_t e_sync = cudaStreamSynchronize(stream);
       if (e_sync != 0) {
         VLOG(10) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);

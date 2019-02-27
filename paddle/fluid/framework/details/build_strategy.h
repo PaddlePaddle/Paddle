@@ -84,10 +84,6 @@ struct BuildStrategy {
 
   bool fuse_broadcast_op_{false};
 
-  // dgc: deep gradients compression
-  // https://arxiv.org/pdf/1712.01887.pdf
-  bool enable_dgc_{false};
-
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
   // it's distributed model.

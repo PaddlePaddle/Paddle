@@ -606,15 +606,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasOutput(const std::string& name) const override {
-    VLOG(10) << "HasOutput " << name;
     // has only one output
     const auto& outs = ctx_.outputs;
-    for (auto it : ctx_.outputs) {
-      VLOG(10) << "HasOutput name:" << it.first;
-      for (auto out : it.second) {
-        VLOG(10) << "\tHasOutput out:" << out;
-      }
-    }
     auto it = outs.find(name);
     if (it == outs.end()) {
       return false;
@@ -963,7 +956,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  VLOG(10) << "RuntimeInferShapeContext begin";
   RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
   this->InferShape(&infer_shape_ctx);
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext

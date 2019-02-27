@@ -31,8 +31,6 @@ class DGCOp : public framework::OperatorWithKernel {
                    "Input(Grad) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("current_step"),
                    "Input(current_step) of DGCop should not be null.");
-    // PADDLE_ENFORCE(ctx->HasInput("rampup_step"),
-    //              "Input(rampup_step) of DGCop should not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("U_out"),
                    "Output(U_out) of DGCop should not be null.");
@@ -42,9 +40,6 @@ class DGCOp : public framework::OperatorWithKernel {
                    "Output(k) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("EncodeGrad"),
                    "Output(EncodeGrad) of DGCop should not be null.");
-
-    // PADDLE_ENFORCE(ctx->HasOutput("Encoded_buf"),
-    // "Output(Encoded_buf) of DGCop should not be null.");
   }
 
  protected:
