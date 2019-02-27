@@ -181,6 +181,12 @@ PYBIND11_MODULE(core, m) {
                     },
                     py::return_value_policy::reference)
       .def_property(
+          "persistable",
+          [](const imperative::VarBase &self) { return self.persistable_; },
+          [](imperative::VarBase &self, const bool persistable) {
+            self.persistable_ = persistable;
+          })
+      .def_property(
           "desc",
           [](const imperative::VarBase &self) { return self.var_desc_; },
           [](imperative::VarBase &self, framework::VarDesc *var_desc) {
