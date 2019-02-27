@@ -37,7 +37,6 @@ class Layer(core.Layer):
     def __init__(self, name_scope, dtype=core.VarDesc.VarType.FP32):
         self._full_name = unique_name.generate(name_scope + "/" +
                                                self.__class__.__name__)
-        print("current full name is: {}".format(self._full_name))
         self._built = False
         self._dtype = dtype
         self._parameters = collections.OrderedDict()
