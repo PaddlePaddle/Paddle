@@ -15,6 +15,7 @@
 #pragma once
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/naive_executor.h"

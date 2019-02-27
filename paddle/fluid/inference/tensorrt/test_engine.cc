@@ -35,7 +35,12 @@ class TensorRTEngineTest : public ::testing::Test {
     engine_->InitNetwork();
   }
 
-  void TearDown() override { delete engine_; }
+  void TearDown() override {
+    if (engine_) {
+      delete engine_;
+      engine_ = nullptr;
+    }
+  }
 
   void PrepareInputOutput(const std::vector<float> &input,
                           std::vector<int> output_shape) {

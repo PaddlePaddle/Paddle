@@ -235,7 +235,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     std::string trt_engine_serialized_data = GetTrtEngineSerializedData(
         Get<std::string>("model_opt_cache_dir"), engine_key);
 
-    if (trt_engine_serialized_data.size() == 0) {
+    if (trt_engine_serialized_data.empty()) {
       LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
                    "kernel etc). This process may cost a lot of time.";
       std::unique_ptr<tensorrt::TensorRTEngine> trt_engine(
