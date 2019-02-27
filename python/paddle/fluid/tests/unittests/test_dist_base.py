@@ -76,8 +76,12 @@ class TestDistRunnerBase(object):
 
     def run_trainer(self, args):
         self.lr = args.lr
-        test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
-            self.get_model(batch_size=args.batch_size, use_dgc=args.use_dgc)
+        if args.use_dgc:
+            test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
+                self.get_model(batch_size=args.batch_size, use_dgc=args.use_dgc)
+        else:
+            test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
+                self.get_model(batch_size=args.batch_size)
 
         if args.mem_opt:
             fluid.memory_optimize(fluid.default_main_program(), skip_grads=True)
