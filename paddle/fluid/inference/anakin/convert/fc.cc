@@ -12,22 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
-#include <vector>
-#include "framework/core/types.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/inference/anakin/convert/op_converter.h"
-#include "paddle/fluid/inference/engine.h"
-#include "paddle/fluid/inference/utils/singleton.h"
-#include "saber/saber_types.h"
+//#include <string>
+//#include <vector>
+//#include "framework/core/types.h"
+//#include "paddle/fluid/framework/tensor.h"
+//#include "paddle/fluid/inference/anakin/convert/op_converter.h"
+//#include "paddle/fluid/inference/engine.h"
+//#include "paddle/fluid/inference/utils/singleton.h"
+//#include "saber/saber_types.h"
+#include "paddle/fluid/inference/anakin/convert/fc.h"
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
+/*
 class FcOpConverter : public AnakinOpConverter {
  public:
-  FcOpConverter() = default;
+     FcOpConverter() {
+      LOG(INFO) << "FcOpConverter::FcOpConverter()";
+     }
 
   virtual void operator()(const framework::proto::OpDesc &op,
                           const framework::Scope &scope,
@@ -35,7 +39,7 @@ class FcOpConverter : public AnakinOpConverter {
   virtual ~FcOpConverter() {}
 
  private:
-};
+};*/
 
 void FcOpConverter::operator()(const framework::proto::OpDesc &op,
                                const framework::Scope &scope, bool test_mode) {
@@ -52,40 +56,13 @@ void FcOpConverter::operator()(const framework::proto::OpDesc &op,
 
   auto shape = framework::vectorize2int(y_t->dims());
   std::cout << shape[0] << std::endl;
-  /*
-  ::anakin::saber::Shape anakin_shape(shape);
-
-  PADDLE_ENFORCE_NOT_NULL(y_t);
-
-  framework::LoDTensor weight;
-  weight.Resize(y_t->dims());
-  TensorCopySync(*y_t, platform::CUDAPlace(), &weight);
-
-  auto *weight_data = weight.mutable_data<float>(platform::CUDAPlace());
-  PADDLE_ENFORCE_EQ(weight.dims().size(), 2UL);
-  auto n_output = weight.dims()[1];  // out_dim
-
-  engine->AddOpAttr(x_name, "out_dim", n_output);
-
-  PADDLE_ENFORCE_NOT_NULL(weight_data);
-  PADDLE_ENFORCE(n_output > 0);
-  */
-
-  /*
-  std::unique_ptr<framework::Tensor> tmp(new framework::LoDTensor());
-  tmp->Resize(weight.dims());
-
-  std::memcpy(tmp->mutable_data<float>(platform::CPUPlace()), weight,
-  y_t->dims()[0] * y_t->dims()[1] * sizeof(float));
-  ::anakin::saber::Shape tmp_shape(shape);
-  ::anakin::PBlock<::anakin::saber::NV> weight1(tmp_shape);
-  */
 }
 
 static Registrar<FcOpConverter> register_anakin_fc_op_converter("fc");
+static int x __attribute__((unused)) = register_anakin_fc_op_converter.Touch();
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-//REGISTER_ANAKIN_OP_CONVERTER(fc, FcOpConverter);
+// REGISTER_ANAKIN_OP_CONVERTER(fc, FcOpConverter);

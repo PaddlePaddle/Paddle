@@ -12,9 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include <string>
 #include <vector>
 #include "framework/core/types.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #include "paddle/fluid/inference/anakin/convert/registrar.h"
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
@@ -24,22 +28,22 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class ActivationConverter {
+class FcOpConverter : public AnakinOpConverter {
  public:
-  ActivationConverter() {}
+     FcOpConverter() {
+      LOG(INFO) << "FcOpConverter::FcOpConverter()";
+     }
 
   virtual void operator()(const framework::proto::OpDesc &op,
-                          const framework::Scope &scope);
-  void ConvertOp(const framework::proto::OpDesc &op,
-                 const std::unordered_set<std::string> &parameters,
-                 const framework::Scope &scope, AnakinNvEngine *engine);
-  virtual ~ActivationConverter() {}
+                          const framework::Scope &scope,
+                          bool test_mode) override;
+  virtual ~FcOpConverter() {}
 
  private:
 };
 
-static Registrar<ActivationConverter> registrar_fc("activation");
-
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
+
+//REGISTER_ANAKIN_OP_CONVERTER(fc, FcOpConverter);

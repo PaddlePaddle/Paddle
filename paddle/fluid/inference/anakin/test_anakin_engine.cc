@@ -55,9 +55,10 @@ TEST_F(TestAnakinEngine, Execute) {
   engine_->AddOpAttr("op1", "axis", 1);
   std::vector<int> shape = {1, 1, 1, 2};
   Shape tmp_shape(shape);
-  //PBlock<NV> weight1(tmp_shape);
-  auto *weight1 = GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(tmp_shape);
-  //auto *weight1 = new PBlock<NV>(tmp_shape, AK_FLOAT);
+  // PBlock<NV> weight1(tmp_shape);
+  auto *weight1 =
+      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(tmp_shape);
+  // auto *weight1 = new PBlock<NV>(tmp_shape, AK_FLOAT);
 
   float *cpu_data = static_cast<float *>(weight1->h_tensor().mutable_data());
   cpu_data[0] = 2.;
@@ -66,8 +67,8 @@ TEST_F(TestAnakinEngine, Execute) {
   engine_->AddOpAttr("op1", "weight_1", *weight1);
 
   engine_->Freeze();
-  //PTuple<int> input_shape = {1};
-  //engine_->AddOpAttr("x", "input_shape", input_shape);
+  // PTuple<int> input_shape = {1};
+  // engine_->AddOpAttr("x", "input_shape", input_shape);
   engine_->SetInputShape("x", {1, 1, 1, 1});
   engine_->Optimize();
   engine_->InitGraph();
@@ -92,11 +93,12 @@ TEST_F(TestAnakinEngine, Execute) {
 
 /*
 TEST_F(TestAnakinEngine, Execute1) {
-    std::unique_ptr<AnakinNvEngineT> engine(new AnakinEngine<NV, Precision::FP32>(true));
+    std::unique_ptr<AnakinNvEngineT> engine(new AnakinEngine<NV,
+Precision::FP32>(true));
     engine->AddOp("op1", "Dense", {"x"}, {"y"});
     engine->AddOpAttr("op1", "out_dim", 2);
     engine->AddOpAttr("op1", "bias_term", false);
-    // axis M * K 
+    // axis M * K
     engine->AddOpAttr("op1", "axis", 3);
     std::vector<int> shape = {1, 1, 3, 2};
     ::anakin::saber::Shape tmp_shape(shape);
