@@ -17,6 +17,7 @@
 #include <NvInfer.h>
 #include <cstring>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"

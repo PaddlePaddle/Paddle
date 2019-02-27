@@ -17,10 +17,12 @@ limitations under the License. */
 #include <sys/stat.h>
 #include <cstdio>
 #include <fstream>
+#include <memory>
 #include <set>
 #include <string>
 #include <typeindex>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/framework.pb.h"
