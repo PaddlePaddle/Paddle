@@ -207,7 +207,7 @@ framework::LoDTensor& VarBase::GradValue() {
 
 std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
   if (grad_op_descs_.empty() && backward_id_ <= 0) {
-    LOG(WARNING) << "op with no grad: " << op_desc_->Type();
+    VLOG(3) << "op with no grad: " << op_desc_->Type();
     return {};
   }
 
@@ -249,7 +249,8 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
       framework::Scope scope;
       PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place_);
       p.op.RuntimeInferShape(scope, place_, ctx);
-      p.func(framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx));
+      p.func(
+          framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx, nullptr));
     }
   }
 

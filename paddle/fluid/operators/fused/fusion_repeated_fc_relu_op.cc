@@ -37,7 +37,7 @@ void FusionRepeatedFCReluOp::InferShape(
                  "Output(Out) of FusionRepeatedFCReluOp should not be null.");
 
   auto i_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_EQ(i_dims.size(), 2UL, "Input shape size should be 2");
+  PADDLE_ENFORCE_EQ(i_dims.size(), 2, "Input shape size should be 2");
 
   auto w_dims = ctx->GetInputsDim("W");
   auto b_dims = ctx->GetInputsDim("Bias");
@@ -49,7 +49,7 @@ void FusionRepeatedFCReluOp::InferShape(
                     "inpute width should be equal with weight height");
 
   for (size_t i = 1; i < sz; ++i) {
-    PADDLE_ENFORCE_EQ(w_dims[i].size(), 2UL,
+    PADDLE_ENFORCE_EQ(w_dims[i].size(), 2,
                       "Every weight shape size should be 2.");
     PADDLE_ENFORCE_EQ(framework::product(b_dims[i]), w_dims[i][1],
                       "The length of Bias must be equal with w_dims[1].");
