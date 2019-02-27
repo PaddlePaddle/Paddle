@@ -31,7 +31,7 @@ template <typename T>
 struct FindAbsMaxFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx, const T* in,
                   const int num, T* out) {
-    *out = *(std::max_element(in + 0, in + num, Compare<T>()));
+    *out = std::abs(*(std::max_element(in + 0, in + num, Compare<T>())));
   }
 };
 
@@ -46,10 +46,8 @@ struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
     platform::Transform<platform::CPUDeviceContext> trans;
     trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
           out->mutable_data<T>(ctx.GetPlace()), ClipFunctor<T>(-s, s));
-    auto in_e = framework::EigenVector<T>::Flatten(in);
     auto out_e = framework::EigenVector<T>::Flatten(*out);
-
-    out_e.device(*ctx.eigen_device()) = (bin_cnt / s * in_e).round();
+    out_e.device(*ctx.eigen_device()) = (bin_cnt / s * out_e).round();
   }
 };
 
