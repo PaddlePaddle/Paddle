@@ -16,13 +16,12 @@
 
 #include <string>
 #include <unordered_set>
-#include <vector>
 #include "framework/core/types.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/inference/anakin/engine.h"
 #include "paddle/fluid/inference/anakin/convert/registrar.h"
+#include "paddle/fluid/inference/anakin/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "saber/saber_types.h"
 
@@ -45,7 +44,7 @@ class AnakinOpConverter {
                  bool test_mode = false) {
     framework::OpDesc op_desc(op, nullptr);
     std::string op_type = op_desc.Type();
-    //AnakinOpConverter *it = nullptr;
+    // AnakinOpConverter *it = nullptr;
     std::shared_ptr<AnakinOpConverter> it{nullptr};
 
     if (op_type == "mul") {
@@ -53,14 +52,13 @@ class AnakinOpConverter {
       std::string Y = op_desc.Input("Y")[0];
       std::cout << Y << parameters.count(Y) << std::endl;
       if (parameters.count(Y)) {
-        //it = Registry<AnakinOpConverter>::Lookup("fc");
-        it = Register::instance()->Create("fc");
+        it = OpRegister::instance()->Get("fc");
       }
     }
 
     if (!it) {
-      //it = Registry<AnakinOpConverter>::Lookup(op_type);
-      it = Register::instance()->Create(op_type);
+      // it = Registry<AnakinOpConverter>::Lookup(op_type);
+      it = OpRegister::instance()->Get(op_type);
     }
     PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]", op_type);
     it->SetEngine(engine);

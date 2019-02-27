@@ -18,15 +18,14 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-std::shared_ptr<AnakinOpConverter> Register::Create(const std::string &name) {
-  std::cout << "=========== Register::Create" << std::endl;
+std::shared_ptr<AnakinOpConverter> OpRegister::Get(const std::string &name) {
   auto it = registry_.find(name);
   if (it == registry_.end()) return nullptr;
   return it->second();
 }
 
-Register *Register::instance() {
-  static Register factory;
+OpRegister *OpRegister::instance() {
+  static OpRegister factory;
   return &factory;
 }
 

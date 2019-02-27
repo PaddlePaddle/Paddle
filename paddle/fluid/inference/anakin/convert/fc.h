@@ -14,15 +14,7 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
-#include "framework/core/types.h"
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
-#include "paddle/fluid/inference/anakin/convert/registrar.h"
-#include "paddle/fluid/inference/engine.h"
-#include "paddle/fluid/inference/utils/singleton.h"
-#include "saber/saber_types.h"
 
 namespace paddle {
 namespace inference {
@@ -30,9 +22,7 @@ namespace anakin {
 
 class FcOpConverter : public AnakinOpConverter {
  public:
-     FcOpConverter() {
-      LOG(INFO) << "FcOpConverter::FcOpConverter()";
-     }
+  FcOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
                           const framework::Scope &scope,
@@ -42,8 +32,7 @@ class FcOpConverter : public AnakinOpConverter {
  private:
 };
 
+static Registrar<FcOpConverter> register_fc_op_converter("fc");
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
-
-//REGISTER_ANAKIN_OP_CONVERTER(fc, FcOpConverter);
