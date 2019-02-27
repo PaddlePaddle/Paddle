@@ -391,7 +391,7 @@ uint64_t LegacyMemMonitor::GetMemUsage(const int &device) const {
 uint64_t LegacyMemMonitor::GetCurrentMemUsage(const int &device) const {
   return gpu_mem_info_.find(device) == gpu_mem_info_.end()
              ? 0UL
-             : gpu_mem_info_.at(device)->GetCurrentMemUsage();
+             : gpu_mem_info_.at(device)->GetUsage();
 }
 
 void LegacyMemMonitor::PrintMemUsage() {

@@ -956,7 +956,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       GetKernelConfig(expected_kernel_key);
 
   uint64_t init_mem_cost = 0UL, prev_mem_cost = 0UL, after_mem_cost = 0UL;
-  if (FLAGS_benchmark) {
+  if (FLAGS_benchmark && platform::is_gpu_place(place)) {
+    auto device = boost::get<platform::CUDAPlace>(place).device;
     init_mem_cost =
         memory::allocation::GPUMemMonitor.GetCurrentMemUsage(device);
   }
@@ -977,8 +978,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
-  if (FLAGS_benchmark) {
+  if (FLAGS_benchmark && platform::is_gpu_place(place)) {
     // get mem usage contains global mutex, which hurt performance badly.
+    auto device = boost::get<platform::CUDAPlace>(place).device;
     prev_mem_cost =
         memory::allocation::GPUMemMonitor.GetCurrentMemUsage(device);
   }
@@ -986,7 +988,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   kernel_iter->second(
       ExecutionContext(*this, exec_scope, *dev_ctx, ctx, kernel_configs));
 
-  if (FLAGS_benchmark) {
+  if (FLAGS_benchmark && platform::is_gpu_place(place)) {
+    auto device = boost::get<platform::CUDAPlace>(place).device;
     after_mem_cost =
         memory::allocation::GPUMemMonitor.GetCurrentMemUsage(device);
   }
@@ -997,18 +1000,20 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   /*For profiling/benchmark only*/
-  if (FLAGS_benchmark) {
+  if (FLAGS_benchmark && platform::is_gpu_place(place)) {
     dev_ctx->Wait();
+
+    auto device = boost::get<platform::CUDAPlace>(place).device;
     VLOG(3) << "op : " << type_ << " Device : " << device
-            << " Peak Memory Usage : " << (after_mem_cost - init_mem_cost >> 20)
-            << " MiB";
+            << " Peak Memory Usage : "
+            << ((after_mem_cost - init_mem_cost) >> 20) << " MiB";
     // print op mem cost in details
     VLOG(4) << "op Infer : " << type_ << " Device : " << device
-            << " Peak Memory Usage : " << (prev_mem_cost - init_mem_cost >> 20)
-            << " MiB";
+            << " Peak Memory Usage : "
+            << ((prev_mem_cost - init_mem_cost) >> 20) << " MiB";
     VLOG(4) << "op Kernel : " << type_ << " Device : " << device
-            << " Peak Memory Usage : " << (after_mem_cost - prev_mem_cost >> 20)
-            << " MiB";
+            << " Peak Memory Usage : "
+            << ((after_mem_cost - prev_mem_cost) >> 20) << " MiB";
   }
 
   if (FLAGS_check_nan_inf) {
