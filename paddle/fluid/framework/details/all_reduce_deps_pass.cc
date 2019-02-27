@@ -50,7 +50,7 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
   std::unordered_map<std::string, int> vars;
   // TODO(gongwb): use graph topology sort to find the order of operators.
   //               Note that must assert topology sort is stable
-  auto& ops = Get<const std::vector<OpDesc*>>(kAllOpDescs);
+  auto& ops = graph->Get<const std::vector<OpDesc*>>(kStaleProgramOpDescs);
   for (auto* op_desc : ops) {
     auto outputs = op_desc->Outputs();
     for (auto& o_it : outputs) {
@@ -120,4 +120,4 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
 
 REGISTER_PASS(all_reduce_deps_pass,
               paddle::framework::details::AllReduceDepsPass)
-    .RequirePassAttr(paddle::framework::details::kAllOpDescs);
+    .RequireGraphAttr(paddle::framework::details::kStaleProgramOpDescs);
