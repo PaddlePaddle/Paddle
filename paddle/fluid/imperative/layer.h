@@ -136,8 +136,6 @@ class VarBase {
 
  public:
   virtual ~VarBase() {
-    // LOG(ERROR) << "remove var " << name_;
-
     if (block_ && !persistable_) {
       block_->RemoveVar(name_);
     }
