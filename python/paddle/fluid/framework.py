@@ -395,6 +395,7 @@ class Variable(object):
             self._ivar.desc = self.desc
             self._ivar.block = block.desc
             self._ivar.name = name
+            self._ivar.persistable = persistable
             if persistable:
                 self.block.vars[name] = self
         else:
