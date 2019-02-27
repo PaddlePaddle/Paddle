@@ -57,7 +57,7 @@ class RecvOp : public framework::OperatorBase {
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto *dev_ctx = pool.Get(place);
-      auto exe_ctx = framework::ExecutionContext(*this, scope, *dev_ctx, ctx);
+      auto exe_ctx = framework::ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr);
       auto recv_functor = distributed::ParameterRecv<float>();
       recv_functor(outs[0], recv_varnames, epmap, exe_ctx, scope);
     } else {
