@@ -51,6 +51,7 @@ __all__ = [
     'yolov3_loss',
     'box_clip',
     'multiclass_nms',
+    'distribute_fpn_proposals',
 ]
 
 
@@ -2220,3 +2221,77 @@ def multiclass_nms(bboxes,
     output.stop_gradient = True
 
     return output
+
+
+def distribute_fpn_proposals(fpn_rois,
+                             min_level,
+                             max_level,
+                             refer_level,
+                             refer_scale,
+                             name=None):
+    """
+    Distribute all proposals into different fpn level, with respect to scale 
+    of the proposals, the referring scale and the referring level. Besides, to
+    restore the order of proposals, we return an array which indicate the 
+    original index of rois in current proposals. To compute fpn level for each 
+    roi, the formula is given as follows:
+    
+    .. code-block:: text
+
+        roi_scale = sqrt(BBoxArea(fpn_roi));
+        level = floor(log2(roi_scale / refer_scale) + refer_level)
+    
+    where BBoxArea is the function to compute the area of each roi:
+
+    .. code-block:: text
+    
+        w = fpn_roi[2] - fpn_roi[0]
+        h = fpn_roi[3] - fpn_roi[1]
+        area = (w + 1) * (h + 1)
+
+    Args:
+        fpn_rois(variable): The input fpn_rois, the last dimension is 4.
+        min_level(int): The lowest level of FPN layer where the proposals come 
+                        from.
+        max_level(int): The highest level of FPN layer where the proposals
+                        come from.
+        refer_level(int): The referring level of FPN layer with specified scale.
+        refer_scale(int): The referring scale of FPN layer with specified level.
+        
+    Returns:
+        List(variable): The list of segmented tensor variables.
+        Variable: An array of positive number which is used to restore the 
+                  order of fpn_rois.
+
+    Examples:
+        .. code-block:: python
+
+            fpn_rois = fluid.layers.data(
+                name='data', shape=[4], dtype='float32', lod_level=1)
+            multi_rois, restore_ind = fluid.layers.distribute_fpn_proposals(
+                fpn_rois=fpn_rois, 
+                min_level=2, 
+                max_level=5, 
+                refer_level=4,
+                refer_scale=224)
+    """
+
+    helper = LayerHelper('distribute_fpn_proposals', **locals())
+    dtype = helper.input_dtype()
+    num_lvl = max_level - min_level + 1
+    multi_rois = [
+        helper.create_variable_for_type_inference(dtype) for i in range(num_lvl)
+    ]
+    restore_ind = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(
+        type='distribute_fpn_proposals',
+        inputs={'FpnRois': fpn_rois},
+        outputs={'MultiFpnRois': multi_rois,
+                 'RestoreIndex': restore_ind},
+        attrs={
+            'min_level': min_level,
+            'max_level': max_level,
+            'refer_level': refer_level,
+            'refer_scale': refer_scale
+        })
+    return multi_rois, restore_ind
