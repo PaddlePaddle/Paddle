@@ -61,16 +61,16 @@ class TestGraph(unittest.TestCase):
             opt.minimize(loss)
         graph = IrGraph(core.Graph(main.desc), for_test=False)
         marked_nodes = set()
-        for op in graph.all_ops():
+        for op in graph.all_op_nodes():
             if op.name().find('conv2d') > -1:
                 marked_nodes.add(op)
         graph.draw('.', 'residual', marked_nodes)
         self.assertFalse(graph.has_circle())
         self.assertEqual(graph.graph_num(), 1)
         nodes = graph.topology_sort()
-        self.assertEqual(len(nodes), len(graph.all_ops()))
+        self.assertEqual(len(nodes), len(graph.all_op_nodes()))
         nodes_map = graph.build_adjacency_list()
-        self.assertEqual(len(nodes_map), len(graph.all_ops()))
+        self.assertEqual(len(nodes_map), len(graph.all_op_nodes()))
         nodes_num = len(graph.all_nodes())
         graph.safe_remove_nodes(marked_nodes)
         self.assertEqual(len(graph.all_nodes()), nodes_num - len(marked_nodes))

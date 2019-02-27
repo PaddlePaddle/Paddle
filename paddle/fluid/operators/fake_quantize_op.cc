@@ -47,7 +47,6 @@ struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
     trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
           out->mutable_data<T>(ctx.GetPlace()), ClipFunctor<T>(-s, s));
     auto out_e = framework::EigenVector<T>::Flatten(*out);
-
     out_e.device(*ctx.eigen_device()) = (bin_cnt / s * out_e).round();
   }
 };
