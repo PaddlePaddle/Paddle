@@ -24,8 +24,9 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("FpnRois"),
                    "Input(FpnRois) shouldn't be null");
-    PADDLE_ENFORCE_GE(ctx->Outputs("MultiFpnRois").size(), 1UL,
-                      "Outputs(MultiFpnRois) of DistributeOp should not be empty");
+    PADDLE_ENFORCE_GE(
+        ctx->Outputs("MultiFpnRois").size(), 1UL,
+        "Outputs(MultiFpnRois) of DistributeOp should not be empty");
     size_t min_level = static_cast<size_t>(ctx->Attrs().Get<int>("min_level"));
     size_t max_level = static_cast<size_t>(ctx->Attrs().Get<int>("max_level"));
     PADDLE_ENFORCE_GE(max_level, min_level,
@@ -35,15 +36,16 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
     std::vector<framework::DDim> outs_dims;
     outs_dims.reserve(num_out_rois);
     for (size_t i = 0; i < num_out_rois; ++i) {
-        framework::DDim out_dim = {-1, 4};
-        outs_dims.push_back(out_dim);
+      framework::DDim out_dim = {-1, 4};
+      outs_dims.push_back(out_dim);
     }
     ctx->SetOutputsDim("MultiFpnRois", outs_dims);
     ctx->SetOutputDim("RestoreIndex", {1, -1});
   }
-protected:
+
+ protected:
   framework::OpKernelType GetExpectedKernelType(
-          const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("FpnRois"));
     return framework::OpKernelType(data_type, platform::CPUPlace());
   }
@@ -52,20 +54,24 @@ protected:
 class DistributeFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("FpnRois",
-             "(LoDTensor) The rois at all levels in shape (-1, 4)");
-    AddOutput("MultiFpnRois",
-              "(LoDTensor) Output with distribute operator").AsDuplicable();
-    AddOutput("RestoreIndex", "(Tensor) An array of positive number which is "
-                              "used to restore the order of FpnRois");
-    AddAttr<int>("min_level", "The lowest level of FPN layer where the"
-                              " proposals come from");
-    AddAttr<int>("max_level", "The highest level of FPN layer where the"
-                              " proposals come from");
-    AddAttr<int>("refer_level", "The referring level of FPN layer with"
-                                " specified scale");
-    AddAttr<int>("refer_scale", "The referring scale of FPN layer with"
-                                " specified level");
+    AddInput("FpnRois", "(LoDTensor) The rois at all levels in shape (-1, 4)");
+    AddOutput("MultiFpnRois", "(LoDTensor) Output with distribute operator")
+        .AsDuplicable();
+    AddOutput("RestoreIndex",
+              "(Tensor) An array of positive number which is "
+              "used to restore the order of FpnRois");
+    AddAttr<int>("min_level",
+                 "The lowest level of FPN layer where the"
+                 " proposals come from");
+    AddAttr<int>("max_level",
+                 "The highest level of FPN layer where the"
+                 " proposals come from");
+    AddAttr<int>("refer_level",
+                 "The referring level of FPN layer with"
+                 " specified scale");
+    AddAttr<int>("refer_scale",
+                 "The referring scale of FPN layer with"
+                 " specified level");
     AddComment(R"DOC(
 This operator distribute all proposals into different fpn level,
  with respect to scale of the proposals, the referring scale and
@@ -75,12 +81,13 @@ we return an array which indicate the original index of rois in
 )DOC");
   }
 };
-}  // namespace operatprs
+}  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(distribute_fpn_proposals, ops::DistributeFpnProposalsOp,
                   ops::DistributeFpnProposalsOpMaker,
                   paddle::framework::EmptyGradOpMaker);
-REGISTER_OP_CPU_KERNEL(distribute_fpn_proposals, ops::DistributeFpnProposalsOpKernel<float>,
+REGISTER_OP_CPU_KERNEL(distribute_fpn_proposals,
+                       ops::DistributeFpnProposalsOpKernel<float>,
                        ops::DistributeFpnProposalsOpKernel<double>);

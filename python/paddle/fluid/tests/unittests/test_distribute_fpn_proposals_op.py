@@ -33,9 +33,12 @@ class TestDistributeFPNProposalsOp(OpTest):
             'refer_scale': self.canonical_scale,
             'refer_level': self.canonical_level
         }
-        output = [('out%d' % i, self.rois_fpn[i]) for i in range(len(self.rois_fpn))]
-        self.outputs = {'MultiFpnRois': output,
-                        'RestoreIndex': self.rois_idx_restore}
+        output = [('out%d' % i, self.rois_fpn[i])
+                  for i in range(len(self.rois_fpn))]
+        self.outputs = {
+            'MultiFpnRois': output,
+            'RestoreIndex': self.rois_idx_restore
+        }
 
     def init_test_case(self):
         self.roi_max_level = 5
@@ -57,7 +60,7 @@ class TestDistributeFPNProposalsOp(OpTest):
         lvl0 = self.canonical_level
         target_lvls = np.floor(lvl0 + np.log2(s / s0 + 1e-6))
         target_lvls = np.clip(target_lvls, lvl_min, lvl_max)
-        return target_lvls         
+        return target_lvls
 
     def get_sub_lod(self, sub_lvl):
         sub_lod = []
@@ -72,23 +75,26 @@ class TestDistributeFPNProposalsOp(OpTest):
         for lvl in range(lvl_min, lvl_max + 1):
             idx_lvl = np.where(target_lvls == lvl)[0]
             if len(idx_lvl) == 0:
-                rois_fpn.append((np.empty(shape=(0,4)),[[0,0]]))
+                rois_fpn.append((np.empty(shape=(0, 4)), [[0, 0]]))
                 continue
             sub_lod = self.get_sub_lod(rois[idx_lvl, 0])
             rois_fpn.append((rois[idx_lvl, 1:], [sub_lod]))
             rois_idx_order = np.concatenate((rois_idx_order, idx_lvl))
-        rois_idx_restore = np.argsort(rois_idx_order).astype(np.int32, copy=False)
+        rois_idx_restore = np.argsort(rois_idx_order).astype(
+            np.int32, copy=False)
         return rois_fpn, rois_idx_restore
 
     def calc_rois_distribute(self):
         lvl_min = self.roi_min_level
         lvl_max = self.roi_max_level
-        target_lvls = self.map_rois_to_fpn_levels(self.rois[:, 1:5], lvl_min, lvl_max)
-        rois_fpn, rois_idx_restore = self.add_multilevel_roi(self.rois, target_lvls, lvl_min, lvl_max)
+        target_lvls = self.map_rois_to_fpn_levels(self.rois[:, 1:5], lvl_min,
+                                                  lvl_max)
+        rois_fpn, rois_idx_restore = self.add_multilevel_roi(
+            self.rois, target_lvls, lvl_min, lvl_max)
         return rois_fpn, rois_idx_restore
 
     def make_rois(self):
-        self.rois_lod = [[100,200]]
+        self.rois_lod = [[100, 200]]
         rois = []
         lod = self.rois_lod[0]
         bno = 0
@@ -109,4 +115,3 @@ class TestDistributeFPNProposalsOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
-
