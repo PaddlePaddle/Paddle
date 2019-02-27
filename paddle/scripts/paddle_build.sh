@@ -432,8 +432,8 @@ function assert_api_spec_approvals() {
         BRANCH="develop"
     fi
 
-    API_FILES=("cmake/external"
-               "paddle/fluid/API.spec"
+    API_FILES=("paddle/fluid/API.spec"
+               "python/paddle/fluid/parallel_executor.py"
                "paddle/fluid/framework/operator.h"
                "paddle/fluid/framework/tensor.h"
                "paddle/fluid/framework/lod_tensor.h"
