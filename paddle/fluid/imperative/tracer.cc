@@ -76,7 +76,8 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   std::map<std::string, VarBase*> vars;
 
   framework::OpDesc* op_desc = op->op_desc_;
-  VLOG(3) << "tracer tracing " << op_desc->Type();
+  VLOG(3) << "tracer tracing " << op_desc->Type() << " trace id "
+          << op->trace_id_;
   op_desc->InferShape(*block);
   op_desc->InferVarType(block);
 
@@ -99,11 +100,13 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
       if (inp->PreOp() && !inp->IsStopGradient()) {
         op->pre_ops_[it.first].push_back(inp->PreOp());
         op->pre_ops_out_idx_[it.first].push_back(inp->PreOpOutIdx());
+        VLOG(3) << "add pre op " << inp->PreOp()->op_desc_->Type();
       } else {
         op->pre_ops_[it.first].push_back(nullptr);
       }
       VLOG(3) << "input vname " << inp->var_desc_->Name() << " "
-              << inp->var_->IsInitialized();
+              << inp->var_->IsInitialized() << " stop_gradient "
+              << inp->IsStopGradient();
     }
   }
 
