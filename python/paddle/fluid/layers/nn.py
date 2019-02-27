@@ -1440,6 +1440,7 @@ def bpr_loss(input, label, name=None):
 
     helper = LayerHelper('bpr_loss', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    label.stop_gradient = True
     helper.append_op(
         type='bpr_loss',
         inputs={'X': [input],
@@ -3934,7 +3935,7 @@ def beam_search(pre_ids,
              accumulated scores.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-        return_parent_idx(bool): Whether to return an extra Tensor variable 
+        return_parent_idx(bool): Whether to return an extra Tensor variable
                         preserving the selected_ids' parent indice in pre_ids
                         in output, which can be used to gather cell states at
                         the next time step.
@@ -6583,6 +6584,7 @@ def dice_loss(input, label, epsilon=0.00001):
     """
     label = one_hot(label, depth=input.shape[-1])
     reduce_dim = list(range(1, len(input.shape)))
+    label.stop_gradient = True
     inse = reduce_sum(input * label, dim=reduce_dim)
     dice_denominator = reduce_sum(
         input, dim=reduce_dim) + reduce_sum(
@@ -6612,33 +6614,33 @@ def image_resize(input,
         'NEAREST' : Nearest neighbor interpolation
 
     Nearest neighbor interpolation is to perform nearest neighbor interpolation
-    in both the 3rd dimention(in height direction) and the 4th dimention(in width 
+    in both the 3rd dimention(in height direction) and the 4th dimention(in width
     direction) on input tensor.
-            
-    Bilinear interpolation is an extension of linear interpolation for 
-    interpolating functions of two variables (e.g. H-direction and 
-    W-direction in this op) on a rectilinear 2D grid. The key idea is 
-    to perform linear interpolation first in one direction, and then 
+
+    Bilinear interpolation is an extension of linear interpolation for
+    interpolating functions of two variables (e.g. H-direction and
+    W-direction in this op) on a rectilinear 2D grid. The key idea is
+    to perform linear interpolation first in one direction, and then
     again in the other direction.
 
-    Align_corners and align_mode are optinal parameters,the calculation method 
+    Align_corners and align_mode are optinal parameters,the calculation method
     of interpolation can be selected by them.
 
     Example:
 
       For scale:
-      
+
         if align_corners = True && out_size > 1 :
 
           scale_factor = (in_size-1.0)/(out_size-1.0)
-        
+
         else:
-          
+
           scale_factor = float(in_size/out_size)
-        
-      
+
+
       Nearest neighbor interpolation:
-      
+
       if:
           align_corners = False
 
@@ -6661,26 +6663,26 @@ def image_resize(input,
 
       if:
           align_corners = False , align_mode = 0
-          
+
           input : (N,C,H_in,W_in)
           output: (N,C,H_out,W_out) where:
-          
+
           H_out = (H_{in}+0.5) * scale_{factor} - 0.5
           W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
 
       else:
-       
+
           input : (N,C,H_in,W_in)
           output: (N,C,H_out,W_out) where:
 
           H_out = H_{in} * scale_{factor}
           W_out = W_{in} * scale_{factor}
 
-    For details of nearest neighbor interpolation, please refer to Wikipedia: 
+    For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
 
-    For details of bilinear interpolation, please refer to Wikipedia: 
+    For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
 
 
@@ -6714,12 +6716,12 @@ def image_resize(input,
                                 set, otherwise errors would be occured in graph
                                 constructing stage.
                                 Default: None
-        align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the 
-                               input and output tensors are aligned, preserving the values at the 
+        align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
+                               input and output tensors are aligned, preserving the values at the
                                corner pixels.
                                Default: True
-        align_mode(int)  :  An optional for bilinear interpolation. can be \'0\' 
-                            for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for 
+        align_mode(int)  :  An optional for bilinear interpolation. can be \'0\'
+                            for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for
                             src_idx = scale*dst_index .
 
     Returns:
@@ -6827,33 +6829,33 @@ def resize_bilinear(input,
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation
 
-    Align_corners and align_mode are optinal parameters,the calculation 
+    Align_corners and align_mode are optinal parameters,the calculation
     method of interpolation can be selected by them.
 
 
-    Align_corners and align_mode are optinal parameters,the calculation method 
+    Align_corners and align_mode are optinal parameters,the calculation method
     of interpolation can be selected by them.
 
     Example:
 
       For scale:
-      
+
         if align_corners = True && out_size > 1 :
 
           scale_factor = (in_size-1.0)/(out_size-1.0)
-        
+
         else:
-          
-          scale_factor = float(in_size/out_size)     
+
+          scale_factor = float(in_size/out_size)
 
     Bilinear interpolation:
 
       if:
           align_corners = False , align_mode = 0
-          
+
           input : (N,C,H_in,W_in)
           output: (N,C,H_out,W_out) where:
-          
+
           H_out = (H_{in}+0.5) * scale_{factor} - 0.5
           W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
@@ -6923,18 +6925,18 @@ def resize_nearest(input,
     Example:
 
       For scale:
-      
+
         if align_corners = True && out_size > 1 :
 
           scale_factor = (in_size-1.0)/(out_size-1.0)
-        
+
         else:
-          
+
           scale_factor = float(in_size/out_size)
-        
-      
+
+
       Nearest neighbor interpolation:
-      
+
       if:
           align_corners = False
 
@@ -7666,6 +7668,8 @@ def rank_loss(label, left, right, name=None):
 
     out = helper.create_variable_for_type_inference("float32")
 
+    label.stop_gradient = True
+
     helper.append_op(
         type='rank_loss',
         inputs={"Label": label,
@@ -7717,6 +7721,7 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
         raise ValueError("The right should be a Variable.")
     out = helper.create_variable_for_type_inference(left.dtype)
     act = helper.create_variable_for_type_inference(left.dtype)
+    label.stop_gradient = True
     helper.append_op(
         type='margin_rank_loss',
         inputs={"Label": label,
@@ -9648,6 +9653,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
         loss = helper.create_variable(
             name=name, dtype=input.dtype, persistable=False)
 
+    label.stop_gradient = True
     helper.append_op(
         type='log_loss',
         inputs={'Predicted': [input],
@@ -9688,6 +9694,7 @@ def teacher_student_sigmoid_loss(input,
     """
     helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
     out = helper.create_variable(dtype=input.dtype)
+    label.stop_gradient = True
     helper.append_op(
         type='teacher_student_sigmoid_loss',
         inputs={'X': [input],
@@ -9850,7 +9857,7 @@ def shuffle_channel(x, group, name=None):
 
     Please refer to the paper
     https://arxiv.org/pdf/1707.01083.pdf
-    
+
     .. code-block:: text
 
         Given a 4-D tensor input with the shape (N, C, H, W):
@@ -9871,22 +9878,22 @@ def shuffle_channel(x, group, name=None):
             out.shape = (1, 4, 2, 2)
             out.data = [[[[0.1, 0.2],
                           [0.2, 0.3]],
-                          
+
                          [[0.5, 0.6],
                           [0.6, 0.7]],
-                          
+
                          [[0.3, 0.4],
                           [0.4, 0.5]],
-                          
+
                          [[0.7, 0.8],
                           [0.8, 0.9]]]]
-                        
-    Args: 
+
+    Args:
         x(Variable): The input tensor variable. It should be a 4-D tensor with shape [N, C, H, W]
         group(int): Indicating the conuts of subgroups, It should divide the number of channels.
 
     Returns:
-        out(Variable): the channels shuffling result is a tensor variable with the 
+        out(Variable): the channels shuffling result is a tensor variable with the
         same shape and same type as the input.
 
     Raises:
@@ -10223,6 +10230,7 @@ def huber_loss(input, label, delta):
     residual = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    label.stop_gradient = True
     helper.append_op(
         type='huber_loss',
         inputs={'X': input,
@@ -10243,9 +10251,9 @@ def tree_conv(nodes_vector,
               param_attr=None,
               bias_attr=None,
               name=None):
-    """ 
+    """
     ${comment}
-    		
+
     Args:
         nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
         edge_set(${edge_set_type}): ${edge_set_comment}

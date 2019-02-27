@@ -99,7 +99,7 @@ def rpn_target_assign(bbox_pred,
             if the input is image feature map, they are close to the origin
             of the coordinate system. [xmax, ymax] is the right bottom
             coordinate of the anchor box.
-        anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
+        anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded
             variances of anchors.
         gt_boxes (Variable): The ground-truth boudding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
@@ -122,7 +122,7 @@ def rpn_target_assign(bbox_pred,
     Returns:
         tuple:
                A tuple(predicted_scores, predicted_location, target_label,
-               target_bbox, bbox_inside_weight) is returned. The predicted_scores 
+               target_bbox, bbox_inside_weight) is returned. The predicted_scores
                and predicted_location is the predicted result of the RPN.
                The target_label and target_bbox is the ground truth,
                respectively. The predicted_location is a 2D Tensor with shape
@@ -353,7 +353,7 @@ def box_coder(prior_box,
     **Box Coder Layer**
 
     Encode/Decode the target bounding box with the priorbox information.
-    
+
     The Encoding schema described below:
 
     .. math::
@@ -362,79 +362,79 @@ def box_coder(prior_box,
 
         oy = (ty - py) / ph / pyv
 
-        ow = \log(\abs(tw / pw)) / pwv 
+        ow = \log(\abs(tw / pw)) / pwv
 
-        oh = \log(\abs(th / ph)) / phv 
+        oh = \log(\abs(th / ph)) / phv
 
     The Decoding schema described below:
-    
+
     .. math::
-  
+
         ox = (pw * pxv * tx * + px) - tw / 2
 
         oy = (ph * pyv * ty * + py) - th / 2
 
         ow = \exp(pwv * tw) * pw + tw / 2
 
-        oh = \exp(phv * th) * ph + th / 2   
+        oh = \exp(phv * th) * ph + th / 2
 
-    where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates, 
-    width and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote 
-    the priorbox's (anchor) center coordinates, width and height. `pxv`, 
-    `pyv`, `pwv`, `phv` denote the variance of the priorbox and `ox`, `oy`, 
-    `ow`, `oh` denote the encoded/decoded coordinates, width and height. 
+    where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates,
+    width and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote
+    the priorbox's (anchor) center coordinates, width and height. `pxv`,
+    `pyv`, `pwv`, `phv` denote the variance of the priorbox and `ox`, `oy`,
+    `ow`, `oh` denote the encoded/decoded coordinates, width and height.
 
-    During Box Decoding, two modes for broadcast are supported. Say target 
-    box has shape [N, M, 4], and the shape of prior box can be [N, 4] or 
-    [M, 4]. Then prior box will broadcast to target box along the 
-    assigned axis. 
+    During Box Decoding, two modes for broadcast are supported. Say target
+    box has shape [N, M, 4], and the shape of prior box can be [N, 4] or
+    [M, 4]. Then prior box will broadcast to target box along the
+    assigned axis.
 
     Args:
-        prior_box(Variable): Box list prior_box is a 2-D Tensor with shape 
+        prior_box(Variable): Box list prior_box is a 2-D Tensor with shape
                              [M, 4] holds M boxes, each box is represented as
-                             [xmin, ymin, xmax, ymax], [xmin, ymin] is the 
-                             left top coordinate of the anchor box, if the 
-                             input is image feature map, they are close to 
+                             [xmin, ymin, xmax, ymax], [xmin, ymin] is the
+                             left top coordinate of the anchor box, if the
+                             input is image feature map, they are close to
                              the origin of the coordinate system. [xmax, ymax]
-                             is the right bottom coordinate of the anchor box.       
-        prior_box_var(Variable|list|None): prior_box_var supports two types 
-                              of input. One is variable with shape [M, 4] 
-                              holds M group. The other one is list consist of 
-                              4 elements shared by all boxes. 
-        target_box(Variable): This input can be a 2-D LoDTensor with shape 
-                              [N, 4] when code_type is 'encode_center_size'. 
-                              This input also can be a 3-D Tensor with shape 
-                              [N, M, 4] when code_type is 'decode_center_size'. 
-                              Each box is represented as  
-                              [xmin, ymin, xmax, ymax]. This tensor can 
-                              contain LoD information to represent a batch 
-                              of inputs. 
+                             is the right bottom coordinate of the anchor box.
+        prior_box_var(Variable|list|None): prior_box_var supports two types
+                              of input. One is variable with shape [M, 4]
+                              holds M group. The other one is list consist of
+                              4 elements shared by all boxes.
+        target_box(Variable): This input can be a 2-D LoDTensor with shape
+                              [N, 4] when code_type is 'encode_center_size'.
+                              This input also can be a 3-D Tensor with shape
+                              [N, M, 4] when code_type is 'decode_center_size'.
+                              Each box is represented as
+                              [xmin, ymin, xmax, ymax]. This tensor can
+                              contain LoD information to represent a batch
+                              of inputs.
         code_type(string): The code type used with the target box. It can be
                            encode_center_size or decode_center_size
         box_normalized(int): Whether treat the priorbox as a noramlized box.
                              Set true by default.
         name(string): The name of box coder.
-        axis(int): Which axis in PriorBox to broadcast for box decode, 
+        axis(int): Which axis in PriorBox to broadcast for box decode,
                    for example, if axis is 0 and TargetBox has shape
                    [N, M, 4] and PriorBox has shape [M, 4], then PriorBox
                    will broadcast to [N, M, 4] for decoding. It is only valid
-                   when code type is decode_center_size. Set 0 by default. 
+                   when code type is decode_center_size. Set 0 by default.
 
     Returns:
-        output_box(Variable): When code_type is 'encode_center_size', the 
-                              output tensor of box_coder_op with shape 
-                              [N, M, 4] representing the result of N target 
-                              boxes encoded with M Prior boxes and variances. 
-                              When code_type is 'decode_center_size', 
-                              N represents the batch size and M represents 
+        output_box(Variable): When code_type is 'encode_center_size', the
+                              output tensor of box_coder_op with shape
+                              [N, M, 4] representing the result of N target
+                              boxes encoded with M Prior boxes and variances.
+                              When code_type is 'decode_center_size',
+                              N represents the batch size and M represents
                               the number of deocded boxes.
 
     Examples:
- 
+
         .. code-block:: python
- 
-            prior_box = fluid.layers.data(name='prior_box', 
-                                          shape=[512, 4], 
+
+            prior_box = fluid.layers.data(name='prior_box',
+                                          shape=[512, 4],
                                           dtype='float32',
                                           append_batch_size=False)
             target_box = fluid.layers.data(name='target_box',
@@ -520,9 +520,9 @@ def yolov3_loss(x,
     Args:
         x (Variable): ${x_comment}
         gtbox (Variable): groud truth boxes, should be in shape of [N, B, 4],
-                          in the third dimenstion, x, y, w, h should be stored 
+                          in the third dimenstion, x, y, w, h should be stored
                           and x, y, w, h should be relative value of input image.
-                          N is the batch number and B is the max box number in 
+                          N is the batch number and B is the max box number in
                           an image.
         gtlabel (Variable): class id of ground truth boxes, shoud be in shape
                             of [N, B].
@@ -552,7 +552,7 @@ def yolov3_loss(x,
         gtlabel = fluid.layers.data(name='gtlabel', shape=[6, 1], dtype='int32')
         anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
         anchors = [0, 1, 2]
-        loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80, anchors=anchors, 
+        loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80, anchors=anchors,
                                         ignore_thresh=0.5, downsample_ratio=32)
     """
     helper = LayerHelper('yolov3_loss', **locals())
@@ -581,6 +581,9 @@ def yolov3_loss(x,
 
     objectness_mask = helper.create_variable_for_type_inference(dtype='int32')
     gt_match_mask = helper.create_variable_for_type_inference(dtype='int32')
+
+    gtbox.stop_gradient = True
+    gtlabel.stop_gradient = True
 
     attrs = {
         "anchors": anchors,
@@ -1239,12 +1242,12 @@ def density_prior_box(input,
     """
     **Density Prior Box Operator**
 
-    Generate density prior boxes for SSD(Single Shot MultiBox Detector) 
-    algorithm. Each position of the input produce N prior boxes, N is 
-    determined by the count of densities, fixed_sizes and fixed_ratios. 
-    Boxes center at grid points around each input position is generated by 
-    this operator, and the grid points is determined by densities and 
-    the count of density prior box is determined by fixed_sizes and fixed_ratios. 
+    Generate density prior boxes for SSD(Single Shot MultiBox Detector)
+    algorithm. Each position of the input produce N prior boxes, N is
+    determined by the count of densities, fixed_sizes and fixed_ratios.
+    Boxes center at grid points around each input position is generated by
+    this operator, and the grid points is determined by densities and
+    the count of density prior box is determined by fixed_sizes and fixed_ratios.
     Obviously, the number of fixed_sizes is equal to the number of densities.
     For densities_i in densities:
     N_density_prior_box =sum(N_fixed_ratios * densities_i^2),
@@ -1253,11 +1256,11 @@ def density_prior_box(input,
        input(Variable): The Input Variables, the format is NCHW.
        image(Variable): The input image data of PriorBoxOp,
             the layout is NCHW.
-       densities(list|tuple|None): the densities of generated density prior 
-            boxes, this attribute should be a list or tuple of integers. 
+       densities(list|tuple|None): the densities of generated density prior
+            boxes, this attribute should be a list or tuple of integers.
             Default: None.
        fixed_sizes(list|tuple|None): the fixed sizes of generated density
-            prior boxes, this attribute should a list or tuple of same 
+            prior boxes, this attribute should a list or tuple of same
             length with :attr:`densities`. Default: None.
        fixed_ratios(list|tuple|None): the fixed ratios of generated density
             prior boxes, if this attribute is not set and :attr:`densities`
@@ -1626,14 +1629,14 @@ def anchor_generator(input,
        name(str): Name of the prior box op. Default: None.
 
     Returns:
-        Anchors(Variable),Variances(Variable):  
-        
+        Anchors(Variable),Variances(Variable):
+
               two variables:
-        
+
               - Anchors(Variable): The output anchors with a layout of [H, W, num_anchors, 4]. \
                 H is the height of input, W is the width of input, \
                 num_anchors is the box count of each position.  \
-                Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized. 
+                Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
               - Variances(Variable): The expanded variances of anchors \
                 with a layout of [H, W, num_priors, 4]. \
                 H is the height of input, W is the width of input \
@@ -1701,22 +1704,22 @@ def roi_perspective_transform(input,
     ROI perspective transform op.
 
     Args:
-        input (Variable): The input of ROIPerspectiveTransformOp. The format of 
+        input (Variable): The input of ROIPerspectiveTransformOp. The format of
                           input tensor is NCHW. Where N is batch size, C is the
                           number of input channels, H is the height of the feature,
                           and W is the width of the feature.
         rois (Variable):  ROIs (Regions of Interest) to be transformed. It should be
-                          a 2-D LoDTensor of shape (num_rois, 8). Given as 
-                          [[x1, y1, x2, y2, x3, y3, x4, y4], ...], (x1, y1) is the 
-                          top left coordinates, and (x2, y2) is the top right 
-                          coordinates, and (x3, y3) is the bottom right coordinates, 
+                          a 2-D LoDTensor of shape (num_rois, 8). Given as
+                          [[x1, y1, x2, y2, x3, y3, x4, y4], ...], (x1, y1) is the
+                          top left coordinates, and (x2, y2) is the top right
+                          coordinates, and (x3, y3) is the bottom right coordinates,
                           and (x4, y4) is the bottom left coordinates.
         transformed_height (integer): The height of transformed output.
         transformed_height (integer): The width of transformed output.
         spatial_scale (float): Spatial scale factor to scale ROI coords. Default: 1.0
 
     Returns:
-        Variable: The output of ROIPerspectiveTransformOp which is a 4-D tensor with shape 
+        Variable: The output of ROIPerspectiveTransformOp which is a 4-D tensor with shape
                   (num_rois, channels, transformed_h, transformed_w).
 
     Examples:
@@ -1867,8 +1870,8 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
                         gt_segm.append(np.array(polys).reshape(-1, 2))
                     gt_masks.append(gt_segm)
                 batch_masks.append(gt_masks)
-            
-            
+
+
             place = fluid.CPUPlace()
             feeder = fluid.DataFeeder(place=place, feed_list=feeds)
             feeder.feed(batch_masks)
@@ -1984,7 +1987,7 @@ def generate_proposals(scores,
     **Generate proposal Faster-RCNN**
 
     This operation proposes RoIs according to each box with their
-    probability to be a foreground object and 
+    probability to be a foreground object and
     the box can be calculated by anchors. Bbox_deltais and scores
     to be an object are the output of RPN. Final proposals
     could be used to train detection net.
@@ -1993,9 +1996,9 @@ def generate_proposals(scores,
 
     1. Transposes and resizes scores and bbox_deltas in size of
        (H*W*A, 1) and (H*W*A, 4)
-    2. Calculate box locations as proposals candidates. 
+    2. Calculate box locations as proposals candidates.
     3. Clip boxes to image
-    4. Remove predicted boxes with small area. 
+    4. Remove predicted boxes with small area.
     5. Apply NMS to get final proposals as output.
 
     Args:
@@ -2060,16 +2063,16 @@ def box_clip(input, im_info, name=None):
     """
     Clip the box into the size given by im_info
     For each input box, The formula is given as follows:
-        
+
     .. code-block:: text
 
         xmin = max(min(xmin, im_w - 1), 0)
-        ymin = max(min(ymin, im_h - 1), 0) 
+        ymin = max(min(ymin, im_h - 1), 0)
         xmax = max(min(xmax, im_w - 1), 0)
         ymax = max(min(ymax, im_h - 1), 0)
-    
+
     where im_w and im_h are computed from im_info:
- 
+
     .. code-block:: text
 
         im_h = round(height / scale)
@@ -2077,18 +2080,18 @@ def box_clip(input, im_info, name=None):
 
     Args:
         input(variable): The input box, the last dimension is 4.
-        im_info(variable): The information of image with shape [N, 3] with 
+        im_info(variable): The information of image with shape [N, 3] with
                             layout (height, width, scale). height and width
                             is the input size and scale is the ratio of input
                             size and original size.
         name (str): The name of this layer. It is optional.
-    
+
     Returns:
         Variable: The cliped tensor variable.
-        
+
     Examples:
         .. code-block:: python
-        
+
             boxes = fluid.layers.data(
                 name='data', shape=[8, 4], dtype='float32', lod_level=1)
             im_info = fluid.layers.data(name='im_info', shape=[3])
@@ -2116,7 +2119,7 @@ def multiclass_nms(bboxes,
                    name=None):
     """
     **Multiclass NMS**
-    
+
     This operator is to do multi-class non maximum suppression (NMS) on
     boxes and scores.
 
@@ -2136,16 +2139,16 @@ def multiclass_nms(bboxes,
                            [N, M, 4 or 8 16 24 32] represents the
                            predicted locations of M bounding bboxes,
                            N is the batch size. Each bounding box has four
-                           coordinate values and the layout is 
+                           coordinate values and the layout is
                            [xmin, ymin, xmax, ymax], when box size equals to 4.
                            2. (LoDTensor) A 3-D Tensor with shape [M, C, 4]
-                           M is the number of bounding boxes, C is the 
-                           class number   
+                           M is the number of bounding boxes, C is the
+                           class number
         scores (Variable): Two types of scores are supported:
                            1. (Tensor) A 3-D Tensor with shape [N, C, M]
                            represents the predicted confidence predictions.
-                           N is the batch size, C is the class number, M is 
-                           number of bounding boxes. For each category there 
+                           N is the batch size, C is the class number, M is
+                           number of bounding boxes. For each category there
                            are total M scores which corresponding M bounding
                            boxes. Please note, M is equal to the 2nd dimension
                            of BBoxes.
@@ -2153,11 +2156,11 @@ def multiclass_nms(bboxes,
                            M is the number of bbox, C is the class number.
                            In this case, input BBoxes should be the second
                            case with shape [M, C, 4].
-        background_label (int): The index of background label, the background 
+        background_label (int): The index of background label, the background
                                 label will be ignored. If set to -1, then all
                                 categories will be considered. Default: 0
         score_threshold (float): Threshold to filter out bounding boxes with
-                                 low confidence score. If not provided, 
+                                 low confidence score. If not provided,
                                  consider all boxes.
         nms_top_k (int): Maximum number of detections to be kept according to
                          the confidences aftern the filtering detections based
@@ -2173,13 +2176,13 @@ def multiclass_nms(bboxes,
         Out: A 2-D LoDTensor with shape [No, 6] represents the detections.
              Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
              or A 2-D LoDTensor with shape [No, 10] represents the detections.
-             Each row has 10 values: 
-             [label, confidence, x1, y1, x2, y2, x3, y3, x4, y4]. No is the 
+             Each row has 10 values:
+             [label, confidence, x1, y1, x2, y2, x3, y3, x4, y4]. No is the
              total number of detections. If there is no detected boxes for all
              images, lod will be set to {1} and Out only contains one value
              which is -1.
-             (After version 1.3, when no boxes detected, the lod is changed 
-             from {0} to {1}) 
+             (After version 1.3, when no boxes detected, the lod is changed
+             from {0} to {1})
 
 
     Examples:
