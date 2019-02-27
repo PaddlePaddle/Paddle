@@ -422,7 +422,7 @@ function assert_api_not_changed() {
     fi
     # ComposeNotAligned has significant difference between py2 and py3
     sed -i '/.*ComposeNotAligned.*/d' new.spec
-
+    cat new.spec
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
     deactivate
 }
@@ -432,8 +432,8 @@ function assert_api_spec_approvals() {
         BRANCH="develop"
     fi
 
-    API_FILES=("cmake/external"
-               "paddle/fluid/API.spec"
+    API_FILES=("paddle/fluid/API.spec"
+               "python/paddle/fluid/parallel_executor.py"
                "paddle/fluid/framework/operator.h"
                "paddle/fluid/framework/tensor.h"
                "paddle/fluid/framework/lod_tensor.h"
