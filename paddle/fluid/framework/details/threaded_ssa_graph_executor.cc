@@ -23,9 +23,8 @@ namespace framework {
 namespace details {
 ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
-    std::unique_ptr<ir::Graph> &&graph)
-    : graph_(std::move(graph)),
+    const std::vector<platform::Place> &places, ir::Graph *graph)
+    : graph_(graph),
       pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
                                        : nullptr),
       local_scopes_(local_scopes),
@@ -110,7 +109,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
         for (auto &run_op_future : run_op_futures_) {
           run_op_future.wait();
         }
-        ClearFetchOp(graph_.get(), &fetch_ops);
+        ClearFetchOp(graph_, &fetch_ops);
         exception_holder_.ReThrow();
       } else {
         continue;
@@ -135,7 +134,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   }
   PADDLE_ENFORCE(ready_ops.empty());
   // Wait FetchOps.
-  ClearFetchOp(graph_.get(), &fetch_ops);
+  ClearFetchOp(graph_, &fetch_ops);
 
   return fetch_data;
 }

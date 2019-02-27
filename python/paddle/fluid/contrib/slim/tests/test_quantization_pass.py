@@ -130,15 +130,16 @@ class TestQuantizationTransformPass(unittest.TestCase):
             loss = linear_fc(3)
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
-        exe = fluid.Executor(fluid.CPUPlace())
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
         graph = IrGraph(core.Graph(main.desc), for_test=False)
         transform_pass = QuantizationTransformPass(
             scope=fluid.global_scope(),
-            program_exe=exe,
+            place=place,
             activation_quantize_type=quant_type)
         transform_pass.apply(graph)
         marked_nodes = set()
-        for op in graph.all_ops():
+        for op in graph.all_op_nodes():
             if op.name().find('quantize') > -1:
                 marked_nodes.add(op)
         graph.draw('.', 'quantize_fc_' + quant_type, marked_nodes)
@@ -146,7 +147,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
         self.check_program(transform_pass, program)
         val_graph = IrGraph(core.Graph(program.desc), for_test=False)
         val_marked_nodes = set()
-        for op in val_graph.all_ops():
+        for op in val_graph.all_op_nodes():
             if op.name().find('quantize') > -1:
                 val_marked_nodes.add(op)
         val_graph.draw('.', 'val_fc_' + quant_type, val_marked_nodes)
@@ -166,15 +167,16 @@ class TestQuantizationTransformPass(unittest.TestCase):
             loss = residual_block(2)
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
-        exe = fluid.Executor(fluid.CPUPlace())
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
         graph = IrGraph(core.Graph(main.desc), for_test=False)
         transform_pass = QuantizationTransformPass(
             scope=fluid.global_scope(),
-            program_exe=exe,
+            place=place,
             activation_quantize_type=quant_type)
         transform_pass.apply(graph)
         marked_nodes = set()
-        for op in graph.all_ops():
+        for op in graph.all_op_nodes():
             if op.name().find('quantize') > -1:
                 marked_nodes.add(op)
         graph.draw('.', 'quantize_residual_' + quant_type, marked_nodes)
@@ -182,7 +184,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
         self.check_program(transform_pass, program)
         val_graph = IrGraph(core.Graph(program.desc), for_test=False)
         val_marked_nodes = set()
-        for op in val_graph.all_ops():
+        for op in val_graph.all_op_nodes():
             if op.name().find('quantize') > -1:
                 val_marked_nodes.add(op)
         val_graph.draw('.', 'val_residual_' + quant_type, val_marked_nodes)
@@ -231,17 +233,17 @@ class TestQuantizationFreezePass(unittest.TestCase):
         with fluid.scope_guard(scope):
             exe.run(startup)
         transform_pass = QuantizationTransformPass(
-            scope=scope, program_exe=exe, activation_quantize_type=quant_type)
+            scope=scope, place=place, activation_quantize_type=quant_type)
         transform_pass.apply(main_graph)
         transform_pass.apply(test_graph)
         dev_name = '_gpu_' if use_cuda else '_cpu_'
         marked_nodes = set()
-        for op in main_graph.all_ops():
+        for op in main_graph.all_op_nodes():
             if op.name().find('quantize') > -1:
                 marked_nodes.add(op)
         main_graph.draw('.', 'main' + dev_name + quant_type, marked_nodes)
         marked_nodes = set()
-        for op in test_graph.all_ops():
+        for op in test_graph.all_op_nodes():
             if op.name().find('quantize') > -1:
                 marked_nodes.add(op)
         test_graph.draw('.', 'test' + dev_name + quant_type, marked_nodes)
@@ -251,11 +253,6 @@ class TestQuantizationFreezePass(unittest.TestCase):
         iters = 5
         batch_size = 8
 
-        #train_exe = fluid.ParallelExecutor(
-        #    main_program=quantized_main_program,
-        #    use_cuda=bool(use_cuda),
-        #    loss_name=loss.name,
-        #    scope=scope)
         train_reader = paddle.batch(
             paddle.reader.shuffle(
                 paddle.dataset.mnist.train(), buf_size=500),
@@ -269,9 +266,7 @@ class TestQuantizationFreezePass(unittest.TestCase):
                 loss_v = exe.run(program=quantized_main_program,
                                  feed=feeder.feed(data),
                                  fetch_list=[loss])
-                #loss_v = train_exe.run(feed=feeder.feed(data),
-                #                       fetch_list=[loss.name])
-                #print('{}: {}'.format('loss' + dev_name + quant_type, loss_v))
+                print('{}: {}'.format('loss' + dev_name + quant_type, loss_v))
 
         test_data = next(test_reader())
         with fluid.program_guard(quantized_test_program):
@@ -287,7 +282,7 @@ class TestQuantizationFreezePass(unittest.TestCase):
         freeze_pass = QuantizationFreezePass(scope=scope, place=place)
         freeze_pass.apply(test_graph)
         marked_nodes = set()
-        for op in test_graph.all_ops():
+        for op in test_graph.all_op_nodes():
             if op.name().find('quantize') > -1:
                 marked_nodes.add(op)
         test_graph.draw('.', 'test_freeze' + dev_name + quant_type,
@@ -299,21 +294,21 @@ class TestQuantizationFreezePass(unittest.TestCase):
                                   feed=feeder.feed(test_data),
                                   fetch_list=[loss])
         self.assertAlmostEqual(test_loss1, test_loss2, delta=5e-3)
-        #print('{}: {}'.format('test_loss1' + dev_name + quant_type, test_loss1))
-        #print('{}: {}'.format('test_loss2' + dev_name + quant_type, test_loss2))
+        print('{}: {}'.format('test_loss1' + dev_name + quant_type, test_loss1))
+        print('{}: {}'.format('test_loss2' + dev_name + quant_type, test_loss2))
         w_freeze = np.array(scope.find_var('conv2d_1.w_0').get_tensor())
         # Maybe failed, this is due to the calculation precision
         # self.assertAlmostEqual(np.sum(w_freeze), np.sum(w_quant))
-        #print('{}: {}'.format('w_freeze' + dev_name + quant_type,
-        #                      np.sum(w_freeze)))
-        #print('{}: {}'.format('w_quant' + dev_name + quant_type,
-        #                      np.sum(w_quant)))
+        print('{}: {}'.format('w_freeze' + dev_name + quant_type,
+                              np.sum(w_freeze)))
+        print('{}: {}'.format('w_quant' + dev_name + quant_type,
+                              np.sum(w_quant)))
 
         # Convert parameter to 8-bit.
         convert_int8_pass = ConvertToInt8Pass(scope=scope, place=place)
         convert_int8_pass.apply(test_graph)
         marked_nodes = set()
-        for op in test_graph.all_ops():
+        for op in test_graph.all_op_nodes():
             if op.name().find('quantize') > -1:
                 marked_nodes.add(op)
         test_graph.draw('.', 'test_int8' + dev_name + quant_type, marked_nodes)
@@ -330,14 +325,14 @@ class TestQuantizationFreezePass(unittest.TestCase):
         w_8bit = np.array(scope.find_var('conv2d_1.w_0.int8').get_tensor())
         self.assertEqual(w_8bit.dtype, np.int8)
         self.assertEqual(np.sum(w_8bit), np.sum(w_freeze))
-        #print('{}: {}'.format('w_8bit' + dev_name + quant_type, np.sum(w_8bit)))
-        #print('{}: {}'.format('w_freeze' + dev_name + quant_type,
-        #                      np.sum(w_freeze)))
+        print('{}: {}'.format('w_8bit' + dev_name + quant_type, np.sum(w_8bit)))
+        print('{}: {}'.format('w_freeze' + dev_name + quant_type,
+                              np.sum(w_freeze)))
 
         mobile_pass = TransformForMobilePass()
         mobile_pass.apply(test_graph)
         marked_nodes = set()
-        for op in test_graph.all_ops():
+        for op in test_graph.all_op_nodes():
             if op.name().find('quantize') > -1:
                 marked_nodes.add(op)
         test_graph.draw('.', 'test_mobile' + dev_name + quant_type,

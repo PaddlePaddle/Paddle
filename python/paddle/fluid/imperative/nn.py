@@ -27,6 +27,7 @@ __all__ = ['Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding']
 
 class Conv2D(layers.Layer):
     def __init__(self,
+                 name_scope,
                  num_channels,
                  num_filters,
                  filter_size,
@@ -38,19 +39,17 @@ class Conv2D(layers.Layer):
                  act=None,
                  param_attr=None,
                  bias_attr=None,
-                 name=None,
                  dtype=core.VarDesc.VarType.FP32):
         assert param_attr is not False, "param_attr should not be False here."
-        super(Conv2D, self).__init__(name=name, dtype=dtype)
+        super(Conv2D, self).__init__(name_scope, dtype=dtype)
 
         # TODO(minqiyang): Move this to the top.
         from ..layer_helper import LayerHelper
         self._helper = LayerHelper(
-            type(self).__name__,
+            self.full_name(),
             param_attr=param_attr,
             bias_attr=bias_attr,
             dtype=dtype,
-            name=name,
             act=act)
 
         self._groups = groups
@@ -143,6 +142,7 @@ class Conv2D(layers.Layer):
 
 class Pool2D(layers.Layer):
     def __init__(self,
+                 name_scope,
                  pool_size=-1,
                  pool_type="max",
                  pool_stride=1,
@@ -151,7 +151,6 @@ class Pool2D(layers.Layer):
                  use_cudnn=True,
                  ceil_mode=False,
                  exclusive=True,
-                 name=None,
                  dtype=core.VarDesc.VarType.FP32):
         if pool_type not in ["max", "avg"]:
             raise ValueError(
@@ -166,10 +165,10 @@ class Pool2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
 
-        super(Pool2D, self).__init__(name=name, dtype=dtype)
+        super(Pool2D, self).__init__(name_scope, dtype=dtype)
 
         from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(type(self).__name__, dtype=dtype, name=name)
+        self._helper = LayerHelper(self.full_name(), dtype=dtype)
 
         self._pool_type = pool_type
         self._pool_size = utils.convert_to_list(pool_size, 2, 'pool_size')
@@ -205,25 +204,24 @@ class Pool2D(layers.Layer):
 
 class FC(layers.Layer):
     def __init__(self,
+                 name_scope,
                  size,
                  param_attr=None,
                  bias_attr=None,
                  num_flatten_dims=1,
                  dtype=core.VarDesc.VarType.FP32,
-                 act=None,
-                 name=None):
-        super(FC, self).__init__()
+                 act=None):
+        super(FC, self).__init__(name_scope)
 
         self._size = size
         self._num_flatten_dims = num_flatten_dims
         self._dtype = dtype
         from ..layer_helper import LayerHelper
         self._helper = LayerHelper(
-            'FC',
+            self.full_name(),
             param_attr=param_attr,
             bias_attr=bias_attr,
-            act=act,
-            name=name)
+            act=act)
 
     def _build_once(self, input):
         input_shape = input.shape
@@ -282,6 +280,7 @@ class FC(layers.Layer):
 
 class BatchNorm(layers.Layer):
     def __init__(self,
+                 name_scope,
                  num_channels,
                  act=None,
                  is_test=False,
@@ -292,22 +291,20 @@ class BatchNorm(layers.Layer):
                  dtype=core.VarDesc.VarType.FP32,
                  data_layout='NCHW',
                  in_place=False,
-                 name=None,
                  moving_mean_name=None,
                  moving_variance_name=None,
                  do_model_average_for_mean_and_var=False,
                  fuse_with_relu=False,
                  use_global_stats=False):
-        super(BatchNorm, self).__init__()
+        super(BatchNorm, self).__init__(name_scope)
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
 
         from ..layer_helper import LayerHelper
         self._helper = LayerHelper(
-            'batch_norm',
+            self.full_name(),
             param_attr=param_attr,
             bias_attr=bias_attr,
-            name=name,
             act=act)
 
         if dtype == core.VarDesc.VarType.FP16:
@@ -419,6 +416,7 @@ class Embedding(layers.Layer):
     constructor.
 
     Args:
+        name_scope: See base class.
         size(tuple|list): The shape of the look up table parameter. It should
             have two elements which indicate the size of the dictionary of
             embeddings and the size of each embedding vector respectively.
@@ -446,6 +444,7 @@ class Embedding(layers.Layer):
     """
 
     def __init__(self,
+                 name_scope,
                  size,
                  is_sparse=False,
                  is_distributed=False,
@@ -453,7 +452,7 @@ class Embedding(layers.Layer):
                  param_attr=None,
                  dtype='float32'):
 
-        super(Embedding, self).__init__()
+        super(Embedding, self).__init__(name_scope)
         self._size = size
         self._is_sparse = is_sparse
         self._is_distributed = is_distributed
@@ -468,7 +467,7 @@ class Embedding(layers.Layer):
             assert self._is_sparse is True and self._is_distributed is False
 
         from ..layer_helper import LayerHelper
-        self._helper = LayerHelper('embedding', param_attr=param_attr)
+        self._helper = LayerHelper(self.full_name(), param_attr=param_attr)
         self._w = self._helper.create_parameter(
             attr=self._param_attr,
             shape=self._size,
