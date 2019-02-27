@@ -511,6 +511,7 @@ paddle.fluid.unique_name.guard ArgSpec(args=['new_generator'], varargs=None, key
 paddle.fluid.recordio_writer.convert_reader_to_recordio_file ArgSpec(args=['filename', 'reader_creator', 'feeder', 'compressor', 'max_num_records', 'feed_order'], varargs=None, keywords=None, defaults=(Compressor.Snappy, 1000, None))
 paddle.fluid.recordio_writer.convert_reader_to_recordio_files ArgSpec(args=['filename', 'batch_per_file', 'reader_creator', 'feeder', 'compressor', 'max_num_records', 'feed_order'], varargs=None, keywords=None, defaults=(Compressor.Snappy, 1000, None))
 paddle.fluid.Scope Scope() -> paddle.fluid.core._Scope
+paddle.reader.cache ArgSpec(args=['reader'], varargs=None, keywords=None, defaults=None)
 paddle.reader.map_readers ArgSpec(args=['func'], varargs='readers', keywords=None, defaults=None)
 paddle.reader.buffered ArgSpec(args=['reader', 'size'], varargs=None, keywords=None, defaults=None)
 paddle.reader.compose ArgSpec(args=[], varargs='readers', keywords='kwargs', defaults=None)
