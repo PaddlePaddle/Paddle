@@ -127,7 +127,6 @@ class TestBase(unittest.TestCase):
                     step_list.append(step)
             end_t = time.time()
             ret = {"time": end_t - start_t, "step": step_list}
-            scope._remove_from_pool()
             return ret
 
     def prepare_places(self, with_data_parallel, with_cpu=True, with_gpu=True):
