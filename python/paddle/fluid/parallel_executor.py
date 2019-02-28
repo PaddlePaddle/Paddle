@@ -13,14 +13,10 @@
 # limitations under the License.
 
 from __future__ import print_function
-import multiprocessing
 from . import core
 from . import framework
 from . import executor
-import warnings
 import sys
-import six
-import os
 import compiler
 
 __all__ = ['ParallelExecutor']
@@ -92,7 +88,6 @@ class ParallelExecutor(object):
                  num_trainers=1,
                  trainer_id=0,
                  scope=None):
-        # get places, the places are used in run too.
         sys.stderr.write(
             'ParallelExecutor is deprecated. '
             'Please use CompiledProgram and Executor. CompiledProgram '
@@ -105,7 +100,7 @@ class ParallelExecutor(object):
         build_strategy.trainer_id = trainer_id
 
         self._places = compiler.get_available_places(use_cuda)
-        self.scope = scope if scope is not None else executor.global_scope()
+        self._scope = scope if scope is not None else executor.global_scope()
 
         main_program = main_program if main_program is not None \
             else framework.default_main_program()
@@ -116,8 +111,9 @@ class ParallelExecutor(object):
             build_strategy=build_strategy,
             exec_strategy=exec_strategy,
             share_vars_from=share_vars_from)
-        self._executor = self._compiled_program._compile_data_parallel(
-            use_cuda=use_cuda, scope=self.scope)
+        self._place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
+        self._executor = executor.Executor(self._place)
+        self._compiled_program._compile(place=self._place, scope=self._scope)
 
     def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):
         """
@@ -184,56 +180,11 @@ class ParallelExecutor(object):
                 loss = pe.run(feed=feeder.feed(cur_batch),
                               fetch_list=[avg_cost.name]))
         """
-        if feed is None and feed_dict is not None:
-            feed = feed_dict
-            print(
-                "`feed_dict` is deprecated. Please use `feed=`",
-                file=sys.stderr)
-
-        if isinstance(feed, dict):
-            feed_tensor_dict = dict()
-            for feed_name in feed:
-                feed_tensor = feed[feed_name]
-                if not isinstance(feed_tensor, core.LoDTensor):
-                    feed_tensor = core.LoDTensor()
-                    # always set to CPU place, since the tensor need to be splitted
-                    # it is fast in CPU
-                    feed_tensor.set(feed[feed_name], core.CPUPlace())
-                feed_tensor_dict[feed_name] = feed_tensor
-
-            self._executor.feed_and_split_tensor_into_local_scopes(
-                feed_tensor_dict)
-        elif isinstance(feed, list) or isinstance(feed, tuple):
-            if len(feed) != len(self._places):
-                raise ValueError(
-                    "Feed a list of tensor, the list should be the same size as places"
-                )
-
-            res = list()
-
-            for i, each in enumerate(feed):
-                if not isinstance(each, dict):
-                    raise TypeError(
-                        "Each element of feed list should be a dict")
-                res_dict = dict()
-                for feed_name in each:
-                    tensor = each[feed_name]
-                    if not isinstance(tensor, core.LoDTensor):
-                        tmp = core.LoDTensor()
-                        tmp.set(tensor, self._places[i])
-                        tensor = tmp
-                    res_dict[feed_name] = tensor
-                res.append(res_dict)
-            self._executor.feed_tensors_into_local_scopes(res)
-
-        fetch_var_name = 'fetch'
-        self._executor.run(fetch_list, fetch_var_name)
-        arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
-
-        if return_numpy:
-            return executor.as_numpy(arr)
-
-        return [arr[i] for i in range(len(arr))]
+        return self._executor.run(program=self._compiled_program,
+                                  scope=self._scope,
+                                  feed=feed,
+                                  fetch_list=fetch_list,
+                                  return_numpy=return_numpy)
 
     @property
     def device_count(self):
