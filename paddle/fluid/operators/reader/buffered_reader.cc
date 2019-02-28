@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reader/buffered_reader.h"
+#include <memory>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 
