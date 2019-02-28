@@ -136,10 +136,7 @@ class VarBase {
 
  public:
   virtual ~VarBase() {
-    if (block_ && !persistable_) {
-      block_->RemoveVar(name_);
-    }
-
+    // TODO(minqiyang): remove var desc from block desc
     if (var_) {
       delete var_;
       var_ = nullptr;
