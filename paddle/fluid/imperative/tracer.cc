@@ -14,7 +14,10 @@
 
 #include "paddle/fluid/imperative/tracer.h"
 
+#include <memory>
 #include <set>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -110,7 +113,8 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   std::map<std::string, VarBase*> vars;
 
   framework::OpDesc* op_desc = op->op_desc_;
-  VLOG(3) << "tracer tracing " << op_desc->Type();
+  VLOG(3) << "tracer tracing " << op_desc->Type() << " trace id "
+          << op->trace_id_;
   op_desc->InferShape(*block);
   op_desc->InferVarType(block);
 
@@ -133,11 +137,13 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
       if (inp->PreOp() && !inp->IsStopGradient()) {
         op->pre_ops_[it.first].push_back(inp->PreOp());
         op->pre_ops_out_idx_[it.first].push_back(inp->PreOpOutIdx());
+        VLOG(3) << "add pre op " << inp->PreOp()->op_desc_->Type();
       } else {
         op->pre_ops_[it.first].push_back(nullptr);
       }
       VLOG(3) << "input vname " << inp->var_desc_->Name() << " "
-              << inp->var_->IsInitialized();
+              << inp->var_->IsInitialized() << " stop_gradient "
+              << inp->IsStopGradient();
     }
   }
 
@@ -189,6 +195,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
 
     op->grad_input_vars_.resize(op->grad_op_descs_.size());
     op->grad_output_vars_.resize(op->grad_op_descs_.size());
+
     for (size_t i = 0; i < op->grad_op_descs_.size(); ++i) {
       framework::OpDesc* grad_op_desc = op->grad_op_descs_[i];
       for (auto it : grad_op_desc->Inputs()) {
@@ -201,7 +208,6 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
             PADDLE_ENFORCE(fwd_var_it != vars.end());
             // Forward inputs or outputs.
             grad_in_vars.push_back(fwd_var_it->second->var_);
-            vars_saved_for_backward.insert(it.first);
           } else {
             VarBase* var = vars[var_it->second];
             if (!var->grads_->var_->IsInitialized()) {
@@ -211,6 +217,8 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
             // Douts.
             grad_in_vars.push_back(var->grads_->var_);
           }
+
+          vars_saved_for_backward.insert(it.first);
         }
       }
 
