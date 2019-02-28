@@ -2259,9 +2259,11 @@ def distribute_fpn_proposals(fpn_rois,
         refer_scale(int): The referring scale of FPN layer with specified level.
         
     Returns:
-        List(variable): The list of segmented tensor variables.
-        Variable: An array of positive number which is used to restore the 
-                  order of fpn_rois.
+        tuple: 
+               A tuple(multi_rois, restore_ind) is returned. The multi_rois is 
+               a list of segmented tensor variables. The restore_ind is a 2D 
+               Tensor with shape [N, 1], N is the number of total rois. It is
+               used to restore the order of fpn_rois.
 
     Examples:
         .. code-block:: python
