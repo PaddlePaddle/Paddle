@@ -764,6 +764,7 @@ function travis_check_api() {
         -DWITH_GPU=OFF \
         -DWITH_MKL=OFF
     build
+    echo "build finish"
     assert_api_not_changed cp27-cp27m
     assert_api_spec_approvals
     pip uninstall paddlepaddle
@@ -869,7 +870,7 @@ function main() {
         ;;
       check_api)
         travis_check_api 
-        travis_check_api_py35
+        #travis_check_api_py35
         ;;
       *)
         print_usage
