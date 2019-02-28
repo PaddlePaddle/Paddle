@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,8 +47,8 @@ static inline int NumBlocks(const int N) {
                   kNumMaxinumNumBlocks);
 }
 
-static inline void transform_lod(const int* length_lod, const int lod_size,
-                                 int* offset_lod) {
+static inline void TransLoD(const int* length_lod, const int lod_size,
+                            int* offset_lod) {
   int offset = 0;
   for (int i = 0; i < lod_size; ++i) {
     offset_lod[i] = offset;
@@ -75,7 +75,7 @@ static __device__ inline T RoIArea(const T* box, bool normalized) {
 }
 
 template <class T>
-static __global__ void GPUDistributeHelper(
+static __global__ void GPUDistFpnProposalsHelper(
     const int nthreads, const T* rois, const int lod_size,
     const int refer_level, const int refer_scale, const int max_level,
     const int min_level, int* roi_batch_id_data, int* sub_lod_list,
@@ -83,11 +83,13 @@ static __global__ void GPUDistributeHelper(
   CUDA_1D_KERNEL_LOOP(i, nthreads) {
     const T* offset_roi = rois + i * BBoxSize;
     int roi_batch_ind = roi_batch_id_data[i];
+    // get the target level of current rois
     T roi_area = RoIArea(offset_roi, false);
     T roi_scale = sqrt(roi_area);
     int tgt_lvl = floor(log2(roi_scale / refer_scale) + refer_level);
     tgt_lvl = min(max_level, max(tgt_lvl, min_level));
     target_lvls[i] = tgt_lvl;
+    // compute number of rois in the same batch and same target level
     platform::CudaAtomicAdd(sub_lod_list + tgt_lvl * lod_size + roi_batch_ind,
                             1);
   }
@@ -118,6 +120,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
+    // get batch id by lod in CPU
     Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({roi_num});
     int* roi_batch_id_data =
@@ -127,6 +130,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
         roi_batch_id_data[i] = n;
       }
     }
+    // copy batch id list to GPU
     Tensor roi_batch_id_list_gpu;
     framework::TensorCopySync(roi_batch_id_list, dev_ctx.GetPlace(),
                               &roi_batch_id_list_gpu);
@@ -140,7 +144,9 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     int blocks = NumBlocks(roi_num);
     int threads = kNumCUDAThreads;
-    GPUDistributeHelper<T><<<blocks, threads>>>(
+
+    // get target levels and sub_lod list
+    GPUDistFpnProposalsHelper<T><<<blocks, threads>>>(
         roi_num, fpn_rois->data<T>(), lod_size, refer_level, refer_scale,
         max_level, min_level, roi_batch_id_list_gpu.data<int>(),
         sub_lod_list_data, target_lvls_data);
@@ -166,13 +172,14 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
                                         memory::Allocator::kScratchpad);
 
     // Run sorting operation
+    // sort target level to get corresponding index
     cub::DeviceRadixSort::SortPairsDescending<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, target_lvls_data, keys_out,
         idx_in, idx_out, roi_num);
 
     int* restore_idx_data =
         restore_index->mutable_data<int>({roi_num, 1}, dev_ctx.GetPlace());
-
+    // sort current index to get restore index
     cub::DeviceRadixSort::SortPairsDescending<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, idx_out, keys_out, idx_in,
         restore_idx_data, roi_num);
@@ -183,7 +190,8 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     for (int i = 0; i < num_level; ++i) {
       Tensor sub_lod = sub_lod_list.Slice(i, i + 1);
       int* sub_lod_data = sub_lod.data<int>();
-      transform_lod(sub_lod_data, lod_size + 1, offset_lod_data);
+      // transfer length-based lod to offset-based lod
+      TransLoD(sub_lod_data, lod_size + 1, offset_lod_data);
       int sub_rois_num = offset_lod_data[lod_size];
       Tensor sub_idx = index_out_t.Slice(0, sub_rois_num);
 
