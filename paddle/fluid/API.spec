@@ -337,6 +337,7 @@ paddle.fluid.layers.polynomial_decay ArgSpec(args=['learning_rate', 'decay_steps
 paddle.fluid.layers.piecewise_decay ArgSpec(args=['boundaries', 'values'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.layers.noam_decay ArgSpec(args=['d_model', 'warmup_steps'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.layers.append_LARS ArgSpec(args=['params_grads', 'learning_rate', 'weight_decay'], varargs=None, keywords=None, defaults=None)
+paddle.fluid.layers.cosine_decay ArgSpec(args=['learning_rate', 'step_each_epoch', 'epochs'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.contrib.InitState.__init__ ArgSpec(args=['self', 'init', 'shape', 'value', 'init_boot', 'need_reorder', 'dtype'], varargs=None, keywords=None, defaults=(None, None, 0.0, None, False, 'float32'))
 paddle.fluid.contrib.StateCell.__init__ ArgSpec(args=['self', 'inputs', 'states', 'out_state', 'name'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.contrib.StateCell.compute_state ArgSpec(args=['self', 'inputs'], varargs=None, keywords=None, defaults=None)
