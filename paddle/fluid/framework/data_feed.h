@@ -60,6 +60,7 @@ class DataFeed {
   // Otherwise, Init() function will init finish_set_filelist_ flag.
   virtual bool SetFileList(const std::vector<std::string>& files);
   virtual bool Start() = 0;
+
   // The trainer calls the Next() function, and the DataFeed will load a new
   // batch to the feed_vec. The return value of this function is the batch
   // size of the current batch.
