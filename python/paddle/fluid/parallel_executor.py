@@ -29,15 +29,6 @@ ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 
-def _is_pserver_mode(main_program):
-    main = main_program if main_program \
-        else framework.default_main_program()
-    for op in main.global_block().ops:
-        if op.type in ["send", "recv"]:
-            return True
-    return False
-
-
 class ParallelExecutor(object):
     """
     ParallelExecutor is designed for data parallelism, which focuses on distributing
@@ -101,6 +92,11 @@ class ParallelExecutor(object):
                  num_trainers=1,
                  trainer_id=0,
                  scope=None):
+        sys.stderr.write(
+            'ParallelExecutor is deprecated. '
+            'Please use CompiledProgram and Executor. CompiledProgram '
+            'is a central place for optimization and Executor is the '
+            'unified executor. Example can be found in compiler.py.\n')
         # step1: get places, the places are used in run too.
         self._places = []
         if use_cuda:
@@ -140,7 +136,7 @@ class ParallelExecutor(object):
         # FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
         # num_trainers is 1, so the current fields of build_strategy doesn't tell if
         # it's distributed model.
-        build_strategy.is_distribution = _is_pserver_mode(
+        build_strategy.is_distribution = framework.is_pserver_mode(
             main_program) or num_trainers > 1
 
         # step4: get main_program, scope, local_scopes
@@ -185,10 +181,13 @@ class ParallelExecutor(object):
         places = list(map(place_obj, self._places))
 
         # step7: init ParallelExecutor
+        # ParallelExecutor API will be deprecated, don't support parallel graph.
+        self._graph = core.Graph(main.desc)
+
         self.executor = core.ParallelExecutor(
-            places, persistable_vars, main.desc,
+            places, persistable_vars,
             cpt.to_text(loss_name) if loss_name else six.u(''), scope,
-            local_scopes, exec_strategy, build_strategy)
+            local_scopes, exec_strategy, build_strategy, self._graph)
 
         self.scope = scope
 

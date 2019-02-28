@@ -61,6 +61,15 @@ struct EmbeddingVSumFunctor {
   }
 };
 
+inline int FusedEmbeddingSeqPoolLastDim(const framework::DDim &table_dims,
+                                        const framework::DDim &ids_dims) {
+  int64_t last_dim = table_dims[1];
+  for (int i = 1; i != ids_dims.size(); ++i) {
+    last_dim *= ids_dims[i];
+  }
+  return last_dim;
+}
+
 template <typename T>
 class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
  public:
@@ -69,6 +78,17 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
     LoDTensor *output_t = context.Output<LoDTensor>("Out");    // float tensor
     const LoDTensor *table_var = context.Input<LoDTensor>("W");
     const std::string &combiner_type = context.Attr<std::string>("combiner");
+
+    int64_t last_dim =
+        FusedEmbeddingSeqPoolLastDim(table_var->dims(), ids_t->dims());
+    const auto &ids_lod = ids_t->lod();
+    // in run time, the LoD of ids must be 1
+    PADDLE_ENFORCE(ids_lod.size(), 1u, "The LoD level of Input(Ids) must be 1");
+    PADDLE_ENFORCE_GE(ids_lod[0].size(), 1u, "The LoD could NOT be empty");
+    int64_t batch_size = ids_lod[0].size() - 1;
+    // in run time, the shape from Ids -> output
+    // should be [seq_length, 1] -> [batch_size, embedding_size]
+    output_t->Resize({batch_size, last_dim});
 
     if (combiner_type == "sum") {
       EmbeddingVSumFunctor<T> functor;

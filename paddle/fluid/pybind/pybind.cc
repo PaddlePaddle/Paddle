@@ -86,6 +86,14 @@ bool IsCompiledWithCUDA() {
 #endif
 }
 
+bool IsCompiledWithMKLDNN() {
+#ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithBrpc() {
 #ifndef PADDLE_WITH_DISTRIBUTE
   return false;
@@ -879,6 +887,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
 #ifdef PADDLE_WITH_CUDA
@@ -1007,6 +1016,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
 
   // -- python binds for parallel executor.
+
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
   py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
     ExecutionStrategy allows the user to more preciously control how to run
@@ -1244,9 +1254,9 @@ All parameter, weight, gradient are variables in Paddle.
                 cannot be updated after being finalized.)DOC");
 
   pe.def(py::init<const std::vector<platform::Place> &,
-                  const std::unordered_set<std::string> &, const ProgramDesc &,
-                  const std::string &, Scope *, std::vector<Scope *> &,
-                  const ExecutionStrategy &, const BuildStrategy &>())
+                  const std::unordered_set<std::string> &, const std::string &,
+                  Scope *, std::vector<Scope *> &, const ExecutionStrategy &,
+                  const BuildStrategy &, ir::Graph *>())
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
       // We still cannot get local_scope from this vector, since the element
       // of vec<Scope*> will be freed by Python GC. We can only return Scope*

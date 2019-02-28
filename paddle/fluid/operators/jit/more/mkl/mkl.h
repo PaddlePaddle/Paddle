@@ -142,6 +142,32 @@ void Softmax(const T* x, T* y, int n, int bs) {
   }
 }
 
+template <typename T>
+void Sgd(const T* lr, const T* param, const T* grad, const int64_t* rows,
+         T* out, const sgd_attr_t* attr) {
+  PADDLE_ENFORCE_EQ(attr->param_width, attr->grad_width);
+  PADDLE_ENFORCE_LE(attr->selected_rows_size, attr->grad_height);
+  T scalar = -lr[0];
+  int width = attr->grad_width;
+  if (out == param) {
+    for (int64_t i = 0; i < attr->selected_rows_size; ++i) {
+      auto h_idx = rows[i];
+      PADDLE_ENFORCE_LT(h_idx, attr->param_height);
+      PADDLE_ENFORCE_GE(h_idx, 0);
+      VAXPY(scalar, grad + i * width, out + h_idx * width, width);
+    }
+  } else {
+    for (int64_t i = 0; i < attr->selected_rows_size; ++i) {
+      auto h_idx = rows[i];
+      PADDLE_ENFORCE_LT(h_idx, attr->param_height);
+      PADDLE_ENFORCE_GE(h_idx, 0);
+      VScal(&scalar, grad + i * width, out + h_idx * width, width);
+      VAdd(param + h_idx * width, out + h_idx * width, out + h_idx * width,
+           width);
+    }
+  }
+}
+
 #define DECLARE_MKL_KERNEL(name, tuples)                             \
   template <typename T>                                              \
   class name##Kernel : public KernelMore<tuples<T>> {                \
@@ -172,6 +198,8 @@ DECLARE_MKL_KERNEL(SeqPool, SeqPoolTuples);
 DECLARE_MKL_KERNEL(EmbSeqPool, EmbSeqPoolTuples);
 
 DECLARE_MKL_KERNEL(Softmax, SoftmaxTuples);
+
+DECLARE_MKL_KERNEL(Sgd, SgdTuples);
 
 #undef DECLARE_MKL_KERNEL
 

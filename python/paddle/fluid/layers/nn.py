@@ -87,6 +87,7 @@ __all__ = [
     'transpose',
     'im2sequence',
     'nce',
+    'sampled_softmax_with_cross_entropy',
     'hsigmoid',
     'beam_search',
     'row_conv',
@@ -1766,7 +1767,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     return softmax_out
 
 
-def softmax(input, use_cudnn=True, name=None):
+def softmax(input, use_cudnn=False, name=None):
     """
     The input of the softmax operator is a tensor of any rank. The output tensor
     has the same shape as the input.
@@ -1794,7 +1795,8 @@ def softmax(input, use_cudnn=True, name=None):
     Args:
         input (Variable): The input variable.
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
-            library is installed.
+            library is installed. To improve numerical stablity, set use_cudnn to \
+            False by default. Default: False
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None.
 
@@ -2472,7 +2474,7 @@ def pool2d(input,
 
           data = fluid.layers.data(
               name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d = fluid.layers.pool2d(
+          pool2d = fluid.layers.pool2d(
                             input=data,
                             pool_size=2,
                             pool_type='max',
@@ -2521,6 +2523,7 @@ def pool2d(input,
     return pool_out
 
 
+@templatedoc()
 def pool3d(input,
            pool_size=-1,
            pool_type="max",
@@ -2532,13 +2535,19 @@ def pool3d(input,
            name=None,
            exclusive=True):
     """
-    This function adds the operator for pooling in 3-dimensions, using the
-    pooling configurations mentioned in input parameters.
+    ${comment}
 
     Args:
-        input (Variable): ${input_comment}
-        pool_size (int): ${ksize_comment}
-        pool_type (str): ${pooling_type_comment}
+        input (Variable): The input tensor of pooling operator. The format of
+                          input tensor is NCDHW, where N is batch size, C is
+                          the number of channels, D is the depth of the feature,
+                          H is the height of the feature, and W is the width
+                          of the feature.
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size 
+            is a tuple or list, it must contain three integers, 
+            (pool_size_Depth, pool_size_Height, pool_size_Width).
+            Otherwise, the pool kernel size will be the cube of an int.
+        pool_type (string): ${pooling_type_comment}
         pool_stride (int): stride of the pooling layer.
         pool_padding (int): padding size.
         global_pooling (bool): ${global_pooling_comment}
@@ -2551,6 +2560,19 @@ def pool3d(input,
 
     Returns:
         Variable: output of pool3d layer.
+
+    Examples:
+
+        .. code-block:: python
+
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32, 32], dtype='float32')
+          pool3d = fluid.layers.pool3d(
+                            input=data,
+                            pool_size=2,
+                            pool_type='max',
+                            pool_stride=1,
+                            global_pooling=False)
     """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
@@ -2600,7 +2622,27 @@ def adaptive_pool2d(input,
                     require_index=False,
                     name=None):
     """
-    ${comment}
+    **Adaptive Pool2d Operator**
+    The adaptive_pool2d operation calculates the output based on the input, pool_size,
+    pool_type parameters. Input(X) and output(Out) are in NCHW format, where N is batch
+    size, C is the number of channels, H is the height of the feature, and W is
+    the width of the feature. Parameters(pool_size) should contain two elements which
+    represent height and width, respectively. Also the H and W dimensions of output(Out)
+    is same as Parameter(pool_size).
+
+    For average adaptive pool2d:
+
+    ..  math::
+
+       hstart &= floor(i * H_{in} / H_{out})
+
+       hend &= ceil((i + 1) * H_{in} / H_{out})
+
+       wstart &= floor(j * W_{in} / W_{out})
+
+       wend &= ceil((j + 1) * W_{in} / W_{out})
+
+       Output(i ,j) &= \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
 
     Args:
         input (Variable): The input tensor of pooling operator. The format of
@@ -2610,8 +2652,8 @@ def adaptive_pool2d(input,
         pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
         pool_type: ${pooling_type_comment}
-        require_index (bool): If true, the index of max pooling point along with outputs.
-            it cannot be set in average pooling type.
+        require_index (bool): If true, the index of max pooling point will be returned along
+            with outputs. It cannot be set in average pooling type.
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
 
@@ -2692,18 +2734,42 @@ def adaptive_pool3d(input,
                     require_index=False,
                     name=None):
     """
-    ${comment}
+    **Adaptive Pool3d Operator**
+    The adaptive_pool3d operation calculates the output based on the input, pool_size,
+    pool_type parameters. Input(X) and output(Out) are in NCDHW format, where N is batch
+    size, C is the number of channels, D is the depth of the feature, H is the height of
+    the feature, and W is the width of the feature. Parameters(pool_size) should contain
+    three elements which represent height and width, respectively. Also the D, H and W
+    dimensions of output(Out) is same as Parameter(pool_size).
+
+    For average adaptive pool3d:
+
+    ..  math::
+
+      dstart &= floor(i * D_{in} / D_{out})
+
+      dend &= ceil((i + 1) * D_{in} / D_{out})
+
+      hstart &= floor(j * H_{in} / H_{out})
+
+      hend &= ceil((j + 1) * H_{in} / H_{out})
+
+      wstart &= floor(k * W_{in} / W_{out})
+
+      wend &= ceil((k + 1) * W_{in} / W_{out})
+
+      Output(i ,j, k) &= \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
 
     Args:
         input (Variable): The input tensor of pooling operator. The format of
-                          input tensor is NCHW, where N is batch size, C is
-                          the number of channels, H is the height of the
-                          feature, and W is the width of the feature.
+                          input tensor is NCDHW, where N is batch size, C is
+                          the number of channels, D is the depth of the feature,
+                          H is the height of the feature, and W is the width of the feature.
         pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain two integers, (Depth, Height, Width).
+            it must contain three integers, (Depth, Height, Width).
         pool_type: ${pooling_type_comment}
-        require_index (bool): If true, the index of max pooling point along with outputs.
-            it cannot be set in average pooling type.
+        require_index (bool): If true, the index of max pooling point will be returned along
+            with outputs. It cannot be set in average pooling type.
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
 
@@ -2740,7 +2806,7 @@ def adaptive_pool3d(input,
               name='data', shape=[3, 32, 32], dtype='float32')
           pool_out, mask = fluid.layers.adaptive_pool3d(
                             input=data,
-                            pool_size=[3, 3],
+                            pool_size=[3, 3, 3],
                             pool_type='avg')
     """
     if pool_type not in ["max", "avg"]:
@@ -2976,7 +3042,6 @@ def data_norm(input,
               param_attr=None,
               data_layout='NCHW',
               in_place=False,
-              use_mkldnn=False,
               name=None,
               moving_mean_name=None,
               moving_variance_name=None,
@@ -3010,7 +3075,6 @@ def data_norm(input,
         param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
         data_layout(string, default NCHW): NCHW|NHWC
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
-        use_mkldnn(bool, Default false): ${use_mkldnn_comment}
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
@@ -3091,8 +3155,7 @@ def data_norm(input,
         outputs={"Y": data_norm_out,
                  "Means": means,
                  "Scales": scales},
-        attrs={"epsilon": epsilon,
-               "use_mkldnn": use_mkldnn})
+        attrs={"epsilon": epsilon})
 
     return helper.append_activation(data_norm_out)
 
@@ -5691,7 +5754,7 @@ def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,
                                ignore_index=kIgnoreIndex,
-                               numeric_stable_mode=False,
+                               numeric_stable_mode=True,
                                return_softmax=False):
     """
     **Softmax With Cross Entropy Operator.**
@@ -5755,7 +5818,7 @@ def softmax_with_cross_entropy(logits,
                                     When soft_label is True or CPU is used,
                                     the algorithm is always numerically stable.
                                     Note that the speed may be slower when use
-                                    stable algorithm. Default: False
+                                    stable algorithm. Default: True
         return_softmax (bool): A flag indicating whether to return the softmax
                                along with the cross entropy loss. Default: False
 
@@ -5794,6 +5857,132 @@ def softmax_with_cross_entropy(logits,
         return loss, softmax
 
     return loss
+
+
+def sampled_softmax_with_cross_entropy(logits,
+                                       label,
+                                       num_samples,
+                                       num_true=1,
+                                       remove_accidental_hits=True,
+                                       use_customized_samples=False,
+                                       customized_samples=None,
+                                       customized_probabilities=None,
+                                       seed=0):
+    """
+    **Sampled Softmax With Cross Entropy Operator.**
+
+    Cross entropy loss with sampled softmax is used as the output layer for 
+    larger output classes extensively. This operator samples a number of samples
+    for all examples, and computes the softmax normalized values for each 
+    row of the sampled tensor, after which cross-entropy loss is computed. 
+
+    Because this operator performs a softmax on logits internally, it expects
+    unscaled logits. This operator should not be used with the output of
+    softmax operator since that would produce incorrect results.
+    
+    For examples with T true labels (T >= 1), we assume that each true label has
+    a probability of 1/T. For each sample, S samples are generated using a
+    log uniform distribution. True labels are concatenated with these samples to
+    form T + S samples for each example. So, assume the shape of logits is
+    [N x K], the shape for samples is [N x (T+S)]. For each sampled label, a 
+    probability is calculated, which corresponds to the Q(y|x) in 
+    [Jean et al., 2014](http://arxiv.org/abs/1412.2007).
+    
+    Logits are sampled according to the sampled labels. Then if 
+    remove_accidental_hits is True, if a sample[i, j] accidentally hits true 
+    labels, then the corresponding sampled_logits[i, j] is minus by 1e20 to 
+    make its softmax result close to zero. Then sampled logits are subtracted by
+    logQ(y|x), these sampled logits and re-indexed labels are used to compute 
+    a softmax with cross entropy.
+
+    Args:
+        logits (Variable): The unscaled log probabilities, which is a 2-D tensor
+            with shape [N x K]. N is the batch_size, and K is the class number.
+        label (Variable): The ground truth which is a 2-D tensor. Label is a 
+            Tensor<int64> with shape [N x T], where T is the number of true 
+            labels per example. 
+        num_samples (int): The number for each example, num_samples should be 
+            less than the number of class.
+        num_true(int): The number of target classes per training example.
+        remove_accidental_hits (bool): A flag indicating whether to remove 
+            accidental hits when sampling. If True and if a sample[i, j] 
+            accidentally hits true labels, then the corresponding 
+            sampled_logits[i, j] is minus by 1e20 to make its softmax result 
+            close to zero. Default is True.
+        use_customized_samples (bool): Whether to use custom samples and probabities to sample
+            logits.
+        customized_samples (Variable): User defined samples, which is a 2-D tensor
+            with shape [N, T + S]. S is the num_samples, and T is the number of true 
+            labels per example. 
+        customized_probabilities (Variable): User defined probabilities of samples, 
+            a 2-D tensor which has the same shape with customized_samples.
+        seed (int): The random seed for generating random number, which is used
+            in the process of sampling. Default is 0.
+
+    Returns:
+        Variable: Return the cross entropy loss which is a 2-D tensor with shape
+                  [N x 1].
+
+    Examples:
+        .. code-block:: python
+
+            logits = fluid.layers.data(name='data', shape=[256], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[5], dtype='int64')
+            fc = fluid.layers.fc(input=data, size=100)
+            out = fluid.layers.sampled_softmax_with_cross_entropy(
+                logits=fc, label=label, num_samples=25)
+    """
+    helper = LayerHelper('sample_logits', **locals())
+    samples = helper.create_variable_for_type_inference(dtype='int64')
+    probabilities = helper.create_variable_for_type_inference(
+        dtype=logits.dtype)
+    sampled_logits \
+        = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    sampled_label = helper.create_variable_for_type_inference(dtype='int64')
+    sampled_softlabel = helper.create_variable_for_type_inference(
+        dtype=logits.dtype)
+
+    helper.append_op(
+        type='sample_logits',
+        inputs={
+            'Logits': logits,
+            'Labels': label,
+            'CustomizedSamples': customized_samples,
+            'CustomizedProbabilities': customized_probabilities
+        },
+        outputs={
+            'Samples': samples,
+            'Probabilities': probabilities,
+            'SampledLabels': sampled_label,
+            'SampledLogits': sampled_logits
+        },
+        attrs={
+            'use_customized_samples': use_customized_samples,
+            'uniq': True,
+            'remove_accidental_hits': remove_accidental_hits,
+            'num_samples': num_samples,
+            'seed': seed
+        })
+    loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    helper.append_op(
+        type='one_hot',
+        inputs={'X': sampled_label},
+        attrs={'depth': num_samples + 1},
+        outputs={'Out': sampled_softlabel})
+
+    helper.append_op(
+        type='softmax_with_cross_entropy',
+        inputs={'Logits': sampled_logits,
+                'Label': sampled_softlabel},
+        outputs={'Softmax': softmax,
+                 'Loss': loss},
+        attrs={
+            'soft_label': True,
+            'ignore_index': False,
+            'numeric_stable_mode': False
+        })
+    return loss / num_true
 
 
 def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
@@ -9754,6 +9943,7 @@ def teacher_student_sigmoid_loss(input,
 
     Examples:
         .. code-block:: python
+
           cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
     """
     helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
