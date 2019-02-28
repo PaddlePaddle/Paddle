@@ -147,6 +147,7 @@ def Print(input,
           first_n=-1,
           message=None,
           summarize=-1,
+          devices=None,
           print_tensor_name=True,
           print_tensor_type=True,
           print_tensor_shape=True,
@@ -165,6 +166,9 @@ def Print(input,
         input (Variable): A Tensor to print.
         summarize (int): Print this number of elements in the tensor, will print
                 all if left is negative.
+        devices (list<int>): Only print tensor on these devices. 
+                None or empty list mean printing tensors on all devices. 
+                It is valid just for CUDA devices.
         message (str): A string message to print as a prefix.
         first_n (int): Only log `first_n` number of times.
         print_tensor_name (bool): Print the tensor name.
@@ -178,16 +182,15 @@ def Print(input,
     Returns:
         Variable: Output tensor, same data with input tensor.
 
-
     Examples:
-
         .. code-block:: python
 
-           value = some_layer(...)
-           Print(value, summarize=10,
-               message="The content of some_layer: ")
+        value = some_layer(...)
+        Print(value, summarize=10,
+              message="The content of some_layer: ")
     '''
     helper = LayerHelper('print', **locals())
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type='print',
         inputs={'In': input},
@@ -195,12 +198,15 @@ def Print(input,
             'first_n': first_n,
             'summarize': summarize,
             'message': message or "",
+            'devices': devices or [],
             'print_tensor_name': print_tensor_name,
             'print_tensor_type': print_tensor_type,
             'print_tensor_shape': print_tensor_shape,
             'print_tensor_lod': print_tensor_lod,
             'print_phase': print_phase.upper()
-        })
+        },
+        outputs={'Out': out})
+    return out
 
 
 class BlockGuard(object):
