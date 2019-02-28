@@ -13,13 +13,17 @@
 # limitations under the License.
 
 from __future__ import print_function
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 import os
-import numpy
-from .layers import Layer
+import contextlib
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.fluid.framework import Variable
+from paddle.fluid.executor import Executor
 
 
-def save_persistables(dirname, filename=None, layer=None):
+def save_persistables(var_list, dirname, filename=None, place=None):
     """
     This function filters out all variables in layer.parameters from the
     give `layer` and then trys to load these variables from the folder
@@ -36,10 +40,9 @@ def save_persistables(dirname, filename=None, layer=None):
         filename(str|None): The file which saved all variables. If variables were
                             saved in differnet files, set it to None.
                             Default: None
-        layer(Layer|PyLayer|None): The layer whose parameters will
-                                    be loaded. If it is None, nothing
+        var_list(list of Parameters): The parameters will
+                                    be saved. If it is None, nothing
                                     will be deal.
-                                    Default: None
 
 
     Returns:
@@ -68,18 +71,14 @@ def save_persistables(dirname, filename=None, layer=None):
             dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
                                                         init_cell)
             param_path = "./my_paddle_model"
-            fluid.imperative.save_persistables(dirname=param_path,
-                                       layer=ptb_model)
+            fluid.imperative.checkpoint.save_persistables(ptb_model.parameters, dirname=param_path,
+                                       layer=ptb_model, place=fluid.CPUPlace())
     """
-    # Todo: PyLayer
-    if isinstance(layer, Layer):
-        layers_parameter_dict = {}
-        for param in layer.parameters():
-            layers_parameter_dict[param.name] = param._numpy()
-        _save_var_to_file(layers_parameter_dict, dirname, filename)
+    if var_list:
+        _save_var_to_file(var_list, place, dirname, filename)
 
 
-def load_persistables(dirname, filename=None):
+def load_persistables(var_list, dirname, filename=None, place=None):
     """
     This function trys to load persistable variables from the folder
     `dirname` or the file `filename`.
@@ -90,49 +89,153 @@ def load_persistables(dirname, filename=None):
     the file name.
 
     Args:
+        var_list(list of Parameters): The parameters will be loaded.
         dirname(str): The directory path.
         filename(str|None): The file which saved all variables, this file path should be end with '.npz'. If variables were
                             saved in differnet files, set it to None.
                             Default: None
+        place():
 
     Returns:
         dict: The parameter-dict resumed from file
 
     Examples:
         .. code-block:: python
-
             param_path = "./my_paddle_model"
-            param_dict = fluid.imperative.load_persistables(param_path)
+
+            param_dict = fluid.imperative.checkpoint.load_persistables(param_path, place=fluid.CPUPlace())
             param_1 = param_dict['PtbModel_0.w_1']
 
             or:
             param_path = "./my_paddle_model"
-            filename = "model.npz"
-            param_dict = fluid.imperative.load_persistables(param_path, filename=filename)
+            filename = "model.file"
+            param_dict = fluid.imperative.checkpoint.load_persistables(param_path, filename=filename,
+                                                                       place=fluid.CPUPlace())
             param_1 = param_dict['PtbModel_0.w_1']
 
         """
-    parameter_dict = {}
-    if filename is not None:
-        # todo lujun: if remove np.save/load, fix this
-        parameter_dict = numpy.load(os.path.join(dirname, filename))
-    else:
-        for pwd, dirs, files in os.walk(dirname):
-            for parameter_file in files:
-                # todo lujun: if remove np.save/load, fix this
-                if os.path.splitext(parameter_file)[-1] == '.npy':
-                    parameter_dict[parameter_file[:-4]] = numpy.load(
-                        os.path.join(pwd, parameter_file))
-    return parameter_dict
+    if var_list:
+        return _load_var_from_file(var_list, place, dirname, filename)
+
+    return {}
 
 
-def _save_var_to_file(var_dict, file_dir, file_name):
-    # ToDo change to C++ do
-    if file_name is not None:
-        # save to np.savez
-        numpy.savez(os.path.join(file_dir, file_name), **var_dict)
-    else:
-        if not os.path.exists(file_dir):
-            os.makedirs(file_dir)
-        for var_name in var_dict.keys():
-            numpy.save(os.path.join(file_dir, var_name), var_dict[var_name])
+def _save_var_to_file(var_list, place, file_dir, file_name):
+    with guard(place) as train_pro:
+        with new_program_scope(
+                main=train_pro[0], startup=train_pro[1]) as (prog, scope):
+            exe = fluid.Executor(place)
+            save_block = prog.global_block()
+            save_var_map = {}
+            for each_var in var_list:
+                new_var = _clone_var_in_block_(save_block, each_var)
+                save_var_map[new_var.name] = new_var
+                if file_name is None:
+                    save_block.append_op(
+                        type='save',
+                        inputs={'X': [new_var]},
+                        outputs={},
+                        attrs={
+                            'file_path': os.path.join(file_dir, new_var.name)
+                        })
+
+            if file_name is not None:
+                save_var_list = []
+                for name in sorted(save_var_map.keys()):
+                    save_var_list.append(save_var_map[name])
+
+                save_block.append_op(
+                    type='save_combine',
+                    inputs={'X': save_var_list},
+                    outputs={},
+                    attrs={'file_path': os.path.join(file_dir, file_name)})
+            exe.run(prog, feed=save_var_map)
+
+
+def _load_var_from_file(var_list, place, file_dir, file_name):
+    with guard(place) as (train_pro, startup_pro):
+        with new_program_scope(
+                main=train_pro, startup=startup_pro) as (prog, scope):
+            exe = fluid.Executor(place)
+            load_block = prog.global_block()
+            load_var_map = {}
+            load_var_list_fetch = []
+            for each_var in var_list:
+                assert isinstance(each_var, Variable)
+                if each_var.type == core.VarDesc.VarType.RAW:
+                    continue
+                new_var = _clone_var_in_block_(load_block, each_var)
+                load_var_list_fetch.append(new_var.name)
+                if file_name is None:
+                    load_block.append_op(
+                        type='load',
+                        inputs={},
+                        outputs={'Out': [new_var]},
+                        attrs={
+                            'file_path': os.path.join(file_dir, new_var.name)
+                        })
+                else:
+                    load_var_map[new_var.name] = new_var
+
+            if file_name is not None:
+                load_var_list = []
+                for name in sorted(load_var_map.keys()):
+                    load_var_list.append(load_var_map[name])
+
+                load_block.append_op(
+                    type='load_combine',
+                    inputs={},
+                    outputs={"Out": load_var_list},
+                    attrs={'file_path': os.path.join(file_dir, file_name)})
+            exe.run(prog)
+            var_dict = {}
+            for var_name in load_var_list_fetch:
+                var_dict[var_name] = scope.find_var(each_var.name)
+            return var_dict
+
+
+@contextlib.contextmanager
+def new_program_scope(main=None, startup=None, scope=None):
+    # TODO fix me after supporting no-kernal op
+    prog = main if main else fluid.Program()
+    startup_prog = startup if startup else fluid.Program()
+    scope = scope if scope else fluid.core.Scope()
+    with fluid.scope_guard(scope):
+        with fluid.program_guard(prog, startup_prog):
+            with fluid.unique_name.guard():
+                yield prog, scope
+
+
+def _clone_var_in_block_(block, var):
+    assert isinstance(var, Variable)
+    return block.create_var(
+        name=var.name,
+        shape=var.shape,
+        dtype=var.dtype,
+        type=var.type,
+        lod_level=var.lod_level,
+        persistable=True)
+
+
+@signature_safe_contextmanager
+def guard(place=None):
+    """
+    fix me with supported no-kernal op
+    :param place:
+    :return:
+    """
+    train = fluid.framework.Program()
+    startup = fluid.framework.Program()
+    tracer = None
+
+    if place is None:
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+
+    with fluid.framework.program_guard(train, startup):
+        with fluid.framework.unique_name.guard():
+            with fluid.framework._imperative_guard(tracer):
+                with fluid.framework._imperative_place_guard(place):
+                    yield train, startup
