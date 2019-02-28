@@ -151,9 +151,10 @@ class LSTMKernel : public framework::OpKernel<T> {
       lstm_value.output_value = out_t.data<T>();
       lstm_value.state_value = cell_t.data<T>();
       lstm_value.state_active_value = cell_pre_act_t.data<T>();
+      T cell_clip = 0.0;
       math::LstmUnitFunctor<DeviceContext, T>::compute(
-          device_ctx, lstm_value, frame_size, cur_batch_size, gate_act,
-          cell_act, cand_act);
+          device_ctx, lstm_value, frame_size, cur_batch_size, cell_clip,
+          gate_act, cell_act, cand_act);
       lstm_value.prev_state_value = lstm_value.state_value;
     }
 
@@ -311,10 +312,15 @@ class LSTMGradKernel : public framework::OpKernel<T> {
         lstm_grad.prev_state_grad = c0_g ? ordered_c0_g.data<T>() : nullptr;
       }
 
+      // lstm_value.output_value not used in bp, set to nullptr
+      // lstm_grad.state_active_grad not used in bp, set to nullptr
+      lstm_value.output_value = nullptr;
+      lstm_grad.state_active_grad = nullptr;
       int cur_batch_size = bend - bstart;
+      T cell_clip = 0.0;
       math::LstmUnitGradFunctor<DeviceContext, T>::compute(
           device_ctx, lstm_value, lstm_grad, frame_size, cur_batch_size,
-          gate_act, cell_act, cand_act);
+          cell_clip, gate_act, cell_act, cand_act);
 
       if (n > 0) {
         int pre_h_start = static_cast<int>(batch_starts[n - 1]);

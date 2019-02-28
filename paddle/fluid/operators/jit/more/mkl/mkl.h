@@ -16,7 +16,9 @@
 
 #include <cmath>
 #include <type_traits>
+#include <vector>
 #include "paddle/fluid/operators/jit/kernel_base.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -25,7 +27,7 @@ namespace more {
 namespace mkl {
 
 template <typename T>
-void MatMul(const T* a, const T* b, T* c, int m, int n, int k);
+void MatMul(const T* a, const T* b, T* c, const matmul_attr_t* attr);
 
 template <typename T>
 void VMul(const T* x, const T* y, T* z, int n);
@@ -90,6 +92,82 @@ void SeqPool(const T* x, T* y, const seq_pool_attr_t* attr) {
   }
 }
 
+template <typename T>
+void EmbSeqPool(const T* table, const int64_t* idx, T* out,
+                const emb_seq_pool_attr_t* attr) {
+  PADDLE_ENFORCE_EQ(attr->table_width * attr->index_width, attr->out_width);
+  auto check_idx_value_valid = [&](int64_t i) {
+    PADDLE_ENFORCE_LT(idx[i], attr->table_height, "idx value: %d, i: %d",
+                      idx[i], i);
+    PADDLE_ENFORCE_GE(idx[i], 0, "idx value: %d, i: %d", idx[i], i);
+  };
+
+  for (int64_t w = 0; w != attr->index_width; ++w) {
+    check_idx_value_valid(w);
+    VCopy<T>(table + idx[w] * attr->table_width, out + w * attr->table_width,
+             attr->table_width);
+  }
+
+  for (int64_t h = 1; h < attr->index_height; ++h) {
+    for (int64_t w = 0; w < attr->index_width; ++w) {
+      int64_t i = h * attr->index_width + w;
+      check_idx_value_valid(i);
+      VAXPY<T>(static_cast<T>(1), table + idx[i] * attr->table_width,
+               out + w * attr->table_width, attr->table_width);
+    }
+  }
+}
+
+template <typename T>
+void ASum(const T* x, T* res, int n);
+
+template <typename T>
+void Softmax(const T* x, T* y, int n, int bs) {
+  std::vector<T> entities(bs);
+  for (int i = 0; i < bs; ++i) {
+    entities[i] = x[i * n];
+    for (int c = 1; c < n; ++c) {
+      entities[i] = x[i * n + c] > entities[i] ? x[i * n + c] : entities[i];
+    }
+    for (int c = 0; c < n; ++c) {
+      y[i * n + c] = x[i * n + c] - entities[i];
+    }
+  }
+  VExp(y, y, n * bs);
+  for (int i = 0; i < bs; ++i) {
+    T sum;
+    ASum(&y[i * n], &sum, n);
+    sum = static_cast<T>(1) / sum;
+    VScal(&sum, &y[i * n], &y[i * n], n);
+  }
+}
+
+template <typename T>
+void Sgd(const T* lr, const T* param, const T* grad, const int64_t* rows,
+         T* out, const sgd_attr_t* attr) {
+  PADDLE_ENFORCE_EQ(attr->param_width, attr->grad_width);
+  PADDLE_ENFORCE_LE(attr->selected_rows_size, attr->grad_height);
+  T scalar = -lr[0];
+  int width = attr->grad_width;
+  if (out == param) {
+    for (int64_t i = 0; i < attr->selected_rows_size; ++i) {
+      auto h_idx = rows[i];
+      PADDLE_ENFORCE_LT(h_idx, attr->param_height);
+      PADDLE_ENFORCE_GE(h_idx, 0);
+      VAXPY(scalar, grad + i * width, out + h_idx * width, width);
+    }
+  } else {
+    for (int64_t i = 0; i < attr->selected_rows_size; ++i) {
+      auto h_idx = rows[i];
+      PADDLE_ENFORCE_LT(h_idx, attr->param_height);
+      PADDLE_ENFORCE_GE(h_idx, 0);
+      VScal(&scalar, grad + i * width, out + h_idx * width, width);
+      VAdd(param + h_idx * width, out + h_idx * width, out + h_idx * width,
+           width);
+    }
+  }
+}
+
 #define DECLARE_MKL_KERNEL(name, tuples)                             \
   template <typename T>                                              \
   class name##Kernel : public KernelMore<tuples<T>> {                \
@@ -116,6 +194,12 @@ DECLARE_MKL_KERNEL(VTanh, XYNTuples);
 DECLARE_MKL_KERNEL(VSquare, XYNTuples);
 
 DECLARE_MKL_KERNEL(SeqPool, SeqPoolTuples);
+
+DECLARE_MKL_KERNEL(EmbSeqPool, EmbSeqPoolTuples);
+
+DECLARE_MKL_KERNEL(Softmax, SoftmaxTuples);
+
+DECLARE_MKL_KERNEL(Sgd, SgdTuples);
 
 #undef DECLARE_MKL_KERNEL
 

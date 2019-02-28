@@ -29,6 +29,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/argument.h"
+#include "paddle/fluid/inference/analysis/helper.h"
 
 namespace paddle {
 namespace inference {
@@ -42,8 +43,8 @@ class IRPassManager final {
 
   std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph);
 
-  framework::proto::ProgramDesc AcquireProgram(
-      std::unique_ptr<Graph> *graph, const ProgramDesc &program) const;
+  framework::proto::ProgramDesc AcquireProgram(std::unique_ptr<Graph> *graph,
+                                               ProgramDesc *program) const;
 
   framework::ir::Graph &graph() const { return *graph_; }
 

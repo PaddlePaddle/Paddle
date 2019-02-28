@@ -33,7 +33,6 @@ function print_usage() {
     ${BLUE}gen_doc_lib${NONE}: generate paddle documents library
     ${BLUE}html${NONE}: convert C++ source code into HTML
     ${BLUE}dockerfile${NONE}: generate paddle release dockerfile
-    ${BLUE}capi${NONE}: generate paddle CAPI package
     ${BLUE}fluid_inference_lib${NONE}: deploy fluid inference library
     ${BLUE}check_style${NONE}: run code style check
     ${BLUE}cicheck${NONE}: run CI tasks
@@ -88,7 +87,7 @@ function cmake_gen() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.5/include/python3.5m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/libpython3.5m.dylib"
-                WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+                pip3.5 uninstall -y protobuf
                 pip3.5 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -101,7 +100,7 @@ function cmake_gen() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib"
-                WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+                pip3.6 uninstall -y protobuf
                 pip3.6 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -114,7 +113,7 @@ function cmake_gen() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib"
-                WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+                pip3.7 uninstall -y protobuf
                 pip3.7 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -129,31 +128,44 @@ function cmake_gen() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
             -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs2/lib/libpython2.7.so"
+                pip uninstall -y protobuf
+                pip install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp27-cp27mu" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs2/lib:}
                 export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
             -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
+                pip uninstall -y protobuf
+                pip install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp35-cp35m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.5.1/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.5.1/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.5.1/include/python3.5m
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.5.1/lib/libpython3.so"
+                pip3.5 uninstall -y protobuf
+                pip3.5 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp36-cp36m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.6.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.6.0/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.6.0/include/python3.6m
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.6.0/lib/libpython3.so"
+                pip3.6 uninstall -y protobuf
+                pip3.6 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp37-cp37m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.7.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.7.0/bin/python3.7
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.7.0/include/python3.7m
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.7.0/lib/libpython3.so"
+                pip3.7 uninstall -y protobuf
+                pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
            fi
+        else
+            pip uninstall -y protobuf
+            pip install -r ${PADDLE_ROOT}/python/requirements.txt
         fi
     fi
 
@@ -165,29 +177,28 @@ function cmake_gen() {
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
 
+    distibuted_flag=${WITH_DISTRIBUTE:-OFF}
+    grpc_flag=${WITH_GRPC:-${distibuted_flag}}
+
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
         -DWITH_DSO=ON
-        -DWITH_DOC=${WITH_DOC:-OFF}
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
-        -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF}
+        -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_NGRAPH=${WITH_NGRAPH:-OFF}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
-        -DWITH_C_API=${WITH_C_API:-OFF}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
-        -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
@@ -197,7 +208,8 @@ function cmake_gen() {
         -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
-        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF}
+        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} 
+        -DWITH_GRPC=${grpc_flag}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -207,22 +219,18 @@ EOF
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
         -DWITH_DSO=ON \
-        -DWITH_DOC=${WITH_DOC:-OFF} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
-        -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF} \
+        -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_NGRAPH=${WITH_NGRAPH:-OFF} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
-        -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \
-        -DWITH_C_API=${WITH_C_API:-OFF} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
-        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
@@ -232,7 +240,8 @@ EOF
         -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}\
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF}
+        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} \
+        -DWITH_GRPC=${grpc_flag}
 
 }
 
@@ -250,6 +259,7 @@ function check_style() {
     	eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
     fi
 
+    pip install cpplint
     # set up go environment for running gometalinter
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
@@ -316,6 +326,46 @@ EOF
     fi
 }
 
+function run_brpc_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [[ ${WITH_TESTING:-ON} == "ON" \
+        && ${WITH_DISTRIBUTE:-OFF} == "ON" \
+        && ${WITH_GRPC:-OFF} == "OFF" ]] ; then
+    cat <<EOF
+    ========================================
+    Running brpc unit tests ...
+    ========================================
+EOF
+        set +x
+        declare -a other_tests=("test_listen_and_serv_op" "system_allocator_test" \
+        "rpc_server_test" "varhandle_test" "collective_server_test" "brpc_serde_test")
+        all_tests=`ctest -N`
+
+        for t in "${other_tests[@]}"
+        do
+            if [[ ${all_tests} != *$t* ]]; then
+                continue
+            fi
+
+            if [[ ${TESTING_DEBUG_MODE:-OFF} == "ON" ]] ; then
+                ctest -V -R $t
+            else
+                ctest --output-on-failure -R $t
+            fi
+        done
+        set -x
+
+        if [[ ${TESTING_DEBUG_MODE:-OFF} == "ON" ]] ; then
+            ctest -V -R test_dist_*
+        else
+            ctest --output-on-failure -R test_dist_*
+        fi
+    fi
+}
+
+
+
 function run_mac_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -344,9 +394,7 @@ EOF
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
 
-        if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
-            paddle version
-        fi
+        paddle version
 
         if [ "$1" == "cp27-cp27m" ]; then
             pip uninstall -y paddlepaddle
@@ -384,8 +432,8 @@ function assert_api_spec_approvals() {
         BRANCH="develop"
     fi
 
-    API_FILES=("cmake/external"
-               "paddle/fluid/API.spec"
+    API_FILES=("paddle/fluid/API.spec"
+               "python/paddle/fluid/parallel_executor.py"
                "paddle/fluid/framework/operator.h"
                "paddle/fluid/framework/tensor.h"
                "paddle/fluid/framework/lod_tensor.h"
@@ -397,6 +445,7 @@ function assert_api_spec_approvals() {
                "paddle/fluid/framework/ir/node.h"
                "paddle/fluid/framework/ir/graph.h"
                "paddle/fluid/framework/framework.proto"
+               "python/paddle/fluid/compiler.py"
                "paddle/fluid/operators/distributed/send_recv.proto.in")
     for API_FILE in ${API_FILES[*]}; do
       API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" || true`
@@ -488,31 +537,6 @@ function bind_test() {
     wait
 }
 
-
-function gen_docs() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-    cat <<EOF
-    ========================================
-    Building documentation ...
-    In /paddle/build
-    ========================================
-EOF
-    cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DWITH_DOC=ON \
-        -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF
-
-    make -j `nproc` paddle_docs paddle_apis
-
-    # check websites for broken links
-    linkchecker doc/v2/en/html/index.html
-    linkchecker doc/v2/cn/html/index.html
-    linkchecker doc/v2/api/en/html/index.html
-
-}
-
 function gen_doc_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -524,10 +548,8 @@ function gen_doc_lib() {
 EOF
     cmake .. \
         -DCMAKE_BUILD_TYPE=Release \
-        -DWITH_DOC=ON \
         -DWITH_GPU=OFF \
         -DWITH_MKL=OFF \
-        -DWITH_FLUID_ONLY=ON
 
     local LIB_TYPE=$1
     case $LIB_TYPE in
@@ -603,13 +625,8 @@ EOF
         NCCL_DEPS="true"
     fi
 
-    if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]]; then
-        PADDLE_VERSION="paddle version"
-        CMD='"paddle", "version"'
-    else
-        PADDLE_VERSION="true"
-        CMD='"true"'
-    fi
+    PADDLE_VERSION="paddle version"
+    CMD='"paddle", "version"'
 
     if [ "$1" == "cp35-cp35m" ]; then
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -694,71 +711,49 @@ EOF
 EOF
     fi
 
-    if [[ ${WITH_GOLANG:-OFF} == "ON" ]]; then
-        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
-        ADD go/cmd/pserver/pserver /usr/bin/
-        ADD go/cmd/master/master /usr/bin/
-EOF
-    fi
     cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # default command shows the paddle version and exit
     CMD [${CMD}]
 EOF
 }
 
-function gen_capi_package() {
-    if [[ ${WITH_C_API} == "ON" ]]; then
-        capi_install_prefix=${INSTALL_PREFIX:-/paddle/build}/capi_output
-        rm -rf $capi_install_prefix
-        make DESTDIR="$capi_install_prefix" install
-        cd $capi_install_prefix/
-        ls | egrep -v "^Found.*item$" | xargs tar -czf ${PADDLE_ROOT}/build/paddle.tgz
-    fi
-}
-
 function gen_fluid_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
-        cat <<EOF
+    cat <<EOF
     ========================================
     Generating fluid library for train and inference ...
     ========================================
 EOF
-        cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
-        make -j `nproc` fluid_lib_dist
-        make -j `nproc` inference_lib_dist
-      fi
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
+    make -j `nproc` fluid_lib_dist
+    make -j `nproc` inference_lib_dist
 }
 
 function tar_fluid_lib() {
-    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
-        cat <<EOF
+    cat <<EOF
     ========================================
     Taring fluid library for train and inference ...
     ========================================
 EOF
-        cd ${PADDLE_ROOT}/build
-        cp -r fluid_install_dir fluid
-        tar -czf fluid.tgz fluid
-        cp -r fluid_inference_install_dir fluid_inference
-        tar -czf fluid_inference.tgz fluid_inference
-      fi
+    cd ${PADDLE_ROOT}/build
+    cp -r fluid_install_dir fluid
+    tar -czf fluid.tgz fluid
+    cp -r fluid_inference_install_dir fluid_inference
+    tar -czf fluid_inference.tgz fluid_inference
 }
 
 function test_fluid_lib() {
-    if [[ ${WITH_C_API:-OFF} == "OFF" ]] ; then
-        cat <<EOF
+    cat <<EOF
     ========================================
     Testing fluid library for inference ...
     ========================================
 EOF
-        cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
-        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
-                 ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
-                 ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
-        ./clean.sh
-      fi
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
+             ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
+             ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
+    ./clean.sh
 }
 
 function main() {
@@ -779,9 +774,6 @@ function main() {
       bind_test)
         bind_test
         ;;
-      doc)
-        gen_docs
-        ;;
       gen_doc_lib)
         gen_doc_lib $2
         ;;
@@ -790,11 +782,6 @@ function main() {
         ;;
       dockerfile)
         gen_dockerfile ${PYTHON_ABI:-""}
-        ;;
-      capi)
-        cmake_gen ${PYTHON_ABI:-""}
-        build
-        gen_capi_package
         ;;
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
@@ -810,17 +797,20 @@ function main() {
         build
         assert_api_not_changed ${PYTHON_ABI:-""}
         run_test
-        gen_capi_package
         gen_fluid_lib
         test_fluid_lib
         assert_api_spec_approvals
+        ;;
+      cicheck_brpc)
+        cmake_gen ${PYTHON_ABI:-""}
+        build
+        run_brpc_test
         ;;
       assert_api)
         assert_api_not_changed ${PYTHON_ABI:-""}
         assert_api_spec_approvals
         ;;
       test_inference)
-        gen_capi_package
         gen_fluid_lib
         test_fluid_lib
         ;;
