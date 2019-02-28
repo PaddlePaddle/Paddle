@@ -33,7 +33,7 @@ experimental_namespace = {"paddle.fluid.imperative"}
 
 def md5(doc):
     hash = hashlib.md5()
-    hash.update(str(doc))
+    hash.update(str(doc).encode('utf-8'))
     return hash.hexdigest()
 
 
