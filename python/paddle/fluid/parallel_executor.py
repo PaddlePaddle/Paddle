@@ -17,7 +17,6 @@ import multiprocessing
 from . import core
 from . import framework
 from . import executor
-from .. import compat as cpt
 import warnings
 import sys
 import six
@@ -99,39 +98,26 @@ class ParallelExecutor(object):
             'Please use CompiledProgram and Executor. CompiledProgram '
             'is a central place for optimization and Executor is the '
             'unified executor. Example can be found in compiler.py.\n')
-        self._places = []
-        if use_cuda:
-            gpus_env = os.getenv("FLAGS_selected_gpus")
-            if gpus_env:
-                gpus = [int(s) for s in gpus_env.split(",")]
-            else:
-                gpus = [
-                    i for i in six.moves.range(core.get_cuda_device_count())
-                ]
-            self._places = [core.CUDAPlace(i) for i in gpus]
-        else:
-            cpu_num = int(
-                os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-            self._places = [core.CPUPlace() for _ in six.moves.range(cpu_num)]
-        assert self._places, "no place for execution"
-
-        main_program = main_program if main_program is not None\
-            else framework.default_main_program()
-
-        self.scope = scope if scope is not None else executor.global_scope()
 
         if build_strategy is None:
             build_strategy = BuildStrategy()
         build_strategy.num_trainers = num_trainers
         build_strategy.trainer_id = trainer_id
 
-        self._executor = compiler.CompiledProgram(
-            main_program).with_data_parallel(
-                loss_name=loss_name,
-                build_strategy=build_strategy,
-                exec_strategy=exec_strategy,
-                share_vars_from=share_vars_from)._compile_data_parallel(
-                    use_cuda=use_cuda, scope=self.scope)
+        self._places = compiler.get_available_places(use_cuda)
+        self.scope = scope if scope is not None else executor.global_scope()
+
+        main_program = main_program if main_program is not None \
+            else framework.default_main_program()
+
+        self._compiled_program = compiler.CompiledProgram(main_program)
+        self._compiled_program.with_data_parallel(
+            loss_name=loss_name,
+            build_strategy=build_strategy,
+            exec_strategy=exec_strategy,
+            share_vars_from=share_vars_from)
+        self._executor = self._compiled_program._compile_data_parallel(
+            use_cuda=use_cuda, scope=self.scope)
 
     def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):
         """

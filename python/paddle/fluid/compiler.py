@@ -35,6 +35,30 @@ def _place_obj(place):
     return p
 
 
+def _is_pserver_mode(main_program):
+    main = main_program if main_program \
+        else default_main_program()
+    for op in main.global_block().ops:
+        if op.type in ["send", "recv"]:
+            return True
+    return False
+
+
+def get_available_places(use_cuda):
+    if use_cuda:
+        gpus_env = os.getenv("FLAGS_selected_gpus")
+        if gpus_env:
+            gpus = [int(s) for s in gpus_env.split(",")]
+        else:
+            gpus = [i for i in six.moves.range(core.get_cuda_device_count())]
+        places = [core.CUDAPlace(i) for i in gpus]
+    else:
+        cpu_num = int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+        places = [core.CPUPlace() for _ in six.moves.range(cpu_num)]
+    assert places, "no place for execution"
+    return places
+
+
 class CompiledProgram(object):
     """
     Compiles to Graph for execution.
@@ -126,8 +150,7 @@ class CompiledProgram(object):
             self._exec_strategy = ExecutionStrategy()
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
-        self._build_strategy.is_distribution = framework.is_pserver_mode(
-            self._program)
+        self._build_strategy.is_distribution = _is_pserver_mode(self._program)
         return self
 
     def with_inference_optimize(self, config):
@@ -169,20 +192,7 @@ class CompiledProgram(object):
             self._local_scopes = []
 
         self._exec_strategy.use_cuda = use_cuda
-        if self._exec_strategy.use_cuda:
-            gpus_env = os.getenv("FLAGS_selected_gpus")
-            if gpus_env:
-                gpus = [int(s) for s in gpus_env.split(",")]
-            else:
-                gpus = [
-                    i for i in six.moves.range(core.get_cuda_device_count())
-                ]
-            self._places = [core.CUDAPlace(i) for i in gpus]
-        else:
-            cpu_num = int(
-                os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-            self._places = [core.CPUPlace() for _ in six.moves.range(cpu_num)]
-        assert self._places, "no place for execution"
+        self._places = get_available_places(self._exec_strategy.use_cuda)
 
         if self._exec_strategy.num_threads == 0:
             if self._exec_strategy.use_cuda:
