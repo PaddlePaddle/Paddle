@@ -19,10 +19,6 @@ namespace framework {
 void LoDRankTable::Reset(const LoD& lod, size_t level) {
   this->coarse_lod_.clear();
   this->items_.clear();
-  if (lod.size() == 0) {
-    // Reset to a empty rank table.
-    return;
-  }
   PADDLE_ENFORCE(level < lod.size(),
                  "Cannot rank lod since the level %d is less than lod size %d",
                  level, lod.size());
