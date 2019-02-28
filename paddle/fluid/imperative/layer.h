@@ -123,22 +123,32 @@ class VarBase {
 
  private:
   VarBase(framework::Variable* var, VarBase* grad, bool stop_gradient)
-      : var_desc_(nullptr),
+      : name_(),
+        var_desc_(nullptr),
         var_(var),
         grads_(grad),
+        block_(nullptr),
+        persistable_(false),
         stop_gradient_(stop_gradient),
         pre_op_(nullptr),
+        pre_op_out_name_(),
         pre_op_out_idx_(-1) {}
 
  public:
   virtual ~VarBase() {
+    // TODO(minqiyang): remove var desc from block desc
     if (var_) {
       delete var_;
+      var_ = nullptr;
     }
 
     if (grads_) {
       delete grads_;
+      grads_ = nullptr;
     }
+
+    pre_op_ = nullptr;
+    pre_op_out_idx_ = -1;
   }
 
   inline OpBase* PreOp() const { return pre_op_; }
@@ -150,6 +160,14 @@ class VarBase {
   inline bool IsStopGradient() const { return stop_gradient_; }
 
   void RunBackward();
+
+  inline void ResetPreOp(OpBase* op) {
+    if (op == pre_op_) {
+      // clear pre_op info when op equals to var's pre_op
+      pre_op_ = nullptr;
+      pre_op_out_idx_ = -1;
+    }
+  }
 
   void TrackPreOp(OpBase* pre_op, const std::string& pre_op_out_name,
                   int pre_op_out_idx, bool pre_op_stop_gradient) {
@@ -184,10 +202,14 @@ class VarBase {
     return string::Sprintf("%s@IGrad", var_desc_->Name());
   }
 
+  std::string name_;
   framework::VarDesc* var_desc_;
 
   framework::Variable* var_;
   VarBase* grads_;
+
+  framework::BlockDesc* block_;
+  bool persistable_;
 
  private:
   bool stop_gradient_;
@@ -199,21 +221,37 @@ class VarBase {
 /* The wrapper for OpDesc which holds a OpDesc and a OpDesc of its
  * gradient. This object should be managed totally by Python intepreter.
  */
-class OpBase {
+class PYBIND11_HIDDEN OpBase {
  public:
   OpBase()
       : op_desc_(nullptr),
         forward_id_(-1),
         backward_id_(-1),
-        place_(platform::CPUPlace()) {}
+        trace_id_(-1),
+        place_(platform::CPUPlace()),
+        backward_hooks_() {}
 
   virtual ~OpBase() {
+    // TODO(minqiyang): remove op_desc from block_desc in tracer
+    //
+    // reset all output vars' pre op
+    for (auto iter : output_vars_) {
+      for (VarBase* var : iter.second) {
+        var->ResetPreOp(this);
+      }
+    }
+
+    // release resource
     for (framework::OpDesc* desc : grad_op_descs_) {
       delete desc;
     }
   }
 
   std::map<std::string, std::vector<VarBase*>> ApplyGrad();
+
+  void RegisterBackwardHooks(const py::object& callable);
+
+  void InvokeBackwardHooks();
 
   // One of `op_desc_` or `forward_id_` is set, not both.
   // For pure python PyLayer, use `forward_id_`, otherwise, use op_desc_.
@@ -225,6 +263,7 @@ class OpBase {
   // Note: each fwd op corresponds to a vector of bwd ops.
   std::vector<framework::OpDesc*> grad_op_descs_;
   int backward_id_;
+  int trace_id_;
 
   platform::Place place_;
 
@@ -239,6 +278,8 @@ class OpBase {
   std::vector<framework::VariableValueMap> grad_output_vars_;
 
   framework::BlockDesc* block_;
+
+  std::vector<py::object> backward_hooks_;
 };
 
 class Layer {
