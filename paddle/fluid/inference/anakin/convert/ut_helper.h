@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -127,6 +128,7 @@ class AnakinConvertValidation {
       engine_->SetInputShape(input, t_shape);
     }
     engine_->Optimize();
+    engine_->InitGraph();
   }
 
   // We use the set 'neglected_output' here, because some Ops like batch norm,
@@ -138,16 +140,47 @@ class AnakinConvertValidation {
     platform::CUDADeviceContext ctx(place_);
     op_->Run(scope_, place_);
 
+    // std::vector<framework::LoDTensor> input_vector;
+    // std::vector<framework::LoDTensor> output_vector;
+    std::map<std::string, framework::LoDTensor*> inputs;
+    for (const auto& input : op_desc_->InputArgumentNames()) {
+      if (parameters_.count(input)) continue;
+      auto* var = scope_.FindVar(input);
+      auto tensor = var->GetMutable<framework::LoDTensor>();
+      inputs.insert({input, tensor});
+    }
+
+    std::map<std::string, framework::LoDTensor*> outputs;
+    std::vector<std::vector<float>> fluid_outputs;
     for (const auto& output : op_desc_->OutputArgumentNames()) {
       if (neglected_output.count(output)) continue;
       std::vector<float> fluid_out;
       auto* var = scope_.FindVar(output);
-      auto* tensor = var->GetMutable<framework::LoDTensor>();
+      auto tensor = var->GetMutable<framework::LoDTensor>();
       framework::TensorToVector(*tensor, ctx, &fluid_out);
+      fluid_outputs.push_back(fluid_out);
 
-      size_t fluid_out_size = fluid_out.size();
-      for (size_t i = 0; i < fluid_out_size; i++) {
+      // size_t fluid_out_size = fluid_out.size();
+      /*for (size_t i = 0; i < fluid_out_size; i++) {
         std::cout << fluid_out[i] << std::endl;
+      }*/
+      outputs.insert({output, tensor});
+    }
+
+    engine_->Execute(inputs, outputs);
+    int i_output = 0;
+    for (const auto& output : op_desc_->OutputArgumentNames()) {
+      if (neglected_output.count(output)) continue;
+      std::vector<float> anakin_out;
+      auto* var = scope_.FindVar(output);
+      auto tensor = var->GetMutable<framework::LoDTensor>();
+      framework::TensorToVector(*tensor, ctx, &anakin_out);
+
+      size_t anakin_out_size = anakin_out.size();
+      auto fluid_out = fluid_outputs[i_output++];
+      for (size_t i = 0; i < anakin_out_size; i++) {
+        LOG(INFO) << "Output[" << i << "]: anakin[" << anakin_out[i] << "], "
+                  << "fluid[" << fluid_out[i] << "]";
       }
     }
   }
