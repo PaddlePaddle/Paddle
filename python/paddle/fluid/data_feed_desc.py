@@ -139,6 +139,10 @@ class DataFeedDesc(object):
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
                 name]].is_used = True
 
+    def global_shuffle(self):
+        self.data.global_shuffle()
+        pass
+
     def desc(self):
         """
         Returns a protobuf message for this DataFeedDesc
