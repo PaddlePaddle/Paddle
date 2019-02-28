@@ -243,7 +243,7 @@ class TestImperativePtbRnn(unittest.TestCase):
             dy_loss = None
             last_hidden = None
             last_cell = None
-            batch_num = 200
+            batch_num = 50
 
             for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
