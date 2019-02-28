@@ -16,29 +16,36 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
 
 using paddle::framework::Tensor;
 
-#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                \
-  class OP_NAME##OpMaker                                                 \
-      : public ::paddle::framework::OpProtoAndCheckerMaker {             \
-   public:                                                               \
-    void Make() override {                                               \
-      AddInput("X", "Input of " #OP_NAME " operator");                   \
-      AddOutput("Out", "Output of " #OP_NAME " operator");               \
-      AddAttr<bool>("use_mkldnn",                                        \
-                    "(bool, default false) Only used in mkldnn kernel")  \
-          .SetDefault(false);                                            \
-      AddAttr<bool>(                                                     \
-          "is_test",                                                     \
-          "(bool, default false) Set to true for inference only, false " \
-          "for training. Some layers may run faster when this is true.") \
-          .SetDefault(false);                                            \
-      AddComment(OP_COMMENT);                                            \
-    }                                                                    \
+#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                    \
+  class OP_NAME##OpMaker                                                     \
+      : public ::paddle::framework::OpProtoAndCheckerMaker {                 \
+   public:                                                                   \
+    void Make() override {                                                   \
+      AddInput("X", "Input of " #OP_NAME " operator");                       \
+      AddOutput("Out", "Output of " #OP_NAME " operator");                   \
+      AddAttr<bool>("use_mkldnn",                                            \
+                    "(bool, default false) Only used in mkldnn kernel")      \
+          .SetDefault(false);                                                \
+      AddAttr<bool>("use_cudnn",                                             \
+                    "(bool, default false) Only used in cudnn kernel, need " \
+                    "install cudnn")                                         \
+          .SetDefault(false);                                                \
+      AddAttr<bool>(                                                         \
+          "is_test",                                                         \
+          "(bool, default false) Set to true for inference only, false "     \
+          "for training. Some layers may run faster when this is true.")     \
+          .SetDefault(false);                                                \
+      AddComment(OP_COMMENT);                                                \
+    }                                                                        \
   }
 
 #define REGISTER_ACTIVATION_OP_GRAD_MAKER(OP_NAME, KERNEL_TYPE)              \
@@ -67,6 +74,12 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
                                       const std::string& name) {
   framework::LibraryType library{framework::LibraryType::kPlain};
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_CUDA
+  auto it1 = oper.Attrs().find("use_cudnn");
+  if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
+    library = framework::LibraryType::kCUDNN;
+  }
+#endif
 #ifdef PADDLE_WITH_MKLDNN
   auto it = oper.Attrs().find("use_mkldnn");
   if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
