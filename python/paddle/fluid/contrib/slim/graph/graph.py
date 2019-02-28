@@ -24,6 +24,7 @@ import copy
 from collections import Iterable
 from ....io import save_inference_model, load_inference_model, save_persistables
 import numpy as np
+import pickle
 
 __all__ = [
     'Graph',
@@ -349,15 +350,36 @@ class ImitationGraph(Graph):
             ret += np.product(param.shape)
         return ret
 
-    def get_optimize_graph(self, optimizer):
+    def serialize(self):
+        data = {}
+        data['program'] = self.program
+        data['in_nodes'] = self.in_nodes
+        data['out_nodes'] = self.out_nodes
+        data['attrs'] = self._attrs
+        return pickle.dumps(data)
+
+    def deserialize(self, s):
+        data = pickle.loads(s)
+        self.program = data['program']
+        self.in_nodes = data['in_nodes']
+        self.out_nodes = data['out_nodes']
+        self._attrs = data['attrs']
+
+    def get_optimize_graph(self, optimizer, place):
         graph = self.clone()
-        with program_guard(main_program=graph.program):
+        startup_program = Program()
+        with program_guard(
+                main_program=graph.program, startup_program=startup_program):
+            target_name = None
             if 'loss' in graph.out_nodes:
-                loss = graph.get_var('loss')
-                optimizer.minimize(loss)
+                target_name = graph.out_nodes['loss']
             elif 'cost' in graph.out_nodes:
-                cost = graph.get_var('cost')
-                optimizer.minimize(cost)
+                target_name = graph.out_nodes['cost']
+            target = graph.get_var(target_name)
+            optimizer.minimize(target)
+
+        exe = Executor(place)
+        exe.run(program=startup_program, scope=self.scope)
         return graph
 
 

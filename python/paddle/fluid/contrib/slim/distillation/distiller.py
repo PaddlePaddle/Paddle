@@ -106,7 +106,6 @@ class FSPDistillerPass(object):
                 t_pair_start = ret_graph.get_var(t_pair[0])
                 t_pair_end = ret_graph.get_var(t_pair[1])
                 t_fsp_matrix = self._fsp_matrix(t_pair_start, t_pair_end)
-                #                layers.Print(t_fsp_matrix, summarize=10)
                 l2_loss = layers.reduce_mean(
                     layers.square(s_fsp_matrix - t_fsp_matrix))
                 losses.append(l2_loss)
@@ -114,18 +113,11 @@ class FSPDistillerPass(object):
                 losses) * self.distillation_loss_weight
             student_loss = ret_graph.get_var(ret_graph.out_nodes['cost'])
             loss = distillation_loss + student_loss
-
-            #            distiller_optimizer = optimizer.Momentum(
-            #                momentum=0.9,
-            #                learning_rate=layers.piecewise_decay(
-            #                    boundaries=[66666, 66666 * 2],
-            #                    values=[0.001, 0.0001, 0.00001]),
-            #                regularization=regularizer.L2Decay(4e-5))
-
+            self.distiller_optimizer._name = 'fsp_distillation_opt'
             self.distiller_optimizer.minimize(loss)
 
             exe = Executor(self.place)
-            # init variable created when append backward ops. Such as leaning rate
+            # init variable created when appending backward ops. Such as leaning rate
             # and accumulators in some optimizer.
             exe.run(startup_program, scope=ret_graph.scope)
             ret_graph.out_nodes['distillation_loss'] = distillation_loss.name

@@ -82,10 +82,8 @@ class ConfigFactory(object):
                 if key == 'compress_pass':
                     self.compress_pass['strategies'] = []
                     self.compress_pass['epoch'] = key_values[key]['epoch']
-                    self.compress_pass['model_save_dir'] = key_values[key][
-                        'model_save_dir']
-                    self.compress_pass['init_epoch'] = key_values[key][
-                        'init_epoch']
+                    self.compress_pass['checkpoint_path'] = key_values[key][
+                        'checkpoint_path']
                     if 'strategies' in key_values[key]:
                         for name in key_values[key]['strategies']:
                             strategy = self.instance(name)

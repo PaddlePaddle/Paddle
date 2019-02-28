@@ -532,32 +532,35 @@ class UniformPruneStrategy(PruneStrategy):
         logger.info('Get ratios: {}'.format([round(r, 2) for r in ratios]))
         return pruned_params, ratios
 
-    def on_compression_begin(self, context):
-        params, ratios = self._get_best_ratios(context)
+    def on_epoch_begin(self, context):
+        if context.epoch_id == self.start_epoch:
+            params, ratios = self._get_best_ratios(context)
 
-        self._prune_parameters(context.train_graph, context.train_graph.scope,
-                               params, ratios, context.place)
+            self._prune_parameters(context.optimize_graph,
+                                   context.optimize_graph.scope, params, ratios,
+                                   context.place)
 
-        model_size = context.eval_graph.numel_params()
-        flops = context.eval_graph.flops()
-        logger.debug('\n################################')
-        logger.debug('#          pruning eval graph    #')
-        logger.debug('################################\n')
-        self._prune_graph(context.eval_graph, context.train_graph)
-        self._update_depthwise_conv(context.train_graph)
-        self._update_depthwise_conv(context.eval_graph)
+            model_size = context.eval_graph.numel_params()
+            flops = context.eval_graph.flops()
+            logger.debug('\n################################')
+            logger.debug('#          pruning eval graph    #')
+            logger.debug('################################\n')
+            self._prune_graph(context.eval_graph, context.optimize_graph)
+            self._update_depthwise_conv(context.optimize_graph)
+            self._update_depthwise_conv(context.eval_graph)
 
-        logger.info(
-            '------------------finish pruning--------------------------------')
-        logger.info('Pruned size: {:.2f}'.format(1 - (float(
-            context.eval_graph.numel_params()) / model_size)))
-        logger.info('Pruned flops: {:.2f}'.format(1 - (float(
-            context.eval_graph.flops()) / flops)))
-        metric = self._eval_graph(context)
-        logger.info('Metric after pruning: {:.2f}'.format(metric))
-        logger.info(
-            '------------------UniformPruneStrategy.on_compression_begin finish--------------------------------'
-        )
+            logger.info(
+                '------------------finish pruning--------------------------------'
+            )
+            logger.info('Pruned size: {:.2f}'.format(1 - (float(
+                context.eval_graph.numel_params()) / model_size)))
+            logger.info('Pruned flops: {:.2f}'.format(1 - (float(
+                context.eval_graph.flops()) / flops)))
+            metric = self._eval_graph(context)
+            logger.info('Metric after pruning: {:.2f}'.format(metric))
+            logger.info(
+                '------------------UniformPruneStrategy.on_compression_begin finish--------------------------------'
+            )
 
 
 class SensitivePruneStrategy(PruneStrategy):
@@ -787,9 +790,8 @@ class SensitivePruneStrategy(PruneStrategy):
             sensitivities = self._compute_sensitivities(context)
             params, ratios = self._get_best_ratios(context, sensitivities,
                                                    current_ratio)
-
-            self._prune_parameters(context.train_graph,
-                                   context.train_graph.scope, params, ratios,
+            self._prune_parameters(context.optimize_graph,
+                                   context.optimize_graph.scope, params, ratios,
                                    context.place)
 
             self.param_shape_backup = {}
@@ -800,9 +802,9 @@ class SensitivePruneStrategy(PruneStrategy):
             logger.debug('\n################################')
             logger.debug('#          pruning eval graph    #')
             logger.debug('################################\n')
-            self._prune_graph(context.eval_graph, context.train_graph)
-            logger.info("self._update_depthwise_conv(context.train_graph)")
-            self._update_depthwise_conv(context.train_graph)
+            self._prune_graph(context.eval_graph, context.optimize_graph)
+            logger.info("self._update_depthwise_conv(context.optimize_graph)")
+            self._update_depthwise_conv(context.optimize_graph)
             logger.info("self._update_depthwise_conv(context.eval_graph)")
             self._update_depthwise_conv(context.eval_graph)
 

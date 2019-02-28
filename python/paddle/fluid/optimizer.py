@@ -73,23 +73,23 @@ class Optimizer(object):
 
     def _create_global_learning_rate(self):
         lr = self._global_learning_rate()
-
         if isinstance(lr, framework.Variable):
             return
         else:
             if not isinstance(self._learning_rate, float):
-                raise TypeError(
-                    "learning rate variable is create outside optimizer,"
-                    "can not create new learning rate variable for new program")
-
-        # create learning rate in the current main program
-        self._learning_rate_map[framework.default_main_program(
-        )] = layers.create_global_var(
-            name=unique_name.generate("learning_rate"),
-            shape=[1],
-            value=float(self._learning_rate),
-            dtype='float32' if self._dtype is None else self._dtype,
-            persistable=True)
+                # Copy self._learning_rate to current program.
+                self._learning_rate_map[framework.default_main_program(
+                )] = framework.default_main_program().global_block(
+                )._clone_variable(self._learning_rate)
+            else:
+                # create learning rate in the current main program
+                self._learning_rate_map[framework.default_main_program(
+                )] = layers.create_global_var(
+                    name=unique_name.generate("learning_rate"),
+                    shape=[1],
+                    value=float(self._learning_rate),
+                    dtype='float32' if self._dtype is None else self._dtype,
+                    persistable=True)
 
     def _global_learning_rate(self, program=None):
         """

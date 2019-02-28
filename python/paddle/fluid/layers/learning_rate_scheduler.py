@@ -281,7 +281,7 @@ def piecewise_decay(boundaries, values):
 
         lr = tensor.create_global_var(
             shape=[1],
-            value=0.0,
+            value=values[0],
             dtype='float32',
             persistable=True,
             name="learning_rate")
