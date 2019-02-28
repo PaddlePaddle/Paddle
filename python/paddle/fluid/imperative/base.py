@@ -16,6 +16,7 @@ import numpy as np
 
 from paddle.fluid import core
 from paddle.fluid import framework
+from .tracer import Tracer
 
 __all__ = ['enabled', 'guard', 'to_variable']
 
@@ -28,7 +29,7 @@ def enabled():
 def guard(place=None):
     train = framework.Program()
     startup = framework.Program()
-    tracer = core.Tracer(train.current_block().desc)
+    tracer = Tracer(train.current_block().desc)
 
     if place is None:
         if core.is_compiled_with_cuda():
