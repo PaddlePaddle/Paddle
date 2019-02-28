@@ -94,6 +94,11 @@ class ParallelExecutor(object):
                  trainer_id=0,
                  scope=None):
         # get places, the places are used in run too.
+        sys.stderr.write(
+            'ParallelExecutor is deprecated. '
+            'Please use CompiledProgram and Executor. CompiledProgram '
+            'is a central place for optimization and Executor is the '
+            'unified executor. Example can be found in compiler.py.\n')
         self._places = []
         if use_cuda:
             gpus_env = os.getenv("FLAGS_selected_gpus")
