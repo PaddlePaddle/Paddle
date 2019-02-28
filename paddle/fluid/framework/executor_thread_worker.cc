@@ -284,6 +284,7 @@ void ExecutorThreadWorker::TrainFilesWithTimer() {
         for (int i = 0; i < fetch_var_num; ++i) {
           print_fetch_var(thread_scope_, fetch_var_names_[i]);
         }
+        fprintf(stderr, "IO percent: %f\n", read_time / total_time);
       }
     }
     timeline.Start();
