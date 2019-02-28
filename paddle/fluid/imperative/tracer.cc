@@ -14,7 +14,10 @@
 
 #include "paddle/fluid/imperative/tracer.h"
 
+#include <memory>
 #include <set>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
