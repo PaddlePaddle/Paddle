@@ -42,8 +42,8 @@ void OpTester::Init(const OpTesterConfig &config) {
   // Initialize the OpDesc
   if (op_desc_info.Has(config_.op_type)) {
     type_ = config_.op_type;
-    op_desc_.SetType(config_.op_type);
 
+    CreateOpDesc();
     CreateInputVarDesc();
     CreateOutputVarDesc();
   } else {
@@ -131,6 +131,26 @@ std::vector<std::string> OpTester::GetOpProtoOutputNames() {
   return output_names;
 }
 
+std::unordered_map<std::string, framework::proto::AttrType>
+OpTester::GetOpProtoAttrNames() {
+  std::unordered_map<std::string, framework::proto::AttrType> attr_types;
+  const framework::proto::OpProto &proto =
+      framework::OpInfoMap::Instance().Get(type_).Proto();
+  const std::vector<std::string> skipped_attrs = {
+      framework::OpProtoAndCheckerMaker::OpRoleAttrName(),
+      framework::OpProtoAndCheckerMaker::OpRoleVarAttrName(),
+      framework::OpProtoAndCheckerMaker::OpNamescopeAttrName(),
+      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName()};
+  for (int i = 0; i != proto.attrs_size(); ++i) {
+    const auto &attr = proto.attrs(i);
+    if (!Has(skipped_attrs, attr.name())) {
+      VLOG(4) << "attr: " << attr.name() << ", type: " << attr.type();
+      attr_types[attr.name()] = attr.type();
+    }
+  }
+  return attr_types;
+}
+
 void OpTester::CreateInputVarDesc() {
   std::vector<std::string> input_names = GetOpProtoInputNames();
   for (auto &name : input_names) {
@@ -164,6 +184,49 @@ void OpTester::CreateOutputVarDesc() {
     var->SetDataType(framework::proto::VarType::FP32);
 
     op_desc_.SetOutput(name, {var_name});
+  }
+}
+
+void OpTester::CreateOpDesc() {
+  op_desc_.SetType(config_.op_type);
+  std::unordered_map<std::string, framework::proto::AttrType> attr_types =
+      GetOpProtoAttrNames();
+  for (auto item : config_.attrs) {
+    const std::string &name = item.first;
+    if (attr_types.find(name) == attr_types.end()) {
+      LOG(FATAL) << "Operator " << type_ << " do not have attr " << name;
+    }
+
+    const std::string &value_str = item.second;
+    const framework::proto::AttrType &type = attr_types[name];
+    switch (type) {
+      case framework::proto::AttrType::BOOLEAN:
+        break;
+      case framework::proto::AttrType::INT: {
+        int value = StringTo<int>(value_str);
+        op_desc_.SetAttr(name, {value});
+      } break;
+      case framework::proto::AttrType::FLOAT: {
+        float value = StringTo<float>(value_str);
+        op_desc_.SetAttr(name, {value});
+      } break;
+      case framework::proto::AttrType::STRING: {
+        op_desc_.SetAttr(name, {value_str});
+      } break;
+      case framework::proto::AttrType::BOOLEANS:
+      case framework::proto::AttrType::INTS:
+      case framework::proto::AttrType::FLOATS:
+      case framework::proto::AttrType::STRINGS:
+        LOG(FATAL) << "Not supported yet.";
+        break;
+      case framework::proto::AttrType::LONG: {
+        int64_t value = StringTo<int64_t>(value_str);
+        op_desc_.SetAttr(name, value);
+      } break;
+      case framework::proto::AttrType::LONGS:
+      default:
+        PADDLE_THROW("Unsupport attr type %d", type);
+    }
   }
 }
 
@@ -288,6 +351,63 @@ std::string OpTester::DebugString() {
     ss << GenSpaces(--count) << "}\n";
   }
   ss << GenSpaces(count) << "type: " << op_desc_.Type() << "\n";
+  for (auto &name : op_desc_.AttrNames()) {
+    ss << GenSpaces(count++) << "attrs {\n";
+    const auto &attr_type = op_desc_.GetAttrType(name);
+    const auto &attr = op_desc_.GetAttr(name);
+    ss << GenSpaces(count) << "name: \"" << name << "\"\n";
+    switch (attr_type) {
+      case framework::proto::AttrType::BOOLEAN: {
+        ss << GenSpaces(count) << "type: BOOLEAN\n";
+        ss << GenSpaces(count) << "b: " << boost::get<bool>(attr) << "\n";
+      } break;
+      case framework::proto::AttrType::INT: {
+        ss << GenSpaces(count) << "type: INT\n";
+        ss << GenSpaces(count) << "i: " << boost::get<int>(attr) << "\n";
+      } break;
+      case framework::proto::AttrType::FLOAT: {
+        ss << GenSpaces(count) << "type: FLOAT\n";
+        ss << GenSpaces(count) << "f: " << boost::get<float>(attr) << "\n";
+      } break;
+      case framework::proto::AttrType::STRING: {
+        ss << GenSpaces(count) << "type: STRING\n";
+        ss << GenSpaces(count) << "s: \"" << boost::get<std::string>(attr)
+           << "\"\n";
+      } break;
+      case framework::proto::AttrType::BOOLEANS: {
+        ss << GenSpaces(count) << "type: BOOLEANS\n";
+        ss << GenSpaces(count) << "bools: "
+           << "\n";
+      } break;
+      case framework::proto::AttrType::INTS: {
+        ss << GenSpaces(count) << "type: INTS\n";
+        ss << GenSpaces(count) << "ints: "
+           << "\n";
+      } break;
+      case framework::proto::AttrType::FLOATS: {
+        ss << GenSpaces(count) << "type: FLOATS\n";
+        ss << GenSpaces(count) << "floats: "
+           << "\n";
+      } break;
+      case framework::proto::AttrType::STRINGS: {
+        ss << GenSpaces(count) << "type: STRINGS\n";
+        ss << GenSpaces(count) << "strings: "
+           << "\n";
+      } break;
+      case framework::proto::AttrType::LONG: {
+        ss << GenSpaces(count) << "type: LONG\n";
+        ss << GenSpaces(count) << "l: " << boost::get<int64_t>(attr) << "\n";
+      } break;
+      case framework::proto::AttrType::LONGS: {
+        ss << GenSpaces(count) << "type: LONGS\n";
+        ss << GenSpaces(count) << "longs: "
+           << "\n";
+      } break;
+      default:
+        PADDLE_THROW("Unsupport attr type %d", attr_type);
+    }
+    ss << GenSpaces(--count) << "}\n";
+  }
   ss << GenSpaces(--count) << "}\n";
   return ss.str();
 }
@@ -299,6 +419,7 @@ TEST(op_tester, base) {
                    FLAGS_op_config_list.c_str());
     std::vector<OpTesterConfig> op_configs;
     while (!fin.eof()) {
+      VLOG(4) << "Reading config " << op_configs.size() << "...";
       OpTesterConfig config;
       bool result = config.Init(fin);
       if (result) {

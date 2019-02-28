@@ -84,7 +84,7 @@ void OpInputConfig::ParseLoD(std::istream& is) {
           number += lod_str[i];
           ++i;
         }
-        level.push_back(atoi(number.c_str()));
+        level.push_back(StringTo<size_t>(number));
       }
       lod.push_back(level);
     } else if (lod_str[i] == '}') {
@@ -167,6 +167,7 @@ bool OpTesterConfig::ParseAttrs(std::istream& is) {
       is >> value;
       EraseEndSep(&key, ":");
       EraseEndSep(&value);
+      VLOG(4) << "attrs: " << key << ", " << value;
 
       attrs[key] = value;
     }

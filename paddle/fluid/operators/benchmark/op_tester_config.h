@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <istream>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -54,6 +55,23 @@ struct OpTesterConfig {
   int print_debug_string{0};
   double runtime{0.0};
 };
+
+static bool Has(const std::vector<std::string>& vec, const std::string& item) {
+  for (size_t i = 0; i < vec.size(); ++i) {
+    if (vec[i] == item) {
+      return true;
+    }
+  }
+  return false;
+}
+
+template <typename T>
+T StringTo(const std::string& str) {
+  std::istringstream is(str);
+  T value;
+  is >> value;
+  return value;
+}
 
 }  // namespace benchmark
 }  // namespace operators

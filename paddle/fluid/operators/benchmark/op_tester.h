@@ -39,9 +39,12 @@ class OpTester {
  private:
   std::vector<std::string> GetOpProtoInputNames();
   std::vector<std::string> GetOpProtoOutputNames();
+  std::unordered_map<std::string, framework::proto::AttrType>
+  GetOpProtoAttrNames();
 
   void CreateInputVarDesc();
   void CreateOutputVarDesc();
+  void CreateOpDesc();
 
   framework::VarDesc *Var(const std::string &name);
   void CreateVariables(framework::Scope *scope);
