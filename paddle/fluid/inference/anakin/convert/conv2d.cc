@@ -51,18 +51,18 @@ void Conv2dOpConverter::operator()(const framework::proto::OpDesc &op,
   PADDLE_ENFORCE_EQ(weight_tensor->dims().size(), 4UL);
 
   const int n_output = weight_tensor->dims()[0];
-  const int n_input = weight_tensor->dims()[1];
+  //const int n_input = weight_tensor->dims()[1];
   const int filter_h = weight_tensor->dims()[2];
   const int filter_w = weight_tensor->dims()[3];
   engine_->AddOpAttr<int>(op_name, "filter_num", n_output);
   engine_->AddOpAttr<PTuple<int>>(op_name, "kernel_size",
                                        {filter_h, filter_w});
-  const auto strides = boost::get<std::vector<int>>(op_desc.GetAttr("strides"));
+  auto strides = boost::get<std::vector<int>>(op_desc.GetAttr("strides"));
   engine_->AddOpAttr<PTuple<int>>(op_name, "strides", strides);
-  const auto paddings =
+  auto paddings =
       boost::get<std::vector<int>>(op_desc.GetAttr("paddings"));
   engine_->AddOpAttr<PTuple<int>>(op_name, "padding", paddings);
-  const auto dilations =
+  auto dilations =
       boost::get<std::vector<int>>(op_desc.GetAttr("dilations"));
   engine_->AddOpAttr<PTuple<int>>(op_name, "dilation", dilations);
   const int groups = boost::get<int>(op_desc.GetAttr("groups"));
@@ -75,9 +75,9 @@ void Conv2dOpConverter::operator()(const framework::proto::OpDesc &op,
   weight_shape.push_back(1);
   Shape anakin_shape(weight_shape);
   auto *weight1 =
-      graphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(anakin_shape);
+      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(anakin_shape);
   float *cpu_data = static_cast<float *>(weight1->h_tensor().mutable_data());
-  std::copy_n(weight_tensor.data<float>(), weight_tensor.numel(), cpu_data);
+  std::copy_n(weight_tensor->data<float>(), weight_tensor->numel(), cpu_data);
   weight1->d_tensor().set_shape(anakin_shape);
   weight1->d_tensor().copy_from(weight1->h_tensor());
   engine_->AddOpAttr(op_name, "weight_1", *weight1);
