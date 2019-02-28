@@ -164,6 +164,8 @@ class ParallelExecutor(object):
 
         if main._enable_dgc:
             assert build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce
+            assert num_trainers * len(self._places) > 1
+            assert use_cuda
 
         # step6: get persistable_vars, places. persistable_vars
         # need be broadcast to other local_scope.
