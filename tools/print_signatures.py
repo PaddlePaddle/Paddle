@@ -46,6 +46,7 @@ def visit_member(parent_name, member):
                 visit_member(cur_name, value)
     elif callable(member):
         try:
+            print(member)
             doc = ('document', md5(member.__doc__))
             args = inspect.getargspec(member)
             all = (args, doc)
