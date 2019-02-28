@@ -87,7 +87,7 @@ function cmake_gen() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.5/include/python3.5m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/libpython3.5m.dylib"
-                WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+                pip3.5 uninstall -y protobuf
                 pip3.5 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -100,7 +100,7 @@ function cmake_gen() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib"
-                WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+                pip3.6 uninstall -y protobuf
                 pip3.6 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -113,7 +113,7 @@ function cmake_gen() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib"
-                WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+                pip3.7 uninstall -y protobuf
                 pip3.7 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -128,31 +128,44 @@ function cmake_gen() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
             -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs2/lib/libpython2.7.so"
+                pip uninstall -y protobuf
+                pip install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp27-cp27mu" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs2/lib:}
                 export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
             -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
+                pip uninstall -y protobuf
+                pip install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp35-cp35m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.5.1/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.5.1/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.5.1/include/python3.5m
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.5.1/lib/libpython3.so"
+                pip3.5 uninstall -y protobuf
+                pip3.5 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp36-cp36m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.6.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.6.0/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.6.0/include/python3.6m
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.6.0/lib/libpython3.so"
+                pip3.6 uninstall -y protobuf
+                pip3.6 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp37-cp37m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.7.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.7.0/bin/python3.7
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.7.0/include/python3.7m
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.7.0/lib/libpython3.so"
+                pip3.7 uninstall -y protobuf
+                pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
            fi
+        else
+            pip uninstall -y protobuf
+            pip install -r ${PADDLE_ROOT}/python/requirements.txt
         fi
     fi
 
@@ -173,7 +186,6 @@ function cmake_gen() {
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
         -DWITH_DSO=ON
-        -DWITH_DOC=${WITH_DOC:-OFF}
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
@@ -187,7 +199,6 @@ function cmake_gen() {
         -DWITH_TESTING=${WITH_TESTING:-ON}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
@@ -208,7 +219,6 @@ EOF
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
         -DWITH_DSO=ON \
-        -DWITH_DOC=${WITH_DOC:-OFF} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
@@ -221,7 +231,6 @@ EOF
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
-        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
@@ -250,6 +259,7 @@ function check_style() {
     	eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
     fi
 
+    pip install cpplint
     # set up go environment for running gometalinter
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
@@ -384,9 +394,7 @@ EOF
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
 
-        if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
-            paddle version
-        fi
+        paddle version
 
         if [ "$1" == "cp27-cp27m" ]; then
             pip uninstall -y paddlepaddle
@@ -424,8 +432,8 @@ function assert_api_spec_approvals() {
         BRANCH="develop"
     fi
 
-    API_FILES=("cmake/external"
-               "paddle/fluid/API.spec"
+    API_FILES=("paddle/fluid/API.spec"
+               "python/paddle/fluid/parallel_executor.py"
                "paddle/fluid/framework/operator.h"
                "paddle/fluid/framework/tensor.h"
                "paddle/fluid/framework/lod_tensor.h"
@@ -437,6 +445,7 @@ function assert_api_spec_approvals() {
                "paddle/fluid/framework/ir/node.h"
                "paddle/fluid/framework/ir/graph.h"
                "paddle/fluid/framework/framework.proto"
+               "python/paddle/fluid/compiler.py"
                "paddle/fluid/operators/distributed/send_recv.proto.in")
     for API_FILE in ${API_FILES[*]}; do
       API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" || true`
@@ -528,31 +537,6 @@ function bind_test() {
     wait
 }
 
-
-function gen_docs() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-    cat <<EOF
-    ========================================
-    Building documentation ...
-    In /paddle/build
-    ========================================
-EOF
-    cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DWITH_DOC=ON \
-        -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF
-
-    make -j `nproc` paddle_docs paddle_apis
-
-    # check websites for broken links
-    linkchecker doc/v2/en/html/index.html
-    linkchecker doc/v2/cn/html/index.html
-    linkchecker doc/v2/api/en/html/index.html
-
-}
-
 function gen_doc_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -564,10 +548,8 @@ function gen_doc_lib() {
 EOF
     cmake .. \
         -DCMAKE_BUILD_TYPE=Release \
-        -DWITH_DOC=ON \
         -DWITH_GPU=OFF \
         -DWITH_MKL=OFF \
-        -DWITH_FLUID_ONLY=ON
 
     local LIB_TYPE=$1
     case $LIB_TYPE in
@@ -643,13 +625,8 @@ EOF
         NCCL_DEPS="true"
     fi
 
-    if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]]; then
-        PADDLE_VERSION="paddle version"
-        CMD='"paddle", "version"'
-    else
-        PADDLE_VERSION="true"
-        CMD='"true"'
-    fi
+    PADDLE_VERSION="paddle version"
+    CMD='"paddle", "version"'
 
     if [ "$1" == "cp35-cp35m" ]; then
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -734,12 +711,6 @@ EOF
 EOF
     fi
 
-    if [[ ${WITH_GOLANG:-OFF} == "ON" ]]; then
-        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
-        ADD go/cmd/pserver/pserver /usr/bin/
-        ADD go/cmd/master/master /usr/bin/
-EOF
-    fi
     cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # default command shows the paddle version and exit
     CMD [${CMD}]
@@ -802,9 +773,6 @@ function main() {
         ;;
       bind_test)
         bind_test
-        ;;
-      doc)
-        gen_docs
         ;;
       gen_doc_lib)
         gen_doc_lib $2

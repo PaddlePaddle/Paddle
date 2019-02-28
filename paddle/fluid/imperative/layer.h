@@ -28,6 +28,7 @@
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 #include "paddle/fluid/imperative/type_defs.h"
 
@@ -43,8 +44,13 @@ class PreparedOp {
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
              framework::OperatorWithKernel::OpKernelFunc func,
-             platform::DeviceContext* dev_ctx)
-      : op(op), ctx(ctx), func(func), dev_ctx(dev_ctx) {}
+             platform::DeviceContext* dev_ctx,
+             std::vector<framework::KernelConfig>* kernel_configs)
+      : op(op),
+        ctx(ctx),
+        func(func),
+        dev_ctx(dev_ctx),
+        kernel_configs(kernel_configs) {}
 
   static PreparedOp Prepare(const framework::RuntimeContext& ctx,
                             const framework::OperatorWithKernel& op,
@@ -63,8 +69,9 @@ class PreparedOp {
 
     framework::OperatorWithKernel::OpKernelMap& kernels = kernels_iter->second;
 
-    auto expected_kernel_key = op.GetExpectedKernelType(
-        framework::ExecutionContext(op, framework::Scope(), *dev_ctx, ctx));
+    auto expected_kernel_key =
+        op.GetExpectedKernelType(framework::ExecutionContext(
+            op, framework::Scope(), *dev_ctx, ctx, nullptr));
     VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
     auto kernel_iter = kernels.find(expected_kernel_key);
@@ -82,7 +89,9 @@ class PreparedOp {
       PADDLE_THROW("op %s does not have kernel for %s", op.Type(),
                    KernelTypeToString(expected_kernel_key));
     }
-    return PreparedOp(op, ctx, kernel_iter->second, dev_ctx);
+    std::vector<framework::KernelConfig>* kernel_configs =
+        op.GetKernelConfig(expected_kernel_key);
+    return PreparedOp(op, ctx, kernel_iter->second, dev_ctx, kernel_configs);
   }
 
   inline platform::DeviceContext* GetDeviceContext() const { return dev_ctx; }
@@ -91,6 +100,7 @@ class PreparedOp {
   const framework::RuntimeContext& ctx;
   framework::OperatorWithKernel::OpKernelFunc func;
   platform::DeviceContext* dev_ctx;
+  std::vector<framework::KernelConfig>* kernel_configs;
 };
 
 class OpBase;
@@ -104,23 +114,23 @@ class VarBase {
  public:
   VarBase() : VarBase(new framework::Variable(), new VarBase(true)) {}
 
-  // Owns `var` and `grad`
+  explicit VarBase(bool stop_gradient)
+      : VarBase(new framework::Variable(),
+                stop_gradient ? nullptr : new VarBase(true), stop_gradient) {}
+
   VarBase(framework::Variable* var, VarBase* grad)
+      : VarBase(var, grad, false) {}
+
+ private:
+  VarBase(framework::Variable* var, VarBase* grad, bool stop_gradient)
       : var_desc_(nullptr),
         var_(var),
         grads_(grad),
-        stop_gradient_(false),
-        pre_op_(nullptr),
-        pre_op_out_idx_(-1) {}
-
-  explicit VarBase(bool stop_gradient)
-      : var_desc_(nullptr),
-        var_(new framework::Variable()),
-        grads_(stop_gradient ? nullptr : new VarBase(true)),
         stop_gradient_(stop_gradient),
         pre_op_(nullptr),
         pre_op_out_idx_(-1) {}
 
+ public:
   virtual ~VarBase() {
     if (var_) {
       delete var_;
@@ -131,25 +141,35 @@ class VarBase {
     }
   }
 
-  OpBase* PreOp() const { return pre_op_; }
-  int PreOpOutIdx() const { return pre_op_out_idx_; }
+  inline OpBase* PreOp() const { return pre_op_; }
+  inline int PreOpOutIdx() const { return pre_op_out_idx_; }
 
-  void SetStopGradient(bool stop_gradient) { stop_gradient_ = stop_gradient; }
-  bool IsStopGradient() const { return stop_gradient_; }
+  inline void SetStopGradient(bool stop_gradient) {
+    stop_gradient_ = stop_gradient;
+  }
+  inline bool IsStopGradient() const { return stop_gradient_; }
 
   void RunBackward();
 
   void TrackPreOp(OpBase* pre_op, const std::string& pre_op_out_name,
-                  int pre_op_out_idx, bool stop_gradient) {
+                  int pre_op_out_idx, bool pre_op_stop_gradient) {
     pre_op_ = pre_op;
     pre_op_out_name_ = pre_op_out_name;
     pre_op_out_idx_ = pre_op_out_idx;
-    stop_gradient_ = stop_gradient;
+    if (pre_op_stop_gradient) {
+      stop_gradient_ = pre_op_stop_gradient;
+    }
   }
 
   void ClearGradient() {
-    delete grads_;
-    grads_ = new VarBase(true);
+    VLOG(1) << "clear gradient of " << var_desc_->Name();
+    if (grads_ && grads_->var_ && grads_->var_->IsInitialized()) {
+      auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
+      operators::math::set_constant(
+          *(platform::DeviceContextPool::Instance().Get(
+              grads_->var_->Get<framework::LoDTensor>().place())),
+          grads_t, 0.0);
+    }
   }
 
   framework::LoDTensor& GradValue();
@@ -184,12 +204,13 @@ class OpBase {
   OpBase()
       : op_desc_(nullptr),
         forward_id_(-1),
-        grad_op_desc_(nullptr),
         backward_id_(-1),
         place_(platform::CPUPlace()) {}
 
   virtual ~OpBase() {
-    if (grad_op_desc_) delete grad_op_desc_;
+    for (framework::OpDesc* desc : grad_op_descs_) {
+      delete desc;
+    }
   }
 
   std::map<std::string, std::vector<VarBase*>> ApplyGrad();
@@ -198,9 +219,11 @@ class OpBase {
   // For pure python PyLayer, use `forward_id_`, otherwise, use op_desc_.
   framework::OpDesc* op_desc_;
   int forward_id_;
-  // When has backward, one of `grad_op_desc_` or `backward_id_` is set,
+
+  // When has backward, one of `grad_op_descs_` or `backward_id_` is set,
   // not both.
-  framework::OpDesc* grad_op_desc_;
+  // Note: each fwd op corresponds to a vector of bwd ops.
+  std::vector<framework::OpDesc*> grad_op_descs_;
   int backward_id_;
 
   platform::Place place_;
@@ -210,8 +233,11 @@ class OpBase {
   OpBasePtrMap pre_ops_;
   std::map<std::string, std::vector<int>> pre_ops_out_idx_;
 
-  framework::VariableValueMap grad_input_vars_;
-  framework::VariableValueMap grad_output_vars_;
+  // Inputs to a vector of bwd ops.
+  std::vector<framework::VariableValueMap> grad_input_vars_;
+  // Outputs to a vector of bwd ops.
+  std::vector<framework::VariableValueMap> grad_output_vars_;
+
   framework::BlockDesc* block_;
 };
 

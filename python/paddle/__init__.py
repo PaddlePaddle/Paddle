@@ -25,4 +25,5 @@ import paddle.reader
 import paddle.dataset
 import paddle.batch
 import paddle.compat
+import paddle.distributed
 batch = batch.batch

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -39,14 +40,15 @@ platform::Place GetExpectedPlace(platform::Place place, VarBasePtrMap inputs);
 
 class Tracer {
  public:
-  explicit Tracer(framework::BlockDesc* root_block) : root_block_(root_block) {}
+  explicit Tracer(framework::BlockDesc* root_block);
 
   virtual ~Tracer() {}
 
-  void Trace(OpBase* op, const VarBasePtrMap& inputs,
-             const VarBasePtrMap& outputs, framework::BlockDesc* block,
-             const platform::Place expected_place,
-             const bool stop_gradient = false);
+  std::set<std::string> Trace(OpBase* op, const VarBasePtrMap& inputs,
+                              const VarBasePtrMap& outputs,
+                              framework::BlockDesc* block,
+                              const platform::Place expected_place,
+                              const bool stop_gradient = false);
 
   std::vector<VarBase*> PyTrace(OpBase* op, const std::vector<VarBase*>& inputs,
                                 bool stop_gradient = false);
