@@ -16,8 +16,8 @@ from __future__ import print_function
 from . import core
 from . import framework
 from . import executor
+from . import compiler
 import sys
-import compiler
 
 __all__ = ['ParallelExecutor']
 
