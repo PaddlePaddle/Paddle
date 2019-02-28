@@ -52,6 +52,7 @@ class TestFakeQuantizeRangeOp(OpTest):
             'InScale': np.zeros(1).astype("float32")
         }
         scale = np.max(np.abs(self.inputs['X'])).astype("float32")
+
         out_scales = np.zeros(self.attrs['window_size']).astype("float32")
         out_scales[0] = scale
         self.outputs = {
@@ -103,6 +104,7 @@ class TestFakeQuantizeMovingOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
 
 class TestFakeQuantizeRangeAbsMaxOp2(OpTest):
     def setUp(self):
