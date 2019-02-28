@@ -756,7 +756,9 @@ EOF
     ./clean.sh
 }
 
-function traivs_check_api() {
+function travis_check_api() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
     cmake .. \
         -DCMAKE_BUILD_TYPE=Release \
         -DWITH_GPU=OFF \
@@ -767,7 +769,9 @@ function traivs_check_api() {
     pip uninstall paddlepaddle
 }
 
-function traivs_check_api_py35() {
+function travis_check_api_py35() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
     cmake .. \
         -DPY_VERSION=3.5 \
         -DCMAKE_BUILD_TYPE=Release \
@@ -863,7 +867,7 @@ function main() {
       test_fluid_lib)
         test_fluid_lib
         ;;
-      travis_check_api)
+      check_api)
         traivs_check_api 
         traivs_check_api_py35
         ;;
