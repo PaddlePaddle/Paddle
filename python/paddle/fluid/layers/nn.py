@@ -186,6 +186,7 @@ __all__ = [
     'teacher_student_sigmoid_loss',
     'huber_loss',
     'tree_conv',
+    'cvm',
 ]
 
 kIgnoreIndex = -100
@@ -10540,3 +10541,50 @@ def tree_conv(nodes_vector,
     else:
         pre_activation = out
     return helper.append_activation(pre_activation)
+
+
+def cvm(input, cvm, use_cvm=True):
+    """
+    **cvm layers**
+
+    This layer accepts a tensor named input which is ID after embedded and lod level is 1 ,
+         cvm is a show_click info and returns the cvm output.
+
+    Args:
+        input (Variable):  a 2-D LodTensor with shape [N x D], where N is the
+                                batch size, D is the embedding dim. 
+                                lod level = 1.
+        cvm (Variable):    a 2-D Tensor with shape [N x 2], where N is the batch size, 2 is show and click.
+        use_cvm  (bool):  use cvm or not. if use cvm, the output dim is the same as input
+                          if don't use cvm, the output dim is input dim - 2(remove show and click).
+
+    Returns:
+        Variable: A 2-D LodTensor with shape [N x D], if use cvm, D is equal to input dim,
+                  if don't use cvm, D is equal to input dim - 2. 
+
+    Examples:
+        .. code-block:: python
+
+          input = fluid.layers.data(name="input", shape=[-1, 1], lod_level=1, append_batch_size=False, dtype="int64")#, stop_gradient=False)
+          label = fluid.layers.data(name="label", shape=[-1, 1], append_batch_size=False, dtype="int64")
+
+          embed = fluid.layers.embedding(
+                            input=input,
+                            size=[100, 11],
+                            dtype='float32')
+
+          ones = fluid.layers.fill_constant_batch_size_like(input=label, shape=[-1, 1], dtype="int64", value=1)
+          show_clk = fluid.layers.cast(fluid.layers.concat([label, ones], axis=1), dtype='float32')
+          show_clk.stop_gradient = True
+
+          input_with_cvm = fluid.layers.cvm(embed, show_clk, True)
+    """
+    helper = LayerHelper('cvm', **locals())
+    out = helper.create_variable(dtype=input.dtype)
+    helper.append_op(
+        type='cvm',
+        inputs={'X': [input],
+                'CVM': [cvm]},
+        outputs={'Y': [out]},
+        attrs={"use_cvm": use_cvm})
+    return out
