@@ -868,8 +868,8 @@ function main() {
         test_fluid_lib
         ;;
       check_api)
-        traivs_check_api 
-        traivs_check_api_py35
+        travis_check_api 
+        travis_check_api_py35
         ;;
       *)
         print_usage
