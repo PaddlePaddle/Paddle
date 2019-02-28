@@ -260,8 +260,9 @@ ParallelExecutor::ParallelExecutor(
   if (build_strategy.num_trainers_ > 1) {
     BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
   } else {
-    if (member_->local_scopes_.size() > 1UL)
+    if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
       BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
+    }
   }
 
 // Startup Program has been run. All local scopes has correct parameters.
