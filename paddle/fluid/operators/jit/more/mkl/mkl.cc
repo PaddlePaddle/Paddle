@@ -155,6 +155,11 @@ bool VSquareKernel<float>::UseMe(const int& d) const {
 }
 
 template <>
+bool VCopyKernel<float>::UseMe(const int& d) const {
+  return d > 15;
+}
+
+template <>
 bool VSigmoidKernel<float>::UseMe(const int& d) const {
   return d > 7;
 }
@@ -223,6 +228,7 @@ AWALYS_USE_ME_WITH_DOUBLE(VExp);
 AWALYS_USE_ME_WITH_DOUBLE(VSigmoid);
 AWALYS_USE_ME_WITH_DOUBLE(VTanh);
 AWALYS_USE_ME_WITH_DOUBLE(VSquare);
+AWALYS_USE_ME_WITH_DOUBLE(VCopy);
 AWALYS_USE_ME_WITH_DOUBLE(Softmax);
 
 #undef AWALYS_USE_ME_WITH_DOUBLE
@@ -244,6 +250,7 @@ REGISTER_MKL_KERNEL(kVAdd, VAdd);
 REGISTER_MKL_KERNEL(kVScal, VScal);
 REGISTER_MKL_KERNEL(kVExp, VExp);
 REGISTER_MKL_KERNEL(kVSquare, VSquare);
+REGISTER_MKL_KERNEL(kVCopy, VCopy);
 REGISTER_MKL_KERNEL(kVSigmoid, VSigmoid);
 REGISTER_MKL_KERNEL(kVTanh, VTanh);
 REGISTER_MKL_KERNEL(kSeqPool, SeqPool);

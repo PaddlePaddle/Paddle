@@ -71,6 +71,11 @@ void VAddBias(const T* a, const T* x, T* y, int n) {
 }
 
 template <typename T>
+void VCopy(const T* x, T* y, int n) {
+  std::memcpy(y, x, n * sizeof(T));
+}
+
+template <typename T>
 void VRelu(const T* x, T* y, int n) {
   for (int i = 0; i < n; ++i) {
     y[i] = x[i] > 0 ? x[i] : 0;
@@ -500,6 +505,7 @@ DECLARE_REFER_KERNEL(VExp, XYNTuples);
 DECLARE_REFER_KERNEL(VSigmoid, XYNTuples);
 DECLARE_REFER_KERNEL(VTanh, XYNTuples);
 DECLARE_REFER_KERNEL(VSquare, XYNTuples);
+DECLARE_REFER_KERNEL(VCopy, XYNTuples);
 
 // lstm_t*, const lstm_attr_t*
 DECLARE_REFER_KERNEL(LSTMCtHt, LSTMTuples);
