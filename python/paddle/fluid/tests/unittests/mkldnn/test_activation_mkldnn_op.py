@@ -19,7 +19,7 @@ import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_activation_op import TestRelu, TestTanh, TestSqrt, TestAbs
-import paddle.fluid as fluid
+from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
 
 class TestMKLDNNReluDim2(TestRelu):
@@ -98,62 +98,24 @@ class TestMKLDNNAbsDim4(TestAbs):
 
 
 # Check if primitives already exist in backward
-class TestMKLDNNReluPrimitivesAlreadyExist(unittest.TestCase):
-    def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
-
-    def test_check_forward_backward(self):
-        place = core.CPUPlace()
+class TestMKLDNNAbsPrimitivesAlreadyExist(unittest.TestCase):
+    def setUp(self):
+        super(TestMKLDNNAbsPrimitivesAlreadyExist, self).setUp()
 
         np.random.seed(123)
-        x = np.random.uniform(-1, 1, [2, 2]).astype(np.float32)
-        out = np.abs(x)
+        self.op_type = 'abs'
+        self.x = np.random.uniform(-1, 1, [2, 2]).astype(np.float32)
+        self.out = np.abs(self.x)
+        self.out_grad = np.random.random_sample(self.x.shape).astype(np.float32)
+        self.x_grad = self.__abs_bwd(self.x, self.out_grad)
 
-        out_grad = np.random.random_sample(x.shape).astype(np.float32)
-        x_grad = out_grad * np.sign(x)  # Abs grad calculation
+    # Abs grad calculation
+    def __abs_bwd(self, x, out_grad):
+        return out_grad * np.sign(x)
 
-        var_dict = {'x': x, 'out': out, 'out@GRAD': out_grad, 'x@GRAD': x_grad}
-        var_names = list(var_dict.keys())
-        ground_truth = {name: var_dict[name] for name in var_names}
-
-        program = fluid.Program()
-        with fluid.program_guard(program):
-            block = program.global_block()
-            for name in ground_truth:
-                block.create_var(
-                    name=name, dtype='float32', shape=ground_truth[name].shape)
-
-            relu_op = block.append_op(
-                type="abs",
-                inputs={"X": block.var('x'), },
-                outputs={"Out": block.var('out')},
-                attrs={"use_mkldnn": True})
-
-            # Generate backward op_desc
-            grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
-                relu_op.desc, set(), [])
-            grad_op_desc = grad_op_desc_list[0]
-            new_op_desc = block.desc.append_op()
-            new_op_desc.copy_from(grad_op_desc)
-            for var_name in grad_op_desc.output_arg_names():
-                block.desc.var(var_name.encode("ascii"))
-            grad_op_desc.infer_var_type(block.desc)
-            grad_op_desc.infer_shape(block.desc)
-            for arg in grad_op_desc.output_arg_names():
-                grad_var = block.desc.find_var(arg.encode("ascii"))
-                grad_var.set_dtype(core.VarDesc.VarType.FP32)
-
-            exe = fluid.Executor(place)
-
-            # Do at least 2 iterations
-            for i in range(2):
-                out = exe.run(
-                    program,
-                    feed={name: var_dict[name]
-                          for name in ['x', 'out@GRAD']},
-                    fetch_list=['x@GRAD'])
-
-            self.__assert_close(x_grad, out[0], "x@GRAD")
+    def test_check(self):
+        check_if_mkldnn_primitives_exist_in_bwd(
+            self, self.op_type, self.x, self.out, self.out_grad, self.x_grad)
 
 
 if __name__ == '__main__':

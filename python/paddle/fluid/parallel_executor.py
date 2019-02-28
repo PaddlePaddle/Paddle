@@ -92,6 +92,11 @@ class ParallelExecutor(object):
                  num_trainers=1,
                  trainer_id=0,
                  scope=None):
+        sys.stderr.write(
+            'ParallelExecutor is deprecated. '
+            'Please use CompiledProgram and Executor. CompiledProgram '
+            'is a central place for optimization and Executor is the '
+            'unified executor. Example can be found in compiler.py.\n')
         # step1: get places, the places are used in run too.
         self._places = []
         if use_cuda:
@@ -176,10 +181,13 @@ class ParallelExecutor(object):
         places = list(map(place_obj, self._places))
 
         # step7: init ParallelExecutor
+        # ParallelExecutor API will be deprecated, don't support parallel graph.
+        self._graph = core.Graph(main.desc)
+
         self.executor = core.ParallelExecutor(
-            places, persistable_vars, main.desc,
+            places, persistable_vars,
             cpt.to_text(loss_name) if loss_name else six.u(''), scope,
-            local_scopes, exec_strategy, build_strategy)
+            local_scopes, exec_strategy, build_strategy, self._graph)
 
         self.scope = scope
 
