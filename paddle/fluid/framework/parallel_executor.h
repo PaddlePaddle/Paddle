@@ -14,9 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/details/build_strategy.h"
