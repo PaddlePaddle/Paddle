@@ -18,6 +18,7 @@
 #include <limits>
 #include <map>
 #include <random>
+#include <unordered_set>
 #include <utility>
 
 #include "paddle/fluid/framework/lod_tensor.h"
