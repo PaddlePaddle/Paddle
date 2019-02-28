@@ -41,6 +41,7 @@ typedef enum {
   kVAdd,
   kVAddBias,
   kVAddRelu,
+  kVCopy,
   kVExp,
   kVIdentity,
   kVMul,
