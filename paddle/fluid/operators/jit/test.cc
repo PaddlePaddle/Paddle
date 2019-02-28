@@ -26,8 +26,8 @@ limitations under the License. */
 DEFINE_double(acc, 1e-5, "Test accuracy threshold.");
 
 template <typename T>
-void RandomVec(const int n, T* a, const T lower = static_cast<T>(-20.f),
-               const T upper = static_cast<T>(20.f)) {
+void RandomVec(const int n, T* a, const T lower = static_cast<T>(-2.f),
+               const T upper = static_cast<T>(2.f)) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
@@ -514,7 +514,7 @@ void TestKernelXRNTuples() {
     auto ref = jit::GetRefer<KT, jit::XRNTuples<T>>();
     EXPECT_TRUE(ref != nullptr);
     std::vector<T> x(d);
-    RandomVec<T>(d, x.data(), -2.f, 2.f);
+    RandomVec<T>(d, x.data());
     T ref_res;
     ref(x.data(), &ref_res, d);
     TestAllImpls<KT, jit::XRNTuples<T>, PlaceType, std::vector<T>, T>(d, x,
@@ -532,7 +532,7 @@ void TestKernelXYNTuples() {
 
     std::vector<T> x(d), yref(d);
     std::vector<T> xinp(d);  // inplace test
-    RandomVec<T>(d, x.data(), -2.f, 2.f);
+    RandomVec<T>(d, x.data());
     std::copy(x.begin(), x.end(), xinp.begin());
 
     const T* x_data = x.data();
@@ -566,7 +566,7 @@ void TestKernelLSTMTuples() {
             EXPECT_TRUE(ref != nullptr);
             std::vector<T> xsrc(4 * d), wp(3 * d), ct_1(d);
             std::vector<T> ct_ref(d), ht_ref(d), checked(2 * d);
-            RandomVec<T>(4 * d, xsrc.data(), -2.f, 2.f);
+            RandomVec<T>(4 * d, xsrc.data());
             RandomVec<T>(3 * d, wp.data(), -1.f, 1.f);
             RandomVec<T>(d, ct_1.data(), -1.f, 1.f);
             // x could be changed after compute, so copy to save src
@@ -614,8 +614,8 @@ void TestKernelGRUTuples() {
         auto ref = jit::GetRefer<KT, jit::GRUTuples<T>>();
         EXPECT_TRUE(ref != nullptr);
         std::vector<T> xsrc(3 * d), ht_1(d), ht_ref(d);
-        RandomVec<T>(3 * d, xsrc.data(), -2.f, 2.f);
-        RandomVec<T>(d, ht_1.data(), -2.f, 2.f);
+        RandomVec<T>(3 * d, xsrc.data());
+        RandomVec<T>(d, ht_1.data());
         // x could be changed after compute, so copy to save src
         std::vector<T> x(xsrc.size());
         std::copy(xsrc.begin(), xsrc.end(), x.begin());
@@ -651,7 +651,7 @@ void TestKernelSeqPoolTuples() {
         auto ref = jit::GetRefer<KT, jit::SeqPoolTuples<T>>();
         EXPECT_TRUE(ref != nullptr);
         std::vector<T> x(h * w), yref(w);
-        RandomVec<T>(h * w, x.data(), -2.f, 2.f);
+        RandomVec<T>(h * w, x.data());
         const T* x_data = x.data();
         T* yref_data = yref.data();
         ref(x_data, yref_data, &attr);
@@ -676,8 +676,8 @@ void TestKernelMatMulTuples() {
         auto ref = jit::GetRefer<KT, jit::MatMulTuples<T>>();
         EXPECT_TRUE(ref != nullptr);
         std::vector<T> a(m * k), b(k * n), c(m * n);
-        RandomVec<T>(m * k, a.data(), -2.f, 2.f);
-        RandomVec<T>(k * n, b.data(), -2.f, 2.f);
+        RandomVec<T>(m * k, a.data());
+        RandomVec<T>(k * n, b.data());
         const T* a_data = a.data();
         const T* b_data = b.data();
         T* c_data = c.data();
@@ -699,7 +699,7 @@ void TestKernelSoftmaxTuples() {
       auto ref = jit::GetRefer<KT, jit::SoftmaxTuples<T>>();
       EXPECT_TRUE(ref != nullptr);
       std::vector<T> x(bs * n), y(bs * n);
-      RandomVec<T>(bs * n, x.data(), -2.f, 2.f);
+      RandomVec<T>(bs * n, x.data());
       const T* x_data = x.data();
       T* y_data = y.data();
 
@@ -726,7 +726,7 @@ void TestKernelEmbSeqPoolTuples() {
   test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 1000));
   for (int tbl_w : test_sizes) {
     std::vector<T> table(tbl_h * tbl_w);
-    RandomVec<T>(tbl_h * tbl_w, table.data(), -2.f, 2.f);
+    RandomVec<T>(tbl_h * tbl_w, table.data());
     const T* table_data = table.data();
     for (auto type : pool_types) {
       for (int idx_w : {1, 2, 10, 16}) {
@@ -772,14 +772,14 @@ void TestKernelSgdTuples() {
     for (int grad_w : TestSizes()) {
       std::vector<T> param(param_h * grad_w);
       std::vector<T> param_out(param_h * grad_w);
-      RandomVec<T>(param_h * grad_w, param.data(), -2.f, 2.f);
+      RandomVec<T>(param_h * grad_w, param.data());
       const T* param_data = param.data();
       T* out_data = param_out.data();
       for (int rows_size = 1; rows_size <= param_h; ++rows_size) {
         std::vector<T> grad(rows_size * grad_w);
         std::vector<int64_t> rows =
             UnDuplicatedRandomVec(rows_size, 0, rows_size - 1);
-        RandomVec<T>(rows_size * grad_w, grad.data(), -2.f, 2.f);
+        RandomVec<T>(rows_size * grad_w, grad.data());
         const int64_t* rows_data = rows.data();
         const T* grad_data = grad.data();
         auto ref = jit::GetRefer<KT, jit::SgdTuples<T>>();
@@ -815,8 +815,8 @@ void TestKernelNCHW16CMulNCTuples() {
   int sz = n * c * h * w;
   std::vector<T> x(sz), y(n * c), zref(sz);
   std::vector<T> ztgt(sz), zjit(sz);
-  RandomVec<T>(sz, x.data(), -2.f, 2.f);
-  RandomVec<T>(n * c, y.data(), -2.f, 2.f);
+  RandomVec<T>(sz, x.data());
+  RandomVec<T>(n * c, y.data());
 
   const T* x_data = x.data();
   const T* y_data = y.data();
@@ -873,11 +873,11 @@ void TestKernelLayerNormTuples() {
         int sz = left * right;
         std::vector<T> x(sz), mean(left), var(left), scale(right), bias(right),
             outref(sz);
-        RandomVec<T>(sz, x.data(), -2.f, 2.f);
-        RandomVec<T>(left, mean.data(), -2.f, 2.f);
-        RandomVec<T>(left, var.data(), -2.f, 2.f);
-        RandomVec<T>(right, scale.data(), -2.f, 2.f);
-        RandomVec<T>(right, bias.data(), -2.f, 2.f);
+        RandomVec<T>(sz, x.data());
+        RandomVec<T>(left, mean.data());
+        RandomVec<T>(left, var.data());
+        RandomVec<T>(right, scale.data());
+        RandomVec<T>(right, bias.data());
 
         const T* scale_data = scale.data();
         const T* bias_data = bias.data();
@@ -903,7 +903,7 @@ void TestKernelCRFDecodingTuples() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   constexpr int state_trans_base_idx = 2;
   auto test_sizes = TestSizes();
-  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 1000));
+  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 2000));
   for (int seq_len : {1, 11, 17, 50}) {
     for (int tag_num : test_sizes) {
       auto ref = jit::GetRefer<KT, jit::CRFDecodingTuples<T>>();
@@ -912,8 +912,8 @@ void TestKernelCRFDecodingTuples() {
       int w_sz = (tag_num + state_trans_base_idx) * tag_num;
       std::vector<T> x(x_sz), w(w_sz), alpharef(x_sz);
       std::vector<int> trackref(x_sz);
-      RandomVec<T>(x_sz, x.data(), -2.f, 2.f);
-      RandomVec<T>(w_sz, w.data(), -2.f, 2.f);
+      RandomVec<T>(x_sz, x.data());
+      RandomVec<T>(w_sz, w.data());
 
       ref(seq_len, (const T*)x.data(), (const T*)w.data(), alpharef.data(),
           trackref.data(), tag_num);
@@ -949,6 +949,7 @@ TEST_CPU_KERNEL(XYNTuples, kVSquare);
 TEST_CPU_KERNEL(XYNTuples, kVExp);
 TEST_CPU_KERNEL(XYNTuples, kVSigmoid);
 TEST_CPU_KERNEL(XYNTuples, kVTanh);
+TEST_CPU_KERNEL(XYNTuples, kVCopy);
 
 TEST_CPU_KERNEL(LSTMTuples, kLSTMCtHt);
 TEST_CPU_KERNEL(LSTMTuples, kLSTMC1H1);
