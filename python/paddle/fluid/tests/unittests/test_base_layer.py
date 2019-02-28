@@ -21,22 +21,15 @@ from paddle.fluid.layer_helper import LayerHelper
 
 class L1(fluid.imperative.Layer):
     def __init__(self, prefix):
-        super(L1, self).__init__(prefix)
-        self._helper = LayerHelper(
-            self.full_name(),
+        super(L1, self).__init__(
+            prefix,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.1)))
 
-        self.w1 = self._helper.create_parameter(
-            attr=self._helper.param_attr,
-            shape=[2, 2],
-            dtype='float32',
-            is_bias=False)
-        self.w2 = self._helper.create_parameter(
-            attr=self._helper.param_attr,
-            shape=[2, 2],
-            dtype='float32',
-            is_bias=False)
+        self.w1 = self.create_parameter(
+            attr=self.param_attr, shape=[2, 2], dtype='float32', is_bias=False)
+        self.w2 = self.create_parameter(
+            attr=self.param_attr, shape=[2, 2], dtype='float32', is_bias=False)
 
     def forward(self):
         return self.w1 + self.w2
