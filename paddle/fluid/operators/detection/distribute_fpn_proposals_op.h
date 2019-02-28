@@ -93,7 +93,7 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     }
     // define the output rois
     // pointer which point to each level fpn rois
-    T* multi_fpn_rois_data[num_level];
+    std::vector<T*> multi_fpn_rois_data(num_level);
     // lod0 which will record the offset information of each level rois
     std::vector<std::vector<size_t>> multi_fpn_rois_lod0;
     for (int i = 0; i < num_level; ++i) {
