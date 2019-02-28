@@ -114,7 +114,7 @@ def auc(input,
 
 
     Returns:
-        Variable: A scalar representing the current AUC.
+        Variable: A scalar representing the current AUC, include global AUC value, batch AUC value, and the state of AUC.
 
     Examples:
         .. code-block:: python
