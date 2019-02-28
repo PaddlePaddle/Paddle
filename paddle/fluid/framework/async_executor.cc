@@ -59,10 +59,6 @@ void AsyncExecutor::GatherServers(const std::vector<uint64_t>& host_sign_list,
   fleet_ptr_->GatherServers(host_sign_list, node_num);
 }
 
-void AsyncExecutor::InitModel() {}
-
-void AsyncExecutor::SaveModel(const std::string& path) {}
-
 void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
                                 const std::string& trainer_desc_str,
                                 const bool debug) {

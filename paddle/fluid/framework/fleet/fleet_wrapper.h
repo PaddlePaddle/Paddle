@@ -48,6 +48,7 @@ namespace framework {
 
 class FleetWrapper {
  public:
+  FleetWrapper() {}
   ~FleetWrapper() {}
   // Pull sparse variables from server in Sync mode
   // Param<in>: scope, table_id, var_names, fea_keys
@@ -122,9 +123,6 @@ class FleetWrapper {
 
  private:
   static std::shared_ptr<FleetWrapper> s_instance_;
-
- private:
-  FleetWrapper() {}
 
  protected:
   static bool is_initialized_;

@@ -235,9 +235,6 @@ class MultiSlotDataFeed
                                    int index);
   virtual bool ParseOneInstance(std::vector<MultiSlotType>* instance);
   virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);
-
- private:
-  BatchGenerator batch_gen_;
 };
 }  // namespace framework
 }  // namespace paddle
