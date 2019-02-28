@@ -882,7 +882,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const RuntimeContext& ctx_;
 };
 
-static void CheckTensorNANOrInf(const std::string& type,
+static void CheckTensorNANOrInf(const std::string& op_type,
                                 const std::string& name,
                                 const framework::Tensor& tensor) {
   if (tensor.memory_size() == 0) {
@@ -893,9 +893,9 @@ static void CheckTensorNANOrInf(const std::string& type,
     return;
   }
   PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
-                 "Op %s output Tensor %s contains Inf", type, name);
+                 "Operator %s output Tensor %s contains Inf", op_type, name);
   PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
-                 "Op %s output Tensor %s contains NAN", type, name);
+                 "Operator %s output Tensor %s contains NAN", op_type, name);
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
