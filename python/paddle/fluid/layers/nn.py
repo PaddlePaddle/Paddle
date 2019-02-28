@@ -6861,10 +6861,6 @@ def resize_bilinear(input,
     Align_corners and align_mode are optinal parameters,the calculation 
     method of interpolation can be selected by them.
 
-
-    Align_corners and align_mode are optinal parameters,the calculation method 
-    of interpolation can be selected by them.
-
     Example:
 
     .. code-block:: text
