@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <memory>
-
+#include <utility>
 #include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"

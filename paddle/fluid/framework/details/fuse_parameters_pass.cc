@@ -46,7 +46,7 @@ class FuseParametersPass : public ir::Pass {
       }
     }
 
-    if (param_names.size()) {
+    if (param_names.size() == 0) {
       return std::move(graph);
     }
 

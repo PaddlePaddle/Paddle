@@ -18,6 +18,7 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 #include <typeindex>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/ddim.h"

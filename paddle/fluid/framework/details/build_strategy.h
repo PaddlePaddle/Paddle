@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
