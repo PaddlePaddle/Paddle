@@ -76,8 +76,8 @@ RUN curl -s -q https://glide.sh/get | sh
 # 2. Manually add ~IPluginFactory() in IPluginFactory class of NvInfer.h, otherwise, it couldn't work in paddle.
 #    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
 
-RUN wget -qO- https://paddlepaddledeps.cdn.bcebos.com/TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda-8.0.cudnn7.0.tar.gz | \
-    tar -xz -C /usr/local && \
+RUN wget -q https://paddlepaddledeps.cdn.bcebos.com/TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda.8.0.cudnn7.0.tar.gz --no-check-certificate && \
+    tar -zxf TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda.8.0.cudnn7.0.tar.gz -C /usr/local && \
     cp -rf /usr/local/TensorRT/include /usr && \
     cp -rf /usr/local/TensorRT/lib /usr
 
