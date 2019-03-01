@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #include "paddle/fluid/inference/anakin/engine.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/utils/singleton.h"
@@ -82,7 +83,7 @@ class AnakinConvertValidation {
   AnakinConvertValidation() = delete;
 
   AnakinConvertValidation(const std::unordered_set<std::string>& parameters,
-                          const framework::Scope& scope)
+                          framework::Scope& scope)
       : parameters_(parameters), scope_(scope), place_(0) {
     PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_), 0);
     engine_.reset(new AnakinEngine<NV, Precision::FP32>(true));
