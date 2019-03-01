@@ -16,6 +16,7 @@ import os, sys
 import unittest
 import numpy
 import numpy as np
+import random
 import time
 import math
 
@@ -57,6 +58,8 @@ def nested_while_op(data, label, dict_dim, emb_dim=128, hid_dim=128):
 
 class BuildNestedWhileIrMemOptBase(unittest.TestCase):
     def custom_reader(self):
+        np.random.seed(123)
+        random.seed(124)
         seq_len, label = [[2, 2]], [0, 1]
         data = []
         for ele in seq_len:
