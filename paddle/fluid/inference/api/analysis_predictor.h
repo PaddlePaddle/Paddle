@@ -55,6 +55,9 @@ class AnalysisPredictor : public PaddlePredictor {
            std::vector<PaddleTensor> *output_data,
            int batch_size = -1) override;
 
+  std::vector<std::string> GetInputNames();
+  std::vector<std::string> GetOutputNames();
+
   std::unique_ptr<ZeroCopyTensor> GetInputTensor(
       const std::string &name) override;
   std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
@@ -133,7 +136,11 @@ class AnalysisPredictor : public PaddlePredictor {
   std::shared_ptr<framework::ProgramDesc> inference_program_;
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
+  // Sorted according to the idx.
+  std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
+  std::map<size_t, std::string> idx2fetches_;
+
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.
   std::vector<framework::LoDTensor> feed_tensors_;

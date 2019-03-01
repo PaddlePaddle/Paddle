@@ -435,12 +435,14 @@ void AnalysisPredictor::PrepareFeedFetch() {
       }
       feeds_[idx] = op;
       feed_names_[op->Output("Out")[0]] = idx;
+      idx2feeds_[idx] = op->Output("Out")[0];
     } else if (op->Type() == "fetch") {
       int idx = boost::get<int>(op->GetAttr("col"));
       if (fetches_.size() <= static_cast<size_t>(idx)) {
         fetches_.resize(idx + 1);
       }
       fetches_[idx] = op;
+      idx2fetches_[idx] = op->Input("X")[0];
     }
   }
 }
@@ -453,6 +455,22 @@ void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
   var->GetMutable<framework::FeedFetchList>();
 }
 
+std::vector<std::string> AnalysisPredictor::GetInputNames() {
+  std::vector<std::string> input_names;
+  for (auto &item : idx2feeds_) {
+    input_names.push_back(item.second);
+  }
+  return input_names;
+}
+
+std::vector<std::string> AnalysisPredictor::GetOutputNames() {
+  std::vector<std::string> output_names;
+  for (auto &item : idx2fetches_) {
+    output_names.push_back(item.second);
+  }
+  return output_names;
+}
+
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
   PADDLE_ENFORCE(executor_->scope()->FindVar(name), "no name called %s", name);
@@ -460,6 +478,13 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
   res->input_or_output_ = true;
   res->SetName(name);
+  if (platform::is_cpu_place(place_)) {
+    res->SetPlace(PaddlePlace::kCPU);
+  } else {
+    auto gpu_place = boost::get<platform::CUDAPlace>(place_);
+    res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
+  }
+
   return res;
 }
 
@@ -470,6 +495,12 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
   res->input_or_output_ = false;
   res->SetName(name);
+  if (platform::is_cpu_place(place_)) {
+    res->SetPlace(PaddlePlace::kCPU);
+  } else {
+    auto gpu_place = boost::get<platform::CUDAPlace>(place_);
+    res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
+  }
   return res;
 }
 
