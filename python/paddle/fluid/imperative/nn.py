@@ -41,18 +41,12 @@ class Conv2D(layers.Layer):
                  bias_attr=None,
                  dtype=core.VarDesc.VarType.FP32):
         assert param_attr is not False, "param_attr should not be False here."
-        super(Conv2D, self).__init__(
-            name_scope,
-            act=act,
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            dtype=dtype)
-
-        # TODO(minqiyang): Move this to the top.
+        super(Conv2D, self).__init__(name_scope)
         self._groups = groups
         self._stride = utils.convert_to_list(stride, 2, 'stride')
         self._padding = utils.convert_to_list(padding, 2, 'padding')
         self._dilation = utils.convert_to_list(dilation, 2, 'dilation')
+        self.act = act
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
         self._use_cudnn = use_cudnn
@@ -78,7 +72,7 @@ class Conv2D(layers.Layer):
             return Normal(0.0, std, 0)
 
         self._filter_param = self.create_parameter(
-            attr=self.param_attr,
+            attr=param_attr,
             shape=filter_shape,
             dtype=self._dtype,
             default_initializer=_get_default_param_initializer())
@@ -98,15 +92,16 @@ class Conv2D(layers.Layer):
                 type=core.VarDesc.VarType.RAW)
 
         self._bias_param = self.create_parameter(
-            attr=self.bias_attr,
+            attr=bias_attr,
             shape=[num_filters],
             dtype=self._dtype,
             is_bias=True)
 
     def forward(self, input):
-        pre_bias = self.create_variable_for_type_inference(dtype=self._dtype)
+        pre_bias = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype)
 
-        self.append_op(
+        self._helper.append_op(
             type=self._l_type,
             inputs={
                 'Input': input,
@@ -122,9 +117,10 @@ class Conv2D(layers.Layer):
                 'use_mkldnn': False,
             })
 
-        pre_act = self.create_variable_for_type_inference(dtype=self._dtype)
+        pre_act = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype)
 
-        self.append_op(
+        self._helper.append_op(
             type='elementwise_add',
             inputs={'X': [pre_bias],
                     'Y': [self._bias_param]},
@@ -132,7 +128,7 @@ class Conv2D(layers.Layer):
             attrs={'axis': 1})
 
         # Currently, we don't support inplace in imperative mode
-        return self.append_activation(pre_act)
+        return self._helper.append_activation(pre_act, act=self.act)
 
 
 class Pool2D(layers.Layer):
@@ -174,9 +170,9 @@ class Pool2D(layers.Layer):
         self._l_type = 'pool2d'
 
     def forward(self, input):
-        pool_out = self.create_variable_for_type_inference(self._dtype)
+        pool_out = self._helper.create_variable_for_type_inference(self._dtype)
 
-        self.append_op(
+        self._helper.append_op(
             type=self._l_type,
             inputs={"X": input},
             outputs={"Out": pool_out},
@@ -203,12 +199,14 @@ class FC(layers.Layer):
                  num_flatten_dims=1,
                  dtype=core.VarDesc.VarType.FP32,
                  act=None):
-        super(FC, self).__init__(
-            name_scope, act=act, param_attr=param_attr, bias_attr=bias_attr)
+        super(FC, self).__init__(name_scope)
 
         self._size = size
         self._num_flatten_dims = num_flatten_dims
         self._dtype = dtype
+        self.param_attr = param_attr
+        self.bias_attr = param_attr
+        self.act = act
 
     def _build_once(self, input):
         input_shape = input.shape
@@ -232,8 +230,8 @@ class FC(layers.Layer):
             self._b = None
 
     def forward(self, input):
-        tmp = self.create_variable_for_type_inference(self._dtype)
-        self.append_op(
+        tmp = self._helper.create_variable_for_type_inference(self._dtype)
+        self._helper.append_op(
             type="mul",
             inputs={"X": input,
                     "Y": self._w},
@@ -243,17 +241,17 @@ class FC(layers.Layer):
                 "y_num_col_dims": 1
             })
 
-        pre_bias = self.create_variable_for_type_inference(self._dtype)
-        self.append_op(
+        pre_bias = self._helper.create_variable_for_type_inference(self._dtype)
+        self._helper.append_op(
             type="sum",
             inputs={"X": [tmp]},
             outputs={"Out": pre_bias},
             attrs={"use_mkldnn": False})
 
         if self._b:
-            pre_activation = self.create_variable_for_type_inference(
+            pre_activation = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
-            self.append_op(
+            self._helper.append_op(
                 type='elementwise_add',
                 inputs={'X': [pre_bias],
                         'Y': [self._b]},
@@ -262,7 +260,7 @@ class FC(layers.Layer):
         else:
             pre_activation = pre_bias
         # Currently, we don't support inplace in imperative mode
-        return self.append_activation(pre_activation)
+        return self._helper.append_activation(pre_activation, act=self.act)
 
 
 class BatchNorm(layers.Layer):
@@ -283,8 +281,10 @@ class BatchNorm(layers.Layer):
                  do_model_average_for_mean_and_var=False,
                  fuse_with_relu=False,
                  use_global_stats=False):
-        super(BatchNorm, self).__init__(
-            name_scope, param_attr=param_attr, act=act, bias_attr=bias_attr)
+        super(BatchNorm, self).__init__(name_scope)
+        self.param_attr = param_attr
+        self.bias_attr = bias_attr
+        self.act = act
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
 
@@ -349,14 +349,14 @@ class BatchNorm(layers.Layer):
         # variance and variance out share the same memory
         variance_out = self._variance
 
-        saved_mean = self.create_variable_for_type_inference(
+        saved_mean = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
-        saved_variance = self.create_variable_for_type_inference(
+        saved_variance = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
-        batch_norm_out = input if self._in_place else self.create_variable_for_type_inference(
+        batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
             self._dtype)
 
-        self.append_op(
+        self._helper.append_op(
             type="batch_norm",
             inputs={
                 "X": input,
@@ -382,7 +382,7 @@ class BatchNorm(layers.Layer):
             })
 
         # Currently, we don't support inplace in imperative mode
-        return self.append_activation(batch_norm_out)
+        return self._helper.append_activation(batch_norm_out, self.act)
 
 
 class Embedding(layers.Layer):
@@ -433,7 +433,7 @@ class Embedding(layers.Layer):
                  param_attr=None,
                  dtype='float32'):
 
-        super(Embedding, self).__init__(name_scope, param_attr=param_attr)
+        super(Embedding, self).__init__(name_scope)
         self._size = size
         self._is_sparse = is_sparse
         self._is_distributed = is_distributed
@@ -454,8 +454,8 @@ class Embedding(layers.Layer):
             is_bias=False)
 
     def forward(self, input):
-        out = self.create_variable_for_type_inference(self._dtype)
-        self.append_op(
+        out = self._helper.create_variable_for_type_inference(self._dtype)
+        self._helper.append_op(
             type='lookup_table',
             inputs={'Ids': input,
                     'W': self._w},

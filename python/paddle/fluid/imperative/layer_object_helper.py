@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,34 +16,32 @@ from __future__ import print_function
 
 import copy
 import six
-
-from .framework import Parameter, dtype_is_floating, _in_imperative_mode
-from . import unique_name
-from paddle.fluid.initializer import Constant, Xavier
-from .param_attr import ParamAttr
-from . import core
+from ..framework import Parameter, _in_imperative_mode
+from ..param_attr import ParamAttr
+from .. import core
 from six.moves import zip
-from layer_helper_base import Layer_Helper_Base
+from ..layer_helper_base import Layer_Helper_Base
 
 
-class LayerHelper(Layer_Helper_Base):
-    def __init__(self, layer_type, **kwargs):
-        self.kwargs = kwargs
-        name = self.kwargs.get('name', None)
-        # TODO(panyx0718, minqiyang): imperative mode
-        # can not use both `layer_type` and `name`. Deprecate LayerHelper
-        # and write a Helper for imperative mode.
-        if name is None:
-            self.kwargs['name'] = unique_name.generate(layer_type)
+class LayerOjbectHelper(Layer_Helper_Base):
+    def __init__(self, name):
+        super(LayerOjbectHelper, self).__init__(name, layer_type=name)
 
-        super(LayerHelper, self).__init__(
-            self.kwargs['name'], layer_type=layer_type)
+    def append_op(self,
+                  type=None,
+                  inputs=None,
+                  outputs=None,
+                  attrs=None,
+                  stop_gradient=None):
+        return self.main_program.current_block().append_op(
+            type=type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs,
+            stop_gradient=stop_gradient)
 
-    def append_op(self, *args, **kwargs):
-        return self.main_program.current_block().append_op(*args, **kwargs)
-
-    def multiple_input(self, input_param_name='input'):
-        inputs = self.kwargs.get(input_param_name, [])
+    def multiple_input(self, inputs_in):
+        inputs = inputs_in
         ret = []
         if isinstance(inputs, list) or isinstance(inputs, tuple):
             for inp in inputs:
@@ -52,23 +50,14 @@ class LayerHelper(Layer_Helper_Base):
             ret.append(self.to_variable(inputs))
         return ret
 
-    def input(self, input_param_name='input'):
-        inputs = self.multiple_input(input_param_name)
+    def input(self, inputs_in):
+        inputs = self.multiple_input(inputs_in)
         if len(inputs) != 1:
             raise "{0} layer only takes one input".format(self.layer_type)
         return inputs[0]
 
-    @property
-    def param_attr(self):
-        return ParamAttr._to_attr(self.kwargs.get('param_attr', None))
-
-    @property
-    def bias_attr(self):
-        return ParamAttr._to_attr(self.kwargs.get('bias_attr', None))
-
-    #TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of param_attr
-    def multiple_param_attr(self, length):
-        param_attr = self.param_attr
+    def multiple_param_attr(self, length, param_attr_in=None):
+        param_attr = param_attr_in
         if isinstance(param_attr, ParamAttr):
             param_attr = [param_attr]
 
@@ -81,14 +70,14 @@ class LayerHelper(Layer_Helper_Base):
             param_attr = tmp
         return param_attr
 
-    def iter_inputs_and_params(self, input_param_name='input'):
-        inputs = self.multiple_input(input_param_name)
-        param_attrs = self.multiple_param_attr(len(inputs))
+    def iter_inputs_and_params(self, inputs_in, param_attr_in=None):
+        inputs = self.multiple_input(inputs_in)
+        param_attrs = self.multiple_param_attr(len(inputs), param_attr_in)
         for ipt, param_attr in zip(inputs, param_attrs):
             yield ipt, param_attr
 
-    def input_dtype(self, input_param_name='input'):
-        inputs = self.multiple_input(input_param_name)
+    def input_dtype(self, inputs_in):
+        inputs = self.multiple_input(inputs_in)
         dtype = None
         for each in inputs:
             if dtype is None:
@@ -104,8 +93,11 @@ class LayerHelper(Layer_Helper_Base):
             raise ValueError("no Parameter name %s found" % name)
         return param
 
-    #TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of bias_attr
-    def append_bias_op(self, input_var, dim_start=1, dim_end=None):
+    def append_bias_op(self,
+                       input_var,
+                       dim_start=1,
+                       dim_end=None,
+                       bias_attr=None):
         """
         Append bias operator and return its output. If the user does not set
         bias_attr, append_bias_op will return input_var
@@ -116,11 +108,12 @@ class LayerHelper(Layer_Helper_Base):
         initialize the bias
         :param dim_start:
         :param dim_end: the shape of the bias will be
+        :param bias_attr: the bias_attr of it
         input_var.shape[dim_start:dim_end]. The bias is broadcasted to other
         dimensions and added to input_var to get the output
         """
         size = list(input_var.shape[dim_start:dim_end])
-        bias_attr = self.bias_attr
+        bias_attr = bias_attr
         if not bias_attr:
             return input_var
 
@@ -135,9 +128,12 @@ class LayerHelper(Layer_Helper_Base):
             attrs={'axis': dim_start})
         return tmp
 
-    #TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of act
-    def append_activation(self, input_var):
-        act = self.kwargs.get('act', None)
+    def append_activation(self,
+                          input_var,
+                          act=None,
+                          use_cudnn=None,
+                          use_mkl_dnn=None):
+        act = act
         if act is None:
             return input_var
         if isinstance(act, six.string_types):
@@ -145,10 +141,10 @@ class LayerHelper(Layer_Helper_Base):
         else:
             raise TypeError(str(act) + " should be unicode or str")
 
-        if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
-            act['use_cudnn'] = self.kwargs.get('use_cudnn')
-        if 'use_mkldnn' in self.kwargs:
-            act['use_mkldnn'] = self.kwargs.get('use_mkldnn')
+        if (use_cudnn is not None) and use_cudnn:
+            act['use_cudnn'] = use_cudnn
+        if (use_mkl_dnn is not None) and use_mkl_dnn:
+            act['use_mkldnn'] = use_mkl_dnn
         act_type = act.pop('type')
 
         tmp = input_var
@@ -165,17 +161,8 @@ class LayerHelper(Layer_Helper_Base):
             attrs=act)
         return tmp
 
-    #TODO (jiabin): should we remove this since it has never be used
-    def _get_default_initializer(self, dtype):
-        if dtype is None or dtype_is_floating(dtype) is True:
-            return Xavier()
-        else:
-            # For integer and boolean types, initialize with all zeros
-            return Constant()
-
-    #TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of kwargs
-    def is_instance(self, param_name, cls):
-        param = self.kwargs.get(param_name, None)
+    def is_instance(self, param, cls):
+        param = param
         if not isinstance(param, cls):
             raise TypeError("The input {0} parameter of method {1} must be {2}",
-                            param_name, self.layer_type, cls.__name__)
+                            param, self.layer_type, cls.__name__)

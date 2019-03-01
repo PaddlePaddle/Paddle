@@ -140,7 +140,7 @@ class PtbModel(fluid.imperative.Layer):
                  num_steps=20,
                  init_scale=0.1,
                  dropout=None):
-        super(PtbModel, self).__init__(name_scope, act="tanh")
+        super(PtbModel, self).__init__(name_scope)
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale

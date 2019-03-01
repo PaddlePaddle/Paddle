@@ -53,11 +53,15 @@ class MLP(fluid.imperative.Layer):
         super(MLP, self).__init__(name_scope)
         self._fc1 = FC(self.full_name(),
                        3,
-                       fluid.ParamAttr(
+                       param_attr=fluid.ParamAttr(
+                           initializer=fluid.initializer.Constant(value=0.1)),
+                       bias_attr=fluid.ParamAttr(
                            initializer=fluid.initializer.Constant(value=0.1)))
         self._fc2 = FC(self.full_name(),
                        4,
-                       fluid.ParamAttr(
+                       param_attr=fluid.ParamAttr(
+                           initializer=fluid.initializer.Constant(value=0.1)),
+                       bias_attr=fluid.ParamAttr(
                            initializer=fluid.initializer.Constant(value=0.1)))
 
     def forward(self, inputs):
@@ -70,12 +74,12 @@ class MLP(fluid.imperative.Layer):
 class SimpleRNNCell(fluid.imperative.Layer):
     def __init__(self, name_scope, step_input_size, hidden_size, output_size,
                  param_attr):
-        super(SimpleRNNCell, self).__init__(
-            name_scope, param_attr=param_attr, act='tanh')
+        super(SimpleRNNCell, self).__init__(name_scope)
         self.step_input_size = step_input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
-        self._dype = core.VarDesc.VarType.FP32
+        self._dtype = core.VarDesc.VarType.FP32
+        self.param_attr = param_attr
 
     def _build_once(self, inputs, pre_hidden):
         i2h_param_shape = [self.step_input_size, self.hidden_size]
@@ -99,13 +103,13 @@ class SimpleRNNCell(fluid.imperative.Layer):
 
     def forward(self, input, pre_hidden):
 
-        tmp_i2h = self.create_variable_for_type_inference(self._dtype)
-        tmp_h2h = self.create_variable_for_type_inference(self._dtype)
-        hidden = self.create_variable_for_type_inference(self._dype)
-        out = self.create_variable_for_type_inference(self._dype)
-        softmax_out = self.create_variable_for_type_inference(self._dtype)
-        reduce_out = self.create_variable_for_type_inference(self._dtype)
-        self.append_op(
+        tmp_i2h = self.create_variable(dtype=self._dtype)
+        tmp_h2h = self.create_variable(dtype=self._dtype)
+        hidden = self.create_variable(dtype=self._dtype)
+        out = self.create_variable(dtype=self._dtype)
+        softmax_out = self.create_variable(dtype=self._dtype)
+        reduce_out = self.create_variable(dtype=self._dtype)
+        self._helper.append_op(
             type="mul",
             inputs={"X": input,
                     "Y": self._i2h_w},
@@ -113,7 +117,7 @@ class SimpleRNNCell(fluid.imperative.Layer):
             attrs={"x_num_col_dims": 1,
                    "y_num_col_dims": 1})
 
-        self.append_op(
+        self._helper.append_op(
             type="mul",
             inputs={"X": pre_hidden,
                     "Y": self._h2h_w},
@@ -121,16 +125,16 @@ class SimpleRNNCell(fluid.imperative.Layer):
             attrs={"x_num_col_dims": 1,
                    "y_num_col_dims": 1})
 
-        self.append_op(
+        self._helper.append_op(
             type="elementwise_add",
             inputs={'X': tmp_h2h,
                     'Y': tmp_i2h},
             outputs={'Out': hidden},
             attrs={'axis': -1,
                    'use_mkldnn': False})
-        hidden = self.append_activation(hidden)
+        hidden = self._helper.append_activation(hidden, act='tanh')
 
-        self.append_op(
+        self._helper.append_op(
             type="mul",
             inputs={"X": hidden,
                     "Y": self._h2o_w},
@@ -138,13 +142,13 @@ class SimpleRNNCell(fluid.imperative.Layer):
             attrs={"x_num_col_dims": 1,
                    "y_num_col_dims": 1})
 
-        self.append_op(
+        self._helper.append_op(
             type="softmax",
             inputs={"X": out},
             outputs={"Out": softmax_out},
             attrs={"use_cudnn": False})
 
-        self.append_op(
+        self._helper.append_op(
             type='reduce_sum',
             inputs={'X': softmax_out},
             outputs={'Out': reduce_out},
@@ -333,10 +337,10 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.allclose(dy_grad, static_grad))
 
         params = mlp.parameters(True)
-        self.assertEqual("mlp/MLP_0/FC_0_0.w_0", params[0].name)
-        self.assertEqual("mlp/MLP_0/FC_0_0.b_0", params[1].name)
-        self.assertEqual("mlp/MLP_0/FC_1_0.w_0", params[2].name)
-        self.assertEqual("mlp/MLP_0/FC_1_0.b_0", params[3].name)
+        self.assertEqual("mlp/MLP_0/FC_0.w_0", params[0].name)
+        self.assertEqual("mlp/MLP_0/FC_0.b_0", params[1].name)
+        self.assertEqual("mlp/MLP_0/FC_1.w_0", params[2].name)
+        self.assertEqual("mlp/MLP_0/FC_1.b_0", params[3].name)
         self.assertEqual(len(params), 4)
 
         sublayers = mlp.sublayers(True)
