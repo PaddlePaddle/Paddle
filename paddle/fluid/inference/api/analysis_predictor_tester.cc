@@ -16,7 +16,9 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <thread>  // NOLINT
+#include "gmock/gmock.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
@@ -242,5 +244,176 @@ TEST(AnalysisPredictor, memory_optim) {
 
   inference::CompareResult(output, output1);
 }
+
+TEST(Quantizer, expand_quantized_bins) {
+  FAIL() << "Test not implemented yet.";
+}
+
+class QuantizerTest : public testing::Test {
+ public:
+  QuantizerTest() {
+    AnalysisConfig config(FLAGS_dirname);
+
+    auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+    auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
+
+    auto qconfig = std::make_shared<QuantizerConfig>();
+
+    quantizer.reset(new AnalysisPredictor::Quantizer(*predictor, qconfig));
+  }
+
+  std::pair<std::vector<int>, float> Histogram(
+      const framework::LoDTensor& var_tensor, float min_val, float max_val,
+      int num_bins) const {
+    return quantizer->Histogram(var_tensor, min_val, max_val, num_bins);
+  }
+
+  std::pair<QuantMax, framework::LoDTensor> GetMaxScalingFactor(
+      const framework::LoDTensor& var_tensor) const {
+    return quantizer->GetMaxScalingFactor(var_tensor);
+  }
+
+ protected:
+  std::unique_ptr<AnalysisPredictor::Quantizer> quantizer;
+  float abs_error = 1e-6;
+  static const std::array<float, 5> non_negative_values;
+  static const std::array<float, 5> positive_and_negative_values;
+};
+
+const std::array<float, 5> QuantizerTest::non_negative_values = {
+    0.5e6f, 1e3f, 0.f, 0.5e-3f, 1e-4f};
+const std::array<float, 5> QuantizerTest::positive_and_negative_values = {
+    -1e2f, 1e2f, -1e1f, 1e1f, 1e-4f};
+
+TEST_F(QuantizerTest, histogram_inverted_min_max) {
+  const std::array<float, 5>& values = non_negative_values;
+  float min_val = *std::min_element(values.begin(), values.end());
+  float max_val = *std::max_element(values.begin(), values.end());
+
+  framework::LoDTensor var_tensor;
+  var_tensor.Resize(framework::make_dim(values.size()));
+  std::copy(begin(values), end(values),
+            var_tensor.mutable_data<float>(platform::CPUPlace()));
+
+  ASSERT_THROW(Histogram(var_tensor, max_val, min_val, 3),
+               platform::EnforceNotMet);
+}
+
+TEST_F(QuantizerTest, histogram_non_negative_5_to_3) {
+  // all non-negative values
+  const std::array<float, 5>& values = non_negative_values;
+  float min_val = *std::min_element(values.begin(), values.end());
+  float max_val = *std::max_element(values.begin(), values.end());
+
+  framework::LoDTensor var_tensor;
+  var_tensor.Resize(framework::make_dim(values.size()));
+  std::copy(begin(values), end(values),
+            var_tensor.mutable_data<float>(platform::CPUPlace()));
+
+  std::vector<int> histogram;
+  float bin_width;
+
+  std::tie(histogram, bin_width) = Histogram(var_tensor, min_val, max_val, 3);
+
+  ASSERT_NEAR(bin_width, std::abs(max_val - min_val) / 3.f, abs_error)
+      << "Improperly calculated bin_width.";
+
+  ASSERT_THAT(histogram, testing::ElementsAre(4, 0, 1))
+      << "Improperly calculated histogram.";
+}
+
+TEST_F(QuantizerTest, histogram_positive_and_negative_5_to_3) {
+  const std::array<float, 5>& values = positive_and_negative_values;
+  float min_val = *std::min_element(values.begin(), values.end());
+  float max_val = *std::max_element(values.begin(), values.end());
+
+  framework::LoDTensor var_tensor;
+  var_tensor.Resize(framework::make_dim(values.size()));
+  std::copy(begin(values), end(values),
+            var_tensor.mutable_data<float>(platform::CPUPlace()));
+
+  std::vector<int> histogram;
+  float bin_width;
+
+  std::tie(histogram, bin_width) = Histogram(var_tensor, min_val, max_val, 3);
+
+  ASSERT_NEAR(bin_width, std::abs(max_val - min_val) / 3.0f, abs_error)
+      << "Improperly calculated bin_width.";
+
+  ASSERT_THAT(histogram, testing::ElementsAre(1, 3, 1))
+      << "Improperly calculated histogram.";
+}
+
+TEST_F(QuantizerTest, histogram_zero_bins) {
+  const std::array<float, 5>& values = non_negative_values;
+  float min_val = *std::min_element(values.begin(), values.end());
+  float max_val = *std::max_element(values.begin(), values.end());
+
+  framework::LoDTensor var_tensor;
+  var_tensor.Resize(framework::make_dim(values.size()));
+  std::copy(begin(values), end(values),
+            var_tensor.mutable_data<float>(platform::CPUPlace()));
+
+  ASSERT_THROW(Histogram(var_tensor, min_val, max_val, 0),
+               platform::EnforceNotMet);
+}
+
+TEST_F(QuantizerTest, histogram_empty) {
+  // empty tensor
+  ASSERT_THROW(Histogram({}, -1, 1, 1), platform::EnforceNotMet);
+
+  // zero tensor
+  framework::LoDTensor var_tensor;
+  var_tensor.Resize({0});
+  ASSERT_TRUE(var_tensor.mutable_data<float>(platform::CPUPlace()));
+
+  ASSERT_THROW(Histogram(var_tensor, -1, 1, 1), platform::EnforceNotMet);
+}
+
+TEST_F(QuantizerTest, kl_scaling_factor) {
+  FAIL() << "Test not implemented yet.";
+}
+
+TEST_F(QuantizerTest, max_scaling_factor_signed) {
+  const std::array<float, 5>& values = positive_and_negative_values;
+  float max_val = *std::max_element(values.begin(), values.end());
+
+  framework::LoDTensor var_tensor;
+  var_tensor.Resize(framework::make_dim(values.size()));
+  std::copy(begin(values), end(values),
+            var_tensor.mutable_data<float>(platform::CPUPlace()));
+
+  QuantMax quant_max;
+  framework::LoDTensor lod_tensor;
+
+  std::tie(quant_max, lod_tensor) = GetMaxScalingFactor(var_tensor);
+
+  ASSERT_EQ(quant_max, QuantMax::S8_MAX);
+  ASSERT_EQ(lod_tensor.numel(), 1);
+  ASSERT_NEAR(lod_tensor.data<float>()[0],
+              static_cast<float>(QuantMax::S8_MAX) / max_val, abs_error);
+}
+
+TEST_F(QuantizerTest, max_scaling_factor_unsigned) {
+  const std::array<float, 5>& values = non_negative_values;
+  float max_val = *std::max_element(values.begin(), values.end());
+
+  framework::LoDTensor var_tensor;
+  var_tensor.Resize(framework::make_dim(values.size()));
+  std::copy(begin(values), end(values),
+            var_tensor.mutable_data<float>(platform::CPUPlace()));
+
+  QuantMax quant_max;
+  framework::LoDTensor lod_tensor;
+
+  std::tie(quant_max, lod_tensor) = GetMaxScalingFactor(var_tensor);
+
+  ASSERT_EQ(quant_max, QuantMax::U8_MAX);
+  ASSERT_EQ(lod_tensor.numel(), 1);
+  ASSERT_NEAR(lod_tensor.data<float>()[0],
+              static_cast<float>(QuantMax::U8_MAX) / max_val, abs_error);
+}
+
+TEST_F(QuantizerTest, safe_entropy) { FAIL() << "test not implemented yet."; }
 
 }  // namespace paddle

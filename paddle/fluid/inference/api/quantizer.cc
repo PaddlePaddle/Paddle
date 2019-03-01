@@ -34,52 +34,59 @@ using framework::ir::Graph;
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<float, Eigen::Dynamic, 1>>;
 
-namespace {
+bool AnalysisPredictor::Quantizer::CalculateScales() {
+  using VariableNameMap = std::map<std::string, std::vector<std::string>>;
+  std::map<std::string, std::map<std::string, LoDTensor>> gathered_data;
+  for (auto* op : predictor_.inference_program_->Block(0).AllOps()) {
+    if (op->HasAttr("use_quantizer") &&
+        boost::get<bool>(op->GetAttr("use_quantizer"))) {
+      VariableNameMap connections = op->Inputs();
+      VariableNameMap connections_out = op->Outputs();
+      connections.insert(connections_out.begin(), connections_out.end());
+      for (auto const& conn : connections) {
+        if (conn.second.size() == 0) continue;
+        auto& var_name = conn.second[0];
+        auto* var = predictor_.sub_scope_->FindVar(var_name);
+        PADDLE_ENFORCE(var, "%s is not in the scope", var_name);
+        PADDLE_ENFORCE(var->IsType<LoDTensor>(),
+                       "Only support lod tensor now.");
+        LoDTensor* var_tensor = var->GetMutable<LoDTensor>();
 
-std::pair<QuantMax, LoDTensor> GetMaxScalingFactor(
-    const LoDTensor* var_tensor) {
-  ConstEigenVectorArrayMap eigen_tensor{var_tensor->data<float>(),
-                                        var_tensor->numel(), 1};
-  float min_val = eigen_tensor.minCoeff();
-  bool is_positive = min_val >= 0.0f;
-  auto quant_max = is_positive ? QuantMax::U8_MAX : QuantMax::S8_MAX;
-
-  PADDLE_ENFORCE(quant_max == QuantMax::U8_MAX || quant_max == QuantMax::S8_MAX,
-                 "Quantizer: Only 8 bit quantization is supported now.");
-
-  LoDTensor scale_tensor;
-  scale_tensor.Resize({1});
-  auto* scale_ptr = scale_tensor.mutable_data<float>(CPUPlace());
-
-  float max_abs = eigen_tensor.abs().maxCoeff();
-  scale_ptr[0] = static_cast<float>(static_cast<unsigned>(quant_max) / max_abs);
-
-  return std::make_pair(quant_max, scale_tensor);
-}
-
-// Returns histogram and bin width
-std::pair<std::vector<int>, float> Histogram(
-    ConstEigenVectorArrayMap eigen_tensor, float min_val, float max_val,
-    int num_bins = 2048) {
-  PADDLE_ENFORCE(max_val > min_val,
-                 "Quantizer: To calculate Histogram, max_val (" +
-                     std::to_string(max_val) +
-                     ") must be greater "
-                     "than min_val (" +
-                     std::to_string(min_val) + ").");
-  auto bin_width = (max_val - min_val) / num_bins;
-  std::vector<int> hist(num_bins);
-
-  for (int i = 0; i < eigen_tensor.size(); i++) {
-    int bin = static_cast<int>(floor((eigen_tensor[i] - min_val) / bin_width));
-    ++hist[bin];
+        CalculateSingleScale(op->Type(), conn.first, var_name, *var_tensor);
+      }
+    }
   }
 
-  return std::make_pair(std::move(hist), std::move(bin_width));
+  return true;
 }
 
-std::vector<int> ExpandQuantizedBins(std::vector<int> quantized_bins,
-                                     std::vector<int> reference_bins) {
+void AnalysisPredictor::Quantizer::CalculateSingleScale(
+    const std::string& op_type_name, const std::string& conn_name,
+    const std::string& var_name, const LoDTensor& var_tensor) {
+  PADDLE_ENFORCE(
+      var_tensor.numel() > 0,
+      "Quantizer: LoDTensor of variable for quantization should not be empty.");
+
+  if (scales_.find(var_name) != scales_.end()) return;
+
+  auto rule = qconfig_->scale_algo(op_type_name, conn_name);
+  switch (rule) {
+    case ScaleAlgo::NONE:
+      return;
+    case ScaleAlgo::MAX: {
+      scales_[var_name] = GetMaxScalingFactor(var_tensor);
+      break;
+    }
+    case ScaleAlgo::KL:
+      scales_[var_name] = GetKLScalingFactor(var_tensor);
+      break;
+    default:
+      throw std::runtime_error("Quantizer: Unexpected ScaleAlgo specified.");
+  }
+}
+
+std::vector<int> AnalysisPredictor::Quantizer::ExpandQuantizedBins(
+    std::vector<int> quantized_bins, std::vector<int> reference_bins) const {
   std::vector<int> expanded_quantized_bins(reference_bins.size(), 0);
   int num_merged_bins = reference_bins.size() / quantized_bins.size();
   int j_start = 0;
@@ -107,33 +114,10 @@ std::vector<int> ExpandQuantizedBins(std::vector<int> quantized_bins,
   return expanded_quantized_bins;
 }
 
-// Calculate the entropy.
-float SafeEntropy(std::vector<int> reference_distr_P, int P_sum,
-                  std::vector<int> candidate_distr_Q, int Q_sum) {
-  PADDLE_ENFORCE_EQ(reference_distr_P.size(), candidate_distr_Q.size());
-  float tmp_sum1 = 0;
-  float tmp_sum2 = 0;
-  for (size_t idx = 0; idx < reference_distr_P.size(); idx++) {
-    int p_idx = reference_distr_P[idx];
-    int q_idx = candidate_distr_Q[idx];
-    if (p_idx == 0) {
-      tmp_sum1 += 0;
-      tmp_sum2 += 0;
-    } else {
-      PADDLE_ENFORCE(q_idx != 0,
-                     "Quantizer: Fatal error!, idx = " + std::to_string(idx) +
-                         " qindex = 0! p_idx = " + std::to_string(p_idx));
-    }
-    tmp_sum1 += p_idx * (log(Q_sum * p_idx));
-    tmp_sum2 += p_idx * (log(P_sum * q_idx));
-  }
-  return (tmp_sum1 - tmp_sum2) / P_sum;
-}
-
-// Using the KL-divergence method get the most precise scaling factor.
-std::pair<QuantMax, LoDTensor> GetKLScalingFactor(const LoDTensor* var_tensor) {
-  ConstEigenVectorArrayMap eigen_tensor{var_tensor->data<float>(),
-                                        var_tensor->numel(), 1};
+std::pair<QuantMax, LoDTensor> AnalysisPredictor::Quantizer::GetKLScalingFactor(
+    const LoDTensor& var_tensor) const {
+  ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
+                                        var_tensor.numel(), 1};
   int precision_hist_num_bins = 2048;
   float max_val = eigen_tensor.maxCoeff();
   float min_val = eigen_tensor.minCoeff();
@@ -150,12 +134,12 @@ std::pair<QuantMax, LoDTensor> GetKLScalingFactor(const LoDTensor* var_tensor) {
   int ending_iter = precision_hist_num_bins - 1;
   if (is_positive) {
     std::tie(hist, bin_width) =
-        Histogram(eigen_tensor, min_val, max_val, precision_hist_num_bins);
+        Histogram(var_tensor, min_val, max_val, precision_hist_num_bins);
     starting_iter = static_cast<int>(ending_iter * 0.7);
   } else {
     float th = std::max(std::abs(max_val), std::abs(min_val));
     std::tie(hist, bin_width) =
-        Histogram(eigen_tensor, -th, th, precision_hist_num_bins);
+        Histogram(var_tensor, -th, th, precision_hist_num_bins);
     starting_iter = 0;
     if (std::abs(max_val) > std::abs(min_val)) {
       while (starting_iter < ending_iter) {
@@ -243,72 +227,56 @@ std::pair<QuantMax, LoDTensor> GetKLScalingFactor(const LoDTensor* var_tensor) {
   return std::make_pair(quant_max, scale_tensor);
 }
 
-}  // namespace
+std::pair<QuantMax, LoDTensor>
+AnalysisPredictor::Quantizer::GetMaxScalingFactor(
+    const LoDTensor& var_tensor) const {
+  ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
+                                        var_tensor.numel(), 1};
+  float min_val = eigen_tensor.minCoeff();
+  bool is_positive = min_val >= 0.0f;
+  auto quant_max = is_positive ? QuantMax::U8_MAX : QuantMax::S8_MAX;
 
-bool AnalysisPredictor::Quantizer::RunWarmup() const {
-  VLOG(3) << "Predictor: run a quantization warmup iteration";
-  auto warmup_data = qconfig_->warmup_data();
-  PADDLE_ENFORCE_NOT_NULL(warmup_data,
-                          "Warmup data cannot be NULL in the config.");
+  PADDLE_ENFORCE(quant_max == QuantMax::U8_MAX || quant_max == QuantMax::S8_MAX,
+                 "Quantizer: Only 8 bit quantization is supported now.");
 
-  // Run the inference program
-  std::vector<PaddleTensor> output_slots;
-  std::cout << "Running warmup iteration." << std::endl;
-  predictor_.Run(*warmup_data, &output_slots, qconfig_->warmup_batch_size());
-  std::cout << "Done." << std::endl;
+  LoDTensor scale_tensor;
+  scale_tensor.Resize({1});
+  auto* scale_ptr = scale_tensor.mutable_data<float>(CPUPlace());
 
-  return true;
+  float max_abs = eigen_tensor.abs().maxCoeff();
+  scale_ptr[0] = static_cast<float>(static_cast<unsigned>(quant_max) / max_abs);
+
+  return std::make_pair(quant_max, scale_tensor);
 }
 
-bool AnalysisPredictor::Quantizer::CalculateScales() {
-  using VariableNameMap = std::map<std::string, std::vector<std::string>>;
-  std::map<std::string, std::map<std::string, LoDTensor>> gathered_data;
-  for (auto* op : predictor_.inference_program_->Block(0).AllOps()) {
-    if (op->HasAttr("use_quantizer") &&
-        boost::get<bool>(op->GetAttr("use_quantizer"))) {
-      VariableNameMap connections = op->Inputs();
-      VariableNameMap connections_out = op->Outputs();
-      connections.insert(connections_out.begin(), connections_out.end());
-      for (auto const& conn : connections) {
-        if (conn.second.size() == 0) continue;
-        auto& var_name = conn.second[0];
-        auto* var = predictor_.sub_scope_->FindVar(var_name);
-        PADDLE_ENFORCE(var, "%s is not in the scope", var_name);
-        PADDLE_ENFORCE(var->IsType<LoDTensor>(),
-                       "Only support lod tensor now.");
-        LoDTensor* var_tensor = var->GetMutable<LoDTensor>();
+std::pair<std::vector<int>, float> AnalysisPredictor::Quantizer::Histogram(
+    const framework::LoDTensor& var_tensor, float min_val, float max_val,
+    size_t num_bins) const {
+  PADDLE_ENFORCE_GT(num_bins, 0,
+                    "Quantizer: To calculate Histogram, num_bins (" +
+                        std::to_string(num_bins) + ") must be positive.");
+  PADDLE_ENFORCE_GT(
+      var_tensor.numel(), 0,
+      "Quantizer: To calculate Histogram, the tensor must not be empty.");
+  PADDLE_ENFORCE(max_val >= min_val,
+                 "Quantizer: To calculate Histogram, max_val (" +
+                     std::to_string(max_val) +
+                     ") must be greater or equal"
+                     "to min_val (" +
+                     std::to_string(min_val) + ").");
+  ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
+                                        var_tensor.numel(), 1};
+  auto bin_width = std::abs(max_val - min_val) / num_bins;
+  std::vector<int> hist(num_bins);
 
-        CalculateSingleScale(op->Type(), conn.first, var_name, var_tensor);
-      }
-    }
+  for (int i = 0; i < eigen_tensor.size(); i++) {
+    int bin = std::min(
+        num_bins - 1,
+        static_cast<size_t>(floor((eigen_tensor[i] - min_val) / bin_width)));
+    ++hist[bin];
   }
 
-  return true;
-}
-
-void AnalysisPredictor::Quantizer::CalculateSingleScale(
-    const std::string& op_type_name, const std::string& conn_name,
-    const std::string& var_name, const LoDTensor* var_tensor) {
-  PADDLE_ENFORCE(
-      var_tensor->numel() > 0,
-      "Quantizer: LoDTensor of variable for quantization should not be empty.");
-
-  if (scales_.find(var_name) != scales_.end()) return;
-
-  auto rule = qconfig_->scale_algo(op_type_name, conn_name);
-  switch (rule) {
-    case ScaleAlgo::NONE:
-      return;
-    case ScaleAlgo::MAX: {
-      scales_[var_name] = GetMaxScalingFactor(var_tensor);
-      break;
-    }
-    case ScaleAlgo::KL:
-      scales_[var_name] = GetKLScalingFactor(var_tensor);
-      break;
-    default:
-      throw std::runtime_error("Quantizer: Unexpected ScaleAlgo specified.");
-  }
+  return std::make_pair(std::move(hist), std::move(bin_width));
 }
 
 void AnalysisPredictor::Quantizer::PrepareArgument() const {
@@ -336,6 +304,18 @@ void AnalysisPredictor::Quantizer::PrepareArgument() const {
   predictor_.argument_.SetQuantVarScales(scales_);
 }
 
+bool AnalysisPredictor::Quantizer::Quantize() {
+  if (!RunWarmup()) return false;
+  if (!CalculateScales()) return false;
+  predictor_.PrepareScope(predictor_.scope_);
+  predictor_.CreateExecutor();
+  if (!RunQuantizePasses()) return false;
+  predictor_.PrepareExecutor();
+  predictor_.PrepareFeedFetch();
+  if (!SaveModel()) return false;
+  return true;
+}
+
 bool AnalysisPredictor::Quantizer::RunQuantizePasses() const {
   predictor_.executor_->CreateVariables(*predictor_.inference_program_, 0, true,
                                         predictor_.sub_scope_);
@@ -353,20 +333,45 @@ bool AnalysisPredictor::Quantizer::RunQuantizePasses() const {
   return true;
 }
 
-bool AnalysisPredictor::Quantizer::SaveModel() const {
-  // TODO(wojtuss): Add saving model
+bool AnalysisPredictor::Quantizer::RunWarmup() const {
+  VLOG(3) << "Predictor: run a quantization warmup iteration";
+  auto warmup_data = qconfig_->warmup_data();
+  PADDLE_ENFORCE_NOT_NULL(warmup_data,
+                          "Warmup data cannot be NULL in the config.");
+
+  // Run the inference program
+  std::vector<PaddleTensor> output_slots;
+  std::cout << "Running warmup iteration." << std::endl;
+  predictor_.Run(*warmup_data, &output_slots, qconfig_->warmup_batch_size());
+  std::cout << "Done." << std::endl;
+
   return true;
 }
 
-bool AnalysisPredictor::Quantizer::Quantize() {
-  if (!RunWarmup()) return false;
-  if (!CalculateScales()) return false;
-  predictor_.PrepareScope(predictor_.scope_);
-  predictor_.CreateExecutor();
-  if (!RunQuantizePasses()) return false;
-  predictor_.PrepareExecutor();
-  predictor_.PrepareFeedFetch();
-  if (!SaveModel()) return false;
+float AnalysisPredictor::Quantizer::SafeEntropy(
+    std::vector<int> reference_distr_P, int P_sum,
+    std::vector<int> candidate_distr_Q, int Q_sum) const {
+  PADDLE_ENFORCE_EQ(reference_distr_P.size(), candidate_distr_Q.size());
+  float tmp_sum1 = 0;
+  float tmp_sum2 = 0;
+  for (size_t idx = 0; idx < reference_distr_P.size(); idx++) {
+    int p_idx = reference_distr_P[idx];
+    int q_idx = candidate_distr_Q[idx];
+    if (p_idx == 0) {
+      tmp_sum1 += 0;
+      tmp_sum2 += 0;
+    } else {
+      PADDLE_ENFORCE(q_idx != 0,
+                     "Quantizer: Fatal error!, idx = " + std::to_string(idx) +
+                         " qindex = 0! p_idx = " + std::to_string(p_idx));
+    }
+    tmp_sum1 += p_idx * (log(Q_sum * p_idx));
+    tmp_sum2 += p_idx * (log(P_sum * q_idx));
+  }
+  return (tmp_sum1 - tmp_sum2) / P_sum;
+}
+bool AnalysisPredictor::Quantizer::SaveModel() const {
+  // TODO(wojtuss): Add saving model
   return true;
 }
 
