@@ -999,7 +999,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
     auto device = boost::get<platform::CUDAPlace>(place).device;
     after_mem_cost =
-      memory::allocation::GPUMemMonitor.GetCurrentMemUsage(device);
+        memory::allocation::GPUMemMonitor.GetCurrentMemUsage(device);
     VLOG(3) << "op : " << type_ << " Device : " << device
             << " Peak Memory Usage : "
             << ((after_mem_cost - init_mem_cost) >> 20) << " MiB";
