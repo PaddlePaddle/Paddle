@@ -86,7 +86,6 @@ def dynamic_rnn_with_while(data, label, dict_dim, emb_dim=128, hid_dim=128):
 
     last = fluid.layers.sequence_last_step(input=rnn())
     logits = fluid.layers.fc(input=last, size=1, act=None)
-    label = fluid.layers.data(name='label', shape=[1], dtype='float32')
     loss = fluid.layers.sigmoid_cross_entropy_with_logits(x=logits, label=label)
     loss = fluid.layers.mean(loss)
     return loss
