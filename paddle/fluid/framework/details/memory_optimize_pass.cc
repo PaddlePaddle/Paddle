@@ -118,13 +118,11 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
       }
     }
     // fill the pool
-    for (auto var : cfg_->LiveIn(op)) {
-      if (cfg_->LiveOut(op).count(var) == 0) {
-        ir::Node* var_node = cfg_->GetNodeByName(var, op);
-        if (var_node == nullptr || var_node->IsCtrlVar()) continue;
-        if (NodeCanReused(var_node) && !pool_.Has(var_node)) {
-          pool_.Insert(var_node);
-        }
+    for (auto& var : cfg_->Unlived(op)) {
+      ir::Node* var_node = cfg_->GetNodeByName(var, op);
+      if (var_node == nullptr || var_node->IsCtrlVar()) continue;
+      if (NodeCanReused(var_node) && !pool_.Has(var_node)) {
+        pool_.Insert(var_node);
       }
     }
   }
@@ -337,4 +335,4 @@ void MemoryOptimizePass::RenameVarInGraphNode(const std::string& var,
 
 REGISTER_PASS(memory_optimize_pass,
               paddle::framework::details::MemoryOptimizePass)
-    .RequireGraphAttr(paddle::framework::details::kAllOpDescs);
+    .RequireGraphAttr(paddle::framework::details::kStaleProgramOpDescs);

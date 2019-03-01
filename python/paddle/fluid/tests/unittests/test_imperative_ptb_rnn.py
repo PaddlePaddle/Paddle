@@ -28,12 +28,13 @@ from paddle.fluid.backward import append_backward
 
 class SimpleLSTMRNN(fluid.imperative.Layer):
     def __init__(self,
+                 name_scope,
                  hidden_size,
                  num_steps,
                  num_layers=2,
                  init_scale=0.1,
                  dropout=None):
-        super(SimpleLSTMRNN, self).__init__()
+        super(SimpleLSTMRNN, self).__init__(name_scope)
         self._hidden_size = hidden_size
         self._num_layers = num_layers
         self._init_scale = init_scale
@@ -130,13 +131,14 @@ class SimpleLSTMRNN(fluid.imperative.Layer):
 
 class PtbModel(fluid.imperative.Layer):
     def __init__(self,
+                 name_scope,
                  hidden_size,
                  vocab_size,
                  num_layers=2,
                  num_steps=20,
                  init_scale=0.1,
                  dropout=None):
-        super(PtbModel, self).__init__()
+        super(PtbModel, self).__init__(name_scope)
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
@@ -146,12 +148,14 @@ class PtbModel(fluid.imperative.Layer):
         from paddle.fluid.layer_helper import LayerHelper
         self._helper = LayerHelper('PtbModel', act="tanh")
         self.simple_lstm_rnn = SimpleLSTMRNN(
+            self.full_name(),
             hidden_size,
             num_steps,
             num_layers=num_layers,
             init_scale=init_scale,
             dropout=dropout)
         self.embedding = Embedding(
+            self.full_name(),
             size=[vocab_size, hidden_size],
             dtype='float32',
             is_sparse=False,
@@ -226,6 +230,7 @@ class TestImperativePtbRnn(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
+                "ptb_model",
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,
@@ -238,7 +243,9 @@ class TestImperativePtbRnn(unittest.TestCase):
             dy_loss = None
             last_hidden = None
             last_cell = None
-            for i in range(2):
+            batch_num = 50
+
+            for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                 x_data = x_data.reshape((-1, num_steps, 1))
@@ -265,6 +272,7 @@ class TestImperativePtbRnn(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             ptb_model = PtbModel(
+                "ptb_model",
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,
@@ -296,7 +304,7 @@ class TestImperativePtbRnn(unittest.TestCase):
             static_loss_value = None
             static_last_cell_value = None
             static_last_hidden_value = None
-            for i in range(2):
+            for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                 x_data = x_data.reshape((-1, num_steps, 1))
