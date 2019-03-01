@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
@@ -52,7 +53,7 @@ class OpConverter {
       PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL);
       std::string Y = op_desc.Input("Y")[0];
       if (parameters.count(Y)) {
-        it = Registry<OpConverter>::Lookup("fc");
+        it = Registry<OpConverter>::Global().Lookup("fc");
       }
     }
     if (op_desc.Type().find("elementwise") != std::string::npos) {
@@ -69,28 +70,28 @@ class OpConverter {
       if (parameters.count(Y)) {
         PADDLE_ENFORCE(add_weight_op_set.count(op_type) > 0,
                        "Unsupported elementwise type" + op_type);
-        it =
-            Registry<OpConverter>::Lookup("elementwise_" + op_type + "_weight");
+        it = Registry<OpConverter>::Global().Lookup("elementwise_" + op_type +
+                                                    "_weight");
         PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                                 op_desc.Type());
       } else {
         PADDLE_ENFORCE(add_tensor_op_set.count(op_type) > 0,
                        "Unsupported elementwise type" + op_type);
-        it =
-            Registry<OpConverter>::Lookup("elementwise_" + op_type + "_tensor");
+        it = Registry<OpConverter>::Global().Lookup("elementwise_" + op_type +
+                                                    "_tensor");
       }
       PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                               op_desc.Type());
     }
 
     if (op_desc.Type() == "depthwise_conv2d") {
-      it = Registry<OpConverter>::Lookup("conv2d");
+      it = Registry<OpConverter>::Global().Lookup("conv2d");
       PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                               op_desc.Type());
     }
 
     if (!it) {
-      it = Registry<OpConverter>::Lookup(op_desc.Type());
+      it = Registry<OpConverter>::Global().Lookup(op_desc.Type());
     }
     PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                             op_desc.Type());
