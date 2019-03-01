@@ -159,6 +159,7 @@ class ImitationGraph(Graph):
     def __init__(self, program=None, scope=None, in_nodes=[], out_nodes=[]):
         super(ImitationGraph, self).__init__()
         self.program = Program() if program is None else program
+        self.compiled_graph = None
         self.scope = scope
         self.in_nodes = in_nodes
         self.out_nodes = out_nodes

@@ -15,6 +15,7 @@
 import abc
 from abc import abstractmethod
 from .... import executor
+from ....compiler import CompiledProgram
 from .... import parallel_executor
 from ....data_feeder import DataFeeder
 from .graph import IRGraph, ImitationGraph
@@ -39,13 +40,13 @@ class IRGraphExecutor(GraphExecutor):
 
 
 class ImitationGraphExecutor(GraphExecutor):
-    def __init__(self, place, parallel=True):
+    def __init__(self, place, parallel=True, for_compiled_program=False):
         super(ImitationGraphExecutor, self).__init__(place, parallel=parallel)
         self.parallel = parallel
         self.exe = None
         self.place = place
 
-        if not parallel:
+        if not parallel and (not for_compiled_program):
             self.exe = executor.Executor(place)
 
     def run(self, graph, data=None, feed=None, fetches=None):
@@ -72,7 +73,8 @@ class ImitationGraphExecutor(GraphExecutor):
         if self.parallel:
             results = self.exe.run(feed=feed, fetch_list=fetch_list)
         else:
-            results = self.exe.run(graph.program,
+            program = graph.compiled_graph if graph.compiled_graph else graph.program
+            results = self.exe.run(program,
                                    scope=graph.scope,
                                    fetch_list=fetch_list,
                                    feed=feed)
@@ -81,6 +83,10 @@ class ImitationGraphExecutor(GraphExecutor):
 
 def get_executor(graph, place, parallel=True):
     if isinstance(graph, ImitationGraph):
-        return ImitationGraphExecutor(place, parallel=parallel)
+        for_compiled_program = False
+        if graph.compiled_graph:
+            for_compiled_program = True
+        return ImitationGraphExecutor(
+            place, parallel=parallel, for_compiled_program=for_compiled_program)
     if isinstance(graph, IRGraph):
         return IRGraphExecutor(place, parallel=parallel)
