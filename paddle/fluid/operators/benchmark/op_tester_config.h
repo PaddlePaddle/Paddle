@@ -28,10 +28,14 @@ struct OpInputConfig {
   OpInputConfig() {}
   explicit OpInputConfig(std::istream& is);
 
+  void ParseDType(std::istream& is);
+  void ParseInitializer(std::istream& is);
   void ParseDims(std::istream& is);
   void ParseLoD(std::istream& is);
 
   std::string name;
+  std::string dtype{"fp32"};  // int32/int, int64/long, fp32/float, fp64/double
+  std::string initializer{"random"};  // random, natural
   std::vector<int64_t> dims;
   std::vector<std::vector<size_t>> lod;
 };

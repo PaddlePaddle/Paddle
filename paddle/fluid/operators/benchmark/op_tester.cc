@@ -151,6 +151,20 @@ OpTester::GetOpProtoAttrNames() {
   return attr_types;
 }
 
+framework::proto::VarType::Type OpTester::TransToVarType(std::string str) {
+  if (str == "int32") {
+    return framework::proto::VarType::INT32;
+  } else if (str == "int64") {
+    return framework::proto::VarType::INT64;
+  } else if (str == "fp32") {
+    return framework::proto::VarType::FP32;
+  } else if (str == "fp64") {
+    return framework::proto::VarType::FP64;
+  } else {
+    PADDLE_THROW("Unsupported dtype %s.", str.c_str());
+  }
+}
+
 void OpTester::CreateInputVarDesc() {
   std::vector<std::string> input_names = GetOpProtoInputNames();
   for (auto &name : input_names) {
@@ -165,11 +179,11 @@ void OpTester::CreateInputVarDesc() {
     // Need to support more type
     var->SetType(framework::proto::VarType::LOD_TENSOR);
     var->SetPersistable(false);
-    var->SetDataType(framework::proto::VarType::FP32);
+    var->SetDataType(TransToVarType(input->dtype));
     var->SetShape(input->dims);
 
     op_desc_.SetInput(name, {var_name});
-    input_lods_[var_name] = input->lod;
+    inputs_[var_name] = *input;
   }
 }
 
@@ -242,24 +256,37 @@ framework::VarDesc *OpTester::Var(const std::string &name) {
 
 template <typename T>
 void OpTester::SetupTensor(framework::LoDTensor *tensor,
-                           const std::vector<int64_t> &shape, T lower,
-                           T upper) {
+                           const std::vector<int64_t> &shape, T lower, T upper,
+                           const std::string &initializer) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
 
   T *ptr = tensor->mutable_data<T>(framework::make_ddim(shape), place_);
-  if (platform::is_cpu_place(place_)) {
-    for (int i = 0; i < tensor->numel(); ++i) {
-      ptr[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
-    }
+
+  framework::LoDTensor cpu_tensor;
+  T *cpu_ptr = nullptr;
+
+  if (!platform::is_cpu_place(place_)) {
+    cpu_ptr = cpu_tensor.mutable_data<T>(framework::make_ddim(shape),
+                                         platform::CPUPlace());
   } else {
-    framework::LoDTensor cpu_tensor;
-    T *cpu_ptr = cpu_tensor.mutable_data<T>(framework::make_ddim(shape),
-                                            platform::CPUPlace());
+    cpu_ptr = ptr;
+  }
+
+  if (initializer == "random") {
     for (int i = 0; i < cpu_tensor.numel(); ++i) {
       cpu_ptr[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
     }
+  } else if (initializer == "natural") {
+    for (int i = 0; i < cpu_tensor.numel(); ++i) {
+      cpu_ptr[i] = lower + i;
+    }
+  } else {
+    PADDLE_THROW("Unsupported initializer %s.", initializer.c_str());
+  }
+
+  if (!platform::is_cpu_place(place_)) {
     TensorCopySync(cpu_tensor, place_, tensor);
   }
 }
@@ -282,7 +309,7 @@ void OpTester::CreateVariables(framework::Scope *scope) {
     }
   }
 
-  for (auto &item : input_lods_) {
+  for (auto &item : inputs_) {
     // Allocate memory for input tensor
     auto &var_name = item.first;
     VLOG(3) << "Allocate memory for tensor " << var_name;
@@ -292,11 +319,23 @@ void OpTester::CreateVariables(framework::Scope *scope) {
 
     auto *var = scope->Var(var_name);
     auto *tensor = var->GetMutable<framework::LoDTensor>();
-    SetupTensor<float>(tensor, shape, static_cast<float>(0.0),
-                       static_cast<float>(1.0));
+    const auto &data_type = var_desc->GetDataType();
+    if (data_type == framework::proto::VarType::INT32) {
+      SetupTensor<int>(tensor, shape, 0, 1, item.second.initializer);
+    } else if (data_type == framework::proto::VarType::INT64) {
+      SetupTensor<int64_t>(tensor, shape, 0, 1, item.second.initializer);
+    } else if (data_type == framework::proto::VarType::FP32) {
+      SetupTensor<float>(tensor, shape, static_cast<float>(0.0),
+                         static_cast<float>(1.0), item.second.initializer);
+    } else if (data_type == framework::proto::VarType::FP64) {
+      SetupTensor<double>(tensor, shape, static_cast<double>(0.0),
+                          static_cast<double>(1.0), item.second.initializer);
+    } else {
+      PADDLE_THROW("Unsupported dtype %d.", data_type);
+    }
 
     VLOG(3) << "Set lod for tensor " << var_name;
-    std::vector<std::vector<size_t>> &lod_vec = item.second;
+    std::vector<std::vector<size_t>> &lod_vec = item.second.lod;
     framework::LoD lod;
     for (size_t i = 0; i < lod_vec.size(); ++i) {
       lod.push_back(lod_vec[i]);
@@ -324,7 +363,16 @@ std::string OpTester::DebugString() {
     ss << GenSpaces(count) << "type: LOD_TENSOR\n";
     ss << GenSpaces(count++) << "lod_tensor {\n";
     ss << GenSpaces(count++) << "tensor {\n";
-    ss << GenSpaces(count) << "data_type: FP32\n";
+    const auto &data_type = var->GetDataType();
+    if (data_type == framework::proto::VarType::INT32) {
+      ss << GenSpaces(count) << "data_type: INT32\n";
+    } else if (data_type == framework::proto::VarType::INT64) {
+      ss << GenSpaces(count) << "data_type: INT64\n";
+    } else if (data_type == framework::proto::VarType::FP32) {
+      ss << GenSpaces(count) << "data_type: FP32\n";
+    } else if (data_type == framework::proto::VarType::FP64) {
+      ss << GenSpaces(count) << "data_type: FP64\n";
+    }
     std::vector<int64_t> shape = var->GetShape();
     for (auto d : shape) {
       ss << GenSpaces(count) << "dims: " << d << "\n";
