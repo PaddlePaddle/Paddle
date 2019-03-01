@@ -186,7 +186,7 @@ __all__ = [
     'teacher_student_sigmoid_loss',
     'huber_loss',
     'tree_conv',
-    'cvm',
+    'continuous_value_model',
 ]
 
 kIgnoreIndex = -100
@@ -10564,20 +10564,22 @@ def tree_conv(nodes_vector,
     return helper.append_activation(pre_activation)
 
 
-def cvm(input, cvm, use_cvm=True):
+def continuous_value_model(input, cvm, use_cvm=True):
     """
-    **cvm layers**
+    **continuous_value_model layers**
 
     This layer accepts a tensor named input which is ID after embedded and lod level is 1 ,
-         cvm is a show_click info and returns the cvm output.
+         continuous value moded(cvm). now, it only consider show and click value in ctr project.
+         cvm is a show_click info.
 
     Args:
-        input (Variable):  a 2-D LodTensor with shape [N x D], where N is the
+        input (Variable): a 2-D LodTensor with shape [N x D], where N is the
                                 batch size, D is the embedding dim. 
                                 lod level = 1.
-        cvm (Variable):    a 2-D Tensor with shape [N x 2], where N is the batch size, 2 is show and click.
+        cvm (Variable):   a 2-D Tensor with shape [N x 2], where N is the batch size, 2 is show and click.
         use_cvm  (bool):  use cvm or not. if use cvm, the output dim is the same as input
                           if don't use cvm, the output dim is input dim - 2(remove show and click).
+                          (cvm op is a customized op, which input is a sequence had embedd_with_cvm default, so we need a op named cvm to decided whever use it or not.)
 
     Returns:
         Variable: A 2-D LodTensor with shape [N x D], if use cvm, D is equal to input dim,
@@ -10598,7 +10600,7 @@ def cvm(input, cvm, use_cvm=True):
           show_clk = fluid.layers.cast(fluid.layers.concat([ones, label], axis=1), dtype='float32')
           show_clk.stop_gradient = True
 
-          input_with_cvm = fluid.layers.cvm(embed, show_clk, True)
+          input_with_cvm = fluid.layers.continuous_value_model(embed, show_clk, True)
     """
     helper = LayerHelper('cvm', **locals())
     out = helper.create_variable(dtype=input.dtype)
