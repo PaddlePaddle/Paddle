@@ -24,6 +24,11 @@ size_t JitCodeKey<int>(const int& d) {
   return d;
 }
 
+template <>
+size_t JitCodeKey<int64_t>(const int64_t& d) {
+  return d;
+}
+
 // TODO(TJ): refine and benchmark JitCodeKey generatation
 constexpr int act_type_shift = 3;  // suppot 2^3 act types
 static inline int act_type_convert(KernelType type) {
