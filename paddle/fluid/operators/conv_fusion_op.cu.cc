@@ -20,6 +20,8 @@ DEFINE_int64(cudnn_exhaustive_search_times, -1,
              "Exhaustive search times for cuDNN convolution, "
              "defalut is 1, only search once.");
 
+#define FLAGS_cudnn_exhaustive_search 1
+
 namespace paddle {
 namespace operators {
 

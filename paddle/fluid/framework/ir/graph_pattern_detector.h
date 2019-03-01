@@ -812,6 +812,54 @@ struct TransposeFlattenConcat : public PatternBase {
   }
 };
 
+struct BidirecGRU : public PatternBase {
+  BidirecGRU(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "bidirec_gru") {}
+
+  PDNode* operator()(PDNode* x, bool with_bias);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(im2sequence);
+  PATTERN_DECL_NODE(im2sequence_out);
+  PATTERN_DECL_NODE(mul0);
+  PATTERN_DECL_NODE(mul1);
+  PATTERN_DECL_NODE(mul2);
+  PATTERN_DECL_NODE(mul3);
+  PATTERN_DECL_NODE(mul0_w);
+  PATTERN_DECL_NODE(mul1_w);
+  PATTERN_DECL_NODE(mul2_w);
+  PATTERN_DECL_NODE(mul3_w);
+  PATTERN_DECL_NODE(mul0_out);
+  PATTERN_DECL_NODE(mul1_out);
+  PATTERN_DECL_NODE(mul2_out);
+  PATTERN_DECL_NODE(mul3_out);
+  PATTERN_DECL_NODE(eltadd0);    // ELEMENTWISE_ADD
+  PATTERN_DECL_NODE(eltadd1);    // ELEMENTWISE_ADD
+  PATTERN_DECL_NODE(eltadd0_b);  // ELEMENTWISE_ADD
+  PATTERN_DECL_NODE(eltadd1_b);  // ELEMENTWISE_ADD
+  PATTERN_DECL_NODE(eltadd0_out);
+  PATTERN_DECL_NODE(eltadd1_out);
+  PATTERN_DECL_NODE(gru0);
+  PATTERN_DECL_NODE(gru1);
+  PATTERN_DECL_NODE(gru0_w);
+  PATTERN_DECL_NODE(gru1_w);
+  PATTERN_DECL_NODE(gru0_b);
+  PATTERN_DECL_NODE(gru1_b);
+  PATTERN_DECL_NODE(hidden0);
+  PATTERN_DECL_NODE(hidden1);
+  PATTERN_DECL_NODE(gate0);
+  PATTERN_DECL_NODE(gate1);
+  PATTERN_DECL_NODE(BatchGate0);
+  PATTERN_DECL_NODE(BatchResetHiddenPrev0);
+  PATTERN_DECL_NODE(BatchHidden0);
+  PATTERN_DECL_NODE(BatchGate1);
+  PATTERN_DECL_NODE(BatchResetHiddenPrev1);
+  PATTERN_DECL_NODE(BatchHidden1);
+
+  PATTERN_DECL_NODE(sum);
+  PATTERN_DECL_NODE(sum_out);
+};
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.

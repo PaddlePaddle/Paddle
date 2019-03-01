@@ -1409,6 +1409,173 @@ PDNode *patterns::TransposeFlattenConcat::operator()(
   return concat_out;
 }
 
+PDNode *patterns::BidirecGRU::operator()(paddle::framework::ir::PDNode *x,
+                                         bool with_bias) {
+  // Create shared nodes.
+  x->assert_is_op_input("im2sequence", "X");
+  auto *im2sequence =
+      pattern->NewNode(im2sequence_repr())->assert_is_op("im2sequence");
+
+#define NEW_NODE(arg__, io__) \
+  auto *arg__ =               \
+      pattern->NewNode(arg__##_repr())->assert_is_op_##io__("gru", #arg__);
+
+  auto *im2sequence_out_var = pattern->NewNode(im2sequence_out_repr())
+                                  ->assert_is_op_output("im2sequence");
+  im2sequence_out_var->AsIntermediate()->assert_is_op_input("mul");
+
+  auto *mul0 = pattern->NewNode(mul0_repr())->assert_is_op("mul");
+  auto *mul0_w_var = pattern->NewNode(mul0_w_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("mul", "Y");
+  auto *mul0_out_var =
+      pattern->NewNode(mul0_out_repr())->assert_is_op_output("mul");
+
+  decltype(mul0) eltadd0;
+  decltype(mul0) eltadd0_b_var;
+  decltype(mul0) eltadd0_out_var;
+
+  if (with_bias) {
+    mul0_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
+    eltadd0 = pattern->NewNode(eltadd0_repr())->assert_is_op("elementwise_add");
+    eltadd0_b_var = pattern->NewNode(eltadd0_b_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("elementwise_add", "Y");
+
+    eltadd0_out_var = pattern->NewNode(eltadd0_out_repr())
+                          ->assert_is_op_output("elementwise_add");
+    eltadd0_out_var->AsIntermediate()->assert_is_op_input("gru");
+  } else {
+    mul0_out_var->AsIntermediate()->assert_is_op_input("gru");
+  }
+  auto *gru0 = pattern->NewNode(gru0_repr())->assert_is_op("gru");
+  auto *gru0_w_var = pattern->NewNode(gru0_w_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("gru", "Weight");
+
+  auto *gru0_b_var = pattern->NewNode(gru0_b_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("gru", "Bias");
+
+  auto *gru0_out_var =
+      pattern->NewNode(hidden0_repr())->assert_is_op_output("gru");
+  gru0_out_var->AsIntermediate()->assert_is_op_input("mul");
+
+  auto *BatchGate0 =
+      pattern->NewNode(BatchGate0_repr())->assert_is_op_output("gru");
+  auto *BatchResetHiddenPrev0 = pattern->NewNode(BatchResetHiddenPrev0_repr())
+                                    ->assert_is_op_output("gru");
+  auto *BatchHidden0 =
+      pattern->NewNode(BatchHidden0_repr())->assert_is_op_output("gru");
+  BatchGate0->AsIntermediate();
+  BatchResetHiddenPrev0->AsIntermediate();
+  BatchHidden0->AsIntermediate();
+
+  auto *mul1 = pattern->NewNode(mul1_repr())->assert_is_op("mul");
+  auto *mul1_w_var = pattern->NewNode(mul1_w_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("mul", "Y");
+  auto *mul1_out_var =
+      pattern->NewNode(mul1_out_repr())->assert_is_op_output("mul");
+  decltype(mul1) eltadd1;
+  decltype(mul1) eltadd1_b_var;
+  decltype(mul1) eltadd1_out_var;
+
+  if (with_bias) {
+    mul1_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
+
+    eltadd1 = pattern->NewNode(eltadd1_repr())->assert_is_op("elementwise_add");
+    eltadd1_b_var = pattern->NewNode(eltadd1_b_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("elementwise_add", "Y");
+    eltadd1_out_var = pattern->NewNode(eltadd1_out_repr())
+                          ->assert_is_op_output("elementwise_add");
+    eltadd1_out_var->AsIntermediate()->assert_is_op_input("gru");
+  } else {
+    mul1_out_var->AsIntermediate()->assert_is_op_input("gru");
+  }
+  auto *gru1 = pattern->NewNode(gru1_repr())->assert_is_op("gru");
+  auto *gru1_w_var = pattern->NewNode(gru1_w_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("gru", "Weight");
+
+  auto *gru1_b_var = pattern->NewNode(gru1_b_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("gru", "Bias");
+
+  auto *gru1_out_var =
+      pattern->NewNode(hidden1_repr())->assert_is_op_output("gru");
+  gru1_out_var->AsIntermediate()->assert_is_op_input("mul");
+
+  auto *BatchGate1 =
+      pattern->NewNode(BatchGate1_repr())->assert_is_op_output("gru");
+  auto *BatchResetHiddenPrev1 = pattern->NewNode(BatchResetHiddenPrev1_repr())
+                                    ->assert_is_op_output("gru");
+  auto *BatchHidden1 =
+      pattern->NewNode(BatchHidden1_repr())->assert_is_op_output("gru");
+  BatchGate1->AsIntermediate();
+  BatchResetHiddenPrev1->AsIntermediate();
+  BatchHidden1->AsIntermediate();
+
+  auto *mul2 = pattern->NewNode(mul2_repr())->assert_is_op("mul");
+  auto *mul2_w_var = pattern->NewNode(mul2_w_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("mul", "Y");
+
+  auto *mul2_out_var =
+      pattern->NewNode(mul2_out_repr())->assert_is_op_output("mul");
+
+  mul2_out_var->AsIntermediate()->assert_is_op_input("sum");
+
+  auto *mul3 = pattern->NewNode(mul3_repr())->assert_is_op("mul");
+  auto *mul3_w_var = pattern->NewNode(mul3_w_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("mul", "Y");
+
+  auto *mul3_out_var =
+      pattern->NewNode(mul3_out_repr())->assert_is_op_output("mul");
+
+  mul3_out_var->AsIntermediate()->assert_is_op_input("sum");
+
+  auto *sum = pattern->NewNode(sum_repr())->assert_is_op("sum");
+  auto *sum_out_var =
+      pattern->NewNode(sum_out_repr())->assert_is_op_output("sum");
+
+  im2sequence->LinksFrom({x}).LinksTo({im2sequence_out_var});
+  mul0->LinksFrom({im2sequence_out_var, mul0_w_var}).LinksTo({mul0_out_var});
+  if (with_bias) {
+    eltadd0->LinksFrom({mul0_out_var, eltadd0_b_var})
+        .LinksTo({eltadd0_out_var});
+    gru0->LinksFrom({eltadd0_out_var, gru0_w_var, gru0_b_var})
+        .LinksTo(
+            {gru0_out_var, BatchGate0, BatchResetHiddenPrev0, BatchHidden0});
+  } else {
+    gru0->LinksFrom({mul0_out_var, gru0_w_var, gru0_b_var})
+        .LinksTo(
+            {gru0_out_var, BatchGate0, BatchResetHiddenPrev0, BatchHidden0});
+  }
+  mul2->LinksFrom({gru0_out_var, mul2_w_var}).LinksTo({mul2_out_var});
+
+  im2sequence->LinksFrom({x}).LinksTo({im2sequence_out_var});
+  mul1->LinksFrom({im2sequence_out_var, mul1_w_var}).LinksTo({mul1_out_var});
+
+  if (with_bias) {
+    eltadd1->LinksFrom({mul1_out_var, eltadd1_b_var})
+        .LinksTo({eltadd1_out_var});
+    gru1->LinksFrom({eltadd1_out_var, gru1_w_var, gru1_b_var})
+        .LinksTo(
+            {gru1_out_var, BatchGate1, BatchResetHiddenPrev1, BatchHidden1});
+  } else {
+    gru1->LinksFrom({mul1_out_var, gru1_w_var, gru1_b_var})
+        .LinksTo(
+            {gru1_out_var, BatchGate1, BatchResetHiddenPrev1, BatchHidden1});
+  }
+  mul3->LinksFrom({gru1_out_var, mul3_w_var}).LinksTo({mul3_out_var});
+
+  sum->LinksFrom({mul2_out_var, mul3_out_var}).LinksTo({sum_out_var});
+  return sum_out_var;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

@@ -44,6 +44,7 @@ math_library(sampler)
 
 math_library(gru_compute DEPS activation_functions math_function)
 math_library(lstm_compute DEPS activation_functions)
+math_library(fusion_bidirectional_gru_compute DEPS activation_functions)
 
 cc_library(blas SRCS blas.cc DEPS cblas framework_proto device_context)
 math_library(math_function DEPS blas)
