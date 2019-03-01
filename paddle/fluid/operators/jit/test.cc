@@ -158,6 +158,26 @@ struct TestFuncWithRefer<jit::XRNTuples<T>, std::vector<T>, T> {
 };
 
 template <typename T>
+struct TestFuncWithRefer<jit::VBroadcastTuples<T>, std::vector<T>,
+                         std::vector<T>, int64_t,
+                         typename jit::VBroadcastTuples<T>::attr_type> {
+  void operator()(const typename jit::VBroadcastTuples<T>::func_type tgt,
+                  const std::vector<T>& x, const std::vector<T>& yref,
+                  int64_t h,
+                  const typename jit::VBroadcastTuples<T>::attr_type& attr) {
+    EXPECT_TRUE(tgt != nullptr);
+    EXPECT_EQ(x.size(), static_cast<size_t>(attr));
+    EXPECT_EQ(yref.size(), x.size() * h);
+    std::vector<T> y(yref.size());
+    const T* x_data = x.data();
+    const T* yref_data = yref.data();
+    T* y_data = y.data();
+    tgt(x_data, y_data, h, attr);
+    ExpectEQ<T>(y_data, yref_data, yref.size());
+  }
+};
+
+template <typename T>
 struct TestFuncWithRefer<jit::XYNTuples<T>, std::vector<T>, std::vector<T>> {
   void operator()(const typename jit::XYNTuples<T>::func_type tgt,
                   const std::vector<T>& x, const std::vector<T>& yref) {
@@ -926,6 +946,27 @@ void TestKernelCRFDecodingTuples() {
   }
 }
 
+template <jit::KernelType KT, typename T, typename PlaceType>
+void TestKernelVBroadcastTuples() {
+  VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
+  for (int w : TestSizes()) {
+    std::vector<T> x(w);
+    RandomVec<T>(w, x.data());
+    const T* x_data = x.data();
+    for (int64_t h : {1, 2, 6}) {
+      auto ref = jit::GetRefer<KT, jit::VBroadcastTuples<T>>();
+      EXPECT_TRUE(ref != nullptr);
+      std::vector<T> y(w * h);
+      T* y_data = y.data();
+      ref(x_data, y_data, h, w);
+
+      TestAllImpls<KT, jit::VBroadcastTuples<T>, PlaceType, std::vector<T>,
+                   std::vector<T>, int64_t>(static_cast<int64_t>(w), x, y, h,
+                                            static_cast<int64_t>(w));
+    }
+  }
+}
+
 #define TEST_CPU_KERNEL(test_tuple, kernel_type)                 \
   TEST(JITKernel, kernel_type) {                                 \
     TestKernel##test_tuple<jit::kernel_type, float, CPUPlace>(); \
@@ -967,6 +1008,7 @@ TEST_CPU_KERNEL(EmbSeqPoolTuples, kEmbSeqPool);
 TEST_CPU_KERNEL(SgdTuples, kSgd);
 TEST_CPU_KERNEL(LayerNormTuples, kLayerNorm);
 TEST_CPU_KERNEL(CRFDecodingTuples, kCRFDecoding);
+TEST_CPU_KERNEL(VBroadcastTuples, kVBroadcast);
 
 TEST(JITKernel_key, lstm) {
   jit::lstm_attr_t attr1(8, jit::kVIdentity, jit::kVSigmoid, jit::kVTanh);
