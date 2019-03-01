@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <utility>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"

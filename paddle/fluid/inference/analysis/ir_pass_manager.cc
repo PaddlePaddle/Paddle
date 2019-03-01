@@ -14,7 +14,9 @@
 
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 #include <map>
+#include <memory>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
