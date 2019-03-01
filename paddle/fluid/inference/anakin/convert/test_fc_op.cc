@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include "paddle/fluid/inference/anakin/convert/fc.h"
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #include "paddle/fluid/inference/anakin/convert/ut_helper.h"
 
@@ -22,10 +21,8 @@ namespace inference {
 namespace anakin {
 
 TEST(fc_op, test) {
-  auto fc_converter = OpRegister::instance()->Get("fc");
-  ASSERT_TRUE(fc_converter != nullptr);
-  // Registrar<FcOpConverter> register_fc("fc");
-  // auto fc = std::make_shared<FcOpConverter>();
+  auto* fc_converter = Registry<AnakinOpConverter>::Global().Lookup("fc");
+  ASSERT_TRUE(fc_converter);
 
   std::unordered_set<std::string> parameters({"mul_y"});
   framework::Scope scope;
@@ -52,3 +49,4 @@ TEST(fc_op, test) {
 }  // namespace paddle
 
 USE_OP(mul);
+USE_ANAKIN_CONVERTER(fc);

@@ -28,11 +28,8 @@ class FcOpConverter : public AnakinOpConverter {
                           const framework::Scope &scope,
                           bool test_mode) override;
   virtual ~FcOpConverter() {}
-
- private:
 };
 
-static Registrar<FcOpConverter> register_fc_op_converter("fc");
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
