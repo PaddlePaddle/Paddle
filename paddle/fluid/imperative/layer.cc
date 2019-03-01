@@ -28,6 +28,7 @@
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/string/printf.h"
+#include "pybind11/stl.h"
 
 namespace paddle {
 namespace imperative {
@@ -38,6 +39,72 @@ const char* PyLayer::kFwdOut = "Out";
 std::map<int, py::object> py_funcs_;
 
 using framework::Variable;
+
+framework::VarDesc* CreateVarDesc(
+    framework::BlockDesc* desc, const std::string& name,
+    proto::VarType::Type type, const py::handle& py_shape,
+    const py::handle& py_dtype, const py::handle& py_lod_level,
+    const py::handle& py_persistable, const py::handle& capacity) {
+  bool is_new_var = false;
+  VarDesc* var_desc = desc->FindOrCreateVar(name, &is_new_var);
+
+  if (is_new_var) {
+    var_desc->SetType(type);
+  } else {
+    if (var_desc->GetType() != type) {
+      PADDLE_THROW(
+          "Variable %s has been created before. The "
+          "previous type is %s; the new type is %s. They"
+          " are not matched",
+          name, var_desc->GetType(), type);
+    }
+  }
+
+  if (!py_shape.is_none()) {
+    std::vector<int64_t> shape = py::cast<std::vector<int64_t>>(py_shape);
+    if (is_new_var) {
+      var_desc->SetShape(shape);
+    } else {
+      if (var_desc->GetShape() != shape) {
+        PADDLE_THROW(
+            "Variable %s has been created before. the previous "
+            "shape is %s; the new shape is %s. They are not "
+            "matched.",
+            name, var_desc->GetShape(), shape);
+      }
+    }
+  }
+
+  if (!py_dtype.is_none()) {
+    proto::VarType::Type dtype = py::cast<proto::VarType::Type>(py_dtype);
+    if (is_new_var) {
+      var_desc->SetDataType(dtype);
+    } else {
+      if (var_desc->GetDataType() != dtype) {
+        PADDLE_THROW(
+            "Variable %s has been created before. the previous "
+            "data type is %s; the new data type is %s. They are not "
+            "matched.",
+            name, var_desc->GetDataType(), dtype);
+      }
+    }
+  }
+
+  if (!py_lod_level.is_none()) {
+    int32_t lod_level = py::cast<int32_t>(py_lod_level);
+    if (is_new_var) {
+      var_desc->SetLoDLevel(lod_level);
+    } else {
+      if (var_desc->GetLoDLevel() != lod_level) {
+        PADDLE_THROW(
+            "Variable %s has been created before. the previous "
+            "lod_level is %s; the new lod_level is %s. They are not "
+            "matched.",
+            name, var_desc->GetLoDLevel(), lod_level);
+      }
+    }
+  }
+}
 
 namespace detail {
 

@@ -148,6 +148,11 @@ PYBIND11_MODULE(core, m) {
   m.def("print_mem_usage",
         []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
+  m.def("create_var_desc",
+        [](const std::string &name, const py::handle &py_shape) {
+          return paddle::imperative::CreateVarDesc(name, py_shape);
+        });
+
   py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
       // .def(py::init<>())
       .def(py::init<bool>(), py::arg("stop_gradient") = false)
@@ -177,23 +182,12 @@ PYBIND11_MODULE(core, m) {
            py::return_value_policy::take_ownership)
       .def("value", [](const imperative::VarBase &self) { return self.var_; },
            py::return_value_policy::reference)
-      .def_property("name",
-                    [](const imperative::VarBase &self) { return self.name_; },
-                    [](imperative::VarBase &self, const std::string &name) {
-                      self.name_ = name;
-                    })
       .def_property("block",
                     [](const imperative::VarBase &self) { return self.block_; },
                     [](imperative::VarBase &self, framework::BlockDesc *block) {
                       self.block_ = block;
                     },
                     py::return_value_policy::reference)
-      .def_property(
-          "persistable",
-          [](const imperative::VarBase &self) { return self.persistable_; },
-          [](imperative::VarBase &self, const bool persistable) {
-            self.persistable_ = persistable;
-          })
       .def_property(
           "desc",
           [](const imperative::VarBase &self) { return self.var_desc_; },

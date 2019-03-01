@@ -51,6 +51,8 @@ class BlockDesc {
 
   VarDesc *FindVar(const std::string &name_bytes) const;
 
+  VarDesc *FindOrCreateVar(const std::string &name, bool *created);
+
   bool HasVar(const std::string &var_name) const;
 
   VarDesc *RenameVar(const std::string &old_name, const std::string &new_name);

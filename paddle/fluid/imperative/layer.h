@@ -39,6 +39,8 @@ class VarBase;
 
 namespace py = ::pybind11;
 
+void CreateVarDesc(const std::string& name, const py::handle& py_shape);
+
 class PreparedOp {
  public:
   PreparedOp(const framework::OperatorBase& op,
@@ -123,12 +125,10 @@ class VarBase {
 
  private:
   VarBase(framework::Variable* var, VarBase* grad, bool stop_gradient)
-      : name_(),
-        var_desc_(nullptr),
+      : var_desc_(nullptr),
         var_(var),
         grads_(grad),
         block_(nullptr),
-        persistable_(false),
         stop_gradient_(stop_gradient),
         pre_op_(nullptr),
         pre_op_out_name_(),
@@ -202,14 +202,12 @@ class VarBase {
     return string::Sprintf("%s@IGrad", var_desc_->Name());
   }
 
-  std::string name_;
   framework::VarDesc* var_desc_;
 
   framework::Variable* var_;
   VarBase* grads_;
 
   framework::BlockDesc* block_;
-  bool persistable_;
 
  private:
   bool stop_gradient_;

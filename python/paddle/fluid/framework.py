@@ -299,6 +299,7 @@ class Variable(object):
                                                 dtype='float32')
     """
 
+    @profile
     def __init__(self,
                  block,
                  type=core.VarDesc.VarType.LOD_TENSOR,
@@ -317,13 +318,16 @@ class Variable(object):
 
         if name is None:
             name = unique_name.generate('_generated_var')
-        is_new_var = False
-        name = cpt.to_text(name)
-        self.desc = self.block.desc.find_var(cpt.to_bytes(name))
 
-        if self.desc is None:
-            self.desc = self.block.desc.var(cpt.to_bytes(name))
-            is_new_var = True
+        if dtype is not None:
+            if not isinstance(dtype, core.VarDesc.VarType):
+                dtype = convert_np_dtype_to_dtype_(dtype)
+
+        self.desc = core.create_var_desc(
+            self.block.desc,
+            name,
+            type,
+            shape, )
 
         if is_new_var:
             self.desc.set_type(type)
@@ -333,20 +337,7 @@ class Variable(object):
                              " are not matched".format(self.name,
                                                        self.desc.type(), type))
 
-        if shape is not None:
-            if is_new_var:
-                self.desc.set_shape(shape)
-            else:
-                old_shape = self.shape
-                shape = tuple(shape)
-                if shape != old_shape:
-                    raise ValueError(
-                        "Variable {0} has been created before. the previous "
-                        "shape is {1}; the new shape is {2}. They are not "
-                        "matched.".format(self.name, old_shape, shape))
         if dtype is not None:
-            if not isinstance(dtype, core.VarDesc.VarType):
-                dtype = convert_np_dtype_to_dtype_(dtype)
             if is_new_var:
                 self.desc.set_dtype(dtype)
             else:
@@ -358,35 +349,6 @@ class Variable(object):
                                      "matched.".format(self.name, old_dtype,
                                                        dtype))
 
-        if lod_level is not None:
-            if is_new_var:
-                self.desc.set_lod_level(lod_level)
-            else:
-                if lod_level != self.lod_level:
-                    raise ValueError("Variable {0} has been created before. "
-                                     "The previous lod_level is {1}; the new "
-                                     "lod_level is {2}. They are not "
-                                     "matched".format(self.name, self.lod_level,
-                                                      lod_level))
-        if persistable is not None:
-            if is_new_var:
-                self.desc.set_persistable(persistable)
-            else:
-                if persistable != self.persistable:
-                    raise ValueError(
-                        "Variable {0} has been created before."
-                        "The previous persistable is {1}; the new "
-                        "persistable is {2}. They are not matched".format(
-                            self.name, self.persistable, persistable))
-
-        if capacity is not None:
-            if is_new_var:
-                self.desc.set_capacity(capacity)
-            else:
-                # TODO(abhinavarora) : Compare with set capacity once,
-                # get_capacity is implemented
-                pass
-
         if _in_imperative_mode():
             # record vars in tracer rather than blocks
             self._ivar = kwargs.get("ivar", None)
@@ -394,8 +356,6 @@ class Variable(object):
                 self._ivar = core.VarBase(stop_gradient)
             self._ivar.desc = self.desc
             self._ivar.block = block.desc
-            self._ivar.name = name
-            self._ivar.persistable = persistable
             if persistable:
                 self.block.vars[name] = self
         else:
@@ -626,6 +586,7 @@ class Operator(object):
         'checkpoint_notify', 'gen_nccl_id'
     }
 
+    @profile
     def __init__(self,
                  block,
                  desc,
@@ -1212,6 +1173,7 @@ class Block(object):
         return (item[1] for item in six.iteritems(self.vars)
                 if isinstance(item[1], Parameter))
 
+    @profile
     def create_var(self, *args, **kwargs):
         var = Variable(block=self, *args, **kwargs)
         if 'initializer' in kwargs:
@@ -1320,6 +1282,7 @@ class Block(object):
                 initializer(param, self)
         return param
 
+    @profile
     def append_op(self, *args, **kwargs):
         """
         Appends a new Operator according to the giving arguments.

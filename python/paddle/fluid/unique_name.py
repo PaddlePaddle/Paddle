@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import collections
 from .wrapped_decorator import signature_safe_contextmanager
+from .. import compat as cpt
 import six
 import sys
 
@@ -48,7 +49,7 @@ class UniqueNameGenerator(object):
         """
         tmp = self.ids[key]
         self.ids[key] += 1
-        return self.prefix + "_".join([key, str(tmp)])
+        return self.prefix + "_".join([key, cpt.to_text(tmp)])
 
 
 generator = UniqueNameGenerator()

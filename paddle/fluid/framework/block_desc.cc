@@ -35,6 +35,19 @@ VarDesc *BlockDesc::Var(const std::string &name) {
   return var;
 }
 
+VarDesc *BlockDesc::FindOrCreateVar(const std::string &name, bool *created) {
+  auto it = vars_.find(name);
+  if (it != vars_.end()) {
+    *created = false;
+    return it->second.get();
+  }
+  need_update_ = true;
+  auto *var = new VarDesc(name);
+  vars_[name].reset(var);
+  *created = true;
+  return var;
+}
+
 VarDesc *BlockDesc::FindVar(const std::string &name) const {
   auto it = vars_.find(name);
   if (it == vars_.end()) {

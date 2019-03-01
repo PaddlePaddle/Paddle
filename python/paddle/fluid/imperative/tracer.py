@@ -38,6 +38,7 @@ class Tracer(core.Tracer):
         self._ops = defaultdict()
         self._trace_id = 0
 
+    @profile
     def trace_op(self, op, stop_gradient=False):
         # record op's trace id
         op.iop._trace_id = self._trace_id
