@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
+#include <memory>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -60,6 +63,11 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(
                     argument->mkldnn_enabled_op_types()));
+    }
+
+    if (pass_name == "anakin_subgraph_pass") {
+      pass->Set("program",
+                new framework::ProgramDesc *(&argument->main_program()));
     }
 
     if (pass_name == "tensorrt_subgraph_pass") {

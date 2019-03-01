@@ -27,6 +27,10 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
 endif()
 
+if (WITH_ANAKIN_SUBGRAPH)
+    set(inference_deps ${inference_deps} anakin_op_converter anakin_engine)
+endif()
+
 add_subdirectory(details)
 
 cc_library(analysis_config SRCS analysis_config.cc DEPS lod_tensor paddle_pass_builder)
@@ -59,4 +63,8 @@ if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
     endfunction()
     anakin_target(inference_anakin_api)
     anakin_target(inference_anakin_api_shared)
+endif()
+
+if (WITH_ANAKIN_SUBGRAPH)
+   inference_analysis_test(test_anakin_model SRCS mobilenet_test.cc EXTRA_DEPS paddle_fluid) 
 endif()
