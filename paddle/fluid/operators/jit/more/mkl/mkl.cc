@@ -160,6 +160,16 @@ bool VCopyKernel<float>::UseMe(const int& d) const {
 }
 
 template <>
+bool VBroadcastKernel<float>::UseMe(const int64_t& d) const {
+  return d > 127;
+}
+
+template <>
+bool VBroadcastKernel<double>::UseMe(const int64_t& attr) const {
+  return true;
+}
+
+template <>
 bool VSigmoidKernel<float>::UseMe(const int& d) const {
   return d > 7;
 }
@@ -251,6 +261,7 @@ REGISTER_MKL_KERNEL(kVScal, VScal);
 REGISTER_MKL_KERNEL(kVExp, VExp);
 REGISTER_MKL_KERNEL(kVSquare, VSquare);
 REGISTER_MKL_KERNEL(kVCopy, VCopy);
+REGISTER_MKL_KERNEL(kVBroadcast, VBroadcast);
 REGISTER_MKL_KERNEL(kVSigmoid, VSigmoid);
 REGISTER_MKL_KERNEL(kVTanh, VTanh);
 REGISTER_MKL_KERNEL(kSeqPool, SeqPool);
