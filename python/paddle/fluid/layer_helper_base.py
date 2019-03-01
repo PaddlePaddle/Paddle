@@ -23,7 +23,7 @@ from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
 
 
-class Layer_Helper_Base(object):
+class LayerHelperBase(object):
     def __init__(self, name, layer_type):
         self._layer_type = layer_type
         self._name = name
@@ -45,6 +45,14 @@ class Layer_Helper_Base(object):
         return default_startup_program()
 
     def to_variable(self, value, block=None):
+        """convert value to variable
+
+            Args:
+                value: value to be convert
+                block: the block of the variable
+
+        Return Variable construct from value
+        """
         if isinstance(value, np.ndarray):
             assert _in_imperative_mode(
             ), "to_variable could only be called in imperative mode"
@@ -240,12 +248,24 @@ class Layer_Helper_Base(object):
         w_param = __weight_normalize(g_param, v_param, dim=attr.dim)
         return w_param
 
+    # TODO: hide the func after we move the layers to Layers
     def create_parameter(self,
                          attr,
                          shape,
                          dtype,
                          is_bias=False,
                          default_initializer=None):
+        """Create parameters for this layers.
+
+           Args:
+               attr: [ParamAttr] should be the parameter attribute for this parameter
+               shape: shape of the paramter
+               dtype: data type of this parameter
+               is_bias: if this is a bias parameter
+               default_initializer: set the default initializer for this parameter
+
+        Returns created parameter Variable.
+        """
         # Deepcopy the attr so that parameters can be shared in program
         attr = copy.deepcopy(attr)
         if attr is None:
@@ -313,6 +333,9 @@ class Layer_Helper_Base(object):
             stop_gradient=stop_gradient)
 
     def create_variable(self, *args, **kwargs):
+        """Create Variable for this layers.
+        Returns created Variable.
+        """
         return self.main_program.current_block().create_var(*args, **kwargs)
 
     def create_global_variable(self, persistable=False, *args, **kwargs):
@@ -339,6 +362,12 @@ class Layer_Helper_Base(object):
             return self.create_global_variable(name=name, *args, **kwargs), True
 
     def set_variable_initializer(self, var, initializer):
+        """Set target Variable's initializer
+
+           Args:
+               var: target Variable
+               initializer: initializer to use
+        """
         assert isinstance(var, Variable)
         if _in_imperative_mode():
             initializer(var, var.block)

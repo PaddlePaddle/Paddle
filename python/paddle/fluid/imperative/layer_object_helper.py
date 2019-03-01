@@ -20,12 +20,12 @@ from ..framework import Parameter, _in_imperative_mode
 from ..param_attr import ParamAttr
 from .. import core
 from six.moves import zip
-from ..layer_helper_base import Layer_Helper_Base
+from ..layer_helper_base import LayerHelperBase
 
 
-class LayerOjbectHelper(Layer_Helper_Base):
+class LayerObjectHelper(LayerHelperBase):
     def __init__(self, name):
-        super(LayerOjbectHelper, self).__init__(name, layer_type=name)
+        super(LayerObjectHelper, self).__init__(name, layer_type=name)
 
     def append_op(self,
                   type=None,
@@ -33,6 +33,17 @@ class LayerOjbectHelper(Layer_Helper_Base):
                   outputs=None,
                   attrs=None,
                   stop_gradient=None):
+        """append an operator for this layer object.
+
+           Args:
+               type: operator type
+               inputs: input variable of the operator
+               dtype: data type of this parameter
+               is_bias: if this is a bias parameter
+               default_initializer: set the default initializer for this parameter
+
+        Returns created parameter Variable.
+        """
         return self.main_program.current_block().append_op(
             type=type,
             inputs=inputs,
@@ -40,7 +51,7 @@ class LayerOjbectHelper(Layer_Helper_Base):
             attrs=attrs,
             stop_gradient=stop_gradient)
 
-    def multiple_input(self, inputs_in):
+    def _multiple_input(self, inputs_in):
         inputs = inputs_in
         ret = []
         if isinstance(inputs, list) or isinstance(inputs, tuple):
@@ -50,13 +61,14 @@ class LayerOjbectHelper(Layer_Helper_Base):
             ret.append(self.to_variable(inputs))
         return ret
 
-    def input(self, inputs_in):
-        inputs = self.multiple_input(inputs_in)
+    # TODO: make it public when we need it
+    def _input(self, inputs_in):
+        inputs = self._multiple_input(inputs_in)
         if len(inputs) != 1:
             raise "{0} layer only takes one input".format(self.layer_type)
         return inputs[0]
 
-    def multiple_param_attr(self, length, param_attr_in=None):
+    def _multiple_param_attr(self, length, param_attr_in=None):
         param_attr = param_attr_in
         if isinstance(param_attr, ParamAttr):
             param_attr = [param_attr]
@@ -71,13 +83,28 @@ class LayerOjbectHelper(Layer_Helper_Base):
         return param_attr
 
     def iter_inputs_and_params(self, inputs_in, param_attr_in=None):
-        inputs = self.multiple_input(inputs_in)
-        param_attrs = self.multiple_param_attr(len(inputs), param_attr_in)
+        """Access all inputs and params one by one
+
+           Args:
+               inputs_in: inputs to be iter
+               param_attr_in: param_attr to be iter
+
+        Returns input, param_attr
+        """
+        inputs = self._multiple_input(inputs_in)
+        param_attrs = self._multiple_param_attr(len(inputs), param_attr_in)
         for ipt, param_attr in zip(inputs, param_attrs):
             yield ipt, param_attr
 
     def input_dtype(self, inputs_in):
-        inputs = self.multiple_input(inputs_in)
+        """Get input data type
+
+           Args:
+               inputs_in: inputs wanted know the data type
+
+        Returns dtype of the input
+        """
+        inputs = self._multiple_input(inputs_in)
         dtype = None
         for each in inputs:
             if dtype is None:
@@ -88,6 +115,13 @@ class LayerOjbectHelper(Layer_Helper_Base):
         return dtype
 
     def get_parameter(self, name):
+        """Get parameter specifically
+
+           Args:
+               name: parameter's name
+
+        Returns target parameter
+        """
         param = self.main_program.global_block().var(name)
         if not isinstance(param, Parameter):
             raise ValueError("no Parameter name %s found" % name)
@@ -98,19 +132,16 @@ class LayerOjbectHelper(Layer_Helper_Base):
                        dim_start=1,
                        dim_end=None,
                        bias_attr=None):
-        """
-        Append bias operator and return its output. If the user does not set
-        bias_attr, append_bias_op will return input_var
+        """Append bias operator and return its output. If the user does not set bias_attr, append_bias_op will return input_var
 
-        :param input_var: the input variable. The len(input_var.shape) is
-        larger or equal than 2.
-        :bias_initializer: an instance of a subclass of Initializer used to
-        initialize the bias
-        :param dim_start:
-        :param dim_end: the shape of the bias will be
-        :param bias_attr: the bias_attr of it
-        input_var.shape[dim_start:dim_end]. The bias is broadcasted to other
-        dimensions and added to input_var to get the output
+            Args:
+                input_var: the input variable. The len(input_var.shape) is
+                larger or equal than 2.
+                dim_start:
+                dim_end: the shape of the bias will be
+                bias_attr: the bias_attr of it
+
+        Return the Variable of after append bias op
         """
         size = list(input_var.shape[dim_start:dim_end])
         bias_attr = bias_attr
@@ -128,11 +159,23 @@ class LayerOjbectHelper(Layer_Helper_Base):
             attrs={'axis': dim_start})
         return tmp
 
+    # TODO: this should not be called anymore after all activation func move to Layers
     def append_activation(self,
                           input_var,
                           act=None,
                           use_cudnn=None,
                           use_mkl_dnn=None):
+        """Append activation
+
+            Args:
+                input_var: the input variable. The len(input_var.shape) is
+                larger or equal than 2.
+                act: activation type
+                use_mkl_dnn: if use mkldnn
+                use_cudnn: if use cudnn
+
+        Return the Variable of after append activation
+        """
         act = act
         if act is None:
             return input_var
@@ -162,6 +205,14 @@ class LayerOjbectHelper(Layer_Helper_Base):
         return tmp
 
     def is_instance(self, param, cls):
+        """Check if the input parameter is instance of input class
+
+            Args:
+                param: parameter to be check
+                cls: class of the parameter
+
+        Return result of the check (True or False)
+        """
         param = param
         if not isinstance(param, cls):
             raise TypeError("The input {0} parameter of method {1} must be {2}",

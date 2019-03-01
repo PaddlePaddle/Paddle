@@ -19,7 +19,7 @@ import numpy as np
 import collections
 from .. import unique_name
 from paddle.fluid import core
-from .layer_object_helper import LayerOjbectHelper
+from .layer_object_helper import LayerObjectHelper
 from paddle.fluid import framework
 
 __all__ = ['Layer', 'PyLayer']
@@ -44,7 +44,7 @@ class Layer(core.Layer):
         self._parameters = collections.OrderedDict()
         self._sub_layers = collections.OrderedDict()
 
-        self._helper = LayerOjbectHelper(self._full_name)
+        self._helper = LayerObjectHelper(self._full_name)
 
     def full_name(self):
         """Full name for this layers.
@@ -61,6 +61,17 @@ class Layer(core.Layer):
                          dtype,
                          is_bias=False,
                          default_initializer=None):
+        """Create parameters for this layers.
+
+           Args:
+               attr: [ParamAttr] should be the parameter attribute for this parameter
+               shape: shape of the paramter
+               dtype: data type of this parameter
+               is_bias: if this is a bias parameter
+               default_initializer: set the default initializer for this parameter
+
+        Returns created parameter Variable.
+        """
         return self._helper.create_parameter(attr, shape, dtype, is_bias,
                                              default_initializer)
 
@@ -70,6 +81,16 @@ class Layer(core.Layer):
                         persistable=None,
                         dtype=None,
                         type=core.VarDesc.VarType.LOD_TENSOR):
+        """Create Variable for this layers.
+
+           Args:
+               name: name of the variable
+               persistable: if set this variable persistable
+               dtype: data type of data in the variable
+               type: type of the variable
+
+        Returns created Variable.
+        """
         if name is not None:
             var_name = ".".join([self._full_name, name])
         else:

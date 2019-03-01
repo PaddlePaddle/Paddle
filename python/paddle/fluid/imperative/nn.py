@@ -46,7 +46,7 @@ class Conv2D(layers.Layer):
         self._stride = utils.convert_to_list(stride, 2, 'stride')
         self._padding = utils.convert_to_list(padding, 2, 'padding')
         self._dilation = utils.convert_to_list(dilation, 2, 'dilation')
-        self.act = act
+        self._act = act
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
         self._use_cudnn = use_cudnn
@@ -128,7 +128,7 @@ class Conv2D(layers.Layer):
             attrs={'axis': 1})
 
         # Currently, we don't support inplace in imperative mode
-        return self._helper.append_activation(pre_act, act=self.act)
+        return self._helper.append_activation(pre_act, act=self._act)
 
 
 class Pool2D(layers.Layer):
@@ -204,9 +204,9 @@ class FC(layers.Layer):
         self._size = size
         self._num_flatten_dims = num_flatten_dims
         self._dtype = dtype
-        self.param_attr = param_attr
-        self.bias_attr = param_attr
-        self.act = act
+        self._param_attr = param_attr
+        self._bias_attr = param_attr
+        self._act = act
 
     def _build_once(self, input):
         input_shape = input.shape
@@ -214,15 +214,15 @@ class FC(layers.Layer):
             reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:], 1)
         ] + [self._size]
         self._w = self.create_parameter(
-            attr=self.param_attr,
+            attr=self._param_attr,
             shape=param_shape,
             dtype=self._dtype,
             is_bias=False)
 
-        if self.bias_attr:
+        if self._param_attr:
             size = list([self._size])
             self._b = self.create_parameter(
-                attr=self.bias_attr,
+                attr=self._param_attr,
                 shape=size,
                 dtype=self._dtype,
                 is_bias=True)
@@ -260,7 +260,7 @@ class FC(layers.Layer):
         else:
             pre_activation = pre_bias
         # Currently, we don't support inplace in imperative mode
-        return self._helper.append_activation(pre_activation, act=self.act)
+        return self._helper.append_activation(pre_activation, act=self._act)
 
 
 class BatchNorm(layers.Layer):
@@ -282,9 +282,9 @@ class BatchNorm(layers.Layer):
                  fuse_with_relu=False,
                  use_global_stats=False):
         super(BatchNorm, self).__init__(name_scope)
-        self.param_attr = param_attr
-        self.bias_attr = bias_attr
-        self.act = act
+        self._param_attr = param_attr
+        self._param_attr = bias_attr
+        self._act = act
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
 
@@ -297,19 +297,19 @@ class BatchNorm(layers.Layer):
 
         # create parameter
         self._scale = self.create_parameter(
-            attr=self.param_attr,
+            attr=self._param_attr,
             shape=param_shape,
             dtype=self._dtype,
             default_initializer=Constant(1.0))
-        if use_global_stats and self.param_attr.learning_rate == 0.:
+        if use_global_stats and self._param_attr.learning_rate == 0.:
             self._scale._stop_gradient = True
 
         self._bias = self.create_parameter(
-            attr=self.bias_attr,
+            attr=self._param_attr,
             shape=param_shape,
             dtype=self._dtype,
             is_bias=True)
-        if use_global_stats and self.bias_attr.learning_rate == 0.:
+        if use_global_stats and self._param_attr.learning_rate == 0.:
             self._bias._stop_gradient = True
 
         self._mean = self.create_parameter(
@@ -382,7 +382,7 @@ class BatchNorm(layers.Layer):
             })
 
         # Currently, we don't support inplace in imperative mode
-        return self._helper.append_activation(batch_norm_out, self.act)
+        return self._helper.append_activation(batch_norm_out, self._act)
 
 
 class Embedding(layers.Layer):

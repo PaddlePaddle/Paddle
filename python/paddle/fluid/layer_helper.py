@@ -23,10 +23,10 @@ from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr
 from . import core
 from six.moves import zip
-from layer_helper_base import Layer_Helper_Base
+from layer_helper_base import LayerHelperBase
 
 
-class LayerHelper(Layer_Helper_Base):
+class LayerHelper(LayerHelperBase):
     def __init__(self, layer_type, **kwargs):
         self.kwargs = kwargs
         name = self.kwargs.get('name', None)
@@ -120,7 +120,7 @@ class LayerHelper(Layer_Helper_Base):
         dimensions and added to input_var to get the output
         """
         size = list(input_var.shape[dim_start:dim_end])
-        bias_attr = self.bias_attr
+        bias_attr = self._param_attr
         if not bias_attr:
             return input_var
 
