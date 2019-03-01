@@ -57,7 +57,10 @@ class LoDTensorBlockingQueue {
 
   inline void ReOpen() { queue_.ReOpen(); }
 
-  inline void Close() { queue_.Close(); }
+  inline void Close() {
+    VLOG(1) << "LoDTensorBlockingQueue close";
+    queue_.Close();
+  }
 
   inline bool IsClosed() const { return queue_.IsClosed(); }
 
