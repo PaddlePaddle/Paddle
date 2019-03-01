@@ -11,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import contextlib
+from ..wrapped_decorator import signature_safe_contextmanager
 import numpy as np
 
 from paddle.fluid import core
 from paddle.fluid import framework
+from .tracer import Tracer
 
 __all__ = ['enabled', 'guard', 'to_variable']
 
@@ -24,11 +25,11 @@ def enabled():
     return framework._in_imperative_mode()
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def guard(place=None):
     train = framework.Program()
     startup = framework.Program()
-    tracer = core.Tracer(train.current_block().desc)
+    tracer = Tracer(train.current_block().desc)
 
     if place is None:
         if core.is_compiled_with_cuda():

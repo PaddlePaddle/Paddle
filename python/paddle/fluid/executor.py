@@ -17,7 +17,7 @@ from __future__ import print_function
 import os
 import multiprocessing
 import numpy as np
-import contextlib
+from .wrapped_decorator import signature_safe_contextmanager
 import six
 from .framework import Program, default_main_program, Variable
 from . import core
@@ -49,7 +49,7 @@ def _switch_scope(scope):
     return ex
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def scope_guard(scope):
     """
     Change the global/default scope instance by Python `with` statement. All
@@ -538,6 +538,8 @@ class Executor(object):
         else:
             # TODO(panyx0718): Can compile program to optimize executor
             # performance.
+            # TODO(panyx0718): executor should be able to run graph.
+            assert program._program, "CompiledProgram is compiled from graph, can only run with_data_parallel."
             return self._run(
                 program._program,
                 self._default_executor,

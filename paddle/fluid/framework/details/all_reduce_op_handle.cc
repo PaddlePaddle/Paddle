@@ -63,7 +63,7 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 void AllReduceOpHandle::_RunImplEncoded() {
-  platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
+  platform::RecordEvent record_event(Name());
 
   WaitInputVarGenerated();
 
@@ -240,7 +240,7 @@ void AllReduceOpHandle::RunImpl() {
 }
 
 void AllReduceOpHandle::_RunImpl() {
-  platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
+  platform::RecordEvent record_event(Name());
 
   WaitInputVarGenerated();
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
