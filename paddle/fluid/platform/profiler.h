@@ -17,44 +17,13 @@ limitations under the License. */
 #include <list>
 #include <string>
 #include <vector>
-#include "paddle/fluid/platform/device_context.h"
-
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/event.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/gpu_info.h"
+#endif
 namespace paddle {
 namespace platform {
-
-enum EventType { kMark, kPushRange, kPopRange };
-
-class Event {
- public:
-  // The DeviceContext is used to get the cuda stream.
-  // If CPU profiling mode, can pass nullptr.
-  Event(EventType type, std::string name, uint32_t thread_id,
-        const DeviceContext* dev_ctx);
-
-  const EventType& type() const;
-  std::string name() const { return name_; }
-  uint32_t thread_id() const { return thread_id_; }
-  bool has_cuda() const { return has_cuda_; }
-
-#ifdef PADDLE_WITH_CUDA
-  cudaEvent_t event() const { return event_; }
-  int device() const { return device_; }
-#endif
-
-  double CpuElapsedMs(const Event& e) const;
-  double CudaElapsedMs(const Event& e) const;
-
- private:
-  EventType type_;
-  std::string name_;
-  uint32_t thread_id_;
-  int64_t cpu_ns_;
-  bool has_cuda_;
-#ifdef PADDLE_WITH_CUDA
-  cudaEvent_t event_ = nullptr;
-  int device_ = -1;
-#endif
-};
 
 enum ProfilerState {
   kDisabled,  // disabled state
@@ -63,22 +32,19 @@ enum ProfilerState {
   kAll,       // Profile both CPU and GPU. (Currently experimental).
 };
 
-void Mark(const std::string& name, const DeviceContext* dev_ctx);
+void Mark(const std::string& name);
 
-void PushEvent(const std::string& name, const DeviceContext* dev_ctx);
+Event* PushEvent(const std::string& name);
 
-void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
+void PopEvent(const std::string& name);
 
 struct RecordEvent {
-  // dev_ctx can be set to nullptr if device is cpu.
-  RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
+  explicit RecordEvent(const std::string& name);
 
   ~RecordEvent();
 
   bool is_enabled_;
   uint64_t start_ns_;
-  // The device context is used by Event to get the current cuda stream.
-  const DeviceContext* dev_ctx_;
   // Event name
   std::string name_;
   // Need to distinguish name by op type, block_id, program_id and perhaps
@@ -88,8 +54,7 @@ struct RecordEvent {
 
 class RecordRPCEvent {
  public:
-  // dev_ctx can be set to nullptr if device is cpu.
-  RecordRPCEvent(const std::string& name, const DeviceContext* dev_ctx);
+  explicit RecordRPCEvent(const std::string& name);
   ~RecordRPCEvent() {}
 
  private:
@@ -111,7 +76,16 @@ struct RecordBlock {
 std::vector<std::vector<Event>> GetAllEvents();
 
 // Candidate keys to sort the profiling report
-enum EventSortingKey { kDefault, kCalls, kTotal, kMin, kMax, kAve };
+enum EventSortingKey {
+  kDefault,
+  kCalls,
+  kTotal,
+  kMin,
+  kMax,
+  kAve,
+  kCPUTime,
+  kGPUTime
+};
 
 // Enable the profiling function.
 void EnableProfiler(ProfilerState state);
@@ -131,6 +105,10 @@ bool ShouldSendProfileState();
 // Mark current process as PS by assigning a lister id.
 void SetProfileListener();
 int64_t ListenerId();
+
+#ifdef PADDLE_WITH_CUDA
+void DummyKernelAndEvent();
+#endif
 
 }  // namespace platform
 }  // namespace paddle

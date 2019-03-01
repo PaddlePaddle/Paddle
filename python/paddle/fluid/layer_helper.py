@@ -34,6 +34,9 @@ class LayerHelper(object):
         self.kwargs = kwargs
         self.layer_type = layer_type
         name = self.kwargs.get('name', None)
+        # TODO(panyx0718, minqiyang): imperative mode
+        # can not use both `layer_type` and `name`. Deprecate LayerHelper
+        # and write a Helper for imperative mode.
         if name is None:
             self.kwargs['name'] = unique_name.generate(self.layer_type)
 
@@ -300,6 +303,18 @@ class LayerHelper(object):
             attr.name = unique_name.generate(".".join([self.name, suffix]))
 
         if default_initializer is None and attr.initializer is None:
+            if isinstance(dtype, core.VarDesc.VarType):
+                if dtype != core.VarDesc.VarType.FP32 and \
+                    dtype != core.VarDesc.VarType.FP64 and \
+                    dtype != core.VarDesc.VarType.FP16:
+                    raise TypeError(
+                        "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
+                    )
+            else:
+                if not (dtype.startswith("float") or dtype == "double"):
+                    raise TypeError(
+                        "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
+                    )
             if is_bias:
                 attr._set_default_bias_initializer()
             else:
@@ -435,7 +450,10 @@ class LayerHelper(object):
         act_type = act.pop('type')
         tmp = input_var
         # NOTE(dzhwinter): some activation support inplace compution.
-        if not core.IsInplace(act_type):
+        # NOTE(minqiyang): currently, we don't support inplace in imperative mode
+        if not imperative_base.enabled() and core.IsInplace(act_type):
+            tmp = input_var
+        else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
         self.append_op(
             type=act_type,

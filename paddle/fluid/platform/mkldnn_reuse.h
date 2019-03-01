@@ -39,6 +39,45 @@ class MKLDNNHandler {
     return this->AcquireMemory(md, ptr, "@user_src_mem_p");
   }
 
+  // TODO(jczaja): extract common part and make AcquireMemory
+  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
+      const mkldnn::memory::primitive_desc& mpd, void* ptr) {
+    auto local_key = key_ + "@user_src_mem_p";
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
+                   " find mem primitive in device context");
+    if (mem_p == nullptr) {
+      mem_p = std::make_shared<mkldnn::memory>(mpd, ptr);
+      dev_ctx_.SetBlob(local_key, mem_p);
+    } else {
+      mem_p->set_data_handle(ptr);
+      // Mark that reusing happenned. All primitives from operator instance
+      // should be reused or none of them. So we check consistency
+      is_reusing_ = true;
+    }
+    return mem_p;
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireWeightsMemory(
+      const mkldnn::memory::primitive_desc& mpd, void* ptr) {
+    auto local_key = key_ + "@user_weights_mem_p";
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
+                   " find mem primitive in device context");
+    if (mem_p == nullptr) {
+      mem_p = std::make_shared<mkldnn::memory>(mpd, ptr);
+      dev_ctx_.SetBlob(local_key, mem_p);
+    } else {
+      mem_p->set_data_handle(ptr);
+      // Mark that reusing happenned. All primitives from operator instance
+      // should be reused or none of them. So we check consistency
+      is_reusing_ = true;
+    }
+    return mem_p;
+  }
+
   std::shared_ptr<mkldnn::memory> AcquireWeightsMemory(
       const mkldnn::memory::desc& md, void* ptr,
       user_function custom_func = {}) {
@@ -232,7 +271,6 @@ class MKLDNNHandler {
     AppendKey(key, suffix);
   }
 
- protected:
   static void AppendKeyDims(std::string* key,
                             const mkldnn::memory::dims& dims) {
     for (unsigned int i = 0; i < dims.size(); i++) {
@@ -250,6 +288,7 @@ class MKLDNNHandler {
     key->append(s);
   }
 
+ protected:
   static std::string dims2str(const mkldnn::memory::dims& operand_dims) {
     std::string dstr = "";
     for (size_t i = 0; i < operand_dims.size(); ++i) {
@@ -263,6 +302,9 @@ class MKLDNNHandler {
   mkldnn::engine engine_;
   std::string key_;
   bool is_reusing_;
+
+ public:
+  static constexpr int MaxKeyLength = 256;
 };
 
 class TransposeMKLDNNHandler : public MKLDNNHandler {
@@ -273,37 +315,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
                          mkldnn::engine engine, const std::string& base_key)
       : platform::MKLDNNHandler(dev_ctx, engine, base_key),
         dims_(dims),
-        axis_(axis),
-        logical_axis_(dims.size(), 0) {}
-
-  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
-      const mkldnn::memory::format& fmt, void* ptr) {
-    auto local_key = key_ + "@user_src_mem_p";
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
-                   " find mem primitive in device context");
-    if (mem_p == nullptr) {
-      // Make memory descriptor using input format, unless it
-      // cannot be trusted (nchw) then make up memory fmt manually
-      for (size_t i = 0; i < logical_axis_.size(); ++i) {
-        logical_axis_[i] = i;
-      }
-      auto src_md = fmt != mkldnn::memory::format::nchw
-                        ? platform::MKLDNNMemDesc(
-                              dims_, platform::MKLDNNGetDataType<float>(), fmt)
-                        : Axis2MemoryDesc(dims_, logical_axis_);
-      mem_p = std::make_shared<mkldnn::memory>(
-          mkldnn::memory::primitive_desc{src_md, engine_}, ptr);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      mem_p->set_data_handle(ptr);
-      // Mark that reusing happenned. All primitives from operator instance
-      // should be reused or none of them. So we check consistency
-      is_reusing_ = true;
-    }
-    return mem_p;
-  }
+        axis_(axis) {}
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(framework::Tensor* output,
                                                    platform::Place place) {
@@ -365,7 +377,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
     mem_fmt.ndims = axis.size();
     for (unsigned int i = 0; i < nchw_tz.size(); ++i) {
       mem_fmt.dims[i] = nchw_tz[i];  // logical dimensions (nchw format,
-                                     // regardless physical layout)
+      // regardless physical layout)
     }
     mem_fmt.data_type = mkldnn_f32;
     mem_fmt.format = mkldnn_blocked;
@@ -374,7 +386,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
     for (int i = nchw_tz.size() - 1; i >= 0; --i) {
       mem_fmt.layout_desc.blocking.padding_dims[i] =
           nchw_tz[i];  // logical dimensions (nchw format, regardless physical
-                       // layout)
+      // layout)
       mem_fmt.layout_desc.blocking.block_dims[i] = 1;
       mem_fmt.layout_desc.blocking.offset_padding_to_data[i] = 0;  // no offset
       mem_fmt.layout_desc.blocking.strides[0][axis[i]] = total_stride;
@@ -388,7 +400,6 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
  private:
   std::vector<int> dims_;
   std::vector<int> axis_;
-  std::vector<int> logical_axis_;
 };
 
 template <class forward_t, class backward_data_t, class backward_weights_t>
@@ -548,9 +559,8 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
     PADDLE_ENFORCE((conv_p != nullptr) || (is_reusing_ == false),
                    "Fail to find convolution primitive in device context");
     if (conv_p == nullptr) {
-      conv_p = std::make_shared<forward_t>(*conv_pd_, *(src_memory_p),
-                                           *(weights_memory_p.get()),
-                                           *(dst_memory_p.get()));
+      conv_p = std::make_shared<forward_t>(*conv_pd_, *src_memory_p,
+                                           *weights_memory_p, *dst_memory_p);
 
       dev_ctx_.SetBlob(prim_key, conv_p);
     } else {
@@ -570,9 +580,9 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
     PADDLE_ENFORCE((conv_p != nullptr) || (is_reusing_ == false),
                    "Fail to find convolution primitive in device context");
     if (conv_p == nullptr) {
-      conv_p = std::make_shared<forward_t>(
-          *conv_pd_, *(src_memory_p), *(weights_memory_p.get()),
-          *(bias_memory_p.get()), *(dst_memory_p.get()));
+      conv_p = std::make_shared<forward_t>(*conv_pd_, *src_memory_p,
+                                           *weights_memory_p, *bias_memory_p,
+                                           *dst_memory_p);
 
       dev_ctx_.SetBlob(prim_key, conv_p);
     } else {

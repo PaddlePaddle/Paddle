@@ -61,8 +61,6 @@ ADD_LIBRARY(gflags STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET gflags PROPERTY IMPORTED_LOCATION ${GFLAGS_LIBRARIES})
 ADD_DEPENDENCIES(gflags extern_gflags)
 
-LIST(APPEND external_project_dependencies gflags)
-
 # On Windows (including MinGW), the Shlwapi library is used by gflags if available.
 if (WIN32)
   include(CheckIncludeFileCXX)
@@ -71,13 +69,3 @@ if (WIN32)
     set_property(GLOBAL PROPERTY OS_DEPENDENCY_MODULES shlwapi.lib)
   endif(HAVE_SHLWAPI)
 endif (WIN32)
-
-IF(WITH_C_API)
-  INSTALL(DIRECTORY ${GFLAGS_INCLUDE_DIR} DESTINATION third_party/gflags)
-  IF(ANDROID)
-    INSTALL(FILES ${GFLAGS_LIBRARIES} DESTINATION third_party/gflags/lib/${ANDROID_ABI})
-  ELSE()
-    INSTALL(FILES ${GFLAGS_LIBRARIES} DESTINATION third_party/gflags/lib)
-  ENDIF()
-ENDIF()
-
