@@ -541,6 +541,7 @@ class OperatorWithKernel : public OperatorBase {
 
  protected:
   mutable OpKernelConfigsMap kernel_configs_map_;
+  mutable RuntimeContext* runtime_ctx_ = nullptr;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);
