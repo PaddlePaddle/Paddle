@@ -51,6 +51,13 @@ template <typename T>
 void VAXPY(T a, const T* x, T* y, int n);
 
 template <typename T>
+void VBroadcast(const T* x, T* y, int64_t y_h, int64_t x_len) {
+  for (int64_t h = 0; h < y_h; ++h) {
+    VCopy(x, y + h * x_len, x_len);
+  }
+}
+
+template <typename T>
 void VSigmoid(const T* x, T* y, int n) {
   const T min = SIGMOID_THRESHOLD_MIN;
   const T max = SIGMOID_THRESHOLD_MAX;
@@ -201,6 +208,8 @@ DECLARE_MKL_KERNEL(EmbSeqPool, EmbSeqPoolTuples);
 DECLARE_MKL_KERNEL(Softmax, SoftmaxTuples);
 
 DECLARE_MKL_KERNEL(Sgd, SgdTuples);
+
+DECLARE_MKL_KERNEL(VBroadcast, VBroadcastTuples);
 
 #undef DECLARE_MKL_KERNEL
 
