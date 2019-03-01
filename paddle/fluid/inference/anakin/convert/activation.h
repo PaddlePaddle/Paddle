@@ -15,6 +15,7 @@
 #pragma once
 
 #include <map>
+#include <string>
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 
 namespace paddle {
@@ -37,12 +38,20 @@ class ActivationOpConverter : public AnakinOpConverter {
       {"relu", "Relu"}, {"tanh", "TanH"}, {"sigmoid", "Sigmoid"}};
 };
 
-static Registrar<ActivationOpConverter, std::string> register_relu_op_converter(
-    "relu", "relu");
-static Registrar<ActivationOpConverter, std::string> register_tanh_op_converter(
-    "tanh", "tanh");
-static Registrar<ActivationOpConverter, std::string> register_sigm_op_converter(
-    "sigmoid", "sigmoid");
+class ReluOpConverter : public ActivationOpConverter {
+ public:
+  ReluOpConverter() : ActivationOpConverter("relu") {}
+};
+
+class TanhOpConverter : public ActivationOpConverter {
+ public:
+  TanhOpConverter() : ActivationOpConverter("tanh") {}
+};
+
+class SigmoidOpConverter : public ActivationOpConverter {
+ public:
+  SigmoidOpConverter() : ActivationOpConverter("tanh") {}
+};
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

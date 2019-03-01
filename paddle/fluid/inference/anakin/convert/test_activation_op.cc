@@ -22,11 +22,13 @@ namespace inference {
 namespace anakin {
 
 static void test_activation_op(const std::string &op_type) {
-  auto converter = OpRegister::instance()->Get(op_type);
+  auto *converter = Registry<AnakinOpConverter>::Global().Lookup(op_type);
   PADDLE_ENFORCE(converter != nullptr);
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, scope);
+  validator.DeclInputVar("act-X", {10, 6, 1, 1});
+  validator.DeclOutputVar("act-Out", {10, 6, 1, 1});
   framework::OpDesc desc;
   desc.SetType(op_type);
   desc.SetInput("X", {"act-X"});
@@ -49,3 +51,6 @@ TEST(tanh_op, test) { test_activation_op("tanh"); }
 USE_OP(relu);
 USE_OP(sigmoid);
 USE_OP(tanh);
+USE_ANAKIN_CONVERTER(relu);
+USE_ANAKIN_CONVERTER(sigmoid);
+USE_ANAKIN_CONVERTER(tanh);

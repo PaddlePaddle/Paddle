@@ -38,13 +38,13 @@ void ActivationOpConverter::operator()(const framework::proto::OpDesc &op,
                                        bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
-  PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
 
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
   auto input_name = op_desc.Input("X").front();
   auto output_name = op_desc.Output("Out").front();
-  engine_->AddOp(op_name, anakin_op_type_, {input_name}, {output_name});
+  engine_->AddOp(op_name, "Activation", {input_name}, {output_name});
+  engine_->AddOpAttr(op_name, "type", anakin_op_type_);
   if (op_type_ == "relu") {
     engine_->AddOpAttr(op_name, "alpha", 0);
   }
@@ -53,3 +53,7 @@ void ActivationOpConverter::operator()(const framework::proto::OpDesc &op,
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
+
+REGISTER_ANAKIN_OP_CONVERTER(relu, ReluOpConverter);
+REGISTER_ANAKIN_OP_CONVERTER(sigmoid, SigmoidOpConverter);
+REGISTER_ANAKIN_OP_CONVERTER(tanh, TanhOpConverter);

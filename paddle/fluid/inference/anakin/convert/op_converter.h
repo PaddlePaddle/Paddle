@@ -22,7 +22,6 @@
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/inference/anakin/convert/registrar.h"
 #include "paddle/fluid/inference/anakin/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "saber/saber_types.h"
@@ -89,7 +88,6 @@ class AnakinOpConverter {
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
-<<<<<<< HEAD
 
 #define REGISTER_ANAKIN_OP_CONVERTER(op_type__, Converter__)               \
   struct anakin_##op_type__##_converter                                    \

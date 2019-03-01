@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include "paddle/fluid/inference/anakin/convert/fc.h"
+#include "paddle/fluid/inference/anakin/convert/conv2d.h"
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #include "paddle/fluid/inference/anakin/convert/ut_helper.h"
 
@@ -22,14 +22,15 @@ namespace inference {
 namespace anakin {
 
 TEST(conv2d_op, test) {
-  auto conv2d_converter = OpRegister::instance()->Get("conv2d");
+  auto* conv2d_converter =
+      Registry<AnakinOpConverter>::Global().Lookup("conv2d");
   ASSERT_TRUE(conv2d_converter != nullptr);
   std::unordered_set<std::string> parameters({"conv2d-Y"});
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, scope);
-  validator.DeclInputVar("conv2d-X", {2, 5, 5});
+  validator.DeclInputVar("conv2d-X", {1, 2, 5, 5});
   validator.DeclParamVar("conv2d-Y", {3, 2, 3, 3});
-  validator.DeclOutputVar("conv2d-Out", {3, 5, 5});
+  validator.DeclOutputVar("conv2d-Out", {1, 3, 5, 5});
 
   // Prepare Op description
   framework::OpDesc desc;
@@ -57,4 +58,5 @@ TEST(conv2d_op, test) {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(mul);
+USE_OP(conv2d);
+USE_ANAKIN_CONVERTER(conv2d);

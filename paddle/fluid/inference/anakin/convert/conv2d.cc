@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/anakin/convert/conv2d.h"
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 using anakin::graph::GraphGlobalMem;
@@ -50,29 +51,25 @@ void Conv2dOpConverter::operator()(const framework::proto::OpDesc &op,
   auto *weight_data = weight_tensor->mutable_data<float>(platform::CPUPlace());
   PADDLE_ENFORCE_EQ(weight_tensor->dims().size(), 4UL);
 
-  const int n_output = weight_tensor->dims()[0];
-  //const int n_input = weight_tensor->dims()[1];
+  // const int n_output = weight_tensor->dims()[0];
+  const int n_input = weight_tensor->dims()[1];
   const int filter_h = weight_tensor->dims()[2];
   const int filter_w = weight_tensor->dims()[3];
-  engine_->AddOpAttr<int>(op_name, "filter_num", n_output);
-  engine_->AddOpAttr<PTuple<int>>(op_name, "kernel_size",
-                                       {filter_h, filter_w});
+  auto filter_num = n_input * filter_h * filter_w;
+  engine_->AddOpAttr<int>(op_name, "filter_num", filter_num);
+  engine_->AddOpAttr<PTuple<int>>(op_name, "kernel_size", {filter_h, filter_w});
   auto strides = boost::get<std::vector<int>>(op_desc.GetAttr("strides"));
   engine_->AddOpAttr<PTuple<int>>(op_name, "strides", strides);
-  auto paddings =
-      boost::get<std::vector<int>>(op_desc.GetAttr("paddings"));
+  auto paddings = boost::get<std::vector<int>>(op_desc.GetAttr("paddings"));
   engine_->AddOpAttr<PTuple<int>>(op_name, "padding", paddings);
-  auto dilations =
-      boost::get<std::vector<int>>(op_desc.GetAttr("dilations"));
-  engine_->AddOpAttr<PTuple<int>>(op_name, "dilation", dilations);
+  auto dilations = boost::get<std::vector<int>>(op_desc.GetAttr("dilations"));
+  engine_->AddOpAttr<PTuple<int>>(op_name, "dilation_rate", dilations);
   const int groups = boost::get<int>(op_desc.GetAttr("groups"));
   engine_->AddOpAttr(op_name, "group", groups);
   engine_->AddOpAttr(op_name, "axis", 1);
   engine_->AddOpAttr(op_name, "bias_term", false);
 
   auto weight_shape = framework::vectorize2int(filter_t->dims());
-  weight_shape.push_back(1);
-  weight_shape.push_back(1);
   Shape anakin_shape(weight_shape);
   auto *weight1 =
       GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(anakin_shape);
@@ -87,4 +84,4 @@ void Conv2dOpConverter::operator()(const framework::proto::OpDesc &op,
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER("conv2d", Conv2dOpConverter);
+REGISTER_ANAKIN_OP_CONVERTER(conv2d, Conv2dOpConverter);
