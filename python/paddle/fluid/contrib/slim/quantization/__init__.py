@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+from . import quantizer
+from .quantizer import *
+from . import quantization_strategy
+from .quantization_strategy import *
 from . import quantization_pass
 from .quantization_pass import *
 
 __all__ = quantization_pass.__all__
+__all__ = quantizer.__all__
+__all__ += quantization_strategy.__all__
