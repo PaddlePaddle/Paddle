@@ -36,7 +36,7 @@ def convolutional_neural_network(use_py_reader):
                 capacity=64,
                 feed_list=[img, label],
                 name='py_reader',
-                use_double_buffer=True)
+                use_double_buffer=False)
             img, label = fluid.layers.read_file(py_reader)
 
         conv_pool_1 = fluid.nets.simple_img_conv_pool(
@@ -139,20 +139,21 @@ def train(use_cuda, thread_num, cpu_num):
         exec_strategy=exec_strategy)
 
     py_reader.decorate_paddle_reader(train_reader)
-    py_reader.start()
 
-    step = 0
-    try:
-        while True:
-            loss_val = pe.run(fetch_list=[avg_loss.name])
-            loss_val = numpy.mean(loss_val)
-            if step % 100 == 0:
-                print("Batch %d, Cost %f, queue size %d" %
-                      (step, loss_val, py_reader.queue.size()))
-            step += 1
-    except fluid.core.EOFException:
-        print("train end")
-        py_reader.reset()
+    for pass_id in range(2):
+        step = 0
+        py_reader.start()
+        try:
+            while True:
+                loss_val = pe.run(fetch_list=[avg_loss.name])
+                loss_val = numpy.mean(loss_val)
+                if step % 10 == 0:
+                    print("Pass %d, Batch %d, Cost %f, queue size %d" %
+                          (pass_id, step, loss_val, py_reader.queue.size()))
+                step += 1
+        except fluid.core.EOFException:
+            print("train end pass = " + str(pass_id))
+            py_reader.reset()
 
     return step
 
@@ -161,10 +162,11 @@ class TestAsyncSSAGraphExecutor(unittest.TestCase):
     def test_check_async_ssa_exe_train(self):
         step_list = []
         for cpu_num in [1, 2, 4]:
-            scope = fluid.core.Scope()
-            with fluid.scope_guard(scope):
+            print("run cpu_num -> " + str(cpu_num))
+            with fluid.scope_guard(fluid.core.Scope()):
                 with fluid.program_guard(
-                        fluid.Program(), startup_program=fluid.Program()):
+                        main_program=fluid.Program(),
+                        startup_program=fluid.Program()):
                     start_time = time.time()
                     step = train(
                         use_cuda=False, thread_num=cpu_num, cpu_num=cpu_num)
@@ -173,7 +175,8 @@ class TestAsyncSSAGraphExecutor(unittest.TestCase):
                 print("cpu_num -> " + str(cpu_num) + " step -> " + str(step) +
                       " time -> " + str(end_time - start_time))
                 with fluid.program_guard(
-                        fluid.Program(), startup_program=fluid.Program()):
+                        main_program=fluid.Program(),
+                        startup_program=fluid.Program()):
                     test()
         assert int(step_list[0] / 2) == int(step_list[1])
         assert int(step_list[1] / 2) == int(step_list[2])

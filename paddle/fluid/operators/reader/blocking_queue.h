@@ -86,6 +86,7 @@ class BlockingQueue {
 
   void ReOpen() {
     std::lock_guard<std::mutex> lock(mutex_);
+    VLOG(1) << "reopen queue";
     closed_ = false;
     std::deque<T> new_deque;
     queue_.swap(new_deque);
@@ -95,7 +96,7 @@ class BlockingQueue {
 
   void Close() {
     std::lock_guard<std::mutex> lock(mutex_);
-    VLOG(3) << "close queue";
+    VLOG(1) << "close queue";
     closed_ = true;
     send_cv_.notify_all();
     receive_cv_.notify_all();

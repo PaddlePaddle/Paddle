@@ -119,6 +119,8 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
 
     if (timeout) {
       if (exception_holder_.IsCaught()) {
+        VLOG(3) << "caught exception " << exception_holder_.Type()
+                << ", rethrow it";
         for (auto &run_op_future : run_op_futures_) {
           run_op_future.wait();
         }

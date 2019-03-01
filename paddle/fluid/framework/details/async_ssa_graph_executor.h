@@ -24,6 +24,12 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+struct VarInfo {
+  std::string name_;
+  proto::VarType::Type type_;
+  bool persistable_;
+};
+
 class AsyncSSAGraphExecutor : public SSAGraphExecutor {
  public:
   AsyncSSAGraphExecutor(const ExecutionStrategy &strategy,
@@ -36,6 +42,10 @@ class AsyncSSAGraphExecutor : public SSAGraphExecutor {
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
 
  private:
+  void StartOffPythonTrainLoop();
+  void HandleException();
+
+ private:
   ExecutionStrategy strategy_;
   std::vector<Scope *> local_scopes_;
   std::unique_ptr<::ThreadPool> pool_{nullptr};
@@ -44,6 +54,8 @@ class AsyncSSAGraphExecutor : public SSAGraphExecutor {
 
   std::vector<std::unique_ptr<details::ThreadedSSAGraphExecutor>> executors_;
   ExceptionHolder exception_holder_;
+  std::vector<std::future<void>> run_futures_;
+  std::vector<VarInfo> var_infos_;
 };
 
 }  // namespace details

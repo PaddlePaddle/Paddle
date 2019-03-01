@@ -77,7 +77,10 @@ class DecoratedReader : public ReaderBase,
   ~DecoratedReader();
 
  protected:
-  void ShutdownImpl() override { reader_->Shutdown(); }
+  void ShutdownImpl() override {
+    VLOG(1) << "ShutdownImpl";
+    reader_->Shutdown();
+  }
 
   void StartImpl() override { reader_->Start(); }
 
@@ -98,6 +101,8 @@ class ReaderHolder {
     reader_ = reader_base;
   }
 
+  ~ReaderHolder() { VLOG(1) << "~ReaderHolder"; }
+
   const std::shared_ptr<ReaderBase>& Get() const { return reader_; }
 
   void ReadNext(std::vector<LoDTensor>* out) {
@@ -106,6 +111,7 @@ class ReaderHolder {
   }
 
   void ResetAll() {
+    VLOG(1) << "ResetAll";
     auto end_readers = reader_->GetEndPoints();
     for (auto* reader : end_readers) {
       reader->Shutdown();
@@ -116,11 +122,13 @@ class ReaderHolder {
   }
 
   void Shutdown() {
+    VLOG(1) << "Shutdown";
     PADDLE_ENFORCE_NOT_NULL(reader_);
     reader_->Shutdown();
   }
 
   void Start() {
+    VLOG(1) << "start";
     PADDLE_ENFORCE_NOT_NULL(reader_);
     reader_->Start();
   }
