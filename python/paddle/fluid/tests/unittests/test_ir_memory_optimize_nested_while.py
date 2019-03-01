@@ -12,27 +12,60 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-import six
+import os, sys
 import unittest
+import numpy
+import numpy as np
 import time
 import math
-import multiprocessing
-import numpy as np
 
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler
 
-# open eager delete mode
-os.environ['FLAGS_eager_delete_tensor_gb'] = '0.0'
-os.environ['FLAGS_fast_eager_deletion_mode'] = 'true'
-os.environ['CPU_NUM'] = '2'
+
+# nested while need lod_level=2 data
+def nested_while_op(data, label, dict_dim, emb_dim=128, hid_dim=128):
+    rnn = fluid.layers.DynamicRNN()
+    with rnn.block():
+        in_ = rnn.step_input(data)
+        sent_emb = fluid.layers.embedding(
+            input=in_, size=[dict_dim, emb_dim], dtype='float32')
+        input_forward_proj = fluid.layers.fc(input=sent_emb,
+                                             size=emb_dim,
+                                             act=None,
+                                             bias_attr=False)
+        forward, _ = fluid.layers.dynamic_lstm(
+            input=input_forward_proj, size=hid_dim, use_peepholes=False)
+
+        rnn1 = fluid.layers.DynamicRNN()
+        with rnn1.block():
+            in_1 = rnn1.step_input(forward)
+            out_1 = fluid.layers.fc(input=[in_1], size=hid_dim, act='tanh')
+            rnn1.output(out_1)
+
+        last = fluid.layers.sequence_last_step(input=rnn1())
+        rnn.output(last)
+
+    last = rnn()
+    logits = fluid.layers.fc(input=last, size=1, act=None)
+    loss = fluid.layers.sigmoid_cross_entropy_with_logits(x=logits, label=label)
+    loss = fluid.layers.mean(loss)
+    return loss
 
 
-class BuildIrMemOptBase(unittest.TestCase):
+class BuildNestedWhileIrMemOptBase(unittest.TestCase):
+    def custom_reader(self):
+        seq_len, label = [[2, 2]], [0, 1]
+        data = []
+        for ele in seq_len:
+            for j in ele:
+                data.append([numpy.random.randint(30) \
+                                for _ in range(j)])
+        while True:
+            yield data, label
+
     def check_network_convergence(self,
                                   network,
                                   use_cuda=True,
@@ -49,20 +82,15 @@ class BuildIrMemOptBase(unittest.TestCase):
             return
         fluid.default_startup_program().random_seed = 100
         fluid.default_main_program().random_seed = 100
-        batch_size = 32
-        batch_size *= fluid.core.get_cuda_device_count() if use_cuda else int(
-            os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+        batch_size = 2
 
-        # build network
-        word_dict = paddle.dataset.imdb.word_dict()
-        train_reader = paddle.batch(
-            paddle.dataset.imdb.train(word_dict), batch_size=batch_size)
+        word_dict = [i for i in range(30)]
+        train_reader = paddle.batch(self.custom_reader, batch_size=2)
 
         data = fluid.layers.data(
-            name="words", shape=[1], dtype="int64", lod_level=1)
-
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-
+            name='word', shape=[1], dtype='int64', lod_level=2)
+        label = fluid.layers.data(
+            name='label', shape=[1], dtype='float32', lod_level=1)
         cost = network(data, label, len(word_dict))
         optimizer = fluid.optimizer.Adam(learning_rate=0.001)
         optimizer.minimize(cost)
@@ -83,9 +111,6 @@ class BuildIrMemOptBase(unittest.TestCase):
         begin = time.time()
         first_loss, last_loss = None, None
         step_id = 0
-        custom_iter = getattr(self, "iter", None)
-        if not custom_iter == None:
-            iter = custom_iter
         for data in reader():
             ret = exe.run(train_cp, feed=data, fetch_list=fetch_list)
             print(ret)
@@ -106,11 +131,10 @@ class BuildIrMemOptBase(unittest.TestCase):
         if math.isnan(float(avg_last_loss_val)) or math.isnan(
                 float(avg_first_loss_val)):
             sys.exit("got NaN loss, training failed.")
-
         return first_loss, last_loss
 
 
-class TestIrMemOptBase(BuildIrMemOptBase):
+class TestIrMemOptBase(BuildNestedWhileIrMemOptBase):
     def setUp(self):
         self.network = None
 
@@ -146,3 +170,12 @@ class TestIrMemOptBase(BuildIrMemOptBase):
                                 np.mean(baseline_first_loss),
                                 np.mean(cur_first_loss),
                                 delta=1e-2)
+
+
+class TestNestedWhileIrMemOpt(TestIrMemOptBase):
+    def setUp(self):
+        self.network = nested_while_op
+
+
+if __name__ == "__main__":
+    unittest.main()
