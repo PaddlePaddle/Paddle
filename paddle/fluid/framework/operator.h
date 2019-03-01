@@ -16,9 +16,11 @@ limitations under the License. */
 
 #include <algorithm>
 #include <atomic>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "glog/logging.h"  // For VLOG
