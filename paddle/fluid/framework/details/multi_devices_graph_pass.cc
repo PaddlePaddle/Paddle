@@ -440,7 +440,7 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
     vars.emplace_back(var);
     op_handle->AddOutput(var);
     VLOG(7) << "all_reduce_op_handle add output " << og
-            << ", handle:" << out_var->DebugString();
+            << ", handle:" << var->DebugString();
   }
 }
 
@@ -957,6 +957,10 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
         PADDLE_ENFORCE(false, "Compiled withoud cuda!");
 #endif
       }
+      break;
+    default:
+      LOG(FATAL) << "Unknown reduce strategy.";
+      break;
   }
 }
 
