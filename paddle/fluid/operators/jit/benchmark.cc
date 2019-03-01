@@ -474,6 +474,24 @@ void BenchCRFDecodingKernel() {
   }
 }
 
+template <jit::KernelType KT, typename T, typename PlaceType>
+void BenchVBroadcastKernel() {
+  for (int w : TestSizes()) {
+    Tensor x;
+    x.Resize({w});
+    RandomVec<T>(w, x.mutable_data<T>(PlaceType()));
+    const T* x_data = x.data<T>();
+    for (int64_t h : {1, 3, 6}) {
+      Tensor y;
+      y.Resize({h * w});
+      T* y_data = y.mutable_data<T>(PlaceType());
+
+      BenchAllImpls<KT, jit::VBroadcastTuples<T>, PlaceType>(
+          static_cast<int64_t>(w), x_data, y_data, h, static_cast<int64_t>(w));
+    }
+  }
+}
+
 using T = float;
 using CPUPlace = paddle::platform::CPUPlace;
 
@@ -534,6 +552,11 @@ BENCH_FP32_CPU(kLayerNorm) {
 // crfdecoding
 BENCH_FP32_CPU(kCRFDecoding) {
   BenchCRFDecodingKernel<jit::kCRFDecoding, T, CPUPlace>();
+}
+
+// vbroadcast function
+BENCH_FP32_CPU(kVBroadcast) {
+  BenchVBroadcastKernel<jit::kVBroadcast, T, CPUPlace>();
 }
 
 // Benchmark all jit kernels including jitcode, mkl and refer.
