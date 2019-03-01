@@ -3356,34 +3356,38 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
     Parameters. Calculations are showed as followings.
 
-    .. code-block:: text
+    Step 1:
+    Generate vector U in shape of [H], and V in shape of [W].
+    While H is the :attr:`dim` th dimension of the input weights,
+    and W is the product result of remain dimensions.
 
-        Step 1:
-        Generate vector u in shape of [h], and v in shape of [w].
-        While h is the attr:`dim`th dimension of the input weights,
-        and w is the product result of remain dimensions.
+    Step 2:
+    :attr:`power_iters` shoule be a positive interger, do following
+    calculations with U and V for :attr:`power_iters` rounds.
 
-        Step 2:
-        While attr:`power_iters` is a positive interger, do following
-        iteration calculations with u and v for attr:`power_iters`
-        round.
-            \mathbf{v} = \mathbf{W}^{T} \mathbf{u}
-            \mathbf{v} = \frac{\mathbf{v}}{\|\mathbf{v}\|_2}
-            \mathbf{u} = \mathbf{W}^{T} \mathbf{v}
-            \mathbf{u} = \frac{\mathbf{u}}{\|\mathbf{u}\|_2}
+    .. math:: 
 
-        Step 3:
-        Calculate \sigma{W} and scale weight values.
-            \sigma{\mathbf{W}} = \mathbf{u}^{T} \mathbf{W} \mathbf{v}
-            \mathbf{W} := \frac{\mathbf{W}}{\sigma{\mathbf{W}}}
+        \mathbf{v} := \\frac{\mathbf{W}^{T} \mathbf{u}}{\|\mathbf{W}^{T} \mathbf{u}\|_2}
+
+        \mathbf{u} := \\frac{\mathbf{W}^{T} \mathbf{v}}{\|\mathbf{W}^{T} \mathbf{v}\|_2}
+
+    Step 3:
+    Calculate :math:`\sigma(\mathbf{W})` and scale weight values.
+
+    .. math::
+
+        \sigma(\mathbf{W}) = \mathbf{u}^{T} \mathbf{W} \mathbf{v}
+
+        \mathbf{W} = \\frac{\mathbf{W}}{\sigma(\mathbf{W})}
                 
 
     Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
 
     Args:
         weight(${weight_type}): ${weight_comment}
-        dim(${dim_type}): ${dim_comment}
-        eps(${eps_type}): ${eps_comment}
+        dim(int): ${dim_comment}
+        power_iters(int): ${power_iters_comment}
+        eps(float): ${eps_comment}
         name (str): The name of this layer. It is optional.
 
     Returns:
