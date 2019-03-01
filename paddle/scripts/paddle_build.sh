@@ -757,6 +757,7 @@ EOF
 }
 
 function travis_check_api() {
+    ls ${TRAVIS_BUILD_DIR}/build/third_party
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     cmake .. \
