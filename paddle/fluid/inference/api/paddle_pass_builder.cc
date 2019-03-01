@@ -81,6 +81,8 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add2_act_fuse_pass",  //
         "conv_elementwise_add_fuse_pass",       //
 #endif
+        "bidirec_gru_fuse_pass",      //
+        "bidirec_mul_gru_fuse_pass",  //
   });
 
   for (int i = 6; i >= 3; i--) {
