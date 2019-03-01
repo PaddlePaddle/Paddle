@@ -218,9 +218,6 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
 
-  /*! \brief  Wait for copying completion in the stream. */
-  void WaitCopy() const;
-
   /*! \brief  Return place in the device context. */
   Place GetPlace() const override;
 
@@ -268,9 +265,6 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
-  /*! \brief  Return cuda copy stream in the device context. */
-  cudaStream_t copy_stream() const;
-
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
     callback();
@@ -291,7 +285,6 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
   std::unique_ptr<CudnnHolder> cudnn_holder_;
   cudaStream_t stream_;
-  cudaStream_t copy_stream_;
 
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;

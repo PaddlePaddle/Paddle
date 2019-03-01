@@ -134,59 +134,40 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     }
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
-  } else {
-#ifdef PADDLE_WITH_CUDA
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    const platform::CUDADeviceContext* dev_ctx = nullptr;
-    if (platform::is_gpu_place(src_place) &&  // NOLINT
-        platform::is_cpu_place(dst_place)) {
-      platform::RecordEvent record_event("TensorCopy:GPU->CPU");
-      dev_ctx = reinterpret_cast<const platform::CUDADeviceContext*>(
-          pool.Get(src_place));
-      auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
-      auto dst_cpu_place = boost::get<platform::CPUPlace>(dst_place);
-      memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size,
-                   dev_ctx->copy_stream());
-    } else if (platform::is_cpu_place(src_place) &&
-               platform::is_gpu_place(dst_place)) {
-      platform::RecordEvent record_event("TensorCopy:CPU->GPU");
-      dev_ctx = reinterpret_cast<const platform::CUDADeviceContext*>(
-          pool.Get(dst_place));
-      auto src_cpu_place = boost::get<platform::CPUPlace>(src_place);
-      auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
-      memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size,
-                   dev_ctx->copy_stream());
-    } else if (platform::is_gpu_place(src_place) &&
-               platform::is_gpu_place(dst_place)) {
-      platform::RecordEvent record_event("TensorCopy:GPU->GPU");
-      if (src_ptr == dst_ptr && platform::is_same_place(src_place, dst_place)) {
-        VLOG(3) << "Skip copy the same data from " << src_place << " to "
-                << dst_place;
-        return;
-      }
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
-      dev_ctx = reinterpret_cast<const platform::CUDADeviceContext*>(
-          pool.Get(dst_place));
-      auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
-      auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
-      memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
-                   dev_ctx->copy_stream());
-    } else if (platform::is_cuda_pinned_place(src_place) &&
-               platform::is_gpu_place(dst_place)) {
-      platform::RecordEvent record_event("TensorCopy:CUDAPinned->GPU");
-      dev_ctx = reinterpret_cast<const platform::CUDADeviceContext*>(
-          pool.Get(dst_place));
-      auto src_pinned_place = boost::get<platform::CUDAPinnedPlace>(src_place);
-      auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
-      memory::Copy(dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size,
-                   dev_ctx->copy_stream());
-    }
-    dev_ctx->WaitCopy();
-#else
-    PADDLE_THROW("Paddle is not compiled with GPU");
-#endif
   }
+#ifdef PADDLE_WITH_CUDA
+  else if (platform::is_gpu_place(src_place) &&  // NOLINT
+           platform::is_cpu_place(dst_place)) {
+    platform::RecordEvent record_event("TensorCopy:GPU->CPU");
+    auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
+    auto dst_cpu_place = boost::get<platform::CPUPlace>(dst_place);
+    memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
+  } else if (platform::is_cpu_place(src_place) &&
+             platform::is_gpu_place(dst_place)) {
+    platform::RecordEvent record_event("TensorCopy:CPU->GPU");
+    auto src_cpu_place = boost::get<platform::CPUPlace>(src_place);
+    auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
+    memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, nullptr);
+  } else if (platform::is_gpu_place(src_place) &&
+             platform::is_gpu_place(dst_place)) {
+    platform::RecordEvent record_event("TensorCopy:GPU->GPU");
+    if (src_ptr == dst_ptr && platform::is_same_place(src_place, dst_place)) {
+      VLOG(3) << "Skip copy the same data from " << src_place << " to "
+              << dst_place;
+      return;
+    }
+    auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
+    auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
+    memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
+  } else if (platform::is_cuda_pinned_place(src_place) &&
+             platform::is_gpu_place(dst_place)) {
+    platform::RecordEvent record_event("TensorCopy:CUDAPinned->GPU");
+    auto src_pinned_place = boost::get<platform::CUDAPinnedPlace>(src_place);
+    auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
+    memory::Copy(dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size,
+                 nullptr);
+  }
+#endif
 }
 
 template <typename Predicate, typename DevCtx>
