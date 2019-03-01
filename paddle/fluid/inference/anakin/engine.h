@@ -67,6 +67,8 @@ class AnakinEngine {
   void Optimize();
   void Execute(const std::map<std::string, framework::LoDTensor *> &inputs,
                const std::map<std::string, framework::LoDTensor *> &outputs);
+  const NetT &net() const { return *net_; }
+  const Graph &graph() const { return *graph_; }
 
  private:
   using NetT = ::anakin::Net<TargetT, PrecisionType, RunType>;
