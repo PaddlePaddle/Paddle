@@ -89,6 +89,7 @@ class AnakinOpConverter {
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
+<<<<<<< HEAD
 
 #define REGISTER_ANAKIN_OP_CONVERTER(op_type__, Converter__)               \
   struct anakin_##op_type__##_converter                                    \
