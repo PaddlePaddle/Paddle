@@ -20,6 +20,7 @@ namespace paddle {
 namespace operators {
 namespace reader {
 BufferedReader::~BufferedReader() {
+  VLOG(1) << "~BufferedReader";
   reader_->Shutdown();
   while (!position_.empty()) {
     position_.front().wait();
@@ -41,6 +42,7 @@ BufferedReader::BufferedReader(
       thread_pool_(1),
       place_(place),
       buffer_size_(buffer_size) {
+  VLOG(1) << "BufferedReader";
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(place_)) {
     platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
@@ -121,6 +123,7 @@ void BufferedReader::ReadAsync(size_t i) {
 }
 
 void BufferedReader::ShutdownImpl() {
+  VLOG(1) << "ShutdownImpl";
   reader_->Shutdown();
   while (!position_.empty()) {
     position_.pop();

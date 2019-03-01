@@ -379,9 +379,11 @@ ParallelExecutor::ParallelExecutor(
   }
 
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
-  member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
-      exec_strategy, member_->local_scopes_, std::move(var_infos),
-      member_->places_, std::move(member_->executor_)));
+  if (!build_strategy.async_mode_) {
+    member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
+        exec_strategy, member_->local_scopes_, std::move(var_infos),
+        member_->places_, std::move(member_->executor_)));
+  }
 }
 
 void ParallelExecutor::BCastParamsToDevices(
