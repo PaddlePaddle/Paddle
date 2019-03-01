@@ -882,7 +882,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const RuntimeContext& ctx_;
 };
 
-static void CheckTensorNANOrInf(const std::string& name,
+static void CheckTensorNANOrInf(const std::string& op_type,
+                                const std::string& name,
                                 const framework::Tensor& tensor) {
   if (tensor.memory_size() == 0) {
     return;
@@ -892,9 +893,9 @@ static void CheckTensorNANOrInf(const std::string& name,
     return;
   }
   PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
-                 "Tensor %s contains Inf", name);
+                 "Operator %s output Tensor %s contains Inf", op_type, name);
   PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
-                 "Tensor %s contains NAN", name);
+                 "Operator %s output Tensor %s contains NAN", op_type, name);
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
@@ -988,9 +989,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       auto* var = exec_scope.FindVar(vname);
       if (var == nullptr) continue;
       if (var->IsType<framework::LoDTensor>()) {
-        CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
+        CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
       } else if (var->IsType<framework::SelectedRows>()) {
-        CheckTensorNANOrInf(vname, var->Get<framework::SelectedRows>().value());
+        CheckTensorNANOrInf(type_, vname,
+                            var->Get<framework::SelectedRows>().value());
       }
     }
   }
