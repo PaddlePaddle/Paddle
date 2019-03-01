@@ -20,6 +20,16 @@ namespace paddle {
 namespace operators {
 
 template <typename Functor, typename T, typename OutType = T>
+static __global__ void EleWiseKernel(Functor func, const T *x, const T *y,
+                                     OutType *z, int n) {
+  int begin = blockIdx.x * blockDim.x + threadIdx.x;
+  int step = gridDim.x * blockDim.x;
+  for (int i = begin; i < n; i += step) {
+    z[i] = static_cast<OutType>(func(x[i], y[i]));
+  }
+}
+
+template <typename Functor, typename T, typename OutType = T>
 static __global__ void RowWiseKernel(Functor func, const T *x, const T *y,
                                      OutType *z, int prev, int n) {
   int n_step = blockDim.x * gridDim.x;
@@ -77,6 +87,16 @@ class TransformFunctor<Functor, T, platform::CUDADeviceContext, OutType> {
   inline void Run() const {
     platform::Transform<platform::CUDADeviceContext> trans;
     trans(ctx_, x_, x_ + nx_, y_, z_, func_);
+    // const int kThreadsPerBlock = ELEMWISE_MAX_BLOCK_DIM;
+    // const int kMaximumBlocks = 65535;
+
+    // int block_dim_x = kThreadsPerBlock;
+    // int grid_dim_x = (nx_ / block_dim_x) > kMaximumBlocks ? kMaximumBlocks :
+    // n / block_dim_x;
+
+    // EleWiseKernel<Functor, T, OutType><<<grid_dim_x, block_dim_x, 0,
+    // ctx_.stream()>>>(
+    //     func_, x_, y_, z_, nx_);
   }
 
   inline void RunRowWise(int n, int prev) const {
