@@ -71,3 +71,5 @@ void FcOpConverter::operator()(const framework::proto::OpDesc &op,
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
+
+REGISTER_ANAKIN_OP_CONVERTER(fc, FcOpConverter);
