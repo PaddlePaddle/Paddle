@@ -22,7 +22,6 @@
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/inference/anakin/convert/registrar.h"
 #include "paddle/fluid/inference/anakin/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "saber/saber_types.h"
