@@ -476,18 +476,17 @@ void BenchCRFDecodingKernel() {
 
 template <jit::KernelType KT, typename T, typename PlaceType>
 void BenchVBroadcastKernel() {
-  for (int w : TestSizes()) {
+  for (int64_t w : {1, 16, 64, 100, 256}) {
     Tensor x;
     x.Resize({w});
     RandomVec<T>(w, x.mutable_data<T>(PlaceType()));
     const T* x_data = x.data<T>();
-    for (int64_t h : {1, 3, 6}) {
+    for (int h : TestSizes()) {
       Tensor y;
       y.Resize({h * w});
       T* y_data = y.mutable_data<T>(PlaceType());
-
       BenchAllImpls<KT, jit::VBroadcastTuples<T>, PlaceType>(
-          static_cast<int64_t>(w), x_data, y_data, h, static_cast<int64_t>(w));
+          w, x_data, y_data, static_cast<int64_t>(h), w);
     }
   }
 }
