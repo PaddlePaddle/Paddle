@@ -31,9 +31,9 @@ void Conv2dOpConverter::operator()(const framework::proto::OpDesc &op,
                                    const framework::Scope &scope,
                                    bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
-  PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1);
-  PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(), 1);
-  PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(), 1);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(), 1UL);
 
   auto input_name = op_desc.Input("Input").front();
   auto output_name = op_desc.Output("Output").front();
