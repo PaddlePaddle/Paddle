@@ -46,19 +46,18 @@ class AnakinOpConverter {
                  bool test_mode = false) {
     framework::OpDesc op_desc(op, nullptr);
     std::string op_type = op_desc.Type();
-    std::shared_ptr<AnakinOpConverter> it{nullptr};
+    AnakinOpConverter *it = nullptr;
 
     if (op_type == "mul") {
       PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL);
       std::string Y = op_desc.Input("Y")[0];
-      std::cout << Y << parameters.count(Y) << std::endl;
       if (parameters.count(Y)) {
-        it = OpRegister::instance()->Get("fc");
+        it = Registry<AnakinOpConverter>::Global().Lookup("fc");
       }
     }
 
     if (!it) {
-      it = OpRegister::instance()->Get(op_type);
+      it = Registry<AnakinOpConverter>::Global().Lookup(op_type);
     }
     PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]", op_type);
     it->SetEngine(engine);
@@ -91,22 +90,23 @@ class AnakinOpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-#define REGISTER_ANAKIN_OP_CONVERTER(op_type__, Converter__)                \
-  struct anakin_##op_type__##_converter                                     \
-      : public ::paddle::framework::Registrar {                             \
-    anakin_##op_type__##_converter() {                                      \
-      ::paddle::inference::                                                 \
-          Registry<paddle::inference::anakin::AnakinOpConverter>::Register< \
-              ::paddle::inference::anakin::Converter__>(#op_type__);        \
-    }                                                                       \
-  };                                                                        \
-  anakin_##op_type__##_converter anakin_##op_type__##_converter__;          \
-  int TouchConverterRegister_anakin_##op_type__() {                         \
-    anakin_##op_type__##_converter__.Touch();                               \
-    return 0;                                                               \
+#define REGISTER_ANAKIN_OP_CONVERTER(op_type__, Converter__)               \
+  struct anakin_##op_type__##_converter                                    \
+      : public ::paddle::framework::Registrar {                            \
+    anakin_##op_type__##_converter() {                                     \
+      LOG(INFO) << "register convert " << #op_type__;                      \
+      ::paddle::inference::Registry<                                       \
+          ::paddle::inference::anakin::AnakinOpConverter>::Global()        \
+          .Register<::paddle::inference::anakin::Converter__>(#op_type__); \
+    }                                                                      \
+  };                                                                       \
+  anakin_##op_type__##_converter anakin_##op_type__##_converter__;         \
+  int TouchConverterRegister_anakin_##op_type__() {                        \
+    anakin_##op_type__##_converter__.Touch();                              \
+    return 0;                                                              \
   }
 
-#define USE_ANAKIN_CONVERTER(op_type__)                                    \
-  extern int TouchConverterRegister_anakin_##op_type__();                  \
-  static int use_op_converter_anakin_##op_type__ __attribute__((unused)) = \
+#define USE_ANAKIN_CONVERTER(op_type__)                             \
+  extern int TouchConverterRegister_anakin_##op_type__();           \
+  int use_op_converter_anakin_##op_type__ __attribute__((unused)) = \
       TouchConverterRegister_anakin_##op_type__();

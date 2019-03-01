@@ -136,9 +136,9 @@ class OpConverter {
 #define REGISTER_TRT_OP_CONVERTER(op_type__, Converter__)                      \
   struct trt_##op_type__##_converter : public ::paddle::framework::Registrar { \
     trt_##op_type__##_converter() {                                            \
-      ::paddle::inference::                                                    \
-          Registry<paddle::inference::tensorrt::OpConverter>::Register<        \
-              ::paddle::inference::tensorrt::Converter__>(#op_type__);         \
+      ::paddle::inference::Registry<                                           \
+          paddle::inference::tensorrt::OpConverter>::Global()                  \
+          .Register<::paddle::inference::tensorrt::Converter__>(#op_type__);   \
     }                                                                          \
   };                                                                           \
   trt_##op_type__##_converter trt_##op_type__##_converter__;                   \
