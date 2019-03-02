@@ -104,7 +104,8 @@ class KLDivLossGradKernel : public framework::OpKernel<T> {
 
     auto loss_grad_expand = loss_grad_t.broadcast(Array1(expand));
     auto grad_t = target_t * loss_grad_expand;
-    input_grad_t.device(place) = target_t.binaryExpr(grad_t, KLDivLossBackward<T>());
+    input_grad_t.device(place) =
+        target_t.binaryExpr(grad_t, KLDivLossBackward<T>());
 
     if ("mean" == reduction) {
       input_grad_t.device(place) = input_grad_t / static_cast<T>(numel);
