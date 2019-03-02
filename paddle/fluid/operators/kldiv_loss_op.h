@@ -30,10 +30,23 @@ struct KLDivLossForward {
   HOSTDEVICE KLDivLossForward() {}
 
   HOSTDEVICE T operator()(const T& target, const T& input) const {
-    if (target < 0) {
+    if (target <= 0) {
       return 0;
     } else {
       return target * (std::log(target) - input);
+    }
+  }
+};
+
+template <typename T>
+struct KLDivLossBackward {
+  HOSTDEVICE KLDivLossBackward() {}
+
+  HOSTDEVICE T operator()(const T& target, const T& grad) const {
+    if (target <= 0) {
+      return 0;
+    } else {
+      return static_cast<T>(-1.) * grad;
     }
   }
 };
@@ -88,11 +101,10 @@ class KLDivLossGradKernel : public framework::OpKernel<T> {
 
     auto input_grad_t = EigenVector<T>::Flatten(*input_grad);
     auto loss_grad_t = EigenVector<T>::Flatten(*loss_grad);
-    auto target_mask = (target_t > target_t.constant(0)).template cast<T>();
 
     auto loss_grad_expand = loss_grad_t.broadcast(Array1(expand));
-    input_grad_t.device(place) =
-        target_t * target_t.constant(-1.0) * loss_grad_expand * target_mask;
+    auto grad_t = target_t * loss_grad_expand;
+    input_grad_t.device(place) = target_t.binaryExpr(grad_t, KLDivLossBackward<T>());
 
     if ("mean" == reduction) {
       input_grad_t.device(place) = input_grad_t / static_cast<T>(numel);
