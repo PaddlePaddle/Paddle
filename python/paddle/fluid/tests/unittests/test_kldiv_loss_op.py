@@ -47,36 +47,37 @@ class TestKLDivLossOp(OpTest):
             'Target': target,
         }
         loss = kldiv_loss(x, target, self.reduction)
-        self.outputs = {'Loss': loss}
+        self.outputs = {'Loss': loss.astype('float32')}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Loss', no_grad_set=set(["Target"]), max_relative_error=0.1)
+            ['X'], 'Loss', no_grad_set=set(["Target"]), max_relative_error=0.06)
 
+    def initTestCase(self):
+        self.x_shape = (3, 7, 7)
+        self.reduction = 'none'
+
+
+class TestKLDivLossOp2(TestKLDivLossOp):
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 5)
         self.reduction = 'batchmean'
 
 
-# class TestKLDivLossOp2(TestKLDivLossOp):
-#     def initTestCase(self):
-#         self.x_shape = (3, 7, 7)
-#         self.reduction = 'batchmean'
-#
-#
-# class TestKLDivLossOp3(TestKLDivLossOp):
-#     def initTestCase(self):
-#         self.x_shape = (2, 3, 5, 7, 9)
-#         self.reduction = 'mean'
-#
-#
-# class TestKLDivLossOp4(TestKLDivLossOp):
-#     def initTestCase(self):
-#         self.x_shape = (5, 7)
-#         self.reduction = 'sum'
+class TestKLDivLossOp3(TestKLDivLossOp):
+    def initTestCase(self):
+        self.x_shape = (2, 3, 5, 7, 9)
+        self.reduction = 'mean'
+
+
+class TestKLDivLossOp4(TestKLDivLossOp):
+    def initTestCase(self):
+        self.x_shape = (5, 7)
+        self.reduction = 'sum'
+
 
 if __name__ == "__main__":
     unittest.main()
