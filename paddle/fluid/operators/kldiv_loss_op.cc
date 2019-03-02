@@ -10,6 +10,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/kldiv_loss_op.h"
+#include <memory>
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
 
