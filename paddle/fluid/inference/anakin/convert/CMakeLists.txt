@@ -8,6 +8,5 @@ cc_test(test_anakin_concat SRCS test_concat_op.cc DEPS anakin_op_converter conca
 cc_test(test_anakin_split SRCS test_split_op.cc DEPS anakin_op_converter split_op concat_and_split)
 cc_test(test_anakin_elementwise SRCS test_elementwise_op.cc DEPS
 anakin_op_converter elementwise_add_op)
-
 cc_test(test_anakin_relu SRCS test_relu_op.cc DEPS activation_op anakin_op_converter SERIAL)
-cc_test(test_anakin_softmax SRCS test_softmax_op.cc DEPS softmax_op)
+cc_test(test_anakin_softmax SRCS test_softmax_op.cc DEPS anakin_op_converter softmax_op softmax)

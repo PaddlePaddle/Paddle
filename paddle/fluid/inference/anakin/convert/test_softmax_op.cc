@@ -14,21 +14,22 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
-#include "paddle/fluid/inference/anakin/convert/softmax.h"
 #include "paddle/fluid/inference/anakin/convert/ut_helper.h"
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-TEST_F(softmax_op, test) {
+
+TEST(softmax, test) {
+  auto* converter = Registry<AnakinOpConverter>::Global().Lookup("softmax");
+  ASSERT_TRUE(converter);
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  TRTConvertValidation validator(8, parameters, scope, 1000);
+  AnakinConvertValidation validator(parameters, scope);
 
   std::vector<int> tensor_shape{8, 10};
-  validator.DeclInputVar("softmax-X", tensor_shape,
-          {1, 10, 1, 1});
+  validator.DeclInputVar("softmax-X", {1, 10, 1, 1});
   validator.DeclOutputVar("softmax-Out", {1, 10, 1, 1});
 
   framework::OpDesc desc;

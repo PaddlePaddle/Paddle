@@ -20,14 +20,14 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class SoftmaxOpConverter : public AnakinOpConverter {
+class SoftMaxOpConverter : public AnakinOpConverter {
  public:
-  SoftmaxOpConverter() = default;
+  SoftMaxOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
                           const framework::Scope &scope,
                           bool test_mode) override;
-  virtual ~SoftmaxOpConverter() {}
+  virtual ~SoftMaxOpConverter() {}
 };
 
 }  // namespace anakin
