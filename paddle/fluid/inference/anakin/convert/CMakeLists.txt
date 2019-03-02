@@ -1,5 +1,5 @@
 cc_library(anakin_op_converter SRCS fc.cc conv2d.cc conv2d_fusion.cc
-elementwise.cc activation.cc pool2d.cc concat.cc split.cc relu.cc DEPS anakin_engine framework_proto scope op_registry)
+elementwise.cc activation.cc pool2d.cc concat.cc split.cc relu.cc softmax.cc DEPS anakin_engine framework_proto scope op_registry)
 cc_test(test_anakin_fc SRCS test_fc_op.cc DEPS anakin_op_converter mul_op)
 cc_test(test_anakin_conv2d SRCS test_conv2d_op.cc DEPS anakin_op_converter conv_op im2col vol2col depthwise_conv SERIAL)
 cc_test(test_anakin_activation SRCS test_activation_op.cc DEPS activation_op anakin_op_converter SERIAL)
@@ -10,3 +10,4 @@ cc_test(test_anakin_elementwise SRCS test_elementwise_op.cc DEPS
 anakin_op_converter elementwise_add_op)
 
 cc_test(test_anakin_relu SRCS test_relu_op.cc DEPS activation_op anakin_op_converter SERIAL)
+cc_test(test_anakin_softmax SRCS test_softmax_op.cc DEPS softmax_op)
