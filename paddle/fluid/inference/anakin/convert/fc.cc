@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/anakin/convert/fc.h"
 #include <algorithm>
+#include <vector>
 
 using anakin::graph::GraphGlobalMem;
 using anakin::AK_FLOAT;
@@ -46,6 +47,8 @@ void FcOpConverter::operator()(const framework::proto::OpDesc &op,
   engine_->AddOpAttr(op_name, "axis", 1);
   int out_dim = weight_shape[1];
   engine_->AddOpAttr(op_name, "out_dim", out_dim);
+  const int w_m = weight_shape[0];
+  const int w_k = weight_shape[1];
 
   weight_shape.push_back(1);
   weight_shape.push_back(1);
@@ -54,11 +57,19 @@ void FcOpConverter::operator()(const framework::proto::OpDesc &op,
   framework::LoDTensor weight_tensor;
   weight_tensor.Resize(y_t->dims());
   TensorCopySync((*y_t), platform::CPUPlace(), &weight_tensor);
+  auto *weight_data = weight_tensor.data<float>();
+  PADDLE_ENFORCE(w_m * w_k == weight_tensor.numel());
 
+  std::vector<float> trans_weight_data(weight_tensor.numel());
+  for (int i = 0; i < w_m; i++) {
+    for (int j = 0; j < w_k; j++) {
+      trans_weight_data[i + j * w_m] = weight_data[i * w_k + j];
+    }
+  }
   auto *weight1 =
       GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(anakin_shape);
   float *cpu_data = static_cast<float *>(weight1->h_tensor().mutable_data());
-  std::copy_n(weight_tensor.data<float>(), weight_tensor.numel(), cpu_data);
+  std::copy_n(trans_weight_data.data(), weight_tensor.numel(), cpu_data);
   weight1->d_tensor().set_shape(anakin_shape);
   weight1->d_tensor().copy_from(weight1->h_tensor());
   engine_->AddOpAttr(op_name, "weight_1", *weight1);

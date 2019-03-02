@@ -90,7 +90,7 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::Freeze() {
-  PADDLE_ENFORCE(graph_->Freeze(), "Freeze anakin subgraph.");
+  PADDLE_ENFORCE(graph_->Freeze_v2(), "Freeze anakin subgraph.");
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
