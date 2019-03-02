@@ -18,6 +18,7 @@
 #include <limits>
 #include <map>
 #include <random>
+#include <unordered_set>
 #include <utility>
 
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -139,6 +140,8 @@ class Autograd {
           }
         }
       }
+
+      ready_op->InvokeBackwardHooks();
     }
   }
 
@@ -156,8 +159,10 @@ class Autograd {
       for (auto it : candidate->pre_ops_) {
         for (OpBase* pre_op : it.second) {
           if (!pre_op) continue;
-          VLOG(5) << "op dep " << candidate->op_desc_->Type() << " <---- "
-                  << it.first << " <---- " << pre_op->op_desc_->Type();
+          VLOG(5) << "op dep " << candidate->op_desc_->Type() << " trace id "
+                  << candidate->trace_id_ << " <---- " << it.first << " <---- "
+                  << pre_op->op_desc_->Type() << " trace id "
+                  << pre_op->trace_id_;
           if (visited.find(pre_op) == visited.end()) {
             visited.insert(pre_op);
             queue.push_back(pre_op);
@@ -211,6 +216,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
     return {};
   }
 
+  VLOG(3) << "apply op grad: " << op_desc_->Type();
   std::vector<framework::VariableValueMap> grad_outputs;
   if (backward_id_ > 0) {
     VLOG(3) << "py_layer_grad";
@@ -249,7 +255,8 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
       framework::Scope scope;
       PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place_);
       p.op.RuntimeInferShape(scope, place_, ctx);
-      p.func(framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx));
+      p.func(
+          framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx, nullptr));
     }
   }
 
@@ -269,6 +276,22 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
   }
 
   return input_vars_;
+}
+
+void OpBase::InvokeBackwardHooks() {
+  VLOG(3) << "call backward hooks, hooks num: " << backward_hooks_.size();
+
+  // call backward hooks
+  for (py::object& callable : backward_hooks_) {
+    callable(this);
+  }
+}
+
+void OpBase::RegisterBackwardHooks(const py::object& callable) {
+  VLOG(3) << "Register backward hooks " << trace_id_;
+
+  // TODO(minqiyang): check the callable format
+  backward_hooks_.push_back(callable);
 }
 
 void VarBase::RunBackward() {

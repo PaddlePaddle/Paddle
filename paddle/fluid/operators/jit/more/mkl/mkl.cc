@@ -175,6 +175,26 @@ bool SeqPoolKernel<double>::UseMe(const seq_pool_attr_t& attr) const {
 }
 
 template <>
+bool EmbSeqPoolKernel<float>::UseMe(const emb_seq_pool_attr_t& attr) const {
+  return true;
+}
+
+template <>
+bool EmbSeqPoolKernel<double>::UseMe(const emb_seq_pool_attr_t& attr) const {
+  return true;
+}
+
+template <>
+bool SgdKernel<float>::UseMe(const sgd_attr_t& attr) const {
+  return true;
+}
+
+template <>
+bool SgdKernel<double>::UseMe(const sgd_attr_t& attr) const {
+  return true;
+}
+
+template <>
 bool MatMulKernel<float>::UseMe(const matmul_attr_t& attr) const {
   return platform::MayIUse(platform::avx);
 }
@@ -227,6 +247,8 @@ REGISTER_MKL_KERNEL(kVSquare, VSquare);
 REGISTER_MKL_KERNEL(kVSigmoid, VSigmoid);
 REGISTER_MKL_KERNEL(kVTanh, VTanh);
 REGISTER_MKL_KERNEL(kSeqPool, SeqPool);
+REGISTER_MKL_KERNEL(kEmbSeqPool, EmbSeqPool);
 REGISTER_MKL_KERNEL(kSoftmax, Softmax);
+REGISTER_MKL_KERNEL(kSgd, Sgd);
 
 #undef REGISTER_MKL_KERNEL

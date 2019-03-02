@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #pragma once
+#include <cstdint>
 #include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -20,34 +21,36 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
-// TODO(TJ): reorder by alphabet
 typedef enum {
   kNone = 0,
-  kVMul = 1,
-  kVAdd = 2,
-  kVAddRelu,
-  kVSub,
-  kVScal,
-  kVAddBias,
-  kVRelu,
-  kVIdentity,
-  kVSquare,
-  kVExp,
-  kVSigmoid,
-  kVTanh,
-  kLSTMCtHt,
-  kLSTMC1H1,
+  // sort by alphabet
+  kCRFDecoding = 1,
+  kEmbSeqPool = 2,
   kGRUH1,
   kGRUHtPart1,
   kGRUHtPart2,
-  kCRFDecoding,
-  kLayerNorm,
-  kNCHW16CMulNC,
-  kSeqPool,
-  kMatMul,
   kHSum,  // horizontal max
   kHMax,  // horizontal sum
+  kLSTMCtHt,
+  kLSTMC1H1,
+  kLayerNorm,
+  kMatMul,
+  kNCHW16CMulNC,
+  kSeqPool,
   kSoftmax,
+  kVAdd,
+  kVAddBias,
+  kVAddRelu,
+  kVExp,
+  kVIdentity,
+  kVMul,
+  kVRelu,
+  kVScal,
+  kSgd,
+  kVSigmoid,
+  kVSquare,
+  kVSub,
+  kVTanh,
 } KernelType;
 
 typedef enum {
@@ -143,6 +146,54 @@ struct SeqPoolTuples {
   typedef T data_type;
   typedef seq_pool_attr_t attr_type;
   typedef void (*func_type)(const T*, T*, const seq_pool_attr_t*);
+};
+
+typedef struct emb_seq_pool_attr_s {
+  int64_t table_height, table_width;
+  int64_t index_height, index_width;
+  int64_t out_width;
+  SeqPoolType pool_type;
+  emb_seq_pool_attr_s() = default;
+  explicit emb_seq_pool_attr_s(int64_t tbl_height, int64_t tbl_width,
+                               int64_t idx_height, int64_t idx_width,
+                               int64_t output_width,
+                               SeqPoolType seqpool_type = SeqPoolType::kSum)
+      : table_height(tbl_height),
+        table_width(tbl_width),
+        index_height(idx_height),
+        index_width(idx_width),
+        out_width(output_width),
+        pool_type(seqpool_type) {}
+} emb_seq_pool_attr_t;
+
+template <typename T>
+struct EmbSeqPoolTuples {
+  typedef T data_type;
+  typedef emb_seq_pool_attr_t attr_type;
+  typedef void (*func_type)(const T*, const int64_t*, T*,
+                            const emb_seq_pool_attr_t*);
+};
+
+typedef struct sgd_attr_s {
+  int64_t param_height, param_width;
+  int64_t grad_height, grad_width;
+  int64_t selected_rows_size;
+  sgd_attr_s() = default;
+  explicit sgd_attr_s(int64_t param_h, int64_t param_w, int64_t grad_h,
+                      int64_t grad_w, int64_t selected_rows_sz)
+      : param_height(param_h),
+        param_width(param_w),
+        grad_height(grad_h),
+        grad_width(grad_w),
+        selected_rows_size(selected_rows_sz) {}
+} sgd_attr_t;
+
+template <typename T>
+struct SgdTuples {
+  typedef T data_type;
+  typedef sgd_attr_t attr_type;
+  typedef void (*func_type)(const T*, const T*, const T*, const int64_t*, T*,
+                            const sgd_attr_t*);
 };
 
 typedef struct matmul_attr_s {

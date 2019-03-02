@@ -119,6 +119,18 @@ __device__ __forceinline__ int SelectTopBeam(
       __syncthreads();
     }
 
+    if ((num_used_threads & 0x1) != 0) {
+      // If num_used_threads is a odd number, merge local top_beam of thread 0
+      // and num_used_threads - 1
+      if (tid_of_seq == 0) {
+        int index_in_sh = (num_used_threads - 1 + tid) * beam_size;
+        for (int i = 0; i < beam_size; i++) {
+          Insert(top_beam_local, top_beam[index_in_sh], beam_size);
+          index_in_sh++;
+        }
+      }
+    }
+
     num_used_threads = num_used_threads >> 1;
     if (tid_of_seq < num_used_threads) {
       int index_in_sh = (num_used_threads + tid) * beam_size;
