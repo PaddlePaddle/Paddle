@@ -88,6 +88,24 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
          This operator calculates the Kullback-Leibler divergence loss
          between Input(X) and Input(Target).
+
+         KL divergence loss calculates as follows:
+
+         $$l(x, y) = y * (\log y - x)$$
+
+         While :attr:`reduction` is :attr:`none`, output loss is in
+         same shape with Input(X), loss in each point is calculated 
+         seperately and no reduction applied.
+         
+         While :attr:`reduction` is :attr:`mean`, output loss in in
+         shape of [1] and loss value is the mean value of all losses.
+         
+         While :attr:`reduction` is :attr:`sum`, output loss in in
+         shape of [1] and loss value is the sum value of all losses.
+         
+         While :attr:`reduction` is :attr:`batchmean`, output loss in 
+         in shape of [1] and loss value is the sum value of all losses
+         divided by batch size.
          
          )DOC");
   }
