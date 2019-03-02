@@ -1035,6 +1035,17 @@ class TestBook(unittest.TestCase):
 
         print(str(program))
 
+    def test_kldiv_loss(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[32, 128, 128], dtype="float32")
+            target = layers.data(
+                name='target', shape=[32, 128, 128], dtype="float32")
+            loss = layers.kldiv_loss(x, target, reduction='batchmean')
+            self.assertIsNotNone(loss)
+
+        print(str(program))
+
     def test_shuffle_channel(self):
         program = Program()
         with program_guard(program):
