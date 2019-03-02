@@ -6,8 +6,7 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
+# Unless required by applicable law or agreed to in writing, software # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
@@ -21,7 +20,7 @@ from op_test import OpTest
 
 def kldiv_loss(x, target, reduction):
     output = target * (np.log(target) - x)
-    loss = np.where(target > 0, output, np.zeros_like(x))
+    loss = np.where(target >= 0, output, np.zeros_like(x))
 
     if reduction == "batchmean":
         return loss.sum() / x.shape[0]
@@ -57,14 +56,14 @@ class TestKLDivLossOp(OpTest):
             ['X'], 'Loss', no_grad_set=set(["Target"]), max_relative_error=0.06)
 
     def initTestCase(self):
-        self.x_shape = (3, 7, 7)
-        self.reduction = 'none'
+        self.x_shape = (2, 5, 5)
+        self.reduction = 'batchmean'
 
 
 class TestKLDivLossOp2(TestKLDivLossOp):
     def initTestCase(self):
-        self.x_shape = (2, 3, 5, 5)
-        self.reduction = 'batchmean'
+        self.x_shape = (3, 2, 7, 7)
+        self.reduction = 'none'
 
 
 class TestKLDivLossOp3(TestKLDivLossOp):
