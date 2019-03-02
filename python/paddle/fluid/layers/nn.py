@@ -3352,14 +3352,14 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     """
     **Spectral Normalization Layer**
 
-    This layer calculate the spectral normalize value of weight parameters of
+    This layer calculates the spectral normalization value of weight parameters of
     fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
-    Parameters. Calculations are showed as followings.
+    Parameters. Calculations are showed as follows.
 
     Step 1:
     Generate vector U in shape of [H], and V in shape of [W].
     While H is the :attr:`dim` th dimension of the input weights,
-    and W is the product result of remain dimensions.
+    and W is the product result of remaining dimensions.
 
     Step 2:
     :attr:`power_iters` shoule be a positive interger, do following
@@ -3372,7 +3372,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
         \mathbf{u} := \\frac{\mathbf{W}^{T} \mathbf{v}}{\|\mathbf{W}^{T} \mathbf{v}\|_2}
 
     Step 3:
-    Calculate :math:`\sigma(\mathbf{W})` and scale weight values.
+    Calculate :math:`\sigma(\mathbf{W})` and normalize weight values.
 
     .. math::
 
@@ -3391,7 +3391,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Variable: A tensor variable of weight after spetral normalization.
+        Variable: A tensor variable of weight parameters after spectral normalization.
 
     Examples:
 

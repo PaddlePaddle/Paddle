@@ -101,9 +101,10 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
               "This tensor is in same shape with Input(Weight).");
 
     AddAttr<int>("dim",
-                 "dimension corresponding to number of outputs, "
-                 "it should be set as 0 if Input(Weight) is the "
-                 "weight of fc layer, and should be set as 1 if "
+                 "The index of dimention which should be permute "
+                 "to the first before reshape Input(Weight) to "
+                 "matrix, it should be set as 0 if Input(Weight) is "
+                 "the weight of fc layer, and should be set as 1 if "
                  "Input(Weight) is the weight of conv layer, "
                  "default 0.")
         .SetDefault(0);
@@ -112,12 +113,12 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
                  "spectral norm, default 1.")
         .SetDefault(1);
     AddAttr<float>("eps",
-                   "epsilob for numerical stability in "
+                   "epsilon for numerical stability in "
                    "calculating norms")
         .SetDefault(1e-12);
 
     AddComment(R"DOC(
-          This layer calculates the spectral normalize value of weight of
+          This layer calculates the spectral normalization value of weight of
           fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
           tensor.
 
