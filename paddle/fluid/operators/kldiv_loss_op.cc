@@ -81,7 +81,7 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
         "The reduction type to apply to the output, available types "
         "are 'none' | 'batchmean' | 'mean' | 'sum', 'none' for no "
         "reduction, 'batchmean' for the sum of output divided by "
-        "batch size, 'mean' for the average valud of all output, "
+        "batchmean size, 'mean' for the average valud of all output, "
         "'sum' for the sum of the output.")
         .SetDefault("mean");
 
