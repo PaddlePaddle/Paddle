@@ -1,5 +1,5 @@
 # PaddlePaddle
-# test trigger
+# test release trigger
 
 English | [简体中文](./README_cn.md)
 
