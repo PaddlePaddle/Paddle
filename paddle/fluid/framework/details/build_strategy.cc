@@ -58,11 +58,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("sequential_execution_pass");
     }
 
-    if (strategy_.fuse_parameters_pass_) {
-      VLOG(10) << "Add fuse_parameters_pass";
-      AppendPass("fuse_parameters_pass");
-    }
-
     // Add op fusion.
     if (strategy_.fuse_relu_depthwise_conv_) {
       VLOG(10) << "Add fuse_relu_depthwise_conv_pass";
@@ -234,8 +229,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 #endif
     } else if (pass->Type() == "alloc_continuous_space_for_grad_pass" ||
                pass->Type() == "fuse_adam_op_pass" ||
-               pass->Type() == "fuse_sgd_op_pass" ||
-               pass->Type() == "fuse_parameters_pass") {
+               pass->Type() == "fuse_sgd_op_pass") {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
       pass->Erase(kLocalScopes);
@@ -284,4 +278,3 @@ USE_PASS(alloc_continuous_space_for_grad_pass);
 USE_PASS(graph_to_program_pass);
 USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
-USE_PASS(fuse_parameters_pass);

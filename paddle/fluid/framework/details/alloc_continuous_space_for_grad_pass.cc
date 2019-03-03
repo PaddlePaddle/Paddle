@@ -39,7 +39,6 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
 
     auto &places = Get<const std::vector<platform::Place>>(kPlaces);
     auto &local_scopes = Get<const std::vector<Scope *>>(kLocalScopes);
-
     ResetAttribute<ParamsAndGrads>(kParamsAndGrads, &result);
 
     // NOTE: The operator nodes should be in topology order.
@@ -63,10 +62,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       }
     }
 
-    // Note: Sort the parameters and gradient variables according
-    // to parameters' info to make the order of variables consistently with
-    // other passes.
-    SortParamsAndGrads(vars, &params_grads);
+    // Note: Maybe the order of the parameters and gradient should be changed.
 
     // Set Gradients as Persistable to prevent this var becoming reusable.
     auto dtype = kDefaultDtype;
@@ -92,6 +88,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     if (!result.Has(kFusedVars)) {
       result.Set(kFusedVars, new FusedVars);
     }
+    // the kFusedGrads is used be fuse_optimizer_op_pass.
     if (!result.Has(kFusedGrads)) {
       result.Set(kFusedGrads, new FusedGrads);
     }
@@ -100,7 +97,8 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     auto fused_var_name = prefix + "@GRAD@" + params_grads.begin()->second;
     result.Get<FusedGrads>(kFusedGrads) = fused_var_name;
     auto &fused_var_set = result.Get<FusedVars>(kFusedVars);
-    PADDLE_ENFORCE_EQ(fused_var_set.count(fused_var_name), 0);
+    PADDLE_ENFORCE_EQ(fused_var_set.count(fused_var_name), 0,
+                      "%s is duplicate in FusedVars.", fused_var_name);
     fused_var_set.insert(fused_var_name);
 
     InitFusedVarsAndAllocSpaceForVars(places, local_scopes, vars,
@@ -116,17 +114,6 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       graph->Erase(attr_name);
     }
     graph->Set(attr_name, new AttrType);
-  }
-
-  void SortParamsAndGrads(
-      const std::unordered_map<std::string, ir::Node *> &var_nodes,
-      ParamsAndGrads *params_grads) const {
-    // TODO(zcd): The sort should be removed.
-    //    std::sort(params_grads->begin(), params_grads->end(),
-    //              [](const std::pair<std::string, std::string> &a,
-    //                 const std::pair<std::string, std::string> &b) -> bool {
-    //                return a.first < b.first;
-    //              });
   }
 
  private:

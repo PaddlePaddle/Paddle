@@ -1203,13 +1203,6 @@ All parameter, weight, gradient are variables in Paddle.
                       self.fuse_all_optimizer_ops_ = b;
                     })
       .def_property(
-          "fuse_parameters_pass",
-          [](const BuildStrategy &self) { return self.fuse_parameters_pass_; },
-          [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
-            self.fuse_parameters_pass_ = b;
-          })
-      .def_property(
           "memory_optimize",
           [](const BuildStrategy &self) { return self.memory_optimize_; },
           [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; })
