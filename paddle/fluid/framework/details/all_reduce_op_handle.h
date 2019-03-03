@@ -50,6 +50,7 @@ struct AllReduceOpHandle : public OpHandleBase {
  private:
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
+  bool is_encoded_{false};
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   void _RunImplEncoded();
   const platform::NCCLContextMap *nccl_ctxs_;
@@ -57,7 +58,6 @@ struct AllReduceOpHandle : public OpHandleBase {
   int GetKValue(const std::string &grad_name);
 #endif
   void _RunImpl();
-  bool is_encoded_{false};
   bool IsEncoded();
 };
 
