@@ -42,7 +42,7 @@ void FusionSquaredMatSubOp::InferShape(
   auto y_dims = ctx->GetInputDim("Y");
   PADDLE_ENFORCE_EQ(x_dims.size(), y_dims.size(),
                     "Input tensors dims size should be equal.");
-  PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, "Input tensors should be a Matrix.");
+  PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input tensors should be a Matrix.");
   PADDLE_ENFORCE_EQ(x_dims[1], y_dims[0], "Inputs Matrix should be multiply.");
 
   ctx->SetOutputDim("SquaredX", x_dims);

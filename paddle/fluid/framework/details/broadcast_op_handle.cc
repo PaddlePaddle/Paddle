@@ -22,7 +22,7 @@ namespace framework {
 namespace details {
 
 void BroadcastOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name(), dev_ctxes_.begin()->second);
+  platform::RecordEvent record_event(Name());
 
   if (places_.size() == 1) return;
 
@@ -30,7 +30,7 @@ void BroadcastOpHandle::RunImpl() {
   VarHandle *in_var_handle;
   {
     auto in_var_handles = DynamicCast<VarHandle>(inputs_);
-    PADDLE_ENFORCE_EQ(in_var_handles.size(), 1,
+    PADDLE_ENFORCE_EQ(in_var_handles.size(), 1UL,
                       "The number of input should be one.");
     in_var_handle = in_var_handles[0];
   }

@@ -46,10 +46,10 @@ class SoftmaxWithCrossEntropyOpMaker
         .SetDefault(false);
     AddAttr<bool>(
         "numeric_stable_mode",
-        "(bool, default: false), A flag to indicate whether to use more "
+        "(bool, default: true), A flag to indicate whether to use more "
         "numerically stable algorithm. This flag is only valid when "
         "soft_label is false and GPU is used.")
-        .SetDefault(false);
+        .SetDefault(true);
     AddAttr<int>(
         "ignore_index",
         "(int, default -100), Specifies a target value that is ignored and"
