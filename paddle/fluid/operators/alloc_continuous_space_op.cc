@@ -77,10 +77,10 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
     int64_t offset = 0;
     if (context.Attr<bool>("copy_data")) {
       for (size_t i = 0; i < in_var_names.size(); ++i) {
-        int64_t len = out_tensors[i]->numel();
+        int64_t len = in_tensors[i]->numel();
         auto sub_tensor = fused_tensor->Slice(offset, offset + len);
         offset += len;
-        framework::TensorCopy(*out_tensors[i], context.GetPlace(), dev_ctx,
+        framework::TensorCopy(*in_tensors[i], context.GetPlace(), dev_ctx,
                               &sub_tensor);
       }
     } else if (context.Attr<bool>("set_constant")) {
