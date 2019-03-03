@@ -182,7 +182,6 @@ void AllReduceOpHandle::_RunImplEncoded() {
     }
   }
 }
-#endif
 
 int AllReduceOpHandle::GetKValue(const std::string &grad_name) {
   auto original_name = paddle::framework::GradOriginalVarName(grad_name);
@@ -196,6 +195,7 @@ int AllReduceOpHandle::GetKValue(const std::string &grad_name) {
   auto tensor = var->Get<LoDTensor>().data<float>();
   return *tensor;
 }
+#endif
 
 bool AllReduceOpHandle::IsEncoded() {
   if (!is_encoded_) {

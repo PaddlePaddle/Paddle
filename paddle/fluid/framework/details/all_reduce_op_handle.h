@@ -52,14 +52,13 @@ struct AllReduceOpHandle : public OpHandleBase {
   std::vector<platform::Place> places_;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   void _RunImplEncoded();
-  void _RunImpl();
-
   const platform::NCCLContextMap *nccl_ctxs_;
-  bool is_encoded_{false};
   int ranks_{-1};
-  bool IsEncoded();
   int GetKValue(const std::string &grad_name);
 #endif
+  void _RunImpl();
+  bool is_encoded_{false};
+  bool IsEncoded();
 };
 
 }  // namespace details

@@ -37,13 +37,13 @@ limitations under the License. */
     }                                                                   \
   } while (0)
 
-#define PADDLE_ASSERT_MSG_CODE(e, m, c)                                    \
-  do {                                                                     \
-    if (!(e)) {                                                            \
+#define PADDLE_ASSERT_MSG_CODE(e, m, c)                                     \
+  do {                                                                      \
+    if (!(e)) {                                                             \
       printf("%s:%d Assertion `%s` failed (%s %ld).\n", __FILE__, __LINE__, \
-             TOSTRING(e), m, c);                                           \
-      asm("trap;");                                                        \
-    }                                                                      \
+             TOSTRING(e), m, c);                                            \
+      asm("trap;");                                                         \
+    }                                                                       \
   } while (0)
 #else
 #include <assert.h>

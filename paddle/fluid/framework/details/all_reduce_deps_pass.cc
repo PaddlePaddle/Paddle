@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
