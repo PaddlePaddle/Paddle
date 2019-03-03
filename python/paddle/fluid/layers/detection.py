@@ -2223,15 +2223,12 @@ def multiclass_nms(bboxes,
 
     return output
 
+
 @templatedoc()
-def box_decoder_and_assign(prior_box,
-              prior_box_var,
-              target_box,
-              box_score,
-              box_clip):
+def box_decoder_and_assign(prior_box, prior_box_var, target_box, box_score,
+                           box_clip):
     """
     ${comment}
-
     Args:
         prior_box(${prior_box_type}): ${prior_box_comment}
         prior_box_var(${prior_box_var_type}): ${prior_box_var_comment}
@@ -2259,5 +2256,6 @@ def box_decoder_and_assign(prior_box,
         attrs={"box_clip": box_clip},
         outputs={
             "OutputBox": output_box,
-            "OutputAssignBox": output_assign_box})
+            "OutputAssignBox": output_assign_box
+        })
     return output_box, output_assign_box
