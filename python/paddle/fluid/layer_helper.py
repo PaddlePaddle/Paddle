@@ -120,7 +120,7 @@ class LayerHelper(LayerHelperBase):
         dimensions and added to input_var to get the output
         """
         size = list(input_var.shape[dim_start:dim_end])
-        bias_attr = self._param_attr
+        bias_attr = self.param_attr
         if not bias_attr:
             return input_var
 
