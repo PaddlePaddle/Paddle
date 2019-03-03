@@ -488,7 +488,7 @@ class UniformPruneStrategy(PruneStrategy):
                                                    metric_name, pruned_params)
 
     def _get_best_ratios(self, context):
-        logger.info('#################_get_best_ratios################')
+        logger.info('_get_best_ratios')
         pruned_params = []
         for param in context.eval_graph.all_parameters():
             if re.match(self.pruned_params, param.name):
@@ -502,7 +502,7 @@ class UniformPruneStrategy(PruneStrategy):
 
         while min_ratio < max_ratio:
             ratio = (max_ratio + min_ratio) / 2
-            logger.info(
+            logger.debug(
                 '-----------Try pruning ratio: {:.2f}-----------'.format(ratio))
             ratios = [ratio] * len(pruned_params)
             self._prune_parameters(
@@ -516,8 +516,8 @@ class UniformPruneStrategy(PruneStrategy):
             pruned_flops = 1 - (float(context.eval_graph.flops()) / flops)
             pruned_size = 1 - (float(context.eval_graph.numel_params()) /
                                model_size)
-            logger.info('Pruned flops: {:.2f}'.format(pruned_flops))
-            logger.info('Pruned model size: {:.2f}'.format(pruned_size))
+            logger.debug('Pruned flops: {:.2f}'.format(pruned_flops))
+            logger.debug('Pruned model size: {:.2f}'.format(pruned_size))
             for param in self.param_shape_backup.keys():
                 context.eval_graph.get_var(param).desc.set_shape(
                     self.param_shape_backup[param])
@@ -587,7 +587,7 @@ class SensitivePruneStrategy(PruneStrategy):
         self.param_shape_backup = {}
         self.num_steps = num_steps
         self.eval_rate = eval_rate
-        self.pruning_step = 1 - pow(target_ratio, 1.0 / self.num_steps)
+        self.pruning_step = 1 - pow((1 - target_ratio), 1.0 / self.num_steps)
 
     def _save_sensitivities(self, sensitivities, sensitivities_file):
         with open(sensitivities_file, 'wb') as f:
@@ -698,7 +698,7 @@ class SensitivePruneStrategy(PruneStrategy):
         return sensitivities
 
     def _get_best_ratios(self, context, sensitivities, target_ratio):
-        logger.info('#################_get_best_ratios################')
+        logger.info('_get_best_ratios')
         self.param_shape_backup = {}
         self.backup = {}
 
@@ -775,13 +775,12 @@ class SensitivePruneStrategy(PruneStrategy):
         '''
         Get the target pruning rate in current epoch.
         '''
-        logger.info('Get current pruning target; target_ratio: {}'.format(
-            self.target_ratio))
-        if (self.target_ratio - 0) <= 1e-4:
+        logger.info('Left number of pruning steps: {}'.format(self.num_steps))
+        if self.num_steps <= 0:
             return None
         if (self.start_epoch == context.epoch_id) or context.eval_converged(
                 self.metric_name, 0.001):
-            self.target_ratio -= self.pruning_step
+            self.num_steps -= 1
             return self.pruning_step
 
     def on_epoch_begin(self, context):
@@ -803,9 +802,7 @@ class SensitivePruneStrategy(PruneStrategy):
             logger.debug('#          pruning eval graph    #')
             logger.debug('################################\n')
             self._prune_graph(context.eval_graph, context.optimize_graph)
-            logger.info("self._update_depthwise_conv(context.optimize_graph)")
             self._update_depthwise_conv(context.optimize_graph)
-            logger.info("self._update_depthwise_conv(context.eval_graph)")
             self._update_depthwise_conv(context.eval_graph)
 
             logger.info(

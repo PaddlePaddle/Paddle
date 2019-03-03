@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from ....core import CPUPlace
+from .... import compiler
 from .... import io
 from .... import profiler
 from ....data_feeder import DataFeeder
@@ -48,7 +49,7 @@ def FeedReader(reader, feed_list, place, program=None):
 def cached_reader(reader, sampled_rate, cache_path, cached_id):
     np.random.seed(cached_id)
     cache_path = cache_path + "/" + str(cached_id)
-    logger.info('read data from: {}'.format(cache_path))
+    logger.debug('read data from: {}'.format(cache_path))
 
     def s_reader():
         if os.path.isdir(cache_path):
@@ -140,12 +141,11 @@ class Context(object):
         return abs(results[1] - results[0]) / results[0] < delta
 
     def run_eval_graph(self, sampled_rate=None, cached_id=0):
-        logger.info(
-            '--------------------------Running evaluation----------------------')
+        logger.info('Running evaluation')
         assert self.eval_graph is not None
         assert self.eval_reader is not None
         eval_graph = self.eval_graph.clone(for_test=True)
-        executor = get_executor(eval_graph, self.place, parallel=True)
+        executor = get_executor(eval_graph, self.place)
         results = []
         batch_id = 0
         s_time = time.time()
@@ -166,8 +166,7 @@ class Context(object):
         ), result))
         if not isinstance(result, Iterable):
             result = [result]
-        logger.info(
-            '--------------------------Finish evaluation----------------------')
+        logger.info('Finish evaluation')
         return result, eval_graph.out_nodes.keys()
 
     def put(self, key, value):
@@ -250,17 +249,18 @@ class CompressPass(object):
             self.checkpoint_path = factory.compress_pass['checkpoint_path']
 
     def _load_checkpoint(self, context):
-        logger.info('_load_checkpoint')
+        logger.debug('_load_checkpoint')
         strategies = self.strategies
         if self.checkpoint_path:
             checkpoints = [
                 dir for dir in os.listdir(self.checkpoint_path)
                 if os.path.isdir(os.path.join(self.checkpoint_path, dir))
             ]
-            logger.info('self.checkpoint_path: {}'.format(self.checkpoint_path))
+            logger.debug('self.checkpoint_path: {}'.format(
+                self.checkpoint_path))
             logger.info('checkpoints: {}'.format(checkpoints))
             if len(checkpoints) > 0:
-                latest = max(checkpoints)
+                latest = max([int(ck) for ck in checkpoints])
                 latest_ck_path = os.path.join(self.checkpoint_path, str(latest))
 
                 model_path = os.path.join(latest_ck_path, 'model')
@@ -270,13 +270,11 @@ class CompressPass(object):
                 context.epoch_id += 1
                 with open(strategy_path, 'rb') as strategy_file:
                     strategies = pickle.load(strategy_file)
-                exe = get_executor(
-                    context.optimize_graph, context.place, parallel=False)
+                exe = get_executor(context.optimize_graph, context.place)
                 load_persistables(context.optimize_graph, model_path, exe)
                 update_param_shape(context.eval_graph)
                 update_depthwise_conv(context.eval_graph)
-                logger.info("Loaded checkpoint from: {}".format(
-                    self.checkpoint_path))
+                logger.info("Loaded checkpoint from: {}".format(latest_ck_path))
         return context, strategies
 
     def _save_checkpoint(self, context):
@@ -288,8 +286,7 @@ class CompressPass(object):
             strategy_path = os.path.join(checkpoint_path, 'strategies')
             if not os.path.isdir(model_path):
                 os.makedirs(model_path)
-            exe = get_executor(
-                context.optimize_graph, context.place, parallel=False)
+            exe = get_executor(context.optimize_graph, context.place)
             save_persistables(context.optimize_graph, model_path, exe)
             context.to_file(context_path)
             with open(strategy_path, 'wb') as strategy_file:
@@ -301,17 +298,22 @@ class CompressPass(object):
             context.optimize_graph.scope.find_var('learning_rate').get_tensor(
             ))[0]
         logger.info(
-            '-----------------------Trainng one epoch; current lr: {}-----------------------'.
-            format(current_lr))
+            '-----------------------Training epoch-{}; current lr: {:.5f}-----------------------'.
+            format(context.epoch_id, current_lr))
 
-        executor = get_executor(
-            context.optimize_graph, self.place, parallel=True)
+        executor = get_executor(context.optimize_graph, self.place)
 
         feed_reader = FeedReader(
             context.train_reader,
             context.optimize_graph.in_nodes.values(),
             self.place,
             program=context.optimize_graph.program)
+
+        if context.optimize_graph.compiled_graph is None:
+            context.optimize_graph.compiled_graph = compiler.CompiledProgram(
+                context.optimize_graph.program).with_data_parallel(
+                    loss_name=context.optimize_graph.out_nodes['loss'])
+
         for feed in feed_reader():
             #        for data in context.train_reader():
             for strategy in self.strategies:
@@ -327,9 +329,6 @@ class CompressPass(object):
                 strategy.on_batch_end(context)
             context.batch_id += 1
         context.batch_id = 0
-        logger.info(
-            '-----------------------Finish training one epoch-----------------------'
-        )
 
     def _eval(self, context):
         results, names = context.run_eval_graph()
@@ -355,7 +354,7 @@ class CompressPass(object):
 
         if not context.optimize_graph:
             if context.train_optimizer:
-                #                context.train_optimizer._name = 'train_opt'
+                context.train_optimizer._name = 'train_opt'
                 context.optimize_graph = context.train_graph.get_optimize_graph(
                     context.train_optimizer, context.place)
             else:

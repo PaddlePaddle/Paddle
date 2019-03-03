@@ -23,6 +23,7 @@ __all__ = [
     'SensitivePruneStrategy',
     'MagnitudePruner',
     'RatioPruner',
-    'FSPDistillationStrategy',
+    'DistillationStrategy',
     'FSPDistiller',
+    'L2Distiller',
 ]

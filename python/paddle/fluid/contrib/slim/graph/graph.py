@@ -25,6 +25,7 @@ from collections import Iterable
 from ....io import save_inference_model, load_inference_model, save_persistables
 import numpy as np
 import pickle
+import os
 
 __all__ = [
     'Graph',
@@ -393,7 +394,10 @@ def save_persistables(graph, path, exe):
 
 
 def load_persistables(graph, path, exe):
-    io.load_persistables(exe.exe, path, main_program=graph.program)
+    def if_exist(var):
+        return os.path.exists(os.path.join(path, var.name))
+
+    io.load_vars(exe.exe, path, main_program=graph.program, predicate=if_exist)
     update_param_shape(graph)
     update_depthwise_conv(graph)
 

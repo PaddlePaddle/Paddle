@@ -41,6 +41,8 @@ class QuantizationStrategy(Strategy):
                  float_model_save_path=None,
                  mobile_model_save_path=None,
                  int8_model_save_path=None,
+                 activation_bits=8,
+                 weight_bits=8,
                  activation_quantize_type='abs_max'):
         super(QuantizationStrategy, self).__init__(start_epoch, end_epoch)
         self.start_epoch = start_epoch
@@ -48,8 +50,9 @@ class QuantizationStrategy(Strategy):
         self.float_model_save_path = float_model_save_path
         self.mobile_model_save_path = mobile_model_save_path
         self.int8_model_save_path = int8_model_save_path
+        self.activation_bits = activation_bits
+        self.weight_bits = weight_bits
         self.activation_quantize_type = activation_quantize_type
-        self.test_graph = None
 
     def on_epoch_begin(self, context):
         super(QuantizationStrategy, self).on_compression_begin(context)
@@ -57,21 +60,23 @@ class QuantizationStrategy(Strategy):
             logger.info('QuantizationStrategy::on_epoch_begin')
             train_graph = IrGraph(
                 core.Graph(context.optimize_graph.program.desc), for_test=False)
-            self.test_graph = IrGraph(
+            test_graph = IrGraph(
                 core.Graph(context.eval_graph.program.desc), for_test=True)
             # insert fake_quantize_op and fake_dequantize_op before trainging and testing
             transform_pass = QuantizationTransformPass(
                 scope=context.optimize_graph.scope,
                 place=context.place,
+                weight_bits=self.weight_bits,
+                activation_bits=self.activation_bits,
                 activation_quantize_type=self.activation_quantize_type)
             transform_pass.apply(train_graph)
-            transform_pass.apply(self.test_graph)
+            transform_pass.apply(test_graph)
             binary = CompiledProgram(train_graph.graph).with_data_parallel(
-                loss_name=context.optimize_graph.out_nodes['cost'])
+                loss_name=context.optimize_graph.out_nodes['loss'])
 
             context.optimize_graph.compiled_program = binary
-            context.eval_graph.program = self.test_graph.to_program()
-
+            context.eval_graph.program = test_graph.to_program()
+            context.put('quantization_test_graph_backup', test_graph)
             logger.info('Finish QuantizationStrategy::on_epoch_begin')
 
     def on_epoch_end(self, context):
@@ -79,14 +84,18 @@ class QuantizationStrategy(Strategy):
 
         if context.epoch_id == self.end_epoch:
             logger.info('QuantizationStrategy::on_epoch_end')
+            test_graph = context.get('quantization_test_graph_backup')
             scope = context.eval_graph.scope
             # freeze the graph after training
             freeze_pass = QuantizationFreezePass(
-                scope=scope, place=context.place)
+                scope=scope,
+                place=context.place,
+                weight_bits=self.weight_bits,
+                activation_bits=self.activation_bits)
             logger.info('create QuantizationFreezePass')
-            freeze_pass.apply(self.test_graph)
+            freeze_pass.apply(test_graph)
             logger.info('apply QuantizationFreezePass')
-            context.eval_graph.program = self.test_graph.to_program()
+            context.eval_graph.program = test_graph.to_program()
             logger.info('test_graph to_program')
 
             if self.float_model_save_path:
@@ -98,7 +107,7 @@ class QuantizationStrategy(Strategy):
                         for var_name in context.eval_graph.out_nodes.values()
                     ],
                     executor,
-                    main_program=self.test_graph.to_program(),
+                    main_program=test_graph.to_program(),
                     model_filename='model',
                     params_filename='weights',
                     export_for_deployment=False)
@@ -107,7 +116,7 @@ class QuantizationStrategy(Strategy):
                 # convert the weights as int8_t type
                 convert_int8_pass = ConvertToInt8Pass(
                     scope=scope, place=context.place)
-                convert_int8_pass.apply(self.test_graph)
+                convert_int8_pass.apply(test_graph)
                 executor = Executor(context.place)
                 io.save_inference_model(
                     self.int8_model_save_path,
@@ -116,7 +125,7 @@ class QuantizationStrategy(Strategy):
                         for var_name in context.eval_graph.out_nodes.values()
                     ],
                     executor,
-                    main_program=self.test_graph.to_program(),
+                    main_program=test_graph.to_program(),
                     model_filename='model',
                     params_filename='weights',
                     export_for_deployment=False)
@@ -126,10 +135,10 @@ class QuantizationStrategy(Strategy):
                     # convert the weights as int8_t type
                     convert_int8_pass = ConvertToInt8Pass(
                         scope=scope, place=context.place)
-                    convert_int8_pass.apply(self.test_graph)
+                    convert_int8_pass.apply(test_graph)
                 # make some changes on the graph for the mobile inference
                 mobile_pass = TransformForMobilePass()
-                mobile_pass.apply(self.test_graph)
+                mobile_pass.apply(test_graph)
                 executor = Executor(context.place)
                 io.save_inference_model(
                     self.mobile_model_save_path,
@@ -138,7 +147,7 @@ class QuantizationStrategy(Strategy):
                         for var_name in context.eval_graph.out_nodes.values()
                     ],
                     executor,
-                    main_program=self.test_graph.to_program(),
+                    main_program=test_graph.to_program(),
                     model_filename='model',
                     params_filename='weights',
                     export_for_deployment=False)
