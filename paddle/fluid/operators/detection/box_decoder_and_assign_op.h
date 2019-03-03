@@ -41,6 +41,7 @@ class BoxDecoderAndAssignKernel : public framework::OpKernel<T> {
     T* output_box_data = output_box->data<T>();
     T* output_assign_box_data = output_assign_box->data<T>();
     const float bbox_clip = static_cast<float>(context.Attr<float>("box_clip"));
+
     std::vector<float> tmp_score(class_num);
 
     for (int i = 0; i < roi_num; ++i) {
