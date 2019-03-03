@@ -59,6 +59,12 @@ class ConfigFactory(object):
                     value = None
                 if isinstance(value, str) and value in self.instances:
                     value = self.instances[value]
+                if isinstance(value, list):
+                    for i in range(len(value)):
+                        if isinstance(value[i],
+                                      str) and value[i] in self.instances:
+                            value[i] = self.instances[value[i]]
+
                 args[key] = value
             self.instances[name] = class_(**args)
         return self.instances.get(name)

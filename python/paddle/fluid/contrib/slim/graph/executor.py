@@ -51,7 +51,7 @@ class ImitationGraphExecutor(GraphExecutor):
 
     def run(self, graph, data=None, feed=None, fetches=None):
         assert isinstance(graph, ImitationGraph)
-        if data:
+        if data is not None:
             feeder = DataFeeder(
                 feed_list=graph.in_nodes.values(),
                 place=self.place,
@@ -81,12 +81,31 @@ class ImitationGraphExecutor(GraphExecutor):
         return results
 
 
-def get_executor(graph, place, parallel=True):
+class CompiledGraphExecutor(GraphExecutor):
+    def __init__(self, place):
+        super(CompiledGraphExecutor, self).__init__(place)
+        self.exe = executor.Executor(place)
+
+    def run(self, graph, data=None, feed=None, fetches=None):
+        assert isinstance(graph, ImitationGraph)
+        if data is not None:
+            feeder = DataFeeder(
+                feed_list=graph.in_nodes.values(),
+                place=self.place,
+                program=graph.program)
+            feed = feeder.feed(data)
+
+        fetch_list = fetches if fetches else graph.out_nodes.values()
+        program = graph.compiled_graph if graph.compiled_graph else graph.program
+        results = self.exe.run(program,
+                               scope=graph.scope,
+                               fetch_list=fetch_list,
+                               feed=feed)
+        return results
+
+
+def get_executor(graph, place):
     if isinstance(graph, ImitationGraph):
-        for_compiled_program = False
-        if graph.compiled_graph:
-            for_compiled_program = True
-        return ImitationGraphExecutor(
-            place, parallel=parallel, for_compiled_program=for_compiled_program)
+        return CompiledGraphExecutor(place)
     if isinstance(graph, IRGraph):
         return IRGraphExecutor(place, parallel=parallel)
