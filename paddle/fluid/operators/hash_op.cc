@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/hash_op.h"
 #include <string>
-#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -27,6 +26,9 @@ class HashOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
+    if (ctx->IsRuntime()) {
+      return;
+    }
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of HashOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
@@ -36,15 +38,8 @@ class HashOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(dims.size(), 2UL,
                       "The input of hash_op's dimensions must be 2");
     std::vector<int64_t> out_dims;
-    out_dims.reserve(dims.size() + 1);
-    // copy all dims except the last one
-    for (int i = 0u; i != dims.size() - 1; ++i) {
-      out_dims.emplace_back(dims[i]);
-    }
     int num_hash = ctx->Attrs().Get<int>("num_hash");
-    out_dims.emplace_back(num_hash);
-    // keep the last dim to 1
-    out_dims.emplace_back(1);
+    HashOutputSize(dims, out_dims, num_hash);
 
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -71,4 +66,4 @@ $$Out = scale * X$$
 namespace ops = paddle::operators;
 
 REGISTER_OP_WITHOUT_GRADIENT(hash, ops::HashOp, ops::HashOpMaker);
-REGISTER_OP_CPU_KERNEL(hash, ops::HashKerel<int>, ops::HashKerel<int64_t>);
+REGISTER_OP_CPU_KERNEL(hash, ops::HashKernel<int>, ops::HashKernel<int64_t>);

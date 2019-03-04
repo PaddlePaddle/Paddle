@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import contextlib
 import unittest
 import numpy as np
@@ -141,8 +143,6 @@ class TestImperativeMnist(unittest.TestCase):
                     avg_loss._backward()
                     sgd.minimize(avg_loss)
                     mnist.clear_gradients()
-
-                    fluid.default_main_program().global_block()._clear_block()
 
                     dy_param_value = {}
                     for param in mnist.parameters():

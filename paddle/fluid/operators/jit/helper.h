@@ -181,6 +181,14 @@ inline std::ostream& operator<<(std::ostream& os,
   return os;
 }
 
+inline std::ostream& operator<<(std::ostream& os, const sgd_attr_t& attr) {
+  os << "param_height[" << attr.param_height << "],param_width["
+     << attr.param_width << "],grad_height[" << attr.grad_height
+     << "],grad_width[" << attr.grad_width << "],selected_rows_size["
+     << attr.selected_rows_size << "]";
+  return os;
+}
+
 inline std::ostream& operator<<(std::ostream& os, const matmul_attr_t& attr) {
   os << "M[" << attr.m << "],N[" << attr.n << "],K[" << attr.k << "]";
   return os;
