@@ -114,7 +114,7 @@ void BufferedReader::ReadAsync(size_t i) {
         } else {
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
                        boost::get<platform::CPUPlace>(cpu_place), cpu_ptr, size,
-                       stream);
+                       0);
         }
         gpu[i].set_lod(cpu[i].lod());
       }
