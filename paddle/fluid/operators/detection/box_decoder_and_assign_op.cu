@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -9,6 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detection/box_decoder_and_assign_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
@@ -19,7 +20,7 @@ template <typename T>
 __global__ void DecodeBoxKernel(const T* prior_box_data,
                                 const T* prior_box_var_data,
                                 const T* target_box_data, const int roi_num,
-                                const int class_num, const float box_clip,
+                                const int class_num, const T box_clip,
                                 T* output_box_data) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < roi_num * class_num) {
@@ -68,10 +69,10 @@ __global__ void AssignBoxKernel(const T* prior_box_data,
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < roi_num) {
     int i = idx;
-    float max_score = -1;
+    T max_score = -1;
     int max_j = -1;
     for (int j = 0; j < class_num; ++j) {
-      float score = box_score_data[i * class_num + j];
+      T score = box_score_data[i * class_num + j];
       if (score > max_score && j > 0) {
         max_score = score;
         max_j = j;
@@ -119,7 +120,7 @@ class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
     int grid = (roi_num * class_num + block - 1) / block;
     auto& device_ctx = context.cuda_device_context();
 
-    const float box_clip = static_cast<float>(context.Attr<float>("box_clip"));
+    const T box_clip = context.Attr<T>("box_clip");
 
     DecodeBoxKernel<T><<<grid, block, 0, device_ctx.stream()>>>(
         prior_box_data, prior_box_var_data, target_box_data, roi_num, class_num,
@@ -138,6 +139,9 @@ class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(box_decoder_and_assign,
-                        ops::BoxDecoderAndAssignCUDAKernel<
-                            paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    box_decoder_and_assign,
+    ops::BoxDecoderAndAssignCUDAKernel<paddle::platform::CUDADeviceContext,
+                                       float>,
+    ops::BoxDecoderAndAssignCUDAKernel<paddle::platform::CUDADeviceContext,
+                                       double>);

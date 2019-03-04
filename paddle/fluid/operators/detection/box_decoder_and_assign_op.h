@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -40,9 +40,7 @@ class BoxDecoderAndAssignKernel : public framework::OpKernel<T> {
     output_assign_box->mutable_data<T>({roi_num, 4}, context.GetPlace());
     T* output_box_data = output_box->data<T>();
     T* output_assign_box_data = output_assign_box->data<T>();
-    const float bbox_clip = static_cast<float>(context.Attr<float>("box_clip"));
-
-    std::vector<float> tmp_score(class_num);
+    const T bbox_clip = context.Attr<T>("box_clip");
 
     for (int i = 0; i < roi_num; ++i) {
       T prior_box_width = prior_box_data[i * 4 + 2] - prior_box_data[i * 4] + 1;
@@ -77,10 +75,10 @@ class BoxDecoderAndAssignKernel : public framework::OpKernel<T> {
             target_box_center_y + target_box_height / 2 - 1;
       }
 
-      float max_score = -1;
+      T max_score = -1;
       int max_j = -1;
       for (int j = 0; j < class_num; ++j) {
-        float score = box_score_data[i * class_num + j];
+        T score = box_score_data[i * class_num + j];
         if (score > max_score && j > 0) {
           max_score = score;
           max_j = j;
