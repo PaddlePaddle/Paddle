@@ -245,10 +245,6 @@ TEST(AnalysisPredictor, memory_optim) {
   inference::CompareResult(output, output1);
 }
 
-TEST(Quantizer, expand_quantized_bins) {
-  FAIL() << "Test not implemented yet.";
-}
-
 class QuantizerTest : public testing::Test {
  public:
   QuantizerTest() {
@@ -452,7 +448,5 @@ TEST_F(QuantizerTest, kl_scaling_factor_unsigned) {
   ASSERT_NEAR(lod_tensor.data<float>()[0],
               static_cast<float>(QuantMax::U8_MAX) / 1098.6328125f, abs_error);
 }
-
-TEST_F(QuantizerTest, safe_entropy) { FAIL() << "test not implemented yet."; }
 
 }  // namespace paddle
