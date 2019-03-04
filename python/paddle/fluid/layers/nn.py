@@ -10570,8 +10570,10 @@ def continuous_value_model(input, cvm, use_cvm=True):
     """
     **continuous_value_model layers**
 
+    continuous value moded(cvm). now, it only consider show and click value in ctr project.
+    This op can be used in ctr project. you can use this op to modify embedding(part) grad by show and click value.
+    
     This layer accepts a tensor named input which is ID after embedded and lod level is 1 ,
-         continuous value moded(cvm). now, it only consider show and click value in ctr project.
          cvm is a show_click info.
 
     Args:

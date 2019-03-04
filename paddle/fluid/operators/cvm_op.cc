@@ -127,7 +127,7 @@ CVM Operator.
           show_clk = fluid.layers.cast(fluid.layers.concat([ones, label], axis=1), dtype='float32')
           show_clk.stop_gradient = True
 
-          input_with_cvm = fluid.layers.cvm(embed, show_clk, True)
+          input_with_cvm = fluid.layers.continuous_value_model(embed, show_clk, True)
 
 )DOC");
   }
