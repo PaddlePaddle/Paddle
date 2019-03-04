@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/fluid/operators/softmax_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -24,22 +25,40 @@ template <typename T>
 class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    auto& dev_ctx = context.template device_context<platform::CUDADeviceContext>();
     auto* X = context.Input<Tensor>("X");
     auto* Out = context.Output<Tensor>("Out");
+    // auto dims = X->dims();
+    const int axis = context.Attr<int>("axis");
+    int rank = X->dims().size();
 
     // allocate memory on device.
     Out->mutable_data<T>(context.GetPlace());
 
-    auto dims = X->dims();
-    auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
-    framework::LoDTensor flattened_x;
-    framework::LoDTensor flattened_out;
-    flattened_x.ShareDataWith(*X).Resize(flattened_dims);
-    flattened_out.ShareDataWith(*Out).Resize(flattened_dims);
+    std::vector<int> perm, shape;
+    CalcTransPermAndShapeByAxis(*X, axis, &perm, &shape);
+
+    Tensor X_2d, Out_2d;
+    Tensor X_trans, Out_trans;
+    if (axis != -1 && axis != rank - 1) {
+      X_trans.mutable_data<T>(framework::make_ddim(shape), context.GetPlace());
+      Out_trans.mutable_data<T>(framework::make_ddim(shape), context.GetPlace());
+      TransCompute<platform::CUDADeviceContext, T>(rank, dev_ctx, *X, &X_trans, perm);
+      TransCompute<platform::CUDADeviceContext, T>(rank, dev_ctx, *Out, &Out_trans, perm);
+      X_2d = framework::ReshapeToMatrix(X_trans, rank - 1);
+      Out_2d = framework::ReshapeToMatrix(Out_trans, rank - 1);
+    } else {
+      X_2d = framework::ReshapeToMatrix(*X, rank - 1);
+      Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
+    }
 
     math::SoftmaxCUDNNFunctor<T>()(
         context.template device_context<platform::CUDADeviceContext>(),
-        &flattened_x, &flattened_out);
+        &X_2d, &Out_2d);
+
+    if (axis != -1 && axis != rank - 1) {
+      TransCompute<platform::CUDADeviceContext, T>(rank, dev_ctx, Out_trans, Out, perm);
+    }
   }
 };
 
@@ -47,25 +66,44 @@ template <typename T>
 class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    auto& dev_ctx = context.template device_context<platform::CUDADeviceContext>();
     auto* Out = context.Input<Tensor>("Out");
     auto* dOut = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
+    const int axis = context.Attr<int>("axis");
+    int rank = Out->dims().size();
 
     // allocate memory on device.
     dX->mutable_data<T>(context.GetPlace());
 
-    auto dims = Out->dims();
-    auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
-    framework::LoDTensor flattened_out;
-    framework::LoDTensor flattened_d_out;
-    framework::LoDTensor flattened_d_x;
-    flattened_out.ShareDataWith(*Out).Resize(flattened_dims);
-    flattened_d_out.ShareDataWith(*dOut).Resize(flattened_dims);
-    flattened_d_x.ShareDataWith(*dX).Resize(flattened_dims);
+    std::vector<int> perm, shape;
+    CalcTransPermAndShapeByAxis(*dX, axis, &perm, &shape);
+
+    Tensor dX_2d, Out_2d, dOut_2d;
+    Tensor dX_trans, Out_trans, dOut_trans;
+    if (axis != -1 && axis != rank - 1) {
+      dX_trans.mutable_data<T>(framework::make_ddim(shape), context.GetPlace());
+      Out_trans.mutable_data<T>(framework::make_ddim(shape), context.GetPlace());
+      dOut_trans.mutable_data<T>(framework::make_ddim(shape), context.GetPlace());
+      TransCompute<platform::CUDADeviceContext, T>(rank, dev_ctx, *dX, &dX_trans, perm);
+      TransCompute<platform::CUDADeviceContext, T>(rank, dev_ctx, *Out, &Out_trans, perm);
+      TransCompute<platform::CUDADeviceContext, T>(rank, dev_ctx, *dOut, &dOut_trans, perm);
+      dX_2d = framework::ReshapeToMatrix(dX_trans, rank - 1);
+      Out_2d = framework::ReshapeToMatrix(Out_trans, rank - 1);
+      dOut_2d = framework::ReshapeToMatrix(dOut_trans, rank - 1);
+    } else {
+      dX_2d = framework::ReshapeToMatrix(*dX, rank - 1);
+      Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
+      dOut_2d = framework::ReshapeToMatrix(*dOut, rank - 1);
+    }
 
     math::SoftmaxGradCUDNNFunctor<T>()(
         context.template device_context<platform::CUDADeviceContext>(),
-        &flattened_out, &flattened_d_out, &flattened_d_x);
+        &Out_2d, &dOut_2d, &dX_2d);
+
+    if (axis != -1 && axis != rank - 1) {
+      TransCompute<platform::CUDADeviceContext, T>(rank, dev_ctx, dX_trans, dX, perm);
+    }
   }
 };
 
