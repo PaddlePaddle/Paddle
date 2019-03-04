@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
-from test_conv2d_int8_mkldnn_op import format_reorder
+from mkldnn_op_test import format_reorder
 
 
 class TestReQuantizeOp(OpTest):
