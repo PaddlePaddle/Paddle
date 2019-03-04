@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/parameter_recv.h"
+#include "paddle/fluid/operators/distributed/rpc_common.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -57,9 +58,11 @@ class RecvOp : public framework::OperatorBase {
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto *dev_ctx = pool.Get(place);
-      auto exe_ctx = framework::ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr);
+      auto exe_ctx =
+          framework::ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr);
       auto recv_functor = distributed::ParameterRecv<float>();
-      recv_functor(outs[0], recv_varnames, epmap, exe_ctx, scope);
+      auto rpc_ctx = distributed::RpcContext(outs[0], recv_varnames, epmap, {});
+      recv_functor(rpc_ctx, exe_ctx, scope);
     } else {
       if (with_barrier) {
         std::vector<distributed::VarHandlePtr> rets;

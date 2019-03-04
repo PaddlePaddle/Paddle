@@ -38,10 +38,7 @@ using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
 template <typename T>
-void ParameterSend<T>::operator()(const std::string &var_name,
-                                  const std::vector<std::string> &send_varnames,
-                                  const std::vector<std::string> &epmap,
-                                  const std::vector<int64_t> &height_sections,
+void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
                                   const framework::ExecutionContext &ctx,
                                   const framework::Scope &scope, bool sync) {
   framework::Scope *local_scope = scope.NewTmpScope();
@@ -53,8 +50,8 @@ void ParameterSend<T>::operator()(const std::string &var_name,
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(
           ctx.Attr<int>("trainer_id"));
 
-  auto *send_var = scope.FindVar(var_name);
-  size_t out_num = send_varnames.size();
+  auto *send_var = scope.FindVar(rpc_ctx.var_name);
+  size_t out_num = rpc_ctx.splited_var_names.size();
   if (send_var->IsType<framework::LoDTensor>()) {
     if (out_num > 1) {
       auto &send_tensor = send_var->Get<framework::LoDTensor>();
@@ -63,19 +60,19 @@ void ParameterSend<T>::operator()(const std::string &var_name,
       outs_dims.reserve(out_num);
 
       // infer output shape
-      PADDLE_ENFORCE_EQ(height_sections.size(), out_num,
+      PADDLE_ENFORCE_EQ(rpc_ctx.height_sections.size(), out_num,
                         "tensor split sections size"
                         "should be equal to output size.");
       for (size_t i = 0; i < out_num; ++i) {
         auto dim = send_tensor_dims;
-        dim[0] = height_sections[i];
+        dim[0] = rpc_ctx.height_sections[i];
         outs_dims.push_back(dim);
       }
 
       // create output var in local scope
       size_t row_offset = 0;
       for (auto i = 0; i < out_num; ++i) {
-        framework::Tensor *out = local_scope->Var(send_varnames[i])
+        framework::Tensor *out = local_scope->Var(rpc_ctx.splited_var_names[i])
                                      ->GetMutable<framework::LoDTensor>();
         *out = send_tensor.Slice(row_offset, row_offset + outs_dims[i][0]);
         row_offset += outs_dims[i][0];
@@ -83,7 +80,7 @@ void ParameterSend<T>::operator()(const std::string &var_name,
     }
   } else if (send_var->IsType<framework::SelectedRows>()) {
     auto &send_slr = send_var->Get<framework::SelectedRows>();
-    auto abs_sections = ToAbsoluteSection(height_sections);
+    auto abs_sections = ToAbsoluteSection(rpc_ctx.height_sections);
 
     auto send_rows = send_slr.rows();
     std::vector<std::vector<int>> outs_rows_idx;
@@ -97,7 +94,7 @@ void ParameterSend<T>::operator()(const std::string &var_name,
 
     // create output var in local scope
     std::vector<framework::SelectedRows *> outs;
-    for (auto &name : send_varnames) {
+    for (auto &name : rpc_ctx.splited_var_names) {
       auto *out = local_scope->Var(name)->GetMutable<framework::SelectedRows>();
       outs.push_back(out);
     }
@@ -112,7 +109,7 @@ void ParameterSend<T>::operator()(const std::string &var_name,
 
     for (size_t i = 0; i < outs_rows_idx.size(); ++i) {
       auto rows_idx = outs_rows_idx[i];
-      outs[i]->set_height(height_sections[i]);
+      outs[i]->set_height(rpc_ctx.height_sections[i]);
       auto dims = send_slr.GetCompleteDims();
       dims[0] = rows_idx.size();
       outs[i]->mutable_value()->mutable_data<T>(dims, send_slr.place());
@@ -149,15 +146,16 @@ void ParameterSend<T>::operator()(const std::string &var_name,
   }
 
   std::vector<distributed::VarHandlePtr> rets;
-  for (size_t i = 0; i < send_varnames.size(); i++) {
-    auto &send_var_name = send_varnames[i];
-    auto &endpoint = epmap[i];
+  for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
+    auto &send_var_name = rpc_ctx.splited_var_names[i];
+    auto &endpoint = rpc_ctx.epmap[i];
     if (NeedSend(*local_scope, send_var_name)) {
       VLOG(3) << "sending " << send_var_name << " to " << endpoint;
       rets.push_back(rpc_client->AsyncSendVar(endpoint, cpu_ctx, *local_scope,
                                               send_var_name));
     } else {
-      VLOG(3) << "don't send non-initialized variable: " << send_varnames[i];
+      VLOG(3) << "don't send non-initialized variable: "
+              << rpc_ctx.splited_var_names[i];
     }
   }
 
