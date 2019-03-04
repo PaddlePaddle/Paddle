@@ -102,7 +102,7 @@ class ParallelExecutor(object):
         self._places = compiler.get_available_places(use_cuda)
         self._scope = scope if scope is not None else executor.global_scope()
 
-        if main._enable_dgc:
+        if main_program is not None and main_program._enable_dgc:
             assert build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce
             assert num_trainers * len(self._places) > 1
             assert use_cuda
