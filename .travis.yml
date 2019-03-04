@@ -11,6 +11,7 @@ services:
 os:
   - linux
 env:
+  - GITHUB_API_TOKEN=$GITHUB_API_TOKEN
   - JOB=check_style
   - JOB=check_approval
 addons:
