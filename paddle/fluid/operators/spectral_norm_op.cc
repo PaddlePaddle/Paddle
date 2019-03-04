@@ -86,7 +86,7 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is the 1st dimentions of Weight after reshape"
              "corresponding by Attr(dim). As for Attr(dim) = 1"
              "in conv2d layer with weight shape [M, C, K1, K2]"
-             "Weight will be reshape to [C, M*K1*Kw], U will"
+             "Weight will be reshape to [C, M*K1*K2], U will"
              "be in shape [C, 1].");
     AddInput("V",
              "The weight_v tensor of spectral_norm operator, "
