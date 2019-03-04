@@ -433,40 +433,17 @@ function assert_api_spec_approvals() {
         BRANCH="develop"
     fi
 
-    API_FILES=("paddle/fluid/API.spec"
-               "python/paddle/fluid/parallel_executor.py"
-               "paddle/fluid/framework/operator.h"
-               "paddle/fluid/framework/tensor.h"
-               "paddle/fluid/framework/lod_tensor.h"
-               "paddle/fluid/framework/selected_rows.h"
-               "paddle/fluid/framework/op_desc.h"
-               "paddle/fluid/framework/block_desc.h"
-               "paddle/fluid/framework/var_desc.h"
-               "paddle/fluid/framework/scope.h"
-               "paddle/fluid/framework/ir/node.h"
-               "paddle/fluid/framework/ir/graph.h"
-               "paddle/fluid/framework/framework.proto"
-               "python/paddle/fluid/compiler.py"
-               "paddle/fluid/operators/distributed/send_recv.proto.in")
+    API_FILES=("paddle/fluid/API.spec")
     for API_FILE in ${API_FILES[*]}; do
       API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" || true`
       echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
       if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
-          if [ "$API_FILE" == "paddle/fluid/API.spec" ];then
-            APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-            python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 2887803 35982308`
-          else
-            APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
-          fi
+          APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+          python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 2887803 35982308`
           echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
           if [ "${APPROVALS}" == "FALSE" ]; then
-            if [ "$API_FILE" == "paddle/fluid/API.spec" ];then
               echo "You must have panyx0718 and shanyi15 approval for the api change! ${API_FILE}"
-            else
-              echo "You must have panyx0718 approval for the api change! ${API_FILE}"
-            fi
             exit 1
           fi
       fi
@@ -753,30 +730,52 @@ EOF
     ./clean.sh
 }
 
-function travis_check_api() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-    cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF
-    build
-    assert_api_not_changed cp27-cp27m
-    assert_api_spec_approvals
-    pip uninstall paddlepaddle
-}
+function assert_panxin_approvals() {
+        if [ -z ${BRANCH} ]; then
+        BRANCH="develop"
+    fi
 
-function travis_check_api_py35() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-    cmake .. \
-        -DPY_VERSION=3.5 \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF
-    build
-    assert_api_not_changed cp35-cp35m
-    assert_api_spec_approvals
+    API_FILES=("python/paddle/fluid/parallel_executor.py"
+               "paddle/fluid/framework/operator.h"
+               "paddle/fluid/framework/tensor.h"
+               "paddle/fluid/framework/lod_tensor.h"
+               "paddle/fluid/framework/selected_rows.h"
+               "paddle/fluid/framework/op_desc.h"
+               "paddle/fluid/framework/block_desc.h"
+               "paddle/fluid/framework/var_desc.h"
+               "paddle/fluid/framework/scope.h"
+               "paddle/fluid/framework/ir/node.h"
+               "paddle/fluid/framework/ir/graph.h"
+               "paddle/fluid/framework/framework.proto"
+               "python/paddle/fluid/compiler.py"
+               "paddle/fluid/operators/distributed/send_recv.proto.in")
+    for API_FILE in ${API_FILES[*]}; do
+      API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" || true`
+      echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
+      if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
+          # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
+          APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+          python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
+          echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+          if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "You must have panyx0718 approval for the api change! ${API_FILE}"
+            exit 1
+          fi
+          echo "no change"
+      fi
+    done
+
+    HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true`
+    if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "You must have panyx0718 approval for the const_cast"
+            exit 1
+        fi
+    fi
+
 }
 
 function main() {
@@ -864,9 +863,8 @@ function main() {
       test_fluid_lib)
         test_fluid_lib
         ;;
-      check_api)
-        travis_check_api 
-        travis_check_api_py35
+      check_approval)
+        assert_panxin_approvals
         ;;
       *)
         print_usage
