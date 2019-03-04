@@ -623,11 +623,8 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
     std::vector<std::string> input{kInputs, kInitialStates};
     std::vector<std::string> output{kOutputs};
     for (auto &s : input) {
-      PADDLE_ENFORCE(ctx->HasInputs(s));
       // NOTE(zcd): In some case, some of kInputs doesn't have gradient.
-      //      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(s)),
-      //                     "Cannot find the gradient variable %s",
-      //                     framework::GradVarName(s));
+      PADDLE_ENFORCE(ctx->HasInputs(s));
     }
     for (auto &s : output) {
       PADDLE_ENFORCE(ctx->HasInputs(s));
