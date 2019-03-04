@@ -6889,7 +6889,6 @@ def image_resize(input,
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
-
           else:
            
               input : (N,C,H_in,W_in)
