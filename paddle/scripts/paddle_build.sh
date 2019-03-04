@@ -730,12 +730,12 @@ EOF
     ./clean.sh
 }
 
-function assert_panxin_approvals() {
-        if [ -z ${BRANCH} ]; then
+function assert_files_approvals() {
+    if [ -z ${BRANCH} ]; then
         BRANCH="develop"
     fi
 
-    API_FILES=("python/paddle/fluid/parallel_executor.py"
+    FILES=("python/paddle/fluid/parallel_executor.py"
                "paddle/fluid/framework/operator.h"
                "paddle/fluid/framework/tensor.h"
                "paddle/fluid/framework/lod_tensor.h"
@@ -749,10 +749,12 @@ function assert_panxin_approvals() {
                "paddle/fluid/framework/framework.proto"
                "python/paddle/fluid/compiler.py"
                "paddle/fluid/operators/distributed/send_recv.proto.in")
-    for API_FILE in ${API_FILES[*]}; do
-      API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" || true`
-      echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
-      if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
+    for FILE in ${FILES[*]}; do
+      branch_ref=`git rev-parse "$TRAVIS_BRANCH"`
+      head_ref=`git rev-parse HEAD`
+      CHANGE=`git diff --name-status $branch_ref $head_ref | awk '$1 != "D" {print $2}'`
+      echo "checking ${FILE} change, PR: ${GIT_PR_ID}, changes: ${CHANGE}"
+      if [ ${CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
           APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
           python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
@@ -864,7 +866,7 @@ function main() {
         test_fluid_lib
         ;;
       check_approval)
-        assert_panxin_approvals
+        assert_files_approvals
         ;;
       *)
         print_usage
