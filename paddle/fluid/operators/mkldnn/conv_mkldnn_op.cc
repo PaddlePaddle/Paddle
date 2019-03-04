@@ -282,8 +282,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     pipeline.push_back(*conv_p);
     stream(stream::kind::eager).submit(pipeline).wait();
 
-    auto dst_mpd = dst_memory_p->get_primitive_desc();
-    output->set_mkldnn_prim_desc(dst_mpd);
+    output->set_mkldnn_prim_desc(dst_memory_p->get_primitive_desc());
   }
   void ComputeINT8(const paddle::framework::ExecutionContext& ctx) const {
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -972,8 +971,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
       pipeline.push_back(*conv_bwd_data_p);
 
-      input_grad->set_layout(DataLayout::kMKLDNN);
-      input_grad->set_format(GetMKLDNNFormat(*diff_src_memory_p));
+      input_grad->set_mkldnn_prim_desc(diff_src_memory_p->get_primitive_desc());
     }
     stream(stream::kind::eager).submit(pipeline).wait();
   }
@@ -991,12 +989,12 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, U8,
-                                    ops::kConvMKLDNNFP32,
+                                    ops::kConvMKLDNNINT8,
                                     ops::ConvMKLDNNOpKernel<uint8_t, float>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, S8,
-                                    ops::kConvMKLDNNFP32,
+                                    ops::kConvMKLDNNINT8,
                                     ops::ConvMKLDNNOpKernel<int8_t, float>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad, MKLDNN,

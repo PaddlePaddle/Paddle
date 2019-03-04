@@ -33,21 +33,64 @@ static bool EndWith(const std::string& str, const std::string& substr) {
   return str.rfind(substr) == (str.length() - substr.length());
 }
 
-static void EraseEndSep(std::string* str) {
-  std::string substr = kSepBetweenItems;
+static void EraseEndSep(std::string* str,
+                        std::string substr = kSepBetweenItems) {
   if (EndWith(*str, substr)) {
     str->erase(str->length() - substr.length(), str->length());
   }
 }
 
-static std::vector<int64_t> ParseDims(std::string dims_str) {
-  std::vector<int64_t> dims;
+void OpInputConfig::ParseDims(std::istream& is) {
+  std::string dims_str;
+  is >> dims_str;
+
+  dims.clear();
   std::string token;
   std::istringstream token_stream(dims_str);
   while (std::getline(token_stream, token, 'x')) {
     dims.push_back(std::stoi(token));
   }
-  return dims;
+}
+
+void OpInputConfig::ParseLoD(std::istream& is) {
+  std::string lod_str;
+  std::string start_sep =
+      std::string(kStartSeparator) + std::string(kStartSeparator);
+  std::string end_sep = std::string(kEndSeparator) + std::string(kEndSeparator);
+
+  std::string sep;
+  is >> sep;
+  if (StartWith(sep, start_sep)) {
+    lod_str += sep;
+    while (!EndWith(sep, end_sep)) {
+      is >> sep;
+      lod_str += sep;
+    }
+  }
+  EraseEndSep(&lod_str);
+  PADDLE_ENFORCE_GE(lod_str.length(), 4U);
+  VLOG(4) << "lod: " << lod_str << ", length: " << lod_str.length();
+
+  // Parse the lod_str
+  lod.clear();
+  for (size_t i = 1; i < lod_str.length() - 1;) {
+    if (lod_str[i] == '{') {
+      std::vector<size_t> level;
+      while (lod_str[i] != '}') {
+        ++i;
+
+        std::string number;
+        while (lod_str[i] >= '0' && lod_str[i] <= '9') {
+          number += lod_str[i];
+          ++i;
+        }
+        level.push_back(atoi(number.c_str()));
+      }
+      lod.push_back(level);
+    } else if (lod_str[i] == '}') {
+      ++i;
+    }
+  }
 }
 
 OpInputConfig::OpInputConfig(std::istream& is) {
@@ -60,9 +103,9 @@ OpInputConfig::OpInputConfig(std::istream& is) {
         is >> name;
         EraseEndSep(&name);
       } else if (sep == "dims" || sep == "dims:") {
-        std::string dims_str;
-        is >> dims_str;
-        dims = ParseDims(dims_str);
+        ParseDims(is);
+      } else if (sep == "lod" || sep == "lod:") {
+        ParseLoD(is);
       }
     }
   }
@@ -76,7 +119,7 @@ OpTesterConfig::OpTesterConfig(const std::string& filename) {
   Init(fin);
 }
 
-void OpTesterConfig::Init(std::istream& is) {
+bool OpTesterConfig::Init(std::istream& is) {
   std::string sep;
   is >> sep;
   if (sep == kStartSeparator) {
@@ -95,9 +138,40 @@ void OpTesterConfig::Init(std::istream& is) {
       } else if (sep == "input" || sep == "input:") {
         OpInputConfig input_config(is);
         inputs.push_back(input_config);
+      } else if (sep == "attrs" || sep == "attrs:") {
+        ParseAttrs(is);
+      } else {
+        if (sep != kEndSeparator) {
+          return false;
+        }
       }
     }
+  } else {
+    return false;
   }
+  return true;
+}
+
+bool OpTesterConfig::ParseAttrs(std::istream& is) {
+  std::string sep;
+  is >> sep;
+  if (sep == kStartSeparator) {
+    while (true) {
+      std::string key;
+      is >> key;
+      if (key == kEndSeparator) {
+        break;
+      }
+
+      std::string value;
+      is >> value;
+      EraseEndSep(&key, ":");
+      EraseEndSep(&value);
+
+      attrs[key] = value;
+    }
+  }
+  return true;
 }
 
 const OpInputConfig* OpTesterConfig::GetInput(const std::string& name) {
