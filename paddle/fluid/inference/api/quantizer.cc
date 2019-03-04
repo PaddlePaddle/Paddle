@@ -214,15 +214,16 @@ std::pair<QuantMax, LoDTensor> AnalysisPredictor::Quantizer::GetKLScalingFactor(
       } else {
         break;
       }
-      min_kl_index = starting_iter;
     }
+    min_kl_index = starting_iter;
   }
 
   LoDTensor scale_tensor;
   scale_tensor.Resize({1});
   auto* scale_ptr = scale_tensor.mutable_data<float>(CPUPlace());
 
-  scale_ptr[0] = static_cast<float>((min_kl_index + 0.5f) * bin_width);
+  scale_ptr[0] =
+      static_cast<float>(quant_max) / ((min_kl_index + 0.5f) * bin_width);
 
   return std::make_pair(quant_max, scale_tensor);
 }

@@ -273,6 +273,11 @@ class QuantizerTest : public testing::Test {
     return quantizer->GetMaxScalingFactor(var_tensor);
   }
 
+  std::pair<QuantMax, framework::LoDTensor> GetKLScalingFactor(
+      const framework::LoDTensor& var_tensor) const {
+    return quantizer->GetKLScalingFactor(var_tensor);
+  }
+
  protected:
   std::unique_ptr<AnalysisPredictor::Quantizer> quantizer;
   float abs_error = 1e-6;
@@ -370,8 +375,23 @@ TEST_F(QuantizerTest, histogram_empty) {
   ASSERT_THROW(Histogram(var_tensor, -1, 1, 1), platform::EnforceNotMet);
 }
 
-TEST_F(QuantizerTest, kl_scaling_factor) {
-  FAIL() << "Test not implemented yet.";
+TEST_F(QuantizerTest, kl_scaling_factor_signed) {
+  const std::array<float, 5>& values = positive_and_negative_values;
+
+  framework::LoDTensor var_tensor;
+  var_tensor.Resize(framework::make_dim(values.size()));
+  std::copy(begin(values), end(values),
+            var_tensor.mutable_data<float>(platform::CPUPlace()));
+
+  QuantMax quant_max;
+  framework::LoDTensor lod_tensor;
+
+  std::tie(quant_max, lod_tensor) = GetKLScalingFactor(var_tensor);
+
+  ASSERT_EQ(quant_max, QuantMax::S8_MAX);
+  ASSERT_EQ(lod_tensor.numel(), 1);
+  ASSERT_NEAR(lod_tensor.data<float>()[0],
+              static_cast<float>(QuantMax::S8_MAX) / 110.009765625f, abs_error);
 }
 
 TEST_F(QuantizerTest, max_scaling_factor_signed) {
@@ -412,6 +432,25 @@ TEST_F(QuantizerTest, max_scaling_factor_unsigned) {
   ASSERT_EQ(lod_tensor.numel(), 1);
   ASSERT_NEAR(lod_tensor.data<float>()[0],
               static_cast<float>(QuantMax::U8_MAX) / max_val, abs_error);
+}
+
+TEST_F(QuantizerTest, kl_scaling_factor_unsigned) {
+  const std::array<float, 5>& values = non_negative_values;
+
+  framework::LoDTensor var_tensor;
+  var_tensor.Resize(framework::make_dim(values.size()));
+  std::copy(begin(values), end(values),
+            var_tensor.mutable_data<float>(platform::CPUPlace()));
+
+  QuantMax quant_max;
+  framework::LoDTensor lod_tensor;
+
+  std::tie(quant_max, lod_tensor) = GetKLScalingFactor(var_tensor);
+
+  ASSERT_EQ(quant_max, QuantMax::U8_MAX);
+  ASSERT_EQ(lod_tensor.numel(), 1);
+  ASSERT_NEAR(lod_tensor.data<float>()[0],
+              static_cast<float>(QuantMax::U8_MAX) / 1098.6328125f, abs_error);
 }
 
 TEST_F(QuantizerTest, safe_entropy) { FAIL() << "test not implemented yet."; }
