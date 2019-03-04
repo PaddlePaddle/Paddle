@@ -752,7 +752,7 @@ function assert_files_approvals() {
     for FILE in ${FILES[*]}; do
       branch_ref=`git rev-parse "$TRAVIS_BRANCH"`
       head_ref=`git rev-parse HEAD`
-      CHANGE=`git diff --name-status $branch_ref $head_ref | awk '$1 != "D" {print $2}'`
+      CHANGE=`git diff --name-status $branch_ref $head_ref | awk '$1 != "D" {print $2}'|grep "${FILE}" || true`
       echo "checking ${FILE} change, PR: ${TRAVIS_PULL_REQUEST}, changes: ${CHANGE}"
       if [ ${CHANGE} ] && [ "${TRAVIS_PULL_REQUEST}" != "" ]; then
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
@@ -766,7 +766,7 @@ function assert_files_approvals() {
       fi
     done
 
-    HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true`
+    HAS_CONST_CAST=`git diff --name-status $branch_ref $head_ref | awk '$1 != "D" {print $2}'|grep -o -m 1"const_cast" || true`
     if [ ${HAS_CONST_CAST} ] && [ "${TRAVIS_PULL_REQUEST}" != "" ]; then
         APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${TRAVIS_PULL_REQUEST}/reviews?per_page=10000 | \
         python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
