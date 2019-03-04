@@ -134,6 +134,61 @@ $$Out = round(X/scale * range)$$
   }
 };
 
+class FakeChannelWiseQuantizeAbsMaxOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of FakeChannelWiseQuantizeOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("Out"),
+        "Output(Out) of FakeChannelWiseQuantizeOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("OutScales"),
+        "Output(Scales) of FakeChannelWiseQuantizeOp should not be null.");
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->SetOutputDim("OutScales", {ctx->GetInputDim("X")[0]});
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.GetPlace());
+  }
+};
+
+class FakeChannelWiseQuantizeAbsMaxOpMaker
+    : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor) Input is float data type.");
+    AddOutput("Out",
+              "(Tensor) Output of quantized low level tensor, "
+              "but also saved as float data type.");
+    AddOutput("OutScales", "(Tensor) Current channel wise scale");
+    AddAttr<int>("bit_length", "(int, default 8)")
+        .SetDefault(8)
+        .AddCustomChecker([](const int& bit_length) {
+          PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
+                         "'bit_length' should be between 1 and 16.");
+        });
+    AddComment(R"DOC(
+The scale of FakeChannelWiseQuantize operator is a vector.
+In detail, each channel of the input X has a scale value.
+
+$$scale_c = max(abs(X_c))$$
+$$range = 2^{bit_length - 1} - 1$$
+$$Out_c = round(X_c / scale_c * range)$$
+
+In above three formulas, the range value of c is as follow:
+$$0 \leq c \leq \ the\ channel\ number\ of\ X$$
+)DOC");
+  }
+};
+
 class FakeQuantizeRangeAbsMaxOp : public framework::OperatorWithKernel {
  public:
   FakeQuantizeRangeAbsMaxOp(const std::string& type,
@@ -218,3 +273,10 @@ REGISTER_OPERATOR(fake_quantize_range_abs_max, ops::FakeQuantizeRangeAbsMaxOp,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(fake_quantize_range_abs_max,
                        ops::FakeQuantizeRangeAbsMaxKernel<CPU, float>);
+
+REGISTER_OPERATOR(fake_channel_wise_quantize_abs_max,
+                  ops::FakeChannelWiseQuantizeAbsMaxOp,
+                  ops::FakeChannelWiseQuantizeAbsMaxOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OP_CPU_KERNEL(fake_channel_wise_quantize_abs_max,
+                       ops::FakeChannelWiseQuantizeAbsMaxKernel<CPU, float>);
