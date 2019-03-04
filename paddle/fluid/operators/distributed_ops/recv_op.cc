@@ -54,12 +54,6 @@ class RecvOp : public framework::OperatorBase {
         Attr<std::vector<std::string>>("recv_varnames");
 
     if (recv_varnames.size() > 0) {
-      framework::RuntimeContext ctx(Inputs(), Outputs(), scope);
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
-      auto *dev_ctx = pool.Get(place);
-      auto exe_ctx =
-          framework::ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr);
       auto recv_functor = distributed::ParameterRecv<float>();
       auto rpc_ctx = distributed::RpcContext(outs[0], recv_varnames, epmap, {});
       recv_functor(rpc_ctx, scope);

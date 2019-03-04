@@ -74,9 +74,9 @@ void Communicator::SendThread() {
       merged_var_num++;
     }
     MergeVars(var_name, vars, send_scope_.get());
-    auto send_functor = distributed::ParameterSend<float>();
-    //    send_functor(var_name, send_varname_to_ctx_[var_name], exe_ctx,
-    //    send_scope_, true);
+    // auto send_functor = distributed::ParameterSend<float>();
+    // send_functor(var_name, send_varname_to_ctx_[var_name], exe_ctx,
+    // send_scope_, true);
   }
 }
 
@@ -85,8 +85,8 @@ void Communicator::RecvThread() {
   for (auto &iter : recv_varname_to_ctx_) {
     auto &var_name = iter.first;
     VLOG(3) << "recv var " << iter.first;
-    auto recv_functor = distributed::ParameterRecv<float>();
-    //    recv_functor(var_name, iter.second, exe_ctx, recv_scope_);
+    // auto recv_functor = distributed::ParameterRecv<float>();
+    // recv_functor(var_name, iter.second, exe_ctx, recv_scope_);
   }
 }
 

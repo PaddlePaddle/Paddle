@@ -47,12 +47,6 @@ class SendOp : public framework::OperatorBase {
 
     if (send_varnames.size() > 0) {
       PADDLE_ENFORCE_EQ(ins.size(), 1, "");
-      framework::RuntimeContext ctx(Inputs(), Outputs(), scope);
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
-      auto* dev_ctx = pool.Get(place);
-      auto exe_ctx =
-          framework::ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr);
       auto send_functor = distributed::ParameterSend<float>();
       auto rpc_ctx = distributed::RpcContext(ins[0], send_varnames, epmap,
                                              height_sections);
