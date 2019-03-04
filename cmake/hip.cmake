@@ -11,8 +11,6 @@ include_directories("/opt/rocm/rocrand/include")
 include_directories("/opt/rocm/rccl/include")
 include_directories("/opt/rocm/thrust")
 
-list(APPEND EXTERNAL_LIBS "-L/opt/rocm/lib/ -lhip_hcc")
-
 set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -fPIC -DPADDLE_WITH_HIP -std=c++11" )
 
 if(WITH_DSO)
@@ -31,21 +29,11 @@ if(WITH_GRPC)
   set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_WITH_GRPC")
 endif(WITH_GRPC)
 
-if(NOT WITH_GOLANG)
-  set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_WITHOUT_GOLANG")
-endif(NOT WITH_GOLANG)
-
 if(WITH_MKLDNN)
   set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_WITH_MKLDNN")
 endif(WITH_MKLDNN)
 
 set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DANY_IMPL_ANY_CAST_MOVEABLE")
-
-if(NOT WITH_RDMA)
-  set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_DISABLE_RDMA")
-endif(NOT WITH_RDMA)
-
-
 
 if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
     list(APPEND HIP_HCC_FLAGS  ${CMAKE_CXX_FLAGS_DEBUG})

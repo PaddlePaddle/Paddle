@@ -49,6 +49,7 @@ __all__ = [
     'box_coder',
     'polygon_box_transform',
     'yolov3_loss',
+    'box_clip',
     'multiclass_nms',
 ]
 
@@ -396,10 +397,10 @@ def box_coder(prior_box,
                              input is image feature map, they are close to 
                              the origin of the coordinate system. [xmax, ymax]
                              is the right bottom coordinate of the anchor box.       
-        prior_box_var(Variable|list): prior_box_var supports two types of input. 
-                              One is variable with shape [M, 4] holds M group.
-                              The other one is list consist of 4 elements 
-                              shared by all boxes. 
+        prior_box_var(Variable|list|None): prior_box_var supports two types 
+                              of input. One is variable with shape [M, 4] 
+                              holds M group. The other one is list consist of 
+                              4 elements shared by all boxes. 
         target_box(Variable): This input can be a 2-D LoDTensor with shape 
                               [N, 4] when code_type is 'encode_center_size'. 
                               This input also can be a 3-D Tensor with shape 
@@ -544,15 +545,16 @@ def yolov3_loss(x,
         TypeError: Attr ignore_thresh of yolov3_loss must be a float number
 
     Examples:
-    .. code-block:: python
+      .. code-block:: python
 
-        x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
-        gtbox = fluid.layers.data(name='gtbox', shape=[6, 5], dtype='float32')
-        gtlabel = fluid.layers.data(name='gtlabel', shape=[6, 1], dtype='int32')
-        anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
-        anchors = [0, 1, 2]
-        loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80, anchors=anchors, 
-                                        ignore_thresh=0.5, downsample_ratio=32)
+          x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
+          gtbox = fluid.layers.data(name='gtbox', shape=[6, 5], dtype='float32')
+          gtlabel = fluid.layers.data(name='gtlabel', shape=[6, 1], dtype='int32')
+          anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
+          anchor_mask = [0, 1, 2]
+          loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, gtlabel=gtlabel, anchors=anchors, 
+                                          anchor_mask=anchor_mask, class_num=80,
+                                          ignore_thresh=0.7, downsample_ratio=32)
     """
     helper = LayerHelper('yolov3_loss', **locals())
 
@@ -2055,6 +2057,54 @@ def generate_proposals(scores,
     return rpn_rois, rpn_roi_probs
 
 
+def box_clip(input, im_info, name=None):
+    """
+    Clip the box into the size given by im_info
+    For each input box, The formula is given as follows:
+        
+    .. code-block:: text
+
+        xmin = max(min(xmin, im_w - 1), 0)
+        ymin = max(min(ymin, im_h - 1), 0) 
+        xmax = max(min(xmax, im_w - 1), 0)
+        ymax = max(min(ymax, im_h - 1), 0)
+    
+    where im_w and im_h are computed from im_info:
+ 
+    .. code-block:: text
+
+        im_h = round(height / scale)
+        im_w = round(weight / scale)
+
+    Args:
+        input(variable): The input box, the last dimension is 4.
+        im_info(variable): The information of image with shape [N, 3] with 
+                            layout (height, width, scale). height and width
+                            is the input size and scale is the ratio of input
+                            size and original size.
+        name (str): The name of this layer. It is optional.
+    
+    Returns:
+        Variable: The cliped tensor variable.
+        
+    Examples:
+        .. code-block:: python
+        
+            boxes = fluid.layers.data(
+                name='data', shape=[8, 4], dtype='float32', lod_level=1)
+            im_info = fluid.layers.data(name='im_info', shape=[3])
+            out = fluid.layers.box_clip(
+                input=boxes, im_info=im_info, inplace=True)
+    """
+
+    helper = LayerHelper("box_clip", **locals())
+    output = helper.create_variable_for_type_inference(dtype=input.dtype)
+    inputs = {"Input": input, "ImInfo": im_info}
+    helper.append_op(type="box_clip", inputs=inputs, outputs={"Output": output})
+
+    return output
+
+
 def multiclass_nms(bboxes,
                    scores,
                    score_threshold,
@@ -2132,8 +2182,10 @@ def multiclass_nms(bboxes,
              (After version 1.3, when no boxes detected, the lod is changed 
              from {0} to {1}) 
 
+
     Examples:
         .. code-block:: python
+
 
             boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
                                       dtype='float32', lod_level=1)

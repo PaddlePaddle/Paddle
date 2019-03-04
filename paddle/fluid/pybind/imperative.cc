@@ -34,8 +34,8 @@ void BindTracer(pybind11::module* m) {
               framework::BlockDesc* block,
               const platform::CPUPlace expected_place,
               const bool stop_gradient = false) {
-             self.Trace(op, inputs, outputs, block, expected_place,
-                        stop_gradient);
+             return self.Trace(op, inputs, outputs, block, expected_place,
+                               stop_gradient);
            })
       .def("trace",
            [](imperative::Tracer& self, imperative::OpBase* op,
@@ -44,8 +44,8 @@ void BindTracer(pybind11::module* m) {
               framework::BlockDesc* block,
               const platform::CUDAPlace expected_place,
               const bool stop_gradient = false) {
-             self.Trace(op, inputs, outputs, block, expected_place,
-                        stop_gradient);
+             return self.Trace(op, inputs, outputs, block, expected_place,
+                               stop_gradient);
            })
       .def("py_trace", &imperative::Tracer::PyTrace,
            pybind11::return_value_policy::take_ownership);
