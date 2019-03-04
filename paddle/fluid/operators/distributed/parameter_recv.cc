@@ -73,7 +73,7 @@ void ParameterRecv<T>::operator()(const std::string &var_name,
       PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
     }
   } else {
-    PADDLE_THROW("unsupported var type to send!");
+    PADDLE_THROW("unsupported var type to recv!");
   }
 
   // concat recved tensor into one var
