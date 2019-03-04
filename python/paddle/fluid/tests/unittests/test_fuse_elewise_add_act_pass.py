@@ -125,7 +125,7 @@ class TestMNIST(TestParallelExecutorBase):
         # need to make it compatible with elewise fuse act
         # FIXME (liuwei12)
         # the new memory optimize strategy will crash this unittest
-        # sue memory_opt=True here to force pass the unittest
+        # add enable_inplace=False here to force pass the unittest
         not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
