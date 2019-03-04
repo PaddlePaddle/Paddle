@@ -734,8 +734,8 @@ function assert_files_approvals() {
     if [ -z ${BRANCH} ]; then
         BRANCH="develop"
     fi
-    echo ${GITHUB_API_TOKEN}
-    echo 1111
+    cat ${PADDLE_ROOT}/tools/check_pr_approval.py
+    ls $TRAVIS_BUILD_DIR/tools/check_pr_approval.py
 
     FILES=("python/paddle/fluid/parallel_executor.py"
            "paddle/fluid/framework/operator.h"

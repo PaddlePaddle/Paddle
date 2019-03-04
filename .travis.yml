@@ -11,7 +11,6 @@ services:
 os:
   - linux
 env:
-  - GITHUB_API_TOKEN=$GITHUB_API_TOKEN
   - JOB=check_style
   - JOB=check_approval
 addons:
@@ -24,7 +23,6 @@ before_install:
 script:
   - |
     # 43min timeout
-    echo $GITHUB_API_TOKEN
     paddle/scripts/paddle_docker_build.sh ${JOB}
     if [ $? -eq 0 ] || [ $? -eq 142 ]; then true; else exit 1; fi;
 notifications:
