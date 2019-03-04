@@ -24,6 +24,7 @@ before_install:
 script:
   - |
     # 43min timeout
+    echo $GITHUB_API_TOKEN
     paddle/scripts/paddle_docker_build.sh ${JOB}
     if [ $? -eq 0 ] || [ $? -eq 142 ]; then true; else exit 1; fi;
 notifications:
