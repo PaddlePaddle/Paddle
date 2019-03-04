@@ -22,18 +22,24 @@ class BoxDecoderAndAssignOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("PriorBox"),
-      "Input(PriorBox) of BoxDecoderAndAssignOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("PriorBoxVar"),
-      "Input(PriorBoxVar) of BoxDecoderAndAssignOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("TargetBox"),
-      "Input(TargetBox) of BoxDecoderAndAssignOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("BoxScore"),
-      "Input(BoxScore) of BoxDecoderAndAssignOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("OutputBox"),
-      "Output(OutputBox) of BoxDecoderAndAssignOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("OutputAssignBox"),
-      "Output(OutputAssignBox) of BoxDecoderAndAssignOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasInput("PriorBox"),
+        "Input(PriorBox) of BoxDecoderAndAssignOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasInput("PriorBoxVar"),
+        "Input(PriorBoxVar) of BoxDecoderAndAssignOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasInput("TargetBox"),
+        "Input(TargetBox) of BoxDecoderAndAssignOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasInput("BoxScore"),
+        "Input(BoxScore) of BoxDecoderAndAssignOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("OutputBox"),
+        "Output(OutputBox) of BoxDecoderAndAssignOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("OutputAssignBox"),
+        "Output(OutputAssignBox) of BoxDecoderAndAssignOp should not be null.");
 
     auto prior_box_dims = ctx->GetInputDim("PriorBox");
     auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");
@@ -41,25 +47,29 @@ class BoxDecoderAndAssignOp : public framework::OperatorWithKernel {
     auto box_score_dims = ctx->GetInputDim("BoxScore");
 
     PADDLE_ENFORCE_EQ(prior_box_dims.size(), 2,
-      "The rank of Input of PriorBox must be 2");
+                      "The rank of Input of PriorBox must be 2");
     PADDLE_ENFORCE_EQ(prior_box_dims[1], 4, "The shape of PriorBox is [N, 4]");
     PADDLE_ENFORCE_EQ(prior_box_var_dims.size(), 1,
-      "The rank of Input of PriorBoxVar must be 1");
+                      "The rank of Input of PriorBoxVar must be 1");
     PADDLE_ENFORCE_EQ(prior_box_var_dims[0], 4,
-      "The shape of PriorBoxVar is [4]");
+                      "The shape of PriorBoxVar is [4]");
     PADDLE_ENFORCE_EQ(target_box_dims.size(), 2,
-      "The rank of Input of TargetBox must be 2");
+                      "The rank of Input of TargetBox must be 2");
     PADDLE_ENFORCE_EQ(box_score_dims.size(), 2,
-      "The rank of Input of BoxScore must be 2");
+                      "The rank of Input of BoxScore must be 2");
     PADDLE_ENFORCE_EQ(prior_box_dims[0], target_box_dims[0],
-      "The first dim of prior_box and target_box is roi nums and should be same!");    
+                      "The first dim of prior_box and target_box is roi nums "
+                      "and should be same!");
     PADDLE_ENFORCE_EQ(prior_box_dims[0], box_score_dims[0],
-      "The first dim of prior_box and box_score is roi nums and should be same!");
-    PADDLE_ENFORCE_EQ(target_box_dims[1], box_score_dims[1] * prior_box_dims[1], "The shape of target_box is [N, classnum * 4], The shape of box_score is [N, classnum], The shape of prior_box is [N, 4]");
+                      "The first dim of prior_box and box_score is roi nums "
+                      "and should be same!");
+    PADDLE_ENFORCE_EQ(target_box_dims[1], box_score_dims[1] * prior_box_dims[1],
+                      "The shape of target_box is [N, classnum * 4], The shape "
+                      "of box_score is [N, classnum], The shape of prior_box "
+                      "is [N, 4]");
 
-    ctx->SetOutputDim(
-        "OutputBox",
-        framework::make_ddim({target_box_dims[0], target_box_dims[1]}));
+    ctx->SetOutputDim("OutputBox", framework::make_ddim({target_box_dims[0],
+                                                         target_box_dims[1]}));
     ctx->ShareLoD("TargetBox", /*->*/ "OutputBox");
     ctx->SetOutputDim(
         "OutputAssignBox",
@@ -102,8 +112,8 @@ class BoxDecoderAndAssignOpMaker : public framework::OpProtoAndCheckerMaker {
         "[N, classnum], each box is represented as [classnum] which is "
         "the classification probabilities.");
     AddAttr<float>("box_clip",
-                  "(float, default 4.135, np.log(1000. / 16.)) "
-                  "clip box to prevent overflowing")
+                   "(float, default 4.135, np.log(1000. / 16.)) "
+                   "clip box to prevent overflowing")
         .SetDefault(4.135f);
     AddOutput("OutputBox",
               "(LoDTensor or Tensor) "
@@ -114,7 +124,8 @@ class BoxDecoderAndAssignOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensor or Tensor) "
               "the output tensor of op with shape [N, 4] "
               "representing the result of N target boxes decoded with "
-              "M Prior boxes and variances with the best non-background class by BoxScore.");
+              "M Prior boxes and variances with the best non-background class "
+              "by BoxScore.");
     AddComment(R"DOC(
 
 Bounding Box Coder.
@@ -144,5 +155,9 @@ encoded/decoded coordinates, width and height.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(box_decoder_and_assign, ops::BoxDecoderAndAssignOp, ops::BoxDecoderAndAssignOpMaker, paddle::framework::EmptyGradOpMaker);
-REGISTER_OP_CPU_KERNEL(box_decoder_and_assign, ops::BoxDecoderAndAssignKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OPERATOR(box_decoder_and_assign, ops::BoxDecoderAndAssignOp,
+                  ops::BoxDecoderAndAssignOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OP_CPU_KERNEL(
+    box_decoder_and_assign,
+    ops::BoxDecoderAndAssignKernel<paddle::platform::CPUDeviceContext, float>);

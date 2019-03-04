@@ -18,15 +18,16 @@ namespace operators {
 template <typename T>
 __global__ void DecodeBoxKernel(const T* prior_box_data,
                                 const T* prior_box_var_data,
-                                const T* target_box_data,
-                                const int roi_num, const int class_num,
-                                const float box_clip, T* output_box_data) {
+                                const T* target_box_data, const int roi_num,
+                                const int class_num, const float box_clip,
+                                T* output_box_data) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < roi_num * class_num) {
     int i = idx / class_num;
     int j = idx % class_num;
     T prior_box_width = prior_box_data[i * 4 + 2] - prior_box_data[i * 4] + 1;
-    T prior_box_height = prior_box_data[i * 4 + 3] - prior_box_data[i * 4 + 1] + 1;
+    T prior_box_height =
+        prior_box_data[i * 4 + 3] - prior_box_data[i * 4 + 1] + 1;
     T prior_box_center_x = prior_box_data[i * 4] + prior_box_width / 2;
     T prior_box_center_y = prior_box_data[i * 4 + 1] + prior_box_height / 2;
 
@@ -41,22 +42,27 @@ __global__ void DecodeBoxKernel(const T* prior_box_data,
     }
     T target_box_center_x = 0, target_box_center_y = 0;
     T target_box_width = 0, target_box_height = 0;
-    target_box_center_x = prior_box_var_data[0] * target_box_data[offset] * prior_box_width + prior_box_center_x;
-    target_box_center_y = prior_box_var_data[1] * target_box_data[offset + 1] * prior_box_height + prior_box_center_y;
+    target_box_center_x =
+        prior_box_var_data[0] * target_box_data[offset] * prior_box_width +
+        prior_box_center_x;
+    target_box_center_y =
+        prior_box_var_data[1] * target_box_data[offset + 1] * prior_box_height +
+        prior_box_center_y;
     target_box_width = expf(dw) * prior_box_width;
     target_box_height = expf(dh) * prior_box_height;
 
     output_box_data[offset] = target_box_center_x - target_box_width / 2;
     output_box_data[offset + 1] = target_box_center_y - target_box_height / 2;
-    output_box_data[offset + 2] = target_box_center_x + target_box_width / 2 - 1;
-    output_box_data[offset + 3] = target_box_center_y + target_box_height / 2 - 1;
+    output_box_data[offset + 2] =
+        target_box_center_x + target_box_width / 2 - 1;
+    output_box_data[offset + 3] =
+        target_box_center_y + target_box_height / 2 - 1;
   }
 }
 
 template <typename T>
 __global__ void AssignBoxKernel(const T* prior_box_data,
-                                const T* box_score_data,
-                                T* output_box_data,
+                                const T* box_score_data, T* output_box_data,
                                 const int roi_num, const int class_num,
                                 T* output_assign_box_data) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -73,17 +79,16 @@ __global__ void AssignBoxKernel(const T* prior_box_data,
     }
     if (max_j > 0) {
       for (int pno = 0; pno < 4; pno++) {
-        output_assign_box_data[i * 4 + pno] = output_box_data[i * class_num * 4 + max_j * 4 + pno];
+        output_assign_box_data[i * 4 + pno] =
+            output_box_data[i * class_num * 4 + max_j * 4 + pno];
       }
-    }
-    else {
+    } else {
       for (int pno = 0; pno < 4; pno++) {
         output_assign_box_data[i * 4 + pno] = prior_box_data[i * 4 + pno];
       }
     }
   }
 }
-
 
 template <typename DeviceContext, typename T>
 class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
@@ -96,12 +101,13 @@ class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
     auto* target_box = context.Input<framework::LoDTensor>("TargetBox");
     auto* box_score = context.Input<framework::LoDTensor>("BoxScore");
     auto* output_box = context.Output<framework::Tensor>("OutputBox");
-    auto* output_assign_box = context.Output<framework::Tensor>("OutputAssignBox");
+    auto* output_assign_box =
+        context.Output<framework::Tensor>("OutputAssignBox");
 
     auto roi_num = target_box->dims()[0];
     auto class_num = box_score->dims()[1];
     auto* target_box_data = target_box->data<T>();
-    auto* prior_box_data = prior_box->data<T>();    
+    auto* prior_box_data = prior_box->data<T>();
     auto* prior_box_var_data = prior_box_var->data<T>();
     auto* box_score_data = box_score->data<T>();
     output_box->mutable_data<T>({roi_num, class_num * 4}, context.GetPlace());
@@ -116,14 +122,15 @@ class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
     const float box_clip = static_cast<float>(context.Attr<float>("box_clip"));
 
     DecodeBoxKernel<T><<<grid, block, 0, device_ctx.stream()>>>(
-      prior_box_data, prior_box_var_data, target_box_data, roi_num, class_num, box_clip, output_box_data);
+        prior_box_data, prior_box_var_data, target_box_data, roi_num, class_num,
+        box_clip, output_box_data);
 
     context.device_context().Wait();
     int assign_grid = (roi_num + block - 1) / block;
     AssignBoxKernel<T><<<assign_grid, block, 0, device_ctx.stream()>>>(
-      prior_box_data, box_score_data, output_box_data, roi_num, class_num, output_assign_box_data);
+        prior_box_data, box_score_data, output_box_data, roi_num, class_num,
+        output_assign_box_data);
     context.device_context().Wait();
-
   }
 };
 
@@ -131,6 +138,6 @@ class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    box_decoder_and_assign,
-    ops::BoxDecoderAndAssignCUDAKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(box_decoder_and_assign,
+                        ops::BoxDecoderAndAssignCUDAKernel<
+                            paddle::platform::CUDADeviceContext, float>);

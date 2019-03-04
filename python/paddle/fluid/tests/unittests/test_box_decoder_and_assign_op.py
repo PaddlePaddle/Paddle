@@ -20,6 +20,7 @@ import sys
 import math
 from op_test import OpTest
 
+
 def box_decoder_and_assign(deltas, weights, boxes, box_score, box_clip):
     boxes = boxes.astype(deltas.dtype, copy=False)
     widths = boxes[:, 2] - boxes[:, 0] + 1.0
@@ -61,6 +62,7 @@ def box_decoder_and_assign(deltas, weights, boxes, box_score, box_clip):
 
     return pred_boxes, output_assign_box
 
+
 class TestBoxDecoderAndAssignOpWithLoD(OpTest):
     def test_check_output(self):
         self.check_output()
@@ -71,10 +73,11 @@ class TestBoxDecoderAndAssignOpWithLoD(OpTest):
         num_classes = 10
         prior_box = np.random.random((20, 4)).astype('float32')
         prior_box_var = np.array([0.1, 0.1, 0.2, 0.2], dtype=np.float32)
-        target_box = np.random.random((20, 4*num_classes)).astype('float32')
+        target_box = np.random.random((20, 4 * num_classes)).astype('float32')
         box_score = np.random.random((20, num_classes)).astype('float32')
         box_clip = 4.135
-        output_box, output_assign_box = box_decoder_and_assign(target_box, prior_box_var, prior_box, box_score, box_clip)        
+        output_box, output_assign_box = box_decoder_and_assign(
+            target_box, prior_box_var, prior_box, box_score, box_clip)
 
         self.inputs = {
             'PriorBox': (prior_box, lod),
@@ -83,7 +86,11 @@ class TestBoxDecoderAndAssignOpWithLoD(OpTest):
             'BoxScore': (box_score, lod),
         }
         self.attrs = {'box_clip': box_clip}
-        self.outputs = {'OutputBox': output_box, 'OutputAssignBox':output_assign_box}
+        self.outputs = {
+            'OutputBox': output_box,
+            'OutputAssignBox': output_assign_box
+        }
+
 
 if __name__ == '__main__':
     unittest.main()
