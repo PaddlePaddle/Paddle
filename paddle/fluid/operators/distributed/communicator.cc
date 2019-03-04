@@ -47,6 +47,8 @@ static inline void MergeVars(const std::string &var_name,
     }
   } else if (var0->IsType<framework::SelectedRows>()) {
     auto *out_slr = out_var->GetMutable<framework::SelectedRows>();
+    out_slr->mutable_rows()->clear();
+    out_slr->mutable_value()->mutable_data<float>({{}}, cpu_place);
     std::vector<const paddle::framework::SelectedRows *> inputs;
     inputs.reserve(vars.size());
     for (auto &var : vars) {
@@ -71,6 +73,7 @@ void Communicator::SendThread() {
         VLOG(3) << "merge var " << var_name << " and send";
         auto &var_queue = iter.second;
         std::vector<std::shared_ptr<Variable>> vars;
+        // TODO(qiao): need to be configurable
         const size_t max_merge_var_num = 20;
         size_t merged_var_num = 0;
         while (var_queue->Size() > 0 && merged_var_num < max_merge_var_num) {
