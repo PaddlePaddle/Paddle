@@ -1767,7 +1767,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     return softmax_out
 
 
-def softmax(input, use_cudnn=True, name=None):
+def softmax(input, use_cudnn=False, name=None):
     """
     The input of the softmax operator is a tensor of any rank. The output tensor
     has the same shape as the input.
@@ -1795,7 +1795,8 @@ def softmax(input, use_cudnn=True, name=None):
     Args:
         input (Variable): The input variable.
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
-            library is installed.
+            library is installed. To improve numerical stablity, set use_cudnn to \
+            False by default. Default: False
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None.
 
@@ -3041,7 +3042,6 @@ def data_norm(input,
               param_attr=None,
               data_layout='NCHW',
               in_place=False,
-              use_mkldnn=False,
               name=None,
               moving_mean_name=None,
               moving_variance_name=None,
@@ -3075,7 +3075,6 @@ def data_norm(input,
         param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
         data_layout(string, default NCHW): NCHW|NHWC
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
-        use_mkldnn(bool, Default false): ${use_mkldnn_comment}
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
@@ -3156,8 +3155,7 @@ def data_norm(input,
         outputs={"Y": data_norm_out,
                  "Means": means,
                  "Scales": scales},
-        attrs={"epsilon": epsilon,
-               "use_mkldnn": use_mkldnn})
+        attrs={"epsilon": epsilon})
 
     return helper.append_activation(data_norm_out)
 
@@ -5756,7 +5754,7 @@ def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,
                                ignore_index=kIgnoreIndex,
-                               numeric_stable_mode=False,
+                               numeric_stable_mode=True,
                                return_softmax=False):
     """
     **Softmax With Cross Entropy Operator.**
@@ -5820,7 +5818,7 @@ def softmax_with_cross_entropy(logits,
                                     When soft_label is True or CPU is used,
                                     the algorithm is always numerically stable.
                                     Note that the speed may be slower when use
-                                    stable algorithm. Default: False
+                                    stable algorithm. Default: True
         return_softmax (bool): A flag indicating whether to return the softmax
                                along with the cross entropy loss. Default: False
 
@@ -6846,56 +6844,58 @@ def image_resize(input,
 
     Example:
 
-      For scale:
-      
-        if align_corners = True && out_size > 1 :
+    .. code-block:: text
 
-          scale_factor = (in_size-1.0)/(out_size-1.0)
-        
-        else:
+        For scale:
           
-          scale_factor = float(in_size/out_size)
-        
-      
-      Nearest neighbor interpolation:
-      
-      if:
-          align_corners = False
+            if align_corners = True && out_size > 1 :
 
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
-
-          H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
-          W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
-
-      else:
-          align_corners = True
-
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
-
-          H_out = round(H_{in} * scale_{factor})
-          W_out = round(W_{in} * scale_{factor})
-
-      Bilinear interpolation:
-
-      if:
-          align_corners = False , align_mode = 0
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+            
+            else:
+              
+              scale_factor = float(in_size/out_size)
+            
           
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
+        Nearest neighbor interpolation:
           
-          H_out = (H_{in}+0.5) * scale_{factor} - 0.5
-          W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+          if:
+              align_corners = False
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = floor (H_{in} * scale_{factor})
+              W_out = floor (W_{in} * scale_{factor})
+
+          else:
+              align_corners = True
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = round(H_{in} * scale_{factor})
+              W_out = round(W_{in} * scale_{factor})
+
+        Bilinear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
 
-      else:
-       
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
+          else:
+           
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
 
-          H_out = H_{in} * scale_{factor}
-          W_out = W_{in} * scale_{factor}
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
 
     For details of nearest neighbor interpolation, please refer to Wikipedia: 
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
@@ -7050,41 +7050,39 @@ def resize_bilinear(input,
     Align_corners and align_mode are optinal parameters,the calculation 
     method of interpolation can be selected by them.
 
-
-    Align_corners and align_mode are optinal parameters,the calculation method 
-    of interpolation can be selected by them.
-
     Example:
 
-      For scale:
-      
-        if align_corners = True && out_size > 1 :
+    .. code-block:: text
 
-          scale_factor = (in_size-1.0)/(out_size-1.0)
-        
-        else:
+        For scale:
           
-          scale_factor = float(in_size/out_size)     
+            if align_corners = True && out_size > 1 :
 
-    Bilinear interpolation:
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+            
+            else:
+              
+              scale_factor = float(in_size/out_size)     
 
-      if:
-          align_corners = False , align_mode = 0
-          
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
-          
-          H_out = (H_{in}+0.5) * scale_{factor} - 0.5
-          W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+        Bilinear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
 
-      else:
+          else:
 
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
 
-          H_out = H_{in} * scale_{factor}
-          W_out = W_{in} * scale_{factor}
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
 
 
 
@@ -7136,42 +7134,44 @@ def resize_nearest(input,
                    align_corners=True):
     """
     Resize input by performing nearest neighbor interpolation in both the
-    3rd dimention(in height direction) and the 4th dimention(in width
-    direction) based on given output shape which specified by actual_shape,
+    3rd dimension(in height direction) and the 4th dimension(in width
+    direction) based on given output shape which is specified by actual_shape,
     out_shape and scale in priority order.
 
     Example:
 
-      For scale:
-      
-        if align_corners = True && out_size > 1 :
+    .. code-block:: text
 
-          scale_factor = (in_size-1.0)/(out_size-1.0)
-        
-        else:
+        For scale:
           
-          scale_factor = float(in_size/out_size)
-        
-      
-      Nearest neighbor interpolation:
-      
-      if:
-          align_corners = False
+            if align_corners = True && out_size > 1 :
 
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+            
+            else:
+              
+              scale_factor = float(in_size/out_size)
+            
+          
+        Nearest neighbor interpolation:
+          
+          if:
+              align_corners = False
 
-          H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
-          W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
 
-      else:
-          align_corners = True
+              H_out = floor(H_{in} * scale_{factor})
+              W_out = floor(W_{in} * scale_{factor})
 
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
+          else:
+              align_corners = True
 
-          H_out = round(H_{in} * scale_{factor})
-          W_out = round(W_{in} * scale_{factor})
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = round(H_{in} * scale_{factor})
+              W_out = round(W_{in} * scale_{factor})
 
 
     For details of nearest neighbor interpolation, please refer to Wikipedia:
@@ -9945,6 +9945,7 @@ def teacher_student_sigmoid_loss(input,
 
     Examples:
         .. code-block:: python
+
           cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
     """
     helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
