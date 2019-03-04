@@ -26,6 +26,7 @@ class TestActivation(OpTest):
         self.op_type = "exp"
         self.dtype = np.float32
         self.init_dtype()
+        self.init_kernel_type()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.exp(x)
@@ -43,6 +44,9 @@ class TestActivation(OpTest):
 
     def init_dtype(self):
         self.dtype = np.float32
+
+    def init_kernel_type(self):
+        pass
 
 
 class TestSigmoid(TestActivation):
@@ -599,6 +603,25 @@ class TestSwish(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
+
+
+#------------------ Test Cudnn Activation----------------------
+def create_test_act_cudnn_class(parent, atol=1e-3, grad_atol=1e-3):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestActCudnn(parent):
+        def init_kernel_type(self):
+            self.attrs = {"use_cudnn": True}
+
+    cls_name = "{0}_{1}".format(parent.__name__, "cudnn")
+    TestActCudnn.__name__ = cls_name
+    globals()[cls_name] = TestActCudnn
+
+
+create_test_act_cudnn_class(TestRelu)
+create_test_act_cudnn_class(TestRelu6)
+create_test_act_cudnn_class(TestSigmoid)
+create_test_act_cudnn_class(TestTanh)
 
 
 #------------------ Test Fp16 ----------------------

@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
@@ -37,35 +38,37 @@ struct EmbeddingVSumFunctor {
                   const LoDTensor *table_t, const LoDTensor *ids_t,
                   LoDTensor *output_t) {
     auto *table = table_t->data<T>();
-    int64_t row_number = table_t->dims()[0];
-    int64_t row_width = table_t->dims()[1];
-    int64_t last_dim = output_t->dims()[1];
+    int64_t table_height = table_t->dims()[0];
+    int64_t table_width = table_t->dims()[1];
+    int64_t out_width = output_t->dims()[1];
     const int64_t *ids = ids_t->data<int64_t>();
     auto ids_lod = ids_t->lod()[0];
-    int64_t ids_count = ids_t->numel() / ids_lod.back();
-
+    int64_t idx_width = ids_t->numel() / ids_lod.back();
     auto *output = output_t->mutable_data<T>(context.GetPlace());
 
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-    for (int64_t i = 0; i != ids_lod.size() - 1; ++i) {
-      size_t begin = ids_lod[i] * ids_count;
-      for (int64_t j = 0; j != ids_count; ++j) {
-        PADDLE_ENFORCE_LT(ids[begin], row_number);
-        PADDLE_ENFORCE_GE(ids[begin], 0, "ids %d", i);
-        blas.VCOPY(row_width, table + ids[begin + j] * row_width,
-                   output + i * last_dim + j * row_width);
-      }
+    PADDLE_ENFORCE_LE(table_width * idx_width, out_width);
+    PADDLE_ENFORCE_GT(ids_lod.size(), 1UL);
 
-      for (int64_t r = (ids_lod[i] + 1) * ids_count;
-           r < ids_lod[i + 1] * ids_count; ++r) {
-        PADDLE_ENFORCE_LT(ids[r], row_number);
-        PADDLE_ENFORCE_GE(ids[r], 0, "ids %d", i);
-        blas.AXPY(row_width, 1., table + ids[r] * row_width,
-                  output + i * last_dim + (r % ids_count) * row_width);
-      }
+    jit::emb_seq_pool_attr_t attr(table_height, table_width, 0, idx_width,
+                                  out_width, jit::SeqPoolType::kSum);
+    for (size_t i = 0; i != ids_lod.size() - 1; ++i) {
+      attr.index_height = ids_lod[i + 1] - ids_lod[i];
+      auto emb_seqpool = jit::Get<jit::kEmbSeqPool, jit::EmbSeqPoolTuples<T>,
+                                  platform::CPUPlace>(attr);
+      emb_seqpool(table, ids + ids_lod[i] * idx_width, output + i * out_width,
+                  &attr);
     }
   }
 };
+
+inline int FusedEmbeddingSeqPoolLastDim(const framework::DDim &table_dims,
+                                        const framework::DDim &ids_dims) {
+  int64_t last_dim = table_dims[1];
+  for (int i = 1; i != ids_dims.size(); ++i) {
+    last_dim *= ids_dims[i];
+  }
+  return last_dim;
+}
 
 template <typename T>
 class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
@@ -75,6 +78,17 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
     LoDTensor *output_t = context.Output<LoDTensor>("Out");    // float tensor
     const LoDTensor *table_var = context.Input<LoDTensor>("W");
     const std::string &combiner_type = context.Attr<std::string>("combiner");
+
+    int64_t last_dim =
+        FusedEmbeddingSeqPoolLastDim(table_var->dims(), ids_t->dims());
+    const auto &ids_lod = ids_t->lod();
+    // in run time, the LoD of ids must be 1
+    PADDLE_ENFORCE(ids_lod.size(), 1u, "The LoD level of Input(Ids) must be 1");
+    PADDLE_ENFORCE_GE(ids_lod[0].size(), 1u, "The LoD could NOT be empty");
+    int64_t batch_size = ids_lod[0].size() - 1;
+    // in run time, the shape from Ids -> output
+    // should be [seq_length, 1] -> [batch_size, embedding_size]
+    output_t->Resize({batch_size, last_dim});
 
     if (combiner_type == "sum") {
       EmbeddingVSumFunctor<T> functor;

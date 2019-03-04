@@ -493,6 +493,7 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
     auto out_dims = framework::make_ddim(out_dims_v);
 
     ctx->SetOutputDim("Out", out_dims);
+    ctx->ShareLoD("ROIs", /*->*/ "Out");
   }
 
  protected:

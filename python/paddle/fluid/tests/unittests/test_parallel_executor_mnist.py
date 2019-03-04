@@ -180,7 +180,7 @@ class TestMNIST(TestParallelExecutorBase):
     def test_batchnorm_fc_with_new_strategy(self):
         # NOTE: the computation result of nccl_reduce is non-deterministic,
         # related issue: https://github.com/NVIDIA/nccl/issues/157
-        self._compare_reduce_and_allreduce(fc_with_batchnorm, True, 1e-5, 1e-3)
+        self._compare_reduce_and_allreduce(fc_with_batchnorm, True, 1e-5, 1e-2)
         self._compare_reduce_and_allreduce(fc_with_batchnorm, False)
 
 

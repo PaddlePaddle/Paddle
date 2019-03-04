@@ -16,6 +16,12 @@
 /*! \file paddle_api.h
  */
 
+/*! \mainpage Paddle Inference APIs
+ * \section intro_sec Introduction
+ * The Paddle inference library aims to offer an high performance inference SDK
+ * for Paddle users.
+ */
+
 #include <cassert>
 #include <memory>
 #include <string>
@@ -34,26 +40,49 @@ enum PaddleDType {
 };
 
 /**
- *\brief Memory menager for PaddleTensor.
+ * \brief Memory manager for `PaddleTensor`.
  *
- *The PaddleBuf holds a buffer for data input or output. The memory can be
- *allocated by user or by PaddleBuf itself, but in any case, the PaddleBuf
- *should be reused for better performance.
+ * The PaddleBuf holds a buffer for data input or output. The memory can be
+ * allocated by user or by PaddleBuf itself, but in any case, the PaddleBuf
+ * should be reused for better performance.
  *
- *For user allocated memory, the following API can be used:
- *- PaddleBuf(void* data, size_t length) to set an external memory by
- *specifying
- *  the memory address and length.
- *- Reset(void* data, size_t length) to reset the PaddleBuf with an external
+ * For user allocated memory, the following API can be used:
+ * - PaddleBuf(void* data, size_t length) to set an external memory by
+ * specifying the memory address and length.
+ * - Reset(void* data, size_t length) to reset the PaddleBuf with an external
  *memory.
- *ATTENTION, for user allocated memory, deallocation should be done by users
+ * ATTENTION, for user allocated memory, deallocation should be done by users
  *externally after the program finished. The PaddleBuf won't do any allocation
  *or deallocation.
  *
- *To have the PaddleBuf allocate and manage the memory:
- *- PaddleBuf(size_t length) will allocate a memory of size `length`.
- *- Resize(size_t length) resize the memory to no less than `length`, ATTENTION
+ * To have the PaddleBuf allocate and manage the memory:
+ * - PaddleBuf(size_t length) will allocate a memory of size `length`.
+ * - Resize(size_t length) resize the memory to no less than `length`, ATTENTION
  *  if the allocated memory is larger than `length`, nothing will done.
+ *
+ * Usage:
+ *
+ * Let PaddleBuf manage the memory internally.
+ * \code{cpp}
+ * const int num_elements = 128;
+ * PaddleBuf buf(num_elements * sizeof(float));
+ * \endcode
+ *
+ * Or
+ * \code{cpp}
+ * PaddleBuf buf;
+ * buf.Resize(num_elements * sizeof(float));
+ * \endcode
+ * Works the exactly the same.
+ *
+ * One can also make the `PaddleBuf` use the external memory.
+ * \code{cpp}
+ * PaddleBuf buf;
+ * void* external_memory = new float[num_elements];
+ * buf.Reset(external_memory, num_elements*sizeof(float));
+ * ...
+ * delete[] external_memory; // manage the memory lifetime outside.
+ * \endcode
  */
 class PaddleBuf {
  public:
@@ -78,7 +107,7 @@ class PaddleBuf {
   /** Tell whether the buffer is empty.
    */
   bool empty() const { return length_ == 0; }
-  /** Get the memory address.
+  /** Get the data's memory address.
    */
   void* data() const { return data_; }
   /** Get the memory length.
@@ -110,7 +139,8 @@ struct PaddleTensor {
 };
 
 enum class PaddlePlace { kUNK = -1, kCPU, kGPU };
-/** Tensor without copy, currently only supports AnalysisPredictor.
+
+/** Tensor without copy, currently only supports `AnalysisPredictor`.
  */
 class ZeroCopyTensor {
  public:
@@ -146,6 +176,9 @@ class ZeroCopyTensor {
   bool input_or_output_;
   friend class AnalysisPredictor;
   void* scope_{nullptr};
+  // The corresponding tensor pointer inside Paddle workspace is cached for
+  // performance.
+  mutable void* tensor_{nullptr};
 };
 
 /** A simple Inference API for Paddle.
@@ -167,18 +200,40 @@ class PaddlePredictor {
                    std::vector<PaddleTensor>* output_data,
                    int batch_size = -1) = 0;
 
-  /** Zero copy input and output optimization.
-   * Get the input or output tensors, and operate on their memory directly,
-   * without copy.
+  /** \brief Get a mutable tensor directly.
+   *
+   * NOTE Only works in AnalysisPredictor.
+   *
+   * One can also use this to modify any temporary variable related tensors in
+   * the predictor.
+   *
    */
   virtual std::unique_ptr<ZeroCopyTensor> GetInputTensor(
       const std::string& name) {
     return nullptr;
   }
+  /**
+   * \brief Get an immutable tensor without copy.
+   *
+   * NOTE Only works in AnalysisPredictor.
+   * One can use this API to get any temporary tensors in the predictor and
+   * read it.
+   */
   virtual std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
       const std::string& name) {
     return nullptr;
   }
+  /**
+   * \brief Run the predictor with zero-copied inputs and outputs.
+   *
+   * NOTE Only works in AnalysisPredictor.
+   *
+   * This will save the IO copy for transfering inputs and outputs to predictor
+   * workspace and get some performance improvement.
+   * To use it, one should call the `AnalysisConfig.SwitchUseFeedFetchOp(true)`
+   * and then use the `GetInputTensor` and `GetOutputTensor` to directly write
+   * or read the input/output tensors.
+   */
   virtual bool ZeroCopyRun() { return false; }
 
   /** Clone a predictor that share the model weights, the Cloned predictor
@@ -189,6 +244,14 @@ class PaddlePredictor {
   /** Destroy the Predictor.
    */
   virtual ~PaddlePredictor() = default;
+
+  /** \brief Get the serialized model program that executes in inference phase.
+   * Its data type is ProgramDesc, which is a protobuf message.
+   */
+  virtual std::string GetSerializedProgram() const {
+    assert(false);  // Force raise error.
+    return "NotImplemented";
+  }
 
   /** The common configs for all the predictors.
    */
@@ -236,9 +299,11 @@ struct NativeConfig : public PaddlePredictor::Config {
  *
  * Usage:
  *
+ * \code{.cpp}
  * NativeConfig config;
  * ... // change the configs.
  * auto native_predictor = CreatePaddlePredictor(config);
+ * \endcode
  *
  * FOR EXTENSION DEVELOPER:
  * Different predictors are designated by config type. Similar configs can be
@@ -262,5 +327,7 @@ template <typename ConfigT, PaddleEngineKind engine>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
 int PaddleDtypeSize(PaddleDType dtype);
+
+std::string get_version();
 
 }  // namespace paddle

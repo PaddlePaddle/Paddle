@@ -54,6 +54,9 @@ class SliceOp : public framework::OperatorWithKernel {
       out_dims[axes[i]] = end - start;
     }
     ctx->SetOutputDim("Out", out_dims);
+    if (axes[0] != 0) {
+      ctx->ShareLoD("Input", /*->*/ "Out");
+    }
   }
 
  protected:
