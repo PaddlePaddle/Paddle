@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/platform/device_tracer.h"
 
 #include <deque>
 #include <forward_list>
@@ -30,7 +29,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 
@@ -480,16 +479,18 @@ class DeviceTracerImpl : public DeviceTracer {
     }
     for (const MemInfoRecord &r : mem_info_record_) {
       auto *event = profile_pb.add_mem_events();
-      if (is_cpu_place(r.place)) {
+      if (platform::is_cpu_place(r.place)) {
         event->set_place(proto::MemEvent::CPUPlace);
         event->set_device_id(0);
-      } else if (is_gpu_place(r.place)) {
+      } else if (platform::is_gpu_place(r.place)) {
         event->set_place(proto::MemEvent::CUDAPlace);
         event->set_device_id(
             boost::get<platform::CUDAPlace>(r.place).GetDeviceId());
-      } else {
+      } else if (platform::is_cuda_pinned_place(r.place)) {
         event->set_place(proto::MemEvent::CUDAPinnedPlace);
         event->set_device_id(0);
+      } else {
+        PADDLE_THROW("The current place is not supported.");
       }
       event->set_start_ns(r.start_ns);
       event->set_end_ns(r.end_ns);

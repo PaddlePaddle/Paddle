@@ -16,7 +16,6 @@ limitations under the License. */
 #include <chrono>  // NOLINT
 #include <string>
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/place.h"
