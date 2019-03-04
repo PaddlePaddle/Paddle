@@ -14,6 +14,7 @@
 
 import os
 import paddle.fluid as fluid
+from paddle.fluid import compiler
 import paddle
 import unittest
 import six
@@ -140,9 +141,10 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
+
+            train_cp = compiler.CompiledProgram(fluid.default_main_program())
             if use_parallel_executor:
-                exe = fluid.ParallelExecutor(
-                    use_cuda=use_cuda, loss_name=loss.name)
+                train_cp = train_cp.with_data_parallel(loss_name=loss.name)
                 fetch_list = [loss.name]
             else:
                 fetch_list = [loss]
@@ -150,9 +152,10 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
             ret = []
             for epoch_id in six.moves.range(2):
                 for d in r():
-                    L, = exe.run(feed=feeder.feed(d), fetch_list=fetch_list)
+                    L, = exe.run(train_cp,
+                                 feed=feeder.feed(d),
+                                 fetch_list=fetch_list)
                     ret.append(L)
-
             return np.array(ret)
 
 

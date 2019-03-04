@@ -34,13 +34,14 @@ class VXXJitCode : public JitCode {
         type_(type),
         scalar_index_(scalar_index),
         with_relu_(with_relu) {
-    if (!(type_ == operand_type::MUL || type_ == operand_type::ADD)) {
+    if (!(type_ == operand_type::MUL || type_ == operand_type::ADD ||
+          type_ == operand_type::SUB)) {
       LOG(FATAL) << "Do not support this operand type: " << type_;
     }
     this->genCode();
   }
 
-  virtual const char* name() const {
+  std::string name() const override {
     std::string base = "VXXJitCode";
     if (scalar_index_ == 1) {
       base += "_Scalar";
@@ -51,6 +52,8 @@ class VXXJitCode : public JitCode {
       base += "_Mul";
     } else if (type_ == operand_type::ADD) {
       base += "_Add";
+    } else if (type_ == operand_type::SUB) {
+      base += "_SUB";
     }
     if (scalar_index_ == 2) {
       base += "_Scalar";
@@ -58,7 +61,8 @@ class VXXJitCode : public JitCode {
       base += "_Vec";
     }
     base += (with_relu_ ? "_Relu" : "");
-    return base.c_str();
+    base += "_D" + std::to_string(num_);
+    return base;
   }
   void genCode() override;
 

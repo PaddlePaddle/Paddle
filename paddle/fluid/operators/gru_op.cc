@@ -137,6 +137,10 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, defalut: False) "
                   "whether to compute reversed GRU.")
         .SetDefault(false);
+    AddAttr<bool>("origin_mode",
+                  "bool"
+                  "use origin mode in article https://arxiv.org/abs/1412.3555")
+        .SetDefault(false);
     AddComment(R"DOC(
 GRU Operator implements part calculations of the complete GRU as following:
 
@@ -221,6 +225,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
     using DeviceContext = paddle::platform::CPUDeviceContext;
+    bool origin_mode = context.Attr<bool>("origin_mode");
     auto* input = context.Input<LoDTensor>("Input");
     auto* h0 = context.Input<Tensor>("H0");
     auto* weight = context.Input<Tensor>("Weight");
@@ -327,7 +332,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
 
         math::detail::forward_final_output(
             math::detail::forward::gru_finalOutput<T>(), gru_value, frame_size,
-            cur_batch_size, active_node);
+            cur_batch_size, active_node, origin_mode);
 
         gru_value.prev_out_value = gru_value.output_value;
       }
@@ -351,7 +356,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
 
         math::GRUUnitFunctor<DeviceContext, T>::compute(
             dev_ctx, gru_value, frame_size, cur_batch_size, active_node,
-            active_gate);
+            active_gate, origin_mode);
 
         gru_value.prev_out_value = gru_value.output_value;
       }

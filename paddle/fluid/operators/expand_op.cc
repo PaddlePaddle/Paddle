@@ -48,7 +48,7 @@ class ExpandOp : public framework::OperatorWithKernel {
     }
 
     // set the first dim to -1 in compile time
-    if (!ctx->IsRuntime()) {
+    if (!ctx->IsRuntime() && x_dims[0] < 0) {
       out_shape[0] = x_dims[0];
     }
 
@@ -115,7 +115,7 @@ class ExpandGradOp : public framework::OperatorWithKernel {
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     size_t start_pos = 0u;
-    if (!ctx->IsRuntime()) {
+    if (!ctx->IsRuntime() && x_dims[0] < 0) {
       PADDLE_ENFORCE_EQ(
           x_dims[0], out_dims[0],
           "The first dimension size of Input(Out@GRAD) should be "
@@ -146,7 +146,11 @@ REGISTER_OPERATOR(expand, ops::ExpandOp, ops::ExpandOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(expand_grad, ops::ExpandGradOp);
 REGISTER_OP_CPU_KERNEL(
-    expand, ops::ExpandKernel<paddle::platform::CPUDeviceContext, float>);
+    expand, ops::ExpandKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ExpandKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ExpandKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ExpandKernel<paddle::platform::CPUDeviceContext, bool>);
 REGISTER_OP_CPU_KERNEL(
     expand_grad,
-    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, double>);

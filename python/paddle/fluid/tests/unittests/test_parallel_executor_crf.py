@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import paddle.dataset.conll05 as conll05
 import paddle.fluid as fluid
+from paddle.fluid import compiler
 import paddle.fluid.core as core
 import unittest
 import paddle
@@ -157,10 +158,8 @@ class TestCRFModel(unittest.TestCase):
             exe = fluid.Executor(place)
             exe.run(startup)
 
-            pe = fluid.ParallelExecutor(
-                use_cuda=use_cuda,
-                loss_name=avg_cost.name,
-                build_strategy=build_strategy)
+            train_cp = compiler.CompiledProgram(main).with_data_parallel(
+                loss_name=avg_cost.name, build_strategy=build_strategy)
 
             feeder = fluid.DataFeeder(
                 feed_list=[
@@ -172,8 +171,9 @@ class TestCRFModel(unittest.TestCase):
             data = train_data()
             for i in range(10):
                 cur_batch = next(data)
-                print(pe.run(feed=feeder.feed(cur_batch),
-                             fetch_list=[avg_cost.name])[0])
+                print(exe.run(train_cp,
+                              feed=feeder.feed(cur_batch),
+                              fetch_list=[avg_cost.name])[0])
 
     def _new_build_strategy(self, use_reduce=False):
         build_strategy = fluid.BuildStrategy()
