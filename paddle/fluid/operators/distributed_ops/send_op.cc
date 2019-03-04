@@ -56,7 +56,7 @@ class SendOp : public framework::OperatorBase {
       auto send_functor = distributed::ParameterSend<float>();
       auto rpc_ctx = distributed::RpcContext(ins[0], send_varnames, epmap,
                                              height_sections);
-      send_functor(rpc_ctx, exe_ctx, scope, static_cast<bool>(sync_send));
+      send_functor(rpc_ctx, scope, static_cast<bool>(sync_send));
     } else {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();

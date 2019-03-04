@@ -40,7 +40,6 @@ using DDim = framework::DDim;
 
 template <typename T>
 void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
-                                  const framework::ExecutionContext &ctx,
                                   const framework::Scope &scope) {
   framework::Scope *local_scope = scope.NewTmpScope();
 
@@ -48,8 +47,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
   auto &cpu_ctx = *pool.Get(platform::CPUPlace());
 
   distributed::RPCClient *rpc_client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>(
-          ctx.Attr<int>("trainer_id"));
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
   auto *recv_var = scope.FindVar(rpc_ctx.var_name);
 
@@ -80,12 +78,13 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
     size_t output_offset = 0;
     framework::Tensor *recv_tensor =
         recv_var->GetMutable<framework::LoDTensor>();
+    auto dev_ctx = paddle::platform::CPUDeviceContext();
     for (auto *in : recved_tensors) {
       auto in_stride = framework::stride_numel(in->dims());
       auto out_stride = framework::stride_numel(recv_tensor->dims());
       StridedNumelCopyWithAxis<T>(
-          ctx.device_context(), 0, recv_tensor->data<T>() + output_offset,
-          out_stride, in->data<T>(), in_stride, in_stride[0]);
+          dev_ctx, 0, recv_tensor->data<T>() + output_offset, out_stride,
+          in->data<T>(), in_stride, in_stride[0]);
       output_offset += in_stride[0];
     }
   }
