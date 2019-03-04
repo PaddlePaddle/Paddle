@@ -19,6 +19,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include <ThreadPool.h>
+
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/distributed/rpc_common.h"
@@ -100,9 +102,18 @@ class Communicator {
       send_varname_to_queue_[iter.first] =
           std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(10);
     }
+    // TODO(qiao): default 5, need to config
+    send_threadpool_.reset(new ::ThreadPool(5));
+    recv_threadpool_.reset(new ::ThreadPool(5));
   }
 
-  ~Communicator() {}
+  ~Communicator() {
+    VLOG(3) << "~Communicator";
+    running_ = false;
+    send_thread_->join();
+    recv_thread_->join();
+    VLOG(3) << "~Communicator done";
+  }
 
   void Start();
 
@@ -113,6 +124,7 @@ class Communicator {
   void SendThread();
   void RecvThread();
 
+  bool running_ = false;
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
       send_varname_to_queue_;
@@ -122,6 +134,8 @@ class Communicator {
   std::unique_ptr<std::thread> recv_thread_;
   Scope* recv_scope_;                  // should be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope
+  std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
+  std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
 };
 
 }  // namespace distributed
