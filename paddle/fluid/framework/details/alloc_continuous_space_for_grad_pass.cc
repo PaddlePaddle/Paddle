@@ -21,7 +21,6 @@
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
-
 DEFINE_int32(
     fuse_parameter_groups_size, 3,
     "fuse_parameter_groups_size is the group size of the fused "
@@ -55,9 +54,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       RecordParamsAndGrads(node, &params_grads);
     }
 
-    auto &group_params_grads =
-        result.Get<GroupGradsAndParams>(kGroupGradsAndParams);
-    if (group_params_grads.size() == 0) {
+    if (params_grads.size() == 0) {
       VLOG(10) << "Doesn't find gradients";
       return std::move(graph);
     }
@@ -71,6 +68,8 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       }
     }
 
+    auto &group_params_grads =
+        result.Get<GroupGradsAndParams>(kGroupGradsAndParams);
     // Note:
     SetGroupGradsAndParams(vars, params_grads, &group_params_grads);
 
@@ -98,7 +97,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       result.Set(kFusedVars, new FusedVars);
     }
     const std::string prefix(kFusedVarNamePrefix);
-    auto fused_var_name = prefix + "_GRAD";
+    auto fused_var_name = prefix + "GRAD@" + params_grads[0].second;
     auto &fused_var_set = result.Get<FusedVars>(kFusedVars);
     PADDLE_ENFORCE_EQ(fused_var_set.count(fused_var_name), 0);
     fused_var_set.insert(fused_var_name);
@@ -122,11 +121,18 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
       const ParamsAndGrads &params_grads,
       GroupGradsAndParams *group_params_grads) const {
+    SetGroupAccordingToGroupSize(var_nodes, params_grads, group_params_grads);
+  }
+
+  void SetGroupAccordingToGroupSize(
+      const std::unordered_map<std::string, ir::Node *> &var_nodes,
+      const ParamsAndGrads &params_grads,
+      GroupGradsAndParams *group_params_grads) const {
     size_t group_size = static_cast<size_t>(FLAGS_fuse_parameter_groups_size);
-    if (group_size == -1) {
+    if (FLAGS_fuse_parameter_groups_size == -1) {
       group_size = params_grads.size();
     }
-
+    VLOG(10) << "Group size: " << group_size;
     size_t groups = (params_grads.size() + group_size - 1) / group_size;
     group_params_grads->reserve(groups);
 
@@ -200,6 +206,25 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       const std::unordered_map<std::string, ir::Node *> &vars,
       const std::string &fused_var_name,
       const ParamsAndGrads &params_grads) const {
+    //  Init Gradients and FusedVars
+    VLOG(10) << "Init FusedVars and Gradients.";
+    for (auto it = local_scopes.rbegin(); it != local_scopes.rend(); ++it) {
+      auto &scope = *it;
+
+      PADDLE_ENFORCE(scope->FindVar(fused_var_name) == nullptr,
+                     "%s has existed in scope.", fused_var_name);
+      scope->Var(fused_var_name)->GetMutable<LoDTensor>();
+
+      for (auto &p_g : params_grads) {
+        auto iter = vars.find(p_g.second);
+        PADDLE_ENFORCE(iter != vars.end());
+        PADDLE_ENFORCE_NOT_NULL(iter->second->Var());
+        PADDLE_ENFORCE_EQ(iter->second->Var()->GetType(),
+                          proto::VarType::LOD_TENSOR);
+        scope->Var(p_g.second)->GetMutable<LoDTensor>();
+      }
+    }
+
     std::vector<std::string> grads_name;
     std::vector<std::string> params_name;
     grads_name.reserve(params_grads.size());
@@ -211,36 +236,12 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     framework::ProgramDesc program_desc;
     AppendAllocSpaceForVarsOp(params_name, grads_name, fused_var_name,
                               program_desc.MutableBlock(0));
-    /*
-     * Init Gradients and FusedVars
-     */
-    VLOG(10) << "Init FusedVars.";
-    for (size_t i = 0; i < local_scopes.size(); ++i) {
-      PADDLE_ENFORCE(local_scopes[i]->FindVar(fused_var_name) == nullptr);
-      local_scopes[i]->Var(fused_var_name)->GetMutable<LoDTensor>();
-    }
 
-    VLOG(10) << "Init Gradients.";
-    for (size_t i = 0; i < local_scopes.size(); ++i) {
-      for (auto &p_g : params_grads) {
-        auto iter = vars.find(p_g.second);
-        PADDLE_ENFORCE(iter != vars.end());
-        PADDLE_ENFORCE_NOT_NULL(iter->second->Var());
-        PADDLE_ENFORCE_EQ(iter->second->Var()->GetType(),
-                          proto::VarType::LOD_TENSOR);
-        local_scopes[i]->Var(p_g.second)->GetMutable<LoDTensor>();
-      }
-    }
-
-    /*
-     * Run Only Once Programs
-     */
+    // Run Only Once Programs
     for (size_t i = 0; i < local_scopes.size(); ++i) {
       for (auto &op_desc : program_desc.Block(0).AllOps()) {
         auto op = OpRegistry::CreateOp(*op_desc);
-        VLOG(4) << op->DebugStringEx(local_scopes[i]);
         op->Run(*local_scopes[i], places[i]);
-        VLOG(3) << op->DebugStringEx(local_scopes[i]);
       }
     }
   }
