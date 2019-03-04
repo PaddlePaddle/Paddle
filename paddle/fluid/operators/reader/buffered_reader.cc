@@ -51,10 +51,10 @@ BufferedReader::BufferedReader(
                                              .Get(place_)))
             ->stream();
     events.resize(buffer_size);
-    PADDLE_ENFORCE(cudaStreamCreate(&stream));
     for (auto &event : events) {
       PADDLE_ENFORCE(cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
     }
+    PADDLE_ENFORCE(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
   }
 #endif
   cpu_buffer_.resize(buffer_size);
