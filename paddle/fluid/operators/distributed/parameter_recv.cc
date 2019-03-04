@@ -39,9 +39,7 @@ using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
 template <typename T>
-void ParameterRecv<T>::operator()(const std::string &var_name,
-                                  const std::vector<std::string> &recv_varnames,
-                                  const std::vector<std::string> &epmap,
+void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
                                   const framework::ExecutionContext &ctx,
                                   const framework::Scope &scope) {
   framework::Scope *local_scope = scope.NewTmpScope();
@@ -53,21 +51,22 @@ void ParameterRecv<T>::operator()(const std::string &var_name,
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(
           ctx.Attr<int>("trainer_id"));
 
-  auto *recv_var = scope.FindVar(var_name);
+  auto *recv_var = scope.FindVar(rpc_ctx.var_name);
 
   std::vector<framework::Tensor *> recved_tensors;
 
   // recv all vars to local scope
   if (recv_var->IsType<framework::LoDTensor>()) {
     std::vector<distributed::VarHandlePtr> rets;
-    for (size_t i = 0; i < recv_varnames.size(); i++) {
-      auto &recv_var_name = recv_varnames[i];
+    for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
+      auto &recv_var_name = rpc_ctx.splited_var_names[i];
       framework::Tensor *t =
           local_scope->Var(recv_var_name)->GetMutable<framework::LoDTensor>();
       recved_tensors.push_back(t);
-      VLOG(3) << "recv " << recv_var_name << " from " << epmap[i];
-      rets.push_back(rpc_client->AsyncGetVar(epmap[i], cpu_ctx, *local_scope,
-                                             recv_var_name, recv_var_name));
+      VLOG(3) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
+      rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
+                                             *local_scope, recv_var_name,
+                                             recv_var_name));
     }
     for (size_t i = 0; i < rets.size(); i++) {
       PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");

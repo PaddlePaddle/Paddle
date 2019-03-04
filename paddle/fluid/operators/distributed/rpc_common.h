@@ -22,6 +22,13 @@ namespace operators {
 namespace distributed {
 
 struct RpcContext {
+  RpcContext(const std::string& name, const std::vector<std::string>& names,
+             const std::vector<std::string>& emap,
+             const std::vector<int64_t>& sections)
+      : var_name(name),
+        splited_var_names(names),
+        epmap(emap),
+        height_sections(sections) {}
   std::string var_name;
   std::vector<std::string> splited_var_names;
   std::vector<std::string> epmap;
