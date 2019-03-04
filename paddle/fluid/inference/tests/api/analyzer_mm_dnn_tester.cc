@@ -16,7 +16,6 @@
 
 namespace paddle {
 namespace inference {
-using contrib::AnalysisConfig;
 
 struct DataRecord {
   std::vector<std::vector<int64_t>> query, title;
@@ -75,7 +74,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   }
 }
 
-void SetConfig(contrib::AnalysisConfig *cfg) {
+void SetConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model);
   cfg->DisableGpu();
   cfg->SwitchSpecifyInputNames();
@@ -94,10 +93,14 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 // Easy for profiling independently.
-TEST(Analyzer_MM_DNN, profile) {
-  contrib::AnalysisConfig cfg;
+void profile(bool use_mkldnn = false) {
+  AnalysisConfig cfg;
   SetConfig(&cfg);
   std::vector<PaddleTensor> outputs;
+
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -119,9 +122,14 @@ TEST(Analyzer_MM_DNN, profile) {
   }
 }
 
+TEST(Analyzer_MM_DNN, profile) { profile(); }
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_MM_DNN, profile_mkldnn) { profile(true /* use_mkldnn */); }
+#endif
+
 // Check the fuse status
 TEST(Analyzer_MM_DNN, fuse_statis) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
 
   int num_ops;
@@ -131,15 +139,24 @@ TEST(Analyzer_MM_DNN, fuse_statis) {
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-TEST(Analyzer_MM_DNN, compare) {
-  contrib::AnalysisConfig cfg;
+void compare(bool use_mkldnn = false) {
+  AnalysisConfig cfg;
   SetConfig(&cfg);
+
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
+
+TEST(Analyzer_MM_DNN, compare) { compare(); }
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_MM_DNN, compare_mkldnn) { compare(true /* use_mkldnn */); }
+#endif
 
 // Compare Deterministic result
 TEST(Analyzer_MM_DNN, compare_determine) {

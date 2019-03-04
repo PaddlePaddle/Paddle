@@ -100,6 +100,7 @@ packages=['paddle',
           'paddle.utils',
           'paddle.dataset',
           'paddle.reader',
+          'paddle.distributed',
           'paddle.fluid',
           'paddle.fluid.imperative',
           'paddle.fluid.proto',
@@ -109,24 +110,16 @@ packages=['paddle',
           'paddle.fluid.contrib',
           'paddle.fluid.contrib.decoder',
           'paddle.fluid.contrib.quantize',
+          'paddle.fluid.contrib.int8_inference',
+          'paddle.fluid.contrib.reader',
           'paddle.fluid.contrib.slim',
           'paddle.fluid.contrib.slim.core',
           'paddle.fluid.contrib.slim.graph',
           'paddle.fluid.contrib.slim.prune',
+          'paddle.fluid.contrib.slim.quantization',
           'paddle.fluid.contrib.utils',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details']
-
-if '${WITH_FLUID_ONLY}'== 'OFF':
-    packages+=['paddle.proto',
-               'paddle.trainer',
-               'paddle.trainer_config_helpers',
-               'paddle.v2',
-               'paddle.v2.master',
-               'paddle.v2.plot',
-               'paddle.v2.reader',
-               'paddle.v2.dataset',
-               'py_paddle']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
@@ -136,18 +129,9 @@ if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
 
 # the prefix is sys.prefix which should always be usr
 paddle_bins = ''
-if '${WITH_FLUID_ONLY}'== 'OFF':
-    paddle_bin_dir = 'opt/paddle/bin'
-    paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/legacy/trainer/paddle_trainer',
-                   '${PADDLE_BINARY_DIR}/paddle/legacy/trainer/paddle_merge_model',
-                   '${PADDLE_BINARY_DIR}/paddle/legacy/pserver/paddle_pserver_main',
-                   '${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
-
+if not '${WIN32}':
+    paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
 package_data={'paddle.fluid': ['core' + (ext_name if os.name != 'nt' else '.pyd')]}
-
-if '${WITH_FLUID_ONLY}'== 'OFF':
-    package_data['paddle.v2.master']=['libpaddle_master' + ext_name]
-    package_data['py_paddle']=['*.py','_swig_paddle' + ext_name]
 
 package_dir={
     '': '${PADDLE_BINARY_DIR}/python',
@@ -157,8 +141,6 @@ package_dir={
     'paddle.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
     'paddle.fluid': '${PADDLE_BINARY_DIR}/python/paddle/fluid',
 }
-if '${WITH_FLUID_ONLY}'== 'OFF':
-    package_dir['py_paddle']='${PADDLE_BINARY_DIR}/python/py_paddle'
 
 # put all thirdparty libraries in paddle.libs
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
@@ -226,14 +208,6 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/core" + ext_name
         if os.system(command) != 0:
             raise Exception("patch core.%s failed, command: %s" % (ext_name, command))
-        if '${WITH_FLUID_ONLY}'== 'OFF':
-            # change rpath of _swig_paddle.xx.
-            if "@APPLE@" == "1":
-                command = "install_name_tool -id \"@loader_path/../paddle/libs/\" ${PADDLE_BINARY_DIR}/python/py_paddle/_swig_paddle" + ext_name
-            else:
-                command = "patchelf --set-rpath '$ORIGIN/../paddle/libs/' ${PADDLE_BINARY_DIR}/python/py_paddle/_swig_paddle" + ext_name
-            if os.system(command) != 0:
-                raise Exception("patch _swig_paddle.%s failed, command: %s" % (ext_name, command))
 
 ext_modules = [Extension('_foo', ['stub.cc'])]
 if os.name == 'nt':

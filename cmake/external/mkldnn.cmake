@@ -49,6 +49,8 @@ IF(NOT WIN32)
     SET(MKLDNN_FLAG "${MKLDNN_FLAG} -Wno-unused-result -Wno-unused-value")
     SET(MKLDNN_CFLAG "${CMAKE_C_FLAGS} ${MKLDNN_FLAG}")
     SET(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} ${MKLDNN_FLAG}")
+ELSE()
+    SET(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} /EHsc")
 ENDIF(NOT WIN32)
 
 ExternalProject_Add(
@@ -61,7 +63,6 @@ ExternalProject_Add(
     UPDATE_COMMAND      ""
     CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
     CMAKE_ARGS          -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-    CMAKE_ARGS          -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
     CMAKE_ARGS          -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
     CMAKE_ARGS          -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
     CMAKE_ARGS          -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
@@ -88,7 +89,6 @@ SET_PROPERTY(TARGET shared_mkldnn PROPERTY IMPORTED_LOCATION ${MKLDNN_LIB})
 ADD_DEPENDENCIES(shared_mkldnn ${MKLDNN_PROJECT})
 MESSAGE(STATUS "MKLDNN library: ${MKLDNN_LIB}")
 add_definitions(-DPADDLE_WITH_MKLDNN)
-LIST(APPEND external_project_dependencies shared_mkldnn)
 
 # generate a static dummy target to track mkldnn dependencies
 # for cc_library(xxx SRCS xxx.c DEPS mkldnn)
@@ -110,7 +110,3 @@ else(WIN32)
 endif(WIN32)
 ADD_CUSTOM_TARGET(mkldnn_shared_lib ALL DEPENDS ${MKLDNN_SHARED_LIB})
 ADD_DEPENDENCIES(mkldnn_shared_lib ${MKLDNN_PROJECT} mkldnn)
-IF(WITH_C_API)
-  INSTALL(FILES ${MKLDNN_SHARED_LIB} DESTINATION lib)
-ENDIF()
-

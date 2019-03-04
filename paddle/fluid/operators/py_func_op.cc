@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/py_func_op.h"
+
 #include <set>
 #include <string>
 #include <vector>
-#include "Python.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {

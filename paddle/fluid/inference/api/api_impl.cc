@@ -161,13 +161,16 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
 }
 
 std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
+  std::lock_guard<std::mutex> lk(clone_mutex_);
   VLOG(3) << "Predictor::clone";
   std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
-
-  if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init(scope_)) {
+  // Hot fix the bug that result diff in multi-thread.
+  // TODO(Superjomn) re-implement a real clone here.
+  if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init(nullptr)) {
     LOG(ERROR) << "fail to call Init";
     return nullptr;
   }
+
 #ifdef __clang__
   // fix clang compile error
   return cls;
@@ -287,7 +290,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
-    // 1. GPU memeroy
+    // 1. GPU memory
     PADDLE_ENFORCE_GE(
         config.fraction_of_gpu_memory, 0.f,
         "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
