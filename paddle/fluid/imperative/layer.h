@@ -114,21 +114,22 @@ class VarBase {
  public:
   VarBase() : VarBase(new framework::Variable(), new VarBase(true)) {}
 
-  explicit VarBase(bool stop_gradient)
-      : VarBase(new framework::Variable(),
+  VarBase(const std::string& name, bool persistable, bool stop_gradient)
+      : VarBase(name, persistable, new framework::Variable(),
                 stop_gradient ? nullptr : new VarBase(true), stop_gradient) {}
 
   VarBase(framework::Variable* var, VarBase* grad)
-      : VarBase(var, grad, false) {}
+      : VarBase("", false, var, grad, false) {}
 
  private:
-  VarBase(framework::Variable* var, VarBase* grad, bool stop_gradient)
-      : name_(),
+  VarBase(const std::string& name, bool persistable, framework::Variable* var,
+          VarBase* grad, bool stop_gradient)
+      : name_(name),
         var_desc_(nullptr),
         var_(var),
         grads_(grad),
         block_(nullptr),
-        persistable_(false),
+        persistable_(persistable),
         stop_gradient_(stop_gradient),
         pre_op_(nullptr),
         pre_op_out_name_(),
@@ -150,6 +151,8 @@ class VarBase {
     pre_op_ = nullptr;
     pre_op_out_idx_ = -1;
   }
+
+  inline std::string Name() const { return name_; }
 
   inline OpBase* PreOp() const { return pre_op_; }
   inline int PreOpOutIdx() const { return pre_op_out_idx_; }
@@ -223,8 +226,9 @@ class VarBase {
  */
 class PYBIND11_HIDDEN OpBase {
  public:
-  OpBase()
-      : op_desc_(nullptr),
+  OpBase(const std::string& type)
+      : type_(type),
+        op_desc_(nullptr),
         forward_id_(-1),
         backward_id_(-1),
         trace_id_(-1),
@@ -249,10 +253,26 @@ class PYBIND11_HIDDEN OpBase {
 
   std::map<std::string, std::vector<VarBase*>> ApplyGrad();
 
+  inline std::string Type() { return type_; }
+
   void RegisterBackwardHooks(const py::object& callable);
 
   void InvokeBackwardHooks();
 
+  void TrackPreOp(const VarBase* inp_var, const std::string& inp_name) {
+    if (inp_var->PreOp() && !inp_var->IsStopGradient()) {
+      VLOG(3) << "add pre op " << inp_var->PreOp()->Type() << " in slot "
+              << inp_name;
+      pre_ops_[inp_name].push_back(inp->PreOp());
+      pre_ops_out_idx_[inp_name].push_back(inp->PreOpOutIdx());
+    } else {
+      VLOG(3) << "add pre op " << nullptr << " in slot " << inp_name;
+      pre_ops_[inp_name].push_back(nullptr);
+      // pre_ops_out_idx_[inp_name].push_back(-1);
+    }
+  }
+
+  std::string type_;
   // One of `op_desc_` or `forward_id_` is set, not both.
   // For pure python PyLayer, use `forward_id_`, otherwise, use op_desc_.
   framework::OpDesc* op_desc_;

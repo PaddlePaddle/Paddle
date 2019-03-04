@@ -36,7 +36,11 @@ class Tracer(core.Tracer):
         super(Tracer, self).__init__(block)
 
         self._ops = defaultdict()
+        self._vars = defaultdict()
         self._trace_id = 0
+
+    def trace_var(self, name, var):
+        self._vars[name] = var
 
     def trace_op(self, op, stop_gradient=False):
         # record op's trace id
