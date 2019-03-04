@@ -39,7 +39,7 @@ using DDim = framework::DDim;
 
 static std::vector<std::vector<int64_t>> SplitIds(
     const std::vector<int64_t>& ids_vector,
-    const std::vector<int64_t>& height_section, framework::Scope* scope) {
+    const std::vector<int64_t>& height_section) {
   std::set<int64_t> all_ids;
   for (auto id : ids_vector) {
     all_ids.insert(id);
@@ -203,7 +203,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
 #endif
   }
 
-  auto splited_ids = SplitIds(ids_vector, height_sections, local_scope);
+  auto splited_ids = SplitIds(ids_vector, height_sections);
   SplitIdsIntoMultipleVarsBySection(in_var_names, height_sections, splited_ids,
                                     local_scope);
 
