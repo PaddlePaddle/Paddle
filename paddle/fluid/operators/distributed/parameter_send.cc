@@ -39,7 +39,6 @@ using DDim = framework::DDim;
 
 template <typename T>
 void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
-                                  const framework::ExecutionContext &ctx,
                                   const framework::Scope &scope, bool sync) {
   framework::Scope *local_scope = scope.NewTmpScope();
 
@@ -47,8 +46,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
   auto &cpu_ctx = *pool.Get(platform::CPUPlace());
 
   distributed::RPCClient *rpc_client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>(
-          ctx.Attr<int>("trainer_id"));
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
   auto *send_var = scope.FindVar(rpc_ctx.var_name);
   size_t out_num = rpc_ctx.splited_var_names.size();
@@ -105,7 +103,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
       outs_rows_idx[out_idx].push_back(send_rows[i]);
       outs_dense_idx[out_idx].push_back(i);
     }
-    auto place = ctx.GetPlace();
+    auto place = platform::CPUPlace();
 
     for (size_t i = 0; i < outs_rows_idx.size(); ++i) {
       auto rows_idx = outs_rows_idx[i];
@@ -118,22 +116,25 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
         for (auto idx : rows_idx) {
           outs[i]->mutable_rows()->push_back(idx - abs_sections[i]);
         }
-        auto dst = outs[i]->mutable_value()->mutable_data<T>(ctx.GetPlace());
+        auto dst = outs[i]->mutable_value()->mutable_data<T>(place);
         for (size_t j = 0; j < rows_idx.size(); j++) {
           if (platform::is_cpu_place(place)) {
             memory::Copy(
                 platform::CPUPlace(), dst + j * row_numel, platform::CPUPlace(),
                 src + outs_dense_idx[i][j] * row_numel, sizeof(T) * row_numel);
           } else {
-#ifdef PADDLE_WITH_CUDA
-            auto stream = ctx.cuda_device_context().stream();
-            memory::Copy(platform::CUDAPlace(), dst + j * row_numel,
-                         platform::CUDAPlace(),
-                         src + outs_dense_idx[i][j] * row_numel,
-                         sizeof(T) * row_numel, stream);
-#else
-            PADDLE_THROW("Paddle is not compiled with GPU");
-#endif
+            PADDLE_THROW("do not support GPU now");
+            /*
+            #ifdef PADDLE_WITH_CUDA
+                        auto stream = ctx.cuda_device_context().stream();
+                        memory::Copy(platform::CUDAPlace(), dst + j * row_numel,
+                                     platform::CUDAPlace(),
+                                     src + outs_dense_idx[i][j] * row_numel,
+                                     sizeof(T) * row_numel, stream);
+            #else
+                        PADDLE_THROW("Paddle is not compiled with GPU");
+            #endif
+            */
           }
         }
       }

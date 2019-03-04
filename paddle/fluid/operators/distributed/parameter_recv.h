@@ -26,9 +26,7 @@ namespace distributed {
 
 template <typename T>
 struct ParameterRecv {
-  void operator()(const RpcContext &rpc_ctx,
-                  const framework::ExecutionContext &context,
-                  const framework::Scope &scope);
+  void operator()(const RpcContext &rpc_ctx, const framework::Scope &scope);
 };
 
 };  // namespace distributed

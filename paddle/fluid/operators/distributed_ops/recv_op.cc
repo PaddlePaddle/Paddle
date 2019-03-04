@@ -62,7 +62,7 @@ class RecvOp : public framework::OperatorBase {
           framework::ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr);
       auto recv_functor = distributed::ParameterRecv<float>();
       auto rpc_ctx = distributed::RpcContext(outs[0], recv_varnames, epmap, {});
-      recv_functor(rpc_ctx, exe_ctx, scope);
+      recv_functor(rpc_ctx, scope);
     } else {
       if (with_barrier) {
         std::vector<distributed::VarHandlePtr> rets;
