@@ -188,7 +188,7 @@ ParallelExecutor::ParallelExecutor(
     const std::string &loss_var_name, Scope *scope,
     const std::vector<Scope *> &local_scopes,
     const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
-    std::vector<ir::Graph *> graphs)
+    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
@@ -218,12 +218,18 @@ ParallelExecutor::ParallelExecutor(
     }
   }
 
+  std::vector<ir::Graph *> graphs;
   if (build_strategy.async_mode_) {
     PADDLE_ENFORCE(!member_->use_cuda_,
                    "gpu mode does not support async_mode_ now!");
+    graphs.push_back(graph);
+    for (int i = 1; i < places.size(); ++i) {
+      auto *tmp_graph = new ir::Graph(graph->OriginProgram());
+      async_graphs_.emplace_back(tmp_graph);
+      graphs.push_back(tmp_graph);
+    }
   }
 
-  ir::Graph *graph = graphs[0];
   std::unique_ptr<ir::Graph> temp_owned_graph(graph);
 
   // FIXME(Yancey1989): parallel graph mode get better performance
