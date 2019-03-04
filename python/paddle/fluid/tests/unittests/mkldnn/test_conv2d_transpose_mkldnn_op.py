@@ -80,23 +80,12 @@ class TestConv2dTransposeMKLDNNOp(TestConv2dTransposeOp):
         self.outputs['Output'] = output
 
 
-class TestMKLDNNFuseRelu(TestConv2dTransposeMKLDNNOp):
+class TestMKLDNNFuseBias(TestConv2dTransposeMKLDNNOp):
     def init_test_case(self):
         TestConv2dTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
-        self.fuse_relu = True
-
-
-class TestWithGroup(TestConv2dTransposeMKLDNNOp):
-    def init_test_case(self):
-        TestConv2dTransposeMKLDNNOp.init_test_case(self)
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 2
-        self.input_size = [2, 4, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 3, 3, 3]
+        self.fuse_bias = True
+        self.bias_size = [6]
 
 
 class TestMKLDNNWithPad(TestConv2dTransposeMKLDNNOp):
