@@ -300,19 +300,23 @@ class OpAttrChecker {
  public:
   template <typename T>
   TypedAttrChecker<T>& AddAttrChecker(const std::string& attr_name) {
-    attr_checkers_.push_back(TypedAttrChecker<T>(attr_name));
-    AttrChecker& checker = attr_checkers_.back();
+    attr_checkers_[attr_name] = TypedAttrChecker<T>(attr_name);
+    AttrChecker& checker = attr_checkers_[attr_name];
     return *(checker.target<TypedAttrChecker<T>>());
   }
 
   void Check(AttributeMap* attr_map) const {
-    for (const auto& checker : attr_checkers_) {
-      checker(attr_map);
+    for (const auto& checker_pair : attr_checkers_) {
+      checker_pair.second(attr_map);
     }
   }
 
+  void CheckAttr(const std::string& name, AttributeMap* attr_map) const {
+    attr_checkers_.at(name)(attr_map);
+  }
+
  private:
-  std::vector<AttrChecker> attr_checkers_;
+  std::unordered_map<std::string, AttrChecker> attr_checkers_;
 };
 
 }  // namespace framework

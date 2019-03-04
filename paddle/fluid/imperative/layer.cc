@@ -40,13 +40,15 @@ std::map<int, py::object> py_funcs_;
 
 using framework::Variable;
 
-framework::VarDesc* CreateVarDesc(
-    framework::BlockDesc* desc, const std::string& name,
-    proto::VarType::Type type, const py::handle& py_shape,
-    const py::handle& py_dtype, const py::handle& py_lod_level,
-    const py::handle& py_persistable, const py::handle& capacity) {
+framework::VarDesc* CreateVarDesc(framework::BlockDesc* desc,
+                                  const std::string& name,
+                                  framework::proto::VarType::Type type,
+                                  const py::handle& py_shape,
+                                  const py::handle& py_dtype,
+                                  const py::handle& py_lod_level,
+                                  const py::handle& py_persistable) {
   bool is_new_var = false;
-  VarDesc* var_desc = desc->FindOrCreateVar(name, &is_new_var);
+  framework::VarDesc* var_desc = desc->FindOrCreateVar(name, &is_new_var);
 
   if (is_new_var) {
     var_desc->SetType(type);
@@ -66,17 +68,17 @@ framework::VarDesc* CreateVarDesc(
       var_desc->SetShape(shape);
     } else {
       if (var_desc->GetShape() != shape) {
+        std::vector<int64_t> old_shape = var_desc->GetShape();
         PADDLE_THROW(
             "Variable %s has been created before. the previous "
-            "shape is %s; the new shape is %s. They are not "
-            "matched.",
-            name, var_desc->GetShape(), shape);
+            "shape and the new shape are not matched.");
       }
     }
   }
 
   if (!py_dtype.is_none()) {
-    proto::VarType::Type dtype = py::cast<proto::VarType::Type>(py_dtype);
+    framework::proto::VarType::Type dtype =
+        py::cast<framework::proto::VarType::Type>(py_dtype);
     if (is_new_var) {
       var_desc->SetDataType(dtype);
     } else {
@@ -104,6 +106,23 @@ framework::VarDesc* CreateVarDesc(
       }
     }
   }
+
+  if (!py_persistable.is_none()) {
+    int32_t persistable = py::cast<int32_t>(py_persistable);
+    if (is_new_var) {
+      var_desc->SetPersistable(persistable);
+    } else {
+      if (var_desc->Persistable() != persistable) {
+        PADDLE_THROW(
+            "Variable %s has been created before. the previous "
+            "persistable is %s; the new persistable is %s. They are not "
+            "matched.",
+            name, var_desc->Persistable(), persistable);
+      }
+    }
+  }
+
+  return var_desc;
 }
 
 namespace detail {
@@ -186,8 +205,10 @@ class Autograd {
     while (!ready.empty()) {
       OpBase* ready_op = ready.front();
       ready.pop_front();
+      LOG(ERROR) << "Op ApplyGrad";
       std::map<std::string, std::vector<VarBase*>> input_grads =
           ready_op->ApplyGrad();
+      LOG(ERROR) << "Op ApplyGrad End";
 
       for (auto it : input_grads) {
         const std::vector<VarBase*>& ingrads = it.second;
@@ -307,11 +328,15 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
         }
       }
 
+      VLOG(3) << "op grad " << grad_op_desc->Type();
+
       framework::RuntimeContext ctx(grad_input_vars_[k], grad_outputs[k]);
 
       // No need to do compile time infer shape here.
       // grad_op_desc_->InferShape(*block_);
       grad_op_desc->InferVarType(block_);
+
+      VLOG(3) << "op grad " << grad_op_desc->Type();
 
       std::unique_ptr<framework::OperatorBase> opbase =
           framework::OpRegistry::CreateOp(*grad_op_desc);
@@ -319,11 +344,15 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
           dynamic_cast<framework::OperatorWithKernel*>(opbase.get());
       PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
 
+      VLOG(3) << "op grad " << grad_op_desc->Type();
       framework::Scope scope;
       PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place_);
+      VLOG(3) << "XX";
       p.op.RuntimeInferShape(scope, place_, ctx);
+      VLOG(3) << "XX";
       p.func(
           framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx, nullptr));
+      VLOG(3) << "XX";
     }
   }
 
@@ -342,6 +371,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
     }
   }
 
+  LOG(ERROR) << "ApplyGrad OK";
   return input_vars_;
 }
 

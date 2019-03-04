@@ -65,6 +65,8 @@ class VarDesc {
 
   explicit VarDesc(const proto::VarDesc &desc) : desc_(desc) {}
 
+  virtual ~VarDesc() { LOG(ERROR) << "remove var_desc " << this; }
+
   proto::VarDesc *Proto() { return &desc_; }
 
   std::string Name() const { return desc_.name(); }

@@ -111,6 +111,8 @@ class OpDesc {
     return &this->attrs_;
   }
 
+  void SetAttrDefaultValue(const std::string &name);
+
   void CheckAttrs();
 
   void InferShape(const BlockDesc &block) const;

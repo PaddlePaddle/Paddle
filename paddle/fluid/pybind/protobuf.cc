@@ -315,6 +315,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("attr", &pd::OpDesc::GetAttr)
       .def("set_block_attr", &pd::OpDesc::SetBlockAttr)
       .def("set_blocks_attr", &pd::OpDesc::SetBlocksAttr)
+      .def("_set_default_attr_value", &pd::OpDesc::SetAttrDefaultValue)
       .def("set_serialized_attr",
            [](pd::OpDesc &self, const std::string &name,
               const pybind11::bytes &seriralized) {

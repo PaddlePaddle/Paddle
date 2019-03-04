@@ -148,9 +148,14 @@ PYBIND11_MODULE(core, m) {
   m.def("print_mem_usage",
         []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
-  m.def("create_var_desc",
-        [](const std::string &name, const py::handle &py_shape) {
-          return paddle::imperative::CreateVarDesc(name, py_shape);
+  m.def("_create_var_desc",
+        [](framework::BlockDesc *desc, const std::string &name,
+           framework::proto::VarType::Type type, const py::handle &py_shape,
+           const py::handle &py_dtype, const py::handle &py_lod_level,
+           const py::handle &py_persistable) {
+          return paddle::imperative::CreateVarDesc(desc, name, type, py_shape,
+                                                   py_dtype, py_lod_level,
+                                                   py_persistable);
         });
 
   py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")

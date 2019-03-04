@@ -299,7 +299,7 @@ class Variable(object):
                                                 dtype='float32')
     """
 
-    @profile
+    # @profile
     def __init__(self,
                  block,
                  type=core.VarDesc.VarType.LOD_TENSOR,
@@ -313,6 +313,7 @@ class Variable(object):
                  stop_gradient=False,
                  is_data=False,
                  **kwargs):
+        # NOTE(minqiyang): keep as simple as possible here
         self.block = block
         self.error_clip = error_clip
 
@@ -323,31 +324,8 @@ class Variable(object):
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
 
-        self.desc = core.create_var_desc(
-            self.block.desc,
-            name,
-            type,
-            shape, )
-
-        if is_new_var:
-            self.desc.set_type(type)
-        elif self.desc.type() != type:
-            raise ValueError("Variable {0} has been created before. The "
-                             "previous type is {1}; the new type is {2}. They"
-                             " are not matched".format(self.name,
-                                                       self.desc.type(), type))
-
-        if dtype is not None:
-            if is_new_var:
-                self.desc.set_dtype(dtype)
-            else:
-                old_dtype = self.dtype
-                if dtype != old_dtype:
-                    raise ValueError("Variable {0} has been created before. "
-                                     "The previous data type is {1}; the new "
-                                     "data type is {2}. They are not "
-                                     "matched.".format(self.name, old_dtype,
-                                                       dtype))
+        self.desc = core._create_var_desc(self.block.desc, name, type, shape,
+                                          dtype, lod_level, persistable)
 
         if _in_imperative_mode():
             # record vars in tracer rather than blocks
@@ -360,6 +338,7 @@ class Variable(object):
                 self.block.vars[name] = self
         else:
             self.block.vars[name] = self
+
         self.op = None
         self.stop_gradient = stop_gradient
         self.is_data = is_data
@@ -586,7 +565,7 @@ class Operator(object):
         'checkpoint_notify', 'gen_nccl_id'
     }
 
-    @profile
+    # @profile
     def __init__(self,
                  block,
                  desc,
@@ -603,34 +582,8 @@ class Operator(object):
             op_attrs = dict()
         del attrs
 
-        op_maker = core.op_proto_and_checker_maker
-
-        if op_maker.kOpRoleAttrName() not in op_attrs:
-            op_attrs[op_maker.kOpRoleAttrName()] = self.block.program.op_role
-
-        role_var_name = op_maker.kOpRoleVarAttrName()
-        if len(self.block.program.
-               op_role_var) != 0 and role_var_name not in op_attrs:
-            op_attrs[role_var_name] = self.block.program.op_role_var
-
-        if role_var_name in op_attrs and len(op_attrs[role_var_name]) == 0:
-            del op_attrs[role_var_name]
-
-        if len(self.desc.type()) != 0:
-            return
-        if type is None:
-            raise ValueError(
-                "`type` to initilized an Operator can not be None.")
-        else:
-            callstack_var_name = op_maker.kOpCreationCallstackAttrName()
-            op_attrs[callstack_var_name] = list(
-                reversed(traceback.format_stack()))[1:]
-
         self.desc.set_type(type)
         proto = OpProtoHolder.instance().get_op_proto(type)
-
-        namescope_var_name = op_maker.kOpNameScopeAttrName()
-        op_attrs[namescope_var_name] = _full_name_scope()
 
         def find_name(var_list, name):
             for var_name in var_list:
@@ -638,74 +591,46 @@ class Operator(object):
                     return True
             return False
 
-        if inputs is not None:
-            for in_proto in proto.inputs:
-                found = find_name(inputs, in_proto.name)
-                assert found or in_proto.dispensable, "Input {} not found".format(
-                    in_proto.name)
-
-                if found:
-                    in_args = inputs[in_proto.name]
-                    if not isinstance(in_args, list):
-                        in_args = [in_args]
-                    if not in_proto.duplicable and len(in_args) > 1:
-                        raise ValueError(
-                            "Input %s expects only one input, but %d are given."
-                            % (in_proto.name, len(in_args)))
-                    in_arg_names = []
-                    for arg in in_args:
-                        if isinstance(arg, six.string_types):
-                            in_arg_names.append(arg)
-                        elif isinstance(arg, six.binary_type):
-                            in_arg_names.append(arg.decode())
-                        else:
-                            in_arg_names.append(cpt.to_text(arg.name))
-                    self.desc.set_input(in_proto.name, in_arg_names)
-                else:
-                    self.desc.set_input(in_proto.name, [])
-
-        if outputs is not None:
-            for m in proto.outputs:
-                if (m.name not in outputs) and m.dispensable:
-                    continue
-                if not ((m.name in outputs) or m.dispensable):
-                    raise ValueError(
-                        ("Incorrect setting for output(s) of "
-                         "operator \"%s\", should set: [%s].") % (type, m.name))
-            for out_proto in proto.outputs:
-                if out_proto.name not in outputs:
-                    continue
-                out_args = outputs[out_proto.name]
-                if not isinstance(out_args, list):
-                    out_args = [out_args]
-                if not out_proto.duplicable and len(out_args) > 1:
-                    raise ValueError(
-                        "Output %s expects only one output, but %d are given." %
-                        (out_proto.name, len(out_args)))
-                out_arg_names = []
-                for arg in out_args:
-                    out_arg_names.append(cpt.to_text(arg.name))
-                    # TODO(minqiyang): could we remove variable's op in static mode?
-                    if not _in_imperative_mode():
-                        arg.op = self
-                self.desc.set_output(out_proto.name, out_arg_names)
-
-        if op_attrs is not None:
-            if not isinstance(op_attrs, dict):
-                raise TypeError("'attrs' should be a dict.")
-            for attr in proto.attrs:
-                attr_name = attr.name
-                if (attr_name not in op_attrs) or (op_attrs[attr_name] is None):
-                    continue
-                attr_val = op_attrs[attr_name]
-                self._update_desc_attr(attr_name, attr_val)
-
-        self.desc.check_attrs()
-        if self._has_kernel(type):
-            self.desc.infer_var_type(self.block.desc)
-            self.desc.infer_shape(self.block.desc)
-
         if _in_imperative_mode():
+            if inputs is not None:
+                for in_proto in proto.inputs:
+                    found = find_name(inputs, in_proto.name)
+                    assert found or in_proto.dispensable, "Input {} not found".format(
+                        in_proto.name)
+
+                    if found:
+                        in_args = inputs[in_proto.name]
+                        if not isinstance(in_args, list):
+                            in_args = [in_args]
+                        in_arg_names = [arg.name for arg in in_args]
+                        self.desc.set_input(in_proto.name, in_arg_names)
+                    else:
+                        self.desc.set_input(in_proto.name, [])
+
+            if outputs is not None:
+                for out_proto in proto.outputs:
+                    if out_proto.name not in outputs:
+                        continue
+                    out_args = outputs[out_proto.name]
+                    if not isinstance(out_args, list):
+                        out_args = [out_args]
+                    out_arg_names = [arg.name for arg in out_args]
+                    self.desc.set_output(out_proto.name, out_arg_names)
+
+            if op_attrs is not None:
+                if not isinstance(op_attrs, dict):
+                    raise TypeError("'attrs' should be a dict.")
+                for attr in proto.attrs:
+                    attr_name = attr.name
+                    if (attr_name not in op_attrs) or (
+                            op_attrs[attr_name] is None):
+                        if attr_name not in ('op_role', 'op_role_var',
+                                             'op_namescope', 'op_callstack'):
+                            self.desc._set_default_attr_value(attr_name)
+                        continue
+                    attr_val = op_attrs[attr_name]
+                    self._update_desc_attr(attr_name, attr_val)
+
             self.iop = core.OpBase()
             self.iop.desc = self.desc
 
@@ -724,6 +649,101 @@ class Operator(object):
                         self.outputs[k].append(v._ivar)
                     elif isinstance(v, list) or isinstance(v, tuple):
                         self.outputs[k].extend([var._ivar for var in v])
+        else:
+            op_maker = core.op_proto_and_checker_maker
+
+            if op_maker.kOpRoleAttrName() not in op_attrs:
+                op_attrs[op_maker.kOpRoleAttrName(
+                )] = self.block.program.op_role
+
+            role_var_name = op_maker.kOpRoleVarAttrName()
+            if len(self.block.program.
+                   op_role_var) != 0 and role_var_name not in op_attrs:
+                op_attrs[role_var_name] = self.block.program.op_role_var
+
+            if role_var_name in op_attrs and len(op_attrs[role_var_name]) == 0:
+                del op_attrs[role_var_name]
+
+            if len(self.desc.type()) != 0:
+                return
+            if type is None:
+                raise ValueError(
+                    "`type` to initilized an Operator can not be None.")
+            else:
+                callstack_var_name = op_maker.kOpCreationCallstackAttrName()
+                op_attrs[callstack_var_name] = list(
+                    reversed(traceback.format_stack()))[1:]
+
+            namescope_var_name = op_maker.kOpNameScopeAttrName()
+            op_attrs[namescope_var_name] = _full_name_scope()
+
+            if inputs is not None:
+                for in_proto in proto.inputs:
+                    found = find_name(inputs, in_proto.name)
+                    assert found or in_proto.dispensable, "Input {} not found".format(
+                        in_proto.name)
+
+                    if found:
+                        in_args = inputs[in_proto.name]
+                        if not isinstance(in_args, list):
+                            in_args = [in_args]
+                        if not in_proto.duplicable and len(in_args) > 1:
+                            raise ValueError(
+                                "Input %s expects only one input, but %d are given."
+                                % (in_proto.name, len(in_args)))
+                        in_arg_names = []
+                        for arg in in_args:
+                            if isinstance(arg, six.string_types):
+                                in_arg_names.append(arg)
+                            elif isinstance(arg, six.binary_type):
+                                in_arg_names.append(arg.decode())
+                            else:
+                                in_arg_names.append(cpt.to_text(arg.name))
+                        self.desc.set_input(in_proto.name, in_arg_names)
+                    else:
+                        self.desc.set_input(in_proto.name, [])
+
+            if outputs is not None:
+                for m in proto.outputs:
+                    if (m.name not in outputs) and m.dispensable:
+                        continue
+                    if not ((m.name in outputs) or m.dispensable):
+                        raise ValueError(("Incorrect setting for output(s) of "
+                                          "operator \"%s\", should set: [%s].")
+                                         % (type, m.name))
+                for out_proto in proto.outputs:
+                    if out_proto.name not in outputs:
+                        continue
+                    out_args = outputs[out_proto.name]
+                    if not isinstance(out_args, list):
+                        out_args = [out_args]
+                    if not out_proto.duplicable and len(out_args) > 1:
+                        raise ValueError(
+                            "Output %s expects only one output, but %d are given."
+                            % (out_proto.name, len(out_args)))
+                    out_arg_names = []
+                    for arg in out_args:
+                        out_arg_names.append(cpt.to_text(arg.name))
+                        # TODO(minqiyang): could we remove variable's op in static mode?
+                        if not _in_imperative_mode():
+                            arg.op = self
+                    self.desc.set_output(out_proto.name, out_arg_names)
+
+            if op_attrs is not None:
+                if not isinstance(op_attrs, dict):
+                    raise TypeError("'attrs' should be a dict.")
+                for attr in proto.attrs:
+                    attr_name = attr.name
+                    if (attr_name not in op_attrs) or (
+                            op_attrs[attr_name] is None):
+                        continue
+                    attr_val = op_attrs[attr_name]
+                    self._update_desc_attr(attr_name, attr_val)
+
+            self.desc.check_attrs()
+            if self._has_kernel(type):
+                self.desc.infer_var_type(self.block.desc)
+                self.desc.infer_shape(self.block.desc)
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
@@ -1173,7 +1193,7 @@ class Block(object):
         return (item[1] for item in six.iteritems(self.vars)
                 if isinstance(item[1], Parameter))
 
-    @profile
+    # @profile
     def create_var(self, *args, **kwargs):
         var = Variable(block=self, *args, **kwargs)
         if 'initializer' in kwargs:
@@ -1282,7 +1302,7 @@ class Block(object):
                 initializer(param, self)
         return param
 
-    @profile
+    # @profile
     def append_op(self, *args, **kwargs):
         """
         Appends a new Operator according to the giving arguments.
@@ -1355,6 +1375,9 @@ class Block(object):
         return self.ops[start:end]
 
     def _prepend_op(self, *args, **kwargs):
+        print('prepend_op', kwargs.get("type", None), kwargs.get("attrs", None))
+        import sys
+        sys.stdout.flush()
         op_desc = self.desc._prepend_op()
         op = Operator(
             self,

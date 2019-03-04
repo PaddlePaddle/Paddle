@@ -39,7 +39,13 @@ class VarBase;
 
 namespace py = ::pybind11;
 
-void CreateVarDesc(const std::string& name, const py::handle& py_shape);
+framework::VarDesc* CreateVarDesc(framework::BlockDesc* desc,
+                                  const std::string& name,
+                                  framework::proto::VarType::Type type,
+                                  const py::handle& py_shape,
+                                  const py::handle& py_dtype,
+                                  const py::handle& py_lod_level,
+                                  const py::handle& py_persistable);
 
 class PreparedOp {
  public:
@@ -57,9 +63,11 @@ class PreparedOp {
   static PreparedOp Prepare(const framework::RuntimeContext& ctx,
                             const framework::OperatorWithKernel& op,
                             const platform::Place& place) {
+    LOG(ERROR) << "XX";
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto* dev_ctx = pool.Get(place);
 
+    LOG(ERROR) << "XX";
     // check if op[type] has kernel registered.
     auto& all_op_kernels = op.AllOpKernels();
     auto kernels_iter = all_op_kernels.find(op.Type());
@@ -69,13 +77,17 @@ class PreparedOp {
           op.Type());
     }
 
+    LOG(ERROR) << "XX";
     framework::OperatorWithKernel::OpKernelMap& kernels = kernels_iter->second;
 
+    LOG(ERROR) << "XX";
     auto expected_kernel_key =
         op.GetExpectedKernelType(framework::ExecutionContext(
             op, framework::Scope(), *dev_ctx, ctx, nullptr));
+    LOG(ERROR) << "XX";
     VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
+    LOG(ERROR) << "XX";
     auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN
     // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
@@ -93,6 +105,7 @@ class PreparedOp {
     }
     std::vector<framework::KernelConfig>* kernel_configs =
         op.GetKernelConfig(expected_kernel_key);
+    LOG(ERROR) << "XX";
     return PreparedOp(op, ctx, kernel_iter->second, dev_ctx, kernel_configs);
   }
 
@@ -136,6 +149,8 @@ class VarBase {
 
  public:
   virtual ~VarBase() {
+    LOG(ERROR) << "remove varbase begin";
+
     // TODO(minqiyang): remove var desc from block desc
     if (var_) {
       delete var_;
@@ -149,6 +164,8 @@ class VarBase {
 
     pre_op_ = nullptr;
     pre_op_out_idx_ = -1;
+
+    LOG(ERROR) << "remove varbase end";
   }
 
   inline OpBase* PreOp() const { return pre_op_; }
@@ -230,6 +247,7 @@ class PYBIND11_HIDDEN OpBase {
         backward_hooks_() {}
 
   virtual ~OpBase() {
+    LOG(ERROR) << "remove opbase begin";
     // TODO(minqiyang): remove op_desc from block_desc in tracer
     //
     // reset all output vars' pre op
@@ -243,6 +261,8 @@ class PYBIND11_HIDDEN OpBase {
     for (framework::OpDesc* desc : grad_op_descs_) {
       delete desc;
     }
+
+    LOG(ERROR) << "remove opbase end";
   }
 
   std::map<std::string, std::vector<VarBase*>> ApplyGrad();

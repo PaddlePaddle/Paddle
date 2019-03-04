@@ -392,7 +392,7 @@ class Optimizer(object):
                 # create gradient variable
                 grad_var = Variable(
                     block=loss.block,
-                    name=param._ivar._grad_name(),
+                    name=unique_name.generate(param._ivar._grad_name()),
                     stop_gradient=True,
                     ivar=param._ivar._grad_ivar())
                 params_grads.append((param, grad_var))

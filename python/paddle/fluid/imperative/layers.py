@@ -91,7 +91,7 @@ class Layer(core.Layer):
     def _build_once(self, *args):
         pass
 
-    @profile
+    # @profile
     def __call__(self, *inputs):
         if not self._built:
             self._build_once(*inputs)
