@@ -113,7 +113,7 @@ class TestNpairLossOp(unittest.TestCase):
 
     def test_check_output(self):
         places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.ops_support_gpu("npair_loss"):
+        if core.is_compiled_with_cuda() and core.op_support_gpu("npair_loss"):
             places.append(core.CUDAPlace(0))
 
         for place in places:
