@@ -59,9 +59,11 @@ bool RequestSendHandler::Handle(const std::string& varname,
             "async mode should not recv BATCH_BARRIER_MESSAGE or "
             "COMPLETE_MESSAGE");
       }
+
       try {
         executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
                                       scope);
+        delete scope;
       } catch (std::exception& e) {
         LOG(ERROR) << "async: run sub program error " << e.what();
         return false;

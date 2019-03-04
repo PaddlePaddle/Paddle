@@ -70,7 +70,7 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
       // if epmap is not empty, then the parameter will be fetched from remote
       // parameter
       // server
-      auto height_sections = ctx.Attr<std::vector<int>>("height_sections");
+      auto height_sections = ctx.Attr<std::vector<int64_t>>("height_sections");
       auto table_names = ctx.Attr<std::vector<std::string>>("table_names");
       std::vector<int64_t> real_rows = PathToRows(*path);
       framework::Scope& local_scope = ctx.scope().NewScope();
