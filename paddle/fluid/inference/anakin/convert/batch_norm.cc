@@ -55,9 +55,9 @@ void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
   float epsilon = boost::get<float>(op_desc.GetAttr("epsilon"));
   engine_->AddOpAttr(op_name, "epsilon", epsilon);
 
-  auto set_anakin_weight = [this, &scope, &op_name](
+  auto set_anakin_weight = [this, &scope, &op_desc, &op_name](
       const std::string &weight_name, const std::string &var_name) {
-    auto *v = scope.FindVar(var_name);
+    auto *v = scope.FindVar(op_desc.Input(var_name).front());
     PADDLE_ENFORCE_NOT_NULL(v);
     auto *t = v->GetMutable<framework::LoDTensor>();
     framework::LoDTensor tensor;
@@ -72,7 +72,7 @@ void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
   };
   set_anakin_weight("weight_1", "Mean");
   set_anakin_weight("weight_2", "Variance");
-  set_anakin_weight("weight_3", "Bias");
+  set_anakin_weight("weight_3", "Scale");
 }
 
 }  // namespace anakin

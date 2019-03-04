@@ -27,8 +27,8 @@ namespace anakin {
 
 ActivationOpConverter::ActivationOpConverter(const std::string &op_type)
     : op_type_(op_type) {
-  auto it = anakin_ops_type_.find(op_type_);
-  PADDLE_ENFORCE(it != anakin_ops_type_.end(),
+  auto it = anakin_op_types_.find(op_type_);
+  PADDLE_ENFORCE(it != anakin_op_types_.end(),
                  "activation op type is not support");
   anakin_op_type_ = it->second;
 }

@@ -20,31 +20,33 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-TEST(reshape, test) {
-  auto* converter = Registry<AnakinOpConverter>::Global().Lookup("reshape");
+TEST(flatten_op, test) {
+  auto *converter = Registry<AnakinOpConverter>::Global().Lookup("flatten");
   ASSERT_TRUE(converter);
-  framework::Scope scope;
+
   std::unordered_set<std::string> parameters;
+  framework::Scope scope;
   AnakinConvertValidation validator(parameters, scope);
-
-  std::vector<int> tensor_shape{8, 10};
-  validator.DeclInputVar("X", {2, 3});
-  validator.DeclOutputVar("Out", {3, 2});
-
+  validator.DeclInputVar("flatten-X", {3, 100, 100, 4});
+  validator.DeclOutputVar("flatten-Out", {300, 400});
   framework::OpDesc desc;
-  desc.SetType("reshape");
-  desc.SetInput("X", {"reshape-X"});
-  desc.SetOutput("Out", {"reshape-Out"});
+  desc.SetType("flatten");
+  desc.SetInput("X", {"flatten-X"});
+  desc.SetOutput("Out", {"flatten-Out"});
+  desc.SetAttr("axis", 2);
 
   LOG(INFO) << "set OP";
   validator.SetOp(*desc.Proto());
   LOG(INFO) << "execute";
-  validator.Execute(1);
+
+  validator.Execute(5);
+  validator.SetOp(*desc.Proto());
+  validator.Execute(10);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(reshape);
-USE_ANAKIN_CONVERTER(reshape);
+USE_OP(flatten);
+USE_ANAKIN_CONVERTER(flatten);
