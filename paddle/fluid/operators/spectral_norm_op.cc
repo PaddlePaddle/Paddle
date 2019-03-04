@@ -101,8 +101,8 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
               "This tensor is in same shape with Input(Weight).");
 
     AddAttr<int>("dim",
-                 "The index of dimention which should be permute "
-                 "to the first before reshape Input(Weight) to "
+                 "The index of dimension which should be permuted "
+                 "to the first before reshaping Input(Weight) to "
                  "matrix, it should be set as 0 if Input(Weight) is "
                  "the weight of fc layer, and should be set as 1 if "
                  "Input(Weight) is the weight of conv layer, "
