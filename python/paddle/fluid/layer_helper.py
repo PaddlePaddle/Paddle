@@ -23,7 +23,7 @@ from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr
 from . import core
 from six.moves import zip
-from layer_helper_base import LayerHelperBase
+from .layer_helper_base import LayerHelperBase
 
 
 class LayerHelper(LayerHelperBase):

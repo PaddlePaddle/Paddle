@@ -17,7 +17,7 @@ from __future__ import print_function
 import copy
 import numpy as np
 
-from .framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating, _in_imperative_mode, _current_expected_place
+from .framework import Variable, default_main_program, default_startup_program, _in_imperative_mode, _current_expected_place
 from . import unique_name
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core

@@ -57,8 +57,8 @@ class TestBaseLayer(unittest.TestCase):
         with fluid.imperative.guard():
             l = L1('test_one_level')
             ret = l()
-            self.assertEqual(l.w1.name, "test_one_level/L1_0_0.w_0")
-            self.assertEqual(l.w2.name, "test_one_level/L1_0_0.w_1")
+            self.assertEqual(l.w1.name, "test_one_level/L1_0.w_0")
+            self.assertEqual(l.w2.name, "test_one_level/L1_0.w_1")
             self.assertTrue(np.allclose(ret._numpy(), 0.2 * np.ones([2, 2])))
 
     def test_three_level(self):
@@ -66,12 +66,12 @@ class TestBaseLayer(unittest.TestCase):
             l = L3('test_three_level')
             names = [p.name for p in l.parameters()]
             ret = l()
-            self.assertEqual(names[0], "test_three_level/L3_0/L2_0/L1_0_0.w_0")
-            self.assertEqual(names[1], "test_three_level/L3_0/L2_0/L1_0_0.w_1")
-            self.assertEqual(names[2], "test_three_level/L3_0/L2_0/L1_1_0.w_0")
-            self.assertEqual(names[3], "test_three_level/L3_0/L2_0/L1_1_0.w_1")
-            self.assertEqual(names[4], "test_three_level/L3_0/L2_1/L1_0_0.w_0")
-            self.assertEqual(names[5], "test_three_level/L3_0/L2_1/L1_0_0.w_1")
+            self.assertEqual(names[0], "test_three_level/L3_0/L2_0/L1_0.w_0")
+            self.assertEqual(names[1], "test_three_level/L3_0/L2_0/L1_0.w_1")
+            self.assertEqual(names[2], "test_three_level/L3_0/L2_0/L1_1.w_0")
+            self.assertEqual(names[3], "test_three_level/L3_0/L2_0/L1_1.w_1")
+            self.assertEqual(names[4], "test_three_level/L3_0/L2_1/L1_0.w_0")
+            self.assertEqual(names[5], "test_three_level/L3_0/L2_1/L1_0.w_1")
             self.assertTrue(np.allclose(ret._numpy(), 0.8 * np.ones([2, 2])))
 
 
