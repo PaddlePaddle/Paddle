@@ -22,6 +22,13 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 
+DEFINE_int32(
+    fuse_parameter_groups_size, 3,
+    "fuse_parameter_groups_size is the group size of the fused "
+    "parameters and gradients. The default value is a experimental result."
+    "If the fuse_parameter_groups_size is -1, it means that the groups size is "
+    "the number of parameters(gradients)");
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -64,9 +71,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       }
     }
 
-    // Note: Sort the parameters and gradient variables according
-    // to parameters' name to make variables' name correspond correctly.
-    SortParamsAndGrads(vars, &params_grads);
+    // Note:
     SetGroupGradsAndParams(vars, params_grads, &group_params_grads);
 
     // Set Gradients as Persistable to prevent this var becoming reusable.
@@ -113,23 +118,15 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     graph->Set(attr_name, new AttrType);
   }
 
-  void SortParamsAndGrads(
-      const std::unordered_map<std::string, ir::Node *> &var_nodes,
-      ParamsAndGrads *params_grads) const {
-    // TODO(zcd): The sort should be removed.
-    //    std::sort(params_grads->begin(), params_grads->end(),
-    //              [](const std::pair<std::string, std::string>& a,
-    //                 const std::pair<std::string, std::string>& b) -> bool {
-    //                return a.first < b.first;
-    //              });
-  }
-
   void SetGroupGradsAndParams(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
       const ParamsAndGrads &params_grads,
       GroupGradsAndParams *group_params_grads) const {
-    // group_size
-    const size_t group_size = 3;
+    size_t group_size = static_cast<size_t>(FLAGS_fuse_parameter_groups_size);
+    if (group_size == -1) {
+      group_size = params_grads.size();
+    }
+
     size_t groups = (params_grads.size() + group_size - 1) / group_size;
     group_params_grads->reserve(groups);
 
