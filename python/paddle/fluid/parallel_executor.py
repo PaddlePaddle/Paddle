@@ -112,8 +112,11 @@ class ParallelExecutor(object):
             exec_strategy=exec_strategy,
             share_vars_from=share_vars_from)
         self._place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
-        self._executor = executor.Executor(self._place)
+        self._exe = executor.Executor(self._place)
         self._compiled_program._compile(place=self._place, scope=self._scope)
+        # NOTD(zcd): _executor and _is_data_parallel are compatible with compiler.
+        self._executor = self._compiled_program._executor
+        self._is_data_parallel = True
 
     def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):
         """
@@ -180,11 +183,11 @@ class ParallelExecutor(object):
                 loss = pe.run(feed=feeder.feed(cur_batch),
                               fetch_list=[avg_cost.name]))
         """
-        return self._executor.run(program=self._compiled_program,
-                                  scope=self._scope,
-                                  feed=feed,
-                                  fetch_list=fetch_list,
-                                  return_numpy=return_numpy)
+        return self._exe.run(program=self._compiled_program,
+                             scope=self._scope,
+                             feed=feed,
+                             fetch_list=fetch_list,
+                             return_numpy=return_numpy)
 
     @property
     def device_count(self):
