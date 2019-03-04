@@ -29,6 +29,14 @@ struct RpcContext {
         splited_var_names(names),
         epmap(emap),
         height_sections(sections) {}
+
+  RpcContext(const RpcContext& ctx) {
+    var_name = ctx.var_name;
+    splited_var_names = ctx.splited_var_names;
+    epmap = ctx.epmap;
+    height_sections = ctx.height_sections;
+  }
+
   std::string var_name;
   std::vector<std::string> splited_var_names;
   std::vector<std::string> epmap;
