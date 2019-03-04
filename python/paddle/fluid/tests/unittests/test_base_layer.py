@@ -16,16 +16,13 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid.layer_helper import LayerHelper
 
 
 class L1(fluid.imperative.Layer):
     def __init__(self, prefix):
-        super(L1, self).__init__(
-            prefix,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)))
-
+        super(L1, self).__init__(prefix)
+        self._param_attr = fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.1))
         self.w1 = self.create_parameter(
             attr=self.param_attr, shape=[2, 2], dtype='float32', is_bias=False)
         self.w2 = self.create_parameter(
