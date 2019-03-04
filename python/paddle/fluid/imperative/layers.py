@@ -17,7 +17,7 @@ import contextlib
 import sys
 import numpy as np
 import collections
-
+from .. import unique_name
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.imperative import base
@@ -26,13 +26,32 @@ __all__ = ['Layer', 'PyLayer']
 
 
 class Layer(core.Layer):
-    """Layers composed of operators."""
+    """Layers composed of operators.
 
-    def __init__(self, dtype=core.VarDesc.VarType.FP32, name=None):
+    Args:
+        name_scope: prefix name used by the layer to name parameters.
+            If prefix is "my_model/layer_1", parameter name in MyLayer
+            can be "my_model/layer_1/MyLayer/w_n", where w is the parameter
+            base name and n is an unique suffix auto-generated.
+        dtype: data type for the variables in the layer.
+    """
+
+    def __init__(self, name_scope, dtype=core.VarDesc.VarType.FP32):
+        self._full_name = unique_name.generate(name_scope + "/" +
+                                               self.__class__.__name__)
         self._built = False
         self._dtype = dtype
         self._parameters = collections.OrderedDict()
         self._sub_layers = collections.OrderedDict()
+
+    def full_name(self):
+        """Full name for this layers.
+
+          Full name is composed by name_scope + "/" + MyLayer.__class__.__name__
+
+        Returns full name of this name.
+        """
+        return self._full_name
 
     def parameters(self, include_sublayers=True):
         """Returns a list of Parameters from current and sub-layers.

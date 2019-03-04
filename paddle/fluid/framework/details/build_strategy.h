@@ -114,7 +114,7 @@ struct BuildStrategy {
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
-  std::unique_ptr<ir::Graph> Apply(const ProgramDesc &main_program,
+  std::unique_ptr<ir::Graph> Apply(std::unique_ptr<ir::Graph> graph,
                                    const std::vector<platform::Place> &places,
                                    const std::string &loss_var_name,
                                    const std::vector<Scope *> &local_scopes,

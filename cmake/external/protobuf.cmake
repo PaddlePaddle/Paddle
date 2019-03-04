@@ -129,7 +129,6 @@ macro(PROMPT_PROTOBUF_LIB)
         ADD_DEPENDENCIES(protoc ${dep})
     ENDFOREACH()
 
-    LIST(APPEND external_project_dependencies protobuf)
     RETURN()
 endmacro()
 macro(SET_PROTOBUF_VERSION)
@@ -231,7 +230,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     )
 ENDFUNCTION()
 
-SET(PROTOBUF_VERSION 3.1)
+SET(PROTOBUF_VERSION 3.1.0)
 
 IF(NOT PROTOBUF_FOUND)
     build_protobuf(extern_protobuf FALSE)

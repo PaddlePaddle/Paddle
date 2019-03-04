@@ -1,17 +1,18 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License. */
 
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#include <algorithm>
 #include <random>
 #include <string>
 #include <vector>
@@ -36,14 +37,14 @@ void RandomVec(const int n, T* a, const T lower = static_cast<T>(-20.f),
 }
 
 template <typename T>
-void ExpectEQ(const T* target, const T* refer, int n) {
+void ExpectEQ(const T* target, const T* refer, size_t n) {
   if (std::is_floating_point<T>::value) {
-    for (int i = 0; i < n; ++i) {
-      EXPECT_NEAR(target[i], refer[i], FLAGS_acc);
+    for (size_t i = 0; i < n; ++i) {
+      EXPECT_NEAR(target[i], refer[i], FLAGS_acc) << " at index : " << i;
     }
   } else {
-    for (int i = 0; i < n; ++i) {
-      EXPECT_EQ(target[i], refer[i]);
+    for (size_t i = 0; i < n; ++i) {
+      EXPECT_EQ(target[i], refer[i]) << " at index : " << i;
     }
   }
 }
@@ -259,7 +260,7 @@ struct TestFuncWithRefer<jit::SeqPoolTuples<T>, std::vector<T>, std::vector<T>,
                   const std::vector<T>& x, const std::vector<T>& yref,
                   const typename jit::SeqPoolTuples<T>::attr_type& attr) {
     EXPECT_TRUE(tgt != nullptr);
-    EXPECT_EQ(x.size() % yref.size(), 0);
+    EXPECT_EQ(x.size() % yref.size(), static_cast<size_t>(0));
     int w = yref.size();
     std::vector<T> y(w);
     const T* x_data = x.data();
@@ -267,6 +268,71 @@ struct TestFuncWithRefer<jit::SeqPoolTuples<T>, std::vector<T>, std::vector<T>,
     T* y_data = y.data();
     tgt(x_data, y_data, &attr);
     ExpectEQ<T>(y_data, yref_data, w);
+  }
+};
+
+template <typename T>
+struct TestFuncWithRefer<jit::EmbSeqPoolTuples<T>, std::vector<T>,
+                         std::vector<int64_t>, std::vector<T>,
+                         typename jit::EmbSeqPoolTuples<T>::attr_type> {
+  void operator()(const typename jit::EmbSeqPoolTuples<T>::func_type tgt,
+                  const std::vector<T>& table, const std::vector<int64_t>& idx,
+                  const std::vector<T>& oref,
+                  const typename jit::EmbSeqPoolTuples<T>::attr_type& attr) {
+    EXPECT_TRUE(tgt != nullptr);
+    EXPECT_EQ(table.size(),
+              static_cast<size_t>(attr.table_height * attr.table_width));
+    EXPECT_EQ(idx.size(),
+              static_cast<size_t>(attr.index_height * attr.index_width));
+    EXPECT_EQ(oref.size(),
+              static_cast<size_t>(attr.table_width * attr.index_width));
+    const T* table_data = table.data();
+    const int64_t* idx_data = idx.data();
+    const T* oref_data = oref.data();
+    int o_w = oref.size();
+    std::vector<T> out(o_w);
+    T* o_data = out.data();
+    tgt(table_data, idx_data, o_data, &attr);
+    ExpectEQ<T>(o_data, oref_data, o_w);
+  }
+};
+
+template <typename T>
+struct TestFuncWithRefer<jit::SgdTuples<T>, T, std::vector<T>, std::vector<T>,
+                         std::vector<int64_t>, std::vector<T>,
+                         typename jit::SgdTuples<T>::attr_type> {
+  void operator()(const typename jit::SgdTuples<T>::func_type tgt, const T lr,
+                  const std::vector<T>& param, const std::vector<T>& grad,
+                  const std::vector<int64_t>& rows, const std::vector<T>& oref,
+                  const typename jit::SgdTuples<T>::attr_type& attr) {
+    EXPECT_TRUE(tgt != nullptr);
+    EXPECT_EQ(param.size(),
+              static_cast<size_t>(attr.param_height * attr.param_width));
+    EXPECT_EQ(grad.size(),
+              static_cast<size_t>(attr.grad_height * attr.grad_width));
+    EXPECT_EQ(rows.size(), static_cast<size_t>(attr.selected_rows_size));
+    EXPECT_EQ(param.size(), oref.size());
+    const T* param_data = param.data();
+    const T* grad_data = grad.data();
+    const int64_t* rows_data = rows.data();
+    const T* oref_data = oref.data();
+
+    std::vector<T> out(oref.size());
+    T* o_data = out.data();
+    tgt(&lr, param_data, grad_data, rows_data, o_data, &attr);
+    // only the selected rows should be equal
+    for (size_t i = 0; i < rows.size(); ++i) {
+      ExpectEQ<T>(o_data + rows[i] * attr.grad_width,
+                  oref_data + rows[i] * attr.grad_width, attr.grad_width);
+    }
+
+    // inplace
+    std::copy(param.begin(), param.end(), out.begin());
+    tgt(&lr, o_data, grad_data, rows_data, o_data, &attr);
+    for (size_t i = 0; i < rows.size(); ++i) {
+      ExpectEQ<T>(o_data + rows[i] * attr.grad_width,
+                  oref_data + rows[i] * attr.grad_width, attr.grad_width);
+    }
   }
 };
 
@@ -289,6 +355,63 @@ struct TestFuncWithRefer<jit::MatMulTuples<T>, std::vector<T>, std::vector<T>,
     T* c_data = c.data();
     tgt(a_data, b_data, c_data, &attr);
     ExpectEQ<T>(c_data, cref_data, attr.m * attr.n);
+  }
+};
+
+template <typename T>
+struct TestFuncWithRefer<jit::LayerNormTuples<T>, std::vector<T>,
+                         std::vector<T>, std::vector<T>, std::vector<T>,
+                         std::vector<T>, std::vector<T>, int, float, int> {
+  void operator()(const typename jit::LayerNormTuples<T>::func_type tgt,
+                  std::vector<T>& x, std::vector<T>& outref,  // NOLINT
+                  std::vector<T>& mean, std::vector<T>& var,  // NOLINT
+                  const std::vector<T>& scale, const std::vector<T>& bias,
+                  int left, const float epsilon, int right) {
+    EXPECT_TRUE(tgt != nullptr);
+    EXPECT_EQ(x.size(), static_cast<size_t>(left * right));
+    EXPECT_EQ(outref.size(), static_cast<size_t>(left * right));
+    EXPECT_EQ(mean.size(), static_cast<size_t>(left));
+    EXPECT_EQ(var.size(), static_cast<size_t>(left));
+    EXPECT_EQ(scale.size(), static_cast<size_t>(right));
+    EXPECT_EQ(bias.size(), static_cast<size_t>(right));
+    std::vector<T> outtgt(outref.size());
+    const T* scale_data = scale.data();
+    const T* bias_data = bias.data();
+    T* x_data = x.data();
+    T* mean_data = mean.data();
+    T* var_data = var.data();
+    T* outref_data = outref.data();
+    T* outtgt_data = outtgt.data();
+
+    tgt(x_data, outtgt_data, mean_data, var_data, scale_data, bias_data, left,
+        epsilon, right);
+    ExpectEQ<T>(outtgt_data, outref_data, left * right);
+  }
+};
+
+template <typename T>
+struct TestFuncWithRefer<jit::CRFDecodingTuples<T>, int, std::vector<T>,
+                         std::vector<T>, std::vector<T>, std::vector<int>,
+                         int> {
+  void operator()(const typename jit::CRFDecodingTuples<T>::func_type tgt,
+                  const int seq_len, const std::vector<T>& x,
+                  const std::vector<T>& w, std::vector<T>& alpharef,  // NOLINT
+                  std::vector<int>& trackref, int tag_num) {          // NOLINT
+    constexpr int state_trans_base_idx = 2;
+    EXPECT_TRUE(tgt != nullptr);
+    EXPECT_EQ(x.size(), static_cast<size_t>(seq_len * tag_num));
+    EXPECT_EQ(w.size(),
+              static_cast<size_t>((tag_num + state_trans_base_idx) * tag_num));
+    EXPECT_EQ(alpharef.size(), static_cast<size_t>(seq_len * tag_num));
+    EXPECT_EQ(trackref.size(), static_cast<size_t>(seq_len * tag_num));
+    std::vector<T> alphatgt(alpharef.size());
+    std::vector<int> tracktgt(trackref.size());
+
+    memcpy(trackref.data(), tracktgt.data(), tag_num * sizeof(int));
+    tgt(seq_len, (const T*)x.data(), (const T*)w.data(), alphatgt.data(),
+        tracktgt.data(), tag_num);
+    ExpectEQ<T>(alpharef.data(), alphatgt.data(), seq_len * tag_num);
+    ExpectEQ<int>(trackref.data(), tracktgt.data(), seq_len * tag_num);
   }
 };
 
@@ -324,7 +447,7 @@ void TestAllImpls(const typename KernelTuples::attr_type& attr, Args... args) {
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
-void TestXYZNKernel() {
+void TestKernelXYZNTuples() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   for (int d : TestSizes()) {
     auto ref = jit::GetRefer<KT, jit::XYZNTuples<T>>();
@@ -357,7 +480,7 @@ void TestXYZNKernel() {
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
-void TestAXYNKernel() {
+void TestKernelAXYNTuples() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   for (int d : TestSizes()) {
     auto ref = jit::GetRefer<KT, jit::AXYNTuples<T>>();
@@ -383,7 +506,7 @@ void TestAXYNKernel() {
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
-void TestXRNKernel() {
+void TestKernelXRNTuples() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   auto last_acc = FLAGS_acc;
   FLAGS_acc = 1e-4;
@@ -401,7 +524,7 @@ void TestXRNKernel() {
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
-void TestXYNKernel() {
+void TestKernelXYNTuples() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   for (int d : TestSizes()) {
     auto ref = jit::GetRefer<KT, jit::XYNTuples<T>>();
@@ -426,10 +549,12 @@ void TestXYNKernel() {
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
-void TestLSTMKernel() {
+void TestKernelLSTMTuples() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   std::vector<std::string> all_acts = {"sigmoid", "tanh", "relu", "identity"};
-  for (int d : TestSizes()) {
+  auto test_sizes = TestSizes();
+  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 1000));
+  for (int d : test_sizes) {
     for (bool use_peephole : {true, false}) {
       for (auto& act_gate : all_acts) {
         for (auto& act_cand : all_acts) {
@@ -476,10 +601,12 @@ void TestLSTMKernel() {
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
-void TestGRUKernel() {
+void TestKernelGRUTuples() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   std::vector<std::string> all_acts = {"sigmoid", "tanh", "relu", "identity"};
-  for (int d : TestSizes()) {
+  auto test_sizes = TestSizes();
+  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 1000));
+  for (int d : test_sizes) {
     for (auto& act_gate : all_acts) {
       for (auto& act_cand : all_acts) {
         const jit::gru_attr_t attr(d, jit::to_kerneltype(act_gate),
@@ -510,14 +637,16 @@ void TestGRUKernel() {
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
-void TestSeqPoolKernel() {
+void TestKernelSeqPoolTuples() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   std::vector<jit::SeqPoolType> pool_types = {
       jit::SeqPoolType::kSum, jit::SeqPoolType::kAvg, jit::SeqPoolType::kSqrt};
+  auto test_sizes = TestSizes();
+  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 1000));
   for (auto type : pool_types) {
-    for (int w : TestSizes()) {
+    for (int w : test_sizes) {
       jit::seq_pool_attr_t attr(w, type);
-      for (int h : TestSizes()) {
+      for (int h : test_sizes) {
         attr.h = h;
         auto ref = jit::GetRefer<KT, jit::SeqPoolTuples<T>>();
         EXPECT_TRUE(ref != nullptr);
@@ -535,11 +664,11 @@ void TestSeqPoolKernel() {
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
-void TestMatMulKernel() {
+void TestKernelMatMulTuples() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   auto last_acc = FLAGS_acc;
-  // TODO(intel): fix MKL acc issue
-  // https://github.com/PaddlePaddle/Paddle/issues/15447
+  // export MKL_CBWR=AVX would make MKL force to use AVX
+  // export KMP_DETERMINISTIC_REDUCTION=yes would make the result deterministic
   FLAGS_acc = 1e-3;
   for (int m : {1, 2, 3, 4}) {
     for (int n : {1, 2, 3, 4}) {
@@ -563,7 +692,7 @@ void TestMatMulKernel() {
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
-void TestSoftmaxKernel() {
+void TestKernelSoftmaxTuples() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   for (int bs : {1, 2, 10}) {
     for (int n : TestSizes()) {
@@ -588,7 +717,97 @@ void TestSoftmaxKernel() {
 }
 
 template <jit::KernelType KT, typename T, typename PlaceType>
-void TestNCHW16CMulNCKernel() {
+void TestKernelEmbSeqPoolTuples() {
+  VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
+  int64_t tbl_h = 1e4;
+  std::vector<jit::SeqPoolType> pool_types = {
+      jit::SeqPoolType::kSum};  // only support sum yet
+  auto test_sizes = TestSizes();
+  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 1000));
+  for (int tbl_w : test_sizes) {
+    std::vector<T> table(tbl_h * tbl_w);
+    RandomVec<T>(tbl_h * tbl_w, table.data(), -2.f, 2.f);
+    const T* table_data = table.data();
+    for (auto type : pool_types) {
+      for (int idx_w : {1, 2, 10, 16}) {
+        for (int idx_h : {1, 2, 9, 13, 16}) {
+          auto ref = jit::GetRefer<KT, jit::EmbSeqPoolTuples<T>>();
+          EXPECT_TRUE(ref != nullptr);
+          std::vector<int64_t> idx(idx_h * idx_w);
+          RandomVec<int64_t>(idx_h * idx_w, idx.data(), 0, tbl_h - 1);
+          int64_t out_w = tbl_w * idx_w;
+          std::vector<T> oref(out_w);
+          const int64_t* idx_data = idx.data();
+          T* o_data = oref.data();
+          jit::emb_seq_pool_attr_t attr(tbl_h, tbl_w, idx_h, idx_w, out_w,
+                                        type);
+          ref(table_data, idx_data, o_data, &attr);
+
+          TestAllImpls<KT, jit::EmbSeqPoolTuples<T>, PlaceType, std::vector<T>,
+                       std::vector<int64_t>, std::vector<T>>(attr, table, idx,
+                                                             oref, attr);
+        }
+      }
+    }
+  }
+}
+
+template <jit::KernelType KT, typename T, typename PlaceType>
+void TestKernelSgdTuples() {
+  VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
+  const T lr = 0.1;
+  auto UnDuplicatedRandomVec = [](int n, const int64_t lower,
+                                  const int64_t upper) -> std::vector<int64_t> {
+    PADDLE_ENFORCE_LE(static_cast<size_t>(upper - lower), n - 1);
+    PADDLE_ENFORCE_GT(n, 0);
+    std::vector<int64_t> all, out;
+    for (int i = 0; i < n; ++i) {
+      all.push_back(i);
+    }
+    std::random_shuffle(all.begin(), all.end());
+    out.insert(out.begin(), all.begin(), all.begin() + n);
+    return out;
+  };
+  for (int param_h : {1, 10}) {
+    for (int grad_w : TestSizes()) {
+      std::vector<T> param(param_h * grad_w);
+      std::vector<T> param_out(param_h * grad_w);
+      RandomVec<T>(param_h * grad_w, param.data(), -2.f, 2.f);
+      const T* param_data = param.data();
+      T* out_data = param_out.data();
+      for (int rows_size = 1; rows_size <= param_h; ++rows_size) {
+        std::vector<T> grad(rows_size * grad_w);
+        std::vector<int64_t> rows =
+            UnDuplicatedRandomVec(rows_size, 0, rows_size - 1);
+        RandomVec<T>(rows_size * grad_w, grad.data(), -2.f, 2.f);
+        const int64_t* rows_data = rows.data();
+        const T* grad_data = grad.data();
+        auto ref = jit::GetRefer<KT, jit::SgdTuples<T>>();
+        EXPECT_TRUE(ref != nullptr);
+        jit::sgd_attr_t attr(param_h, grad_w, rows_size, grad_w, rows_size);
+        ref(&lr, param_data, grad_data, rows_data, out_data, &attr);
+
+        // inplace test
+        std::vector<T> inp(param.size());
+        std::copy(param.begin(), param.end(), inp.begin());
+        T* inp_data = inp.data();
+        ref(&lr, inp_data, grad_data, rows_data, inp_data, &attr);
+        // only the selected rows should be equal
+        for (int i = 0; i < rows_size; ++i) {
+          ExpectEQ<T>(inp_data + rows[i] * grad_w, out_data + rows[i] * grad_w,
+                      grad_w);
+        }
+
+        TestAllImpls<KT, jit::SgdTuples<T>, PlaceType, T, std::vector<T>,
+                     std::vector<T>, std::vector<int64_t>, std::vector<T>>(
+            attr, lr, param, grad, rows, param_out, attr);
+      }
+    }
+  }
+}
+
+template <jit::KernelType KT, typename T, typename PlaceType>
+void TestKernelNCHW16CMulNCTuples() {
   VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
   const int n = 3, c = 16 * 4, h = 10, w = 10;
   auto ref = jit::GetRefer<KT, jit::NCHW16CMulNCTuples<T>>();
@@ -640,129 +859,143 @@ void TestNCHW16CMulNCKernel() {
   }
 }
 
-// XYZNTuple
-TEST(JITKernel, kVMul) {
-  TestXYZNKernel<jit::kVMul, float, CPUPlace>();
-  TestXYZNKernel<jit::kVMul, double, CPUPlace>();
+template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+void TestKernelLayerNormTuples() {
+  VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
+  const T epsilon = 9.99999975e-06;
+  for (int n : {1, 2, 10}) {
+    for (int x_dim_0 : {1, 9, 17, 50}) {
+      int left = n * x_dim_0;
+      for (int x_dim_1 : TestSizes()) {
+        int right = x_dim_1;
+        auto ref = jit::GetRefer<KT, jit::LayerNormTuples<T>>();
+        EXPECT_TRUE(ref != nullptr);
+        int sz = left * right;
+        std::vector<T> x(sz), mean(left), var(left), scale(right), bias(right),
+            outref(sz);
+        RandomVec<T>(sz, x.data(), -2.f, 2.f);
+        RandomVec<T>(left, mean.data(), -2.f, 2.f);
+        RandomVec<T>(left, var.data(), -2.f, 2.f);
+        RandomVec<T>(right, scale.data(), -2.f, 2.f);
+        RandomVec<T>(right, bias.data(), -2.f, 2.f);
+
+        const T* scale_data = scale.data();
+        const T* bias_data = bias.data();
+        T* x_data = x.data();
+        T* mean_data = mean.data();
+        T* var_data = var.data();
+        T* outref_data = outref.data();
+
+        ref(x_data, outref_data, mean_data, var_data, scale_data, bias_data,
+            left, epsilon, right);
+
+        TestAllImpls<KT, jit::LayerNormTuples<T>, PlaceType, std::vector<T>,
+                     std::vector<T>, std::vector<T>, std::vector<T>,
+                     std::vector<T>, std::vector<T>, int, float>(
+            right, x, outref, mean, var, scale, bias, left, epsilon, right);
+      }
+    }
+  }
 }
 
-TEST(JITKernel, kVAdd) {
-  TestXYZNKernel<jit::kVAdd, float, CPUPlace>();
-  TestXYZNKernel<jit::kVAdd, double, CPUPlace>();
+template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+void TestKernelCRFDecodingTuples() {
+  VLOG(10) << "===== Test JITKernel " << jit::to_string(KT);
+  constexpr int state_trans_base_idx = 2;
+  auto test_sizes = TestSizes();
+  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 1000));
+  for (int seq_len : {1, 11, 17, 50}) {
+    for (int tag_num : test_sizes) {
+      auto ref = jit::GetRefer<KT, jit::CRFDecodingTuples<T>>();
+      EXPECT_TRUE(ref != nullptr);
+      int x_sz = seq_len * tag_num;
+      int w_sz = (tag_num + state_trans_base_idx) * tag_num;
+      std::vector<T> x(x_sz), w(w_sz), alpharef(x_sz);
+      std::vector<int> trackref(x_sz);
+      RandomVec<T>(x_sz, x.data(), -2.f, 2.f);
+      RandomVec<T>(w_sz, w.data(), -2.f, 2.f);
+
+      ref(seq_len, (const T*)x.data(), (const T*)w.data(), alpharef.data(),
+          trackref.data(), tag_num);
+
+      TestAllImpls<KT, jit::CRFDecodingTuples<T>, PlaceType, int,
+                   std::vector<T>, std::vector<T>, std::vector<T>,
+                   std::vector<int>, int>(tag_num, seq_len, x, w, alpharef,
+                                          trackref, tag_num);
+    }
+  }
 }
 
-TEST(JITKernel, kVAddRelu) {
-  TestXYZNKernel<jit::kVAddRelu, float, CPUPlace>();
-  TestXYZNKernel<jit::kVAddRelu, double, CPUPlace>();
+#define TEST_CPU_KERNEL(test_tuple, kernel_type)                 \
+  TEST(JITKernel, kernel_type) {                                 \
+    TestKernel##test_tuple<jit::kernel_type, float, CPUPlace>(); \
+    TestKernel##test_tuple<jit::kernel_type, float, CPUPlace>(); \
+  }
+
+TEST_CPU_KERNEL(XYZNTuples, kVMul);
+TEST_CPU_KERNEL(XYZNTuples, kVAdd);
+TEST_CPU_KERNEL(XYZNTuples, kVAddRelu);
+TEST_CPU_KERNEL(XYZNTuples, kVSub);
+
+TEST_CPU_KERNEL(AXYNTuples, kVScal);
+TEST_CPU_KERNEL(AXYNTuples, kVAddBias);
+
+TEST_CPU_KERNEL(XRNTuples, kHMax);
+TEST_CPU_KERNEL(XRNTuples, kHSum);
+
+TEST_CPU_KERNEL(XYNTuples, kVRelu);
+TEST_CPU_KERNEL(XYNTuples, kVIdentity);
+TEST_CPU_KERNEL(XYNTuples, kVSquare);
+TEST_CPU_KERNEL(XYNTuples, kVExp);
+TEST_CPU_KERNEL(XYNTuples, kVSigmoid);
+TEST_CPU_KERNEL(XYNTuples, kVTanh);
+
+TEST_CPU_KERNEL(LSTMTuples, kLSTMCtHt);
+TEST_CPU_KERNEL(LSTMTuples, kLSTMC1H1);
+
+TEST_CPU_KERNEL(GRUTuples, kGRUH1);
+TEST_CPU_KERNEL(GRUTuples, kGRUHtPart1);
+TEST_CPU_KERNEL(GRUTuples, kGRUHtPart2);
+
+TEST_CPU_KERNEL(NCHW16CMulNCTuples, kNCHW16CMulNC);
+
+TEST_CPU_KERNEL(SeqPoolTuples, kSeqPool);
+TEST_CPU_KERNEL(MatMulTuples, kMatMul);
+TEST_CPU_KERNEL(SoftmaxTuples, kSoftmax);
+TEST_CPU_KERNEL(EmbSeqPoolTuples, kEmbSeqPool);
+TEST_CPU_KERNEL(SgdTuples, kSgd);
+TEST_CPU_KERNEL(LayerNormTuples, kLayerNorm);
+TEST_CPU_KERNEL(CRFDecodingTuples, kCRFDecoding);
+
+TEST(JITKernel_key, lstm) {
+  jit::lstm_attr_t attr1(8, jit::kVIdentity, jit::kVSigmoid, jit::kVTanh);
+  jit::lstm_attr_t attr2(9, jit::kVIdentity, jit::kVSigmoid, jit::kVTanh);
+  jit::lstm_attr_t attr3(9, jit::kVIdentity, jit::kVSigmoid, jit::kVTanh);
+  jit::lstm_attr_t attr4(9, jit::kVRelu, jit::kVSigmoid, jit::kVTanh);
+
+  auto key1 = jit::JitCodeKey<jit::lstm_attr_t>(attr1);
+  auto key2 = jit::JitCodeKey<jit::lstm_attr_t>(attr2);
+  auto key3 = jit::JitCodeKey<jit::lstm_attr_t>(attr3);
+  auto key4 = jit::JitCodeKey<jit::lstm_attr_t>(attr4);
+
+  EXPECT_TRUE(key1 != key2);
+  EXPECT_TRUE(key2 == key3);
+  EXPECT_TRUE(key3 != key4);
 }
 
-TEST(JITKernel, kVSub) {
-  TestXYZNKernel<jit::kVSub, float, CPUPlace>();
-  TestXYZNKernel<jit::kVSub, double, CPUPlace>();
-}
+TEST(JITKernel_key, gru) {
+  jit::gru_attr_t attr1(8, jit::kVSigmoid, jit::kVTanh);
+  jit::gru_attr_t attr2(9, jit::kVSigmoid, jit::kVTanh);
+  jit::gru_attr_t attr3(9, jit::kVSigmoid, jit::kVTanh);
+  jit::gru_attr_t attr4(9, jit::kVSigmoid, jit::kVIdentity);
 
-// AXYNTuples
-TEST(JITKernel, kVScal) {
-  TestAXYNKernel<jit::kVScal, float, CPUPlace>();
-  TestAXYNKernel<jit::kVScal, double, CPUPlace>();
-}
+  auto key1 = jit::JitCodeKey<jit::gru_attr_t>(attr1);
+  auto key2 = jit::JitCodeKey<jit::gru_attr_t>(attr2);
+  auto key3 = jit::JitCodeKey<jit::gru_attr_t>(attr3);
+  auto key4 = jit::JitCodeKey<jit::gru_attr_t>(attr4);
 
-TEST(JITKernel, kVAddBias) {
-  TestAXYNKernel<jit::kVAddBias, float, CPUPlace>();
-  TestAXYNKernel<jit::kVAddBias, double, CPUPlace>();
+  EXPECT_TRUE(key1 != key2);
+  EXPECT_TRUE(key2 == key3);
+  EXPECT_TRUE(key3 != key4);
 }
-
-// XRNTuples
-TEST(JITKernel, kHMax) {
-  TestXRNKernel<jit::kHMax, float, CPUPlace>();
-  TestXRNKernel<jit::kHMax, double, CPUPlace>();
-}
-
-TEST(JITKernel, kHSum) {
-  TestXRNKernel<jit::kHSum, float, CPUPlace>();
-  TestXRNKernel<jit::kHSum, double, CPUPlace>();
-}
-
-// XYNTuples
-TEST(JITKernel, kVRelu) {
-  TestXYNKernel<jit::kVRelu, float, CPUPlace>();
-  TestXYNKernel<jit::kVRelu, double, CPUPlace>();
-}
-
-TEST(JITKernel, kVIdentity) {
-  TestXYNKernel<jit::kVIdentity, float, CPUPlace>();
-  TestXYNKernel<jit::kVIdentity, double, CPUPlace>();
-}
-
-TEST(JITKernel, kVSquare) {
-  TestXYNKernel<jit::kVSquare, float, CPUPlace>();
-  TestXYNKernel<jit::kVSquare, double, CPUPlace>();
-}
-
-TEST(JITKernel, kVExp) {
-  TestXYNKernel<jit::kVExp, float, CPUPlace>();
-  TestXYNKernel<jit::kVExp, double, CPUPlace>();
-}
-
-TEST(JITKernel, kVSigmoid) {
-  TestXYNKernel<jit::kVSigmoid, float, CPUPlace>();
-  TestXYNKernel<jit::kVSigmoid, double, CPUPlace>();
-}
-
-TEST(JITKernel, kVTanh) {
-  TestXYNKernel<jit::kVTanh, float, CPUPlace>();
-  TestXYNKernel<jit::kVTanh, double, CPUPlace>();
-}
-
-// LSTM
-TEST(JITKernel, kLSTMCtHt) {
-  TestLSTMKernel<jit::kLSTMCtHt, float, CPUPlace>();
-  TestLSTMKernel<jit::kLSTMCtHt, double, CPUPlace>();
-}
-
-TEST(JITKernel, kLSTMC1H1) {
-  TestLSTMKernel<jit::kLSTMC1H1, float, CPUPlace>();
-  TestLSTMKernel<jit::kLSTMC1H1, double, CPUPlace>();
-}
-
-// GRU
-TEST(JITKernel, kGRUH1) {
-  TestGRUKernel<jit::kGRUH1, float, CPUPlace>();
-  TestGRUKernel<jit::kGRUH1, double, CPUPlace>();
-}
-
-TEST(JITKernel, kGRUHtPart1) {
-  TestGRUKernel<jit::kGRUHtPart1, float, CPUPlace>();
-  TestGRUKernel<jit::kGRUHtPart1, double, CPUPlace>();
-}
-
-TEST(JITKernel, kGRUHtPart2) {
-  TestGRUKernel<jit::kGRUHtPart2, float, CPUPlace>();
-  TestGRUKernel<jit::kGRUHtPart2, double, CPUPlace>();
-}
-
-TEST(JITKernel, kSeqPool) {
-  TestSeqPoolKernel<jit::kSeqPool, float, CPUPlace>();
-  TestSeqPoolKernel<jit::kSeqPool, double, CPUPlace>();
-}
-
-TEST(JITKernel, kMatMul) {
-  TestMatMulKernel<jit::kMatMul, float, CPUPlace>();
-  TestMatMulKernel<jit::kMatMul, double, CPUPlace>();
-}
-
-TEST(JITKernel, kSoftmax) {
-  TestSoftmaxKernel<jit::kSoftmax, float, CPUPlace>();
-  TestSoftmaxKernel<jit::kSoftmax, double, CPUPlace>();
-}
-
-TEST(JITKernel, kNCHW16CMulNC) {
-  TestNCHW16CMulNCKernel<jit::kNCHW16CMulNC, float, CPUPlace>();
-  TestNCHW16CMulNCKernel<jit::kNCHW16CMulNC, double, CPUPlace>();
-}
-
-// TODO(yihua/TJ): add crf decoding and layer norm unit tests
-
-TEST(JITKernel, pool) {
-  // TODO(TJ): add some test
-}
+// TODO(TJ): add more test about key and pool
