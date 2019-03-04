@@ -50,7 +50,7 @@ class ParallelExecutor {
                             const std::vector<Scope *> &local_scopes,
                             const ExecutionStrategy &exec_strategy,
                             const BuildStrategy &build_strategy,
-                            std::vector<ir::Graph *> graphs);
+                            ir::Graph *graph);
 
   ~ParallelExecutor();
 
@@ -76,6 +76,7 @@ class ParallelExecutor {
                                     const BuildStrategy &build_strategy) const;
 
   ParallelExecutorPrivate *member_;
+  std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<ncclUniqueId> local_nccl_id_;
 #endif
