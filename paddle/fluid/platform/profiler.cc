@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler.h"
-#include <float.h>
-#include <gflags/gflags.h>
 #include <algorithm>
 #include <iomanip>
 #include <limits>
@@ -60,7 +58,7 @@ static std::list<std::shared_ptr<EventList>> g_all_event_lists;
 // The thread local event list only can be accessed by the specific thread
 static thread_local std::shared_ptr<EventList> g_event_list;
 
-std::mutex profiler_mem;  // record memory mutex
+std::mutex g_profiler_mem;  // record memory mutex
 static std::list<std::shared_ptr<MemEventList>> g_all_mem_event_lists;
 static thread_local std::shared_ptr<MemEventList> g_mem_event_list;
 static std::mutex g_all_mem_event_lists_mutex;
@@ -174,19 +172,10 @@ static void ForEachDevice(std::function<void(int)> func) {
 }
 #endif
 
-MemEvent::MemEvent(EventType type, uint64_t start_ns, uint64_t end_ns,
-                   size_t bytes, Place place, int64_t thread_id)
-    : type_(type),
-      start_ns_(start_ns),
-      end_ns_(end_ns),
-      bytes_(bytes),
-      place_(place),
-      thread_id_(thread_id) {}
-
 inline MemEventList& GetMemEventList() {
   if (!g_mem_event_list) {
-    std::lock_guard<std::mutex> guard(g_all_mem_event_lists_mutex);
     g_mem_event_list = std::make_shared<MemEventList>();
+    std::lock_guard<std::mutex> guard(g_all_mem_event_lists_mutex);
     g_mem_thread_id = g_mem_next_thread_id++;
     g_all_mem_event_lists.emplace_front(g_mem_event_list);
   }
@@ -252,22 +241,39 @@ RecordEvent::~RecordEvent() {
   PopEvent(name_);
 }
 
-RecordMemEvent::RecordMemEvent()
-    : is_enabled_(false), start_ns_(PosixInNsec()) {}
+MemEvenRecorder MemEvenRecorder::recorder;
 
-void RecordMemEvent::InitRecordMem(size_t bytes, Place place) {
+void MemEvenRecorder::PushMemRecord(const void* ptr, const Place& place,
+                                    size_t size) {
   if (g_state == ProfilerState::kDisabled) return;
-  std::lock_guard<std::mutex> l(profiler_mem);
-  is_enabled_ = true;
-  place_ = place;
-  bytes_ = bytes;
+  std::lock_guard<std::mutex> guard(mtx_);
+  VLOG(10) << "MemEvenRecorder Alloc: " << place << ", " << size << ", " << ptr;
+  auto& events = address_memevent_[place];
+  PADDLE_ENFORCE(events.count(ptr) == 0, "");
+  events.emplace(ptr, std::unique_ptr<RecordMemEvent>(
+                          new MemEvenRecorder::RecordMemEvent(place, size)));
 }
 
-void RecordMemEvent::DelRecordMem() {
-  if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
-  std::lock_guard<std::mutex> l(profiler_mem);
+void MemEvenRecorder::PopMemRecord(const void* ptr, const Place& place) {
+  if (g_state == ProfilerState::kDisabled) return;
+  std::lock_guard<std::mutex> guard(mtx_);
+  VLOG(10) << "MemEvenRecorder Free : " << place << ", " << ptr;
+  auto& events = address_memevent_[place];
+  auto iter = events.find(ptr);
+  PADDLE_ENFORCE(iter != events.end(), "");
+  iter->second->DelRecordMem();
+  iter->second.release();
+  events.erase(iter);
+}
+
+MemEvenRecorder::RecordMemEvent::RecordMemEvent(const Place& place,
+                                                size_t bytes)
+    : place_(place), bytes_(bytes) {}
+
+void MemEvenRecorder::RecordMemEvent::DelRecordMem() {
   DeviceTracer* tracer = GetDeviceTracer();
   end_ns_ = PosixInNsec();
+  std::lock_guard<std::mutex> l(g_profiler_mem);
   PushMemEvent(start_ns_, end_ns_, bytes_, place_);
   if (tracer) {
     tracer->AddMemInfoRecord(start_ns_, end_ns_, bytes_, place_,

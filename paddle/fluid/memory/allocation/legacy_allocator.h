@@ -20,7 +20,6 @@
 #include <vector>
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.h"
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -75,11 +74,9 @@ class LegacyAllocator : public Allocator {
  protected:
   Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override;
   void Free(Allocation *allocation) override;
-  std::unordered_map<Allocation *, platform::RecordMemEvent> record_mem;
 
  private:
   platform::Place place_;
-  static std::mutex mem;
 };
 
 }  // namespace allocation
