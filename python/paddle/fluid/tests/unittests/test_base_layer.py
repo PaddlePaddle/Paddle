@@ -24,9 +24,9 @@ class L1(fluid.imperative.Layer):
         self._param_attr = fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.1))
         self.w1 = self.create_parameter(
-            attr=self.param_attr, shape=[2, 2], dtype='float32', is_bias=False)
+            attr=self._param_attr, shape=[2, 2], dtype='float32', is_bias=False)
         self.w2 = self.create_parameter(
-            attr=self.param_attr, shape=[2, 2], dtype='float32', is_bias=False)
+            attr=self._param_attr, shape=[2, 2], dtype='float32', is_bias=False)
 
     def forward(self):
         return self.w1 + self.w2
