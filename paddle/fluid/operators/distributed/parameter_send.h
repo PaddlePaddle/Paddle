@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/distributed/rpc_common.h"
 
 namespace paddle {
 namespace operators {
@@ -25,10 +26,7 @@ namespace distributed {
 
 template <typename T>
 struct ParameterSend {
-  void operator()(const std::string &var_name,
-                  const std::vector<std::string> &send_varnames,
-                  const std::vector<std::string> &epmap,
-                  const std::vector<int64_t> &height_sections,
+  void operator()(const RpcContext &rpc_ctx,
                   const framework::ExecutionContext &context,
                   const framework::Scope &scope, bool sync);
 };

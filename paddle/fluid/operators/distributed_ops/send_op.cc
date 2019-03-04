@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/parameter_send.h"
+#include "paddle/fluid/operators/distributed/rpc_common.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -50,10 +51,12 @@ class SendOp : public framework::OperatorBase {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(place);
-      auto exe_ctx = framework::ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr);
+      auto exe_ctx =
+          framework::ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr);
       auto send_functor = distributed::ParameterSend<float>();
-      send_functor(ins[0], send_varnames, epmap, height_sections, exe_ctx,
-                   scope, static_cast<bool>(sync_send));
+      auto rpc_ctx = distributed::RpcContext(ins[0], send_varnames, epmap,
+                                             height_sections);
+      send_functor(rpc_ctx, exe_ctx, scope, static_cast<bool>(sync_send));
     } else {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
