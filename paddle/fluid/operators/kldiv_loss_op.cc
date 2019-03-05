@@ -65,11 +65,11 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "The input tensor of KL divergence loss operator, "
-             "This is a tensor with shape of [N, *], where N is the"
+             "The input tensor of KL divergence loss operator. "
+             "This is a tensor with shape of [N, *], where N is the "
              "batch size, * means any number of additional dimensions.");
     AddInput("Target",
-             "The  tensor of KL divergence loss operator, "
+             "The  tensor of KL divergence loss operator. "
              "This is a tensor with shape of Input(X).");
     AddOutput(
         "Loss",
@@ -82,7 +82,7 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
         "The reduction type to apply to the output, available types "
         "are 'none' | 'batchmean' | 'mean' | 'sum', 'none' for no "
         "reduction, 'batchmean' for the sum of output divided by "
-        "batch size, 'mean' for the average valud of all output, "
+        "batch size, 'mean' for the average value of all output, "
         "'sum' for the sum of the output.")
         .SetDefault("mean");
 
@@ -90,21 +90,23 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
          This operator calculates the Kullback-Leibler divergence loss
          between Input(X) and Input(Target).
 
-         KL divergence loss calculates as follows:
+         KL divergence loss is calculated as follows:
 
-         $$l(x, y) = y * (\log y - x)$$
+         $$l(x, y) = y * (\log(y) - x)$$
+
+         While :math:`x` is Input(X) and :math:`y` is Input(Target).
 
          While :attr:`reduction` is :attr:`none`, output loss is in
-         same shape with Input(X), loss in each point is calculated 
-         seperately and no reduction applied.
+         the same shape as Input(X), loss in each point is calculated 
+         seperately and no reduction is applied.
          
-         While :attr:`reduction` is :attr:`mean`, output loss in in
+         While :attr:`reduction` is :attr:`mean`, output loss is in
          shape of [1] and loss value is the mean value of all losses.
          
-         While :attr:`reduction` is :attr:`sum`, output loss in in
+         While :attr:`reduction` is :attr:`sum`, output loss is in
          shape of [1] and loss value is the sum value of all losses.
          
-         While :attr:`reduction` is :attr:`batchmean`, output loss in 
+         While :attr:`reduction` is :attr:`batchmean`, output loss is 
          in shape of [1] and loss value is the sum value of all losses
          divided by batch size.
          
