@@ -513,7 +513,9 @@ def yolov3_loss(x,
                 class_num,
                 ignore_thresh,
                 downsample_ratio,
-                name=None):
+                name=None,
+                gtscore=None,
+                use_label_smooth=True):
     """
     ${comment}
 
@@ -532,27 +534,34 @@ def yolov3_loss(x,
         ignore_thresh (float): ${ignore_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
         name (string): the name of yolov3 loss
+        gtscore (Variable): mixup score of ground truth boxes, shoud be in shape
+                            of [N, B].
+        use_label_smooth (bool): ${use_label_smooth_comment}
 
     Returns:
-        Variable: A 1-D tensor with shape [1], the value of yolov3 loss
+        Variable: A 1-D tensor with shape [N], the value of yolov3 loss
 
     Raises:
         TypeError: Input x of yolov3_loss must be Variable
         TypeError: Input gtbox of yolov3_loss must be Variable"
         TypeError: Input gtlabel of yolov3_loss must be Variable"
+        TypeError: Input gtscore of yolov3_loss must be Variable"
         TypeError: Attr anchors of yolov3_loss must be list or tuple
         TypeError: Attr class_num of yolov3_loss must be an integer
         TypeError: Attr ignore_thresh of yolov3_loss must be a float number
+        TypeError: Attr use_label_smooth of yolov3_loss must be a bool value
 
     Examples:
       .. code-block:: python
 
           x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
-          gtbox = fluid.layers.data(name='gtbox', shape=[6, 5], dtype='float32')
-          gtlabel = fluid.layers.data(name='gtlabel', shape=[6, 1], dtype='int32')
+          gtbox = fluid.layers.data(name='gtbox', shape=[6, 4], dtype='float32')
+          gtlabel = fluid.layers.data(name='gtlabel', shape=[6], dtype='int32')
+          gtscore = fluid.layers.data(name='gtlabel', shape=[6], dtype='int32')
           anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
           anchor_mask = [0, 1, 2]
-          loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, gtlabel=gtlabel, anchors=anchors, 
+          loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, gtlabel=gtlabel,
+                                          gtscore=gtscore, anchors=anchors, 
                                           anchor_mask=anchor_mask, class_num=80,
                                           ignore_thresh=0.7, downsample_ratio=32)
     """
@@ -564,6 +573,8 @@ def yolov3_loss(x,
         raise TypeError("Input gtbox of yolov3_loss must be Variable")
     if not isinstance(gtlabel, Variable):
         raise TypeError("Input gtlabel of yolov3_loss must be Variable")
+    if not isinstance(gtscore, Variable):
+        raise TypeError("Input gtscore of yolov3_loss must be Variable")
     if not isinstance(anchors, list) and not isinstance(anchors, tuple):
         raise TypeError("Attr anchors of yolov3_loss must be list or tuple")
     if not isinstance(anchor_mask, list) and not isinstance(anchor_mask, tuple):
@@ -573,6 +584,9 @@ def yolov3_loss(x,
     if not isinstance(ignore_thresh, float):
         raise TypeError(
             "Attr ignore_thresh of yolov3_loss must be a float number")
+    if not isinstance(use_label_smooth, bool):
+        raise TypeError(
+            "Attr use_label_smooth of yolov3_loss must be a bool value")
 
     if name is None:
         loss = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -583,21 +597,26 @@ def yolov3_loss(x,
     objectness_mask = helper.create_variable_for_type_inference(dtype='int32')
     gt_match_mask = helper.create_variable_for_type_inference(dtype='int32')
 
+    inputs = {
+        "X": x,
+        "GTBox": gtbox,
+        "GTLabel": gtlabel,
+    }
+    if gtscore:
+        inputs["GTScore"] = gtscore
+
     attrs = {
         "anchors": anchors,
         "anchor_mask": anchor_mask,
         "class_num": class_num,
         "ignore_thresh": ignore_thresh,
         "downsample_ratio": downsample_ratio,
+        "use_label_smooth": use_label_smooth,
     }
 
     helper.append_op(
         type='yolov3_loss',
-        inputs={
-            "X": x,
-            "GTBox": gtbox,
-            "GTLabel": gtlabel,
-        },
+        inputs=inputs,
         outputs={
             'Loss': loss,
             'ObjectnessMask': objectness_mask,
