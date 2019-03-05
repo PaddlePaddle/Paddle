@@ -129,7 +129,6 @@ class AnakinConvertValidation {
       engine_->SetInputShape(input, t_shape);
     }
     engine_->Optimize();
-    engine_->Save("anakin.saved");
     engine_->InitGraph();
   }
 
