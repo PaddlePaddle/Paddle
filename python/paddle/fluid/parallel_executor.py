@@ -104,6 +104,7 @@ class ParallelExecutor(object):
 
         main_program = main_program if main_program is not None \
             else framework.default_main_program()
+
         self._compiled_program = compiler.CompiledProgram(main_program)
         self._compiled_program.with_data_parallel(
             loss_name=loss_name,
