@@ -72,6 +72,18 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(class_num, 0,
                       "Attr(class_num) should be an integer greater then 0.");
 
+    if (ctx->HasInput("GTScore")) {
+      auto dim_gtscore = ctx->GetInputDim("GTScore");
+      PADDLE_ENFORCE_EQ(dim_gtscore.size(), 2,
+                        "Input(GTScore) should be a 2-D tensor");
+      PADDLE_ENFORCE_EQ(
+          dim_gtscore[0], dim_gtbox[0],
+          "Input(GTBox) and Input(GTScore) dim[0] should be same");
+      PADDLE_ENFORCE_EQ(
+          dim_gtscore[1], dim_gtbox[1],
+          "Input(GTBox) and Input(GTScore) dim[1] should be same");
+    }
+
     std::vector<int64_t> dim_out({dim_x[0]});
     ctx->SetOutputDim("Loss", framework::make_ddim(dim_out));
 
@@ -112,6 +124,11 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
              "This is a 2-D tensor with shape of [N, max_box_num], "
              "and each element should be an integer to indicate the "
              "box class id.");
+    AddInput("GTScore",
+             "The score of GTLabel, This is a 2-D tensor in same shape "
+             "GTLabel, and score values should in range (0, 1). This "
+             "input is for GTLabel score can be not 1.0 in image mixup "
+             "augmentation.");
     AddOutput("Loss",
               "The output yolov3 loss tensor, "
               "This is a 1-D tensor with shape of [N]");
@@ -143,6 +160,8 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("ignore_thresh",
                    "The ignore threshold to ignore confidence loss.")
         .SetDefault(0.7);
+    AddAttr<bool>("use_label_smooth", "bool,default True", "use label smooth")
+        .SetDefault(true);
     AddComment(R"DOC(
          This operator generates yolov3 loss based on given predict result and ground
          truth boxes.
@@ -240,6 +259,7 @@ class Yolov3LossGradMaker : public framework::SingleGradOpDescMaker {
     op->SetInput("X", Input("X"));
     op->SetInput("GTBox", Input("GTBox"));
     op->SetInput("GTLabel", Input("GTLabel"));
+    op->SetInput("GTScore", Input("GTScore"));
     op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
     op->SetInput("ObjectnessMask", Output("ObjectnessMask"));
     op->SetInput("GTMatchMask", Output("GTMatchMask"));
@@ -249,6 +269,7 @@ class Yolov3LossGradMaker : public framework::SingleGradOpDescMaker {
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetOutput(framework::GradVarName("GTBox"), {});
     op->SetOutput(framework::GradVarName("GTLabel"), {});
+    op->SetOutput(framework::GradVarName("GTScore"), {});
     return std::unique_ptr<framework::OpDesc>(op);
   }
 };
