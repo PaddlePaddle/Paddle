@@ -106,17 +106,19 @@ class ParallelExecutor(object):
             else framework.default_main_program()
 
         self._compiled_program = compiler.CompiledProgram(main_program)
+        if share_vars_from:
+            assert isinstance(
+                share_vars_from, ParallelExecutor
+            ), "The share_vars_from should be ParallelExecutor."
         self._compiled_program.with_data_parallel(
             loss_name=loss_name,
             build_strategy=build_strategy,
             exec_strategy=exec_strategy,
-            share_vars_from=share_vars_from)
+            share_vars_from=share_vars_from._compiled_program
+            if share_vars_from else None)
         self._place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
         self._exe = executor.Executor(self._place)
         self._compiled_program._compile(place=self._place, scope=self._scope)
-        # NOTD(zcd): _executor and _is_data_parallel are compatible with compiler.
-        self._executor = self._compiled_program._executor
-        self._is_data_parallel = True
 
     def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):
         """
