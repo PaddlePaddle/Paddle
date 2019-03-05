@@ -85,10 +85,10 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "The input tensor of softmax, "
-             "whose last dimension is the input_feature_dimensions.");
+             "whose :attr:`axis` dimension is the input_feature_dimensions.");
     AddOutput("Out", "The normalized values with the same shape as X.");
     AddAttr<int>("axis",
-                 "The dimension of Input(x) to perform softmax,"
+                 "The dimension index of Input(x) to perform softmax,"
                  "default -1 for last dimension")
         .SetDefault(-1);
     AddAttr<bool>(
@@ -115,12 +115,13 @@ Softmax Operator.
 The input of the softmax operator is a tensor of any rank. The output tensor
 has the same shape as the input.
 
-The input tensor will first be logically flattened to a 2-D matrix. The matrix's
-second dimension(row length) is as same as the last dimension of the input
+The :attr:`axis` th dimension of the input tensor will be permuted to the last.
+Then the input tensor will be logically flattened to a 2-D matrix. The matrix's
+second dimension(row length) is as same as the :attr:`axis` dimension of the input
 tensor, and the first dimension(column length) is the product of all other
 dimensions of the input tensor. For each row of the matrix, the softmax operator
 squashes the K-dimensional(K is the width of the matrix, which is also the size
-of the input tensor's last dimension) vector of arbitrary real values to a
+of the input tensor's :attr:`axis` dimension) vector of arbitrary real values to a
 K-dimensional vector of real values in the range [0, 1] that add up to 1.
 It computes the exponential of the given dimension and the sum of exponential
 values of all the other dimensions in the K-dimensional vector input.

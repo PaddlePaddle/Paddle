@@ -28,7 +28,6 @@ class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<platform::CUDADeviceContext>();
     auto* X = context.Input<Tensor>("X");
     auto* Out = context.Output<Tensor>("Out");
-    // auto dims = X->dims();
     const int axis = context.Attr<int>("axis");
     int rank = X->dims().size();
 
