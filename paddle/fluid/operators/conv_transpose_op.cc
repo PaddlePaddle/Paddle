@@ -127,6 +127,12 @@ void Conv2DTransposeOpMaker::Make() {
       "output feature channels,"
       "H is the height of the filter, and W is the width of the filter. "
       "We enforce groups number == 1 in the convolution transpose scenario.");
+  AddInput("Bias",
+           "(Tensor) Bias to be added to each output of filter application."
+           "The format of output tensor is X (one-dimensional) of size equal"
+           "to the number of output channels. Only used with MKL-DNN.")
+      .AsDispensable();
+
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator. "
             "The format of output tensor is also NCHW.");
