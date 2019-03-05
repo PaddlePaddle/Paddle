@@ -1040,6 +1040,20 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             layers.range(0, 10, 2, 'int32')
             layers.range(0.1, 10.0, 0.2, 'float32')
+
+        print(str(program))
+
+    def test_spectral_norm(self):
+        program = Program()
+        with program_guard(program):
+            weight = layers.data(
+                name='weight',
+                shape=[2, 3, 32, 32],
+                dtype="float32",
+                append_batch_size=False)
+            out = layers.spectral_norm(weight, dim=1, power_iters=1)
+            self.assertIsNotNone(out)
+
         print(str(program))
 
     def test_shuffle_channel(self):
