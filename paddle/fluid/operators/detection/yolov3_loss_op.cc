@@ -128,7 +128,8 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
              "The score of GTLabel, This is a 2-D tensor in same shape "
              "GTLabel, and score values should in range (0, 1). This "
              "input is for GTLabel score can be not 1.0 in image mixup "
-             "augmentation.");
+             "augmentation.")
+        .AsDispensable();
     AddOutput("Loss",
               "The output yolov3 loss tensor, "
               "This is a 1-D tensor with shape of [N]");
