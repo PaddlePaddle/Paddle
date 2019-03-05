@@ -85,7 +85,8 @@ void OpInputConfig::ParseInitializer(std::istream& is) {
   is >> initializer_str;
   EraseEndSep(&initializer_str);
 
-  const std::vector<std::string> supported_initializers = {"random", "natural"};
+  const std::vector<std::string> supported_initializers = {"random", "natural",
+                                                           "zeros"};
   if (!Has(supported_initializers, initializer_str)) {
     PADDLE_THROW("Unsupported initializer %s", initializer_str.c_str());
   }

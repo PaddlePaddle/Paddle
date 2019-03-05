@@ -282,6 +282,10 @@ void OpTester::SetupTensor(framework::LoDTensor *tensor,
     for (int i = 0; i < cpu_tensor.numel(); ++i) {
       cpu_ptr[i] = lower + i;
     }
+  } else if (initializer == "zeros") {
+    for (int i = 0; i < cpu_tensor.numel(); ++i) {
+      cpu_ptr[i] = 0;
+    }
   } else {
     PADDLE_THROW("Unsupported initializer %s.", initializer.c_str());
   }
