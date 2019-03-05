@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
@@ -55,7 +57,7 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   std::vector<FetchOpHandle *> fetch_ops;
 
   for (auto &fetch_var_name : fetch_tensors) {
-    for (auto &var_map : graph_->Get<details::GraphVars>("vars")) {
+    for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
         fetched_vars[fetch_var_name].push_back(*it->second.rbegin());
