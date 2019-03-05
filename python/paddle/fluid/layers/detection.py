@@ -2238,10 +2238,16 @@ def box_decoder_and_assign(prior_box,
         prior_box_var(${prior_box_var_type}): ${prior_box_var_comment}
         target_box(${target_box_type}): ${target_box_comment}
         box_score(${box_score_type}): ${box_score_comment}
+        box_clip(${box_clip_type}): ${box_clip_comment}
         name(str|None): The name of this operator
     Returns:
-        output_box(${output_box_type}): ${output_box_comment}
-        output_assign_box(${output_assign_box_type}): ${output_assign_box_comment}
+        decode_box(Variable), output_assign_box(Variable):
+
+            two variables:
+
+            - decode_box(${decode_box_type}): ${decode_box_comment}
+            - output_assign_box(${output_assign_box_type}): ${output_assign_box_comment}
+
     Examples:
         .. code-block:: python
 
@@ -2253,13 +2259,13 @@ def box_decoder_and_assign(prior_box,
                 name='target_box', shape=[20, 4*81], dtype='float32')
             scores = fluid.layers.data(
                 name='scores', shape=[20, 81], dtype='float32')
-            output_box, assign_box = fluid.layers.box_decoder_and_assign(
+            decoded_box, output_assign_box = fluid.layers.box_decoder_and_assign(
                 pb, pbv, loc, scores, 4.135)
 
     """
     helper = LayerHelper("box_decoder_and_assign", **locals())
 
-    output_box = helper.create_variable_for_type_inference(
+    decoded_box = helper.create_variable_for_type_inference(
         dtype=prior_box.dtype)
     output_assign_box = helper.create_variable_for_type_inference(
         dtype=prior_box.dtype)
@@ -2274,7 +2280,7 @@ def box_decoder_and_assign(prior_box,
         },
         attrs={"box_clip": box_clip},
         outputs={
-            "OutputBox": output_box,
+            "DecodeBox": decoded_box,
             "OutputAssignBox": output_assign_box
         })
-    return output_box, output_assign_box
+    return decoded_box, output_assign_box
