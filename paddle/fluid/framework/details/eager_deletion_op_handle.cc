@@ -25,8 +25,6 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static const std::string kEagerDeletionOpName{"eager_deletion"};  // NOLINT
-
 EagerDeletionOpHandle::EagerDeletionOpHandle(
     ir::Node *node, const Scope *scope, const platform::Place &place,
     const std::unordered_set<std::string> &var_names, GarbageCollector *gc,
@@ -61,10 +59,9 @@ EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 #endif
 }
 
-std::string EagerDeletionOpHandle::Name() const { return kEagerDeletionOpName; }
+std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
 
 void EagerDeletionOpHandle::RunImpl() {
-  platform::RecordEvent event(kEagerDeletionOpName, nullptr);
   Scope *exec_scope = nullptr;
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (auto &name : var_names_) {

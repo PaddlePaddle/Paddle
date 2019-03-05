@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -409,8 +410,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
-  // skip while_op and while_grad_op temporarily
-  if (max_memory_size >= 0 && !keep_kids) {
+  if (max_memory_size >= 0) {
     ctx->ResetReferenceCount();
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place_)) {
@@ -428,6 +428,10 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 #ifdef PADDLE_WITH_CUDA
     }
 #endif
+    if (gc) {
+      operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(ctx->block_id_,
+                                                                 ctx->ops_);
+    }
   }
 
   for (auto& op : ctx->ops_) {
