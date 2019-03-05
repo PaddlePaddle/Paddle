@@ -180,11 +180,10 @@ The scale of FakeChannelWiseQuantize operator is a vector.
 In detail, each channel of the input X has a scale value.
 
 $$scale_c = max(abs(X_c))$$
-$$range = 2^{bit_length - 1} - 1$$
-$$Out_c = round(X_c / scale_c * range)$$
-
+$$range = 2^{bit\_length - 1} - 1$$
+$$Out_c = round(\frac{X_c * range} {scale_c})$$
 In above three formulas, the range value of c is as follow:
-$$0 \leq c \leq \ the\ channel\ number\ of\ X$$
+$$0 \leq c \lt \ the\ channel\ number\ of\ X$$
 )DOC");
   }
 };
