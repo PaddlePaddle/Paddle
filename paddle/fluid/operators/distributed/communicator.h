@@ -87,12 +87,12 @@ class BlockingQueue {
   std::condition_variable send_cv_;
 };
 
+using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
+
 class Communicator {
  public:
-  Communicator(
-      const std::unordered_map<std::string, RpcContext>& send_varname_to_ctx,
-      const std::unordered_map<std::string, RpcContext>& recv_varname_to_ctx,
-      Scope* recv_scope)
+  Communicator(const RpcCtxMap& send_varname_to_ctx,
+               const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope)
       : send_varname_to_ctx_(send_varname_to_ctx),
         recv_varname_to_ctx_(recv_varname_to_ctx),
         recv_scope_(recv_scope) {
@@ -128,14 +128,38 @@ class Communicator {
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
       send_varname_to_queue_;
-  std::unordered_map<std::string, RpcContext> send_varname_to_ctx_;
-  std::unordered_map<std::string, RpcContext> recv_varname_to_ctx_;
+  RpcCtxMap send_varname_to_ctx_;
+  RpcCtxMap recv_varname_to_ctx_;
   std::unique_ptr<std::thread> send_thread_;
   std::unique_ptr<std::thread> recv_thread_;
   Scope* recv_scope_;                  // should be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
   std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
+
+  // the following code is for initialize the commnunicator
+ public:
+  static void Init(const RpcCtxMap& send_varname_to_ctx,
+                   const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope) {
+    InitImpl(send_varname_to_ctx, recv_varname_to_ctx, recv_scope);
+  }
+
+  static Communicator* GetInstance() { return communicator_.get(); }
+
+ private:
+  // Init is called by GetInstance.
+  static void InitImpl(const RpcCtxMap& send_varname_to_ctx,
+                       const RpcCtxMap& recv_varname_to_ctx,
+                       Scope* recv_scope) {
+    if (communicator_ == nullptr) {
+      communicator_.reset(new Communicator(send_varname_to_ctx,
+                                           recv_varname_to_ctx, recv_scope));
+    }
+  }
+
+ private:
+  static std::once_flag init_flag_;
+  static std::unique_ptr<Communicator> communicator_;
 };
 
 }  // namespace distributed
