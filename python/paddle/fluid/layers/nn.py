@@ -1819,17 +1819,18 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     return softmax_out
 
 
-def softmax(input, use_cudnn=False, name=None):
+def softmax(input, use_cudnn=False, name=None, axis=-1):
     """
     The input of the softmax operator is a tensor of any rank. The output tensor
     has the same shape as the input.
 
-    The input tensor will first be logically flattened to a 2-D matrix. The matrix's
-    second dimension(row length) is as same as the last dimension of the input
+    The :attr:`axis` th dimension of the input tensor will be permuted to the last.
+    Then the input tensor will be logically flattened to a 2-D matrix. The matrix's
+    second dimension(row length) is as same as the :attr:`axis` th dimension of the input
     tensor, and the first dimension(column length) is the product of all other
     dimensions of the input tensor. For each row of the matrix, the softmax operator
     squashes the K-dimensional(K is the width of the matrix, which is also the size
-    of the input tensor's last dimension) vector of arbitrary real values to a
+    of the input tensor's :attr:`axis` th dimension) vector of arbitrary real values to a
     K-dimensional vector of real values in the range [0, 1] that add up to 1.
 
     It computes the exponential of the given dimension and the sum of exponential
@@ -1851,6 +1852,7 @@ def softmax(input, use_cudnn=False, name=None):
             False by default. Default: False
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None.
+        axis (int): The index of dimension to perform softmax calculation. Default: -1.
 
     Returns:
         Variable: output of softmax
@@ -1860,7 +1862,7 @@ def softmax(input, use_cudnn=False, name=None):
         .. code-block:: python
 
              fc = fluid.layers.fc(input=x, size=10)
-             softmax = fluid.layers.softmax(input=fc)
+             softmax = fluid.layers.softmax(input=fc, axis=1)
 
     """
     helper = LayerHelper('softmax', **locals())
@@ -1870,7 +1872,10 @@ def softmax(input, use_cudnn=False, name=None):
         type="softmax",
         inputs={"X": input},
         outputs={"Out": softmax_out},
-        attrs={"use_cudnn": use_cudnn})
+        attrs={
+            "axis": axis,
+            "use_cudnn": use_cudnn
+        })
     return softmax_out
 
 
