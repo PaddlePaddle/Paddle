@@ -14,12 +14,15 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "ngraph/ngraph.hpp"
 #include "paddle/fluid/operators/ngraph/ops/elementwise_node.h"
 #include "paddle/fluid/operators/ngraph/ops/elementwise_scalar_op.h"
+#include "paddle/fluid/operators/ngraph/ops/op_bridge.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
 
 namespace paddle {
@@ -43,6 +46,10 @@ void BuildBatchNormNode(
   const bool is_test = op_attrs.Get<bool>("is_test");
   const float epsilon = op_attrs.Get<float>("epsilon");
   const float momentum = op_attrs.Get<float>("momentum");
+
+  PADDLE_ENFORCE(
+      data_layout == "NHWC" || data_layout == "NCHW" || data_layout == "NC",
+      "The BatchNorm operator only supports NHWC/NCHW/NC data format");
 
   if (data_layout == "NHWC") {
     x = paddle::platform::Nhwc2Nchw(x);
@@ -110,6 +117,9 @@ void BuildBatchNormGradNode(
                  "BN grap input size needs to be 2 or 4");
   PADDLE_ENFORCE_EQ(x_shape.size(), dy_shape.size(),
                     "BN grap input and delta size needs to be equal");
+  PADDLE_ENFORCE(
+      data_layout == "NHWC" || data_layout == "NCHW" || data_layout == "NC",
+      "The BatchNorm operator only supports NHWC/NCHW/NC data format");
 
   if (x_shape.size() == 2) {
     x = std::make_shared<ngraph::op::Reshape>(
@@ -148,3 +158,6 @@ void BuildBatchNormGradNode(
 }  // namespace ngraphs
 }  // namespace operators
 }  // namespace paddle
+
+REGISTER_NG_OP(batch_norm, BuildBatchNormNode);
+REGISTER_NG_OP(batch_norm_grad, BuildBatchNormGradNode);

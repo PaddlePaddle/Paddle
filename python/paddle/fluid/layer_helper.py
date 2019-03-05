@@ -34,6 +34,9 @@ class LayerHelper(object):
         self.kwargs = kwargs
         self.layer_type = layer_type
         name = self.kwargs.get('name', None)
+        # TODO(panyx0718, minqiyang): imperative mode
+        # can not use both `layer_type` and `name`. Deprecate LayerHelper
+        # and write a Helper for imperative mode.
         if name is None:
             self.kwargs['name'] = unique_name.generate(self.layer_type)
 

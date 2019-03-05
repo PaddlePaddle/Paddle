@@ -123,7 +123,7 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
     auto& dev_ctx = *pool.Get(dev_place);
 
     framework::RuntimeContext run_ctx(Inputs(), Outputs(), scope);
-    framework::ExecutionContext ctx(*this, scope, dev_ctx, run_ctx);
+    framework::ExecutionContext ctx(*this, scope, dev_ctx, run_ctx, nullptr);
 
     const LoDTensorArray* ids = ctx.Input<LoDTensorArray>("Ids");
     const LoDTensorArray* scores = ctx.Input<LoDTensorArray>("Scores");
