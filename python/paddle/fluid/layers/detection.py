@@ -2233,22 +2233,16 @@ def distribute_fpn_proposals(fpn_rois,
     """
     Distribute all proposals into different fpn level, with respect to scale 
     of the proposals, the referring scale and the referring level. Besides, to
-    restore the order of proposals, we return an array which indicate the 
+    restore the order of proposals, we return an array which indicates the 
     original index of rois in current proposals. To compute fpn level for each 
     roi, the formula is given as follows:
     
     .. code-block:: text
 
-        roi_scale = sqrt(BBoxArea(fpn_roi));
-        level = floor(log2(roi_scale / refer_scale) + refer_level)
-    
-    where BBoxArea is the function to compute the area of each roi:
+        roi_scale = \sqrt{BBoxArea(fpn_roi)};
+        level = \floor{\log \frac{roi_scale}{refer_scale} + refer_level}
 
-    .. code-block:: text
-    
-        w = fpn_roi[2] - fpn_roi[0]
-        h = fpn_roi[3] - fpn_roi[1]
-        area = (w + 1) * (h + 1)
+    where BBoxArea is the area of each roi
 
     Args:
         fpn_rois(variable): The input fpn_rois, the last dimension is 4.
@@ -2258,7 +2252,8 @@ def distribute_fpn_proposals(fpn_rois,
                         come from.
         refer_level(int): The referring level of FPN layer with specified scale.
         refer_scale(int): The referring scale of FPN layer with specified level.
-        
+        name(str|None): The name of this operator.        
+
     Returns:
         tuple: 
                A tuple(multi_rois, restore_ind) is returned. The multi_rois is 
