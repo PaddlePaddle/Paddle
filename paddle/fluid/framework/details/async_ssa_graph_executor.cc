@@ -14,6 +14,9 @@
 
 #include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
 
+#include <memory>
+#include <utility>
+
 #include "paddle/fluid/framework/variable_helper.h"
 
 namespace paddle {
