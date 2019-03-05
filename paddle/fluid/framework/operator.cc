@@ -919,15 +919,16 @@ std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   const Scope* cur_scope = &scope;
-  if (!runtime_ctx_ || pre_scope_ != cur_scope ||
-      scope.FindVar(details::kLocalExecScopeName)) {
-    // RuntimeContext is used to relate input/output names of Operator with
-    // the corresponding variables in Scope.
-    // In a same Scope, since the input/output names of Operator do not change
-    // in the execution, RuntimeContext could be created only at the first
-    // iteration of the execution to save the elapsed time.
-    // Note that the Scope should not be the local scope, since local scope
-    // would be cleaned regularly.
+  // RuntimeContext is used to relate input/output names of Operator with
+  // the corresponding variables in Scope.
+  // In a same Scope, since the input/output names of Operator do not change
+  // in the execution, RuntimeContext could be created only at the first
+  // iteration of the execution to save the elapsed time.
+  // Note that the Scope should not be the local scope, since local scope
+  // would be cleaned regularly.
+  if (scope.FindVar(details::kLocalExecScopeName)) {
+    runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+  } else if (!runtime_ctx_ || pre_scope_ != cur_scope) {
     runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
     pre_scope_ = cur_scope;
   }
