@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -76,11 +77,11 @@ struct BuildStrategy {
 
   bool fuse_relu_depthwise_conv_{false};
 
-  bool memory_optimize_{false};
+  bool memory_optimize_{true};
   // TODO(dzhwinter):
   // make enable_inplace, memory_optimize_
   // memory_early_delete_ true by default
-  bool enable_inplace_{false};
+  bool enable_inplace_{true};
 
   bool enable_sequential_execution_{false};
 
