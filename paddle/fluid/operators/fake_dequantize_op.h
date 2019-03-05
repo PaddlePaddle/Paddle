@@ -65,27 +65,20 @@ class FakeChannelWiseDequantizeMaxAbsKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(dev_ctx.GetPlace());
 
     auto dequant = DequantizeFunctor<DeviceContext, T>();
+    for (int64_t i = 0; i < in->dims()[0]; i++) {
+      framework::Tensor one_channel_in = in->Slice(i, i + 1);
+      framework::Tensor one_channel_out = out->Slice(i, i + 1);
+      framework::Tensor one_channel_scale = scales[0]->Slice(i, i + 1);
+      dequant(dev_ctx, &one_channel_in, &one_channel_scale,
+              static_cast<T>(max_range), &one_channel_out);
+    }
+
     if (scales.size() == 2) {
       PADDLE_ENFORCE_EQ(
           scales[1]->numel(), 1,
           "The second scale tensor should only have one value at now.");
-      for (int64_t i = 0; i < in->dims()[0]; i++) {
-        framework::Tensor one_channel_in = in->Slice(i, i + 1);
-        framework::Tensor one_channel_out = out->Slice(i, i + 1);
-        framework::Tensor one_channel_scale = scales[0]->Slice(i, i + 1);
-        max_range *= (std::pow(2, quant_bits[1] - 1) - 1);
-        dequant(dev_ctx, &one_channel_in, &one_channel_scale,
-                static_cast<T>(max_range), &one_channel_out);
-      }
-      dequant(dev_ctx, out, scales[1], static_cast<T>(1), out);
-    } else {
-      for (int64_t i = 0; i < in->dims()[0]; i++) {
-        framework::Tensor one_channel_in = in->Slice(i, i + 1);
-        framework::Tensor one_channel_out = out->Slice(i, i + 1);
-        framework::Tensor one_channel_scale = scales[0]->Slice(i, i + 1);
-        dequant(dev_ctx, &one_channel_in, &one_channel_scale,
-                static_cast<T>(max_range), &one_channel_out);
-      }
+      max_range = std::pow(2, quant_bits[1] - 1) - 1;
+      dequant(dev_ctx, out, scales[1], static_cast<T>(max_range), out);
     }
   }
 };
