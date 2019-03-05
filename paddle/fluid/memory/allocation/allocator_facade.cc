@@ -83,7 +83,7 @@ class ChunkedAllocator : public Allocator {
         VLOG(1) << "Create AutoIncrementAllocator with chunk_size "
                 << max_chunk_size_ << " and capacity " << capacity;
         default_allocator_ = std::make_shared<AutoIncrementAllocator>(
-            [this] { return std::move(CreateAllocatorWithChunk()); }, capacity);
+            [this] { return CreateAllocatorWithChunk(); }, capacity);
       }
     }
 

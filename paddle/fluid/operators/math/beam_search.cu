@@ -119,6 +119,18 @@ __device__ __forceinline__ int SelectTopBeam(
       __syncthreads();
     }
 
+    if ((num_used_threads & 0x1) != 0) {
+      // If num_used_threads is a odd number, merge local top_beam of thread 0
+      // and num_used_threads - 1
+      if (tid_of_seq == 0) {
+        int index_in_sh = (num_used_threads - 1 + tid) * beam_size;
+        for (int i = 0; i < beam_size; i++) {
+          Insert(top_beam_local, top_beam[index_in_sh], beam_size);
+          index_in_sh++;
+        }
+      }
+    }
+
     num_used_threads = num_used_threads >> 1;
     if (tid_of_seq < num_used_threads) {
       int index_in_sh = (num_used_threads + tid) * beam_size;
@@ -157,10 +169,10 @@ __device__ __forceinline__ bool PruneEndBeams(Triple* top_beam_local,
 }
 
 __device__ __forceinline__ void WriteBack(
-    int64_t* selected_ids, float* selected_scores, size_t* selected_offsets,
-    Triple* top_beam_local, const int seq_offset_start,
-    const int seq_offset_end, const int selected_seq_start,
-    const int selected_seq_length) {
+    int64_t* selected_ids, float* selected_scores, int* parent_idx,
+    size_t* selected_offsets, Triple* top_beam_local,
+    const int seq_offset_start, const int seq_offset_end,
+    const int selected_seq_start, const int selected_seq_length) {
   const int tid = threadIdx.x;  // use 1 thread only for each sequence
   int global_index = selected_seq_start;
   for (int global_offset = seq_offset_start; global_offset < seq_offset_end;
@@ -171,6 +183,7 @@ __device__ __forceinline__ void WriteBack(
         selected_ids[global_index] =
             static_cast<int64_t>(top_beam_local[local_index].id);
         selected_scores[global_index] = top_beam_local[local_index].score;
+        parent_idx[global_index] = static_cast<int>(global_offset);
         global_index++;
       }
     }
@@ -180,11 +193,11 @@ __device__ __forceinline__ void WriteBack(
 
 template <int MaxLength, int MaxThreadsPerSeq, int MaxSeqs>
 __device__ void BeamSearchDetails(
-    int64_t* selected_ids, float* selected_scores, size_t* selected_offsets,
-    const int64_t* pre_ids, const float* pre_scores, const int64_t* ids,
-    const float* scores, const int seq_offset_start, const int seq_offset_end,
-    const int seq_width, int beam_size, int end_id, bool is_accumulated,
-    int num_used_threads) {
+    int64_t* selected_ids, float* selected_scores, int* parent_idx,
+    size_t* selected_offsets, const int64_t* pre_ids, const float* pre_scores,
+    const int64_t* ids, const float* scores, const int seq_offset_start,
+    const int seq_offset_end, const int seq_width, int beam_size, int end_id,
+    bool is_accumulated, int num_used_threads) {
   __shared__ Triple top_beam[MaxLength];
 
   int num_items = 0;
@@ -228,15 +241,15 @@ __device__ void BeamSearchDetails(
       selected_offsets[0] = 0;
     }
 
-    WriteBack(selected_ids, selected_scores, selected_offsets, top_beam_local,
-              seq_offset_start, seq_offset_end, selected_seq_start,
-              selected_seq_length);
+    WriteBack(selected_ids, selected_scores, parent_idx, selected_offsets,
+              top_beam_local, seq_offset_start, seq_offset_end,
+              selected_seq_start, selected_seq_length);
   }
 }
 
 template <int MaxLength, int MaxThreadsPerSeq, int MaxSeqs>
 __global__ void BeamSearchKernel(int64_t* selected_ids, float* selected_scores,
-                                 size_t* selected_offsets,
+                                 int* parent_idx, size_t* selected_offsets,
                                  const int64_t* pre_ids,
                                  const float* pre_scores, const int64_t* ids,
                                  const float* scores, const size_t* seq_offsets,
@@ -250,24 +263,25 @@ __global__ void BeamSearchKernel(int64_t* selected_ids, float* selected_scores,
   int seq_offset_end = static_cast<int>(seq_offsets[seq_id + 1]);
 
   BeamSearchDetails<MaxLength, MaxThreadsPerSeq, MaxSeqs>(
-      selected_ids, selected_scores, selected_offsets, pre_ids, pre_scores, ids,
-      scores, seq_offset_start, seq_offset_end, seq_width, beam_size, end_id,
-      is_accumulated, num_used_threads);
+      selected_ids, selected_scores, parent_idx, selected_offsets, pre_ids,
+      pre_scores, ids, scores, seq_offset_start, seq_offset_end, seq_width,
+      beam_size, end_id, is_accumulated, num_used_threads);
 }
 
 template <int MaxLength, int MaxThreadsPerSeq>
 __global__ void BeamSearchKernelSingle(
-    int64_t* selected_ids, float* selected_scores, size_t* selected_offsets,
-    const int64_t* pre_ids, const float* pre_scores, const int64_t* ids,
-    const float* scores, const int seq_length, const int seq_width,
-    int beam_size, int end_id, bool is_accumulated, int num_used_threads) {
+    int64_t* selected_ids, float* selected_scores, int* parent_idx,
+    size_t* selected_offsets, const int64_t* pre_ids, const float* pre_scores,
+    const int64_t* ids, const float* scores, const int seq_length,
+    const int seq_width, int beam_size, int end_id, bool is_accumulated,
+    int num_used_threads) {
   const int seq_offset_start = 0;
   const int seq_offset_end = seq_length;
 
   BeamSearchDetails<MaxLength, MaxThreadsPerSeq, 1>(
-      selected_ids, selected_scores, selected_offsets, pre_ids, pre_scores, ids,
-      scores, seq_offset_start, seq_offset_end, seq_width, beam_size, end_id,
-      is_accumulated, num_used_threads);
+      selected_ids, selected_scores, parent_idx, selected_offsets, pre_ids,
+      pre_scores, ids, scores, seq_offset_start, seq_offset_end, seq_width,
+      beam_size, end_id, is_accumulated, num_used_threads);
 }
 
 static inline int GetNumUsedThreads(const int max_threads_per_seq,
@@ -300,8 +314,9 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
                   const framework::LoDTensor* ids,
                   const framework::LoDTensor* scores,
                   framework::LoDTensor* selected_ids,
-                  framework::LoDTensor* selected_scores, size_t level,
-                  size_t beam_size, int end_id, bool is_accumulated) {
+                  framework::LoDTensor* selected_scores,
+                  framework::Tensor* parent_idx, size_t level, size_t beam_size,
+                  int end_id, bool is_accumulated) {
     auto abs_lod = framework::ToAbsOffset(scores->lod());
 
     const int64_t* pre_ids_data = pre_ids->data<int64_t>();
@@ -322,6 +337,8 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
         selected_ids->mutable_data<int64_t>(selected_dims, context.GetPlace());
     float* selected_scores_data =
         selected_scores->mutable_data<float>(selected_dims, context.GetPlace());
+    int* parent_idx_data = parent_idx->mutable_data<int>(
+        {static_cast<int64_t>(num_seqs * beam_size)}, context.GetPlace());
 
     framework::LoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
@@ -339,9 +356,9 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
         CUDA_LAUNCH_KERNEL_HELPER(
             BeamSearchKernelSingle<kPowerOfTwoDim, kMaxThreadsPerSeq><<<
                 1, kMaxThreadsPerSeq, 0, context.stream()>>>(
-                selected_ids_data, selected_scores_data, selected_offsets,
-                pre_ids_data, pre_scores_data, ids_data, scores_data,
-                seq_length, static_cast<int>(seq_width),
+                selected_ids_data, selected_scores_data, parent_idx_data,
+                selected_offsets, pre_ids_data, pre_scores_data, ids_data,
+                scores_data, seq_length, static_cast<int>(seq_width),
                 static_cast<int>(beam_size), static_cast<int>(end_id),
                 is_accumulated, num_used_threads));
       }
@@ -357,9 +374,9 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
         CUDA_LAUNCH_KERNEL_HELPER(
             BeamSearchKernel<kPowerOfTwoDim, kMaxThreadsPerSeq, kMaxSeqs><<<
                 1, num_seqs * kMaxThreadsPerSeq, 0, context.stream()>>>(
-                selected_ids_data, selected_scores_data, selected_offsets,
-                pre_ids_data, pre_scores_data, ids_data, scores_data,
-                seq_offsets, static_cast<int>(num_seqs),
+                selected_ids_data, selected_scores_data, parent_idx_data,
+                selected_offsets, pre_ids_data, pre_scores_data, ids_data,
+                scores_data, seq_offsets, static_cast<int>(num_seqs),
                 static_cast<int>(seq_width), static_cast<int>(beam_size),
                 end_id, is_accumulated, num_used_threads));
       }
@@ -379,6 +396,7 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
           {static_cast<int64_t>(selected_lod[1].back()), 1});
       selected_ids->Resize(final_selected_dims);
       selected_scores->Resize(final_selected_dims);
+      parent_idx->Resize({static_cast<int64_t>(selected_lod[1].back())});
     }
   }
 };

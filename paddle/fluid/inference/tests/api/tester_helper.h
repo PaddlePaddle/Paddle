@@ -56,13 +56,6 @@ DECLARE_int32(paddle_num_threads);
 namespace paddle {
 namespace inference {
 
-float Random(float low, float high) {
-  static std::random_device rd;
-  static std::mt19937 mt(rd());
-  std::uniform_real_distribution<double> dist(low, high);
-  return dist(mt);
-}
-
 void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
   const auto *analysis_config =
       reinterpret_cast<const AnalysisConfig *>(config);
@@ -146,7 +139,8 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
                        const std::string &dirname, bool is_combined = true,
                        std::string model_filename = "model",
                        std::string params_filename = "params",
-                       const std::vector<std::string> *feed_names = nullptr) {
+                       const std::vector<std::string> *feed_names = nullptr,
+                       const int continuous_inuput_index = 0) {
   // Set fake_image_data
   PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0, "Only have single batch of data.");
   std::vector<std::vector<int64_t>> feed_target_shapes = GetFeedTargetShapes(
@@ -183,7 +177,8 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
     float *input_data = static_cast<float *>(input.data.data());
     // fill input data, for profile easily, do not use random data here.
     for (size_t j = 0; j < len; ++j) {
-      *(input_data + j) = Random(0.0, 1.0) / 10.;
+      *(input_data + j) =
+          static_cast<float>((j + continuous_inuput_index) % len) / len;
     }
   }
   (*inputs).emplace_back(input_slots);

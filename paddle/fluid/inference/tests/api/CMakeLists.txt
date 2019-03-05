@@ -60,10 +60,13 @@ set(RNN2_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn2")
 download_model_and_data(${RNN2_INSTALL_DIR} "rnn2_model.tar.gz" "rnn2_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR} analyzer_rnn2_tester.cc)
 
+# TODO(luotao, Superjom) Disable DAM test, temporarily fix
+# https://github.com/PaddlePaddle/Paddle/issues/15032#issuecomment-455990914.
+# After inference framework refactor, will reopen it.
 # normal DAM
 set(DAM_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/dam")
 download_model_and_data(${DAM_INSTALL_DIR} "DAM_model.tar.gz" "DAM_data.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_dam ${DAM_INSTALL_DIR} analyzer_dam_tester.cc EXTRA_DEPS legacy_allocator SERIAL)
+#inference_analysis_api_test(test_analyzer_dam ${DAM_INSTALL_DIR} analyzer_dam_tester.cc EXTRA_DEPS legacy_allocator SERIAL)
 
 # small DAM
 set(DAM_SMALL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_dam")
@@ -128,9 +131,9 @@ inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
 inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_conv
   "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz" SERIAL)
 
-# bert, max_len=20
-set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert20")
-download_model_and_data(${BERT_INSTALL_DIR} "bert_model.tar.gz" "bert_data_len20.txt.tar.gz")
+# bert, max_len=20, embedding_dim=128
+set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert_emb128")
+download_model_and_data(${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_data_len20.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc SERIAL)
 
 # anakin

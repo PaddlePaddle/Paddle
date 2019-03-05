@@ -34,6 +34,9 @@ class LayerHelper(object):
         self.kwargs = kwargs
         self.layer_type = layer_type
         name = self.kwargs.get('name', None)
+        # TODO(panyx0718, minqiyang): imperative mode
+        # can not use both `layer_type` and `name`. Deprecate LayerHelper
+        # and write a Helper for imperative mode.
         if name is None:
             self.kwargs['name'] = unique_name.generate(self.layer_type)
 
@@ -302,7 +305,8 @@ class LayerHelper(object):
         if default_initializer is None and attr.initializer is None:
             if isinstance(dtype, core.VarDesc.VarType):
                 if dtype != core.VarDesc.VarType.FP32 and \
-                    dtype != core.VarDesc.VarType.FP64:
+                    dtype != core.VarDesc.VarType.FP64 and \
+                    dtype != core.VarDesc.VarType.FP16:
                     raise TypeError(
                         "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
                     )
