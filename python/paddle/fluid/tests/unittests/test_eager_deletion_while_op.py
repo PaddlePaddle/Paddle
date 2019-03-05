@@ -47,7 +47,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         self.with_data_parallel = with_data_parallel
 
         if not core.is_compiled_with_cuda() and isinstance(self.place,
-                                                           core.CUDPlace):
+                                                           core.CUDAPlace):
             return
 
         if isinstance(self.place, core.CUDAPlace):
@@ -55,8 +55,8 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
             ) if self.with_data_parallel else 1
         else:
             device_cnt = int(
-                os.environ['CPU_NUM'],
-                multiprocessing.cpu_count()) if self.with_data_parallel else 1
+                os.environ.get('CPU_NUM', multiprocessing.cpu_count(
+                ))) if self.with_data_parallel else 1
 
         d0 = layers.data(
             "d0", shape=[10], append_batch_size=False, dtype='float32')

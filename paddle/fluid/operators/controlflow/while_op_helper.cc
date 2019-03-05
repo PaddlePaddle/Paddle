@@ -241,9 +241,6 @@ static void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOpImpl(
     ModifyWhileOpAndWhileGradOpAttr(*matched_fwd_op, bwd_op);
     while_op_set.erase(*matched_fwd_op);
   }
-
-  PADDLE_ENFORCE(while_op_set.empty(),
-                 "There are not matched while_grad op in graph.");
 }
 
 void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
