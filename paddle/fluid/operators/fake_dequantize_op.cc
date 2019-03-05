@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fake_dequantize_op.h"
 #include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -84,8 +85,8 @@ class FakeChannelWiseDequantizeMaxAbsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(
         ctx->HasInput("X"),
         "Input(X) of FakeChannelWiseDequantizeMaxAbsOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("WeightScales"),
-                   "Input(WeightScales) of FakeChannelWiseDequantizeMaxAbsOp "
+    PADDLE_ENFORCE(ctx->HasInputs("Scales"),
+                   "Input(Scales) of FakeChannelWiseDequantizeMaxAbsOp "
                    "should not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("Out"),
@@ -103,39 +104,32 @@ class FakeChannelWiseDequantizeMaxAbsOpMaker
     AddInput("X",
              "(Tensor) The input with float-32/64 type is the "
              "low precision tensor.");
-    AddInput("ActivationScale",
-             "(float) The activation scale in quantization stage.")
-        .AsDispensable();
-    AddInput("WeightScales",
-             "(float array) The weight scales in quantization stage.");
+    AddInput("Scales",
+             "(Tensors) The scales in quantization stage. "
+             "Now, `Scales` is a vector with at most two tensors. "
+             "If Scales has two elements, the second tensor should only have "
+             "one value.")
+        .AsDuplicable();
     AddOutput("Out",
               "(Tensor) The output is the dequantized high "
               "precision tensor.");
-    AddAttr<int>("activation_bits", "Quantization bit number for activation.")
-        .SetDefault(8)
-        .AddCustomChecker([](const int& bit_length) {
-          PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
-                         "'activation_bits' should be between 1 and 16.");
-        });
-    AddAttr<int>("weight_bits", "Quantization bit number for weights.")
-        .SetDefault(8)
-        .AddCustomChecker([](const int& bit_length) {
-          PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
-                         "'weight_bits' should be between 1 and 16.");
-        });
+    AddAttr<std::vector<int>>(
+        "quant_bits",
+        "Quantization bit numbers in quantization stage. "
+        "The size of `quant_bits` should be equal to the size of `Scales`.")
+        .SetDefault({8});
 
     AddComment(R"DOC(
 FakeChannelWiseDequantizeMaxAbsOp operator.
 
 This calculation is an opposite operation of FakeChannelWiseQuantizeMaxAbsOp:
 
-$$Out_c = \frac{ActivationScale*WeightScale_c*X_c}{(2^{weight\_bits-1}-1)*(2^{activation\_bits-1}-1)}$$
+$$Out_c = \frac{X_c\prod_{i=1}^{n}Scales_{ic}}{\prod_{i=1}^{n}(2^{quant\_bits_i-1}-1)}$$
 
-In the above formula, the range value of c is as follow:
-$$0 \leq c \lt \ the\ channel\ number\ of\ X$$
+In the above formula, the range value of $c$ can be represented as $0 \leq c \lt \ the\ channel\ number\ of\ X$.
+Besides, the size of $quant\_bits$ should be equal to the size of $Scales$, and it is called $n$  in the formula.
 
-Notes: Tha per-channel quantization is only applied to weights(channel size scale).
-And the activations use per-layer quantization(only one scale).
+Notes: In general, the per-channel quantization is only applied to weights and the activations use per-layer quantization.
 )DOC");
   }
 };
