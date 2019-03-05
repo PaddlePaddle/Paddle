@@ -31,42 +31,49 @@ def dequantize_max_abs(x, scale, max_range):
     return y
 
 
-def channel_wise_quantize_max_abs(x, max_range):
+def channel_wise_quantize_max_abs(x, quant_bit=8):
     scales = []
     for i in range(x.shape[0]):
         scales.append(np.max(np.abs(x[i])).astype("float32"))
 
     y = x.copy()
+    max_range = math.pow(2, quant_bit - 1) - 1
     for i, scale in enumerate(scales):
         y[i] = np.round(y[i] / scale * max_range)
     return y, scales
 
 
-def channel_wise_dequantize_max_abs(x, scales, max_range):
+def channel_wise_dequantize_max_abs(x,
+                                    scales,
+                                    quant_bits,
+                                    activation_scale=None):
     y = x.copy()
     for i in range(x.shape[0]):
-        y[i] = (scales[i] / max_range) * y[i]
+        y[i] = (scales[i] / (math.pow(2, quant_bits[0] - 1) - 1)) * y[i]
+    if activation_scale is not None:
+        y *= activation_scale / (math.pow(2, quant_bits[1] - 1) - 1)
     return y
 
 
 class TestFakeChannelWiseDequantizeMaxAbsOpTwoScales(OpTest):
     def set_args(self):
-        self.quant_bits = [8, 2]
+        self.quant_bits = [8, 8]
         self.data_type = "float32"
+        self.activation_scale = 0.7861
 
     def setUp(self):
         self.set_args()
         self.op_type = "fake_channel_wise_dequantize_max_abs"
         x = np.random.randn(4, 3, 64, 64).astype(self.data_type)
-        max_range = math.pow(2, self.quant_bits[0] - 1) - 1
-        max_range *= (math.pow(2, self.quant_bits[1] - 1) - 1)
-        yq, scales = channel_wise_quantize_max_abs(x, max_range)
-        ydq = channel_wise_dequantize_max_abs(yq, scales, max_range)
+        yq, scales = channel_wise_quantize_max_abs(x, self.quant_bits[0])
+        ydq = channel_wise_dequantize_max_abs(yq, scales, self.quant_bits,
+                                              self.activation_scale)
 
         self.inputs = {
             'X': yq,
             'Scales': [("scales0", np.array(scales).astype(self.data_type)),
-                       ("scales1", np.array([1.0]).astype(self.data_type))]
+                       ("scales1", np.array(
+                           [self.activation_scale]).astype(self.data_type))]
         }
         self.attrs = {'quant_bits': self.quant_bits}
         self.outputs = {'Out': ydq}
@@ -84,9 +91,8 @@ class TestFakeChannelWiseDequantizeMaxAbsOpOneScale(OpTest):
         self.set_args()
         self.op_type = "fake_channel_wise_dequantize_max_abs"
         x = np.random.randn(4, 3, 64, 64).astype(self.data_type)
-        max_range = math.pow(2, self.quant_bits[0] - 1) - 1
-        yq, scales = channel_wise_quantize_max_abs(x, max_range)
-        ydq = channel_wise_dequantize_max_abs(yq, scales, max_range)
+        yq, scales = channel_wise_quantize_max_abs(x, self.quant_bits[0])
+        ydq = channel_wise_dequantize_max_abs(yq, scales, self.quant_bits)
 
         self.inputs = {
             'X': yq,
