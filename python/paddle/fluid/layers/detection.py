@@ -2225,8 +2225,12 @@ def multiclass_nms(bboxes,
 
 
 @templatedoc()
-def box_decoder_and_assign(prior_box, prior_box_var, target_box, box_score,
-                           box_clip):
+def box_decoder_and_assign(prior_box,
+                           prior_box_var,
+                           target_box,
+                           box_score,
+                           box_clip,
+                           name=None):
     """
     ${comment}
     Args:
@@ -2234,6 +2238,7 @@ def box_decoder_and_assign(prior_box, prior_box_var, target_box, box_score,
         prior_box_var(${prior_box_var_type}): ${prior_box_var_comment}
         target_box(${target_box_type}): ${target_box_comment}
         box_score(${box_score_type}): ${box_score_comment}
+        name(str|None): The name of this operator
     Returns:
         output_box(${output_box_type}): ${output_box_comment}
         output_assign_box(${output_assign_box_type}): ${output_assign_box_comment}

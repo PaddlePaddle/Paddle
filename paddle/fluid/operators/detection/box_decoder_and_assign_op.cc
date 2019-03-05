@@ -152,6 +152,12 @@ and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote the
 priorbox's (anchor) center coordinates, width and height. `pxv`, `pyv`, `pwv`,
 `phv` denote the variance of the priorbox and `ox`, `oy`, `ow`, `oh` denote the
 encoded/decoded coordinates, width and height.
+
+After box decode, the Assigning schema described below:
+
+For each priorbox, use the best non-background class's decoded values to 
+updata the priorbox locations and get outputassignbox. So, the shape of
+output_assign_box is the same as priorbox.
 )DOC");
   }
 };
