@@ -22,14 +22,16 @@ namespace inference {
 namespace anakin {
 
 TEST(fc_op, test) {
-  auto it = OpRegister::instance()->Get("fc");
-  ASSERT_TRUE(it != nullptr);
+  auto fc_converter = OpRegister::instance()->Get("fc");
+  ASSERT_TRUE(fc_converter != nullptr);
+  // Registrar<FcOpConverter> register_fc("fc");
+  // auto fc = std::make_shared<FcOpConverter>();
 
   std::unordered_set<std::string> parameters({"mul_y"});
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, scope);
   validator.DeclInputVar("mul_x", {1, 1, 1, 1});
-  validator.DeclParamVar("mul_y", {1, 1, 1, 2});
+  validator.DeclParamVar("mul_y", {1, 2});
   validator.DeclOutputVar("mul_out", {1, 1, 1, 2});
 
   // Prepare Op description
