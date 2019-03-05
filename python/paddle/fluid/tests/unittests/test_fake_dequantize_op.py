@@ -49,53 +49,50 @@ def channel_wise_dequantize_max_abs(x, scales, max_range):
     return y
 
 
-class TestFakeChannelWiseDequantizeMaxAbsOp(OpTest):
+class TestFakeChannelWiseDequantizeMaxAbsOpTwoScales(OpTest):
     def set_args(self):
-        self.weight_bits = 8
-        self.activation_bits = 2
+        self.quant_bits = [8, 2]
         self.data_type = "float32"
 
     def setUp(self):
         self.set_args()
         self.op_type = "fake_channel_wise_dequantize_max_abs"
         x = np.random.randn(4, 3, 64, 64).astype(self.data_type)
-        max_range = math.pow(2, self.weight_bits - 1) - 1
+        max_range = math.pow(2, self.quant_bits[0] - 1) - 1
+        max_range *= (math.pow(2, self.quant_bits[1] - 1) - 1)
         yq, scales = channel_wise_quantize_max_abs(x, max_range)
         ydq = channel_wise_dequantize_max_abs(yq, scales, max_range)
 
         self.inputs = {
             'X': yq,
-            'ActivationScale': np.array(1.0).astype(self.data_type),
-            'WeightScales': np.array(scales).astype(self.data_type)
+            'Scales': [("scales0", np.array(scales).astype(self.data_type)),
+                       ("scales1", np.array([1.0]).astype(self.data_type))]
         }
-        self.attrs = {
-            'weight_bits': self.weight_bits,
-            'activation_bits': self.activation_bits
-        }
+        self.attrs = {'quant_bits': self.quant_bits}
         self.outputs = {'Out': ydq}
 
     def test_check_output(self):
         self.check_output()
 
 
-class TestFakeChannelWiseDequantizeMaxAbsOpNoActivationScale(OpTest):
+class TestFakeChannelWiseDequantizeMaxAbsOpOneScale(OpTest):
     def set_args(self):
-        self.weight_bits = 8
+        self.quant_bits = [8]
         self.data_type = "float32"
 
     def setUp(self):
         self.set_args()
         self.op_type = "fake_channel_wise_dequantize_max_abs"
         x = np.random.randn(4, 3, 64, 64).astype(self.data_type)
-        max_range = math.pow(2, self.weight_bits - 1) - 1
+        max_range = math.pow(2, self.quant_bits[0] - 1) - 1
         yq, scales = channel_wise_quantize_max_abs(x, max_range)
         ydq = channel_wise_dequantize_max_abs(yq, scales, max_range)
 
         self.inputs = {
             'X': yq,
-            'WeightScales': np.array(scales).astype(self.data_type)
+            'Scales': [("scales0", np.array(scales).astype(self.data_type))]
         }
-        self.attrs = {'weight_bits': self.weight_bits}
+        self.attrs = {'quant_bits': self.quant_bits}
         self.outputs = {'Out': ydq}
 
     def test_check_output(self):
