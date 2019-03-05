@@ -13,18 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
-from paddle.fluid.tests.unittests.test_elementwise_add_op import TestElementwiseAddOp
-
-
-class TestNGRAPHElementwiseAddOp(TestElementwiseAddOp):
-    def setUp(self):
-        super(TestNGRAPHElementwiseAddOp, self).setUp()
-        self._cpu_only = True
-
-    def init_input_output(self):
-        super(TestNGRAPHElementwiseAddOp, self).init_input_output()
-
+from paddle.fluid.tests.unittests.test_elementwise_add_op import TestElementwiseAddOp, TestElementwiseAddOp_broadcast_0
 
 if __name__ == '__main__':
     unittest.main()

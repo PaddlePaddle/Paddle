@@ -61,8 +61,6 @@ ADD_LIBRARY(gflags STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET gflags PROPERTY IMPORTED_LOCATION ${GFLAGS_LIBRARIES})
 ADD_DEPENDENCIES(gflags extern_gflags)
 
-LIST(APPEND external_project_dependencies gflags)
-
 # On Windows (including MinGW), the Shlwapi library is used by gflags if available.
 if (WIN32)
   include(CheckIncludeFileCXX)
