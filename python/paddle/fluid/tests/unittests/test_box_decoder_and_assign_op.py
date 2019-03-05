@@ -87,7 +87,7 @@ class TestBoxDecoderAndAssignOpWithLoD(OpTest):
         }
         self.attrs = {'box_clip': box_clip}
         self.outputs = {
-            'OutputBox': output_box,
+            'DecodeBox': output_box,
             'OutputAssignBox': output_assign_box
         }
 

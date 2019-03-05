@@ -101,7 +101,7 @@ class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
     auto* prior_box_var = context.Input<framework::Tensor>("PriorBoxVar");
     auto* target_box = context.Input<framework::LoDTensor>("TargetBox");
     auto* box_score = context.Input<framework::LoDTensor>("BoxScore");
-    auto* output_box = context.Output<framework::Tensor>("OutputBox");
+    auto* output_box = context.Output<framework::Tensor>("DecodeBox");
     auto* output_assign_box =
         context.Output<framework::Tensor>("OutputAssignBox");
 
