@@ -76,6 +76,70 @@ $$Out = \frac{scale*X}{ max_range }$$
   }
 };
 
+class FakeChannelWiseDequantizeMaxAbsOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(
+        ctx->HasInput("X"),
+        "Input(X) of FakeChannelWiseDequantizeMaxAbsOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("WeightScales"),
+                   "Input(WeightScales) of FakeChannelWiseDequantizeMaxAbsOp "
+                   "should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("Out"),
+        "Output(Out) of FakeChannelWiseDequantizeMaxAbsOp should not be null.");
+
+    ctx->ShareDim("X", /*->*/ "Out");
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+};
+
+class FakeChannelWiseDequantizeMaxAbsOpMaker
+    : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X",
+             "(Tensor) The input with float-32/64 type is the "
+             "low precision tensor.");
+    AddInput("ActivationScale",
+             "(float) The activation scale in quantization stage.")
+        .AsDispensable();
+    AddInput("WeightScales",
+             "(float array) The weight scales in quantization stage.");
+    AddOutput("Out",
+              "(Tensor) The output is the dequantized high "
+              "precision tensor.");
+    AddAttr<int>("activation_bits", "Quantization bit number for activation.")
+        .SetDefault(8)
+        .AddCustomChecker([](const int& bit_length) {
+          PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
+                         "'activation_bits' should be between 1 and 16.");
+        });
+    AddAttr<int>("weight_bits", "Quantization bit number for weights.")
+        .SetDefault(8)
+        .AddCustomChecker([](const int& bit_length) {
+          PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
+                         "'weight_bits' should be between 1 and 16.");
+        });
+
+    AddComment(R"DOC(
+FakeChannelWiseDequantizeMaxAbsOp operator.
+
+This calculation is an opposite operation of FakeChannelWiseQuantizeMaxAbsOp:
+
+$$Out_c = \frac{ActivationScale*WeightScale_c*X_c}{(2^{weight\_bits-1}-1)*(2^{activation\_bits-1}-1)}$$
+
+In the above formula, the range value of c is as follow:
+$$0 \leq c \lt \ the\ channel\ number\ of\ X$$
+
+Notes: Tha per-channel quantization is only applied to weights(channel size scale).
+And the activations use per-layer quantization(only one scale).
+)DOC");
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -88,3 +152,11 @@ REGISTER_OPERATOR(fake_dequantize_max_abs, ops::FakeDequantizeMaxAbsOp,
 REGISTER_OP_CPU_KERNEL(fake_dequantize_max_abs,
                        ops::FakeDequantizeMaxAbsKernel<CPU, float>,
                        ops::FakeDequantizeMaxAbsKernel<CPU, double>);
+
+REGISTER_OPERATOR(fake_channel_wise_dequantize_max_abs,
+                  ops::FakeChannelWiseDequantizeMaxAbsOp,
+                  ops::FakeChannelWiseDequantizeMaxAbsOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OP_CPU_KERNEL(fake_channel_wise_dequantize_max_abs,
+                       ops::FakeChannelWiseDequantizeMaxAbsKernel<CPU, float>,
+                       ops::FakeChannelWiseDequantizeMaxAbsKernel<CPU, double>);
