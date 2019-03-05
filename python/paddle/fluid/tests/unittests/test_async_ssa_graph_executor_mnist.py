@@ -178,8 +178,8 @@ class TestAsyncSSAGraphExecutor(unittest.TestCase):
                         main_program=fluid.Program(),
                         startup_program=fluid.Program()):
                     test()
-        assert int(step_list[0] / 2) == int(step_list[1])
-        assert int(step_list[1] / 2) == int(step_list[2])
+        assert abs(int(step_list[0] / 2) - int(step_list[1])) < 5
+        assert abs(int(step_list[1] / 2) - int(step_list[2])) < 5
 
 
 if __name__ == "__main__":
