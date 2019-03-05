@@ -243,7 +243,9 @@ class TestImperativePtbRnn(unittest.TestCase):
             dy_loss = None
             last_hidden = None
             last_cell = None
-            for i in range(2):
+            batch_num = 50
+
+            for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                 x_data = x_data.reshape((-1, num_steps, 1))
@@ -302,7 +304,7 @@ class TestImperativePtbRnn(unittest.TestCase):
             static_loss_value = None
             static_last_cell_value = None
             static_last_hidden_value = None
-            for i in range(2):
+            for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                 x_data = x_data.reshape((-1, num_steps, 1))
