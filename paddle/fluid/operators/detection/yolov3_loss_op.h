@@ -289,7 +289,6 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     const T* gt_box_data = gt_box->data<T>();
     const int* gt_label_data = gt_label->data<int>();
-    const T* gt_score_data = gt_score->data<T>();
     T* loss_data = loss->mutable_data<T>({n}, ctx.GetPlace());
     memset(loss_data, 0, loss->numel() * sizeof(T));
     T* obj_mask_data =
@@ -297,6 +296,19 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     memset(obj_mask_data, 0, objness_mask->numel() * sizeof(T));
     int* gt_match_mask_data =
         gt_match_mask->mutable_data<int>({n, b}, ctx.GetPlace());
+
+    const T* gt_score_data;
+    if (!gt_score) {
+      Tensor _gt_score;
+      _gt_score.mutable_data<T>({n, b}, ctx.GetPlace());
+      math::SetConstant<platform::CPUDeviceContext, T>()(
+          ctx.template device_context<platform::CPUDeviceContext>(), &_gt_score,
+          static_cast<T>(1.0));
+      gt_score = &_gt_score;
+      gt_score_data = _gt_score.data<T>();
+    } else {
+      gt_score_data = gt_score->data<T>();
+    }
 
     // calc valid gt box mask, avoid calc duplicately in following code
     Tensor gt_valid_mask;
@@ -432,13 +444,25 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     const T* gt_box_data = gt_box->data<T>();
     const int* gt_label_data = gt_label->data<int>();
-    const T* gt_score_data = gt_score->data<T>();
     const T* loss_grad_data = loss_grad->data<T>();
     const T* obj_mask_data = objness_mask->data<T>();
     const int* gt_match_mask_data = gt_match_mask->data<int>();
     T* input_grad_data =
         input_grad->mutable_data<T>({n, c, h, w}, ctx.GetPlace());
     memset(input_grad_data, 0, input_grad->numel() * sizeof(T));
+
+    const T* gt_score_data;
+    if (!gt_score) {
+      Tensor _gt_score;
+      _gt_score.mutable_data<T>({n, b}, ctx.GetPlace());
+      math::SetConstant<platform::CPUDeviceContext, T>()(
+          ctx.template device_context<platform::CPUDeviceContext>(), &_gt_score,
+          static_cast<T>(1.0));
+      gt_score = &_gt_score;
+      gt_score_data = _gt_score.data<T>();
+    } else {
+      gt_score_data = gt_score->data<T>();
+    }
 
     for (int i = 0; i < n; i++) {
       for (int t = 0; t < b; t++) {
