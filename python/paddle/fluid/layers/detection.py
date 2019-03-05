@@ -2237,6 +2237,19 @@ def box_decoder_and_assign(prior_box, prior_box_var, target_box, box_score,
     Returns:
         output_box(${output_box_type}): ${output_box_comment}
         output_assign_box(${output_assign_box_type}): ${output_assign_box_comment}
+    Examples:
+        .. code-block:: python
+
+            pb = fluid.layers.data(name='prior_box', shape=[20, 4],
+                dtype='float32')
+            pbv = fluid.layers.data(name='prior_box_var', shape=[1, 4],
+                dtype='float32')
+            loc = fluid.layers.data(name='target_box', shape=[20, 4*81],
+                dtype='float32')
+            scores = fluid.layers.data(name='scores', shape=[20, 81],
+                dtype='float32')
+            output_box, output_assign_box = fluid.layers.box_decoder_and_assign(pb, pbv, loc, scores, 4.135)
+
     """
     helper = LayerHelper("box_decoder_and_assign", **locals())
 
