@@ -132,7 +132,7 @@ def __bootstrap__():
         'reader_queue_speed_test_mode', 'print_sub_graph_dir',
         'pe_profile_fname', 'warpctc_dir', 'inner_op_parallelism',
         'enable_parallel_graph', 'multiple_of_cupti_buffer_size',
-        'fuse_parameter_groups_size'
+        'fuse_parameter_groups_size', 'enable_subgraph_optimize'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
