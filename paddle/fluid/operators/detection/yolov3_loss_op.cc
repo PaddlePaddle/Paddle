@@ -227,8 +227,8 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
 
          While :attr:`use_label_smooth` is set to be :attr:`True`, the classification
          target will be smoothed when calculating classification loss, target of 
-         positive samples will be smoothed to $$1.0 - 1.0/class_num$$ and target of
-         negetive samples will be smoothed to $$1.0/class_num$$.
+         positive samples will be smoothed to :math:`1.0 - 1.0 / class\_num` and target of
+         negetive samples will be smoothed to :math:`1.0 / class\_num`.
 
          While :attr:`GTScore` is given, which means the mixup score of ground truth 
          boxes, all looses incured by a ground truth box will be multiplied by its 
