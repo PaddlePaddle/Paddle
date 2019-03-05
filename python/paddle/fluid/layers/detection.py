@@ -2237,10 +2237,10 @@ def distribute_fpn_proposals(fpn_rois,
     original index of rois in current proposals. To compute fpn level for each 
     roi, the formula is given as follows:
     
-    .. code-block:: text
+    .. math::
+        roi\_scale = \sqrt{BBoxArea(fpn\_roi)}
 
-        roi_scale = \sqrt{BBoxArea(fpn_roi)};
-        level = \floor{\log \frac{roi_scale}{refer_scale} + refer_level}
+        level = floor(\log(\\frac{roi\_scale}{refer\_scale}) + refer\_level)
 
     where BBoxArea is the area of each roi
 
