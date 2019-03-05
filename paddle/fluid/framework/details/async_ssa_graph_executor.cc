@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
 
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/operators/distributed/communicator.h"
 
 namespace paddle {
 namespace framework {
@@ -37,6 +38,43 @@ inline void NewTempScopeAndInitVars(const std::vector<VarInfo> &var_infos,
       InitializeVariable(local_scope.Var(info.name_), info.type_);
     }
   }
+}
+
+// get RpcContext and remote send and recv op
+void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
+  using RpcCtxMap = operators::distributed::RpcCtxMap;
+  RpcCtxMap send_varname_to_ctx;
+  RpcCtxMap recv_varname_to_ctx;
+  for (auto i = 0; i < graphs.size(); ++i) {
+    for (auto &node : graphs[i]->Nodes()) {
+      if (node->IsOp()) {
+        if (node->Op()->Type() == "send") {
+          auto send_var_name = node->Op()->Input("X")[0];
+          auto send_varnames = boost::get<std::vector<std::string>>(
+              node->Op()->GetNullableAttr("send_varnames"));
+          auto epmap = boost::get<std::vector<std::string>>(
+              node->Op()->GetNullableAttr("epmap"));
+          auto height_section = boost::get<std::vector<int64_t>>(
+              node->Op()->GetNullableAttr("sections"));
+          send_varname_to_ctx[send_var_name] =
+              operators::distributed::RpcContext(send_var_name, send_varnames,
+                                                 epmap, height_section);
+        } else if (node->Op()->Type() == "recv") {
+          auto recv_var_name = node->Op()->Input("X")[0];
+          auto recv_varnames = boost::get<std::vector<std::string>>(
+              node->Op()->GetNullableAttr("recv_varnames"));
+          auto epmap = boost::get<std::vector<std::string>>(
+              node->Op()->GetNullableAttr("epmap"));
+          recv_varname_to_ctx[recv_var_name] =
+              operators::distributed::RpcContext(recv_var_name, recv_varnames,
+                                                 epmap, {});
+        }
+      }
+    }
+  }
+  // init communicator here
+  operators::distributed::Communicator::Init(send_varname_to_ctx,
+                                             recv_varname_to_ctx, scope);
 }
 
 AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
