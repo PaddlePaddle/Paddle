@@ -3973,7 +3973,8 @@ def beam_search(pre_ids,
                 level=0,
                 is_accumulated=True,
                 name=None,
-                return_parent_idx=False):
+                return_parent_idx=False,
+                parent_idx=None):
     """
     Beam search is a classical algorithm for selecting candidate words in a
     machine translation task.
@@ -4075,7 +4076,8 @@ def beam_search(pre_ids,
     # step. Though lod in selected_ids can also be used to gather by
     # sequence_expand, it is not efficient.
     # gather_op's index input only supports int32 dtype currently
-    parent_idx = helper.create_variable_for_type_inference(dtype="int32")
+    if parent_idx is None:
+        parent_idx = helper.create_variable_for_type_inference(dtype="int32")
 
     helper.append_op(
         type='beam_search',
