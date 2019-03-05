@@ -134,13 +134,18 @@ Decode the target bounding box with the priorbox information.
 
 The Decoding schema described below:
 
-    ox = (pw * pxv * tx * + px) - tw / 2
-
-    oy = (ph * pyv * ty * + py) - th / 2
-
-    ow = exp(pwv * tw) * pw + tw / 2
-
-    oh = exp(phv * th) * ph + th / 2
+    $$
+    oy = (ph \\times pyv \\times ty + py) - \\frac{th}{2} 
+    $$
+    $$
+    oy = (ph \\times pyv \\times ty + py) - \\frac{th}{2}
+    $$
+    $$
+    ow = \\exp (pwv \\times tw) \\times pw + \\frac{tw}{2}
+    $$
+    $$
+    oh = \\exp (phv \\times th) \\times ph + \\frac{th}{2}
+    $$
 
 where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates, width
 and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote the
