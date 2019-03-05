@@ -2231,21 +2231,23 @@ def distribute_fpn_proposals(fpn_rois,
                              refer_scale,
                              name=None):
     """
-    Distribute all proposals into different fpn level, with respect to scale 
-    of the proposals, the referring scale and the referring level. Besides, to
-    restore the order of proposals, we return an array which indicates the 
-    original index of rois in current proposals. To compute fpn level for each 
-    roi, the formula is given as follows:
+    In Feature Pyramid Networks (FPN) models, it is needed to distribute all 
+    proposals into different FPN level, with respect to scale of the proposals,
+    the referring scale and the referring level. Besides, to restore the order
+    of proposals, we return an array which indicates the original index of rois
+    in current proposals. To compute FPN level for each roi, the formula is 
+    given as follows:
     
     .. math::
-        roi\_scale = \sqrt{BBoxArea(fpn\_roi)}
 
-        level = floor(\log(\\frac{roi\_scale}{refer\_scale}) + refer\_level)
+        roi\_scale &= \sqrt{BBoxArea(fpn\_roi)}
 
-    where BBoxArea is the area of each roi
+        level = floor(&\log(\\frac{roi\_scale}{refer\_scale}) + refer\_level)
+
+    where BBoxArea is a function to compute the area of each roi.
 
     Args:
-        fpn_rois(variable): The input fpn_rois, the last dimension is 4.
+        fpn_rois(variable): The input fpn_rois, the second dimension is 4.
         min_level(int): The lowest level of FPN layer where the proposals come 
                         from.
         max_level(int): The highest level of FPN layer where the proposals
