@@ -117,7 +117,7 @@ class AnakinEngineOp : public framework::OperatorBase {
 
   void Prepare(const framework::Scope &scope, const platform::Place &dev_place,
                AnakinNvEngineT *engine) const {
-    LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
+    LOG(INFO) << "Prepare Anakin engine (Optimize model structure, Select OP "
                  "kernel etc). This process may cost a lot of time.";
     framework::proto::BlockDesc block_desc;
     block_desc.ParseFromString(Attr<std::string>("subgraph"));
@@ -135,6 +135,11 @@ class AnakinEngineOp : public framework::OperatorBase {
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
       auto t_shape = framework::vectorize2int(t.dims());
+      // all input shape should be 4 dims
+      if (t_shape.size() == 2) {
+        t_shape.push_back(1);
+        t_shape.push_back(1);
+      }
       engine->SetInputShape(x, t_shape);
     }
     engine->InitGraph();
