@@ -35,8 +35,8 @@ class BoxDecoderAndAssignOp : public framework::OperatorWithKernel {
         ctx->HasInput("BoxScore"),
         "Input(BoxScore) of BoxDecoderAndAssignOp should not be null.");
     PADDLE_ENFORCE(
-        ctx->HasOutput("OutputBox"),
-        "Output(OutputBox) of BoxDecoderAndAssignOp should not be null.");
+        ctx->HasOutput("DecodeBox"),
+        "Output(DecodeBox) of BoxDecoderAndAssignOp should not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("OutputAssignBox"),
         "Output(OutputAssignBox) of BoxDecoderAndAssignOp should not be null.");
@@ -68,9 +68,9 @@ class BoxDecoderAndAssignOp : public framework::OperatorWithKernel {
                       "of box_score is [N, classnum], The shape of prior_box "
                       "is [N, 4]");
 
-    ctx->SetOutputDim("OutputBox", framework::make_ddim({target_box_dims[0],
+    ctx->SetOutputDim("DecodeBox", framework::make_ddim({target_box_dims[0],
                                                          target_box_dims[1]}));
-    ctx->ShareLoD("TargetBox", /*->*/ "OutputBox");
+    ctx->ShareLoD("TargetBox", /*->*/ "DecodeBox");
     ctx->SetOutputDim(
         "OutputAssignBox",
         framework::make_ddim({prior_box_dims[0], prior_box_dims[1]}));
@@ -84,38 +84,32 @@ class BoxDecoderAndAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput(
         "PriorBox",
         "(Tensor, default Tensor<float>) "
-        "Box list PriorBox is a 2-D Tensor with shape [M, 4] holds M boxes, "
-        "each box is represented as [xmin, ymin, xmax, ymax], "
+        "Box list PriorBox is a 2-D Tensor with shape [N, 4] which holds N "
+        "boxes and each box is represented as [xmin, ymin, xmax, ymax], "
         "[xmin, ymin] is the left top coordinate of the anchor box, "
         "if the input is image feature map, they are close to the origin "
         "of the coordinate system. [xmax, ymax] is the right bottom "
         "coordinate of the anchor box.");
     AddInput("PriorBoxVar",
              "(Tensor, default Tensor<float>, optional) "
-             "PriorBoxVar is a 2-D Tensor with shape [M, 4] holds M group "
-             "of variance. PriorBoxVar will set all elements to 1 by "
+             "PriorBoxVar is a 2-D Tensor with shape [N, 4] which holds N "
+             "group of variance. PriorBoxVar will set all elements to 1 by "
              "default.")
         .AsDispensable();
-    AddInput(
-        "TargetBox",
-        "(LoDTensor or Tensor) This input can be a 2-D LoDTensor with shape "
-        "[N, classnum*4]. [N, classnum*4], each box is represented as "
-        "[xmin, ymin, xmax, ymax], [xmin, ymin] is the left top coordinate "
-        "of the box if the input is image feature map, they are close to "
-        "the origin of the coordinate system. [xmax, ymax] is the right "
-        "bottom coordinate of the box. This tensor can contain LoD "
-        "information to represent a batch of inputs. One instance of this "
-        "batch can contain different numbers of entities.");
-    AddInput(
-        "BoxScore",
-        "(LoDTensor or Tensor) This input can be a 2-D LoDTensor with shape "
-        "[N, classnum], each box is represented as [classnum] which is "
-        "the classification probabilities.");
+    AddInput("TargetBox",
+             "(LoDTensor or Tensor) "
+             "This input can be a 2-D LoDTensor with shape "
+             "[N, classnum*4]. It holds N targets for N boxes.");
+    AddInput("BoxScore",
+             "(LoDTensor or Tensor) "
+             "This input can be a 2-D LoDTensor with shape "
+             "[N, classnum], each box is represented as [classnum] which is "
+             "the classification probabilities.");
     AddAttr<float>("box_clip",
                    "(float, default 4.135, np.log(1000. / 16.)) "
                    "clip box to prevent overflowing")
         .SetDefault(4.135f);
-    AddOutput("OutputBox",
+    AddOutput("DecodeBox",
               "(LoDTensor or Tensor) "
               "the output tensor of op with shape [N, classnum * 4] "
               "representing the result of N target boxes decoded with "
@@ -130,12 +124,12 @@ class BoxDecoderAndAssignOpMaker : public framework::OpProtoAndCheckerMaker {
 
 Bounding Box Coder.
 
-Decode the target bounding box with the priorbox information.
+Decode the target bounding box with the prior_box information.
 
-The Decoding schema described below:
+The Decoding schema is described below:
 
     $$
-    oy = (ph \\times pyv \\times ty + py) - \\frac{th}{2} 
+    ox = (pw \\times pxv \\times tx + px) - \\frac{tw}{2} 
     $$
     $$
     oy = (ph \\times pyv \\times ty + py) - \\frac{th}{2}
@@ -149,15 +143,15 @@ The Decoding schema described below:
 
 where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates, width
 and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote the
-priorbox's (anchor) center coordinates, width and height. `pxv`, `pyv`, `pwv`,
-`phv` denote the variance of the priorbox and `ox`, `oy`, `ow`, `oh` denote the
-encoded/decoded coordinates, width and height.
+prior_box's (anchor) center coordinates, width and height. `pxv`, `pyv`, `pwv`,
+`phv` denote the variance of the prior_box and `ox`, `oy`, `ow`, `oh` denote the
+decoded coordinates, width and height in decode_box. 
 
-After box decode, the Assigning schema described below:
+decode_box is obtained after box decode, then assigning schema is described below:
 
-For each priorbox, use the best non-background class's decoded values to 
-updata the priorbox locations and get outputassignbox. So, the shape of
-output_assign_box is the same as priorbox.
+For each prior_box, use the best non-background class's decoded values to 
+update the prior_box locations and get output_assign_box. So, the shape of
+output_assign_box is the same as PriorBox.
 )DOC");
   }
 };
