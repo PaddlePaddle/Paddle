@@ -66,8 +66,7 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
                    "Fail to find softmax primitive in device context");
     if (softmax_p == nullptr) {
       softmax_p = std::make_shared<mkldnn::softmax_forward>(
-          *(softmax_pd_.get()),
-          *(static_cast<mkldnn::memory*>(src_memory_p.get())),
+          *softmax_pd_, *(static_cast<mkldnn::memory*>(src_memory_p.get())),
           *(static_cast<mkldnn::memory*>(dst_memory_p.get())));
       dev_ctx_.SetBlob(prim_key, softmax_p);
     } else {
@@ -88,8 +87,8 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
                    "Fail to find softmax backward primitive in device context");
     if (softmax_bwd_p == nullptr) {
       softmax_bwd_p = std::make_shared<mkldnn::softmax_backward>(
-          *softmax_bwd_pd_, *(dst_memory_p.get()), *(diff_dst_memory_p.get()),
-          *(diff_src_memory_p.get()));
+          *softmax_bwd_pd_, *dst_memory_p, *diff_dst_memory_p,
+          *diff_src_memory_p);
       dev_ctx_.SetBlob(prim_key, softmax_bwd_p);
     } else {
       is_reusing_ = true;
@@ -158,6 +157,14 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
         handler.AcquireDstMemory(softmax_md, to_void_cast<T>(output_data));
     auto softmax_p =
         handler.AcquireSoftmax(softmax_dst_memory_p, softmax_src_memory_p);
+
+    // We cannot use softmax_dst_memory_p to get prim desc as
+    // it contains flattened dims (2D) while output tensor can
+    // have 2,3,4+ dims
+    auto output_mem_pd = paddle::platform::create_prim_desc_from_dims(
+        paddle::framework::vectorize2int(output->dims()),
+        mkldnn::memory::format::blocked);
+    output->set_mkldnn_prim_desc(output_mem_pd);
 
     std::vector<primitive> pipeline{
         *(static_cast<softmax_forward::primitive*>(softmax_p.get()))};

@@ -125,19 +125,22 @@ def __bootstrap__():
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
     sysstr = platform.system()
     read_env_flags = [
-        'check_nan_inf', 'benchmark', 'eager_delete_scope', 'use_mkldnn',
-        'use_ngraph', 'initial_cpu_memory_in_mb', 'init_allocated_mem',
-        'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
-        'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
-        'allocator_strategy', 'reader_queue_speed_test_mode',
-        'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir',
-        'inner_op_parallelism', 'enable_parallel_graph'
+        'check_nan_inf', 'benchmark', 'eager_delete_scope', 'use_ngraph',
+        'initial_cpu_memory_in_mb', 'init_allocated_mem', 'free_idle_memory',
+        'paddle_num_threads', "dist_threadpool_size", 'eager_delete_tensor_gb',
+        'fast_eager_deletion_mode', 'allocator_strategy',
+        'reader_queue_speed_test_mode', 'print_sub_graph_dir',
+        'pe_profile_fname', 'warpctc_dir', 'inner_op_parallelism',
+        'enable_parallel_graph', 'multiple_of_cupti_buffer_size'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
 
     if os.name != 'nt':
         read_env_flags.append('cpu_deterministic')
+
+    if core.is_compiled_with_mkldnn():
+        read_env_flags.append('use_mkldnn')
 
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')
