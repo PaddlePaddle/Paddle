@@ -545,9 +545,9 @@ def yolov3_loss(x,
 
     Raises:
         TypeError: Input x of yolov3_loss must be Variable
-        TypeError: Input gtbox of yolov3_loss must be Variable"
-        TypeError: Input gtlabel of yolov3_loss must be Variable"
-        TypeError: Input gtscore of yolov3_loss must be Variable"
+        TypeError: Input gtbox of yolov3_loss must be Variable
+        TypeError: Input gtlabel of yolov3_loss must be Variable
+        TypeError: Input gtscore of yolov3_loss must be Variable
         TypeError: Attr anchors of yolov3_loss must be list or tuple
         TypeError: Attr class_num of yolov3_loss must be an integer
         TypeError: Attr ignore_thresh of yolov3_loss must be a float number
@@ -559,7 +559,7 @@ def yolov3_loss(x,
           x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
           gtbox = fluid.layers.data(name='gtbox', shape=[6, 4], dtype='float32')
           gtlabel = fluid.layers.data(name='gtlabel', shape=[6], dtype='int32')
-          gtscore = fluid.layers.data(name='gtlabel', shape=[6], dtype='int32')
+          gtscore = fluid.layers.data(name='gtscore', shape=[6], dtype='int32')
           anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
           anchor_mask = [0, 1, 2]
           loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, gtlabel=gtlabel,
