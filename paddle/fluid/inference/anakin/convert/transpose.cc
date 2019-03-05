@@ -35,13 +35,11 @@ void TransposeOpConverter::operator()(const framework::proto::OpDesc &op,
   PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
 
   auto input = op_desc.Input("X").front();
-  auto output = op_desc.Output("X").front();
+  auto output = op_desc.Output("Out").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
   engine_->AddOp(op_name, "Permute", {input}, {output});
 
   auto axis = boost::get<std::vector<int>>(op_desc.GetAttr("axis"));
-  auto data_format = boost::get<std::string>(op_desc.GetAttr("data_format"));
-  PADDLE_ENFORCE_EQ(data_format, "NCHW");
   engine_->AddOpAttr<PTuple<int>>(op_name, "dims", axis);
 }
 

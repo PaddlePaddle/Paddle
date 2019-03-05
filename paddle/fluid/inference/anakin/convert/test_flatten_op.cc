@@ -40,13 +40,12 @@ TEST(flatten_op, test) {
   LOG(INFO) << "execute";
 
   validator.Execute(5);
-  validator.SetOp(*desc.Proto());
-  validator.Execute(10);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
+//USE_OP(reshape);
 USE_OP(flatten);
 USE_ANAKIN_CONVERTER(flatten);

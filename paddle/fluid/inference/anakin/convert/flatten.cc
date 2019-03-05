@@ -19,6 +19,7 @@ using anakin::graph::GraphGlobalMem;
 using anakin::AK_FLOAT;
 using anakin::saber::NV;
 using anakin::saber::Shape;
+using anakin::PTuple;
 
 namespace paddle {
 namespace inference {
@@ -33,6 +34,26 @@ void FlattenOpConverter::operator()(const framework::proto::OpDesc &op,
 
   auto input = op_desc.Input("X").front();
   auto output = op_desc.Output("Out").front();
+  auto in_dims = scope.FindVar(input)->Get<framework::LoDTensor>().dims();
+  int axis = boost::get<int>(op_desc.GetAttr("aixs"));
+
+  int inner = 1;
+  int outer = 1;
+  for (int i = 0; i < in_dims.size(); i++) {
+    if (i < axis) {
+      outer *= in_dims[i];
+    } else {
+      inner *= in_dims[i];
+    }
+  }
+
+  std::vector<int> out_dims = {outer, inner};
+  auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
+  engine_->AddOp(op_name, "Reshape", {input}, {output});
+
+  engine_->AddOpAttr<PTuple<int>>(op_name, "dims", out_dims);
+
+  /*
   int axis = boost::get<int>(op_desc.GetAttr("axis"));
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
   auto op1 = op_name + "_1";
@@ -42,9 +63,11 @@ void FlattenOpConverter::operator()(const framework::proto::OpDesc &op,
   engine_->AddOpAttr(op1, "end_axis", -1);
 
   auto op2 = op_name + "_2";
-  engine_->AddOp(op2, "Flatten", {op1_output}, {output});
+  auto op2_input = op1_output;
+  engine_->AddOp(op2, "Flatten", {op2_input}, {output});
   engine_->AddOpAttr(op2, "start_axis", 0);
   engine_->AddOpAttr(op2, "end_axis", axis - 1);
+  */
 }
 
 }  // namespace anakin

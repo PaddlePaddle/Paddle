@@ -33,10 +33,12 @@ TEST(transpose_op, test) {
   framework::OpDesc desc;
   desc.SetType("transpose");
   desc.SetInput("X", {"transpose-X"});
-  desc.SetOutput("Output", {"transpose-Out"});
-  desc.SetAttr<std::vector<int>>("axis", {2, 0, 3, 1});
+  desc.SetOutput("Out", {"transpose-Out"});
+  desc.SetAttr("axis", std::vector<int>({2, 0, 3, 1}));
 
+  LOG(INFO) << "set OP";
   validator.SetOp(*desc.Proto());
+  LOG(INFO) << "execute";
 
   validator.Execute(3);
 }

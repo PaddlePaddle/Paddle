@@ -30,23 +30,17 @@ void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
                                       const framework::Scope &scope,
                                       bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
-  PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
-  PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);
-  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
-
+  PADDLE_ENFORCE_EQ(op_desc.Output("Y").size(), 1);
   std::map<std::string, std::string> inputs;
   for (auto k : {"X", "Scale", "Bias", "Mean", "Variance"}) {
+    PADDLE_ENFORCE_EQ(op_desc.Input(k).size(), 1UL);
     auto v = op_desc.Input(k).front();
     inputs.insert({k, v});
   }
 
-  std::map<std::string, std::string> outputs;
-  for (auto k : {"Y", "MeanOut", "VarianceOut", "SaveMean"}) {
-    auto v = op_desc.Output(k).front();
-    outputs.insert({k, v});
-  }
-  auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
-  engine_->AddOp(op_name, "BatchNorm", {inputs["X"]}, {outputs["Y"]});
+  auto output = op_desc.Output("Y").front();
+  auto op_name = op_desc.Type() + ":" + op_desc.Output("Y").front();
+  engine_->AddOp(op_name, "BatchNorm", {inputs["X"]}, {output});
 
   bool is_test = boost::get<bool>(op_desc.GetAttr("is_test"));
   PADDLE_ENFORCE(is_test);
@@ -57,22 +51,27 @@ void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
 
   auto set_anakin_weight = [this, &scope, &op_desc, &op_name](
       const std::string &weight_name, const std::string &var_name) {
-    auto *v = scope.FindVar(op_desc.Input(var_name).front());
+    auto *v = scope.FindVar(var_name); //op_desc.Input(var_name).front());
     PADDLE_ENFORCE_NOT_NULL(v);
     auto *t = v->GetMutable<framework::LoDTensor>();
     framework::LoDTensor tensor;
     tensor.Resize(t->dims());
     TensorCopySync((*t), platform::CPUPlace(), &tensor);
-    Shape shape(framework::vectorize2int(t->dims()));
+    auto shape = framework::vectorize2int(t->dims());
+    if (shape.size() < 4UL) {
+      shape.insert(shape.end(), 4UL - shape.size(), 1);
+    }
+    Shape anakin_shape(shape);
+    //Shape shape(framework::vectorize2int(t->dims()));
     auto *weight =
-        GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(shape);
+        GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(anakin_shape);
     float *cpu_data = static_cast<float *>(weight->h_tensor().mutable_data());
     std::copy_n(tensor.data<float>(), tensor.numel(), cpu_data);
     this->engine_->AddOpAttr(op_name, weight_name, *weight);
   };
-  set_anakin_weight("weight_1", "Mean");
-  set_anakin_weight("weight_2", "Variance");
-  set_anakin_weight("weight_3", "Scale");
+  set_anakin_weight("weight_1", inputs["Mean"]);
+  set_anakin_weight("weight_2", inputs["Variance"]);
+  set_anakin_weight("weight_3", inputs["Scale"]);
 }
 
 }  // namespace anakin
