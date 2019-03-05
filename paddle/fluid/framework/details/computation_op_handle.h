@@ -31,6 +31,8 @@ class ComputationOpHandle : public OpHandleBase {
   ComputationOpHandle(ir::Node *node, Scope *scope, platform::Place place,
                       size_t scope_idx);
 
+  OperatorBase *GetOp() { return op_.get(); }
+
   std::string Name() const override;
 
   const Scope *GetScope() const { return scope_; }
