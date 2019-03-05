@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/benchmark/op_tester_config.h"
 #include <fstream>
-#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -38,6 +37,62 @@ static void EraseEndSep(std::string* str,
   if (EndWith(*str, substr)) {
     str->erase(str->length() - substr.length(), str->length());
   }
+}
+
+OpInputConfig::OpInputConfig(std::istream& is) {
+  std::string sep;
+  is >> sep;
+  if (sep == kStartSeparator) {
+    while (sep != kEndSeparator) {
+      is >> sep;
+      if (sep == "name" || sep == "name:") {
+        is >> name;
+        EraseEndSep(&name);
+      } else if (sep == "dtype" || sep == "dtype:") {
+        ParseDType(is);
+      } else if (sep == "initializer" || sep == "initializer:") {
+        ParseInitializer(is);
+      } else if (sep == "dims" || sep == "dims:") {
+        ParseDims(is);
+      } else if (sep == "lod" || sep == "lod:") {
+        ParseLoD(is);
+      }
+    }
+  }
+}
+
+void OpInputConfig::ParseDType(std::istream& is) {
+  std::string dtype_str;
+  is >> dtype_str;
+  EraseEndSep(&dtype_str);
+
+  if (dtype_str == "int32" || dtype_str == "int") {
+    dtype = "int32";
+  } else if (dtype_str == "int64" || dtype_str == "long") {
+    dtype = "int64";
+  } else if (dtype_str == "fp32" || dtype_str == "float") {
+    dtype = "fp32";
+  } else if (dtype_str == "fp64" || dtype_str == "double") {
+    dtype = "fp64";
+  } else {
+    PADDLE_THROW("Unsupported dtype %s", dtype_str.c_str());
+  }
+  VLOG(4) << "dtype of input " << name << " is: " << dtype;
+}
+
+void OpInputConfig::ParseInitializer(std::istream& is) {
+  std::string initializer_str;
+  is >> initializer_str;
+  EraseEndSep(&initializer_str);
+
+  const std::vector<std::string> supported_initializers = {"random", "natural",
+                                                           "zeros"};
+  if (!Has(supported_initializers, initializer_str)) {
+    PADDLE_THROW("Unsupported initializer %s", initializer_str.c_str());
+  }
+
+  initializer = initializer_str;
+  VLOG(4) << "initializer of input " << name << " is: " << initializer;
 }
 
 void OpInputConfig::ParseDims(std::istream& is) {
@@ -84,29 +139,11 @@ void OpInputConfig::ParseLoD(std::istream& is) {
           number += lod_str[i];
           ++i;
         }
-        level.push_back(atoi(number.c_str()));
+        level.push_back(StringTo<size_t>(number));
       }
       lod.push_back(level);
     } else if (lod_str[i] == '}') {
       ++i;
-    }
-  }
-}
-
-OpInputConfig::OpInputConfig(std::istream& is) {
-  std::string sep;
-  is >> sep;
-  if (sep == kStartSeparator) {
-    while (sep != kEndSeparator) {
-      is >> sep;
-      if (sep == "name" || sep == "name:") {
-        is >> name;
-        EraseEndSep(&name);
-      } else if (sep == "dims" || sep == "dims:") {
-        ParseDims(is);
-      } else if (sep == "lod" || sep == "lod:") {
-        ParseLoD(is);
-      }
     }
   }
 }
@@ -167,6 +204,7 @@ bool OpTesterConfig::ParseAttrs(std::istream& is) {
       is >> value;
       EraseEndSep(&key, ":");
       EraseEndSep(&value);
+      VLOG(4) << "attrs: " << key << ", " << value;
 
       attrs[key] = value;
     }
