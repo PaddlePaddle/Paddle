@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/box_coder_multiclass_nms_fuse_pass.h"
-#include "box_coder_multiclass_nms_fuse_pass.h"
 
 namespace paddle {
 namespace framework {
