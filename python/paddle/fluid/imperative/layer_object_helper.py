@@ -54,7 +54,7 @@ class LayerObjectHelper(LayerHelperBase):
     def _multiple_input(self, inputs_in):
         inputs = inputs_in
         ret = []
-        if isinstance(inputs, list) or isinstance(inputs, tuple):
+        if isinstance(inputs, (list, tuple)):
             for inp in inputs:
                 ret.append(self.to_variable(inp))
         else:
@@ -91,7 +91,8 @@ class LayerObjectHelper(LayerHelperBase):
 
         Returns input, param_attr
         """
-        inputs = self._multiple_input(inputs_in)
+        inputs = inputs_in if (inputs_in is not None) else []
+        inputs = self._multiple_input(inputs)
         param_attrs = self._multiple_param_attr(len(inputs), param_attr_in)
         for ipt, param_attr in zip(inputs, param_attrs):
             yield ipt, param_attr
