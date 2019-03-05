@@ -33,6 +33,7 @@ from .regularizer import append_regularization_ops
 from .imperative import base as imperative_base
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
+from functools import reduce
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
@@ -548,6 +549,47 @@ class MomentumOptimizer(Optimizer):
 
 
 class DGCOptimizer(MomentumOptimizer):
+    """
+
+    Simple DGC(Deep Gradient Compression) Optimzer wrapper.
+
+    Original paper is https://arxiv.org/abs/1712.01887
+
+    This optimizer will do two thing:
+        
+        1. Compress the gradient by get topK import value from tensor  
+            and use it for allreduce to reduce network bandwidth.
+    
+        2. Call momentum to optimize on the cost.
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+            Can be a float value or a Variable with one float value as data element.
+        momentum (float): momentum factor.
+        sparsity (list[float]): get top important element from gradient tensor, the ratio is (1 - current sparsity).
+        rampup_begin_step (int): the iteration from which use graident comrepssion.
+        rampup_step (int): how long it use the sparsity periods.
+            for example: If the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 5,
+                it will use 0.75 at 0 step, and 0.9375 at 1 step, and so on. And when reach sparsity array end, 
+                it will use 0.999 then and after.
+        use_nesterov (bool): enables Nesterov momentum
+        local_grad_clip_norm (float): clip norm value if needed.
+        regularization: A Regularizer, such as fluid.regularizer.L2DecayRegularizer.
+        name: A optional name prefix.
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.DGCOptimizer(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr),
+                momentum=0.9,
+                rampup_step=1252,
+                regularization=fluid.regularizer.L2Decay(1e-4))
+            optimizer.minimize(cost)
+
+    """
+
     def __init__(self,
                  learning_rate,
                  momentum,
