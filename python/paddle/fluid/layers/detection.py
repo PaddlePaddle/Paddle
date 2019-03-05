@@ -2251,7 +2251,7 @@ def collect_fpn_proposals(multi_rois,
     Returns:
         Variable: Output variable of selected rois. 
 
-     Examples:
+    Examples:
         .. code-block:: python
 
             fpn_rois = fluid.layers.collect_fpn_proposals(

@@ -34,11 +34,7 @@ class TestCollectFPNProposalstOp(OpTest):
             'MultiLayerRois': inputs_x,
             "MultiLayerScores": self.scores_input
         }
-        self.attrs = {
-            'post_nms_topN': self.post_nms_topN,
-            #            'rpn_max_level': self.rpn_max_level,
-            #            'rpn_min_level': self.rpn_min_level
-        }
+        self.attrs = {'post_nms_topN': self.post_nms_topN, }
         self.outputs = {'FpnRois': (self.rois, [self.lod])}
 
     def init_test_case(self):

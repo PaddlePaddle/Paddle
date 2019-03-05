@@ -122,6 +122,7 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     std::stable_sort(scores_of_all_rois.begin(), scores_of_all_rois.end(),
                      compare_by_score<T>);
     scores_of_all_rois.resize(post_nms_topN);
+    std::reverse(scores_of_all_rois.begin(), scores_of_all_rois.end());
     // sort by batch id
     std::stable_sort(scores_of_all_rois.begin(), scores_of_all_rois.end(),
                      compare_by_batchid<T>);
@@ -139,14 +140,15 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
       int cur_fpn_level = scores_of_all_rois[i].level;
       int cur_level_index = scores_of_all_rois[i].index;
       memcpy(fpn_rois_data,
-             multi_fpn_rois_data[cur_fpn_level] + cur_level_index,
+             multi_fpn_rois_data[cur_fpn_level] + cur_level_index * kBoxDim,
              kBoxDim * sizeof(T));
       fpn_rois_data += kBoxDim;
       if (scores_of_all_rois[i].batch_id != cur_batch_id) {
         cur_batch_id = scores_of_all_rois[i].batch_id;
-        lod0.emplace_back(i + 1);
+        lod0.emplace_back(i);
       }
     }
+    lod0.emplace_back(post_nms_topN);
     framework::LoD lod;
     lod.emplace_back(lod0);
     fpn_rois->set_lod(lod);
