@@ -110,28 +110,51 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
                    "It must use CPUPlace.");
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     auto mkldnn_engine = dev_ctx.GetEngine();
-    const Tensor* input = ctx.Input<Tensor>("X");
-    Tensor* output = ctx.Output<Tensor>("Out");
+    const Tensor* X = ctx.Input<Tensor>("X");
+    Tensor* Out = ctx.Output<Tensor>("Out");
     PADDLE_ENFORCE_EQ(
-        input->dims(), output->dims(),
+        X->dims(), Out->dims(),
         "The shape of softmax's input and output must be identical.");
+
+    const int axis = ctx.Attr<int>("axis");
+    int rank = X->dims().size();
 
     // make sure 'output' holds memory, which will be shared by
     // 'flattened_output' later.
-    output->mutable_data<T>(ctx.GetPlace());
+    Out->mutable_data<T>(ctx.GetPlace());
+
+    std::vector<int> perm, shape;
+    CalcTransPermAndShapeByAxis(*X, axis, &perm, &shape);
+
+    Tensor X_2d, Out_2d;
+    Tensor X_trans, Out_trans;
+    if (axis != -1 && axis != rank - 1) {
+      X_trans.mutable_data<T>(framework::make_ddim(shape), ctx.GetPlace());
+      Out_trans.mutable_data<T>(framework::make_ddim(shape), ctx.GetPlace());
+      TransCompute<MKLDNNDeviceContext, T>(rank, dev_ctx, *X, &X_trans, perm);
+      TransCompute<MKLDNNDeviceContext, T>(rank, dev_ctx, *Out, &Out_trans, perm);
+      X_2d = framework::ReshapeToMatrix(X_trans, rank - 1);
+      Out_2d = framework::ReshapeToMatrix(Out_trans, rank - 1);
+    } else {
+      X_2d = framework::ReshapeToMatrix(*X, rank - 1);
+      Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
+    }
 
     // flatten input and output to 2-D matrixs
-    auto dims = input->dims();  // input and output share the same shape
-    auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
-    framework::Tensor flattened_input;
-    framework::Tensor flattened_output;
-    flattened_input.ShareDataWith(*input).Resize(flattened_dims);
-    flattened_output.ShareDataWith(*output).Resize(flattened_dims);
+    // auto dims = input->dims();  // input and output share the same shape
+    // auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
+    // framework::Tensor flattened_input;
+    // framework::Tensor flattened_output;
+    // flattened_input.ShareDataWith(*input).Resize(flattened_dims);
+    // flattened_output.ShareDataWith(*output).Resize(flattened_dims);
 
-    const T* input_data = flattened_input.data<T>();
-    T* output_data = flattened_output.mutable_data<T>(ctx.GetPlace());
+    // const T* input_data = flattened_input.data<T>();
+    // T* output_data = flattened_output.mutable_data<T>(ctx.GetPlace());
+    const T* input_data = X_2d.data<T>();
+    T* output_data = Out_2d.mutable_data<T>(ctx.GetPlace());
 
-    std::vector<int> src_tz = paddle::framework::vectorize2int(flattened_dims);
+    // std::vector<int> src_tz = paddle::framework::vectorize2int(flattened_dims);
+    std::vector<int> src_tz = paddle::framework::vectorize2int(X_2d.dims());
     std::vector<int> dst_tz = src_tz;
     // Same memory descriptor to be used for input and output
     memory::dims softmax_tz = {src_tz[0], src_tz[1]};
@@ -178,6 +201,10 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
             output_data[i] < threshold ? threshold : output_data[i];
       }
     }
+
+    if (axis != -1 && axis != rank - 1) {
+      TransCompute<MKLDNNDeviceContext, T>(rank, dev_ctx, Out_trans, Out, perm);
+    }
   }
 };
 
@@ -190,33 +217,60 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     auto mkldnn_engine = dev_ctx.GetEngine();
-    const Tensor* output = ctx.Input<Tensor>("Out");
-    auto* dout = ctx.template Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx =
+    const Tensor* Out = ctx.Input<Tensor>("Out");
+    auto* dOut = ctx.template Input<Tensor>(framework::GradVarName("Out"));
+    auto* dX =
         ctx.template Output<framework::Tensor>(framework::GradVarName("X"));
 
     PADDLE_ENFORCE_EQ(
-        dout->dims(), dx->dims(),
+        dOut->dims(), dX->dims(),
         "The shape of softmax_grad's input and output must be identical.");
+
+    const int axis = ctx.Attr<int>("axis");
+    int rank = Out->dims().size();
 
     // make sure 'dx' holds memory, which will be shared by 'flattened_dx'
     // later.
-    dx->template mutable_data<T>(ctx.GetPlace());
+    dX->template mutable_data<T>(ctx.GetPlace());
 
-    auto dims = dout->dims();  // input and output share the same shape
-    auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
-    framework::Tensor flattened_output;
-    framework::Tensor flattened_dout;
-    framework::Tensor flattened_dx;
-    flattened_output.ShareDataWith(*output).Resize(flattened_dims);
-    flattened_dout.ShareDataWith(*dout).Resize(flattened_dims);
-    flattened_dx.ShareDataWith(*dx).Resize(flattened_dims);
+    std::vector<int> perm, shape;
+    CalcTransPermAndShapeByAxis(*dX, axis, &perm, &shape);
 
-    const T* dst_data = flattened_output.data<T>();
-    const T* diff_dst_ptr = flattened_dout.template data<T>();
-    T* diff_src_ptr = flattened_dx.template mutable_data<T>(ctx.GetPlace());
+    Tensor dX_2d, Out_2d, dOut_2d;
+    Tensor dX_trans, Out_trans, dOut_trans;
+    if (axis != -1 && axis != rank - 1) {
+      dX_trans.mutable_data<T>(framework::make_ddim(shape), ctx.GetPlace());
+      Out_trans.mutable_data<T>(framework::make_ddim(shape), ctx.GetPlace());
+      dOut_trans.mutable_data<T>(framework::make_ddim(shape), ctx.GetPlace());
+      TransCompute<MKLDNNDeviceContext, T>(rank, dev_ctx, *dX, &dX_trans, perm);
+      TransCompute<MKLDNNDeviceContext, T>(rank, dev_ctx, *Out, &Out_trans, perm);
+      TransCompute<MKLDNNDeviceContext, T>(rank, dev_ctx, *dOut, &dOut_trans, perm);
+      dX_2d = framework::ReshapeToMatrix(dX_trans, rank - 1);
+      Out_2d = framework::ReshapeToMatrix(Out_trans, rank - 1);
+      dOut_2d = framework::ReshapeToMatrix(dOut_trans, rank - 1);
+    } else {
+      dX_2d = framework::ReshapeToMatrix(*dX, rank - 1);
+      Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
+      dOut_2d = framework::ReshapeToMatrix(*dOut, rank - 1);
+    }
 
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(flattened_dims);
+    // auto dims = dout->dims();  // input and output share the same shape
+    // auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
+    // framework::Tensor flattened_output;
+    // framework::Tensor flattened_dout;
+    // framework::Tensor flattened_dx;
+    // flattened_output.ShareDataWith(*output).Resize(flattened_dims);
+    // flattened_dout.ShareDataWith(*dout).Resize(flattened_dims);
+    // flattened_dx.ShareDataWith(*dx).Resize(flattened_dims);
+
+    // const T* dst_data = flattened_output.data<T>();
+    // const T* diff_dst_ptr = flattened_dout.template data<T>();
+    // T* diff_src_ptr = flattened_dx.template mutable_data<T>(ctx.GetPlace());
+    const T* dst_data = Out_2d.data<T>();
+    const T* diff_dst_ptr = dOut_2d.template data<T>();
+    T* diff_src_ptr = dX_2d.template mutable_data<T>(ctx.GetPlace());
+
+    std::vector<int> dst_tz = paddle::framework::vectorize2int(Out_2d.dims());
     std::vector<int> src_tz(dst_tz);
 
     // Same memory descriptor to be used for input and output
@@ -261,6 +315,10 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
 
     std::vector<primitive> pipeline{*softmax_bwd_p};
     stream(stream::kind::eager).submit(pipeline).wait();
+
+    if (axis != -1 && axis != rank - 1) {
+      TransCompute<MKLDNNDeviceContext, T>(rank, dev_ctx, dX_trans, dX, perm);
+    }
   }
 };
 }  // namespace operators
