@@ -39,6 +39,7 @@ class ZeroSizeAllocator : public Allocator {
 
  protected:
   Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
+  void FreeImpl(Allocation* allocation) override;
 
  private:
   std::shared_ptr<Allocator> underlying_allocator_;

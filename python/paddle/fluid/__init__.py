@@ -129,6 +129,7 @@ def __bootstrap__():
         'initial_cpu_memory_in_mb', 'init_allocated_mem', 'free_idle_memory',
         'paddle_num_threads', "dist_threadpool_size", 'eager_delete_tensor_gb',
         'fast_eager_deletion_mode', 'allocator_strategy',
+        'enable_buffered_allocator', 'tolerant_times',
         'reader_queue_speed_test_mode', 'print_sub_graph_dir',
         'pe_profile_fname', 'warpctc_dir', 'inner_op_parallelism',
         'enable_parallel_graph', 'multiple_of_cupti_buffer_size',

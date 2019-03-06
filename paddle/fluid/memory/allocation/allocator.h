@@ -15,6 +15,8 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <vector>
+#include "paddle/fluid/framework/small_stack.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -47,10 +49,12 @@ class Allocator;
 class Allocation {
  public:
   Allocation(void* ptr, size_t size, platform::Place place)
-      : allocator_(nullptr), ptr_(ptr), size_(size), place_(place) {}
+      : ptr_(ptr), size_(size), place_(place) {}
 
   Allocation(const Allocation& o) = delete;
   Allocation& operator=(const Allocation& o) = delete;
+  Allocation(Allocation&& o) = delete;
+  Allocation& operator=(Allocation&& o) = delete;
 
   // Returns the holding pointer.
   // NOTE: For performance consideration, it is better not to make this method
@@ -72,17 +76,34 @@ class Allocation {
 
   const platform::Place& place() const { return place_; }
 
-  Allocator* allocator() { return allocator_; }
-
-  void set_allocator(Allocator* allocator) { allocator_ = allocator; }
-
   virtual ~Allocation();
 
+  // This function should only be used in unittest
+  std::vector<Allocator*> GetAllocatorChain() const {
+    std::vector<Allocator*> allocators;
+    for (size_t i = 0; i < allocator_chain_.size(); ++i) {
+      allocators[i] = allocator_chain_[i];
+    }
+    return allocators;
+  }
+
  private:
-  Allocator* allocator_;
+  inline void RegisterAllocatorChain(Allocator* allocator) {
+    allocator_chain_.push(allocator);
+  }
+
+  inline void PopAllocator() { allocator_chain_.pop(); }
+
+  inline Allocator* TopAllocator() { return allocator_chain_.top(); }
+
+ private:
   void* ptr_;
   size_t size_;
   platform::Place place_;
+  framework::SmallStack<Allocator*, 8> allocator_chain_;
+
+  friend class Allocator;
+  friend class AllocationDeleter;
 };
 
 using AllocationPtr = std::unique_ptr<Allocation, AllocationDeleter>;
@@ -132,9 +153,12 @@ class Allocator {
   // True if the `Allocate` is thread safe.
   virtual bool IsAllocThreadSafe() const;
 
+  // This function should not be called outside
+  void Free(Allocation* allocation);
+
  protected:
-  virtual void Free(Allocation* allocation);
   virtual Allocation* AllocateImpl(size_t size, Allocator::Attr attr) = 0;
+  virtual void FreeImpl(Allocation* allocation);
 
  private:
   friend class AllocationDeleter;
