@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/parallel_ssa_graph_executor.h"
+#include <memory>
+#include <utility>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
