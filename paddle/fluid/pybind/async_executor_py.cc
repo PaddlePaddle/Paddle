@@ -49,6 +49,7 @@ void BindAsyncExecutor(py::module* m) {
             new framework::AsyncExecutor(scope, place));
       }))
       .def("run_from_files", &framework::AsyncExecutor::RunFromFile)
+      .def("run_from_dataset", &framework::AsyncExecutor::RunFromDataset)
       .def("init_server", &framework::AsyncExecutor::InitServer)
       .def("init_worker", &framework::AsyncExecutor::InitWorker)
       .def("start_server", &framework::AsyncExecutor::StartServer)

@@ -27,6 +27,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/framework/blocking_queue.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 
 namespace paddle {
 namespace framework {
@@ -75,6 +77,19 @@ class DataFeed {
   }
   // This function is used for binding feed_vec memory
   virtual void AddFeedVar(Variable* var, const std::string& name);
+
+  virtual void LoadIntoMemory() {
+    PADDLE_THROW("This function(LoadIntoMemory) is not implemented.");
+  }
+  virtual void LocalShuffle() {
+    PADDLE_THROW("This function(LocalShuffle) is not implemented.");
+  }
+  virtual void GlobalShuffle(int trainer_num) {
+    PADDLE_THROW("This function(GlobalShuffle) is not implemented.");
+  }
+  virtual void PutInsToChannel(const std::string& ins_str) {
+    PADDLE_THROW("This function(PutToChannel) is not implemented.");
+  }
 
  protected:
   // The following three functions are used to check if it is executed in this
@@ -161,6 +176,35 @@ class PrivateQueueDataFeed : public DataFeed {
   std::unique_ptr<paddle::operators::reader::BlockingQueue<T>> queue_;
 };
 
+template <typename T>
+class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
+ public:
+  InMemoryDataFeed();
+  virtual ~InMemoryDataFeed() {}
+  virtual bool Start();
+  virtual int Next();
+  virtual void PutInsToChannel(const std::string& ins_str);
+  virtual void LoadIntoMemory();
+  virtual void LocalShuffle();
+  // todo global shuffle
+  //virtual void GlobalShuffle(int trainer_num);
+ protected:
+  virtual void AddInstanceToInsVec(T* vec_ins, const T& instance, int index) = 0;
+  virtual bool ParseOneInstance(T* instance) = 0;
+  virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
+  virtual void PutToFeedVec(const T& ins_vec) = 0;
+  virtual void SerializeIns(const T& ins, std::string& str) = 0;
+  virtual void DeserializeIns(T& ins, const std::string& str) = 0;
+
+  std::vector<T> memory_data_;
+  // when read ins, we put ins from one channel to the other,
+  // and when finish reading, we set cur_channel = 1 - cur_channel,
+  // so if cur_channel=0, all data are in shuffled_ins_, else shuffled_ins_out_
+  int cur_channel_;
+  std::shared_ptr<paddle::framework::BlockingQueue<T>> shuffled_ins_;
+  std::shared_ptr<paddle::framework::BlockingQueue<T>> shuffled_ins_out_;
+};
+
 // This class define the data type of instance(ins_vec) in MultiSlotDataFeed
 class MultiSlotType {
  public:
@@ -245,5 +289,23 @@ class MultiSlotDataFeed
   virtual bool ParseOneInstanceFromPipe(std::vector<MultiSlotType>* instance);
   virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);
 };
+
+class MultiSlotInMemoryDataFeed
+    : public InMemoryDataFeed<std::vector<MultiSlotType>> {
+ public:
+  MultiSlotInMemoryDataFeed() {}
+  virtual ~MultiSlotInMemoryDataFeed() {}
+  virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc);
+ protected:
+  virtual void AddInstanceToInsVec(std::vector<MultiSlotType>* vec_ins,
+                                   const std::vector<MultiSlotType>& instance,
+                                   int index);
+  virtual bool ParseOneInstance(std::vector<MultiSlotType>* instance);
+  virtual bool ParseOneInstanceFromPipe(std::vector<MultiSlotType>* instance);
+  virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);
+  virtual void SerializeIns(const std::vector<MultiSlotType>& ins, std::string& str);
+  virtual void DeserializeIns(std::vector<MultiSlotType>& ins, const std::string& str);
+};
+
 }  // namespace framework
 }  // namespace paddle
