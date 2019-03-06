@@ -14,39 +14,22 @@
 
 #pragma once
 
-#include <map>
-#include <string>
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-class ActivationOpConverter : public AnakinOpConverter {
+class TransposeOpConverter : public AnakinOpConverter {
  public:
-  explicit ActivationOpConverter(const std::string &op_type);
+  TransposeOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
                           const framework::Scope &scope,
                           bool test_mode) override;
-  virtual ~ActivationOpConverter() {}
-
- private:
-  std::string op_type_;
-  std::string anakin_op_type_;
-  std::map<std::string, std::string> anakin_op_types_{{"tanh", "TanH"},
-                                                      {"sigmoid", "Sigmoid"}};
+  virtual ~TransposeOpConverter() {}
 };
 
-class TanhOpConverter : public ActivationOpConverter {
- public:
-  TanhOpConverter() : ActivationOpConverter("tanh") {}
-};
-
-class SigmoidOpConverter : public ActivationOpConverter {
- public:
-  SigmoidOpConverter() : ActivationOpConverter("sigmoid") {}
-};
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
