@@ -56,6 +56,7 @@ class Executor {
 
   explicit Executor(const platform::Place& place);
 
+  explicit Executor(Scope* scope, const platform::Place& place);
   /*
    * Close this Executor.
    * Calling this method will send complete messages to all pserver instances.
@@ -112,8 +113,20 @@ class Executor {
 
   void EnableMKLDNN(const ProgramDesc& program);
 
+  void RunFromTrainerDesc(const ProgramDesc& main_program,
+                          const std::string& trainer_desc_str,
+                          const bool debug);
+
+  void RunFromDataset(const ProgramDesc& main_program, const Dataset* dataset,
+                      const std::string& trainer_desc_str, const bool debug);
+
+ public:
+  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+  Scope* root_scope_;
+
  private:
   const platform::Place place_;
+  int actual_thread_num_;
 };
 
 }  // namespace framework
