@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/buffered_allocator.h"
+#include "paddle/fluid/memory/allocation/multi_bin_buffered_allocator.h"
 #include <gtest/gtest.h>
+#include <vector>
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
@@ -22,15 +23,14 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-inline std::unique_ptr<BufferedAllocator> GetBufferedAllocator(
+inline std::shared_ptr<MultiBinBufferedAllocator> GetBufferedAllocator(
     Allocation *allocation, bool thread_safe) {
-  std::unique_ptr<Allocator> allocator(new BestFitAllocator(allocation));
+  std::shared_ptr<Allocator> allocator(new BestFitAllocator(allocation));
   if (thread_safe) {
     allocator.reset(new LockedAllocator(std::move(allocator)));
   }
 
-  return std::unique_ptr<BufferedAllocator>(
-      new BufferedAllocator(std::move(allocator)));
+  return std::make_shared<MultiBinBufferedAllocator>(allocator);
 }
 
 TEST(buffered_allocator, thread_safety) {
@@ -71,6 +71,7 @@ class StubAllocator : public Allocator {
     ++destruct_count_;
     delete allocation;
   }
+
   Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override {
     ++construct_count_;
     if (size == 0) {
@@ -90,39 +91,42 @@ constexpr size_t kOne = 1;
 constexpr size_t kTwo = 2;
 
 TEST(buffered_allocator, lazy_free) {
-  std::unique_ptr<StubAllocator> stub_allocator(new StubAllocator());
-  auto *underlying_allocator = stub_allocator.get();
-  std::unique_ptr<BufferedAllocator> allocator(
-      new BufferedAllocator(std::move(stub_allocator)));
+  std::vector<int> original_alloc_size({1022, 1023, 1024, 1025, 1026});
+  for (auto alloc_size : original_alloc_size) {
+    auto stub_allocator = std::make_shared<StubAllocator>();
+    auto *underlying_allocator = stub_allocator.get();
+    auto allocator =
+        std::make_shared<MultiBinBufferedAllocator>(stub_allocator);
 
-  {
-    underlying_allocator->ResetCounter();
-    auto x = allocator->Allocate(1025, allocator->kDefault);
-    ASSERT_EQ(underlying_allocator->GetAllocCount(), kOne);
-    ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
-    x = nullptr;
-    ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
-  }
+    {
+      underlying_allocator->ResetCounter();
+      auto x = allocator->Allocate(alloc_size, allocator->kDefault);
+      ASSERT_EQ(underlying_allocator->GetAllocCount(), kOne);
+      ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
+      x = nullptr;
+      ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
+    }
 
-  {
-    underlying_allocator->ResetCounter();
-    auto x = allocator->Allocate(900, allocator->kDefault);
-    ASSERT_EQ(underlying_allocator->GetAllocCount(), kZero);
-    ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
-    auto y = allocator->Allocate(2048, allocator->kDefault);
-    ASSERT_EQ(underlying_allocator->GetAllocCount(), kOne);
-    ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
-    x = nullptr;
-    ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
-    y = nullptr;
-    ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
-  }
+    {
+      underlying_allocator->ResetCounter();
+      auto x = allocator->Allocate(900, allocator->kDefault);
+      ASSERT_EQ(underlying_allocator->GetAllocCount(), kZero);
+      ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
+      auto y = allocator->Allocate(2048, allocator->kDefault);
+      ASSERT_EQ(underlying_allocator->GetAllocCount(), kOne);
+      ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
+      x = nullptr;
+      ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
+      y = nullptr;
+      ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
+    }
 
-  {
-    underlying_allocator->ResetCounter();
-    allocator->ClearCache();
-    ASSERT_EQ(underlying_allocator->GetAllocCount(), kZero);
-    ASSERT_EQ(underlying_allocator->GetFreeCount(), kTwo);
+    {
+      underlying_allocator->ResetCounter();
+      allocator->ClearCache();
+      ASSERT_EQ(underlying_allocator->GetAllocCount(), kZero);
+      ASSERT_EQ(underlying_allocator->GetFreeCount(), kTwo);
+    }
   }
 }
 

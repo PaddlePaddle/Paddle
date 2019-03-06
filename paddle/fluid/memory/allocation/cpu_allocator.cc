@@ -25,7 +25,7 @@ CPUAllocation::CPUAllocation(void *ptr, size_t size)
 
 bool CPUAllocator::IsAllocThreadSafe() const { return true; }
 
-void CPUAllocator::Free(Allocation *allocation) {
+void CPUAllocator::FreeImpl(Allocation *allocation) {
   PADDLE_ENFORCE_NOT_NULL(dynamic_cast<CPUAllocation *>(allocation));
   free(allocation->ptr());
   delete allocation;

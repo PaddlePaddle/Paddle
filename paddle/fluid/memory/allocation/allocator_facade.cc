@@ -27,6 +27,7 @@
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
+#include "paddle/fluid/memory/allocation/multi_bin_buffered_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/memory/allocation/zero_size_allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -42,6 +43,8 @@ DEFINE_int64(
     gpu_allocator_retry_time, 0,
     "The retry time (milliseconds) when allocator fails "
     "to allocate memory. No retry if this value is not greater than 0");
+
+DEFINE_bool(enable_buffered_allocator, false, "Enable buffered_allocator");
 
 namespace paddle {
 namespace memory {
@@ -110,13 +113,17 @@ class ChunkedAllocator : public Allocator {
   std::shared_ptr<Allocator> CreateAllocatorWithChunk() {
     chunks_.emplace_back(raw_allocator_->Allocate(max_chunk_size_));
     auto* allocation = chunks_.back().get();
-    std::unique_ptr<Allocator> allocator(new LockedAllocator(
-        std::unique_ptr<Allocator>(new BestFitAllocator(allocation))));
+    std::shared_ptr<Allocator> allocator(new LockedAllocator(
+        std::shared_ptr<Allocator>(new BestFitAllocator(allocation))));
 
     if (retry_time_ > 0) {
       auto* retry_allocator =
           new RetryAllocator(std::move(allocator), retry_time_);
       allocator.reset(retry_allocator);
+    }
+
+    if (FLAGS_enable_buffered_allocator) {
+      allocator.reset(new MultiBinBufferedAllocator(allocator));
     }
 
     return std::make_shared<AlignedAllocator<64u>>(std::move(allocator));

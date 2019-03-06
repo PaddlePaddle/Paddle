@@ -35,7 +35,7 @@ class CUDAAllocator : public Allocator {
   bool IsAllocThreadSafe() const override;
 
  protected:
-  void Free(Allocation* allocation) override;
+  void FreeImpl(Allocation* allocation) override;
   Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
 
  private:

@@ -20,7 +20,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 bool CPUPinnedAllocator::IsAllocThreadSafe() const { return true; }
-void CPUPinnedAllocator::Free(Allocation *allocation) {
+void CPUPinnedAllocator::FreeImpl(Allocation *allocation) {
   PADDLE_ENFORCE_NOT_NULL(dynamic_cast<CPUPinnedAllocation *>(allocation));
   PADDLE_ENFORCE(cudaFreeHost(allocation->ptr()));
   delete allocation;

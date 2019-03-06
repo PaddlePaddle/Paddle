@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,29 +11,42 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
+
+#include <map>
 #include <memory>
-#include <mutex>   // NOLINT
-#include <thread>  // NOLINT
+#include <vector>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-// A allocator to make underlying allocator thread safe.
-class LockedAllocator : public Allocator {
+class MultiBinBufferedAllocator : public Allocator {
  public:
-  explicit LockedAllocator(std::shared_ptr<Allocator> underlying_allocator);
-  bool IsAllocThreadSafe() const override;
+  explicit MultiBinBufferedAllocator(
+      std::shared_ptr<Allocator> underlying_allocator);
+
+  MultiBinBufferedAllocator(std::shared_ptr<Allocator> underlying_allocator,
+                            const std::vector<size_t>& division_plan);
+
+  bool IsAllocThreadSafe() const override { return mtx_.front() != nullptr; }
+
+  void ClearCache() { FreeCache(static_cast<size_t>(-1), 0); }
 
  protected:
-  void FreeImpl(Allocation *allocation) override;
-  Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override;
+  Allocation* AllocateImpl(size_t size, Attr attr) override;
+  void FreeImpl(Allocation* allocation) override;
 
  private:
+  void FreeCache(size_t size, size_t bin_index);
+
   std::shared_ptr<Allocator> underlying_allocator_;
-  std::unique_ptr<std::mutex> mtx_;
+  std::vector<std::multimap<size_t, AllocationPtr>> allocations_;
+  std::vector<size_t> division_plan_;
+  std::vector<std::unique_ptr<std::mutex>> mtx_;
 };
 
 }  // namespace allocation

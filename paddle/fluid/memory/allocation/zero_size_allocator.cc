@@ -22,6 +22,14 @@ bool ZeroSizeAllocator::IsAllocThreadSafe() const {
   return underlying_allocator_->IsAllocThreadSafe();
 }
 
+void ZeroSizeAllocator::FreeImpl(Allocation *allocation) {
+  if (dynamic_cast<ZeroSizeAllocation *>(allocation)) {
+    delete allocation;
+  } else {
+    underlying_allocator_->Free(allocation);
+  }
+}
+
 Allocation *ZeroSizeAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   if (size == 0) {
     return new ZeroSizeAllocation(place_);
