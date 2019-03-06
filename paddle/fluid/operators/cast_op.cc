@@ -30,7 +30,8 @@ class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 Cast Operator.
 
 This Operator casts the input tensor to another data type and
-returns tha Output Tensor.
+returns tha Output Tensor. It's not meaningful if the output dtype equals
+the input dtype, but it's fine if you do so.
 
 )DOC");
   }
