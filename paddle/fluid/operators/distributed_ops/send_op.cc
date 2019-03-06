@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/distributed/communicator.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/parameter_send.h"
 #include "paddle/fluid/operators/distributed/rpc_common.h"
@@ -47,10 +48,12 @@ class SendOp : public framework::OperatorBase {
 
     if (send_varnames.size() > 0) {
       PADDLE_ENFORCE_EQ(ins.size(), 1, "");
-      auto send_functor = distributed::ParameterSend<float>();
-      auto rpc_ctx = distributed::RpcContext(ins[0], send_varnames, epmap,
-                                             height_sections);
-      send_functor(rpc_ctx, scope, static_cast<bool>(sync_send));
+      //      auto send_functor = distributed::ParameterSend<float>();
+      //      auto rpc_ctx = distributed::RpcContext(ins[0], send_varnames,
+      //      epmap,
+      //                                             height_sections);
+      //      send_functor(rpc_ctx, scope, static_cast<bool>(sync_send));
+      distributed::Communicator::GetInstance()->Send(ins[0], scope);
     } else {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();

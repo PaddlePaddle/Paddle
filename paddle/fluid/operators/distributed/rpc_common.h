@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -22,15 +23,17 @@ namespace operators {
 namespace distributed {
 
 struct RpcContext {
-  RpcContext(const std::string& name, const std::vector<std::string>& names,
-             const std::vector<std::string>& emap,
-             const std::vector<int64_t>& sections)
+  RpcContext() = default;
+
+  RpcContext(const std::string &name, const std::vector<std::string> &names,
+             const std::vector<std::string> &emap,
+             const std::vector<int64_t> &sections)
       : var_name(name),
         splited_var_names(names),
         epmap(emap),
         height_sections(sections) {}
 
-  RpcContext(const RpcContext& ctx) {
+  RpcContext(const RpcContext &ctx) {
     var_name = ctx.var_name;
     splited_var_names = ctx.splited_var_names;
     epmap = ctx.epmap;
@@ -42,6 +45,31 @@ struct RpcContext {
   std::vector<std::string> epmap;
   std::vector<int64_t> height_sections;
 };
+
+inline std::ostream &operator<<(std::ostream &os, const RpcContext &rpc_ctx) {
+  os << "{";
+  os << "var_name: " << rpc_ctx.var_name << "\n";
+
+  os << "splited_var_names: [";
+  for (auto &name : rpc_ctx.splited_var_names) {
+    os << name << ", ";
+  }
+  os << "]\n";
+
+  os << "epmap: [";
+  for (auto &ep : rpc_ctx.epmap) {
+    os << ep << ", ";
+  }
+  os << "]\n";
+
+  os << "height_sections: [";
+  for (auto &section : rpc_ctx.height_sections) {
+    os << section << ", ";
+  }
+  os << "]\n";
+  os << "}";
+  return os;
+}
 
 }  // namespace distributed
 }  // namespace operators
