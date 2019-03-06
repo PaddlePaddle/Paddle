@@ -25,7 +25,10 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
 DEFINE_double(memory_fraction_of_eager_deletion, 1.0,
-              "Fraction of eager deletion");
+              "Fraction of eager deletion. If less than 1.0, all variables in "
+              "the program would be sorted according to its memory size, and "
+              "only the FLAGS_memory_fraction_of_eager_deletion of the largest "
+              "variables would be deleted.");
 
 namespace paddle {
 namespace framework {
