@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
