@@ -16,6 +16,7 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
