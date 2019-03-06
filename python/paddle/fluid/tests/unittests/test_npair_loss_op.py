@@ -86,8 +86,9 @@ class TestNpairLossOp(unittest.TestCase):
             shape=[num_data, feat_dim],
             dtype=self.dtype,
             append_batch_size=False)
+        rname = 'labels' + str(np.random.rand()).split('.')[1]
         labels_tensor = fluid.layers.data(
-            name='labels',
+            name=rname,
             shape=[num_data],
             dtype=self.dtype,
             append_batch_size=False)
@@ -100,7 +101,7 @@ class TestNpairLossOp(unittest.TestCase):
         out_tensor = exe.run(feed={
             'anchor': embeddings_anchor,
             'positive': embeddings_positive,
-            'labels': labels
+            rname: labels
         },
                              fetch_list=[npair_loss_op.name])
 
