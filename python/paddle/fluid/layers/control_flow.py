@@ -848,7 +848,7 @@ def create_array(dtype):
 
 
 @templatedoc()
-def less_than(x, y, force_cpu=None, cond=None, **ignored):
+def less_than(x, y, force_cpu=None, cond=None):
     """
     ${comment}
 
@@ -1800,7 +1800,7 @@ def reorder_lod_tensor_by_rank(x, rank_table):
     return out
 
 
-def is_empty(x, cond=None, **ignored):
+def is_empty(x, cond=None):
     """
     Test whether a Variable is empty.
 
