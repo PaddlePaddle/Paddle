@@ -139,6 +139,109 @@ int PrivateQueueDataFeed<T>::Next() {
 template class PrivateQueueDataFeed<std::vector<MultiSlotType>>;
 #endif
 
+template <typename T>
+InMemoryDataFeed<T>::InMemoryDataFeed() {
+  cur_channel_ = 0;
+  shuffled_ins_ = nullptr;
+  shuffled_ins_out_ = nullptr;
+}
+
+template <typename T>
+bool InMemoryDataFeed<T>::Start() {
+  DataFeed::CheckSetFileList();
+  if (memory_data_.size() != 0) {
+    CHECK(cur_channel_ == 0);
+    shuffled_ins_->Extend(std::move(memory_data_));
+    std::vector<T>().swap(memory_data_);
+  }
+  DataFeed::finish_start_ = true;
+  return true;
+}
+
+template <typename T>
+int InMemoryDataFeed<T>::Next() {
+  DataFeed::CheckStart();
+  std::shared_ptr<paddle::framework::BlockingQueue<T>> in_channel = nullptr;
+  std::shared_ptr<paddle::framework::BlockingQueue<T>> out_channel = nullptr;
+  if (cur_channel_ == 0) {
+    in_channel = shuffled_ins_;
+    out_channel = shuffled_ins_out_;
+  } else {
+    in_channel = shuffled_ins_out_;
+    out_channel = shuffled_ins_;
+  }
+  CHECK(in_channel != nullptr);
+  CHECK(out_channel != nullptr);
+  int index = 0;
+    T instance;
+    T ins_vec;
+    while (index < DataFeed::default_batch_size_) {
+      if (in_channel->Size() == 0) {
+        break;
+      }
+      in_channel->Pop(instance);
+      AddInstanceToInsVec(&ins_vec, instance, index++);
+      out_channel->Push(std::move(instance));
+    }
+    DataFeed::batch_size_ = index;
+    if (DataFeed::batch_size_ != 0) {
+      PutToFeedVec(ins_vec);
+    } else {
+      cur_channel_ = 1 - cur_channel_;
+    }
+    return DataFeed::batch_size_;
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::PutInsToChannel(const std::string& ins_str) {
+   T ins;
+   DeserializeIns(ins, ins_str);
+   shuffled_ins_->Push(std::move(ins));
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::LoadIntoMemory() {
+  std::vector<T> local_vec;
+  std::string filename;
+  while (DataFeed::PickOneFile(&filename)) {
+    int err_no = 0;
+    PrivateQueueDataFeed<T>::fp_ = fs_open_read(filename, &err_no,
+                                                PrivateQueueDataFeed<T>::pipe_command_);
+    __fsetlocking(&*PrivateQueueDataFeed<T>::fp_, FSETLOCKING_BYCALLER);
+    T instance;
+    while(ParseOneInstanceFromPipe(&instance)) {
+      local_vec.push_back(instance);
+    }
+    memory_data_.insert(memory_data_.end(), local_vec.begin(), local_vec.end());
+    std::vector<T>().swap(local_vec);
+  }
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::LocalShuffle() {
+  std::random_shuffle(memory_data_.begin(), memory_data_.end());
+}
+
+// todo global shuffle
+/*
+template <typename T>
+void InMemoryDataFeed<T>::GlobalShuffle(int trainer_num) {
+  std::random_shuffle(memory_data_.begin(), memory_data_.end());
+  for (int64_t i = 0; i < memory_data_.size(); ++i) {
+    // todo get ins id
+    //std::string ins_id = memory_data_[i].ins_id;
+    // todo hash
+    int64_t hash_id = paddle::ps::local_random_engine()();
+    //int64_t hash_id = hash(ins_id);
+    int64_t node_id = hash_id % trainer_num_;
+    std::string str;
+    SerializeIns(memory_data_[i], str);
+    auto fleet_ptr = FleetWrapper::GetInstance();
+    auto ret = fleet_ptr->send_client2client_msg(0, node_id, str);
+  }
+}
+*/
+
 void MultiSlotDataFeed::Init(
     const paddle::framework::DataFeedDesc& data_feed_desc) {
   finish_init_ = false;
@@ -443,6 +546,191 @@ void MultiSlotDataFeed::PutToFeedVec(
       feed_vec_[i]->Resize({batch_size_, dim});
     }
   }
+}
+
+void MultiSlotInMemoryDataFeed::Init(
+    const paddle::framework::DataFeedDesc& data_feed_desc) {
+  finish_init_ = false;
+  finish_set_filelist_ = false;
+  finish_start_ = false;
+
+  PADDLE_ENFORCE(data_feed_desc.has_multi_slot_desc(),
+                 "Multi_slot_desc has not been set.");
+  paddle::framework::MultiSlotDesc multi_slot_desc =
+      data_feed_desc.multi_slot_desc();
+  SetBatchSize(data_feed_desc.batch_size());
+  SetQueueSize(data_feed_desc.batch_size());
+  size_t all_slot_num = multi_slot_desc.slots_size();
+  all_slots_.resize(all_slot_num);
+  all_slots_type_.resize(all_slot_num);
+  use_slots_index_.resize(all_slot_num);
+  use_slots_.clear();
+  use_slots_is_dense_.clear();
+  for (size_t i = 0; i < all_slot_num; ++i) {
+    const auto& slot = multi_slot_desc.slots(i);
+    all_slots_[i] = slot.name();
+    all_slots_type_[i] = slot.type();
+    use_slots_index_[i] = slot.is_used() ? use_slots_.size() : -1;
+    if (slot.is_used()) {
+      use_slots_.push_back(all_slots_[i]);
+      use_slots_is_dense_.push_back(slot.is_dense());
+    }
+  }
+  feed_vec_.resize(use_slots_.size());
+  pipe_command_ = data_feed_desc.pipe_command();
+  finish_init_ = true;
+}
+
+bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(
+    std::vector<MultiSlotType>* instance) {
+  thread_local string::LineFileReader reader;
+
+  if (!reader.getline(&*(fp_.get()))) {
+    return false;
+  } else {
+    int use_slots_num = use_slots_.size();
+    instance->resize(use_slots_num);
+
+    const char* str = reader.get();
+    std::string line = std::string(str);
+    VLOG(3) << line;
+    char* endptr = const_cast<char*>(str);
+    int pos = 0;
+    for (size_t i = 0; i < use_slots_index_.size(); ++i) {
+      int idx = use_slots_index_[i];
+      int num = strtol(&str[pos], &endptr, 10);
+      PADDLE_ENFORCE(
+          num,
+          "The number of ids can not be zero, you need padding "
+          "it in data generator; or if there is something wrong with "
+          "the data, please check if the data contains unresolvable "
+          "characters.\nplease check this error line: %s",
+          str);
+      if (idx != -1) {
+        (*instance)[idx].Init(all_slots_type_[i]);
+        if ((*instance)[idx].GetType()[0] == 'f') {  // float
+          for (int j = 0; j < num; ++j) {
+            float feasign = strtof(endptr, &endptr);
+            (*instance)[idx].AddValue(feasign);
+          }
+        } else if ((*instance)[idx].GetType()[0] == 'u') {  // uint64
+          for (int j = 0; j < num; ++j) {
+            uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
+            (*instance)[idx].AddValue(feasign);
+          }
+        }
+        pos = endptr - str;
+      } else {
+        for (int j = 0; j <= num; ++j) {
+          // pos = line.find_first_of(' ', pos + 1);
+          while (line[pos + 1] != ' ') {
+            pos++;
+          }
+        }
+      }
+    }
+    return true;
+  }
+}
+
+bool MultiSlotInMemoryDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
+  std::string line;
+  if (getline(file_, line)) {
+    int use_slots_num = use_slots_.size();
+    instance->resize(use_slots_num);
+    // parse line
+    const char* str = line.c_str();
+    char* endptr = const_cast<char*>(str);
+    int pos = 0;
+    for (size_t i = 0; i < use_slots_index_.size(); ++i) {
+      int idx = use_slots_index_[i];
+      int num = strtol(&str[pos], &endptr, 10);
+      PADDLE_ENFORCE(
+          num,
+          "The number of ids can not be zero, you need padding "
+          "it in data generator; or if there is something wrong with "
+          "the data, please check if the data contains unresolvable "
+          "characters.\nplease check this error line: %s",
+          str);
+
+      if (idx != -1) {
+        (*instance)[idx].Init(all_slots_type_[i]);
+        if ((*instance)[idx].GetType()[0] == 'f') {  // float
+          for (int j = 0; j < num; ++j) {
+            float feasign = strtof(endptr, &endptr);
+            (*instance)[idx].AddValue(feasign);
+          }
+        } else if ((*instance)[idx].GetType()[0] == 'u') {  // uint64
+          for (int j = 0; j < num; ++j) {
+            uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
+            (*instance)[idx].AddValue(feasign);
+          }
+        }
+        pos = endptr - str;
+      } else {
+        for (int j = 0; j <= num; ++j) {
+          pos = line.find_first_of(' ', pos + 1);
+        }
+      }
+    }
+  } else {
+    return false;
+  }
+  return true;
+}
+
+void MultiSlotInMemoryDataFeed::AddInstanceToInsVec(
+    std::vector<MultiSlotType>* ins_vec,
+    const std::vector<MultiSlotType>& instance, int index) {
+  if (index == 0) {
+    ins_vec->resize(instance.size());
+    for (size_t i = 0; i < instance.size(); ++i) {
+      (*ins_vec)[i].Init(instance[i].GetType());
+      (*ins_vec)[i].InitOffset();
+    }
+  }
+
+  for (size_t i = 0; i < instance.size(); ++i) {
+    (*ins_vec)[i].AddIns(instance[i]);
+  }
+}
+
+void MultiSlotInMemoryDataFeed::PutToFeedVec(
+    const std::vector<MultiSlotType>& ins_vec) {
+  for (size_t i = 0; i < use_slots_.size(); ++i) {
+    const auto& type = ins_vec[i].GetType();
+    const auto& offset = ins_vec[i].GetOffset();
+    int total_instance = static_cast<int>(offset.back());
+
+    if (type[0] == 'f') {  // float
+      const auto& feasign = ins_vec[i].GetFloatData();
+      float* tensor_ptr = feed_vec_[i]->mutable_data<float>(
+          {total_instance, 1}, platform::CPUPlace());
+      memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(float));
+    } else if (type[0] == 'u') {  // uint64
+      // no uint64_t type in paddlepaddle
+      const auto& feasign = ins_vec[i].GetUint64Data();
+      int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
+          {total_instance, 1}, platform::CPUPlace());
+      memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
+    }
+
+    LoD data_lod{offset};
+    feed_vec_[i]->set_lod(data_lod);
+    if (use_slots_is_dense_[i]) {
+      int dim = total_instance / batch_size_;
+      feed_vec_[i]->Resize({batch_size_, dim});
+    }
+  }
+}
+
+// todo serialize ins in global shuffle
+void MultiSlotInMemoryDataFeed::SerializeIns(const std::vector<MultiSlotType>& ins, std::string& str) {
+
+}
+// todo deserialize ins in global shuffle
+void MultiSlotInMemoryDataFeed::DeserializeIns(std::vector<MultiSlotType>& ins, const std::string& str) {
+
 }
 
 }  // namespace framework

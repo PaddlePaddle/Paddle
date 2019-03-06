@@ -199,6 +199,7 @@ if(WITH_PSLIB)
                               executor_thread_worker.cc multi_trainer.cc dist_multi_trainer.cc
                               trainer_factory.cc trainer.cc device_worker.cc hogwild_worker.cc 
                               downpour_worker.cc pull_dense_worker.cc device_worker_factory.cc
+                              data_set.cc
 			      DEPS op_registry device_context scope framework_proto
 			      trainer_desc_proto glog lod_rank_table fleet_wrapper lodtensor_printer
 			      feed_fetch_method graph_to_program_pass async_executor_proto
@@ -208,6 +209,7 @@ else()
                               executor_thread_worker.cc multi_trainer.cc dist_multi_trainer.cc
                               trainer_factory.cc trainer.cc device_worker.cc hogwild_worker.cc
                               downpour_worker.cc pull_dense_worker.cc device_worker_factory.cc
+                              data_set.cc
 			      DEPS op_registry device_context scope framework_proto
 			      trainer_desc_proto glog lod_rank_table fleet_wrapper lodtensor_printer
 			      feed_fetch_method graph_to_program_pass async_executor_proto
