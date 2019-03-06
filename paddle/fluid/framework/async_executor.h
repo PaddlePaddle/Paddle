@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/data_set.h"
 
 namespace paddle {
 namespace framework {
@@ -64,6 +65,8 @@ class AsyncExecutor {
   virtual ~AsyncExecutor() {}
   void RunFromFile(const ProgramDesc& main_program,
                    const std::string& trainer_desc_str, const bool debug);
+  void RunFromDataset(const ProgramDesc& main_program, Dataset* data_set,
+                      const std::string& trainer_desc_str, const bool debug);
   void InitServer(const std::string& dist_desc, int index);
   void InitWorker(const std::string& dist_desc,
                   const std::vector<uint64_t>& host_sign_list, int node_num,
