@@ -81,12 +81,12 @@ class CollectFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("MultiLayerRois",
-             "(LoDTensor) Multi roi LoDTensors"
-             " from each levels in shape (-1, 4)")
+             "(LoDTensor) Multiple roi LoDTensors from each levels in shape "
+             "(N, 4), N is the number of rois")
         .AsDuplicable();
     AddInput("MultiLayerScores",
-             "(LoDTensor) Multi score LoDTensors"
-             " from each levels in shape (-1, 1)")
+             "(LoDTensor) Multiple score LoDTensors from each levels in shape"
+             " (N, 1), N is the number of rois.")
         .AsDuplicable();
     AddOutput("FpnRois", "(LoDTensor) All selected rois with highest scores");
     AddAttr<int>("post_nms_topN",

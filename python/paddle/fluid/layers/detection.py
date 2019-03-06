@@ -2231,32 +2231,33 @@ def collect_fpn_proposals(multi_rois,
                           post_nms_topN,
                           name=None):
     """
-    Collect multi-level rois and select N rois with respect to multi_scores.
-    This operation performs as following steps:
+    Collect multi-level RoIs (Region of Interest) and select N RoIs 
+    with respect to multi_scores. This operation performs the following steps:
 
-    1. Choose num_lvl rois and scores as input: num_lvl = max_level - min_level
-    2. Concat multi-level rois and scores
+    1. Choose num_level RoIs and scores 
+       as input: num_level = max_level - min_level
+    2. Concat multi-level RoIs and scores
     3. Sort scores and select post_nms_topN scores
-    4. Gather rois by selected index from scores
-    5. Re-sort rois by corresponding batch_id
+    4. Gather RoIs by selected indices from scores
+    5. Re-sort RoIs by corresponding batch_id
 
     Args:
-        multi_rois(list): List of RoIs to collect
+        multi_ros(list): List of RoIs to collect
         multi_scores(list): List of scores
-        max_level(int): The highest level of FPN layer to collect
         min_level(int): The lowest level of FPN layer to collect
-        post_nms_topN(int): The number of selected rois
+        max_level(int): The highest level of FPN layer to collect
+        post_nms_topN(int): The number of selected RoIs
         name(str|None): A name for this layer(optional)
         
     Returns:
-        Variable: Output variable of selected rois. 
+        Variable: Output variable of selected RoIs. 
 
     Examples:
         .. code-block:: python
 
             fpn_rois = fluid.layers.collect_fpn_proposals(
                 multi_rois=[roi_1, roi_2, roi_3, roi_4], 
-                multi_scores=[score_1, score_2, score_3, sccore_4],
+                multi_scores=[score_1, score_2, score_3, score_4],
                 min_level=2, 
                 max_level=5, 
                 post_nms_topN=2000)
