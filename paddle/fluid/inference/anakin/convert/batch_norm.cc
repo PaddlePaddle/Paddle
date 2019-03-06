@@ -42,7 +42,7 @@ void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
   auto output = op_desc.Output("Y").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Y").front();
   engine_->AddOp(op_name, "Scale", {inputs["X"]}, {output});
-  engine_->AddOpAttr(op_name, "bias_term", false);
+  engine_->AddOpAttr(op_name, "bias_term", true);
   engine_->AddOpAttr(op_name, "axis", 1);
   engine_->AddOpAttr(op_name, "num_axes", 1);
 
