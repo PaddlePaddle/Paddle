@@ -76,6 +76,10 @@ void compare(bool use_mkldnn = false) {
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+  
+  if (use_mkldnn == true) {
+    CHECK_LE(std::abs(0.0f - 123456.0), FLAGS_accuracy);
+  }
 }
 
 TEST(Analyzer_resnet50, compare) { compare(); }
