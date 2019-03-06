@@ -71,10 +71,13 @@ class TestNpairLossOp(unittest.TestCase):
                                            feat_dim).astype(np.float32)
         embeddings_positive = np.random.rand(num_data,
                                              feat_dim).astype(np.float32)
-        labels = np.random.randint(
+        row_labels = np.random.randint(
             0, num_classes, size=(num_data)).astype(np.float32)
         out_loss = npairloss(
-            embeddings_anchor, embeddings_positive, labels, l2_reg=reg_lambda)
+            embeddings_anchor,
+            embeddings_positive,
+            row_labels,
+            l2_reg=reg_lambda)
 
         anchor_tensor = fluid.layers.data(
             name='anchor',
@@ -86,9 +89,8 @@ class TestNpairLossOp(unittest.TestCase):
             shape=[num_data, feat_dim],
             dtype=self.dtype,
             append_batch_size=False)
-        rname = 'labels' + str(np.random.rand()).split('.')[1]
         labels_tensor = fluid.layers.data(
-            name=rname,
+            name='labels',
             shape=[num_data],
             dtype=self.dtype,
             append_batch_size=False)
@@ -101,7 +103,7 @@ class TestNpairLossOp(unittest.TestCase):
         out_tensor = exe.run(feed={
             'anchor': embeddings_anchor,
             'positive': embeddings_positive,
-            rname: labels
+            'labels': row_labels
         },
                              fetch_list=[npair_loss_op.name])
 
