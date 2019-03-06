@@ -15,9 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "ngraph/ngraph.hpp"
+#include "paddle/fluid/operators/ngraph/ops/op_bridge.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
 
 namespace paddle {
@@ -143,3 +146,6 @@ void BuildCrossEntropyGradNode(
 }  // namespace ngraphs
 }  // namespace operators
 }  // namespace paddle
+
+REGISTER_NG_OP(cross_entropy, BuildCrossEntropyNode);
+REGISTER_NG_OP(cross_entropy_grad, BuildCrossEntropyGradNode);

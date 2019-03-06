@@ -17,22 +17,88 @@ import contextlib
 import sys
 import numpy as np
 import collections
-
+from .. import unique_name
 from paddle.fluid import core
+from .layer_object_helper import LayerObjectHelper
 from paddle.fluid import framework
-from paddle.fluid.imperative import base
 
 __all__ = ['Layer', 'PyLayer']
 
 
 class Layer(core.Layer):
-    """Layers composed of operators."""
+    """Layers composed of operators.
 
-    def __init__(self, dtype=core.VarDesc.VarType.FP32, name=None):
+    Args:
+        name_scope: prefix name used by the layer to name parameters.
+            If prefix is "my_model/layer_1", parameter name in MyLayer
+            can be "my_model/layer_1/MyLayer/w_n", where w is the parameter
+            base name and n is an unique suffix auto-generated.
+        dtype: data type for the variables in the layer.
+    """
+
+    def __init__(self, name_scope, dtype=core.VarDesc.VarType.FP32):
+        self._full_name = unique_name.generate(name_scope + "/" +
+                                               self.__class__.__name__)
         self._built = False
         self._dtype = dtype
         self._parameters = collections.OrderedDict()
         self._sub_layers = collections.OrderedDict()
+
+        self._helper = LayerObjectHelper(self._full_name)
+
+    def full_name(self):
+        """Full name for this layers.
+
+          Full name is composed by name_scope + "/" + MyLayer.__class__.__name__
+
+        Returns full name of this name.
+        """
+        return self._full_name
+
+    def create_parameter(self,
+                         attr,
+                         shape,
+                         dtype,
+                         is_bias=False,
+                         default_initializer=None):
+        """Create parameters for this layers.
+
+           Args:
+               attr: [ParamAttr] should be the parameter attribute for this parameter
+               shape: shape of the paramter
+               dtype: data type of this parameter
+               is_bias: if this is a bias parameter
+               default_initializer: set the default initializer for this parameter
+
+        Returns created parameter Variable.
+        """
+        return self._helper.create_parameter(attr, shape, dtype, is_bias,
+                                             default_initializer)
+
+    # TODO: Add more parameter list when we need them
+    def create_variable(self,
+                        name=None,
+                        persistable=None,
+                        dtype=None,
+                        type=core.VarDesc.VarType.LOD_TENSOR):
+        """Create Variable for this layers.
+
+           Args:
+               name: name of the variable
+               persistable: if set this variable persistable
+               dtype: data type of data in the variable
+               type: type of the variable
+
+        Returns created Variable.
+        """
+        if name is not None:
+            var_name = ".".join([self._full_name, name])
+        else:
+            var_name = unique_name.generate(".".join(
+                [self._full_name, "_generated_var"]))
+
+        return self._helper.main_program.current_block().create_var(
+            name=var_name, persistable=persistable, dtype=dtype, type=type)
 
     def parameters(self, include_sublayers=True):
         """Returns a list of Parameters from current and sub-layers.

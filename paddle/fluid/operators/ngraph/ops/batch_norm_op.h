@@ -14,12 +14,15 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "ngraph/ngraph.hpp"
 #include "paddle/fluid/operators/ngraph/ops/elementwise_node.h"
 #include "paddle/fluid/operators/ngraph/ops/elementwise_scalar_op.h"
+#include "paddle/fluid/operators/ngraph/ops/op_bridge.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
 
 namespace paddle {
@@ -155,3 +158,6 @@ void BuildBatchNormGradNode(
 }  // namespace ngraphs
 }  // namespace operators
 }  // namespace paddle
+
+REGISTER_NG_OP(batch_norm, BuildBatchNormNode);
+REGISTER_NG_OP(batch_norm_grad, BuildBatchNormGradNode);
