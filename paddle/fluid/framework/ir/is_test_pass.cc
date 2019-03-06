@@ -34,7 +34,7 @@ std::unique_ptr<ir::Graph> IsTestPass::ApplyImpl(
                   "hard_shrink", "hard_sigmoid", "relu6",
                   "soft_relu",   "swish",        "thresholded_relu",
                   "log",         "square",       "softplus",
-                  "softsign"};
+                  "recurrent",   "softsign"};
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       auto* op = n->Op();
@@ -44,6 +44,10 @@ std::unique_ptr<ir::Graph> IsTestPass::ApplyImpl(
                  end(op_list)) {
         op->MutableAttrMap()->insert(
             std::pair<std::string, Attribute>("is_test", true));
+      }
+
+      if (op->HasAttr("is_train")) {
+        op->SetAttr("is_train", false);
       }
     }
   }

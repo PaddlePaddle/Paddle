@@ -275,9 +275,21 @@ class RecurrentOp : public RecurrentBase {
                    Attr<std::vector<std::string>>(kExStates));
       } else {
         auto &ex_scope = scopes.ExScope();
-        // Link ex_scope::state --> cur_scope::ex_state
-        LinkTensor(ex_scope, Attr<std::vector<std::string>>(kStates),
-                   &cur_scope, Attr<std::vector<std::string>>(kExStates));
+        if (Attr<bool>(kIsTrain)) {
+          // Link ex_scope::state --> cur_scope::ex_state
+          LinkTensor(ex_scope, Attr<std::vector<std::string>>(kStates),
+                     &cur_scope, Attr<std::vector<std::string>>(kExStates));
+        } else {
+          const auto states = Attr<std::vector<std::string>>(kStates);
+          const auto ex_states = Attr<std::vector<std::string>>(kExStates);
+          for (int i = 0; i < states.size(); i++) {
+            if (!ex_scope.FindVar(states[i])) {
+              LinkTensor(ex_scope, {ex_states[i]}, &cur_scope, {ex_states[i]});
+            } else {
+              LinkTensor(ex_scope, {states[i]}, &cur_scope, {ex_states[i]});
+            }
+          }
+        }
       }
 
       // Every inputs are linked now, execute!
