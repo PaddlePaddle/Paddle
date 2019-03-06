@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <string.h>  // for strdup
 #include <algorithm>
+#include <set>
 #include <stdexcept>
 #include <string>
 
@@ -28,6 +29,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
+
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#include "paddle/fluid/platform/nccl_helper.h"
+#endif
 
 DEFINE_int32(paddle_num_threads, 1,
              "Number of threads for each paddle instance.");
@@ -122,7 +127,7 @@ void InitDevices(bool init_p2p) {
 }
 
 void InitDevices(bool init_p2p, const std::vector<int> devices) {
-  std::vector<platform::Place> places;
+  std::set<platform::Place> places;
 
   for (size_t i = 0; i < devices.size(); ++i) {
     // In multi process multi gpu mode, we may have gpuid = 7
@@ -132,14 +137,38 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
       continue;
     }
 
-    places.emplace_back(platform::CUDAPlace(devices[i]));
+    places.insert(platform::CUDAPlace(devices[i]));
   }
   if (init_p2p) {
     InitP2P(devices);
   }
-  places.emplace_back(platform::CPUPlace());
-  platform::DeviceContextPool::Init(places);
+  places.insert(platform::CPUPlace());
+  LOG(ERROR) << "DeviceContextPool Init Start";
+  std::vector<platform::Place> devs(places.begin(), places.end());
+  platform::DeviceContextPool::Init(devs);
+  LOG(ERROR) << "DeviceContextPool Init End";
   platform::DeviceTemporaryAllocator::Init();
+
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  std::vector<platform::Place> cuda_devs;
+  for (auto &p : places) {
+    if (platform::is_gpu_place(p)) {
+      cuda_devs.push_back(p);
+    }
+  }
+  std::unique_ptr<platform::NCCLContextMap> nccl_ctxs;
+  nccl_ctxs.reset(new platform::NCCLContextMap(cuda_devs));
+  for (auto &p : cuda_devs) {
+    auto &nccl_ctx =
+        nccl_ctxs->at(boost::get<platform::CUDAPlace>(p).GetDeviceId());
+    auto cuda_ctx = static_cast<platform::CUDADeviceContext *>(
+        platform::DeviceContextPool::Instance().Get(p));
+    LOG(ERROR) << "nccl_comm " << nccl_ctx.comm();
+    cuda_ctx->set_nccl_comm(nccl_ctx.comm());
+  }
+#endif
+
+  LOG(ERROR) << "DeviceTemporaryAllocator Init End";
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
@@ -189,6 +218,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #undef AVX_GUIDE
 
 #endif
+  LOG(ERROR) << "InitDevices End";
 }
 
 void InitGLOG(const std::string &prog_name) {

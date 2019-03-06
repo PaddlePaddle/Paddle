@@ -78,6 +78,8 @@ struct NCCLContext {
 
   cudaStream_t stream() const { return ctx_->stream(); }
 
+  ncclComm_t comm() const { return comm_; }
+
   int device_id() const {
     return boost::get<platform::CUDAPlace>(ctx_->GetPlace()).device;
   }
@@ -93,14 +95,20 @@ struct NCCLContextMap {
     PADDLE_ENFORCE(!places.empty());
     order_.reserve(places.size());
     for (auto &p : places) {
+      LOG(ERROR) << "==== start === " << p;
       int dev_id = boost::get<CUDAPlace>(p).device;
+      LOG(ERROR) << "dev id " << dev_id;
       order_.emplace_back(dev_id);
       contexts_.emplace(dev_id, NCCLContext(dev_id));
+      LOG(ERROR) << "dev id end ";
     }
+    LOG(ERROR) << "ord size " << order_.size() << " , ctx size "
+               << contexts_.size();
     PADDLE_ENFORCE_EQ(
         order_.size(), contexts_.size(),
         "NCCL Context Map does not support contain two or more same device");
 
+    LOG(ERROR) << "pls size " << places.size() << " , num_tr " << num_trainers;
     if (places.size() <= 1 && num_trainers == 1) {
       return;
     }

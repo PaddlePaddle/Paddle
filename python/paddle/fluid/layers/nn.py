@@ -58,6 +58,7 @@ __all__ = [
     'adaptive_pool2d',
     'adaptive_pool3d',
     'batch_norm',
+    'sync_batch_norm',
     'data_norm',
     'beam_search_decode',
     'conv2d_transpose',
@@ -2934,6 +2935,139 @@ def batch_norm(input,
             "use_mkldnn": False,
             "fuse_with_relu": fuse_with_relu,
             "use_global_stats": use_global_stats
+        })
+
+    return helper.append_activation(batch_norm_out)
+
+
+def sync_batch_norm(input,
+                    act=None,
+                    is_test=False,
+                    momentum=0.9,
+                    epsilon=1e-05,
+                    param_attr=None,
+                    bias_attr=None,
+                    data_layout='NCHW',
+                    name=None,
+                    moving_mean_name=None,
+                    moving_variance_name=None,
+                    do_model_average_for_mean_and_var=False):
+    """
+    **Batch Normalization Layer**
+
+    Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
+    Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
+    for more details.
+
+    :math:`input` is the input features over a mini-batch.
+
+    Args:
+        input(variable): The input variable which is a LoDTensor.
+        act(string, Default None): Activation type, linear|relu|prelu|...
+        is_test(bool, Default False): Used for training or training.
+        momentum(float, Default 0.9):
+        epsilon(float, Default 1e-05):
+        param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
+             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
+             will create ParamAttr as param_attr. If the Initializer of the param_attr
+             is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
+             If it is set to None or one attribute of ParamAttr, batch_norm
+             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+             is not set, the bias is initialized zero. Default: None.
+        data_layout(string, default NCHW): NCHW|NHWC
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
+        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+
+    Returns:
+        Variable: A tensor variable which is the result after applying batch normalization on the input.
+
+    Examples:
+
+        .. code-block:: python
+
+            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+            hidden2 = fluid.layers.batch_norm(input=hidden1)
+    """
+    assert bias_attr is not False, "bias_attr should not be False in batch_norm."
+    helper = LayerHelper('sync_batch_norm', **locals())
+    dtype = helper.input_dtype()
+
+    input_shape = input.shape
+    if data_layout == 'NCHW':
+        channel_num = input_shape[1]
+    else:
+        if data_layout == 'NHWC':
+            channel_num = input_shape[-1]
+        else:
+            raise ValueError("unsupported data layout:" + data_layout)
+
+    param_shape = [channel_num]
+
+    # create parameter
+    scale = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=param_shape,
+        dtype=dtype,
+        default_initializer=Constant(1.0))
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
+
+    mean = helper.create_parameter(
+        attr=ParamAttr(
+            name=moving_mean_name,
+            initializer=Constant(0.0),
+            trainable=False,
+            do_model_average=do_model_average_for_mean_and_var),
+        shape=param_shape,
+        dtype=dtype)
+    mean.stop_gradient = True
+
+    variance = helper.create_parameter(
+        attr=ParamAttr(
+            name=moving_variance_name,
+            initializer=Constant(1.0),
+            trainable=False,
+            do_model_average=do_model_average_for_mean_and_var),
+        shape=param_shape,
+        dtype=dtype)
+    variance.stop_gradient = True
+
+    # create output
+    # mean and mean_out share the same memory
+    mean_out = mean
+    # variance and variance out share the same memory
+    variance_out = variance
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+
+    batch_norm_out = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type="sync_batch_norm",
+        inputs={
+            "X": input,
+            "Scale": scale,
+            "Bias": bias,
+            "Mean": mean,
+            "Variance": variance
+        },
+        outputs={
+            "Y": batch_norm_out,
+            "MeanOut": mean_out,
+            "VarianceOut": variance_out,
+            "SavedMean": saved_mean,
+            "SavedVariance": saved_variance
+        },
+        attrs={
+            "momentum": momentum,
+            "epsilon": epsilon,
+            "is_test": is_test,
+            "data_layout": data_layout,
         })
 
     return helper.append_activation(batch_norm_out)

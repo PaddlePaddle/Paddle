@@ -53,12 +53,7 @@ inline void EmplaceDeviceContext(
 DeviceContextPool::DeviceContextPool(
     const std::vector<platform::Place>& places) {
   PADDLE_ENFORCE_GT(places.size(), 0);
-  std::set<Place> set;
   for (auto& p : places) {
-    set.insert(p);
-  }
-
-  for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
       EmplaceDeviceContext<MKLDNNDeviceContext, CPUPlace>(&device_contexts_, p);
@@ -84,6 +79,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     }
   }
+  LOG(ERROR) << "DeviceContextPool End";
 }
 
 DeviceTemporaryAllocator* DeviceTemporaryAllocator::allocators = nullptr;
