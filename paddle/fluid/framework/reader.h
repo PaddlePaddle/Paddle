@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/ddim.h"
