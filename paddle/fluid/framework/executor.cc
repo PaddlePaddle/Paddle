@@ -14,6 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
 #include <deque>
+#include <memory>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
@@ -428,7 +432,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 #ifdef PADDLE_WITH_CUDA
     }
 #endif
-    if (gc) {
+    if (gc && keep_kids) {
       operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(ctx->block_id_,
                                                                  ctx->ops_);
     }
