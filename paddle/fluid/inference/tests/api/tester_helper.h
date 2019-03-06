@@ -101,6 +101,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         for (size_t j = 0; j < size; ++j) {
           CHECK_LE(std::abs(pdata_ref[j] - pdata[j]), FLAGS_accuracy);
         }
+        CHECK_LE(std::abs(pdata_ref[0] - 123456.0), FLAGS_accuracy);
         break;
       }
     }
