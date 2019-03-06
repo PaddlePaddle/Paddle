@@ -33,12 +33,31 @@ class BlockingQueue {
     cv_.notify_one();
   }
 
+  void Push(T &&item) {
+    {
+      std::lock_guard<std::mutex> g(mutex_);
+      q_.emplace_back(std::move(item));
+    }
+    cv_.notify_one();
+  }
+
   template <typename U>
   void Extend(const U &items) {
     {
       std::lock_guard<std::mutex> g(mutex_);
       for (auto &item : items) {
         q_.emplace_back(item);
+      }
+    }
+    cv_.notify_all();
+  }
+
+  template <typename U>
+  void Extend(U &&items) {
+    {
+      std::lock_guard<std::mutex> g(mutex_);
+      for (auto &item : items) {
+        q_.emplace_back(std::move(item));
       }
     }
     cv_.notify_all();
@@ -62,6 +81,18 @@ class BlockingQueue {
     T rc(std::move(q_.front()));
     q_.pop_front();
     return rc;
+  }
+
+  void Pop(T &t) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait(lock, [=] { return !q_.empty(); });
+    t = std::move(q_.front());
+    q_.pop_front();
+  }
+
+  size_t Size() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return q_.size();
   }
 
  private:

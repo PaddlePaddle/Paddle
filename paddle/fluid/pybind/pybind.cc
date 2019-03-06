@@ -61,6 +61,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/string/to_string.h"
+#include "paddle/fluid/pybind/data_set_py.h"
 
 #ifdef PADDLE_WITH_CUDA
 #ifndef _WIN32
@@ -1359,6 +1360,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindGraph(&m);
   BindNode(&m);
   BindInferenceApi(&m);
+  BindDataset(&m);
 }
 }  // namespace pybind
 }  // namespace paddle
