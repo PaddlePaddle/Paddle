@@ -256,6 +256,8 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T> {
     auto bias = ctx.Input<Tensor>("Bias");
     auto output = ctx.Output<Tensor>("Out");
 
+    printf("===> MKL-DNN FC\n");
+
     auto prim_creator = GetPrimitiveFactory<T>(dev_ctx, ctx, w, mkldnn_engine);
     auto fc = prim_creator->CreateFcPrimitive(input, w, bias, output, ctx);
     stream(stream::kind::eager).submit({fc}).wait();

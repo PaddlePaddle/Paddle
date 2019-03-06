@@ -87,6 +87,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   void ComputeFP32(const paddle::framework::ExecutionContext& ctx) const {
     const bool is_test = ctx.Attr<bool>("is_test");
 
+    mkldnn_verbose_set(1);
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
