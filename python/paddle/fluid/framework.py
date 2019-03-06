@@ -303,18 +303,27 @@ class Variable(object):
                  stop_gradient=False,
                  is_data=False,
                  **kwargs):
+        if name is None:
+            name = unique_name.generate('_generated_var')
+
+        if dtype is not None:
+            if not isinstance(dtype, core.VarDesc.VarType):
+                dtype = convert_np_dtype_to_dtype_(dtype)
+
         if _in_imperative_mode():
             # record vars in tracer rather than blocks
             self._ivar = kwargs.get("ivar", None)
             if not self._ivar:
-                self._ivar = core.VarBase(name, persistable, stop_gradient)
+                self._ivar = core.VarBase(
+                    name, dtype if dtype else core.VarDesc.VarType.FP32,
+                    list(shape) if shape else [],
+                    _current_expected_place(), True
+                    if persistable else False, stop_gradient)
             if persistable:
-                _current_expected_place().trace_var(name, self)
+                _imperative_tracer().trace_var(name, self)
         else:
             self.error_clip = error_clip
 
-            if name is None:
-                name = unique_name.generate('_generated_var')
             is_new_var = False
             name = cpt.to_text(name)
             self.desc = self.block.desc.find_var(cpt.to_bytes(name))
@@ -344,8 +353,6 @@ class Variable(object):
                             "shape is {1}; the new shape is {2}. They are not "
                             "matched.".format(self.name, old_shape, shape))
             if dtype is not None:
-                if not isinstance(dtype, core.VarDesc.VarType):
-                    dtype = convert_np_dtype_to_dtype_(dtype)
                 if is_new_var:
                     self.desc.set_dtype(dtype)
                 else:
@@ -459,40 +466,63 @@ class Variable(object):
     def _stop_gradient(self, s):
         if _in_imperative_mode():
             self._ivar.stop_gradient = s
-        self.stop_gradient = s
+        else:
+            self.stop_gradient = s
 
     @property
     def persistable(self):
-        return self.desc.persistable()
+        if _in_imperative_mode():
+            return self._ivar.persistable
+        else:
+            return self.desc.persistable()
 
     @persistable.setter
     def persistable(self, p):
-        self.desc.set_persistable(p)
+        if _in_imperative_mode():
+            return self._ivar.persistable
+        else:
+            self.desc.set_persistable(p)
 
     @property
     def name(self):
-        return cpt.to_text(self.desc.name())
+        if _in_imperative_mode():
+            return self._ivar.name
+        else:
+            return cpt.to_text(self.desc.name())
 
     @name.setter
     def name(self, new_name):
-        self.desc.set_name(new_name)
+        if _in_imperative_mode():
+            self._ivar.name = new_name
+        else:
+            self.desc.set_name(new_name)
 
     @property
     def shape(self):
         # convert to tuple, make it as same as numpy API.
-        return tuple(self.desc.shape())
+        if _in_imperative_mode():
+            return self._ivar.shape
+        else:
+            return tuple(self.desc.shape())
 
     @property
     def dtype(self):
-        return self.desc.dtype()
+        if _in_imperative_mode():
+            return self._ivar.dtype
+        else:
+            return self.desc.dtype()
 
     @property
     def lod_level(self):
+        # TODO(minqiyang): Support lod_level in imperative mode
         return self.desc.lod_level()
 
     @property
     def type(self):
-        return self.desc.type()
+        if _in_imperative_mode():
+            return self._ivar.dtype
+        else:
+            return self.desc.type()
 
     def _set_error_clip(self, error_clip):
         """
@@ -621,8 +651,11 @@ class Operator(object):
                  inputs=None,
                  outputs=None,
                  attrs=None):
+        if type is None:
+            raise ValueError(
+                "`type` to initilized an Operator can not be None.")
         if _in_imperative_mode():
-            self.iop = core.OpBase(attrs)
+            self.iop = core.OpBase(type)
 
             # TODO(minqiyang): remove these lines after we take apart all
             # backward grads and forward variables
@@ -641,6 +674,7 @@ class Operator(object):
                         self.outputs[k].append(v._ivar)
                     elif isinstance(v, list) or isinstance(v, tuple):
                         self.outputs[k].extend([var._ivar for var in v])
+            self.attrs = attrs
         else:
             self.block = block
             self.desc = desc
@@ -667,9 +701,6 @@ class Operator(object):
 
             if len(self.desc.type()) != 0:
                 return
-            if type is None:
-                raise ValueError(
-                    "`type` to initilized an Operator can not be None.")
             else:
                 callstack_var_name = op_maker.kOpCreationCallstackAttrName()
                 op_attrs[callstack_var_name] = list(
@@ -1391,19 +1422,27 @@ class Block(object):
         return self.ops[start:end]
 
     def _prepend_op(self, *args, **kwargs):
-        op_desc = self.desc._prepend_op()
-        op = Operator(
-            self,
-            op_desc,
-            type=kwargs.get("type", None),
-            inputs=kwargs.get("inputs", None),
-            outputs=kwargs.get("outputs", None),
-            attrs=kwargs.get("attrs", None))
         if _in_imperative_mode():
+            op = Operator(
+                None,
+                None,
+                type=kwargs.get("type", None),
+                inputs=kwargs.get("inputs", None),
+                outputs=kwargs.get("outputs", None),
+                attrs=kwargs.get("attrs", None))
             _imperative_tracer().trace_op(op,
                                           kwargs.get("stop_gradient", False))
         else:
+            op_desc = self.desc._prepend_op()
+            op = Operator(
+                self,
+                op_desc,
+                type=kwargs.get("type", None),
+                inputs=kwargs.get("inputs", None),
+                outputs=kwargs.get("outputs", None),
+                attrs=kwargs.get("attrs", None))
             self.ops.insert(0, op)
+
         return op
 
     def _sync_with_cpp(self):

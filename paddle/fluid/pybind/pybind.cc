@@ -149,8 +149,14 @@ PYBIND11_MODULE(core, m) {
         []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
   py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
-      // .def(py::init<>())
-      .def(py::init<bool>(), py::arg("stop_gradient") = false)
+      .def(
+          py::init<const std::string &, paddle::framework::proto::VarType::Type,
+                   const std::vector<int64_t>, const paddle::platform::CPUPlace,
+                   bool, bool>())
+      .def(
+          py::init<const std::string &, paddle::framework::proto::VarType::Type,
+                   const std::vector<int64_t>,
+                   const paddle::platform::CUDAPlace, bool, bool>())
       .def("_run_backward",
            [](imperative::VarBase &self) { self.RunBackward(); })
       .def("_grad_name", &imperative::VarBase::GradName)
@@ -177,51 +183,21 @@ PYBIND11_MODULE(core, m) {
            py::return_value_policy::take_ownership)
       .def("value", [](const imperative::VarBase &self) { return self.var_; },
            py::return_value_policy::reference)
-      .def_property("name",
-                    [](const imperative::VarBase &self) { return self.name_; },
-                    [](imperative::VarBase &self, const std::string &name) {
-                      self.name_ = name;
-                    })
-      .def_property("block",
-                    [](const imperative::VarBase &self) { return self.block_; },
-                    [](imperative::VarBase &self, framework::BlockDesc *block) {
-                      self.block_ = block;
-                    },
-                    py::return_value_policy::reference)
-      .def_property(
-          "persistable",
-          [](const imperative::VarBase &self) { return self.persistable_; },
-          [](imperative::VarBase &self, const bool persistable) {
-            self.persistable_ = persistable;
-          })
-      .def_property(
-          "desc",
-          [](const imperative::VarBase &self) { return self.var_desc_; },
-          [](imperative::VarBase &self, framework::VarDesc *var_desc) {
-            self.var_desc_ = var_desc;
-          },
-          py::return_value_policy::reference)
-      .def_property(
-          "stop_gradient",
-          [](const imperative::VarBase &self) { return self.IsStopGradient(); },
-          [](imperative::VarBase &self, bool stop_gradient) {
-            self.SetStopGradient(stop_gradient);
-          });
+      .def_property("name", &imperative::VarBase::Name,
+                    &imperative::VarBase::SetName)
+      .def_property_readonly("shape", &imperative::VarBase::Shape)
+      .def_property_readonly("dtype", &imperative::VarBase::DType)
+      .def_property("persistable", &imperative::VarBase::IsPersistable,
+                    &imperative::VarBase::SetPersistable)
+      .def_property("stop_gradient", &imperative::VarBase::IsStopGradient,
+                    &imperative::VarBase::SetStopGradient);
 
   py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
-      .def(py::init<>())
+      .def(py::init<const std::string &>())
       .def("register_backward_hooks",
            [](imperative::OpBase &self, const py::object &callable) {
              self.RegisterBackwardHooks(callable);
            })
-      .def_property(
-          "desc", [](const imperative::OpBase &self) { return self.op_desc_; },
-          [](imperative::OpBase &self, framework::OpDesc *op_desc) {
-            if (op_desc) {
-              self.op_desc_ = op_desc;
-            }
-          },
-          py::return_value_policy::reference)
       .def_property("_trace_id",
                     [](const imperative::OpBase &self) {
                       pybind11::gil_scoped_release release;
