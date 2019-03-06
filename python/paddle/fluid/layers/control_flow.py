@@ -1454,7 +1454,7 @@ class DynamicRNN(object):
 
         Args:
             x(Variable): The input sequence.
-            level(int): The level of lod used to split steps. Default: 1.
+            level(int): The level of lod used to split steps. Default: 0.
 
         Returns:
             The current timestep in the input sequence.
