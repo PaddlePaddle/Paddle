@@ -12,44 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/anakin/convert/activation.h"
+#include "paddle/fluid/inference/anakin/convert/transpose.h"
 #include <algorithm>
-#include <map>
+#include <string>
+#include <vector>
 
 using anakin::graph::GraphGlobalMem;
 using anakin::AK_FLOAT;
 using anakin::saber::NV;
 using anakin::saber::Shape;
+using anakin::PTuple;
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-ActivationOpConverter::ActivationOpConverter(const std::string &op_type)
-    : op_type_(op_type) {
-  auto it = anakin_op_types_.find(op_type_);
-  PADDLE_ENFORCE(it != anakin_op_types_.end(),
-                 "activation op type is not support");
-  anakin_op_type_ = it->second;
-}
-
-void ActivationOpConverter::operator()(const framework::proto::OpDesc &op,
-                                       const framework::Scope &scope,
-                                       bool test_mode) {
+void TransposeOpConverter::operator()(const framework::proto::OpDesc &op,
+                                      const framework::Scope &scope,
+                                      bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
 
+  auto input = op_desc.Input("X").front();
+  auto output = op_desc.Output("Out").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
-  auto input_name = op_desc.Input("X").front();
-  auto output_name = op_desc.Output("Out").front();
-  engine_->AddOp(op_name, "Activation", {input_name}, {output_name});
-  engine_->AddOpAttr(op_name, "type", anakin_op_type_);
+  engine_->AddOp(op_name, "Permute", {input}, {output});
+
+  auto axis = boost::get<std::vector<int>>(op_desc.GetAttr("axis"));
+  engine_->AddOpAttr<PTuple<int>>(op_name, "dims", axis);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(sigmoid, SigmoidOpConverter);
-REGISTER_ANAKIN_OP_CONVERTER(tanh, TanhOpConverter);
+REGISTER_ANAKIN_OP_CONVERTER(transpose, TransposeOpConverter);
