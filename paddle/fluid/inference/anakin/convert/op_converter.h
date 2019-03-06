@@ -47,14 +47,6 @@ class AnakinOpConverter {
     std::string op_type = op_desc.Type();
     AnakinOpConverter *it = nullptr;
 
-    if (op_type == "mul") {
-      PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL);
-      std::string Y = op_desc.Input("Y")[0];
-      if (parameters.count(Y)) {
-        it = Registry<AnakinOpConverter>::Global().Lookup("fc");
-      }
-    }
-
     if (!it) {
       it = Registry<AnakinOpConverter>::Global().Lookup(op_type);
     }

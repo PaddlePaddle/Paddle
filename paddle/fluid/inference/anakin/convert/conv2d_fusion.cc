@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/anakin/convert/conv2d.h"
+#include "paddle/fluid/inference/anakin/convert/conv2d_fusion.h"
 #include <algorithm>
 #include <memory>
 #include <vector>
@@ -27,12 +27,13 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-void Conv2dOpConverter::operator()(const framework::proto::OpDesc &op,
-                                   const framework::Scope &scope,
-                                   bool test_mode) {
+void Conv2dFusionOpConverter::operator()(const framework::proto::OpDesc &op,
+                                         const framework::Scope &scope,
+                                         bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1UL);
   PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Bias").size(), 1UL);
   PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(), 1UL);
 
   auto input_name = op_desc.Input("Input").front();
@@ -43,6 +44,11 @@ void Conv2dOpConverter::operator()(const framework::proto::OpDesc &op,
   auto *filter_v = scope.FindVar(op_desc.Input("Filter").front());
   PADDLE_ENFORCE_NOT_NULL(filter_v);
   auto *filter_t = filter_v->GetMutable<framework::LoDTensor>();
+
+  auto *b_v = scope.FindVar(op_desc.Input("Bias").front());
+  PADDLE_ENFORCE_NOT_NULL(b_v);
+  auto *b_t = b_v->GetMutable<framework::LoDTensor>();
+
   std::unique_ptr<framework::LoDTensor> weight_tensor(
       new framework::LoDTensor());
   weight_tensor->Resize(filter_t->dims());
@@ -67,7 +73,7 @@ void Conv2dOpConverter::operator()(const framework::proto::OpDesc &op,
   const int groups = boost::get<int>(op_desc.GetAttr("groups"));
   engine_->AddOpAttr(op_name, "group", groups);
   engine_->AddOpAttr(op_name, "axis", 1);
-  engine_->AddOpAttr(op_name, "bias_term", false);
+  engine_->AddOpAttr(op_name, "bias_term", true);
 
   auto weight_shape = framework::vectorize2int(filter_t->dims());
   Shape anakin_shape(weight_shape);
@@ -78,10 +84,30 @@ void Conv2dOpConverter::operator()(const framework::proto::OpDesc &op,
   weight1->d_tensor().set_shape(anakin_shape);
   weight1->d_tensor().copy_from(weight1->h_tensor());
   engine_->AddOpAttr(op_name, "weight_1", *weight1);
+
+  auto bias_shape = framework::vectorize2int(b_t->dims());
+  framework::LoDTensor bias_tensor;
+  bias_tensor.Resize(b_t->dims());
+  TensorCopySync((*b_t), platform::CPUPlace(), &bias_tensor);
+  auto *bias_data = bias_tensor.data<float>();
+  bias_shape.insert(bias_shape.begin(), 1);
+  bias_shape.insert(bias_shape.begin(), 1);
+  bias_shape.insert(bias_shape.begin(), 1);
+  // bias_shape.push_back(1);
+  // bias_shape.push_back(1);
+  Shape anakin_bias_shape(bias_shape);
+
+  auto *weight2 = GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(
+      anakin_bias_shape);
+  float *cpu_data2 = static_cast<float *>(weight2->h_tensor().mutable_data());
+  std::copy_n(bias_data, bias_tensor.numel(), cpu_data2);
+  weight2->d_tensor().set_shape(anakin_bias_shape);
+  weight2->d_tensor().copy_from(weight2->h_tensor());
+  engine_->AddOpAttr(op_name, "weight_2", *weight2);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(conv2d, Conv2dOpConverter);
+REGISTER_ANAKIN_OP_CONVERTER(conv2d_fusion, Conv2dFusionOpConverter);

@@ -43,6 +43,8 @@
 
 #endif
 
+#include "paddle/fluid/inference/anakin/convert/op_converter.h"
+
 DECLARE_bool(profile);
 
 namespace paddle {
@@ -765,3 +767,14 @@ USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 #endif
+
+USE_ANAKIN_CONVERTER(fc);
+USE_ANAKIN_CONVERTER(conv2d);
+USE_ANAKIN_CONVERTER(concat);
+USE_ANAKIN_CONVERTER(split);
+USE_ANAKIN_CONVERTER(relu);
+USE_ANAKIN_CONVERTER(sigmoid);
+USE_ANAKIN_CONVERTER(tanh);
+USE_ANAKIN_CONVERTER(pool2d);
+USE_ANAKIN_CONVERTER(conv2d_fusion);
+USE_ANAKIN_CONVERTER(elementwise_add);

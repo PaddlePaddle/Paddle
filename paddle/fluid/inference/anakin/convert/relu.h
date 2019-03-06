@@ -14,32 +14,22 @@
 
 #pragma once
 
+#include <map>
+#include <string>
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-class FcBaseOpConverter : public AnakinOpConverter {
+class ReluOpConverter : public AnakinOpConverter {
  public:
-  FcBaseOpConverter() = default;
+  ReluOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
                           const framework::Scope &scope,
                           bool test_mode) override;
-  virtual ~FcBaseOpConverter() {}
-};
-
-// with bias
-class FcOpConverter : public FcBaseOpConverter {
- public:
-  FcOpConverter() = default;
-};
-
-// without bias
-class MulOpConverter : public FcBaseOpConverter {
- public:
-  MulOpConverter() = default;
+  virtual ~ReluOpConverter() {}
 };
 
 }  // namespace anakin

@@ -20,7 +20,18 @@ namespace anakin {
 
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
-  SimpleOpTypeSetTeller() {}
+  SimpleOpTypeSetTeller() {
+    // teller_set.insert("mul");
+    teller_set.insert("fc");
+    teller_set.insert("conv2d_fusion");
+    teller_set.insert("split");
+    teller_set.insert("relu");
+    teller_set.insert("pool2d");
+    teller_set.insert("elementwise_add");
+    teller_set.insert("concat");
+    teller_set.insert("tanh");
+    // teller_set.insert("conv2d");
+  }
 
   bool operator()(const std::string& op_type,
                   const framework::OpDesc& desc) override {
@@ -28,7 +39,7 @@ struct SimpleOpTypeSetTeller : public Teller {
   }
 
  private:
-  std::unordered_set<std::string> teller_set{{"mul"}};
+  std::unordered_set<std::string> teller_set;
 };
 
 bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {

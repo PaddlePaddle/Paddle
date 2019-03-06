@@ -30,6 +30,7 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
 
   // The parameters are on the cpu, therefore, synchronization is not necessary.
   if (!argument->use_gpu()) return;
+  return;
 
   LOG(INFO) << "Sync params from CPU to GPU";
 

@@ -68,29 +68,34 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     auto *tensor = input.second;
     auto *data = tensor->data<float>();
     auto shape = framework::vectorize2int(tensor->dims());
-    ::anakin::saber::Shape anakin_shape(shape);
     auto *anakin_input = net_->get_in(input.first);
+    auto anakin_input_shape = anakin_input->valid_shape();
+    PADDLE_ENFORCE(tensor->numel(), anakin_input_shape.count(),
+                   "the fluid input size should be equal to anakin");
     ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
-                                                       anakin_shape);
-    anakin_input->share_from(tmp_anakin_tensor);
+                                                       anakin_input_shape);
+    anakin_input->copy_from(tmp_anakin_tensor);
   }
 
   for (const auto &output : outputs) {
     auto *tensor = output.second;
     auto *data = tensor->data<float>();
     auto shape = framework::vectorize2int(tensor->dims());
-    ::anakin::saber::Shape anakin_shape(shape);
     auto *anakin_output = net_->get_out(output.first);
+    auto anakin_output_shape = anakin_output->valid_shape();
+    PADDLE_ENFORCE(tensor->numel(), anakin_output_shape.count(),
+                   "the fluid output size should be equal to anakin");
     ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
-                                                       anakin_shape);
+                                                       anakin_output_shape);
     anakin_output->share_from(tmp_anakin_tensor);
   }
   net_->prediction();
+  cudaDeviceSynchronize();
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::Freeze() {
-  PADDLE_ENFORCE(graph_->Freeze(), "Freeze anakin subgraph.");
+  PADDLE_ENFORCE(graph_->Freeze_v3(), "Freeze anakin subgraph.");
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>

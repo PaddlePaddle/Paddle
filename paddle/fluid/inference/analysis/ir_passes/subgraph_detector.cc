@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -418,7 +420,7 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph
     // as deleted. 3. Replace the deleted node with the new Block Node.
     framework::OpDesc empty_desc;
-    empty_desc.SetType("tensorrt_engine");
+    empty_desc.SetType("anakin_engine");
     auto *block_node = graph_->CreateOpNode(&empty_desc);
     Agent(block_node).set_subgraph({});
     auto io = ExtractInputAndOutputOfSubGraph(subgraph);
