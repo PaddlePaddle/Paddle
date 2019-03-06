@@ -36,8 +36,10 @@ detection_library(yolov3_loss_op SRCS yolov3_loss_op.cc)
 
 if(WITH_GPU)
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc generate_proposals_op.cu DEPS memory cub)
+  detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc collect_fpn_proposals_op.cu DEPS memory cub)
 else()
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc)
+  detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc)
 endif()
 
 detection_library(roi_perspective_transform_op SRCS roi_perspective_transform_op.cc roi_perspective_transform_op.cu)
