@@ -27,8 +27,8 @@ TEST(reshape, test) {
   std::unordered_set<std::string> parameters;
   AnakinConvertValidation validator(parameters, scope);
 
-  //validator.DeclInputVar("reshape-X", {2, 3, 3, 1});
-  //validator.DeclOutputVar("reshape-Out", {3, 2, 1, 3});
+  // validator.DeclInputVar("reshape-X", {2, 3, 3, 1});
+  // validator.DeclOutputVar("reshape-Out", {3, 2, 1, 3});
   validator.DeclInputVar("reshape-X", {1, 2, 4, 1});
   validator.DeclOutputVar("reshape-Out", {1, 8, 1, 1});
 
@@ -36,7 +36,7 @@ TEST(reshape, test) {
   desc.SetType("reshape");
   desc.SetInput("X", {"reshape-X"});
   desc.SetOutput("Out", {"reshape-Out"});
-  //desc.SetAttr("shape", std::vector<int>({3, 2, 1, 3}));
+  // desc.SetAttr("shape", std::vector<int>({3, 2, 1, 3}));
   desc.SetAttr("shape", std::vector<int>({1, 8, 1, 1}));
 
   LOG(INFO) << "set OP";

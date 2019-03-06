@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/anakin/convert/flatten.h"
-#include <algorithm>
+#include <vector>
 
 using anakin::graph::GraphGlobalMem;
 using anakin::AK_FLOAT;

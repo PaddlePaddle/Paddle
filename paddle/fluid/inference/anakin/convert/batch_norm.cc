@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/inference/anakin/convert/batch_norm.h"
 #include <math.h>
-#include <algorithm>
 #include <map>
 #include <string>
+#include <vector>
 
 using anakin::graph::GraphGlobalMem;
 using anakin::AK_FLOAT;
@@ -48,17 +48,16 @@ void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
 
   bool is_test = boost::get<bool>(op_desc.GetAttr("is_test"));
   PADDLE_ENFORCE(is_test);
-  //float momentum = boost::get<float>(op_desc.GetAttr("momentum"));
   float epsilon = boost::get<float>(op_desc.GetAttr("epsilon"));
   engine_->AddOpAttr(op_name, "epsilon", epsilon);
 
-  auto get_lod_tensor = [this, &scope, &op_name](
-      const std::string &var_name, framework::LoDTensor *tensor) {
-      auto *v = scope.FindVar(var_name);
-      PADDLE_ENFORCE_NOT_NULL(v);
-      auto *t = v->GetMutable<framework::LoDTensor>();
-      tensor->Resize(t->dims());
-      TensorCopySync(*t, platform::CPUPlace(), tensor);
+  auto get_lod_tensor = [this, &scope, &op_name](const std::string &var_name,
+                                                 framework::LoDTensor *tensor) {
+    auto *v = scope.FindVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(v);
+    auto *t = v->GetMutable<framework::LoDTensor>();
+    tensor->Resize(t->dims());
+    TensorCopySync(*t, platform::CPUPlace(), tensor);
   };
 
   framework::LoDTensor bias_t;
@@ -80,7 +79,8 @@ void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
   combile_scale_t.Resize(scale_t.dims());
   combile_bias_t.Resize(bias_t.dims());
 
-  auto *combile_scale = combile_scale_t.mutable_data<float>(platform::CPUPlace());
+  auto *combile_scale =
+      combile_scale_t.mutable_data<float>(platform::CPUPlace());
   auto *combile_bias = combile_bias_t.mutable_data<float>(platform::CPUPlace());
 
   size_t elem_num = combile_scale_t.memory_size() / sizeof(float);
@@ -104,7 +104,8 @@ void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
   auto *weight1 =
       GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(weight1_shape);
   auto *scale_data = static_cast<float *>(weight1->h_tensor().mutable_data());
-  std::copy_n(combile_scale_t.data<float>(), combile_scale_t.numel(), scale_data);
+  std::copy_n(combile_scale_t.data<float>(), combile_scale_t.numel(),
+              scale_data);
   engine_->AddOpAttr(op_name, "weight_1", *weight1);
 
   auto *weight2 =

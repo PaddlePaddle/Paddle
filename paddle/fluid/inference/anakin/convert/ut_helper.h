@@ -14,13 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+#include <gtest/gtest.h>
 #include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -178,9 +178,6 @@ class AnakinConvertValidation {
       auto fluid_out = fluid_outputs[i_output++];
       for (size_t i = 0; i < anakin_out_size; i++) {
         EXPECT_LT(std::abs(fluid_out[i] - anakin_out[i]), 1e-3);
-        //LOG(INFO) << "Output[" << i << "]: anakin[" << anakin_out[i] << "], "
-        //          << "fluid[" << fluid_out[i] << "]";
-        //ASSERT_NEAR(fluid_out[i], anakin_out[i], 1e-6);
       }
     }
   }

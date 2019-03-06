@@ -54,7 +54,7 @@ TEST(batch_norm_op, test) {
   float eps = 1e-5f;
   desc.SetAttr("epsilon", eps);
   desc.SetAttr("is_test", true);
-  //desc.SetAttr("momentum", 0.8f);
+  // desc.SetAttr("momentum", 0.8f);
 
   validator.SetOp(*desc.Proto());
 

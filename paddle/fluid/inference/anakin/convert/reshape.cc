@@ -34,7 +34,6 @@ void ReshapeOpConverter::operator()(const framework::proto::OpDesc &op,
 
   auto input = op_desc.Input("X").front();
   auto output = op_desc.Output("Out").front();
-  // auto input_shape = op_desc.Input("Shape").front();
 
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
   engine_->AddOp(op_name, "Reshape", {input}, {output});
@@ -44,9 +43,6 @@ void ReshapeOpConverter::operator()(const framework::proto::OpDesc &op,
     shape.insert(shape.end(), 4 - shape.size(), 1);
   }
   engine_->AddOpAttr<PTuple<int>>(op_name, "dims", shape);
-  // engine_->AddOpAttr(op_name, "axis", 1);
-  // engine_->AddOpAttr(op_name, "num_axes", 1);
-  // engine_->AddOpAttr(op_name, "layout", "NCHW");
 }
 
 }  // namespace anakin
