@@ -29,6 +29,13 @@ ParallelSSAGraphExecutor::SeparateMultiDevicesGraph(ir::Graph *graph) {
     auto &g = graphs.back();
     g->Set(kGraphVars, new GraphVars(1UL));
     g->Set(kGraphDepVars, new GraphDepVars);
+    if (places_.size() > 1) {
+      auto &stale_ops = graph->Get<const std::vector<OpDesc *>>(
+          details::kStaleProgramOpDescs);
+      g->Erase(details::kStaleProgramOpDescs);
+      g->Set<const std::vector<OpDesc *>>(details::kStaleProgramOpDescs,
+                                          new std::vector<OpDesc *>(stale_ops));
+    }
   }
   auto op_handles = ir::FilterByNodeWrapper<OpHandleBase>(*graph);
 
