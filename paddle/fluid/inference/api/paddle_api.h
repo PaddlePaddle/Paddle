@@ -23,6 +23,7 @@
  */
 
 #include <cassert>
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -136,6 +137,19 @@ struct PaddleTensor {
   PaddleBuf data;  // blob of data.
   PaddleDType dtype;
   std::vector<std::vector<size_t>> lod;  // Tensor+LoD equals LoDTensor
+
+  template <typename T>
+  T* mutable_data() {
+    if (typeid(T) == typeid(int64_t)) {
+      dtype = PaddleDType::INT64;
+    } else {
+      dtype = PaddleDType::FLOAT32;
+    }
+    data.Resize(sizeof(T) *
+                std::accumulate(shape.begin(), shape.end(), 1,
+                                [](int a, int b) { return a * b; }));
+    return static_cast<T*>(data.data());
+  }
 };
 
 enum class PaddlePlace { kUNK = -1, kCPU, kGPU };

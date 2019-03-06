@@ -345,6 +345,7 @@ class RecurrentGradOp : public RecurrentBase {
                const platform::Place &place) const override {
     auto seq_len = static_cast<size_t>(GetSequenceLength(scope));
     StepScopes scopes = CreateStepScopes(scope, seq_len);
+
     auto reverse = Attr<bool>(kReverse);
 
     framework::Executor executor(place);
