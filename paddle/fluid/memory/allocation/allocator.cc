@@ -26,17 +26,28 @@ Allocator::~Allocator() {}
 bool Allocator::IsAllocThreadSafe() const { return false; }
 
 AllocationPtr Allocator::Allocate(size_t size, Allocator::Attr attr) {
+  VLOG(2) << "Alloc allocation on " << typeid(*this).name();
   auto ptr = AllocateImpl(size, attr);
-  ptr->set_allocator(this);
+  ptr->RegisterAllocatorChain(this);
+  VLOG(2) << "Alloc success";
   return AllocationPtr(ptr);
 }
 
-void Allocator::Free(Allocation* allocation) { delete allocation; }
+void Allocator::FreeImpl(Allocation* allocation) {
+  auto* allocator = allocation->TopAllocator();
+  allocator->Free(allocation);
+}
+
+void Allocator::Free(Allocation* allocation) {
+  VLOG(2) << "Free allocation on " << typeid(*this).name();
+  allocation->PopAllocator();
+  FreeImpl(allocation);
+}
 
 const char* BadAlloc::what() const noexcept { return msg_.c_str(); }
 
 void AllocationDeleter::operator()(Allocation* allocation) const {
-  auto* allocator = allocation->allocator();
+  auto* allocator = allocation->TopAllocator();
   allocator->Free(allocation);
 }
 
