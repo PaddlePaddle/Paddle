@@ -27,4 +27,6 @@ message DataFeedDesc {
   optional string name = 1;
   optional int32 batch_size = 2 [ default = 32 ];
   optional MultiSlotDesc multi_slot_desc = 3;
+  optional string pipe_command = 4;
+  optional int32 thread_num = 5;
 }

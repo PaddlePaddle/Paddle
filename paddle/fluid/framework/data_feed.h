@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -59,6 +60,7 @@ class DataFeed {
   // Otherwise, Init() function will init finish_set_filelist_ flag.
   virtual bool SetFileList(const std::vector<std::string>& files);
   virtual bool Start() = 0;
+
   // The trainer calls the Next() function, and the DataFeed will load a new
   // batch to the feed_vec. The return value of this function is the batch
   // size of the current batch.
@@ -114,6 +116,7 @@ class DataFeed {
   bool finish_init_;
   static bool finish_set_filelist_;
   bool finish_start_;
+  std::string pipe_command_;
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.
@@ -136,6 +139,7 @@ class PrivateQueueDataFeed : public DataFeed {
   virtual void SetQueueSize(int queue_size);
   // The reading and parsing method called in the ReadThread.
   virtual bool ParseOneInstance(T* instance) = 0;
+  virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
   // This function is used to put instance to vec_ins
   virtual void AddInstanceToInsVec(T* vec_ins, const T& instance,
                                    int index) = 0;
@@ -150,7 +154,9 @@ class PrivateQueueDataFeed : public DataFeed {
   //     ifstream one line and one line parse: 6034 ms
   //     fread one buffer and one buffer parse: 7097 ms
   std::ifstream file_;
+  std::shared_ptr<FILE> fp_;
   size_t queue_size_;
+  string::LineFileReader reader_;
   // The queue for store parsed data
   std::unique_ptr<paddle::operators::reader::BlockingQueue<T>> queue_;
 };
@@ -228,12 +234,15 @@ class MultiSlotDataFeed
   virtual ~MultiSlotDataFeed() {}
   virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc);
   virtual bool CheckFile(const char* filename);
+  // virtual void ReadThread();
 
  protected:
+  virtual void ReadThread();
   virtual void AddInstanceToInsVec(std::vector<MultiSlotType>* vec_ins,
                                    const std::vector<MultiSlotType>& instance,
                                    int index);
   virtual bool ParseOneInstance(std::vector<MultiSlotType>* instance);
+  virtual bool ParseOneInstanceFromPipe(std::vector<MultiSlotType>* instance);
   virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);
 };
 }  // namespace framework

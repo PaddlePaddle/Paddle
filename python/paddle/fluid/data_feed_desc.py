@@ -68,6 +68,7 @@ class DataFeedDesc(object):
 
     def __init__(self, proto_file):
         self.proto_desc = data_feed_pb2.DataFeedDesc()
+        self.proto_desc.pipe_command = "cat"
         with open(proto_file, 'r') as f:
             text_format.Parse(f.read(), self.proto_desc)
         if self.proto_desc.name == "MultiSlotDataFeed":
@@ -137,6 +138,10 @@ class DataFeedDesc(object):
         for name in use_slots_name:
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
                 name]].is_used = True
+
+    def global_shuffle(self):
+        self.data.global_shuffle()
+        pass
 
     def desc(self):
         """
