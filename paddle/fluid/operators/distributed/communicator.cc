@@ -63,6 +63,9 @@ static inline void MergeVars(const std::string &var_name,
   }
 }
 
+std::unique_ptr<Communicator> Communicator::communicator_(nullptr);
+std::once_flag Communicator::init_flag_;
+
 void Communicator::SendThread() {
   while (running_) {
     std::vector<std::future<void>> task_futures;
@@ -117,6 +120,7 @@ void Communicator::RecvThread() {
 
 void Communicator::Send(const std::string &var_name,
                         const framework::Scope &scope) {
+  VLOG(3) << "communicator send " << var_name;
   // push var into send queue by var_name
   auto *grad_var = scope.FindVar(var_name);
   PADDLE_ENFORCE(grad_var->IsInitialized(), "grad var should be inited");
@@ -124,6 +128,8 @@ void Communicator::Send(const std::string &var_name,
   framework::CopyVariable(*grad_var, tmp_grad_var.get());
   send_varname_to_queue_[var_name]->Push(tmp_grad_var);
 }
+
+Communicator *Communicator::GetInstance() { return communicator_.get(); }
 
 void Communicator::Start() {
   running_ = true;

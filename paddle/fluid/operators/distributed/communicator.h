@@ -144,7 +144,7 @@ class Communicator {
     InitImpl(send_varname_to_ctx, recv_varname_to_ctx, recv_scope);
   }
 
-  static Communicator* GetInstance() { return communicator_.get(); }
+  static Communicator* GetInstance();
 
  private:
   // Init is called by GetInstance.
