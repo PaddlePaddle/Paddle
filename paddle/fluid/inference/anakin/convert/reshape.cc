@@ -40,6 +40,9 @@ void ReshapeOpConverter::operator()(const framework::proto::OpDesc &op,
   engine_->AddOp(op_name, "Reshape", {input}, {output});
 
   auto shape = boost::get<std::vector<int>>(op_desc.GetAttr("shape"));
+  if (shape.size() < 4) {
+    shape.insert(shape.end(), 4 - shape.size(), 1);
+  }
   engine_->AddOpAttr<PTuple<int>>(op_name, "dims", shape);
   // engine_->AddOpAttr(op_name, "axis", 1);
   // engine_->AddOpAttr(op_name, "num_axes", 1);

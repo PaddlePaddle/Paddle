@@ -28,7 +28,7 @@ TEST(flatten_op, test) {
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, scope);
   validator.DeclInputVar("flatten-X", {3, 100, 100, 4});
-  validator.DeclOutputVar("flatten-Out", {300, 400});
+  validator.DeclOutputVar("flatten-Out", {1, 300, 400, 1});
   framework::OpDesc desc;
   desc.SetType("flatten");
   desc.SetInput("X", {"flatten-X"});
@@ -46,6 +46,6 @@ TEST(flatten_op, test) {
 }  // namespace inference
 }  // namespace paddle
 
-//USE_OP(reshape);
-USE_OP(flatten);
+USE_OP(reshape);
+USE_OP_ITSELF(flatten);
 USE_ANAKIN_CONVERTER(flatten);

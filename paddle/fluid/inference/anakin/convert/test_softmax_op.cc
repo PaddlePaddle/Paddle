@@ -20,7 +20,6 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-
 TEST(softmax, test) {
   auto* converter = Registry<AnakinOpConverter>::Global().Lookup("softmax");
   ASSERT_TRUE(converter);

@@ -35,7 +35,8 @@ void FlattenOpConverter::operator()(const framework::proto::OpDesc &op,
   auto input = op_desc.Input("X").front();
   auto output = op_desc.Output("Out").front();
   auto in_dims = scope.FindVar(input)->Get<framework::LoDTensor>().dims();
-  int axis = boost::get<int>(op_desc.GetAttr("aixs"));
+  //LOG(INFO) << "========= in_dmis: size[" << framework::vectorize2int(in_dims).size() << "]";
+  int axis = boost::get<int>(op_desc.GetAttr("axis"));
 
   int inner = 1;
   int outer = 1;
@@ -47,27 +48,30 @@ void FlattenOpConverter::operator()(const framework::proto::OpDesc &op,
     }
   }
 
-  std::vector<int> out_dims = {outer, inner};
+  std::vector<int> out_dims = {1, outer, inner, 1};
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
   engine_->AddOp(op_name, "Reshape", {input}, {output});
 
+  //engine_->AddOpAttr(op_name, "axis", 1);
+  //engine_->AddOpAttr(op_name, "num_axes", 1);
   engine_->AddOpAttr<PTuple<int>>(op_name, "dims", out_dims);
+  //engine_->AddOpAttr(op_name, "layout", "HW");
+  //engine_->AddOpAttr(op_name, "layout", "NCHW");
 
-  /*
-  int axis = boost::get<int>(op_desc.GetAttr("axis"));
-  auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
-  auto op1 = op_name + "_1";
-  auto op1_output = op1 + ":out";
-  engine_->AddOp(op1, "Flatten", {input}, {op1_output});
-  engine_->AddOpAttr(op1, "start_axis", axis);
-  engine_->AddOpAttr(op1, "end_axis", -1);
+  //int axis = boost::get<int>(op_desc.GetAttr("axis"));
+  //auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
+  //auto op1 = op_name + "_1";
+  //auto op1_output = op1 + ":out";
+  //engine_->AddOp(op1, "Flatten", {input}, {op1_output});
+  //engine_->AddOpAttr(op1, "start_axis", axis);
+  //engine_->AddOpAttr(op1, "end_axis", -1);
 
-  auto op2 = op_name + "_2";
-  auto op2_input = op1_output;
-  engine_->AddOp(op2, "Flatten", {op2_input}, {output});
-  engine_->AddOpAttr(op2, "start_axis", 0);
-  engine_->AddOpAttr(op2, "end_axis", axis - 1);
-  */
+  //auto op2 = op_name + "_2";
+  //auto op2_input = op1_output;
+  //engine_->AddOp(op2, "Flatten", {op2_input}, {output});
+  ////engine_->AddOpAttr(op2, "input_shape", )
+  //engine_->AddOpAttr(op2, "start_axis", 0);
+  //engine_->AddOpAttr(op2, "end_axis", axis - 1);
 }
 
 }  // namespace anakin

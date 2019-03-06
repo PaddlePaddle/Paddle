@@ -52,10 +52,9 @@ TEST(batch_norm_op, test) {
   desc.SetOutput("SavedVariance", {"batch_norm_save_variance"});
 
   float eps = 1e-5f;
-  bool is_test = true;
   desc.SetAttr("epsilon", eps);
-  desc.SetAttr("is_test", is_test);
-  desc.SetAttr("momentum", 0.8f);
+  desc.SetAttr("is_test", true);
+  //desc.SetAttr("momentum", 0.8f);
 
   validator.SetOp(*desc.Proto());
 
