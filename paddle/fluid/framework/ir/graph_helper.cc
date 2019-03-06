@@ -140,7 +140,7 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
         nodes.push_back(adj_n);
       }
     }
-    std::sort(nodes.begin(), nodes.end(), [](Node *node1, Node *node2) {
+    std::sort(nodes.begin(), nodes.end(), [](ir::Node *node1, ir::Node *node2) {
       return node1->id() > node2->id();
     });
     adj_list[n].insert(std::make_move_iterator(nodes.begin()),
