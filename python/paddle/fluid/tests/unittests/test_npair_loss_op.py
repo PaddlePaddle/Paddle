@@ -45,15 +45,6 @@ def npairloss(anchor, positive, labels, l2_reg=0.002):
     return l2loss + celoss
 
 
-def create_or_get_tensor(scope, var_name, var, place):
-    tensor = scope.var(var_name).get_tensor()
-    if var is not None:
-        assert isinstance(var, np.ndarray)
-        tensor.set_recursive_sequence_lengths([])
-        tensor.set(var, place)
-    return tensor
-
-
 class TestNpairLossOp(unittest.TestCase):
     def setUp(self):
         self.dtype = np.float32
@@ -61,10 +52,11 @@ class TestNpairLossOp(unittest.TestCase):
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
-    def check_with_place(self, place, dtype, shape):
+    def test_npair_loss(self):
         reg_lambda = 0.002
-        num_data, feat_dim, num_classes = shape[0], shape[1], shape[2]
+        num_data, feat_dim, num_classes = 18, 6, 3
 
+        place = core.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
         embeddings_anchor = np.random.rand(num_data,
@@ -79,48 +71,30 @@ class TestNpairLossOp(unittest.TestCase):
             row_labels,
             l2_reg=reg_lambda)
 
-        anchor_tensor = fluid.layers.data(
-            name='anchor',
-            shape=[num_data, feat_dim],
-            dtype=self.dtype,
-            append_batch_size=False)
-        positive_tensor = fluid.layers.data(
-            name='positive',
-            shape=[num_data, feat_dim],
-            dtype=self.dtype,
-            append_batch_size=False)
-        labels_tensor = fluid.layers.data(
-            name='labels_t',
-            shape=[num_data],
-            dtype=self.dtype,
-            append_batch_size=False)
+        anc = fluid.layers.create_tensor(
+            dtype='float32', persistable=True, name='anc')
+        pos = fluid.layers.create_tensor(
+            dtype='float32', persistable=True, name='pos')
+        lab = fluid.layers.create_tensor(
+            dtype='float32', persistable=True, name='lab')
+        fluid.layers.assign(input=embeddings_anchor, output=anc)
+        fluid.layers.assign(input=embeddings_positive, output=pos)
+        fluid.layers.assign(input=row_labels, output=lab)
 
         npair_loss_op = fluid.layers.npair_loss(
-            anchor=anchor_tensor,
-            positive=positive_tensor,
-            labels=labels_tensor,
-            l2_reg=reg_lambda)
-        out_tensor = exe.run(feed={
-            'anchor': embeddings_anchor,
-            'positive': embeddings_positive,
-            'labels_t': row_labels
-        },
+            anchor=anc, positive=pos, labels=lab, l2_reg=reg_lambda)
+        out_tensor = exe.run(feed={'anc': anc,
+                                   'pos': pos,
+                                   'lab': lab},
                              fetch_list=[npair_loss_op.name])
 
         self.__assert_close(
             out_tensor,
             out_loss,
             "inference output are different at " + str(place) + ", " +
-            str(np.dtype(dtype)) + str(np.array(out_tensor)) + str(out_loss),
+            str(np.dtype('float32')) + str(np.array(out_tensor)) +
+            str(out_loss),
             atol=1e-3)
-
-    def test_check_output(self):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("npair_loss"):
-            places.append(core.CUDAPlace(0))
-
-        for place in places:
-            self.check_with_place(place, self.dtype, [18, 6, 3])
 
 
 if __name__ == '__main__':
