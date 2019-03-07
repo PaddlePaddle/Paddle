@@ -197,6 +197,9 @@ static std::string DescribeTensor(const PaddleTensor &tensor,
     case PaddleDType::INT64:
       os << "int64";
       break;
+    case PaddleDType::INT32:
+      os << "int32";
+      break;
     default:
       os << "unset";
   }
