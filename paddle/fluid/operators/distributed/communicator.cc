@@ -31,7 +31,7 @@ namespace distributed {
 static inline void MergeVars(const std::string &var_name,
                              const std::vector<std::shared_ptr<Variable>> &vars,
                              Scope *scope) {
-  VLOG(3) << "merge " << vars.size() << " vars " << var_name << " to one";
+  VLOG(3) << "merge " << vars.size() << " vars " << var_name << " to 1";
   PADDLE_ENFORCE(!vars.empty(), "should have value to merge!");
   auto cpu_place = platform::CPUPlace();
   auto &var0 = vars[0];
