@@ -121,7 +121,9 @@ class AsyncExecutor(object):
         with open("trainer_desc.proto", "w") as fout:
             fout.write(trainer._desc())
         # define a trainer and a device_worker here
-        self.executor.run_from_files(program_desc, trainer._desc(), debug)
+        self.executor.run_from_files(program_desc,
+                                     trainer._desc(), debug,
+                                     str(id(program_desc)))
 
     '''
     def run(self,
@@ -194,7 +196,7 @@ class AsyncExecutor(object):
 
         self.executor.run_from_files(program_desc,
                                      data_feed.desc(), filelist, thread_num,
-                                     fetch_var_names, mode, debug)
+                                     fetch_var_names, mode, debug, str(id(program_desc)))
     '''
 
     def download_data(self,
@@ -313,7 +315,11 @@ class AsyncExecutor(object):
         self.dist_desc = dist_desc
         place = core.CPUPlace()
         executor = Executor(place)
-        executor.run(startup_program)
+        if isinstance(startup_program, list):
+            for sp in startup_program:
+                executor.run(sp)
+        else:
+            executor.run(startup_program)
 
         self.instance.barrier_all()  #wait all server start
         ips = self.instance.gather_ips()
