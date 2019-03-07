@@ -60,8 +60,9 @@ void FcBaseOpConverter::operator()(const framework::proto::OpDesc &op,
   const int w_m = weight_shape[0];
   const int w_k = weight_shape[1];
 
-  weight_shape.push_back(1);
-  weight_shape.push_back(1);
+  if (weight_shape.size() < 4UL) {
+    weight_shape.insert(weight_shape.begin(), 4UL - weight_shape.size(), 1);
+  }
   Shape anakin_shape(weight_shape);
 
   framework::LoDTensor weight_tensor;
