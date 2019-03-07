@@ -54,14 +54,13 @@ void BindGraph(py::module *m) {
       "The graph is a Directed Acyclic Single Static Assignment Graph, see "
       "`paddle::ir::Graph` for details.")
       .def(py::init<const ProgramDesc &>())
-      .def("__init__",
-           [](Graph &self, const Graph &other) { new (&self) Graph(other); })
       .def("has", &Graph::Has)
       .def("get_int", &Graph::Get<int>)
       .def("get_float", &Graph::Get<float>)
       .def("get_double", &Graph::Get<double>)
       .def("get_string", &Graph::Get<std::string>)
-      .def("get_marked_nodes", &Graph::Get<std::unordered_set<const Node *>>)
+      .def("get_marked_nodes", &Graph::Get<std::unordered_set<const Node *>>,
+           return_value_policy::reference)
       .def("set", [](Graph &self, const std::string &attr_name,
                      int attr) { return self.Set(attr_name, new int(attr)); })
       .def("set",
@@ -105,7 +104,8 @@ void BindGraph(py::module *m) {
       .def("retrieve_node", &Graph::RetrieveNode,
            return_value_policy::reference)
       .def("resolve_hazard", &Graph::ResolveHazard)
-      .def("origin_program_desc", &Graph::OriginProgram);
+      .def("origin_program_desc", &Graph::OriginProgram,
+           return_value_policy::reference);
 }
 
 void BindNode(py::module *m) {
