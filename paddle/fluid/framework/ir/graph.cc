@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <algorithm>
 #include <unordered_map>
-#include <unordered_set>
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
@@ -29,8 +28,6 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
   auto var_nodes = InitFromProgram(program_);
   ResolveHazard(var_nodes);
 }
-
-Graph::Graph(const Graph &o) : Graph(o.program_) {}
 
 std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
     const ProgramDesc &program) {
