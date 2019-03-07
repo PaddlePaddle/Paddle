@@ -49,4 +49,4 @@ void ReshapeOpConverter::operator()(const framework::proto::OpDesc &op,
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(reshape2, ReshapeOpConverter);
+REGISTER_ANAKIN_OP_CONVERTER(reshape, ReshapeOpConverter);
