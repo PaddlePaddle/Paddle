@@ -48,9 +48,9 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
   RpcCtxMap send_varname_to_ctx;
   RpcCtxMap recv_varname_to_ctx;
   for (auto i = 0; i < graphs.size(); ++i) {
+    std::vector<ir::Node *> nodes_to_delete;
     for (auto &node : graphs[i]->Nodes()) {
       VLOG(3) << "node name " << node->Name();
-      std::vector<ir::Node *> nodes_to_delete;
       if (node && node->IsOp()) {
         if (node->Name() == "send") {
           auto send_var_name = node->Op()->Input("X")[0];
@@ -78,11 +78,11 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
           VLOG(3) << "find and remove an recv op: "
                   << recv_varname_to_ctx[recv_var_name];
         }
-        VLOG(3) << "delete all recv ops";
-        for (auto *node : nodes_to_delete) {
-          graphs[i]->RemoveNode(node);
-        }
       }
+    }
+    VLOG(3) << "delete all recv ops";
+    for (auto *node : nodes_to_delete) {
+      graphs[i]->RemoveNode(node);
     }
   }
   // init communicator here
