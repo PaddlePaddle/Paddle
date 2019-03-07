@@ -52,10 +52,7 @@ class TestTemporalShift(OpTest):
         self.check_output()
 
     def test_check_grad_ignore_uv(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            max_relative_error=0.01)
+        self.check_grad(['X'], 'Out')
 
     def initTestCase(self):
         self.x_shape = (6, 4, 4, 4)
