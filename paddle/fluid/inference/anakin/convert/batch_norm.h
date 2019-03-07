@@ -30,6 +30,16 @@ class BatchNormOpConverter : public AnakinOpConverter {
   virtual ~BatchNormOpConverter() {}
 };
 
+class BatchNorm2OpConverter : public AnakinOpConverter {
+ public:
+  BatchNorm2OpConverter() = default;
+
+  virtual void operator()(const framework::proto::OpDesc &op,
+                          const framework::Scope &scope,
+                          const test_mode) override;
+  virtual ~BatchNorm2OpConverter() {}
+};
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
