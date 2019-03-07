@@ -68,6 +68,12 @@ class BlockingQueue {
     return rc;
   }
 
+  bool NotEmpty() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    recv_cv_.wait(lock, [=] { return !queue_.empty(); });
+    return true;
+  }
+
   size_t Cap() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return capacity_;

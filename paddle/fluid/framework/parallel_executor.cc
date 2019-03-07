@@ -277,7 +277,7 @@ ParallelExecutor::ParallelExecutor(
   // ncclOp
   std::vector<ir::Graph *> async_graphs(places.size());
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  if (build_strategy.async_mode_ && !build_strategy.is_distribution_) {
+  if (build_strategy.async_mode_) {
     VLOG(3) << "use local async mode";
     temp_owned_graph =
         build_strategy.Apply(std::move(temp_owned_graph), {member_->places_[0]},
@@ -298,7 +298,7 @@ ParallelExecutor::ParallelExecutor(
         member_->nccl_ctxs_.get());
   }
 #else
-  if (build_strategy.async_mode_ && !build_strategy.is_distribution_) {
+  if (build_strategy.async_mode_) {
     VLOG(3) << "use local async mode";
     temp_owned_graph = build_strategy.Apply(
         std::move(temp_owned_graph), {member_->places_[0]}, loss_var_name,
@@ -358,7 +358,7 @@ ParallelExecutor::ParallelExecutor(
     }
   }
 
-  if (build_strategy.async_mode_ && !build_strategy.is_distribution_) {
+  if (build_strategy.async_mode_) {
     VLOG(3) << "use AsyncSSAGraphExecutor";
     member_->executor_.reset(new details::AsyncSSAGraphExecutor(
         exec_strategy, member_->local_scopes_, member_->places_, async_graphs));
