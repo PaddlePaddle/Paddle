@@ -71,10 +71,31 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
               "interger.");
 
     AddComment(R"DOC(
-          This operator calculates the temporal shift features for Input(X).
+          This operator calculates the temporal shifting features for Input(X).
 
-          For details of spectral normalization, please refer to paper: 
-          `Temporal Shift Module <arxiv.org/abs/1802.0595://arxiv.org/abs/1811.08383>`_ .
+          Input(X) should be in shape of [N*T, C, H, W], while N is the batch
+          size, T is the temporal segment number, C is the channel number, 
+          H and W is the height and width of features.
+
+          Temporal Shifting calculates as follows:
+          
+          Step 1: Reshape Input(X) to [N, T, C, H, W].
+
+          Step 2: Pad 0 to reshaping result in the 2nd(T) dimension with 
+          padding width as 1 on each side, padding result will be in shape 
+          of [N, T+2, C, H, W].
+
+          Step 3: Slice padding result as follows:
+
+                slice1 = x[:, :T, :C/4, :, :]
+                slice2 = x[:, 2:T+2, C/4:C/2, :, :]
+                slice3 = x[:, 1:T+1, C/2:, :, :]
+
+          Step 4: Concatenate three slices with :math:`axis=2` and reshape result
+          to [N*T, C, H, W]
+
+          For details of temporal shifting, please refer to paper: 
+          `Temporal Shift Module <http://arxiv.org/abs/1811.08383>`_ .
 
          )DOC");
   }
