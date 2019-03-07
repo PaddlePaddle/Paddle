@@ -18,8 +18,11 @@
 #include <gtest/gtest_prod.h>
 #endif
 
+#include <memory>
 #include <numeric>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
@@ -769,6 +772,21 @@ struct ConvAffineChannel : public PatternBase {
 struct TransposeFlattenConcat : public PatternBase {
   TransposeFlattenConcat(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "transpose_flatten_concat") {}
+
+  PDNode* operator()(std::vector<PDNode*> conv_inputs, int times);
+
+  std::string GetNodeName(const std::string& op_type) {
+    return PDNodeName(name_scope_, repr_, id_, op_type);
+  }
+
+  PDNode* GetPDNode(const std::string& op_type) {
+    return pattern->RetrieveNode(GetNodeName(op_type));
+  }
+};
+
+struct AnakinDetectionPattern : public PatternBase {
+  AnakinDetectionPattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "anakin_detect_pattern") {}
 
   PDNode* operator()(std::vector<PDNode*> conv_inputs, int times);
 
