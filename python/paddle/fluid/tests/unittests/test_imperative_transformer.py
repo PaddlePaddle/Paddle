@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid.imperative.nn import Embedding, LayerNorm
+from paddle.fluid.imperative.nn import Embedding, LayerNorm, FC
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.imperative.base import to_variable
@@ -258,12 +258,9 @@ class PreprocessLayer(fluid.imperative.Layer):
                     param_attr=fluid.initializer.Constant(1.),
                     bias_attr=fluid.initializer.Constant(0.))
 
-    def forward(self, prev_out, out, process_cmd, dropout_rate=0.):
-
+    def forward(self, out, process_cmd, dropout_rate=0.):
         for cmd in process_cmd:
-            if cmd == "a":  # add residual connection
-                out = out + prev_out if prev_out else out
-            elif cmd == "n":  # add layer normalization
+            if cmd == "n":  # add layer normalization
                 out = self._layer_norm(out)
             elif cmd == "d":  # add dropout
                 if dropout_rate:
@@ -288,7 +285,15 @@ class MutiHeadAttentionLayer(fluid.imperative.Layer):
                  cache=None,
                  gather_idx=None,
                  static_kv=False):
-        return 0
+        self._q_fc = FC(size=d_key * n_head,
+                        bias_attr=False,
+                        num_flatten_dims=2)
+        self._k_fc = FC(size=d_key * n_head,
+                        bias_attr=False,
+                        num_flatten_dims=2)
+        self._v_fc = FC(size=d_key * n_head,
+                        bias_attr=False,
+                        num_flatten_dims=2)
 
 
 class EncoderSubLayer(fluid.imperative.Layer):
@@ -305,6 +310,7 @@ class EncoderSubLayer(fluid.imperative.Layer):
                  postprocess_cmd="da"):
 
         super(EncoderSubLayer, self).__init__('encoderSubLayer')
+        self._pre_process_layer = PreprocessLayer(preprocess_cmd)
 
 
 class EncoderLayer(fluid.imperative.Layer):
@@ -321,7 +327,7 @@ class EncoderLayer(fluid.imperative.Layer):
                  preprocess_cmd="n",
                  postprocess_cmd="da"):
         self._encoder_sublayers = list()
-        self._preprocess_layer = PreprocessLayer(None, preprocess_cmd)
+        self._preprocess_layer = PreprocessLayer(preprocess_cmd)
         for i in range(n_layer):
             self._encoder_sublayers.append(
                 EncoderSubLayer(n_head, d_key, d_value, d_model, d_inner_hid,
@@ -345,7 +351,7 @@ class PrepareEncoderLayer(fluid.imperative.Layer):
         self._dropout_rate = dropout_rate
         self._src_max_len = src_max_len
 
-    def forward(self, src_word, attention_biasd):
+    def forward(self, src_word):
         src_word_emb = self.input_emb(src_word)
         src_word_emb = fluid.layers.scale(
             x=src_word_emb, scale=self._src_emb_dim**0.5)
