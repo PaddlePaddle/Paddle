@@ -41,16 +41,15 @@ void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
 
   auto output = op_desc.Output("Y").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Y").front();
-  engine_->AddOp(op_name, "Scale", {inputs["X"]}, {output});
-  engine_->AddOpAttr(op_name, "bias_term", true);
-  engine_->AddOpAttr(op_name, "axis", 1);
-  engine_->AddOpAttr(op_name, "num_axes", 1);
-
   bool is_test = boost::get<bool>(op_desc.GetAttr("is_test"));
-  PADDLE_ENFORCE(is_test);
-  float epsilon = boost::get<float>(op_desc.GetAttr("epsilon"));
-  engine_->AddOpAttr(op_name, "epsilon", epsilon);
+  auto epsilon = boost::get<float>(op_desc.GetAttr("epsilon"));
 
+  auto bn_op_name = op_name + ":bn";
+  auto bn_output = bn_op_name + "_output";
+  engine_->AddOp(bn_op_name, "BatchNorm", {inputs["X"]}, {bn_output});
+  engine_->AddOpAttr(bn_op_name, "epsilon", epsilon);
+
+  auto scale_op_name = op_name + ":scale";
   auto get_lod_tensor = [this, &scope, &op_name](const std::string &var_name,
                                                  framework::LoDTensor *tensor) {
     auto *v = scope.FindVar(var_name);
@@ -69,50 +68,54 @@ void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
   get_lod_tensor(inputs["Scale"], &scale_t);
   get_lod_tensor(inputs["Variance"], &variance_t);
 
-  auto *bias = bias_t.mutable_data<float>(platform::CPUPlace());
-  auto *mean = mean_t.mutable_data<float>(platform::CPUPlace());
-  auto *scale = scale_t.mutable_data<float>(platform::CPUPlace());
-  auto *variance = variance_t.mutable_data<float>(platform::CPUPlace());
-
-  framework::LoDTensor combile_scale_t;
-  framework::LoDTensor combile_bias_t;
-  combile_scale_t.Resize(scale_t.dims());
-  combile_bias_t.Resize(bias_t.dims());
-
-  auto *combile_scale =
-      combile_scale_t.mutable_data<float>(platform::CPUPlace());
-  auto *combile_bias = combile_bias_t.mutable_data<float>(platform::CPUPlace());
-
-  size_t elem_num = combile_scale_t.memory_size() / sizeof(float);
-  for (size_t i = 0; i < elem_num; i++) {
-    combile_scale[i] = scale[i] / sqrtf(variance[i] + epsilon);
-    combile_bias[i] = bias[i] - mean[i] * combile_scale[i];
-  }
-
-  auto fill_shape = [](size_t n, std::vector<int> *shape) {
-    shape->insert(shape->begin(), 1);
-    if (shape->size() < n) {
-      shape->insert(shape->end(), n - shape->size(), 1);
+  auto fill_shape = [](size_t n, std::vector<int> shape) {
+    shape.insert(shape.begin(), 1);
+    if (shape.size() < n) {
+      shape.insert(shape.end(), n - shape.size(), 1);
     }
+    return shape;
   };
-  auto scale_shape = framework::vectorize2int(combile_scale_t.dims());
-  auto bias_shape = framework::vectorize2int(combile_bias_t.dims());
-  fill_shape(4, &scale_shape);
-  fill_shape(4, &bias_shape);
-  Shape weight1_shape(scale_shape);
-  Shape weight2_shape(bias_shape);
+  Shape shape1(fill_shape(4, framework::vectorize2int(mean_t.dims())));
+  Shape shape2(fill_shape(4, framework::vectorize2int(variance_t.dims())));
   auto *weight1 =
-      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(weight1_shape);
-  auto *scale_data = static_cast<float *>(weight1->h_tensor().mutable_data());
-  std::copy_n(combile_scale_t.data<float>(), combile_scale_t.numel(),
-              scale_data);
-  engine_->AddOpAttr(op_name, "weight_1", *weight1);
+      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(shape1);
+  auto *mean_data = static_cast<float *>(weight1->h_tensor().mutable_data());
+  std::copy_n(mean_t.data<float>(), mean_t.numel(), mean_data);
+  engine_->AddOpAttr(bn_op_name, "weight_1", *weight1);
 
   auto *weight2 =
-      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(weight2_shape);
-  auto *bias_data = static_cast<float *>(weight2->h_tensor().mutable_data());
-  std::copy_n(combile_bias_t.data<float>(), combile_bias_t.numel(), bias_data);
-  engine_->AddOpAttr(op_name, "weight_2", *weight2);
+      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(shape2);
+  auto *variance_data =
+      static_cast<float *>(weight2->h_tensor().mutable_data());
+  std::copy_n(variance_t.data<float>(), variance_t.numel(), variance_data);
+  engine_->AddOpAttr(bn_op_name, "weight_2", *weight2);
+
+  Shape shape3(std::vector<int>({1, 1, 1, 1}));
+  auto *weight3 =
+      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(shape3);
+  auto *alpha_data = static_cast<float *>(weight3->h_tensor().mutable_data());
+  float weight3_data[] = {1};
+  std::copy(std::begin(weight3_data), std::end(weight3_data), alpha_data);
+  engine_->AddOpAttr(bn_op_name, "weight_3", *weight3);
+
+  Shape scale_shape(fill_shape(4, framework::vectorize2int(scale_t.dims())));
+  auto *scale =
+      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(scale_shape);
+  auto *scale_data = static_cast<float *>(scale->h_tensor().mutable_data());
+  std::copy_n(scale_t.data<float>(), scale_t.numel(), scale_data);
+
+  Shape bias_shape(fill_shape(4, framework::vectorize2int(bias_t.dims())));
+  auto *bias =
+      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(bias_shape);
+  auto *bias_data = static_cast<float *>(bias->h_tensor().mutable_data());
+  std::copy_n(bias_t.data<float>(), bias_t.numel(), bias_data);
+
+  engine_->AddOp(scale_op_name, "Scale", {bn_output}, {output});
+  engine_->AddOpAttr(scale_op_name, "axis", 1);
+  engine_->AddOpAttr(scale_op_name, "num_axes", 1);
+  engine_->AddOpAttr(scale_op_name, "bias_term", true);
+  engine_->AddOpAttr(scale_op_name, "weight_1", *scale);
+  engine_->AddOpAttr(scale_op_name, "weight_2", *bias);
 }
 
 }  // namespace anakin
