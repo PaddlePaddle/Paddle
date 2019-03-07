@@ -14,6 +14,9 @@
 
 #pragma once
 
+extern "C" {
+#include <xxhash.h>
+}
 #include <iostream>
 #include <string>
 #include <vector>
@@ -127,23 +130,36 @@ class KernelFuncs {
     return g_func_cache;
   }
 
-  bool Has(int key) const { return funcs_.find(key) != funcs_.end(); }
-
-  void Insert(int key, typename KernelTuples::func_type func) {
-    funcs_.emplace(key, func);
-  }
-
-  typename KernelTuples::func_type At(int key) {
+  // the exposed interface to use
+  typename KernelTuples::func_type At(
+      const typename KernelTuples::attr_type& attr) {
+    // XXH64: 13.8 GB/s
+    int64_t key = XXH64(&attr, sizeof(typename KernelTuples::attr_type), 0);
     if (Has(key)) {
       return funcs_.at(key);
     }
-    auto func = Get<KT, KernelTuples, PlaceType>(key);
+    // If do not have this attr in cache,
+    // then could run some runtime benchmark of this attr and save the best one.
+    // Here just get the offline benchmarked best one.
+    auto func = Get<KT, KernelTuples, PlaceType>(attr);
     Insert(key, func);
     return func;
   }
 
+  typename KernelTuples::func_type operator[](
+      const typename KernelTuples::attr_type& attr) {
+    return At(attr);
+  }
+
+ protected:
+  bool Has(int64_t key) const { return funcs_.find(key) != funcs_.end(); }
+
+  void Insert(int64_t key, typename KernelTuples::func_type func) {
+    funcs_.emplace(key, func);
+  }
+
  private:
-  std::unordered_map<int, typename KernelTuples::func_type> funcs_;
+  std::unordered_map<int64_t, typename KernelTuples::func_type> funcs_;
   DISABLE_COPY_AND_ASSIGN(KernelFuncs);
 };
 
