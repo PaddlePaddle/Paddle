@@ -44,7 +44,7 @@ class SimpleImgConvPool(fluid.imperative.Layer):
                  conv_dilation=1,
                  conv_groups=1,
                  act=None,
-                 use_cudnn=True,
+                 use_cudnn=False,
                  param_attr=None,
                  bias_attr=None):
         super(SimpleImgConvPool, self).__init__(name_scope)

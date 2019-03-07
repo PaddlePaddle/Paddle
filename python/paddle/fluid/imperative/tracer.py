@@ -42,12 +42,13 @@ class Tracer(core.Tracer):
     def trace_var(self, name, var):
         self._vars[name] = var
 
+    def all_parameters(self):
+        return list((item for item in six.iteritems(self._vars)
+                     if isinstance(item, framework.Parameter)))
+
     def trace_op(self, op, stop_gradient=False):
         # record op's trace id
         op.iop._trace_id = self._trace_id
-
-        # trace op and save it
-        print("trace op", op._type, op.attrs)
 
         backward_refs = self.trace(op.iop, op.inputs, op.outputs, op.attrs,
                                    framework._current_expected_place(),

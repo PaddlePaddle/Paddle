@@ -303,6 +303,7 @@ class Variable(object):
                  stop_gradient=False,
                  is_data=False,
                  **kwargs):
+        self.block = block
         if name is None:
             name = unique_name.generate('_generated_var')
 
@@ -651,10 +652,10 @@ class Operator(object):
                  inputs=None,
                  outputs=None,
                  attrs=None):
-        if type is None:
-            raise ValueError(
-                "`type` to initilized an Operator can not be None.")
         if _in_imperative_mode():
+            if type is None:
+                raise ValueError(
+                    "`type` to initilized an Operator can not be None.")
             self.iop = core.OpBase(type)
 
             # TODO(minqiyang): remove these lines after we take apart all
@@ -674,8 +675,8 @@ class Operator(object):
                         self.outputs[k].append(v._ivar)
                     elif isinstance(v, list) or isinstance(v, tuple):
                         self.outputs[k].extend([var._ivar for var in v])
+
             self.attrs = attrs
-            self._type = type
         else:
             self.block = block
             self.desc = desc
@@ -702,6 +703,9 @@ class Operator(object):
 
             if len(self.desc.type()) != 0:
                 return
+            if type is None:
+                raise ValueError(
+                    "`type` to initilized an Operator can not be None.")
             else:
                 callstack_var_name = op_maker.kOpCreationCallstackAttrName()
                 op_attrs[callstack_var_name] = list(
@@ -1352,7 +1356,7 @@ class Block(object):
         """
         if _in_imperative_mode():
             op = Operator(
-                block=None,
+                block=self,
                 desc=None,
                 type=kwargs.get("type", None),
                 inputs=kwargs.get("inputs", None),
@@ -1425,7 +1429,7 @@ class Block(object):
     def _prepend_op(self, *args, **kwargs):
         if _in_imperative_mode():
             op = Operator(
-                None,
+                self,
                 None,
                 type=kwargs.get("type", None),
                 inputs=kwargs.get("inputs", None),
