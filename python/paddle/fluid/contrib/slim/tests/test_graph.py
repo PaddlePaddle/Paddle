@@ -52,7 +52,7 @@ def residual_block(num):
 
 
 class TestGraph(unittest.TestCase):
-    def test_graph_functions(self):
+    def test_graph_functions(self, for_ci=True):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -60,11 +60,20 @@ class TestGraph(unittest.TestCase):
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
         graph = IrGraph(core.Graph(main.desc), for_test=False)
+        backup_graph = graph.clone()
+        self.assertEqual(len(graph.all_nodes()), len(backup_graph.all_nodes()))
+
         marked_nodes = set()
         for op in graph.all_op_nodes():
             if op.name().find('conv2d') > -1:
                 marked_nodes.add(op)
-        graph.draw('.', 'residual', marked_nodes)
+        if not for_ci:
+            graph.draw('.', 'residual', marked_nodes)
+            backup_marked_nodes = set()
+            for op in backup_graph.all_op_nodes():
+                if op.name().find('conv2d') > -1:
+                    backup_marked_nodes.add(op)
+            backup_graph.draw('.', 'backup', backup_marked_nodes)
         self.assertFalse(graph.has_circle())
         self.assertEqual(graph.graph_num(), 1)
         nodes = graph.topology_sort()

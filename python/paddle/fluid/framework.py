@@ -2002,6 +2002,16 @@ class IrGraph(object):
         self.graph = graph
         self._for_test = for_test
 
+    def clone(self):
+        """
+        Create a new and duplicated IrGraph.
+
+        Returns:
+            IrGraph: A new and duplicated graph.
+        """
+        g = core.Graph(self.graph)
+        return IrGraph(g, self._for_test)
+
     def is_test(self):
         """
         If the graph is used for testing, the function returns true. Otherwise, returns false.
