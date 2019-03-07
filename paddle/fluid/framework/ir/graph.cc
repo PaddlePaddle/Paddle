@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "paddle/fluid/framework/ir/graph.h"
@@ -28,6 +29,8 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
   auto var_nodes = InitFromProgram(program_);
   ResolveHazard(var_nodes);
 }
+
+Graph::Graph(const Graph &o) : Graph(o.program_) {}
 
 std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
     const ProgramDesc &program) {
