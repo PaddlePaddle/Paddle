@@ -2012,7 +2012,7 @@ class IrGraph(object):
         Returns:
             IrGraph: A new and duplicated graph.
         """
-        g = core.Graph(self.graph.origin_program_desc())
+        g = self.graph.clone()
         return IrGraph(g, self._for_test)
 
     def is_test(self):
