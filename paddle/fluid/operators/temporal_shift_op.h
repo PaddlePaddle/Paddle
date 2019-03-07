@@ -88,6 +88,7 @@ class TemporalShiftGradKernel : public framework::OpKernel<T> {
 
     const T* output_grad_data = output_grad->data<T>();
     T* input_grad_data = input_grad->mutable_data<T>({nt, c, h, w}, ctx.GetPlace());
+    memset(input_grad_data, 0, input_grad->numel() * sizeof(T));
 
     int src_it = 0;
     for (int i = 0; i < output_grad->numel(); i++) {
