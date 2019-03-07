@@ -205,7 +205,7 @@ class FC(layers.Layer):
         self._num_flatten_dims = num_flatten_dims
         self._dtype = dtype
         self._param_attr = param_attr
-        self._bias_attr = param_attr
+        self._bias_attr = bias_attr
         self._act = act
 
     def _build_once(self, input):
@@ -219,10 +219,10 @@ class FC(layers.Layer):
             dtype=self._dtype,
             is_bias=False)
 
-        if self._param_attr:
+        if self._bias_attr:
             size = list([self._size])
             self._b = self.create_parameter(
-                attr=self._param_attr,
+                attr=self._bias_attr,
                 shape=size,
                 dtype=self._dtype,
                 is_bias=True)
