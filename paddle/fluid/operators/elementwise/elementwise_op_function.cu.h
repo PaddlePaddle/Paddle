@@ -85,18 +85,18 @@ class TransformFunctor<Functor, T, platform::CUDADeviceContext, OutType> {
         func_(func) {}
 
   inline void Run() const {
-    platform::Transform<platform::CUDADeviceContext> trans;
-    trans(ctx_, x_, x_ + nx_, y_, z_, func_);
-    // const int kThreadsPerBlock = ELEMWISE_MAX_BLOCK_DIM;
-    // const int kMaximumBlocks = 65535;
+    // platform::Transform<platform::CUDADeviceContext> trans;
+    // trans(ctx_, x_, x_ + nx_, y_, z_, func_);
+    const int kThreadsPerBlock = ELEMWISE_MAX_BLOCK_DIM;
+    const int kMaximumBlocks = 65535;
 
-    // int block_dim_x = kThreadsPerBlock;
-    // int grid_dim_x = (nx_ / block_dim_x) > kMaximumBlocks ? kMaximumBlocks :
-    // n / block_dim_x;
+    int block_dim_x = kThreadsPerBlock;
+    int grid_dim_x = (nx_ / block_dim_x) > kMaximumBlocks ? kMaximumBlocks
+                                                          : nx_ / block_dim_x;
 
-    // EleWiseKernel<Functor, T, OutType><<<grid_dim_x, block_dim_x, 0,
-    // ctx_.stream()>>>(
-    //     func_, x_, y_, z_, nx_);
+    EleWiseKernel<Functor, T,
+                  OutType><<<grid_dim_x, block_dim_x, 0, ctx_.stream()>>>(
+        func_, x_, y_, z_, nx_);
   }
 
   inline void RunRowWise(int n, int prev) const {
