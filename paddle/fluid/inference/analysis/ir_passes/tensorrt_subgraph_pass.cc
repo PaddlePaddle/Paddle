@@ -226,10 +226,11 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     calibrator.reset(new tensorrt::TRTInt8Calibrator(calibration_data));
   }
 
+  bool use_static_engine = Get<bool>("use_static_engine");
   // When in int8 mode and calibration_mode, the program just produce the
   // calibration table data.
   bool calibration_mode = (enable_int8 && calibration_data.size() == 0);
-  if (!calibration_mode) {
+  if (!calibration_mode && use_static_engine) {
     std::copy(params.begin(), params.end(),
               std::back_inserter(*repetitive_params));
     std::string trt_engine_serialized_data = GetTrtEngineSerializedData(
