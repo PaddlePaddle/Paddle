@@ -206,12 +206,12 @@ class CompiledProgram(object):
 
         # FIXME(dzhwinter): enable_inplace should be after memory_optimize
         # if turn on python memory optimize, turn off the inplace_pass.
-        if self._build_strategy.memory_optimize is None:
-            self._build_strategy.memory_optimize = False \
-                if self._program and self._program._is_mem_optimized else True
-        if self._build_strategy.enable_inplace is None:
-            self._build_strategy.enable_inplace = False \
-                if self._program and self._program._is_mem_optimized else True
+        # memory_optimize and enable_inplace default are True, but we can disable them on purpose
+        if self._program and self._program._is_mem_optimized:
+            self._build_strategy.memory_optimize = False
+
+        if self._program and self._program._is_mem_optimized:
+            self._build_strategy.enable_inplace = False
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.

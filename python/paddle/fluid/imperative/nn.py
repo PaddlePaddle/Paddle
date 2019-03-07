@@ -41,21 +41,12 @@ class Conv2D(layers.Layer):
                  bias_attr=None,
                  dtype=core.VarDesc.VarType.FP32):
         assert param_attr is not False, "param_attr should not be False here."
-        super(Conv2D, self).__init__(name_scope, dtype=dtype)
-
-        # TODO(minqiyang): Move this to the top.
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(
-            self.full_name(),
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            dtype=dtype,
-            act=act)
-
+        super(Conv2D, self).__init__(name_scope)
         self._groups = groups
         self._stride = utils.convert_to_list(stride, 2, 'stride')
         self._padding = utils.convert_to_list(padding, 2, 'padding')
         self._dilation = utils.convert_to_list(dilation, 2, 'dilation')
+        self._act = act
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
         self._use_cudnn = use_cudnn
@@ -80,28 +71,28 @@ class Conv2D(layers.Layer):
             std = (2.0 / filter_elem_num)**0.5
             return Normal(0.0, std, 0)
 
-        self._filter_param = self._helper.create_parameter(
-            attr=self._helper.param_attr,
+        self._filter_param = self.create_parameter(
+            attr=param_attr,
             shape=filter_shape,
             dtype=self._dtype,
             default_initializer=_get_default_param_initializer())
 
         if self._use_cudnn:
-            self._helper.create_variable(
+            self.create_variable(
                 name="kCUDNNFwdAlgoCache",
                 persistable=True,
                 type=core.VarDesc.VarType.RAW)
-            self._helper.create_variable(
+            self.create_variable(
                 name="kCUDNNBwdDataAlgoCache",
                 persistable=True,
                 type=core.VarDesc.VarType.RAW)
-            self._helper.create_variable(
+            self.create_variable(
                 name="kCUDNNBwdFilterAlgoCache",
                 persistable=True,
                 type=core.VarDesc.VarType.RAW)
 
-        self._bias_param = self._helper.create_parameter(
-            attr=self._helper.bias_attr,
+        self._bias_param = self.create_parameter(
+            attr=bias_attr,
             shape=[num_filters],
             dtype=self._dtype,
             is_bias=True)
@@ -137,7 +128,7 @@ class Conv2D(layers.Layer):
             attrs={'axis': 1})
 
         # Currently, we don't support inplace in imperative mode
-        return self._helper.append_activation(pre_act)
+        return self._helper.append_activation(pre_act, act=self._act)
 
 
 class Pool2D(layers.Layer):
@@ -166,9 +157,6 @@ class Pool2D(layers.Layer):
             raise ValueError("use_cudnn should be True or False")
 
         super(Pool2D, self).__init__(name_scope, dtype=dtype)
-
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(self.full_name(), dtype=dtype)
 
         self._pool_type = pool_type
         self._pool_size = utils.convert_to_list(pool_size, 2, 'pool_size')
@@ -216,28 +204,25 @@ class FC(layers.Layer):
         self._size = size
         self._num_flatten_dims = num_flatten_dims
         self._dtype = dtype
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(
-            self.full_name(),
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            act=act)
+        self._param_attr = param_attr
+        self._bias_attr = param_attr
+        self._act = act
 
     def _build_once(self, input):
         input_shape = input.shape
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:], 1)
         ] + [self._size]
-        self._w = self._helper.create_parameter(
-            attr=self._helper.param_attr,
+        self._w = self.create_parameter(
+            attr=self._param_attr,
             shape=param_shape,
             dtype=self._dtype,
             is_bias=False)
 
-        if self._helper.bias_attr:
+        if self._param_attr:
             size = list([self._size])
-            self._b = self._helper.create_parameter(
-                attr=self._helper.bias_attr,
+            self._b = self.create_parameter(
+                attr=self._param_attr,
                 shape=size,
                 dtype=self._dtype,
                 is_bias=True)
@@ -275,7 +260,7 @@ class FC(layers.Layer):
         else:
             pre_activation = pre_bias
         # Currently, we don't support inplace in imperative mode
-        return self._helper.append_activation(pre_activation)
+        return self._helper.append_activation(pre_activation, act=self._act)
 
 
 class BatchNorm(layers.Layer):
@@ -297,15 +282,11 @@ class BatchNorm(layers.Layer):
                  fuse_with_relu=False,
                  use_global_stats=False):
         super(BatchNorm, self).__init__(name_scope)
+        self._param_attr = param_attr
+        self._param_attr = bias_attr
+        self._act = act
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
-
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(
-            self.full_name(),
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            act=act)
 
         if dtype == core.VarDesc.VarType.FP16:
             self._dtype = core.VarDesc.VarType.FP32
@@ -315,23 +296,23 @@ class BatchNorm(layers.Layer):
         param_shape = [num_channels]
 
         # create parameter
-        self._scale = self._helper.create_parameter(
-            attr=self._helper.param_attr,
+        self._scale = self.create_parameter(
+            attr=self._param_attr,
             shape=param_shape,
             dtype=self._dtype,
             default_initializer=Constant(1.0))
-        if use_global_stats and self._helper.param_attr.learning_rate == 0.:
+        if use_global_stats and self._param_attr.learning_rate == 0.:
             self._scale._stop_gradient = True
 
-        self._bias = self._helper.create_parameter(
-            attr=self._helper.bias_attr,
+        self._bias = self.create_parameter(
+            attr=self._param_attr,
             shape=param_shape,
             dtype=self._dtype,
             is_bias=True)
-        if use_global_stats and self._helper.bias_attr.learning_rate == 0.:
+        if use_global_stats and self._param_attr.learning_rate == 0.:
             self._bias._stop_gradient = True
 
-        self._mean = self._helper.create_parameter(
+        self._mean = self.create_parameter(
             attr=ParamAttr(
                 name=moving_mean_name,
                 initializer=Constant(0.0),
@@ -341,7 +322,7 @@ class BatchNorm(layers.Layer):
             dtype=self._dtype)
         self._mean._stop_gradient = True
 
-        self._variance = self._helper.create_parameter(
+        self._variance = self.create_parameter(
             attr=ParamAttr(
                 name=moving_variance_name,
                 initializer=Constant(1.0),
@@ -401,7 +382,7 @@ class BatchNorm(layers.Layer):
             })
 
         # Currently, we don't support inplace in imperative mode
-        return self._helper.append_activation(batch_norm_out)
+        return self._helper.append_activation(batch_norm_out, self._act)
 
 
 class Embedding(layers.Layer):
@@ -466,9 +447,7 @@ class Embedding(layers.Layer):
         if self._remote_prefetch:
             assert self._is_sparse is True and self._is_distributed is False
 
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(self.full_name(), param_attr=param_attr)
-        self._w = self._helper.create_parameter(
+        self._w = self.create_parameter(
             attr=self._param_attr,
             shape=self._size,
             dtype=self._dtype,
