@@ -2006,10 +2006,13 @@ class IrGraph(object):
         """
         Create a new and duplicated IrGraph.
 
+        Warns:
+            The method only clones the graph structure, not its attributes.
+
         Returns:
             IrGraph: A new and duplicated graph.
         """
-        g = core.Graph(self.graph)
+        g = core.Graph(self.graph.origin_program_desc())
         return IrGraph(g, self._for_test)
 
     def is_test(self):
