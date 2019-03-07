@@ -17,6 +17,7 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/node.h"
@@ -71,6 +72,7 @@ namespace ir {
 class Graph {
  public:
   explicit Graph(const ProgramDesc &program);
+  Graph(const Graph &o);
 
   virtual ~Graph() {
     for (auto &attr : attrs_) {
