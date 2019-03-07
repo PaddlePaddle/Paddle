@@ -73,6 +73,40 @@ option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
 
+#cmake .. -DCMAKE_BUILD_TYPE=Release 
+#-DWITH_DSO=ON 
+#-DWITH_GPU=ON 
+#-DWITH_AMD_GPU=OFF
+# -DWITH_DISTRIBUTE=ON 
+#-DWITH_MKL=ON 
+#-DWITH_NGRAPH=ON 
+#-DWITH_AVX=ON
+# -DWITH_GOLANG=OFF 
+#-DCUDA_ARCH_NAME=Auto
+# -DWITH_PYTHON=ON
+# -DCUDNN_ROOT=/usr/
+# -DWITH_TESTING=ON 
+#-DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake 
+#-DCMAKE_EXPORT_COMPILE_COMMANDS=ON 
+#-DWITH_CONTRIB=ON 
+#-DWITH_INFERENCE_API_TEST=ON 
+#-DINFERENCE_DEMO_INSTALL_DIR=/root/.cache/inference_demo
+# -DWITH_ANAKIN=ON
+# -DANAKIN_BUILD_FAT_BIN= -DANAKIN_BUILD_CROSS_PLANTFORM= -DPY_VERSION=2.7
+# -DCMAKE_INSTALL_PREFIX=/paddle/build 
+#-DWITH_JEMALLOC=OFF
+# -DWITH_GRPC=ON
+
+set(WITH_GPU OFF)
+set(WITH_DSO OFF)
+set(WITH_AMD_GPU OFF)
+set(WITH_DISTRIBUTE OFF)
+set(WITH_NGRAPH OFF)
+set(WITH_ANAKIN OFF)
+set(WITH_JEMALLOC OFF)
+set(WITH_GRPC OFF)
+
+
 # PY_VERSION
 if(NOT PY_VERSION)
   set(PY_VERSION 2.7)
