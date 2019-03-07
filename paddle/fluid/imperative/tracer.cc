@@ -218,6 +218,20 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
       CreateInputVarNameMap(op, inputs);
   framework::VariableNameMap outvars_name_map =
       CreateOutputVarNameMap(op, outputs);
+
+  for (auto kv : attrs_map) {
+    LOG(ERROR) << "Attrs: " << kv.first;
+  }
+
+  auto& info = framework::OpInfoMap::Instance().Get(op->Type());
+  if (info.Checker() != nullptr) {
+    info.Checker()->Check(&attrs_map);
+  }
+
+  for (auto kv : attrs_map) {
+    LOG(ERROR) << "Attrs: " << kv.first;
+  }
+
   std::unique_ptr<framework::OperatorBase> op_base =
       framework::OpRegistry::CreateOp(op->Type(), invars_name_map,
                                       outvars_name_map, attrs_map);
@@ -245,6 +259,10 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   if (!stop_gradient) {
     VLOG(5) << "start construct backward op";
 
+    for (auto kv : attrs_map) {
+      LOG(ERROR) << "Attrs: " << kv.first;
+    }
+
     // construct grad op descs
     std::unique_ptr<framework::OpDesc> fwd_op_desc(new framework::OpDesc(
         op->Type(), invars_name_map, outvars_name_map, attrs_map));
@@ -256,13 +274,16 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
 
     VLOG(5) << "create grad op desc: " << op->grad_op_descs_[0]->Type();
 
+    for (auto name : op->grad_op_descs_[0]->AttrNames()) {
+      LOG(ERROR) << "Attrs: " << name;
+    }
+
     const size_t grad_op_count = op->grad_op_descs_.size();
 
     op->grad_input_vars_.resize(grad_op_count);
     op->grad_output_vars_.resize(grad_op_count);
 
     for (size_t i = 0; i < grad_op_count; ++i) {
-      VLOG(5) << "init grad input vars";
       framework::OpDesc* grad_op_desc = op->grad_op_descs_[i];
       for (auto it : grad_op_desc->Inputs()) {
         auto& grad_in_vars = op->grad_input_vars_[i][it.first];
@@ -296,13 +317,6 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
           VarBase* var = current_vars_map[var_it->second];
           InitGrad(var, prepared_op.GetDeviceContext());
           grad_out_vars.push_back(var->grads_->var_);
-          VLOG(5) << "init grad output var: " << it.first << " "
-                  << var->grads_->Name();
-          framework::DDim dim =
-              var->grads_->var_->Get<framework::LoDTensor>().dims();
-          for (size_t i = 0; i < dim.size(); ++i) {
-            LOG(ERROR) << dim[i];
-          }
         }
       }
     }

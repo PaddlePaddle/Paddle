@@ -675,6 +675,7 @@ class Operator(object):
                     elif isinstance(v, list) or isinstance(v, tuple):
                         self.outputs[k].extend([var._ivar for var in v])
             self.attrs = attrs
+            self._type = type
         else:
             self.block = block
             self.desc = desc

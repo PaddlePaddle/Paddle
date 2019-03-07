@@ -47,6 +47,8 @@ class Tracer(core.Tracer):
         op.iop._trace_id = self._trace_id
 
         # trace op and save it
+        print("trace op", op._type, op.attrs)
+
         backward_refs = self.trace(op.iop, op.inputs, op.outputs, op.attrs,
                                    framework._current_expected_place(),
                                    stop_gradient)
