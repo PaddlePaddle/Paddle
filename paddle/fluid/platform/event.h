@@ -70,13 +70,14 @@ class Event {
 class MemEvent {
  public:
   MemEvent(EventType type, uint64_t start_ns, uint64_t end_ns, size_t bytes,
-           Place place, int64_t thread_id)
+           Place place, int64_t thread_id, const std::string& annotation)
       : type_(type),
         start_ns_(start_ns),
         end_ns_(end_ns),
         bytes_(bytes),
         place_(place),
-        thread_id_(thread_id) {}
+        thread_id_(thread_id),
+        annotation_(annotation) {}
 
   const EventType& type() const { return type_; }
   uint64_t start_ns() const { return start_ns_; }
@@ -84,6 +85,7 @@ class MemEvent {
   size_t bytes() const { return bytes_; }
   Place place() const { return place_; }
   int64_t thread_id() const { return thread_id_; }
+  const std::string& annotation() const { return annotation_; }
 
  private:
   EventType type_;
@@ -92,6 +94,7 @@ class MemEvent {
   size_t bytes_;
   Place place_;
   int64_t thread_id_;
+  std::string annotation_;
 };
 
 }  // namespace platform

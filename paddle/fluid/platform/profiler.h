@@ -38,8 +38,9 @@ enum ProfilerState {
 void Mark(const std::string& name);
 
 void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                  Place place);
-void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes, Place place);
+                  const Place& place);
+void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                 const Place& place);
 
 struct MemEvenRecorder {
  public:
@@ -50,7 +51,7 @@ struct MemEvenRecorder {
 
  private:
   struct RecordMemEvent {
-    RecordMemEvent(const Place& place, size_t bytes);
+    RecordMemEvent(const Place& place, size_t bytes, const std::string&);
 
     ~RecordMemEvent() {}
 
@@ -59,6 +60,8 @@ struct MemEvenRecorder {
     Place place_;
     size_t bytes_;
     uint64_t start_ns_;
+    std::string alloc_in_;
+    std::string free_in_;
     uint64_t end_ns_;
   };
 

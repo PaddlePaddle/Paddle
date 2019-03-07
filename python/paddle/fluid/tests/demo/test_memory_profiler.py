@@ -139,8 +139,10 @@ class TestMNIST(unittest.TestCase):
 
         opt_alg = _sgd_optimizer
         # opt_alg = fluid.optimizer.Adam
-        for use_cuda in [True]:  #[True, False]:
+        for use_cuda in [True, False]:
             if use_cuda and not core.is_compiled_with_cuda():
+                continue
+            if core.is_compiled_with_cuda() and use_cuda is False:
                 continue
             self.run_model(
                 fc_with_batchnorm,

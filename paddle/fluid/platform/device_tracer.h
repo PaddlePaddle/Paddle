@@ -70,6 +70,8 @@ class DeviceTracer {
     size_t bytes;
     Place place;
     int64_t thread_id;
+    std::string alloc_in;
+    std::string free_in;
   };
 
   virtual ~DeviceTracer() {}
@@ -95,7 +97,9 @@ class DeviceTracer {
                              int64_t thread_id) = 0;
 
   virtual void AddMemInfoRecord(uint64_t start_ns, uint64_t end_ns,
-                                size_t bytes, Place place,
+                                size_t bytes, const Place& place,
+                                const std::string& alloc_in,
+                                const std::string& free_in,
                                 int64_t thread_id) = 0;
 
   // Add a cuda kernel stats. `correlation_id` will be mapped to annotation
