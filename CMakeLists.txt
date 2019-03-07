@@ -100,11 +100,11 @@ option(WITH_FAST_MATH   "Make use of fast math library, might affect the precisi
 set(WITH_GPU OFF)
 set(WITH_DSO OFF)
 set(WITH_AMD_GPU OFF)
-set(WITH_DISTRIBUTE OFF)
-set(WITH_NGRAPH OFF)
-set(WITH_ANAKIN OFF)
-set(WITH_JEMALLOC OFF)
-set(WITH_GRPC OFF)
+#set(WITH_DISTRIBUTE OFF)
+#set(WITH_NGRAPH OFF)
+#set(WITH_ANAKIN OFF)
+#set(WITH_JEMALLOC OFF)
+#set(WITH_GRPC OFF)
 
 
 # PY_VERSION
