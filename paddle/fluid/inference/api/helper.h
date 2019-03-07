@@ -127,9 +127,8 @@ static void TensorAssignData(PaddleTensor *tensor,
 }
 
 template <typename T>
-static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
-                                    const std::vector<std::vector<T>> &data) {
-  int size{0};
+static void ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
+                                     const std::vector<std::vector<T>> &data) {
   auto *ptr = tensor->mutable_data<T>(PaddlePlace::kCPU);
   int c = 0;
   for (const auto &f : data) {
@@ -137,7 +136,15 @@ static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
       ptr[c++] = v;
     }
   }
-  return size;
+}
+
+template <typename T>
+static void ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
+                                     const PaddleBuf &data) {
+  auto *ptr = tensor->mutable_data<T>(PaddlePlace::kCPU);
+  for (size_t i = 0; i < data.length() / sizeof(T); i++) {
+    ptr[i] = *(reinterpret_cast<T *>(data.data()) + i);
+  }
 }
 
 static bool CompareTensor(const PaddleTensor &a, const PaddleTensor &b) {
