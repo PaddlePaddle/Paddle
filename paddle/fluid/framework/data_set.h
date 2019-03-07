@@ -34,29 +34,27 @@ class Dataset {
   virtual void SetFileList(const std::vector<std::string>& filelist);
   virtual void SetThreadNum(int thread_num);
   virtual void SetTrainerNum(int trainer_num);
-  virtual void SetDataFeedDesc(const paddle::framework::DataFeedDesc& data_feed_desc);
+  virtual void SetDataFeedDesc(
+      const paddle::framework::DataFeedDesc& data_feed_desc);
 
-  virtual const std::vector<std::string>& GetFileList() {
-    return filelist_;
-  }
-  virtual int GetThreadNum() {
-    return thread_num_;
-  }
-  virtual int GetTrainerNum() {
-    return trainer_num_;
-  }
+  virtual const std::vector<std::string>& GetFileList() { return filelist_; }
+  virtual int GetThreadNum() { return thread_num_; }
+  virtual int GetTrainerNum() { return trainer_num_; }
   virtual const paddle::framework::DataFeedDesc& GetDataFeedDesc() {
     return data_feed_desc_;
   }
 
-  virtual std::vector<std::shared_ptr<paddle::framework::DataFeed>> GetReaders();
+  virtual std::vector<std::shared_ptr<paddle::framework::DataFeed>>
+  GetReaders();
   virtual void LoadIntoMemory();
   virtual void LocalShuffle();
   // todo global shuffle
-  virtual void GlobalShuffle(); 
+  virtual void GlobalShuffle();
   virtual void CreateReaders();
+
  protected:
-  virtual int ReceiveFromClient(int msg_type, int client_id, const std::string& msg);
+  virtual int ReceiveFromClient(int msg_type, int client_id,
+                                const std::string& msg);
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers_;
   int thread_num_;
   std::string fs_name_;
@@ -66,5 +64,5 @@ class Dataset {
   int trainer_num_;
 };
 
-}
-}
+}  // end namespace framework
+}  // end namespace paddle
