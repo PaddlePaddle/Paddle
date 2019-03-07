@@ -142,7 +142,7 @@ void BenchAllImpls(const typename KernelTuples::attr_type& attr, Args... args) {
     }
   }
   // Test result from Get function
-  auto tgt = jit::Get<KT, KernelTuples, PlaceType>(attr);
+  auto tgt = jit::KernelFuncs<KT, KernelTuples, PlaceType>::Cache().At(attr);
   if (!tgt) {
     LOG(FATAL) << "Target can not be empty!";
   }
