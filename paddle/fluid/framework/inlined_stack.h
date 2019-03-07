@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <array>
 #include <deque>
 #include "paddle/fluid/platform/enforce.h"
 
@@ -22,7 +21,7 @@ namespace paddle {
 namespace framework {
 
 template <typename T, size_t N>
-class SmallStack {
+class InlinedStack {
   static_assert(N > 0, "N must be larger than 0");
 
  public:
@@ -66,8 +65,8 @@ class SmallStack {
 
  private:
   T head_[N];
+  size_t size_{0};
   std::deque<T> tail_;
-  size_t size_;
 };
 
 }  // namespace framework

@@ -77,6 +77,7 @@ void TemporaryAllocator::FreeImpl(alloc::Allocation *temp_allocation) {
   }
   VLOG(10) << "Delete temporary allocation " << temp_allocation->ptr()
            << " size: " << temp_allocation->size();
+  alloc::AllocationDeleter()(temp_allocation);
 }
 
 size_t TemporaryAllocator::TemporaryAllocationQueueSize() {
