@@ -17,8 +17,10 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 #include <vector>
 #ifdef WITH_GPERFTOOLS
 #include <gperftools/profiler.h>
@@ -252,7 +254,11 @@ void TestMultiThreadPrediction(
   int batch_size = FLAGS_batch_size;
   int num_times = FLAGS_repeat;
   std::vector<std::thread> threads;
-  auto main_predictor = CreateTestPredictor(config, use_analysis);
+  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
+  predictors.emplace_back(CreateTestPredictor(config, use_analysis));
+  for (int tid = 1; tid < num_threads; tid++) {
+    predictors.emplace_back(predictors.front()->Clone());
+  }
 
   size_t total_time{0};
   for (int tid = 0; tid < num_threads; ++tid) {
@@ -260,9 +266,7 @@ void TestMultiThreadPrediction(
       // Each thread should have local inputs and outputs.
       // The inputs of each thread are all the same.
       std::vector<PaddleTensor> outputs_tid;
-      // To ensure the thread binding correctly,
-      // please clone inside the threadpool.
-      auto predictor = main_predictor->Clone();
+      auto &predictor = predictors[tid];
 #ifdef PADDLE_WITH_MKLDNN
       if (use_analysis) {
         static_cast<AnalysisPredictor *>(predictor.get())

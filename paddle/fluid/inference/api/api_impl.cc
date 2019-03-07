@@ -131,6 +131,9 @@ NativePaddlePredictor::~NativePaddlePredictor() {
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 std::vector<PaddleTensor> *output_data,
                                 int batch_size) {
+  if (UNLIKELY(config_.cpu_math_library_num_threads() > 1)) {
+    paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+  }
   VLOG(3) << "Predictor::predict";
   Timer timer;
   timer.tic();
@@ -290,7 +293,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
-    // 1. GPU memeroy
+    // 1. GPU memory
     PADDLE_ENFORCE_GE(
         config.fraction_of_gpu_memory, 0.f,
         "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
