@@ -81,18 +81,18 @@ void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
   auto *weight1 =
       GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(shape1);
   auto *mean_data = static_cast<float *>(weight1->h_tensor().mutable_data());
-  std::copy_n(mean_t.data<float>(), mean_t.numel(),
-              mean_data);
+  std::copy_n(mean_t.data<float>(), mean_t.numel(), mean_data);
   engine_->AddOpAttr(bn_op_name, "weight_1", *weight1);
 
   auto *weight2 =
       GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(shape2);
-  auto *variance_data = static_cast<float *>(weight2->h_tensor().mutable_data());
+  auto *variance_data =
+      static_cast<float *>(weight2->h_tensor().mutable_data());
   std::copy_n(variance_t.data<float>(), variance_t.numel(), variance_data);
   engine_->AddOpAttr(bn_op_name, "weight_2", *weight2);
 
   Shape shape3(std::vector<int>({1, 1, 1, 1}));
-  auto *weight3  =
+  auto *weight3 =
       GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(shape3);
   auto *alpha_data = static_cast<float *>(weight3->h_tensor().mutable_data());
   float weight3_data[] = {1};
