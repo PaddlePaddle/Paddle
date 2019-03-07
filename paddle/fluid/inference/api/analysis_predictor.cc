@@ -362,6 +362,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
+    argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
   }
 
   if (config_.use_mkldnn_) {
