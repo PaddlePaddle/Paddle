@@ -71,6 +71,20 @@ void VAddBias(const T* a, const T* x, T* y, int n) {
 }
 
 template <typename T>
+void VCopy(const T* x, T* y, int n) {
+  std::memcpy(y, x, n * sizeof(T));
+}
+
+// x shape: (x_len)
+// y shape: (h, x_len)
+template <typename T>
+void VBroadcast(const T* x, T* y, int64_t y_h, int64_t x_len) {
+  for (int64_t h = 0; h < y_h; ++h) {
+    VCopy(x, y + h * x_len, x_len);
+  }
+}
+
+template <typename T>
 void VRelu(const T* x, T* y, int n) {
   for (int i = 0; i < n; ++i) {
     y[i] = x[i] > 0 ? x[i] : 0;
@@ -500,6 +514,7 @@ DECLARE_REFER_KERNEL(VExp, XYNTuples);
 DECLARE_REFER_KERNEL(VSigmoid, XYNTuples);
 DECLARE_REFER_KERNEL(VTanh, XYNTuples);
 DECLARE_REFER_KERNEL(VSquare, XYNTuples);
+DECLARE_REFER_KERNEL(VCopy, XYNTuples);
 
 // lstm_t*, const lstm_attr_t*
 DECLARE_REFER_KERNEL(LSTMCtHt, LSTMTuples);
@@ -527,6 +542,8 @@ DECLARE_REFER_KERNEL(Softmax, SoftmaxTuples);
 DECLARE_REFER_KERNEL(EmbSeqPool, EmbSeqPoolTuples);
 
 DECLARE_REFER_KERNEL(Sgd, SgdTuples);
+
+DECLARE_REFER_KERNEL(VBroadcast, VBroadcastTuples);
 
 #undef DECLARE_REFER_KERNEL
 
