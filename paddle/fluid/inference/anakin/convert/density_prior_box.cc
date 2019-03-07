@@ -35,7 +35,7 @@ void DensityPriorBoxOpConverter::operator()(const framework::proto::OpDesc &op,
   auto image_name = op_desc.Input("Image").front();
   auto output_name = op_desc.Output("Boxes").front();
 
-  auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
+  auto op_name = op_desc.Type() + ":" + op_desc.Output("Boxes").front();
 
   auto fixed_sizes =
       boost::get<std::vector<float>>(op_desc.GetAttr("fixed_sizes"));
@@ -52,14 +52,18 @@ void DensityPriorBoxOpConverter::operator()(const framework::proto::OpDesc &op,
   auto step_w = boost::get<float>(op_desc.GetAttr("step_w"));
   auto offset = boost::get<float>(op_desc.GetAttr("offset"));
   std::vector<std::string> order = {"MIN", "COM", "MAX"};
+  std::vector<float> temp_v = {};
 
   engine_->AddOp(op_name, "PriorBox", {input_name, image_name}, {output_name});
+  engine_->AddOpAttr<PTuple<float>>(op_name, "min_size", temp_v);
+  engine_->AddOpAttr<PTuple<float>>(op_name, "max_size", temp_v);
+  engine_->AddOpAttr<PTuple<float>>(op_name, "aspect_ratio", temp_v);
   engine_->AddOpAttr<PTuple<float>>(op_name, "fixed_sizes", fixed_sizes);
   engine_->AddOpAttr<PTuple<float>>(op_name, "fixed_ratios", fixed_ratios);
   engine_->AddOpAttr<PTuple<int>>(op_name, "density", densities);
-  engine_->AddOpAttr(op_name, "flip", false);
-  engine_->AddOpAttr(op_name, "clip", clip);
-  engine_->AddOpAttr<PTuple<float>>(op_name, "variances", variances);
+  engine_->AddOpAttr(op_name, "is_flip", false);
+  engine_->AddOpAttr(op_name, "is_clip", clip);
+  engine_->AddOpAttr<PTuple<float>>(op_name, "variance", variances);
   engine_->AddOpAttr(op_name, "img_h", static_cast<int>(0));
   engine_->AddOpAttr(op_name, "img_w", static_cast<int>(0));
   engine_->AddOpAttr(op_name, "step_h", step_h);

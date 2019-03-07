@@ -47,6 +47,7 @@ class AnakinOpConverter {
     std::string op_type = op_desc.Type();
     AnakinOpConverter *it = nullptr;
 
+    std::cout << op_type << std::endl;
     if (!it) {
       it = Registry<AnakinOpConverter>::Global().Lookup(op_type);
     }

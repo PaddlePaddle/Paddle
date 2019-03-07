@@ -44,6 +44,29 @@ TEST(concat_op, test) {
   validator.Execute(1);
 }
 
+TEST(concat_op, test2) {
+  std::unordered_set<std::string> parameters({""});
+  framework::Scope scope;
+  AnakinConvertValidation validator(parameters, scope);
+  validator.DeclInputVar("concat_x1", {1, 4});
+  validator.DeclInputVar("concat_x2", {3, 4});
+  validator.DeclInputVar("concat_x3", {2, 4});
+  validator.DeclOutputVar("concat_out", {6, 4});
+
+  // Prepare Op description
+  framework::OpDesc desc;
+  desc.SetType("concat");
+  desc.SetInput("X", {"concat_x1", "concat_x2", "concat_x3"});
+  desc.SetOutput("Out", {"concat_out"});
+
+  int axis = 0;
+  desc.SetAttr("axis", axis);
+
+  validator.SetOp(*desc.Proto());
+
+  validator.Execute(1);
+}
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

@@ -40,6 +40,11 @@ void TransposeOpConverter::operator()(const framework::proto::OpDesc &op,
   engine_->AddOp(op_name, "Permute", {input}, {output});
 
   auto axis = boost::get<std::vector<int>>(op_desc.GetAttr("axis"));
+  size_t axis_size = axis.size();
+  while (axis.size() < 4) {
+    axis.push_back(axis_size);
+    axis_size += 1;
+  }
   engine_->AddOpAttr<PTuple<int>>(op_name, "dims", axis);
 }
 
@@ -47,4 +52,4 @@ void TransposeOpConverter::operator()(const framework::proto::OpDesc &op,
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(transpose, TransposeOpConverter);
+REGISTER_ANAKIN_OP_CONVERTER(transpose2, TransposeOpConverter);

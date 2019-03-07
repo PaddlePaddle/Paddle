@@ -39,10 +39,17 @@ void DetectionOutOpConverter::operator()(const framework::proto::OpDesc &op,
   auto code_type = boost::get<std::string>(op_desc.GetAttr("code_type"));
   auto background_label = boost::get<int>(op_desc.GetAttr("background_label"));
   auto score_threshold = boost::get<float>(op_desc.GetAttr("score_threshold"));
-  auto nms_top_k = boost::get<float>(op_desc.GetAttr("nms_top_k"));
+  auto nms_top_k = boost::get<int>(op_desc.GetAttr("nms_top_k"));
   auto nms_threshold = boost::get<float>(op_desc.GetAttr("nms_threshold"));
   auto nms_eta = boost::get<float>(op_desc.GetAttr("nms_eta"));
   auto keep_top_k = boost::get<int>(op_desc.GetAttr("keep_top_k"));
+  std::string anakin_code_type;
+  if (code_type == "decode_center_size") {
+    anakin_code_type = "CENTER_SIZE";
+  } else if (code_type == "encode_center_size") {
+    PADDLE_THROW(
+        "Not support encode_center_size code_type in DetectionOut of anakin");
+  }
 
   engine_->AddOp(op_name, "DetectionOutput",
                  {target_name, scores_name, prior_box_name}, {output_name});
@@ -51,7 +58,7 @@ void DetectionOutOpConverter::operator()(const framework::proto::OpDesc &op,
   engine_->AddOpAttr(op_name, "class_num", static_cast<int>(0));
   engine_->AddOpAttr(op_name, "background_id", background_label);
   engine_->AddOpAttr(op_name, "keep_top_k", keep_top_k);
-  engine_->AddOpAttr(op_name, "code_type", code_type);
+  engine_->AddOpAttr(op_name, "code_type", anakin_code_type);
   engine_->AddOpAttr(op_name, "conf_thresh", score_threshold);
   engine_->AddOpAttr(op_name, "nms_top_k", nms_top_k);
   engine_->AddOpAttr(op_name, "nms_thresh", nms_threshold);

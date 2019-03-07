@@ -72,6 +72,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
       "infer_clean_graph_pass",  //
       "simplify_anakin_detection_pattern_pass3", "fc_fuse_pass",
+      "conv_elementwise_add_fuse_pass", "conv_bn_fuse_pass",
       "conv_elementwise_add_fuse_pass", "anakin_subgraph_pass",
       //     "identity_scale_op_clean_pass",              //
       /*

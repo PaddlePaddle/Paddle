@@ -27,13 +27,13 @@ TEST(flatten_op, test) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, scope);
-  validator.DeclInputVar("flatten-X", {3, 100, 100, 4});
-  validator.DeclOutputVar("flatten-Out", {1, 300, 400, 1});
+  validator.DeclInputVar("flatten-X", {3, 10, 10, 4});
+  validator.DeclOutputVar("flatten-Out", {3, 400, 1, 1});
   framework::OpDesc desc;
   desc.SetType("flatten");
   desc.SetInput("X", {"flatten-X"});
   desc.SetOutput("Out", {"flatten-Out"});
-  desc.SetAttr("axis", 2);
+  desc.SetAttr("axis", 1);
 
   LOG(INFO) << "set OP";
   validator.SetOp(*desc.Proto());
