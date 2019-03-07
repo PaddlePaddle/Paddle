@@ -51,6 +51,7 @@ __all__ = [
     'yolov3_loss',
     'box_clip',
     'multiclass_nms',
+    'box_decoder_and_assign',
 ]
 
 
@@ -545,15 +546,16 @@ def yolov3_loss(x,
         TypeError: Attr ignore_thresh of yolov3_loss must be a float number
 
     Examples:
-    .. code-block:: python
+      .. code-block:: python
 
-        x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
-        gtbox = fluid.layers.data(name='gtbox', shape=[6, 5], dtype='float32')
-        gtlabel = fluid.layers.data(name='gtlabel', shape=[6, 1], dtype='int32')
-        anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
-        anchors = [0, 1, 2]
-        loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80, anchors=anchors, 
-                                        ignore_thresh=0.5, downsample_ratio=32)
+          x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
+          gtbox = fluid.layers.data(name='gtbox', shape=[6, 5], dtype='float32')
+          gtlabel = fluid.layers.data(name='gtlabel', shape=[6, 1], dtype='int32')
+          anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
+          anchor_mask = [0, 1, 2]
+          loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, gtlabel=gtlabel, anchors=anchors, 
+                                          anchor_mask=anchor_mask, class_num=80,
+                                          ignore_thresh=0.7, downsample_ratio=32)
     """
     helper = LayerHelper('yolov3_loss', **locals())
 
@@ -2220,3 +2222,65 @@ def multiclass_nms(bboxes,
     output.stop_gradient = True
 
     return output
+
+
+@templatedoc()
+def box_decoder_and_assign(prior_box,
+                           prior_box_var,
+                           target_box,
+                           box_score,
+                           box_clip,
+                           name=None):
+    """
+    ${comment}
+    Args:
+        prior_box(${prior_box_type}): ${prior_box_comment}
+        prior_box_var(${prior_box_var_type}): ${prior_box_var_comment}
+        target_box(${target_box_type}): ${target_box_comment}
+        box_score(${box_score_type}): ${box_score_comment}
+        box_clip(${box_clip_type}): ${box_clip_comment}
+        name(str|None): The name of this operator
+    Returns:
+        decode_box(Variable), output_assign_box(Variable):
+
+            two variables:
+
+            - decode_box(${decode_box_type}): ${decode_box_comment}
+            - output_assign_box(${output_assign_box_type}): ${output_assign_box_comment}
+
+    Examples:
+        .. code-block:: python
+
+            pb = fluid.layers.data(
+                name='prior_box', shape=[20, 4], dtype='float32')
+            pbv = fluid.layers.data(
+                name='prior_box_var', shape=[1, 4], dtype='float32')
+            loc = fluid.layers.data(
+                name='target_box', shape=[20, 4*81], dtype='float32')
+            scores = fluid.layers.data(
+                name='scores', shape=[20, 81], dtype='float32')
+            decoded_box, output_assign_box = fluid.layers.box_decoder_and_assign(
+                pb, pbv, loc, scores, 4.135)
+
+    """
+    helper = LayerHelper("box_decoder_and_assign", **locals())
+
+    decoded_box = helper.create_variable_for_type_inference(
+        dtype=prior_box.dtype)
+    output_assign_box = helper.create_variable_for_type_inference(
+        dtype=prior_box.dtype)
+
+    helper.append_op(
+        type="box_decoder_and_assign",
+        inputs={
+            "PriorBox": prior_box,
+            "PriorBoxVar": prior_box_var,
+            "TargetBox": target_box,
+            "BoxScore": box_score
+        },
+        attrs={"box_clip": box_clip},
+        outputs={
+            "DecodeBox": decoded_box,
+            "OutputAssignBox": output_assign_box
+        })
+    return decoded_box, output_assign_box
