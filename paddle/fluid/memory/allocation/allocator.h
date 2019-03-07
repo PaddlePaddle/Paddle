@@ -16,7 +16,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/small_stack.h"
+#include "paddle/fluid/framework/inlined_stack.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -82,7 +82,7 @@ class Allocation {
   std::vector<Allocator*> GetAllocatorChain() const {
     std::vector<Allocator*> allocators;
     for (size_t i = 0; i < allocator_chain_.size(); ++i) {
-      allocators[i] = allocator_chain_[i];
+      allocators.push_back(allocator_chain_[i]);
     }
     return allocators;
   }
@@ -100,7 +100,7 @@ class Allocation {
   void* ptr_;
   size_t size_;
   platform::Place place_;
-  framework::SmallStack<Allocator*, 8> allocator_chain_;
+  framework::InlinedStack<Allocator*, 8> allocator_chain_;
 
   friend class Allocator;
   friend class AllocationDeleter;

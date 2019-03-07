@@ -474,6 +474,23 @@ void BenchCRFDecodingKernel() {
   }
 }
 
+template <jit::KernelType KT, typename T, typename PlaceType>
+void BenchVBroadcastKernel() {
+  for (int64_t w : {1, 16, 64, 100, 256}) {
+    Tensor x;
+    x.Resize({w});
+    RandomVec<T>(w, x.mutable_data<T>(PlaceType()));
+    const T* x_data = x.data<T>();
+    for (int h : TestSizes()) {
+      Tensor y;
+      y.Resize({h * w});
+      T* y_data = y.mutable_data<T>(PlaceType());
+      BenchAllImpls<KT, jit::VBroadcastTuples<T>, PlaceType>(
+          w, x_data, y_data, static_cast<int64_t>(h), w);
+    }
+  }
+}
+
 using T = float;
 using CPUPlace = paddle::platform::CPUPlace;
 
@@ -498,6 +515,7 @@ BENCH_FP32_CPU(kVSquare) { BenchXYNKernel<jit::kVSquare, T, CPUPlace>(); }
 BENCH_FP32_CPU(kVExp) { BenchXYNKernel<jit::kVExp, T, CPUPlace>(); }
 BENCH_FP32_CPU(kVSigmoid) { BenchXYNKernel<jit::kVSigmoid, T, CPUPlace>(); }
 BENCH_FP32_CPU(kVTanh) { BenchXYNKernel<jit::kVTanh, T, CPUPlace>(); }
+BENCH_FP32_CPU(kVCopy) { BenchXYNKernel<jit::kVCopy, T, CPUPlace>(); }
 
 // lstm and peephole
 BENCH_FP32_CPU(kLSTMCtHt) { BenchLSTMKernel<jit::kLSTMCtHt, T, CPUPlace>(); }
@@ -533,6 +551,11 @@ BENCH_FP32_CPU(kLayerNorm) {
 // crfdecoding
 BENCH_FP32_CPU(kCRFDecoding) {
   BenchCRFDecodingKernel<jit::kCRFDecoding, T, CPUPlace>();
+}
+
+// vbroadcast function
+BENCH_FP32_CPU(kVBroadcast) {
+  BenchVBroadcastKernel<jit::kVBroadcast, T, CPUPlace>();
 }
 
 // Benchmark all jit kernels including jitcode, mkl and refer.

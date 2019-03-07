@@ -34,7 +34,8 @@ namespace detail {
 class BuddyAllocator {
  public:
   BuddyAllocator(std::unique_ptr<SystemAllocator> system_allocator,
-                 size_t min_chunk_size, size_t max_chunk_size);
+                 size_t min_chunk_size, size_t first_allocate_chunk_size,
+                 size_t reallocate_chunk_size);
 
   ~BuddyAllocator();
 
@@ -57,7 +58,7 @@ class BuddyAllocator {
   using PoolSet = std::set<IndexSizeAddress>;
 
   /*! \brief Allocate fixed-size memory from system */
-  void* SystemAlloc(size_t size);
+  void* SystemAlloc(size_t size, bool is_managed = true);
 
   /*! \brief If existing chunks are not suitable, refill pool */
   PoolSet::iterator RefillPool();
@@ -87,7 +88,11 @@ class BuddyAllocator {
   size_t total_free_ = 0;  // the total size of free memory
 
   size_t min_chunk_size_;  // the minimum size of each chunk
-  size_t max_chunk_size_;  // the maximum size of each chunk
+
+  size_t first_allocate_chunk_size_;
+  size_t reallocate_chunk_size_;
+
+  size_t max_chunk_size_;
 
  private:
   /**

@@ -41,7 +41,7 @@ class MultiBinBufferedAllocator : public Allocator {
   void FreeImpl(Allocation* allocation) override;
 
  private:
-  void FreeCache(size_t size, size_t bin_index);
+  size_t FreeCache(size_t size, size_t bin_index);
 
   std::shared_ptr<Allocator> underlying_allocator_;
   std::vector<std::multimap<size_t, AllocationPtr>> allocations_;

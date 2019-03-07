@@ -159,6 +159,7 @@ def __bootstrap__():
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
+            'initial_gpu_memory_in_mb', 'reallocate_gpu_memory_in_mb',
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
             'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',

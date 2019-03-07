@@ -41,6 +41,8 @@ typedef enum {
   kVAdd,
   kVAddBias,
   kVAddRelu,
+  kVBroadcast,
+  kVCopy,
   kVExp,
   kVIdentity,
   kVMul,
@@ -131,6 +133,13 @@ struct GRUTuples {
   typedef T data_type;
   typedef gru_attr_t attr_type;
   typedef void (*func_type)(gru_t*, const gru_attr_t*);
+};
+
+template <typename T>
+struct VBroadcastTuples {
+  typedef T data_type;
+  typedef int64_t attr_type;
+  typedef void (*func_type)(const T*, T*, int64_t, int64_t);
 };
 
 typedef struct seq_pool_attr_s {

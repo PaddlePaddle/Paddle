@@ -14,15 +14,89 @@
 
 #include "paddle/fluid/memory/allocation/multi_bin_buffered_allocator.h"
 #include <algorithm>
+#include <cctype>
+#include <fstream>
 #include <limits>
+#include <sstream>
+#include <string>
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 
 DEFINE_double(tolerant_times, 2,
               "Tolerant memory size times of buffered_allocator");
 
+DEFINE_string(division_plan_path, "", "Division plan file path");
+
 namespace paddle {
 namespace memory {
 namespace allocation {
+
+std::string TrimStringAndToLowerCase(const std::string &str) {
+  auto not_space = [](char ch) { return std::isspace(ch) == 0; };
+  auto first_idx = static_cast<size_t>(
+      std::find_if(str.begin(), str.end(), not_space) - str.begin());
+  auto last_idx = static_cast<size_t>(
+      std::find_if(str.rbegin(), str.rend(), not_space) - str.rbegin());
+  if (first_idx == str.size() || last_idx == str.size()) return "";
+
+  last_idx = str.size() - 1 - last_idx;
+  auto ret = str.substr(first_idx, last_idx - first_idx);
+  std::for_each(ret.begin(), ret.end(),
+                [](char &ch) { ch = std::tolower(ch); });
+  return ret;
+}
+
+static size_t ParseStringToBytes(const std::string &str) {
+  std::string ret = str;
+  if (ret.back() == 'b') {
+    ret.pop_back();
+  }
+
+  PADDLE_ENFORCE(!ret.empty(), "Wrong format: %s", str);
+  size_t multiples = 1;
+  switch (ret.back()) {
+    case 'g':
+      multiples *= (static_cast<size_t>(1) << 30);
+      break;
+    case 'm':
+      multiples *= (static_cast<size_t>(1) << 20);
+      break;
+    case 'k':
+      multiples *= (static_cast<size_t>(1) << 10);
+      break;
+    default:
+      break;
+  }
+
+  if (multiples != 1) ret.pop_back();
+  ret = TrimStringAndToLowerCase(ret);
+  double ret_val = 0.0;
+  std::stringstream ss(ret);
+  PADDLE_ENFORCE((ss >> ret_val).good(), "Wrong format %s", str);
+  return static_cast<size_t>(ret_val * multiples);
+}
+
+static std::string GetDebugStringOfPlan(const std::vector<size_t> &plan) {
+  std::string ret("[");
+  for (auto sz : plan) {
+    ret += string::HumanReadableSize(sz);
+    ret += ", ";
+  }
+  return ret + "]";
+}
+
+static std::vector<size_t> ReadDivisionPlanFromFile(
+    const std::string &filepath) {
+  std::ifstream is(filepath.c_str());
+  PADDLE_ENFORCE(is.good(), "File not exist");
+  std::string str;
+  std::vector<size_t> plan;
+  while (std::getline(is, str).good()) {
+    str = TrimStringAndToLowerCase(str);
+    if (str.empty()) break;
+    plan.push_back(ParseStringToBytes(str));
+  }
+  return plan;
+}
 
 static void CheckAndModifyMemoryDivisionPlan(
     std::vector<size_t> *division_plan) {
@@ -50,10 +124,21 @@ static void CheckAndModifyMemoryDivisionPlan(
 }
 
 static std::vector<size_t> GetDefaultDivisionPlan() {
+  if (!FLAGS_division_plan_path.empty()) {
+    return ReadDivisionPlanFromFile(FLAGS_division_plan_path);
+  }
+
+  constexpr size_t kMaxLogSize = 30;
+
   std::vector<size_t> plan;
+  for (size_t i = 12; i <= kMaxLogSize; ++i) {
+    plan.push_back(static_cast<size_t>(1) << i);
+  }
+  /*
   for (size_t i = 0; i < sizeof(size_t) * 8; ++i) {
     plan.push_back(static_cast<size_t>(1) << i);
   }
+  */
   return plan;
 }
 
@@ -78,27 +163,32 @@ MultiBinBufferedAllocator::MultiBinBufferedAllocator(
     : underlying_allocator_(std::move(underlying_allocator)),
       division_plan_(division_plan) {
   CheckAndModifyMemoryDivisionPlan(&division_plan_);
-  allocations_.resize(division_plan_.size());
-  mtx_.resize(division_plan_.size());
+  allocations_.resize(division_plan_.size() - 1);
+  mtx_.resize(division_plan_.size() - 1);
   if (underlying_allocator_->IsAllocThreadSafe()) {
     for (auto &mtx : mtx_) {
       mtx.reset(new std::mutex());
     }
   }
 
+  VLOG(1) << "Division plan is: " << GetDebugStringOfPlan(division_plan_);
   VLOG(1) << "FLAGS_tolerant_times = " << FLAGS_tolerant_times;
 }
 
 void MultiBinBufferedAllocator::FreeImpl(Allocation *allocation) {
   auto bin_index = FindDivisionPlanBinIndex(division_plan_, allocation->size());
-  {
+  if (bin_index < allocations_.size()) {
     platform::LockGuardPtr<std::mutex> guard(mtx_[bin_index]);
     allocations_[bin_index].emplace(allocation->size(),
                                     AllocationPtr(allocation));
+  } else {
+    underlying_allocator_->Free(allocation);
   }
 }
 
-void MultiBinBufferedAllocator::FreeCache(size_t size, size_t bin_index) {
+// bin_index is not used currently.
+// Maybe we can design more flexible FreeCache strategy based on bin_index
+size_t MultiBinBufferedAllocator::FreeCache(size_t size, size_t bin_index) {
   size_t accumulated_size = 0;
   // FIXME(zjl): free the largest first when there is no extra
   for (size_t i = allocations_.size() - 1; i != static_cast<size_t>(-1); --i) {
@@ -110,33 +200,53 @@ void MultiBinBufferedAllocator::FreeCache(size_t size, size_t bin_index) {
       underlying_allocator_->Free(it->second.release());
       allocations_[i].erase(it--);
       if (accumulated_size >= size) {
-        return;
+        return accumulated_size;
       }
     } while (!allocations_[i].empty());
   }
+  return accumulated_size;
 }
 
 Allocation *MultiBinBufferedAllocator::AllocateImpl(size_t size, Attr attr) {
   auto bin_index = FindDivisionPlanBinIndex(division_plan_, size);
   auto upper_size = TolerantUpperSize(size);
 
-  for (; upper_size >= division_plan_[bin_index]; ++bin_index) {
+  // if (bin_index >= allocations_.size()) {
+  //  VLOG(2) << "Allocate " << size << " from underlying directly";
+  //}
+
+  for (; bin_index < allocations_.size() &&
+         upper_size >= division_plan_[bin_index];
+       ++bin_index) {
     auto &allocation = allocations_[bin_index];
     platform::LockGuardPtr<std::mutex> lock(mtx_[bin_index]);
     auto it = allocation.lower_bound(size);
-    if (it != allocation.end() && it->second->size() < upper_size) {
+    if (it != allocation.end() && it->second->size() <= upper_size) {
+      size_t sz = it->second->size();
       auto ret = std::move(it->second);
       allocation.erase(it);
+      VLOG(3) << "Allocate " << sz << "(required " << size
+              << ") from cache directly";
       return ret.release();
     }
   }
 
-  try {
-    return underlying_allocator_->Allocate(size, attr).release();
-  } catch (BadAlloc &) {
-    VLOG(2) << "BadAlloc raises, try to free " << size << " caches";
-    FreeCache(size, bin_index);
-    return underlying_allocator_->Allocate(size, attr).release();
+  size_t retry_time = 1;
+  while (true) {
+    try {
+      auto ret = underlying_allocator_->Allocate(size, attr).release();
+      VLOG(2) << "Allocate " << size << " from underlying directly";
+      return ret;
+    } catch (BadAlloc &) {
+      VLOG(1) << retry_time << "-th BadAlloc raises, try to free " << size
+              << " bytes caches";
+      // size_t actual_free_size = FreeCache(size, bin_index);
+      size_t actual_free_size = FreeCache(-1UL, bin_index);
+      VLOG(1) << retry_time << "-th free " << actual_free_size
+              << " bytes caches";
+      if (actual_free_size == 0) throw;
+    }
+    ++retry_time;
   }
 }
 
