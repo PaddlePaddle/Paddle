@@ -19,13 +19,13 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/framework/data_set.h"
 
 namespace paddle {
 namespace framework {
@@ -112,11 +112,7 @@ class Executor {
 
   void EnableMKLDNN(const ProgramDesc& program);
 
-  void RunFromTrainerDesc(const ProgramDesc& main_program,
-                          const std::string& trainer_desc_str,
-                          const bool debug);
-
-  void RunFromDataset(const ProgramDesc& main_program, Dataset* dataset,
+  void RunFromDataset(const ProgramDesc& main_program, const Dataset& dataset,
                       const std::string& trainer_desc_str, const bool debug);
 
  public:

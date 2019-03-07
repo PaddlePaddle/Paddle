@@ -115,6 +115,10 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
   }
 }
 
+void Executor::RunFromDataset(const ProgramDesc& pdesc, const Dataset& dataset,
+                              const std::string& trainer_desc_str,
+                              const bool debug) {}
+
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars,
                    const std::vector<std::string>& skip_ref_cnt_vars,
