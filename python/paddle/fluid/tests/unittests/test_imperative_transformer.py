@@ -16,10 +16,9 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid.imperative.nn import Embedding, LayerNorm, FC
+from ...imperative import Embedding, LayerNorm, FC, to_variable, Layer
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.imperative.base import to_variable
 from test_imperative_base import new_program_scope
 import numpy as np
 import six
@@ -248,19 +247,24 @@ def position_encoding_init(n_position, d_pos_vec):
     return position_enc.astype("float32")
 
 
-class PreprocessLayer(fluid.imperative.Layer):
-    def __init__(self, process_cmd, shape=None):
-        super(PreprocessLayer, self).__init__("preprocess_layer")
+class PrePostProcessLayer(Layer):
+    def __init__(self, name_scope, process_cmd, shape_len=None):
+        super(PrePostProcessLayer, self).__init__(name_scope)
         for cmd in process_cmd:
             if cmd == "n":
                 self._layer_norm = LayerNorm(
-                    begin_norm_axis=len(shape) - 1,
-                    param_attr=fluid.initializer.Constant(1.),
-                    bias_attr=fluid.initializer.Constant(0.))
+                    name_scope=self.full_name(),
+                    begin_norm_axis=shape_len - 1,
+                    param_attr=fluid.ParamAttr(
+                        initializer=fluid.initializer.Constant(1.)),
+                    bias_attr=fluid.ParamAttr(
+                        initializer=fluid.initializer.Constant(0.)))
 
-    def forward(self, out, process_cmd, dropout_rate=0.):
+    def forward(self, prev_out, out, process_cmd, dropout_rate=0.):
         for cmd in process_cmd:
-            if cmd == "n":  # add layer normalization
+            if cmd == "a":  # add residual connection
+                out = out + prev_out if prev_out else out
+            elif cmd == "n":  # add layer normalization
                 out = self._layer_norm(out)
             elif cmd == "d":  # add dropout
                 if dropout_rate:
@@ -269,14 +273,36 @@ class PreprocessLayer(fluid.imperative.Layer):
                         dropout_prob=dropout_rate,
                         seed=ModelHyperParams.dropout_seed,
                         is_test=False)
+        return out
 
 
-class MutiHeadAttentionLayer(fluid.imperative.Layer):
+class PositionwiseFeedForwardLayer(Layer):
+    def __init__(self, name_scope, d_inner_hid, d_hid, dropout_rate):
+        super(PositionwiseFeedForwardLayer, self).__init__(name_scope)
+        self._i2h = FC(name_scope=self.full_name(),
+                       size=d_inner_hid,
+                       num_flatten_dims=2,
+                       act="relu")
+        self._h2o = FC(name_scope=self.full_name(),
+                       size=d_hid,
+                       num_flatten_dims=2)
+        self._dropout_rate = dropout_rate
+
+    def forward(self, x):
+        hidden = self._i2h(x)
+        if self._dropout_rate:
+            hidden = fluid.layers.dropout(
+                hidden,
+                dropout_prob=self._dropout_rate,
+                seed=ModelHyperParams.dropout_seed,
+                is_test=False)
+        out = self._h2o(hidden)
+        return out
+
+
+class MultiHeadAttentionLayer(Layer):
     def __init__(self,
-                 queries,
-                 keys,
-                 values,
-                 attn_bias,
+                 name_scope,
                  d_key,
                  d_value,
                  d_model,
@@ -285,19 +311,76 @@ class MutiHeadAttentionLayer(fluid.imperative.Layer):
                  cache=None,
                  gather_idx=None,
                  static_kv=False):
-        self._q_fc = FC(size=d_key * n_head,
+        super(MultiHeadAttentionLayer, self).__init__(name_scope)
+        self._q_fc = FC(name_scope=self.full_name(),
+                        size=d_key * n_head,
                         bias_attr=False,
                         num_flatten_dims=2)
-        self._k_fc = FC(size=d_key * n_head,
+        self._k_fc = FC(name_scope=self.full_name(),
+                        size=d_key * n_head,
                         bias_attr=False,
                         num_flatten_dims=2)
-        self._v_fc = FC(size=d_key * n_head,
+        self._v_fc = FC(name_scope=self.full_name(),
+                        size=d_value * n_head,
                         bias_attr=False,
                         num_flatten_dims=2)
+        self._proj_fc = FC(name_scope=self.full_name(),
+                           size=self.d_model,
+                           bias_attr=False,
+                           num_flatten_dims=2)
+        self._n_head = n_head
+        self._d_key = d_key
+        self._d_value = d_value
+        self._d_model = d_model
+        self._dropout_rate = dropout_rate
+
+    def forward(self, quires, keys, values, attn_bias):
+        # compute q ,k ,v
+        q = self._q_fc(quires)
+        k = self._k_fc(keys)
+        v = self._v_fc(values)
+
+        # split head
+        reshaped_q = fluid.layers.reshape(
+            x=q, shape=[0, 0, self._n_head, self._d_key], inplace=True)
+        q = fluid.layers.transpose(x=reshaped_q, perm=[0, 2, 1, 3])
+        reshaped_k = fluid.layers.reshape(
+            x=k, shape=[0, 0, self._n_head, self._d_key], inplace=True)
+        k = fluid.layers.transpose(x=reshaped_k, perm=[0, 2, 1, 3])
+        reshaped_v = fluid.layers.reshape(
+            x=v, shape=[0, 0, self._n_head, self._d_value], inplace=True)
+        v = fluid.layers.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
+
+        #scale dot product attention
+        product = fluid.layers.matmul(
+            x=q, y=k, transpose_y=True, alpha=self._d_model**-0.5)
+        if attn_bias:
+            product += attn_bias
+        weights = fluid.layers.softmax(product)
+        if self._dropout_rate:
+            weights = fluid.layers.dropout(
+                weights,
+                dropout_prob=self._dropout_rate,
+                seed=ModelHyperParams.dropout_seed,
+                is_test=False)
+        out = fluid.layers.matmul(weights, v)
+
+        # combine heads
+        if len(out.shape) != 4:
+            raise ValueError("Input(x) should be a 4-D Tensor.")
+        trans_x = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
+        final_out = fluid.layers.reshape(
+            x=trans_x,
+            shape=[0, 0, trans_x.shape[2] * trans_x.shape[3]],
+            inplace=True)
+        # fc to output
+        proj_out = self._proj_fc(final_out)
+        return proj_out
 
 
-class EncoderSubLayer(fluid.imperative.Layer):
+class EncoderSubLayer(Layer):
     def __init__(self,
+                 name_scope,
                  n_head,
                  d_key,
                  d_value,
@@ -309,12 +392,45 @@ class EncoderSubLayer(fluid.imperative.Layer):
                  preprocess_cmd="n",
                  postprocess_cmd="da"):
 
-        super(EncoderSubLayer, self).__init__('encoderSubLayer')
-        self._pre_process_layer = PreprocessLayer(preprocess_cmd)
+        super(EncoderSubLayer, self).__init__(name_scope)
+        self._preprocess_cmd = preprocess_cmd
+        self._postprocess_cmd = postprocess_cmd
+        self._prepostprocess_dropout = prepostprocess_dropout
+
+        self._preprocess_layer = PrePostProcessLayer(self.full_name(),
+                                                     self._preprocess_cmd, 3)
+        self._multihead_attention_layer = MultiHeadAttentionLayer(
+            self.full_name(), d_key, d_value, d_model, n_head,
+            attention_dropout)
+        self._postprocess_layer = PrePostProcessLayer(
+            self.full_name(), self._postprocess_cmd, None)
+        self._preprocess_layer2 = PrePostProcessLayer(self.full_name(),
+                                                      self._preprocess_cmd, 3)
+        self._positionwise_feed_forward = PositionwiseFeedForwardLayer(
+            self.full_name(), d_inner_hid, d_model, relu_dropout)
+        self._postprocess_layer2 = PrePostProcessLayer(
+            self.full_name(), self._postprocess_cmd, None)
+
+    def forward(self, enc_input, attn_bias):
+        pre_process_multihead = self._preprocess_layer(
+            None, enc_input, self._preprocess_cmd, self._prepostprocess_dropout)
+        attn_output = self._multihead_attention_layer(pre_process_multihead,
+                                                      None, None, attn_bias)
+        attn_output = self._postprocess_layer(enc_input, attn_output,
+                                              self._postprocess_cmd,
+                                              self._prepostprocess_dropout)
+        pre_process2_output = self._preprocess_layer2(
+            None, attn_output, self._preprocess_cmd,
+            self._prepostprocess_dropout)
+        ffd_output = self._positionwise_feed_forward(pre_process2_output)
+        return self._postprocess_layer2(attn_output, ffd_output,
+                                        self._postprocess_cmd,
+                                        self._prepostprocess_dropout)
 
 
-class EncoderLayer(fluid.imperative.Layer):
+class EncoderLayer(Layer):
     def __init__(self,
+                 name_scope,
                  n_layer,
                  n_head,
                  d_key,
@@ -326,38 +442,59 @@ class EncoderLayer(fluid.imperative.Layer):
                  relu_dropout,
                  preprocess_cmd="n",
                  postprocess_cmd="da"):
+
+        super(EncoderLayer, self).__init__(name_scope)
+        self._preprocess_cmd = preprocess_cmd
         self._encoder_sublayers = list()
-        self._preprocess_layer = PreprocessLayer(preprocess_cmd)
+        self._prepostprocess_dropout = prepostprocess_dropout
+        self._n_layer = n_layer
+        self._preprocess_layer = PrePostProcessLayer(self.full_name(),
+                                                     self._preprocess_cmd, 3)
         for i in range(n_layer):
             self._encoder_sublayers.append(
-                EncoderSubLayer(n_head, d_key, d_value, d_model, d_inner_hid,
+                EncoderSubLayer(self.full_name(
+                ), n_head, d_key, d_value, d_model, d_inner_hid,
                                 prepostprocess_dropout, attention_dropout,
                                 relu_dropout, preprocess_cmd, postprocess_cmd))
 
-    # def forward(self, ):
+    def forward(self, enc_input, attn_bias):
+        for i in range(self._n_layer):
+            enc_output = self._encoder_sublayers[i](enc_input, attn_bias)
+            enc_input = enc_output
+
+        return self._preprocess_layer(None, enc_output, self._preprocess_cmd,
+                                      self._prepostprocess_dropout)
 
 
-class PrepareEncoderLayer(fluid.imperative.Layer):
-    def __init__(self, src_vocab_size, src_emb_dim, src_max_len, dropout_rate):
-        super(PrepareEncoderLayer, self).__init__('prepare_encoder_layer')
-        self.input_emb = Embedding(
+class PrepareEncoderLayer(Layer):
+    def __init__(self, name_scope, src_vocab_size, src_emb_dim, src_max_len,
+                 dropout_rate):
+        super(PrepareEncoderLayer, self).__init__(name_scope)
+        self._input_emb = Embedding(
+            name_scope=self.full_name(),
             size=[src_vocab_size, src_emb_dim],
             padding_idx=0,
             param_attr=fluid.ParamAttr(
                 name=word_emb_param_names[0],
                 initializer=fluid.initializer.Normal(0., src_emb_dim**-0.5)))
+        self._pos_emb = Embedding(
+            name_scope=self.full_name(),
+            size=[src_max_len, src_emb_dim],
+            param_attr=fluid.ParamAttr(
+                name=pos_enc_param_names[0], trainable=False))
+        self._pos_emb._w = to_variable(
+            position_encoding_init(self._src_max_len, self._src_emb_dim))
         self._src_vocab_size = src_vocab_size
         self._src_emb_dim = src_emb_dim
         self._dropout_rate = dropout_rate
         self._src_max_len = src_max_len
 
-    def forward(self, src_word):
-        src_word_emb = self.input_emb(src_word)
+    def forward(self, src_word, src_pos):
+        src_word_emb = self._input_emb(src_word)
         src_word_emb = fluid.layers.scale(
             x=src_word_emb, scale=self._src_emb_dim**0.5)
         # TODO change this to fit dynamic length input
-        pos_enc = position_encoding_init(self._src_max_len, self._src_emb_dim)
-        src_pos_enc = to_variable(pos_enc)
+        src_pos_enc = self._pos_emb(src_pos)
         src_pos_enc.stop_gradient = True
         enc_input = src_word_emb + src_pos_enc
         return fluid.layers.dropout(
@@ -367,19 +504,26 @@ class PrepareEncoderLayer(fluid.imperative.Layer):
             is_test=False) if self._dropout_rate else enc_input
 
 
-class WrapEncoderLayer(fluid.imperative.Layer):
-    def __init__(self, src_vocab_size, max_length, n_layer, n_head, d_key,
-                 d_value, d_model, d_inner_hid, prepostprocess_dropout,
+class WrapEncoderLayer(Layer):
+    def __init__(self, name_cope, src_vocab_size, max_length, n_layer, n_head,
+                 d_key, d_value, d_model, d_inner_hid, prepostprocess_dropout,
                  attention_dropout, relu_dropout, preprocess_cmd,
                  postprocess_cmd, weight_sharing):
         """
         The wrapper assembles together all needed layers for the encoder.
         """
-        super(WrapEncoderLayer, self).__init__('wrap_encoder_layer')
+        super(WrapEncoderLayer, self).__init__(name_cope)
 
         self._prepare_encoder_layer = PrepareEncoderLayer(
-            src_vocab_size, d_model, max_length, prepostprocess_dropout)
-        self._encoder = EncoderLayer(n_layer, n_head, d_key, d_value, d_model,
-                                     d_inner_hid, prepostprocess_dropout,
-                                     attention_dropout, relu_dropout,
-                                     preprocess_cmd, postprocess_cmd)
+            self.full_name(), src_vocab_size, d_model, max_length,
+            prepostprocess_dropout)
+        self._encoder = EncoderLayer(
+            self.full_name(), n_layer, n_head, d_key, d_value, d_model,
+            d_inner_hid, prepostprocess_dropout, attention_dropout,
+            relu_dropout, preprocess_cmd, postprocess_cmd)
+
+    def forward(self, enc_inputs):
+        src_word, src_pos, src_slf_attn_bias = enc_inputs
+        enc_input = self._prepare_encoder_layer(src_word, src_pos)
+        enc_output = self._encoder(enc_input, src_slf_attn_bias)
+        return enc_output

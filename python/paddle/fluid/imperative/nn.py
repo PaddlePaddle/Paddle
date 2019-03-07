@@ -23,7 +23,7 @@ from ..framework import Variable, OpProtoHolder
 from ..layers import layer_function_generator
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant
-__all__ = ['Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding']
+__all__ = ['Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'LayerNorm']
 
 
 class Conv2D(layers.Layer):
@@ -474,14 +474,14 @@ class Embedding(layers.Layer):
 @layer_function_generator.templatedoc()
 class LayerNorm(layers.Layer):
     def __init__(self,
+                 name_scope,
                  scale=True,
                  shift=True,
                  begin_norm_axis=1,
                  epsilon=1e-05,
                  param_attr=None,
                  bias_attr=None,
-                 act=None,
-                 name=None):
+                 act=None):
         """
         ${comment}
 
@@ -527,9 +527,6 @@ class LayerNorm(layers.Layer):
                 :attr:`bias_attr` is initialized as 0 if it is added. Default None.
             act(str): Activation to be applied to the output of layer normalizaiton.
                       Default None.
-            name(str): The name of this layer. It is optional. Default None, and a
-                       unique name would be generated automatically.
-
         Returns:
             ${y_comment}
 
@@ -539,12 +536,8 @@ class LayerNorm(layers.Layer):
             >>>                          dtype='float32')
             >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
         """
-        if name is None:
-            layer_name = name
-        else:
-            layer_name = "layer_norm"
 
-        super(LayerNorm, self).__init__(layer_name)
+        super(LayerNorm, self).__init__(name_scope)
         self._scale = scale
         self._shift = shift
         self._begin_norm_axis = begin_norm_axis
