@@ -71,7 +71,7 @@ std::unique_ptr<Communicator> Communicator::communicator_(nullptr);
 std::once_flag Communicator::init_flag_;
 
 void Communicator::SendThread() {
-  VLOG("SendThread start!");
+  VLOG(3) << "SendThread start!";
   while (running_) {
     std::vector<std::future<void>> task_futures;
     task_futures.reserve(send_varname_to_ctx_.size());

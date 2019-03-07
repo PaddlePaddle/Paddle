@@ -136,11 +136,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   void AppendMultiDevPass(const BuildStrategy &strategy) {
     ir::Pass *multi_devices_pass;
 
-    if (strategy_.is_distribution_) {
+    if (strategy_.async_mode_) {
+      multi_devices_pass = AppendPass("async_multi_devices_pass").get();
+    } else if (strategy_.is_distribution_) {
       VLOG(3) << "multi device parameter server mode";
       multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
-    } else if (strategy_.async_mode_) {
-      multi_devices_pass = AppendPass("async_multi_devices_pass").get();
     } else {
       if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
         VLOG(3) << "multi devices collective mode with allreduce";
