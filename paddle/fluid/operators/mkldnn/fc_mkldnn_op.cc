@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <mkldnn/include/mkldnn_types.h>
 #include <memory>
+#include <cstdlib>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -250,6 +251,12 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T> {
                    "It must use CPUPlace.");
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
+
+    char var[] = "MKL_VERBOSE=1";
+    if (putenv(var) != 0) {
+       std::cout << "Could not set MKL_VERBOSE=1" << std::endl;
+    }
+
 
     auto input = ctx.Input<Tensor>("Input");
     auto w = ctx.Input<Tensor>("W");
