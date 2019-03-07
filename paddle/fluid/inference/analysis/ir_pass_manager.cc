@@ -82,6 +82,8 @@ void IRPassManager::CreatePasses(Argument *argument,
           "model_opt_cache_dir",
           new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
+      pass->Set("use_static_engine",
+                new bool(argument->tensorrt_use_static_engine()));
     }
 
     pre_pass = pass_name;
