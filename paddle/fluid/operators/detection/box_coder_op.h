@@ -23,7 +23,7 @@ enum class BoxCodeType {
   kDecodeCenterSize = 1
 };
 
-inline BoxCodeType GetBoxCodeType(const std::string& type) {
+inline BoxCodeType GetBoxCodeType(const std::string &type) {
   if (type == "encode_center_size") {
     return BoxCodeType::kEncodeCenterSize;
   } else if (type == "decode_center_size") {
@@ -35,17 +35,18 @@ inline BoxCodeType GetBoxCodeType(const std::string& type) {
 template <typename DeviceContext, typename T>
 class BoxCoderKernel : public framework::OpKernel<T> {
  public:
-  void EncodeCenterSize(const framework::Tensor* target_box,
-                        const framework::Tensor* prior_box,
-                        const framework::Tensor* prior_box_var,
+  void EncodeCenterSize(const framework::Tensor *target_box,
+                        const framework::Tensor *prior_box,
+                        const framework::Tensor *prior_box_var,
                         const bool normalized,
-                        const std::vector<float> variance, T* output) const {
+                        const std::vector<float> variance,
+                        T *output) const {
     int64_t row = target_box->dims()[0];
     int64_t col = prior_box->dims()[0];
     int64_t len = prior_box->dims()[1];
-    auto* target_box_data = target_box->data<T>();
-    auto* prior_box_data = prior_box->data<T>();
-    const T* prior_box_var_data = nullptr;
+    auto *target_box_data = target_box->data<T>();
+    auto *prior_box_data = prior_box->data<T>();
+    const T *prior_box_var_data = nullptr;
     if (prior_box_var) {
       prior_box_var_data = prior_box_var->data<T>();
 #ifdef PADDLE_WITH_MKLML
@@ -112,24 +113,25 @@ class BoxCoderKernel : public framework::OpKernel<T> {
   }
 
   template <int axis, int var_size>
-  void DecodeCenterSize(const framework::Tensor* target_box,
-                        const framework::Tensor* prior_box,
-                        const framework::Tensor* prior_box_var,
-                        const bool normalized, std::vector<float> variance,
-                        T* output) const {
+  void DecodeCenterSize(const framework::Tensor *target_box,
+                        const framework::Tensor *prior_box,
+                        const framework::Tensor *prior_box_var,
+                        const bool normalized,
+                        std::vector<float> variance,
+                        T *output) const {
     int64_t row = target_box->dims()[0];
     int64_t col = target_box->dims()[1];
     int64_t len = target_box->dims()[2];
 
-    auto* target_box_data = target_box->data<T>();
-    auto* prior_box_data = prior_box->data<T>();
+    auto *target_box_data = target_box->data<T>();
+    auto *prior_box_data = prior_box->data<T>();
 
     T var_data[4] = {1., 1., 1., 1.};
-    T* var_ptr = var_data;
+    T *var_ptr = var_data;
     if (var_size == 2) {
-      var_ptr = const_cast<T*>(prior_box_var->data<T>());
+      var_ptr = const_cast<T *>(prior_box_var->data<T>());
     } else if (var_size == 1) {
-      var_ptr = reinterpret_cast<T*>(variance.data());
+      var_ptr = reinterpret_cast<T *>(variance.data());
     }
 
 #ifdef PADDLE_WITH_MKLML
@@ -179,16 +181,16 @@ class BoxCoderKernel : public framework::OpKernel<T> {
     }
   }
 
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* prior_box = context.Input<framework::Tensor>("PriorBox");
-    auto* prior_box_var = context.Input<framework::Tensor>("PriorBoxVar");
-    auto* target_box = context.Input<framework::LoDTensor>("TargetBox");
-    auto* output_box = context.Output<framework::Tensor>("OutputBox");
+  void Compute(const framework::ExecutionContext &context) const override {
+    auto *prior_box = context.Input<framework::Tensor>("PriorBox");
+    auto *prior_box_var = context.Input<framework::Tensor>("PriorBoxVar");
+    auto *target_box = context.Input<framework::LoDTensor>("TargetBox");
+    auto *output_box = context.Output<framework::Tensor>("OutputBox");
     std::vector<float> variance = context.Attr<std::vector<float>>("variance");
     const int axis = context.Attr<int>("axis");
     if (target_box->lod().size()) {
-      PADDLE_ENFORCE_EQ(target_box->lod().size(), 1UL,
-                        "Only support 1 level of LoD.");
+      PADDLE_ENFORCE_EQ(
+          target_box->lod().size(), 1UL, "Only support 1 level of LoD.");
     }
     if (prior_box_var) {
       PADDLE_ENFORCE(variance.empty(),
@@ -211,34 +213,58 @@ class BoxCoderKernel : public framework::OpKernel<T> {
 
     output_box->mutable_data<T>({row, col, len}, context.GetPlace());
 
-    T* output = output_box->data<T>();
+    T *output = output_box->data<T>();
     if (code_type == BoxCodeType::kEncodeCenterSize) {
-      EncodeCenterSize(target_box, prior_box, prior_box_var, normalized,
-                       variance, output);
+      EncodeCenterSize(
+          target_box, prior_box, prior_box_var, normalized, variance, output);
     } else if (code_type == BoxCodeType::kDecodeCenterSize) {
       if (prior_box_var) {
         if (axis == 0) {
-          DecodeCenterSize<0, 2>(target_box, prior_box, prior_box_var,
-                                 normalized, variance, output);
+          DecodeCenterSize<0, 2>(target_box,
+                                 prior_box,
+                                 prior_box_var,
+                                 normalized,
+                                 variance,
+                                 output);
         } else {
-          DecodeCenterSize<1, 2>(target_box, prior_box, prior_box_var,
-                                 normalized, variance, output);
+          DecodeCenterSize<1, 2>(target_box,
+                                 prior_box,
+                                 prior_box_var,
+                                 normalized,
+                                 variance,
+                                 output);
         }
       } else if (!(variance.empty())) {
         if (axis == 0) {
-          DecodeCenterSize<0, 1>(target_box, prior_box, prior_box_var,
-                                 normalized, variance, output);
+          DecodeCenterSize<0, 1>(target_box,
+                                 prior_box,
+                                 prior_box_var,
+                                 normalized,
+                                 variance,
+                                 output);
         } else {
-          DecodeCenterSize<1, 1>(target_box, prior_box, prior_box_var,
-                                 normalized, variance, output);
+          DecodeCenterSize<1, 1>(target_box,
+                                 prior_box,
+                                 prior_box_var,
+                                 normalized,
+                                 variance,
+                                 output);
         }
       } else {
         if (axis == 0) {
-          DecodeCenterSize<0, 0>(target_box, prior_box, prior_box_var,
-                                 normalized, variance, output);
+          DecodeCenterSize<0, 0>(target_box,
+                                 prior_box,
+                                 prior_box_var,
+                                 normalized,
+                                 variance,
+                                 output);
         } else {
-          DecodeCenterSize<1, 0>(target_box, prior_box, prior_box_var,
-                                 normalized, variance, output);
+          DecodeCenterSize<1, 0>(target_box,
+                                 prior_box,
+                                 prior_box_var,
+                                 normalized,
+                                 variance,
+                                 output);
         }
       }
     }
