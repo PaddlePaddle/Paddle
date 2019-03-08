@@ -25,7 +25,6 @@
 #ifdef WITH_GPERFTOOLS
 #include <gperftools/profiler.h>
 #endif
-
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
@@ -94,6 +93,14 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         float *pdata_ref = static_cast<float *>(ref_out.data.data());
         for (size_t j = 0; j < size; ++j) {
           CHECK_LE(std::abs(pdata_ref[j] - pdata[j]), FLAGS_accuracy);
+        }
+        break;
+      }
+      case PaddleDType::INT32: {
+        int32_t *pdata = static_cast<int32_t *>(out.data.data());
+        int32_t *pdata_ref = static_cast<int32_t *>(ref_out.data.data());
+        for (size_t j = 0; j < size; ++j) {
+          EXPECT_EQ(pdata_ref[j], pdata[j]);
         }
         break;
       }
