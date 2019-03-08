@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/batch_norm_op.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include "paddle/fluid/framework/data_layout.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"

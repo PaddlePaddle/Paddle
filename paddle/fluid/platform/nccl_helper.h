@@ -16,9 +16,11 @@
 #pragma once
 
 #include <stdio.h>
+#include <memory>
 #include <string>
 #include <thread>  // NOLINT
 #include <typeindex>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
