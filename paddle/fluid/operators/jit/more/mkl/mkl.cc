@@ -250,23 +250,23 @@ AWALYS_USE_ME_WITH_DOUBLE(Softmax);
 
 namespace mkl = paddle::operators::jit::more::mkl;
 
-#define REGISTER_MKL_KERNEL(key, func)                        \
-  REGISTER_JITKERNEL_MORE(key, mkl, mkl::func##Kernel<float>, \
+#define REGISTER_MKL_KERNEL(func)                                 \
+  REGISTER_JITKERNEL_MORE(k##func, mkl, mkl::func##Kernel<float>, \
                           mkl::func##Kernel<double>)
 
-REGISTER_MKL_KERNEL(kMatMul, MatMul);
-REGISTER_MKL_KERNEL(kVMul, VMul);
-REGISTER_MKL_KERNEL(kVAdd, VAdd);
-REGISTER_MKL_KERNEL(kVScal, VScal);
-REGISTER_MKL_KERNEL(kVExp, VExp);
-REGISTER_MKL_KERNEL(kVSquare, VSquare);
-REGISTER_MKL_KERNEL(kVCopy, VCopy);
-REGISTER_MKL_KERNEL(kVBroadcast, VBroadcast);
-REGISTER_MKL_KERNEL(kVSigmoid, VSigmoid);
-REGISTER_MKL_KERNEL(kVTanh, VTanh);
-REGISTER_MKL_KERNEL(kSeqPool, SeqPool);
-REGISTER_MKL_KERNEL(kEmbSeqPool, EmbSeqPool);
-REGISTER_MKL_KERNEL(kSoftmax, Softmax);
-REGISTER_MKL_KERNEL(kSgd, Sgd);
+REGISTER_MKL_KERNEL(MatMul);
+REGISTER_MKL_KERNEL(VMul);
+REGISTER_MKL_KERNEL(VAdd);
+REGISTER_MKL_KERNEL(VScal);
+REGISTER_MKL_KERNEL(VExp);
+REGISTER_MKL_KERNEL(VSquare);
+REGISTER_MKL_KERNEL(VCopy);
+REGISTER_MKL_KERNEL(VBroadcast);
+REGISTER_MKL_KERNEL(VSigmoid);
+REGISTER_MKL_KERNEL(VTanh);
+REGISTER_MKL_KERNEL(SeqPool);
+REGISTER_MKL_KERNEL(EmbSeqPool);
+REGISTER_MKL_KERNEL(Softmax);
+REGISTER_MKL_KERNEL(Sgd);
 
 #undef REGISTER_MKL_KERNEL

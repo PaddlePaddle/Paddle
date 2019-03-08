@@ -53,8 +53,7 @@ struct EmbeddingVSumFunctor {
     for (size_t i = 0; i != ids_lod.size() - 1; ++i) {
       attr.index_height = ids_lod[i + 1] - ids_lod[i];
       auto emb_seqpool =
-          jit::KernelFuncs<jit::kEmbSeqPool, jit::EmbSeqPoolTuples<T>,
-                           platform::CPUPlace>::Cache()
+          jit::KernelFuncs<jit::EmbSeqPoolTuple<T>, platform::CPUPlace>::Cache()
               .At(attr);
       emb_seqpool(table, ids + ids_lod[i] * idx_width, output + i * out_width,
                   &attr);
@@ -138,8 +137,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       const T *d_output_data = d_output->data<T>();
 
       auto vbroadcast =
-          jit::KernelFuncs<jit::kVBroadcast, jit::VBroadcastTuples<T>,
-                           platform::CPUPlace>::Cache()
+          jit::KernelFuncs<jit::VBroadcastTuple<T>, platform::CPUPlace>::Cache()
               .At(out_width);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
