@@ -51,6 +51,8 @@ __all__ = [
     'yolov3_loss',
     'box_clip',
     'multiclass_nms',
+    'distribute_fpn_proposals',
+    'box_decoder_and_assign',
 ]
 
 
@@ -2221,3 +2223,138 @@ def multiclass_nms(bboxes,
     output.stop_gradient = True
 
     return output
+
+
+def distribute_fpn_proposals(fpn_rois,
+                             min_level,
+                             max_level,
+                             refer_level,
+                             refer_scale,
+                             name=None):
+    """
+    In Feature Pyramid Networks (FPN) models, it is needed to distribute all 
+    proposals into different FPN level, with respect to scale of the proposals,
+    the referring scale and the referring level. Besides, to restore the order
+    of proposals, we return an array which indicates the original index of rois
+    in current proposals. To compute FPN level for each roi, the formula is 
+    given as follows:
+    
+    .. math::
+
+        roi\_scale &= \sqrt{BBoxArea(fpn\_roi)}
+
+        level = floor(&\log(\\frac{roi\_scale}{refer\_scale}) + refer\_level)
+
+    where BBoxArea is a function to compute the area of each roi.
+
+    Args:
+        fpn_rois(variable): The input fpn_rois, the second dimension is 4.
+        min_level(int): The lowest level of FPN layer where the proposals come 
+                        from.
+        max_level(int): The highest level of FPN layer where the proposals
+                        come from.
+        refer_level(int): The referring level of FPN layer with specified scale.
+        refer_scale(int): The referring scale of FPN layer with specified level.
+        name(str|None): The name of this operator.        
+
+    Returns:
+        tuple: 
+               A tuple(multi_rois, restore_ind) is returned. The multi_rois is 
+               a list of segmented tensor variables. The restore_ind is a 2D 
+               Tensor with shape [N, 1], N is the number of total rois. It is
+               used to restore the order of fpn_rois.
+
+    Examples:
+        .. code-block:: python
+
+            fpn_rois = fluid.layers.data(
+                name='data', shape=[4], dtype='float32', lod_level=1)
+            multi_rois, restore_ind = fluid.layers.distribute_fpn_proposals(
+                fpn_rois=fpn_rois,
+                min_level=2,
+                max_level=5,
+                refer_level=4,
+                refer_scale=224)
+    """
+
+    helper = LayerHelper('distribute_fpn_proposals', **locals())
+    dtype = helper.input_dtype()
+    num_lvl = max_level - min_level + 1
+    multi_rois = [
+        helper.create_variable_for_type_inference(dtype) for i in range(num_lvl)
+    ]
+    restore_ind = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(
+        type='distribute_fpn_proposals',
+        inputs={'FpnRois': fpn_rois},
+        outputs={'MultiFpnRois': multi_rois,
+                 'RestoreIndex': restore_ind},
+        attrs={
+            'min_level': min_level,
+            'max_level': max_level,
+            'refer_level': refer_level,
+            'refer_scale': refer_scale
+        })
+    return multi_rois, restore_ind
+
+
+@templatedoc()
+def box_decoder_and_assign(prior_box,
+                           prior_box_var,
+                           target_box,
+                           box_score,
+                           box_clip,
+                           name=None):
+    """
+    ${comment}
+    Args:
+        prior_box(${prior_box_type}): ${prior_box_comment}
+        prior_box_var(${prior_box_var_type}): ${prior_box_var_comment}
+        target_box(${target_box_type}): ${target_box_comment}
+        box_score(${box_score_type}): ${box_score_comment}
+        box_clip(${box_clip_type}): ${box_clip_comment}
+        name(str|None): The name of this operator
+    Returns:
+        decode_box(Variable), output_assign_box(Variable):
+
+            two variables:
+
+            - decode_box(${decode_box_type}): ${decode_box_comment}
+            - output_assign_box(${output_assign_box_type}): ${output_assign_box_comment}
+
+    Examples:
+        .. code-block:: python
+
+            pb = fluid.layers.data(
+                name='prior_box', shape=[20, 4], dtype='float32')
+            pbv = fluid.layers.data(
+                name='prior_box_var', shape=[1, 4], dtype='float32')
+            loc = fluid.layers.data(
+                name='target_box', shape=[20, 4*81], dtype='float32')
+            scores = fluid.layers.data(
+                name='scores', shape=[20, 81], dtype='float32')
+            decoded_box, output_assign_box = fluid.layers.box_decoder_and_assign(
+                pb, pbv, loc, scores, 4.135)
+
+    """
+    helper = LayerHelper("box_decoder_and_assign", **locals())
+
+    decoded_box = helper.create_variable_for_type_inference(
+        dtype=prior_box.dtype)
+    output_assign_box = helper.create_variable_for_type_inference(
+        dtype=prior_box.dtype)
+
+    helper.append_op(
+        type="box_decoder_and_assign",
+        inputs={
+            "PriorBox": prior_box,
+            "PriorBoxVar": prior_box_var,
+            "TargetBox": target_box,
+            "BoxScore": box_score
+        },
+        attrs={"box_clip": box_clip},
+        outputs={
+            "DecodeBox": decoded_box,
+            "OutputAssignBox": output_assign_box
+        })
+    return decoded_box, output_assign_box
