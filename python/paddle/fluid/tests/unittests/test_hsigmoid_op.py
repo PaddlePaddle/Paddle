@@ -151,7 +151,7 @@ class TestHSigmoidOp(OpTest):
         x = np.random.random((batch_size, feature_size)).astype("float32") * 2
         w = np.random.random(
             (num_classes - 1, feature_size)).astype("float32") * 2
-        label = np.random.randint(0, num_classes, (batch_size, 1))
+        label = np.random.randint(0, num_classes, (batch_size, 1)).astype('int64')
         bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {'X': x, 'W': w, 'Label': label, 'Bias': bias}
@@ -173,13 +173,13 @@ class TestHSigmoidOpSparse(OpTest):
         batch_size = 4
         x = np.random.random((batch_size, feature_size)).astype("float32")
         w = np.random.random((num_classes - 1, feature_size)).astype("float32")
-        label = np.array([0, 1, 4, 5])
+        label = np.array([0, 1, 4, 5]).astype('int64')
         path_table = np.array(
             [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
              (0, 2, -1, -1,
-              -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
+              -1)]).astype('int64')  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
         path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
-            1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
+            1, 0, 0, -1, -1), (0, 1, -1, -1, -1)]).astype('int64')  #np.array to store
         bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': True}
         self.inputs = {
@@ -235,9 +235,9 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             start_up = fluid.default_startup_program()
             start_up.random_seed = 1  # Fix random seed
             x = np.arange(6).reshape(6)
-            path_table = np.array([(1, 2, -1), (1, 2, -1)])
-            path_code = np.array([(1, 0, -1), (0, 0, -1)])
-            label = np.array([1, 4])
+            path_table = np.array([(1, 2, -1), (1, 2, -1)]).astype('int64')
+            path_code = np.array([(1, 0, -1), (0, 0, -1)]).astype('int64')
+            label = np.array([1, 4]).astype('int64')
 
             loss, data_list = self.hs_net_conf(is_sparse)
             optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
@@ -275,13 +275,13 @@ class TestHSigmoidOpWithCostumTree(OpTest):
         x = np.random.random((batch_size, feature_size)).astype("float32") * 2
         w = np.random.random(
             (num_classes - 1, feature_size)).astype("float32") * 2
-        label = np.array([0, 1, 4, 5])
+        label = np.array([0, 1, 4, 5]).astype('int64')
         path_table = np.array(
             [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
              (0, 2, -1, -1,
-              -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
+              -1)]).astype('int64')  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
         path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
-            1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
+            1, 0, 0, -1, -1), (0, 1, -1, -1, -1)]).astype('int64')  #np.array to store
         bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {
@@ -312,13 +312,13 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
         x = np.random.random((batch_size, feature_size)).astype("float32") * 2
         w = np.random.random(
             (num_classes - 1, feature_size)).astype("float32") * 2
-        label = np.array([0, 1, 4, 5])
+        label = np.array([0, 1, 4, 5]).astype('int64')
         path_table = np.array(
             [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
              (0, 2, -1, -1,
-              -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
+              -1)]).astype('int64')  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
         path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
-            1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
+            1, 0, 0, -1, -1), (0, 1, -1, -1, -1)]).astype('int64')  #np.array to store
         # bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {
