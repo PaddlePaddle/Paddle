@@ -37,9 +37,6 @@ DEFINE_bool(enable_rpc_profiler, false, "Enable rpc profiler or not.");
 namespace paddle {
 namespace platform {
 
-struct EventList;
-struct MemEventList;
-
 static int64_t profiler_lister_id = 0;
 static bool should_send_profile_state = false;
 std::mutex profiler_mu;
@@ -55,82 +52,15 @@ static uint32_t g_next_thread_id = 0;
 // The global mutex
 static std::mutex g_all_event_lists_mutex;
 // The total event lists of all threads
-static std::list<std::shared_ptr<EventList>> g_all_event_lists;
+static std::list<std::shared_ptr<EventList<Event>>> g_all_event_lists;
 // The thread local event list only can be accessed by the specific thread
-static thread_local std::shared_ptr<EventList> g_event_list;
+static thread_local std::shared_ptr<EventList<Event>> g_event_list;
 
-static std::list<std::shared_ptr<MemEventList>> g_all_mem_event_lists;
-static thread_local std::shared_ptr<MemEventList> g_mem_event_list;
+static std::list<std::shared_ptr<EventList<MemEvent>>> g_all_mem_event_lists;
+static thread_local std::shared_ptr<EventList<MemEvent>> g_mem_event_list;
 static std::mutex g_all_mem_event_lists_mutex;
 static thread_local int32_t g_mem_thread_id;
 static uint32_t g_mem_next_thread_id = 0;
-
-struct EventList {
-  constexpr static size_t kMB = 1024 * 1024;
-  constexpr static size_t kEventBlockSize = 16 * kMB;
-  constexpr static size_t kEventSize = sizeof(Event);
-  constexpr static size_t kEventAlign = alignof(Event);
-  constexpr static size_t kNumBlock =
-      kEventBlockSize /
-      ((kEventSize + kEventAlign - 1) / kEventAlign * kEventAlign);
-
-  template <typename... Args>
-  Event *Record(Args &&... args) {
-    if (event_blocks.empty() || event_blocks.front().size() == kNumBlock) {
-      event_blocks.emplace_front();
-      event_blocks.front().reserve(kNumBlock);
-    }
-    event_blocks.front().emplace_back(std::forward<Args>(args)...);
-    return &event_blocks.front().back();
-  }
-
-  std::vector<Event> Reduce() {
-    std::vector<Event> result;
-    for (auto &block : event_blocks) {
-      result.insert(result.begin(), std::make_move_iterator(block.begin()),
-                    std::make_move_iterator(block.end()));
-    }
-    event_blocks.clear();
-    return result;
-  }
-
-  void Clear() { event_blocks.clear(); }
-
-  std::forward_list<std::vector<Event>> event_blocks;
-};
-
-struct MemEventList {
-  constexpr static size_t kMB = 1024 * 1024;
-  constexpr static size_t kEventBlockSize = 16 * kMB;
-  constexpr static size_t kEventSize = sizeof(MemEvent);
-  constexpr static size_t kEventAlign = alignof(MemEvent);
-  constexpr static size_t kNumBlock =
-      kEventBlockSize /
-      ((kEventSize + kEventAlign - 1) / kEventAlign * kEventAlign);
-
-  template <typename... Args>
-  void Record(Args &&... args) {
-    if (event_blocks_.empty() || event_blocks_.front().size() == kNumBlock) {
-      event_blocks_.emplace_front();
-      event_blocks_.front().reserve(kNumBlock);
-    }
-    event_blocks_.front().emplace_back(std::forward<Args>(args)...);
-  }
-
-  std::vector<MemEvent> Reduce() {
-    std::vector<MemEvent> result;
-    for (auto &block : event_blocks_) {
-      result.insert(result.begin(), std::make_move_iterator(block.begin()),
-                    std::make_move_iterator(block.end()));
-    }
-    event_blocks_.clear();
-    return result;
-  }
-
-  void Clear() { event_blocks_.clear(); }
-
-  std::forward_list<std::vector<MemEvent>> event_blocks_;
-};
 
 inline uint64_t GetTimeInNsec() {
   using clock = std::conditional<std::chrono::high_resolution_clock::is_steady,
@@ -161,9 +91,9 @@ double Event::CudaElapsedMs(const Event &e) const {
 #endif
 }
 
-inline MemEventList &GetMemEventList() {
+inline EventList<MemEvent> &GetMemEventList() {
   if (!g_mem_event_list) {
-    g_mem_event_list = std::make_shared<MemEventList>();
+    g_mem_event_list = std::make_shared<EventList<MemEvent>>();
     std::lock_guard<std::mutex> guard(g_all_mem_event_lists_mutex);
     g_mem_thread_id = g_mem_next_thread_id++;
     g_all_mem_event_lists.emplace_front(g_mem_event_list);
@@ -183,10 +113,10 @@ void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
                            g_mem_thread_id, annotation);
 }
 
-inline EventList &GetEventList() {
+inline EventList<Event> &GetEventList() {
   if (!g_event_list) {
     std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
-    g_event_list = std::make_shared<EventList>();
+    g_event_list = std::make_shared<EventList<Event>>();
     g_thread_id = g_next_thread_id++;
     g_all_event_lists.emplace_front(g_event_list);
     RecoreCurThreadId(g_thread_id);
@@ -236,7 +166,6 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
                                     size_t size) {
   if (g_state == ProfilerState::kDisabled) return;
   std::lock_guard<std::mutex> guard(mtx_);
-  VLOG(10) << "MemEvenRecorder Alloc: " << place << ", " << size << ", " << ptr;
   auto &events = address_memevent_[place];
   PADDLE_ENFORCE(events.count(ptr) == 0, "");
   events.emplace(
@@ -247,7 +176,6 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
 void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place) {
   if (g_state == ProfilerState::kDisabled) return;
   std::lock_guard<std::mutex> guard(mtx_);
-  VLOG(10) << "MemEvenRecorder Free : " << place << ", " << ptr;
   auto &events = address_memevent_[place];
   auto iter = events.find(ptr);
   PADDLE_ENFORCE(iter != events.end(), "");

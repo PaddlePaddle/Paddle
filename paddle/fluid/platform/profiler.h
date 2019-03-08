@@ -126,6 +126,41 @@ enum EventSortingKey {
   kGPUTime
 };
 
+template <typename T>
+struct EventList {
+  constexpr static size_t kMB = 1024 * 1024;
+  constexpr static size_t kEventBlockSize = 16 * kMB;
+  constexpr static size_t kEventSize = sizeof(T);
+  constexpr static size_t kEventAlign = alignof(T);
+  constexpr static size_t kNumBlock =
+      kEventBlockSize /
+      ((kEventSize + kEventAlign - 1) / kEventAlign * kEventAlign);
+
+  template <typename... Args>
+  T* Record(Args&&... args) {
+    if (event_blocks.empty() || event_blocks.front().size() == kNumBlock) {
+      event_blocks.emplace_front();
+      event_blocks.front().reserve(kNumBlock);
+    }
+    event_blocks.front().emplace_back(std::forward<Args>(args)...);
+    return &event_blocks.front().back();
+  }
+
+  std::vector<T> Reduce() {
+    std::vector<T> result;
+    for (auto& block : event_blocks) {
+      result.insert(result.begin(), std::make_move_iterator(block.begin()),
+                    std::make_move_iterator(block.end()));
+    }
+    event_blocks.clear();
+    return result;
+  }
+
+  void Clear() { event_blocks.clear(); }
+
+  std::forward_list<std::vector<T>> event_blocks;
+};
+
 // Enable the profiling function.
 void EnableProfiler(ProfilerState state);
 
