@@ -37,6 +37,7 @@ __all__ = [
     'save_persistables',
     'update_depthwise_conv',
     'update_param_shape',
+    'infer_shape',
 ]
 
 
@@ -248,9 +249,6 @@ class ImitationGraph(Graph):
         in_nodes = OrderedDict([(key, value)
                                 for key, value in self.in_nodes.items()
                                 if value in feeds])
-        #        print "feeds: %s" % (feeds, )
-        #        print "self.in_nodes: %s" % (self.in_nodes, )
-        #        print "in_nodes after pruning: %s" % (in_nodes, )
         out_nodes = OrderedDict([(key, value)
                                  for key, value in self.out_nodes.items()
                                  if value in fetches])
@@ -407,6 +405,12 @@ def update_param_shape(graph):
         tensor_shape = np.array(graph.scope.find_var(param.name).get_tensor(
         )).shape
         param.desc.set_shape(tensor_shape)
+
+
+def infer_shape(graph):
+    for op in graph.all_ops():
+        if op.type != 'conditional_block':
+            op.desc.infer_shape(op.block.desc)
 
 
 def update_depthwise_conv(graph):

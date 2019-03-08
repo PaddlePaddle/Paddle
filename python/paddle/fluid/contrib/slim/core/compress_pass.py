@@ -230,6 +230,7 @@ class CompressPass(object):
 
         self.train_optimizer = train_optimizer
         self.distiller_optimizer = distiller_optimizer
+        self.init_model = None
 
     def add_strategy(self, strategy):
         """
@@ -247,6 +248,18 @@ class CompressPass(object):
             self.add_strategy(strategy)
         if 'checkpoint_path' in factory.compress_pass:
             self.checkpoint_path = factory.compress_pass['checkpoint_path']
+
+        if 'init_model' in factory.compress_pass:
+            self.init_model = factory.compress_pass['init_model']
+
+    def _init_model(self, context):
+        if self.init_model and os.path.exists(self.init_model):
+            exe = get_executor(context.train_graph, context.place)
+            load_persistables(context.train_graph, self.init_model, exe)
+            update_param_shape(context.eval_graph)
+            update_depthwise_conv(context.eval_graph)
+            infer_shape(context.train_graph)
+            logger.info("Init model from: {}".format(self.init_model))
 
     def _load_checkpoint(self, context):
         logger.debug('_load_checkpoint')
@@ -266,15 +279,19 @@ class CompressPass(object):
                 model_path = os.path.join(latest_ck_path, 'model')
                 context_path = os.path.join(latest_ck_path, 'context')
                 strategy_path = os.path.join(latest_ck_path, 'strategies')
-                context.from_file(context_path)
-                context.epoch_id += 1
-                with open(strategy_path, 'rb') as strategy_file:
-                    strategies = pickle.load(strategy_file)
-                exe = get_executor(context.optimize_graph, context.place)
-                load_persistables(context.optimize_graph, model_path, exe)
-                update_param_shape(context.eval_graph)
-                update_depthwise_conv(context.eval_graph)
-                logger.info("Loaded checkpoint from: {}".format(latest_ck_path))
+                if os.path.exists(context_path):
+                    context.from_file(context_path)
+                    context.epoch_id += 1
+                if os.path.exists(strategy_path):
+                    with open(strategy_path, 'rb') as strategy_file:
+                        strategies = pickle.load(strategy_file)
+
+                if os.path.exists(model_path):
+                    exe = get_executor(context.optimize_graph, context.place)
+                    load_persistables(context.optimize_graph, model_path, exe)
+                    update_param_shape(context.eval_graph)
+                    update_depthwise_conv(context.eval_graph)
+                    logger.info("Loaded params from: {}".format(model_path))
         return context, strategies
 
     def _save_checkpoint(self, context):
@@ -351,7 +368,7 @@ class CompressPass(object):
 
         if self.teacher_graphs:
             context.put('teachers', self.teacher_graphs)
-
+        self._init_model(context)
         if not context.optimize_graph:
             if context.train_optimizer:
                 context.train_optimizer._name = 'train_opt'
@@ -365,6 +382,7 @@ class CompressPass(object):
         for strategy in self.strategies:
             strategy.on_compression_begin(context)
         start = context.epoch_id
+        self._eval(context)
         for epoch in range(start, self.epoch):
             context.epoch_id = epoch
             for strategy in self.strategies:
