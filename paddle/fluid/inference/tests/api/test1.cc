@@ -9,10 +9,12 @@
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
 #include <glog/logging.h>
+#include <thread>
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
@@ -191,16 +193,7 @@ void Prepare_sent_num_mask(PaddleTensor* tensor) {
   }
 }
 
-TEST(test, test) {
-  LOG(INFO) << "model: " << FLAGS_model;
-  AnalysisConfig config(FLAGS_model);
-  config.SwitchIrDebug();
-  config.pass_builder()->DeletePass("identity_scale_op_clean_pass");
-
-  auto predictor = CreatePaddlePredictor(config);
-
-  std::vector<PaddleTensor> inputs, outputs;
-
+void PrepareInputs(std::vector<PaddleTensor>& inputs) {
   inputs.emplace_back();
   PrepareWordInput(&inputs.back());
 
@@ -228,11 +221,49 @@ TEST(test, test) {
 
   inputs.emplace_back();
   Prepare_sent_num_mask(&inputs.back());
+}
+
+TEST(test, test) {
+  LOG(INFO) << "model: " << FLAGS_model;
+  AnalysisConfig config(FLAGS_model);
+  config.SwitchIrDebug();
+  config.pass_builder()->DeletePass("identity_scale_op_clean_pass");
+
+  auto predictor = CreatePaddlePredictor(config);
+
+  std::vector<PaddleTensor> inputs, outputs;
+  PrepareInputs(inputs);
 
   ASSERT_TRUE(predictor->Run(inputs, &outputs));
 
   for (auto& output : outputs) {
     LOG(INFO) << output.data.length();
   }
+}
+
+TEST(test, test_multi_threads) {
+  LOG(INFO) << "model: " << FLAGS_model;
+  AnalysisConfig config(FLAGS_model);
+  config.SwitchIrDebug();
+  config.pass_builder()->DeletePass("identity_scale_op_clean_pass");
+
+  auto predictor = CreatePaddlePredictor(config);
+
+  std::vector<PaddleTensor> inputs, outputs;
+  PrepareInputs(inputs);
+
+  std::vector<std::thread> threads;
+  for (int i = 0; i < 10; i++) {
+    threads.emplace_back([&] {
+      auto p = predictor->Clone();
+      ASSERT_TRUE(p->Run(inputs, &outputs));
+
+      for (auto& output : outputs) {
+        LOG(INFO) << output.data.length();
+      }
+    });
+  }
+
+  for (auto& t : threads) t.join();
 }
 }
