@@ -23,6 +23,7 @@
  */
 
 #include <algorithm>
+#include <numeric>
 #include <cassert>
 #include <memory>
 #include <string>
