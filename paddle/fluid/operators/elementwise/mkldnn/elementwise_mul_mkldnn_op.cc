@@ -110,10 +110,9 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
         constexpr int simd_width = 16;
         int C = c / simd_width;
 
-        auto multiply =
-            jit::KernelFuncs<jit::kNCHW16CMulNC, jit::NCHW16CMulNCTuples<T>,
-                             platform::CPUPlace>::Cache()
-                .At(0);
+        auto multiply = jit::KernelFuncs<jit::NCHW16CMulNCTuple<T>,
+                                         platform::CPUPlace>::Cache()
+                            .At(0);
 #pragma omp parallel for collapse(2)
         for (int ni = 0; ni < n; ni++) {
           for (int ci = 0; ci < C; ci++) {
