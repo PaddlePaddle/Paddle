@@ -45,7 +45,7 @@ std::unique_ptr<framework::ir::Graph> analysis::AnakinSubgraphPass::ApplyImpl(
     return anakin::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
   };
 
-  SubGraphFuser fuser(graph.get(), teller, 0);
+  SubGraphFuser fuser(graph.get(), teller, 3 /* min_subgraph_size */);
   fuser();
 
   for (auto *node : graph->Nodes()) {
