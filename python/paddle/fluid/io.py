@@ -468,9 +468,10 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
 
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
+            # `prog` can be a program defined by the user
             prog = fluid.default_main_program()
             fluid.io.save_persistables(executor=exe, dirname=param_path,
-                                       main_program=None)
+                                       main_program=prog)
     """
 
     if main_program and main_program._is_distributed:
