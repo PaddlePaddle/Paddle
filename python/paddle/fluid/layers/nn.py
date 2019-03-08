@@ -10676,7 +10676,10 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
   Examples:
     .. code-block:: python
 
-       npair_loss = fluid.layers.npair_loss(anchor, positive, labels, l2_reg)
+       anchor = fluid.layers.data(name='anchor', shape=[18,6], dtype='float32')
+       positive = fluid.layers.data(name='positive', shape=[18,6], dtype='float32')
+       label = fluid.layers.data(name='labels',shape=[18], dtype='float32')
+       npair_loss = fluid.layers.npair_loss(anchor, positive, labels, 0.002)
   '''
     Beta = 0.25
     batch_size = labels.shape[0]
