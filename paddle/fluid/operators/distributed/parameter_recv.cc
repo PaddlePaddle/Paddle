@@ -41,6 +41,7 @@ using DDim = framework::DDim;
 template <typename T>
 void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
                                   const framework::Scope &scope) {
+  VLOG(3) << "ParameterRecv in";
   framework::Scope *local_scope = scope.NewTmpScope();
 
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -90,6 +91,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
   }
 
   delete local_scope;
+  VLOG(3) << "ParameterRecv out";
 }
 
 template struct ParameterRecv<float>;

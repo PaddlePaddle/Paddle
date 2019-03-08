@@ -48,12 +48,15 @@ class SendOp : public framework::OperatorBase {
 
     if (send_varnames.size() > 0) {
       PADDLE_ENFORCE_EQ(ins.size(), 1, "");
-      //      auto send_functor = distributed::ParameterSend<float>();
-      //      auto rpc_ctx = distributed::RpcContext(ins[0], send_varnames,
-      //      epmap,
-      //                                             height_sections);
-      //      send_functor(rpc_ctx, scope, static_cast<bool>(sync_send));
+      /*
+      auto send_functor = distributed::ParameterSend<float>();
+      auto rpc_ctx = distributed::RpcContext(ins[0], send_varnames, epmap,
+      height_sections);
+      send_functor(rpc_ctx, scope, static_cast<bool>(sync_send));
+      */
+      VLOG(3) << "send " << ins[0];
       distributed::Communicator::GetInstance()->Send(ins[0], scope);
+      VLOG(3) << "send " << ins[0] << " done";
     } else {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();

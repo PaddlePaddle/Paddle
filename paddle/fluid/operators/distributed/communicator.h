@@ -43,35 +43,34 @@ class BlockingQueue {
   }
 
   bool Push(const T& elem) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    send_cv_.wait(lock, [&] { return queue_.size() < capacity_; });
-    PADDLE_ENFORCE_LT(queue_.size(), capacity_);
-    queue_.push_back(elem);
-    recv_cv_.notify_one();
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      cv_.wait(lock, [&] { return queue_.size() < capacity_; });
+      PADDLE_ENFORCE_LT(queue_.size(), capacity_);
+      queue_.push_back(elem);
+    }
+    cv_.notify_one();
     return true;
   }
 
   bool Push(T&& elem) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    send_cv_.wait(lock, [&] { return queue_.size() < capacity_; });
-    PADDLE_ENFORCE_LT(queue_.size(), capacity_);
-    queue_.emplace_back(std::move(elem));
-    recv_cv_.notify_one();
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      cv_.wait(lock, [&] { return queue_.size() < capacity_; });
+      PADDLE_ENFORCE_LT(queue_.size(), capacity_);
+      queue_.emplace_back(std::move(elem));
+    }
+    cv_.notify_one();
     return true;
   }
 
   T Pop() {
     std::unique_lock<std::mutex> lock(mutex_);
-    recv_cv_.wait(lock, [=] { return !queue_.empty(); });
+    cv_.wait(lock, [=] { return !queue_.empty(); });
     T rc(std::move(queue_.front()));
     queue_.pop_front();
+    cv_.notify_one();
     return rc;
-  }
-
-  bool NotEmpty() {
-    std::unique_lock<std::mutex> lock(mutex_);
-    recv_cv_.wait(lock, [=] { return !queue_.empty(); });
-    return true;
   }
 
   size_t Cap() const {
@@ -89,8 +88,7 @@ class BlockingQueue {
   std::deque<T> queue_;
 
   mutable std::mutex mutex_;
-  std::condition_variable recv_cv_;
-  std::condition_variable send_cv_;
+  std::condition_variable cv_;
 };
 
 using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
@@ -127,6 +125,8 @@ class Communicator {
   void Send(const std::string& var_name, const framework::Scope& scope);
 
  private:
+  // recv all parameter
+  void RecvAll();
   void SendThread();
   void RecvThread();
 
