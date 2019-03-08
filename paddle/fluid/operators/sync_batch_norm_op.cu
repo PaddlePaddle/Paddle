@@ -38,40 +38,32 @@ __global__ void KeLocalStats(const T *x, int N, int M, int C, T *mean_var) {
   T x_sum = 0;
   T x2_sum = 0;
   if (layout == framework::DataLayout::kNCHW) {
-    // for (int i = threadIdx.y; i < N; i += blockDim.y) {
-    for (int i = 0; i < N; i += 1) {
-      for (int j = threadIdx.x; j < M; j += blockDim.x) {
-        int id = i * C * M + blockIdx.x * M + j;
-        T x_in = x[id];
-        x_sum += x_in;
-        x2_sum += x_in * x_in;
-      }
+    for (int i = threadIdx.x; i < N * M; i += blockDim.x) {
+      int n = i / M;
+      int id = n * C * M + blockIdx.x * M + i % M;
+      T x_in = x[id];
+      x_sum += x_in;
+      x2_sum += x_in * x_in;
     }
   } else {
-    // for (int i = threadIdx.y; i < N; i += blockDim.y) {
-    for (int i = 0; i < N; i += 1) {
-      for (int j = threadIdx.x; j < M; j += blockDim.x) {
-        int id = i * C * M + j * C + blockIdx.x;
-        T x_in = x[id];
-        x_sum += x_in;
-        x2_sum += x_in * x_in;
-      }
+    for (int i = threadIdx.x; i < N * M; i += BlockDim) {
+      int id = i * C + blockIdx.x;
+      T x_in = x[id];
+      x_sum += x_in;
+      x2_sum += x_in * x_in;
     }
   }
   __syncthreads();
   T out = BlockReduce(temp_storage).Reduce(x_sum, cub::Sum());
   __syncthreads();
-  // if (threadIdx.x == 0 && threadIdx.y == 0) {
   if (threadIdx.x == 0) {
     mean_var[blockIdx.x] = out / (N * M);
   }
   out = BlockReduce(temp_storage).Reduce(x2_sum, cub::Sum());
   __syncthreads();
-  // if (threadIdx.x == 0 && threadIdx.y == 0) {
   if (threadIdx.x == 0) {
     mean_var[blockIdx.x + C] = out / (N * M);
   }
-  // if (blockIdx.x == 0 && threadIdx.x == 0 && threadIdx.y == 0) {
   if (blockIdx.x == 0 && threadIdx.x == 0) {
     mean_var[2 * C] = static_cast<T>(1.0);
   }
@@ -120,12 +112,16 @@ template <typename DeviceContext, typename T>
 class SyncBatchNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    LOG(ERROR) << "SyncBatchNormKernel Compute Start";
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout layout = framework::StringToDataLayout(layout_str);
+    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
+    PADDLE_ENFORCE(
+        !use_global_stats,
+        "sync_batch_norm doesn't support to set use_global_stats True. ",
+        "Please use batch_norm in this case.");
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
@@ -134,7 +130,6 @@ class SyncBatchNormKernel : public framework::OpKernel<T> {
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
     int x_numel = x->numel();
-    LOG(ERROR) << "NCHW " << N << " " << C << " " << H << " " << W;
 
     const T *x_d = x->data<T>();
     const T *s_d = ctx.Input<Tensor>("Scale")->data<T>();
@@ -150,7 +145,6 @@ class SyncBatchNormKernel : public framework::OpKernel<T> {
     auto stream = dev_ctx.stream();
     auto *comm = dev_ctx.nccl_comm();
 
-    LOG(ERROR) << "========= 00 =========";
     paddle::memory::AllocationPtr alloc_ptr{nullptr};
 
     if (is_test) {
@@ -159,7 +153,6 @@ class SyncBatchNormKernel : public framework::OpKernel<T> {
       mean_data = est_mean->data<T>();
       var_data = est_var->data<T>();
     } else {
-      LOG(ERROR) << "========= 11 =========";
       auto &allocator =
           platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
       // x, x^2, 1, here 1 is used to calc device num
@@ -171,43 +164,13 @@ class SyncBatchNormKernel : public framework::OpKernel<T> {
       const int block = 256;
       dim3 threads(block, 2);
       dim3 grid(C, 1);
-      LOG(ERROR) << "========= 22 =========";
-
-      Tensor ct;
-      TensorCopy(*x, platform::CPUPlace(), dev_ctx, &ct);
-      Tensor c_st, c_st2;
-      T *c_st_d = c_st.mutable_data<T>({C}, platform::CPUPlace());
-      T *c_st_d2 = c_st2.mutable_data<T>({C}, platform::CPUPlace());
-      T *xx_d = ct.data<T>();
-      for (int c = 0; c < C; ++c) {
-        T sm = 0;
-        T sm2 = 0;
-        for (int i = 0; i < N; ++i) {
-          for (int j = 0; j < H * W * D; ++j) {
-            sm += xx_d[i * C * H * W * D + j];
-            sm2 += xx_d[i * C * H * W * D + c * H * W * D + j] *
-                   xx_d[i * c * H * W * D + c * H * W * D + j];
-          }
-        }
-        c_st_d[c] = sm / (N * H * W * D);
-        c_st_d2[c] = sm2 / (N * H * W * D);
-      }
-      T ass = 0;
-      T ass2 = 0;
-      for (int c = 0; c < C; ++c) {
-        ass += std::abs(c_st_d[c]);
-        ass2 += std::abs(c_st_d2[c]);
-      }
-      LOG(ERROR) << "mean sum = " << ass << ", m2 sum " << ass2;
-
       if (layout == framework::DataLayout::kNCHW) {
         KeLocalStats<T, 512,
                      framework::DataLayout::kNCHW><<<C, 512, 0, stream>>>(
             x_d, N, H * W * D, C, stats);
-        // framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
       } else {
-        KeLocalStats<
-            T, 512, framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
+        KeLocalStats<T, 512,
+                     framework::DataLayout::kNHWC><<<C, 512, 0, stream>>>(
             x_d, N, H * W * D, C, stats);
       }
 
@@ -216,23 +179,12 @@ class SyncBatchNormKernel : public framework::OpKernel<T> {
       auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
       memory::Copy(platform::CPUPlace(), c_g_st_d, gplace, stats, bytes, 0);
 
-      ass = 0;
-      ass2 = 0;
-      for (int c = 0; c < C; ++c) {
-        ass += std::abs(c_g_st_d[c]);
-        ass2 += std::abs(c_g_st_d[C + c]);
-      }
-      LOG(ERROR) << "local mean sum = " << ass << ", local m2 sum " << ass2
-                 << ", NUM " << c_g_st_d[2 * C];
-
-      LOG(ERROR) << "========= 33 =========";
       int dtype = platform::ToNCCLDataType(x->type());
       // In-place operation
       PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
           stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
           comm, stream));
 
-      LOG(ERROR) << "========= 44 =========";
       // moving mean/variance
       auto *mean_out = ctx.Output<Tensor>("MeanOut");
       auto *variance_out = ctx.Output<Tensor>("VarianceOut");
@@ -256,7 +208,6 @@ class SyncBatchNormKernel : public framework::OpKernel<T> {
 
     const int block = 512;
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-    LOG(ERROR) << "max_threads = " << max_threads;
     int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
     if (layout == framework::DataLayout::kNCHW) {
       KeNormAffine<T,
@@ -269,15 +220,6 @@ class SyncBatchNormKernel : public framework::OpKernel<T> {
           x_d, s_d, b_d, mean_data, var_data, epsilon, C, H * W * D, x_numel,
           y_d);
     }
-
-    Tensor ctt;
-    TensorCopy(*y, platform::CPUPlace(), dev_ctx, &ctt);
-    T *ctt_d = ctt.data<T>();
-    T smm = 0;
-    for (int i = 0; i < ctt.numel(); ++i) {
-      smm += std::abs(ctt_d[i]);
-    }
-    LOG(ERROR) << "BN Y shape " << y->dims() << ", osum " << smm;
   }
 };
 
@@ -289,7 +231,7 @@ __global__ void KeBackwardLocalStats(const T *dy, const T *x, const T *means,
   T sum1 = 0;
   T sum2 = 0;
   T mean = means[blockIdx.x];
-  for (int i = threadIdx.y; i < N; i += blockDim.y) {
+  for (int i = 0; i < N; i += 1) {
     for (int j = threadIdx.x; j < M; j += blockDim.x) {
       int id = layout == framework::DataLayout::kNCHW
                    ? (i * C + blockIdx.x) * M + j
@@ -324,9 +266,8 @@ static __global__ void KeBNBackwardScaleBias(const T *dy, const T *x,
                                              T *dscale, T *dbias) {
   const int outer_size = C;
   const int inner_size = N * HxW;
-  typedef cub::BlockReduce<T, BlockDim> BlockReduce;
-  __shared__ typename BlockReduce::TempStorage ds_storage;
-  __shared__ typename BlockReduce::TempStorage db_storage;
+  typedef cub::BlockReduce<double, BlockDim> BlockReduce;
+  __shared__ typename BlockReduce::TempStorage temp_storage;
 
   for (int i = blockIdx.x; i < outer_size; i += gridDim.x) {
     T ds_sum = static_cast<T>(0);
@@ -335,17 +276,22 @@ static __global__ void KeBNBackwardScaleBias(const T *dy, const T *x,
     T inv_var_i = inv_variance[i];
     T mean_i = mean[i];
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == framework::DataLayout::kNCHW
-                            ? (j / HxW * C + i) * HxW + j % HxW
-                            : j * outer_size + i;
-      ds_sum += static_cast<T>(dy[index]) * (static_cast<T>(x[index]) - mean_i);
-      db_sum += static_cast<T>(dy[index]);
+      const int id = layout == framework::DataLayout::kNCHW
+                         ? ((j / HxW) * C + i) * HxW + (j % HxW)
+                         : j * outer_size + i;
+      ds_sum += dy[id] * (x[id] - mean_i);
+      db_sum += dy[id];
     }
-    ds_sum = BlockReduce(ds_storage).Reduce(ds_sum, cub::Sum());
-    db_sum = BlockReduce(db_storage).Reduce(db_sum, cub::Sum());
+    __syncthreads();
+    double os = BlockReduce(temp_storage)
+                    .Reduce(static_cast<double>(ds_sum), cub::Sum());
+    __syncthreads();
+    double ob = BlockReduce(temp_storage)
+                    .Reduce(static_cast<double>(db_sum), cub::Sum());
+    __syncthreads();
     if (threadIdx.x == 0) {
-      dscale[i] = ds_sum * inv_var_i;
-      dbias[i] = db_sum;
+      dscale[i] = static_cast<T>(os * inv_var_i);
+      dbias[i] = static_cast<T>(ob);
     }
     __syncthreads();
   }
@@ -368,9 +314,9 @@ static __global__ void KeBNBackwardData(const T *dy, const T *x, const T *beta,
     // T var = variance[c];
     T inv_var = inv_variance[c];
     T s_d = beta[c];
-    T gvar =
-        -1.0 * (g_sum_dy[c] / dev_num) * s_d * inv_var * (inv_var * inv_var);
-    T gmean = -1.0 * (g_sum_dy_prod[c] / dev_num) * s_d * inv_var;
+    T gvar = -1.0 * (g_sum_dy_prod[c] / dev_num) * s_d * inv_var *
+             (inv_var * inv_var);
+    T gmean = -1.0 * (g_sum_dy[c] / dev_num) * s_d * inv_var;
 
     dx[i] =
         dy[i] * s_d * inv_var + gmean * scale + gvar * scale * (x[i] - mean[c]);
@@ -383,7 +329,6 @@ template <typename DeviceContext, typename T>
 class SyncBatchNormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    LOG(ERROR) << "SyncBatchNormGradKernel Compute";
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
@@ -426,7 +371,6 @@ class SyncBatchNormGradKernel : public framework::OpKernel<T> {
 
     const T *x_d = x->data<T>();
     const T *dy_d = d_y->data<T>();
-    LOG(ERROR) << "=======bn grad x_d=======";
 
     auto &dev_ctx = ctx.cuda_device_context();
     auto stream = dev_ctx.stream();
@@ -439,7 +383,6 @@ class SyncBatchNormGradKernel : public framework::OpKernel<T> {
     const int bytes = (C * 2 + 1) * sizeof(T);
     auto alloc_ptr = allocator.Allocate(bytes);
     T *stats = reinterpret_cast<T *>(alloc_ptr->ptr());
-    LOG(ERROR) << "======== 0 =======";
 
     const int block = 512;
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
@@ -448,17 +391,15 @@ class SyncBatchNormGradKernel : public framework::OpKernel<T> {
     int x_numel = x->numel();
     int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
 
-    LOG(ERROR) << "======== 1 =======";
     if (layout == framework::DataLayout::kNCHW) {
-      KeBackwardLocalStats<
-          T, 256, framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
+      KeBackwardLocalStats<T, 512,
+                           framework::DataLayout::kNCHW><<<C, 512, 0, stream>>>(
           dy_d, x_d, saved_mean, N, H * W * D, C, stats);
     } else {
-      KeBackwardLocalStats<
-          T, 256, framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
+      KeBackwardLocalStats<T, 512,
+                           framework::DataLayout::kNHWC><<<C, 512, 0, stream>>>(
           dy_d, x_d, saved_mean, N, H * W * D, C, stats);
     }
-    LOG(ERROR) << "======== 2 =======";
     int dtype = platform::ToNCCLDataType(x->type());
     // In-place operation
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
@@ -466,14 +407,12 @@ class SyncBatchNormGradKernel : public framework::OpKernel<T> {
         comm, stream));
 
     if (layout == framework::DataLayout::kNCHW) {
-      LOG(ERROR) << "======== 3 =======";
       if (d_scale && d_bias) {
-        KeBNBackwardScaleBias<T, block, framework::DataLayout::kNCHW><<<
-            std::min(C, max_threads), block, 0, stream>>>(
+        KeBNBackwardScaleBias<
+            T, block, framework::DataLayout::kNCHW><<<C, block, 0, stream>>>(
             dy_d, x_d, saved_mean, saved_inv_var, epsilon, N, C, H * W * D,
             d_scale->data<T>(), d_bias->data<T>());
       }
-      LOG(ERROR) << "======== 4 =======";
       if (d_x) {
         KeBNBackwardData<
             T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(

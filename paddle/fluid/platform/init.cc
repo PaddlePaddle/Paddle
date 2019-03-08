@@ -143,13 +143,12 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
     InitP2P(devices);
   }
   places.insert(platform::CPUPlace());
-  LOG(ERROR) << "DeviceContextPool Init Start";
   std::vector<platform::Place> devs(places.begin(), places.end());
   platform::DeviceContextPool::Init(devs);
-  LOG(ERROR) << "DeviceContextPool Init End";
   platform::DeviceTemporaryAllocator::Init();
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && \
+    !defined(PADDLE_ON_INFERENCE)
   std::vector<platform::Place> cuda_devs;
   for (auto &p : places) {
     if (platform::is_gpu_place(p)) {
@@ -163,7 +162,6 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
         nccl_ctxs->at(boost::get<platform::CUDAPlace>(p).GetDeviceId());
     auto cuda_ctx = static_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(p));
-    LOG(ERROR) << "nccl_comm " << nccl_ctx.comm();
     cuda_ctx->set_nccl_comm(nccl_ctx.comm());
   }
 #endif
@@ -218,7 +216,6 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #undef AVX_GUIDE
 
 #endif
-  LOG(ERROR) << "InitDevices End";
 }
 
 void InitGLOG(const std::string &prog_name) {

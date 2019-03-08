@@ -23,17 +23,28 @@ namespace paddle {
 namespace operators {
 
 void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
-  LOG(ERROR) << "BatchNorm InferShape ";
-  PADDLE_ENFORCE(ctx->HasInput("X"), "");
-  PADDLE_ENFORCE(ctx->HasInput("Scale"), "");
-  PADDLE_ENFORCE(ctx->HasInput("Bias"), "");
-  PADDLE_ENFORCE(ctx->HasInput("Mean"), "");
-  PADDLE_ENFORCE(ctx->HasInput("Variance"), "");
-  PADDLE_ENFORCE(ctx->HasOutput("Y"), "");
-  PADDLE_ENFORCE(ctx->HasOutput("MeanOut"), "");
-  PADDLE_ENFORCE(ctx->HasOutput("VarianceOut"), "");
-  PADDLE_ENFORCE(ctx->HasOutput("SavedMean"), "");
-  PADDLE_ENFORCE(ctx->HasOutput("SavedVariance"), "");
+  PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of ConvOp should not be null.");
+  PADDLE_ENFORCE(ctx->HasInput("Scale"),
+                 "Input(Scale) of ConvOp should not be null.");
+  PADDLE_ENFORCE(ctx->HasInput("Bias"),
+                 "Input(Bias) of ConvOp should not be null.");
+  PADDLE_ENFORCE(ctx->HasInput("Mean"),
+                 "Input(Mean) of ConvOp should not be null.");
+  PADDLE_ENFORCE(ctx->HasInput("Variance"),
+                 "Input(Variance) of ConvOp should not be null.");
+  PADDLE_ENFORCE(ctx->HasOutput("Y"),
+                 "Output(Y) of ConvOp should not be null.");
+  bool is_test = ctx->Attrs().Get<bool>("is_test");
+  if (!is_test) {
+    PADDLE_ENFORCE(ctx->HasOutput("MeanOut"),
+                   "Output(MeanOut) of ConvOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("VarianceOut"),
+                   "Output(VarianceOut) of ConvOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("SavedMean"),
+                   "Output(SavedMean) of ConvOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("SavedVariance"),
+                   "Output(SavedVariance) of ConvOp should not be null.");
+  }
 
   // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
   PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0], ctx->Outputs("MeanOut")[0],
@@ -57,14 +68,12 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1UL);
   PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], C);
 
-  LOG(ERROR) << "batch_norm y out shape " << x_dims;
   ctx->SetOutputDim("Y", x_dims);
   ctx->SetOutputDim("MeanOut", {C});
   ctx->SetOutputDim("VarianceOut", {C});
   ctx->SetOutputDim("SavedMean", {C});
   ctx->SetOutputDim("SavedVariance", {C});
   ctx->ShareLoD("X", "Y");
-  LOG(ERROR) << "BatchNorm InferShape End";
 }
 
 framework::OpKernelType BatchNormOp::GetExpectedKernelType(
@@ -613,10 +622,10 @@ class BatchNormGradInplaceInToOut : public framework::InplaceInToOut {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
-                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker,
-                  ops::BatchNormInplaceInToOut);
-REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp,
-                  ops::BatchNormGradInplaceInToOut);
+                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker)
+// ops::BatchNormInplaceInToOut);
+REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp)
+//                  ops::BatchNormGradInplaceInToOut);
 
 REGISTER_OP_CPU_KERNEL(
     batch_norm, ops::BatchNormKernel<paddle::platform::CPUDeviceContext, float>,

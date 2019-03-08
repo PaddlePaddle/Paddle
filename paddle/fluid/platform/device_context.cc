@@ -79,7 +79,6 @@ DeviceContextPool::DeviceContextPool(
 #endif
     }
   }
-  LOG(ERROR) << "DeviceContextPool End";
 }
 
 DeviceTemporaryAllocator* DeviceTemporaryAllocator::allocators = nullptr;

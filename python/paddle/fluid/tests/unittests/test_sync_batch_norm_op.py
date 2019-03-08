@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import os
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler
@@ -23,109 +24,142 @@ from paddle.fluid import compiler
 
 class TestSyncBatchNormOpTraining(unittest.TestCase):
     def setUp(self):
-        self.dtype = np.float32
+        #self.dtype = np.float32
+        self.dtype = np.float64
         self.N = 32
         self.C = 16
-        self.H = 56
-        self.W = 64
+        self.H = 64
+        self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
 
-    def build_program(self, place, layout, seed, sync_bn=False):
+    def build_program(self,
+                      place,
+                      layout,
+                      seed,
+                      sync_bn=False,
+                      only_forward=False):
         main = fluid.Program()
         startup = fluid.Program()
         main.random_seed = seed
         startup.random_seed = seed
-        #with fluid.unique_name.guard():
-        with fluid.program_guard(main, startup):
-            data = fluid.layers.data(
-                name='input',
-                shape=self.dshape,
-                dtype=self.dtype,
-                append_batch_size=False)
-            conv = fluid.layers.conv2d(
-                input=data,
-                num_filters=32,
-                filter_size=1,
-                param_attr=fluid.ParamAttr(name='conv2d_weight'),
-                act='relu',
-                bias_attr=False)
-            if sync_bn:
-                bn = fluid.layers.sync_batch_norm(
-                    conv,
-                    param_attr=fluid.ParamAttr(name='bn_scale'),
-                    bias_attr=fluid.ParamAttr(name='bn_bias'),
-                    moving_mean_name='bn_moving_mean_sync',
-                    moving_variance_name='bn_moving_variance_sync',
-                    data_layout=layout)
-            else:
-                bn = fluid.layers.batch_norm(
-                    conv,
-                    param_attr=fluid.ParamAttr(name='bn_scale'),
-                    bias_attr=fluid.ParamAttr(name='bn_bias'),
-                    moving_mean_name='bn_moving_mean_async',
-                    moving_variance_name='bn_moving_variance_async',
-                    data_layout=layout)
-            out = fluid.layers.reduce_sum(bn)
-            sgd_opt = fluid.optimizer.SGD(learning_rate=0.01)
-            sgd_opt.backward(out)
-            print(bn.name)
+        with fluid.unique_name.guard():
+            with fluid.program_guard(main, startup):
+                data = fluid.layers.data(
+                    name='input',
+                    shape=self.dshape,
+                    dtype=self.dtype,
+                    append_batch_size=False)
+                conv = fluid.layers.conv2d(
+                    input=data,
+                    num_filters=8,  #32,
+                    filter_size=1,
+                    param_attr=fluid.ParamAttr(name='conv2d_weight'),
+                    bias_attr=False,
+                    use_cudnn=False)
+                if sync_bn:
+                    bn = fluid.layers.sync_batch_norm(
+                        conv,
+                        param_attr=fluid.ParamAttr(name='bn_scale'),
+                        bias_attr=fluid.ParamAttr(name='bn_bias'),
+                        moving_mean_name='bn_moving_mean_sync',
+                        moving_variance_name='bn_moving_variance_sync',
+                        data_layout=layout,
+                        is_test=only_forward)
+                    sigmoid = fluid.layers.sigmoid(bn)
+                    out = fluid.layers.reduce_sum(sigmoid)
+                else:
+                    bn = fluid.layers.batch_norm(
+                        conv,
+                        param_attr=fluid.ParamAttr(name='bn_scale'),
+                        bias_attr=fluid.ParamAttr(name='bn_bias'),
+                        moving_mean_name='bn_moving_mean_async',
+                        moving_variance_name='bn_moving_variance_async',
+                        data_layout=layout,
+                        is_test=only_forward)
+                    sigmoid = fluid.layers.sigmoid(bn)
+                    out = fluid.layers.reduce_sum(sigmoid)
+                    out = out / 2.
+                if not only_forward:
+                    sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
+                    sgd_opt.backward(out)
         return main, startup, [out, conv, bn]
 
-    #def compare_output(self, a, b):
-
-    def compare(self, place, layout):
+    def compare(self, place, layout, only_forward):
         seed = 10
-        np.random.seed(5)
-        data = np.random.random(size=self.dshape).astype(self.dtype)
-
+        #np.random.seed(5)
+        os.environ['FLAGS_cudnn_deterministic'] = "1"
+        data = np.random.random(size=self.dshape).astype(self.dtype) * 4. - 2
         # Single-GPU, N = 32 per GPU
-        main, startup, outs = self.build_program(
-            place, layout, seed, sync_bn=False)
+        main, startup, outs = self.build_program(place, layout, seed, False,
+                                                 only_forward)
         exe = fluid.Executor(place)
         exe.run(startup)
-        fces = [v.name for v in outs] + [
-            'bn_moving_mean_async', 'bn_moving_variance_async',
-            'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale', 'bn_bias',
-            'batch_norm_0.tmp_2'
+        fetch_names = [v.name for v in outs] + [
+            'bn_moving_mean_async', 'bn_moving_variance_async', 'bn_scale',
+            'bn_bias'
         ]
-        fetches = exe.run(program=main, feed={'input': data}, fetch_list=fces)
-
-        with open('one-gpu.txt', 'w+') as f:
-            print(main, file=f)
-        print(np.sum(np.abs(fetches[-1])))
-        for nm, v in zip(fces, fetches):
-            print(nm, v.shape, np.sum(np.abs(v)))
-
+        if not only_forward:
+            others = [
+                'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
+                'bn_bias@GRAD', 'batch_norm_0.tmp_2@GRAD', 'conv2d_0.tmp_0@GRAD'
+            ]
+            fetch_names += others
+        bn_fetches = exe.run(program=main,
+                             feed={'input': data},
+                             fetch_list=fetch_names)
         # Multi-GPUs, N = 32 per GPU
-        main, startup, outs = self.build_program(
-            place, layout, seed, sync_bn=True)
+        main, startup, outs = self.build_program(place, layout, seed, True,
+                                                 only_forward)
         exe = fluid.Executor(place)
         exe.run(startup)
-
-        with open('sync-gpu.txt', 'w+') as f:
-            print(main, file=f)
+        sync_fetch_names = [v.name for v in outs] + [
+            'bn_moving_mean_sync', 'bn_moving_variance_sync', 'bn_scale',
+            'bn_bias'
+        ]
+        if not only_forward:
+            others = [
+                'sync_batch_norm_0.tmp_0', 'sync_batch_norm_0.tmp_1',
+                'bn_scale@GRAD', 'bn_bias@GRAD', 'sync_batch_norm_0.tmp_2@GRAD',
+                'conv2d_0.tmp_0@GRAD'
+            ]
+            fetch_names += others
+        for nm in sync_fetch_names:
+            fv = fluid.framework._get_var(str(nm), program=main)
+            fv.persistable = True
         comp_prog = compiler.CompiledProgram(main).with_data_parallel(outs[0]
                                                                       .name)
-        fces = [v.name for v in outs] + [
-            'bn_moving_mean_sync', 'bn_moving_variance_sync',
-            'sync_batch_norm_0.tmp_0', 'sync_batch_norm_0.tmp_1', 'bn_scale',
-            'bn_bias', 'sync_batch_norm_0.tmp_2'
-        ]
-        fetches = exe.run(program=comp_prog,
-                          feed={'input': data},
-                          fetch_list=fces)
-        for i in xrange(0, 3):
-            print(fces[i], fetches[i].shape, np.sum(np.abs(fetches[i])))
-        for i in xrange(3, 9):
-            print(fces[i], fetches[i].shape, np.sum(np.abs(fetches[i])) / 2)
-        print(np.sum(np.abs(fetches[-1])) / 2)
+        sync_bn_fetches = exe.run(program=comp_prog,
+                                  feed={'input': data},
+                                  fetch_list=sync_fetch_names)
 
-    def test_check_output(self):
+        for i in xrange(1, len(sync_bn_fetches)):
+            bn_val = bn_fetches[i]
+            sync_bn_val = sync_bn_fetches[i]
+            if sync_bn_val.shape != bn_val.shape:
+                sync_bn_val = sync_bn_val[:bn_val.shape[0]]
+            self.assertTrue(
+                np.allclose(
+                    bn_val, sync_bn_val, atol=1e-3),
+                "Output (" + fetch_names[i] + ") has diff. \n" + "\nBN     " +
+                str(bn_val) + "\n" + "Sync BN " + str(sync_bn_val))
+
+    def test_train(self):
+        if not core.is_compiled_with_cuda():
+            pass
+
         places = [core.CUDAPlace(0)]
         for place in places:
-            #for layout in ["NCHW", "NHWC"]:
-            for layout in ["NCHW"]:
-                self.compare(place, layout)
+            for layout in ["NCHW", "NHWC"]:
+                self.compare(place, layout, False)
+
+    def test_infer(self):
+        if not core.is_compiled_with_cuda():
+            pass
+
+        places = [core.CUDAPlace(0)]
+        for place in places:
+            for layout in ["NCHW", "NHWC"]:
+                self.compare(place, layout, True)
 
 
 if __name__ == '__main__':

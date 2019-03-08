@@ -2904,7 +2904,7 @@ def batch_norm(input,
         y_i &\\gets \\gamma \\hat{x_i} + \\beta
 
     Args:
-        input(variable): The input variable which is a LoDTensor.
+        input(variable): The rank of input variable can be 2, 3, 4, 5.
         act(string, Default None): Activation type, linear|relu|prelu|...
         is_test(bool, Default False): Used for training or training.
         momentum(float, Default 0.9):
@@ -3051,16 +3051,16 @@ def sync_batch_norm(input,
                     moving_variance_name=None,
                     do_model_average_for_mean_and_var=False):
     """
-    **Batch Normalization Layer**
+    **Synchronous Batch Normalization Layer**
+    The details of batch normalization can be referred to batch_norm interface.
+    Different from batch_norm, sync_batch_norm synchronizes the mean and
+    variance through multi-GPUs in training phase.
 
-    Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
-    Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
-    for more details.
-
-    :math:`input` is the input features over a mini-batch.
+    Note, current implementation doesn't support FP16 training, will be
+    supported later. And only synchronous on one machine, not all machines.
 
     Args:
-        input(variable): The input variable which is a LoDTensor.
+        input(variable): The rank of input variable can be 2, 3, 4, 5.
         act(string, Default None): Activation type, linear|relu|prelu|...
         is_test(bool, Default False): Used for training or training.
         momentum(float, Default 0.9):
@@ -3074,20 +3074,25 @@ def sync_batch_norm(input,
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. Default: None.
         data_layout(string, default NCHW): NCHW|NHWC
-        name(string, Default None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
-        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
-        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+        name(string, Default None): A name for this layer(optional).
+            If set None, the layer will be named automatically.
+        moving_mean_name(string, Default None): The name of moving_mean
+            which store the global Mean.
+        moving_variance_name(string, Default None): The name of the
+            moving_variance which store the global Variance.
+        do_model_average_for_mean_and_var(bool, Default False): Do model
+            average for mean and variance or not.
 
     Returns:
-        Variable: A tensor variable which is the result after applying batch normalization on the input.
+        Variable: A tensor variable which is the result after applying batch
+        normalization on the input. It has same dimension with input.
 
     Examples:
 
         .. code-block:: python
 
-            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
-            hidden2 = fluid.layers.batch_norm(input=hidden1)
+            hidden1 = fluid.layers.fc(input=x, size=200)
+            hidden2 = fluid.layers.sync_batch_norm(input=hidden1)
     """
     assert bias_attr is not False, "bias_attr should not be False in batch_norm."
     helper = LayerHelper('sync_batch_norm', **locals())

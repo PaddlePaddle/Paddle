@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
-// #include "paddle/fluid/operators/norm_op.cu.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -375,7 +374,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
               running_var_data, epsilon, C, H * W, num, d_x->data<T>());
         }
         if (d_scale && d_bias) {
-          KeBNBackwardScaleBias<T, block, framework::DataLayout::kNCHW><<<
+          KeBNBackwardScaleBias<T, block, framework::DataLayout::kNHWC><<<
               grid2, block, 0, dev_ctx.stream()>>>(
               d_y->data<T>(), x->data<T>(), running_mean_data, running_var_data,
               epsilon, N, C, H * W * D, d_scale->data<BatchNormParamType<T>>(),
