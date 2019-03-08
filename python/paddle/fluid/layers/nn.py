@@ -10657,10 +10657,10 @@ def tree_conv(nodes_vector,
 def npair_loss(anchor, positive, labels, l2_reg=0.002):
     '''
   **Npair Loss Layer**
-  
+
   Read `Improved Deep Metric Learning with Multi class N pair Loss Objective <http://www.nec-labs.com/uploads/images/Department-Images/MediaAnalytics/papers/nips16_npairmetriclearning.pdf>`_ .
-  
-  Npair loss requires paired data. Npair loss has two parts: the first part is L2 
+
+  Npair loss requires paired data. Npair loss has two parts: the first part is L2
   regularizer on the embedding vector; the second part is cross entropy loss which
   takes the similarity matrix of anchor and positive as logits.
 
@@ -10676,10 +10676,14 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
   Examples:
     .. code-block:: python
 
-       anchor = fluid.layers.data(name='anchor', shape=[18,6], dtype='float32')
-       positive = fluid.layers.data(name='positive', shape=[18,6], dtype='float32')
-       label = fluid.layers.data(name='labels',shape=[18], dtype='float32')
-       npair_loss = fluid.layers.npair_loss(anchor, positive, labels, 0.002)
+       anchor = fluid.layers.data(
+                     name = 'anchor', shape = [18, 6], dtype = 'float32', append_batch_size=False)
+       positive = fluid.layers.data(
+                     name = 'positive', shape = [18, 6], dtype = 'float32', append_batch_size=False)
+       labels = fluid.layers.data(
+                     name = 'labels', shape = [18], dtype = 'float32', append_batch_size=False)
+
+       npair_loss = fluid.layers.npair_loss(anchor, positive, labels, l2_reg = 0.002)
   '''
     Beta = 0.25
     batch_size = labels.shape[0]
