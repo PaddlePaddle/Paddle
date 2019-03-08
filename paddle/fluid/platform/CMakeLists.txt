@@ -39,6 +39,8 @@ nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce)
 cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
+cc_library(stream SRCS cuda_api.cc)
+
 add_subdirectory(dynload)
 
 cc_library(cpu_helper SRCS cpu_helper.cc DEPS cblas enforce)
@@ -58,7 +60,7 @@ ENDIF()
 
 cc_library(temp_allocator SRCS temporary_allocator.cc DEPS  allocator_facade)
 
-nv_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce) 
+nv_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce)
 IF(WITH_GPU)
   set(STREAM_CALLBACK_DEPS stream_callback_manager)
 ELSE()
