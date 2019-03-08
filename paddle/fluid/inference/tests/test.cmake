@@ -30,13 +30,14 @@ function(inference_download_and_uncompress INSTALL_DIR URL FILENAME)
       ${EXTERNAL_PROJECT_NAME}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       PREFIX                ${INSTALL_DIR}
-      URL                   ${URL}/${FILENAME}
+      DOWNLOAD_COMMAND      wget -q -O ${INSTALL_DIR}/${FILENAME} ${URL}/${FILENAME} &&
+                            ${CMAKE_COMMAND} -E tar xzf ${INSTALL_DIR}/${FILENAME}
       DOWNLOAD_DIR          ${INSTALL_DIR}
       DOWNLOAD_NO_PROGRESS  1
       CONFIGURE_COMMAND     ""
       BUILD_COMMAND         ""
       UPDATE_COMMAND        ""
-      INSTALL_COMMAND       ${CMAKE_COMMAND} -E copy_directory ${UNPACK_DIR} ${INSTALL_DIR}
+      INSTALL_COMMAND       ""
   )
 endfunction()
 
