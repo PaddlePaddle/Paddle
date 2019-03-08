@@ -28,8 +28,11 @@ class OperatorBase;
 class OpDesc;
 class InferShapeContext;
 class BlockDesc;
+class Variable;
 
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
+// TODO(panyx0718): Replace vector with something like gtl::Vector.
+using VariableValueMap = std::map<std::string, std::vector<Variable*>>;
 
 // The order should be as same as framework.proto
 using Attribute =
@@ -53,6 +56,9 @@ using InferVarTypeFN =
     std::function<void(const OpDesc& /*op_desc*/, BlockDesc* /*block*/)>;
 
 using InferShapeFN = std::function<void(InferShapeContext*)>;
+
+using InplacePair = std::unordered_map<std::string, std::string>;
+using InferInplaceOpFN = std::function<InplacePair(const OpDesc&, BlockDesc*)>;
 
 }  // namespace framework
 }  // namespace paddle

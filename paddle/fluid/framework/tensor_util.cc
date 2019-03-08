@@ -14,6 +14,8 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include <algorithm>
 #include <limits>
+#include <memory>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 

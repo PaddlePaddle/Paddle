@@ -88,7 +88,7 @@ void EagerDeletionOpHandle::RunImpl() {
       }
     } else {
       PADDLE_THROW("Type %s of %s is not supported eager deletion",
-                   var->Type().name(), name);
+                   framework::ToTypeName(var->Type()), name);
     }
   }
 

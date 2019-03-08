@@ -15,6 +15,9 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <iostream>
+#ifdef _WIN32
+#include <numeric>
+#endif
 #include <random>
 
 #define PADDLE_CUDA_FP16

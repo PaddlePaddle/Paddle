@@ -89,12 +89,21 @@ endif()
 
 if(WITH_MKL)
   include_directories("${PADDLE_LIB}/third_party/install/mklml/include")
-  set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml_intel${CMAKE_SHARED_LIBRARY_SUFFIX}
-               ${PADDLE_LIB}/third_party/install/mklml/lib/libiomp5${CMAKE_SHARED_LIBRARY_SUFFIX})
+  if(NOT WIN32)
+    set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml_intel${CMAKE_SHARED_LIBRARY_SUFFIX}
+                 ${PADDLE_LIB}/third_party/install/mklml/lib/libiomp5${CMAKE_SHARED_LIBRARY_SUFFIX})
+  else()
+    set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml${CMAKE_SHARED_LIBRARY_SUFFIX}
+            ${PADDLE_LIB}/third_party/install/mklml/lib/libiomp5md${CMAKE_SHARED_LIBRARY_SUFFIX})
+  endif()
   set(MKLDNN_PATH "${PADDLE_LIB}/third_party/install/mkldnn")
   if(EXISTS ${MKLDNN_PATH})
     include_directories("${MKLDNN_PATH}/include")
-    set(MKLDNN_LIB ${MKLDNN_PATH}/lib/libmkldnn.so.0)
+    if(WIN32)
+      set(MKLDNN_LIB ${MKLDNN_PATH}/lib/mkldnn.lib)
+    else(WIN32)
+      set(MKLDNN_LIB ${MKLDNN_PATH}/lib/libmkldnn.so.0)
+    endif(WIN32)
   endif()
 else()
   set(MATH_LIB ${PADDLE_LIB}/third_party/install/openblas/lib/libopenblas${CMAKE_STATIC_LIBRARY_SUFFIX})
@@ -119,8 +128,8 @@ else()
       ${CMAKE_STATIC_LIBRARY_PREFIX}glog  ${CMAKE_STATIC_LIBRARY_PREFIX}gflags  ${CMAKE_STATIC_LIBRARY_PREFIX}protobuf
       ${CMAKE_STATIC_LIBRARY_PREFIX}snappy ${CMAKE_STATIC_LIBRARY_PREFIX}z ${CMAKE_STATIC_LIBRARY_PREFIX}xxhash
       snappystream ${EXTERNAL_LIB})
-  # NOTE(dzhwinter) shlwapi is deprecated.
-  set(DEPS ${DEPS} libcmt shlwapi)
+  get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+  set(DEPS ${DEPS} libcmt ${os_dependency_modules})
 endif(NOT WIN32)
 
 if(WITH_GPU)

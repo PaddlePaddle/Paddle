@@ -28,6 +28,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#include "paddle/fluid/platform/nccl_helper.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -41,14 +45,12 @@ class ParallelExecutor {
 
  public:
   explicit ParallelExecutor(const std::vector<platform::Place> &places,
-                            const std::unordered_set<std::string> &params,
                             const std::unordered_set<std::string> &bcast_vars,
-                            const ProgramDesc &main_program,
                             const std::string &loss_var_name, Scope *scope,
                             const std::vector<Scope *> &local_scopes,
                             const ExecutionStrategy &exec_strategy,
                             const BuildStrategy &build_strategy,
-                            size_t num_trainers = 1, size_t trainer_id = 0);
+                            ir::Graph *graph);
 
   ~ParallelExecutor();
 
@@ -69,8 +71,14 @@ class ParallelExecutor {
 
  private:
   void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;
+  bool EnableParallelGraphExecution(const ir::Graph &graph,
+                                    const ExecutionStrategy &exec_strategy,
+                                    const BuildStrategy &build_strategy) const;
 
   ParallelExecutorPrivate *member_;
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  std::unique_ptr<ncclUniqueId> local_nccl_id_;
+#endif
 };
 
 }  // namespace framework

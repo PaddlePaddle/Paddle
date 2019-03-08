@@ -20,6 +20,14 @@ from .base import *
 from . import layers
 from .layers import *
 
+from . import nn
+from .nn import *
+
+from . import tracer
+from .tracer import *
+
 __all__ = []
 __all__ += layers.__all__
 __all__ += base.__all__
+__all__ += nn.__all__
+__all__ += tracer.__all__

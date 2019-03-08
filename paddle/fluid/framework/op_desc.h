@@ -123,6 +123,8 @@ class OpDesc {
 
   BlockDesc *Block() { return this->block_; }
 
+  const BlockDesc *Block() const { return this->block_; }
+
  private:
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {

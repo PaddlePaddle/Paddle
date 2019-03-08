@@ -36,12 +36,11 @@ namespace demo {
  */
 void Main() {
   std::unique_ptr<PaddlePredictor> predictor;
-  paddle::contrib::AnalysisConfig config(true);
-  config.param_file = FLAGS_modeldir + "/__params__";
-  config.prog_file = FLAGS_modeldir + "/__model__";
-  config.device = 0;
+  paddle::AnalysisConfig config;
+  config.EnableUseGpu(100, 0);
+  config.SetModel(FLAGS_modeldir + "/__model__",
+                  FLAGS_modeldir + "/__params__");
   config.EnableTensorRtEngine();
-  config.fraction_of_gpu_memory = 0.1;  // set by yourself
   predictor = CreatePaddlePredictor(config);
 
   VLOG(3) << "begin to process data";

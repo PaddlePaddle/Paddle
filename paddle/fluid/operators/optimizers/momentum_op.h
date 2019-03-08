@@ -237,7 +237,8 @@ class SparseMomentumFunctor<T, UseNesterov> {
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
         math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
-    T g = row_idx >= 0 ? g_[row_idx * row_numel_ + i % row_numel_] : 0;
+    T g = row_idx >= 0 ? g_[row_idx * row_numel_ + i % row_numel_]
+                       : static_cast<T>(0);
     // put memory access in register
     const T p = p_[i];
     const T lr = lr_[0];
@@ -282,7 +283,8 @@ class SparseMomentumFunctor<T, NoNesterov> {
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
         math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
-    T g = row_idx >= 0 ? g_[row_idx * row_numel_ + i % row_numel_] : 0;
+    T g = row_idx >= 0 ? g_[row_idx * row_numel_ + i % row_numel_]
+                       : static_cast<T>(0);
     // put memory access in register
     const T p = p_[i];
     const T lr = lr_[0];
@@ -393,7 +395,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
       PADDLE_THROW(
           string::Sprintf("MomentumOp only supports LoDTensor or SelectedRows "
                           "gradient, but the received Variable Type is %s",
-                          grad_var->Type().name()));
+                          framework::ToTypeName(grad_var->Type())));
     }
   }
 };

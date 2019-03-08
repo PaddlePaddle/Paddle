@@ -38,7 +38,7 @@ class DLPackTensor {
 
   // The shape in DLTensor is defined as int64_t*
   // Add this member to make TVMTensor init without heap allocation
-  ShapeType shape_[9];
+  ShapeType shape_[DDim::kMaxRank];
 };
 
 }  // namespace framework

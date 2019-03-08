@@ -129,7 +129,6 @@ macro(PROMPT_PROTOBUF_LIB)
         ADD_DEPENDENCIES(protoc ${dep})
     ENDFOREACH()
 
-    LIST(APPEND external_project_dependencies protobuf)
     RETURN()
 endmacro()
 macro(SET_PROTOBUF_VERSION)
@@ -204,15 +203,6 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
 
     SET(PROTOBUF_REPO "https://github.com/google/protobuf.git")
     SET(PROTOBUF_TAG "9f75c5aa851cd877fb0d93ccc31b8567a6706546")
-    IF(MOBILE_INFERENCE)
-        # The reason why the official version is not used is described in
-        # https://github.com/PaddlePaddle/Paddle/issues/6114
-        SET(PROTOBUF_REPO "https://github.com/qingqing01/protobuf.git")
-        SET(PROTOBUF_TAG "v3.2.0")
-        IF(NOT BUILD_FOR_HOST)
-            SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} "-Dprotobuf_BUILD_PROTOC_BINARIES=OFF")
-        ENDIF()
-    ENDIF()
 
     ExternalProject_Add(
         ${TARGET_NAME}
@@ -240,19 +230,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     )
 ENDFUNCTION()
 
-IF(NOT MOBILE_INFERENCE)
-    SET(PROTOBUF_VERSION 3.1)
-ELSE()
-    SET(PROTOBUF_VERSION 3.2)
-ENDIF()
-IF(CMAKE_CROSSCOMPILING)
-    build_protobuf(protobuf_host TRUE)
-    LIST(APPEND external_project_dependencies protobuf_host)
-
-    SET(PROTOBUF_PROTOC_EXECUTABLE ${protobuf_host_PROTOC_EXECUTABLE}
-        CACHE FILEPATH "protobuf executable." FORCE)
-ENDIF()
-
+SET(PROTOBUF_VERSION 3.1.0)
 
 IF(NOT PROTOBUF_FOUND)
     build_protobuf(extern_protobuf FALSE)
@@ -266,20 +244,7 @@ IF(NOT PROTOBUF_FOUND)
     SET(PROTOBUF_PROTOC_LIBRARY ${extern_protobuf_PROTOC_LIBRARY}
         CACHE FILEPATH "protoc library." FORCE)
 
-    IF(WITH_C_API)
-        INSTALL(DIRECTORY ${PROTOBUF_INCLUDE_DIR} DESTINATION third_party/protobuf)
-        IF(ANDROID)
-            INSTALL(FILES ${PROTOBUF_LITE_LIBRARY} DESTINATION third_party/protobuf/lib/${ANDROID_ABI})
-        ELSE()
-            INSTALL(FILES ${PROTOBUF_LITE_LIBRARY} DESTINATION third_party/protobuf/lib)
-        ENDIF()
-    ENDIF()
-
-    IF(CMAKE_CROSSCOMPILING)
-        PROMPT_PROTOBUF_LIB(protobuf_host extern_protobuf)
-    ELSE()
-        SET(PROTOBUF_PROTOC_EXECUTABLE ${extern_protobuf_PROTOC_EXECUTABLE}
-            CACHE FILEPATH "protobuf executable." FORCE)
-        PROMPT_PROTOBUF_LIB(extern_protobuf)
-    ENDIF()
+    SET(PROTOBUF_PROTOC_EXECUTABLE ${extern_protobuf_PROTOC_EXECUTABLE}
+        CACHE FILEPATH "protobuf executable." FORCE)
+    PROMPT_PROTOBUF_LIB(extern_protobuf)
 ENDIF(NOT PROTOBUF_FOUND)

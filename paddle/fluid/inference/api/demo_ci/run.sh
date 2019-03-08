@@ -1,3 +1,4 @@
+#!/bin/bash
 set -x
 PADDLE_ROOT=$1
 TURN_ON_MKL=$2 # use MKL or Openblas
@@ -116,6 +117,10 @@ D
       --modeldir=$DATA_DIR/mobilenet/model \
       --data=$DATA_DIR/mobilenet/data.txt \
       --refer=$DATA_DIR/mobilenet/result.txt 
+    if [ $? -ne 0 ]; then
+      echo "trt demo trt_mobilenet_demo runs fail."
+      exit 1
+    fi
   fi
 done
 set +x
