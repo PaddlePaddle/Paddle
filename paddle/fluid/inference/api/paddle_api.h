@@ -22,8 +22,8 @@
  * for Paddle users.
  */
 
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 #include <memory>
 #include <string>
 #include <vector>
