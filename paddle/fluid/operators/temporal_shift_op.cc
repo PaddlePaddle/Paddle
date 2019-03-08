@@ -33,8 +33,12 @@ class TemporalShiftOp: public framework::OperatorWithKernel {
                    "Input(X) rank should be 4 in shape of [N*T, C, H, W].");
 
     int seg_num = ctx->Attrs().Get<int>("seg_num");
+    float shift_ratio = ctx->Attrs().Get<float>("shift_ratio");
     PADDLE_ENFORCE_GT(seg_num, 0,
-                   "Attr(seg_num) should be greater then 0.");
+                   "Attr(seg_num) should be greater than 0.");
+    PADDLE_ENFORCE(shift_ratio > 0 || shift_ratio < .5,
+                   "Attr(shift_ratio) should be greater than 0 and less "
+                   "than 0.5.");
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(dim_x[0] % seg_num, 0,
@@ -69,6 +73,12 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("seg_num", 
               "The temporal segment number, this should be a positive "
               "interger.");
+    AddAttr<float>("shift_ratio",
+              "The shift ratio of the channels, the first shift ratio part "
+              "of channels will be shifted by -1 along the temporal dimension, "
+              "and the second shift ratio part of channels will be shifted by "
+              "1 along the temporal dimension. Default 0.25.")
+        .SetDefault(0.25);
 
     AddComment(R"DOC(
           This operator calculates the temporal shifting features for Input(X).
@@ -85,7 +95,8 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
           padding width as 1 on each side, padding result will be in shape 
           of [N, T+2, C, H, W].
 
-          Step 3: Slice padding result as follows:
+          Step 3: Assume :attr:`shift_ratio` is :math:`0.25`, slice padding 
+          result as follows:
 
                 slice1 = x[:, :T, :C/4, :, :]
                 slice2 = x[:, 2:T+2, C/4:C/2, :, :]

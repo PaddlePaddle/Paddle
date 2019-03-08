@@ -30,11 +30,15 @@ class TemporalShiftKernel: public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
     int t = ctx.Attr<int>("seg_num");
+    float shift_ratio = ctx.Attr<float>("shift_ratio");
 
     const int nt = input->dims()[0];
     const int c = input->dims()[1];
     const int h = input->dims()[2];
     const int w = input->dims()[3];
+
+    const int c1 = static_cast<int>(c * shift_ratio);
+    const int c2 = static_cast<int>(c * 2 * shift_ratio);
 
     const int hw = h * w;
     const int chw = c * hw;
@@ -51,9 +55,9 @@ class TemporalShiftKernel: public framework::OpKernel<T> {
       int ih = (i % hw) / w;
       int iw = i % w;
 
-      if (ic < c / 4) {
+      if (ic < c1) {
         src_it = it - 1;
-      } else if (ic < c / 2) {
+      } else if (ic < c2) {
         src_it = it + 1;
       } else {
         src_it = it;
@@ -76,11 +80,15 @@ class TemporalShiftGradKernel : public framework::OpKernel<T> {
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     int t = ctx.Attr<int>("seg_num");
+    float shift_ratio = ctx.Attr<float>("shift_ratio");
 
     const int nt = output_grad->dims()[0];
     const int c = output_grad->dims()[1];
     const int h = output_grad->dims()[2];
     const int w = output_grad->dims()[3];
+
+    const int c1 = static_cast<int>(c * shift_ratio);
+    const int c2 = static_cast<int>(c * 2 * shift_ratio);
 
     const int hw = h * w;
     const int chw = c * hw;
@@ -98,9 +106,9 @@ class TemporalShiftGradKernel : public framework::OpKernel<T> {
       int ih = (i % hw) / w;
       int iw = i % w;
 
-      if (ic < c / 4) {
+      if (ic < c1) {
         src_it = it - 1;
-      } else if (ic < c / 2) {
+      } else if (ic < c2) {
         src_it = it + 1;
       } else {
         src_it = it;

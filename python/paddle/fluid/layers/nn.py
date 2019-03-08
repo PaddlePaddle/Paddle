@@ -10266,7 +10266,7 @@ def shuffle_channel(x, group, name=None):
 
 
 @templatedoc()
-def temporal_shift(x, seg_num, name=None):
+def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
     """
     **Temporal Shift Operator**
     
@@ -10275,6 +10275,7 @@ def temporal_shift(x, seg_num, name=None):
     Args: 
         x(Variable): ${x_comment}
         seg_num(int): ${seg_num_comment}
+        shift_ratio(float): ${shift_ratio_comment}
 
     Returns:
         out(Variable): The temporal shifting result is a tensor variable with the 
@@ -10287,7 +10288,7 @@ def temporal_shift(x, seg_num, name=None):
         .. code-block:: python
 
             input = fluid.layers.data(name='input', shape=[4,2,2], dtype='float32')
-            out = fluid.layers.temporal_shift(x=input, seg_num=2)
+            out = fluid.layers.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
     helper = LayerHelper("temporal_shift", **locals())
 
@@ -10300,7 +10301,10 @@ def temporal_shift(x, seg_num, name=None):
         type="temporal_shift",
         inputs={"X": x},
         outputs={"Out": out},
-        attrs={"seg_num": seg_num})
+        attrs={
+            "seg_num": seg_num,
+            "shift_ratio": shift_ratio 
+        })
     return out
 
 
