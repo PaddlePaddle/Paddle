@@ -93,24 +93,24 @@ class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
     attr.n = y_dims[1];
     int o_numel = attr.m * attr.n;
 
-    auto vsquare_x = jit::KernelFuncs<jit::kVSquare, jit::XYNTuples<T>,
-                                      platform::CPUPlace>::Cache()
-                         .At(attr.m * attr.k);
-    auto vsquare_y = jit::KernelFuncs<jit::kVSquare, jit::XYNTuples<T>,
-                                      platform::CPUPlace>::Cache()
-                         .At(attr.k * attr.n);
-    auto vsquare_xy = jit::KernelFuncs<jit::kVSquare, jit::XYNTuples<T>,
-                                       platform::CPUPlace>::Cache()
-                          .At(o_numel);
-    auto vsub = jit::KernelFuncs<jit::kVSub, jit::XYZNTuples<T>,
-                                 platform::CPUPlace>::Cache()
-                    .At(o_numel);
-    auto vscal = jit::KernelFuncs<jit::kVScal, jit::AXYNTuples<T>,
-                                  platform::CPUPlace>::Cache()
-                     .At(o_numel);
-    auto matmul = jit::KernelFuncs<jit::kMatMul, jit::MatMulTuples<T>,
-                                   platform::CPUPlace>::Cache()
-                      .At(attr);
+    auto vsquare_x =
+        jit::KernelFuncs<jit::VSquareTuple<T>, platform::CPUPlace>::Cache().At(
+            attr.m * attr.k);
+    auto vsquare_y =
+        jit::KernelFuncs<jit::VSquareTuple<T>, platform::CPUPlace>::Cache().At(
+            attr.k * attr.n);
+    auto vsquare_xy =
+        jit::KernelFuncs<jit::VSquareTuple<T>, platform::CPUPlace>::Cache().At(
+            o_numel);
+    auto vsub =
+        jit::KernelFuncs<jit::VSubTuple<T>, platform::CPUPlace>::Cache().At(
+            o_numel);
+    auto vscal =
+        jit::KernelFuncs<jit::VScalTuple<T>, platform::CPUPlace>::Cache().At(
+            o_numel);
+    auto matmul =
+        jit::KernelFuncs<jit::MatMulTuple<T>, platform::CPUPlace>::Cache().At(
+            attr);
 
     const T* x_data = x->data<T>();
     const T* y_data = y->data<T>();
