@@ -18,7 +18,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-enum class BoxCodeType { kEncodeCenterSize = 0, kDecodeCenterSize = 1 };
+enum class BoxCodeType {
+  kEncodeCenterSize = 0,
+  kDecodeCenterSize = 1
+};
 
 inline BoxCodeType GetBoxCodeType(const std::string& type) {
   if (type == "encode_center_size") {
@@ -43,55 +46,71 @@ class BoxCoderKernel : public framework::OpKernel<T> {
     auto* target_box_data = target_box->data<T>();
     auto* prior_box_data = prior_box->data<T>();
     const T* prior_box_var_data = nullptr;
-    if (prior_box_var) prior_box_var_data = prior_box_var->data<T>();
-
+    if (prior_box_var) {
+      prior_box_var_data = prior_box_var->data<T>();
 #ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(3)
 #endif
-    for (int64_t i = 0; i < row; ++i) {
-      for (int64_t j = 0; j < col; ++j) {
-        T prior_box_width = prior_box_data[j * len + 2] -
-                            prior_box_data[j * len] + (normalized == false);
-        T prior_box_height = prior_box_data[j * len + 3] -
-                             prior_box_data[j * len + 1] +
-                             (normalized == false);
-        T prior_box_center_x = prior_box_data[j * len] + prior_box_width / 2;
-        T prior_box_center_y =
-            prior_box_data[j * len + 1] + prior_box_height / 2;
-
-        T target_box_center_x =
-            (target_box_data[i * len + 2] + target_box_data[i * len]) / 2;
-        T target_box_center_y =
-            (target_box_data[i * len + 3] + target_box_data[i * len + 1]) / 2;
-        T target_box_width = target_box_data[i * len + 2] -
-                             target_box_data[i * len] + (normalized == false);
-        T target_box_height = target_box_data[i * len + 3] -
-                              target_box_data[i * len + 1] +
-                              (normalized == false);
-
-        size_t offset = i * col * len + j * len;
-        output[offset] =
-            (target_box_center_x - prior_box_center_x) / prior_box_width;
-        output[offset + 1] =
-            (target_box_center_y - prior_box_center_y) / prior_box_height;
-        output[offset + 2] =
-            std::log(std::fabs(target_box_width / prior_box_width));
-        output[offset + 3] =
-            std::log(std::fabs(target_box_height / prior_box_height));
-        if (prior_box_var) {
-          int prior_var_offset = j * len;
-          output[offset] /= prior_box_var_data[prior_var_offset];
-          output[offset + 1] /= prior_box_var_data[prior_var_offset + 1];
-          output[offset + 2] /= prior_box_var_data[prior_var_offset + 2];
-          output[offset + 3] /= prior_box_var_data[prior_var_offset + 3];
-        } else if (!(variance.empty())) {
+      for (int64_t i = 0; i < row; ++i) {
+        for (int64_t j = 0; j < col; ++j) {
           for (int k = 0; k < 4; ++k) {
+            size_t offset = i * col * len + j * len;
+            int prior_var_offset = j * len;
+            output[offset + k] /= prior_box_var_data[prior_var_offset + k];
+          }
+        }
+      }
+    } else if (!(variance.empty())) {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for collapse(3)
+#endif
+      for (int64_t i = 0; i < row; ++i) {
+        for (int64_t j = 0; j < col; ++j) {
+          for (int k = 0; k < 4; ++k) {
+            size_t offset = i * col * len + j * len;
             output[offset + k] /= static_cast<T>(variance[k]);
           }
         }
       }
+    } else {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for collapse(2)
+#endif
+      for (int64_t i = 0; i < row; ++i) {
+        for (int64_t j = 0; j < col; ++j) {
+          size_t offset = i * col * len + j * len;
+          T prior_box_width = prior_box_data[j * len + 2] -
+                              prior_box_data[j * len] + (normalized == false);
+          T prior_box_height = prior_box_data[j * len + 3] -
+                               prior_box_data[j * len + 1] +
+                               (normalized == false);
+          T prior_box_center_x = prior_box_data[j * len] + prior_box_width / 2;
+          T prior_box_center_y =
+              prior_box_data[j * len + 1] + prior_box_height / 2;
+
+          T target_box_center_x =
+              (target_box_data[i * len + 2] + target_box_data[i * len]) / 2;
+          T target_box_center_y =
+              (target_box_data[i * len + 3] + target_box_data[i * len + 1]) / 2;
+          T target_box_width = target_box_data[i * len + 2] -
+                               target_box_data[i * len] + (normalized == false);
+          T target_box_height = target_box_data[i * len + 3] -
+                                target_box_data[i * len + 1] +
+                                (normalized == false);
+
+          output[offset] =
+              (target_box_center_x - prior_box_center_x) / prior_box_width;
+          output[offset + 1] =
+              (target_box_center_y - prior_box_center_y) / prior_box_height;
+          output[offset + 2] =
+              std::log(std::fabs(target_box_width / prior_box_width));
+          output[offset + 3] =
+              std::log(std::fabs(target_box_height / prior_box_height));
+        }
+      }
     }
   }
+
   template <int axis, int var_size>
   void DecodeCenterSize(const framework::Tensor* target_box,
                         const framework::Tensor* prior_box,
@@ -104,18 +123,22 @@ class BoxCoderKernel : public framework::OpKernel<T> {
 
     auto* target_box_data = target_box->data<T>();
     auto* prior_box_data = prior_box->data<T>();
-    const T* prior_box_var_data = nullptr;
-    if (var_size == 2) prior_box_var_data = prior_box_var->data<T>();
-    int prior_box_offset = 0;
+
     T var_data[4] = {1., 1., 1., 1.};
     T* var_ptr = var_data;
+    if (var_size == 2) {
+      var_ptr = const_cast<T*>(prior_box_var->data<T>());
+    } else if (var_size == 1) {
+      var_ptr = reinterpret_cast<T*>(variance.data());
+    }
+
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for collapse(2)
 #endif
     for (int64_t i = 0; i < row; ++i) {
       for (int64_t j = 0; j < col; ++j) {
         size_t offset = i * col * len + j * len;
-        prior_box_offset = axis == 0 ? j * len : i * len;
+        int prior_box_offset = axis == 0 ? j * len : i * len;
         T prior_box_width = prior_box_data[prior_box_offset + 2] -
                             prior_box_data[prior_box_offset] +
                             (normalized == false);
@@ -129,13 +152,7 @@ class BoxCoderKernel : public framework::OpKernel<T> {
 
         T target_box_center_x = 0, target_box_center_y = 0;
         T target_box_width = 0, target_box_height = 0;
-        int prior_var_offset = axis == 0 ? j * len : i * len;
-        if (var_size == 2) {
-          std::memcpy(var_ptr, prior_box_var_data + prior_var_offset,
-                      4 * sizeof(T));
-        } else if (var_size == 1) {
-          var_ptr = reinterpret_cast<T*>(variance.data());
-        }
+
         T box_var_x = *var_ptr;
         T box_var_y = *(var_ptr + 1);
         T box_var_w = *(var_ptr + 2);
