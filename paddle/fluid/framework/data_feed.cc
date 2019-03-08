@@ -220,8 +220,8 @@ void InMemoryDataFeed<T>::LocalShuffle() {
   std::random_shuffle(memory_data_.begin(), memory_data_.end());
 }
 
-
 template class InMemoryDataFeed<std::vector<MultiSlotType>>;
+
 // todo global shuffle
 /*
 template <typename T>
