@@ -328,20 +328,14 @@ void PyLayer::RegisterFunc(int func_id, const py::object& py_func) {
 
 int PyLayer::NumFuncs() { return py_funcs_.size(); }
 
-std::vector<VarBase*> PyLayer::Apply(int func_id,
-                                     const std::vector<VarBase*>& inputs) {
+std::vector<Variable*> PyLayer::Apply(int func_id,
+                                      const std::vector<VarBase*>& inputs) {
   std::vector<framework::Variable*> invars;
   for (const VarBase* in : inputs) {
     invars.push_back(in->var_);
   }
   PADDLE_ENFORCE(py_funcs_.find(func_id) != py_funcs_.end());
-  std::vector<Variable*> outvars = CallPythonFunc(py_funcs_[func_id], invars);
-  std::vector<VarBase*> ret;
-  for (Variable* v : outvars) {
-    // TODO(minqiyang): change this after move unique_name generator to CXX
-    ret.push_back(new VarBase("py_layer_tmp_output", v, nullptr));
-  }
-  return ret;
+  return CallPythonFunc(py_funcs_[func_id], invars);
 }
 
 std::vector<Variable*> PyLayer::ApplyGrad(

@@ -113,11 +113,12 @@ class OpBase;
 class VarBase {
  public:
   // Internal interface, create VarBase from exist variable
-  VarBase(const std::string& name, framework::Variable* var, VarBase* grad)
+  VarBase(const std::string& name, framework::Variable* var, VarBase* grad,
+          bool stop_gradient)
       : VarBase(name, var->Get<framework::LoDTensor>().type(),
                 var->Get<framework::LoDTensor>().dims(),
                 var->Get<framework::LoDTensor>().place(), var, grad,
-                grad ? false : true, false) {}
+                stop_gradient, false) {}
 
   // Python interface
   VarBase(const std::string& name, const framework::proto::VarType::Type dtype,
@@ -300,7 +301,8 @@ class PYBIND11_HIDDEN OpBase {
       pre_ops_[inp_name].push_back(inp_var->PreOp());
       pre_ops_out_idx_[inp_name].push_back(inp_var->PreOpOutIdx());
     } else {
-      VLOG(3) << "no pre op in slot " << inp_name;
+      VLOG(3) << "no pre op in slot " << inp_name
+              << " input var stop_gradient: " << inp_var->IsStopGradient();
       pre_ops_[inp_name].push_back(nullptr);
       // pre_ops_out_idx_[inp_name].push_back(-1);
     }
@@ -354,8 +356,8 @@ class PyLayer {
 
   static int NumFuncs();
 
-  static std::vector<VarBase*> Apply(int func_id,
-                                     const std::vector<VarBase*>& inputs);
+  static std::vector<framework::Variable*> Apply(
+      int func_id, const std::vector<VarBase*>& inputs);
 
   static std::vector<framework::Variable*> ApplyGrad(
       int func_id, const std::vector<framework::Variable*>& inputs);

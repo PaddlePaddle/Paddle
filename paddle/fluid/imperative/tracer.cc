@@ -312,20 +312,29 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
 std::vector<VarBase*> Tracer::PyTrace(OpBase* op,
                                       const std::vector<VarBase*>& inputs,
                                       bool stop_gradient) {
-  VLOG(3) << "py_trace";
+  VLOG(3) << "py_trace " << op->Type();
+
   op->input_vars_[PyLayer::kFwdInp] = inputs;
-  op->output_vars_[PyLayer::kFwdOut] = PyLayer::Apply(op->forward_id_, inputs);
+
+  std::vector<framework::Variable*> ret_vars =
+      PyLayer::Apply(op->forward_id_, inputs);
+
   for (VarBase* inp : inputs) {
     op->TrackPreOp(inp, PyLayer::kFwdInp);
   }
 
-  auto& outputs = op->output_vars_[PyLayer::kFwdOut];
-  for (size_t i = 0; i < outputs.size(); ++i) {
-    VarBase* out = outputs[i];
+  std::vector<VarBase*>& outputs = op->output_vars_[PyLayer::kFwdOut];
+  outputs.reserve(ret_vars.size());
+  for (size_t i = 0U; i != ret_vars.size(); ++i) {
+    framework::Variable* v = ret_vars[i];
+    VarBase* out = new VarBase(string::Sprintf("%s_out_%d", op->Type(), i), v,
+                               nullptr, stop_gradient);
+    outputs.emplace_back(out);
     out->TrackPreOp(op, PyLayer::kFwdOut, i, stop_gradient);
   }
 
   if (!stop_gradient) {
+    VLOG(5) << "start construct backward op";
     op->grad_input_vars_.resize(1);
     op->grad_output_vars_.resize(1);
     auto& grad_input_vars =
@@ -340,15 +349,14 @@ std::vector<VarBase*> Tracer::PyTrace(OpBase* op,
       grad_input_vars.push_back(out->var_);
     }
 
+    // TODO(minqiyang): Add GPU support for PyLayer, only support CPU now
     platform::CPUPlace place;
     for (VarBase* out : outputs) {
-      // TODO(minqiyang): Add GPU support for PyLayer, only support CPU now
       InitGrad(out, platform::DeviceContextPool::Instance().Get(place));
       grad_input_vars.push_back(out->grads_->var_);
     }
 
     for (VarBase* inp : inputs) {
-      // TODO(minqiyang): Add GPU support for PyLayer, only support CPU now
       InitGrad(inp, platform::DeviceContextPool::Instance().Get(place));
       grad_output_vars.push_back(inp->grads_->var_);
     }

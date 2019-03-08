@@ -333,9 +333,6 @@ namespace allocation {
 LegacyMemMonitor GPUMemMonitor;
 
 Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
-  if (size == 0U) {
-    return new Allocation(nullptr, size, place_);
-  }
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
   return new Allocation(ptr, size, place_);
 }
