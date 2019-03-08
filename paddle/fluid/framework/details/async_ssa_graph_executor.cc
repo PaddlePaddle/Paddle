@@ -80,6 +80,7 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
         }
       }
     }
+    /*
     VLOG(3) << "delete all recv ops";
     for (auto *node : nodes_to_delete) {
       // delete input edge
@@ -105,6 +106,7 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
       VLOG(3) << "delete node " << node->Name();
       graphs[i]->RemoveNode(node);
     }
+    */
   }
   // init communicator here
   if (send_varname_to_ctx.size() > 0) {
