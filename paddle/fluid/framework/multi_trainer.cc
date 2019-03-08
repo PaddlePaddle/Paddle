@@ -22,11 +22,12 @@ namespace paddle {
 namespace framework {
 
 void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
-                              Dataset* dataset) {
+                              const Dataset& dataset) {
   thread_num_ = trainer_desc.thread_num();
   // get filelist from trainer_desc here
   workers_.resize(thread_num_);
 
+  /*
   if (NULL == dataset) {
     readers_.resize(thread_num_);
     for (int i = 0; i < thread_num_; ++i) {
@@ -42,6 +43,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   } else {
     // readers_ = dataset.get_readers(); ?
   }
+  */
 
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
