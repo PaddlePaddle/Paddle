@@ -45,7 +45,7 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   auto src_dims = src.dims();
 
   const T* p_src = src.data<T>();
-  const auto* p_index = index.data<int64_t>();
+  const int* p_index = index.data<int>();
   T* p_output = output->data<T>();
 
   // slice size

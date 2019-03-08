@@ -81,9 +81,11 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set(
           "model_opt_cache_dir",
           new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
+      pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
+      pass->Set("use_static_engine",
+                new bool(argument->tensorrt_use_static_engine()));
     }
 
-    // graph_ = pass->Apply(std::move(graph_));
     pre_pass = pass_name;
 
     passes_.emplace_back(std::move(pass));
@@ -97,11 +99,12 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
   PADDLE_ENFORCE(graph.get());
   // Apply all the passes
   for (const auto &pass : passes_) {
-    if (pass->Type() == "graph_viz_pass") continue;
-    PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
+    if (pass->Type() != "graph_viz_pass") {
+      PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
+    }
     graph = pass->Apply(std::move(graph));
   }
-  return std::move(graph);
+  return graph;
 }
 
 framework::proto::ProgramDesc IRPassManager::AcquireProgram(

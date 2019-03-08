@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -76,9 +77,11 @@ struct BuildStrategy {
 
   bool fuse_relu_depthwise_conv_{false};
 
-  bool memory_optimize_{false};
-
-  bool memory_early_delete_{false};
+  bool memory_optimize_{true};
+  // TODO(dzhwinter):
+  // make enable_inplace, memory_optimize_
+  // memory_early_delete_ true by default
+  bool enable_inplace_{true};
 
   bool enable_sequential_execution_{false};
 
@@ -112,7 +115,7 @@ struct BuildStrategy {
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
-  std::unique_ptr<ir::Graph> Apply(const ProgramDesc &main_program,
+  std::unique_ptr<ir::Graph> Apply(std::unique_ptr<ir::Graph> graph,
                                    const std::vector<platform::Place> &places,
                                    const std::string &loss_var_name,
                                    const std::vector<Scope *> &local_scopes,

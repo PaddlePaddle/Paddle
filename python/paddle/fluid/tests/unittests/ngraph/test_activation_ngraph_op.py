@@ -18,17 +18,7 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_activation_op import TestRelu, TestTanh
-
-
-class TestNGRAPHReluDim2(TestRelu):
-    def setUp(self):
-        super(TestNGRAPHReluDim2, self).setUp()
-
-
-class TestNGRAPHTanhDim2(TestTanh):
-    def setUp(self):
-        super(TestNGRAPHTanhDim2, self).setUp()
+from paddle.fluid.tests.unittests.test_activation_op import TestSigmoid, TestRelu, TestTanh
 
 
 class TestNGRAPHReluDim4(TestRelu):

@@ -50,6 +50,11 @@ class Timer {
   }
 };
 
+static int GetUniqueId() {
+  static int id = 0;
+  return id++;
+}
+
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
   pieces->clear();
@@ -203,6 +208,9 @@ static std::string DescribeTensor(const PaddleTensor &tensor,
       break;
     case PaddleDType::INT64:
       os << "int64";
+      break;
+    case PaddleDType::INT32:
+      os << "int32";
       break;
     default:
       os << "unset";
