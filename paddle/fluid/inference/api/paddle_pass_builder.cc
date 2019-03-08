@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
-
+#ifdef PADDLE_WITH_CUDA
+#include <cudnn.h>
+#endif
 #include <glog/logging.h>
 
 namespace paddle {

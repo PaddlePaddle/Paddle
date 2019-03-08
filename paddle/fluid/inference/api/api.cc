@@ -28,6 +28,8 @@ int PaddleDtypeSize(PaddleDType dtype) {
       return sizeof(float);
     case PaddleDType::INT64:
       return sizeof(int64_t);
+    case PaddleDType::INT32:
+      return sizeof(int32_t);
     default:
       assert(false);
       return -1;

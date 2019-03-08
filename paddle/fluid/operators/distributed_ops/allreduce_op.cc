@@ -78,8 +78,26 @@ class AllReduceOp : public framework::OperatorBase {
     auto* comm = cuda_ctx->nccl_comm();
     // FIXME(typhoonzero): should use nccl stream here.
     auto stream = cuda_ctx->stream();
+
+    int reduce_type = Attr<int>("reduce_type");
+    ncclRedOp_t red_type = ncclSum;
+    switch (reduce_type) {
+      case 0:
+        red_type = ncclSum;
+        break;
+      case 1:
+        red_type = ncclProd;
+        break;
+      case 2:
+        red_type = ncclMax;
+        break;
+      case 3:
+        red_type = ncclMin;
+        break;
+    }
+
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
+        sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), red_type,
         comm, stream));
 #endif
   }
@@ -89,12 +107,21 @@ class AllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor), tensor to be allreduced.");
-    AddOutput("Out", "(Tensor) the result of allreduced");
+    AddOutput("Out", "(Tensor) the result of allreduced.");
+    AddAttr<int>("reduce_type", "(int) determin the reduce type.")
+        .SetDefault(0);
     AddComment(R"DOC(
 ***AllReduce Operator***
 
 Call NCCL AllReduce internally. Note that this op must be used when one
 thread is managing one GPU device.
+
+For speed reasons, reduce_type should be an integer:
+
+0: sum
+1: prod
+2: max
+3: min
 
 If input and output are the same variable, in-place allreduce will be used.
 )DOC");

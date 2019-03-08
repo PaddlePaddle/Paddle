@@ -14,54 +14,27 @@ limitations under the License. */
 
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <vector>
 
 #include "ngraph/ngraph.hpp"
 #include "paddle/fluid/operators/ngraph/ngraph_bridge.h"
 #include "paddle/fluid/operators/ngraph/ngraph_ops.h"
+#include "paddle/fluid/operators/ngraph/ops/op_bridge.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
 
 namespace paddle {
 namespace operators {
 
-namespace NG_OPS = paddle::operators::ngraphs;
-std::map<std::string,
-         std::function<void(const std::shared_ptr<framework::OperatorBase>&,
-                            std::shared_ptr<std::unordered_map<
-                                std::string, std::shared_ptr<ngraph::Node>>>)>>
-    NgraphBridge::NG_NODE_MAP = {
-        {"accuracy", NG_OPS::BuildAccuracyNode},
-        {"conv2d", NG_OPS::BuildConv2dNode},
-        {"conv2d_grad", NG_OPS::BuildConv2dGradNode},
-        {"batch_norm", NG_OPS::BuildBatchNormNode},
-        {"batch_norm_grad", NG_OPS::BuildBatchNormGradNode},
-        {"cross_entropy", NG_OPS::BuildCrossEntropyNode},
-        {"cross_entropy_grad", NG_OPS::BuildCrossEntropyGradNode},
-        {"elementwise_add", NG_OPS::BuildElementwiseAddNode},
-        {"elementwise_add_grad", NG_OPS::BuildElementwiseAddGradNode},
-        {"fill_constant", NG_OPS::BuildFillConstantNode},
-        {"mean", NG_OPS::BuildMeanNode},
-        {"mean_grad", NG_OPS::BuildMeanGradNode},
-        {"mul", NG_OPS::BuildMulNode},
-        {"mul_grad", NG_OPS::BuildMulGradNode},
-        {"pool2d", NG_OPS::BuildPool2dNode},
-        {"pool2d_grad", NG_OPS::BuildPool2dGradNode},
-        {"softmax", NG_OPS::BuildSoftmaxNode},
-        {"softmax_grad", NG_OPS::BuildSoftmaxGradNode},
-        {"scale", NG_OPS::BuildScaleNode},
-        {"sigmoid", NG_OPS::BuildUnaryNode<ngraph::op::Sigmoid>},
-        {"sum", NG_OPS::BuildSumNode},
-        {"relu", NG_OPS::BuildUnaryNode<ngraph::op::Relu>},
-        {"relu_grad", NG_OPS::BuildReluGradNode},
-        {"tanh", NG_OPS::BuildUnaryNode<ngraph::op::Tanh>},
-        {"tanh_grad", NG_OPS::BuildTanhGradNode},
-        {"top_k", NG_OPS::BuildTopKNode}};
+bool NgraphBridge::isRegister(const std::string& str) {
+  return ops::NgraphSingleton::Lookup(str);
+}
 
 void NgraphBridge::BuildNgNode(
     const std::shared_ptr<framework::OperatorBase>& op) {
   auto& op_type = op->Type();
-  NG_NODE_MAP[op_type](op, ngb_node_map_);
+  ops::NgraphSingleton::BuildNode(ngb_node_map_, op, op_type);
 }
 
 }  // namespace operators

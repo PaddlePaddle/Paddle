@@ -20,6 +20,9 @@
 #include <numeric>
 #include <sstream>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
@@ -33,10 +36,10 @@ namespace details {
 using paddle::framework::VarDesc;
 
 std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph) {
-  PADDLE_ENFORCE(graph.Has(kAllOpDescs),
-                 "Graph has no attribute of kAllOpDescs.");
+  PADDLE_ENFORCE(graph.Has(kStaleProgramOpDescs),
+                 "Graph has no attribute of kStaleProgramOpDescs.");
   // 1. get op desc order
-  auto& op_descs = graph.Get<const std::vector<OpDesc*>>(kAllOpDescs);
+  auto& op_descs = graph.Get<const std::vector<OpDesc*>>(kStaleProgramOpDescs);
 
   // 2. topology sort order
   auto nodes = graph.Nodes();
@@ -302,7 +305,10 @@ std::string OrderedSet::ToString() const {
 
 bool NodeCanReused(ir::Node* node) {
   // valid the node is a var node
-  if (node == nullptr || !node->IsVar() || node->IsCtrlVar()) return false;
+  // vars can be @EMPTY@, @LR_DECAY_REUSE_ID@. For example, while_grad
+  if (node == nullptr || !node->IsVar() || node->IsCtrlVar() ||
+      node->Name() == kEmptyVarName)
+    return false;
 
   bool flag = true;
   // op output force generated in cpu, can not be reused.
@@ -348,10 +354,6 @@ bool NodeCanReused(const VarDesc& node) {
   if (shape.empty() || size < MinChunkSize()) {
     return false;
   }
-  // vars can be @EMPTY@, @LR_DECAY_REUSE_ID@. For example, while_grad
-  std::string name = node.Name();
-  if (!name.empty() && name[0] == '@' && name[name.size() - 1] == '@')
-    return false;
   return true;
 }
 
@@ -461,11 +463,21 @@ void ControlFlowGraph::LiveVariableAnalysis() {
       }
     }
   }
+
+  for (auto* op : ops_) {
+    unlived_vars_[op] = std::set<std::string>();
+    for (auto& var : this->LiveIn(op)) {
+      if (!this->LiveOut(op).count(var)) {
+        unlived_vars_[op].insert(var);
+      }
+    }
+  }
 }
 
 void ControlFlowGraph::RenameVarInCFGGraph(const std::string& old_node,
                                            const std::string& new_node,
                                            int begin_idx) {
+  std::vector<bool> need_update(ops_.size(), false);
   // update graph from begin idx to the end
   for (size_t i = begin_idx; i != ops_.size(); ++i) {
     auto* op = ops_[i];
@@ -480,15 +492,27 @@ void ControlFlowGraph::RenameVarInCFGGraph(const std::string& old_node,
     if (live_in_[op].find(old_node) != live_in_[op].end()) {
       live_in_[op].erase(old_node);
       live_in_[op].insert(new_node);
+      need_update[i] = true;
     }
     if (live_out_[op].find(old_node) != live_out_[op].end()) {
       live_out_[op].erase(old_node);
       live_out_[op].insert(new_node);
+      need_update[i] = true;
+    }
+  }
+
+  for (size_t i = begin_idx; i < ops_.size(); ++i) {
+    if (!need_update[i]) continue;
+    auto* op = ops_[i];
+    for (auto& var : this->LiveIn(op)) {
+      if (!this->LiveOut(op).count(var)) {
+        unlived_vars_[op].insert(var);
+      }
     }
   }
 }
 
-const std::set<std::string> ControlFlowGraph::LiveIn(ir::Node* op) const {
+const std::set<std::string>& ControlFlowGraph::LiveIn(ir::Node* op) const {
   auto it = live_in_.find(op);
   PADDLE_ENFORCE(
       it != live_in_.end(),
@@ -496,7 +520,7 @@ const std::set<std::string> ControlFlowGraph::LiveIn(ir::Node* op) const {
   return it->second;
 }
 
-const std::set<std::string> ControlFlowGraph::LiveOut(ir::Node* op) const {
+const std::set<std::string>& ControlFlowGraph::LiveOut(ir::Node* op) const {
   auto it = live_out_.find(op);
   PADDLE_ENFORCE(
       it != live_out_.end(),
@@ -504,15 +528,24 @@ const std::set<std::string> ControlFlowGraph::LiveOut(ir::Node* op) const {
   return it->second;
 }
 
-const std::set<std::string> ControlFlowGraph::Use(ir::Node* op) const {
+const std::set<std::string>& ControlFlowGraph::Use(ir::Node* op) const {
   auto it = uses_.find(op);
   PADDLE_ENFORCE(
       it != uses_.end(),
-      string::Sprintf("Expect %s in live_out, but Not Found.", op->Name()));
+      string::Sprintf("Expect %s in use, but Not Found.", op->Name()));
   return it->second;
 }
 
-const std::vector<ir::Node*> ControlFlowGraph::Ops() const { return ops_; }
+const std::set<std::string>& ControlFlowGraph::Unlived(ir::Node* op) const {
+  auto it = unlived_vars_.find(op);
+  PADDLE_ENFORCE(
+      it != unlived_vars_.end(),
+      string::Sprintf("Expect %s in unlived_set, but Not Found.", op->Name()));
+  return it->second;
+  return it->second;
+}
+
+const std::vector<ir::Node*>& ControlFlowGraph::Ops() const { return ops_; }
 
 std::vector<ir::Node*>& ControlFlowGraph::Ops() { return ops_; }
 

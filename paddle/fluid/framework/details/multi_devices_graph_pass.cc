@@ -166,7 +166,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   result.Set(kGraphOps, new GraphOps);
 
   bool is_forwarding = true;
-  bool insert_collection_ops = NeedCollectiveOps(sorted_ops);
+  bool insert_collective_ops = NeedCollectiveOps();
 
   for (ir::Node *node : sorted_ops) {
     if (DealWithSpecialOp(&result, node)) {
@@ -186,7 +186,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
       }
 
       // Insert collection ops
-      if (!is_forwarding && insert_collection_ops) {
+      if (!is_forwarding && insert_collective_ops) {
         try {
           bool is_bk_op =
               static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
@@ -205,8 +205,9 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
             auto &p_name = backward_vars[i];
             auto &g_name = backward_vars[i + 1];
             VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
-
-            InsertCollectiveOp(&result, p_name, g_name);
+            if (NeedCollectiveOpHandle(g_name, sorted_ops)) {
+              InsertCollectiveOp(&result, p_name, g_name);
+            }
           }
         } catch (boost::bad_get e) {
         }
@@ -271,15 +272,24 @@ bool MultiDevSSAGraphBuilderBase::UseGPU() const {
   return use_gpu;
 }
 
-bool MultiDevSSAGraphBuilderBase::NeedCollectiveOps(
-    std::vector<ir::Node *> ops) const {
+bool MultiDevSSAGraphBuilderBase::NeedCollectiveOpHandle(
+    const std::string &grad_name, std::vector<ir::Node *> ops) const {
+  // if we have allreduce_op for current gradient variable in the graph, then we
+  // don't
+  // need to add allreduce_op_handle for this gradient
+  // NOTE: This is for the case that all gradients should add collective ops
   for (auto *node : ops) {
-    if (node->Op()->Type() == "allreduce") {
-      // HACK: if graph have allreduce op, do not append automatic
-      // allreduce allreduce_op_handles
-      return false;
+    if (node->Op()->Type() != "allreduce") continue;
+    for (auto in_name : node->Op()->InputArgumentNames()) {
+      if (in_name == grad_name) {
+        return false;
+      }
     }
   }
+  return true;
+}
+
+bool MultiDevSSAGraphBuilderBase::NeedCollectiveOps() const {
   return Get<size_t>(kNRanks) > 1;
 }
 
@@ -400,20 +410,32 @@ void MultiDevSSAGraphBuilderBase::CreateComputationalOp(ir::Graph *result,
 
 void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
     ir::Graph *result, const std::string &og) const {
+  OpHandleBase *op_handle = nullptr;
+
+  auto append_allreduce_op = [&](
+      const std::vector<Scope *> &scopes,
+      const std::vector<platform::Place> &places) -> OpHandleBase * {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
-      result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-      local_scopes_, places_, nccl_ctxs_));
+    result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
+        result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
+        scopes, places, nccl_ctxs_));
 #else
-  result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
-      result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-      local_scopes_, places_));
+    result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
+        result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
+        scopes, places));
 #endif
-  auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
+    return result->Get<GraphOps>(kGraphOps).back();
+  };
+
+  if (!strategy_.enable_parallel_graph_)
+    op_handle = append_allreduce_op(local_scopes_, places_);
 
   for (size_t i = 0; i < places_.size(); ++i) {
-    auto &p = places_[i];
-    SetCommunicationContext(op_handle, p);
+    if (strategy_.enable_parallel_graph_) {
+      op_handle = append_allreduce_op({local_scopes_[i]}, {places_[i]});
+    }
+
+    SetCommunicationContext(op_handle, places_[i]);
     auto &vars = result->Get<GraphVars>(kGraphVars)[i][og];
     PADDLE_ENFORCE(!vars.empty());
     auto &prev_grad = vars.back();
@@ -421,7 +443,7 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
 
     auto var =
         new VarHandle(result->CreateEmptyNode(og, ir::Node::Type::kVariable),
-                      vars.size(), i, og, p);
+                      vars.size(), i, og, places_[i]);
     vars.emplace_back(var);
     op_handle->AddOutput(var);
   }
@@ -933,9 +955,21 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
 }
 
 void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
-  if (need_broadcast_var_ ||
-      (UseGPU() &&
-       strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce)) {
+  // broad cast received parameters when training in parameter server mode.
+  if (need_broadcast_var_) {
+    // There are 4 conditions:
+    // 1. GPU && Reduce: Reduce gradient then broadcast gradient to other GPUS.
+    // Need to broadcast received parameters to other GPU.
+    // 2. GPU && AllReduce: AllReduce all graident to each GPU. Need to
+    // broadcast received parameters to other GPU.
+    // 3. CPU && AllReduce: AllReduce all gradient to each thread. Need to
+    // broadcast received parameters to other scope.
+    // 4. CPU && Reduce: because all parameters share the same memory, did not
+    // broadcast received parameters.
+    if (!UseGPU() &&
+        strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
+      return;
+    }
     if (strategy_.fuse_broadcast_op_) {
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {

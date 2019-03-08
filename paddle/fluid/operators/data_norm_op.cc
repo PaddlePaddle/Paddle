@@ -140,9 +140,6 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
               "Scales of the history data batch, "
               "will apply to output when training")
         .AsIntermediate();
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
     AddComment(R"DOC(
 Data Normalization.
 
