@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <fcntl.h>
-
-// To avoid conflicting definition in gcc-4.8.2 headers and pyconfig.h (2.7.3)
 #ifdef _POSIX_C_SOURCE
 #undef _POSIX_C_SOURCE
 #endif
@@ -43,7 +41,7 @@ namespace paddle {
 namespace pybind {
 
 void BindDataset(py::module* m) {
-  py::class_<framework::DataSet>(*m, "Dataset")
+  py::class_<framework::Dataset>(*m, "Dataset")
       .def(py::init([]() {
         return std::unique_ptr<framework::Dataset>(new framework::Dataset());
       }))
@@ -53,7 +51,7 @@ void BindDataset(py::module* m) {
       .def("set_data_feed_desc", &framework::Dataset::SetDataFeedDesc)
       .def("load_into_memory", &framework::Dataset::LoadIntoMemory)
       .def("local_shuffle", &framework::Dataset::LocalShuffle)
-      .def("global_shuffle", &framework::Dataset::GLobalShuffle)
+      .def("global_shuffle", &framework::Dataset::GlobalShuffle);
 }
 
 }  // end namespace pybind

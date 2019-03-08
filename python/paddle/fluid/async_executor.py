@@ -118,12 +118,13 @@ class AsyncExecutor(object):
         trainer.set_thread(thread_num)
         trainer.set_filelist(filelist)
         trainer.set_data_feed(data_feed)
+        if not is_local:
+            trainer.set_program_config(self.dist_desc, str(id(program)))
         with open("trainer_desc.proto", "w") as fout:
             fout.write(trainer._desc())
         # define a trainer and a device_worker here
         self.executor.run_from_files(program_desc,
-                                     trainer._desc(), debug,
-                                     str(id(program_desc)))
+                                     trainer._desc(), debug)
 
     '''
     def run(self,

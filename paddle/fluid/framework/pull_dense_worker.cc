@@ -28,16 +28,26 @@ std::map<uint64_t, std::vector<std::string>>
 void PullDenseWorker::Initialize(const TrainerDesc& param) {
   running_ = false;
   param_ = param.pull_dense_param();
+  dwp_param_ = param.downpour_param();
   threshold_ = param_.threshold();
   thread_num_ = param_.device_num();
   sleep_time_ms_ = param_.sleep_time_ms();
-  for (size_t i = 0; i < param_.dense_table_size(); ++i) {
+  for (size_t i = 0;
+       i < dwp_param_.program_config(0).pull_dense_table_id_size(); ++i) {
+    uint64_t tid = static_cast<uint64_t>(
+        dwp_param_.program_config(0).pull_dense_table_id(i));
+    TableParameter table;
+    for (auto i : param_.dense_table()) {
+      if (i.table_id() == tid) {
+        table = i;
+        break;
+      }
+    }
     // setup dense variables for each table
-    int var_num = param_.dense_table(i).dense_value_name_size();
-    uint64_t tid = static_cast<uint64_t>(param_.dense_table(i).table_id());
+    int var_num = table.dense_value_name_size();
     dense_value_names_[tid].resize(var_num);
     for (int j = 0; j < var_num; ++j) {
-      dense_value_names_[tid][j] = param_.dense_table(i).dense_value_name(j);
+        dense_value_names_[tid][j] = table.dense_value_name(j);
     }
     // setup training version for each table
     training_versions_[tid].resize(thread_num_, 0);
@@ -82,8 +92,10 @@ int PullDenseWorker::Start() {
 void PullDenseWorker::Run() {
   while (running_) {
     pull_dense_status_.resize(0);
-    for (size_t i = 0; i < param_.dense_table_size(); ++i) {
-      uint64_t tid = static_cast<uint64_t>(param_.dense_table(i).table_id());
+    for (size_t i = 0;
+         i < dwp_param_.program_config(0).pull_dense_table_id_size(); ++i) {
+      uint64_t tid = static_cast<uint64_t>(
+          dwp_param_.program_config(0).pull_dense_table_id(i));
       if (CheckUpdateParam(tid)) {
         fleet_ptr_->PullDenseVarsAsync(
             *root_scope_, tid, dense_value_names_[tid], &pull_dense_status_);
