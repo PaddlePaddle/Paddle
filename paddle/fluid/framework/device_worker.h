@@ -63,6 +63,7 @@ class PullDenseWorker {
   static std::shared_ptr<PullDenseWorker> s_instance_;
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   PullDenseWorkerParameter param_;
+  DownpourWorkerParameter dwp_param_;
   Scope* root_scope_;
   bool running_;
 
