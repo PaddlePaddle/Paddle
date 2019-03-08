@@ -135,9 +135,7 @@ int PrivateQueueDataFeed<T>::Next() {
   return batch_size_;
 }
 
-#ifdef _WIN32
 template class PrivateQueueDataFeed<std::vector<MultiSlotType>>;
-#endif
 
 template <typename T>
 InMemoryDataFeed<T>::InMemoryDataFeed() {
@@ -150,7 +148,7 @@ template <typename T>
 bool InMemoryDataFeed<T>::Start() {
   DataFeed::CheckSetFileList();
   if (memory_data_.size() != 0) {
-    CHECK(cur_channel_ == 0);
+    CHECK_EQ(cur_channel_, 0);
     shuffled_ins_->Extend(std::move(memory_data_));
     std::vector<T>().swap(memory_data_);
   }
@@ -173,30 +171,30 @@ int InMemoryDataFeed<T>::Next() {
   CHECK(in_channel != nullptr);
   CHECK(out_channel != nullptr);
   int index = 0;
-    T instance;
-    T ins_vec;
-    while (index < DataFeed::default_batch_size_) {
-      if (in_channel->Size() == 0) {
-        break;
-      }
-      in_channel->Pop(instance);
-      AddInstanceToInsVec(&ins_vec, instance, index++);
-      out_channel->Push(std::move(instance));
+  T instance;
+  T ins_vec;
+  while (index < DataFeed::default_batch_size_) {
+    if (in_channel->Size() == 0) {
+      break;
     }
-    DataFeed::batch_size_ = index;
-    if (DataFeed::batch_size_ != 0) {
-      PutToFeedVec(ins_vec);
-    } else {
-      cur_channel_ = 1 - cur_channel_;
-    }
-    return DataFeed::batch_size_;
+    in_channel->Pop(instance);
+    AddInstanceToInsVec(&ins_vec, instance, index++);
+    out_channel->Push(std::move(instance));
+  }
+  DataFeed::batch_size_ = index;
+  if (DataFeed::batch_size_ != 0) {
+    PutToFeedVec(ins_vec);
+  } else {
+    cur_channel_ = 1 - cur_channel_;
+  }
+  return DataFeed::batch_size_;
 }
 
 template <typename T>
 void InMemoryDataFeed<T>::PutInsToChannel(const std::string& ins_str) {
-   T ins;
-   DeserializeIns(ins, ins_str);
-   shuffled_ins_->Push(std::move(ins));
+  T ins;
+  DeserializeIns(ins, ins_str);
+  shuffled_ins_->Push(std::move(ins));
 }
 
 template <typename T>
@@ -205,11 +203,11 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
   std::string filename;
   while (DataFeed::PickOneFile(&filename)) {
     int err_no = 0;
-    PrivateQueueDataFeed<T>::fp_ = fs_open_read(filename, &err_no,
-                                                PrivateQueueDataFeed<T>::pipe_command_);
+    PrivateQueueDataFeed<T>::fp_ =
+        fs_open_read(filename, &err_no, PrivateQueueDataFeed<T>::pipe_command_);
     __fsetlocking(&*PrivateQueueDataFeed<T>::fp_, FSETLOCKING_BYCALLER);
     T instance;
-    while(ParseOneInstanceFromPipe(&instance)) {
+    while (ParseOneInstanceFromPipe(&instance)) {
       local_vec.push_back(instance);
     }
     memory_data_.insert(memory_data_.end(), local_vec.begin(), local_vec.end());
@@ -241,6 +239,8 @@ void InMemoryDataFeed<T>::GlobalShuffle(int trainer_num) {
   }
 }
 */
+
+template class InMemoryDataFeed<std::vector<MultiSlotType>>;
 
 void MultiSlotDataFeed::Init(
     const paddle::framework::DataFeedDesc& data_feed_desc) {
@@ -633,7 +633,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(
   }
 }
 
-bool MultiSlotInMemoryDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
+bool MultiSlotInMemoryDataFeed::ParseOneInstance(
+    std::vector<MultiSlotType>* instance) {
   std::string line;
   if (getline(file_, line)) {
     int use_slots_num = use_slots_.size();
@@ -725,12 +726,14 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
 }
 
 // todo serialize ins in global shuffle
-void MultiSlotInMemoryDataFeed::SerializeIns(const std::vector<MultiSlotType>& ins, std::string& str) {
-
+void MultiSlotInMemoryDataFeed::SerializeIns(
+    const std::vector<MultiSlotType>& ins, std::string& str) {
+  return;
 }
 // todo deserialize ins in global shuffle
-void MultiSlotInMemoryDataFeed::DeserializeIns(std::vector<MultiSlotType>& ins, const std::string& str) {
-
+void MultiSlotInMemoryDataFeed::DeserializeIns(std::vector<MultiSlotType>& ins,
+                                               const std::string& str) {
+  return;
 }
 
 }  // namespace framework
