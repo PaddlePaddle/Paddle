@@ -24,8 +24,8 @@ from paddle.fluid import compiler
 
 class TestSyncBatchNormOpTraining(unittest.TestCase):
     def setUp(self):
-        #self.dtype = np.float32
-        self.dtype = np.float64
+        self.dtype = np.float32
+        #self.dtype = np.float64
         self.N = 32
         self.C = 16
         self.H = 64
@@ -78,7 +78,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                         is_test=only_forward)
                     sigmoid = fluid.layers.sigmoid(bn)
                     out = fluid.layers.reduce_sum(sigmoid)
-                    out = out / 2.
+                    out = out / core.get_cuda_device_count()
                 if not only_forward:
                     sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
                     sgd_opt.backward(out)
@@ -126,8 +126,8 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         for nm in sync_fetch_names:
             fv = fluid.framework._get_var(str(nm), program=main)
             fv.persistable = True
-        comp_prog = compiler.CompiledProgram(main).with_data_parallel(outs[0]
-                                                                      .name)
+        comp_prog = compiler.CompiledProgram(main).with_data_parallel(outs[
+            0].name if not only_forward else None)
         sync_bn_fetches = exe.run(program=comp_prog,
                                   feed={'input': data},
                                   fetch_list=sync_fetch_names)
