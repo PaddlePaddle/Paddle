@@ -85,9 +85,7 @@ class ReadOp : public framework::OperatorBase {
     std::vector<framework::LoDTensor> ins;
 
     // For profiling
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(dev_place);
-    platform::RecordEvent record_event(Type(), &ctx);
+    platform::RecordEvent record_event(Type());
 
     reader->ReadNext(&ins);
     if (ins.empty()) {

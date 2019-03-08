@@ -144,15 +144,5 @@ class TestSoftmaxFP16CUDNNOp2(TestSoftmaxFP16CUDNNOp):
         return [2, 3, 4, 5]
 
 
-class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestSoftmaxMKLDNNOp2(TestSoftmaxMKLDNNOp):
-    def get_x_shape(self):
-        return [2, 3, 4, 5]
-
-
 if __name__ == "__main__":
     unittest.main()
