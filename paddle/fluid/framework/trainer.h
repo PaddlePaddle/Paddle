@@ -22,6 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -29,7 +30,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
-#include "paddle/fluid/framework/data_set.h"
 
 namespace paddle {
 namespace framework {
@@ -41,7 +41,8 @@ class TrainerBase {
   // model memory are hosted in root_scope
   void SetScope(Scope* root_scope);
   void SetDebug(const bool debug) { debug_ = debug; }
-  virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set) = 0;
+  virtual void Initialize(const TrainerDesc& trainer_desc,
+                          const Dataset& data_set) = 0;
   virtual void InitTrainerEnv(const ProgramDesc& main_program,
                               const platform::Place& place) = 0;
   virtual void InitOtherEnv(const ProgramDesc& main_program) = 0;
@@ -60,7 +61,8 @@ class MultiTrainer : public TrainerBase {
  public:
   MultiTrainer() {}
   virtual ~MultiTrainer() {}
-  virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set);
+  virtual void Initialize(const TrainerDesc& trainer_desc,
+                          const Dataset& data_set);
   virtual void InitTrainerEnv(const ProgramDesc& main_program,
                               const platform::Place& place);
   virtual void InitOtherEnv(const ProgramDesc& main_program) {}
@@ -78,7 +80,8 @@ class DistMultiTrainer : public MultiTrainer {
  public:
   DistMultiTrainer() {}
   virtual ~DistMultiTrainer() {}
-  virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set);
+  virtual void Initialize(const TrainerDesc& trainer_desc,
+                          const Dataset& data_set);
   virtual void InitOtherEnv(const ProgramDesc& main_program);
   virtual void Finalize();
 

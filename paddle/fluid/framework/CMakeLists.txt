@@ -28,7 +28,7 @@ add_subdirectory(common)
 add_subdirectory(io)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
-proto_library(async_executor_proto SRCS data_feed.proto)
+proto_library(data_feed_proto SRCS data_feed.proto)
 proto_library(trainer_desc_proto SRCS trainer_desc.proto)
 
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
@@ -175,15 +175,11 @@ cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc o
 
 if(WITH_DISTRIBUTE)
   cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog
-    lod_rank_table feed_fetch_method sendrecvop_rpc  ${GLOB_DISTRIBUTE_DEPS} graph_to_program_pass variable_helper ${NGRAPH_EXE_DEPS})
+    lod_rank_table feed_fetch_method sendrecvop_rpc  ${GLOB_DISTRIBUTE_DEPS} graph_to_program_pass variable_helper ${NGRAPH_EXE_DEPS} trainer_library)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
-  if(WITH_NGRAPH)
-    cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass ngraph_operator variable_helper)
-  else(WITH_NGRAPH)
-    cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
-  endif(WITH_NGRAPH)
+  cc_library(executor SRCS executor.cc multi_trainer.cc dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc pull_dense_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry device_context scope framework_proto data_feed_proto trainer_desc_proto glog lod_rank_table fs shell fleet_wrapper lodtensor_printer feed_fetch_method graph_to_program_pass variable_helper ${NGRAPH_EXE_DEPS} timer)
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
 
@@ -194,28 +190,15 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy
         fast_threaded_ssa_graph_executor variable_helper)
 
-if(WITH_PSLIB)
-    cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc
-                              executor_thread_worker.cc multi_trainer.cc dist_multi_trainer.cc
-                              trainer_factory.cc trainer.cc device_worker.cc hogwild_worker.cc 
-                              downpour_worker.cc pull_dense_worker.cc device_worker_factory.cc
-                              data_set.cc
-			      DEPS op_registry device_context scope framework_proto
-			      trainer_desc_proto glog lod_rank_table fleet_wrapper lodtensor_printer
-			      feed_fetch_method graph_to_program_pass async_executor_proto
-			      variable_helper pslib_brpc pslib timer)
-else()
-    cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc
-                              executor_thread_worker.cc multi_trainer.cc dist_multi_trainer.cc
-                              trainer_factory.cc trainer.cc device_worker.cc hogwild_worker.cc
-                              downpour_worker.cc pull_dense_worker.cc device_worker_factory.cc
-                              data_set.cc
-			      DEPS op_registry device_context scope framework_proto
-			      trainer_desc_proto glog lod_rank_table fleet_wrapper lodtensor_printer
-			      feed_fetch_method graph_to_program_pass async_executor_proto
-			      variable_helper timer)
-endif(WITH_PSLIB)
 
+cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc
+           executor_thread_worker.cc multi_trainer.cc dist_multi_trainer.cc
+           trainer_factory.cc trainer.cc device_worker.cc hogwild_worker.cc
+           downpour_worker.cc pull_dense_worker.cc device_worker_factory.cc
+           data_set.cc DEPS op_registry device_context scope framework_proto
+	   trainer_desc_proto glog lod_rank_table fleet_wrapper lodtensor_printer
+	   feed_fetch_method graph_to_program_pass data_feed_proto
+	   variable_helper timer)
 
 cc_test(data_feed_test SRCS data_feed_test.cc DEPS async_executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto)
