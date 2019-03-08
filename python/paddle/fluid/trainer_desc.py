@@ -78,3 +78,18 @@ class DistMultiTrainer(TrainerDesc):
         worker_builder = DeviceWorkerFactory()
         device_worker = worker_builder.create_device_worker("Downpour")
         device_worker.gen_worker_desc(self.proto_desc, fleet_desc)
+
+    def set_program_config(self, fleet_desc, program_id):
+        for program_config in fleet_desc.trainer_param.program_config:
+            if program_config.program_id == program_id:
+                pc = self.proto_desc.downpour_param.program_config.add()
+                pc.program_id = program_config.program_id
+                for i in program_config.push_sparse_table_id:
+                    pc.push_sparse_table_id.extend([i])
+                for i in program_config.push_dense_table_id:
+                    pc.push_dense_table_id.extend([i])
+                for i in program_config.pull_sparse_table_id:
+                    pc.pull_sparse_table_id.extend([i])
+                for i in program_config.pull_dense_table_id:
+                    pc.pull_dense_table_id.extend([i])
+                break

@@ -45,6 +45,15 @@ message DownpourWorkerParameter {
   repeated TableParameter sparse_table = 1;
   repeated TableParameter dense_table = 2;
   repeated string skip_ops = 3;
+  repeated ProgramConfig program_config = 4;
+}
+
+message ProgramConfig {
+  required string program_id = 1;
+  repeated int32 push_sparse_table_id = 2;
+  repeated int32 push_dense_table_id = 3;
+  repeated int32 pull_sparse_table_id = 4;
+  repeated int32 pull_dense_table_id = 5;
 }
 
 message PullDenseWorkerParameter {
