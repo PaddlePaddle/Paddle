@@ -107,7 +107,7 @@ class _ChromeTraceFormatter(object):
             value: Value of the counter as integer
             tid: Thread id of the allocation as integer
         """
-        event = self._create_event('C', name, category, pid, 0, timestamp)
+        event = self._create_event('C', category, name, pid, 0, timestamp)
         event['args'] = {counter: value}
         self._events.append(event)
 
@@ -220,27 +220,22 @@ class Timeline(object):
                     event.sub_device_id, 'Op', event.name, args)
 
     def _allocate_memory_event(self):
-        cpu_involved = False
-        gpu_involved = False
-        cudapin_involved = False
-
+        place_to_str = {
+            profiler_pb2.MemEvent.CPUPlace: "CPU",
+            profiler_pb2.MemEvent.CUDAPlace: "GPU",
+            profiler_pb2.MemEvent.CUDAPinnedPlace: "CUDAPinnedPlace"
+        }
         for k, profile_pb in six.iteritems(self._profile_dict):
             mem_list = []
-            cnt = 0
             end_profiler = 0
             for mevent in profile_pb.mem_events:
                 crt_info = dict()
                 crt_info['time'] = mevent.start_ns
                 crt_info['size'] = mevent.bytes
-                if mevent.place == profiler_pb2.MemEvent.CPUPlace:
-                    place = "CPU"
-                    cpu_involved = True
-                elif mevent.place == profiler_pb2.MemEvent.CUDAPlace:
-                    place = "GPU"
-                    gpu_involved = True
-                elif mevent.place == profiler_pb2.MemEvent.CUDAPinnedPlace:
-                    place = "CUDAPinnedPlace"
-                    cudapin_involved = True
+                if mevent.place in place_to_str:
+                    place = place_to_str[mevent.place]
+                else:
+                    place = "UnDefine"
                 crt_info['place'] = place
                 pid = self._mem_devices[(k, mevent.device_id, place)]
                 crt_info['pid'] = pid
@@ -265,30 +260,11 @@ class Timeline(object):
                         i + 1]['time']:
                     total_size += mem_list[i + 1]['size']
                     i += 1
+
                 self._chrome_trace.emit_counter(
-                    str(mem_list[i]['thread_id']), mem_list[i]['thread_id'],
-                    mem_list[i]['pid'], mem_list[i]['time'],
-                    mem_list[i]['thread_id'], total_size)
+                    "Memory", "Memory", mem_list[i]['pid'], mem_list[i]['time'],
+                    0, total_size)
                 i += 1
-            cnt += 1
-            if not cpu_involved:
-                self._chrome_trace.emit_counter(
-                    "",
-                    str(cnt), self._mem_devices[(k, 0, "CPU")], end_profiler,
-                    str(cnt), 0)
-                cnt += 1
-            if not gpu_involved:
-                self._chrome_trace.emit_counter(
-                    "0",
-                    str(cnt), self._mem_devices[(k, 0, "GPU")], end_profiler,
-                    str(cnt), 0)
-                cnt += 1
-            if not cudapin_involved:
-                self._chrome_trace.emit_counter(
-                    "0",
-                    str(cnt), self._mem_devices[(k, 0, "CUDAPinnedPlace")],
-                    end_profiler, str(cnt), 0)
-                cnt += 1
 
     def generate_chrome_trace(self):
         self._allocate_pids()

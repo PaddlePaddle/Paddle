@@ -633,7 +633,6 @@ void DisableProfiler(EventSortingKey sorted_key,
 }
 
 bool IsProfileEnabled() { return g_state != ProfilerState::kDisabled; }
-
 bool ShouldSendProfileState() { return should_send_profile_state; }
 
 void SetProfileListener() {
@@ -643,7 +642,6 @@ void SetProfileListener() {
       1, std::numeric_limits<int>::max());
   profiler_lister_id = dist6(rng);
 }
-
 int64_t ListenerId() { return profiler_lister_id; }
 
 }  // namespace platform

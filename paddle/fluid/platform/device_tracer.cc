@@ -317,7 +317,7 @@ class DeviceTracerImpl : public DeviceTracer {
                         const Place &place, const std::string &alloc_in,
                         const std::string &free_in, int64_t thread_id) {
     if (0 == start_ns || 0 == end_ns) {
-      VLOG(3) << "Cannot be traced\n";
+      VLOG(3) << alloc_in << ", " << free_in << " Cannot be traced.";
       return;
     }
     thread_local std::forward_list<MemInfoRecord> *local_mem_info_record_ =
