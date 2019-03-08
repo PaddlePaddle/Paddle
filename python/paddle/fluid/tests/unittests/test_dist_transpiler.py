@@ -22,6 +22,9 @@ import six
 import unittest
 import numpy as np
 
+import gc
+gc.set_debug(gc.DEBUG_COLLECTABLE)
+
 import paddle.fluid as fluid
 
 
@@ -99,6 +102,12 @@ class TranspilerTest(unittest.TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
                 self.transpiler_test_impl()
+        # NOTE: run gc.collect to eliminate pybind side objects to
+        # prevent random double-deallocate when inherited in python.
+        del self.transpiler
+        del main
+        del startup
+        gc.collect()
 
 
 class TestBasicModel(TranspilerTest):
@@ -797,6 +806,7 @@ class TestNCCL2Transpile(TranspilerTest):
             print([op.type for op in startup.global_block().ops])
             self.assertEqual(startup.global_block().ops[-1].type, "gen_nccl_id")
             self.assertIsNotNone(startup.global_block().vars.get("NCCLID"))
+            gc.collect()
         else:
             pass
 
