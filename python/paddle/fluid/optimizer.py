@@ -557,7 +557,7 @@ class DGCOptimizer(MomentumOptimizer):
 
     This optimizer will do two thing:
         
-        1. Compress the gradient by get topK import value from tensor  
+        1. Compress the gradient by get TopK import value from tensor \
             and use it for allreduce to reduce network bandwidth.
     
         2. Call momentum to optimize on the cost.
@@ -569,8 +569,8 @@ class DGCOptimizer(MomentumOptimizer):
         sparsity (list[float]): get top important element from gradient tensor, the ratio is (1 - current sparsity).
         rampup_begin_step (int): the iteration from which use graident comrepssion.
         rampup_step (int): how long it use the sparsity periods.
-            for example: If the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 5,
-                it will use 0.75 at 0 step, and 0.9375 at 1 step, and so on. And when reach sparsity array end, 
+            for example: If the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 5, \
+                it will use 0.75 at 0 step, and 0.9375 at 1 step, and so on. And when reach sparsity array end, \
                 it will use 0.999 then and after.
         use_nesterov (bool): enables Nesterov momentum
         local_grad_clip_norm (float): clip norm value if needed.
