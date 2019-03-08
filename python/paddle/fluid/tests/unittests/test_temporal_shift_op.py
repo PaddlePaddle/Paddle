@@ -21,13 +21,15 @@ from op_test import OpTest
 from paddle.fluid import core
 
 
-def temporal_shift(x, seg_num):
+def temporal_shift(x, seg_num, shift_ratio):
     shape = x.shape
     reshape_x = x.reshape((-1, seg_num, shape[1], shape[2], shape[3]))
     pad_x = np.pad(reshape_x, ((0, 0), (1, 1), (0, 0), (0, 0), (0, 0)), 'constant')
-    slice1 = pad_x[:, :seg_num, :shape[1]//4, :, :]
-    slice2 = pad_x[:, 2:seg_num+2, shape[1]//4:shape[1]//2, :, :]
-    slice3 = pad_x[:, 1:seg_num+1, shape[1]//2:, :, :]
+    c1 = int(shape[1] * shift_ratio)
+    c2 = int(shape[1] * 2 * shift_ratio)
+    slice1 = pad_x[:, :seg_num, :c1, :, :]
+    slice2 = pad_x[:, 2:seg_num+2, c1:c2, :, :]
+    slice3 = pad_x[:, 1:seg_num+1, c2:, :, :]
     concat_x = np.concatenate([slice1, slice2, slice3], axis=2)
     return concat_x.reshape(shape)
 
@@ -39,13 +41,14 @@ class TestTemporalShift(OpTest):
 
         self.attrs = {
             "seg_num": self.seg_num,
+            "shift_ratio": self.shift_ratio,
         }
 
         self.inputs = {
             "X": x,
         }
 
-        output = temporal_shift(x, self.seg_num)
+        output = temporal_shift(x, self.seg_num, self.shift_ratio)
         self.outputs = {"Out": output}
 
     def test_check_output(self):
@@ -57,17 +60,20 @@ class TestTemporalShift(OpTest):
     def initTestCase(self):
         self.x_shape = (6, 4, 4, 4)
         self.seg_num = 3
+        self.shift_ratio = 0.25
 
 class TestTemporalShift2(TestTemporalShift):
     def initTestCase(self):
         self.x_shape = (4, 9, 7, 7)
         self.seg_num = 2
+        self.shift_ratio = 0.2
 
 
 class TestTemporalShift2(TestTemporalShift):
     def initTestCase(self):
         self.x_shape = (3, 10, 5, 5)
         self.seg_num = 1
+        self.shift_ratio = 0.3
 
 
 if __name__ == "__main__":

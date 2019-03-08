@@ -1052,7 +1052,7 @@ class TestBook(unittest.TestCase):
         program = Program()
         with program_guard(program):
             x = layers.data(name="X", shape=[16, 4, 4], dtype="float32")
-            out = layers.temporal_shift(x, seg_num=4)
+            out = layers.temporal_shift(x, seg_num=4, shift_ratio=0.2)
             self.assertIsNotNone(out)
         print(str(program))
 
