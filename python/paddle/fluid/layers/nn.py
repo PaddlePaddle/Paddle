@@ -32,6 +32,8 @@ from .. import unique_name
 from functools import reduce
 from .. import core
 from ..imperative import layers
+from .control_flow import equal
+from .ops import square
 
 __all__ = [
     'fc',
@@ -10690,9 +10692,6 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 
     labels = reshape(labels, shape=[batch_size, 1], inplace=True)
     labels = expand(labels, expand_times=[1, batch_size])
-
-    from .control_flow import equal
-    from .ops import square
 
     labels = equal(labels, transpose(labels, perm=[1, 0])).astype('float32')
     labels = labels / reduce_sum(labels, dim=1, keep_dim=True)
