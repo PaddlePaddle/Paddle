@@ -37,23 +37,33 @@ using ConstEigenVectorArrayMap =
 bool AnalysisPredictor::Quantizer::CalculateScales() {
   using VariableNameMap = std::map<std::string, std::vector<std::string>>;
   std::map<std::string, std::map<std::string, LoDTensor>> gathered_data;
-  for (auto* op : predictor_.inference_program_->Block(0).AllOps()) {
+  for (const auto* op : predictor_.inference_program_->Block(0).AllOps()) {
     if (op->HasAttr("use_quantizer") &&
         boost::get<bool>(op->GetAttr("use_quantizer"))) {
-      VariableNameMap connections = op->Inputs();
-      VariableNameMap connections_out = op->Outputs();
-      connections.insert(connections_out.begin(), connections_out.end());
-      for (auto const& conn : connections) {
-        if (conn.second.size() == 0) continue;
-        auto& var_name = conn.second[0];
-        auto* var = predictor_.sub_scope_->FindVar(var_name);
-        PADDLE_ENFORCE(var, "%s is not in the scope", var_name);
-        PADDLE_ENFORCE(var->IsType<LoDTensor>(),
-                       "Only support lod tensor now.");
-        LoDTensor* var_tensor = var->GetMutable<LoDTensor>();
+      const VariableNameMap& connections_in = op->Inputs();
+      const VariableNameMap& connections_out = op->Outputs();
 
-        CalculateSingleScale(op->Type(), conn.first, var_name, *var_tensor);
-      }
+      auto glambda = [&](const VariableNameMap& connections, bool is_output) {
+        for (auto const& conn : connections) {
+          if (conn.second.size() == 0) continue;
+          auto& var_name = conn.second[0];
+          auto* var = predictor_.sub_scope_->FindVar(var_name);
+          PADDLE_ENFORCE(var, "%s is not in the scope", var_name);
+          PADDLE_ENFORCE(var->IsType<LoDTensor>(),
+                         "Only support lod tensor now.");
+          LoDTensor* var_tensor = var->GetMutable<LoDTensor>();
+
+          bool is_unsigned = is_output && op->HasAttr("fuse_relu") &&
+                             boost::get<bool>(op->GetAttr("fuse_relu"));
+
+          CalculateSingleScale(
+              op->Type(), conn.first, var_name, *var_tensor,
+              is_unsigned ? QuantMax::U8_MAX : QuantMax::S8_MAX);
+        }
+      };
+
+      glambda(connections_in, false);
+      glambda(connections_out, true);
     }
   }
 
@@ -62,7 +72,8 @@ bool AnalysisPredictor::Quantizer::CalculateScales() {
 
 void AnalysisPredictor::Quantizer::CalculateSingleScale(
     const std::string& op_type_name, const std::string& conn_name,
-    const std::string& var_name, const LoDTensor& var_tensor) {
+    const std::string& var_name, const LoDTensor& var_tensor,
+    const QuantMax qmax) {
   PADDLE_ENFORCE(
       var_tensor.numel() > 0,
       "Quantizer: LoDTensor of variable for quantization should not be empty.");
@@ -74,13 +85,13 @@ void AnalysisPredictor::Quantizer::CalculateSingleScale(
     case ScaleAlgo::NONE:
       return;
     case ScaleAlgo::MAX:
-      scales_[var_name] = GetMaxScalingFactor(var_tensor);
+      scales_[var_name] = GetMaxScalingFactor(var_tensor, qmax);
       break;
     case ScaleAlgo::MAX_CH:
-      scales_[var_name] = GetMaxChScalingFactor(var_tensor);
+      scales_[var_name] = GetMaxChScalingFactor(var_tensor, qmax);
       break;
     case ScaleAlgo::KL:
-      scales_[var_name] = GetKLScalingFactor(var_tensor);
+      scales_[var_name] = GetKLScalingFactor(var_tensor, qmax);
       break;
     default:
       throw std::runtime_error("Quantizer: Unexpected ScaleAlgo specified.");
@@ -117,17 +128,14 @@ std::vector<int> AnalysisPredictor::Quantizer::ExpandQuantizedBins(
 }
 
 std::pair<QuantMax, LoDTensor> AnalysisPredictor::Quantizer::GetKLScalingFactor(
-    const LoDTensor& var_tensor) const {
+    const LoDTensor& var_tensor, const QuantMax quant_max) const {
   ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
                                         var_tensor.numel(), 1};
   int precision_hist_num_bins = 2048;
   float max_val = eigen_tensor.maxCoeff();
   float min_val = eigen_tensor.minCoeff();
   bool is_positive = min_val >= 0.0f;
-  auto quant_max = is_positive ? QuantMax::U8_MAX : QuantMax::S8_MAX;
 
-  PADDLE_ENFORCE(quant_max == QuantMax::U8_MAX || quant_max == QuantMax::S8_MAX,
-                 "Quantizer: Only 8 bit quantization is supported now.");
   int num_quantized_bins = 255;
 
   std::vector<int> hist;
@@ -232,16 +240,9 @@ std::pair<QuantMax, LoDTensor> AnalysisPredictor::Quantizer::GetKLScalingFactor(
 
 std::pair<QuantMax, LoDTensor>
 AnalysisPredictor::Quantizer::GetMaxScalingFactor(
-    const LoDTensor& var_tensor) const {
+    const LoDTensor& var_tensor, const QuantMax quant_max) const {
   ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
                                         var_tensor.numel(), 1};
-  float min_val = eigen_tensor.minCoeff();
-  bool is_positive = min_val >= 0.0f;
-  auto quant_max = is_positive ? QuantMax::U8_MAX : QuantMax::S8_MAX;
-
-  PADDLE_ENFORCE(quant_max == QuantMax::U8_MAX || quant_max == QuantMax::S8_MAX,
-                 "Quantizer: Only 8 bit quantization is supported now.");
-
   LoDTensor scale_tensor;
   scale_tensor.Resize({1});
   auto* scale_ptr = scale_tensor.mutable_data<float>(CPUPlace());
@@ -254,14 +255,8 @@ AnalysisPredictor::Quantizer::GetMaxScalingFactor(
 
 std::pair<QuantMax, LoDTensor>
 AnalysisPredictor::Quantizer::GetMaxChScalingFactor(
-    const LoDTensor& var_tensor) const {
+    const LoDTensor& var_tensor, const QuantMax quant_max) const {
   PADDLE_ENFORCE(var_tensor.dims().size() > 0, "Tensor dimension is empty.");
-
-  float min_val = *std::min_element(
-      var_tensor.data<float>(), var_tensor.data<float>() + var_tensor.numel());
-  bool is_positive = min_val >= 0;
-  auto quant_max = is_positive ? QuantMax::U8_MAX : QuantMax::S8_MAX;
-
   int channels = var_tensor.dims()[0];
   LoDTensor scale_tensor;
   scale_tensor.Resize({channels});

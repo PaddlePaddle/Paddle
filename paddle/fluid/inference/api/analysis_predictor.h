@@ -199,7 +199,8 @@ class AnalysisPredictor::Quantizer {
   void CalculateSingleScale(const std::string &op_name,
                             const std::string &conn_name,
                             const std::string &var_name,
-                            const framework::LoDTensor &var_tensor);
+                            const framework::LoDTensor &var_tensor,
+                            const QuantMax qmax);
   void PrepareArgument() const;
   bool RunQuantizePasses() const;
   bool SaveModel() const;
@@ -209,13 +210,13 @@ class AnalysisPredictor::Quantizer {
 
   // Using the KL-divergence method get the most precise scaling factor.
   std::pair<QuantMax, framework::LoDTensor> GetKLScalingFactor(
-      const framework::LoDTensor &var_tensor) const;
+      const framework::LoDTensor &var_tensor, const QuantMax quant_max) const;
 
   std::pair<QuantMax, framework::LoDTensor> GetMaxChScalingFactor(
-      const framework::LoDTensor &var_tensor) const;
+      const framework::LoDTensor &var_tensor, const QuantMax quant_max) const;
 
   std::pair<QuantMax, framework::LoDTensor> GetMaxScalingFactor(
-      const framework::LoDTensor &var_tensor) const;
+      const framework::LoDTensor &var_tensor, const QuantMax quant_max) const;
 
   // Returns histogram and bin width
   std::pair<std::vector<int>, float> Histogram(
