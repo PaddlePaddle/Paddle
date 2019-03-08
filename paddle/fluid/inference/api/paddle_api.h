@@ -36,6 +36,7 @@ namespace paddle {
 enum PaddleDType {
   FLOAT32,
   INT64,
+  INT32,
   // TODO(Superjomn) support more data types if needed.
 };
 
