@@ -10,6 +10,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/detection/yolov3_loss_op.h"
+#include <memory>
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
