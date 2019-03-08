@@ -4833,11 +4833,6 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     """
 
     def __check_input(x, y):
-        if len(y.shape) > len(x.shape):
-            raise ValueError(
-                "Invalid inputs for matmul. "
-                "x's rank should be always greater than or equal to y'rank.")
-
         x_shape = list(x.shape)
         y_shape = list(y.shape)
         if len(x_shape) == 1:
@@ -4853,10 +4848,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         if x_shape[-1] != y_shape[-2]:
             raise ValueError("Invalid inputs for matmul.")
 
-        if len(y_shape) > 2:
+        if len(y_shape) > 2 and len(x_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):
                 if dim_x != y_shape[i]:
-                    raise ValueError("Invalid inputs for matmul.")
+                    raise ValueError("Invalid inputs for matmul. x(%s), y(%s)" %
+                                     (x.shape, y.shape))
 
     __check_input(x, y)
 

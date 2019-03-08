@@ -112,6 +112,7 @@ void BufferedReader::ReadAsync(size_t i) {
                        boost::get<platform::CUDAPlace>(cpu_place), cpu_ptr,
                        size, stream);
         } else {
+          // TODO(zcd): The default stream should not be used here.
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
                        boost::get<platform::CPUPlace>(cpu_place), cpu_ptr, size,
                        0);
