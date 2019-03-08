@@ -198,27 +198,15 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy
         fast_threaded_ssa_graph_executor variable_helper)
 
-if(WITH_PSLIB)
-    cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc
-                              executor_thread_worker.cc multi_trainer.cc dist_multi_trainer.cc
-                              trainer_factory.cc trainer.cc device_worker.cc hogwild_worker.cc 
-                              downpour_worker.cc pull_dense_worker.cc device_worker_factory.cc
-                              data_set.cc
-			      DEPS op_registry device_context scope framework_proto
-			      trainer_desc_proto glog lod_rank_table fleet_wrapper lodtensor_printer
-			      feed_fetch_method graph_to_program_pass async_executor_proto
-			      variable_helper pslib_brpc pslib timer fs shell)
-else()
-    cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc
-                              executor_thread_worker.cc multi_trainer.cc dist_multi_trainer.cc
-                              trainer_factory.cc trainer.cc device_worker.cc hogwild_worker.cc
-                              downpour_worker.cc pull_dense_worker.cc device_worker_factory.cc
-                              data_set.cc
-			      DEPS op_registry device_context scope framework_proto
-			      trainer_desc_proto glog lod_rank_table fleet_wrapper lodtensor_printer
-			      feed_fetch_method graph_to_program_pass async_executor_proto
-			      variable_helper timer fs shell)
-endif(WITH_PSLIB)
+cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc
+           executor_thread_worker.cc multi_trainer.cc dist_multi_trainer.cc
+           trainer_factory.cc trainer.cc device_worker.cc hogwild_worker.cc
+           downpour_worker.cc pull_dense_worker.cc device_worker_factory.cc
+           data_set.cc
+           DEPS op_registry device_context scope framework_proto
+           trainer_desc_proto glog lod_rank_table fleet_wrapper lodtensor_printer
+           feed_fetch_method graph_to_program_pass data_feed_proto
+           variable_helper timer)
 
 
 cc_test(data_feed_test SRCS data_feed_test.cc DEPS async_executor)
