@@ -65,7 +65,8 @@ void BindInferenceApi(py::module *m) {
 void BindPaddleDType(py::module *m) {
   py::enum_<PaddleDType>(*m, "PaddleDType")
       .value("FLOAT32", PaddleDType::FLOAT32)
-      .value("INT64", PaddleDType::INT64);
+      .value("INT64", PaddleDType::INT64)
+      .value("INT32", PaddleDType::INT32);
 }
 
 void BindPaddleBuf(py::module *m) {
@@ -101,6 +102,11 @@ void BindPaddleBuf(py::module *m) {
       .def("int64_data",
            [](PaddleBuf &self) -> std::vector<int64_t> {
              int64_t *data = static_cast<int64_t *>(self.data());
+             return {data, data + self.length() / sizeof(*data)};
+           })
+      .def("int32_data",
+           [](PaddleBuf &self) -> std::vector<int32_t> {
+             int32_t *data = static_cast<int32_t *>(self.data());
              return {data, data + self.length() / sizeof(*data)};
            })
       .def("length", &PaddleBuf::length);
