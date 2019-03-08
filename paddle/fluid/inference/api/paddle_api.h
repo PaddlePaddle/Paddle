@@ -23,9 +23,9 @@
  */
 
 #include <algorithm>
-#include <numeric>
 #include <cassert>
 #include <memory>
+#include <numeric>
 #include <string>
 #include <vector>
 
