@@ -256,11 +256,14 @@ TEST(test, test_multi_threads) {
   for (int i = 0; i < 10; i++) {
     threads.emplace_back([&] {
       auto p = predictor->Clone();
-      ASSERT_TRUE(p->Run(inputs, &outputs));
+      for (int j = 0; j < 100; j++) {
+        ASSERT_TRUE(p->Run(inputs, &outputs));
+      }
 
       for (auto& output : outputs) {
         LOG(INFO) << output.data.length();
       }
+
     });
   }
 
