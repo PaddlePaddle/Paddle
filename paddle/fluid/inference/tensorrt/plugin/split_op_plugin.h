@@ -15,6 +15,7 @@
 #pragma once
 
 #include <thrust/device_vector.h>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
@@ -25,6 +26,7 @@ namespace plugin {
 
 class SplitPlugin : public PluginTensorRT {
  public:
+  SplitPlugin() {}
   SplitPlugin(int axis, std::vector<int> const &output_lengths)
       : axis_(axis), same_shape_(true), output_length_(output_lengths) {}
 
@@ -38,7 +40,7 @@ class SplitPlugin : public PluginTensorRT {
     return new SplitPlugin(axis_, output_length_);
   }
 
-  const char *getPluginType() const override { return "split"; }
+  const char *getPluginType() const override { return "split_plugin"; }
   int getNbOutputs() const override { return output_length_.size(); }
   nvinfer1::Dims getOutputDimensions(int index,
                                      const nvinfer1::Dims *input_dims,
@@ -50,11 +52,12 @@ class SplitPlugin : public PluginTensorRT {
 
  protected:
   size_t getSerializationSize() override {
-    return SerializedSize(axis_) + SerializedSize(output_length_) +
-           getBaseSerializationSize();
+    return SerializedSize(getPluginType()) + SerializedSize(axis_) +
+           SerializedSize(output_length_) + getBaseSerializationSize();
   }
 
   void serialize(void *buffer) override {
+    SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, axis_);
     SerializeValue(&buffer, output_length_);
