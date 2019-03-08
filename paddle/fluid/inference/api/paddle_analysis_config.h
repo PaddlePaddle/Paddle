@@ -121,7 +121,7 @@ struct AnalysisConfig {
   bool specify_input_name() const { return specify_input_name_; }
 
   /**
-   * \brief Turn on the TensorRT engine.
+   * \brief Turn on the usage of TensorRT sub-graph engine.
    *
    * The TensorRT engine will accelerate some subgraphes in the original Fluid
    * computation graph. In some models such as TensorRT50, GoogleNet and so on,
@@ -136,9 +136,19 @@ struct AnalysisConfig {
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1, int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32);
-  /** A boolean state telling whether the TensorRT engine is used.
+
+  /** A boolean state telling whether the TensorRT sub-graph engine is used.
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
+
+  /**
+   * \brief Turn on the usage of Anakin sub-graph engine.
+   */
+  void EnableAnakinEngine();
+
+  /** A boolean state indicating whether the Anakin sub-graph engine is used.
+   */
+  bool anakin_engine_enabled() const { return use_anakin_; }
 
   /** \brief Control whether to debug IR graph analysis phase.
    *
@@ -256,6 +266,8 @@ struct AnalysisConfig {
   std::string serialized_info_cache_;
 
   mutable std::unique_ptr<PassStrategy> pass_builder_;
+
+  bool use_anakin_{false};
 };
 
 }  // namespace paddle

@@ -45,6 +45,8 @@ class PaddlePassBuilder {
   /** Delete all the passes that has type `pass_type`. */
   void DeletePass(const std::string &pass_type);
 
+  void ClearPasses();
+
   /** Append an analysis pass. */
   void AppendAnalysisPass(const std::string &pass);
 

@@ -343,6 +343,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   argument_.SetStaticMemoryOptimForceUpdate(
       config_.static_memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
+  argument_.SetUseAnakin(config_.anakin_engine_enabled());
   // Analyze inference_program
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
@@ -364,6 +365,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
+  }
+
+  if (config_.use_gpu() && config_.anakin_engine_enabled()) {
+    LOG(INFO) << "Anakin subgraph engine is enabled";
   }
 
   if (config_.use_mkldnn_) {

@@ -134,6 +134,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_precision_mode, TensorRtPrecisionMode,
                       AnalysisConfig::Precision);
 
+  DECL_ARGUMENT_FIELD(use_anakin, UseAnakin, bool);
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
   DECL_ARGUMENT_FIELD(static_memory_optim, StaticMemoryOptim, bool);
