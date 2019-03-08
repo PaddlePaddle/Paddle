@@ -50,7 +50,7 @@ struct MemEvenRecorder {
  public:
   void PushMemRecord(const void* ptr, const Place& place, size_t size);
   void PopMemRecord(const void* ptr, const Place& place);
-
+  void Flush();
   static MemEvenRecorder& Instance() { return recorder; }
 
  private:
@@ -61,16 +61,15 @@ struct MemEvenRecorder {
     Place place_;
     size_t bytes_;
     uint64_t start_ns_;
+    uint64_t end_ns_;
     std::string alloc_in_;
     std::string free_in_;
-    uint64_t end_ns_;
   };
 
   static MemEvenRecorder recorder;
   std::map<Place,
            std::unordered_map<const void*, std::unique_ptr<RecordMemEvent>>>
       address_memevent_;
-  std::unordered_set<const void*> deleted_ptr;
   std::mutex mtx_;
   MemEvenRecorder() {}
   DISABLE_COPY_AND_ASSIGN(MemEvenRecorder);

@@ -168,7 +168,6 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
   std::lock_guard<std::mutex> guard(mtx_);
   auto &events = address_memevent_[place];
   PADDLE_ENFORCE(events.count(ptr) == 0, "");
-  VLOG(10) << "PushMemRecord " << place << ", " << ptr;
   events.emplace(ptr, std::unique_ptr<RecordMemEvent>(
                           new MemEvenRecorder::RecordMemEvent(place, size)));
 }
@@ -180,12 +179,13 @@ void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place) {
   auto iter = events.find(ptr);
   // The ptr maybe not in address_memevent
   if (iter != events.end()) {
-    VLOG(10) << "PopMemRecord " << place << ", " << ptr;
     events.erase(iter);
-    deleted_ptr.insert(ptr);
-  } else {
-    PADDLE_ENFORCE(deleted_ptr.count(ptr) == 0);
   }
+}
+
+void MemEvenRecorder::Flush() {
+  std::lock_guard<std::mutex> guard(mtx_);
+  address_memevent_.clear();
 }
 
 MemEvenRecorder::RecordMemEvent::RecordMemEvent(const Place &place,
@@ -193,13 +193,14 @@ MemEvenRecorder::RecordMemEvent::RecordMemEvent(const Place &place,
     : place_(place),
       bytes_(bytes),
       start_ns_(PosixInNsec()),
-      alloc_in_(CurAnnotationName()) {}
+      alloc_in_(CurAnnotationName()) {
+  PushMemEvent(start_ns_, end_ns_, bytes_, place_, alloc_in_);
+}
 
 MemEvenRecorder::RecordMemEvent::~RecordMemEvent() {
   DeviceTracer *tracer = GetDeviceTracer();
   end_ns_ = PosixInNsec();
 
-  PushMemEvent(start_ns_, end_ns_, bytes_, place_, alloc_in_);
   auto annotation_free = CurAnnotationName();
   if (tracer) {
     tracer->AddMemInfoRecord(start_ns_, end_ns_, bytes_, place_, alloc_in_,
@@ -273,6 +274,7 @@ void EnableProfiler(ProfilerState state) {
 void ResetProfiler() {
   SynchronizeAllDevice();
   GetDeviceTracer()->Reset();
+  MemEvenRecorder::Instance().Flush();
   std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
   for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
        ++it) {
@@ -610,6 +612,8 @@ void ParseMemEvents(const std::vector<std::vector<MemEvent>> &events) {
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string &profile_path) {
   SynchronizeAllDevice();
+  MemEvenRecorder::Instance().Flush();
+
   std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled) return;
   // Mark the profiling stop.

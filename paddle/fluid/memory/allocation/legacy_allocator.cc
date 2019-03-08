@@ -334,7 +334,6 @@ LegacyMemMonitor GPUMemMonitor;
 Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
   auto *tmp_alloc = new Allocation(ptr, size, place_);
-  VLOG(10) << "LegacyAlloc " << place_ << ", " << tmp_alloc << ", " << size;
   platform::MemEvenRecorder::Instance().PushMemRecord(
       static_cast<void *>(tmp_alloc), place_, size);
   return tmp_alloc;
@@ -344,8 +343,6 @@ void LegacyAllocator::Free(Allocation *allocation) {
   boost::apply_visitor(
       legacy::FreeVisitor(allocation->ptr(), allocation->size()),
       allocation->place());
-  VLOG(10) << "LegacyFree " << place_ << ", " << allocation << ", "
-           << allocation->size();
   platform::MemEvenRecorder::Instance().PopMemRecord(
       static_cast<void *>(allocation), place_);
   delete allocation;
