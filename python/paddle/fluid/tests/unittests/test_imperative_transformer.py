@@ -743,3 +743,66 @@ class WrapDecoderLayer(Layer):
             # Return probs for independent decoder program.
             predict = fluid.layers.softmax(predict)
         return predict
+
+
+class TransFormer(Layer):
+    def __init__(self,
+                 name_scope,
+                 src_vocab_size,
+                 trg_vocab_size,
+                 max_length,
+                 n_layer,
+                 n_head,
+                 d_key,
+                 d_value,
+                 d_model,
+                 d_inner_hid,
+                 prepostprocess_dropout,
+                 attention_dropout,
+                 relu_dropout,
+                 preprocess_cmd,
+                 postprocess_cmd,
+                 weight_sharing,
+                 label_smooth_eps,
+                 use_py_reader=False,
+                 is_test=False):
+        super(TransFormer, self).__init__(name_scope)
+        self._label_smooth_eps = label_smooth_eps
+        self._trg_vocab_size = trg_vocab_size
+        if weight_sharing:
+            assert src_vocab_size == trg_vocab_size, (
+                "Vocabularies in source and target should be same for weight sharing."
+            )
+        self._wrap_encoder_layer = WrapEncoderLayer(
+            self.full_name(), src_vocab_size, max_length, n_layer, n_head,
+            d_key, d_value, d_model, d_inner_hid, prepostprocess_dropout,
+            attention_dropout, relu_dropout, preprocess_cmd, postprocess_cmd,
+            weight_sharing)
+        self._wrap_decoder_layer = WrapDecoderLayer(
+            self.full_name(), trg_vocab_size, max_length, n_layer, n_head,
+            d_key, d_value, d_model, d_inner_hid, prepostprocess_dropout,
+            attention_dropout, relu_dropout, preprocess_cmd, postprocess_cmd,
+            weight_sharing)
+
+    def forward(self, enc_inputs, dec_inputs, label, weights):
+        enc_output = self._wrap_encoder_layer(enc_inputs)
+        predict = self._wrap_decoder_layer(dec_inputs, enc_output)
+        if self._label_smooth_eps:
+            label = fluid.layers.label_smooth(
+                label=fluid.layers.one_hot(
+                    input=label, depth=self._trg_vocab_size),
+                epsilon=self._label_smooth_eps)
+
+        cost = fluid.layers.softmax_with_cross_entropy(
+            logits=predict,
+            label=label,
+            soft_label=True if self._label_smooth_eps else False)
+        weighted_cost = cost * weights
+        sum_cost = fluid.layers.reduce_sum(weighted_cost)
+        token_num = fluid.layers.reduce_sum(weights)
+        token_num.stop_gradient = True
+        avg_cost = sum_cost / token_num
+        return sum_cost, avg_cost, predict, token_num
+
+
+# class TestImperativeTransformer(unittest.TestCase):
