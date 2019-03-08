@@ -16,8 +16,12 @@ limitations under the License. */
 #include <forward_list>
 #include <list>
 #include <map>
+#include <memory>
+#include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/event.h"
@@ -51,11 +55,8 @@ struct MemEvenRecorder {
 
  private:
   struct RecordMemEvent {
-    RecordMemEvent(const Place& place, size_t bytes, const std::string&);
-
-    ~RecordMemEvent() {}
-
-    void DelRecordMem();
+    RecordMemEvent(const Place& place, size_t bytes);
+    ~RecordMemEvent();
 
     Place place_;
     size_t bytes_;
@@ -69,6 +70,7 @@ struct MemEvenRecorder {
   std::map<Place,
            std::unordered_map<const void*, std::unique_ptr<RecordMemEvent>>>
       address_memevent_;
+  std::unordered_set<const void*> deleted_ptr;
   std::mutex mtx_;
   MemEvenRecorder() {}
   DISABLE_COPY_AND_ASSIGN(MemEvenRecorder);

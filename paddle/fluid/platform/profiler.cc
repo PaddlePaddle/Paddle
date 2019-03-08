@@ -168,9 +168,9 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
   std::lock_guard<std::mutex> guard(mtx_);
   auto &events = address_memevent_[place];
   PADDLE_ENFORCE(events.count(ptr) == 0, "");
-  events.emplace(
-      ptr, std::unique_ptr<RecordMemEvent>(new MemEvenRecorder::RecordMemEvent(
-               place, size, CurAnnotationName())));
+  VLOG(10) << "PushMemRecord " << place << ", " << ptr;
+  events.emplace(ptr, std::unique_ptr<RecordMemEvent>(
+                          new MemEvenRecorder::RecordMemEvent(place, size)));
 }
 
 void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place) {
@@ -178,21 +178,24 @@ void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place) {
   std::lock_guard<std::mutex> guard(mtx_);
   auto &events = address_memevent_[place];
   auto iter = events.find(ptr);
-  PADDLE_ENFORCE(iter != events.end(), "");
-  iter->second->DelRecordMem();
-  iter->second.release();
-  events.erase(iter);
+  // The ptr maybe not in address_memevent
+  if (iter != events.end()) {
+    VLOG(10) << "PopMemRecord " << place << ", " << ptr;
+    events.erase(iter);
+    deleted_ptr.insert(ptr);
+  } else {
+    PADDLE_ENFORCE(deleted_ptr.count(ptr) == 0);
+  }
 }
 
 MemEvenRecorder::RecordMemEvent::RecordMemEvent(const Place &place,
-                                                size_t bytes,
-                                                const std::string &annotation)
+                                                size_t bytes)
     : place_(place),
       bytes_(bytes),
       start_ns_(PosixInNsec()),
-      alloc_in_(annotation) {}
+      alloc_in_(CurAnnotationName()) {}
 
-void MemEvenRecorder::RecordMemEvent::DelRecordMem() {
+MemEvenRecorder::RecordMemEvent::~RecordMemEvent() {
   DeviceTracer *tracer = GetDeviceTracer();
   end_ns_ = PosixInNsec();
 
