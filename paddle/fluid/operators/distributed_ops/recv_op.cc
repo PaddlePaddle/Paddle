@@ -131,7 +131,7 @@ This operator can get variables from server side.
         "(vector<string>) "
         "the splited parameter varnames to be recved from pserver")
         .SetDefault(std::vector<std::string>{});
-    AddAttr<bool>("do_not_run", "").SetDefault(false);
+    AddAttr<bool>("do_not_run", "if recv need to really run").SetDefault(false);
   }
 };
 
