@@ -210,7 +210,7 @@ TEST(test, test) {
   inputs.emplace_back();
   PrepareUnigram(&inputs.back());
 
-  inputs.emplace_back()
+  inputs.emplace_back();
 
   PreparePosition(&inputs.back());
 
