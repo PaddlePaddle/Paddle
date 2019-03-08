@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserve.
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
@@ -48,11 +48,11 @@ class YoloBoxOp : public framework::OperatorWithKernel {
         "Input(ImgSize) dim[0] and Input(X) dim[0] should be same.");
     PADDLE_ENFORCE_EQ(dim_imgsize[1], 2, "Input(ImgSize) dim[1] should be 2.");
     PADDLE_ENFORCE_GT(anchors.size(), 0,
-                      "Attr(anchors) length should be greater then 0.");
+                      "Attr(anchors) length should be greater than 0.");
     PADDLE_ENFORCE_EQ(anchors.size() % 2, 0,
                       "Attr(anchors) length should be even integer.");
     PADDLE_ENFORCE_GT(class_num, 0,
-                      "Attr(class_num) should be an integer greater then 0.");
+                      "Attr(class_num) should be an integer greater than 0.");
 
     int box_num = dim_x[2] * dim_x[3] * anchor_num;
     std::vector<int64_t> dim_boxes({dim_x[0], box_num, 4});
@@ -76,7 +76,7 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "The input tensor of YoloBox operator, "
              "This is a 4-D tensor with shape of [N, C, H, W]."
-             "H and W should be same, and the second dimention(C) stores"
+             "H and W should be same, and the second dimension(C) stores"
              "box locations, confidence score and classification one-hot"
              "keys of each anchor box. Generally, X should be the output"
              "of YOLOv3 network.");
@@ -88,7 +88,7 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Boxes",
               "The output tensor of detection boxes of YoloBox operator, "
               "This is a 3-D tensor with shape of [N, M, 4], N is the"
-              "batch num, M is output box number, and the 3rd dimention"
+              "batch num, M is output box number, and the 3rd dimension"
               "stores [xmin, ymin, xmax, ymax] coordinates of boxes.");
     AddOutput("Scores",
               "The output tensor ofdetection boxes scores of YoloBox"
@@ -112,36 +112,42 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                    "be ignored.")
         .SetDefault(0.01);
     AddComment(R"DOC(
-         This operator generate YOLO detection boxes fron output of YOLOv3 network.
+         This operator generate YOLO detection boxes from output of YOLOv3 network.
          
          The output of previous network is in shape [N, C, H, W], while H and W
          should be the same, specify the grid size, each grid point predict given
          number boxes, this given number is specified by anchors, it should be 
          half anchors length, which following will be represented as S. In the 
-         second dimention(the channel dimention), C should be S * (class_num + 5),
+         second dimension(the channel dimension), C should be S * (class_num + 5),
          class_num is the box categoriy number of source dataset(such as coco), 
-         so in the second dimention, stores 4 box location coordinates x, y, w, h 
+         so in the second dimension, stores 4 box location coordinates x, y, w, h 
          and confidence score of the box and class one-hot key of each anchor box.
 
-         While the 4 location coordinates if $$tx, ty, tw, th$$, the box predictions
-         correspnd to:
+         While the 4 location coordinates if :math:`tx, ty, tw, th`, the box 
+         predictions correspnd to:
 
          $$
          b_x = \sigma(t_x) + c_x
+         $$
+         $$
          b_y = \sigma(t_y) + c_y
+         $$
+         $$
          b_w = p_w e^{t_w}
+         $$
+         $$
          b_h = p_h e^{t_h}
          $$
 
-         While $$c_x, c_y$$ is the left top corner of current grid and $$p_w, p_h$$
-         is specified by anchors.
+         While :math:`c_x, c_y` is the left top corner of current grid and 
+         :math:`p_w, p_h` is specified by anchors.
 
          The logistic scores of the 5rd channel of each anchor prediction boxes
          represent the confidence score of each prediction scores, and the logistic
          scores of the last class_num channels of each anchor prediction boxes 
-         represent the classifcation scores. Boxes with confidence scores less then
-         conf_thresh should be ignored, and boxes final scores if the products result
-         of confidence scores and classification scores.
+         represent the classifcation scores. Boxes with confidence scores less than
+         conf_thresh should be ignored, and box final scores is the product of 
+         confidence scores and classification scores.
 
          )DOC");
   }
