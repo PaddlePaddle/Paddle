@@ -46,7 +46,6 @@ std::unique_ptr<ir::Graph> IsTestPass::ApplyImpl(
         op->MutableAttrMap()->insert(
             std::pair<std::string, Attribute>("is_test", true));
       }
-
       if (op->HasAttr("is_train")) {
         op->SetAttr("is_train", false);
       }
