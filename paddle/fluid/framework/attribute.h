@@ -270,7 +270,6 @@ class TypedAttrChecker {
   }
 
   void operator()(AttributeMap* attr_map) const {
-    LOG(ERROR) << "Check Attr: " << attr_name_;
     if (!attr_map->count(attr_name_)) {
       // user do not set this attr
       PADDLE_ENFORCE(!default_value_setter_.empty(),
@@ -279,7 +278,6 @@ class TypedAttrChecker {
       T val;
       (default_value_setter_[0])(&val);
       (*attr_map)[attr_name_] = val;
-      LOG(ERROR) << "Set default Value: " << attr_name_;
     }
     Attribute& attr = attr_map->at(attr_name_);
     ExtractAttribute<T> extract_attr(attr_name_);

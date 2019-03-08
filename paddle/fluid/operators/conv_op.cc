@@ -455,15 +455,14 @@ class Conv2dGradMaker : public framework::SingleGradOpDescMaker {
   std::unique_ptr<framework::OpDesc> Apply() const override {
     auto* op = new framework::OpDesc();
     op->SetType(GradOpType());
-    for (auto& input_name : InputNames()) {
-      op->SetInput(input_name, Input(input_name));
-    }
-
+    op->SetInput("Input", Input("Input"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetInput("Bias", Input("Bias"));
     op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
 
-    for (auto& input_name : InputNames()) {
-      op->SetOutput(framework::GradVarName(input_name), InputGrad(input_name));
-    }
+    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
 
     op->SetAttrMap(Attrs());
 

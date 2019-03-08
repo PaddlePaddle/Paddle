@@ -43,7 +43,7 @@ class Tracer(core.Tracer):
         self._vars[name] = var
 
     def all_parameters(self):
-        return list((item for item in six.iteritems(self._vars)
+        return list((item for name, item in six.iteritems(self._vars)
                      if isinstance(item, framework.Parameter)))
 
     def trace_op(self, op, stop_gradient=False):

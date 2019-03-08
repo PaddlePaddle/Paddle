@@ -50,9 +50,6 @@ class MeanGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto OG = context.Input<Tensor>(framework::GradVarName("Out"));
-    for (size_t i = 0; i < OG->dims().size(); ++i) {
-      LOG(ERROR) << OG->dims()[i];
-    }
     PADDLE_ENFORCE(OG->numel() == 1, "Mean Gradient should be scalar");
     auto IG = context.Output<Tensor>(framework::GradVarName("X"));
     IG->mutable_data<T>(context.GetPlace());

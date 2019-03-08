@@ -246,7 +246,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
           // Allocate a new variable
           Variable* tmp_var = new framework::Variable();
           tmp_var->GetMutable<framework::LoDTensor>();
-          outputs.push_back(tmp_var);
+          outputs.emplace_back(tmp_var);
         }
       }
 

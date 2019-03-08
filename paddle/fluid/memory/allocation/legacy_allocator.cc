@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>

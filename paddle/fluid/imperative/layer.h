@@ -238,7 +238,6 @@ class VarBase {
 
   std::string name_;
   framework::proto::VarType::Type dtype_;
-  framework::DDim shape_;
   platform::Place place_;
 
   framework::Variable* var_;
