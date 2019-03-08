@@ -134,7 +134,7 @@ TEST(Analyzer_Pyramid_DNN, profile) {
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                  input_slots_all, &outputs, FLAGS_num_threads);
 
-  if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
+  if (FLAGS_num_threads == 1 && !FLAGS_test_all_data && !FLAGS_zero_copy) {
     PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
     size_t size = GetSize(outputs[0]);
     PADDLE_ENFORCE_GT(size, 0);
@@ -167,6 +167,12 @@ TEST(Analyzer_Pyramid_DNN, compare) {
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+
+  // Compare AnalysisConfig and AnalysisConfig + ZeroCopy
+  std::vector<std::string> outputs_name;
+  outputs_name.emplace_back("cos_sim_2.tmp_0");
+  CompareAnalysisAndZeroCopy(reinterpret_cast<PaddlePredictor::Config *>(&cfg),
+                             input_slots_all, outputs_name);
 }
 
 // Compare Deterministic result
