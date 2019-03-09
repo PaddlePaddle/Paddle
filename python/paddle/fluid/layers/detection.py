@@ -628,10 +628,12 @@ def yolo_box(x,
         class_num (int): ${class_num_comment}
         conf_thresh (float): ${conf_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
-        name (string): the name of yolov3 loss
+        name (string): the name of yolo box layer
 
     Returns:
-        Variable: A 1-D tensor with shape [1], the value of yolov3 loss
+        Variable: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
+        and a 3-D tensor with shape [N, M, C], the classification scores
+        of boxes.
 
     Raises:
         TypeError: Input x of yolov_box must be Variable
@@ -640,6 +642,7 @@ def yolo_box(x,
         TypeError: Attr conf_thresh of yolo box must be a float number
 
     Examples:
+
     .. code-block:: python
 
         x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
