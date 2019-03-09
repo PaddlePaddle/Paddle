@@ -17,70 +17,72 @@ namespace operators {
 
 using framework::Tensor;
 
-
 template <typename T>
 __global__ void KeTemporalShiftFw(const T* input, T* output, const int ntchw,
-    const int tchw, const int chw, const int hw, const int w, const int t, const int c,
-    const float shift_ratio) {
+                                  const int tchw, const int chw, const int hw,
+                                  const int w, const int t, const int c,
+                                  const float shift_ratio) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   int src_it = 0;
   for (; tid < ntchw; tid += stride) {
-      int in = tid / tchw;
-      int it = (tid % tchw) / chw;
-      int ic = (tid % chw) / hw;
-      int ih = (tid % hw) / w;
-      int iw = tid % w;
+    int in = tid / tchw;
+    int it = (tid % tchw) / chw;
+    int ic = (tid % chw) / hw;
+    int ih = (tid % hw) / w;
+    int iw = tid % w;
 
-      const int c1 = static_cast<T>(c * shift_ratio);
-      const int c2 = static_cast<T>(c * 2 * shift_ratio);
+    const int c1 = static_cast<T>(c * shift_ratio);
+    const int c2 = static_cast<T>(c * 2 * shift_ratio);
 
-      if (ic < c1) {
-        src_it = it - 1;
-      } else if (ic < c2) {
-        src_it = it + 1;
-      } else {
-        src_it = it;
-      }
-      
-      if (src_it < 0 || src_it >= t) {
-        output[tid] = 0;
-      } else {
-        int src_idx = GetEntryIndex(in, src_it, ic, ih, iw, tchw, chw, hw, w);
-        output[tid] = input[src_idx];
-      }
+    if (ic < c1) {
+      src_it = it - 1;
+    } else if (ic < c2) {
+      src_it = it + 1;
+    } else {
+      src_it = it;
+    }
+
+    if (src_it < 0 || src_it >= t) {
+      output[tid] = 0;
+    } else {
+      int src_idx = GetEntryIndex(in, src_it, ic, ih, iw, tchw, chw, hw, w);
+      output[tid] = input[src_idx];
+    }
   }
 }
 
 template <typename T>
-__global__ void KeTemporalShiftBw(const T* output_grad, T* input_grad, const int ntchw,
-    const int tchw, const int chw, const int hw, const int w, const int t, const int c,
-    const float shift_ratio) {
+__global__ void KeTemporalShiftBw(const T* output_grad, T* input_grad,
+                                  const int ntchw, const int tchw,
+                                  const int chw, const int hw, const int w,
+                                  const int t, const int c,
+                                  const float shift_ratio) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   int src_it = 0;
   for (; tid < ntchw; tid += stride) {
-      int in = tid / tchw;
-      int it = (tid % tchw) / chw;
-      int ic = (tid % chw) / hw;
-      int ih = (tid % hw) / w;
-      int iw = tid % w;
+    int in = tid / tchw;
+    int it = (tid % tchw) / chw;
+    int ic = (tid % chw) / hw;
+    int ih = (tid % hw) / w;
+    int iw = tid % w;
 
-      const int c1 = static_cast<T>(c * shift_ratio);
-      const int c2 = static_cast<T>(c * 2 * shift_ratio);
+    const int c1 = static_cast<T>(c * shift_ratio);
+    const int c2 = static_cast<T>(c * 2 * shift_ratio);
 
-      if (ic < c1) {
-        src_it = it - 1;
-      } else if (ic < c2) {
-        src_it = it + 1;
-      } else {
-        src_it = it;
-      }
-      
-      if (src_it >= 0 && src_it < t) {
-        int src_idx = GetEntryIndex(in, src_it, ic, ih, iw, tchw, chw, hw, w);
-        input_grad[src_idx] = output_grad[tid];
-      }
+    if (ic < c1) {
+      src_it = it - 1;
+    } else if (ic < c2) {
+      src_it = it + 1;
+    } else {
+      src_it = it;
+    }
+
+    if (src_it >= 0 && src_it < t) {
+      int src_idx = GetEntryIndex(in, src_it, ic, ih, iw, tchw, chw, hw, w);
+      input_grad[src_idx] = output_grad[tid];
+    }
   }
 }
 
@@ -113,8 +115,8 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
     grid_dim = grid_dim > 8 ? 8 : grid_dim;
 
     KeTemporalShiftFw<
-      T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
-          input_data, output_data, ntchw, tchw, chw, hw, w, t, c, shift_ratio);
+        T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
+        input_data, output_data, ntchw, tchw, chw, hw, w, t, c, shift_ratio);
   }
 };
 
@@ -138,7 +140,8 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
     const int ntchw = nt * chw;
 
     const T* output_grad_data = output_grad->data<T>();
-    T* input_grad_data = input_grad->mutable_data<T>({nt, c, h, w}, ctx.GetPlace());
+    T* input_grad_data =
+        input_grad->mutable_data<T>({nt, c, h, w}, ctx.GetPlace());
     math::SetConstant<platform::CUDADeviceContext, T>()(
         ctx.template device_context<platform::CUDADeviceContext>(), input_grad,
         static_cast<T>(0));
@@ -148,8 +151,9 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
     grid_dim = grid_dim > 8 ? 8 : grid_dim;
 
     KeTemporalShiftBw<
-      T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
-          output_grad_data, input_grad_data, ntchw, tchw, chw, hw, w, t, c, shift_ratio);
+        T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
+        output_grad_data, input_grad_data, ntchw, tchw, chw, hw, w, t, c,
+        shift_ratio);
   }
 };
 
