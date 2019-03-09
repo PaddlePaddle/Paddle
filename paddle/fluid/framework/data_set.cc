@@ -52,7 +52,7 @@ void Dataset::SetDataFeedDesc(const std::string& data_feed_desc_str) {
     data_feed_desc_str,  &data_feed_desc_);
 }
 
-std::vector<std::shared_ptr<paddle::framework::DataFeed>>
+const std::vector<std::shared_ptr<paddle::framework::DataFeed>>&
 Dataset::GetReaders() {
   return readers_;
 }

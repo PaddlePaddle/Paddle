@@ -30,7 +30,7 @@ add_subdirectory(io)
 proto_library(framework_proto SRCS framework.proto)
 proto_library(data_feed_proto SRCS data_feed.proto)
 proto_library(async_executor_proto SRCS data_feed.proto)
-proto_library(trainer_desc_proto SRCS trainer_desc.proto)
+proto_library(trainer_desc_proto SRCS trainer_desc.proto data_feed.proto)
 
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
