@@ -610,3 +610,23 @@ class Executor(object):
 
     def _run_inference(self, exe, feed):
         return exe.run(feed)
+
+    def run_from_dataset(self,
+                         program=None,
+                         dataset=None,
+                         fetch_list=None,
+                         scope=None,
+                         opt_info=None):
+        if scope is None:
+            scope = global_scope()
+        if fetch_list is None:
+            fetch_list = []
+        compiled = isinstance(program, compiler.CompiledProgram)
+        if not compiled:
+            trainer = TrainerFactory().create_trainer(opt_info)
+            self._default_executor.run_from_dataset(program_desc,
+                                                    trainer._desc())
+        else:
+            # For compiled program, more runtime should be implemented
+            print("run_from_dataset current does not support compiled program"
+                  ", we will support this later", sys.stderr)

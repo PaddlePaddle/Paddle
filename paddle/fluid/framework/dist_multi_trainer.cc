@@ -15,6 +15,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/data_feed_factory.h"
+#include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
 
@@ -25,25 +26,17 @@ void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
                                   Dataset* data_set) {
   thread_num_ = trainer_desc.thread_num();
   workers_.resize(thread_num_);
-  readers_.resize(thread_num_);
+
+  const std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers =
+      data_set->GetReaders();
 
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
-    readers_[i] =
-        DataFeedFactory::CreateDataFeed(trainer_desc.data_desc().name());
     workers_[i]->SetDeviceIndex(i);
-    readers_[i]->Init(trainer_desc.data_desc());
-    workers_[i]->SetDataFeed(readers_[i]);
+    workers_[i]->SetDataFeed(readers[i]);
     workers_[i]->Initialize(trainer_desc);
   }
-
-  std::vector<std::string> filelist_vec;
-  for (unsigned i = 0; i < trainer_desc.filelist_size(); ++i) {
-    filelist_vec.push_back(trainer_desc.filelist(i));
-  }
-
-  readers_[0]->SetFileList(filelist_vec);
 
   fleet_ptr_ = FleetWrapper::GetInstance();
   pull_dense_worker_ = PullDenseWorker::GetInstance();
