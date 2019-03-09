@@ -17,7 +17,7 @@ namespace operators {
 
 using framework::Tensor;
 
-class TemporalShiftOp: public framework::OperatorWithKernel {
+class TemporalShiftOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -29,23 +29,23 @@ class TemporalShiftOp: public framework::OperatorWithKernel {
                    "Output(Out) of TemporalShiftOp should not be null.");
 
     auto dim_x = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(dim_x.size(), 4, 
-                   "Input(X) rank should be 4 in shape of [N*T, C, H, W].");
+    PADDLE_ENFORCE_EQ(dim_x.size(), 4,
+                      "Input(X) rank should be 4 in shape of [N*T, C, H, W].");
 
     int seg_num = ctx->Attrs().Get<int>("seg_num");
     float shift_ratio = ctx->Attrs().Get<float>("shift_ratio");
-    PADDLE_ENFORCE_GT(seg_num, 0,
-                   "Attr(seg_num) should be greater than 0.");
+    PADDLE_ENFORCE_GT(seg_num, 0, "Attr(seg_num) should be greater than 0.");
     PADDLE_ENFORCE(shift_ratio > 0 || shift_ratio < .5,
                    "Attr(shift_ratio) should be greater than 0 and less "
                    "than 0.5.");
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(dim_x[0] % seg_num, 0,
-                     "Input(X) dims[0] should be divided exactly by Attr(seg_num).");
+      PADDLE_ENFORCE_EQ(
+          dim_x[0] % seg_num, 0,
+          "Input(X) dims[0] should be divided exactly by Attr(seg_num).");
     }
 
-    ctx->SetOutputDim("Out", dim_x); 
+    ctx->SetOutputDim("Out", dim_x);
     ctx->ShareLoD("X", "Out");
   }
 
@@ -70,14 +70,15 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
               "The output tensor of temporal shift operator. "
               "This is a 4-D tensor in the same shape with Input(X).");
 
-    AddAttr<int>("seg_num", 
-              "The temporal segment number, this should be a positive "
-              "interger.");
-    AddAttr<float>("shift_ratio",
-              "The shift ratio of the channels, the first shift ratio part "
-              "of channels will be shifted by -1 along the temporal dimension, "
-              "and the second shift ratio part of channels will be shifted by "
-              "1 along the temporal dimension. Default 0.25.")
+    AddAttr<int>("seg_num",
+                 "The temporal segment number, this should be a positive "
+                 "interger.");
+    AddAttr<float>(
+        "shift_ratio",
+        "The shift ratio of the channels, the first shift ratio part "
+        "of channels will be shifted by -1 along the temporal dimension, "
+        "and the second shift ratio part of channels will be shifted by "
+        "1 along the temporal dimension. Default 0.25.")
         .SetDefault(0.25);
 
     AddComment(R"DOC(
@@ -118,7 +119,7 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class TemporalShiftOpGrad: public framework::OperatorWithKernel {
+class TemporalShiftOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -144,7 +145,8 @@ class TemporalShiftOpGrad: public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(temporal_shift, ops::TemporalShiftOp, ops::TemporalShiftOpMaker,
+REGISTER_OPERATOR(temporal_shift, ops::TemporalShiftOp,
+                  ops::TemporalShiftOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(temporal_shift_grad, ops::TemporalShiftOpGrad);
 REGISTER_OP_CPU_KERNEL(temporal_shift, ops::TemporalShiftKernel<float>,
