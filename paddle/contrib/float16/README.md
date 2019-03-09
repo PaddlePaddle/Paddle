@@ -20,7 +20,7 @@ The trend in today's deep learning community is to use bigger and deeper model, 
 
 2. Because float16 occupies less memory than float, in theory, hardware devices can achieve much higher floating point operators per second (FLOPS) for float16 data than float data. Right now, NVIDIA's latest Volta GPUs, including Tesla V100 and Titan V, can deliver significantly higher FLOPS for float16 using Tensor Cores. Moreover, float16 takes less time to read from or write to memory, and hence float16 can make inference more efficient especially in memory-bound applications where the performance is mostly affected by how fast it is to read and write data.
 
-3. From the energy efficiency perspective, the energy needed to read, write, and compute float16 data is much less than its float counterpart, which can significantly reduce the battery power consumption on mobile devices or the total cost of ownership (TCO) of data centers.
+3. From the energy efficiency perspective, the energy needed to read, write, and compute float16 data is much less than its float counterpart, which can significantly reduce the battery power consumption on mobile devices or the total cost of ownership (TCO) of data centers. 
 
 ## Fluid implementation of float16 inference
 ### Overview
