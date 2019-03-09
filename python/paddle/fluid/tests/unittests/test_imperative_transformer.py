@@ -805,4 +805,5 @@ class TransFormer(Layer):
         return sum_cost, avg_cost, predict, token_num
 
 
+#
 # class TestImperativeTransformer(unittest.TestCase):
