@@ -34,8 +34,7 @@ class Dataset {
   virtual void SetFileList(const std::vector<std::string>& filelist);
   virtual void SetThreadNum(int thread_num);
   virtual void SetTrainerNum(int trainer_num);
-  virtual void SetDataFeedDesc(
-      const paddle::framework::DataFeedDesc& data_feed_desc);
+  virtual void SetDataFeedDesc(const std::string& data_feed_desc_str);
 
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
   virtual int GetThreadNum() { return thread_num_; }
