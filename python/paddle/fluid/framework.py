@@ -87,15 +87,6 @@ def _current_expected_place():
     return _imperative_current_expected_place_
 
 
-def is_pserver_mode(main_program):
-    main = main_program if main_program \
-        else default_main_program()
-    for op in main.global_block().ops:
-        if op.type in ["send", "recv"]:
-            return True
-    return False
-
-
 class NameScope(object):
     def __init__(self, name="", parent=None):
         self._children = dict()
@@ -393,6 +384,9 @@ class Variable(object):
             if not self._ivar:
                 self._ivar = core.VarBase(stop_gradient)
             self._ivar.desc = self.desc
+            self._ivar.block = block.desc
+            self._ivar.name = name
+            self._ivar.persistable = persistable
             if persistable:
                 self.block.vars[name] = self
         else:
@@ -721,7 +715,9 @@ class Operator(object):
                 out_arg_names = []
                 for arg in out_args:
                     out_arg_names.append(cpt.to_text(arg.name))
-                    arg.op = self
+                    # TODO(minqiyang): could we remove variable's op in static mode?
+                    if not _in_imperative_mode():
+                        arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
         if op_attrs is not None:
@@ -1200,15 +1196,6 @@ class Block(object):
         else:
             raise ValueError("Var {0} is not found recursively".format(name))
 
-    def _clear_block(self):
-        # TODO(minqiyang): move this to backward_hooks
-        self.desc._clear_block()
-
-        for name in self.vars.keys():
-            assert self.vars[name].persistable
-
-        del self.ops[:]
-
     def all_parameters(self):
         return list(self.iter_parameters())
 
@@ -1345,25 +1332,12 @@ class Block(object):
             #
             # TODO(minqiyang): add op stop_gradient support in static mode too.
             # currently, we only support stop_gradient in imperative mode.
-            self._trace_op(op, kwargs.get("stop_gradient", False))
-        self.ops.append(op)
+            _imperative_tracer().trace_op(op,
+                                          kwargs.get("stop_gradient", False))
+        else:
+            self.ops.append(op)
 
         return op
-
-    def _trace_op(self, op, stop_gradient=False):
-        backward_refs = _imperative_tracer().trace(
-            op.iop, op.inputs, op.outputs, self.desc,
-            _imperative_current_expected_place_, stop_gradient)
-
-        # TODO(minqiyang): support backward_hooks to eager remove backward_refs
-        op.backward_refs = defaultdict(list)
-        for k, v in six.iteritems(op.inputs):
-            if k in backward_refs:
-                op.backward_refs[k] = op.inputs[k]
-
-        for k, v in six.iteritems(op.outputs):
-            if k in backward_refs:
-                op.backward_refs[k] = op.outputs[k]
 
     def _insert_op(self, index, *args, **kwargs):
         """
@@ -1417,9 +1391,11 @@ class Block(object):
             inputs=kwargs.get("inputs", None),
             outputs=kwargs.get("outputs", None),
             attrs=kwargs.get("attrs", None))
-        self.ops.insert(0, op)
         if _in_imperative_mode():
-            self._trace_op(op, kwargs.get("stop_gradient", False))
+            _imperative_tracer().trace_op(op,
+                                          kwargs.get("stop_gradient", False))
+        else:
+            self.ops.insert(0, op)
         return op
 
     def _sync_with_cpp(self):

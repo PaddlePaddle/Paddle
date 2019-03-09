@@ -94,6 +94,7 @@ __all__ = [
     'multiplex',
     'layer_norm',
     'group_norm',
+    'spectral_norm',
     'softmax_with_cross_entropy',
     'smooth_l1',
     'one_hot',
@@ -3346,6 +3347,98 @@ def group_norm(input,
     return helper.append_activation(group_norm_out)
 
 
+@templatedoc()
+def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
+    """
+    **Spectral Normalization Layer**
+
+    This layer calculates the spectral normalization value of weight parameters of
+    fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
+    Parameters. Calculations are showed as follows.
+
+    Step 1:
+    Generate vector U in shape of [H], and V in shape of [W].
+    While H is the :attr:`dim` th dimension of the input weights,
+    and W is the product result of remaining dimensions.
+
+    Step 2:
+    :attr:`power_iters` shoule be a positive interger, do following
+    calculations with U and V for :attr:`power_iters` rounds.
+
+    .. math:: 
+
+        \mathbf{v} := \\frac{\mathbf{W}^{T} \mathbf{u}}{\|\mathbf{W}^{T} \mathbf{u}\|_2}
+
+        \mathbf{u} := \\frac{\mathbf{W}^{T} \mathbf{v}}{\|\mathbf{W}^{T} \mathbf{v}\|_2}
+
+    Step 3:
+    Calculate :math:`\sigma(\mathbf{W})` and normalize weight values.
+
+    .. math::
+
+        \sigma(\mathbf{W}) = \mathbf{u}^{T} \mathbf{W} \mathbf{v}
+
+        \mathbf{W} = \\frac{\mathbf{W}}{\sigma(\mathbf{W})}
+                
+
+    Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
+
+    Args:
+        weight(${weight_type}): ${weight_comment}
+        dim(int): ${dim_comment}
+        power_iters(int): ${power_iters_comment}
+        eps(float): ${eps_comment}
+        name (str): The name of this layer. It is optional.
+
+    Returns:
+        Variable: A tensor variable of weight parameters after spectral normalization.
+
+    Examples:
+
+        >>> weight = fluid.layers.data(name='weight', shape=[8, 32, 32],
+        >>>                          dtype='float32')
+        >>> x = fluid.layers.spectral_norm(weight=data, dim=1, power_iters=2)
+    """
+    helper = LayerHelper('spectral_norm', **locals())
+    dtype = weight.dtype
+
+    # create intput and parameters
+    inputs = {'Weight': weight}
+    input_shape = weight.shape
+    h = input_shape[dim]
+    w = np.prod(input_shape) // h
+
+    u = helper.create_parameter(
+        attr=ParamAttr(),
+        shape=[h],
+        dtype=dtype,
+        default_initializer=Normal(0., 1.))
+    u.stop_gradient = True
+    inputs['U'] = u
+    v = helper.create_parameter(
+        attr=ParamAttr(),
+        shape=[w],
+        dtype=dtype,
+        default_initializer=Normal(0., 1.))
+    inputs['V'] = v
+    v.stop_gradient = True
+
+    # create output
+    out = helper.create_variable(dtype=dtype)
+
+    helper.append_op(
+        type="spectral_norm",
+        inputs=inputs,
+        outputs={"Out": out, },
+        attrs={
+            "dim": dim,
+            "power_iters": power_iters,
+            "eps": eps,
+        })
+
+    return out
+
+
 def conv2d_transpose(input,
                      num_filters,
                      output_size=None,
@@ -4740,11 +4833,6 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     """
 
     def __check_input(x, y):
-        if len(y.shape) > len(x.shape):
-            raise ValueError(
-                "Invalid inputs for matmul. "
-                "x's rank should be always greater than or equal to y'rank.")
-
         x_shape = list(x.shape)
         y_shape = list(y.shape)
         if len(x_shape) == 1:
@@ -4760,10 +4848,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         if x_shape[-1] != y_shape[-2]:
             raise ValueError("Invalid inputs for matmul.")
 
-        if len(y_shape) > 2:
+        if len(y_shape) > 2 and len(x_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):
                 if dim_x != y_shape[i]:
-                    raise ValueError("Invalid inputs for matmul.")
+                    raise ValueError("Invalid inputs for matmul. x(%s), y(%s)" %
+                                     (x.shape, y.shape))
 
     __check_input(x, y)
 
@@ -6844,56 +6933,58 @@ def image_resize(input,
 
     Example:
 
-      For scale:
-      
-        if align_corners = True && out_size > 1 :
+    .. code-block:: text
 
-          scale_factor = (in_size-1.0)/(out_size-1.0)
-        
-        else:
+        For scale:
           
-          scale_factor = float(in_size/out_size)
-        
-      
-      Nearest neighbor interpolation:
-      
-      if:
-          align_corners = False
+            if align_corners = True && out_size > 1 :
 
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
-
-          H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
-          W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
-
-      else:
-          align_corners = True
-
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
-
-          H_out = round(H_{in} * scale_{factor})
-          W_out = round(W_{in} * scale_{factor})
-
-      Bilinear interpolation:
-
-      if:
-          align_corners = False , align_mode = 0
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+            
+            else:
+              
+              scale_factor = float(in_size/out_size)
+            
           
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
+        Nearest neighbor interpolation:
           
-          H_out = (H_{in}+0.5) * scale_{factor} - 0.5
-          W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+          if:
+              align_corners = False
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = floor (H_{in} * scale_{factor})
+              W_out = floor (W_{in} * scale_{factor})
+
+          else:
+              align_corners = True
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = round(H_{in} * scale_{factor})
+              W_out = round(W_{in} * scale_{factor})
+
+        Bilinear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
 
-      else:
-       
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
+          else:
+           
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
 
-          H_out = H_{in} * scale_{factor}
-          W_out = W_{in} * scale_{factor}
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
 
     For details of nearest neighbor interpolation, please refer to Wikipedia: 
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
@@ -7048,41 +7139,39 @@ def resize_bilinear(input,
     Align_corners and align_mode are optinal parameters,the calculation 
     method of interpolation can be selected by them.
 
-
-    Align_corners and align_mode are optinal parameters,the calculation method 
-    of interpolation can be selected by them.
-
     Example:
 
-      For scale:
-      
-        if align_corners = True && out_size > 1 :
+    .. code-block:: text
 
-          scale_factor = (in_size-1.0)/(out_size-1.0)
-        
-        else:
+        For scale:
           
-          scale_factor = float(in_size/out_size)     
+            if align_corners = True && out_size > 1 :
 
-    Bilinear interpolation:
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+            
+            else:
+              
+              scale_factor = float(in_size/out_size)     
 
-      if:
-          align_corners = False , align_mode = 0
-          
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
-          
-          H_out = (H_{in}+0.5) * scale_{factor} - 0.5
-          W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+        Bilinear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
 
-      else:
+          else:
 
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
 
-          H_out = H_{in} * scale_{factor}
-          W_out = W_{in} * scale_{factor}
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
 
 
 
@@ -7134,42 +7223,44 @@ def resize_nearest(input,
                    align_corners=True):
     """
     Resize input by performing nearest neighbor interpolation in both the
-    3rd dimention(in height direction) and the 4th dimention(in width
-    direction) based on given output shape which specified by actual_shape,
+    3rd dimension(in height direction) and the 4th dimension(in width
+    direction) based on given output shape which is specified by actual_shape,
     out_shape and scale in priority order.
 
     Example:
 
-      For scale:
-      
-        if align_corners = True && out_size > 1 :
+    .. code-block:: text
 
-          scale_factor = (in_size-1.0)/(out_size-1.0)
-        
-        else:
+        For scale:
           
-          scale_factor = float(in_size/out_size)
-        
-      
-      Nearest neighbor interpolation:
-      
-      if:
-          align_corners = False
+            if align_corners = True && out_size > 1 :
 
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+            
+            else:
+              
+              scale_factor = float(in_size/out_size)
+            
+          
+        Nearest neighbor interpolation:
+          
+          if:
+              align_corners = False
 
-          H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
-          W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
 
-      else:
-          align_corners = True
+              H_out = floor(H_{in} * scale_{factor})
+              W_out = floor(W_{in} * scale_{factor})
 
-          input : (N,C,H_in,W_in)
-          output: (N,C,H_out,W_out) where:
+          else:
+              align_corners = True
 
-          H_out = round(H_{in} * scale_{factor})
-          W_out = round(W_{in} * scale_{factor})
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = round(H_{in} * scale_{factor})
+              W_out = round(W_{in} * scale_{factor})
 
 
     For details of nearest neighbor interpolation, please refer to Wikipedia:

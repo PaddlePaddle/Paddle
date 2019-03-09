@@ -467,12 +467,6 @@ const Variable* ExecutionContext::InputVar(const std::string& name) const {
   return it->second.empty() ? nullptr : it->second[0];
 }
 
-const Variable* ExecutionContext::LegacyInputVar(
-    const std::string& name) const {
-  auto ipt = op_.Input(name);
-  return ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-}
-
 Variable* ExecutionContext::OutputVar(const std::string& name) const {
   auto it = ctx_.outputs.find(name);
   if (it == ctx_.outputs.end()) return nullptr;
@@ -483,20 +477,9 @@ Variable* ExecutionContext::OutputVar(const std::string& name) const {
   return it->second.empty() ? nullptr : it->second[0];
 }
 
-Variable* ExecutionContext::LegacyOutputVar(const std::string& name) const {
-  auto opt = op_.Output(name);
-  return opt == kEmptyVarName ? nullptr : scope_.FindVar(opt);
-}
-
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   return Input<LoDTensor>(name);
-}
-
-template <>
-const Tensor* ExecutionContext::LegacyInput<Tensor>(
-    const std::string& name) const {
-  return LegacyInput<LoDTensor>(name);
 }
 
 template <>
@@ -522,32 +505,8 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
 }
 
 template <>
-const std::vector<const Tensor*> ExecutionContext::LegacyMultiInput<Tensor>(
-    const std::string& name) const {
-  auto names = op().Inputs(name);
-  std::vector<const Tensor*> res;
-  res.reserve(names.size());
-  std::transform(names.begin(), names.end(), std::back_inserter(res),
-                 [&](const std::string& sub_name) -> const Tensor* {
-                   auto var = scope_.FindVar(sub_name);
-                   if (var == nullptr) return nullptr;
-                   PADDLE_ENFORCE(
-                       var->IsType<LoDTensor>(),
-                       "%s should be LoDTensor, but the received type is %s",
-                       sub_name, ToTypeName(var->Type()));
-                   return &(var->Get<LoDTensor>());
-                 });
-  return res;
-}
-
-template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
   return Output<LoDTensor>(name);
-}
-
-template <>
-Tensor* ExecutionContext::LegacyOutput<Tensor>(const std::string& name) const {
-  return LegacyOutput<LoDTensor>(name);
 }
 
 template <>
@@ -882,7 +841,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const RuntimeContext& ctx_;
 };
 
-static void CheckTensorNANOrInf(const std::string& name,
+static void CheckTensorNANOrInf(const std::string& op_type,
+                                const std::string& name,
                                 const framework::Tensor& tensor) {
   if (tensor.memory_size() == 0) {
     return;
@@ -892,9 +852,9 @@ static void CheckTensorNANOrInf(const std::string& name,
     return;
   }
   PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
-                 "Tensor %s contains Inf", name);
+                 "Operator %s output Tensor %s contains Inf", op_type, name);
   PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
-                 "Tensor %s contains NAN", name);
+                 "Operator %s output Tensor %s contains NAN", op_type, name);
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
@@ -988,9 +948,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       auto* var = exec_scope.FindVar(vname);
       if (var == nullptr) continue;
       if (var->IsType<framework::LoDTensor>()) {
-        CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
+        CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
       } else if (var->IsType<framework::SelectedRows>()) {
-        CheckTensorNANOrInf(vname, var->Get<framework::SelectedRows>().value());
+        CheckTensorNANOrInf(type_, vname,
+                            var->Get<framework::SelectedRows>().value());
       }
     }
   }
