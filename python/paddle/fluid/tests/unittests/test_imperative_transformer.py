@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
-from ...imperative import Embedding, LayerNorm, FC, to_variable, Layer
+from ...imperative import Embedding, LayerNorm, FC, to_variable, Layer, guard
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from test_imperative_base import new_program_scope
@@ -92,7 +92,7 @@ class ModelHyperParams(object):
     # index for <unk> token
     unk_idx = 2
     # max length of sequences deciding the size of position encoding table.
-    max_length = 256
+    max_length = 4
     # the dimension for word embeddings, which is also the last dimension of
     # the input and output of multi-head attention, position-wise feed-forward
     # networks, encoder and decoder.
@@ -138,10 +138,77 @@ def merge_cfg_from_list(cfg_list, g_cfgs):
                 break
 
 
+def create_data(is_numpy=False):
+
+    src_word_np = np.random.randint(
+        1, 10000, size=(batch_size, seq_len, 1), dtype='int64')
+    src_pos_np = np.random.randint(
+        1, 50, size=(batch_size, seq_len, 1), dtype='int64')
+    src_slf_attn_bias_np = np.random.randn((batch_size, ModelHyperParams.n_head,
+                                            seq_len, seq_len)).astype('float32')
+
+    trg_word_np = np.random.randint(
+        1, 10000, size=(batch_size, seq_len, 1), dtype='int64')
+    trg_pos_np = np.random.randint(
+        1, 50, size=(batch_size, seq_len, 1), dtype='int64')
+    trg_slf_attn_bias_np = np.random.randn((batch_size, ModelHyperParams.n_head,
+                                            seq_len, seq_len)).astype('float32')
+    trg_src_attn_bias_np = np.random.randn((batch_size, ModelHyperParams.n_head,
+                                            seq_len, seq_len)).astype('float32')
+
+    lbl_word_np = np.random.randint(
+        1, 10000, size=(batch_size * seq_len, 1), dtype='int64')
+    lbl_weight_np = np.random.randn((batch_size * seq_len, 1)).astype('float32')
+
+    if is_numpy:
+        return [
+            src_word_np, src_pos_np, src_slf_attn_bias_np, trg_word_np,
+            trg_pos_np, trg_slf_attn_bias_np, trg_src_attn_bias_np, lbl_word_np,
+            lbl_weight_np
+        ]
+    else:
+        enc_inputs = [
+            to_variable(src_word_np), to_variable(src_pos_np),
+            to_variable(src_slf_attn_bias_np)
+        ]
+        dec_inputs = [
+            to_variable(trg_word_np), to_variable(trg_pos_np),
+            to_variable(trg_slf_attn_bias_np, to_variable(trg_src_attn_bias_np))
+        ]
+        label = to_variable(lbl_word_np)
+        weight = to_variable(lbl_weight_np)
+
+        return enc_inputs, dec_inputs, label, weight
+
+
+def create_feed_dict_list():
+    data_input_names = encoder_data_input_fields + \
+                       decoder_data_input_fields[:-1] + label_data_input_fields
+    feed_dict_list = dict()
+    # for name in data_input_names:
+
+
+def make_all_inputs(input_fields):
+    """
+    Define the input data layers for the transformer model.
+    """
+    inputs = []
+    for input_field in input_fields:
+        input_var = fluid.layers.data(
+            name=input_field,
+            shape=input_descs[input_field][0],
+            dtype=input_descs[input_field][1],
+            lod_level=input_descs[input_field][2]
+            if len(input_descs[input_field]) == 3 else 0,
+            append_batch_size=False)
+        inputs.append(input_var)
+    return inputs
+
+
 # The placeholder for batch_size in compile time. Must be -1 currently to be
 # consistent with some ops' infer-shape output in compile time, such as the
 # sequence_expand op used in beamsearch decoder.
-batch_size = -1
+batch_size = 10
 # The placeholder for squence length in compile time.
 seq_len = ModelHyperParams.max_length
 # Here list the data shapes and data types of all inputs.
@@ -226,6 +293,14 @@ fast_decoder_data_input_fields = (
     "init_score",
     "init_idx",
     "trg_src_attn_bias", )
+# if we use py_reader
+use_py_reader = False
+
+# if we run sync mode
+sync = False
+
+# how many batches we use
+batch_num = 5
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -805,5 +880,131 @@ class TransFormer(Layer):
         return sum_cost, avg_cost, predict, token_num
 
 
-#
-# class TestImperativeTransformer(unittest.TestCase):
+class TestImperativeTransformer(unittest.TestCase):
+    def test_transformer_float32(self):
+        seed = 90
+
+        with guard():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            transformer = TransFormer(
+                'transformer',
+                ModelHyperParams.src_vocab_size,
+                ModelHyperParams.trg_vocab_size,
+                ModelHyperParams.max_length + 1,
+                ModelHyperParams.n_layer,
+                ModelHyperParams.n_head,
+                ModelHyperParams.d_key,
+                ModelHyperParams.d_value,
+                ModelHyperParams.d_model,
+                ModelHyperParams.d_inner_hid,
+                ModelHyperParams.prepostprocess_dropout,
+                ModelHyperParams.attention_dropout,
+                ModelHyperParams.relu_dropout,
+                ModelHyperParams.preprocess_cmd,
+                ModelHyperParams.postprocess_cmd,
+                ModelHyperParams.weight_sharing,
+                TrainTaskConfig.label_smooth_eps,
+                use_py_reader=use_py_reader,
+                is_test=False)
+            if sync:
+                lr_decay = fluid.layers.learning_rate_scheduler.noam_decay(
+                    ModelHyperParams.d_model, TrainTaskConfig.warmup_steps)
+                with fluid.default_main_program()._lr_schedule_guard():
+                    learning_rate = lr_decay * TrainTaskConfig.learning_rate
+                optimizer = fluid.optimizer.Adam(
+                    learning_rate=learning_rate,
+                    beta1=TrainTaskConfig.beta1,
+                    beta2=TrainTaskConfig.beta2,
+                    epsilon=TrainTaskConfig.eps)
+            else:
+                optimizer = fluid.optimizer.SGD(learning_rate=0.003)
+
+            dy_param_init = dict()
+            dy_param_updated = dict()
+
+            for i in range(batch_num):
+                enc_inputs, dec_inputs, label, weights = create_data()
+
+                sum_cost, avg_cost, predict, token_num = transformer(
+                    enc_inputs, dec_inputs, label, weights)
+                if i == 0:
+                    for param in transformer.parameters():
+                        dy_param_init[param.name] = param._numpy()
+                avg_cost._backward()
+                optimizer.minimize(avg_cost)
+                for param in transformer.parameters():
+                    dy_param_updated[param.name] = param._numpy()
+
+        with new_program_scope():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            transformer = TransFormer(
+                'transformer',
+                ModelHyperParams.src_vocab_size,
+                ModelHyperParams.trg_vocab_size,
+                ModelHyperParams.max_length + 1,
+                ModelHyperParams.n_layer,
+                ModelHyperParams.n_head,
+                ModelHyperParams.d_key,
+                ModelHyperParams.d_value,
+                ModelHyperParams.d_model,
+                ModelHyperParams.d_inner_hid,
+                ModelHyperParams.prepostprocess_dropout,
+                ModelHyperParams.attention_dropout,
+                ModelHyperParams.relu_dropout,
+                ModelHyperParams.preprocess_cmd,
+                ModelHyperParams.postprocess_cmd,
+                ModelHyperParams.weight_sharing,
+                TrainTaskConfig.label_smooth_eps,
+                use_py_reader=use_py_reader,
+                is_test=False)
+            exe = fluid.Executor(fluid.CUDAPlace(0))
+            optimizer = fluid.optimizer.SGD(learning_rate=0.003)
+
+            data_input_names = encoder_data_input_fields + decoder_data_input_fields[:
+                                                                                     -1] + label_data_input_fields
+            all_inputs = make_all_inputs(data_input_names)
+            enc_inputs_len = len(encoder_data_input_fields)
+            dec_inputs_len = len(decoder_data_input_fields[:-1])
+            enc_inputs = all_inputs[0:enc_inputs_len]
+            dec_inputs = all_inputs[enc_inputs_len:enc_inputs_len +
+                                    dec_inputs_len]
+            label = all_inputs[-2]
+            weights = all_inputs[-1]
+            static_param_updated = dict()
+            static_param_init = dict()
+            static_param_name_list = list()
+            sum_cost, avg_cost, predict, token_num = transformer(
+                enc_inputs, dec_inputs, label, weights)
+
+            for param in transformer.parameters():
+                static_param_name_list.append(param.name)
+
+            out = exe.run(framework.default_startup_program(),
+                          fetch_list=static_param_name_list)
+
+            for i in range(len(static_param_name_list)):
+                static_param_init[static_param_name_list[i]] = out[i]
+
+            static_sum_cost = None
+            static_avg_cost = None
+            static_predict = None
+            static_token_num = None
+
+            for i in range(batch_num):
+                enc_inputs, dec_inputs, label, weights = create_data()
+                fetch_list = [
+                    static_sum_cost, static_avg_cost, static_predict,
+                    static_token_num
+                ]
+                fetch_list.extend(static_param_name_list)
+
+                # out = exe.run(fluid.default_main_program(),
+                #               feed={
+                #                   "x": x_data,
+                #                   "y": y_data,
+                #                   "init_hidden": init_hidden_data,
+                #                   "init_cell": init_cell_data
+                #               },
+                #               fetch_list=fetch_list)
