@@ -84,8 +84,8 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
           This operator calculates the temporal shifting features for Input(X).
 
           Input(X) should be in shape of [N*T, C, H, W], while N is the batch
-          size, T is the temporal segment number, C is the channel number, 
-          H and W is the height and width of features.
+          size, T is the temporal segment number specified by :attr:`seg_num`, 
+          C is the channel number, H and W is the height and width of features.
 
           Temporal Shifting calculates as follows:
           
@@ -95,15 +95,21 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
           padding width as 1 on each side, padding result will be in shape 
           of [N, T+2, C, H, W].
 
-          Step 3: Assume :attr:`shift_ratio` is :math:`0.25`, slice padding 
+          Step 3: Assume :attr:`shift_ratio` is :math:`1/4`, slice padding 
           result as follows:
 
-                slice1 = x[:, :T, :C/4, :, :]
-                slice2 = x[:, 2:T+2, C/4:C/2, :, :]
-                slice3 = x[:, 1:T+1, C/2:, :, :]
+          $$
+          slice1 = x[:, :T, :C/4, :, :]
+          $$
+          $$
+          slice2 = x[:, 2:T+2, C/4:C/2, :, :]
+          $$
+          $$
+          slice3 = x[:, 1:T+1, C/2:, :, :]
+          $$
 
-          Step 4: Concatenate three slices with :math:`axis=2` and reshape result
-          to [N*T, C, H, W]
+          Step 4: Concatenate three slices along the 3rd(C) dimension and 
+          reshape result to [N*T, C, H, W].
 
           For details of temporal shifting, please refer to paper: 
           `Temporal Shift Module <http://arxiv.org/abs/1811.08383>`_ .
