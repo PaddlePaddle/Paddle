@@ -33,8 +33,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/ngraph/ngraph_bridge.h"
 #include "paddle/fluid/operators/ngraph/ngraph_engine.h"
 
-DEFINE_bool(use_ngraph_cache, true, "Use NGRAPH cache");
-
 namespace paddle {
 namespace operators {
 
@@ -73,9 +71,10 @@ static std::map<ngraph::element::Type, framework::proto::VarType::Type>
         {ngraph::element::i64, framework::proto::VarType::INT64},
         {ngraph::element::boolean, framework::proto::VarType::BOOL}};
 
-const framework::BlockDesc* NgraphEngine::p_bdesc = nullptr;
 std::vector<std::string> NgraphEngine::feed_vars = {};
 std::vector<std::string> NgraphEngine::fetch_vars = {};
+framework::Variable* NgraphEngine::pre_var_ptr = nullptr;
+const framework::BlockDesc* NgraphEngine::p_bdesc = nullptr;
 
 std::unordered_map<std::string, EngineCache> NgraphEngine::engine_cache = {};
 std::unordered_map<std::string,
@@ -160,6 +159,34 @@ static void SubstituteNgraphOp(
   ops->erase(ops->begin() + interval[0], ops->begin() + interval[1]);
   ops->insert(ops->begin() + interval[0],
               framework::OpRegistry::CreateOp(ng_op_desc));
+}
+
+std::string SerializedBlock(const std::vector<framework::OpDesc*>& op_descs) {
+  framework::proto::BlockDesc block_proto;
+  framework::BlockDesc block_desc(nullptr, &block_proto);
+  block_desc.Proto()->set_parent_idx(-1);
+  block_desc.Proto()->set_idx(0);
+
+  for (auto* op_desc : op_descs) {
+    auto* op = block_desc.AppendOp();
+    *op->Proto() = *op_desc->Proto();
+  }
+  return block_desc.Proto()->SerializeAsString();
+}
+
+std::string GenerateEngineKey(const framework::BlockDesc& bdesc) {
+  framework::proto::BlockDesc block_proto;
+  framework::BlockDesc block_desc(nullptr, &block_proto);
+  block_desc.Proto()->set_parent_idx(-1);
+  block_desc.Proto()->set_idx(0);
+
+  for (auto& op_desc : bdesc.AllOps()) {
+    auto* op = block_desc.AppendOp();
+    *op->Proto() = *op_desc->Proto();
+  }
+  auto engine_key = std::to_string(
+      std::hash<std::string>()(block_desc.Proto()->SerializeAsString()));
+  return engine_key;
 }
 
 std::string GenerateEngineKey(const std::vector<std::string>& engine_inputs,
@@ -351,6 +378,12 @@ void NgraphEngine::BuildNgIO(const std::vector<framework::OpDesc*>& ops_desc,
       }
     }
   }
+  for (size_t i = 0; i < var_in_.size(); ++i) {
+    auto var_name = var_in_[i];
+    if (persistables_.find(var_name) == persistables_.end()) {
+      var_in_updates_.emplace_back(i);
+    }
+  }
 }
 
 void NgraphEngine::GetNgInputShape() {
@@ -426,7 +459,8 @@ void NgraphEngine::BuildNgFunction(const std::vector<int>& interval) {
 
 void NgraphEngine::GetNgFunction(std::string engine_key,
                                  const std::vector<int>& interval) {
-  if (FLAGS_use_ngraph_cache) {
+  bool use_cache = true;
+  if (use_cache) {
     this->func_cache_key_ = "";
     for (int i = 0; i < std::min(static_cast<int>(feed_vars.size()), 10); ++i) {
       auto* var = scope_.FindVar(feed_vars[i]);
@@ -440,12 +474,28 @@ void NgraphEngine::GetNgFunction(std::string engine_key,
     }
     func_cache_key_ += std::to_string(interval[0]) + "_" +
                        std::to_string(interval[1]) + engine_key;
-
     func_cache_key_ = std::to_string(std::hash<std::string>()(func_cache_key_));
+
+    if (engine_cache.find(func_cache_key_) != engine_cache.end()) {
+      if (engine_cache[func_cache_key_].persistables.size() == 0) {
+        engine_cache.clear();
+        t_in_cache_.clear();
+      } else {
+        auto var_name = engine_cache[func_cache_key_].persistables.begin();
+        framework::Variable* var = scope_.FindVar(*var_name);
+        if (var != pre_var_ptr) {
+          engine_cache.clear();
+          t_in_cache_.clear();
+        }
+        pre_var_ptr = var;
+      }
+    }
+
     if (engine_cache.find(func_cache_key_) == engine_cache.end()) {
       BuildNgFunction(interval);
       engine_cache[func_cache_key_].ngraph_function = this->ngraph_function_;
       engine_cache[func_cache_key_].persistables = this->persistables_;
+      engine_cache[func_cache_key_].var_in_updates = this->var_in_updates_;
       engine_cache[func_cache_key_].var_in = this->var_in_;
       engine_cache[func_cache_key_].var_out = this->var_out_;
       engine_cache[func_cache_key_].is_test = this->is_test_;
@@ -458,22 +508,26 @@ void NgraphEngine::GetNgFunction(std::string engine_key,
 void NgraphEngine::Run(const framework::Scope& scope,
                        const platform::Place& place) const {
   std::shared_ptr<ngraph::Function> ng_func;
-  const std::unordered_set<std::string>* p_persistables;
+  const std::set<std::string>* p_persistables;
+  const std::vector<size_t>* p_var_in_updates;
   const std::vector<std::string>* p_var_in;
   const std::vector<std::string>* p_var_out;
   bool is_test;
 
-  if (FLAGS_use_ngraph_cache) {
+  bool use_cache = true;
+  if (use_cache) {
     PADDLE_ENFORCE(engine_cache.find(func_cache_key_) != engine_cache.end(),
                    "Cannot find cached data to run ngraph function");
     ng_func = engine_cache[func_cache_key_].ngraph_function;
     p_persistables = &(engine_cache[func_cache_key_].persistables);
+    p_var_in_updates = &(engine_cache[func_cache_key_].var_in_updates);
     p_var_in = &(engine_cache[func_cache_key_].var_in);
     p_var_out = &(engine_cache[func_cache_key_].var_out);
     is_test = engine_cache[func_cache_key_].is_test;
   } else {
     ng_func = ngraph_function_;
     p_persistables = &this->persistables_;
+    p_var_in_updates = &this->var_in_updates_;
     p_var_in = &this->var_in_;
     p_var_out = &this->var_out_;
     is_test = this->is_test_;
@@ -484,12 +538,27 @@ void NgraphEngine::Run(const framework::Scope& scope,
 
   auto m_parameters = ng_func->get_parameters();
   auto m_results = ng_func->get_results();
-
-  if (is_test && FLAGS_use_ngraph_cache &&
+  if (is_test && use_cache &&
       t_in_cache_.find(func_cache_key_) != t_in_cache_.end()) {
     p_t_in = &(t_in_cache_[func_cache_key_]);
+    for (size_t i = 0; i < p_var_in_updates->size(); ++i) {
+      int index = p_var_in_updates->at(i);
+      auto vi = p_var_in->at(index);
+      auto sp = m_parameters[index]->get_shape();
+      auto ng_type = m_parameters[index]->get_element_type();
+      std::shared_ptr<ngraph::runtime::Tensor> ti;
+      auto* var = scope.FindVar(vi);
+      if (var && var->IsType<framework::LoDTensor>()) {
+        auto* tensor_pd = GetMutableLoDTensorOrSelectedRowsValueFromVar(var);
+        void* pd_arr = tensor_pd->mutable_data(place, ng2pd_type_map[ng_type]);
+        ti = backend_->create_tensor(ng_type, sp, pd_arr);
+        (*p_t_in)[index] = ti;
+      } else {
+        PADDLE_THROW("Cannot find var or tensor with var name %s", vi);
+      }
+    }
   } else {
-    if (is_test && FLAGS_use_ngraph_cache) {
+    if (is_test && use_cache) {
       p_t_in = &(t_in_cache_[func_cache_key_]);
     } else {
       p_t_in = &t_in;

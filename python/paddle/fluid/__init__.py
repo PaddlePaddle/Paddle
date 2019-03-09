@@ -145,7 +145,6 @@ def __bootstrap__():
 
     if core.is_compiled_with_ngraph():
         read_env_flags.append('use_ngraph')
-        read_env_flags.append('use_ngraph_cache')
 
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')

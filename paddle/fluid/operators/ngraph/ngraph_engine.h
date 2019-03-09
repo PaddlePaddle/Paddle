@@ -15,6 +15,7 @@ limitations under the License. */
 #ifndef PADDLE_FLUID_OPERATORS_NGRAPH_NGRAPH_ENGINE_H_
 #define PADDLE_FLUID_OPERATORS_NGRAPH_NGRAPH_ENGINE_H_
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -41,9 +42,10 @@ enum class OpState {                /* nGraph support state on ops          */
 // cache engine repetitives
 struct EngineCache {
   std::shared_ptr<ngraph::Function> ngraph_function;
-  std::unordered_set<std::string> persistables;
+  std::set<std::string> persistables;
   std::vector<std::string> var_in;
   std::vector<std::string> var_out;
+  std::vector<size_t> var_in_updates;
   bool is_test = true;
 };
 
@@ -68,12 +70,13 @@ class NgraphEngine {
   static std::unordered_map<
       std::string, std::vector<std::shared_ptr<ngraph::runtime::Tensor>>>
       t_in_cache_;
+  static framework::Variable* pre_var_ptr;
 
   const framework::Scope& scope_;
   const platform::Place& place_;
   std::vector<std::shared_ptr<framework::OperatorBase>> fused_ops_;
   std::unordered_map<std::string, ngraph::element::Type> var_type_map_;
-  std::unordered_set<std::string> persistables_;
+  std::set<std::string> persistables_;
   std::unordered_set<std::string> post_op_inputs_;
   OpState op_state_ = OpState::UNKNOWN;
   bool is_test_{true};
@@ -87,6 +90,8 @@ class NgraphEngine {
   std::vector<std::string> var_in_;
   // var_name of outputs from  fetch in order
   std::vector<std::string> var_out_;
+  // non-persitable var_in
+  std::vector<size_t> var_in_updates_;
   // map input vars to nodes
   std::shared_ptr<
       std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>

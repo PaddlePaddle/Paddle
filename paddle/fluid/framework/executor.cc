@@ -194,9 +194,6 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool force_disable_gc) {
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
-#ifdef PADDLE_WITH_NGRAPH
-  if (FLAGS_use_ngraph) operators::NgraphEngine::EnableNgraph(pdesc);
-#endif
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
   RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
 }
