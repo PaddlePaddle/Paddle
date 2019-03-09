@@ -1872,10 +1872,8 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
         type="softmax",
         inputs={"X": input},
         outputs={"Out": softmax_out},
-        attrs={
-            "axis": axis,
-            "use_cudnn": use_cudnn
-        })
+        attrs={"axis": axis,
+               "use_cudnn": use_cudnn})
     return softmax_out
 
 

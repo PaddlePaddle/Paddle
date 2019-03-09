@@ -24,7 +24,8 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 static inline void CalcTransPermAndShapeByAxis(const Tensor& x, const int axis,
-                                std::vector<int>* perm, std::vector<int>* shape) {
+                                               std::vector<int>* perm,
+                                               std::vector<int>* shape) {
   auto dim_x = x.dims();
   int rank = dim_x.size();
 
@@ -65,7 +66,8 @@ class SoftmaxKernel : public framework::OpKernel<T> {
     Tensor X_trans, Out_trans;
     if (axis != -1 && axis != rank - 1) {
       X_trans.mutable_data<T>(framework::make_ddim(shape), context.GetPlace());
-      Out_trans.mutable_data<T>(framework::make_ddim(shape), context.GetPlace());
+      Out_trans.mutable_data<T>(framework::make_ddim(shape),
+                                context.GetPlace());
       TransCompute<DeviceContext, T>(rank, dev_ctx, *X, &X_trans, perm);
       TransCompute<DeviceContext, T>(rank, dev_ctx, *Out, &Out_trans, perm);
       X_2d = framework::ReshapeToMatrix(X_trans, rank - 1);
@@ -74,7 +76,6 @@ class SoftmaxKernel : public framework::OpKernel<T> {
       X_2d = framework::ReshapeToMatrix(*X, rank - 1);
       Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
     }
-
 
 #ifdef PADDLE_ON_INFERENCE
     math::SoftmaxFunctor<DeviceContext, T, true>()(
@@ -111,8 +112,10 @@ class SoftmaxGradKernel : public framework::OpKernel<T> {
     Tensor dX_trans, Out_trans, dOut_trans;
     if (axis != -1 && axis != rank - 1) {
       dX_trans.mutable_data<T>(framework::make_ddim(shape), context.GetPlace());
-      Out_trans.mutable_data<T>(framework::make_ddim(shape), context.GetPlace());
-      dOut_trans.mutable_data<T>(framework::make_ddim(shape), context.GetPlace());
+      Out_trans.mutable_data<T>(framework::make_ddim(shape),
+                                context.GetPlace());
+      dOut_trans.mutable_data<T>(framework::make_ddim(shape),
+                                 context.GetPlace());
       TransCompute<DeviceContext, T>(rank, dev_ctx, *dX, &dX_trans, perm);
       TransCompute<DeviceContext, T>(rank, dev_ctx, *Out, &Out_trans, perm);
       TransCompute<DeviceContext, T>(rank, dev_ctx, *dOut, &dOut_trans, perm);

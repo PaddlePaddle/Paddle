@@ -131,8 +131,10 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     if (axis != -1 && axis != rank - 1) {
       X_trans.mutable_data<T>(framework::make_ddim(shape), ctx.GetPlace());
       Out_trans.mutable_data<T>(framework::make_ddim(shape), ctx.GetPlace());
-      TransCompute<platform::CPUDeviceContext, T>(rank, dev_ctx, *X, &X_trans, perm);
-      TransCompute<platform::CPUDeviceContext, T>(rank, dev_ctx, *Out, &Out_trans, perm);
+      TransCompute<platform::CPUDeviceContext, T>(rank, dev_ctx, *X, &X_trans,
+                                                  perm);
+      TransCompute<platform::CPUDeviceContext, T>(rank, dev_ctx, *Out,
+                                                  &Out_trans, perm);
       auto dims = X_trans.dims();
       auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
       X_2d.ShareDataWith(X_trans).Resize(flattened_dims);
@@ -202,7 +204,8 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     }
 
     if (axis != -1 && axis != rank - 1) {
-      TransCompute<platform::CPUDeviceContext, T>(rank, dev_ctx, Out_trans, Out, perm);
+      TransCompute<platform::CPUDeviceContext, T>(rank, dev_ctx, Out_trans, Out,
+                                                  perm);
     }
   }
 };
@@ -241,9 +244,12 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
       dX_trans.mutable_data<T>(framework::make_ddim(shape), ctx.GetPlace());
       Out_trans.mutable_data<T>(framework::make_ddim(shape), ctx.GetPlace());
       dOut_trans.mutable_data<T>(framework::make_ddim(shape), ctx.GetPlace());
-      TransCompute<platform::CPUDeviceContext, T>(rank, dev_ctx, *dX, &dX_trans, perm);
-      TransCompute<platform::CPUDeviceContext, T>(rank, dev_ctx, *Out, &Out_trans, perm);
-      TransCompute<platform::CPUDeviceContext, T>(rank, dev_ctx, *dOut, &dOut_trans, perm);
+      TransCompute<platform::CPUDeviceContext, T>(rank, dev_ctx, *dX, &dX_trans,
+                                                  perm);
+      TransCompute<platform::CPUDeviceContext, T>(rank, dev_ctx, *Out,
+                                                  &Out_trans, perm);
+      TransCompute<platform::CPUDeviceContext, T>(rank, dev_ctx, *dOut,
+                                                  &dOut_trans, perm);
       auto dims = dX_trans.dims();
       auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
       dX_2d.ShareDataWith(dX_trans).Resize(flattened_dims);
@@ -308,7 +314,8 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
     stream(stream::kind::eager).submit(pipeline).wait();
 
     if (axis != -1 && axis != rank - 1) {
-      TransCompute<platform::CPUDeviceContext, T>(rank, dev_ctx, dX_trans, dX, perm);
+      TransCompute<platform::CPUDeviceContext, T>(rank, dev_ctx, dX_trans, dX,
+                                                  perm);
     }
   }
 };
