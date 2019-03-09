@@ -49,11 +49,6 @@ class EngineBase {
   // Execute the engine, that will run the inference network.
   virtual void Execute(int batch_size) = 0;
 
-  // Return the IO buffer that allocated in engine. One can read/write directly
-  // on the buffer. If the buffer's buffer is nullptr, one can also allocate
-  // memory and maintain it outside the engine.
-  virtual Buffer& buffer(const std::string& name) = 0;
-
   virtual ~EngineBase() {}
 };  // class EngineBase
 
