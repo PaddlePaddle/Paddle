@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/profiler.pb.h"
 
@@ -63,6 +64,15 @@ class DeviceTracer {
     uint32_t correlation_id;
     uint64_t bytes;
   };
+  struct MemInfoRecord {
+    uint64_t start_ns;
+    uint64_t end_ns;
+    size_t bytes;
+    Place place;
+    int64_t thread_id;
+    std::string alloc_in;
+    std::string free_in;
+  };
 
   virtual ~DeviceTracer() {}
   // Needs to be called once before use.
@@ -85,6 +95,12 @@ class DeviceTracer {
   virtual void AddCPURecords(const std::string& anno, uint64_t start_ns,
                              uint64_t end_ns, int64_t device_id,
                              int64_t thread_id) = 0;
+
+  virtual void AddMemInfoRecord(uint64_t start_ns, uint64_t end_ns,
+                                size_t bytes, const Place& place,
+                                const std::string& alloc_in,
+                                const std::string& free_in,
+                                int64_t thread_id) = 0;
 
   // Add a cuda kernel stats. `correlation_id` will be mapped to annotation
   // added before for human readability.
