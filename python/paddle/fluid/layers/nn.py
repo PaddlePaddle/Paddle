@@ -10301,10 +10301,8 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
         type="temporal_shift",
         inputs={"X": x},
         outputs={"Out": out},
-        attrs={
-            "seg_num": seg_num,
-            "shift_ratio": shift_ratio 
-        })
+        attrs={"seg_num": seg_num,
+               "shift_ratio": shift_ratio})
     return out
 
 

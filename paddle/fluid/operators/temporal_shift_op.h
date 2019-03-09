@@ -18,13 +18,15 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-static HOSTDEVICE inline int GetEntryIndex(int in, int it, int ic, int ih, int iw, 
-    const int tchw, const int chw, const int hw, const int w) {
+static HOSTDEVICE inline int GetEntryIndex(int in, int it, int ic, int ih,
+                                           int iw, const int tchw,
+                                           const int chw, const int hw,
+                                           const int w) {
   return in * tchw + it * chw + ic * hw + ih * w + iw;
 }
 
 template <typename T>
-class TemporalShiftKernel: public framework::OpKernel<T> {
+class TemporalShiftKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("X");
@@ -62,7 +64,7 @@ class TemporalShiftKernel: public framework::OpKernel<T> {
       } else {
         src_it = it;
       }
-      
+
       if (src_it < 0 || src_it >= t) {
         output_data[i] = 0;
       } else {
@@ -95,7 +97,8 @@ class TemporalShiftGradKernel : public framework::OpKernel<T> {
     const int tchw = t * chw;
 
     const T* output_grad_data = output_grad->data<T>();
-    T* input_grad_data = input_grad->mutable_data<T>({nt, c, h, w}, ctx.GetPlace());
+    T* input_grad_data =
+        input_grad->mutable_data<T>({nt, c, h, w}, ctx.GetPlace());
     memset(input_grad_data, 0, input_grad->numel() * sizeof(T));
 
     int src_it = 0;
@@ -113,7 +116,7 @@ class TemporalShiftGradKernel : public framework::OpKernel<T> {
       } else {
         src_it = it;
       }
-      
+
       if (src_it >= 0 && src_it < t) {
         int src_idx = GetEntryIndex(in, src_it, ic, ih, iw, tchw, chw, hw, w);
         input_grad_data[src_idx] = output_grad_data[i];

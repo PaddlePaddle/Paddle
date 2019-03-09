@@ -24,14 +24,16 @@ from paddle.fluid import core
 def temporal_shift(x, seg_num, shift_ratio):
     shape = x.shape
     reshape_x = x.reshape((-1, seg_num, shape[1], shape[2], shape[3]))
-    pad_x = np.pad(reshape_x, ((0, 0), (1, 1), (0, 0), (0, 0), (0, 0)), 'constant')
+    pad_x = np.pad(reshape_x, ((0, 0), (1, 1), (0, 0), (0, 0), (0, 0)),
+                   'constant')
     c1 = int(shape[1] * shift_ratio)
     c2 = int(shape[1] * 2 * shift_ratio)
     slice1 = pad_x[:, :seg_num, :c1, :, :]
-    slice2 = pad_x[:, 2:seg_num+2, c1:c2, :, :]
-    slice3 = pad_x[:, 1:seg_num+1, c2:, :, :]
+    slice2 = pad_x[:, 2:seg_num + 2, c1:c2, :, :]
+    slice3 = pad_x[:, 1:seg_num + 1, c2:, :, :]
     concat_x = np.concatenate([slice1, slice2, slice3], axis=2)
     return concat_x.reshape(shape)
+
 
 class TestTemporalShift(OpTest):
     def setUp(self):
@@ -44,9 +46,7 @@ class TestTemporalShift(OpTest):
             "shift_ratio": self.shift_ratio,
         }
 
-        self.inputs = {
-            "X": x,
-        }
+        self.inputs = {"X": x, }
 
         output = temporal_shift(x, self.seg_num, self.shift_ratio)
         self.outputs = {"Out": output}
@@ -61,6 +61,7 @@ class TestTemporalShift(OpTest):
         self.x_shape = (6, 4, 4, 4)
         self.seg_num = 3
         self.shift_ratio = 0.25
+
 
 class TestTemporalShift2(TestTemporalShift):
     def initTestCase(self):
