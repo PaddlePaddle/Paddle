@@ -59,6 +59,12 @@ void AsyncExecutor::GatherServers(const std::vector<uint64_t>& host_sign_list,
   fleet_ptr_->GatherServers(host_sign_list, node_num);
 }
 
+// todo InitModel
+void AsyncExecutor::InitModel() { }
+
+// todo SaveModel
+void AsyncExecutor::SaveModel(const std::string& path) { }
+
 void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
                                 const std::string& trainer_desc_str,
                                 const bool debug) {
@@ -72,7 +78,7 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   trainer = TrainerFactory::CreateTrainer(trainer_desc.class_name());
   // initialize trainer
   VLOG(3) << "Going to initialize trainer";
-  // trainer->Initialize(trainer_desc, NULL);
+  trainer->Initialize(trainer_desc, NULL);
   VLOG(3) << "Set root scope here";
   trainer->SetScope(root_scope_);
   VLOG(3) << "Going to set debug";
@@ -91,6 +97,12 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   root_scope_->DropKids();
   return;
 }
+
+// todo RunFromDataset
+void AsyncExecutor::RunFromDataset(const ProgramDesc& main_program,
+                                   Dataset* data_set,
+                                   const std::string& trainer_desc_str,
+                                   const bool debug) { }
 
 }  // end namespace framework
 }  // end namespace paddle

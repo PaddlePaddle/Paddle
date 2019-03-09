@@ -121,6 +121,18 @@ class PaddlePSInstance(object):
         """
         return self._nodes
 
+    def get_worker_num(self):
+        """
+        Return worker num
+        """
+        return self._worker_num
+
+    def get_server_num(self):
+        """
+        Return server num
+        """
+        return self._server_num
+
     def barrier_all(self):
         """
         barrier workers and servers
