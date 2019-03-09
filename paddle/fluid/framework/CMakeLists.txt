@@ -29,7 +29,7 @@ add_subdirectory(io)
 proto_library(framework_proto SRCS framework.proto)
 proto_library(data_feed_proto SRCS data_feed.proto)
 proto_library(async_executor_proto SRCS data_feed.proto)
-proto_library(trainer_desc_proto SRCS trainer_desc.proto)
+proto_library(trainer_desc_proto SRCS trainer_desc.proto data_feed.proto)
 
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
@@ -171,12 +171,12 @@ else()
   set(NGRAPH_EXE_DEPS)
 endif()
 
-cc_library(trainer_library SRCS multi_trainer.cc dist_multi_trainer.cc
-trainer_factory.cc trainer.cc data_feed_factory.cc data_feed.cc
-device_worker.cc hogwild_worker.cc downpour_worker.cc pull_dense_worker.cc
-device_worker_factory.cc data_set.cc DEPS op_registry scope framework_proto
-data_feed_proto trainer_desc_proto glog lod_rank_table fs shell fleet_wrapper
-lodtensor_printer feed_fetch_method graph_to_program_pass timer)
+#cc_library(trainer_library SRCS multi_trainer.cc dist_multi_trainer.cc
+#trainer_factory.cc trainer.cc data_feed_factory.cc data_feed.cc
+#device_worker.cc hogwild_worker.cc downpour_worker.cc pull_dense_worker.cc
+#device_worker_factory.cc data_set.cc DEPS op_registry scope framework_proto
+#data_feed_proto trainer_desc_proto glog lod_rank_table fs shell fleet_wrapper
+#lodtensor_printer feed_fetch_method graph_to_program_pass timer)
 
 if(WITH_DISTRIBUTE)
   cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog fleet_wrapper
