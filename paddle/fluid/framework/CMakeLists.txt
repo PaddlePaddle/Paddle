@@ -206,7 +206,7 @@ cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.
            DEPS op_registry device_context scope framework_proto
            trainer_desc_proto glog lod_rank_table fleet_wrapper lodtensor_printer
            feed_fetch_method graph_to_program_pass data_feed_proto
-           variable_helper timer)
+           variable_helper timer fs shell)
 
 
 cc_test(data_feed_test SRCS data_feed_test.cc DEPS async_executor)

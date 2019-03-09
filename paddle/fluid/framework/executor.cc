@@ -14,11 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
 #include <deque>
-#include <memory>
-#include <unordered_map>
 #include <unordered_set>
+#include <unordered_map>
 #include <utility>
-
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -119,7 +117,7 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
 }
 
 void Executor::RunFromDataset(const ProgramDesc& main_program,
-                              const Dataset& dataset,
+                              Dataset* dataset,
                               const std::string& trainer_desc_str,
                               const bool debug) {
   VLOG(3) << "Start to RunFromDataset in executor";

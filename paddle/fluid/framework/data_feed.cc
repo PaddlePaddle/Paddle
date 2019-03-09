@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_feed.h"
 #include <stdio_ext.h>
+#include <utility>
 #include "gflags/gflags.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
@@ -135,6 +136,7 @@ int PrivateQueueDataFeed<T>::Next() {
   return batch_size_;
 }
 
+// explicit instantiation
 template class PrivateQueueDataFeed<std::vector<MultiSlotType>>;
 
 template <typename T>
@@ -220,8 +222,6 @@ void InMemoryDataFeed<T>::LocalShuffle() {
   std::random_shuffle(memory_data_.begin(), memory_data_.end());
 }
 
-template class InMemoryDataFeed<std::vector<MultiSlotType>>;
-
 // todo global shuffle
 /*
 template <typename T>
@@ -241,6 +241,9 @@ void InMemoryDataFeed<T>::GlobalShuffle(int trainer_num) {
   }
 }
 */
+
+// explicit instantiation
+template class InMemoryDataFeed<std::vector<MultiSlotType>>;
 
 void MultiSlotDataFeed::Init(
     const paddle::framework::DataFeedDesc& data_feed_desc) {

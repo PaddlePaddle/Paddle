@@ -22,7 +22,7 @@ namespace paddle {
 namespace framework {
 
 void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
-                              const Dataset& dataset) {
+                              Dataset* dataset) {
   thread_num_ = trainer_desc.thread_num();
   // get filelist from trainer_desc here
   workers_.resize(thread_num_);

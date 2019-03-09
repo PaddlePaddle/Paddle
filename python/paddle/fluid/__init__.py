@@ -24,6 +24,9 @@ from .executor import *
 from . import data_feed_desc
 from .data_feed_desc import *
 
+from . import dataset
+from .dataset import *
+
 from . import async_executor
 from .async_executor import *
 
