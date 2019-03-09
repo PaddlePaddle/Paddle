@@ -116,10 +116,9 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
   }
 }
 
-void Executor::RunFromDataset(const ProgramDesc& main_program,
+void Executor::RunFromDataset(const ProgramDesc& main_program, Scope* scope,
                               Dataset* dataset,
-                              const std::string& trainer_desc_str,
-                              const bool debug) {
+                              const std::string& trainer_desc_str) {
   VLOG(3) << "Start to RunFromDataset in executor";
   TrainerDesc trainer_desc;
   google::protobuf::TextFormat::ParseFromString(trainer_desc_str,
@@ -132,9 +131,7 @@ void Executor::RunFromDataset(const ProgramDesc& main_program,
   VLOG(3) << "Going to initialize trainer";
   trainer->Initialize(trainer_desc, dataset);
   VLOG(3) << "Set root scope here";
-  trainer->SetScope(root_scope_);
-  VLOG(3) << "Going to set debug";
-  trainer->SetDebug(debug);
+  trainer->SetScope(scope);
   // prepare training environment and helper environment
   VLOG(3) << "Try to init train environment";
   trainer->InitTrainerEnv(main_program, place_);
@@ -146,7 +143,7 @@ void Executor::RunFromDataset(const ProgramDesc& main_program,
   VLOG(3) << "Trainer going to finalize";
   trainer->Finalize();
   VLOG(3) << "Drop current scope kids";
-  root_scope_->DropKids();
+  scope->DropKids();
   return;
 }
 

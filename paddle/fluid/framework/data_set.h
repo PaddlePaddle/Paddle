@@ -43,7 +43,7 @@ class Dataset {
     return data_feed_desc_;
   }
 
-  virtual std::vector<std::shared_ptr<paddle::framework::DataFeed>>
+  virtual const std::vector<std::shared_ptr<paddle::framework::DataFeed>>&
   GetReaders();
   virtual void LoadIntoMemory();
   virtual void LocalShuffle();

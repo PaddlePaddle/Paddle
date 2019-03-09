@@ -114,16 +114,11 @@ class Executor {
 
   void EnableMKLDNN(const ProgramDesc& program);
 
-  void RunFromDataset(const ProgramDesc& main_program, Dataset* dataset,
-                      const std::string& trainer_desc_str, const bool debug);
-
- public:
-  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
-  Scope* root_scope_;
+  void RunFromDataset(const ProgramDesc& main_program, Scope* scope,
+                      Dataset* dataset, const std::string& trainer_desc_str);
 
  private:
   const platform::Place place_;
-  int actual_thread_num_;
 };
 
 }  // namespace framework
