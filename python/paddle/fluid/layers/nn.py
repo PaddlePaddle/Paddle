@@ -10654,8 +10654,8 @@ def tree_conv(nodes_vector,
     return helper.append_activation(pre_activation)
 
 
-from .control_flow import equal
 from .ops import square
+from .control_flow import equal
 
 
 def npair_loss(anchor, positive, labels, l2_reg=0.002):
