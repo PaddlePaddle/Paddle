@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/softmax_op.h"
 
+#include <memory>
 #include <string>
 
 #ifdef PADDLE_WITH_CUDA
