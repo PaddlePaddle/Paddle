@@ -1824,13 +1824,13 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
     The input of the softmax operator is a tensor of any rank. The output tensor
     has the same shape as the input.
 
-    The :attr:`axis` th dimension of the input tensor will be permuted to the last.
+    The dimension :attr:`axis` of the input tensor will be permuted to the last.
     Then the input tensor will be logically flattened to a 2-D matrix. The matrix's
-    second dimension(row length) is as same as the :attr:`axis` th dimension of the input
+    second dimension(row length) is as same as the dimension :attr:`axis` of the input
     tensor, and the first dimension(column length) is the product of all other
     dimensions of the input tensor. For each row of the matrix, the softmax operator
     squashes the K-dimensional(K is the width of the matrix, which is also the size
-    of the input tensor's :attr:`axis` th dimension) vector of arbitrary real values to a
+    of the input tensor's dimension :attr:`axis`) vector of arbitrary real values to a
     K-dimensional vector of real values in the range [0, 1] that add up to 1.
 
     It computes the exponential of the given dimension and the sum of exponential
@@ -1852,7 +1852,9 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
             False by default. Default: False
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None.
-        axis (int): The index of dimension to perform softmax calculation. Default: -1.
+        axis (int): The index of dimension to perform softmax calculations, it should
+            be in range :math:`[-1, rank - 1]`, while :math:`rank` is the rank of
+            input variable. Default: -1.
 
     Returns:
         Variable: output of softmax
