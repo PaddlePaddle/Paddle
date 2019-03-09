@@ -12,6 +12,9 @@
  *     See the License for the specific language governing permissions and
  *     limitations under the License. */
 
+#include "google/protobuf/io/zero_copy_stream_impl.h"
+#include "google/protobuf/message.h"
+#include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
 
@@ -44,9 +47,9 @@ void Dataset::SetThreadNum(int thread_num) {
 
 void Dataset::SetTrainerNum(int trainer_num) { trainer_num_ = trainer_num; }
 
-void Dataset::SetDataFeedDesc(
-    const paddle::framework::DataFeedDesc& data_feed_desc) {
-  data_feed_desc_ = data_feed_desc;
+void Dataset::SetDataFeedDesc(const std::string& data_feed_desc_str) {
+  google::protobuf::TextFormat::ParseFromString(
+    data_feed_desc_str,  &data_feed_desc_);
 }
 
 std::vector<std::shared_ptr<paddle::framework::DataFeed>>

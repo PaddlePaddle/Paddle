@@ -59,6 +59,12 @@ void AsyncExecutor::GatherServers(const std::vector<uint64_t>& host_sign_list,
   fleet_ptr_->GatherServers(host_sign_list, node_num);
 }
 
+// todo InitModel
+void AsyncExecutor::InitModel() { }
+
+// todo SaveModel
+void AsyncExecutor::SaveModel(const std::string& path) { }
+
 void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
                                 const std::string& data_feed_desc_str,
                                 const std::vector<std::string>& filelist,
@@ -153,6 +159,12 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   root_scope_->DropKids();
   return;
 }
+
+// todo RunFromDataset
+void AsyncExecutor::RunFromDataset(const ProgramDesc& main_program,
+                                   Dataset* data_set,
+                                   const std::string& trainer_desc_str,
+                                   const bool debug) { }
 
 }  // end namespace framework
 }  // end namespace paddle
