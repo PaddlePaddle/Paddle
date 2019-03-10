@@ -23,12 +23,13 @@ namespace paddle {
 namespace framework {
 
 void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
-                                  Dataset* data_set) {
+                                  Dataset* dataset) {
   thread_num_ = trainer_desc.thread_num();
   workers_.resize(thread_num_);
 
+  dataset->CreateReaders();
   const std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers =
-      data_set->GetReaders();
+      dataset->GetReaders();
 
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
