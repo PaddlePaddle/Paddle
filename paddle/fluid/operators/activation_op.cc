@@ -269,6 +269,27 @@ $$out = \\frac{x}{1 + \|x\|}$$
 
 )DOC";
 
+UNUSED constexpr char AcosDoc[] = R"DOC(
+Arccosine Activation Operator.
+
+$${out}_{i} = \cos^{-1}({input}_{i})$$
+
+)DOC";
+
+UNUSED constexpr char AsinDoc[] = R"DOC(
+Arcsine Activation Operator.
+
+$out = \sin^{-1}({input}_{i})$
+
+)DOC";
+
+UNUSED constexpr char AtanDoc[] = R"DOC(
+Arctanh Activation Operator.
+
+$out = \tanh^{-1}({input}_{i})$
+
+)DOC";
+
 class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -494,13 +515,16 @@ REGISTER_ACTIVATION_OP_MAKER(Exp, ExpDoc);
 REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Gelu, GeluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
+REGISTER_ACTIVATION_OP_MAKER(Atan, AtanDoc);
 REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
 REGISTER_ACTIVATION_OP_MAKER(Abs, AbsDoc);
 REGISTER_ACTIVATION_OP_MAKER(Ceil, CeilDoc);
 REGISTER_ACTIVATION_OP_MAKER(Floor, FloorDoc);
 REGISTER_ACTIVATION_OP_MAKER(Cos, CosDoc);
+REGISTER_ACTIVATION_OP_MAKER(Acos, AcosDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sin, SinDoc);
+REGISTER_ACTIVATION_OP_MAKER(Asin, AsinDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
@@ -543,7 +567,10 @@ namespace ops = paddle::operators;
   __macro(SoftShrink, softshrink);   \
   __macro(Abs, abs);                 \
   __macro(Cos, cos);                 \
+  __macro(Acos, acos);               \
   __macro(Sin, sin);                 \
+  __macro(Asin, asin);               \
+  __macro(Atan, atan);               \
   __macro(Round, round);             \
   __macro(Log, log);                 \
   __macro(Square, square);           \
