@@ -23,6 +23,7 @@ from .framework import Program, default_main_program, Variable
 from . import core
 from . import compiler
 from .. import compat as cpt
+from .trainer_factory import TrainerFactory
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -616,6 +617,7 @@ class Executor(object):
                          dataset=None,
                          fetch_list=None,
                          scope=None,
+                         thread=0,
                          opt_info=None):
         if scope is None:
             scope = global_scope()
@@ -624,7 +626,14 @@ class Executor(object):
         compiled = isinstance(program, compiler.CompiledProgram)
         if not compiled:
             trainer = TrainerFactory().create_trainer(opt_info)
-            self._default_executor.run_from_dataset(program_desc,
+            if thread <= 0:
+                trainer.set_thread(dataset.thread_num)
+            else:
+                trainer.set_thread(thread)
+            dataset._prepare_to_run()
+            print("run_from_dataset called")
+            self._default_executor.run_from_dataset(program.desc, scope,
+                                                    dataset.dataset,
                                                     trainer._desc())
         else:
             # For compiled program, more runtime should be implemented
