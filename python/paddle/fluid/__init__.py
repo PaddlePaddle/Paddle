@@ -150,6 +150,10 @@ def __bootstrap__():
         read_env_flags.append('rpc_get_thread_num')
         read_env_flags.append('rpc_prefetch_thread_num')
         read_env_flags.append('rpc_disable_reuse_port')
+        read_env_flags.append('communicator_independent_recv_thread')
+        read_env_flags.append('communicator_send_queue_size')
+        read_env_flags.append('communicator_recv_wait_ms')
+        read_env_flags.append('communicator_thread_pool_size')
         if core.is_compiled_with_brpc():
             read_env_flags.append('max_body_size')
             #set brpc max body size
