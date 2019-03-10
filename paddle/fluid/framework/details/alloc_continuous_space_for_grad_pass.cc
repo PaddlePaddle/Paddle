@@ -39,10 +39,10 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
 
     auto &places = Get<const std::vector<platform::Place>>(kPlaces);
     auto &local_scopes = Get<const std::vector<Scope *>>(kLocalScopes);
-    ResetAttribute<ParamsAndGrads>(kParamsAndGrads, &result);
 
     // NOTE: The operator nodes should be in topology order.
     std::vector<ir::Node *> topo_nodes = ir::TopologySortOperations(result);
+    result.Set(kParamsAndGrads, new ParamsAndGrads);
     auto &params_grads = result.Get<ParamsAndGrads>(kParamsAndGrads);
     for (auto &node : topo_nodes) {
       RecordParamsAndGrads(node, &params_grads);
@@ -61,8 +61,6 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
         vars.emplace(node->Var()->Name(), node);
       }
     }
-
-    // Note: Maybe the order of the parameters and gradient should be changed.
 
     // Set Gradients as Persistable to prevent this var becoming reusable.
     auto dtype = kDefaultDtype;
@@ -83,18 +81,18 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       PADDLE_ENFORCE_EQ(ele_dtype, dtype);
     }
 
-    // Create a FusedVars Set to avoid duplicating names for fused_var in other
+    // Create a FusedVarsSet to avoid duplicating names for fused_var in other
     // pass.
     if (!result.Has(kFusedVars)) {
       result.Set(kFusedVars, new FusedVars);
     }
     // the kFusedGrads is used be fuse_optimizer_op_pass.
-    if (!result.Has(kFusedGrads)) {
-      result.Set(kFusedGrads, new FusedGrads);
-    }
-    // the fused_var_name should be unique.
-    const std::string prefix(kFusedVarNamePrefix);
-    auto fused_var_name = prefix + "@GRAD@" + params_grads.begin()->second;
+    result.Set(kFusedGrads, new FusedGrads);
+
+    // the fused_var_name should be unique, so it appends
+    // params_grads.begin()->second.
+    auto fused_var_name = std::string(kFusedVarNamePrefix) + "@GRAD@" +
+                          params_grads.begin()->second;
     result.Get<FusedGrads>(kFusedGrads) = fused_var_name;
     auto &fused_var_set = result.Get<FusedVars>(kFusedVars);
     PADDLE_ENFORCE_EQ(fused_var_set.count(fused_var_name), 0,
@@ -107,30 +105,10 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     return std::move(graph);
   }
 
-  template <typename AttrType>
-  void ResetAttribute(const std::string &attr_name, ir::Graph *graph) const {
-    if (graph->Has(attr_name)) {
-      VLOG(10) << attr_name << " is reset.";
-      graph->Erase(attr_name);
-    }
-    graph->Set(attr_name, new AttrType);
-  }
-
  private:
   bool IsSupportedVarType(const proto::VarType::Type &type) const {
     // Current only support LOD_TENSOR.
     return type == proto::VarType::LOD_TENSOR;
-  }
-
-  void AppendAllocSpaceForVarsOp(const std::vector<std::string> &params_name,
-                                 const std::vector<std::string> &grads_name,
-                                 const std::string &fused_var_name,
-                                 BlockDesc *global_block) const {
-    auto op_desc = global_block->AppendOp();
-    op_desc->SetType("alloc_continuous_space");
-    op_desc->SetInput("Input", params_name);
-    op_desc->SetOutput("Output", grads_name);
-    op_desc->SetOutput("FusedOutput", {fused_var_name});
   }
 
   void RecordParamsAndGrads(ir::Node *node,
@@ -212,6 +190,17 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
         op->Run(*local_scopes[i], places[i]);
       }
     }
+  }
+
+  void AppendAllocSpaceForVarsOp(const std::vector<std::string> &params_name,
+                                 const std::vector<std::string> &grads_name,
+                                 const std::string &fused_var_name,
+                                 BlockDesc *global_block) const {
+    auto op_desc = global_block->AppendOp();
+    op_desc->SetType("alloc_continuous_space");
+    op_desc->SetInput("Input", params_name);
+    op_desc->SetOutput("Output", grads_name);
+    op_desc->SetOutput("FusedOutput", {fused_var_name});
   }
 };
 

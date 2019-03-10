@@ -23,6 +23,8 @@ namespace operators {
 
 static framework::proto::VarType::Type kDefaultDtype =
     framework::proto::VarType::Type::VarType_Type_BOOL;
+// Note(zcd): Addresses should be aligned, otherwise, the GPU results may have
+// diff.
 static const size_t kAlignment = 256;
 
 template <typename DeviceContext, typename T>
@@ -137,8 +139,6 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GT(size, 0);
       VLOG(10) << "alloc_space_for_vars: input(" << var_names[i] << ") ,dim:("
                << lod_tensors[i]->dims() << ")";
-      // Note(zcd): Addresses should be aligned, otherwise the GPU results will
-      // be diff.
       *numel += Alignment(static_cast<size_t>(size));
     }
   }

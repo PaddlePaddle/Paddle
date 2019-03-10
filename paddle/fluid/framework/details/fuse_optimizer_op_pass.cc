@@ -81,7 +81,7 @@ std::unique_ptr<ir::Graph> FuseOptimizerOpPass::ApplyImpl(
         "The alloc_continuous_space_for_grad_pass should be called before this "
         "pass.");
   }
-  auto fused_grad = result.Get<FusedGrads>(kFusedGrads);
+  auto &fused_grad = result.Get<FusedGrads>(kFusedGrads);
   auto &fused_vars = result.Get<FusedVars>(kFusedVars);
   auto iter = std::find(fused_vars.begin(), fused_vars.end(), fused_grad);
   VLOG(10) << fused_grad;
@@ -218,20 +218,24 @@ void FuseOptimizerOpPass::AppendAllocContinuousSpace(
 
 void FuseOptimizerOpPass::InserInputAndOutputForOptOps(
     const std::vector<ir::Node *> &opt_ops, ir::Node *opt_node) const {
+  std::unordered_set<ir::Node *> inputs;
+  std::unordered_set<ir::Node *> outputs;
   for (auto opt_op : opt_ops) {
     // set inputs
-    opt_node->inputs.insert(opt_node->inputs.begin(), opt_op->inputs.begin(),
-                            opt_op->inputs.end());
+    inputs.insert(opt_op->inputs.begin(), opt_op->inputs.end());
     for (auto &input : opt_op->inputs) {
       replace(input->outputs.begin(), input->outputs.end(), opt_op, opt_node);
     }
     // set outputs
-    opt_node->outputs.insert(opt_node->outputs.begin(), opt_op->outputs.begin(),
-                             opt_op->outputs.end());
+    outputs.insert(opt_op->outputs.begin(), opt_op->outputs.end());
     for (auto &output : opt_op->outputs) {
       replace(output->inputs.begin(), output->inputs.end(), opt_op, opt_node);
     }
   }
+  opt_node->inputs.insert(opt_node->inputs.begin(), inputs.begin(),
+                          inputs.end());
+  opt_node->outputs.insert(opt_node->outputs.begin(), outputs.begin(),
+                           outputs.end());
 }
 }  // namespace details
 }  // namespace framework

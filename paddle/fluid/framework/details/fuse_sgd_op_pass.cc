@@ -57,8 +57,6 @@ void FuseSgdOpPass::FuseSgdOps(
   // TODO(zcd): The LearningRate, Beta1Pow, Beta2Pow should be equal.
   Sgd_desc.SetInput("LearningRate", sgd_ops[0]->Op()->Input("LearningRate"));
 
-  // TODO(zcd): Prune LearningRate Node's output
-
   // NOTE: multi_devices_pass requires that every op should have a role.
   Sgd_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
 

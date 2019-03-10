@@ -97,8 +97,6 @@ void FuseAdamOpPass::FuseAdamOps(
                     min_row_size_to_use_multithread);
   adam_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
 
-  // TODO(zcd): Prune LearningRate Node's output
-
   auto adam_node = graph->CreateOpNode(&adam_desc);
 
   InserInputAndOutputForOptOps(adam_ops, adam_node);
