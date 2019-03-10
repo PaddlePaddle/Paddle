@@ -76,7 +76,7 @@ void HOPVJitCode::genCode() {
 #define DECLARE_HOP_CREATOR(name)                                            \
   class name##Creator : public JitCodeCreator<int> {                         \
    public:                                                                   \
-    bool UseMe(const int& attr) const override {                             \
+    bool CanBeUsed(const int& attr) const override {                         \
       return platform::MayIUse(platform::avx);                               \
     }                                                                        \
     size_t CodeSize(const int& d) const override {                           \

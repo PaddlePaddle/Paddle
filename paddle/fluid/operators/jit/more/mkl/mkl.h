@@ -175,13 +175,13 @@ void Sgd(const T* lr, const T* param, const T* grad, const int64_t* rows,
   }
 }
 
-#define DECLARE_MKL_KERNEL(name)                                          \
-  template <typename T>                                                   \
-  class name##Kernel : public KernelMore<name##Tuple<T>> {                \
-   public:                                                                \
-    name##Kernel() { this->func = name<T>; }                              \
-    bool UseMe(const typename name##Tuple<T>::attr_type&) const override; \
-    const char* ImplType() const override { return "MKL"; }               \
+#define DECLARE_MKL_KERNEL(name)                                              \
+  template <typename T>                                                       \
+  class name##Kernel : public KernelMore<name##Tuple<T>> {                    \
+   public:                                                                    \
+    name##Kernel() { this->func = name<T>; }                                  \
+    bool CanBeUsed(const typename name##Tuple<T>::attr_type&) const override; \
+    const char* ImplType() const override { return "MKL"; }                   \
   }
 
 // ABCMNK
