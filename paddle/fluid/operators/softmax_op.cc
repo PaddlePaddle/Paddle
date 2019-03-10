@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
