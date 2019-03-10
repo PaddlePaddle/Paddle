@@ -628,7 +628,7 @@ static void InitInferShapeFuncs() {
         continue;
       }
       op_info.infer_shape_ = [op](InferShapeContext *ctx) {
-        op->InferShape(ctx);
+        try_run(op, [op, ctx]() { op->InferShape(ctx); });
       };
     }
   });

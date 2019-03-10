@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
@@ -161,7 +160,7 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  try {
+  try_run(this, [this, &scope, &place]() {
     VLOG(3) << place << " " << DebugStringEx(&scope);
     if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
@@ -184,36 +183,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     VLOG(3) << place << " " << DebugStringEx(&scope);
-  } catch (platform::EnforceNotMet exception) {
-    if (Attrs().count("sub_block") != 0) {
-      throw;
-    }
-
-    std::ostringstream sout;
-    sout << "Invoke operator " << Type() << " error.\n";
-    if (HasAttr(OpProtoAndCheckerMaker::OpNamescopeAttrName())) {
-      auto& namescope =
-          Attr<std::string>(OpProtoAndCheckerMaker::OpNamescopeAttrName());
-      sout << "name scope: \n";
-      sout << namescope;
-      sout << "\n";
-    }
-
-    auto& callstack = Attr<std::vector<std::string>>(
-        OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
-    if (!callstack.empty()) {
-      sout << "Python Callstacks: \n";
-      for (auto& line : callstack) {
-        sout << line;
-      }
-    }
-    sout << "C++ Callstacks: \n";
-    sout << exception.err_str_;
-    exception.err_str_ = sout.str();
-    throw;
-  } catch (...) {
-    std::rethrow_exception(std::current_exception());
-  }
+  });
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
