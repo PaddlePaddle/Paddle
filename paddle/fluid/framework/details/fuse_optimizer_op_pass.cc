@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/details/fuse_optimizer_op_pass.h"
 #include <algorithm>
+#include <unordered_set>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 
