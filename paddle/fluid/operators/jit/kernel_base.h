@@ -302,6 +302,7 @@ class Kernel {
  public:
   Kernel() = default;
   virtual ~Kernel() = default;
+  virtual const char* ImplType() const = 0;
   DISABLE_COPY_AND_ASSIGN(Kernel);
 };
 
@@ -312,8 +313,8 @@ class KernelMore : public Kernel {
   using Func = typename KernelTuple::func_type;
   using Attr = typename KernelTuple::attr_type;
   virtual Func GetFunc() const { return func; }
-  virtual bool UseMe(const Attr& attr) const = 0;
-  virtual const char* ImplType() const = 0;
+  // specify this kernel can be used, means it should not fail if use it.
+  virtual bool CanBeUsed(const Attr& attr) const = 0;
 
  protected:
   Func func{nullptr};
@@ -323,7 +324,7 @@ template <typename KernelTuple>
 class ReferKernel : public KernelMore<KernelTuple> {
  public:
   // Refer code can always be used
-  bool UseMe(const typename KernelTuple::attr_type& attr) const override {
+  bool CanBeUsed(const typename KernelTuple::attr_type& attr) const override {
     return true;
   }
   const char* ImplType() const override { return "Refer"; }

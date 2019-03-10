@@ -204,21 +204,21 @@ void GRUHtPart2(gru_t* step, const gru_attr_t* attr) {
 }
 
 // TODO(TJ): tuning me
-bool VSigmoidKernel::UseMe(const int& d) const { return true; }
+bool VSigmoidKernel::CanBeUsed(const int& d) const { return true; }
 
-bool VTanhKernel::UseMe(const int& d) const { return true; }
+bool VTanhKernel::CanBeUsed(const int& d) const { return true; }
 
-bool SoftmaxKernel::UseMe(const int& d) const { return true; }
+bool SoftmaxKernel::CanBeUsed(const int& d) const { return true; }
 
-bool LSTMCtHtKernel::UseMe(const lstm_attr_t& attr) const { return true; }
+bool LSTMCtHtKernel::CanBeUsed(const lstm_attr_t& attr) const { return true; }
 
-bool LSTMC1H1Kernel::UseMe(const lstm_attr_t& attr) const { return true; }
+bool LSTMC1H1Kernel::CanBeUsed(const lstm_attr_t& attr) const { return true; }
 
-bool GRUH1Kernel::UseMe(const gru_attr_t& attr) const { return true; }
+bool GRUH1Kernel::CanBeUsed(const gru_attr_t& attr) const { return true; }
 
-bool GRUHtPart1Kernel::UseMe(const gru_attr_t& attr) const { return true; }
+bool GRUHtPart1Kernel::CanBeUsed(const gru_attr_t& attr) const { return true; }
 
-bool GRUHtPart2Kernel::UseMe(const gru_attr_t& attr) const { return true; }
+bool GRUHtPart2Kernel::CanBeUsed(const gru_attr_t& attr) const { return true; }
 
 }  // namespace mix
 }  // namespace more

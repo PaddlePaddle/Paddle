@@ -57,7 +57,7 @@ void SeqPoolJitCode::genCode() {
 
 class SeqPoolCreator : public JitCodeCreator<seq_pool_attr_t> {
  public:
-  bool UseMe(const seq_pool_attr_t& attr) const override {
+  bool CanBeUsed(const seq_pool_attr_t& attr) const override {
     return platform::MayIUse(platform::avx);
   }
   size_t CodeSize(const seq_pool_attr_t& attr) const override {

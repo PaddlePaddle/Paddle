@@ -142,7 +142,7 @@ void NCHW16CMulNCJitCode::genCode() {
 
 class NCHW16CMulNCCreator : public JitCodeCreator<int> {
  public:
-  bool UseMe(const int& attr) const override {
+  bool CanBeUsed(const int& attr) const override {
     return platform::MayIUse(platform::avx512f);
   }
   size_t CodeSize(const int& d) const override { return 256 * 1024; }
@@ -154,7 +154,7 @@ class NCHW16CMulNCCreator : public JitCodeCreator<int> {
 #define DECLARE_BLAS_CREATOR(name)                                           \
   class name##Creator : public JitCodeCreator<int> {                         \
    public:                                                                   \
-    bool UseMe(const int& attr) const override {                             \
+    bool CanBeUsed(const int& attr) const override {                         \
       return platform::MayIUse(platform::avx) && attr <= 1024;               \
     }                                                                        \
     size_t CodeSize(const int& d) const override {                           \

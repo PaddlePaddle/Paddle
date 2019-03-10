@@ -34,12 +34,12 @@ void GRUH1(gru_t* step, const gru_attr_t* attr);
 void GRUHtPart1(gru_t* step, const gru_attr_t* attr);
 void GRUHtPart2(gru_t* step, const gru_attr_t* attr);
 
-#define DECLARE_MORE_KERNEL(name)                                         \
-  class name##Kernel : public KernelMore<name##Tuple<T>> {                \
-   public:                                                                \
-    name##Kernel() { this->func = name; }                                 \
-    bool UseMe(const typename name##Tuple<T>::attr_type&) const override; \
-    const char* ImplType() const override { return "Mixed"; }             \
+#define DECLARE_MORE_KERNEL(name)                                             \
+  class name##Kernel : public KernelMore<name##Tuple<T>> {                    \
+   public:                                                                    \
+    name##Kernel() { this->func = name; }                                     \
+    bool CanBeUsed(const typename name##Tuple<T>::attr_type&) const override; \
+    const char* ImplType() const override { return "Mixed"; }                 \
   }
 
 // XYN
