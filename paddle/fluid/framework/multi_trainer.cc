@@ -26,8 +26,12 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   thread_num_ = trainer_desc.thread_num();
   // get filelist from trainer_desc here
   workers_.resize(thread_num_);
+  VLOG(3) << "worker thread num: " << thread_num_;
+  dataset->CreateReaders();
+  VLOG(3) << "readers created";
   const std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers =
       dataset->GetReaders();
+  VLOG(3) << "readers num: " << readers.size();
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
@@ -50,6 +54,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 }
 
 void MultiTrainer::Run() {
+  VLOG(3) << "Going to run";
   for (int thidx = 0; thidx < thread_num_; ++thidx) {
     threads_.push_back(
         std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));

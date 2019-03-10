@@ -12,10 +12,10 @@
  *     See the License for the specific language governing permissions and
  *     limitations under the License. */
 
+#include "paddle/fluid/framework/data_set.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
-#include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
 
 namespace paddle {
@@ -24,6 +24,7 @@ namespace framework {
 Dataset::Dataset() { thread_num_ = 1; }
 
 void Dataset::SetFileList(const std::vector<std::string>& filelist) {
+  VLOG(3) << "filelist size: " << filelist.size();
   filelist_ = filelist;
   int file_cnt = filelist_.size();
   if (thread_num_ > file_cnt) {
@@ -34,6 +35,8 @@ void Dataset::SetFileList(const std::vector<std::string>& filelist) {
   }
 }
 
+// buggy here, a user should set filelist first before this function
+// not user friendly
 void Dataset::SetThreadNum(int thread_num) {
   int file_cnt = filelist_.size();
   if (file_cnt != 0 && thread_num > file_cnt) {
@@ -48,8 +51,8 @@ void Dataset::SetThreadNum(int thread_num) {
 void Dataset::SetTrainerNum(int trainer_num) { trainer_num_ = trainer_num; }
 
 void Dataset::SetDataFeedDesc(const std::string& data_feed_desc_str) {
-  google::protobuf::TextFormat::ParseFromString(
-    data_feed_desc_str,  &data_feed_desc_);
+  google::protobuf::TextFormat::ParseFromString(data_feed_desc_str,
+                                                &data_feed_desc_);
 }
 
 const std::vector<std::shared_ptr<paddle::framework::DataFeed>>&
@@ -107,14 +110,19 @@ void Dataset::GlobalShuffle() {
 }
 
 void Dataset::CreateReaders() {
+  VLOG(3) << "Calling CreateReaders()";
   CHECK(thread_num_ > 0) << "thread_num should > 0";
+  VLOG(3) << "thread_num in Readers: " << thread_num_;
+  VLOG(3) << "readers size: " << readers_.size();
   if (readers_.size() != 0) {
     return;
   }
+  VLOG(3) << "data feed class name: " << data_feed_desc_.name();
   for (int64_t i = 0; i < thread_num_; ++i) {
     readers_.push_back(DataFeedFactory::CreateDataFeed(data_feed_desc_.name()));
     readers_.back()->Init(data_feed_desc_);
   }
+  VLOG(3) << "Filelist size in readers: " << filelist_.size();
   readers_[0]->SetFileList(filelist_);
 }
 

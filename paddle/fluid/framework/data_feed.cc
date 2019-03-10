@@ -44,10 +44,14 @@ void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
 bool DataFeed::SetFileList(const std::vector<std::string>& files) {
   std::unique_lock<std::mutex> lock(mutex_for_pick_file_);
   CheckInit();
+  // Do not set finish_set_filelist_ flag,
+  // since a user may set file many times after init reader
+  /*
   if (finish_set_filelist_) {
     VLOG(3) << "info: you have set the filelist.";
     return false;
   }
+  */
   PADDLE_ENFORCE(files.size(), "You have set an empty filelist.");
   filelist_.assign(files.begin(), files.end());
   file_idx_ = 0;
