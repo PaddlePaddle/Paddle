@@ -22,7 +22,7 @@ class DatasetFactory(object):
     def __init__(self):
         pass
 
-    def create_dataset(self, datafeed_class):
+    def create_dataset(self, datafeed_class="QueueDataset"):
         try:
             dataset = globals()[datafeed_class]()
             return dataset
@@ -38,6 +38,7 @@ class DatasetBase(object):
         self.proto_desc = data_feed_pb2.DataFeedDesc()
         self.proto_desc.pipe_command = "cat"
         self.dataset = core.Dataset()
+        self.thread_num = 0
 
     def set_pipe_command(self, pipe_command):
         """
@@ -63,6 +64,7 @@ class DatasetBase(object):
 
     def set_thread(self, thread_num):
         self.dataset.set_thread_num(thread_num)
+        self.thread_num = thread_num
 
     def set_filelist(self, filelist):
         self.dataset.set_filelist(filelist)
@@ -84,6 +86,9 @@ class DatasetBase(object):
                     "Currently, fluid.dataset only supports dtype=float32 and dtype=int64"
                 )
 
+    def _prepare_to_run(self):
+        self.dataset.set_data_feed_desc(self.desc())
+
     def desc(self):
         """
         Returns a protobuf message for this DataFeedDesc
@@ -104,7 +109,7 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
 
     def load_into_memory(self):
-        self.dataset.set_data_feed_desc(self.desc())
+        _prepare_to_run()
         self.dataset.load_into_memory()
 
     def local_shuffle(self):
