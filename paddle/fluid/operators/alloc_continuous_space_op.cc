@@ -23,9 +23,6 @@ namespace operators {
 
 static framework::proto::VarType::Type kDefaultDtype =
     framework::proto::VarType::Type::VarType_Type_BOOL;
-// Note(zcd): Addresses should be aligned, otherwise, the GPU results may have
-// diff.
-static const size_t kAlignment = 256;
 
 template <typename DeviceContext, typename T>
 class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
@@ -110,11 +107,13 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
     }
   }
 
+ private:
+  // Note(zcd): Addresses should be aligned, otherwise, the results may have
+  // diff.
   size_t Alignment(size_t size) const {
-    if (size % kAlignment != 0) {
-      size = (size + kAlignment) / kAlignment * kAlignment;
-    }
-    return size;
+    size_t alignment = 1 << 8;
+    size_t remaining = size % alignment;
+    return remaining == 0 ? size : size + (alignment - remaining);
   }
 
   void GetMemSizeAndDtype(

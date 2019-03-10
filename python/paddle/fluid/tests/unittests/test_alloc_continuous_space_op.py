@@ -19,6 +19,8 @@ import numpy as np
 
 from op_test import OpTest
 
+alignment = 256
+
 
 class TestAllocContinuousSpace(OpTest):
     def setUp(self):
@@ -52,8 +54,15 @@ class TestAllocContinuousSpace(OpTest):
         return {"copy_data": True, "set_constant": False, "constant": 0.0}
 
     def init_output(self, input_list, set_constant, constant):
-        inputs = [input[1].flatten() for input in input_list]
-        output = np.concatenate(inputs)
+        inputs = []
+        for input in input_list:
+            length = len(input[1].flatten())
+            aligned_len = (length + alignment) / alignment * alignment
+            out = np.zeros(int(aligned_len))
+            out[0:length] = input[1].flatten()
+            inputs.append(out)
+
+        output = np.concatenate([input for input in inputs])
         if set_constant:
             output = np.ones((len(output))) * constant
         return output
