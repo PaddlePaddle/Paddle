@@ -121,7 +121,7 @@ void EmbSeqPoolJitCode::genCode() {
 
 class EmbSeqPoolCreator : public JitCodeCreator<emb_seq_pool_attr_t> {
  public:
-  bool UseMe(const emb_seq_pool_attr_t& attr) const override {
+  bool CanBeUsed(const emb_seq_pool_attr_t& attr) const override {
     return platform::MayIUse(platform::avx) &&
            attr.table_width % YMM_FLOAT_BLOCK == 0;
   }

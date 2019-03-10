@@ -104,7 +104,7 @@ void SgdJitCode::genCode() {
 
 class SgdCreator : public JitCodeCreator<sgd_attr_t> {
  public:
-  bool UseMe(const sgd_attr_t& attr) const override {
+  bool CanBeUsed(const sgd_attr_t& attr) const override {
     return platform::MayIUse(platform::avx) &&
            attr.grad_width % YMM_FLOAT_BLOCK == 0;
   }

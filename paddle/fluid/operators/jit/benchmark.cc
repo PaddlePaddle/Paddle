@@ -111,33 +111,11 @@ template <typename KernelTuple, typename PlaceType, typename... Args>
 void BenchAllImpls(const typename KernelTuple::attr_type& attr, Args... args) {
   BenchFunc<KernelTuple, Args...> benchmark;
   std::vector<std::pair<std::string, double>> infos;
-  // test refer
-  auto refer = jit::GetRefer<KernelTuple>();
-  if (!refer) {
-    LOG(FATAL) << "Refer can not be empty!";
+  auto funcs = jit::GetAllCandidateFuncsWithTypes<KernelTuple, PlaceType>(attr);
+  for (auto f : funcs) {
+    infos.push_back(std::make_pair(f.first, benchmark(f.second, args...)));
   }
-  infos.push_back(std::make_pair("Refer", benchmark(refer, args...)));
 
-  // test jitcode
-  auto jitcode = jit::GetJitCode<KernelTuple, PlaceType>(attr);
-  if (jitcode) {
-    infos.push_back(std::make_pair("JitCode", benchmark(jitcode, args...)));
-  }
-  // test all impls in more
-  jit::KernelKey kkey(KernelTuple::kernel_type, PlaceType());
-  auto& pool = jit::KernelPool().Instance().AllKernels();
-  auto iter = pool.find(kkey);
-  if (iter != pool.end()) {
-    auto& impls = iter->second;
-    for (auto& impl : impls) {
-      auto i = dynamic_cast<const jit::KernelMore<KernelTuple>*>(impl.get());
-      if (i && i->UseMe(attr)) {
-        auto more = i->GetFunc();
-        infos.push_back(
-            std::make_pair(i->ImplType(), benchmark(more, args...)));
-      }
-    }
-  }
   // Test result from Get function
   auto tgt = jit::KernelFuncs<KernelTuple, PlaceType>::Cache().At(attr);
   if (!tgt) {

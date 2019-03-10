@@ -29,7 +29,8 @@ void CRFDecoding(const int seq_len, const float* x, const float* w,
 class CRFDecodingKernel : public KernelMore<CRFDecodingTuple<float>> {
  public:
   CRFDecodingKernel() { this->func = CRFDecoding; }
-  bool UseMe(const typename CRFDecodingTuple<float>::attr_type&) const override;
+  bool CanBeUsed(
+      const typename CRFDecodingTuple<float>::attr_type&) const override;
   const char* ImplType() const override { return "Intrinsic"; }
 };
 

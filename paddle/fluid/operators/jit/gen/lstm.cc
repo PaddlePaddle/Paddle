@@ -114,7 +114,7 @@ void LSTMJitCode::genCode() {
   class name##Creator : public JitCodeCreator<lstm_attr_t> {      \
    public:                                                        \
     /* TODO(TJ): enable more */                                   \
-    bool UseMe(const lstm_attr_t& attr) const override {          \
+    bool CanBeUsed(const lstm_attr_t& attr) const override {      \
       return platform::MayIUse(platform::avx) && attr.d % 8 == 0; \
     }                                                             \
     size_t CodeSize(const lstm_attr_t& attr) const override {     \

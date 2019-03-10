@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/kernel_key.h"
+#include <xxhash.h>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -49,6 +50,8 @@ static inline int act_type_convert(KernelType type) {
 
 template <>
 size_t JitCodeKey<lstm_attr_t>(const lstm_attr_t& attr) {
+  // XXH64: 13.8 GB/s
+
   size_t key = attr.d;
   int gate_key = act_type_convert(attr.act_gate) << 1;
   int cand_key = act_type_convert(attr.act_cand) << (1 + act_type_shift);
