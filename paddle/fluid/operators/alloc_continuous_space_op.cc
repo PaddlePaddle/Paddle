@@ -23,6 +23,7 @@ namespace operators {
 
 static framework::proto::VarType::Type kDefaultDtype =
     framework::proto::VarType::Type::VarType_Type_BOOL;
+static const size_t kAlignment = 256;
 
 template <typename DeviceContext, typename T>
 class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
@@ -74,14 +75,15 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
 
     // Init the continuous space
     auto out_tensors = context.MultiOutput<framework::LoDTensor>("Output");
-    int64_t offset = 0;
+    size_t offset = 0;
     if (context.Attr<bool>("copy_data")) {
       for (size_t i = 0; i < in_var_names.size(); ++i) {
-        int64_t len = in_tensors[i]->numel();
-        auto sub_tensor = fused_tensor->Slice(offset, offset + len);
-        offset += len;
+        size_t len = static_cast<size_t>(in_tensors[i]->numel());
+        auto sub_tensor = fused_tensor->Slice(
+            static_cast<int64_t>(offset), static_cast<int64_t>(offset + len));
         framework::TensorCopy(*in_tensors[i], context.GetPlace(), dev_ctx,
                               &sub_tensor);
+        offset += Alignment(len);
       }
     } else if (context.Attr<bool>("set_constant")) {
       math::SetConstant<DeviceContext, T> set_constant;
@@ -92,16 +94,25 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
     // Make the outputs point to the continuous space.
     offset = 0;
     for (size_t i = 0; i < out_tensors.size(); ++i) {
-      int64_t len = out_tensors[i]->numel();
+      size_t len = static_cast<size_t>(out_tensors[i]->numel());
       auto dim = out_tensors[i]->dims();
       out_tensors[i]
-          ->ShareDataWith(fused_tensor->Slice(offset, offset + len))
+          ->ShareDataWith(fused_tensor->Slice(
+              static_cast<int64_t>(offset), static_cast<int64_t>(offset + len)))
           .Resize(dim);
+      len = Alignment(len);
       offset += len;
       VLOG(10) << "alloc_space_for_vars: output(" << out_var_names[i]
                << ") ,dim:(" << dim << ")"
                << " Address: " << out_tensors[i]->data<void>();
     }
+  }
+
+  size_t Alignment(size_t size) const {
+    if (size % kAlignment != 0) {
+      size = (size + kAlignment) / kAlignment * kAlignment;
+    }
+    return size;
   }
 
   void GetMemSizeAndDtype(
@@ -126,7 +137,9 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GT(size, 0);
       VLOG(10) << "alloc_space_for_vars: input(" << var_names[i] << ") ,dim:("
                << lod_tensors[i]->dims() << ")";
-      *numel += size;
+      // Note(zcd): Addresses should be aligned, otherwise the GPU results will
+      // be diff.
+      *numel += Alignment(static_cast<size_t>(size));
     }
   }
 };
