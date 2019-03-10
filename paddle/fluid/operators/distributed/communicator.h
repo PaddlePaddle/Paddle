@@ -96,28 +96,9 @@ using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
 class Communicator {
  public:
   Communicator(const RpcCtxMap& send_varname_to_ctx,
-               const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope)
-      : send_varname_to_ctx_(send_varname_to_ctx),
-        recv_varname_to_ctx_(recv_varname_to_ctx),
-        recv_scope_(recv_scope) {
-    // get all send information from graph, build vars_to_send
-    send_scope_.reset(new Scope());
-    for (auto& iter : send_varname_to_ctx_) {
-      send_varname_to_queue_[iter.first] =
-          std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(10);
-    }
-    // TODO(qiao): default 5, need to config
-    send_threadpool_.reset(new ::ThreadPool(5));
-    recv_threadpool_.reset(new ::ThreadPool(5));
-  }
+               const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope);
 
-  ~Communicator() {
-    VLOG(3) << "~Communicator";
-    running_ = false;
-    send_thread_->join();
-    recv_thread_->join();
-    VLOG(3) << "~Communicator done";
-  }
+  ~Communicator();
 
   void Start();
 
