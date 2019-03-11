@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <istream>
+#include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace paddle {
@@ -26,25 +28,54 @@ struct OpInputConfig {
   OpInputConfig() {}
   explicit OpInputConfig(std::istream& is);
 
+  void ParseDType(std::istream& is);
+  void ParseInitializer(std::istream& is);
+  void ParseDims(std::istream& is);
+  void ParseLoD(std::istream& is);
+
   std::string name;
+  std::string dtype{"fp32"};  // int32/int, int64/long, fp32/float, fp64/double
+  std::string initializer{"random"};  // random, natural
   std::vector<int64_t> dims;
+  std::vector<std::vector<size_t>> lod;
 };
 
 struct OpTesterConfig {
   OpTesterConfig() {}
   explicit OpTesterConfig(const std::string& filename);
-  void Init(std::istream& is);
+
+  bool Init(std::istream& is);
+
+  bool ParseAttrs(std::istream& is);
 
   const OpInputConfig* GetInput(const std::string& name);
 
   std::string op_type;
   std::vector<OpInputConfig> inputs;
+  std::unordered_map<std::string, std::string> attrs;
   int device_id{-1};  // CPU: -1
   int repeat{1};
   int profile{0};
   int print_debug_string{0};
   double runtime{0.0};
 };
+
+static bool Has(const std::vector<std::string>& vec, const std::string& item) {
+  for (size_t i = 0; i < vec.size(); ++i) {
+    if (vec[i] == item) {
+      return true;
+    }
+  }
+  return false;
+}
+
+template <typename T>
+T StringTo(const std::string& str) {
+  std::istringstream is(str);
+  T value;
+  is >> value;
+  return value;
+}
 
 }  // namespace benchmark
 }  // namespace operators
