@@ -167,8 +167,15 @@ TEST(Analyzer_Pyramid_DNN, compare) {
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
 
-  // Compare AnalysisConfig and AnalysisConfig + ZeroCopy
+// Compare result of AnalysisConfig and AnalysisConfig + ZeroCopy
+TEST(Analyzer_Pyramid_DNN, compare_zero_copy) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
   std::vector<std::string> outputs_name;
   outputs_name.emplace_back("cos_sim_2.tmp_0");
   CompareAnalysisAndZeroCopy(reinterpret_cast<PaddlePredictor::Config *>(&cfg),
