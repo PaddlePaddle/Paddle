@@ -40,14 +40,14 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
       outs_dims.push_back(out_dim);
     }
     ctx->SetOutputsDim("MultiFpnRois", outs_dims);
-    ctx->SetOutputDim("RestoreIndex", {1, -1});
+    ctx->SetOutputDim("RestoreIndex", {-1, 1});
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("FpnRois"));
-    return framework::OpKernelType(data_type, platform::CPUPlace());
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 

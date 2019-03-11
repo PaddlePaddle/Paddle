@@ -107,7 +107,7 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
       num_rois_level_integral[i + 1] =
           num_rois_level_integral[i] + num_rois_level[i];
     }
-    restore_index->mutable_data<int>({1, fpn_rois_num}, context.GetPlace());
+    restore_index->mutable_data<int>({fpn_rois_num, 1}, context.GetPlace());
     int* restore_index_data = restore_index->data<int>();
     std::vector<int> restore_index_inter(fpn_rois_num, -1);
     // distribute the rois into different fpn level by target level
