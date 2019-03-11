@@ -109,7 +109,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
             data_parallel_param_grads = []
             for p, g in params_grads:
                 # NOTE: scale will be done on loss scale in multi_devices_graph_pass using nranks.
-                grad_reduce = fluid.layers._allreduce(g)
+                grad_reduce = fluid.layers.control_flow._allreduce(g)
                 data_parallel_param_grads.append([p, grad_reduce])
             opt.apply_gradients(data_parallel_param_grads)
 
