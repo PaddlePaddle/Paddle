@@ -15,12 +15,14 @@
 #pragma once
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/string/printf.h"
 #ifdef PADDLE_WITH_TESTING
@@ -52,6 +54,9 @@ class AnalysisPredictor : public PaddlePredictor {
   bool Run(const std::vector<PaddleTensor> &inputs,
            std::vector<PaddleTensor> *output_data,
            int batch_size = -1) override;
+
+  std::vector<std::string> GetInputNames();
+  std::vector<std::string> GetOutputNames();
 
   std::unique_ptr<ZeroCopyTensor> GetInputTensor(
       const std::string &name) override;
@@ -131,7 +136,11 @@ class AnalysisPredictor : public PaddlePredictor {
   std::shared_ptr<framework::ProgramDesc> inference_program_;
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
+  // Sorted according to the idx.
+  std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
+  std::map<size_t, std::string> idx2fetches_;
+
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.
   std::vector<framework::LoDTensor> feed_tensors_;
