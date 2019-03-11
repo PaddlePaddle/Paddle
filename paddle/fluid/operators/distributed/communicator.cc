@@ -96,7 +96,7 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
   VLOG(0) << "communicator_recv_wait_ms: " << FLAGS_communicator_recv_wait_ms;
   VLOG(0) << "communicator_thread_pool_size: "
           << FLAGS_communicator_thread_pool_size;
-  VLOG(0) << "communicator_max_merge_var_num"
+  VLOG(0) << "communicator_max_merge_var_num: "
           << FLAGS_communicator_max_merge_var_num;
   VLOG(0) << "communicator_fake_rpc: " << FLAGS_communicator_fake_rpc;
   send_scope_.reset(new Scope());
