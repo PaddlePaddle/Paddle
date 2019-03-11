@@ -85,7 +85,7 @@ def create_test_int8_class(parent):
             self.x1_shape = [1, 2, 5, 5]
             self.x2_shape = [1, 3, 5, 5]
 
-    #--------------------test concat s8/u8 in with axis 2--------------------
+#--------------------test concat s8/u8 in with axis 2--------------------
 
     class TestAxis2Case(parent):
         def init_axis(self):
@@ -96,7 +96,7 @@ def create_test_int8_class(parent):
             self.x1_shape = [2, 3, 5, 5]
             self.x2_shape = [2, 3, 6, 5]
 
-    #--------------------test concat s8/u8 in with axis 3--------------------
+#--------------------test concat s8/u8 in with axis 3--------------------
 
     class TestAxis3Case(parent):
         def init_axis(self):
@@ -116,7 +116,6 @@ def create_test_int8_class(parent):
     globals()[cls_name_1] = TestAxis1Case
     globals()[cls_name_2] = TestAxis2Case
     globals()[cls_name_3] = TestAxis3Case
-
 
 create_test_int8_class(TestConcatOp)
 create_test_int8_class(TestConcatOp2)
