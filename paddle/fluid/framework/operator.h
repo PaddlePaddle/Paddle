@@ -30,7 +30,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
@@ -469,34 +468,6 @@ class OperatorWithKernel : public OperatorBase {
 };
 
 extern bool OpSupportGPU(const std::string& op_type);
-
-template <typename Functor, typename... Args>
-void try_run(OperatorBase* op, Functor func, Args... args) {
-  try {
-    func(args...);
-  } catch (platform::EnforceNotMet exception) {
-    if (op->Attrs().count("sub_block") != 0) {
-      throw;
-    }
-
-    std::ostringstream sout;
-    sout << "Invoke operator " << op->Type() << " error.\n";
-    auto& callstack = op->Attr<std::vector<std::string>>(
-        OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
-    if (!callstack.empty()) {
-      sout << "Python Callstacks: \n";
-      for (auto& line : callstack) {
-        sout << line;
-      }
-    }
-    sout << "C++ Callstacks: \n";
-    sout << exception.err_str_;
-    exception.err_str_ = sout.str();
-    throw;
-  } catch (...) {
-    std::rethrow_exception(std::current_exception());
-  }
-};
 
 }  // namespace framework
 }  // namespace paddle
