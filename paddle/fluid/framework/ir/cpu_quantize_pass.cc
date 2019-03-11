@@ -138,8 +138,12 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     auto conv_output_scale =
         scales[conv_output->Name()].second.data<float>()[0];
 
-    QuantizeInput<int8_t>(g, conv_op, conv_input, "Input", prefix,
-                          conv_input_scale, is_input_negative);
+    if (is_input_negative)
+      QuantizeInput<int8_t>(g, conv_op, conv_input, "Input", prefix,
+                            conv_input_scale, is_input_negative);
+    else
+      QuantizeInput<uint8_t>(g, conv_op, conv_input, "Input", prefix,
+                             conv_input_scale, is_input_negative);
     conv_op->Op()->SetAttr("Scale_in", conv_input_scale);
     conv_op->Op()->SetAttr("Scale_weights", conv_filter_scale);
 
@@ -148,21 +152,28 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
                                 conv_pattern);
       auto conv_res_conn_scale =
           scales[conv_residual_data->Name()].second.data<float>()[0];
+      bool is_res_conn_negative =
+          scales[conv_residual_data->Name()].first == QuantMax::S8_MAX;
 
-      QuantizeInput<int8_t>(g, conv_op, conv_residual_data, "ResidualData",
-                            prefix, conv_res_conn_scale, true);
+      if (is_res_conn_negative)
+        QuantizeInput<int8_t>(g, conv_op, conv_residual_data, "ResidualData",
+                              prefix, conv_res_conn_scale,
+                              is_res_conn_negative);
+      else
+        QuantizeInput<uint8_t>(g, conv_op, conv_residual_data, "ResidualData",
+                               prefix, conv_res_conn_scale,
+                               is_res_conn_negative);
       conv_op->Op()->SetAttr("Scale_in_eltwise", conv_res_conn_scale);
     }
 
-    bool fuse_relu = conv_op_desc->HasAttr("fuse_relu") &&
-                     boost::get<bool>(conv_op_desc->GetAttr("fuse_relu"));
-
-    if (fuse_relu)
-      DequantizeOutput<uint8_t>(g, conv_op, conv_output, "Output", prefix,
-                                conv_output_scale);
-    else
+    bool is_output_negative =
+        scales[conv_output->Name()].first == QuantMax::S8_MAX;
+    if (is_output_negative)
       DequantizeOutput<int8_t>(g, conv_op, conv_output, "Output", prefix,
                                conv_output_scale);
+    else
+      DequantizeOutput<uint8_t>(g, conv_op, conv_output, "Output", prefix,
+                                conv_output_scale);
 
     conv_op->Op()->SetAttr("Scale_out", conv_output_scale);
 
@@ -206,14 +217,14 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
 
     auto scales = Get<VarQuantMaxAndScale>("quant_var_scales");
     auto input_scale = scales[pool_input->Name()].second.data<float>()[0];
-    bool is_input_negative =
-        scales[pool_input->Name()].first == QuantMax::S8_MAX;
+    // bool is_input_negative =
+    // scales[pool_input->Name()].first == QuantMax::S8_MAX;
 
     std::string prefix{"q_pool"};
-    QuantizeInput<int8_t>(g, pool_op, pool_input, "X", prefix, input_scale,
-                          is_input_negative);
-    DequantizeOutput<int8_t>(g, pool_op, pool_output, "Out", prefix,
-                             input_scale);
+    QuantizeInput<uint8_t>(g, pool_op, pool_input, "X", prefix, input_scale,
+                           false);
+    DequantizeOutput<uint8_t>(g, pool_op, pool_output, "Out", prefix,
+                              input_scale);
 
     ++quantize_pool_count;
   };
