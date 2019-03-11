@@ -154,8 +154,16 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
       conv_op->Op()->SetAttr("Scale_in_eltwise", conv_res_conn_scale);
     }
 
-    DequantizeOutput<int8_t>(g, conv_op, conv_output, "Output", prefix,
-                             conv_output_scale);
+    bool fuse_relu = conv_op_desc->HasAttr("fuse_relu") &&
+                     boost::get<bool>(conv_op_desc->GetAttr("fuse_relu"));
+
+    if (fuse_relu)
+      DequantizeOutput<uint8_t>(g, conv_op, conv_output, "Output", prefix,
+                                conv_output_scale);
+    else
+      DequantizeOutput<int8_t>(g, conv_op, conv_output, "Output", prefix,
+                               conv_output_scale);
+
     conv_op->Op()->SetAttr("Scale_out", conv_output_scale);
 
     ++quantize_conv_count;
