@@ -22,6 +22,7 @@ from . import layers
 from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant
+
 __all__ = ['Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit']
 
 
@@ -548,7 +549,7 @@ class GRUUnit(layers.Layer):
     """
 
     def __init__(self,
-                 hidden,
+                 name_scope,
                  size,
                  param_attr=None,
                  bias_attr=None,
@@ -556,8 +557,8 @@ class GRUUnit(layers.Layer):
                  gate_activation='sigmoid',
                  origin_mode=False,
                  dtype='float32'):
+        super(GRUUnit, self).__init__(name_scope)
 
-        super(GRUUnit, self).__init__()
         activation_dict = dict(
             identity=0,
             sigmoid=1,
@@ -566,29 +567,27 @@ class GRUUnit(layers.Layer):
         activation = activation_dict[activation]
         gate_activation = activation_dict[gate_activation]
 
-        helper = LayerHelper('gru_unit', **locals())
-        dtype = helper.input_dtype()
+        self._dtype = dtype
         size = size // 3
-
         # create weight
-        weight = helper.create_parameter(
-            attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
+        self._weight = self.create_parameter(
+            attr=param_attr, shape=[size, 3 * size], dtype=dtype)
 
-        gate = helper.create_variable_for_type_inference(dtype)
-        reset_hidden_pre = helper.create_variable_for_type_inference(dtype)
-        updated_hidden = helper.create_variable_for_type_inference(dtype)
-        inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': weight}
         # create bias
-        if helper.bias_attr:
-            bias_size = [1, 3 * size]
-            bias = helper.create_parameter(
-                attr=helper.bias_attr,
-                shape=bias_size,
-                dtype=dtype,
-                is_bias=True)
-            inputs['Bias'] = bias
+        bias_size = [1, 3 * size]
+        self._bias = self.create_parameter(
+            attr=bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
 
-    def forward(self, input):
+    def forward(self, input, hidden):
+        inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': self._weight}
+        if self._bias:
+            inputs['Bias'] = self._bias
+
+        gate = self._helper.create_variable_for_type_inference(self._dtype)
+        reset_hidden_pre = self._helper.create_variable_for_type_inference(
+            self._dtype)
+        updated_hidden = self._helper.create_variable_for_type_inference(
+            self._dtype)
         self._helper.append_op(
             type='gru_unit',
             inputs=inputs,
