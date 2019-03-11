@@ -48,6 +48,7 @@ class DeviceTracer {
     int64_t stream_id;
     uint32_t correlation_id;
   };
+
   struct CPURecord {
     std::string name;
     uint64_t start_ns;
@@ -55,6 +56,7 @@ class DeviceTracer {
     int64_t device_id;
     int64_t thread_id;
   };
+
   struct MemRecord {
     std::string name;
     uint64_t start_ns;
@@ -64,6 +66,7 @@ class DeviceTracer {
     uint32_t correlation_id;
     uint64_t bytes;
   };
+
   struct MemInfoRecord {
     uint64_t start_ns;
     uint64_t end_ns;
@@ -72,6 +75,15 @@ class DeviceTracer {
     int64_t thread_id;
     std::string alloc_in;
     std::string free_in;
+  };
+
+  struct ActiveKindRecord {
+    std::string name;
+    uint64_t start_ns;
+    uint64_t end_ns;
+    int64_t device_id;
+    int64_t thread_id;
+    uint32_t correlation_id;
   };
 
   virtual ~DeviceTracer() {}
@@ -95,6 +107,10 @@ class DeviceTracer {
   virtual void AddCPURecords(const std::string& anno, uint64_t start_ns,
                              uint64_t end_ns, int64_t device_id,
                              int64_t thread_id) = 0;
+  virtual void AddActiveKindRecords(const std::string& anno, uint64_t start_ns,
+                                    uint64_t end_ns, int64_t device_id,
+                                    int64_t thread_id,
+                                    uint32_t correlation_id) = 0;
 
   virtual void AddMemInfoRecord(uint64_t start_ns, uint64_t end_ns,
                                 size_t bytes, const Place& place,

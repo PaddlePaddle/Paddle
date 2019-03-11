@@ -222,19 +222,24 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
           }
           case CUPTI_ACTIVITY_KIND_DRIVER: {
             auto *api = reinterpret_cast<const CUpti_ActivityAPI *>(record);
-            if (api->start != 0 && api->end != 0)
-              // -1 device id represents CUDA api call
-              tracer->AddCPURecords(
+            if (api->start != 0 && api->end != 0) {
+              // -1 device id represents ActiveKind api call
+              tracer->AddActiveKindRecords(
                   DriverKind(api->cbid), api->start, api->end, -1,
-                  GetThreadIdFromSystemThreadId(api->threadId));
+                  GetThreadIdFromSystemThreadId(api->threadId),
+                  api->correlationId);
+            }
             break;
           }
           case CUPTI_ACTIVITY_KIND_RUNTIME: {
             auto *api = reinterpret_cast<const CUpti_ActivityAPI *>(record);
-            if (api->start != 0 && api->end != 0)
-              tracer->AddCPURecords(
+            if (api->start != 0 && api->end != 0) {
+              // -1 device id represents ActiveKind api call
+              tracer->AddActiveKindRecords(
                   RuntimeKind(api->cbid), api->start, api->end, -1,
-                  GetThreadIdFromSystemThreadId(api->threadId));
+                  GetThreadIdFromSystemThreadId(api->threadId),
+                  api->correlationId);
+            }
             break;
           }
           default: { break; }
@@ -320,15 +325,34 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(3) << alloc_in << ", " << free_in << " Cannot be traced.";
       return;
     }
-    thread_local std::forward_list<MemInfoRecord> *local_mem_info_record_ =
+    thread_local std::forward_list<MemInfoRecord> *local_mem_info_record =
         nullptr;
-    if (local_mem_info_record_ == nullptr) {
+    if (local_mem_info_record == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
       mem_info_record_.emplace_front();
-      local_mem_info_record_ = &mem_info_record_.front();
+      local_mem_info_record = &mem_info_record_.front();
     }
-    local_mem_info_record_->emplace_front(MemInfoRecord{
+    local_mem_info_record->emplace_front(MemInfoRecord{
         start_ns, end_ns, bytes, place, thread_id, alloc_in, free_in});
+  }
+
+  void AddActiveKindRecords(const std::string &anno, uint64_t start_ns,
+                            uint64_t end_ns, int64_t device_id,
+                            int64_t thread_id, uint32_t correlation_id) {
+    if (anno.empty()) {
+      VLOG(1) << "Empty timeline annotation.";
+      return;
+    }
+    thread_local std::forward_list<ActiveKindRecord>
+        *local_active_kind_records = nullptr;
+    if (local_active_kind_records == nullptr) {
+      std::lock_guard<std::mutex> l(trace_mu_);
+      active_kind_records_.emplace_front();
+      local_active_kind_records = &active_kind_records_.front();
+    }
+    //  lock is not needed, only one thread call this function.
+    local_active_kind_records->push_front(ActiveKindRecord{
+        anno, start_ns, end_ns, device_id, thread_id, correlation_id});
   }
 
   void AddKernelRecords(std::string name, uint64_t start, uint64_t end,
@@ -373,6 +397,7 @@ class DeviceTracerImpl : public DeviceTracer {
     }
     const std::vector<int> cbids {
       CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020,
+          CUPTI_RUNTIME_TRACE_CBID_cudaSetupArgument_v3020,
           CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020,
           CUPTI_RUNTIME_TRACE_CBID_cudaMemset_v3020,
           CUPTI_RUNTIME_TRACE_CBID_cudaMemsetAsync_v3020,
@@ -404,6 +429,7 @@ class DeviceTracerImpl : public DeviceTracer {
     for (auto &tmp : correlations_pairs) tmp.clear();
     for (auto &tmp : cpu_records_) tmp.clear();
     for (auto &tmp : mem_info_record_) tmp.clear();
+    for (auto &tmp : active_kind_records_) tmp.clear();
   }
 
   void GenEventKernelCudaElapsedTime() {
@@ -472,6 +498,23 @@ class DeviceTracerImpl : public DeviceTracer {
       }
     }
 
+    for (auto &tmp : active_kind_records_) {
+      for (const ActiveKindRecord &r : tmp) {
+        auto *event = profile_pb.add_events();
+        event->set_type(proto::Event::CPU);
+        auto c = correlations_.find(r.correlation_id);
+        if (c != correlations_.end() && c->second != nullptr) {
+          event->set_name(c->second->name());
+          event->set_detail_info(r.name);
+        } else {
+          event->set_name(r.name);
+        }
+        event->set_start_ns(r.start_ns);
+        event->set_end_ns(r.end_ns);
+        event->set_sub_device_id(r.thread_id);
+        event->set_device_id(r.device_id);
+      }
+    }
     miss = find = 0;
     for (const MemRecord &r : mem_records_) {
       auto *event = profile_pb.add_events();
@@ -561,6 +604,7 @@ class DeviceTracerImpl : public DeviceTracer {
   std::forward_list<MemRecord> mem_records_;
   std::forward_list<std::forward_list<CPURecord>> cpu_records_;
   std::forward_list<std::forward_list<MemInfoRecord>> mem_info_record_;
+  std::forward_list<std::forward_list<ActiveKindRecord>> active_kind_records_;
   std::forward_list<std::forward_list<std::pair<uint32_t, Event *>>>
       correlations_pairs;
   std::unordered_map<uint32_t, Event *> correlations_;
@@ -664,6 +708,7 @@ void initCuptiCbidStr() {
   REGISTER_RUNTIME_CBID_STR(cudaUnbindTexture_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaSetupArgument_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaLaunch_v3020);
+  REGISTER_RUNTIME_CBID_STR(cudaDeviceGetPCIBusId_v4010);
 #if CUDA_VERSION >= 9000
   REGISTER_RUNTIME_CBID_STR(cudaLaunchCooperativeKernel_v9000);
   REGISTER_RUNTIME_CBID_STR(cudaLaunchCooperativeKernelMultiDevice_v9000);
