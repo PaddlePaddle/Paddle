@@ -141,6 +141,15 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         }
         break;
       }
+      case PaddleDType::INT32: {
+        int32_t *pdata = static_cast<int32_t *>(out.data.data());
+        int32_t *pdata_ref = ref_out.data<int32_t>(&place, &ref_size);
+        EXPECT_EQ(size, ref_size);
+        for (size_t j = 0; j < size; ++j) {
+          EXPECT_EQ(pdata_ref[j], pdata[j]);
+        }
+        break;
+      }
     }
   }
 }
@@ -253,6 +262,8 @@ void ConvertPaddleTensorToZeroCopyTensor(
       ZeroCopyTensorAssignData<int64_t>(tensor.get(), input.data);
     } else if (input.dtype == PaddleDType::FLOAT32) {
       ZeroCopyTensorAssignData<float>(tensor.get(), input.data);
+    } else if (input.dtype == PaddleDType::INT32) {
+      ZeroCopyTensorAssignData<int32_t>(tensor.get(), input.data);
     } else {
       LOG(ERROR) << "unsupported feed type " << input.dtype;
     }
