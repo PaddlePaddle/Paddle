@@ -125,7 +125,7 @@ def __bootstrap__():
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
     sysstr = platform.system()
     read_env_flags = [
-        'check_nan_inf', 'benchmark', 'eager_delete_scope', 'use_ngraph',
+        'check_nan_inf', 'benchmark', 'eager_delete_scope',
         'initial_cpu_memory_in_mb', 'init_allocated_mem', 'free_idle_memory',
         'paddle_num_threads', "dist_threadpool_size", 'eager_delete_tensor_gb',
         'fast_eager_deletion_mode', 'memory_fraction_of_eager_deletion',
@@ -142,6 +142,10 @@ def __bootstrap__():
 
     if core.is_compiled_with_mkldnn():
         read_env_flags.append('use_mkldnn')
+
+    if core.is_compiled_with_ngraph():
+        read_env_flags.append('use_ngraph')
+        read_env_flags.append('use_ngraph_cache')
 
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')
