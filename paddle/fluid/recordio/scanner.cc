@@ -15,6 +15,7 @@
 #include "paddle/fluid/recordio/scanner.h"
 
 #include <string>
+#include <utility>
 
 #include "paddle/fluid/platform/enforce.h"
 
