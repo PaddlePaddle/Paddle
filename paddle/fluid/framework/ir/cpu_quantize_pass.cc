@@ -218,10 +218,6 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
     auto scales = Get<VarQuantMaxAndScale>("quant_var_scales");
     auto input_scale = scales[pool_input->Name()].second.data<float>()[0];
     auto output_scale = scales[pool_output->Name()].second.data<float>()[0];
-    bool is_input_negative =
-        scales[pool_input->Name()].first == QuantMax::S8_MAX;
-    bool is_output_negative =
-        scales[pool_output->Name()].first == QuantMax::S8_MAX;
 
     std::string prefix{"q_pool"};
     QuantizeInput<uint8_t>(g, pool_op, pool_input, "X", prefix, input_scale,
