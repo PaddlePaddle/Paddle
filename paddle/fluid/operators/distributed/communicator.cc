@@ -191,15 +191,17 @@ void Communicator::RecvThread() {
 
 void Communicator::Send(const std::string &var_name,
                         const framework::Scope &scope) {
-  VLOG(3) << "communicator send " << var_name;
-  // push var into send queue by var_name
-  auto *grad_var = scope.FindVar(var_name);
-  PADDLE_ENFORCE(grad_var->IsInitialized(), "grad var should be inited");
-  auto tmp_grad_var = std::make_shared<Variable>();
-  framework::CopyVariable(*grad_var, tmp_grad_var.get());
-  auto &queue = send_varname_to_queue_.at(var_name);
-  VLOG(3) << "send " << var_name << " queue size " << queue->Size();
-  queue->Push(tmp_grad_var);
+  if (!FLAGS_communicator_fake_rpc) {
+    VLOG(3) << "communicator send " << var_name;
+    // push var into send queue by var_name
+    auto *grad_var = scope.FindVar(var_name);
+    PADDLE_ENFORCE(grad_var->IsInitialized(), "grad var should be inited");
+    auto tmp_grad_var = std::make_shared<Variable>();
+    framework::CopyVariable(*grad_var, tmp_grad_var.get());
+    auto &queue = send_varname_to_queue_.at(var_name);
+    VLOG(3) << "send " << var_name << " queue size " << queue->Size();
+    queue->Push(tmp_grad_var);
+  }
 }
 
 Communicator *Communicator::GetInstance() { return communicator_.get(); }
