@@ -250,20 +250,24 @@ class PyReader(object):
 
     def _start(self):
         def __thread_main__():
-            for tensors in self._tensor_reader():
-                array = core.LoDTensorArray()
-                for item in tensors:
-                    if not isinstance(item, core.LoDTensor):
-                        tmp = core.LoDTensor()
-                        tmp.set(item, core.CPUPlace())
-                        item = tmp
+            try:
+                for tensors in self._tensor_reader():
+                    array = core.LoDTensorArray()
+                    for item in tensors:
+                        if not isinstance(item, core.LoDTensor):
+                            tmp = core.LoDTensor()
+                            tmp.set(item, core.CPUPlace())
+                            item = tmp
 
-                    array.append(item)
+                        array.append(item)
 
-                if not self._queue.push(array):
-                    break
+                    if not self._queue.push(array):
+                        break
 
-            self._queue.close()
+                self._queue.close()
+            except Exception as ex:
+                self._queue.close()
+                raise ex
 
         self._thread = threading.Thread(target=__thread_main__)
         self._thread.daemon = True
