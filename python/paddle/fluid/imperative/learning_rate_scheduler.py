@@ -14,13 +14,9 @@
 
 from __future__ import print_function
 
-from .. import layers
 from .. import unique_name
 
-__all__ = [
-    'ExponentialDecay', 'NaturalExpDecay', 'InverseTimeDecay',
-    'PolynomialDecay', 'PiecewiseDecay', 'NoamDecay'
-]
+__all__ = ['PiecewiseDecay']
 
 
 class LearningRateDecay(object):
@@ -28,32 +24,35 @@ class LearningRateDecay(object):
     Base class of learning rate decay
     """
 
-    def __init__(self, step, dtype='float32'):
-        self.step = step
+    def __init__(self, begin=0, step=1, dtype='float32'):
+        self.step_num = begin
+        self.step_size = step
         self.dtype = dtype
 
     def __call__(self):
         lr = self.step()
         if isinstance(lr, float):
             lr = self._create_lr_var(lr)
-        self.step += 1
+        self.step_num += self.step_size
         return lr
 
-    def create_lr_var(lr):
+    def create_lr_var(self, lr):
+        from .. import layers
         lr = layers.create_global_var(
             name=unique_name.generate("learning_rate"),
             shape=[1],
             value=float(lr),
             dtype=self.dtype,
             persistable=True)
+        return lr
 
     def step(self):
         raise NotImplementedError()
 
 
-class PiecewiseDecay(object):
-    def __init__(self, boundaries, values, step, dtype='float32'):
-        super(PiecewiseDecay, self).__init__(step, dtype)
+class PiecewiseDecay(LearningRateDecay):
+    def __init__(self, boundaries, values, begin, step=1, dtype='float32'):
+        super(PiecewiseDecay, self).__init__(begin, step, dtype)
         self.boundaries = boundaries
         self.values = values
 
@@ -62,7 +61,7 @@ class PiecewiseDecay(object):
             self.vars.append(self.create_lr_var(value))
 
     def step(self):
-        for i in range(len(boundaries)):
-            if self.step <= boundaries[i]:
+        for i in range(len(self.boundaries)):
+            if self.step_num < self.boundaries[i]:
                 return self.vars[i]
-        return self.vars[len(values) - 1]
+        return self.vars[len(self.values) - 1]

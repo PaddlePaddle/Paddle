@@ -29,9 +29,11 @@ from test_imperative_base import new_program_scope
 
 
 class MLP(fluid.imperative.Layer):
-    def __init__(self, param_attr=None, bias_attr=None):
-        self._fc1 = FC(10)
-        self._fc2 = FC(10)
+    def __init__(self, name_scope, param_attr=None, bias_attr=None):
+        super(MLP, self).__init__(name_scope)
+
+        self._fc1 = FC(self.full_name(), 10)
+        self._fc2 = FC(self.full_name(), 10)
 
     def forward(self, inputs):
         y = self._fc1(inputs)
@@ -41,10 +43,15 @@ class MLP(fluid.imperative.Layer):
 
 class TestImperativeOptimizerBase(unittest.TestCase):
     def setUp(self):
-        self.batch_num = 2
+        self.batch_num = 10
 
     def get_optimizer(self):
-        self.optimizer = SGDOptimizer(learning_rate=1e-3)
+        bd = [3, 6, 9]
+        self.optimizer = SGDOptimizer(
+            learning_rate=fluid.layers.piecewise_decay(
+                boundaries=bd,
+                values=[0.1 * (0.1**i) for i in range(len(bd) + 1)]))
+        return self.optimizer
 
     def test_optimizer_float32(self):
         seed = 90
@@ -52,8 +59,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            mlp = MLP()
-            self.get_optimizer()
+            mlp = MLP('mlp')
+            optimizer = self.get_optimizer()
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
@@ -81,7 +88,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                         dy_param_init_value[param.name] = param._numpy()
 
                 avg_loss._backward()
-                self.optimizer.minimize(avg_loss)
+                optimizer.minimize(avg_loss)
                 mlp.clear_gradients()
                 dy_param_value = {}
                 for param in fluid.default_main_program().global_block(
@@ -95,8 +102,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            mnist = MNIST()
-            self.get_optimizer()
+            mnist = MLP('mlp')
+            optimizer = self.get_optimizer()
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
@@ -105,7 +112,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             cost = mnist(img)
             avg_loss = fluid.layers.reduce_mean(cost)
-            self.optimizer.minimize(avg_loss)
+            optimizer.minimize(avg_loss)
 
             # initialize params and fetch them
             static_param_init_value = {}
