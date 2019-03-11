@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ from paddle.fluid import compiler
 class TestSyncBatchNormOpTraining(unittest.TestCase):
     def setUp(self):
         self.dtype = np.float32
-        #self.dtype = np.float64
+        # or set self.dtype = np.float64
         self.N = 32
         self.C = 16
         self.H = 64
@@ -86,7 +86,6 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
 
     def compare(self, place, layout, only_forward):
         seed = 10
-        #np.random.seed(5)
         os.environ['FLAGS_cudnn_deterministic'] = "1"
         data = np.random.random(size=self.dshape).astype(self.dtype) * 4. - 2
         # Single-GPU, N = 32 per GPU
@@ -108,7 +107,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                              feed={'input': data},
                              fetch_list=fetch_names)
 
-        #################################################################
+        #####################################################################
         # Multi-GPUs, self.N / core.get_cuda_device_count() per GPU
         main, startup, outs = self.build_program(place, layout, seed, True,
                                                  only_forward)

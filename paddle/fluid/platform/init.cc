@@ -148,26 +148,6 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   platform::DeviceContextPool::Init(devs);
   platform::DeviceTemporaryAllocator::Init();
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && \
-    !defined(PADDLE_ON_INFERENCE)
-  std::vector<platform::Place> cuda_devs;
-  for (auto &p : places) {
-    if (platform::is_gpu_place(p)) {
-      cuda_devs.push_back(p);
-    }
-  }
-  std::unique_ptr<platform::NCCLContextMap> nccl_ctxs;
-  nccl_ctxs.reset(new platform::NCCLContextMap(cuda_devs));
-  for (auto &p : cuda_devs) {
-    auto &nccl_ctx =
-        nccl_ctxs->at(boost::get<platform::CUDAPlace>(p).GetDeviceId());
-    auto cuda_ctx = static_cast<platform::CUDADeviceContext *>(
-        platform::DeviceContextPool::Instance().Get(p));
-    cuda_ctx->set_nccl_comm(nccl_ctx.comm());
-  }
-#endif
-
-  LOG(ERROR) << "DeviceTemporaryAllocator Init End";
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
