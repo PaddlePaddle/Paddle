@@ -259,7 +259,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // 1. multiple trainer instances
   // 2. one trainer with multiple devices
   if (build_strategy.num_trainers_ > 1) {
-    VLOG(0) << "broadcasting... trainer_id: " << build_strategy.trainer_id_;
     BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
   } else {
     if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
@@ -368,7 +367,6 @@ void ParallelExecutor::BCastParamsToDevices(
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
       ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
-      VLOG(0) << "broadcast " << var << " numel: " << numel;
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;

@@ -232,6 +232,9 @@ class CompiledProgram(object):
             ])
 
         places = list(map(_place_obj, self._places))
+        # ParallelExecutor would broadcast all the parameters during initializing.
+        # The parameters of each process should be in the same ordered for the data-parallelism
+        # distributed training to keep the broadcast correct.
         self._persistable_vars = list(set(self._persistable_vars))
         self._persistable_vars.sort()
 
