@@ -926,8 +926,15 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
-  this->InferShape(&infer_shape_ctx);
+  // If Op has attribute all_kernels_must_compute_runtime_shape,
+  // all the kernels of this Op would compute runtime shape,
+  // and skip infershape in runtime for speedup.
+  // TODO(luotao): Note that it is a temporal attribute, after all ops
+  // implement computing runtime shape, this attribute would be deleted.
+  if (!HasAttr("all_kernels_must_compute_runtime_shape")) {
+    RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
+    this->InferShape(&infer_shape_ctx);
+  }
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   kernel_iter->second(
