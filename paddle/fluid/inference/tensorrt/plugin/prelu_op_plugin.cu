@@ -17,12 +17,24 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/prelu_op_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/operators/math/prelu.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+
+PReluPlugin *CreatePreluPluginDeserialize(const void *buffer, size_t length) {
+  return new PReluPlugin(buffer, length);
+}
+REGISTER_TRT_PLUGIN("prelu_plugin", CreatePreluPluginDeserialize);
+
+int PReluPlugin::initialize() {
+  cudaMalloc(&p_gpu_weight_, sizeof(float) * weight_.size());
+  cudaMemcpy(p_gpu_weight_, weight_.data(), weight_.size() * sizeof(float),
+             cudaMemcpyHostToDevice);
+}
 
 nvinfer1::Dims PReluPlugin::getOutputDimensions(int index,
                                                 const nvinfer1::Dims *inputDims,
@@ -39,7 +51,8 @@ int PReluPlugin::enqueue(int batch_size, const void *const *inputs,
   // input dims is CHW.
   const auto &input_dims = this->getInputDims(0);
   const float *input = reinterpret_cast<const float *>(inputs[0]);
-  const float *alpha = reinterpret_cast<const float *>(alpha_.get().values);
+  // const float *alpha = reinterpret_cast<const float *>(alpha_.get().values);
+  const float *alpha = p_gpu_weight_;
   float *output = reinterpret_cast<float **>(outputs)[0];
 
   std::vector<int> input_shape;
