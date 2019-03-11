@@ -27,12 +27,18 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
                    "Inputs(MultiLayerScores) shouldn't be null");
     PADDLE_ENFORCE(context->HasOutput("FpnRois"),
                    "Outputs(MultiFpnRois) of DistributeOp should not be null");
-    auto x_dims = context->GetInputsDim("MultiLayerRois");
+    auto roi_dims = context->GetInputsDim("MultiLayerRois");
+    auto score_dims = context->GetInputsDim("MultiLayerScores");
     auto post_nms_topN = context->Attrs().Get<int>("post_nms_topN");
     std::vector<int64_t> out_dims;
-    for (auto &x_dim : x_dims) {
-      PADDLE_ENFORCE_EQ(x_dim[1], 4,
+    for (auto &roi_dim : roi_dims) {
+      PADDLE_ENFORCE_EQ(roi_dim[1], 4,
                         "Second dimension of Input(MultiLayerRois) must be 4");
+    }
+    for (auto &score_dim : score_dims) {
+      PADDLE_ENFORCE_EQ(
+          score_dim[1], 1,
+          "Second dimension of Input(MultiLayerScores) must be 1");
     }
     context->SetOutputDim("FpnRois", {post_nms_topN, 4});
     if (!context->IsRuntime()) {  // Runtime LoD infershape will be computed
@@ -73,7 +79,7 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto data_type =
         framework::GetDataTypeOfVar(ctx.MultiInputVar("MultiLayerRois")[0]);
-    return framework::OpKernelType(data_type, platform::CPUPlace());
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 };
 

@@ -25,7 +25,8 @@ class TestCollectFPNProposalstOp(OpTest):
     def set_data(self):
         self.init_test_case()
         self.make_rois()
-        self.scores_input = [('y%d' % i, (self.scores[i], self.rois_lod[i]))
+        self.scores_input = [('y%d' % i,
+                              (self.scores[i].reshape(-1, 1), self.rois_lod[i]))
                              for i in range(self.num_level)]
         self.rois, self.lod = self.calc_rois_collect()
         inputs_x = [('x%d' % i, (self.roi_inputs[i][:, 1:], self.rois_lod[i]))

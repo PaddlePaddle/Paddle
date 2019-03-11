@@ -11,6 +11,8 @@ limitations under the License. */
 
 #include <paddle/fluid/memory/allocation/allocator.h>
 #include "cub/cub.cuh"
+#include "paddle/fluid/framework/mixed_vector.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detection/collect_fpn_proposals_op.h"
 #include "paddle/fluid/operators/gather.cu.h"
@@ -44,15 +46,6 @@ struct RangeInitFunctor {
 static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
                   kNumMaxinumNumBlocks);
-}
-
-static inline void TransLoD(const int* length_lod, const int lod_size,
-                            int* offset_lod) {
-  int offset = 0;
-  for (int i = 0; i < lod_size; ++i) {
-    offset_lod[i] = offset;
-    offset += length_lod[i];
-  }
 }
 
 static __global__ void GetLengthLoD(const int nthreads, const int* batch_ids,
@@ -153,14 +146,13 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         d_temp_storage->ptr(), temp_storage_bytes, concat_scores.data<T>(),
         keys_out, idx_in, idx_out, total_roi_num);
     index_out_t.Resize({post_nms_topN});
-
-    Tensor* sorted_rois;
-    sorted_rois->mutable_data<T>({post_nms_topN, BBoxSize}, dev_ctx.GetPlace());
-    Tensor* sorted_batch_id;
-    sorted_batch_id->mutable_data<int>({post_nms_topN}, dev_ctx.GetPlace());
-    GPUGather<T>(dev_ctx, concat_rois, index_out_t, sorted_rois);
+    Tensor sorted_rois;
+    sorted_rois.mutable_data<T>({post_nms_topN, BBoxSize}, dev_ctx.GetPlace());
+    Tensor sorted_batch_id;
+    sorted_batch_id.mutable_data<int>({post_nms_topN}, dev_ctx.GetPlace());
+    GPUGather<T>(dev_ctx, concat_rois, index_out_t, &sorted_rois);
     GPUGather<int>(dev_ctx, roi_batch_id_list_gpu, index_out_t,
-                   sorted_batch_id);
+                   &sorted_batch_id);
 
     Tensor batch_index_t;
     int* batch_idx_in =
@@ -174,8 +166,8 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         out_id_t.mutable_data<int>({post_nms_topN}, dev_ctx.GetPlace());
     // Determine temporary device storage requirements
     temp_storage_bytes = 0;
-    cub::DeviceRadixSort::SortPairsDescending<int, int>(
-        nullptr, temp_storage_bytes, sorted_batch_id->data<int>(), out_id_data,
+    cub::DeviceRadixSort::SortPairs<int, int>(
+        nullptr, temp_storage_bytes, sorted_batch_id.data<int>(), out_id_data,
         batch_idx_in, index_out_t.data<int>(), post_nms_topN);
     // Allocate temporary storage
     d_temp_storage = memory::Alloc(place, temp_storage_bytes,
@@ -183,32 +175,31 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     // Run sorting operation
     // sort batch_id to get corresponding index
-    cub::DeviceRadixSort::SortPairsDescending<int, int>(
-        d_temp_storage->ptr(), temp_storage_bytes, sorted_batch_id->data<int>(),
+    cub::DeviceRadixSort::SortPairs<int, int>(
+        d_temp_storage->ptr(), temp_storage_bytes, sorted_batch_id.data<int>(),
         out_id_data, batch_idx_in, index_out_t.data<int>(), post_nms_topN);
 
-    GPUGather<T>(dev_ctx, *sorted_rois, index_out_t, fpn_rois);
+    GPUGather<T>(dev_ctx, sorted_rois, index_out_t, fpn_rois);
 
-    // Tensor length_lod;
-    // int* length_lod_data =
-    //    length_lod.mutable_data<int>({lod_size}, dev_ctx.GetPlace);
-    int* length_lod_data;
+    Tensor length_lod;
+    int* length_lod_data =
+        length_lod.mutable_data<int>({lod_size}, dev_ctx.GetPlace());
     int blocks = NumBlocks(post_nms_topN);
     int threads = kNumCUDAThreads;
 
     // get length-based lod by batch ids
     GetLengthLoD<<<blocks, threads>>>(post_nms_topN, out_id_data,
                                       length_lod_data);
+    std::vector<int> length_lod_cpu(lod_size);
+    memory::Copy(platform::CPUPlace(), length_lod_cpu.data(), place,
+                 length_lod_data, sizeof(int) * lod_size, 0);
 
-    Tensor offset_lod;
-    int* offset_lod_data =
-        offset_lod.mutable_data<int>({lod_size + 1}, dev_ctx.GetPlace());
-    TransLoD(length_lod_data, lod_size + 1, offset_lod_data);
+    std::vector<size_t> offset(1, 0);
+    for (int i = 0; i < lod_size; ++i) {
+      offset.emplace_back(offset.back() + length_lod_cpu[i]);
+    }
 
     framework::LoD lod;
-    std::vector<size_t> offset;
-    memory::Copy(platform::CPUPlace(), offset.data(), place, offset_lod_data,
-                 sizeof(int) * (lod_size + 1), 0);
     lod.emplace_back(offset);
     fpn_rois->set_lod(lod);
   }

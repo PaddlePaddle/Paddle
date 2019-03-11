@@ -54,7 +54,7 @@ bool compare_by_score(ScoreWithID<T> a, ScoreWithID<T> b) {
 
 template <typename T>
 bool compare_by_batchid(ScoreWithID<T> a, ScoreWithID<T> b) {
-  return a.batch_id <= b.batch_id;
+  return a.batch_id < b.batch_id;
 }
 
 template <typename T>
@@ -122,7 +122,6 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     std::stable_sort(scores_of_all_rois.begin(), scores_of_all_rois.end(),
                      compare_by_score<T>);
     scores_of_all_rois.resize(post_nms_topN);
-    std::reverse(scores_of_all_rois.begin(), scores_of_all_rois.end());
     // sort by batch id
     std::stable_sort(scores_of_all_rois.begin(), scores_of_all_rois.end(),
                      compare_by_batchid<T>);
