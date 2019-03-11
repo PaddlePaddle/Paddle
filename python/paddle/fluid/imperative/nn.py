@@ -516,6 +516,7 @@ class GRUUnit(layers.Layer):
 
     Args:
         input (Variable): The fc transformed input value of current step.
+        name_scope (str): See base class.
         hidden (Variable): The hidden value of gru unit from previous step.
         size (integer): The input dimension value.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
