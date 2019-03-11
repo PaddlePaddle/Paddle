@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import contextlib
 import unittest
 import numpy as np
@@ -53,7 +55,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             mlp = MLP()
             self.get_optimizer()
             train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=128)
+                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
             dy_param_init_value = {}
             for batch_id, data in enumerate(train_reader()):
@@ -96,7 +98,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             mnist = MNIST()
             self.get_optimizer()
             train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=128)
+                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
             img = fluid.layers.data(
                 name='pixel', shape=[1, 28, 28], dtype='float32')
@@ -108,8 +110,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             # initialize params and fetch them
             static_param_init_value = {}
             static_param_name_list = []
-            for param in fluid.default_startup_program().global_block(
-            ).all_parameters():
+            for param in mnist.parameters():
                 static_param_name_list.append(param.name)
 
             out = exe.run(fluid.default_startup_program(),
@@ -145,7 +146,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         self.assertTrue(np.allclose(static_out, dy_out))
 
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key]))
+            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
 
 
 if __name__ == '__main__':

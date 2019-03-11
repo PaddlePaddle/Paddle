@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -28,13 +29,6 @@ namespace operators {
 
 class NgraphBridge {
  public:
-  static std::map<
-      std::string,
-      std::function<void(const std::shared_ptr<framework::OperatorBase>&,
-                         std::shared_ptr<std::unordered_map<
-                             std::string, std::shared_ptr<ngraph::Node>>>)>>
-      NG_NODE_MAP;
-
   explicit NgraphBridge(
       std::shared_ptr<
           std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
@@ -42,6 +36,8 @@ class NgraphBridge {
       : ngb_node_map_(var_node_map) {}
 
   void BuildNgNode(const std::shared_ptr<framework::OperatorBase>& op);
+
+  static bool isRegister(const std::string& str);
 
  private:
   std::shared_ptr<

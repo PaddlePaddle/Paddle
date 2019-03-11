@@ -135,14 +135,18 @@ struct AnalysisConfig {
    */
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1, int min_subgraph_size = 3,
-                            Precision precision = Precision::kFloat32);
+                            Precision precision = Precision::kFloat32,
+                            bool use_static = true);
   /** A boolean state telling whether the TensorRT engine is used.
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
 
-  /** Control whther to debug IR graph analysis phase.
+  /** \brief Control whether to debug IR graph analysis phase.
+   *
+   * This will generate DOT files for visualizing the computation graph after
+   * each analysis pass applied.
    */
-  void SwitchIrDebug(int x = true) { ir_debug_ = x; }
+  void SwitchIrDebug(int x = true);
 
   /** Turn on MKLDNN.
    */
@@ -209,12 +213,12 @@ struct AnalysisConfig {
   std::string prog_file_;
   std::string params_file_;
 
-  // GPU releated.
+  // GPU related.
   bool use_gpu_{false};
   int device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
 
-  // TensorRT releated.
+  // TensorRT related.
   bool use_tensorrt_{false};
   // For workspace_size, refer it from here:
   // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
@@ -230,6 +234,7 @@ struct AnalysisConfig {
   //  subgraph, 3 as default value.
   int tensorrt_min_subgraph_size_{3};
   Precision tensorrt_precision_mode_;
+  bool trt_use_static_engine_;
 
   // memory reuse related.
   bool enable_memory_optim_{false};

@@ -56,14 +56,14 @@ struct DataRecord {
       std::vector<float> slot_data;
       split_to_float(data[1], ' ', &slot_data);
       std::string name = data[0];
-      PADDLE_ENFORCE_EQ(slot_data.size() % 11, 0,
+      PADDLE_ENFORCE_EQ(slot_data.size() % 11, 0UL,
                         "line %d, %s should be divisible", num_lines, name);
       datasets[name].emplace_back(std::move(slot_data));
     }
     num_samples = num_lines / num_slots;
     PADDLE_ENFORCE_EQ(num_samples * num_slots, static_cast<size_t>(num_lines),
                       "num samples should be divisible");
-    PADDLE_ENFORCE_GT(num_samples, 0);
+    PADDLE_ENFORCE_GT(num_samples, 0UL);
   }
 
   void Prepare(int bs) {
@@ -142,7 +142,7 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
   cfg->SetModel(FLAGS_infer_model + "/model", FLAGS_infer_model + "/params");
   cfg->DisableGpu();
   cfg->SwitchSpecifyInputNames();
-  cfg->pass_builder()->TurnOnDebug();
+  cfg->SwitchIrDebug();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
   if (use_mkldnn) {
     cfg->EnableMKLDNN();
@@ -266,15 +266,17 @@ TEST(Analyzer_seq_pool1, zerocopy_profile_threads) {
   SetConfig(&config);
   config.SwitchUseFeedFetchOps(false);
 
-  auto base_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
+  predictors.emplace_back(CreatePaddlePredictor<AnalysisConfig>(config));
+  for (int tid = 1; tid < FLAGS_num_threads; tid++) {
+    predictors.emplace_back(predictors.front()->Clone());
+  }
   double total_time_of_threads{0};
   std::vector<std::thread> threads;
 
   for (int tid = 0; tid < FLAGS_num_threads; tid++) {
     threads.emplace_back([&, tid] {
-      // To ensure the thread binding correctly,
-      // please clone inside the threadpool.
-      auto predictor = base_predictor->Clone();
+      auto &predictor = predictors[tid];
       std::vector<std::unique_ptr<ZeroCopyTensor>> inputs;
       PrepareZeroCopyInputs(predictor, &inputs);
       auto output_tensor = predictor->GetOutputTensor(out_var_name);

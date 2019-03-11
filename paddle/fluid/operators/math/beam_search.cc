@@ -29,8 +29,9 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
                   const framework::LoDTensor *ids,
                   const framework::LoDTensor *scores,
                   framework::LoDTensor *selected_ids,
-                  framework::LoDTensor *selected_scores, size_t level,
-                  size_t beam_size, int end_id, bool is_accumulated) {
+                  framework::LoDTensor *selected_scores,
+                  framework::Tensor *parent_idx, size_t level, size_t beam_size,
+                  int end_id, bool is_accumulated) {
     auto abs_lod = framework::ToAbsOffset(scores->lod());
     auto &high_level = abs_lod[level];
 
@@ -55,13 +56,15 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     // the output tensor shape should be [num_instances, 1]
     auto dims = framework::make_ddim(
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
-    selected_ids->Resize(dims);
-    selected_scores->Resize(dims);
-
     auto *selected_ids_data =
-        selected_ids->mutable_data<int64_t>(platform::CPUPlace());
+        selected_ids->mutable_data<int64_t>(dims, platform::CPUPlace());
     auto *selected_scores_data =
-        selected_scores->mutable_data<float>(platform::CPUPlace());
+        selected_scores->mutable_data<float>(dims, platform::CPUPlace());
+    auto *parent_idx_data =
+        parent_idx
+            ? parent_idx->mutable_data<int>(
+                  {static_cast<int64_t>(num_instances)}, platform::CPUPlace())
+            : nullptr;
 
     // fill in data
     std::vector<size_t> low_level;
@@ -69,6 +72,9 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     for (auto &items : selected_items) {
       low_level.push_back(low_offset);
       for (auto &item : items) {
+        if (parent_idx) {
+          parent_idx_data[low_offset] = static_cast<int>(low_level.size() - 1);
+        }
         selected_ids_data[low_offset] = item.id;
         selected_scores_data[low_offset] = item.score;
         low_offset++;
