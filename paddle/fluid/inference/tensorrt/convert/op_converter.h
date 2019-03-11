@@ -16,15 +16,49 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+
+using FluidDT = framework::proto::VarType_Type;
+using TRT_DT = nvinfer1::DataType;
+
+namespace {  // NOLINT
+
+TRT_DT FluidDataType2TRT(FluidDT type) {
+  switch (type) {
+    case FluidDT::VarType_Type_FP32:
+      return TRT_DT::kFLOAT;
+    case FluidDT::VarType_Type_INT32:
+      return TRT_DT::kINT32;
+    default:
+      return TRT_DT::kINT32;
+  }
+  PADDLE_THROW("unkown type");
+  return TRT_DT::kINT32;
+}
+
+nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t>& shape) {
+  PADDLE_ENFORCE_GT(shape.size(), 1UL,
+                    "TensorRT' tensor input requires at least 2 dimensions");
+  PADDLE_ENFORCE_LE(shape.size(), 4UL,
+                    "TensorRT' tensor input requires at most 4 dimensions");
+  PADDLE_ENFORCE(shape.size() == 4UL || shape.size() == 2UL);
+  if (shape.size() == 4UL)
+    return nvinfer1::DimsCHW(shape[1], shape[2], shape[3]);
+  return nvinfer1::DimsCHW(shape[1], 1, 1);
+}
+
+}  // namespace // NOLINT
 
 /*
  * Convert Op from Fluid to TensorRT Engine.
@@ -108,6 +142,34 @@ class OpConverter {
       const auto& op = block.ops(i);
       ConvertOp(op, parameters, scope, engine);
     }
+  }
+
+  // The scope  here should be inited with the parameter vars.
+  void ConvertBlockToTRTEngine(
+      framework::BlockDesc* block_desc, const framework::Scope& scope,
+      const std::vector<std::string>& inputs,
+      const std::unordered_set<std::string>& parameters,
+      const std::vector<std::string>& outputs, TensorRTEngine* engine) {
+    engine->InitNetwork();
+    for (auto& input : inputs) {
+      if (parameters.count(input)) continue;
+      auto* var = block_desc->FindVar(input);
+      PADDLE_ENFORCE(var, "no variable called %s", input);
+      PADDLE_ENFORCE_EQ(var->GetType(), FluidDT::VarType_Type_LOD_TENSOR,
+                        "TensorRT engine only takes LoDTensor as input");
+      auto var_shape = var->GetShape();
+
+      engine->DeclareInput(
+          input, FluidDataType2TRT(
+                     var->Proto()->type().lod_tensor().tensor().data_type()),
+          Vec2TRT_Dims(var_shape));
+    }
+    framework::proto::BlockDesc* block_proto = block_desc->Proto();
+    ConvertBlock(*block_proto, parameters, scope, engine);
+    for (auto& output : outputs) {
+      engine->DeclareOutput(output);
+    }
+    engine->FreezeNetwork();
   }
 
   void SetEngine(TensorRTEngine* engine) { engine_ = engine; }
