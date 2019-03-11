@@ -93,6 +93,7 @@ std::vector<int> TestSizes() {
 template <typename KernelTuples, typename... Args>
 struct BenchFunc {
   // return this function avg time
+  // TODO(TJ): clear cache every time
   double operator()(const typename KernelTuples::func_type tgt, Args... args) {
     for (int i = 0; i < FLAGS_burning; ++i) {
       tgt(args...);
@@ -158,7 +159,7 @@ void BenchAllImpls(const typename KernelTuples::attr_type& attr, Args... args) {
 
 using Tensor = paddle::framework::Tensor;
 
-template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+template <jit::KernelType KT, typename T, typename PlaceType>
 void BenchXYZNKernel() {
   for (int d : TestSizes()) {
     Tensor x, y, z;
@@ -172,10 +173,13 @@ void BenchXYZNKernel() {
     RandomVec<T>(d, y_data);
     BenchAllImpls<KT, jit::XYZNTuples<T>, PlaceType>(d, x.data<T>(),
                                                      y.data<T>(), z_data, d);
+    // test inplace
+    BenchAllImpls<KT, jit::XYZNTuples<T>, PlaceType>(d, x.data<T>(), z_data,
+                                                     z_data, d);
   }
 }
 
-template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+template <jit::KernelType KT, typename T, typename PlaceType>
 void BenchAXYNKernel() {
   for (int d : TestSizes()) {
     const T a = static_cast<T>(3);
@@ -187,10 +191,23 @@ void BenchAXYNKernel() {
     RandomVec<T>(d, x_data);
     BenchAllImpls<KT, jit::AXYNTuples<T>, PlaceType>(d, &a, x.data<T>(), y_data,
                                                      d);
+    // test inplace
+    BenchAllImpls<KT, jit::AXYNTuples<T>, PlaceType>(d, &a, x.data<T>(), x_data,
+                                                     d);
   }
 }
 
-template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+template <jit::KernelType KT, typename T, typename PlaceType>
+void BenchXRNKernel() {
+  for (int d : TestSizes()) {
+    Tensor x;
+    RandomVec<T>(d, x.mutable_data<T>({d}, PlaceType()));
+    T res;
+    BenchAllImpls<KT, jit::XRNTuples<T>, PlaceType>(d, x.data<T>(), &res, d);
+  }
+}
+
+template <jit::KernelType KT, typename T, typename PlaceType>
 void BenchXYNKernel() {
   for (int d : TestSizes()) {
     Tensor x, y;
@@ -203,7 +220,7 @@ void BenchXYNKernel() {
   }
 }
 
-template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+template <jit::KernelType KT, typename T, typename PlaceType>
 void BenchLSTMKernel() {
   for (bool use_peephole : {true, false}) {
     for (int d : TestSizes()) {
@@ -240,7 +257,7 @@ void BenchLSTMKernel() {
   }
 }
 
-template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+template <jit::KernelType KT, typename T, typename PlaceType>
 void BenchGRUKernel() {
   for (int d : TestSizes()) {
     const jit::gru_attr_t attr(d, jit::kVSigmoid, jit::kVTanh);
@@ -262,7 +279,7 @@ void BenchGRUKernel() {
   }
 }
 
-template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+template <jit::KernelType KT, typename T, typename PlaceType>
 void BenchSeqPoolKernel() {
   std::vector<jit::SeqPoolType> pool_types = {
       jit::SeqPoolType::kSum, jit::SeqPoolType::kAvg, jit::SeqPoolType::kSqrt};
@@ -284,7 +301,77 @@ void BenchSeqPoolKernel() {
   }
 }
 
-template <paddle::operators::jit::KernelType KT, typename T, typename PlaceType>
+template <jit::KernelType KT, typename T, typename PlaceType>
+void BenchEmbSeqPoolKernel() {
+  std::vector<jit::SeqPoolType> pool_types = {jit::SeqPoolType::kSum};
+  int64_t tbl_h = 1e4;
+  for (int tbl_w : {10, 16, 256}) {
+    Tensor table;
+    table.Resize({tbl_h, tbl_w});
+    RandomVec<T>(tbl_h * tbl_w, table.mutable_data<T>(PlaceType()), -2.f, 2.f);
+    const T* table_data = table.data<T>();
+    for (auto type : pool_types) {
+      for (int idx_w : {1, 2, 10, 16}) {
+        for (int idx_h : {1, 2, 9, 13, 16}) {
+          int64_t out_w = tbl_w * idx_w;
+          jit::emb_seq_pool_attr_t attr(tbl_h, tbl_w, idx_h, idx_w, out_w,
+                                        type);
+          Tensor idx, out;
+          idx.Resize({idx_h, idx_w});
+          out.Resize({out_w});
+          RandomVec<int64_t>(idx_h * idx_w,
+                             idx.mutable_data<int64_t>(PlaceType()), 0,
+                             tbl_h - 1);
+          const int64_t* idx_data = idx.data<int64_t>();
+          T* o_data = out.mutable_data<T>(PlaceType());
+          BenchAllImpls<KT, jit::EmbSeqPoolTuples<T>, PlaceType>(
+              attr, table_data, idx_data, o_data, &attr);
+        }
+      }
+    }
+  }
+}
+
+template <jit::KernelType KT, typename T, typename PlaceType>
+void BenchSgdKernel() {
+  const T lr = 0.1;
+  auto UnDuplicatedRandomVec = [](int n, const int64_t lower,
+                                  const int64_t upper) -> std::vector<int64_t> {
+    PADDLE_ENFORCE_LE(static_cast<size_t>(upper - lower), n - 1);
+    PADDLE_ENFORCE_GT(n, 0);
+    std::vector<int64_t> all, out;
+    for (int i = 0; i < n; ++i) {
+      all.push_back(i);
+    }
+    std::random_shuffle(all.begin(), all.end());
+    out.insert(out.begin(), all.begin(), all.begin() + n);
+    return out;
+  };
+  for (int param_h : {1, 1000}) {
+    for (int grad_w : {1, 2, 8, 16, 30, 256}) {
+      // only benchmark inplace
+      Tensor param;
+      param.Resize({param_h, grad_w});
+      T* param_data = param.mutable_data<T>(PlaceType());
+      RandomVec<T>(param_h * grad_w, param_data, -2.f, 2.f);
+      for (int rows_size = 1; rows_size <= std::min(param_h, 10); ++rows_size) {
+        Tensor grad;
+        grad.Resize({rows_size, grad_w});
+        std::vector<int64_t> rows =
+            UnDuplicatedRandomVec(rows_size, 0, rows_size - 1);
+        RandomVec<T>(rows_size * grad_w, grad.mutable_data<T>(PlaceType()),
+                     -2.f, 2.f);
+        const T* grad_data = grad.data<T>();
+        const int64_t* rows_data = rows.data();
+        jit::sgd_attr_t attr(param_h, grad_w, rows_size, grad_w, rows_size);
+        BenchAllImpls<KT, jit::SgdTuples<T>, PlaceType>(
+            attr, &lr, param_data, grad_data, rows_data, param_data, &attr);
+      }
+    }
+  }
+}
+
+template <jit::KernelType KT, typename T, typename PlaceType>
 void BenchMatMulKernel() {
   for (int m : {1, 2, 3, 4}) {
     for (int n : TestSizes()) {
@@ -298,64 +385,178 @@ void BenchMatMulKernel() {
         const T* a_data = a.data<T>();
         const T* b_data = b.data<T>();
         T* c_data = c.mutable_data<T>(PlaceType());
-        BenchAllImpls<KT, jit::MatMulTuples<T>, PlaceType>(k, a_data, b_data,
-                                                           c_data, m, n, k);
+        const jit::matmul_attr_t attr{m, n, k};
+        BenchAllImpls<KT, jit::MatMulTuples<T>, PlaceType>(attr, a_data, b_data,
+                                                           c_data, &attr);
       }
     }
   }
 }
 
+template <jit::KernelType KT, typename T, typename PlaceType>
+void BenchSoftmaxKernel() {
+  for (int bs : {1, 2, 10}) {
+    for (int n : TestSizes()) {
+      Tensor x, y;
+      x.Resize({bs, n});
+      y.Resize({bs, n});
+      RandomVec<T>(bs * n, x.mutable_data<T>(PlaceType()), -2.f, 2.f);
+      const T* x_data = x.data<T>();
+      T* y_data = y.mutable_data<T>(PlaceType());
+      BenchAllImpls<KT, jit::SoftmaxTuples<T>, PlaceType>(n, x_data, y_data, n,
+                                                          bs);
+    }
+  }
+}
+
+template <jit::KernelType KT, typename T, typename PlaceType>
+void BenchLayerNormKernel() {
+  const T epsilon = 9.99999975e-06;
+  for (int n : {1, 2, 10}) {
+    for (int x_dim_0 : {1, 9, 17, 50}) {
+      int left = n * x_dim_0;
+      for (int x_dim_1 : TestSizes()) {
+        int right = x_dim_1;
+        int sz = left * right;
+        Tensor x, mean, var, scale, bias, out;
+        x.Resize({n, x_dim_0, x_dim_1});
+        out.Resize({n, x_dim_0, x_dim_1});
+        mean.Resize({n, x_dim_0});
+        var.Resize({n, x_dim_0});
+        scale.Resize({x_dim_1});
+        bias.Resize({x_dim_1});
+
+        RandomVec<T>(sz, x.mutable_data<T>(PlaceType()), -2.f, 2.f);
+        RandomVec<T>(left, mean.mutable_data<T>(PlaceType()), -2.f, 2.f);
+        RandomVec<T>(left, var.mutable_data<T>(PlaceType()), -2.f, 2.f);
+        RandomVec<T>(right, scale.mutable_data<T>(PlaceType()), -2.f, 2.f);
+        RandomVec<T>(right, bias.mutable_data<T>(PlaceType()), -2.f, 2.f);
+
+        const T* scale_data = scale.data<T>();
+        const T* bias_data = bias.data<T>();
+        T* x_data = x.data<T>();
+        T* mean_data = mean.data<T>();
+        T* var_data = var.data<T>();
+        T* out_data = out.mutable_data<T>(PlaceType());
+
+        BenchAllImpls<KT, jit::LayerNormTuples<T>, PlaceType>(
+            right, x_data, out_data, mean_data, var_data, scale_data, bias_data,
+            left, epsilon, right);
+      }
+    }
+  }
+}
+
+template <jit::KernelType KT, typename T, typename PlaceType>
+void BenchCRFDecodingKernel() {
+  constexpr int state_trans_base_idx = 2;
+  for (int seq_len : {1, 11, 17, 50}) {
+    for (int tag_num : TestSizes()) {
+      int x_sz = seq_len * tag_num;
+      int w_sz = (tag_num + state_trans_base_idx) * tag_num;
+      Tensor x, w, alpha, track;
+      x.Resize({seq_len, tag_num});
+      w.Resize({tag_num + state_trans_base_idx, tag_num});
+      alpha.Resize({seq_len, tag_num});
+      track.Resize({seq_len, tag_num});
+
+      RandomVec<T>(x_sz, x.mutable_data<T>(PlaceType()), -2.f, 2.f);
+      RandomVec<T>(w_sz, w.mutable_data<T>(PlaceType()), -2.f, 2.f);
+
+      const T* x_data = x.data<T>();
+      const T* w_data = w.data<T>();
+      T* alpha_data = alpha.mutable_data<T>(PlaceType());
+      int* track_data = track.mutable_data<int>(PlaceType());
+
+      BenchAllImpls<KT, jit::CRFDecodingTuples<T>, PlaceType>(
+          tag_num, seq_len, x_data, w_data, alpha_data, track_data, tag_num);
+    }
+  }
+}
+
+template <jit::KernelType KT, typename T, typename PlaceType>
+void BenchVBroadcastKernel() {
+  for (int64_t w : {1, 16, 64, 100, 256}) {
+    Tensor x;
+    x.Resize({w});
+    RandomVec<T>(w, x.mutable_data<T>(PlaceType()));
+    const T* x_data = x.data<T>();
+    for (int h : TestSizes()) {
+      Tensor y;
+      y.Resize({h * w});
+      T* y_data = y.mutable_data<T>(PlaceType());
+      BenchAllImpls<KT, jit::VBroadcastTuples<T>, PlaceType>(
+          w, x_data, y_data, static_cast<int64_t>(h), w);
+    }
+  }
+}
+
 using T = float;
-using PlaceType = paddle::platform::CPUPlace;
+using CPUPlace = paddle::platform::CPUPlace;
 
 // xyzn
-BENCH_FP32_CPU(kVMul) { BenchXYZNKernel<jit::kVMul, T, PlaceType>(); }
-
-BENCH_FP32_CPU(kVAdd) { BenchXYZNKernel<jit::kVAdd, T, PlaceType>(); }
-
-BENCH_FP32_CPU(kVAddRelu) { BenchXYZNKernel<jit::kVAddRelu, T, PlaceType>(); }
-
-BENCH_FP32_CPU(kVSub) { BenchXYZNKernel<jit::kVSub, T, PlaceType>(); }
+BENCH_FP32_CPU(kVMul) { BenchXYZNKernel<jit::kVMul, T, CPUPlace>(); }
+BENCH_FP32_CPU(kVAdd) { BenchXYZNKernel<jit::kVAdd, T, CPUPlace>(); }
+BENCH_FP32_CPU(kVAddRelu) { BenchXYZNKernel<jit::kVAddRelu, T, CPUPlace>(); }
+BENCH_FP32_CPU(kVSub) { BenchXYZNKernel<jit::kVSub, T, CPUPlace>(); }
 
 // axyn
-BENCH_FP32_CPU(kVScal) { BenchAXYNKernel<jit::kVScal, T, PlaceType>(); }
+BENCH_FP32_CPU(kVScal) { BenchAXYNKernel<jit::kVScal, T, CPUPlace>(); }
+BENCH_FP32_CPU(kVAddBias) { BenchAXYNKernel<jit::kVAddBias, T, CPUPlace>(); }
 
-BENCH_FP32_CPU(kVAddBias) { BenchAXYNKernel<jit::kVAddBias, T, PlaceType>(); }
+// xrn
+BENCH_FP32_CPU(kHSum) { BenchXRNKernel<jit::kHSum, T, CPUPlace>(); }
+BENCH_FP32_CPU(kHMax) { BenchXRNKernel<jit::kHMax, T, CPUPlace>(); }
 
 // xyn
-BENCH_FP32_CPU(kVRelu) { BenchXYNKernel<jit::kVRelu, T, PlaceType>(); }
-
-BENCH_FP32_CPU(kVIdentity) { BenchXYNKernel<jit::kVIdentity, T, PlaceType>(); }
-
-BENCH_FP32_CPU(kVSquare) { BenchXYNKernel<jit::kVSquare, T, PlaceType>(); }
-
-BENCH_FP32_CPU(kVExp) { BenchXYNKernel<jit::kVExp, T, PlaceType>(); }
-
-BENCH_FP32_CPU(kVSigmoid) { BenchXYNKernel<jit::kVSigmoid, T, PlaceType>(); }
-
-BENCH_FP32_CPU(kVTanh) { BenchXYNKernel<jit::kVTanh, T, PlaceType>(); }
+BENCH_FP32_CPU(kVRelu) { BenchXYNKernel<jit::kVRelu, T, CPUPlace>(); }
+BENCH_FP32_CPU(kVIdentity) { BenchXYNKernel<jit::kVIdentity, T, CPUPlace>(); }
+BENCH_FP32_CPU(kVSquare) { BenchXYNKernel<jit::kVSquare, T, CPUPlace>(); }
+BENCH_FP32_CPU(kVExp) { BenchXYNKernel<jit::kVExp, T, CPUPlace>(); }
+BENCH_FP32_CPU(kVSigmoid) { BenchXYNKernel<jit::kVSigmoid, T, CPUPlace>(); }
+BENCH_FP32_CPU(kVTanh) { BenchXYNKernel<jit::kVTanh, T, CPUPlace>(); }
+BENCH_FP32_CPU(kVCopy) { BenchXYNKernel<jit::kVCopy, T, CPUPlace>(); }
 
 // lstm and peephole
-BENCH_FP32_CPU(kLSTMCtHt) { BenchLSTMKernel<jit::kLSTMCtHt, T, PlaceType>(); }
-
-BENCH_FP32_CPU(kLSTMC1H1) { BenchLSTMKernel<jit::kLSTMC1H1, T, PlaceType>(); }
+BENCH_FP32_CPU(kLSTMCtHt) { BenchLSTMKernel<jit::kLSTMCtHt, T, CPUPlace>(); }
+BENCH_FP32_CPU(kLSTMC1H1) { BenchLSTMKernel<jit::kLSTMC1H1, T, CPUPlace>(); }
 
 // gru functions
-BENCH_FP32_CPU(kGRUH1) { BenchGRUKernel<jit::kGRUH1, T, PlaceType>(); }
-
-BENCH_FP32_CPU(kGRUHtPart1) {
-  BenchGRUKernel<jit::kGRUHtPart1, T, PlaceType>();
-}
-
-BENCH_FP32_CPU(kGRUHtPart2) {
-  BenchGRUKernel<jit::kGRUHtPart2, T, PlaceType>();
-}
+BENCH_FP32_CPU(kGRUH1) { BenchGRUKernel<jit::kGRUH1, T, CPUPlace>(); }
+BENCH_FP32_CPU(kGRUHtPart1) { BenchGRUKernel<jit::kGRUHtPart1, T, CPUPlace>(); }
+BENCH_FP32_CPU(kGRUHtPart2) { BenchGRUKernel<jit::kGRUHtPart2, T, CPUPlace>(); }
 
 // seq pool function
-BENCH_FP32_CPU(kSeqPool) { BenchSeqPoolKernel<jit::kSeqPool, T, PlaceType>(); }
+BENCH_FP32_CPU(kSeqPool) { BenchSeqPoolKernel<jit::kSeqPool, T, CPUPlace>(); }
+
+// embedding seq pool function
+BENCH_FP32_CPU(kEmbSeqPool) {
+  BenchEmbSeqPoolKernel<jit::kEmbSeqPool, T, CPUPlace>();
+}
+
+// sgd function
+BENCH_FP32_CPU(kSgd) { BenchSgdKernel<jit::kSgd, T, CPUPlace>(); }
 
 // matmul
-BENCH_FP32_CPU(kMatMul) { BenchMatMulKernel<jit::kMatMul, T, PlaceType>(); }
+BENCH_FP32_CPU(kMatMul) { BenchMatMulKernel<jit::kMatMul, T, CPUPlace>(); }
+
+// softmax
+BENCH_FP32_CPU(kSoftmax) { BenchSoftmaxKernel<jit::kSoftmax, T, CPUPlace>(); }
+
+// layernorm
+BENCH_FP32_CPU(kLayerNorm) {
+  BenchLayerNormKernel<jit::kLayerNorm, T, CPUPlace>();
+}
+
+// crfdecoding
+BENCH_FP32_CPU(kCRFDecoding) {
+  BenchCRFDecodingKernel<jit::kCRFDecoding, T, CPUPlace>();
+}
+
+// vbroadcast function
+BENCH_FP32_CPU(kVBroadcast) {
+  BenchVBroadcastKernel<jit::kVBroadcast, T, CPUPlace>();
+}
 
 // Benchmark all jit kernels including jitcode, mkl and refer.
 // To use this tool, run command: ./benchmark [options...]

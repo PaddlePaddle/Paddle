@@ -17,13 +17,14 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 #include <vector>
 #ifdef WITH_GPERFTOOLS
 #include <gperftools/profiler.h>
 #endif
-
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
@@ -55,13 +56,6 @@ DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace inference {
-
-float Random(float low, float high) {
-  static std::random_device rd;
-  static std::mt19937 mt(rd());
-  std::uniform_real_distribution<double> dist(low, high);
-  return dist(mt);
-}
 
 void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
   const auto *analysis_config =
@@ -99,6 +93,14 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         float *pdata_ref = static_cast<float *>(ref_out.data.data());
         for (size_t j = 0; j < size; ++j) {
           CHECK_LE(std::abs(pdata_ref[j] - pdata[j]), FLAGS_accuracy);
+        }
+        break;
+      }
+      case PaddleDType::INT32: {
+        int32_t *pdata = static_cast<int32_t *>(out.data.data());
+        int32_t *pdata_ref = static_cast<int32_t *>(ref_out.data.data());
+        for (size_t j = 0; j < size; ++j) {
+          EXPECT_EQ(pdata_ref[j], pdata[j]);
         }
         break;
       }
@@ -146,7 +148,8 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
                        const std::string &dirname, bool is_combined = true,
                        std::string model_filename = "model",
                        std::string params_filename = "params",
-                       const std::vector<std::string> *feed_names = nullptr) {
+                       const std::vector<std::string> *feed_names = nullptr,
+                       const int continuous_inuput_index = 0) {
   // Set fake_image_data
   PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0, "Only have single batch of data.");
   std::vector<std::vector<int64_t>> feed_target_shapes = GetFeedTargetShapes(
@@ -183,7 +186,8 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
     float *input_data = static_cast<float *>(input.data.data());
     // fill input data, for profile easily, do not use random data here.
     for (size_t j = 0; j < len; ++j) {
-      *(input_data + j) = Random(0.0, 1.0) / 10.;
+      *(input_data + j) =
+          static_cast<float>((j + continuous_inuput_index) % len) / len;
     }
   }
   (*inputs).emplace_back(input_slots);
@@ -257,7 +261,11 @@ void TestMultiThreadPrediction(
   int batch_size = FLAGS_batch_size;
   int num_times = FLAGS_repeat;
   std::vector<std::thread> threads;
-  auto main_predictor = CreateTestPredictor(config, use_analysis);
+  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
+  predictors.emplace_back(CreateTestPredictor(config, use_analysis));
+  for (int tid = 1; tid < num_threads; tid++) {
+    predictors.emplace_back(predictors.front()->Clone());
+  }
 
   size_t total_time{0};
   for (int tid = 0; tid < num_threads; ++tid) {
@@ -265,9 +273,7 @@ void TestMultiThreadPrediction(
       // Each thread should have local inputs and outputs.
       // The inputs of each thread are all the same.
       std::vector<PaddleTensor> outputs_tid;
-      // To ensure the thread binding correctly,
-      // please clone inside the threadpool.
-      auto predictor = main_predictor->Clone();
+      auto &predictor = predictors[tid];
 #ifdef PADDLE_WITH_MKLDNN
       if (use_analysis) {
         static_cast<AnalysisPredictor *>(predictor.get())
