@@ -72,6 +72,8 @@ __global__ void GPUDistFpnProposalsHelper(
     const int min_level, int* roi_batch_id_data, int* sub_lod_list,
     int* target_lvls) {
   CUDA_1D_KERNEL_LOOP(i, nthreads) {
+    sub_lod_list[threadIdx.x] = 0;
+    __syncthreads();
     const T* offset_roi = rois + i * BBoxSize;
     int roi_batch_ind = roi_batch_id_data[i];
     // get the target level of current rois
