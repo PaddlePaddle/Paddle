@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -30,7 +32,8 @@ namespace framework {
 struct ExecutorPrepareContext {
   ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id,
                          const std::vector<std::string>& skip_ref_cnt_vars =
-                             std::vector<std::string>());
+                             std::vector<std::string>(),
+                         bool force_disable_gc = false);
 
   ~ExecutorPrepareContext();
 
@@ -38,6 +41,7 @@ struct ExecutorPrepareContext {
 
   const framework::ProgramDesc& prog_;
   size_t block_id_;
+  bool force_disable_gc_;
   std::vector<std::unique_ptr<OperatorBase>> ops_;
 
   std::unordered_map<std::string, size_t> global_ref_cnts_;
@@ -66,7 +70,10 @@ class Executor {
    *  Scope
    */
   void Run(const ProgramDesc& prog, Scope* scope, int block_id,
-           bool create_local_scope = true, bool create_vars = true);
+           bool create_local_scope = true, bool create_vars = true,
+           const std::vector<std::string>& skip_ref_cnt_vars =
+               std::vector<std::string>(),
+           bool force_disable_gc = false);
 
   // This API is very slow.
   void Run(const ProgramDesc& program, Scope* scope,
@@ -79,12 +86,14 @@ class Executor {
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
       const ProgramDesc& program, int block_id,
       const std::vector<std::string>& skip_ref_cnt_vars =
-          std::vector<std::string>());
+          std::vector<std::string>(),
+      bool force_disable_gc = false);
 
   static std::vector<std::shared_ptr<ExecutorPrepareContext>> Prepare(
       const ProgramDesc& program, const std::vector<int>& block_ids,
       const std::vector<std::vector<std::string>>& skip_ref_cnt_vars =
-          std::vector<std::vector<std::string>>());
+          std::vector<std::vector<std::string>>(),
+      bool force_disable_gc = false);
 
   void CreateVariables(const ProgramDesc& pdesc, Scope* scope, int block_id);
 

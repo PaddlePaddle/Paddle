@@ -39,6 +39,7 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
     // Generate enumerate sequence set
     auto lod0 = in_lod[0];
     auto in_data = in->data<T>();
+    out->Resize({in_dims[0], win_size});
     auto out_data = out->mutable_data<T>(context.GetPlace());
     for (size_t i = 0; i < lod0.size() - 1; ++i) {
       for (size_t idx = lod0[i]; idx < lod0[i + 1]; ++idx) {
@@ -49,6 +50,7 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
         }
       }
     }
+    out->set_lod(in->lod());
   }
 };
 

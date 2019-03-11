@@ -172,6 +172,23 @@ inline std::ostream& operator<<(std::ostream& os, const seq_pool_attr_t& attr) {
   return os;
 }
 
+inline std::ostream& operator<<(std::ostream& os,
+                                const emb_seq_pool_attr_t& attr) {
+  os << "table_height[" << attr.table_height << "],table_width["
+     << attr.table_width << "],index_height[" << attr.index_height
+     << "],index_width[" << attr.index_width << "],output_width["
+     << attr.out_width << "],pool_type[" << to_string(attr.pool_type) << "]";
+  return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const sgd_attr_t& attr) {
+  os << "param_height[" << attr.param_height << "],param_width["
+     << attr.param_width << "],grad_height[" << attr.grad_height
+     << "],grad_width[" << attr.grad_width << "],selected_rows_size["
+     << attr.selected_rows_size << "]";
+  return os;
+}
+
 inline std::ostream& operator<<(std::ostream& os, const matmul_attr_t& attr) {
   os << "M[" << attr.m << "],N[" << attr.n << "],K[" << attr.k << "]";
   return os;

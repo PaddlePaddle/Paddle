@@ -468,9 +468,10 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
 
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
+            # `prog` can be a program defined by the user
             prog = fluid.default_main_program()
             fluid.io.save_persistables(executor=exe, dirname=param_path,
-                                       main_program=None)
+                                       main_program=prog)
     """
 
     if main_program and main_program._is_distributed:
@@ -766,7 +767,10 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                     dtype=slice_var.dtype,
                     persistable=True)
 
-                dim1_flatten = reduce(lambda x, y: x * y, slice.shape[1:])
+                dim1_flatten = 1
+                if len(slice.shape) >= 2:
+                    dim1_flatten = reduce(lambda x, y: x * y, slice.shape[1:])
+
                 start = int(offset / dim1_flatten)
                 end = int(offset / dim1_flatten + slice.shape[0])
 
