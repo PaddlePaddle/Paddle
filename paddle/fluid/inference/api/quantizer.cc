@@ -53,8 +53,9 @@ bool AnalysisPredictor::Quantizer::CalculateScales() {
                          "Only support lod tensor now.");
           LoDTensor* var_tensor = var->GetMutable<LoDTensor>();
 
-          bool is_unsigned = is_output && op->HasAttr("fuse_relu") &&
-                             boost::get<bool>(op->GetAttr("fuse_relu"));
+          bool is_unsigned = (is_output && op->HasAttr("fuse_relu") &&
+                              boost::get<bool>(op->GetAttr("fuse_relu"))) ||
+                             op->Type() == "pool2d";
 
           CalculateSingleScale(
               op->Type(), conn.first, var_name, *var_tensor,
