@@ -13,7 +13,6 @@
 # limitations under the License.
 """VGG16 benchmark in TensorFlow"""
 import tensorflow as tf
-import paddle.v2 as paddle
 import numpy as np
 import argparse
 import time

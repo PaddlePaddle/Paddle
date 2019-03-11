@@ -60,10 +60,13 @@ set(RNN2_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn2")
 download_model_and_data(${RNN2_INSTALL_DIR} "rnn2_model.tar.gz" "rnn2_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR} analyzer_rnn2_tester.cc)
 
+# TODO(luotao, Superjom) Disable DAM test, temporarily fix
+# https://github.com/PaddlePaddle/Paddle/issues/15032#issuecomment-455990914.
+# After inference framework refactor, will reopen it.
 # normal DAM
 set(DAM_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/dam")
 download_model_and_data(${DAM_INSTALL_DIR} "DAM_model.tar.gz" "DAM_data.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_dam ${DAM_INSTALL_DIR} analyzer_dam_tester.cc EXTRA_DEPS legacy_allocator SERIAL)
+#inference_analysis_api_test(test_analyzer_dam ${DAM_INSTALL_DIR} analyzer_dam_tester.cc EXTRA_DEPS legacy_allocator SERIAL)
 
 # small DAM
 set(DAM_SMALL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_dam")
@@ -102,6 +105,13 @@ set(SEQ_CONV1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_conv1")
 download_model_and_data(${SEQ_CONV1_INSTALL_DIR} "seq_conv1_model.tar.gz" "seq_conv1_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_seq_conv1 ${SEQ_CONV1_INSTALL_DIR} analyzer_seq_conv1_tester.cc)
 
+# transformer, the dataset only works on batch_size=8 now
+set(TRANSFORMER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/transformer")
+download_model_and_data(${TRANSFORMER_INSTALL_DIR} "temp%2Ftransformer_model.tar.gz" "temp%2Ftransformer_data.txt.tar.gz")
+inference_analysis_test(test_analyzer_transformer SRCS analyzer_transformer_tester.cc 
+  EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+  ARGS --infer_model=${TRANSFORMER_INSTALL_DIR}/model --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt --batch_size=8)
+
 # ocr
 set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
 if (NOT EXISTS ${OCR_INSTALL_DIR})
@@ -128,9 +138,9 @@ inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
 inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_conv
   "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz" SERIAL)
 
-# bert, max_len=20
-set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert20")
-download_model_and_data(${BERT_INSTALL_DIR} "bert_model.tar.gz" "bert_data_len20.txt.tar.gz")
+# bert, max_len=20, embedding_dim=128
+set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert_emb128")
+download_model_and_data(${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_data_len20.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc SERIAL)
 
 # anakin

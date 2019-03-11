@@ -111,7 +111,7 @@ std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
       xg_var = subgraph.at(xg)->Var();
     }
 
-    PADDLE_ENFORCE_EQ(layer_op->Input("Input").size(), 1);
+    PADDLE_ENFORCE_EQ(layer_op->Input("Input").size(), 1UL);
     PADDLE_ENFORCE_EQ(layer_op->Input("Input")[0], y_var->Name());
     layer_op->SetInput("Input", {x_var->Name()});
     subgraph.at(layer)->inputs.push_back(subgraph.at(x));
@@ -119,13 +119,13 @@ std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
     VLOG(4) << "replace " << y_var->Name() << " -> " << x_var->Name();
 
     if (!only_forward) {
-      PADDLE_ENFORCE_EQ(layer_g_op->Input("Input").size(), 1);
+      PADDLE_ENFORCE_EQ(layer_g_op->Input("Input").size(), 1UL);
       PADDLE_ENFORCE_EQ(layer_g_op->Input("Input")[0], y_var->Name());
       layer_g_op->SetInput("Input", {x_var->Name()});
       subgraph.at(layer_g)->inputs.push_back(subgraph.at(x));
       subgraph.at(x)->outputs.push_back(subgraph.at(layer_g));
 
-      PADDLE_ENFORCE_EQ(layer_g_op->Output(GradVarName("Input")).size(), 1);
+      PADDLE_ENFORCE_EQ(layer_g_op->Output(GradVarName("Input")).size(), 1UL);
       PADDLE_ENFORCE_EQ(layer_g_op->Output(GradVarName("Input"))[0],
                         yg_var->Name());
       layer_g_op->SetOutput(GradVarName("Input"), {xg_var->Name()});

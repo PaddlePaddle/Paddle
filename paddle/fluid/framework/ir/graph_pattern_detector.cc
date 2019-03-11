@@ -38,7 +38,7 @@ size_t PDPattern::id_ = 0UL;
 
 PDNode *PDPattern::NewNode(const std::string &name) {
   if (!name.empty()) {
-    PADDLE_ENFORCE_EQ(node_map_.count(name), 0,
+    PADDLE_ENFORCE_EQ(node_map_.count(name), 0UL,
                       "PDNode's name should be unique, get duplicate [%s]",
                       name);
   }
@@ -51,7 +51,7 @@ PDNode *PDPattern::NewNode(const std::string &name) {
 
 PDNode *PDPattern::NewNode(PDNode::teller_t &&teller, const std::string &name) {
   if (!name.empty()) {
-    PADDLE_ENFORCE_EQ(node_map_.count(name), 0,
+    PADDLE_ENFORCE_EQ(node_map_.count(name), 0UL,
                       "PDNode's name should be unique, get duplicate [%s]",
                       name);
   }
@@ -115,11 +115,6 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
     if (!pdnodes2nodes_.count(pdnode.get())) {
       VLOG(4) << pdnode->name() << " can't find matched Node, early stop";
       // return false;
-    }
-  }
-  for (auto &item : pdnodes2nodes_) {
-    for (auto &n : item.second) {
-      GetMarkedNodes(const_cast<Graph *>(&graph)).insert(n);
     }
   }
   VLOG(3) << pdnodes2nodes_.size() << " nodes marked";
