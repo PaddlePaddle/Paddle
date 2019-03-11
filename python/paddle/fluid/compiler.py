@@ -36,6 +36,15 @@ def _place_obj(place):
     return p
 
 
+def _is_pserver_mode(main_program):
+    main = main_program if main_program \
+        else framework.default_main_program()
+    for op in main.global_block().ops:
+        if op.type in ["send", "recv"]:
+            return True
+    return False
+
+
 class CompiledProgram(object):
     """
     Compiles to Graph for execution.
@@ -166,9 +175,9 @@ class CompiledProgram(object):
     def _with_distributed(self):
         raise NotImplementedError()
 
-    def _compile_data_parallel(self):
+    def _compile_data_parallel(self, use_cuda=False, scope=None):
         if self._share_vars_from:
-            if self._scope:
+            if scope:
                 sys.stderr.write("share_vars_from is set, scope is ignored.\n")
             if not self._share_vars_from._is_data_parallel:
                 raise ValueError("share_vars_from is not data parallel. Cannot "
@@ -179,6 +188,7 @@ class CompiledProgram(object):
                     "var to share.")
             self._local_scopes = self._share_vars_from._executor.local_scopes()
         else:
+            assert scope is not None, ""
             self._local_scopes = []
 
         self._exec_strategy.use_cuda = isinstance(self._place, core.CUDAPlace)
@@ -204,10 +214,12 @@ class CompiledProgram(object):
 
         # FIXME(dzhwinter): enable_inplace should be after memory_optimize
         # if turn on python memory optimize, turn off the inplace_pass.
-        if self._build_strategy.memory_optimize is None:
-            self._build_strategy.memory_optimize = False if self._program and self._program._is_mem_optimized else True
-        if self._build_strategy.enable_inplace is None:
-            self._build_strategy.enable_inplace = False if self._program and self._program._is_mem_optimized else True
+        # memory_optimize and enable_inplace default are True, but we can disable them on purpose
+        if self._program and self._program._is_mem_optimized:
+            self._build_strategy.memory_optimize = False
+
+        if self._program and self._program._is_mem_optimized:
+            self._build_strategy.enable_inplace = False
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
@@ -229,12 +241,12 @@ class CompiledProgram(object):
 
         places = list(map(_place_obj, self._places))
 
-        return core.ParallelExecutor(
-            places,
-            set(self._persistable_vars),
-            cpt.to_text(self._loss_name)
-            if self._loss_name else six.u(''), self._scope, self._local_scopes,
-            self._exec_strategy, self._build_strategy, self._graph)
+        return core.ParallelExecutor(places,
+                                     set(self._persistable_vars),
+                                     cpt.to_text(self._loss_name)
+                                     if self._loss_name else six.u(''), scope,
+                                     self._local_scopes, self._exec_strategy,
+                                     self._build_strategy, self._graph)
 
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)
@@ -261,7 +273,9 @@ class CompiledProgram(object):
         self._scope = scope
         self._place = place
         if self._is_data_parallel:
-            self._executor = self._compile_data_parallel()
+            self._executor = self._compile_data_parallel(
+                use_cuda=isinstance(self._place, core.CUDAPlace),
+                scope=self._scope)
         elif self._is_inference:
             self._executor = self._compile_inference()
         else:

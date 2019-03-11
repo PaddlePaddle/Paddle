@@ -155,6 +155,21 @@ bool VSquareKernel<float>::UseMe(const int& d) const {
 }
 
 template <>
+bool VCopyKernel<float>::UseMe(const int& d) const {
+  return d > 15;
+}
+
+template <>
+bool VBroadcastKernel<float>::UseMe(const int64_t& d) const {
+  return d > 127;
+}
+
+template <>
+bool VBroadcastKernel<double>::UseMe(const int64_t& attr) const {
+  return true;
+}
+
+template <>
 bool VSigmoidKernel<float>::UseMe(const int& d) const {
   return d > 7;
 }
@@ -181,6 +196,16 @@ bool EmbSeqPoolKernel<float>::UseMe(const emb_seq_pool_attr_t& attr) const {
 
 template <>
 bool EmbSeqPoolKernel<double>::UseMe(const emb_seq_pool_attr_t& attr) const {
+  return true;
+}
+
+template <>
+bool SgdKernel<float>::UseMe(const sgd_attr_t& attr) const {
+  return true;
+}
+
+template <>
+bool SgdKernel<double>::UseMe(const sgd_attr_t& attr) const {
   return true;
 }
 
@@ -213,6 +238,7 @@ AWALYS_USE_ME_WITH_DOUBLE(VExp);
 AWALYS_USE_ME_WITH_DOUBLE(VSigmoid);
 AWALYS_USE_ME_WITH_DOUBLE(VTanh);
 AWALYS_USE_ME_WITH_DOUBLE(VSquare);
+AWALYS_USE_ME_WITH_DOUBLE(VCopy);
 AWALYS_USE_ME_WITH_DOUBLE(Softmax);
 
 #undef AWALYS_USE_ME_WITH_DOUBLE
@@ -234,10 +260,13 @@ REGISTER_MKL_KERNEL(kVAdd, VAdd);
 REGISTER_MKL_KERNEL(kVScal, VScal);
 REGISTER_MKL_KERNEL(kVExp, VExp);
 REGISTER_MKL_KERNEL(kVSquare, VSquare);
+REGISTER_MKL_KERNEL(kVCopy, VCopy);
+REGISTER_MKL_KERNEL(kVBroadcast, VBroadcast);
 REGISTER_MKL_KERNEL(kVSigmoid, VSigmoid);
 REGISTER_MKL_KERNEL(kVTanh, VTanh);
 REGISTER_MKL_KERNEL(kSeqPool, SeqPool);
 REGISTER_MKL_KERNEL(kEmbSeqPool, EmbSeqPool);
 REGISTER_MKL_KERNEL(kSoftmax, Softmax);
+REGISTER_MKL_KERNEL(kSgd, Sgd);
 
 #undef REGISTER_MKL_KERNEL

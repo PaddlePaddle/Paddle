@@ -142,7 +142,8 @@ def create_global_var(shape,
 def cast(x, dtype):
     """
     This layer takes in the Variable :attr:`x` with :attr:`x.dtype` and casts
-    it to the output with :attr:`dtype`.
+    it to the output with :attr:`dtype`. It's meaningless if the output
+    dtype equals the input dtype, but it's fine if you do so.
 
     Args:
         x (Variable): The input Variable for casting.

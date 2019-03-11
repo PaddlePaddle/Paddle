@@ -231,7 +231,7 @@ class TestImperativeResnet(unittest.TestCase):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
-        batch_num = 2
+        batch_num = 20
         with fluid.imperative.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -285,8 +285,6 @@ class TestImperativeResnet(unittest.TestCase):
 
                 optimizer.minimize(avg_loss)
                 resnet.clear_gradients()
-
-                fluid.default_main_program().global_block()._clear_block()
 
                 dy_param_value = {}
                 for param in resnet.parameters():

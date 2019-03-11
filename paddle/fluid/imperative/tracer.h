@@ -40,7 +40,7 @@ platform::Place GetExpectedPlace(platform::Place place, VarBasePtrMap inputs);
 
 class Tracer {
  public:
-  explicit Tracer(framework::BlockDesc* root_block) : root_block_(root_block) {}
+  explicit Tracer(framework::BlockDesc* root_block);
 
   virtual ~Tracer() {}
 

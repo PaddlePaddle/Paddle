@@ -22,6 +22,9 @@ class SequenceEnumerateOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
+    if (ctx->IsRuntime()) {
+      return;
+    }
     PADDLE_ENFORCE(
         ctx->HasInput("X"),
         "Input(X) of SequecceEnumerate operator should not be null.");
@@ -33,9 +36,9 @@ class SequenceEnumerateOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dims.size(), 2,
         "Input(X) of SequenceEnumerate operator's rank should be 2.");
-    PADDLE_ENFORCE_EQ(
-        x_dims[1], 1,
-        "Input(X) of SequenceEnumerate operator's 2nd dimension should be 1.");
+    PADDLE_ENFORCE_EQ(x_dims[1], 1,
+                      "Input(X) of SequenceEnumerate operator's 2nd "
+                      "dimension should be 1.");
 
     const auto win_size = ctx->Attrs().Get<int>("win_size");
     ctx->SetOutputDim("Out", {x_dims[0], win_size});
