@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -35,6 +36,12 @@ namespace framework {
 class Scope;
 
 namespace details {
+
+struct OpDependentData {
+  std::unordered_map<OpHandleBase *, size_t> pending_ops_;
+  std::unordered_set<VarHandleBase *> pending_vars_;
+  std::unordered_set<OpHandleBase *> ready_ops_;
+};
 
 class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
  public:
@@ -57,6 +64,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
  private:
   ir::Graph *graph_;
   std::unique_ptr<::ThreadPool> pool_;
+  ::ThreadPool prepare_pool_;
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
   platform::DeviceContextPool fetch_ctxs_;
@@ -67,7 +75,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
                        OpHandleBase *op_instance) const;
 
   void InsertPendingVar(std::unordered_set<VarHandleBase *> *pending_vars,
-                        BlockingQueue<VarHandleBase *> *ready_vars,
+                        std::unordered_set<VarHandleBase *> *ready_vars,
                         VarHandleBase *var) const;
 
   void InsertFetchOps(const std::vector<std::string> &fetch_tensors,
@@ -78,8 +86,14 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
                       BlockingQueue<VarHandleBase *> *ready_vars,
                       FeedFetchList *fetch_data);
 
+  void PrepareOpDeps();
+  void CopyOpDeps();
+
  private:
+  std::future<std::unique_ptr<OpDependentData>> op_deps_futures_;
+
   ExecutionStrategy strategy_;
+  std::unique_ptr<OpDependentData> op_deps_;
   // use std::list because clear(), push_back, and for_each are O(1)
   std::list<std::future<void>> run_op_futures_;
 };

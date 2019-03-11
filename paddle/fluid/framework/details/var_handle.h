@@ -43,6 +43,7 @@ struct VarHandleBase {
   virtual ~VarHandleBase();
 
   virtual std::string DebugString() const = 0;
+  virtual const std::string& Name() const = 0;
 
   void AddInput(OpHandleBase* in, ir::Node* node) {
     node_->inputs.clear();
@@ -125,6 +126,7 @@ struct VarHandle : public VarHandleBase {
 
   size_t version() const { return version_; }
   size_t scope_idx() const { return scope_idx_; }
+  const std::string& Name() const override { return name_; }
   const std::string& name() const { return name_; }
   const platform::Place& place() const { return place_; }
 };
@@ -136,6 +138,10 @@ struct DummyVarHandle : public VarHandleBase {
   virtual ~DummyVarHandle();
 
   std::string DebugString() const override;
+
+ public:
+  const std::string& Name() const override { return name_; }
+  std::string name_{"DummyVar"};
 };
 
 }  // namespace details

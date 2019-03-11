@@ -122,6 +122,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // Verify that the graph is correct for multi-device executor.
     AppendPass("multi_devices_check_pass");
 
+    if (VLOG_IS_ON(2)) {
+      AppendPass("all_reduce_deps_pass");
+    }
+
     if (SeqOnlyAllReduceOps(strategy)) {
       AppendPass("all_reduce_deps_pass");
     }
