@@ -181,13 +181,14 @@ std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
   return member_->local_scopes_;
 }
 
-ParallelExecutor::ParallelExecutor(
-    const std::vector<platform::Place> &places,
-    const std::unordered_set<std::string> &bcast_vars,
-    const std::string &loss_var_name, Scope *scope,
-    const std::vector<Scope *> &local_scopes,
-    const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
-    ir::Graph *graph)
+ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
+                                   const std::vector<std::string> &bcast_vars,
+                                   const std::string &loss_var_name,
+                                   Scope *scope,
+                                   const std::vector<Scope *> &local_scopes,
+                                   const ExecutionStrategy &exec_strategy,
+                                   const BuildStrategy &build_strategy,
+                                   ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
@@ -258,6 +259,7 @@ ParallelExecutor::ParallelExecutor(
   // 1. multiple trainer instances
   // 2. one trainer with multiple devices
   if (build_strategy.num_trainers_ > 1) {
+    VLOG(0) << "broadcasting... trainer_id: " << build_strategy.trainer_id_;
     BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
   } else {
     if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
@@ -346,7 +348,7 @@ ParallelExecutor::ParallelExecutor(
 }
 
 void ParallelExecutor::BCastParamsToDevices(
-    const std::unordered_set<std::string> &vars, int trainer_id) const {
+    const std::vector<std::string> &vars, int trainer_id) const {
   // the initializing bcast, all vars would be bcast from device(0).
   for (auto &var : vars) {
     framework::Variable *main_var = member_->local_scopes_[0]->FindVar(var);
@@ -366,6 +368,7 @@ void ParallelExecutor::BCastParamsToDevices(
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
       ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
+      VLOG(0) << "broadcast " << var << " numel: " << numel;
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;

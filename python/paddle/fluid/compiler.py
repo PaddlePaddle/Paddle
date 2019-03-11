@@ -220,10 +220,11 @@ class CompiledProgram(object):
             ])
 
         places = list(map(_place_obj, self._places))
+        self._persistable_vars = list(set(self._persistable_vars))
+        self._persistable_vars.sort()
 
         return core.ParallelExecutor(
-            places,
-            set(self._persistable_vars),
+            places, self._persistable_vars,
             cpt.to_text(self._loss_name)
             if self._loss_name else six.u(''), self._scope, self._local_scopes,
             self._exec_strategy, self._build_strategy, self._graph)

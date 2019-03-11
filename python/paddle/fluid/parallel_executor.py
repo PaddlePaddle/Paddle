@@ -172,6 +172,8 @@ class ParallelExecutor(object):
                 if var.persistable and var.type != core.VarDesc.VarType.RAW
             ]
         ])
+        persistable_vars = list(set(persistable_vars))
+        persistable_vars.sort()
 
         def place_obj(place):
             p = core.Place()
