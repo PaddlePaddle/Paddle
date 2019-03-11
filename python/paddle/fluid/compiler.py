@@ -37,7 +37,7 @@ def _place_obj(place):
 
 def _is_pserver_mode(main_program):
     main = main_program if main_program \
-        else default_main_program()
+        else framework.default_main_program()
     for op in main.global_block().ops:
         if op.type in ["send", "recv"]:
             return True
