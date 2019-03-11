@@ -65,7 +65,8 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
     // Get numel and dtype
     size_t numel = 0;
     auto dtype = kDefaultDtype;
-    GetMemSizeAndDtype(in_tensors, in_var_names, &numel, &dtype);
+    GetMemSizeAndDtype(in_tensors, in_var_names, &numel, &dtype,
+                       context.GetPlace());
 
     // Alloc the continuous space
     auto fused_tensor = context.Output<framework::LoDTensor>("FusedOutput");
@@ -82,7 +83,7 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
             static_cast<int64_t>(offset), static_cast<int64_t>(offset + len));
         framework::TensorCopy(*in_tensors[i], context.GetPlace(), dev_ctx,
                               &sub_tensor);
-        offset += Alignment(len);
+        offset += Alignment(len, context.GetPlace());
       }
     } else if (context.Attr<bool>("set_constant")) {
       math::SetConstant<DeviceContext, T> set_constant;
@@ -99,7 +100,7 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
           ->ShareDataWith(fused_tensor->Slice(
               static_cast<int64_t>(offset), static_cast<int64_t>(offset + len)))
           .Resize(dim);
-      len = Alignment(len);
+      len = Alignment(len, context.GetPlace());
       offset += len;
       VLOG(10) << "alloc_space_for_vars: output(" << out_var_names[i]
                << ") ,dim:(" << dim << ")"
@@ -110,16 +111,20 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
  private:
   // Note(zcd): Addresses should be aligned, otherwise, the results may have
   // diff.
-  size_t Alignment(size_t size) const {
-    size_t alignment = 1 << 8;
-    size_t remaining = size % alignment;
-    return remaining == 0 ? size : size + (alignment - remaining);
+  size_t Alignment(size_t size, const platform::Place &place) const {
+    if (platform::is_gpu_place(place)) {
+      size_t alignment = 1 << 8;
+      size_t remaining = size % alignment;
+      return remaining == 0 ? size : size + (alignment - remaining);
+    }
+    return size;
   }
 
   void GetMemSizeAndDtype(
       const std::vector<const framework::LoDTensor *> &lod_tensors,
       const std::vector<std::string> var_names, size_t *numel,
-      framework::proto::VarType::Type *dtype) const {
+      framework::proto::VarType::Type *dtype,
+      const platform::Place &place) const {
     PADDLE_ENFORCE_EQ(lod_tensors.size(), var_names.size());
     *numel = 0;
     for (size_t i = 0; i < var_names.size(); ++i) {
@@ -138,7 +143,7 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GT(size, 0);
       VLOG(10) << "alloc_space_for_vars: input(" << var_names[i] << ") ,dim:("
                << lod_tensors[i]->dims() << ")";
-      *numel += Alignment(static_cast<size_t>(size));
+      *numel += Alignment(static_cast<size_t>(size), place);
     }
   }
 };

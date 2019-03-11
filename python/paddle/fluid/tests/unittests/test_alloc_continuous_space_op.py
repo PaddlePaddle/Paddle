@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 alignment = 256
 
@@ -68,7 +68,7 @@ class TestAllocContinuousSpace(OpTest):
         return output
 
     def test_check_output(self):
-        self.check_output(no_check_set=["FusedOutput"])
+        self.check_output_with_place([core.CUDAPlace(0)], atol=1e-5)
 
 
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
@@ -76,7 +76,8 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
         return {"copy_data": False, "set_constant": True, "constant": 0.5}
 
     def test_check_output(self):
-        self.check_output(no_check_set=["Output"])
+        self.check_output_with_place(
+            [core.CUDAPlace(0)], no_check_set=["Output"], atol=1e-5)
 
 
 if __name__ == '__main__':
