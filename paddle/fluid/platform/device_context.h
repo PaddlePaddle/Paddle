@@ -37,6 +37,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/stream_callback_manager.h"
 #endif
+#include "cuda_device_guard.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
@@ -213,6 +214,9 @@ class CudnnWorkspaceHandle {
 class CUDADeviceContext : public DeviceContext {
  public:
   explicit CUDADeviceContext(CUDAPlace place);
+
+  CUDADeviceContext(CUDAPlace place, cudaStream_t stream);
+
   virtual ~CUDADeviceContext();
 
   /*! \brief  Wait for all operations completion in the stream. */

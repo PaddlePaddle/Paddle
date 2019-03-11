@@ -356,6 +356,18 @@ CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
+CUDADeviceContext::CUDADeviceContext(CUDAPlace place, cudaStream_t stream)
+    : place_(place), cudnn_holder_(nullptr) {
+  CUDADeviceGuard guard(place_.device);
+  compute_capability_ = GetCUDAComputeCapability(place_.device);
+  multi_process_ = GetCUDAMultiProcessors(place_.device);
+  max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
+  eigen_stream_.reset(new EigenCudaStreamDevice());
+  eigen_stream_->Reinitialize(&stream_, place);
+  eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
+  cublas_handle_.reset(new CublasHandleHolder(stream_, CUBLAS_DEFAULT_MATH));
+}
+
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }

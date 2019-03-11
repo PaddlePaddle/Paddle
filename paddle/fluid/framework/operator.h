@@ -452,6 +452,7 @@ class OperatorWithKernel : public OperatorBase {
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
 
+ protected:
   /**
    * Transfer data from scope to a transfered scope. If there is no data need to
    * be tranfered, it returns nullptr.
@@ -467,8 +468,9 @@ class OperatorWithKernel : public OperatorBase {
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
 
- protected:
   mutable OpKernelConfigsMap kernel_configs_map_;
+
+  friend class StreamOperation;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

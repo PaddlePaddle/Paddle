@@ -39,6 +39,8 @@ struct CudaAPI {
 
   static void RecordEvent(event_t event);
 
+  static void RecordEvent(event_t event, stream_t stream);
+
   static bool QueryEvent(event_t event);
 
   static void SyncEvent(event_t event);

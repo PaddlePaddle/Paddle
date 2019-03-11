@@ -26,18 +26,30 @@ std::unique_ptr<Graph> ParallelSchedulePass::ApplyImpl(
   graph->Set(kStreamMap, new stream_map_t);
   auto& stream_map = graph->Get<stream_map_t>(kStreamMap);
 
+  graph->Set(kEventDependMap, new event_depend_map_t);
+  auto& event_depend_map = graph->Get<event_depend_map_t>(kEventDependMap);
+
   for (auto& node : GraphTraits::TS(*graph)) {
     if (node.IsOp()) {
+      auto op_key = GenOpKey(*node.Op());
       // Each operator has an unique stream to make them parallel.
       // The outputs share the same stream of the operator, when the operator
       // finish executes, it will generate a event.
       // When the next operator begin executes, it should sync all the events of
       // the tensor belongs.
-      stream_map.emplace(&node, stream_count);
+      stream_map.emplace(GenOpKey(*node.Op()), stream_count);
       for (auto* o : node.outputs) {
-        stream_map.emplace(o, stream_count);
+        stream_map.emplace(o->Name(), stream_count);
       }
       ++stream_count;
+
+      // Prepare event dependent relations.
+      for (auto* i : node.inputs) {
+        event_depend_map[op_key + ":inputs"].insert(stream_map.at(i->Name()));
+      }
+      for (auto* o : node.outputs) {
+        event_depend_map[op_key + ":outputs"].insert(stream_map.at(o->Name()));
+      }
     }
   }
   return graph;

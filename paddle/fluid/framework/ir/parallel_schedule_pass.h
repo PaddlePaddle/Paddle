@@ -24,12 +24,20 @@ namespace framework {
 namespace ir {
 
 const char kStreamMap[] = "__stream_map__";
+const char kEventDependMap[] = "__event_depend_map__";
+
+// Only analyze the main block, so the key is string.
+// Each stream will have an event.
+using stream_map_t =
+    std::unordered_map<std::string /*node repr*/, int /*stream id*/>;
+
+// Record the input events each operator depends on, and record the events the
+// outputs will update.
+using event_depend_map_t =
+    std::unordered_map<std::string, std::set<int> /*stream ids*/>;
 
 class ParallelSchedulePass : public Pass {
  public:
-  using stream_map_t =
-      std::unordered_map<void* /*node adr*/, int /*stream id*/>;
-
  protected:
   std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const override;
 };

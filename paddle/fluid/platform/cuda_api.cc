@@ -60,5 +60,9 @@ void CudaAPI::SyncStream(stream_t stream) {
   PADDLE_ENFORCE(cudaStreamSynchronize(stream));
 }
 
+void CudaAPI::RecordEvent(CudaAPI::event_t event, CudaAPI::stream_t stream) {
+  PADDLE_ENFORCE(cudaEventRecord(event, stream));
+}
+
 }  // namespace platform
 }  // namespace paddle

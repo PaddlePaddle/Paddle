@@ -148,5 +148,28 @@ class OpDesc {
   // local changes should be synchronized, need_update_ should be set to true.
   bool need_update_{false};
 };
+
+static std::string GenOpKey(const std::string &type,
+                            std::vector<std::string> inputs,
+                            std::vector<std::string> outputs) {
+  std::sort(inputs.begin(), inputs.end());
+  std::sort(outputs.begin(), outputs.end());
+
+  std::stringstream ss;
+  ss << type << ";";
+  for (auto &x : inputs) {
+    ss << x << ":";
+  }
+  ss << ";";
+  for (auto &x : outputs) {
+    ss << x << ":";
+  }
+  return ss.str();
+}
+
+static std::string GenOpKey(const OpDesc &desc) {
+  return GenOpKey(desc.Type(), desc.InputNames(), desc.OutputNames());
+}
+
 }  // namespace framework
 }  // namespace paddle
