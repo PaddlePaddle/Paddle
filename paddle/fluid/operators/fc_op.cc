@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fc_op.h"
+#include <cstdlib>
 #include <vector>
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
@@ -69,6 +70,11 @@ void FCOp::InferShape(framework::InferShapeContext* ctx) const {
 
   ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
   ctx->ShareLoD("Input", "Out");
+
+  char var[] = "MKL_VERBOSE=1";
+  if (putenv(var) != 0) {
+    std::cout << "Could not set MKL_VERBOSE=1" << std::endl;
+  }
 }
 
 framework::OpKernelType FCOp::GetExpectedKernelType(

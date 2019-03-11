@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <mkldnn/include/mkldnn_types.h>
-#include <memory>
 #include <cstdlib>
+#include <memory>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -252,18 +252,17 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    char var[] = "MKL_VERBOSE=1";
-    if (putenv(var) != 0) {
-       std::cout << "Could not set MKL_VERBOSE=1" << std::endl;
+    if (getenv("MKL_VERBOSE") == NULL) {
+      std::cout << "Could not get MKL_VERBOSE" << std::endl;
+    } else {
+      std::cout << "===> MKL-DNN FC with MKL. MKL_VERBOSE="
+                << getenv("MKL_VERBOSE") << std::endl;
     }
-
 
     auto input = ctx.Input<Tensor>("Input");
     auto w = ctx.Input<Tensor>("W");
     auto bias = ctx.Input<Tensor>("Bias");
     auto output = ctx.Output<Tensor>("Out");
-
-    printf("===> MKL-DNN FC\n");
 
     auto prim_creator = GetPrimitiveFactory<T>(dev_ctx, ctx, w, mkldnn_engine);
     auto fc = prim_creator->CreateFcPrimitive(input, w, bias, output, ctx);

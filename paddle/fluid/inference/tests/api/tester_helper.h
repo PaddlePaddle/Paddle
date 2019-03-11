@@ -96,7 +96,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         float max_abs = 0.0f;
         for (size_t j = 0; j < size; ++j) {
           auto tmpval = std::abs(pdata_ref[j] - pdata[j]);
-          if(tmpval > max_abs) {
+          if (tmpval > max_abs) {
             max_abs = tmpval;
           }
         }
