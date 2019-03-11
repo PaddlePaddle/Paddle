@@ -1003,9 +1003,43 @@ TEST(JITKernel_helper, GetAllCandidateFuncs) {
   }
 }
 
+TEST(JITKernel_helper, pack_weights) {
+  const int N = 8 * 60, K = 2;
+  float src[K][N], yref[K][N], y[K * N];
+  float* x = &(src[0][0]);
+  float* ref = &(yref[0][0]);
+  for (int i = 0; i < N * K; ++i) {
+    *(x + i) = static_cast<float>(i);
+  }
+  int block = 0;
+  std::vector<int> groups;
+  if (paddle::platform::MayIUse(paddle::platform::avx512f)) {
+    block = ZMM_FLOAT_BLOCK;
+    groups.push_back(30);
+  } else {
+    block = YMM_FLOAT_BLOCK;
+    groups.insert(groups.end(), {14, 14, 14, 14, 4});
+  }
+
+  int offset = 0;
+  int acc = 0;
+  for (int g : groups) {
+    g = g * block;
+    for (int k = 0; k < K; ++k) {
+      for (int i = 0; i < g; ++i) {
+        *(ref + offset) = src[k][i + acc];
+        offset++;
+      }
+    }
+    acc += g;
+  }
+
+  jit::pack_weights<float>(x, y, N, K);
+  ExpectEQ<float>(y, ref, N * K);
+}
+
 TEST(JITKernel_helper, attr) {
   std::ostringstream out;
-
   // KernelTypes
   out << jit::to_string(jit::kNone) << jit::to_string(jit::kCRFDecoding)
       << jit::to_string(jit::kEmbSeqPool) << jit::to_string(jit::kGRUH1)

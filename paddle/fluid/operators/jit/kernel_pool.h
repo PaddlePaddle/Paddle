@@ -17,6 +17,7 @@
 #include <memory>  // for unique_ptr
 #include <string>
 #include <unordered_map>
+#include <utility>  // for move
 #include <vector>
 #include "paddle/fluid/operators/jit/gen_base.h"
 #include "paddle/fluid/operators/jit/kernel_base.h"
