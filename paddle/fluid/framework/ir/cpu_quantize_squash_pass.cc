@@ -14,7 +14,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/cpu_quantize_squash_pass.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/enforce.h"
