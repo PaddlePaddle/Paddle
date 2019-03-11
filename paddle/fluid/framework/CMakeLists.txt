@@ -209,7 +209,7 @@ endif (NOT WIN32)
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
 
-cc_library(stream_executor SRCS stream_executor.cc DEPS scope)
+cc_library(stream_executor SRCS stream_engine.cc DEPS scope)
 
 # Get the current working branch
 execute_process(

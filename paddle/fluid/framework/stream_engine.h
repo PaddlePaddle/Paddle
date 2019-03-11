@@ -180,21 +180,24 @@ class StreamEngine final {
     }
 
     for (auto&& op : ops) {
-      operations_.emplace_back(op, scope, place);
+      operations_.emplace_back(
+          new StreamOperation(std::move(op), scope, place));
       // Prepare input events
       std::vector<CudaAPI::event_t> input_events, output_events;
 
       const auto op_key =
           GenOpKey(op->Type(), op->InputVars(), op->OutputVars(false));
-      auto op_stream_id = stream_map.at(op_key);
+      // auto op_stream_id = stream_map.at(op_key);
 
-      const auto& input_event_ids = event_depend_map.find(op_key + ":inputs");
-      const auto& output_event_ids = event_depend_map.find(op_key + ":outputs");
+      auto input_event_ids_it = event_depend_map.find(op_key + ":inputs");
+      auto output_event_ids_it = event_depend_map.find(op_key + ":outputs");
+      PADDLE_ENFORCE(input_event_ids_it != event_depend_map.end());
+      PADDLE_ENFORCE(output_event_ids_it != event_depend_map.end());
 
-      for (int id : input_event_ids) {
+      for (int id : input_event_ids_it->second) {
         input_events.push_back(parallel_meta_.at(id).event);
       }
-      for (int id : output_event_ids) {
+      for (int id : output_event_ids_it->second) {
         output_events.push_back(parallel_meta_.at(id).event);
       }
       operations_.back()->SetInputEvents(input_events);
