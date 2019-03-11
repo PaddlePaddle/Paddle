@@ -232,7 +232,7 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
          negetive samples will be smoothed to :math:`1.0 / class\_num`.
 
          While :attr:`GTScore` is given, which means the mixup score of ground truth 
-         boxes, all looses incured by a ground truth box will be multiplied by its 
+         boxes, all losses incured by a ground truth box will be multiplied by its 
          mixup score.
          )DOC");
   }
