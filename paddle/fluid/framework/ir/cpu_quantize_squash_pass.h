@@ -14,7 +14,9 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -35,10 +37,10 @@ class CPUQuantizeSquashPass : public FusePassBase {
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
   void Squash(Graph* graph,
-              std::unordered_map<const Node*, int>& nodes_keep_counter) const;
+              std::unordered_map<const Node*, int>* nodes_keep_counter) const;
   void FindNodesToKeep(
       Graph* graph,
-      std::unordered_map<const Node*, int>& nodes_keep_counter) const;
+      std::unordered_map<const Node*, int>* nodes_keep_counter) const;
 
   const std::string name_scope_{"squash"};
 };

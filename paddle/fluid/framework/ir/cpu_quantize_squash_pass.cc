@@ -14,9 +14,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/cpu_quantize_squash_pass.h"
-#include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -27,7 +25,7 @@ namespace ir {
 
 void CPUQuantizeSquashPass::FindNodesToKeep(
     Graph* graph,
-    std::unordered_map<const Node*, int>& nodes_keep_counter) const {
+    std::unordered_map<const Node*, int>* nodes_keep_counter) const {
   GraphPatternDetector gpd;
   patterns::DequantAny deq_any_pattern{gpd.mutable_pattern(),
                                        "deqant_not_quant"};
@@ -41,10 +39,10 @@ void CPUQuantizeSquashPass::FindNodesToKeep(
 
     GET_IR_NODE_FROM_SUBGRAPH(dequant_out, dequant_out, deq_any_pattern);
 
-    if (nodes_keep_counter.find(dequant_out) == nodes_keep_counter.end())
-      nodes_keep_counter[dequant_out] = 1;
+    if (nodes_keep_counter->find(dequant_out) == nodes_keep_counter->end())
+      (*nodes_keep_counter)[dequant_out] = 1;
     else
-      nodes_keep_counter[dequant_out] += 1;
+      (*nodes_keep_counter)[dequant_out] += 1;
     found_count++;
   };
   gpd(graph, handler);
@@ -53,7 +51,7 @@ void CPUQuantizeSquashPass::FindNodesToKeep(
 
 void CPUQuantizeSquashPass::Squash(
     Graph* graph,
-    std::unordered_map<const Node*, int>& nodes_keep_counter) const {
+    std::unordered_map<const Node*, int>* nodes_keep_counter) const {
   GraphPatternDetector gpd;
   patterns::DequantQuantRM squash_pattern{gpd.mutable_pattern(), "squash_pass"};
   squash_pattern();
@@ -77,11 +75,9 @@ void CPUQuantizeSquashPass::Squash(
     auto* next_op_desc = next_op->Op();
     float dequant_scale = boost::get<float>(dequant->Op()->GetAttr("Scale"));
     float quant_scale = boost::get<float>(quant->Op()->GetAttr("Scale"));
-    bool is_negative =
-        boost::get<bool>(quant->Op()->GetAttr("is_negative_input"));
-    PADDLE_ENFORCE(nodes_keep_counter.find(dequant_out) !=
-                   nodes_keep_counter.end());
-    bool keep_dequant = nodes_keep_counter[dequant_out]-- > 1;
+    PADDLE_ENFORCE(nodes_keep_counter->find(dequant_out) !=
+                   nodes_keep_counter->end());
+    bool keep_dequant = (*nodes_keep_counter)[dequant_out]-- > 1;
 
     if (dequant_scale == quant_scale) {
       auto quant_out_var_name = quant_out->Name();
@@ -136,8 +132,8 @@ std::unique_ptr<ir::Graph> CPUQuantizeSquashPass::ApplyImpl(
   FusePassBase::Init("cpu_quantize_squash_pass", graph.get());
 
   std::unordered_map<const Node*, int> nodes_keep_counter;
-  FindNodesToKeep(graph.get(), nodes_keep_counter);
-  Squash(graph.get(), nodes_keep_counter);
+  FindNodesToKeep(graph.get(), &nodes_keep_counter);
+  Squash(graph.get(), &nodes_keep_counter);
 
   return graph;
 }
