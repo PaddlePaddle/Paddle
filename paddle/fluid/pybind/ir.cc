@@ -103,7 +103,8 @@ void BindGraph(py::module *m) {
       .def("retrieve_node", &Graph::RetrieveNode,
            return_value_policy::reference)
       .def("resolve_hazard", &Graph::ResolveHazard)
-      .def("origin_program_desc", &Graph::OriginProgram);
+      .def("origin_program_desc", &Graph::OriginProgram,
+           return_value_policy::reference);
 }
 
 void BindNode(py::module *m) {

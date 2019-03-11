@@ -1829,6 +1829,17 @@ class IrOpNode(IrNode):
         super(IrOpNode, self).__init__(node)
         self.node = node
 
+    def block(self):
+        """
+        Get the block description of this op.
+
+        Returns:
+            core.BlockDesc: the block description of this op.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        return self.node.op().block()
+
     def rename_input(self, old_input_name, new_input_name):
         """
         Rename the input of this node.
@@ -2012,7 +2023,16 @@ class IrGraph(object):
             raise ValueError("var_node %s not in this graph" % name)
         return target_var_node
 
-    def create_persistable_node(self, name, var_type, shape, var_dtype):
+    def origin_global_block(self):
+        """
+        Get the global block of the origin program.
+
+        Returns:
+            core.BlockDesc: The global block of the origin program.
+        """
+        return self.graph.origin_program_desc().block(0)
+
+    def create_persistable_node(self, name, var_type, shape, var_dtype, block):
         """
         Create a persistable variable node in the graph. In IrGraph,
         it can not distinguish between persistable variables and parameters.
@@ -2022,18 +2042,19 @@ class IrGraph(object):
             vart_type(core.VarDesc.VarType): the type of the persistable variable node.
             shape(list): the shape of the persistable variable node.
             var_dtype(core.VarDesc.VarType): the data type of the persistable variable node.
+            block(core.BlockDesc): The block where the node is created.
 
         Returns:
             IrVarNode: the created persistable variable node.
         """
-        var_desc = core.VarDesc(name)
+        var_desc = block.var(cpt.to_bytes(name))
         var_desc.set_type(var_type)
         var_desc.set_shape(shape)
         var_desc.set_dtype(var_dtype)
         var_desc.set_persistable(True)
         return IrVarNode(self.graph.create_var_node(var_desc))
 
-    def create_var_node(self, name, var_type, shape, var_dtype):
+    def create_var_node(self, name, var_type, shape, var_dtype, block):
         """
         Create a variable node in the graph. The created variable node is
         not persistable.
@@ -2043,12 +2064,13 @@ class IrGraph(object):
             vart_type(core.VarDesc.VarType): the type of the variable node.
             shape(list): the shape of the variable node.
             var_dtype(core.VarDesc.VarType): the data type of the variable node.
+            block(core.BlockDesc): The block where the node is created.
 
         Returns:
             IrVarNode: the created variable node.
         """
 
-        var_desc = core.VarDesc(name)
+        var_desc = block.var(cpt.to_bytes(name))
         var_desc.set_type(var_type)
         var_desc.set_shape(shape)
         var_desc.set_dtype(var_dtype)
@@ -2067,7 +2089,7 @@ class IrGraph(object):
         """
         return IrVarNode(self.graph.create_var_node(var_desc))
 
-    def create_op_node(self, op_type, attrs, inputs, outputs):
+    def create_op_node(self, op_type, attrs, inputs, outputs, block):
         """
         Create a operator node in the graph.
 
@@ -2076,11 +2098,12 @@ class IrGraph(object):
             attrs(dict): the attributes of the operator node.
             inputs(dict): the inputs of the operator node.
             outputs(dict): the outpus of the operator node.
+            block(core.BlockDesc): The block where the node is created.
 
         Returns:
             IrOpNode: the created operator node.
         """
-        op_desc = core.OpDesc()
+        op_desc = core.OpDesc(block)
         op_desc.set_type(op_type)
         for attr, value in six.iteritems(attrs):
             self._update_desc_attr(op_desc, attr, value)
@@ -2180,10 +2203,10 @@ class IrGraph(object):
         Notes: the `graph` cannot contain a circle.
 
         Returns:
-            set(IrNode): nodes in topology order.
+            list(IrNode): nodes in topology order.
         """
         ordered_nodes = core.topology_sort(self.graph)
-        return {IrNode(n) for n in ordered_nodes}
+        return [IrNode(n) for n in ordered_nodes]
 
     def build_adjacency_list(self):
         """
@@ -2251,7 +2274,7 @@ class IrGraph(object):
         """
         Convert the graph into a Program.
 
-        Notes: When the graph includes backward operator nodes, the
+        WARN: When the graph includes backward operator nodes, the
         conversion process may be failed. Usually, this function is
         only used to convert a test graph.
 
