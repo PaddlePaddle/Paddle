@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/conv_op.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 

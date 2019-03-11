@@ -18,8 +18,11 @@
 #include <gtest/gtest_prod.h>
 #endif
 
+#include <memory>
 #include <numeric>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
