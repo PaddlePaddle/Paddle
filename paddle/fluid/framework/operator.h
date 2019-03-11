@@ -496,7 +496,7 @@ void try_run(OperatorBase* op, Functor func, Args... args) {
   } catch (...) {
     std::rethrow_exception(std::current_exception());
   }
-};
+}
 
 }  // namespace framework
 }  // namespace paddle
