@@ -36,7 +36,7 @@ inline typename std::enable_if<
     const Kernel*>::type
 GetJitCode(const typename KernelTuple::attr_type& attr) {
   using Attr = typename KernelTuple::attr_type;
-  size_t key = JitCodeKey<Attr>(attr);
+  int64_t key = JitCodeKey<Attr>(attr);
   auto& codes = JitCodePool<KernelTuple::kernel_type>::Instance();
   if (codes.Has(key)) {
     return codes.AllKernels().at(key).get();
