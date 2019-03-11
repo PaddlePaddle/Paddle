@@ -211,6 +211,9 @@ class AnalysisPredictor::Quantizer {
   std::pair<QuantMax, framework::LoDTensor> GetKLScalingFactor(
       const framework::LoDTensor &var_tensor) const;
 
+  std::pair<QuantMax, framework::LoDTensor> GetMaxChScalingFactor(
+      const framework::LoDTensor &var_tensor) const;
+
   std::pair<QuantMax, framework::LoDTensor> GetMaxScalingFactor(
       const framework::LoDTensor &var_tensor) const;
 

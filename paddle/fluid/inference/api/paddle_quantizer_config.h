@@ -26,9 +26,10 @@ namespace paddle {
 
 // Algorithms for finding scale of quantized Tensors.
 enum class ScaleAlgo {
-  NONE,  // Do not compute scale
-  MAX,   // Find scale based on the maximum absolute value
-  KL,    // Find scale based on KL Divergence
+  NONE,    // Do not compute scale
+  MAX,     // Find scale based on the maximum absolute value
+  MAX_CH,  // Find scale based on the maximum absolute value per channel
+  KL,      // Find scale based on KL Divergence
 };
 
 // The max value of a quantized integer.
