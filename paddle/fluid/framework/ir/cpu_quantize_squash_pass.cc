@@ -82,7 +82,7 @@ void CPUQuantizeSquashPass::Squash(
     if (dequant_scale == quant_scale) {
       auto quant_out_var_name = quant_out->Name();
       auto next_op_inputs = next_op_desc->InputNames();
-      for (auto name : next_op_inputs) {
+      for (const auto& name : next_op_inputs) {
         auto var_name = next_op_desc->Input(name)[0];
         if (var_name.compare(quant_out_var_name) == 0) {
           next_op_desc->SetInput(name,
