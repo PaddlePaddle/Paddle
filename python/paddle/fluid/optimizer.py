@@ -379,7 +379,7 @@ class Optimizer(object):
         self._dtype = loss.dtype
         program = loss.block.program
         optimize_ops = []
-        if imperative_base.enabled():
+        if framework._in_imperative_mode():
             if parameter_list is not None:
                 parameters = parameter_list
             else:
