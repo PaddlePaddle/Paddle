@@ -55,6 +55,7 @@ else()
 endif()
 
 inference_analysis_test(test1 SRCS test1.cc DEPS ${INFERENCE_EXTRA_DEPS})
+target_link_libraries(test1 tcmalloc)
 
 # RNN2
 set(RNN2_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn2")

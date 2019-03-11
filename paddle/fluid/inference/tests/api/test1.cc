@@ -18,6 +18,7 @@
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "gperftools/heap-profiler.h"
 
 DEFINE_string(model, "", "");
 DEFINE_int32(batch_size, 1, "");
@@ -234,13 +235,21 @@ TEST(test, test) {
   std::vector<PaddleTensor> inputs, outputs;
   PrepareInputs(inputs);
 
-  ASSERT_TRUE(predictor->Run(inputs, &outputs));
+  HeapProfilerStart("/home/chunwei/project2/perfs");
+  for (int i = 0; i < 10000; i++) {
+    ASSERT_TRUE(predictor->Run(inputs, &outputs));
+    if (i % 100 == 0) {
+      HeapProfilerDump("/home/chunwei/project2/perfs");
+    }
+  }
+  HeapProfilerStop();
 
   for (auto& output : outputs) {
     LOG(INFO) << output.data.length();
   }
 }
 
+/*
 TEST(test, test_multi_threads) {
   LOG(INFO) << "model: " << FLAGS_model;
   AnalysisConfig config(FLAGS_model);
@@ -269,4 +278,5 @@ TEST(test, test_multi_threads) {
 
   for (auto& t : threads) t.join();
 }
+ */
 }

@@ -58,6 +58,7 @@ class StepScopes {
         scopes_(scopes),
         is_train_(is_train),
         is_backward_(is_backward) {
+    const_cast<framework::Scope*>(&parent)->DropKids();
     size_t num_step_scopes = is_train ? seq_len : 2;
     PADDLE_ENFORCE(is_train || !is_backward,
                    "Cannot backward when is not training");
