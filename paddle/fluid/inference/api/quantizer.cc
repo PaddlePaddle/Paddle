@@ -62,8 +62,8 @@ bool AnalysisPredictor::Quantizer::CalculateScales() {
         }
       };
 
-      glambda(connections_in, false);
       glambda(connections_out, true);
+      glambda(connections_in, false);
     }
   }
 
@@ -78,7 +78,8 @@ void AnalysisPredictor::Quantizer::CalculateSingleScale(
       var_tensor.numel() > 0,
       "Quantizer: LoDTensor of variable for quantization should not be empty.");
 
-  if (scales_.find(var_name) != scales_.end()) return;
+  if (scales_.find(var_name) != scales_.end() && qmax == QuantMax::S8_MAX)
+    return;
 
   auto rule = qconfig_->scale_algo(op_type_name, conn_name);
   switch (rule) {
