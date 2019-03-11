@@ -94,6 +94,7 @@ __all__ = [
     'multiplex',
     'layer_norm',
     'group_norm',
+    'spectral_norm',
     'softmax_with_cross_entropy',
     'smooth_l1',
     'one_hot',
@@ -1430,6 +1431,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
           predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
           cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
+    if not soft_label:
+        return cross_entropy2(input, label, ignore_index)
     helper = LayerHelper('cross_entropy', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -1439,6 +1442,20 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
         outputs={'Y': [out]},
         attrs={"soft_label": soft_label,
                "ignore_index": ignore_index})
+    return out
+
+
+def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
+    helper = LayerHelper('cross_entropy2', **locals())
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    xshape = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='cross_entropy2',
+        inputs={'X': [input],
+                'Label': [label]},
+        outputs={'Y': [out],
+                 'XShape': [xshape]},
+        attrs={'ignore_index': ignore_index})
     return out
 
 
@@ -3346,6 +3363,98 @@ def group_norm(input,
     return helper.append_activation(group_norm_out)
 
 
+@templatedoc()
+def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
+    """
+    **Spectral Normalization Layer**
+
+    This layer calculates the spectral normalization value of weight parameters of
+    fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
+    Parameters. Calculations are showed as follows.
+
+    Step 1:
+    Generate vector U in shape of [H], and V in shape of [W].
+    While H is the :attr:`dim` th dimension of the input weights,
+    and W is the product result of remaining dimensions.
+
+    Step 2:
+    :attr:`power_iters` shoule be a positive interger, do following
+    calculations with U and V for :attr:`power_iters` rounds.
+
+    .. math:: 
+
+        \mathbf{v} := \\frac{\mathbf{W}^{T} \mathbf{u}}{\|\mathbf{W}^{T} \mathbf{u}\|_2}
+
+        \mathbf{u} := \\frac{\mathbf{W}^{T} \mathbf{v}}{\|\mathbf{W}^{T} \mathbf{v}\|_2}
+
+    Step 3:
+    Calculate :math:`\sigma(\mathbf{W})` and normalize weight values.
+
+    .. math::
+
+        \sigma(\mathbf{W}) = \mathbf{u}^{T} \mathbf{W} \mathbf{v}
+
+        \mathbf{W} = \\frac{\mathbf{W}}{\sigma(\mathbf{W})}
+                
+
+    Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
+
+    Args:
+        weight(${weight_type}): ${weight_comment}
+        dim(int): ${dim_comment}
+        power_iters(int): ${power_iters_comment}
+        eps(float): ${eps_comment}
+        name (str): The name of this layer. It is optional.
+
+    Returns:
+        Variable: A tensor variable of weight parameters after spectral normalization.
+
+    Examples:
+
+        >>> weight = fluid.layers.data(name='weight', shape=[8, 32, 32],
+        >>>                          dtype='float32')
+        >>> x = fluid.layers.spectral_norm(weight=data, dim=1, power_iters=2)
+    """
+    helper = LayerHelper('spectral_norm', **locals())
+    dtype = weight.dtype
+
+    # create intput and parameters
+    inputs = {'Weight': weight}
+    input_shape = weight.shape
+    h = input_shape[dim]
+    w = np.prod(input_shape) // h
+
+    u = helper.create_parameter(
+        attr=ParamAttr(),
+        shape=[h],
+        dtype=dtype,
+        default_initializer=Normal(0., 1.))
+    u.stop_gradient = True
+    inputs['U'] = u
+    v = helper.create_parameter(
+        attr=ParamAttr(),
+        shape=[w],
+        dtype=dtype,
+        default_initializer=Normal(0., 1.))
+    inputs['V'] = v
+    v.stop_gradient = True
+
+    # create output
+    out = helper.create_variable(dtype=dtype)
+
+    helper.append_op(
+        type="spectral_norm",
+        inputs=inputs,
+        outputs={"Out": out, },
+        attrs={
+            "dim": dim,
+            "power_iters": power_iters,
+            "eps": eps,
+        })
+
+    return out
+
+
 def conv2d_transpose(input,
                      num_filters,
                      output_size=None,
@@ -4740,11 +4849,6 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     """
 
     def __check_input(x, y):
-        if len(y.shape) > len(x.shape):
-            raise ValueError(
-                "Invalid inputs for matmul. "
-                "x's rank should be always greater than or equal to y'rank.")
-
         x_shape = list(x.shape)
         y_shape = list(y.shape)
         if len(x_shape) == 1:
@@ -4760,10 +4864,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         if x_shape[-1] != y_shape[-2]:
             raise ValueError("Invalid inputs for matmul.")
 
-        if len(y_shape) > 2:
+        if len(y_shape) > 2 and len(x_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):
                 if dim_x != y_shape[i]:
-                    raise ValueError("Invalid inputs for matmul.")
+                    raise ValueError("Invalid inputs for matmul. x(%s), y(%s)" %
+                                     (x.shape, y.shape))
 
     __check_input(x, y)
 
