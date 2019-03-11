@@ -432,6 +432,7 @@ void CompareAnalysisAndZeroCopy(
     ZeroCopyTensor zerocopy_output =
         *predictor->GetOutputTensor(outputs_name[i]).get();
     zerocopy_outputs.emplace_back(zerocopy_output);
+    LOG(INFO) << "ZeroCopy output: " << DescribeZeroCopyTensor(zerocopy_output);
   }
   // compare
   CompareResult(analysis_outputs, zerocopy_outputs);
