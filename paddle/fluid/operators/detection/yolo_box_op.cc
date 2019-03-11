@@ -83,7 +83,7 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("ImgSize",
              "The image size tensor of YoloBox operator, "
              "This is a 2-D tensor with shape of [N, 2]. This tensor holds "
-             "height and width of each input image using for resize output "
+             "height and width of each input image used for resizing output "
              "box in input image scale.");
     AddOutput("Boxes",
               "The output tensor of detection boxes of YoloBox operator, "
@@ -117,9 +117,9 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
          The output of previous network is in shape [N, C, H, W], while H and W
          should be the same, H and W specify the grid size, each grid point predict 
          given number boxes, this given number, which following will be represented as S,
-         is specified by the number of anchors, In the second dimension(the channel
-         dimension), C should be equal to S * (class_num + 5), class_num is the object 
-         category number of source dataset(such as 80 in coco dataset), so in the 
+         is specified by the number of anchors. In the second dimension(the channel
+         dimension), C should be equal to S * (5 + class_num), class_num is the object 
+         category number of source dataset(such as 80 in coco dataset), so the 
          second(channel) dimension, apart from 4 box location coordinates x, y, w, h, 
          also includes confidence score of the box and class one-hot key of each anchor 
          box.
@@ -143,10 +143,10 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
          in the equation above, :math:`c_x, c_y` is the left top corner of current grid
          and :math:`p_w, p_h` is specified by anchors.
 
-         The logistic regression value of the 5rd channel of each anchor prediction boxes
-         represent the confidence score of each prediction box, and the logistic
+         The logistic regression value of the 5th channel of each anchor prediction boxes
+         represents the confidence score of each prediction box, and the logistic
          regression value of the last :attr:`class_num` channels of each anchor prediction 
-         boxes represent the classifcation scores. Boxes with confidence scores less than
+         boxes represents the classifcation scores. Boxes with confidence scores less than
          :attr:`conf_thresh` should be ignored, and box final scores is the product of 
          confidence scores and classification scores.
 
