@@ -58,6 +58,13 @@ class StepScopes {
         scopes_(scopes),
         is_train_(is_train),
         is_backward_(is_backward) {
+    // Force to delete scopes. In training, the scopes will be dropped after
+    // each batch, while in inference, the scopes will be kept for performance
+    // improvement, that will cause memory leak in this Operator for it uses
+    // step-scopes.
+    // NOTE This operator is ugly implemented, need to be refactored by
+    // someone.
+    const_cast<framework::Scope *>(&parent)->DropKids();
     size_t num_step_scopes = is_train ? seq_len : 2;
     PADDLE_ENFORCE(is_train || !is_backward,
                    "Cannot backward when is not training");
