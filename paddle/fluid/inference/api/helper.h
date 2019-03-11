@@ -50,6 +50,11 @@ class Timer {
   }
 };
 
+static int GetUniqueId() {
+  static int id = 0;
+  return id++;
+}
+
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
   pieces->clear();
@@ -76,6 +81,13 @@ static void split_to_float(const std::string &str, char sep,
 }
 static void split_to_int64(const std::string &str, char sep,
                            std::vector<int64_t> *is) {
+  std::vector<std::string> pieces;
+  split(str, sep, &pieces);
+  std::transform(pieces.begin(), pieces.end(), std::back_inserter(*is),
+                 [](const std::string &v) { return std::stoi(v); });
+}
+static void split_to_int(const std::string &str, char sep,
+                         std::vector<int> *is) {
   std::vector<std::string> pieces;
   split(str, sep, &pieces);
   std::transform(pieces.begin(), pieces.end(), std::back_inserter(*is),
@@ -203,6 +215,9 @@ static std::string DescribeTensor(const PaddleTensor &tensor,
       break;
     case PaddleDType::INT64:
       os << "int64";
+      break;
+    case PaddleDType::INT32:
+      os << "int32";
       break;
     default:
       os << "unset";
