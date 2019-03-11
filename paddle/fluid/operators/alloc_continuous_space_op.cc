@@ -112,12 +112,12 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
   // Note(zcd): Addresses should be aligned, otherwise, the results may have
   // diff.
   size_t Alignment(size_t size, const platform::Place &place) const {
+    size_t alignment = 1 << 14;
     if (platform::is_gpu_place(place)) {
-      size_t alignment = 1 << 8;
-      size_t remaining = size % alignment;
-      return remaining == 0 ? size : size + (alignment - remaining);
+      alignment = 1 << 8;
     }
-    return size;
+    size_t remaining = size % alignment;
+    return remaining == 0 ? size : size + (alignment - remaining);
   }
 
   void GetMemSizeAndDtype(

@@ -83,19 +83,21 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     if (strategy_.fuse_all_optimizer_ops_) {
       if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
-        PADDLE_THROW(
-            "Currently, fuse_all_optimizer_ops only works under AllReduce "
-            "mode.");
+        VLOG(3)
+            << "Currently, fuse_all_optimizer_ops only works under AllReduce "
+               "mode.";
+        strategy_.fuse_all_optimizer_ops_ = false;
+      } else {
+        VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
+        AppendPass("alloc_continuous_space_for_grad_pass");
+        // NOTE: fuse_all_xx_ops will count the number of xx operator first,
+        // if the number is zero, fuse_all_reduce_ops will do nothing.
+        // Currently, only one type of optimization algorithm can be fused.
+        VLOG(10) << "Add fuse_adam_op_pass";
+        AppendPass("fuse_adam_op_pass");
+        VLOG(10) << "Add fuse_sgd_op_pass";
+        AppendPass("fuse_sgd_op_pass");
       }
-      VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
-      AppendPass("alloc_continuous_space_for_grad_pass");
-      // NOTE: fuse_all_xx_ops will count the number of xx operator first,
-      // if the number is zero, fuse_all_reduce_ops will do nothing.
-      // Currently, only one type of optimization algorithm can be fused.
-      VLOG(10) << "Add fuse_adam_op_pass";
-      AppendPass("fuse_adam_op_pass");
-      VLOG(10) << "Add fuse_sgd_op_pass";
-      AppendPass("fuse_sgd_op_pass");
     }
 
     // Add a graph viz pass to record a graph.
