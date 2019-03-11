@@ -886,7 +886,11 @@ void TestKernelVBroadcast() {
 // test pool
 TEST(JITKernel_pool, jitcreator) {
   const auto& jitcreators = jit::JitCodeCreatorPool::Instance().AllCreators();
+#if defined(_WIN32) || defined(__APPLE__) || defined(__OSX__)
+  EXPECT_EQ(jitcreators.size(), 0UL);
+#else
   EXPECT_EQ(jitcreators.size(), 25UL);
+#endif
 }
 
 TEST(JITKernel_pool, jitpool) {
@@ -894,13 +898,25 @@ TEST(JITKernel_pool, jitpool) {
   const auto& kers = jit::JitCodePool<jit::kVAdd>().Instance().AllKernels();
   EXPECT_EQ(kers.size(), 0UL);
   jit::GetAllCandidateKernels<jit::VAddTuple<float>, CPUPlace>(3);
-  // after call GetAllCandidateKernels, it will create jitcode Automatically
+// after call GetAllCandidateKernels, it will create jitcode Automatically
+#if defined(_WIN32) || defined(__APPLE__) || defined(__OSX__)
+  EXPECT_EQ(kers.size(), 0UL);
+#else
   EXPECT_EQ(kers.size(), 1UL);
+#endif
 }
 
 TEST(JITKernel_pool, more) {
   const auto& kers = jit::KernelPool::Instance().AllKernels();
+#if defined(__APPLE__) || defined(__OSX__)
+  EXPECT_EQ(kers.size(), 10UL);
+#else
+#ifdef PADDLE_WITH_MKLML
   EXPECT_EQ(kers.size(), 21UL);
+#else
+  EXPECT_EQ(kers.size(), 8UL);
+#endif
+#endif
 }
 
 TEST(JITKernel_pool, refer) {
@@ -915,7 +931,11 @@ TEST(JITKernel_helper, GetAllCandidateKernels) {
 #if defined(_WIN32) || defined(__APPLE__) || defined(__OSX__)
   EXPECT_GE(fp_kers.size(), 1UL);  // refer
 #else
+#ifdef PADDLE_WITH_MKLML
   EXPECT_GE(fp_kers.size(), 3UL);  // jitcode, mkl, refer
+#else
+  EXPECT_GE(fp_kers.size(), 2UL);  // jitcode, refer
+#endif
 #endif
 
   auto db_kers =
@@ -923,18 +943,48 @@ TEST(JITKernel_helper, GetAllCandidateKernels) {
 #if defined(_WIN32) || defined(__APPLE__) || defined(__OSX__)
   EXPECT_GE(db_kers.size(), 1UL);  // refer
 #else
+#ifdef PADDLE_WITH_MKLML
   EXPECT_GE(db_kers.size(), 2UL);  // mkl, refer
+#else
+  EXPECT_GE(db_kers.size(), 1UL);  // refer
+#endif
 #endif
 }
 
 TEST(JITKernel_helper, GetAllCandidateFuncsWithTypes) {
   auto fp_kers =
       jit::GetAllCandidateFuncsWithTypes<jit::VExpTuple<float>, CPUPlace>(10);
+#if defined(__APPLE__) || defined(__OSX__)
+  EXPECT_GE(fp_kers.size(), 1UL);  // refer
+#else
+#if !defined(PADDLE_WITH_MKLML) || defined(_WIN32)
+  EXPECT_GE(fp_kers.size(), 2UL);  // jitcode/mkl, refer
+#else
   EXPECT_GE(fp_kers.size(), 3UL);  // jitcode, mkl, refer
+#endif
+#endif
 
   auto db_kers =
       jit::GetAllCandidateFuncsWithTypes<jit::VExpTuple<double>, CPUPlace>(10);
+#if defined(__APPLE__) || defined(__OSX__) || !defined(PADDLE_WITH_MKLML)
+  EXPECT_GE(db_kers.size(), 1UL);  // refer
+#else
   EXPECT_GE(db_kers.size(), 2UL);  // mkl, refer
+#endif
+}
+
+TEST(JITKernel_helper, KernelFuncs) {
+  auto f1 = jit::KernelFuncs<jit::VAddTuple<float>, CPUPlace>::Cache().At(3);
+  auto f2 = jit::KernelFuncs<jit::VAddTuple<float>, CPUPlace>::Cache()[3];
+  EXPECT_TRUE(f1 != nullptr);
+  EXPECT_TRUE(f1 == f2);
+
+  auto f3 = jit::KernelFuncs<jit::VAddTuple<float>, CPUPlace>::Cache()[5];
+#if defined(_WIN32) || defined(__APPLE__) || defined(__OSX__)
+  EXPECT_TRUE(f2 == f3);
+#else
+  EXPECT_TRUE(f2 != f3);
+#endif
 }
 
 TEST(JITKernel_helper, GetAllCandidateFuncs) {
@@ -1011,6 +1061,134 @@ TEST(JITKernel_helper, attr) {
   EXPECT_EQ(out.str().size(), 14);
 }
 
+// test keys
+TEST(JITKernel_key, int) {
+  EXPECT_TRUE(jit::JitCodeKey<int>(2) == jit::JitCodeKey<int>(2));
+  EXPECT_TRUE(jit::JitCodeKey<int>(2) == jit::JitCodeKey<int64_t>(2));
+  EXPECT_TRUE(jit::JitCodeKey<int>(2) != jit::JitCodeKey<int>(3));
+}
+
+TEST(JITKernel_key, gru) {
+  jit::gru_attr_t attr1(8, jit::kVSigmoid, jit::kVTanh);
+  jit::gru_attr_t attr2(8, jit::kVSigmoid, jit::kVTanh);
+  jit::gru_attr_t attr3(9, jit::kVSigmoid, jit::kVTanh);
+  jit::gru_attr_t attr4(9, jit::kVSigmoid, jit::kVIdentity);
+  jit::gru_attr_t attr5(9, jit::kVTanh, jit::kVIdentity);
+
+  auto key1 = jit::JitCodeKey<jit::gru_attr_t>(attr1);
+  auto key2 = jit::JitCodeKey<jit::gru_attr_t>(attr2);
+  auto key3 = jit::JitCodeKey<jit::gru_attr_t>(attr3);
+  auto key4 = jit::JitCodeKey<jit::gru_attr_t>(attr4);
+  auto key5 = jit::JitCodeKey<jit::gru_attr_t>(attr5);
+
+  EXPECT_TRUE(key1 == key2);
+  EXPECT_TRUE(key2 != key3);
+  EXPECT_TRUE(key2 != key4);
+  EXPECT_TRUE(key2 != key5);
+  EXPECT_TRUE(key3 != key4);
+  EXPECT_TRUE(key3 != key5);
+  EXPECT_TRUE(key4 != key5);
+}
+
+TEST(JITKernel_key, lstm) {
+  jit::lstm_attr_t attr1(8, jit::kVIdentity, jit::kVSigmoid, jit::kVTanh);
+  jit::lstm_attr_t attr2(8, jit::kVIdentity, jit::kVSigmoid, jit::kVTanh);
+  jit::lstm_attr_t attr3(9, jit::kVIdentity, jit::kVSigmoid, jit::kVTanh);
+  jit::lstm_attr_t attr4(9, jit::kVRelu, jit::kVSigmoid, jit::kVTanh);
+  jit::lstm_attr_t attr5(9, jit::kVRelu, jit::kVSigmoid, jit::kVTanh, true);
+  jit::lstm_attr_t attr6(9, jit::kVRelu, jit::kVSigmoid, jit::kVTanh, true);
+
+  auto key1 = jit::JitCodeKey<jit::lstm_attr_t>(attr1);
+  auto key2 = jit::JitCodeKey<jit::lstm_attr_t>(attr2);
+  auto key3 = jit::JitCodeKey<jit::lstm_attr_t>(attr3);
+  auto key4 = jit::JitCodeKey<jit::lstm_attr_t>(attr4);
+  auto key5 = jit::JitCodeKey<jit::lstm_attr_t>(attr5);
+  auto key6 = jit::JitCodeKey<jit::lstm_attr_t>(attr6);
+
+  EXPECT_TRUE(key1 == key2);
+  EXPECT_TRUE(key2 != key3);
+  EXPECT_TRUE(key2 != key4);
+  EXPECT_TRUE(key2 != key5);
+  EXPECT_TRUE(key3 != key4);
+  EXPECT_TRUE(key3 != key5);
+  EXPECT_TRUE(key4 != key5);
+  EXPECT_TRUE(key5 == key6);
+}
+
+TEST(JITKernel_key, seq_pool) {
+  jit::seq_pool_attr_t attr1(2, jit::SeqPoolType::kSum, 1);
+  jit::seq_pool_attr_t attr2(2, jit::SeqPoolType::kSum, 3);
+  jit::seq_pool_attr_t attr3(3, jit::SeqPoolType::kSum, 3);
+  jit::seq_pool_attr_t attr4(3, jit::SeqPoolType::kAvg, 3);
+
+  auto key1 = jit::JitCodeKey<jit::seq_pool_attr_t>(attr1);
+  auto key2 = jit::JitCodeKey<jit::seq_pool_attr_t>(attr2);
+  auto key3 = jit::JitCodeKey<jit::seq_pool_attr_t>(attr3);
+  auto key4 = jit::JitCodeKey<jit::seq_pool_attr_t>(attr4);
+
+  EXPECT_TRUE(key1 == key2);
+  EXPECT_TRUE(key2 != key3);
+  EXPECT_TRUE(key2 != key4);
+  EXPECT_TRUE(key3 != key4);
+}
+
+TEST(JITKernel_key, matmul) {
+  jit::matmul_attr_t attr1(1, 2, 3);
+  jit::matmul_attr_t attr2(1, 2, 3);
+  jit::matmul_attr_t attr3(1, 3, 3);
+  jit::matmul_attr_t attr4(2, 3, 4);
+
+  auto key1 = jit::JitCodeKey<jit::matmul_attr_t>(attr1);
+  auto key2 = jit::JitCodeKey<jit::matmul_attr_t>(attr2);
+  auto key3 = jit::JitCodeKey<jit::matmul_attr_t>(attr3);
+  auto key4 = jit::JitCodeKey<jit::matmul_attr_t>(attr4);
+
+  EXPECT_TRUE(key1 == key2);
+  EXPECT_TRUE(key2 != key3);
+  EXPECT_TRUE(key2 != key4);
+  EXPECT_TRUE(key3 != key4);
+}
+
+TEST(JITKernel_key, emb_seq_pool) {
+  jit::emb_seq_pool_attr_t attr1(1, 2, 3, 4, 5, jit::SeqPoolType::kSum);
+  jit::emb_seq_pool_attr_t attr2(1, 2, 3, 4, 5, jit::SeqPoolType::kSum);
+  jit::emb_seq_pool_attr_t attr3(10, 2, 9, 8, 7, jit::SeqPoolType::kAvg);
+  jit::emb_seq_pool_attr_t attr4(10, 3, 9, 8, 7, jit::SeqPoolType::kSum);
+  jit::emb_seq_pool_attr_t attr5(1, 6, 3, 4, 5, jit::SeqPoolType::kSum);
+
+  auto key1 = jit::JitCodeKey<jit::emb_seq_pool_attr_t>(attr1);
+  auto key2 = jit::JitCodeKey<jit::emb_seq_pool_attr_t>(attr2);
+  auto key3 = jit::JitCodeKey<jit::emb_seq_pool_attr_t>(attr3);
+  auto key4 = jit::JitCodeKey<jit::emb_seq_pool_attr_t>(attr4);
+  auto key5 = jit::JitCodeKey<jit::emb_seq_pool_attr_t>(attr5);
+
+  EXPECT_TRUE(key1 == key2);
+  EXPECT_TRUE(key2 == key3);
+  EXPECT_TRUE(key2 != key4);
+  EXPECT_TRUE(key2 != key5);
+  EXPECT_TRUE(key4 != key5);
+}
+
+TEST(JITKernel_key, sgd) {
+  jit::sgd_attr_t attr1(1, 2, 3, 4, 5);
+  jit::sgd_attr_t attr2(1, 2, 3, 4, 5);
+  jit::sgd_attr_t attr3(9, 8, 7, 4, 6);
+  jit::sgd_attr_t attr4(1, 2, 3, 6, 5);
+  jit::sgd_attr_t attr5(10, 9, 8, 7, 6);
+
+  auto key1 = jit::JitCodeKey<jit::sgd_attr_t>(attr1);
+  auto key2 = jit::JitCodeKey<jit::sgd_attr_t>(attr2);
+  auto key3 = jit::JitCodeKey<jit::sgd_attr_t>(attr3);
+  auto key4 = jit::JitCodeKey<jit::sgd_attr_t>(attr4);
+  auto key5 = jit::JitCodeKey<jit::sgd_attr_t>(attr5);
+
+  EXPECT_TRUE(key1 == key2);
+  EXPECT_TRUE(key2 == key3);
+  EXPECT_TRUE(key3 != key4);
+  EXPECT_TRUE(key3 != key5);
+  EXPECT_TRUE(key4 != key5);
+}
+
 // test kernerls
 #define TestKernelVMul TestKernelXYZN
 #define TestKernelVAdd TestKernelXYZN
@@ -1080,43 +1258,3 @@ TEST_CPU_KERNEL(MatMul);
 TEST_CPU_KERNEL(Softmax);
 TEST_CPU_KERNEL(Sgd);
 TEST_CPU_KERNEL(VBroadcast);
-
-TEST(JITKernel, kernel_func) {
-  auto f1 = jit::KernelFuncs<jit::VAddTuple<float>, CPUPlace>::Cache().At(3);
-  auto f2 = jit::KernelFuncs<jit::VAddTuple<float>, CPUPlace>::Cache()[3];
-  EXPECT_TRUE(f1 != nullptr);
-  EXPECT_TRUE(f1 == f2);
-  // TODO(TJ): check not equal
-}
-
-TEST(JITKernel_key, lstm) {
-  jit::lstm_attr_t attr1(8, jit::kVIdentity, jit::kVSigmoid, jit::kVTanh);
-  jit::lstm_attr_t attr2(9, jit::kVIdentity, jit::kVSigmoid, jit::kVTanh);
-  jit::lstm_attr_t attr3(9, jit::kVIdentity, jit::kVSigmoid, jit::kVTanh);
-  jit::lstm_attr_t attr4(9, jit::kVRelu, jit::kVSigmoid, jit::kVTanh);
-
-  auto key1 = jit::JitCodeKey<jit::lstm_attr_t>(attr1);
-  auto key2 = jit::JitCodeKey<jit::lstm_attr_t>(attr2);
-  auto key3 = jit::JitCodeKey<jit::lstm_attr_t>(attr3);
-  auto key4 = jit::JitCodeKey<jit::lstm_attr_t>(attr4);
-
-  EXPECT_TRUE(key1 != key2);
-  EXPECT_TRUE(key2 == key3);
-  EXPECT_TRUE(key3 != key4);
-}
-
-TEST(JITKernel_key, gru) {
-  jit::gru_attr_t attr1(8, jit::kVSigmoid, jit::kVTanh);
-  jit::gru_attr_t attr2(9, jit::kVSigmoid, jit::kVTanh);
-  jit::gru_attr_t attr3(9, jit::kVSigmoid, jit::kVTanh);
-  jit::gru_attr_t attr4(9, jit::kVSigmoid, jit::kVIdentity);
-
-  auto key1 = jit::JitCodeKey<jit::gru_attr_t>(attr1);
-  auto key2 = jit::JitCodeKey<jit::gru_attr_t>(attr2);
-  auto key3 = jit::JitCodeKey<jit::gru_attr_t>(attr3);
-  auto key4 = jit::JitCodeKey<jit::gru_attr_t>(attr4);
-
-  EXPECT_TRUE(key1 != key2);
-  EXPECT_TRUE(key2 == key3);
-  EXPECT_TRUE(key3 != key4);
-}
