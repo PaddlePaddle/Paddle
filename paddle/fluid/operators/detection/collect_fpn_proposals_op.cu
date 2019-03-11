@@ -51,6 +51,8 @@ static inline int NumBlocks(const int N) {
 static __global__ void GetLengthLoD(const int nthreads, const int* batch_ids,
                                     int* length_lod) {
   CUDA_1D_KERNEL_LOOP(i, nthreads) {
+    length_lod[threadIdx.x] = 0;
+    __syncthreads();
     platform::CudaAtomicAdd(length_lod + batch_ids[i], 1);
   }
 }
