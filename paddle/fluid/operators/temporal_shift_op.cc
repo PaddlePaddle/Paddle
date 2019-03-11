@@ -72,12 +72,12 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<int>("seg_num",
                  "The temporal segment number, this should be a positive "
-                 "interger.");
+                 "integer.");
     AddAttr<float>(
         "shift_ratio",
-        "The shift ratio of the channels, the first shift ratio part "
+        "The shift ratio of the channels, the first :attr:`shift_ratio` part "
         "of channels will be shifted by -1 along the temporal dimension, "
-        "and the second shift ratio part of channels will be shifted by "
+        "and the second :attr:`shift_ratio` part of channels will be shifted by "
         "1 along the temporal dimension. Default 0.25.")
         .SetDefault(0.25);
 
@@ -88,7 +88,7 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
           size, T is the temporal segment number specified by :attr:`seg_num`, 
           C is the channel number, H and W is the height and width of features.
 
-          Temporal Shifting calculates as follows:
+          Temporal Shifting is calculated as follows:
           
           Step 1: Reshape Input(X) to [N, T, C, H, W].
 
