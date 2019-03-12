@@ -19,8 +19,6 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <unordered_map>
-#include <memory>
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -115,7 +113,8 @@ class Executor {
   void EnableMKLDNN(const ProgramDesc& program);
 
   void RunFromDataset(const ProgramDesc& main_program, Scope* scope,
-                      Dataset* dataset, const std::string& trainer_desc_str);
+                      MultiSlotDataset* dataset,
+                      const std::string& trainer_desc_str);
 
  private:
   const platform::Place place_;

@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+__all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD']
+
 
 class DeviceWorker(object):
     def __init__(self):
         pass
 
-    def gen_worker_desc(self, trainer_desc, fleet_desc):
+    def gen_worker_desc(self, trainer_desc):
         pass
 
 
@@ -25,7 +27,7 @@ class Hogwild(DeviceWorker):
     def __init__(self):
         super(Hogwild, self).__init__()
 
-    def gen_worker_desc(self, trainer_desc, fleet_desc):
+    def gen_worker_desc(self, trainer_desc):
         trainer_desc.device_worker_name = "HogwildWorker"
 
 
@@ -33,7 +35,7 @@ class DownpourSGD(DeviceWorker):
     def __init__(self):
         super(Downpour, self).__init__()
 
-    def gen_worker_desc(self, trainer_desc, fleet_desc):
+    def gen_worker_desc(self, trainer_desc):
         trainer_desc.device_worker_name = "DownpourWorker"
         pull_thread = trainer_desc.pull_dense_param
         pull_thread.device_num = trainer_desc.thread_num

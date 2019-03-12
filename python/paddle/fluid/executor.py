@@ -612,31 +612,40 @@ class Executor(object):
     def _run_inference(self, exe, feed):
         return exe.run(feed)
 
-    def run_from_dataset(self,
-                         program=None,
-                         dataset=None,
-                         fetch_list=None,
-                         scope=None,
-                         thread=0,
-                         opt_info=None):
+    def infer_from_dataset(self,
+                           program=None,
+                           dataset=None,
+                           fetch_list=None,
+                           scope=None,
+                           thread=0,
+                           opt_info=None):
+        pass
+
+    def train_from_dataset(self,
+                           program=None,
+                           dataset=None,
+                           fetch_list=None,
+                           scope=None,
+                           thread=0,
+                           opt_info=None):
         if scope is None:
             scope = global_scope()
         if fetch_list is None:
             fetch_list = []
+
         compiled = isinstance(program, compiler.CompiledProgram)
         if not compiled:
-            trainer = TrainerFactory().create_trainer(opt_info)
-            if thread <= 0:
-                trainer.set_thread(dataset.thread_num)
-            else:
-                trainer.set_thread(thread)
+            trainer = TrainerFactory().create_trainer(program._fleet_opt)
+        else:
+            trainer = TrainerFactory().create_trainer(
+                program.program._fleet_opt)
+
+        if thread <= 0:
+            trainer.set_thread(dataset.thread_num)
+        else:
+            trainer.set_thread(thread)
             trainer.gen_trainer_desc()
             dataset._prepare_to_run()
-            print("run_from_dataset called")
             self._default_executor.run_from_dataset(program.desc, scope,
                                                     dataset.dataset,
                                                     trainer._desc())
-        else:
-            # For compiled program, more runtime should be implemented
-            print("run_from_dataset current does not support compiled program"
-                  ", we will support this later", sys.stderr)
