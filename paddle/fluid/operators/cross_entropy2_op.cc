@@ -16,46 +16,22 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include "paddle/fluid/operators/cross_entropy_op_base.h"
 
 namespace paddle {
 namespace operators {
 
-class CrossEntropyOp2 : public framework::OperatorWithKernel {
+class CrossEntropyOp2 : public CrossEntropyOpBase {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
+  using CrossEntropyOpBase::CrossEntropyOpBase;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
+    CrossEntropyOpBase::InferShape(ctx);
 
-    PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) should be not null.");
     PADDLE_ENFORCE(ctx->HasOutput("XShape"),
                    "Output(XShape) should be not null.");
 
     auto x_dims = ctx->GetInputDim("X");
-    auto label_dims = ctx->GetInputDim("Label");
-    int rank = x_dims.size();
-    PADDLE_ENFORCE_EQ(rank, label_dims.size(),
-                      "Input(X) and Input(Label) shall have the same rank.");
-    bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
-                                framework::product(label_dims) <= 0)) {
-      check = false;
-    }
-    if (check) {
-      PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
-                        framework::slice_ddim(label_dims, 0, rank - 1),
-                        "Input(X) and Input(Label) shall have the same shape "
-                        "except the last dimension.");
-    }
-
-    PADDLE_ENFORCE_EQ(label_dims[rank - 1], 1UL,
-                      "Last dimension of Input(Label) should be 1.");
-    auto y_dims = x_dims;
-    y_dims[rank - 1] = 1;
-    ctx->SetOutputDim("Y", y_dims);
-    ctx->ShareLoD("X", /*->*/ "Y");
-
     auto x_dims_vec = framework::vectorize(x_dims);
     x_dims_vec.push_back(0);
     ctx->SetOutputDim("XShape", framework::make_ddim(x_dims_vec));
@@ -63,73 +39,25 @@ class CrossEntropyOp2 : public framework::OperatorWithKernel {
   }
 
  protected:
-  // Explicitly set that the data type of computation kernel of cross_entropy
-  // is determined by its input "X".
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+  bool IsSoftLabel(framework::InferShapeContext* ctx) const override {
+    return false;
   }
 };
 
-class CrossEntropyGradientOp2 : public framework::OperatorWithKernel {
+class CrossEntropyGradientOp2 : public CrossEntropyGradientOpBase {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("XShape"),
-                   "Input(XShape) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should be not null.");
-
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
-                   "Input(Y@GRAD) shoudl be not null.");
-
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) should be not null.");
-
-    auto x_shapes = ctx->GetInputDim("XShape");
-    framework::DDim x_dims(x_shapes.Get(), x_shapes.size() - 1);
-    auto label_dims = ctx->GetInputDim("Label");
-    auto dy_dims = ctx->GetInputDim(framework::GradVarName("Y"));
-    int rank = x_dims.size();
-    PADDLE_ENFORCE_EQ(dy_dims.size(), rank,
-                      "Input(Y@Grad) and Input(X) should have the same rank.");
-    PADDLE_ENFORCE_EQ(label_dims.size(), rank,
-                      "Input(Label) and Input(X) should have the same rank.");
-
-    bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
-                                framework::product(label_dims) <= 0)) {
-      check = false;
-    }
-
-    if (check) {
-      PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
-                        framework::slice_ddim(label_dims, 0, rank - 1),
-                        "The Input(X) and Input(Label) should have the same "
-                        "shape except the last dimension.");
-      PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
-                        framework::slice_ddim(dy_dims, 0, rank - 1),
-                        "The Input(X) and Input(Y@Grad) should have the same "
-                        "shape except the last dimension.");
-    }
-    PADDLE_ENFORCE_EQ(dy_dims[rank - 1], 1,
-                      "The last dimension of Input(Y@Grad) should be 1.");
-    PADDLE_ENFORCE_EQ(label_dims[rank - 1], 1,
-                      "Last dimension of Input(Label) should be 1.");
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-    ctx->ShareLoD("XShape", framework::GradVarName("X"));
-  }
+  using CrossEntropyGradientOpBase::CrossEntropyGradientOpBase;
 
  protected:
-  // Explicitly set that the data type of computation kernel of cross_entropy
-  // is determined by its input "X".
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Y"))->type(),
-        ctx.device_context());
+  virtual framework::DDim GetXDim(framework::InferShapeContext* ctx) const {
+    auto x_shape = ctx->GetInputDim("XShape");
+    return framework::DDim(x_shape.Get(), x_shape.size() - 1);
+  }
+
+  virtual const char* VarNameWithXLoD() const { return "XShape"; }
+
+  virtual bool IsSoftLabel(framework::InferShapeContext* ctx) const {
+    return false;
   }
 };
 
@@ -156,7 +84,7 @@ class CrossEntropyOpMaker2 : public framework::OpProtoAndCheckerMaker {
                  "Only valid if soft_label is set to False")
         .SetDefault(-100);
     AddComment(R"DOC(
-CrossEntropy Operator.
+Hard-label CrossEntropy Operator.
 
 The input 'X' and 'Label' will first be logically flattened to 2-D matrixs. 
 The matrix's second dimension(row length) is as same as the original last 
@@ -170,15 +98,6 @@ Both the input X and Label can carry the LoD (Level of Details) information,
 or not. But the output only shares the LoD information with input X.
 
 )DOC");
-  }
-};
-
-class CrossEntropyOpInferVarType2
-    : public framework::PassInDtypeAndVarTypeToOutput {
- protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
-      const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Y"}};
   }
 };
 
@@ -207,7 +126,7 @@ namespace ops = paddle::operators;
 using CPUCtx = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(cross_entropy2, ops::CrossEntropyOp2,
-                  ops::CrossEntropyOpMaker2, ops::CrossEntropyOpInferVarType2,
+                  ops::CrossEntropyOpMaker2, ops::CrossEntropyOpInferVarType,
                   ops::CrossEntropyGradOpMaker2);
 REGISTER_OPERATOR(cross_entropy_grad2, ops::CrossEntropyGradientOp2);
 REGISTER_OP_CPU_KERNEL(cross_entropy2,

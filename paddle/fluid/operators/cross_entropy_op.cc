@@ -14,127 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/cross_entropy_op.h"
 #include <string>
+#include "paddle/fluid/operators/cross_entropy_op_base.h"
 
 namespace paddle {
 namespace operators {
-
-class CrossEntropyOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) should be not null.");
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto label_dims = ctx->GetInputDim("Label");
-    int rank = x_dims.size();
-    PADDLE_ENFORCE_EQ(rank, label_dims.size(),
-                      "Input(X) and Input(Label) shall have the same rank.");
-    bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
-                                framework::product(label_dims) <= 0)) {
-      check = false;
-    }
-    if (check) {
-      PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
-                        framework::slice_ddim(label_dims, 0, rank - 1),
-                        "Input(X) and Input(Label) shall have the same shape "
-                        "except the last dimension.");
-    }
-    if (ctx->Attrs().Get<bool>("soft_label")) {
-      if (check) {
-        PADDLE_ENFORCE_EQ(x_dims[rank - 1], label_dims[rank - 1],
-                          "If Attr(soft_label) == true, the last dimension of "
-                          "Input(X) and Input(Label) should be equal.");
-      }
-    } else {
-      PADDLE_ENFORCE_EQ(label_dims[rank - 1], 1UL,
-                        "If Attr(softLabel) == false, the last dimension of "
-                        "Input(Label) should be 1.");
-    }
-
-    auto y_dims = x_dims;
-    y_dims[rank - 1] = 1;
-    ctx->SetOutputDim("Y", y_dims);
-    ctx->ShareLoD("X", /*->*/ "Y");
-  }
-
- protected:
-  // Explicitly set that the data type of computation kernel of cross_entropy
-  // is determined by its input "X".
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
-  }
-};
-
-class CrossEntropyGradientOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
-                   "Input(Y@GRAD) shoudl be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) should be not null.");
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto label_dims = ctx->GetInputDim("Label");
-    auto dy_dims = ctx->GetInputDim(framework::GradVarName("Y"));
-    int rank = x_dims.size();
-    PADDLE_ENFORCE_EQ(dy_dims.size(), rank,
-                      "Input(Y@Grad) and Input(X) should have the same rank.");
-    PADDLE_ENFORCE_EQ(label_dims.size(), rank,
-                      "Input(Label) and Input(X) should have the same rank.");
-
-    bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
-                                framework::product(label_dims) <= 0)) {
-      check = false;
-    }
-
-    if (check) {
-      PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
-                        framework::slice_ddim(label_dims, 0, rank - 1),
-                        "The Input(X) and Input(Label) should have the same "
-                        "shape except the last dimension.");
-      PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
-                        framework::slice_ddim(dy_dims, 0, rank - 1),
-                        "The Input(X) and Input(Y@Grad) should have the same "
-                        "shape except the last dimension.");
-    }
-    PADDLE_ENFORCE_EQ(dy_dims[rank - 1], 1,
-                      "The last dimension of Input(Y@Grad) should be 1.");
-    if (ctx->Attrs().Get<bool>("soft_label")) {
-      if (check) {
-        PADDLE_ENFORCE_EQ(
-            x_dims[rank - 1], label_dims[rank - 1],
-            "When Attr(soft_label) == true, the last dimension of "
-            "Input(X) and Input(Label) should be equal.");
-      }
-    } else {
-      PADDLE_ENFORCE_EQ(label_dims[rank - 1], 1,
-                        "When Attr(soft_label) == false, the last dimension of "
-                        "Input(Label) should be 1.");
-    }
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-    ctx->ShareLoD("X", framework::GradVarName("X"));
-  }
-
- protected:
-  // Explicitly set that the data type of computation kernel of cross_entropy
-  // is determined by its input "X".
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
-  }
-};
 
 class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -200,22 +83,24 @@ or not. But the output only shares the LoD information with input X.
   }
 };
 
-class CrossEntropyOpInferVarType
-    : public framework::PassInDtypeAndVarTypeToOutput {
- protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
-      const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Y"}};
+class CrossEntropyGradientOp : public CrossEntropyGradientOpBase {
+ public:
+  using CrossEntropyGradientOpBase::CrossEntropyGradientOpBase;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
+    CrossEntropyGradientOpBase::InferShape(ctx);
   }
 };
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 using CPUCtx = paddle::platform::CPUDeviceContext;
 
-REGISTER_OPERATOR(cross_entropy, ops::CrossEntropyOp, ops::CrossEntropyOpMaker,
-                  ops::CrossEntropyOpInferVarType,
+REGISTER_OPERATOR(cross_entropy, ops::CrossEntropyOpBase,
+                  ops::CrossEntropyOpMaker, ops::CrossEntropyOpInferVarType,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(cross_entropy_grad, ops::CrossEntropyGradientOp);
 REGISTER_OP_CPU_KERNEL(cross_entropy, ops::CrossEntropyOpKernel<CPUCtx, float>,
