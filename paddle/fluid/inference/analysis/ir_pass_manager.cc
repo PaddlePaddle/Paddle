@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -68,6 +69,11 @@ void IRPassManager::CreatePasses(Argument *argument,
     if (pass_name == "anakin_subgraph_pass") {
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
+      pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
+      pass->Set("model_from_memory", new bool(argument->model_from_memory()));
+      pass->Set("engine_opt_info", new std::map<std::string, std::string>(
+                                       argument->engine_opt_info()));
+      pass->Set("predictor_id", new int(argument->predictor_id()));
     }
 
     if (pass_name == "tensorrt_subgraph_pass") {
@@ -92,6 +98,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("use_static_engine",
                 new bool(argument->tensorrt_use_static_engine()));
+      pass->Set("model_from_memory", new bool(argument->model_from_memory()));
+      pass->Set("engine_opt_info", new std::map<std::string, std::string>(
+                                       argument->engine_opt_info()));
     }
 
     pre_pass = pass_name;

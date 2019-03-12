@@ -27,8 +27,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-void DensityPriorBoxOpConverter::operator()(const framework::proto::OpDesc &op,
-                                            const framework::Scope &scope,
+void DensityPriorBoxOpConverter::operator()(const framework::proto::OpDesc& op,
+                                            const framework::Scope& scope,
                                             bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   auto input_name = op_desc.Input("Input").front();
@@ -42,34 +42,45 @@ void DensityPriorBoxOpConverter::operator()(const framework::proto::OpDesc &op,
   auto fixed_ratios =
       boost::get<std::vector<float>>(op_desc.GetAttr("fixed_ratios"));
   auto densities = boost::get<std::vector<int>>(op_desc.GetAttr("densities"));
+  std::vector<float> dens;
+  for (auto& ele : densities) {
+    dens.push_back(static_cast<float>(ele));
+  }
 
   // lack flip
-  auto clip = boost::get<bool>(op_desc.GetAttr("clip"));
+  // auto clip = boost::get<bool>(op_desc.GetAttr("clip"));
   auto variances = boost::get<std::vector<float>>(op_desc.GetAttr("variances"));
+  for (auto& ele : variances) {
+    LOG(INFO) << ele;
+  }
 
   // lack img_h, img_w
   auto step_h = boost::get<float>(op_desc.GetAttr("step_h"));
   auto step_w = boost::get<float>(op_desc.GetAttr("step_w"));
   auto offset = boost::get<float>(op_desc.GetAttr("offset"));
-  std::vector<std::string> order = {"MIN", "COM", "MAX"};
+  PTuple<std::string> t_order;
+  t_order.push_back("MIN");
+  t_order.push_back("COM");
+  t_order.push_back("MAX");
+
   std::vector<float> temp_v = {};
 
   engine_->AddOp(op_name, "PriorBox", {input_name, image_name}, {output_name});
   engine_->AddOpAttr<PTuple<float>>(op_name, "min_size", temp_v);
   engine_->AddOpAttr<PTuple<float>>(op_name, "max_size", temp_v);
   engine_->AddOpAttr<PTuple<float>>(op_name, "aspect_ratio", temp_v);
-  engine_->AddOpAttr<PTuple<float>>(op_name, "fixed_sizes", fixed_sizes);
-  engine_->AddOpAttr<PTuple<float>>(op_name, "fixed_ratios", fixed_ratios);
-  engine_->AddOpAttr<PTuple<int>>(op_name, "density", densities);
-  engine_->AddOpAttr(op_name, "is_flip", false);
-  engine_->AddOpAttr(op_name, "is_clip", clip);
+  engine_->AddOpAttr<PTuple<float>>(op_name, "fixed_size", fixed_sizes);
+  engine_->AddOpAttr<PTuple<float>>(op_name, "fixed_ratio", fixed_ratios);
+  engine_->AddOpAttr<PTuple<float>>(op_name, "density", dens);
+  engine_->AddOpAttr(op_name, "is_flip", static_cast<bool>(false));
+  engine_->AddOpAttr(op_name, "is_clip", static_cast<bool>(false));
   engine_->AddOpAttr<PTuple<float>>(op_name, "variance", variances);
   engine_->AddOpAttr(op_name, "img_h", static_cast<int>(0));
   engine_->AddOpAttr(op_name, "img_w", static_cast<int>(0));
   engine_->AddOpAttr(op_name, "step_h", step_h);
   engine_->AddOpAttr(op_name, "step_w", step_w);
   engine_->AddOpAttr(op_name, "offset", offset);
-  engine_->AddOpAttr<PTuple<std::string>>(op_name, "order", order);
+  engine_->AddOpAttr<PTuple<std::string>>(op_name, "order", t_order);
 }
 
 }  // namespace anakin

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUDA
 
+#include <fstream>
 #include <map>
 #include <memory>
 #include <string>
@@ -52,8 +53,9 @@ class AnakinEngineOp : public framework::OperatorBase {
  private:
   std::vector<std::string> input_names_;
   std::unordered_set<std::string> param_names_;
-  mutable std::unique_ptr<AnakinNvEngineT> anakin_engine_;
+  mutable AnakinNvEngineT *anakin_engine_;
   std::string engine_key_;
+  std::string engine_serialized_data_;
 
  public:
   AnakinEngineOp(const std::string &type,
@@ -67,6 +69,7 @@ class AnakinEngineOp : public framework::OperatorBase {
     for (const auto &param : params) {
       param_names_.insert(param);
     }
+    anakin_engine_ = nullptr;
   }
 
  protected:
@@ -77,12 +80,12 @@ class AnakinEngineOp : public framework::OperatorBase {
 
   void RunAnakin(const framework::Scope &scope,
                  const platform::Place &dev_place) const {
-    if (anakin_engine_.get() == nullptr) {
-      anakin_engine_.reset(new AnakinEngine<NV, Precision::FP32>(true));
-      Prepare(scope, dev_place, anakin_engine_.get());
-    }
+    auto *engine = GetEngine(scope, dev_place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
+    auto stream =
+        reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
 
-    auto *engine = anakin_engine_.get();
     PADDLE_ENFORCE(!input_names_.empty(), "should pass more than one inputs");
 
     std::vector<std::string> output_maps =
@@ -95,24 +98,48 @@ class AnakinEngineOp : public framework::OperatorBase {
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
       auto t_shape = framework::vectorize(t.dims());
+      auto *anakin_input = engine->Net()->get_in(x);
+      auto net_shape = anakin_input->shape();
+      size_t anakin_net_input_size = net_shape.count() * sizeof(float);
+      size_t fluid_input_size = t.memory_size();
+
+      if (fluid_input_size < anakin_net_input_size) {
+        framework::LoDTensor temp_t;
+        auto t_dims = t.dims();
+        temp_t.Resize(t_dims);
+        TensorCopySync(t, dev_place, &temp_t);
+        t.Resize(framework::make_ddim(net_shape));
+        t.mutable_data<float>(dev_place);
+        TensorCopySync(temp_t, dev_place, &t);
+      }
       inputs.insert({x, &t});
     }
 
     std::map<std::string, framework::LoDTensor *> outputs;
     int output_index = 0;
     for (const auto &y : Outputs("Ys")) {
-      std::vector<int> ddim =
-          engine->Net()->get_out(output_maps[output_index])->valid_shape();
+      // std::vector<int> ddim =
+      //    engine->Net()->get_out(output_maps[output_index])->valid_shape();
       // we need get the output anakin output shape.
       auto *fluid_v = scope.FindVar(y);
       PADDLE_ENFORCE_NOT_NULL(fluid_v, "no output variable called %s", y);
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
-      fluid_t->Resize(framework::make_ddim(ddim));
-      fluid_t->mutable_data<float>(boost::get<platform::CUDAPlace>(dev_place));
+      // fluid_t->Resize(framework::make_ddim(ddim));
+      // fluid_t->mutable_data<float>(boost::get<platform::CUDAPlace>(dev_place));
       outputs.insert({output_maps[output_index], fluid_t});
       output_index += 1;
     }
-    engine->Execute(inputs, outputs);
+    engine->Execute(inputs, outputs, stream);
+  }
+
+  AnakinNvEngineT *GetEngine(const framework::Scope &scope,
+                             const platform::Place &dev_place) const {
+    if (anakin_engine_ == nullptr) {
+      anakin_engine_ =
+          inference::Singleton<inference::anakin::AnakinEngineManager>::Global()
+              .Get(engine_key_);
+    }
+    return anakin_engine_;
   }
 
   void Prepare(const framework::Scope &scope, const platform::Place &dev_place,
@@ -128,8 +155,6 @@ class AnakinEngineOp : public framework::OperatorBase {
     inference::Singleton<inference::anakin::AnakinOpConverter>::Global()
         .ConvertBlock(block_desc, param_names_, scope, engine);
     engine->Freeze();
-    engine->Optimize();
-
     for (const auto &x : Inputs("Xs")) {
       if (param_names_.count(x)) continue;
       auto &t =
@@ -142,6 +167,9 @@ class AnakinEngineOp : public framework::OperatorBase {
       }
       engine->SetInputShape(x, t_shape);
     }
+
+    engine->Optimize();
+
     engine->InitGraph();
   }
 };

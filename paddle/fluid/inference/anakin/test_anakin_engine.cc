@@ -17,9 +17,6 @@ limitations under the License. */
 
 #include <map>
 
-#include "framework/core/net/net.h"
-#include "framework/graph/graph.h"
-#include "framework/graph/graph_global_mem.h"
 #include "paddle/fluid/inference/anakin/engine.h"
 
 using anakin::graph::GraphGlobalMem;
@@ -84,7 +81,9 @@ TEST_F(TestAnakinEngine, Execute) {
   auto *y_data = y.mutable_data<float>(platform::CUDAPlace());
   std::map<std::string, framework::LoDTensor *> outputs = {{"y", &y}};
 
-  engine_->Execute(inputs, outputs);
+  cudaStream_t stream;
+
+  engine_->Execute(inputs, outputs, stream);
   auto *y_data_gpu = y_data;
   float y_data_cpu[2];
   cudaMemcpy(y_data_cpu, y_data_gpu, sizeof(float) * 2, cudaMemcpyDeviceToHost);

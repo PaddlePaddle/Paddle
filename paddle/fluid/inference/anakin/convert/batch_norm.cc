@@ -43,11 +43,13 @@ void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
   auto output = op_desc.Output("Y").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Y").front();
   auto epsilon = boost::get<float>(op_desc.GetAttr("epsilon"));
+  // auto momentum = boost::get<float>(op_desc.GetAttr("momentum"));
 
   auto bn_op_name = op_name + ":bn";
   auto bn_output = bn_op_name + "_output";
   engine_->AddOp(bn_op_name, "BatchNorm", {inputs["X"]}, {bn_output});
   engine_->AddOpAttr(bn_op_name, "epsilon", epsilon);
+  engine_->AddOpAttr(bn_op_name, "momentum", static_cast<float>(1.0));
 
   auto scale_op_name = op_name + ":scale";
   auto get_lod_tensor = [this, &scope, &op_name](const std::string &var_name,

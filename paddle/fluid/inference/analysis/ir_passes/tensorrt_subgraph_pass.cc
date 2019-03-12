@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <map>
 #include <set>
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -219,7 +220,17 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
 
   SetAttr(op_desc->Proto(), "enable_int8", enable_int8);
   SetAttr(op_desc->Proto(), "engine_key", engine_key);
-  SetAttr(op_desc->Proto(), "engine_serialized_data", std::string(""));
+  bool load_from_memory = Get<bool>("model_from_memory");
+  std::string trt_engine_serialized_data = "";
+  if (load_from_memory) {
+    std::map<std::string, std::string> engine_opt_info =
+        Get<std::map<std::string, std::string>>("engine_opt_info");
+    if (engine_opt_info.count(engine_key)) {
+      trt_engine_serialized_data = engine_opt_info[engine_key];
+    }
+  }
+  SetAttr(op_desc->Proto(), "engine_serialized_data",
+          trt_engine_serialized_data);
 
   std::unique_ptr<tensorrt::TRTInt8Calibrator> calibrator;
   if (enable_int8 && calibration_data.size() != 0) {
@@ -230,10 +241,11 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // When in int8 mode and calibration_mode, the program just produce the
   // calibration table data.
   bool calibration_mode = (enable_int8 && calibration_data.size() == 0);
-  if (!calibration_mode && use_static_engine) {
+  if (!calibration_mode && use_static_engine &&
+      trt_engine_serialized_data.empty()) {
     std::copy(params.begin(), params.end(),
               std::back_inserter(*repetitive_params));
-    std::string trt_engine_serialized_data = GetTrtEngineSerializedData(
+    trt_engine_serialized_data = GetTrtEngineSerializedData(
         Get<std::string>("model_opt_cache_dir"), engine_key);
 
     if (trt_engine_serialized_data.empty()) {
