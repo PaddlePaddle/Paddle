@@ -3065,7 +3065,21 @@ def sync_batch_norm(input,
     variance through multi-GPUs in training phase.
 
     Note: current implementation doesn't support FP16 training.
-    And only synchronous on one machine, not all machines.
+    And only synchronous on one machine, not all machines. And dot not use
+    this operator in inference.
+
+    **Note**: it's better to make sure that the operators execution sequence
+     is the same on multi-gpus, you can set the `build_strategy` when compiling
+     program for data parallelism:
+
+        .. code-block:: python
+
+            build_strategy = fluid.BuildStrategy()
+            build_strategy.enable_sequential_execution = True
+            tp = fluid.default_main_program()
+            binary = fluid.compiler.CompiledProgram(tp).with_data_parallel(
+                loss_name=loss.name,
+                build_strategy=build_strategy,
 
     Args:
         input(variable): The rank of input variable can be 2, 3, 4, 5.
