@@ -4731,7 +4731,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
             the dimension to normalization is rank(X) + axis. -1 is the
             last dimension.
         epsilon(float): The epsilon value is used to avoid division by zero, \
-            the defalut value is 1e-12.
+            the default value is 1e-12.
         name(str|None): A name for this layer(optional). If set None, the layer \
             will be named automatically.
 
@@ -10704,8 +10704,9 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 
     similarity_matrix = matmul(
         anchor, positive, transpose_x=False, transpose_y=True)
-    softmax_value = softmax(similarity_matrix)
-    cross_entropy = -1 * reduce_sum(labels * log(softmax_value), 0)
+    softmax_ce = softmax_with_cross_entropy(
+        logits=similarity_matrix, label=labels, soft_label=True)
+    cross_entropy = reduce_sum(labels * softmax_ce, 0)
     celoss = reduce_mean(cross_entropy)
 
     return l2loss + celoss
