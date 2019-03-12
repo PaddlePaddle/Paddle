@@ -271,26 +271,47 @@ $$out = \\frac{x}{1 + \|x\|}$$
 
 )DOC";
 
-UNUSED constexpr char AcosDoc[] = R"DOC(
+class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of acos operator");
+    AddOutput("Out", "Output of acos operator");
+    AddComment(R"DOC(
 Arccosine Activation Operator.
 
-$${out}_{i} = \cos^{-1}({input}_{i})$$
+$$out = \cos^{-1}(x)$$
 
-)DOC";
+)DOC");
+  }
+};
 
-UNUSED constexpr char AsinDoc[] = R"DOC(
+class AsinOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of asin operator");
+    AddOutput("Out", "Output of asin operator");
+    AddComment(R"DOC(
 Arcsine Activation Operator.
 
-$out = \sin^{-1}({input}_{i})$
+$$out = \sin^{-1}(x)$$
 
-)DOC";
+)DOC");
+  }
+};
 
-UNUSED constexpr char AtanDoc[] = R"DOC(
+class AtanOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of atan operator");
+    AddOutput("Out", "Output of atan operator");
+    AddComment(R"DOC(
 Arctanh Activation Operator.
 
-$out = \tanh^{-1}({input}_{i})$
+$$out = \tanh^{-1}(x)$$
 
-)DOC";
+)DOC");
+  }
+};
 
 class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -517,16 +538,13 @@ REGISTER_ACTIVATION_OP_MAKER(Exp, ExpDoc);
 REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Gelu, GeluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
-REGISTER_ACTIVATION_OP_MAKER(Atan, AtanDoc);
 REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
 REGISTER_ACTIVATION_OP_MAKER(Abs, AbsDoc);
 REGISTER_ACTIVATION_OP_MAKER(Ceil, CeilDoc);
 REGISTER_ACTIVATION_OP_MAKER(Floor, FloorDoc);
 REGISTER_ACTIVATION_OP_MAKER(Cos, CosDoc);
-REGISTER_ACTIVATION_OP_MAKER(Acos, AcosDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sin, SinDoc);
-REGISTER_ACTIVATION_OP_MAKER(Asin, AsinDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
