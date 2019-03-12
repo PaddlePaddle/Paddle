@@ -630,6 +630,7 @@ class Executor(object):
                 trainer.set_thread(dataset.thread_num)
             else:
                 trainer.set_thread(thread)
+            trainer.gen_trainer_desc()
             dataset._prepare_to_run()
             print("run_from_dataset called")
             self._default_executor.run_from_dataset(program.desc, scope,
