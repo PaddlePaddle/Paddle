@@ -126,15 +126,20 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
 }
 template void ZeroCopyTensor::copy_from_cpu<float>(const float *data);
 template void ZeroCopyTensor::copy_from_cpu<int64_t>(const int64_t *data);
+template void ZeroCopyTensor::copy_from_cpu<int32_t>(const int32_t *data);
 template void ZeroCopyTensor::copy_to_cpu<float>(float *data);
 template void ZeroCopyTensor::copy_to_cpu<int64_t>(int64_t *data);
+template void ZeroCopyTensor::copy_to_cpu<int32_t>(int32_t *data);
 
 template float *ZeroCopyTensor::data<float>(PaddlePlace *place,
                                             int *size) const;
 template int64_t *ZeroCopyTensor::data<int64_t>(PaddlePlace *place,
                                                 int *size) const;
+template int32_t *ZeroCopyTensor::data<int32_t>(PaddlePlace *place,
+                                                int *size) const;
 template float *ZeroCopyTensor::mutable_data<float>(PaddlePlace place);
 template int64_t *ZeroCopyTensor::mutable_data<int64_t>(PaddlePlace place);
+template int32_t *ZeroCopyTensor::mutable_data<int32_t>(PaddlePlace place);
 
 void *ZeroCopyTensor::FindTensor() const {
   PADDLE_ENFORCE(!name_.empty(),

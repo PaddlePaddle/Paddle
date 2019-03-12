@@ -282,7 +282,9 @@ class RecurrentOp : public RecurrentBase {
 
       // Every inputs are linked now, execute!
       executor.Run(*program, &cur_scope, block->ID(),
-                   false /*create_local_scope*/);
+                   false /*create_local_scope*/, true /*create_vars*/,
+                   std::vector<std::string>() /*skip_ref_cnt_vars*/,
+                   true /*force_disable_gc*/);
 
       // get device context from pool
       platform::DeviceContextPool &pool =
@@ -398,7 +400,9 @@ class RecurrentGradOp : public RecurrentBase {
       VLOG(5) << "Recurrent memory linking finished ";
       // Run step block with cur_scope
       executor.Run(*program, &cur_scope, block->ID(),
-                   false /*create_local_scope*/);
+                   false /*create_local_scope*/, true /*create_vars*/,
+                   std::vector<std::string>() /*skip_ref_cnt_vars*/,
+                   true /*force_disable_gc*/);
 
       VLOG(5) << "executor.Run finished ";
 
