@@ -160,6 +160,10 @@ class TestQuantizationTransformPass(unittest.TestCase):
         self.act_quant_op_type = 'fake_quantize_range_abs_max'
         self.linear_fc_quant('range_abs_max')
 
+    def test_linear_fc_quant_moving_average_abs_max(self):
+        self.act_quant_op_type = 'fake_quantize_moving_average_abs_max'
+        self.linear_fc_quant('moving_average_abs_max')
+
     def residual_block_quant(self, quant_type):
         main = fluid.Program()
         startup = fluid.Program()
@@ -196,6 +200,10 @@ class TestQuantizationTransformPass(unittest.TestCase):
     def test_residual_block_range_abs_max(self):
         self.act_quant_op_type = 'fake_quantize_range_abs_max'
         self.residual_block_quant('range_abs_max')
+
+    def test_residual_block_moving_average_abs_max(self):
+        self.act_quant_op_type = 'fake_quantize_moving_average_abs_max'
+        self.residual_block_quant('moving_average_abs_max')
 
 
 class TestQuantizationFreezePass(unittest.TestCase):
@@ -357,10 +365,14 @@ class TestQuantizationFreezePass(unittest.TestCase):
         if fluid.core.is_compiled_with_cuda():
             with fluid.unique_name.guard():
                 self.freeze_graph(True, seed=1, quant_type='range_abs_max')
+                self.freeze_graph(
+                    True, seed=1, quant_type='moving_average_abs_max')
 
     def test_freeze_graph_cpu_static(self):
         with fluid.unique_name.guard():
             self.freeze_graph(False, seed=2, quant_type='range_abs_max')
+            self.freeze_graph(
+                False, seed=2, quant_type='moving_average_abs_max')
 
 
 if __name__ == '__main__':
