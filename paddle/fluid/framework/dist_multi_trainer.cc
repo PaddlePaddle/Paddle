@@ -39,7 +39,6 @@ void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
     workers_[i]->Initialize(trainer_desc);
   }
 
-  fleet_ptr_ = FleetWrapper::GetInstance();
   pull_dense_worker_ = PullDenseWorker::GetInstance();
   pull_dense_worker_->Initialize(trainer_desc);
   VLOG(3) << "initialize pull dense worker";
