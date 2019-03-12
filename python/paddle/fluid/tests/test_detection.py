@@ -476,7 +476,7 @@ class TestYoloDetection(unittest.TestCase):
             x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
             gtbox = layers.data(name='gtbox', shape=[10, 4], dtype='float32')
             gtlabel = layers.data(name='gtlabel', shape=[10], dtype='int32')
-            gtscore = layers.data(name='gtscore', shape=[10], dtype='int32')
+            gtscore = layers.data(name='gtscore', shape=[10], dtype='float32')
             loss = layers.yolov3_loss(
                 x,
                 gtbox,
