@@ -84,15 +84,15 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     int input_size = downsample_ratio * h;
 
     auto& dev_ctx = ctx.cuda_device_context();
-    auto& allocator = 
-      platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
+    auto& allocator =
+        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
     int bytes = sizeof(int) * anchors.size();
     auto anchors_ptr = allocator.Allocate(sizeof(int) * anchors.size());
     int* anchors_data = reinterpret_cast<int*>(anchors_ptr->ptr());
     const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     const auto cplace = platform::CPUPlace();
     memory::Copy(gplace, anchors_data, cplace, anchors.data(), bytes,
-                            dev_ctx.stream());
+                 dev_ctx.stream());
 
     const T* input_data = input->data<T>();
     const int* imgsize_data = img_size->data<int>();
