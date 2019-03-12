@@ -905,13 +905,24 @@ def save_inference_model(dirname,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+            image = fluid.layers.data(name="image", shape=[784])
+            label = fluid.layers.data(name="label", shape=[1])
+            hidden = fluid.layers.fc(input=image, size=100, act='relu')
+            prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+            loss = fluid.layers.mean(
+                fluid.layers.cross_entropy(
+                    input=prediction,
+                    label=label))
+            sgd = fluid.optimizer.SGD(learning_rate=0.001)
+            sgd.minimize(loss)
             exe = fluid.Executor(fluid.CPUPlace())
-            path = "./infer_model"
-            fluid.io.save_inference_model(dirname=path, feeded_var_names=['img'],
-                         target_vars=[predict_var], executor=exe)
+            exe.run(program=fluid.default_startup_program())
+            fluid.io.save_inference_model(dirname="./infer_model", feeded_var_names=[image.name],
+                         target_vars=[prediction], executor=exe)
 
-            # In this exsample, the function will prune the default main program
-            # to make it suitable for infering the `predict_var`. The pruned
+            # In this example, the function will prune the default main program
+            # to make it suitable for inferring the `prediction`. The pruned
             # inference program is going to be saved in the "./infer_model/__model__"
             # and parameters are going to be saved in separate files under folder
             # "./infer_model".

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/slice_op.h"
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 namespace paddle {
@@ -89,14 +90,14 @@ Slice Operator.
 
 Produces a slice of the input tensor along multiple axes. Similar to numpy:
 https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
-Slice uses `axes`, `starts` and `ends` attributes to specify the start and
-end dimension for each axis in the list of axes, it uses this information
+Slice uses `axes`, `starts` and `ends` attributes to specify the start (include) and
+end (exclude) dimension for each axis in the list of axes, it uses this information
 to slice the input data tensor. If a negative value is passed for any of
 the start or end indices, it represents number of elements before the end
 of that dimension. If the value passed to start or end is larger than
 the n (the number of elements in this dimension), it represents n.
 For slicing to the end of a dimension with unknown size, it is recommended
-to pass in INT_MAX. If axes are omitted, they are set to [0, ..., ndim-1].
+to pass in INT_MAX.
 Following examples will explain how slice works:
 
     .. code-block:: text
