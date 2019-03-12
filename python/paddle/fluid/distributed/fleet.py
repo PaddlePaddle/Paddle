@@ -10,6 +10,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
+import sys
 from .. import core
 from . import ps_instance
 
@@ -33,9 +34,15 @@ class Fleet(object):
         self.instance_.barrier_all()
         self.instance.finalize()
 
-    def init_pserver(self, dist_desc):
-        self.dist_desc_str_ = text_format.MessageToString(dist_desc)
-        self.dist_desc = dist_desc
+    def init_pserver(self, opt_info):
+        if "fleet_desc" in opt_info:
+            self.dist_desc_str_ = text_format.MessageToString(opt_info[
+                "fleet_desc"])
+            self.dist_desc_ = opt_info["fleet_desc"]
+        else:
+            print(
+                "You should run distributed optimization to get opt_info first")
+            sys.exit(-1)
         self.fleet_.init_server(self.dist_desc_str_)
         ip = self.fleet_.start_server()
         self.instance_.set_ip(ip)
@@ -44,10 +51,15 @@ class Fleet(object):
         self.fleet.gather_servers(ips, self.instance_.get_node_cnt())
         self.instance_.barrier_all()
 
-    def init_worker(self, dist_desc):
-        self.dist_desc_str_ = text_format.MessageToString(dist_desc)
-        self.dist_desc_ = dist_desc
-
+    def init_worker(self, opt_info):
+        if "fleet_desc" in opt_info:
+            self.dist_desc_str_ = text_format.MessageToString(opt_info[
+                "fleet_desc"])
+            self.dist_desc_ = opt_info["fleet_desc"]
+        else:
+            print(
+                "You should run distributed optimization to get opt_info first")
+            sys.exit(-1)
         self.instance_.barrier_all()
         ips = self.instance.gather_ips()
         self.fleet_.init_worker(self.dist_desc_str_, ips,

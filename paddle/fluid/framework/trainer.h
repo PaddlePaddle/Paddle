@@ -61,8 +61,7 @@ class MultiTrainer : public TrainerBase {
  public:
   MultiTrainer() {}
   virtual ~MultiTrainer() {}
-  virtual void Initialize(const TrainerDesc& trainer_desc,
-                          Dataset* data_set);
+  virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set);
   virtual void InitTrainerEnv(const ProgramDesc& main_program,
                               const platform::Place& place);
   virtual void InitOtherEnv(const ProgramDesc& main_program) {}
@@ -80,14 +79,12 @@ class DistMultiTrainer : public MultiTrainer {
  public:
   DistMultiTrainer() {}
   virtual ~DistMultiTrainer() {}
-  virtual void Initialize(const TrainerDesc& trainer_desc,
-                          Dataset* data_set);
+  virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set);
   virtual void InitOtherEnv(const ProgramDesc& main_program);
   virtual void Finalize();
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
-  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
 };
 
 }  // namespace framework
