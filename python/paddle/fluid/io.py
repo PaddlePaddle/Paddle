@@ -565,11 +565,17 @@ def load_vars(executor,
         if not isinstance(main_program, Program):
             raise TypeError("program's type should be Program")
 
+        vars = list(filter(predicate, main_program.list_vars())),
+        if len(vars) == 0:
+            warnings.warn(
+                "Doesn't find vars in the current program, maybe you should pass the main_program."
+            )
+
         load_vars(
             executor,
             dirname=dirname,
             main_program=main_program,
-            vars=list(filter(predicate, main_program.list_vars())),
+            vars=vars,
             filename=filename)
     else:
         load_prog = Program()
@@ -581,6 +587,9 @@ def load_vars(executor,
             raise TypeError("program should be as Program type or None")
 
         load_var_map = {}
+        if len(vars) == 0:
+            warnings.warn("The input vars is empty.")
+
         for each_var in vars:
             assert isinstance(each_var, Variable)
             if each_var.type == core.VarDesc.VarType.RAW:
