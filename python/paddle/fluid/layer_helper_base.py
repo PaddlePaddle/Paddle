@@ -272,7 +272,6 @@ class LayerHelperBase(object):
             attr = ParamAttr._to_attr(attr)
         if not attr:
             return None
-
         assert isinstance(attr, ParamAttr)
         suffix = 'b' if is_bias else 'w'
         if attr.name is None:

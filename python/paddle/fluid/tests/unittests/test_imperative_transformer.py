@@ -558,7 +558,6 @@ class PrepareEncoderDecoderLayer(Layer):
         self._src_emb_dim = src_emb_dim
         self._src_vocab_size = src_vocab_size
         self._dropout_rate = dropout_rate
-
         self._input_emb = Embedding(
             name_scope=self.full_name(),
             size=[src_vocab_size, src_emb_dim],
