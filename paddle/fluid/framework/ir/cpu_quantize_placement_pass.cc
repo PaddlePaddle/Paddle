@@ -23,10 +23,15 @@ namespace ir {
 std::unique_ptr<ir::Graph> CPUQuantizePlacementPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   VLOG(3) << "Marks operators which are to be quantized.";
+  const auto& excluded_ids_list =
+      Get<std::unordered_set<int>>("quantize_excluded_op_ids");
   const auto& op_types_list =
       Get<std::unordered_set<std::string>>("quantize_enabled_op_types");
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
+      if (std::find(excluded_ids_list.begin(), excluded_ids_list.end(),
+                    n->id()) != excluded_ids_list.end())
+        continue;
       auto* op = n->Op();
       if (op->HasAttr("use_quantizer") || op->HasProtoAttr("use_quantizer")) {
         if (op_types_list.empty()) {
@@ -47,4 +52,5 @@ std::unique_ptr<ir::Graph> CPUQuantizePlacementPass::ApplyImpl(
 
 REGISTER_PASS(cpu_quantize_placement_pass,
               paddle::framework::ir::CPUQuantizePlacementPass)
-    .RequirePassAttr("quantize_enabled_op_types");
+    .RequirePassAttr("quantize_enabled_op_types")
+    .RequirePassAttr("quantize_excluded_op_ids");

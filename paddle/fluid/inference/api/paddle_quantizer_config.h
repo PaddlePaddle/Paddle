@@ -87,6 +87,14 @@ struct QuantizerConfig {
     return enabled_op_types_;
   }
 
+  void SetExcludedOpIds(std::unordered_set<int> op_ids_list) {
+    excluded_op_ids_ = op_ids_list;
+  }
+
+  const std::unordered_set<int>& excluded_op_ids() const {
+    return excluded_op_ids_;
+  }
+
   void SetDefaultScaleAlgo(ScaleAlgo algo) { default_scale_algo_ = algo; }
 
   ScaleAlgo default_scale_algo() const { return default_scale_algo_; }
@@ -94,6 +102,7 @@ struct QuantizerConfig {
  protected:
   std::map<std::string, std::map<std::string, ScaleAlgo>> rules_;
   std::unordered_set<std::string> enabled_op_types_;
+  std::unordered_set<int> excluded_op_ids_;
   std::shared_ptr<std::vector<PaddleTensor>> warmup_data_;
   int warmup_bs_{1};
   ScaleAlgo default_scale_algo_{ScaleAlgo::MAX};

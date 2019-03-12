@@ -382,6 +382,8 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Quantization is enabled";
     argument_.SetQuantizeEnabledOpTypes(
         config_.quantizer_config()->enabled_op_types());
+    argument_.SetQuantizeExcludedOpIds(
+        config_.quantizer_config()->excluded_op_ids());
   }
 
   auto passes = config_.pass_builder()->AllPasses();

@@ -135,6 +135,10 @@ struct Argument {
   DECL_ARGUMENT_FIELD(quantize_enabled_op_types, QuantizeEnabledOpTypes,
                       std::unordered_set<std::string>);
 
+  // A set of op IDs to exclude from enabling their quantized kernels
+  DECL_ARGUMENT_FIELD(quantize_excluded_op_ids, QuantizeExcludedOpIds,
+                      std::unordered_set<int>);
+
   // Scales for variables to be quantized
   using VarQuantMaxAndScale =
       std::map<std::string, std::pair<QuantMax, framework::LoDTensor>>;
