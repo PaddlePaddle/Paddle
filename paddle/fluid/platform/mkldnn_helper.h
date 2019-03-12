@@ -114,7 +114,9 @@ inline mkldnn::memory::format MKLDNNFormatForSize(
   } else if (dims_size == 2) {
     return mkldnn::memory::format::nc;
   } else if (dims_size == 3) {
-    if (data_format == mkldnn::memory::format::nchw) {
+    if (data_format == mkldnn::memory::format::nchw ||
+        data_format == mkldnn::memory::format::nChw16c ||
+        data_format == mkldnn::memory::format::nChw8c) {
       return mkldnn::memory::format::ncw;
     } else if (data_format == mkldnn::memory::format::nhwc) {
       return mkldnn::memory::format::nwc;
