@@ -112,7 +112,7 @@ class Conv2D(layers.Layer):
                 'strides': self._stride,
                 'paddings': self._padding,
                 'dilations': self._dilation,
-                'groups': self._groups,
+                'groups': self._groups if self._groups else 1,
                 'use_cudnn': self._use_cudnn,
                 'use_mkldnn': False,
             })
