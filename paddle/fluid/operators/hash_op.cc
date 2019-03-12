@@ -54,13 +54,7 @@ $$Out = scale * X$$
 )DOC");
     AddAttr<int>("num_hash", "").SetDefault(1);
     AddAttr<int>("mod_by", "").SetDefault(100000);
-    AddAttr<bool>(
-        "all_kernels_must_compute_runtime_shape",
-        "(boolean, default true) "
-        "An attribute to speed up OperatorWithKernel::RunImpl."
-        "If true, all the kernels of this Op would compute runtime "
-        "shape, but skip infershape in runtime. Note that it is a temporal "
-        "attribute, please do DOT set it in python layer.")
+    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape, "")
         .SetDefault(true);
   }
 };
