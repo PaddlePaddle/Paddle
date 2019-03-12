@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trainer_desc import *
-from device_worker import *
+from .trainer_desc import MultiTrainer
+from .device_worker import Hogwild
 
 __all__ = ["TrainerFactory"]
 
@@ -38,5 +38,5 @@ class TrainerFactory(object):
             device_worker = globals()[device_worker_class]()
             trainer.set_device_worker(device_worker)
             trainer.set_fleet_desc(opt_info["fleet_desc"])
-            trainer.gen_trainer_desc(fleet_desc=opt_info["fleet_desc"])
+            trainer.gen_trainer_desc()
         return trainer

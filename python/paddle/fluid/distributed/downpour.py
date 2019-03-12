@@ -33,6 +33,9 @@ class DownpourSGD(object):
     Examples:
         .. code-block:: python
     
+             opt = fluid.DistributedOptimizer(sgd_opt)
+             opt.minimize()
+
              downpour_sgd = fluid.distributed.DownpourSGD(learning_rate=0.2)
              downpour_sgd.minimize(cost)
     """
@@ -87,6 +90,7 @@ class DownpourSGD(object):
                                 prefetch_slots, prefetch_slots_emb)
         dense_table_index = 1
         program_configs = []
+        param_grads_list = []
         for loss_index in range(len(losses)):
             program_config = ps_param.trainer_param.program_config.add()
             program_config.program_id = str(
@@ -97,6 +101,7 @@ class DownpourSGD(object):
                 append_backward(losses[loss_index], parameter_list,
                                 no_grad_set),
                 key=lambda x: x[0].name)
+            param_grads_list.append(params_grads)
             params = []
             grads = []
             data_norm_params = []
@@ -156,4 +161,8 @@ class DownpourSGD(object):
         opt_info["optimizer"] = "DownpourSGD"
         opt_info["fleet_desc"] = ps_param
         opt_info["worker_skipped_ops"] = worker_skipped_ops
-        return opt_info
+
+        for loss in losses:
+            loss.block.program._fleet_opt = opt_info
+
+        return None, param_grads_list
