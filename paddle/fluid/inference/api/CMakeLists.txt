@@ -44,11 +44,15 @@ cc_test(test_paddle_inference_api
 
 if(WITH_TESTING)
   inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS ${inference_deps}
-                      ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book)
+                      ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book
+                      DOWNLOAD_DEPS ${WORD2VEC_DOWNLOAD_DEPS})
   set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
 endif()
 cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
         ARGS --dirname=${WORD2VEC_MODEL_DIR})
+if(WORD2VEC_DOWNLOAD_DEPS)
+  add_download_dependencies(test_analysis_predictor ${WORD2VEC_DOWNLOAD_DEPS})
+endif()
 
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.

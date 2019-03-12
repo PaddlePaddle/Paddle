@@ -25,14 +25,22 @@ cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
 
 function(inference_analysis_test TARGET)
   if(WITH_TESTING)
-     set(options "")
-     set(oneValueArgs "")
-     set(multiValueArgs SRCS ARGS EXTRA_DEPS)
-     cmake_parse_arguments(analysis_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS ARGS EXTRA_DEPS DOWNLOAD_DEPS)
+    cmake_parse_arguments(analysis_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    if(WORD2VEC_DOWNLOAD_DEPS OR analysis_test_DOWNLOAD_DEPS)
+     inference_base_test(${TARGET}
+             SRCS ${analysis_test_SRCS}
+             DEPS analysis pass ${GLOB_PASS_LIB} ${analysis_test_EXTRA_DEPS}
+             ARGS --inference_model_dir=${WORD2VEC_MODEL_DIR} ${analysis_test_ARGS}
+             DOWNLOAD_DEPS "${WORD2VEC_DOWNLOAD_DEPS} ${analysis_test_DOWNLOAD_DEPS}")
+    else()
      inference_base_test(${TARGET}
              SRCS ${analysis_test_SRCS}
              DEPS analysis pass ${GLOB_PASS_LIB} ${analysis_test_EXTRA_DEPS}
              ARGS --inference_model_dir=${WORD2VEC_MODEL_DIR} ${analysis_test_ARGS})
+    endif()
   endif()
 endfunction(inference_analysis_test)
 
