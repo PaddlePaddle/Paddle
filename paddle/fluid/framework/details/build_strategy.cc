@@ -96,15 +96,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
     VLOG(1) << "CollectiveContext:" << context->String();
 
-    // NOTE(dzh): memory optimize should be a runtime pass.
-    // However, after multi_devices_pass, VarHandle, OpHandle is
-    // the de-fact IR, any reuse on Graph is meaningless.
-    // A side-effect of that, memory optimize cannot forsee the fetched vars
-    // , so fetchlist should be set persistable before call the Run interface.
-    if (strategy.memory_optimize_) {
-      auto memory_optimize_pass = AppendPass("memory_optimize_pass");
-    }
-
     AppendMultiDevPass(strategy);
 
     // Add a graph print pass to record a graph with device info.
@@ -124,6 +115,15 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     if (SeqOnlyAllReduceOps(strategy)) {
       AppendPass("all_reduce_deps_pass");
+    }
+
+    // NOTE(dzh): memory optimize should be a runtime pass.
+    // However, after multi_devices_pass, VarHandle, OpHandle is
+    // the de-fact IR, any reuse on Graph is meaningless.
+    // A side-effect of that, memory optimize cannot forsee the fetched vars
+    // , so fetchlist should be set persistable before call the Run interface.
+    if (strategy.memory_optimize_) {
+      auto memory_optimize_pass = AppendPass("memory_optimize_pass");
     }
 
     if (strategy_.remove_unnecessary_lock_) {
