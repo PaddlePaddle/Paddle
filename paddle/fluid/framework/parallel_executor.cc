@@ -252,9 +252,11 @@ ParallelExecutor::ParallelExecutor(
     member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
         member_->places_, nccl_id, build_strategy.num_trainers_,
         build_strategy.trainer_id_));
+
+    auto dev_nccl_ctxs = new platform::NCCLContextMap(member_->places_);
     // initialize device context's nccl comm, so that all operators
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
-      auto &nccl_ctx = member_->nccl_ctxs_->at(dev_id);
+      auto &nccl_ctx = dev_nccl_ctxs->at(dev_id);
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
