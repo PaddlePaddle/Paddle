@@ -299,13 +299,13 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
 
     const T* gt_score_data;
     if (!gt_score) {
-      Tensor _gt_score;
-      _gt_score.mutable_data<T>({n, b}, ctx.GetPlace());
+      Tensor gtscore;
+      gtscore.mutable_data<T>({n, b}, ctx.GetPlace());
       math::SetConstant<platform::CPUDeviceContext, T>()(
-          ctx.template device_context<platform::CPUDeviceContext>(), &_gt_score,
+          ctx.template device_context<platform::CPUDeviceContext>(), &gtscore,
           static_cast<T>(1.0));
-      gt_score = &_gt_score;
-      gt_score_data = _gt_score.data<T>();
+      gt_score = &gtscore;
+      gt_score_data = gtscore.data<T>();
     } else {
       gt_score_data = gt_score->data<T>();
     }
@@ -453,13 +453,13 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
 
     const T* gt_score_data;
     if (!gt_score) {
-      Tensor _gt_score;
-      _gt_score.mutable_data<T>({n, b}, ctx.GetPlace());
+      Tensor gtscore;
+      gtscore.mutable_data<T>({n, b}, ctx.GetPlace());
       math::SetConstant<platform::CPUDeviceContext, T>()(
-          ctx.template device_context<platform::CPUDeviceContext>(), &_gt_score,
+          ctx.template device_context<platform::CPUDeviceContext>(), &gtscore,
           static_cast<T>(1.0));
-      gt_score = &_gt_score;
-      gt_score_data = _gt_score.data<T>();
+      gt_score = &gtscore;
+      gt_score_data = gtscore.data<T>();
     } else {
       gt_score_data = gt_score->data<T>();
     }
