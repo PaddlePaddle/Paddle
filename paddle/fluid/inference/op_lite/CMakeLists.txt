@@ -1,0 +1,5 @@
+cc_library(op_lite SRCS op_lite.cc)
+cc_library(fc_op_lite SRCS fc_op.cc DEPS lod_tensor )
+cc_library(activation_op_lite SRCS activation_op.cc DEPS lod_tensor activation_op)
+cc_library(concat_op_lite SRCS concat_op.cc DEPS lod_tensor concat_op)
+cc_library(lite_ops SRCS ops.cc DEPS op_lite fc_op_lite activation_op_lite concat_op_lite)

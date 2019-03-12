@@ -22,6 +22,8 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/inference/op_lite/ops.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -35,7 +37,7 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
   }
 
   VLOG(3) << "NaiveExecutor init with scope " << scope;
-  CreateOps(program_desc, block_id, with_feed_fetch_ops);
+  CreateOps(program_desc, block_id, with_feed_fetch_ops, scope);
 }
 
 void NaiveExecutor::Run() {
@@ -49,12 +51,36 @@ void NaiveExecutor::Run() {
                              "setting the cmake flag ON_INFER=ON if you are "
                              "running Paddle Inference";
 #endif  // PADDLE_ON_INFERENCE
-  for (auto &op : ops_) {
-    VLOG(4) << std::this_thread::get_id() << " run "
-            << op->DebugStringEx(scope_) << " on scope " << scope_;
-    op->SetIsCalledByExecutor(false);
-    op->Run(*scope_, place_);
+  inference::Timer timer;
+  //timer.tic();
+  if (!FLAGS_global_use_lite_op) {
+      for (auto& op : ops_) {
+        op->SetIsCalledByExecutor(false);
+        op->Run(*scope_, place_);
+      }
+      return;
   }
+
+  for (auto &gear : gears_) {
+      timer.tic();
+      if (gear.op) {
+        //LOG(INFO) << std::this_thread::get_id() << " run "
+                //<< gear.op->DebugStringEx(scope_) << " on scope " << scope_;
+        gear.op->SetIsCalledByExecutor(false);
+        gear.op->Run(*scope_, place_);
+      } else {
+        if (!shape_checked_) {
+            shape_checked_ = true;
+            PADDLE_ENFORCE(gear.lite_op->CheckShape());
+        }
+        PADDLE_ENFORCE(gear.lite_op->InferShape());
+        VLOG(3) << "running lite op " << gear.lite_op->DebugString();
+        PADDLE_ENFORCE(gear.lite_op->Run());
+      }
+      //gear.timer += timer.toc();
+      //++gear.run_times;
+  }
+  //LOG(INFO) << "op " << gear.name << " takes " << timer.toc();
 }
 
 void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
@@ -96,7 +122,8 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
 }
 
 void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
-                              bool with_feed_fetch_ops) {
+                              bool with_feed_fetch_ops,
+                              framework::Scope *scope) {
   for (const auto &op_desc : desc.Block(block_id).AllOps()) {
     if (!with_feed_fetch_ops &&
         (op_desc->Type() == "feed" || op_desc->Type() == "fetch")) {
@@ -105,7 +132,24 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
                             op_desc->Output("Out")[0]);
       continue;
     }
-    ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
+
+    if (!FLAGS_global_use_lite_op) {
+        ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
+        continue;
+    }
+
+    gears_.emplace_back();
+    gears_.back().name = op_desc->Type();
+    if ((!FLAGS_global_with_gpu) && FLAGS_global_use_lite_op &&
+        inference::op_lite::LiteOpRegistry::Global().Has(op_desc->Type())) {
+      LOG(INFO) << "create lite op " << op_desc->Type();
+      gears_.back().lite_op =
+          inference::op_lite::LiteOpRegistry::Global().Create(op_desc->Type());
+      gears_.back().lite_op->Build(*op_desc, scope);
+    } else {
+      LOG(INFO) << "create old op " << op_desc->Type();
+      gears_.back().op = OpRegistry::CreateOp(*op_desc);
+    }
   }
 }
 
@@ -117,15 +161,8 @@ LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
   return tensor;
 }
 
-void NaiveExecutor::CleanFeedFetchOps() {
-  std::vector<std::unique_ptr<OperatorBase>> ops;
-  for (auto &op : ops_) {
-    if (op->Type() != "feed" && op->Type() != "fetch") {
-      ops.emplace_back(std::move(op));
-    }
-  }
-  ops_.swap(ops);
-}
-
 }  // namespace framework
 }  // namespace paddle
+
+DEFINE_bool(global_with_gpu, false, "");
+DEFINE_bool(global_use_lite_op, true, "");
