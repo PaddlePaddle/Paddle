@@ -243,6 +243,13 @@ std::shared_ptr<FCPrimitiveFactory<T>> GetPrimitiveFactory(
   return prim_creator;
 }
 
+static int callback(struct dl_phdr_info *info, size_t size, void *data) {
+
+    printf("Name: \"%s\" (%d segments)\n", info->dlpi_name,
+               info->dlpi_phnum);
+    return 0; 
+}
+
 template <typename T>
 class FCMKLDNNOpKernel : public framework::OpKernel<T> {
  public:
@@ -258,6 +265,8 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T> {
       std::cout << "===> MKL-DNN FC with MKL. MKL_VERBOSE="
                 << getenv("MKL_VERBOSE") << std::endl;
     }
+
+    dl_iterate_phdr(callback, NULL);
 
     auto input = ctx.Input<Tensor>("Input");
     auto w = ctx.Input<Tensor>("W");
