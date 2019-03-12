@@ -142,4 +142,18 @@ class DownpourSGD(object):
         # currently only support lookup_table
         worker_skipped_ops = ["lookup_table", "lookup_table_grad"]
         ps_param.trainer_param.skip_op.extend(worker_skipped_ops)
-        return [ps_param, worker_skipped_ops]
+
+        # all fleet operations should be defined in operators in the future
+        # we want to return an object here containing:
+        # 1) worker execution strategy
+        # 2) pserver execution strategy
+        # 3) fleet configurations
+        # 4) skipped operators in runtime
+        # 5) distributed optimization
+        opt_info = {}
+        opt_info["trainer"] = "DistMultiTrainer"
+        opt_info["device_worker"] = "DownpourSGD"
+        opt_info["optimizer"] = "DownpourSGD"
+        opt_info["fleet_desc"] = ps_param
+        opt_info["worker_skipped_ops"] = worker_skipped_ops
+        return opt_info
