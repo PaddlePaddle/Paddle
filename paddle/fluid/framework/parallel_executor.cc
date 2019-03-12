@@ -14,8 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
