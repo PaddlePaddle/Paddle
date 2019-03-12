@@ -632,8 +632,8 @@ def yolo_box(x,
 
     Returns:
         Variable: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
-        and a 3-D tensor with shape [N, M, C], the classification scores
-        of boxes.
+        and a 3-D tensor with shape [N, M, :attr:`class_num`], the classification 
+        scores of boxes.
 
     Raises:
         TypeError: Input x of yolov_box must be Variable
@@ -647,7 +647,7 @@ def yolo_box(x,
 
         x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
         anchors = [10, 13, 16, 30, 33, 23]
-        loss = fluid.layers.yolov3_loss(x=x, class_num=80, anchors=anchors, 
+        loss = fluid.layers.yolo_box(x=x, class_num=80, anchors=anchors, 
                                         conf_thresh=0.01, downsample_ratio=32)
     """
     helper = LayerHelper('yolo_box', **locals())

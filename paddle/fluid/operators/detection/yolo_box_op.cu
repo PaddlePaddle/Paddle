@@ -83,12 +83,22 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     const int an_num = anchors.size() / 2;
     int input_size = downsample_ratio * h;
 
-    Tensor anchors_t, cpu_anchors_t;
-    auto cpu_anchors_data =
-        cpu_anchors_t.mutable_data<int>({an_num * 2}, platform::CPUPlace());
-    std::copy(anchors.begin(), anchors.end(), cpu_anchors_data);
-    TensorCopySync(cpu_anchors_t, ctx.GetPlace(), &anchors_t);
-    auto anchors_data = anchors_t.data<int>();
+    /* Tensor anchors_t, cpu_anchors_t; */
+    /* auto cpu_anchors_data = */
+    /*     cpu_anchors_t.mutable_data<int>({an_num * 2}, platform::CPUPlace()); */
+    /* std::copy(anchors.begin(), anchors.end(), cpu_anchors_data); */
+    /* TensorCopySync(cpu_anchors_t, ctx.GetPlace(), &anchors_t); */
+    /* auto anchors_data = anchors_t.data<int>(); */
+    auto& dev_ctx = ctx.cuda_device_context();
+    auto& allocator = 
+      platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
+    int bytes = sizeof(int) * anchors.size();
+    auto anchors_ptr = allocator.Allocate(sizeof(int) * anchors.size());
+    int* anchors_data = reinterpret_cast<int*>(anchors_ptr->ptr());
+    const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    const auto cplace = platform::CPUPlace();
+    memory::Copy(gplace, anchors_data, cplace, anchors.data(), bytes,
+                            dev_ctx.stream());
 
     const T* input_data = input->data<T>();
     const int* imgsize_data = img_size->data<int>();
@@ -96,7 +106,6 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     T* scores_data =
         scores->mutable_data<T>({n, box_num, class_num}, ctx.GetPlace());
     math::SetConstant<platform::CUDADeviceContext, T> set_zero;
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     set_zero(dev_ctx, boxes, static_cast<T>(0));
     set_zero(dev_ctx, scores, static_cast<T>(0));
 
