@@ -112,6 +112,47 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
+    def test_gru_unit(self):
+        lod = [[2, 4, 3]]
+        D = 5
+        T = sum(lod[0])
+        N = len(lod[0])
+
+        input = np.random.rand(T, 3 * D).astype('float32')
+        hidden_input = np.random.rand(T, D).astype('float32')
+
+        with self.static_graph():
+            x = layers.data(name='x', shape=[-1, D * 3], dtype='float32')
+            hidden = layers.data(name='hidden', shape=[-1, D], dtype='float32')
+            updated_hidden, reset_hidden_pre, gate = layers.gru_unit(
+                input=x, hidden=hidden, size=D * 3)
+            static_ret = self.get_static_graph_result(
+                feed={'x': input,
+                      'hidden': hidden_input},
+                fetch_list=[updated_hidden, reset_hidden_pre, gate])
+
+        with self.static_graph():
+            x = layers.data(name='x', shape=[-1, D * 3], dtype='float32')
+            hidden = layers.data(name='hidden', shape=[-1, D], dtype='float32')
+            updated_hidden, reset_hidden_pre, gate = layers.gru_unit(
+                input=x, hidden=hidden, size=D * 3)
+            gru = nn.GRUUnit('gru', size=D * 3)
+            updated_hidden, reset_hidden_pre, gate = gru(x, hidden)
+
+            static_ret2 = self.get_static_graph_result(
+                feed={'x': input,
+                      'hidden': hidden_input},
+                fetch_list=[updated_hidden, reset_hidden_pre, gate])
+
+        with self.dynamic_graph():
+            gru = nn.GRUUnit('gru', size=D * 3)
+            dy_ret = gru(
+                base.to_variable(input), base.to_variable(hidden_input))
+
+        for i in range(len(static_ret)):
+            self.assertTrue(np.allclose(static_ret[i], static_ret2[i]))
+            self.assertTrue(np.allclose(static_ret[i], dy_ret[i]._numpy()))
+
 
 class TestBook(unittest.TestCase):
     def test_fit_a_line(self):
