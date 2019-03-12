@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import os
+import six
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler
@@ -133,7 +134,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                                   feed={'input': data},
                                   fetch_list=sync_fetch_names)
 
-        for i in xrange(1, len(sync_bn_fetches)):
+        for i in six.moves.xrange(1, len(sync_bn_fetches)):
             bn_val = bn_fetches[i]
             sync_bn_val = sync_bn_fetches[i]
             if sync_bn_val.shape != bn_val.shape:
@@ -146,7 +147,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
 
     def test_train(self):
         if not core.is_compiled_with_cuda():
-            pass
+            return
 
         places = [core.CUDAPlace(0)]
         for place in places:
@@ -155,7 +156,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
 
     def test_infer(self):
         if not core.is_compiled_with_cuda():
-            pass
+            return
 
         places = [core.CUDAPlace(0)]
         for place in places:
