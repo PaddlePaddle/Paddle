@@ -2232,10 +2232,10 @@ class IrGraph(object):
         Notes: the `graph` cannot contain a circle.
 
         Returns:
-            set(IrNode): nodes in topology order.
+            list(IrNode): nodes in topology order.
         """
         ordered_nodes = core.topology_sort(self.graph)
-        return {IrNode(n) for n in ordered_nodes}
+        return [IrNode(n) for n in ordered_nodes]
 
     def build_adjacency_list(self):
         """
@@ -2303,7 +2303,7 @@ class IrGraph(object):
         """
         Convert the graph into a Program.
 
-        Notes: When the graph includes backward operator nodes, the
+        WARN: When the graph includes backward operator nodes, the
         conversion process may be failed. Usually, this function is
         only used to convert a test graph.
 
