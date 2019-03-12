@@ -61,6 +61,11 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
             param_attr=fluid.ParamAttr(
                 name=embedding_name, trainable=False)) for x in word_input
     ]
+    # TODO(zcd): if the parameter is not trainable, the
+    #  parameter's gradient should not generated.
+    for emb_layer in emb_layers:
+        emb_layer.stop_gradient = True
+
     emb_layers.append(predicate_embedding)
     emb_layers.append(mark_embedding)
 

@@ -112,7 +112,7 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
   // Note(zcd): Addresses should be aligned, otherwise, the results may have
   // diff.
   size_t Alignment(size_t size, const platform::Place &place) const {
-    size_t alignment = 1 << 14;
+    size_t alignment = 1 << 16;
     if (platform::is_gpu_place(place)) {
       alignment = 1 << 8;
     }

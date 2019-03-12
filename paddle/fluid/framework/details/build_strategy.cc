@@ -82,7 +82,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 
     if (strategy_.fuse_all_optimizer_ops_) {
-      if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
+      if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce ||
+          strategy_.is_distribution_) {
         VLOG(3)
             << "Currently, fuse_all_optimizer_ops only works under AllReduce "
                "mode.";
