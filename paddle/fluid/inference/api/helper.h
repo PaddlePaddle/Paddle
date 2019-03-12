@@ -86,6 +86,13 @@ static void split_to_int64(const std::string &str, char sep,
   std::transform(pieces.begin(), pieces.end(), std::back_inserter(*is),
                  [](const std::string &v) { return std::stoi(v); });
 }
+static void split_to_int(const std::string &str, char sep,
+                         std::vector<int> *is) {
+  std::vector<std::string> pieces;
+  split(str, sep, &pieces);
+  std::transform(pieces.begin(), pieces.end(), std::back_inserter(*is),
+                 [](const std::string &v) { return std::stoi(v); });
+}
 template <typename T>
 std::string to_string(const std::vector<T> &vec) {
   std::stringstream ss;
@@ -132,9 +139,8 @@ static void TensorAssignData(PaddleTensor *tensor,
 }
 
 template <typename T>
-static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
-                                    const std::vector<std::vector<T>> &data) {
-  int size{0};
+static void ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
+                                     const std::vector<std::vector<T>> &data) {
   auto *ptr = tensor->mutable_data<T>(PaddlePlace::kCPU);
   int c = 0;
   for (const auto &f : data) {
@@ -142,7 +148,15 @@ static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
       ptr[c++] = v;
     }
   }
-  return size;
+}
+
+template <typename T>
+static void ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
+                                     const PaddleBuf &data) {
+  auto *ptr = tensor->mutable_data<T>(PaddlePlace::kCPU);
+  for (size_t i = 0; i < data.length() / sizeof(T); i++) {
+    ptr[i] = *(reinterpret_cast<T *>(data.data()) + i);
+  }
 }
 
 static bool CompareTensor(const PaddleTensor &a, const PaddleTensor &b) {
