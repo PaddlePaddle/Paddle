@@ -15,6 +15,7 @@ limitations under the License. */
 #include <mkldnn/include/mkldnn_types.h>
 #include <cstdlib>
 #include <memory>
+#include <link.h>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/platform/device_context.h"
