@@ -14,9 +14,11 @@
 #pragma once
 
 #include <cassert>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 /*! \file */
@@ -140,6 +142,14 @@ struct AnalysisConfig {
   /** A boolean state telling whether the TensorRT engine is used.
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
+  /**
+   *  \brief Turn on the usage of Anakin sub-graph engine.
+   */
+  void EnableAnakinEngine();
+
+  /** A boolean state indicating whether the Anakin sub-graph engine is used.
+  */
+  bool anakin_engine_enabled() const { return use_anakin_; }
 
   /** \brief Control whether to debug IR graph analysis phase.
    *
@@ -185,6 +195,7 @@ struct AnalysisConfig {
   /** A boolean state telling whether the model is set from the CPU memory.
    */
   bool model_from_memory() const { return model_from_memory_; }
+  void SetEngineOptInfo(std::map<std::string, std::string> engine_opt_info);
 
   /** Turn on memory optimize
    * NOTE still in development, will release latter.
@@ -258,6 +269,8 @@ struct AnalysisConfig {
   std::string serialized_info_cache_;
 
   mutable std::unique_ptr<PassStrategy> pass_builder_;
+  bool use_anakin_{false};
+  std::map<std::string, std::string> engine_opt_info_;
 };
 
 }  // namespace paddle

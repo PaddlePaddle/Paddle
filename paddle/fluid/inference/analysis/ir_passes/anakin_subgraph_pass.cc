@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #include "paddle/fluid/inference/anakin/op_teller.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/ir_passes/anakin_subgraph_pass.h"
@@ -45,12 +46,20 @@ std::unique_ptr<framework::ir::Graph> analysis::AnakinSubgraphPass::ApplyImpl(
     return anakin::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
   };
 
-  SubGraphFuser fuser(graph.get(), teller, 3 /* min_subgraph_size */);
+  SubGraphFuser fuser(graph.get(), teller, 0 /* min_subgraph_size */);
   fuser();
+
+  std::vector<std::string> graph_param_names =
+      ExtractAnakinParameters(graph->Nodes());
+
+  // those parameter already exist in anakin, and should not have another copy
+  // in
+  // fluid.
+  std::vector<std::string> repetitive_params;
 
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !Agent(node).subgraph()->empty()) {
-      CreateAnakinOp(node, graph.get());
+      CreateAnakinOp(node, graph.get(), graph_param_names, &repetitive_params);
       std::unordered_set<const Node *> nodes2remove(
           Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
       framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
@@ -64,13 +73,15 @@ std::unique_ptr<framework::ir::Graph> analysis::AnakinSubgraphPass::ApplyImpl(
     }
   }
   framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
+  graph->Set(framework::ir::kRepetitiveParamAttr,
+             new std::vector<std::string>(repetitive_params));
 
   return graph;
 }
 
-std::string GenerateAnakinEngineKey(
-    const std::set<std::string> &engine_inputs,
-    const std::set<std::string> &engine_outputs) {
+std::string GenerateAnakinEngineKey(const std::set<std::string> &engine_inputs,
+                                    const std::set<std::string> &engine_outputs,
+                                    std::string id) {
   std::string engine_hash_key = "";
   for (auto name : engine_inputs) {
     engine_hash_key += name;
@@ -78,12 +89,15 @@ std::string GenerateAnakinEngineKey(
   for (auto name : engine_outputs) {
     engine_hash_key += name;
   }
+  engine_hash_key += id;
   auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
   return engine_key;
 }
 
-void AnakinSubgraphPass::CreateAnakinOp(framework::ir::Node *node,
-                                        Graph *graph) const {
+void AnakinSubgraphPass::CreateAnakinOp(
+    framework::ir::Node *node, Graph *graph,
+    const std::vector<std::string> &graph_params,
+    std::vector<std::string> *repetitive_params) const {
   auto *op_desc = node->Op();
   auto &subgraph = *Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
@@ -117,10 +131,16 @@ void AnakinSubgraphPass::CreateAnakinOp(framework::ir::Node *node,
   // is unique.
   std::set<std::string> input_names;
   std::set<std::string> input_names_with_id;
+  std::vector<std::string> params;
   for (auto *x : node->inputs) {
     input_names.insert(x->Name());
     input_names_with_id.insert(x->Name() + std::to_string(x->id()));
+    if (std::count(graph_params.begin(), graph_params.end(), x->Name()) > 0) {
+      params.push_back(x->Name());
+    }
   }
+  std::copy(params.begin(), params.end(),
+            std::back_inserter(*repetitive_params));
   op_desc->SetInput(
       "Xs", std::vector<std::string>(input_names.begin(), input_names.end()));
 
@@ -231,10 +251,25 @@ void AnakinSubgraphPass::CreateAnakinOp(framework::ir::Node *node,
   SetAttr(op_desc->Proto(), "parameters",
           ExtractAnakinParameters(graph->Nodes()));
   SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
-  auto engine_key =
-      GenerateAnakinEngineKey(input_names_with_id, output_names_with_id);
+  int predictor_id = Get<int>("predictor_id");
+  auto engine_key = GenerateAnakinEngineKey(
+      input_names_with_id, output_names_with_id, std::to_string(predictor_id));
 
   SetAttr(op_desc->Proto(), "engine_key", engine_key);
+
+  auto *anakin_engine =
+      inference::Singleton<anakin::AnakinEngineManager>::Global().Create(
+          true, Get<int>("gpu_device_id"), engine_key);
+
+  auto *scope = param_scope();
+  std::unordered_set<std::string> param_set(params.begin(), params.end());
+  framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
+
+  inference::Singleton<inference::anakin::AnakinOpConverter>::Global()
+      .ConvertBlockToAnakinEngine(
+          &block_desc_temp, *scope,
+          std::vector<std::string>(input_names.begin(), input_names.end()),
+          param_set, output_mapping, anakin_engine);
 }
 
 std::vector<std::string> ExtractAnakinParameters(
@@ -246,7 +281,7 @@ std::vector<std::string> ExtractAnakinParameters(
   for (const auto &node : nodes) {
     if (!node->IsOp()) continue;
     std::string op_type = node->Op()->Type();
-    if (op_type == "feed") {
+    if (op_type == "feed" || op_type == "fetch") {
       std::vector<std::string> output_names = node->Op()->OutputArgumentNames();
       std::copy(output_names.begin(), output_names.end(),
                 std::back_inserter(feed_outputs));

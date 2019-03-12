@@ -45,7 +45,7 @@ std::unique_ptr<ir::Graph> SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
 
   input_nodes.push_back(gpd.mutable_pattern()
                             ->NewNode("x" + std::to_string(times + 1))
-                            ->assert_is_op_input("multiclass_nms", "Scores")
+                            ->assert_is_op_input("transpose2")
                             ->AsInput());
 
   patterns::AnakinDetectionPattern pattern(gpd.mutable_pattern(), pattern_name);
@@ -106,6 +106,11 @@ std::unique_ptr<ir::Graph> SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
     Node *box_coder_out = subgraph.at(pattern.GetPDNode("box_coder_out"));
 
     Node *multiclass_nms_second_input = subgraph.at(input_nodes[times + 1]);
+    Node *transpose_before_nms =
+        subgraph.at(pattern.GetPDNode("transpose_before_nms"));
+    Node *transpose_before_nms_out =
+        subgraph.at(pattern.GetPDNode("transpose_before_nms_out"));
+
     Node *multiclass_nms = subgraph.at(pattern.GetPDNode("multiclass_nms"));
     Node *multiclass_nms_out =
         subgraph.at(pattern.GetPDNode("multiclass_nms_out"));
@@ -133,11 +138,11 @@ std::unique_ptr<ir::Graph> SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
           nodes[i * kNumFields + kPriorBoxLocOffset]->Name());
     }
 
-    int axis = boost::get<int>(concat_op1->Op()->GetAttr("axis"));
+    // int axis = boost::get<int>(concat_op1->Op()->GetAttr("axis"));
     framework::OpDesc concat1_desc;
     concat1_desc.SetType("concat");
     concat1_desc.SetInput("X", concat1_input_names);
-    concat1_desc.SetAttr("axis", axis);
+    concat1_desc.SetAttr("axis", 2);
     concat1_desc.SetOutput("Out", {concat_out1->Name()});
 
     auto *new_add_concat_op = graph->CreateOpNode(&concat1_desc);
@@ -184,6 +189,8 @@ std::unique_ptr<ir::Graph> SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
     delete_nodes.insert(concat_out2);
     delete_nodes.insert(box_coder_op);
     delete_nodes.insert(box_coder_out);
+    delete_nodes.insert(transpose_before_nms);
+    delete_nodes.insert(transpose_before_nms_out);
     delete_nodes.insert(multiclass_nms);
 
     new_add_concat_op->outputs.push_back(concat_out1);
