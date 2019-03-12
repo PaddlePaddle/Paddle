@@ -83,12 +83,6 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     const int an_num = anchors.size() / 2;
     int input_size = downsample_ratio * h;
 
-    /* Tensor anchors_t, cpu_anchors_t; */
-    /* auto cpu_anchors_data = */
-    /*     cpu_anchors_t.mutable_data<int>({an_num * 2}, platform::CPUPlace()); */
-    /* std::copy(anchors.begin(), anchors.end(), cpu_anchors_data); */
-    /* TensorCopySync(cpu_anchors_t, ctx.GetPlace(), &anchors_t); */
-    /* auto anchors_data = anchors_t.data<int>(); */
     auto& dev_ctx = ctx.cuda_device_context();
     auto& allocator = 
       platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
