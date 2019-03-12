@@ -258,7 +258,7 @@ class PyLayer(core.PyLayer):
             cls.backward_id = core.PyLayer.num_funcs() + 1
             PyLayer.register_func(cls.backward_id, cls._do_backward)
 
-        iop = core.OpBase()
+        iop = core.OpBase(cls.__class__.__name__ + str(cls.forward_id))
         iop.forward_id = cls.forward_id
         iop.backward_id = cls.backward_id
         block.ops.append(iop)
