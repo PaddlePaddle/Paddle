@@ -162,7 +162,8 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("ignore_thresh",
                    "The ignore threshold to ignore confidence loss.")
         .SetDefault(0.7);
-    AddAttr<bool>("use_label_smooth", "bool,default True", "use label smooth")
+    AddAttr<bool>("use_label_smooth",
+                  "Whether to use label smooth. Default True.")
         .SetDefault(true);
     AddComment(R"DOC(
          This operator generates yolov3 loss based on given predict result and ground

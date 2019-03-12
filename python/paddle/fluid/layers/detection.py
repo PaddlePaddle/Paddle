@@ -535,9 +535,9 @@ def yolov3_loss(x,
         class_num (int): ${class_num_comment}
         ignore_thresh (float): ${ignore_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
-        name (string): the name of yolov3 loss
+        name (string): the name of yolov3 loss. Default None.
         gtscore (Variable): mixup score of ground truth boxes, shoud be in shape
-                            of [N, B].
+                            of [N, B]. Default None.
         use_label_smooth (bool): ${use_label_smooth_comment}
 
     Returns:
