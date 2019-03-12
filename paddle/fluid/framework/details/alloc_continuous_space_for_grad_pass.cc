@@ -70,15 +70,22 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       PADDLE_ENFORCE(iter != vars.end(), "%s is not found.", p_g.second);
       iter->second->Var()->SetPersistable(true);
 
-      PADDLE_ENFORCE(IsSupportedVarType(iter->second->Var()->GetType()));
+      if (!IsSupportedVarType(iter->second->Var()->GetType())) {
+        LOG(FATAL) << string::Sprintf(
+            "Currently, alloc_continuous_space_for_grad_pass only "
+            "supports LoDTensor, but the received var(%s) is not LoDTensor.",
+            p_g.second);
+      }
 
       // Get Dtype
       auto ele_dtype = iter->second->Var()->GetDataType();
       if (dtype == kDefaultDtype) {
         dtype = ele_dtype;
-        PADDLE_ENFORCE_NE(ele_dtype, kDefaultDtype);
+        PADDLE_ENFORCE_NE(ele_dtype, kDefaultDtype,
+                          "The data type should not be bool.");
       }
-      PADDLE_ENFORCE_EQ(ele_dtype, dtype);
+      PADDLE_ENFORCE_EQ(ele_dtype, dtype,
+                        "The data type of input is not consistent.");
     }
 
     // Create a FusedVarsSet to avoid duplicating names for fused_var in other

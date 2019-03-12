@@ -69,7 +69,10 @@ class TestAllocContinuousSpace(OpTest):
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
-            self.check_output_with_place(place=core.CUDAPlace(0), atol=1e-5)
+            self.check_output_with_place(
+                place=core.CUDAPlace(0),
+                no_check_set=["FusedOutput"],
+                atol=1e-5)
 
 
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):

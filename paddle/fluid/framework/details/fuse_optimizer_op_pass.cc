@@ -85,15 +85,14 @@ std::unique_ptr<ir::Graph> FuseOptimizerOpPass::ApplyImpl(
   auto &fused_grad = result.Get<FusedGrads>(kFusedGrads);
   auto &fused_vars = result.Get<FusedVars>(kFusedVars);
   auto iter = std::find(fused_vars.begin(), fused_vars.end(), fused_grad);
-  VLOG(10) << fused_grad;
   PADDLE_ENFORCE(iter != fused_vars.end(), "Not find the fused_grad.");
   fused_vars_name.emplace("Grad", fused_grad);
-  VLOG(10) << fused_grad;
 
   // Step 4: Sort the parameters and auxiliary variables according
   // to parameters' name to make variables' name correspond correctly.
   PADDLE_ENFORCE(result.Has(kParamsAndGrads), "Does't find kParamsAndGrads.");
-  PADDLE_ENFORCE_EQ(params_grads.size(), aux_var_set.begin()->second.size());
+  PADDLE_ENFORCE_EQ(params_grads.size(), aux_var_set.begin()->second.size(),
+                    "The size of params_grads and aux_var_set are not equal.");
   SortParametersAndAuxVars(params_grads, &aux_var_set, &opt_ops);
 
   // Step 5: Alloc continuous space for Parameters and AuxiliaryVar(e.g.
@@ -201,6 +200,7 @@ void FuseOptimizerOpPass::GetSpecifiedOpsAndVars(
     auto arg_names = node->Op()->Input(var_n);
     PADDLE_ENFORCE_EQ(arg_names.size(), static_cast<size_t>(1));
     (*aux_args_name)[var_n].emplace_back(arg_names[0]);
+    VLOG(10) << var_n << ", " << arg_names[0];
   }
   ops->emplace_back(node);
 }
