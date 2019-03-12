@@ -37,7 +37,7 @@ class DatasetBase(object):
         # to decide whether we need create in memory instance
         self.proto_desc = data_feed_pb2.DataFeedDesc()
         self.proto_desc.pipe_command = "cat"
-        self.dataset = core.Dataset()
+        self.dataset = core.MultiSlotDataset()
         self.thread_num = 0
 
     def set_pipe_command(self, pipe_command):
@@ -109,7 +109,7 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
 
     def load_into_memory(self):
-        _prepare_to_run()
+        self._prepare_to_run()
         self.dataset.load_into_memory()
 
     def local_shuffle(self):
