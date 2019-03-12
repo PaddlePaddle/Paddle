@@ -264,37 +264,39 @@ class QuantizerTest : public testing::Test {
     return quantizer->Histogram(var_tensor, min_val, max_val, num_bins);
   }
 
-  std::pair<QuantMax, framework::LoDTensor> GetMaxScalingFactor(
-      const framework::LoDTensor& var_tensor, QuantMax qmax) const {
+  std::pair<bool, framework::LoDTensor> GetMaxScalingFactor(
+      const framework::LoDTensor& var_tensor, bool qmax) const {
     return quantizer->GetMaxScalingFactor(var_tensor, qmax);
   }
 
-  std::pair<QuantMax, framework::LoDTensor> GetMaxChScalingFactor(
-      const framework::LoDTensor& var_tensor, QuantMax qmax) const {
+  std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
+      const framework::LoDTensor& var_tensor, bool qmax) const {
     return quantizer->GetMaxChScalingFactor(var_tensor, qmax);
   }
 
-  std::pair<QuantMax, framework::LoDTensor> GetKLScalingFactor(
-      const framework::LoDTensor& var_tensor, QuantMax qmax) const {
+  std::pair<bool, framework::LoDTensor> GetKLScalingFactor(
+      const framework::LoDTensor& var_tensor, bool qmax) const {
     return quantizer->GetKLScalingFactor(var_tensor, qmax);
   }
 
  protected:
   std::unique_ptr<AnalysisPredictor::Quantizer> quantizer;
   float abs_error = 1e-6;
-  static const std::array<float, 5> non_negative_values;
-  static const std::array<float, 5> positive_and_negative_values;
+  static const std::array<float, 10> non_negative_values;
+  static const std::array<float, 10> positive_and_negative_values;
 };
 
-const std::array<float, 5> QuantizerTest::non_negative_values = {
-    0.5e6f, 1e3f, 0.f, 0.5e-3f, 1e-4f};
-const std::array<float, 5> QuantizerTest::positive_and_negative_values = {
-    -1e2f, 1e2f, -1e1f, 1e1f, 1e-4f};
+const std::array<float, 10> QuantizerTest::non_negative_values = {
+    0.0158671, 0.026459,   0.0280772,  0.00962479, 0.0131628,
+    0.016704,  0.00118407, 0.00765726, 0.0123213,  0.00944741};
+const std::array<float, 10> QuantizerTest::positive_and_negative_values = {
+    -0.0482659, -0.0102493, -0.00794221, -0.00387115, -0.00674586,
+    -0.0495346, 0.0629528,  -0.00531285, -0.0230353,  0.0269089};
 
 TEST_F(QuantizerTest, histogram_inverted_min_max) {
-  const std::array<float, 5>& values = non_negative_values;
-  float min_val = *std::min_element(values.begin(), values.end());
-  float max_val = *std::max_element(values.begin(), values.end());
+  const auto& values = non_negative_values;
+  auto min_val = *std::min_element(values.begin(), values.end());
+  auto max_val = *std::max_element(values.begin(), values.end());
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
@@ -305,11 +307,11 @@ TEST_F(QuantizerTest, histogram_inverted_min_max) {
                platform::EnforceNotMet);
 }
 
-TEST_F(QuantizerTest, histogram_non_negative_5_to_3) {
+TEST_F(QuantizerTest, histogram_non_negative_to_3) {
   // all non-negative values
-  const std::array<float, 5>& values = non_negative_values;
-  float min_val = *std::min_element(values.begin(), values.end());
-  float max_val = *std::max_element(values.begin(), values.end());
+  const auto& values = non_negative_values;
+  auto min_val = *std::min_element(values.begin(), values.end());
+  auto max_val = *std::max_element(values.begin(), values.end());
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
@@ -324,14 +326,14 @@ TEST_F(QuantizerTest, histogram_non_negative_5_to_3) {
   ASSERT_NEAR(bin_width, std::abs(max_val - min_val) / 3.f, abs_error)
       << "Improperly calculated bin_width.";
 
-  ASSERT_THAT(histogram, testing::ElementsAre(4, 0, 1))
+  ASSERT_THAT(histogram, testing::ElementsAre(4, 4, 2))
       << "Improperly calculated histogram.";
 }
 
-TEST_F(QuantizerTest, histogram_positive_and_negative_5_to_3) {
-  const std::array<float, 5>& values = positive_and_negative_values;
-  float min_val = *std::min_element(values.begin(), values.end());
-  float max_val = *std::max_element(values.begin(), values.end());
+TEST_F(QuantizerTest, histogram_positive_and_negative_to_3) {
+  const auto& values = positive_and_negative_values;
+  auto min_val = *std::min_element(values.begin(), values.end());
+  auto max_val = *std::max_element(values.begin(), values.end());
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
@@ -346,14 +348,14 @@ TEST_F(QuantizerTest, histogram_positive_and_negative_5_to_3) {
   ASSERT_NEAR(bin_width, std::abs(max_val - min_val) / 3.0f, abs_error)
       << "Improperly calculated bin_width.";
 
-  ASSERT_THAT(histogram, testing::ElementsAre(1, 3, 1))
+  ASSERT_THAT(histogram, testing::ElementsAre(3, 5, 2))
       << "Improperly calculated histogram.";
 }
 
 TEST_F(QuantizerTest, histogram_zero_bins) {
-  const std::array<float, 5>& values = non_negative_values;
-  float min_val = *std::min_element(values.begin(), values.end());
-  float max_val = *std::max_element(values.begin(), values.end());
+  const auto& values = non_negative_values;
+  auto min_val = *std::min_element(values.begin(), values.end());
+  auto max_val = *std::max_element(values.begin(), values.end());
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
@@ -371,76 +373,70 @@ TEST_F(QuantizerTest, histogram_empty) {
   // zero tensor
   framework::LoDTensor var_tensor;
   var_tensor.Resize({0});
-  ASSERT_TRUE(var_tensor.mutable_data<float>(platform::CPUPlace()));
+  ASSERT_TRUE(var_tensor.mutable_data<double>(platform::CPUPlace()));
 
   ASSERT_THROW(Histogram(var_tensor, -1, 1, 1), platform::EnforceNotMet);
 }
 
 TEST_F(QuantizerTest, kl_scaling_factor_signed) {
-  const std::array<float, 5>& values = positive_and_negative_values;
+  const auto& values = positive_and_negative_values;
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
-  QuantMax quant_max;
+  bool is_unsigned;
   framework::LoDTensor lod_tensor;
 
-  std::tie(quant_max, lod_tensor) =
-      GetKLScalingFactor(var_tensor, QuantMax::S8_MAX);
+  std::tie(is_unsigned, lod_tensor) = GetKLScalingFactor(var_tensor, false);
 
-  ASSERT_EQ(quant_max, QuantMax::S8_MAX);
+  ASSERT_EQ(is_unsigned, false);
   ASSERT_EQ(lod_tensor.numel(), 1);
-  ASSERT_NEAR(lod_tensor.data<float>()[0],
-              static_cast<float>(QuantMax::S8_MAX) / 110.009765625f, abs_error);
+  ASSERT_NEAR(lod_tensor.data<double>()[0], 1.0 / 0.0899106152344, abs_error);
 }
 
 TEST_F(QuantizerTest, max_scaling_factor_signed) {
-  const std::array<float, 5>& values = positive_and_negative_values;
-  float max_val = *std::max_element(values.begin(), values.end());
+  const auto& values = positive_and_negative_values;
+  auto max_val = *std::max_element(values.begin(), values.end());
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
-  QuantMax quant_max;
+  bool is_unsigned;
   framework::LoDTensor lod_tensor;
 
-  std::tie(quant_max, lod_tensor) =
-      GetMaxScalingFactor(var_tensor, QuantMax::S8_MAX);
+  std::tie(is_unsigned, lod_tensor) = GetMaxScalingFactor(var_tensor, false);
 
-  ASSERT_EQ(quant_max, QuantMax::S8_MAX);
+  ASSERT_EQ(is_unsigned, false);
   ASSERT_EQ(lod_tensor.numel(), 1);
-  ASSERT_NEAR(lod_tensor.data<float>()[0],
-              static_cast<float>(QuantMax::S8_MAX) / max_val, abs_error);
+  ASSERT_NEAR(lod_tensor.data<double>()[0], 1.0 / max_val, abs_error);
 }
 
 TEST_F(QuantizerTest, max_scaling_factor_unsigned) {
-  const std::array<float, 5>& values = non_negative_values;
-  float max_val = *std::max_element(values.begin(), values.end());
+  const auto& values = non_negative_values;
+  auto max_val = *std::max_element(values.begin(), values.end());
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
-  QuantMax quant_max;
+  bool is_unsigned;
   framework::LoDTensor lod_tensor;
 
-  std::tie(quant_max, lod_tensor) =
-      GetMaxScalingFactor(var_tensor, QuantMax::U8_MAX);
+  std::tie(is_unsigned, lod_tensor) = GetMaxScalingFactor(var_tensor, true);
 
-  ASSERT_EQ(quant_max, QuantMax::U8_MAX);
+  ASSERT_EQ(is_unsigned, true);
   ASSERT_EQ(lod_tensor.numel(), 1);
-  ASSERT_NEAR(lod_tensor.data<float>()[0],
-              static_cast<float>(QuantMax::U8_MAX) / max_val, abs_error);
+  ASSERT_NEAR(lod_tensor.data<double>()[0], 1.0 / max_val, abs_error);
 }
 
 TEST_F(QuantizerTest, max_scaling_factor_chwise_unsigned) {
-  const std::array<float, 5>& values = non_negative_values;
-  float max_val = *std::max_element(values.begin(), values.end());
+  const auto& values = non_negative_values;
+  auto max_val = *std::max_element(values.begin(), values.end());
   int channels = 3;
 
   framework::LoDTensor var_tensor;
@@ -450,38 +446,34 @@ TEST_F(QuantizerTest, max_scaling_factor_chwise_unsigned) {
               var_tensor.mutable_data<float>(platform::CPUPlace()) +
                   i * values.size());
 
-  QuantMax quant_max;
+  bool is_unsigned;
   framework::LoDTensor lod_tensor;
 
-  std::tie(quant_max, lod_tensor) =
-      GetMaxChScalingFactor(var_tensor, QuantMax::U8_MAX);
+  std::tie(is_unsigned, lod_tensor) = GetMaxChScalingFactor(var_tensor, true);
 
-  ASSERT_EQ(quant_max, QuantMax::U8_MAX);
+  ASSERT_EQ(is_unsigned, true);
   ASSERT_EQ(lod_tensor.numel(), channels);
   for (int i = 0; i < channels; i++) {
-    ASSERT_NEAR(lod_tensor.data<float>()[i],
-                static_cast<float>(QuantMax::U8_MAX) / max_val, abs_error);
+    ASSERT_NEAR(lod_tensor.data<double>()[i], 1.0 / max_val, abs_error);
   }
 }
 
 TEST_F(QuantizerTest, kl_scaling_factor_unsigned) {
-  const std::array<float, 5>& values = non_negative_values;
+  const auto& values = non_negative_values;
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(framework::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
-  QuantMax quant_max;
+  bool is_unsigned;
   framework::LoDTensor lod_tensor;
 
-  std::tie(quant_max, lod_tensor) =
-      GetKLScalingFactor(var_tensor, QuantMax::U8_MAX);
+  std::tie(is_unsigned, lod_tensor) = GetKLScalingFactor(var_tensor, true);
 
-  ASSERT_EQ(quant_max, QuantMax::U8_MAX);
+  ASSERT_EQ(is_unsigned, true);
   ASSERT_EQ(lod_tensor.numel(), 1);
-  ASSERT_NEAR(lod_tensor.data<float>()[0],
-              static_cast<float>(QuantMax::U8_MAX) / 1098.6328125f, abs_error);
+  ASSERT_NEAR(lod_tensor.data<double>()[0], 1.0 / 0.0252845321362, abs_error);
 }
 
 }  // namespace paddle
