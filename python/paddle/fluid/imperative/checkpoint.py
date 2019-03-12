@@ -13,17 +13,16 @@
 # limitations under the License.
 
 from __future__ import print_function
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 import os
-import contextlib
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.framework import Variable
-from paddle.fluid.executor import Executor
+
+__all__ = ['save_persistables', 'load_persistables']
 
 
-def save_persistables(var_list, dirname, filename=None, place=None):
+def save_persistables(var_list, dirname, filename=None):
     """
     This function filters out all variables in layer.parameters from the
     give `layer` and then trys to load these variables from the folder
@@ -35,15 +34,13 @@ def save_persistables(var_list, dirname, filename=None, place=None):
     the file name.
 
     Args:
-        executor(Executor): The executor to run for loading persistable variables.
+        var_list(list of Parameters): The parameters will
+                                    be saved. If it is None, nothing
+                                    will be deal.
         dirname(str): The directory path.
         filename(str|None): The file which saved all variables. If variables were
                             saved in differnet files, set it to None.
                             Default: None
-        var_list(list of Parameters): The parameters will
-                                    be saved. If it is None, nothing
-                                    will be deal.
-
 
     Returns:
 
@@ -71,14 +68,14 @@ def save_persistables(var_list, dirname, filename=None, place=None):
             dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
                                                         init_cell)
             param_path = "./my_paddle_model"
-            fluid.imperative.checkpoint.save_persistables(ptb_model.parameters, dirname=param_path,
-                                       layer=ptb_model, place=fluid.CPUPlace())
+            fluid.imperative.checkpoint.save_persistables(ptb_model.parameters(), dirname=param_path,
+                                       layer=ptb_model)
     """
     if var_list:
-        _save_var_to_file(var_list, place, dirname, filename)
+        _save_var_to_file(var_list, dirname, filename)
 
 
-def load_persistables(var_list, dirname, filename=None, place=None):
+def load_persistables(var_list, dirname, filename=None):
     """
     This function trys to load persistable variables from the folder
     `dirname` or the file `filename`.
@@ -94,116 +91,91 @@ def load_persistables(var_list, dirname, filename=None, place=None):
         filename(str|None): The file which saved all variables, this file path should be end with '.npz'. If variables were
                             saved in differnet files, set it to None.
                             Default: None
-        place():
 
     Returns:
         dict: The parameter-dict resumed from file
 
     Examples:
         .. code-block:: python
+            my_layer = layer(fluid.imperative.Layer)
             param_path = "./my_paddle_model"
 
-            param_dict = fluid.imperative.checkpoint.load_persistables(param_path, place=fluid.CPUPlace())
+            param_dict = fluid.imperative.checkpoint.load_persistables(my_layer.parameters(), param_path)
             param_1 = param_dict['PtbModel_0.w_1']
 
             or:
+            my_layer = layer(fluid.imperative.Layer)
             param_path = "./my_paddle_model"
             filename = "model.file"
-            param_dict = fluid.imperative.checkpoint.load_persistables(param_path, filename=filename,
-                                                                       place=fluid.CPUPlace())
+            param_dict = fluid.imperative.checkpoint.load_persistables(my_layer.parameters(), var_list, param_path,
+                                                                       filename=filename)
             param_1 = param_dict['PtbModel_0.w_1']
 
         """
     if var_list:
-        return _load_var_from_file(var_list, place, dirname, filename)
+        return _load_var_from_file(var_list, dirname, filename)
 
     return {}
 
 
-def _save_var_to_file(var_list, place, file_dir, file_name):
-    with guard(place) as train_pro:
-        with new_program_scope(
-                main=train_pro[0], startup=train_pro[1]) as (prog, scope):
-            exe = fluid.Executor(place)
-            save_block = prog.global_block()
-            save_var_map = {}
-            for each_var in var_list:
-                new_var = _clone_var_in_block_(save_block, each_var)
-                save_var_map[new_var.name] = new_var
-                if file_name is None:
-                    save_block.append_op(
-                        type='save',
-                        inputs={'X': [new_var]},
-                        outputs={},
-                        attrs={
-                            'file_path': os.path.join(file_dir, new_var.name)
-                        })
+def _save_var_to_file(var_list, file_dir, file_name):
+    save_block = fluid.default_main_program().global_block()
+    save_var_map = {}
+    for each_var in var_list:
+        save_var_map[each_var.name] = each_var
+        if file_name is None:
+            save_block.append_op(
+                type='save',
+                inputs={'X': [each_var]},
+                outputs={},
+                attrs={'file_path': os.path.join(file_dir, each_var.name)})
 
-            if file_name is not None:
-                save_var_list = []
-                for name in sorted(save_var_map.keys()):
-                    save_var_list.append(save_var_map[name])
+    if file_name is not None:
+        save_var_list = []
+        for name in sorted(save_var_map.keys()):
+            save_var_list.append(save_var_map[name])
 
-                save_block.append_op(
-                    type='save_combine',
-                    inputs={'X': save_var_list},
-                    outputs={},
-                    attrs={'file_path': os.path.join(file_dir, file_name)})
-            exe.run(prog, feed=save_var_map)
+        save_block.append_op(
+            type='save_combine',
+            inputs={'X': save_var_list},
+            outputs={},
+            attrs={'file_path': os.path.join(file_dir, file_name)})
 
 
-def _load_var_from_file(var_list, place, file_dir, file_name):
-    with guard(place) as (train_pro, startup_pro):
-        with new_program_scope(
-                main=train_pro, startup=startup_pro) as (prog, scope):
-            exe = fluid.Executor(place)
-            load_block = prog.global_block()
-            load_var_map = {}
-            load_var_list_fetch = []
-            for each_var in var_list:
-                assert isinstance(each_var, Variable)
-                if each_var.type == core.VarDesc.VarType.RAW:
-                    continue
-                new_var = _clone_var_in_block_(load_block, each_var)
-                load_var_list_fetch.append(new_var.name)
-                if file_name is None:
-                    load_block.append_op(
-                        type='load',
-                        inputs={},
-                        outputs={'Out': [new_var]},
-                        attrs={
-                            'file_path': os.path.join(file_dir, new_var.name)
-                        })
-                else:
-                    load_var_map[new_var.name] = new_var
+def _load_var_from_file(var_list, file_dir, file_name):
+    load_block = fluid.default_main_program().global_block()
+    load_var_map = {}
+    load_var_list_fetch = []
 
-            if file_name is not None:
-                load_var_list = []
-                for name in sorted(load_var_map.keys()):
-                    load_var_list.append(load_var_map[name])
+    for each_var in var_list:
+        assert isinstance(each_var, Variable)
+        if each_var.type == core.VarDesc.VarType.RAW:
+            continue
+        new_var = _clone_var_in_block_(load_block, each_var)
+        load_var_list_fetch.append(new_var.name)
+        if file_name is None:
+            load_block.append_op(
+                type='load',
+                inputs={},
+                outputs={'Out': [new_var]},
+                attrs={'file_path': os.path.join(file_dir, each_var.name)})
 
-                load_block.append_op(
-                    type='load_combine',
-                    inputs={},
-                    outputs={"Out": load_var_list},
-                    attrs={'file_path': os.path.join(file_dir, file_name)})
-            exe.run(prog)
-            var_dict = {}
-            for var_name in load_var_list_fetch:
-                var_dict[var_name] = scope.find_var(each_var.name)
-            return var_dict
+        load_var_map[new_var.name] = new_var
 
+    if file_name is not None:
+        load_var_list = []
+        for name in sorted(load_var_map.keys()):
+            load_var_list.append(load_var_map[name])
 
-@contextlib.contextmanager
-def new_program_scope(main=None, startup=None, scope=None):
-    # TODO fix me after supporting no-kernal op
-    prog = main if main else fluid.Program()
-    startup_prog = startup if startup else fluid.Program()
-    scope = scope if scope else fluid.core.Scope()
-    with fluid.scope_guard(scope):
-        with fluid.program_guard(prog, startup_prog):
-            with fluid.unique_name.guard():
-                yield prog, scope
+        load_block.append_op(
+            type='load_combine',
+            inputs={},
+            outputs={"Out": load_var_list},
+            attrs={'file_path': os.path.join(file_dir, file_name)})
+        for res_var in load_var_list:
+            load_var_map[res_var.name] = res_var
+
+    return load_var_map
 
 
 def _clone_var_in_block_(block, var):
@@ -215,27 +187,3 @@ def _clone_var_in_block_(block, var):
         type=var.type,
         lod_level=var.lod_level,
         persistable=True)
-
-
-@signature_safe_contextmanager
-def guard(place=None):
-    """
-    fix me with supported no-kernal op
-    :param place:
-    :return:
-    """
-    train = fluid.framework.Program()
-    startup = fluid.framework.Program()
-    tracer = None
-
-    if place is None:
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-
-    with fluid.framework.program_guard(train, startup):
-        with fluid.framework.unique_name.guard():
-            with fluid.framework._imperative_guard(tracer):
-                with fluid.framework._imperative_place_guard(place):
-                    yield train, startup
