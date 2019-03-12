@@ -37,8 +37,13 @@ using inference::analysis::Analyzer;
 using framework::proto::ProgramDesc;
 using framework::NaiveExecutor;
 
-using VarQuantMaxAndScale =
-    std::map<std::string, std::pair<QuantMax, framework::LoDTensor>>;
+/*
+ * Map variable name to tensor of scaling factors scaling it to MAX=1.0.
+ * bool denotes whether quantization of the variable should be done to unsigned
+ * type.
+ */
+using VarQuantScale =
+    std::map<std::string, std::pair<bool, framework::LoDTensor>>;
 
 /** \brief This predictor is based on the original native predictor with IR and
  * Analysis support.
@@ -200,7 +205,7 @@ class AnalysisPredictor::Quantizer {
                             const std::string &conn_name,
                             const std::string &var_name,
                             const framework::LoDTensor &var_tensor,
-                            const QuantMax qmax);
+                            bool is_unsigned);
   void PrepareArgument() const;
   bool RunQuantizePasses() const;
   bool SaveModel() const;
@@ -209,14 +214,14 @@ class AnalysisPredictor::Quantizer {
                                        std::vector<int> reference_bins) const;
 
   // Using the KL-divergence method get the most precise scaling factor.
-  std::pair<QuantMax, framework::LoDTensor> GetKLScalingFactor(
-      const framework::LoDTensor &var_tensor, const QuantMax quant_max) const;
+  std::pair<bool, framework::LoDTensor> GetKLScalingFactor(
+      const framework::LoDTensor &var_tensor, bool is_unsigned) const;
 
-  std::pair<QuantMax, framework::LoDTensor> GetMaxChScalingFactor(
-      const framework::LoDTensor &var_tensor, const QuantMax quant_max) const;
+  std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
+      const framework::LoDTensor &var_tensor, bool is_unsigned) const;
 
-  std::pair<QuantMax, framework::LoDTensor> GetMaxScalingFactor(
-      const framework::LoDTensor &var_tensor, const QuantMax quant_max) const;
+  std::pair<bool, framework::LoDTensor> GetMaxScalingFactor(
+      const framework::LoDTensor &var_tensor, bool is_unsigned) const;
 
   // Returns histogram and bin width
   std::pair<std::vector<int>, float> Histogram(
@@ -232,7 +237,7 @@ class AnalysisPredictor::Quantizer {
   const std::shared_ptr<QuantizerConfig> qconfig_;
 
   // A map: variable name -> scale
-  VarQuantMaxAndScale scales_;
+  VarQuantScale scales_;
 };
 
 }  // namespace paddle

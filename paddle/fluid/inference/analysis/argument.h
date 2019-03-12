@@ -140,9 +140,9 @@ struct Argument {
                       std::unordered_set<int>);
 
   // Scales for variables to be quantized
-  using VarQuantMaxAndScale =
-      std::map<std::string, std::pair<QuantMax, framework::LoDTensor>>;
-  DECL_ARGUMENT_FIELD(quant_var_scales, QuantVarScales, VarQuantMaxAndScale);
+  using VarQuantScale =
+      std::map<std::string, std::pair<bool, framework::LoDTensor>>;
+  DECL_ARGUMENT_FIELD(quant_var_scales, QuantVarScales, VarQuantScale);
 
   // Passed from config.
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);

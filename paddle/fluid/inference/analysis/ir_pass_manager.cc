@@ -71,10 +71,10 @@ void IRPassManager::CreatePasses(Argument *argument,
           "quantize_excluded_op_ids",
           new std::unordered_set<int>(argument->quantize_excluded_op_ids()));
     } else if (pass_name == "cpu_quantize_pass") {
-      using VarQuantMaxAndScale =
-          std::map<std::string, std::pair<QuantMax, framework::LoDTensor>>;
+      using VarQuantScale =
+          std::map<std::string, std::pair<bool, framework::LoDTensor>>;
       pass->Set("quant_var_scales",
-                new VarQuantMaxAndScale(argument->quant_var_scales()));
+                new VarQuantScale(argument->quant_var_scales()));
     } else if (pass_name == "tensorrt_subgraph_pass") {
       pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));

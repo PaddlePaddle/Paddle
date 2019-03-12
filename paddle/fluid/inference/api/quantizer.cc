@@ -47,19 +47,30 @@ bool AnalysisPredictor::Quantizer::CalculateScales() {
         for (auto const& conn : connections) {
           if (conn.second.size() == 0) continue;
           auto& var_name = conn.second[0];
+
+          // skip if scale already computed
+          if (scales_.find(var_name) != scales_.end()) return;
+
           auto* var = predictor_.sub_scope_->FindVar(var_name);
           PADDLE_ENFORCE(var, "%s is not in the scope", var_name);
           PADDLE_ENFORCE(var->IsType<LoDTensor>(),
                          "Only support lod tensor now.");
           LoDTensor* var_tensor = var->GetMutable<LoDTensor>();
 
-          bool is_unsigned = (is_output && op->HasAttr("fuse_relu") &&
-                              boost::get<bool>(op->GetAttr("fuse_relu"))) ||
-                             op->Type() == "pool2d";
+          // force unsigned type if already know it
+          bool is_unsigned = false;
+          if (is_output && op->Type() == "conv2d") {
+            is_unsigned = op->HasAttr("fuse_relu") &&
+                          boost::get<bool>(op->GetAttr("fuse_relu"));
+          } else if (is_output && op->Type() == "pool2d") {
+            auto input_var_name = op->Input("X")[0];
+            if (scales_.find(input_var_name) != scales_.end()) {
+              is_unsigned = scales_[input_var_name].first;
+            }
+          }
 
-          CalculateSingleScale(
-              op->Type(), conn.first, var_name, *var_tensor,
-              is_unsigned ? QuantMax::U8_MAX : QuantMax::S8_MAX);
+          CalculateSingleScale(op->Type(), conn.first, var_name, *var_tensor,
+                               is_unsigned);
         }
       };
 
@@ -74,26 +85,23 @@ bool AnalysisPredictor::Quantizer::CalculateScales() {
 void AnalysisPredictor::Quantizer::CalculateSingleScale(
     const std::string& op_type_name, const std::string& conn_name,
     const std::string& var_name, const LoDTensor& var_tensor,
-    const QuantMax qmax) {
+    bool is_unsigned) {
   PADDLE_ENFORCE(
       var_tensor.numel() > 0,
       "Quantizer: LoDTensor of variable for quantization should not be empty.");
-
-  if (scales_.find(var_name) != scales_.end() && qmax == QuantMax::S8_MAX)
-    return;
 
   auto rule = qconfig_->scale_algo(op_type_name, conn_name);
   switch (rule) {
     case ScaleAlgo::NONE:
       return;
     case ScaleAlgo::MAX:
-      scales_[var_name] = GetMaxScalingFactor(var_tensor, qmax);
+      scales_[var_name] = GetMaxScalingFactor(var_tensor, is_unsigned);
       break;
     case ScaleAlgo::MAX_CH:
-      scales_[var_name] = GetMaxChScalingFactor(var_tensor, qmax);
+      scales_[var_name] = GetMaxChScalingFactor(var_tensor, is_unsigned);
       break;
     case ScaleAlgo::KL:
-      scales_[var_name] = GetKLScalingFactor(var_tensor, qmax);
+      scales_[var_name] = GetKLScalingFactor(var_tensor, is_unsigned);
       break;
     default:
       throw std::runtime_error("Quantizer: Unexpected ScaleAlgo specified.");
@@ -129,14 +137,15 @@ std::vector<int> AnalysisPredictor::Quantizer::ExpandQuantizedBins(
   return expanded_quantized_bins;
 }
 
-std::pair<QuantMax, LoDTensor> AnalysisPredictor::Quantizer::GetKLScalingFactor(
-    const LoDTensor& var_tensor, const QuantMax quant_max) const {
+std::pair<bool, LoDTensor> AnalysisPredictor::Quantizer::GetKLScalingFactor(
+    const LoDTensor& var_tensor, bool is_unsigned) const {
   ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
                                         var_tensor.numel(), 1};
   int precision_hist_num_bins = 2048;
   float max_val = eigen_tensor.maxCoeff();
   float min_val = eigen_tensor.minCoeff();
   bool is_positive = min_val >= 0.0f;
+  if (is_unsigned) PADDLE_ENFORCE(is_positive);
 
   int num_quantized_bins = 255;
 
@@ -232,37 +241,42 @@ std::pair<QuantMax, LoDTensor> AnalysisPredictor::Quantizer::GetKLScalingFactor(
 
   LoDTensor scale_tensor;
   scale_tensor.Resize({1});
-  auto* scale_ptr = scale_tensor.mutable_data<float>(CPUPlace());
+  auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
 
-  scale_ptr[0] =
-      static_cast<float>(quant_max) / ((min_kl_index + 0.5f) * bin_width);
+  scale_ptr[0] = 1.0 / ((min_kl_index + 0.5) * bin_width);
 
-  return std::make_pair(quant_max, scale_tensor);
+  return std::make_pair(is_unsigned, scale_tensor);
 }
 
-std::pair<QuantMax, LoDTensor>
-AnalysisPredictor::Quantizer::GetMaxScalingFactor(
-    const LoDTensor& var_tensor, const QuantMax quant_max) const {
+std::pair<bool, LoDTensor> AnalysisPredictor::Quantizer::GetMaxScalingFactor(
+    const LoDTensor& var_tensor, bool is_unsigned) const {
   ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
                                         var_tensor.numel(), 1};
+  float max_abs = eigen_tensor.abs().maxCoeff();
+  float min_val = eigen_tensor.minCoeff();
+  if (is_unsigned) PADDLE_ENFORCE(min_val >= 0.0f);
+
   LoDTensor scale_tensor;
   scale_tensor.Resize({1});
-  auto* scale_ptr = scale_tensor.mutable_data<float>(CPUPlace());
+  auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
+  scale_ptr[0] = 1.0 / max_abs;
 
-  float max_abs = eigen_tensor.abs().maxCoeff();
-  scale_ptr[0] = static_cast<float>(static_cast<unsigned>(quant_max) / max_abs);
-
-  return std::make_pair(quant_max, scale_tensor);
+  return std::make_pair(is_unsigned, scale_tensor);
 }
 
-std::pair<QuantMax, LoDTensor>
-AnalysisPredictor::Quantizer::GetMaxChScalingFactor(
-    const LoDTensor& var_tensor, const QuantMax quant_max) const {
+std::pair<bool, LoDTensor> AnalysisPredictor::Quantizer::GetMaxChScalingFactor(
+    const LoDTensor& var_tensor, bool is_unsigned) const {
   PADDLE_ENFORCE(var_tensor.dims().size() > 0, "Tensor dimension is empty.");
+
+  ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
+                                        var_tensor.numel(), 1};
+  float min_val = eigen_tensor.minCoeff();
+  if (is_unsigned) PADDLE_ENFORCE(min_val >= 0.0f);
+
   int channels = var_tensor.dims()[0];
   LoDTensor scale_tensor;
   scale_tensor.Resize({channels});
-  auto* scale_ptr = scale_tensor.mutable_data<float>(CPUPlace());
+  auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
 
 #pragma omp parallel for
   for (int i = 0; i < channels; ++i) {
@@ -271,10 +285,10 @@ AnalysisPredictor::Quantizer::GetMaxChScalingFactor(
     ConstEigenVectorArrayMap eigen_tensor{tensor.data<float>(), tensor.numel(),
                                           1};
     float max_abs = eigen_tensor.abs().maxCoeff();
-    scale_ptr[i] = static_cast<float>(quant_max) / max_abs;
+    scale_ptr[i] = 1.0 / max_abs;
   }
 
-  return std::make_pair(quant_max, scale_tensor);
+  return std::make_pair(is_unsigned, scale_tensor);
 }
 
 std::pair<std::vector<int>, float> AnalysisPredictor::Quantizer::Histogram(
@@ -320,10 +334,10 @@ void AnalysisPredictor::Quantizer::PrepareArgument() const {
   builder->AnalysisPasses().clear();
   builder->SetPasses({
       "infer_clean_graph_pass",
-      "cpu_quantize_pass",  // TODO(wojtuss): quantize chosen operators
-      /* "cpu_quantize_squash_pass", */    // TODO(wojtuss): squash
-                                           // dequantize-quantize
-                                           // pairs
+      "cpu_quantize_pass",         // TODO(wojtuss): quantize chosen operators
+      "cpu_quantize_squash_pass",  // TODO(wojtuss): squash
+                                   // dequantize-quantize
+                                   // pairs
       /* "cpu_quantize_scale_out_pass" */  // TODO(wojtuss): fuse
                                            // conv->dequantize
                                            // pattern
