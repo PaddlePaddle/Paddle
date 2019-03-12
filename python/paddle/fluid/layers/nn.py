@@ -10704,8 +10704,9 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 
     similarity_matrix = matmul(
         anchor, positive, transpose_x=False, transpose_y=True)
-    softmax_value = softmax(similarity_matrix)
-    cross_entropy = -1 * reduce_sum(labels * log(softmax_value), 0)
+    softmax_ce = softmax_with_cross_entropy(
+        logits=similarity_matrix, label=labels, soft_label=True)
+    cross_entropy = reduce_sum(labels * softmax_ce, 0)
     celoss = reduce_mean(cross_entropy)
 
     return l2loss + celoss
