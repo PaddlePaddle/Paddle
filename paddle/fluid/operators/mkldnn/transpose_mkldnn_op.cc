@@ -70,6 +70,21 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         paddle::framework::vectorize2int(output->dims()),
         mkldnn::memory::format::blocked);
     output->set_mkldnn_prim_desc(output_mem_pd);
+    output->set_layout(DataLayout::kMKLDNN);
+  }
+};
+
+template <typename T>
+class TransposeINT8MKLDNNOpKernel : public paddle::framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
+    VLOG(4) << "The format of MKL-DNN INT8 will always be 'nhwc', do not need "
+               "to do transpose for it.";
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    output->ShareDataWith(*input);
+    output->set_layout(DataLayout::kMKLDNN);
+    output->set_format(input->format());
   }
 };
 
@@ -140,7 +155,10 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(transpose2, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::TransposeMKLDNNOpKernel<float>);
+                   ops::TransposeMKLDNNOpKernel<float>,
+                   ops::TransposeINT8MKLDNNOpKernel<uint8_t>,
+                   ops::TransposeINT8MKLDNNOpKernel<int8_t>);
+
 REGISTER_OP_KERNEL(transpose, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNOpKernel<float>);
 
