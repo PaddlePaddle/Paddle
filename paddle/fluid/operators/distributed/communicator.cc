@@ -66,8 +66,6 @@ static inline void MergeVars(const std::string &var_name,
 
     // init output tensor
     auto *out_t = out_var->GetMutable<framework::LoDTensor>();
-    auto *out_ptr = out_t->mutable_data<float>(
-        var0->Get<framework::LoDTensor>().dims(), cpu_place);
     auto numel = out_t->numel();
 
     // check the input dims
@@ -83,7 +81,7 @@ static inline void MergeVars(const std::string &var_name,
     constant_functor(cpu_ctx, out_t, static_cast<float>(0));
 
     // sum all vars to out
-    auto result = EigenVector<T>::Flatten(*out_t);
+    auto result = EigenVector<float>::Flatten(*out_t);
     for (auto &var : vars) {
       auto &in_t = var->Get<framework::LoDTensor>();
       auto in = EigenVector<float>::Flatten(in_t);
