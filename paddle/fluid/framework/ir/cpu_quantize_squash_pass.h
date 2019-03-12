@@ -36,11 +36,19 @@ class CPUQuantizeSquashPass : public FusePassBase {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
-  void Squash(Graph* graph,
-              std::unordered_map<const Node*, int>* nodes_keep_counter) const;
+
+  /*
+   * For each dequantize's output find the number of operators it is an input to
+   */
   void FindNodesToKeep(
       Graph* graph,
       std::unordered_map<const Node*, int>* nodes_keep_counter) const;
+
+  /*
+   * Squash dequantize-quantize ops pairs into requantize or nothing
+   */
+  void Squash(Graph* graph,
+              std::unordered_map<const Node*, int>* nodes_keep_counter) const;
 
   const std::string name_scope_{"squash"};
 };

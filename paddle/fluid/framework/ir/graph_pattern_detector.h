@@ -769,22 +769,19 @@ struct ConvAffineChannel : public PatternBase {
   PATTERN_DECL_NODE(ac_out);  // Out
 };
 
-// Dequantize + Quantize + anotherOP
+// Dequantize + Quantize + anyOP
 // This pattern is used for squashing the dequantize-quantize pairs.
-struct DequantQuantRM : public PatternBase {
-  DequantQuantRM(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "dequant_quant_squash") {}
+struct DequantQuantAny : public PatternBase {
+  DequantQuantAny(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dequant_quant_any") {}
   PDNode* operator()();
 
-  // declare operator node's name
-  PATTERN_DECL_NODE(dequantize);
-  PATTERN_DECL_NODE(quantize);
-  PATTERN_DECL_NODE(next_op);
-
-  // declare the variable
-  PATTERN_DECL_NODE(int8_out);
+  PATTERN_DECL_NODE(dequant_in);
+  PATTERN_DECL_NODE(dequant_op);
   PATTERN_DECL_NODE(dequant_out);
+  PATTERN_DECL_NODE(quant_op);
   PATTERN_DECL_NODE(quant_out);
+  PATTERN_DECL_NODE(next_op);
 };
 
 // Dequantize + anyOP
@@ -792,15 +789,12 @@ struct DequantQuantRM : public PatternBase {
 // output is an input to.
 struct DequantAny : public PatternBase {
   DequantAny(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "dequant_another") {}
+      : PatternBase(pattern, name_scope, "dequant_any") {}
   PDNode* operator()();
 
-  // declare operator node's name
   PATTERN_DECL_NODE(dequant_op);
-  PATTERN_DECL_NODE(next_op);
-
-  // declare the variable
   PATTERN_DECL_NODE(dequant_out);
+  PATTERN_DECL_NODE(next_op);
 };
 
 struct TransposeFlattenConcat : public PatternBase {
