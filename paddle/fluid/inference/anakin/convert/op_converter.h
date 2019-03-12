@@ -47,6 +47,10 @@ class AnakinOpConverter {
     std::string op_type = op_desc.Type();
     AnakinOpConverter *it = nullptr;
 
+    if (op_type == "reshape2") op_type = "reshape";
+    if (op_type == "transpose2") op_type = "transpose";
+    if (op_type == "flatten2") op_type = "flatten";
+
     if (!it) {
       it = Registry<AnakinOpConverter>::Global().Lookup(op_type);
     }

@@ -14,27 +14,24 @@
 
 #pragma once
 
+#include <map>
 #include <string>
-#include <vector>
-
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/inference/analysis/analysis_pass.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/inference/anakin/convert/op_converter.h"
 
 namespace paddle {
 namespace inference {
-namespace analysis {
+namespace anakin {
 
-/*
- * Sync parameter from CPU to GPU.
- */
-class IrParamsSyncAmongDevicesPass : public AnalysisPass {
+class DensityPriorBoxOpConverter : public AnakinOpConverter {
  public:
-  void RunImpl(Argument *argument) override;
-  std::string repr() const override;
+  DensityPriorBoxOpConverter() = default;
+
+  virtual void operator()(const framework::proto::OpDesc &op,
+                          const framework::Scope &scope,
+                          bool test_mode) override;
+  virtual ~DensityPriorBoxOpConverter() {}
 };
 
-}  // namespace analysis
+}  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

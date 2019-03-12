@@ -13,28 +13,29 @@
 // limitations under the License.
 
 #pragma once
-
-#include <string>
-#include <vector>
-
+#include <memory>
+#include <unordered_set>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/inference/analysis/analysis_pass.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
-namespace inference {
-namespace analysis {
+namespace framework {
+namespace ir {
 
-/*
- * Sync parameter from CPU to GPU.
- */
-class IrParamsSyncAmongDevicesPass : public AnalysisPass {
+// There may be many transpose-flatten structures in a model, and the output of
+// these structures will be used as inputs to the concat Op. This pattern will
+// be detected by our pass. The times here represents the repeat times of this
+// structure.
+template <int times>
+class SimplifyAnakinDetectionPatternPass : public FusePassBase {
  public:
-  void RunImpl(Argument *argument) override;
-  std::string repr() const override;
+  virtual ~SimplifyAnakinDetectionPatternPass() {}
+
+ protected:
+  std::unique_ptr<ir::Graph> ApplyImpl(
+      std::unique_ptr<ir::Graph> graph) const override;
 };
 
-}  // namespace analysis
-}  // namespace inference
+}  // namespace ir
+}  // namespace framework
 }  // namespace paddle

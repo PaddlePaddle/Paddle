@@ -34,8 +34,8 @@ void ConcatOpConverter::operator()(const framework::proto::OpDesc &op,
   framework::OpDesc op_desc(op, nullptr);
   int axis = boost::get<int>(op_desc.GetAttr("axis"));
   auto input_names = op_desc.Input("X");
-  PADDLE_ENFORCE(axis > 0,
-                 "The axis attr of Concat op should be large than 0 for trt");
+  // PADDLE_ENFORCE(axis > 0,
+  //               "The axis attr of Concat op should be large than 0 for trt");
 
   auto y_name = op_desc.Output("Out").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
