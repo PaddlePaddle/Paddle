@@ -29,7 +29,7 @@ class Hogwild(DeviceWorker):
         trainer_desc.device_worker_name = "HogwildWorker"
 
 
-class Downpour(DeviceWorker):
+class DownpourSGD(DeviceWorker):
     def __init__(self):
         super(Downpour, self).__init__()
 
@@ -55,6 +55,7 @@ class Downpour(DeviceWorker):
         sparse_table.emb_dim = fleet_desc.server_param.downpour_server_param.downpour_table_param[
             0].accessor.fea_dim - 2
         sparse_table.fea_dim = sparse_table.emb_dim + 2
+        # TODO(guru4elephant): hard code here, need to improve
         sparse_table.label_var_name = "click"
 
         dense_table = downpour.dense_table.add()
@@ -70,6 +71,4 @@ class Downpour(DeviceWorker):
 class DeviceWorkerFactory(object):
     def create_device_worker(self, worker_type):
         classname = worker_type.capitalize()
-        print("------------")
-        print(classname)
         return globals()[classname]()

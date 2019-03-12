@@ -20,13 +20,20 @@ class TrainerFactory(object):
         pass
 
     def create_trainer(self, opt_info=None):
+        trainer = None
+        device_worker = None
         if opt_info == None:
-            return MultiTrainer()
+            # default is MultiTrainer + Hogwild
+            trainer = MultiTrainer()
+            device_worker = Hogwild()
+            trainer.set_device_worker(device_worker)
+            trainer.gen_trainer_desc()
         else:
-            if opt_info["optimizer"] == "DownpourSGD":
-                trainer = DistMultiTrainer()
-                trainer.gen_trainer_desc(
-                    fleet_desc=opt_info["fleet"], worker="downpour")
-                return trainer
-            else:
-                print("Currently only support DownpourSGD")
+            trainer_class = opt_info["trainer"]
+            device_worker_class = opt_info["device_worker"]
+            trainer = globals()[trainer_class]()
+            device_worker = globals()[device_worker_class]()
+            trainer.set_device_worker(device_worker)
+            trainer.set_fleet_desc(opt_info["fleet_desc"])
+            trainer.gen_trainer_desc(fleet_desc=opt_info["fleet_desc"])
+        return trainer
