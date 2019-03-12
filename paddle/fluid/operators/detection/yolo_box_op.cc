@@ -74,9 +74,8 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "The input tensor of YoloBox operator, "
-             "This is a 4-D tensor with shape of [N, C, H, W]. "
-             "H and W should be same, and the second dimension(C) stores "
+             "The input tensor of YoloBox operator is a 4-D tensor with "
+             "shape of [N, C, H, W]. The second dimension(C) stores "
              "box locations, confidence score and classification one-hot "
              "keys of each anchor box. Generally, X should be the output "
              "of YOLOv3 network.");
@@ -91,10 +90,10 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
               "batch num, M is output box number, and the 3rd dimension "
               "stores [xmin, ymin, xmax, ymax] coordinates of boxes.");
     AddOutput("Scores",
-              "The output tensor ofdetection boxes scores of YoloBox "
-              "operator, This is a 3-D tensor with shape of [N, M, C], "
-              "N is the batch num, M is output box number, C is the "
-              "class number.");
+              "The output tensor of detection boxes scores of YoloBox "
+              "operator, This is a 3-D tensor with shape of "
+              "[N, M, :attr:`class_num`], N is the batch num, M is "
+              "output box number.");
 
     AddAttr<int>("class_num", "The number of classes to predict.");
     AddAttr<std::vector<int>>("anchors",
@@ -112,7 +111,7 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                    "be ignored.")
         .SetDefault(0.01);
     AddComment(R"DOC(
-         This operator generate YOLO detection boxes from output of YOLOv3 network.
+         This operator generates YOLO detection boxes from output of YOLOv3 network.
          
          The output of previous network is in shape [N, C, H, W], while H and W
          should be the same, H and W specify the grid size, each grid point predict 
@@ -149,6 +148,10 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
          boxes represents the classifcation scores. Boxes with confidence scores less than
          :attr:`conf_thresh` should be ignored, and box final scores is the product of 
          confidence scores and classification scores.
+
+         $$
+         score_{pred} = score_{conf} * score_{class}
+         $$
 
          )DOC");
   }
