@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/distributed/rpc_common.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
@@ -90,6 +92,65 @@ class BlockingQueue {
   mutable std::mutex mutex_;
   std::condition_variable cv_;
 };
+
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+
+inline void MergeVars(const std::string& var_name,
+                      const std::vector<std::shared_ptr<Variable>>& vars,
+                      Scope* scope) {
+  PADDLE_ENFORCE(!vars.empty(), "should have value to merge!");
+  auto cpu_place = platform::CPUPlace();
+  auto& var0 = vars[0];
+  auto* out_var = scope->Var(var_name);
+  if (var0->IsType<framework::LoDTensor>()) {
+    auto dims = var0->Get<framework::LoDTensor>().dims();
+    VLOG(3) << "merge " << var_name << " LoDTensor " << dims;
+
+    // init output tensor
+    auto* out_t = out_var->GetMutable<framework::LoDTensor>();
+    out_t->mutable_data<float>(dims, cpu_place);
+
+    // check the input dims
+    for (auto& var : vars) {
+      auto& var_t = var->Get<framework::LoDTensor>();
+      PADDLE_ENFORCE_EQ(var_t.dims(), dims, "should have the same dims");
+    }
+
+    // set output tensor to 0.
+    auto cpu_ctx = paddle::platform::CPUDeviceContext();
+    math::SetConstant<paddle::platform::CPUDeviceContext, float>
+        constant_functor;
+    constant_functor(cpu_ctx, out_t, static_cast<float>(0));
+
+    // sum all vars to out
+    auto result = EigenVector<float>::Flatten(*out_t);
+    for (auto& var : vars) {
+      auto& in_t = var->Get<framework::LoDTensor>();
+      auto in = EigenVector<float>::Flatten(in_t);
+      result.device(*cpu_ctx.eigen_device()) = result + in;
+    }
+  } else if (var0->IsType<framework::SelectedRows>()) {
+    auto& slr0 = var0->Get<framework::SelectedRows>();
+    auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
+    out_slr->mutable_rows()->clear();
+    out_slr->mutable_value()->mutable_data<float>({{}}, cpu_place);
+    std::vector<const paddle::framework::SelectedRows*> inputs;
+    inputs.reserve(vars.size());
+    for (auto& var : vars) {
+      inputs.push_back(&var->Get<framework::SelectedRows>());
+    }
+    math::scatter::MergeAdd<paddle::platform::CPUDeviceContext, float>
+        merge_add;
+    auto dev_ctx = paddle::platform::CPUDeviceContext();
+    merge_add(dev_ctx, inputs, out_slr, false);
+    VLOG(3) << "merge " << var_name << " SelectedRows height: " << slr0.height()
+            << " dims: " << slr0.value().dims();
+  } else {
+    PADDLE_THROW("unsupported var type!");
+  }
+}
 
 using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
 
