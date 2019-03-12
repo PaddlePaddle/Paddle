@@ -2907,9 +2907,15 @@ def batch_norm(input,
     Args:
         input(variable): The rank of input variable can be 2, 3, 4, 5.
         act(string, Default None): Activation type, linear|relu|prelu|...
-        is_test(bool, Default False): Used for training or training.
-        momentum(float, Default 0.9):
-        epsilon(float, Default 1e-05):
+        is_test (bool, Default False): A flag indicating whether it is in
+            test phrase or not.
+        momentum(float, Default 0.9): The value used for the moving_mean and
+            moving_var computation. The updated formula is:
+            :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
+            :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
+            Default is 0.9.
+        epsilon(float, Default 1e-05): A value added to the denominator for
+            numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
              will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -3053,19 +3059,26 @@ def sync_batch_norm(input,
                     do_model_average_for_mean_and_var=False):
     """
     **Synchronous Batch Normalization Layer**
+
     The details of batch normalization can be referred to batch_norm interface.
     Different from batch_norm, sync_batch_norm synchronizes the mean and
     variance through multi-GPUs in training phase.
 
-    Note, current implementation doesn't support FP16 training, will be
-    supported later. And only synchronous on one machine, not all machines.
+    Note: current implementation doesn't support FP16 training.
+    And only synchronous on one machine, not all machines.
 
     Args:
         input(variable): The rank of input variable can be 2, 3, 4, 5.
         act(string, Default None): Activation type, linear|relu|prelu|...
-        is_test(bool, Default False): Used for training or training.
-        momentum(float, Default 0.9):
-        epsilon(float, Default 1e-05):
+        is_test (bool, Default False): A flag indicating whether it is in
+            test phrase or not.
+        momentum(float, Default 0.9): The value used for the moving_mean and
+            moving_var computation. The updated formula is:
+            :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
+            :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
+            Default is 0.9.
+        epsilon(float, Default 1e-05): A value added to the denominator for
+            numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
              will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -3077,10 +3090,11 @@ def sync_batch_norm(input,
         data_layout(string, default NCHW): NCHW|NHWC
         name(string, Default None): A name for this layer(optional).
             If set None, the layer will be named automatically.
-        moving_mean_name(string, Default None): The name of moving_mean
-            which store the global Mean.
+        moving_mean_name(string, Default None): The name of moving_mean,
+            the corresponding variable stores the global mean.
         moving_variance_name(string, Default None): The name of the
-            moving_variance which store the global Variance.
+            moving_variance, the corresponding variable stores the global
+            variance.
         do_model_average_for_mean_and_var(bool, Default False): Do model
             average for mean and variance or not.
 
@@ -3092,8 +3106,27 @@ def sync_batch_norm(input,
 
         .. code-block:: python
 
-            hidden1 = fluid.layers.fc(input=x, size=200)
-            hidden2 = fluid.layers.sync_batch_norm(input=hidden1)
+            # Example 1:
+            data = fluid.layers.data(
+                name='input',
+                shape=[100],
+                dtype='float32')
+            fc = fluid.layers.fc(input=data, size=200)
+            bn = fluid.layers.sync_batch_norm(input=fc)
+
+            # Example 2:
+            data = fluid.layers.data(
+                name='input',
+                shape=[3, 122, 122],
+                dtype='float32')
+            conv = fluid.layers.conv2d(
+                input=data,
+                num_filters=32,
+                filter_size=1,
+                param_attr=fluid.ParamAttr(name='conv2d_weight'),
+                bias_attr=False)
+            bn = fluid.layers.sync_batch_norm(conv)
+
     """
     assert bias_attr is not False, "bias_attr should not be False in batch_norm."
     helper = LayerHelper('sync_batch_norm', **locals())
