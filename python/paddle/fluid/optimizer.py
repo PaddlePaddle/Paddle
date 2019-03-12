@@ -377,17 +377,16 @@ class Optimizer(object):
             and list of (param, grad) Variables pair for optimization.
         """
         self._dtype = loss.dtype
-        program = loss.block.program
         optimize_ops = []
         if framework._in_imperative_mode():
             if parameter_list is not None:
                 parameters = parameter_list
             else:
-                parameters = program.global_block().all_parameters()
+                parameters = framework._imperative_tracer().all_parameters()
 
             params_grads = []
             for param in parameters:
-                if param.stop_gradient or not param.trainable:
+                if not param.trainable:
                     continue
                 # create gradient variable
                 grad_var = Variable(
@@ -396,9 +395,11 @@ class Optimizer(object):
                     stop_gradient=True,
                     ivar=param._ivar._grad_ivar())
                 params_grads.append((param, grad_var))
-            with program_guard(program, startup_program):
+            with program_guard(framework.default_main_program(),
+                               framework.default_startup_program()):
                 optimize_ops = self._create_optimization_pass(params_grads)
         else:
+            program = loss.block.program
             with program_guard(program, startup_program):
                 params_grads = self.backward(loss, startup_program,
                                              parameter_list, no_grad_set)
