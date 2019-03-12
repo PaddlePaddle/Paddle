@@ -628,7 +628,7 @@ def yolo_box(x,
         class_num (int): ${class_num_comment}
         conf_thresh (float): ${conf_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
-        name (string): the name of yolo box layer
+        name (string): the name of yolo box layer. Default None.
 
     Returns:
         Variable: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
