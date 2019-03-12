@@ -209,6 +209,8 @@ namespace ops = paddle::operators;
 using CUDA = paddle::platform::CUDADeviceContext;
 REGISTER_OP_CUDA_KERNEL(fake_quantize_abs_max,
                         ops::FakeQuantizeAbsMaxKernel<CUDA, float>);
+REGISTER_OP_CUDA_KERNEL(fake_channel_wise_quantize_abs_max,
+                        ops::FakeChannelWiseQuantizeAbsMaxKernel<CUDA, float>);
 REGISTER_OP_CUDA_KERNEL(fake_quantize_range_abs_max,
                         ops::FakeQuantizeRangeAbsMaxKernel<CUDA, float>);
 REGISTER_OP_CUDA_KERNEL(
