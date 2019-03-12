@@ -130,7 +130,7 @@ class BoxCoderKernel : public framework::OpKernel<T> {
         T *var_ptr = var_data;
         size_t offset = i * col * len + j * len;
         int prior_box_offset = axis == 0 ? j * len : i * len;
-        
+
         T prior_box_width = prior_box_data[prior_box_offset + 2] -
                             prior_box_data[prior_box_offset] +
                             (normalized == false);
