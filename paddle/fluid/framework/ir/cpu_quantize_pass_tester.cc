@@ -116,7 +116,7 @@ std::unique_ptr<ir::Graph> MainTest(const ProgramDesc& prog,
   Scope scope;
   exe.CreateVariables(prog, 0, true, &scope);
 
-  auto* scales = new VarQuantMaxAndScale();
+  auto* scales = new VarQuantScale();
 
   for (auto& v : variable_names) {
     InitTensorHolder(&scope, place, v.c_str());

@@ -16,7 +16,9 @@
 #include <map>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/inference/api/paddle_quantizer_config.h"  // for QuantMax
+#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -33,14 +35,18 @@ void UnlinkNodes(ir::Node* a, ir::Node* b) {
 
 }  // namespace
 
-template <typename OutT>
+using EigenVectorArrayMap = Eigen::Map<Eigen::Array<double, Eigen::Dynamic, 1>>;
+using string::PrettyLogDetail;
+
 void CPUQuantizePass::QuantizeInput(Graph* g, Node* op, Node* input,
-                                    std::string input_name, std::string prefix,
-                                    float scale, bool is_negative) const {
+                                    std::string input_name, double scale_to_one,
+                                    bool is_unsigned,
+                                    std::string scale_attr_name) const {
+  QuantMax max = is_unsigned ? QuantMax::U8_MAX : QuantMax::S8_MAX;
+  float scale = scale_to_one * (unsigned)max;
+
   // Create quantize output variable
-  VarDesc quantize_out_desc(patterns::PDNodeName(prefix + "quantize", "out"));
-  quantize_out_desc.SetDataType(framework::ToDataType(typeid(OutT)));
-  quantize_out_desc.SetShape(input->Var()->GetShape());
+  VarDesc quantize_out_desc(patterns::PDNodeName("quantize", "out"));
   auto* quantize_out_node = g->CreateVarNode(&quantize_out_desc);
 
   // create a quantize op node
@@ -50,7 +56,7 @@ void CPUQuantizePass::QuantizeInput(Graph* g, Node* op, Node* input,
   q_desc.SetOutput("Output",
                    std::vector<std::string>({quantize_out_node->Name()}));
   q_desc.SetAttr("Scale", scale);
-  q_desc.SetAttr("is_negative_input", is_negative);
+  q_desc.SetAttr("is_negative_input", !is_unsigned);
   auto quantize_op = g->CreateOpNode(&q_desc);  // OpDesc will be copied.
 
   // update op's input
@@ -62,16 +68,19 @@ void CPUQuantizePass::QuantizeInput(Graph* g, Node* op, Node* input,
   IR_NODE_LINK_TO(input, quantize_op);
   IR_NODE_LINK_TO(quantize_op, quantize_out_node);
   IR_NODE_LINK_TO(quantize_out_node, op);
+
+  if (!scale_attr_name.empty()) op->Op()->SetAttr(scale_attr_name, scale);
 }
 
-template <typename InT>
 void CPUQuantizePass::DequantizeOutput(Graph* g, Node* op, Node* output,
                                        std::string output_name,
-                                       std::string prefix, float scale) const {
+                                       double scale_to_one, bool is_unsigned,
+                                       std::string scale_attr_name) const {
+  QuantMax max = is_unsigned ? QuantMax::U8_MAX : QuantMax::S8_MAX;
+  float scale = scale_to_one * (unsigned)max;
+
   // Create dequantize input variable
-  VarDesc dequantize_in_desc(patterns::PDNodeName(prefix + "dequantize", "in"));
-  dequantize_in_desc.SetDataType(framework::ToDataType(typeid(InT)));
-  dequantize_in_desc.SetShape(output->Var()->GetShape());
+  VarDesc dequantize_in_desc(patterns::PDNodeName("dequantize", "in"));
   auto* dequantize_in_node = g->CreateVarNode(&dequantize_in_desc);
 
   // create a dequantize op node for output.
@@ -92,6 +101,8 @@ void CPUQuantizePass::DequantizeOutput(Graph* g, Node* op, Node* output,
   IR_NODE_LINK_TO(op, dequantize_in_node);
   IR_NODE_LINK_TO(dequantize_in_node, dequantize_op);
   IR_NODE_LINK_TO(dequantize_op, output);
+
+  if (!scale_attr_name.empty()) op->Op()->SetAttr(scale_attr_name, scale);
 }
 
 void CPUQuantizePass::QuantizeConv(Graph* graph,
@@ -104,89 +115,70 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
   int quantize_conv_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "handle Conv2d with residual connection quantization";
+    VLOG(4) << "Quantize conv2d op";
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
-
     auto* conv_op_desc = conv_op->Op();
+
+    // skip if should not be quantized
     if (!conv_op_desc->HasAttr("use_quantizer") ||
         !boost::get<bool>(conv_op_desc->GetAttr("use_quantizer")))
       return;
 
+    // skip if already quantized
     if (conv_op_desc->HasAttr("quantized") &&
         boost::get<bool>(conv_op_desc->GetAttr("quantized")))
       return;
 
     conv_op_desc->SetAttr("quantized", true);
 
-    std::stringstream prefix_ss;
-    if (with_residual_data) prefix_ss << "rc_";
-    auto prefix = prefix_ss.str();
-
     GET_IR_NODE_FROM_SUBGRAPH(conv_filter, conv_filter, conv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(conv_input, conv_input, conv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(conv_output, conv_output, conv_pattern);
 
-    auto scales = Get<VarQuantMaxAndScale>("quant_var_scales");
-    auto conv_input_scale = scales[conv_input->Name()].second.data<float>()[0];
-    bool is_input_negative =
-        scales[conv_input->Name()].first == QuantMax::S8_MAX;
-    bool is_output_negative =
-        scales[conv_output->Name()].first == QuantMax::S8_MAX;
-    auto conv_filter_scale_tensor = scales[conv_filter->Name()].second;
-    std::vector<float> conv_filter_scale{
-        conv_filter_scale_tensor.data<float>(),
-        conv_filter_scale_tensor.data<float>() +
-            conv_filter_scale_tensor.numel()};
-    auto conv_output_scale =
-        scales[conv_output->Name()].second.data<float>()[0];
+    // get scales calculated after warmup, they scale variables to MAX=1.0
+    auto scales = Get<VarQuantScale>("quant_var_scales");
 
-    if (is_input_negative)
-      QuantizeInput<int8_t>(g, conv_op, conv_input, "Input", prefix,
-                            conv_input_scale, is_input_negative);
-    else
-      QuantizeInput<uint8_t>(g, conv_op, conv_input, "Input", prefix,
-                             conv_input_scale, is_input_negative);
-    conv_op->Op()->SetAttr("Scale_in", conv_input_scale);
-    conv_op->Op()->SetAttr("Scale_weights", conv_filter_scale);
+    auto input_scale = scales[conv_input->Name()].second.data<double>()[0];
+    bool is_input_unsigned = scales[conv_input->Name()].first;
+    QuantizeInput(g, conv_op, conv_input, "Input", input_scale,
+                  is_input_unsigned, "Scale_in");
+
+    auto filter_scale_tensor = scales[conv_filter->Name()].second;
+    EigenVectorArrayMap eigen_tensor{filter_scale_tensor.data<double>(),
+                                     filter_scale_tensor.numel(), 1};
+    eigen_tensor *= (double)QuantMax::S8_MAX;
+    std::vector<float> filter_scale{
+        filter_scale_tensor.data<double>(),
+        filter_scale_tensor.data<double>() + filter_scale_tensor.numel()};
+
+    conv_op->Op()->SetAttr("Scale_weights", filter_scale);
 
     if (with_residual_data) {
       GET_IR_NODE_FROM_SUBGRAPH(conv_residual_data, conv_residual_data,
                                 conv_pattern);
-      auto conv_res_conn_scale =
-          scales[conv_residual_data->Name()].second.data<float>()[0];
-      bool is_res_conn_negative =
-          scales[conv_residual_data->Name()].first == QuantMax::S8_MAX;
+      auto residual_scale =
+          scales[conv_residual_data->Name()].second.data<double>()[0];
+      bool is_residual_unsigned = scales[conv_residual_data->Name()].first;
 
-      if (is_res_conn_negative)
-        QuantizeInput<int8_t>(g, conv_op, conv_residual_data, "ResidualData",
-                              prefix, conv_res_conn_scale,
-                              is_res_conn_negative);
-      else
-        QuantizeInput<uint8_t>(g, conv_op, conv_residual_data, "ResidualData",
-                               prefix, conv_res_conn_scale,
-                               is_res_conn_negative);
-      conv_op->Op()->SetAttr("Scale_in_eltwise", conv_res_conn_scale);
+      QuantizeInput(g, conv_op, conv_residual_data, "ResidualData",
+                    residual_scale, is_residual_unsigned, "Scale_in_eltwise");
     }
 
-    if (is_output_negative)
-      DequantizeOutput<int8_t>(g, conv_op, conv_output, "Output", prefix,
-                               conv_output_scale);
-    else
-      DequantizeOutput<uint8_t>(g, conv_op, conv_output, "Output", prefix,
-                                conv_output_scale);
-
-    conv_op->Op()->SetAttr("Scale_out", conv_output_scale);
+    auto output_scale = scales[conv_output->Name()].second.data<double>()[0];
+    bool is_output_unsigned = scales[conv_output->Name()].first;
+    DequantizeOutput(g, conv_op, conv_output, "Output", output_scale,
+                     is_output_unsigned, "Scale_out");
 
     ++quantize_conv_count;
   };
 
   gpd(graph, handler);
-  std::stringstream msg_ss;
-  msg_ss << "---  Quantized " << quantize_conv_count << " conv2d ops";
-  if (with_residual_data) msg_ss << " with residual connection";
-  msg_ss << "." << std::endl;
-  std::cout << msg_ss.str();
   AddStatis(quantize_conv_count);
+
+  std::stringstream msg_ss;
+  msg_ss << "---    quantized " << quantize_conv_count << " conv2d ops";
+  if (with_residual_data) msg_ss << " with residual connection";
+  PrettyLogDetail(msg_ss.str().c_str());
 }
 
 void CPUQuantizePass::QuantizePool(Graph* graph) const {
@@ -198,14 +190,16 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
   int quantize_pool_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "Handle quantization of pool2d op";
+    VLOG(4) << "Quantize pool2d op";
     GET_IR_NODE_FROM_SUBGRAPH(pool_op, pool_op, pool_pattern);
-
     auto* pool_op_desc = pool_op->Op();
+
+    // skip if should not be quantized
     if (!pool_op_desc->HasAttr("use_quantizer") ||
         !boost::get<bool>(pool_op_desc->GetAttr("use_quantizer")))
       return;
 
+    // skip if already quantized
     if (pool_op_desc->HasAttr("quantized") &&
         boost::get<bool>(pool_op_desc->GetAttr("quantized")))
       return;
@@ -215,25 +209,25 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(pool_input, pool_input, pool_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(pool_output, pool_output, pool_pattern);
 
-    auto scales = Get<VarQuantMaxAndScale>("quant_var_scales");
-    auto input_scale = scales[pool_input->Name()].second.data<float>()[0];
-    auto output_scale = scales[pool_output->Name()].second.data<float>()[0];
+    // get scales calculated after warmup, they scale variables to MAX=1.0
+    auto scales = Get<VarQuantScale>("quant_var_scales");
 
-    std::string prefix{"q_pool"};
-    QuantizeInput<uint8_t>(g, pool_op, pool_input, "X", prefix, input_scale,
-                           false);
-    DequantizeOutput<uint8_t>(g, pool_op, pool_output, "Out", prefix,
-                              output_scale);
+    auto input_scale = scales[pool_input->Name()].second.data<double>()[0];
+    bool is_input_unsigned = scales[pool_input->Name()].first;
+    QuantizeInput(g, pool_op, pool_input, "X", input_scale, is_input_unsigned);
+
+    auto output_scale = scales[pool_output->Name()].second.data<double>()[0];
+    bool is_output_unsigned = scales[pool_output->Name()].first;
+    DequantizeOutput(g, pool_op, pool_output, "Out", output_scale,
+                     is_output_unsigned);
 
     ++quantize_pool_count;
   };
 
   gpd(graph, handler);
-  std::stringstream msg_ss;
-  msg_ss << "---  Quantized " << quantize_pool_count << " pool2d ops."
-         << std::endl;
-  std::cout << msg_ss.str();
   AddStatis(quantize_pool_count);
+
+  PrettyLogDetail("---    quantized %d pool2d ops", quantize_pool_count);
 }
 
 std::unique_ptr<ir::Graph> CPUQuantizePass::ApplyImpl(

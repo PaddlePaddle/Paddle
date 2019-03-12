@@ -21,14 +21,17 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/inference/api/paddle_quantizer_config.h"  // for QuantMax
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-using VarQuantMaxAndScale =
-    std::map<std::string, std::pair<QuantMax, LoDTensor>>;
+/*
+ * Map variable name to tensor of scaling factors scaling it to MAX=1.0.
+ * bool denotes whether quantization of the variable should be done to unsigned
+ * type.
+ */
+using VarQuantScale = std::map<std::string, std::pair<bool, LoDTensor>>;
 
 /*
  * Quantize all supported operators.
@@ -45,14 +48,14 @@ class CPUQuantizePass : public FusePassBase {
 
   void QuantizePool(Graph* graph) const;
 
-  template <typename OutT>
   void QuantizeInput(Graph* g, Node* op, Node* input, std::string input_name,
-                     std::string prefix, float scale, bool is_negative) const;
+                     double scale_to_one, bool is_unsigned,
+                     std::string scale_attr_name = "") const;
 
-  template <typename InT>
   void DequantizeOutput(Graph* g, Node* op, Node* output,
-                        std::string output_name, std::string prefix,
-                        float scale) const;
+                        std::string output_name, double scale_to_one,
+                        bool is_unsigned,
+                        std::string scale_attr_name = "") const;
 
   const std::string name_scope_{"quantize"};
 };

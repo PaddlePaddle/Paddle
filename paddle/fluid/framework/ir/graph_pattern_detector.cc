@@ -90,7 +90,8 @@ void GraphPatternDetector::operator()(Graph *graph,
   ValidateByNodeRole(&subgraphs);
 
   if (subgraphs.empty()) return;
-  PrettyLogEndl(Style::detail(), "---  detect %d subgraphs", subgraphs.size());
+  PrettyLogEndl(Style::detail(), "---  detected %d subgraphs",
+                subgraphs.size());
   int id = 0;
   for (auto &g : subgraphs) {
     VLOG(3) << "optimizing #" << id++ << " subgraph";
