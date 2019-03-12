@@ -255,15 +255,21 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     PADDLE_THROW("Not compiled with CUDA");
 #endif
   }
-  // broadcast parameters from device 0 to others:
-  // 1. multiple trainer instances
-  // 2. one trainer with multiple devices
-  if (build_strategy.num_trainers_ > 1) {
-    BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
-  } else {
-    if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
-      BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
+  // broadcast parameters from the 0th device to others:
+  auto need_broadcast = [&]() -> bool {
+    if (build_strategy.num_trainers_ > 1) {
+      // 1. num_tariners would be grater than 1 for nccl distributed training.
+      return true;
+    } else if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
+      // 2. Only one trainer process, but ParallelExecutor hold multiple
+      // devices.
+      return true;
     }
+    return false;
+  };
+
+  if (need_broadcast()) {
+    BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
   }
 
 // Startup Program has been run. All local scopes has correct parameters.

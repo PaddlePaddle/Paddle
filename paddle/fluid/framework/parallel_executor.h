@@ -72,6 +72,8 @@ class ParallelExecutor {
            const std::string &fetched_var_name);
 
  private:
+  // broadcast the parameters from the 0th device.
+  // trainer_id the trainer index in nccl distributed training.
   void BCastParamsToDevices(const std::vector<std::string> &vars,
                             int trainer_id = 0) const;
   bool EnableParallelGraphExecution(const ir::Graph &graph,
