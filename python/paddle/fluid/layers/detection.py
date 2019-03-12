@@ -53,6 +53,7 @@ __all__ = [
     'multiclass_nms',
     'distribute_fpn_proposals',
     'box_decoder_and_assign',
+    'generate_mask_labels_by_mask',
 ]
 
 
@@ -1938,6 +1939,42 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
               num_classes=81,
               resolution=14)
     """
+
+    helper = LayerHelper('generate_mask_labels', **locals())
+
+    mask_rois = helper.create_variable_for_type_inference(dtype=rois.dtype)
+    roi_has_mask_int32 = helper.create_variable_for_type_inference(
+        dtype=gt_classes.dtype)
+    mask_int32 = helper.create_variable_for_type_inference(
+        dtype=gt_classes.dtype)
+
+    helper.append_op(
+        type="generate_mask_labels",
+        inputs={
+            'ImInfo': im_info,
+            'GtClasses': gt_classes,
+            'IsCrowd': is_crowd,
+            'GtSegms': gt_segms,
+            'Rois': rois,
+            'LabelsInt32': labels_int32
+        },
+        outputs={
+            'MaskRois': mask_rois,
+            'RoiHasMaskInt32': roi_has_mask_int32,
+            'MaskInt32': mask_int32
+        },
+        attrs={'num_classes': num_classes,
+               'resolution': resolution})
+
+    mask_rois.stop_gradient = True
+    roi_has_mask_int32.stop_gradient = True
+    mask_int32.stop_gradient = True
+
+    return mask_rois, roi_has_mask_int32, mask_int32
+
+
+def generate_mask_labels_by_mask(im_info, gt_classes, is_crowd, gt_segms, rois,
+                                 labels_int32, num_classes, resolution):
 
     helper = LayerHelper('generate_mask_labels', **locals())
 
