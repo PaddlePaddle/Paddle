@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ class MultiTrainer(TrainerDesc):
     def gen_trainer_desc(self):
         super(MultiTrainer, self).gen_trainer_desc()
         self.proto_desc.class_name = "MultiTrainer"
-        self.device_worker_.gen_worker_desc(self.proto_desc, self.fleet_desc_)
+        self.device_worker_.gen_worker_desc(self.proto_desc)
 
 
 class DistMultiTrainer(TrainerDesc):
@@ -70,7 +70,7 @@ class DistMultiTrainer(TrainerDesc):
     def gen_trainer_desc(self):
         super(DistMultiTrainer, self).gen_trainer_desc()
         self.proto_desc.class_name = "DistMultiTrainer"
-        self.device_worker_.gen_worker_desc(self.proto_desc, self.fleet_desc_)
+        self.device_worker_.gen_worker_desc(self.proto_desc)
 
     def set_program_config(self, fleet_desc, program_id):
         for program_config in fleet_desc.trainer_param.program_config:
