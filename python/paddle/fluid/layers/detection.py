@@ -575,7 +575,7 @@ def yolov3_loss(x,
         raise TypeError("Input gtbox of yolov3_loss must be Variable")
     if not isinstance(gtlabel, Variable):
         raise TypeError("Input gtlabel of yolov3_loss must be Variable")
-    if gtsocre is not None and not isinstance(gtscore, Variable):
+    if gtscore is not None and not isinstance(gtscore, Variable):
         raise TypeError("Input gtscore of yolov3_loss must be Variable")
     if not isinstance(anchors, list) and not isinstance(anchors, tuple):
         raise TypeError("Attr anchors of yolov3_loss must be list or tuple")
