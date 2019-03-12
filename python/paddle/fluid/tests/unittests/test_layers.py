@@ -15,13 +15,102 @@
 from __future__ import print_function
 import unittest
 
-import paddle.fluid.layers as layers
+import contextlib
+import numpy as np
+import decorators
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid.layers.device import get_places
 import paddle.fluid.nets as nets
 from paddle.fluid.framework import Program, program_guard, default_main_program
 from paddle.fluid.param_attr import ParamAttr
-import decorators
+from paddle.fluid import core
 from paddle.fluid.initializer import Constant
+import paddle.fluid.layers as layers
+from test_imperative_base import new_program_scope
+from paddle.fluid.imperative import nn
+from paddle.fluid.imperative import base
+
+
+class LayerTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.seed = 111
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
+
+    def _get_place(self):
+        if core.is_compiled_with_cuda():
+            return core.CUDAPlace(0)
+        return core.CPUPlace()
+
+    @contextlib.contextmanager
+    def static_graph(self):
+        with new_program_scope():
+            fluid.default_startup_program().random_seed = self.seed
+            fluid.default_main_program().random_seed = self.seed
+            yield
+
+    def get_static_graph_result(self, feed, fetch_list):
+        exe = fluid.Executor(self._get_place())
+        exe.run(fluid.default_startup_program())
+        return exe.run(fluid.default_main_program(),
+                       feed=feed,
+                       fetch_list=fetch_list)
+
+    @contextlib.contextmanager
+    def dynamic_graph(self):
+        with fluid.imperative.guard(self._get_place()):
+            fluid.default_startup_program().random_seed = self.seed
+            fluid.default_main_program().random_seed = self.seed
+            yield
+
+
+class TestLayer(LayerTest):
+    def test_relu(self):
+        with self.static_graph():
+            t = layers.data(name='t', shape=[3, 3], dtype='float32')
+            ret = layers.relu(t)
+            static_ret = self.get_static_graph_result(
+                feed={'t': np.ones(
+                    [3, 3], dtype='float32')}, fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            t = np.ones([3, 3], dtype='float32')
+            dy_ret = layers.relu(base.to_variable(t))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+
+    def test_conv2d(self):
+        with self.static_graph():
+            images = layers.data(name='pixel', shape=[3, 5, 5], dtype='float32')
+            ret = layers.conv2d(input=images, num_filters=3, filter_size=[2, 2])
+            static_ret = self.get_static_graph_result(
+                feed={'pixel': np.ones(
+                    [2, 3, 5, 5], dtype='float32')},
+                fetch_list=[ret])[0]
+
+        with self.static_graph():
+            images = layers.data(name='pixel', shape=[3, 5, 5], dtype='float32')
+            conv2d = nn.Conv2D(
+                'conv2d', num_channels=3, num_filters=3, filter_size=[2, 2])
+            ret = conv2d(images)
+            static_ret2 = self.get_static_graph_result(
+                feed={'pixel': np.ones(
+                    [2, 3, 5, 5], dtype='float32')},
+                fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            images = np.ones([2, 3, 5, 5], dtype='float32')
+            conv2d = nn.Conv2D(
+                'conv2d', num_channels=3, num_filters=3, filter_size=[2, 2])
+            dy_ret = conv2d(base.to_variable(images))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.allclose(static_ret, static_ret2))
 
 
 class TestBook(unittest.TestCase):
@@ -1032,6 +1121,19 @@ class TestBook(unittest.TestCase):
             data = layers.data(
                 name='data', shape=[32, 128, 128], dtype="float32")
             out = layers.batch_norm(data)
+
+        print(str(program))
+
+    def test_spectral_norm(self):
+        program = Program()
+        with program_guard(program):
+            weight = layers.data(
+                name='weight',
+                shape=[2, 3, 32, 32],
+                dtype="float32",
+                append_batch_size=False)
+            out = layers.spectral_norm(weight, dim=1, power_iters=1)
+            self.assertIsNotNone(out)
 
         print(str(program))
 

@@ -115,6 +115,9 @@ class TestDistRunnerBase(object):
         strategy.allow_op_delay = False
 
         build_stra = fluid.BuildStrategy()
+        # FIXME force disable enable_inplace and memory_optimize
+        build_stra.enable_inplace = False
+        build_stra.memory_optimize = False
 
         if args.use_reduce:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
