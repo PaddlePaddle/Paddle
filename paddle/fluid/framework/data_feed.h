@@ -20,6 +20,7 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+#include <sstream>
 
 #include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -78,17 +79,33 @@ class DataFeed {
   // This function is used for binding feed_vec memory
   virtual void AddFeedVar(Variable* var, const std::string& name);
 
+  // This function will do nothing at default
+  virtual void SetMemoryData(void* memory_data) { }
+  // This function will do nothing at default
+  virtual void SetMemoryDataMutex(std::mutex* mutex) { }
+  // This function will do nothing at default
+  virtual void SetThreadId(int thread_id) { }
+  // This function will do nothing at default
+  virtual void SetThreadNum(int thread_num) { }
+  // This function will do nothing at default
+  virtual void SetTrainerNum(int trainer_num) { }
   virtual void LoadIntoMemory() {
     PADDLE_THROW("This function(LoadIntoMemory) is not implemented.");
   }
   virtual void LocalShuffle() {
     PADDLE_THROW("This function(LocalShuffle) is not implemented.");
   }
-  virtual void GlobalShuffle(int trainer_num) {
+  virtual void GlobalShuffle() {
     PADDLE_THROW("This function(GlobalShuffle) is not implemented.");
   }
+  virtual void FillMemoryDataToChannel() {
+    PADDLE_THROW("This function(FillMemoryDataToChannel) is not implemented.");
+  }
+  virtual void FillChannelToMemoryData() {
+    PADDLE_THROW("This function(FillChannelToMemoryData) is not implemented.");
+  }
   virtual void PutInsToChannel(const std::string& ins_str) {
-    PADDLE_THROW("This function(PutToChannel) is not implemented.");
+    PADDLE_THROW("This function(PutInsToChannel) is not implemented.");
   }
 
  protected:
@@ -181,13 +198,20 @@ class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
  public:
   InMemoryDataFeed();
   virtual ~InMemoryDataFeed() {}
+  virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc) = 0;
   virtual bool Start();
   virtual int Next();
+  virtual void SetMemoryData(void* memory_data);
+  virtual void SetMemoryDataMutex(std::mutex* mutex);
+  virtual void SetThreadId(int thread_id);
+  virtual void SetThreadNum(int thread_num);
+  virtual void SetTrainerNum(int trainer_num);
   virtual void PutInsToChannel(const std::string& ins_str);
+  virtual void FillMemoryDataToChannel();
+  virtual void FillChannelToMemoryData();
   virtual void LoadIntoMemory();
   virtual void LocalShuffle();
-  // todo global shuffle
-  //virtual void GlobalShuffle(int trainer_num);
+  virtual void GlobalShuffle();
  protected:
   virtual void AddInstanceToInsVec(T* vec_ins, const T& instance, int index) = 0;
   virtual bool ParseOneInstance(T* instance) = 0;
@@ -196,13 +220,18 @@ class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
   virtual void SerializeIns(const T& ins, std::string& str) = 0;
   virtual void DeserializeIns(T& ins, const std::string& str) = 0;
 
-  std::vector<T> memory_data_;
+  int thread_id_;
+  int thread_num_;
+  int trainer_num_;
+  std::vector<T>* memory_data_;
+  std::mutex* mutex_for_update_memory_data_;
   // when read ins, we put ins from one channel to the other,
   // and when finish reading, we set cur_channel = 1 - cur_channel,
   // so if cur_channel=0, all data are in shuffled_ins_, else shuffled_ins_out_
   int cur_channel_;
   std::shared_ptr<paddle::framework::BlockingQueue<T>> shuffled_ins_;
   std::shared_ptr<paddle::framework::BlockingQueue<T>> shuffled_ins_out_;
+  int64_t fleet_send_batch_size_;
 };
 
 // This class define the data type of instance(ins_vec) in MultiSlotDataFeed
@@ -226,6 +255,7 @@ class MultiSlotType {
     offset_[0] = 0;
   }
   const std::vector<size_t>& GetOffset() const { return offset_; }
+  std::vector<size_t>& MutableOffset() { return offset_; }
   void AddValue(const float v) {
     CheckFloat();
     float_feasign_.push_back(v);
@@ -248,8 +278,11 @@ class MultiSlotType {
     }
   }
   const std::vector<float>& GetFloatData() const { return float_feasign_; }
+  std::vector<float>& MutableFloatData() { return float_feasign_; }
   const std::vector<uint64_t>& GetUint64Data() const { return uint64_feasign_; }
+  std::vector<uint64_t>& MutableUint64Data() { return uint64_feasign_; }
   const std::string& GetType() const { return type_; }
+  std::string& MutableType() { return type_; }
 
  private:
   void CheckType(const std::string& type) const {

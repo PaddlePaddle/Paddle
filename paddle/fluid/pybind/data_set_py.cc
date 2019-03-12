@@ -41,17 +41,17 @@ namespace paddle {
 namespace pybind {
 
 void BindDataset(py::module* m) {
-  py::class_<framework::Dataset>(*m, "Dataset")
+  py::class_<framework::MultiSlotDataset>(*m, "MultiSlotDataset")
       .def(py::init([]() {
-        return std::unique_ptr<framework::Dataset>(new framework::Dataset());
+        return std::unique_ptr<framework::MultiSlotDataset>(new framework::MultiSlotDataset());
       }))
-      .def("set_filelist", &framework::Dataset::SetFileList)
-      .def("set_thread_num", &framework::Dataset::SetThreadNum)
-      .def("set_trainer_num", &framework::Dataset::SetTrainerNum)
-      .def("set_data_feed_desc", &framework::Dataset::SetDataFeedDesc)
-      .def("load_into_memory", &framework::Dataset::LoadIntoMemory)
-      .def("local_shuffle", &framework::Dataset::LocalShuffle)
-      .def("global_shuffle", &framework::Dataset::GlobalShuffle);
+      .def("set_filelist", &framework::MultiSlotDataset::SetFileList)
+      .def("set_thread_num", &framework::MultiSlotDataset::SetThreadNum)
+      .def("set_trainer_num", &framework::MultiSlotDataset::SetTrainerNum)
+      .def("set_data_feed_desc", &framework::MultiSlotDataset::SetDataFeedDesc)
+      .def("load_into_memory", &framework::MultiSlotDataset::LoadIntoMemory)
+      .def("local_shuffle", &framework::MultiSlotDataset::LocalShuffle)
+      .def("global_shuffle", &framework::MultiSlotDataset::GlobalShuffle);
 }
 
 }  // end namespace pybind
