@@ -187,14 +187,14 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     VLOG(3) << place << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet exception) {
     if (Attrs().count("sub_block") != 0) {
-      throw;
+      throw std::move(exception);
     }
 
     auto& callstack = Attr<std::vector<std::string>>(
         OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
 
     if (callstack.empty()) {
-      throw;
+      throw std::move(exception);
     }
     std::ostringstream sout;
     sout << "Invoke operator " << Type() << " error.\n";
@@ -205,7 +205,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     sout << "C++ Callstacks: \n";
     sout << exception.err_str_;
     exception.err_str_ = sout.str();
-    throw;
+    throw std::move(exception);
   } catch (...) {
     std::rethrow_exception(std::current_exception());
   }
@@ -468,12 +468,6 @@ const Variable* ExecutionContext::InputVar(const std::string& name) const {
   return it->second.empty() ? nullptr : it->second[0];
 }
 
-const Variable* ExecutionContext::LegacyInputVar(
-    const std::string& name) const {
-  auto ipt = op_.Input(name);
-  return ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-}
-
 Variable* ExecutionContext::OutputVar(const std::string& name) const {
   auto it = ctx_.outputs.find(name);
   if (it == ctx_.outputs.end()) return nullptr;
@@ -484,20 +478,9 @@ Variable* ExecutionContext::OutputVar(const std::string& name) const {
   return it->second.empty() ? nullptr : it->second[0];
 }
 
-Variable* ExecutionContext::LegacyOutputVar(const std::string& name) const {
-  auto opt = op_.Output(name);
-  return opt == kEmptyVarName ? nullptr : scope_.FindVar(opt);
-}
-
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   return Input<LoDTensor>(name);
-}
-
-template <>
-const Tensor* ExecutionContext::LegacyInput<Tensor>(
-    const std::string& name) const {
-  return LegacyInput<LoDTensor>(name);
 }
 
 template <>
@@ -523,32 +506,8 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
 }
 
 template <>
-const std::vector<const Tensor*> ExecutionContext::LegacyMultiInput<Tensor>(
-    const std::string& name) const {
-  auto names = op().Inputs(name);
-  std::vector<const Tensor*> res;
-  res.reserve(names.size());
-  std::transform(names.begin(), names.end(), std::back_inserter(res),
-                 [&](const std::string& sub_name) -> const Tensor* {
-                   auto var = scope_.FindVar(sub_name);
-                   if (var == nullptr) return nullptr;
-                   PADDLE_ENFORCE(
-                       var->IsType<LoDTensor>(),
-                       "%s should be LoDTensor, but the received type is %s",
-                       sub_name, ToTypeName(var->Type()));
-                   return &(var->Get<LoDTensor>());
-                 });
-  return res;
-}
-
-template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
   return Output<LoDTensor>(name);
-}
-
-template <>
-Tensor* ExecutionContext::LegacyOutput<Tensor>(const std::string& name) const {
-  return LegacyOutput<LoDTensor>(name);
 }
 
 template <>
