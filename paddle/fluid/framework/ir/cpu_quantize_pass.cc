@@ -146,7 +146,7 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     auto filter_scale_tensor = scales[conv_filter->Name()].second;
     EigenVectorArrayMap eigen_tensor{filter_scale_tensor.data<double>(),
                                      filter_scale_tensor.numel(), 1};
-    eigen_tensor *= (double)QuantMax::S8_MAX;
+    eigen_tensor *= static_cast<double>(QuantMax::S8_MAX);
     std::vector<float> filter_scale{
         filter_scale_tensor.data<double>(),
         filter_scale_tensor.data<double>() + filter_scale_tensor.numel()};
