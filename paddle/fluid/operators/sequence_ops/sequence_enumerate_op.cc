@@ -22,9 +22,6 @@ class SequenceEnumerateOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    if (ctx->IsRuntime()) {
-      return;
-    }
     PADDLE_ENFORCE(
         ctx->HasInput("X"),
         "Input(X) of SequecceEnumerate operator should not be null.");
@@ -62,6 +59,8 @@ class SequenceEnumerateOpMaker : public framework::OpProtoAndCheckerMaker {
         });
     AddAttr<int>("pad_value", "(int) The enumerate sequence padding value.")
         .SetDefault(0);
+    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape, "")
+        .SetDefault(true);
     AddComment(R"DOC(
 Sequence Enumerate Operator.
 
