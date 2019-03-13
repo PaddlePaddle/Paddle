@@ -36,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/profiler.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
@@ -147,6 +148,12 @@ PYBIND11_MODULE(core, m) {
 
   m.def("print_mem_usage",
         []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
+
+  m.def("start_imperative_profiler",
+        []() { imperative::StartProfile(); });
+
+  m.def("stop_imperative_profiler",
+        []() { imperative::StopProfile(); });
 
   py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
       .def(
