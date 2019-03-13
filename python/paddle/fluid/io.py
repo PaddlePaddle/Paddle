@@ -106,8 +106,7 @@ def save_vars(executor,
               vars=None,
               predicate=None,
               filename=None,
-              raw_encryption_key=None,
-              encryption_key_file=None):
+              encrypt=False):
     """
     Save variables to the given directory by executor.
 
@@ -141,8 +140,7 @@ def save_vars(executor,
         filename(str|None): The file which to save all variables. If you prefer to save
                             variables separately, set it to None.
                             Default: None
-        raw_encryption_key(str|None): The raw encryption key.
-        encryption_key_file(str|None): The path of encryption key.
+        encrypt(bool|False): The encrypt flag.
     
     Returns:
         None
@@ -187,8 +185,7 @@ def save_vars(executor,
             dirname=dirname,
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename,
-            raw_encryption_key=raw_encryption_key,
-            encryption_key_file=encryption_key_file)
+            encrypt=encrypt)
     else:
         save_program = Program()
         save_block = save_program.global_block()
@@ -211,18 +208,17 @@ def save_vars(executor,
                     inputs={'X': [new_var]},
                     outputs={},
                     attrs={'file_path': new_var_path})
+                """
                 # TODO(chenwhql): just for similation
-                if raw_encryption_key is not None:
-                    encryption_key_path = os.path.join(dirname,
-                                                       "encryption_key")
-                    decryption_key_path = os.path.join(dirname,
-                                                       "decryption_key")
+                if encrypt is True:
+                    encrypt_key_path = os.path.join(dirname, "encrypt_key")
+                    decrypt_key_path = os.path.join(dirname, "decrypt_key")
                     if not os.path.exists(
-                            encryption_key_path) or not os.path.exists(
-                                decryption_key_path):
+                            encrypt_key_path) or not os.path.exists(
+                                decrypt_key_path):
                         # Generate encryption key and decryption key
-                        encryption_key = raw_encryption_key
-                        decryption_key = raw_encryption_key[::-1]
+                        encrypt_key = encrypt_key
+                        decrypt_key = encrypt_key[::-1]
                         # Save encryption key and decryption 
                         with open(encryption_key_path, "wb") as f:
                             f.write(encryption_key.encode())
@@ -233,17 +229,9 @@ def save_vars(executor,
                         new_var_str = f.read()
                     with open(new_var_path, "wb") as f:
                         f.write(new_var_str[::-1])
-                elif encryption_key_file is not None:
-                    # Load encryption key
-                    with open(encryption_key_file, "rb") as f:
-                        encryption_key = f.read()
-                    # read var and encrypt then save
-                    with open(new_var_path, "rb") as f:
-                        new_var_str = f.read()
-                    with open(new_var_path, "wb") as f:
-                        f.write(new_var_str[::-1])
                 else:
                     pass
+                """
             else:
                 save_var_map[new_var.name] = new_var
 
@@ -258,7 +246,7 @@ def save_vars(executor,
                 inputs={'X': save_var_list},
                 outputs={},
                 attrs={'file_path': vars_file_path})
-
+            """
             # TODO(chenwhql): just for similation
             if raw_encryption_key is not None:
                 encryption_key_path = os.path.join(dirname, "encryption_key")
@@ -290,6 +278,7 @@ def save_vars(executor,
                     f.write(vars_file_str[::-1])
             else:
                 pass
+            """
 
         executor.run(save_program)
 
@@ -526,8 +515,7 @@ def save_persistables(executor,
                       dirname,
                       main_program=None,
                       filename=None,
-                      raw_encryption_key=None,
-                      encryption_key_file=None):
+                      encrypt=False):
     """
     This function filters out all variables with `persistable==True` from the
     give `main_program` and then saves these variables to the folder `dirname`
@@ -548,8 +536,7 @@ def save_persistables(executor,
         filename(str|None): The file to saved all variables. If you prefer to
                             save variables in differnet files, set it to None.
                             Default: None
-        raw_encryption_key(str|None): The raw encryption key.
-        encryption_key_file(str|None): The path of encryption key.
+        encrypt(bool|Flase): The encrypt flag.
 
     Returns:
         None
@@ -577,8 +564,7 @@ def save_persistables(executor,
             vars=None,
             predicate=is_persistable,
             filename=filename,
-            raw_encryption_key=raw_encryption_key,
-            encryption_key_file=encryption_key_file)
+            encrypt=encrypt)
 
 
 def load_vars(executor,
@@ -587,7 +573,7 @@ def load_vars(executor,
               vars=None,
               predicate=None,
               filename=None,
-              decryption_key_file=None):
+              decrypt=False):
     """
     Load variables from the given directory by executor.
 
@@ -621,7 +607,7 @@ def load_vars(executor,
         filename(str|None): The file which saved all required variables. If variables
                             were saved in differnet files, set it to None.
                             Default: None
-        decryption_key_file(str|None): The path of decryption key.
+        decrypt(bool|False): The decrypt flag.
 
     Returns:
         None
@@ -666,7 +652,7 @@ def load_vars(executor,
             main_program=main_program,
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename,
-            decryption_key_file=decryption_key_file)
+            decrypt=decrypt)
     else:
         load_prog = Program()
         load_block = load_prog.global_block()
@@ -684,6 +670,7 @@ def load_vars(executor,
             new_var = _clone_var_in_block_(load_block, each_var)
             new_var_path = os.path.join(dirname, new_var.name)
             if filename is None:
+                """
                 # TODO(chenwhql): just for similation
                 if decryption_key_file is not None:
                     # Load decryption key
@@ -693,7 +680,7 @@ def load_vars(executor,
                         new_var_str = f.read()
                     with open(new_var_path, "wb") as f:
                         f.write(new_var_str[::-1])
-
+                """
                 load_block.append_op(
                     type='load',
                     inputs={},
@@ -708,6 +695,7 @@ def load_vars(executor,
                 load_var_list.append(load_var_map[name])
 
             vars_file_path = os.path.join(dirname, filename)
+            """
             # TODO(chenwhql): just for similation
             if decryption_key_file is not None:
                 # Load decryption key
@@ -717,7 +705,7 @@ def load_vars(executor,
                     vars_file_str = f.read()
                 with open(vars_file_path, "wb") as f:
                     f.write(vars_file_path[::-1])
-
+            """
             load_block.append_op(
                 type='load_combine',
                 inputs={},
@@ -777,7 +765,7 @@ def load_persistables(executor,
                       dirname,
                       main_program=None,
                       filename=None,
-                      decryption_key_file=None):
+                      decrypt=False):
     """
     This function filters out all variables with `persistable==True` from the
     give `main_program` and then trys to load these variables from the folder
@@ -798,7 +786,7 @@ def load_persistables(executor,
         filename(str|None): The file which saved all variables. If variables were
                             saved in differnet files, set it to None.
                             Default: None
-        decryption_key_file(str|None): The path of decryption key.
+        decrypt(bool|False): The decrypt flag.
 
     Returns:
         None
@@ -823,7 +811,7 @@ def load_persistables(executor,
             main_program=main_program,
             predicate=is_persistable,
             filename=filename,
-            decryption_key_file=decryption_key_file)
+            decrypt=decrypt)
 
 
 def _load_distributed_persistables(executor, dirname, main_program=None):
@@ -992,8 +980,7 @@ def save_inference_model(dirname,
                          model_filename=None,
                          params_filename=None,
                          export_for_deployment=True,
-                         raw_encryption_key=None,
-                         encryption_key_file=None):
+                         encrypt=False):
     """
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` by the `executor`.
@@ -1020,8 +1007,7 @@ def save_inference_model(dirname,
                                      more information will be stored for flexible
                                      optimization and re-training. Currently, only
                                      True is supported.
-        raw_encryption_key(str|None): The raw encryption key.
-        encryption_key_file(str|None): The path of encryption key.
+        encrypt(bool|False): The encrypt flag.
 
     Returns:
         None
@@ -1130,7 +1116,8 @@ def save_inference_model(dirname,
         with open(os.path.join(dirname, "__model__hash__"), "wb") as f:
             f.write(_get_md5_hash(model_str).encode())
 
-        if raw_encryption_key is not None:
+        if encrypt is True:
+            """
             # Generate encryption key and decryption key
             encryption_key = raw_encryption_key
             decryption_key = raw_encryption_key[::-1]
@@ -1139,18 +1126,14 @@ def save_inference_model(dirname,
                 f.write(encryption_key.encode())
             with open(os.path.join(dirname, "decryption_key"), "wb") as f:
                 f.write(decryption_key.encode())
+            """
             # encrypt model and write
+            encryptor = core.Cryption.getCryptor()
+            encrypt_model_str = encryptor.encryptInMemory(model_str)
             with open(model_basename, "wb") as f:
-                f.write(model_str[::-1])
-        elif encryption_key_file is not None:
-            # Load encryption key
-            with open(encryption_key_file, "rb") as f:
-                encryption_key = f.read()
-            # encrypt model and write
-            with open(model_basename, "wb") as f:
-                f.write(model_str[::-1])
+                f.write(encrypt_model_str)
         else:
-            with open(model_basename, "wb") as f:
+            with open(model_bas, "wb") as f:
                 f.write(model_str)
     else:
         # TODO(panyx0718): Save more information so that it can also be used
@@ -1172,7 +1155,7 @@ def load_inference_model(dirname,
                          model_filename=None,
                          params_filename=None,
                          pserver_endpoints=None,
-                         decryption_key_file=None):
+                         decrypt=False):
     """
     Load inference model from a directory
 
@@ -1192,7 +1175,7 @@ def load_inference_model(dirname,
                                     When use distributed look up table in training,
                                     We also need it in inference.The parameter is
                                     a list of pserver endpoints.
-        decryption_key_file(str|None): The path of decryption key.
+        decrypt(bool|False): The decrypt flag.
 
     Returns:
         tuple: The return of this function is a tuple with three elements:
@@ -1241,13 +1224,13 @@ def load_inference_model(dirname,
     if params_filename is not None:
         params_filename = os.path.basename(params_filename)
 
+    with open(model_filename, "rb") as f:
+        program_desc_str = f.read()
+
     # TODO(chenwhql): just for similation
-    if decryption_key_file is not None:
-        with open(model_filename, "rb") as f:
-            program_desc_str = f.read()[::-1]
-    else:
-        with open(model_filename, "rb") as f:
-            program_desc_str = f.read()
+    if decrypt is True:
+        decryptor = core.Cryption.getCryptor()
+        decrypt_program_desc_str = decryptor.decryptInMemory(program_desc_str)
 
     # Calculate model's hash and compare
     with open(os.path.join(dirname, "__model__hash__"), "rb") as f:

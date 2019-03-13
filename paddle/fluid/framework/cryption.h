@@ -14,32 +14,51 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
 
 namespace paddle {
 namespace framework {
 
+std::string ConvertHexString(const char* buf, int len);
+
 class Cryption {
  public:
   Cryption();
-  ~Cryption();
+  // Cryption(const Cryption&) = delete;
 
-  bool CreateKeyInMemory();
+  ~Cryption() {}
 
-  void EncryptInMemory(char* origStr, int strLen);
+  static Cryption* GetCryptionInstance();
 
-  void DecryptInMemory(char* origStr, int strLen);
+  char* EncryptInMemory(const char* inputStr);
+  char* DecryptInMemory(const char* encryptStr);
+
+  void EncryptInFile(const std::string& inputFilePath,
+                     const std::string& encryptFilePath);
+  void DecryptInFile(const std::string& encryptFilePath,
+                     const std::string& decryptTFilePath);
 
   char* GetEncryptKey() { return encrypt_key; }
-
   char* GetDecryptKey() { return decrypt_key; }
 
  private:
+  void CreateKeyInMemory();
+  void FreeKeyInMemory();
+
+ private:
   const char* key_string = "0123456789abcdef";
-  mutable char* encrypt_key;
-  mutable char* decrypt_key;
-  mutable int encrypt_key_length;
-  mutable int decrypt_key_length;
+  const int block_size = 4096;
+
+  char* encrypt_key;
+  char* decrypt_key;
+  int encrypt_key_length;
+  int decrypt_key_length;
+
+  int original_str_len;
+
+  std::unique_ptr<char> encrypt_text;
+  std::unique_ptr<char> decrypt_text;
 };
 
 }  // namespace framework

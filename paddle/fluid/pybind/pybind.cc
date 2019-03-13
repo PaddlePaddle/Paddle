@@ -21,6 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/cryption.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -1275,6 +1276,22 @@ All parameter, weight, gradient are variables in Paddle.
                      const std::string &fetched_var_name) {
         pybind11::gil_scoped_release release;
         self.Run(fetch_tensors, fetched_var_name);
+      });
+
+  py::class_<framework::Cryption>(m, "Cryption")
+      .def("getCryptor",
+           []() {
+             std::unique_ptr<Cryption> cryptor =
+                 std::unique_ptr<Cryption>(Cryption::GetCryptionInstance());
+             return cryptor.release();
+           },
+           py::return_value_policy::reference)
+      .def("encryptInMemory",
+           [](Cryption &self, const char *inputStr) {
+             return py::bytes(self.EncryptInMemory(inputStr));
+           })
+      .def("decryptInMemory", [](Cryption &self, const char *encryptStr) {
+        return self.DecryptInMemory(encryptStr);
       });
 
   BindRecordIOWriter(&m);

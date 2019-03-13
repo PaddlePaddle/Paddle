@@ -24,11 +24,7 @@ import sys
 import os
 
 
-def train(use_cuda,
-          save_dirname,
-          is_local,
-          raw_encrypt_key=None,
-          encrypt_key_file=None):
+def train(use_cuda, save_dirname, is_local, encrypt=False):
     x = fluid.layers.data(name='x', shape=[13], dtype='float32')
 
     y_predict = fluid.layers.fc(input=x, size=1, act=None)
@@ -51,7 +47,7 @@ def train(use_cuda,
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
 
-    def train_loop(main_program, raw_encrypt_key=None, encrypt_key_file=None):
+    def train_loop(main_program, encrypt=False):
         feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
         exe.run(fluid.default_startup_program())
 
@@ -67,8 +63,7 @@ def train(use_cuda,
                         fluid.io.save_inference_model(
                             save_dirname, ['x'], [y_predict],
                             exe,
-                            raw_encryption_key=raw_encrypt_key,
-                            encryption_key_file=encrypt_key_file)
+                            encrypt=encrypt)
                     return
                 if math.isnan(float(avg_loss_value)):
                     sys.exit("got NaN loss, training failed.")
@@ -76,8 +71,7 @@ def train(use_cuda,
             avg_loss_value[0]))
 
     if is_local:
-        train_loop(fluid.default_main_program(), raw_encrypt_key,
-                   encrypt_key_file)
+        train_loop(fluid.default_main_program(), encrypt)
     else:
         port = os.getenv("PADDLE_PSERVER_PORT", "6174")
         pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
@@ -98,11 +92,10 @@ def train(use_cuda,
             exe.run(pserver_startup)
             exe.run(pserver_prog)
         elif training_role == "TRAINER":
-            train_loop(t.get_trainer_program(), raw_encrypt_key,
-                       encrypt_key_file)
+            train_loop(t.get_trainer_program(), encrypt)
 
 
-def infer(use_cuda, save_dirname=None, decrypt_key_file=None):
+def infer(use_cuda, save_dirname=None, decrypt=False):
     if save_dirname is None:
         return
 
@@ -117,7 +110,7 @@ def infer(use_cuda, save_dirname=None, decrypt_key_file=None):
         # we want to obtain data from using fetch operators).
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(
-             save_dirname, exe, decryption_key_file=decrypt_key_file)
+             save_dirname, exe, decrypt=decrypt)
 
         # The input's dimension should be 2-D and the second dim is 13
         # The input data should be >= 0
@@ -144,44 +137,22 @@ def infer(use_cuda, save_dirname=None, decrypt_key_file=None):
 def main(use_cuda,
          is_local=True,
          raw_encrypt_key=None,
-         encrypt_key_file=None,
-         decrypt_key_file=None):
+         encrypt=False,
+         decrypt=False):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
     # Directory for saving the trained model
     save_dirname = "fit_a_line.inference.model"
 
-    train(use_cuda, save_dirname, is_local, raw_encrypt_key, encrypt_key_file)
-    infer(use_cuda, save_dirname, decrypt_key_file)
+    train(use_cuda, save_dirname, is_local, encrypt)
+    infer(use_cuda, save_dirname, decrypt)
 
 
 class TestFitALineWithEncryption(unittest.TestCase):
-    def test_cpu_with_raw_encrypt_key_only(self):
+    def test_cpu_with_encrypt(self):
         with self.program_scope_guard():
-            # No decrypt key, infer will crash
-            main(use_cuda=False, raw_encrypt_key="test1234")
-
-    def test_cpu_with_encrypt_key_file_only(self):
-        with self.program_scope_guard():
-            # No decrypt key, infer will crash
-            main(
-                use_cuda=False,
-                encrypt_key_file="./fit_a_line.inference.model/decryption_key")
-
-    def test_cpu_with_raw_encrypt_key_and_decrypt_key_file(self):
-        with self.program_scope_guard():
-            main(
-                use_cuda=False,
-                raw_encrypt_key="test1234",
-                decrypt_key_file="./fit_a_line.inference.model/decryption_key")
-
-    def test_cpu_with_encrypt_and_decrypt_key_file(self):
-        with self.program_scope_guard():
-            main(
-                use_cuda=False,
-                encrypt_key_file="./fit_a_line.inference.model/encryption_key",
-                decrypt_key_file="./fit_a_line.inference.model/decryption_key")
+            main(use_cuda=False, encrypt=True, decrypt=True)
 
     """
     def test_cuda(self):
