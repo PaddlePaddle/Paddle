@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/reshape_op.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "mkldnn.hpp"
 #include "paddle/fluid/framework/op_registry.h"

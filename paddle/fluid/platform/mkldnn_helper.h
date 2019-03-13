@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <mkldnn.h>
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
