@@ -644,8 +644,8 @@ class Executor(object):
             trainer.set_thread(dataset.thread_num)
         else:
             trainer.set_thread(thread)
-            trainer.gen_trainer_desc()
-            dataset._prepare_to_run()
-            self._default_executor.run_from_dataset(program.desc, scope,
-                                                    dataset.dataset,
-                                                    trainer._desc())
+        trainer.gen_trainer_desc()
+        dataset._prepare_to_run()
+        self._default_executor.run_from_dataset(program.desc, scope,
+                                                dataset.dataset,
+                                                trainer._desc())
