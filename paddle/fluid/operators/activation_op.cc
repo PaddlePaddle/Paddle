@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
 #ifdef PADDLE_WITH_CUDA
@@ -268,6 +270,48 @@ Softsign Activation Operator.
 $$out = \\frac{x}{1 + \|x\|}$$
 
 )DOC";
+
+class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of acos operator");
+    AddOutput("Out", "Output of acos operator");
+    AddComment(R"DOC(
+Arccosine Activation Operator.
+
+$$out = \cos^{-1}(x)$$
+
+)DOC");
+  }
+};
+
+class AsinOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of asin operator");
+    AddOutput("Out", "Output of asin operator");
+    AddComment(R"DOC(
+Arcsine Activation Operator.
+
+$$out = \sin^{-1}(x)$$
+
+)DOC");
+  }
+};
+
+class AtanOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of atan operator");
+    AddOutput("Out", "Output of atan operator");
+    AddComment(R"DOC(
+Arctanh Activation Operator.
+
+$$out = \tanh^{-1}(x)$$
+
+)DOC");
+  }
+};
 
 class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -543,7 +587,10 @@ namespace ops = paddle::operators;
   __macro(SoftShrink, softshrink);   \
   __macro(Abs, abs);                 \
   __macro(Cos, cos);                 \
+  __macro(Acos, acos);               \
   __macro(Sin, sin);                 \
+  __macro(Asin, asin);               \
+  __macro(Atan, atan);               \
   __macro(Round, round);             \
   __macro(Log, log);                 \
   __macro(Square, square);           \
