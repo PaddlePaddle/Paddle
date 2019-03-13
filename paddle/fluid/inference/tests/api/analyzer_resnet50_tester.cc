@@ -36,6 +36,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg.EnableUseGpu(100);
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();

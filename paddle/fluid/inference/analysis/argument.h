@@ -30,6 +30,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/parallel_schedule_pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
@@ -39,6 +40,7 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 using framework::ir::Graph;
+using framework::ir::ParallelMeta;
 
 /*
  * The argument definition of both Pass and PassManagers.
@@ -154,6 +156,8 @@ struct Argument {
                              framework::proto::ProgramDesc);
 
   DECL_ARGUMENT_FIELD(fusion_statis, FusionStatis, fusion_statis_t);
+
+  DECL_ARGUMENT_UNIQUE_FIELD(parallel_meta, ParallelMeta, ParallelMeta);
 
  private:
   std::unordered_set<std::string> valid_fields_;

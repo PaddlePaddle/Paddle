@@ -39,7 +39,8 @@ nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce)
 cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
-cc_library(stream SRCS cuda_api.cc)
+cc_library(cuda_api SRCS cuda_api.cc)
+nv_test(cuda_api_test SRCS cuda_api_test.cc DEPS cuda_api)
 
 add_subdirectory(dynload)
 

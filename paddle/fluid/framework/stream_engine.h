@@ -27,7 +27,12 @@ namespace paddle {
 namespace framework {
 
 using platform::CudaAPI;
+using framework::ir::ParallelMeta;
 
+struct StreamParallelStuff {
+  CudaAPI::stream_t stream;
+  CudaAPI::event_t event;
+};
 /*
  * An wrapper of operator, to enable setting stream and events to sync
  * externally.
@@ -35,8 +40,10 @@ using platform::CudaAPI;
 class StreamOperation {
  public:
   StreamOperation(std::unique_ptr<OperatorBase>&& op, Scope* scope,
-                  platform::Place place);
+                  platform::Place place)
+      : op_(std::move(op)), scope_(scope), place_(place) {}
 
+  OperatorBase* op() { return op_.get(); }
   // Set the stream the operator runs on.
   void SetStream(platform::CudaAPI::stream_t stream) { stream_ = stream; }
 
@@ -52,12 +59,14 @@ class StreamOperation {
   // Sync the inputs, make sure the inputs are valid.
   void SyncInputs() {
     for (auto event : input_events_) {
+      LOG(INFO) << "sync input event " << event;
       CudaAPI::SyncEvent(event);
     }
   }
 
   void RecordOutputs() {
     for (auto event : output_events_) {
+      LOG(INFO) << "record output event " << event;
       CudaAPI::RecordEvent(event, stream_);
     }
   }
@@ -78,6 +87,8 @@ class StreamOperation {
   }
 
   void RunKernel() {
+    cudaDeviceSynchronize();
+    PADDLE_ENFORCE(stream_);
     auto* kernel_p = static_cast<OperatorWithKernel*>(op_.get());
     if (!runtime_context_) {
       runtime_context_.reset(
@@ -92,13 +103,13 @@ class StreamOperation {
       execution_context_.reset(
           new ExecutionContext(*kernel_p, *scope_, *cuda_device_context_,
                                *runtime_context_, nullptr));
-      kernel_type_ =
+      kernel_type_.reset(new OpKernelType(
           static_cast<OperatorWithKernel*>(op_.get())->GetExpectedKernelType(
-              *execution_context_);
-      auto kernel = kernel_map.find(kernel_type_);
+              *execution_context_)));
+      auto kernel = kernel_map.find(*kernel_type_);
 
       PADDLE_ENFORCE(kernel != kernel_map.end(), "no kernel found for %s",
-                     kernel_type_);
+                     *kernel_type_);
       kernel_ = kernel->second;
 
       // auto kernel_configs = kernel_p->GetKernelConfig(kernel_type_);
@@ -119,6 +130,8 @@ class StreamOperation {
       kernel_p->TransferInplaceVarsBack(*scope_, transfered_inplace_vars,
                                         *transfer_scope_);
     }
+
+    cudaDeviceSynchronize();
   }
 
   std::string type() const { return op_->Type(); }
@@ -127,14 +140,15 @@ class StreamOperation {
   // TODO(Superjomn) Improve the performance here.
   void TransferScope(std::vector<std::string>* transfered_inplace_vars) {
     auto* kernel_p = static_cast<OperatorWithKernel*>(op_.get());
-    transfer_scope_ = kernel_p->PrepareData(
-        *scope_, kernel_type_, transfered_inplace_vars, runtime_context_.get());
+    transfer_scope_ =
+        kernel_p->PrepareData(*scope_, *kernel_type_, transfered_inplace_vars,
+                              runtime_context_.get());
     exec_scope_ = transfer_scope_ ? transfer_scope_ : scope_;
   }
 
  private:
   // stream related.
-  cudaStream_t stream_;
+  cudaStream_t stream_{0};
   std::vector<CudaAPI::event_t> input_events_;
   std::vector<CudaAPI::event_t> output_events_;
 
@@ -144,7 +158,7 @@ class StreamOperation {
   framework::Scope* exec_scope_{nullptr};
   framework::Scope* transfer_scope_{nullptr};
   platform::Place place_;
-  OpKernelType kernel_type_;
+  std::unique_ptr<OpKernelType> kernel_type_;
   OperatorWithKernel::OpKernelFunc kernel_;
   // contexts.
   std::unique_ptr<RuntimeContext> runtime_context_;
@@ -153,54 +167,45 @@ class StreamOperation {
   std::unique_ptr<RuntimeInferShapeContext> infer_shape_context_;
 };
 
-struct ParallelMeta {
-  platform::CudaAPI::stream_t stream;
-  platform::CudaAPI::event_t event;
-};
-
 /*
  * An operator execution engine with GPU streaming parallel support.
  * It takes a list of operators as input, and run them wit multiple stream.
  */
 class StreamEngine final {
  public:
-  StreamEngine(std::vector<std::unique_ptr<OperatorBase>>&& ops, Scope* scope,
-               platform::Place place, const ir::stream_map_t& stream_map,
-               const ir::event_depend_map_t& event_depend_map)
-      : stream_map_(stream_map), event_depend_map_(event_depend_map) {
+  StreamEngine(std::vector<std::unique_ptr<OperatorBase>>* ops, Scope* scope,
+               platform::Place place, const ParallelMeta& parallel_meta) {
     // Get number of streams.
     std::set<int> stream_set;
-    for (auto item : stream_map) {
-      stream_set.insert(item.second);
+
+    for (int id : parallel_meta.StreamIds()) {
+      parallel_stuff_.emplace(id,
+                              StreamParallelStuff{CudaAPI::CreateStream(),
+                                                  CudaAPI::CreateEvent(true)});
     }
 
-    for (int id : stream_set) {
-      parallel_meta_.emplace(id, ParallelMeta{CudaAPI::CreateStream(),
-                                              CudaAPI::CreateEvent(false)});
-    }
-
-    for (auto&& op : ops) {
+    for (auto& op : *ops) {
+      // LOG(INFO) << "creating stream operation " << op->Type();
       operations_.emplace_back(
           new StreamOperation(std::move(op), scope, place));
+      auto& operation = operations_.back();
       // Prepare input events
       std::vector<CudaAPI::event_t> input_events, output_events;
 
       const auto op_key =
-          GenOpKey(op->Type(), op->InputVars(), op->OutputVars(false));
-      // auto op_stream_id = stream_map.at(op_key);
+          GenOpKey(operation->op()->Type(), operation->op()->InputVars(),
+                   operation->op()->OutputVars(true));
+      auto op_stream_id = parallel_meta.GetStreamId(op_key);
+      operation->SetStream(parallel_stuff_.at(op_stream_id).stream);
 
-      auto input_event_ids_it = event_depend_map.find(op_key + ":inputs");
-      auto output_event_ids_it = event_depend_map.find(op_key + ":outputs");
-      PADDLE_ENFORCE(input_event_ids_it != event_depend_map.end());
-      PADDLE_ENFORCE(output_event_ids_it != event_depend_map.end());
-
-      for (int id : input_event_ids_it->second) {
-        input_events.push_back(parallel_meta_.at(id).event);
+      for (int id : parallel_meta.GetInputDependEventIds(op_key)) {
+        input_events.push_back(parallel_stuff_.at(id).event);
       }
-      for (int id : output_event_ids_it->second) {
-        output_events.push_back(parallel_meta_.at(id).event);
+      for (int id : parallel_meta.GetOutputDependEventIds(op_key)) {
+        output_events.push_back(parallel_stuff_.at(id).event);
       }
       operations_.back()->SetInputEvents(input_events);
+      operations_.back()->SetOutputEvents(output_events);
     }
   }
 
@@ -216,9 +221,7 @@ class StreamEngine final {
   }
 
  private:
-  const ir::stream_map_t& stream_map_;
-  const ir::event_depend_map_t& event_depend_map_;
-  std::unordered_map<int, ParallelMeta> parallel_meta_;
+  std::unordered_map<int, StreamParallelStuff> parallel_stuff_;
   std::vector<std::unique_ptr<StreamOperation>> operations_;
 };
 

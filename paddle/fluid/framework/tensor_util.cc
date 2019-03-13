@@ -125,6 +125,8 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   auto src_ptr = src.data<void>();
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
   auto size = src.numel() * SizeOfType(src.type());
+
+  cudaDeviceSynchronize();
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     if (src_ptr == dst_ptr) {
       VLOG(3) << "Skip copy the same data from " << src_place << " to "
@@ -162,6 +164,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size,
                  nullptr);
   }
+  cudaDeviceSynchronize();
 #endif
 }
 

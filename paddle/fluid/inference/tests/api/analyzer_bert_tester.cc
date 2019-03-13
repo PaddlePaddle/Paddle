@@ -162,10 +162,12 @@ void SetConfig(AnalysisConfig *config) { config->SetModel(FLAGS_infer_model); }
 void profile(bool use_mkldnn = false) {
   AnalysisConfig config;
   SetConfig(&config);
+  config.EnableUseGpu(100);
 
   if (use_mkldnn) {
     config.EnableMKLDNN();
   }
+  config.SwitchIrDebug();
 
   std::vector<PaddleTensor> outputs;
   std::vector<std::vector<PaddleTensor>> inputs;

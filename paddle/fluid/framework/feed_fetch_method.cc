@@ -46,8 +46,8 @@ LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
   Variable* g_fetch_value = scope.FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(g_fetch_value, "%s is not found.", var_name);
   PADDLE_ENFORCE(g_fetch_value->IsType<FeedFetchList>(),
-                 "Only %s can be invoked by GetFetchVariable",
-                 typeid(FeedFetchList).name());
+                 "Only %s can be invoked by GetFetchVariable, get %s",
+                 typeid(FeedFetchList).name(), g_fetch_value->Type());
   auto& fetch_outputs = *g_fetch_value->GetMutable<FeedFetchList>();
   auto& tensor = fetch_outputs[index];
   VLOG(3) << "Fetch " << var_name << " with index " << index

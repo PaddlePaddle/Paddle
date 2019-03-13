@@ -54,8 +54,11 @@ class IRPassManager final {
  private:
   void CreatePasses(Argument *argument, const std::vector<std::string> &passes);
 
+  void CollectPassProducts(Argument *argument);
+
   std::unique_ptr<Graph> graph_;
   std::vector<std::unique_ptr<framework::ir::Pass>> passes_;
+  Argument *argument_{nullptr};
 };
 
 }  // namespace analysis

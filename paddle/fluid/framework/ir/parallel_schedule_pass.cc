@@ -23,11 +23,10 @@ std::unique_ptr<Graph> ParallelSchedulePass::ApplyImpl(
     std::unique_ptr<Graph> graph) const {
   int stream_count{0};
 
-  graph->Set(kStreamMap, new stream_map_t);
-  auto& stream_map = graph->Get<stream_map_t>(kStreamMap);
+  graph->Set(kParallelMeta, new ParallelMeta);
+  auto& parallel_meta = graph->Get<ParallelMeta>(kParallelMeta);
 
-  graph->Set(kEventDependMap, new event_depend_map_t);
-  auto& event_depend_map = graph->Get<event_depend_map_t>(kEventDependMap);
+  parallel_meta.SetStreamId("feed", stream_count++);
 
   for (auto& node : GraphTraits::TS(*graph)) {
     if (node.IsOp()) {
@@ -37,24 +36,43 @@ std::unique_ptr<Graph> ParallelSchedulePass::ApplyImpl(
       // finish executes, it will generate a event.
       // When the next operator begin executes, it should sync all the events of
       // the tensor belongs.
-      stream_map.emplace(GenOpKey(*node.Op()), stream_count);
+      parallel_meta.SetStreamId(GenOpKey(*node.Op()), stream_count);
       for (auto* o : node.outputs) {
-        stream_map.emplace(o->Name(), stream_count);
+        parallel_meta.SetStreamId(o->Name(), stream_count);
       }
-      ++stream_count;
 
-      // Prepare event dependent relations.
+      // Collect event dependent relations.
+      std::set<int> input_events, output_events;
       for (auto* i : node.inputs) {
-        event_depend_map[op_key + ":inputs"].insert(stream_map.at(i->Name()));
+        input_events.insert(parallel_meta.GetStreamId(i->Name()));
       }
       for (auto* o : node.outputs) {
-        event_depend_map[op_key + ":outputs"].insert(stream_map.at(o->Name()));
+        output_events.insert(parallel_meta.GetStreamId(o->Name()));
       }
+
+      parallel_meta.SetInputDependEventIds(op_key, input_events.begin(),
+                                           input_events.end());
+      parallel_meta.SetOutputDependEventIds(op_key, output_events.begin(),
+                                            output_events.end());
+
+      ++stream_count;
+    }
+
+    // process the weights.
+    if (node.IsVar() && node.Var()->Persistable()) {
+      parallel_meta.SetStreamId(node.Name(), 0);
     }
   }
+
+  LOG(INFO) << "get meta " << parallel_meta.StreamIds().size();
+
   return graph;
 }
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
+
+REGISTER_PASS(parallel_schedule_pass,
+              paddle::framework::ir::ParallelSchedulePass)
+    .RequirePassAttr(paddle::framework::ir::kParallelMeta);

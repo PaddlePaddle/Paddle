@@ -14,11 +14,13 @@
 
 #pragma once
 
+#include <paddle/fluid/framework/ir/parallel_schedule_pass.h>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/stream_engine.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -30,7 +32,10 @@ namespace framework {
  */
 class NaiveExecutor {
  public:
-  explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
+  explicit NaiveExecutor(
+      const platform::Place& place,
+      std::shared_ptr<framework::ir::ParallelMeta> parallel_meta = nullptr)
+      : place_(place), parallel_meta_(parallel_meta) {}
 
   // Create child scope.
   // Create variables.
@@ -39,13 +44,18 @@ class NaiveExecutor {
                bool with_feed_fetch_ops);
 
   // Create variables before head.
-  // Create parameters if persistable is ture, or create the temporary variables
+  // Create parameters if persistable is true, or create the temporary variables
   // instead.
   void CreateVariables(const ProgramDesc& desc, int block_id, bool persistable,
                        Scope* scope);
 
+  void SetParallelMeta(
+      const std::shared_ptr<framework::ir::ParallelMeta>& parallel_meta) {
+    parallel_meta_ = parallel_meta;
+  }
+
   // Run all the operators.
-  void Run();
+  void Run(bool async = true);
 
   // Get an tensor to operating directly, without the need for feed_ops.
   LoDTensor* FindTensor(const std::string& name);
@@ -62,7 +72,9 @@ class NaiveExecutor {
   const platform::Place place_;
   // Catch the required resource to avoid recreate.
   std::vector<std::unique_ptr<OperatorBase>> ops_;
-  Scope* scope_;
+  Scope* scope_{nullptr};
+  std::shared_ptr<framework::ir::ParallelMeta> parallel_meta_;
+  std::unique_ptr<StreamEngine> stream_engine_;
 };
 
 }  // namespace framework

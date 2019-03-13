@@ -49,7 +49,8 @@ class AnalysisPredictor : public PaddlePredictor {
   ~AnalysisPredictor();
 
   bool Init(const std::shared_ptr<framework::Scope> &parent_scope,
-            const std::shared_ptr<framework::ProgramDesc> &program = nullptr);
+            const std::shared_ptr<framework::ProgramDesc> &program,
+            const std::shared_ptr<framework::ir::ParallelMeta> &parallel_meta);
 
   bool Run(const std::vector<PaddleTensor> &inputs,
            std::vector<PaddleTensor> *output_data,
@@ -159,6 +160,7 @@ class AnalysisPredictor : public PaddlePredictor {
   bool status_is_cloned_{false};
   bool status_use_gpu_{false};
   bool status_ir_optim_enabled_{false};
+  std::shared_ptr<framework::ir::ParallelMeta> parallel_meta_;
 };
 
 }  // namespace paddle

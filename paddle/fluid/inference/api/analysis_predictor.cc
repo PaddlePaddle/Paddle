@@ -40,6 +40,7 @@
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
+#include "paddle/fluid/platform/cuda_api.h"
 
 #endif
 
@@ -68,8 +69,11 @@ bool IsPersistable(const framework::VarDesc *var) {
 
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
-    const std::shared_ptr<framework::ProgramDesc> &program) {
+    const std::shared_ptr<framework::ProgramDesc> &program,
+    const std::shared_ptr<framework::ir::ParallelMeta> &parallel_meta) {
   VLOG(3) << "Predictor::init()";
+  platform::CudaAPI::SetDevice(0);
+
   if (FLAGS_profile) {
     LOG(WARNING) << "Profiler is actived, might affect the performance";
     LOG(INFO) << "You can turn off by set gflags '-profile false'";
@@ -92,6 +96,14 @@ bool AnalysisPredictor::Init(
   }
 
   // Prepare executor, create local variables.
+  if (parallel_meta) {
+    parallel_meta_ = parallel_meta;
+  }
+  executor_->SetParallelMeta(parallel_meta_);
+  if (parallel_meta_) {
+    LOG(INFO) << "get parallel meta: " << parallel_meta_->StreamIds().size();
+  }
+  PADDLE_ENFORCE(parallel_meta_.get());
   if (!PrepareExecutor()) {
     return true;
   }
@@ -160,7 +172,7 @@ bool AnalysisPredictor::CreateExecutor() {
   } else {
     place_ = paddle::platform::CPUPlace();
   }
-  executor_.reset(new paddle::framework::NaiveExecutor(place_));
+  executor_.reset(new paddle::framework::NaiveExecutor(place_, parallel_meta_));
   return true;
 }
 bool AnalysisPredictor::PrepareExecutor() {
@@ -312,6 +324,7 @@ void AnalysisPredictor::GetFetchOne(const framework::LoDTensor &fetch,
 
 bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
                                  framework::Scope *scope) {
+  cudaDeviceSynchronize();
   VLOG(3) << "Predictor::get_fetch";
   outputs->resize(fetches_.size());
   for (size_t i = 0; i < fetches_.size(); ++i) {
@@ -364,7 +377,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
 
   if (config_.use_gpu() && config_.tensorrt_engine_enabled()) {
-    LOG(INFO) << "TensorRT subgraph engine is enabled";
+    LOG(INFO) << "TensorRT sub-graph engine is enabled";
     argument_.SetUseTensorRT(true);
     argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
@@ -393,6 +406,9 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);
   inference_program_.reset(
       new framework::ProgramDesc(argument_.ir_analyzed_program()));
+
+  // Collect parallel meta
+  parallel_meta_.reset(argument_.ReleaseParallelMeta());
   LOG(INFO) << "== optimize end ==";
 }
 
@@ -427,7 +443,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
-  if (!dynamic_cast<AnalysisPredictor *>(predictor.get())->Init(nullptr)) {
+  if (!dynamic_cast<AnalysisPredictor *>(predictor.get())
+           ->Init(nullptr, nullptr, nullptr)) {
     return nullptr;
   }
   return predictor;
@@ -702,7 +719,7 @@ AnalysisPredictor::~AnalysisPredictor() {
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
-  x->Init(scope_, inference_program_);
+  x->Init(scope_, inference_program_, parallel_meta_);
   return std::unique_ptr<PaddlePredictor>(x);
 }
 

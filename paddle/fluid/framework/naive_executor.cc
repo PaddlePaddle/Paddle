@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/stream_engine.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
 
@@ -38,7 +39,7 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
   CreateOps(program_desc, block_id, with_feed_fetch_ops);
 }
 
-void NaiveExecutor::Run() {
+void NaiveExecutor::Run(bool async) {
 #ifndef PADDLE_ON_INFERENCE
   LOG_FIRST_N(WARNING, 5) << "The NaiveExecutor can not work properly if the "
                              "cmake flag ON_INFER is not set.";
@@ -50,18 +51,29 @@ void NaiveExecutor::Run() {
                              "running Paddle Inference";
 #endif  // PADDLE_ON_INFERENCE
 
-  for (auto &op : ops_) {
-    VLOG(4) << std::this_thread::get_id() << " run "
-            << op->DebugStringEx(scope_) << " on scope " << scope_;
-    op->SetIsCalledByExecutor(false);
-    op->Run(*scope_, place_);
+  if (!async) {
+    for (auto &op : ops_) {
+      VLOG(4) << std::this_thread::get_id() << " run "
+              << op->DebugStringEx(scope_) << " on scope " << scope_;
+      op->SetIsCalledByExecutor(false);
+      op->Run(*scope_, place_);
+    }
+  } else {
+    if (!stream_engine_) {
+      PADDLE_ENFORCE(parallel_meta_.get());
+      PADDLE_ENFORCE(scope_);
+      LOG(INFO) << "parallel meta get " << parallel_meta_->StreamIds().size()
+                << " stream ids";
+      stream_engine_.reset(
+          new StreamEngine(&ops_, scope_, place_, *parallel_meta_));
+      stream_engine_->Run(true);
+    }
   }
 }
 
 void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
                                     bool persistable, Scope *scope) {
   PADDLE_ENFORCE_NOT_NULL(scope);
-
   auto &global_block = desc.Block(block_id);
 
   const auto *anc = scope;

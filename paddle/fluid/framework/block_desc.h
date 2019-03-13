@@ -119,5 +119,23 @@ class BlockDesc {
 
   DISABLE_COPY_AND_ASSIGN(BlockDesc);
 };
+
+std::string GenOpKey(const std::string &type, std::vector<std::string> inputs,
+                     std::vector<std::string> outputs) {
+  std::sort(inputs.begin(), inputs.end());
+  std::sort(outputs.begin(), outputs.end());
+
+  std::stringstream ss;
+  ss << type << ";";
+  for (auto &x : inputs) {
+    ss << x << ":";
+  }
+  ss << ";";
+  for (auto &x : outputs) {
+    ss << x << ":";
+  }
+  return ss.str();
+}
+
 }  // namespace framework
 }  // namespace paddle

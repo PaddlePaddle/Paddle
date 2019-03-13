@@ -15,8 +15,10 @@
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 #include <string>
 #include <vector>
+#include "ir_pass_manager.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/parallel_schedule_pass.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/argument.h"
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
@@ -29,7 +31,7 @@ using string::PrettyLogEndl;
 using string::PrettyLog;
 using string::Style;
 
-IRPassManager::IRPassManager(Argument *argument) {
+IRPassManager::IRPassManager(Argument *argument) : argument_(argument) {
   ARGUMENT_CHECK_FIELD(argument, main_program);
   graph_ = std::unique_ptr<Graph>(new Graph(argument->main_program()));
   if (argument->Has("scope")) {
@@ -86,6 +88,11 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new bool(argument->tensorrt_use_static_engine()));
     }
 
+    if (pass_name == "parallel_schedule_pass") {
+      LOG(INFO) << "set " << framework::ir::kParallelMeta;
+      pass->Set(framework::ir::kParallelMeta, new ParallelMeta);
+    }
+
     pre_pass = pass_name;
 
     passes_.emplace_back(std::move(pass));
@@ -103,7 +110,13 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
       PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
     }
     graph = pass->Apply(std::move(graph));
+
+    if (pass->Type() == "parallel_schedule_pass") {
+      argument_->SetParallelMeta(new ParallelMeta(
+          graph->Get<ParallelMeta>(framework::ir::kParallelMeta)));
+    }
   }
+
   return graph;
 }
 
