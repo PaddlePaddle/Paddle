@@ -33,9 +33,14 @@ def check_approval(count, required_reviewers):
     required_reviewers_int = set()
     for rr in required_reviewers:
         required_reviewers_int.add(int(rr))
-
     if len(set(approved_user_ids) & required_reviewers_int) >= count:
-        print("TRUE")
+        if 35982308 in required_reviewers_int and 35982308 in set(
+                approved_user_ids):
+            print("TRUE")
+        elif 35982308 not in required_reviewers_int:
+            print("TRUE")
+        else:
+            print("FALSE")
     else:
         print("FALSE")
 
