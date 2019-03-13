@@ -24,6 +24,7 @@ namespace framework {
 void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
                               Dataset* dataset) {
   thread_num_ = trainer_desc.thread_num();
+  SetDataset(dataset);
   // get filelist from trainer_desc here
   workers_.resize(thread_num_);
   VLOG(3) << "worker thread num: " << thread_num_;
@@ -65,7 +66,7 @@ void MultiTrainer::Finalize() {
   for (auto& th : threads_) {
     th.join();
   }
-  // todo  dataset->DestroyReaders();
+  dataset_ptr_->DestroyReaders();
 }
 
 }  // end namespace framework
