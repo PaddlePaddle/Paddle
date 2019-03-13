@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
-#include <map>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -62,7 +62,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                     argument->mkldnn_enabled_op_types()));
     } else if (pass_name == "cpu_quantize_pass") {
       using VarQuantScale =
-          std::map<std::string, std::pair<bool, framework::LoDTensor>>;
+          std::unordered_map<std::string,
+                             std::pair<bool, framework::LoDTensor>>;
       pass->Set("quant_var_scales",
                 new VarQuantScale(argument->quant_var_scales()));
     } else if (pass_name == "tensorrt_subgraph_pass") {

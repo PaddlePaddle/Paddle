@@ -122,9 +122,10 @@ std::unique_ptr<ir::Graph> MainTest(const ProgramDesc& prog,
     InitTensorHolder(&scope, place, v.c_str());
     LoDTensor tensor;
     tensor.Resize({1});
-    tensor.mutable_data<float>(place);
+    auto* ptr = tensor.mutable_data<double>(place);
+    ptr[0] = 1.0;
 
-    (*scales)[v] = std::make_pair(127, std::move(tensor));
+    (*scales)[v] = std::make_pair(false, std::move(tensor));
   }
 
   graph->Set(kParamScopeAttr, new framework::Scope*(&scope));
