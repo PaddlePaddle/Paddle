@@ -41,6 +41,7 @@ class TrainerBase {
   // model memory are hosted in root_scope
   void SetScope(Scope* root_scope);
   void SetDebug(const bool debug) { debug_ = debug; }
+  void SetDataset(Dataset* dataset_ptr) { dataset_ptr_ = dataset_ptr; }
   virtual void Initialize(const TrainerDesc& trainer_desc,
                           Dataset* data_set) = 0;
   virtual void InitTrainerEnv(const ProgramDesc& main_program,
@@ -52,6 +53,7 @@ class TrainerBase {
  protected:
   Scope* root_scope_;
   bool debug_;
+  Dataset* dataset_ptr_;
 };
 
 // general trainer for async execution
