@@ -25,12 +25,21 @@ __all__ = ['Calibrator']
 class Calibrator(object):
     '''
     The calibrator class transforms the program and updates the calculated scale into it.
-    This is INT8 v1 calibration tool, mainly for the support of ResNet-50 and MobileNet.
+    This is INT8 v1 calibration tool, mainly for the support of ResNet-50, MobileNet and SSD-MobileNet.
     '''
     # TODO(guomingz): Below op list will be updated once more INT8 op kernels are supported.
-    non_conv_int8_op_type = ("pool2d")
-    supported_int8_op_type = ("conv2d", "pool2d")
-    const_sign_op_type = ('pool2d', 'reshape', 'concat', 'transpose')
+    supported_int8_compute_op_type = ['conv2d']
+    supported_int8_memory_op_type = [
+        'pool2d', 'reshape', 'reshape2', 'concat', 'transpose', 'transpose2'
+    ]
+    supported_int8_op_type = supported_int8_compute_op_type + \
+        supported_int8_memory_op_type
+    supported_int8_scale_op_type = supported_int8_compute_op_type + ['quantize']
+    addition_sampling_op_type = supported_int8_memory_op_type
+
+    FP32 = 'fp32'
+    INT8 = 'int8'
+
     u8_max = 255
     s8_max = 127
 
@@ -43,10 +52,12 @@ class Calibrator(object):
         self.feed_var_names = kwargs['feed_var_names']
         self.fetch_list = kwargs['fetch_list']
         self.exe = kwargs['exe']
+        self.first_conv_int8 = kwargs[
+            'first_conv_int8'] if 'first_conv_int8' in kwargs else False
 
         self._conv_input_var_name = []
         self._conv_output_var_name = []
-        self._pool2d_output_var_name = []
+        self._other_output_var_name = []
         self._weights_var_name = []
         self._residual_input_var_name = []
         self._int8_output_var_op_index_dict = {}
@@ -70,6 +81,7 @@ class Calibrator(object):
         self.__sampling(self._sampling_data)
         self.__save_scale()
         self.__update_program()
+        self.__unify_concat_scale_get_requantize()
         self.__update_output_program_attr()
         self.__display_debug()
         self.__save_offline_model()
@@ -137,7 +149,7 @@ class Calibrator(object):
                     break
 
             if ops_type[
-                    search_end_index] not in Calibrator.const_sign_op_type and ops_type[
+                    search_end_index] not in Calibrator.supported_int8_memory_op_type and ops_type[
                         search_end_index] != 'conv2d':
                 return Calibrator.s8_max
 
@@ -153,143 +165,93 @@ class Calibrator(object):
 
         return Calibrator.s8_max
 
-    def __check_op_type_with_specified_var_as_input(self,
-                                                    program,
-                                                    var_name,
-                                                    start_index=0):
-        '''
-        Check whether all the type of ops that use the specified variable as the
-        input.If one of those op is not int8-enabled, return False.
-        '''
-        op_type_list = [
-            op.type for op in program.current_block().ops[start_index:]
-            if var_name in op.input_arg_names
-        ]
-        for i in op_type_list:
-            if not i in Calibrator.supported_int8_op_type:
-                return False
-        return True
-
-    def __check_var_source_dt(self, var_name):
-        '''
-        Check whether the specified variable is the output of int8 conv op or not.
-        If true, return the original op index.
-        If false, return -1
-        '''
-        return self._int8_output_var_op_index_dict[
-            var_name] if var_name in self._int8_output_var_op_index_dict else -1
-
-    def __update_int8_output_var_op_index_dict(self, index, var_name=None):
-        '''
-        Update the int8_output_variable/op_index dictionary
-        '''
-        for k, v in self._int8_output_var_op_index_dict.items():
-            if v >= index:
-                self._int8_output_var_op_index_dict[k] = v + 1
-        if var_name:
-            self._int8_output_var_op_index_dict[var_name] = index
-
     def __update_program(self):
         '''
         Update the program with the quantize/dequantize op insertion.
         '''
-        quantize_index, dequantize_index = self.__get_quantize_dequantize_combination(
+        quantize_indexes, dequantize_indexes, next_diff_ops_map = self.__get_quantize_dequantize_combination(
             self._output_program)
-        inserted_op_length = 0
         calc_max_func = self.__get_optimal_scaling_factor if self.algo == "KL" else np.max
-        insert_op_collection = sorted(quantize_index + dequantize_index)
-
-        for index in insert_op_collection:
-            if index in quantize_index:
-                quantize_tmp = self._output_program.current_block().create_var(
-                    name="quantize_{}_tmp".format(index),
-                    dtype=core.VarDesc.VarType.UINT8)
-                original_out_name = self._output_program.current_block().ops[
-                    index + inserted_op_length - 1].output_names[0]
-                original_out = self._output_program.current_block().ops[
-                    index + inserted_op_length - 1].output(original_out_name)[0]
-
-                op = self._output_program.current_block()._insert_op(
-                    index=index + inserted_op_length,
-                    type="quantize",
-                    inputs={"Input": original_out},
-                    outputs={"Output": quantize_tmp}, )
-
-                op._set_attr("data_format", "MKLDNNLAYOUT")
-                op._set_attr("use_mkldnn", 1)
-                op._set_attr(
-                    "Scale", self._var_max_range[original_out] /
-                    calc_max_func(self._var_max_value_map[original_out]))
-
-                if self.__get_max_range_by_var_name(
-                        self._output_program,
-                        original_out) == Calibrator.s8_max:
-                    op._set_attr("is_negative_input", 1)
-
-                self.__update_int8_output_var_op_index_dict(
-                    index + inserted_op_length, "quantize_{}_tmp".format(index))
-
-                inserted_op_length += 1
-                for op in self._output_program.current_block().ops[
-                        index + inserted_op_length:]:
-                    for j in op.input_names:
-                        if op.input(j) and op.input(
-                                j
-                        )[0] == original_out and op.type in Calibrator.supported_int8_op_type:
-                            op.desc.set_input(j,
-                                              ["{}".format(quantize_tmp.name)])
+        insert_poses = quantize_indexes + dequantize_indexes
+        insert_poses.sort(reverse=True)
+        quantize_index = len(quantize_indexes) - 1
+        dequantize_index = len(dequantize_indexes) - 1
+        for i in insert_poses:
+            if i == -1 and self.first_conv_int8:
+                current_out = self._output_program.global_block().ops[
+                    self._conv_op_index[0]].input_arg_names[2]
             else:
-                start_index = index + inserted_op_length
-                dequantize_tmp_var = self._output_program.current_block(
-                ).create_var(
-                    name="dequantize_{}_tmp".format(index + 1),
+                current_op = self._output_program.global_block().ops[i]
+                current_out = current_op.output_arg_names[0]
+                if current_op.type == "split":
+                    current_out = current_op.output_arg_names[1]
+            if i in quantize_indexes:
+                var_tmp = self._output_program.current_block().create_var(
+                    name="quantize_{}_tmp".format(quantize_index),
+                    dtype=core.VarDesc.VarType.UINT8, )
+                op = self._output_program.current_block()._insert_op(
+                    index=i + 1,
+                    type="quantize",
+                    inputs={"Input": current_out},
+                    outputs={"Output": var_tmp}, )
+                op._set_attr("data_format", "MKLDNNLAYOUT")
+                op._set_attr(
+                    "Scale", self._var_max_range[current_out] /
+                    calc_max_func(self._var_max_value_map[current_out]))
+                op._set_attr("use_mkldnn", 1)
+                if self.__get_max_range_by_var_name(
+                        self._output_program, current_out) == Calibrator.s8_max:
+                    op._set_attr("is_negative_input", 1)
+                for next_op in next_diff_ops_map[i]:
+                    op_inserted = 1
+                    for l in insert_poses:
+                        if i < l and next_op > l:
+                            op_inserted += 1
+                    op_n = self._output_program.current_block().ops[next_op +
+                                                                    op_inserted]
+                    for k in op_n.input_names:
+                        op_n_inputs = op_n.input(k)
+                        if len(
+                                op_n_inputs
+                        ) > 0 and current_out in op_n_inputs and op_n.type in Calibrator.supported_int8_op_type:
+                            op_n_new_inputs = [
+                                var_tmp.name
+                                if op_n_input == current_out else op_n_input
+                                for op_n_input in op_n_inputs
+                            ]
+                            op_n.desc.set_input(k, op_n_new_inputs)
+                quantize_index -= 1
+            else:
+                var_tmp = self._output_program.current_block().create_var(
+                    name="dequantize_{}_tmp".format(dequantize_index),
                     dtype="float32", )
-                original_out_var = None
-
-                for original_input in self._output_program.current_block().ops[
-                        start_index].input_arg_names:
-                    index_res = self.__get_op_index_by_output_var(
-                        self._output_program, original_input)
-                    if index_res != -1:
-                        original_out_var = original_input
-                        break
-
-                if original_out_var:
-                    op = self._output_program.current_block()._insert_op(
-                        index=start_index,
-                        type="dequantize",
-                        inputs={"Input": original_out_var},
-                        outputs={"Output": dequantize_tmp_var})
-                    op._set_attr("data_format", "MKLDNNLAYOUT")
-                    op._set_attr("use_mkldnn", 1)
-                    op._set_attr("Scale", self._var_max_range[original_out_var]
-                                 / calc_max_func(self._var_max_value_map[
-                                     original_out_var]))
-
-                    for op_index in range(
-                            start_index + 1,
-                            len(self._output_program.current_block().ops)):
-                        if self._output_program.current_block(
-                        ).ops[op_index].type == "conv2d" and self._output_program.current_block(
-                        ).ops[op_index].attr("force_fp32_output"):
-                            continue
-                        else:
-                            for j in self._output_program.current_block().ops[
-                                    op_index].input_names:
-                                if len(self._output_program.current_block().ops[
-                                        op_index].input(j)
-                                       ) and self._output_program.current_block(
-                                       ).ops[op_index].input(j)[
-                                           0] == original_out_var:
-                                    self._output_program.current_block(
-                                    ).ops[op_index].desc.set_input(
-                                        j,
-                                        ["{}".format(dequantize_tmp_var.name)])
-
-                    inserted_op_length += 1
-
-                    op._set_attr("data_format", "MKLDNNLAYOUT")
-                    op._set_attr("use_mkldnn", 1)
+                op = self._output_program.current_block()._insert_op(
+                    index=i + 1,
+                    type="dequantize",
+                    inputs={"Input": current_out},
+                    outputs={"Output": var_tmp}, )
+                op._set_attr("data_format", "MKLDNNLAYOUT")
+                op._set_attr(
+                    "Scale", self._var_max_range[current_out] /
+                    calc_max_func(self._var_max_value_map[current_out]))
+                op._set_attr("use_mkldnn", 1)
+                for next_op in next_diff_ops_map[i]:
+                    op_inserted = 1
+                    for l in insert_poses:
+                        if i < l and next_op > l:
+                            op_inserted += 1
+                    op_n = self._output_program.current_block().ops[next_op +
+                                                                    op_inserted]
+                    for k in op_n.input_names:
+                        op_n_inputs = op_n.input(k)
+                        if len(op_n_inputs) > 0 and current_out in op_n_inputs:
+                            op_n_new_inputs = [
+                                var_tmp.name
+                                if op_n_input == current_out else op_n_input
+                                for op_n_input in op_n_inputs
+                            ]
+                            op_n.desc.set_input(k, op_n_new_inputs)
+                dequantize_index -= 1
 
     def __update_output_program_attr(self):
         for i in self._output_program.list_vars():
@@ -311,7 +273,8 @@ class Calibrator(object):
 
     @property
     def sampling_vars(self):
-        return self._weights_var_name + self._conv_input_var_name + self._conv_output_var_name + self._residual_input_var_name + self._pool2d_output_var_name
+        return self._weights_var_name + self._conv_input_var_name + self._conv_output_var_name + \
+               self._residual_input_var_name + self._other_output_var_name
 
     def _is_close(self, a, b, rel_tol=1e-09, abs_tol=0.0):
         return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
@@ -329,7 +292,8 @@ class Calibrator(object):
         Update the convolution scale information.
         '''
         func = self.__get_optimal_scaling_factor if self.algo == 'KL' else np.max
-        for i in self._conv_op_index[1:]:
+        start_index = 0 if self.first_conv_int8 else 1
+        for i in self._conv_op_index[start_index:]:
             weights_var_name = self.program.current_block().ops[i].input(
                 'Filter')[0]
             input_var_name = self.program.current_block().ops[i].input('Input')[
@@ -395,15 +359,9 @@ class Calibrator(object):
                 self._var_max_range[i.name] = max_range
                 self._var_max_value_map[i.name] = max_value
 
-    def __check_force_fp32_attr_by_output_var(self, program, var_name):
-        for op in program.current_block().ops:
-            if op.type == "conv2d" and var_name in op.output_arg_names:
-                return op.attr("force_fp32_output")
-        return False
-
     def __get_op_index_by_output_var(self, program, var_name, start_index=0):
         '''
-        Check whether the specified input variable is the output of the
+        Check whether the specified input variable is the output of the 
         conv/pool2d op's output or not.
 
         Returns:
@@ -438,103 +396,232 @@ class Calibrator(object):
         Returns:
             Two lists contains the quantize op and dequantize op index information.
         """
-        quantize_op_index = []
-        dequantize_op_index = []
-        minimal_conv_count = 2  # there must be two conv ops if not enable the first conv int8.
-        if len(self._conv_op_index) < minimal_conv_count:
-            return [], []
 
-        for index, value in enumerate(self._conv_op_index):
-            if index == 0:
-                quantize_op_index.append(self._conv_op_index[index + 1])
-            elif index == len(self._conv_op_index) - 1:
-                output_var = program.current_block().ops[value].output(
-                    "Output")[0]
-                if self.__check_op_type_with_specified_var_as_input(
-                        program, output_var, index):
-                    dequantize_op_index.append(self._conv_op_index[index] + 2)
-                else:
-                    program.current_block().ops[value]._set_attr(
-                        "force_fp32_output", True)
+        op_values = [
+            value for _, value in enumerate(program.global_block().ops)
+        ]
+        op_types = [op_value.type for op_value in op_values]
+        op_support_types = [
+            Calibrator.INT8 if x in Calibrator.supported_int8_op_type \
+                else Calibrator.FP32 for x in op_types
+        ]
+        op_inputs = [op_value.input_arg_names for op_value in op_values]
+        op_outputs = [op_value.output_arg_names for op_value in op_values]
 
-            elif self._conv_op_index[index] + 1 < self._conv_op_index[index +
-                                                                      1]:
+        start = self._conv_op_index[0] - \
+            1 if self.first_conv_int8 else self._conv_op_index[1] - 1
+        for index in range(len(op_values) - 1, start, -1):
+            if op_types[index] not in Calibrator.supported_int8_op_type:
+                continue
+            else:
+                end = index + 1
+                break
+        end = len(op_values) - 1
 
-                program.current_block().ops[self._conv_op_index[
-                    index]]._set_attr("force_fp32_output", True)
-
-                for op_index in range(self._conv_op_index[index + 1],
-                                      self._conv_op_index[index], -1):
-                    op_type = program.current_block().ops[op_index].type
-                    op_has_int8_input = False
-                    input_var_name = None
-                    input_length = len(program.current_block().ops[op_index]
-                                       .input_arg_names)
-
-                    for var_name in program.current_block().ops[
-                            op_index].input_arg_names:
-                        if self.__check_var_source_dt(var_name) != -1:
-                            op_has_int8_input = True
-                            input_var_name = var_name
+        op_input_map = {}
+        op_output_map = {}
+        for index in range(start, end):
+            sub_ops = []
+            for op_output in op_outputs[index]:
+                for j in range(index + 1, end + 1):
+                    if op_output in op_inputs[j]:
+                        sub_ops.append(j)
+                        if op_inputs[j] == op_outputs[j]:
                             break
+            op_output_map[index] = sub_ops
+            reverse_index = end - index + start
+            parent_ops = []
+            for op_input in op_inputs[reverse_index]:
+                for j in range(reverse_index, start - 1, -1):
+                    if op_input in op_outputs[j]:
+                        parent_ops.append(j)
+                        if op_inputs[j] == op_outputs[j]:
+                            break
+            op_input_map[reverse_index] = parent_ops
 
-                    if op_has_int8_input:
-                        if op_type == "conv2d":
-                            if program.current_block().ops[op_index +
-                                                           1].type == "conv2d":
-                                continue
-                            elif program.current_block(
-                            ).ops[op_index +
-                                  1].type in Calibrator.non_conv_int8_op_type:
-                                dequantize_op_index.append(op_index + 2)
-                                break
-                            else:
-                                program.current_block().ops[op_index]._set_attr(
-                                    "force_fp32_output", True)
-                                continue
-                        elif not self.__check_force_fp32_attr_by_output_var(
-                                program, input_var_name
-                        ) and op_index not in dequantize_op_index:
-                            share_input_flag = True
-                            for input_attr_name in program.current_block().ops[
-                                    op_index].input_names:
-                                input_var_name = program.current_block().ops[
-                                    op_index].input(input_attr_name)[0]
-                                cousin_op_index = self.__get_op_index_by_input_var(
-                                    program, input_var_name)
-                                if cousin_op_index != -1 and cousin_op_index in dequantize_op_index:
-                                    share_input_flag = False
-                                    break
-                            if share_input_flag:
-                                dequantize_op_index.append(op_index)
+        combine_indexes = [x for x in op_input_map if len(op_input_map[x]) > 1]
+        combine_map = {x: op_input_map[x] for x in combine_indexes}
 
-                    elif input_length:
-                        output_is_to_int8_op = False
-                        share_input_flag = True
-                        for var_name in program.current_block().ops[
-                                op_index].input_arg_names:
-                            if not self.__check_op_type_with_specified_var_as_input(
-                                    program, var_name):
-                                share_input_flag = False
-                                break
+        split_indexes = [x for x in op_output_map if len(op_output_map[x]) > 1]
+        split_map = {x: op_output_map[x] for x in split_indexes}
 
-                        for var_name in program.current_block().ops[
-                                op_index].output_arg_names:
-                            if self.__get_op_index_by_output_var(
-                                    program, var_name, op_index) != -1:
-                                output_is_to_int8_op = True
-                                break
+        quantize_indexes = [start]
+        dequantize_indexes = []
+        int8_to_fp32 = []
+        fp32_to_int8 = []
 
-                        if share_input_flag or output_is_to_int8_op:
-                            quantize_op_index.append(op_index)
+        for index in range(start, end):
+            if index not in split_indexes and len(op_output_map[index]) > 0:
+                if op_types[
+                        index] in Calibrator.supported_int8_op_type and op_types[
+                            op_output_map[index][
+                                0]] not in Calibrator.supported_int8_op_type:
+                    int8_to_fp32.append(index)
+                if op_types[
+                        index] not in Calibrator.supported_int8_op_type and op_types[
+                            op_output_map[index][
+                                0]] in Calibrator.supported_int8_op_type:
+                    fp32_to_int8.append(index)
+            elif index in split_indexes:
+                for sub_split in split_map[index]:
+                    if op_types[index] in Calibrator.supported_int8_op_type and \
+                            op_types[sub_split] not in Calibrator.supported_int8_op_type and \
+                            index not in int8_to_fp32:
+                        int8_to_fp32.append(index)
+                    if op_types[index] not in Calibrator.supported_int8_op_type and \
+                            op_types[sub_split] in Calibrator.supported_int8_op_type and \
+                            index not in fp32_to_int8:
+                        fp32_to_int8.append(index)
 
-        return quantize_op_index, dequantize_op_index
+        quantize_indexes.extend(
+            [x for x in fp32_to_int8 if x not in quantize_indexes])
+
+        int8_to_fp32_opt = int8_to_fp32
+        int8_to_fp32_opt.sort()
+        for i in range(len(int8_to_fp32_opt) - 1, -1, -1):
+            index = int8_to_fp32_opt[i]
+            if index in split_indexes:
+                for j in range(i + 1, len(int8_to_fp32_opt) - 1):
+                    if int8_to_fp32_opt[j] in split_map[index] and op_types[
+                            int8_to_fp32_opt[
+                                j]] in Calibrator.supported_int8_memory_op_type:
+                        int8_to_fp32_opt.pop(j)
+
+        remove_int8_to_fp32 = []
+        for i in range(len(quantize_indexes) - 1, -1, -1):
+            quantize_index = quantize_indexes[i]
+            if len(op_output_map[quantize_index]) == 1 and op_output_map[
+                    quantize_index][0] in int8_to_fp32_opt and op_types[
+                        op_output_map[quantize_index][
+                            0]] in Calibrator.supported_int8_memory_op_type:
+                quantize_indexes.pop(i)
+                if op_output_map[quantize_index][0] not in remove_int8_to_fp32:
+                    remove_int8_to_fp32.append(op_output_map[quantize_index][0])
+        for index in remove_int8_to_fp32:
+            int8_to_fp32_opt.pop(int8_to_fp32_opt.index(index))
+
+        next_diff_ops_map = {}
+        pre_insert_ops = quantize_indexes + int8_to_fp32_opt
+        for i in pre_insert_ops:
+            next_diff_ops = []
+            if i in int8_to_fp32_opt:
+                for sub_node in op_output_map[i]:
+                    if op_support_types[i] != op_support_types[sub_node]:
+                        next_diff_ops.append(sub_node)
+                    elif op_support_types[sub_node] != op_support_types[
+                            op_output_map[sub_node]
+                        [0]] and op_types[
+                            sub_node] in Calibrator.supported_int8_memory_op_type:
+                        next_diff_ops.append(sub_node)
+            else:
+                if i == -1 and self.first_conv_int8:
+                    next_diff_ops = [self._conv_op_index[0]]
+                else:
+                    for sub_node in op_output_map[i]:
+                        if op_support_types[sub_node] == Calibrator.INT8:
+                            next_diff_ops.append(sub_node)
+            next_diff_ops.sort(reverse=True)
+            next_diff_ops_map[i] = next_diff_ops
+
+        int8_conv_fp32_out = []
+        for i in int8_to_fp32_opt:
+            if op_types[i] != "conv2d" and i not in dequantize_indexes:
+                dequantize_indexes.append(i)
+            elif i in split_indexes and len(split_map[i]) != len(
+                    next_diff_ops_map[i]) and i not in dequantize_indexes:
+                dequantize_indexes.append(i)
+            else:
+                int8_conv_fp32_out.append(i)
+
+        for i in int8_conv_fp32_out:
+            op = program.current_block().ops[i]
+            op._set_attr("force_fp32_output", 1)
+
+        return quantize_indexes, dequantize_indexes, next_diff_ops_map
+
+    def __get_parent_op_with_scale(self, op_index, op_types, op_output_map):
+        """
+        Get a op parent op with scale conv/quantize.
+        """
+        for i in range(1, op_index):
+            if op_index in op_output_map[i] and op_types[
+                    i] in Calibrator.supported_int8_scale_op_type:
+                return i
+            elif op_index in op_output_map[i] and op_types[
+                    i] not in Calibrator.supported_int8_scale_op_type:
+                return self.__get_parent_op_with_scale(i, op_types,
+                                                       op_output_map)
+
+    def __unify_concat_scale_get_requantize(self):
+        """
+        Unify concat scale and get the requantize op index for further inserting.
+        """
+        op_values = [
+            value
+            for _, value in enumerate(self._output_program.global_block().ops)
+        ]
+        op_types = [op_value.type for op_value in op_values]
+        op_inputs = [op_value.input_arg_names for op_value in op_values]
+        op_outputs = [op_value.output_arg_names for op_value in op_values]
+        concat_op_index = [
+            index
+            for index, value in enumerate(self._output_program.global_block()
+                                          .ops) if value.type == 'concat'
+        ]
+        op_input_map = {}
+        op_output_map = {}
+        start = 1
+        end = len(op_types) - 1
+        for index in range(start, end):
+            sub_ops = []
+            for op_output in op_outputs[index]:
+                for j in range(index + 1, end + 1):
+                    if op_output in op_inputs[j]:
+                        sub_ops.append(j)
+                        if op_inputs[j] == op_outputs[j]:
+                            break
+            op_output_map[index] = sub_ops
+            reverse_index = end - index + start
+            parent_ops = []
+            for op_input in op_inputs[reverse_index]:
+                for j in range(reverse_index, start - 1, -1):
+                    if op_input in op_outputs[j]:
+                        parent_ops.append(j)
+                        if op_inputs[j] == op_outputs[j]:
+                            break
+            op_input_map[reverse_index] = parent_ops
+
+        fp32_concat = []
+        for concat_op in concat_op_index:
+            for input_op in op_input_map[concat_op]:
+                if op_types[input_op] not in Calibrator.supported_int8_op_type:
+                    fp32_concat.append(concat_op)
+                    break
+        int8_concat = [x for x in concat_op_index if x not in fp32_concat]
+
+        int8_concat.sort(reverse=True)
+        for concat_op in int8_concat:
+            direct_input = op_input_map[concat_op]
+            scale_input = [
+                self.__get_parent_op_with_scale(i, op_types, op_output_map)
+                for i in direct_input
+            ]
+            input_scale = [
+                self._output_program.current_block().ops[i].attr('Scale_out')
+                for i in scale_input
+            ]
+            scale_min = np.min(input_scale)
+            for i in scale_input:
+                if self._output_program.current_block().ops[i].attr(
+                        'Scale_out') > scale_min:
+                    self._output_program.current_block().ops[i]._set_attr(
+                        "Scale_out", scale_min)
 
     def __init_analysis(self):
         '''
         Collect the variable names for sampling.
         '''
-        start_index = 1  #analysis the conv op detail from second conv op.
+        start_index = 0 if self.first_conv_int8 else 1
 
         for i in self._conv_op_index[start_index:]:
             self._weights_var_name.append(self.program.current_block().ops[i]
@@ -549,9 +636,11 @@ class Calibrator(object):
                 self._residual_input_var_name.append(self.program.current_block(
                 ).ops[i].desc.input("ResidualData")[0])
 
-            if self.program.current_block().ops[i + 1].type == "pool2d":
-                self._pool2d_output_var_name.append(self.program.current_block(
-                ).ops[i + 1].output('Out')[0])
+        for i in range(len(self.program.current_block().ops)):
+            if self.program.current_block().ops[i].type in Calibrator.addition_sampling_op_type \
+                and 'Out' in self.program.current_block().ops[i].output_names:
+                self._other_output_var_name.append(self.program.current_block()
+                                                   .ops[i].output('Out')[0])
 
     def __expand_quantized_bins(self, quantized_bins, reference_bins):
         expanded_quantized_bins = [0] * len(reference_bins)
