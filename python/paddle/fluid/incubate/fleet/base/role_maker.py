@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .helper import MPIHelper
 
 
 class RoleMakerBase(object):
@@ -46,6 +45,7 @@ class MPIRoleMaker(RoleMakerBase):
         from mpi4py import MPI
         self.comm_ = MPI.COMM_WORLD
         self.MPI = MPI
+        self.ips_ = None
 
     def get_rank(self):
         self.rank_ = self.comm_.Get_rank()
