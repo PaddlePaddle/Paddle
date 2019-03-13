@@ -56,6 +56,10 @@ class Tracer {
   std::vector<VarBase*> PyTrace(OpBase* op, const std::vector<VarBase*>& inputs,
                                 bool stop_gradient = false);
 
+  static void StartProfile();
+
+  static void StopProfile();
+
  private:
   platform::Place GetPlace(const VarBasePtrMap& inputs);
 

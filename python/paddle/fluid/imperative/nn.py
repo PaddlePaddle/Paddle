@@ -97,6 +97,7 @@ class Conv2D(layers.Layer):
             dtype=self._dtype,
             is_bias=True)
 
+    #  @profile
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(
             dtype=self._dtype)
@@ -169,6 +170,7 @@ class Pool2D(layers.Layer):
         self._exclusive = exclusive
         self._l_type = 'pool2d'
 
+    #  @profile
     def forward(self, input):
         pool_out = self._helper.create_variable_for_type_inference(self._dtype)
 
@@ -229,6 +231,7 @@ class FC(layers.Layer):
         else:
             self._b = None
 
+    #  @profile
     def forward(self, input):
         tmp = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
