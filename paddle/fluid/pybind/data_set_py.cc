@@ -21,7 +21,7 @@ limitations under the License. */
 #endif
 #include <string>
 #include <vector>
-
+#include <memory>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/async_executor.h"
@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/fluid/pybind/data_set_py.h"
+#include "paddle/fluid/framework/dataset_factory.h"
 
 namespace py = pybind11;
 namespace pd = paddle::framework;
@@ -41,17 +42,18 @@ namespace paddle {
 namespace pybind {
 
 void BindDataset(py::module* m) {
-  py::class_<framework::MultiSlotDataset>(*m, "MultiSlotDataset")
-      .def(py::init([]() {
-        return std::unique_ptr<framework::MultiSlotDataset>(new framework::MultiSlotDataset());
+  py::class_<framework::Dataset,
+    std::shared_ptr<framework::Dataset>>(*m, "Dataset")
+      .def(py::init([](const std::string& name = "MultiSlotDataset") {
+        return framework::DatasetFactory::CreateDataset(name);
       }))
-      .def("set_filelist", &framework::MultiSlotDataset::SetFileList)
-      .def("set_thread_num", &framework::MultiSlotDataset::SetThreadNum)
-      .def("set_trainer_num", &framework::MultiSlotDataset::SetTrainerNum)
-      .def("set_data_feed_desc", &framework::MultiSlotDataset::SetDataFeedDesc)
-      .def("load_into_memory", &framework::MultiSlotDataset::LoadIntoMemory)
-      .def("local_shuffle", &framework::MultiSlotDataset::LocalShuffle)
-      .def("global_shuffle", &framework::MultiSlotDataset::GlobalShuffle);
+      .def("set_filelist", &framework::Dataset::SetFileList)
+      .def("set_thread_num", &framework::Dataset::SetThreadNum)
+      .def("set_trainer_num", &framework::Dataset::SetTrainerNum)
+      .def("set_data_feed_desc", &framework::Dataset::SetDataFeedDesc)
+      .def("load_into_memory", &framework::Dataset::LoadIntoMemory)
+      .def("local_shuffle", &framework::Dataset::LocalShuffle)
+      .def("global_shuffle", &framework::Dataset::GlobalShuffle);
 }
 
 }  // end namespace pybind
