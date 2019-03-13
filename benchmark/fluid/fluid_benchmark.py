@@ -179,7 +179,6 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
     else:
         build_strategy.reduce_strategy = fluid.BuildStrategy(
         ).ReduceStrategy.AllReduce
-    build_strategy.fuse_broadcast_op = args.fuse_broadcast_op
 
     avg_loss = train_args[0]
 
