@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <deque>
 #include <iterator>
+#include <memory>
 #include <stack>
 #include <string>
 #include <unordered_map>
@@ -49,7 +50,7 @@ DEFINE_bool(
     "If this option turns on, only these op in whitelist can be inplaced."
     "If it turns off, all of the running op can be candidate of inplaced op."
     "Such as scale, elementwise_add"
-    "By default, it's turned on");
+    "By default, it's turned off");
 
 DECLARE_string(memory_optimize_debug);
 
@@ -263,6 +264,10 @@ void InplacePass::WithdrawModify(const NodeSwapQueue& nodes,
 void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
                                           ir::Graph* graph) const {
   VLOG(4) << "Try to inplace op " << op->Name();
+  // FIXME(liuwei1031): Graph is not aware of the existence of BlockDescs and
+  // ProgramDescs.
+  // The operations related to BlockDesc or ProgramDesc should perform on Graph
+  // or Node directly!
   PADDLE_ENFORCE(op->Op() != nullptr && op->Op()->Block() != nullptr,
                  "op_desc is nullptr");
   // some pre-requirments need to meet if the op want to inplaced.

@@ -199,7 +199,6 @@ class TestCalibrationForResnet50(unittest.TestCase):
 
     def run_program(self, model_path, generate_int8=False, algo='direct'):
         image_shape = [3, 224, 224]
-        os.environ['FLAGS_use_mkldnn'] = 'True'
 
         fluid.memory_optimize(fluid.default_main_program())
 
@@ -241,9 +240,6 @@ class TestCalibrationForResnet50(unittest.TestCase):
             label = label.reshape([-1, 1])
             running_program = calibrator.sampling_program.clone(
             ) if generate_int8 else infer_program.clone()
-            for op in running_program.current_block().ops:
-                if op.has_attr("use_mkldnn"):
-                    op._set_attr("use_mkldnn", True)
 
             t1 = time.time()
             _, acc1, _ = exe.run(
