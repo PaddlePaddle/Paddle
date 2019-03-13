@@ -124,7 +124,7 @@ std::unique_ptr<ir::Graph> MainTest(const ProgramDesc& prog,
     tensor.Resize({1});
     tensor.mutable_data<float>(place);
 
-    (*scales)[v] = std::make_pair(QuantMax::S8_MAX, std::move(tensor));
+    (*scales)[v] = std::make_pair(127, std::move(tensor));
   }
 
   graph->Set(kParamScopeAttr, new framework::Scope*(&scope));
