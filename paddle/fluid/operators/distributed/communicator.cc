@@ -128,8 +128,11 @@ void Communicator::SendThread() {
       task_f.wait();
     }
     auto after_run_send_graph = GetCurrentUS();
-    VLOG(3) << "run send graph use time "
-            << after_run_send_graph - before_run_send_graph;
+    auto send_graph_use_time = after_run_send_graph - before_run_send_graph;
+    if (send_graph_use_time > 10) {
+      VLOG(1) << "run send graph use time "
+              << after_run_send_graph - before_run_send_graph;
+    }
     if (!FLAGS_communicator_independent_recv_thread) {
       RecvAll();
     }
@@ -156,7 +159,7 @@ void Communicator::RecvAll() {
     task.wait();
   }
   auto after_recv = GetCurrentUS();
-  VLOG(3) << "run recv graph use time " << after_recv - before_send;
+  VLOG(1) << "run recv graph use time " << after_recv - before_send;
 }
 
 void Communicator::RecvThread() {
