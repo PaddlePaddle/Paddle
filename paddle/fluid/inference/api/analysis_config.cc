@@ -109,6 +109,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
 
+  CP_MEMBER(use_anakin_);
+  CP_MEMBER(anakin_max_batchsize_);
+
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
   CP_MEMBER(use_feed_fetch_ops_);
@@ -344,7 +347,8 @@ void AnalysisConfig::SwitchIrDebug(int x) {
   ir_debug_ = x;
   Update();
 }
-void AnalysisConfig::EnableAnakinEngine() {
+void AnalysisConfig::EnableAnakinEngine(int max_batch_size) {
+  anakin_max_batchsize_ = max_batch_size;
   use_anakin_ = true;
   Update();
 }

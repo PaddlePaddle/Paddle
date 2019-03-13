@@ -371,6 +371,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
 
   if (config_.use_gpu() && config_.anakin_engine_enabled()) {
+    argument_.SetAnakinMaxBatchSize(config_.anakin_max_batchsize_);
     LOG(INFO) << "Anakin subgraph engine is enabled";
   }
 

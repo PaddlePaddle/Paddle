@@ -144,6 +144,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine, TensorRtUseStaticEngine,
                       bool);
 
+  DECL_ARGUMENT_FIELD(anakin_max_batch_size, AnakinMaxBatchSize, int);
   DECL_ARGUMENT_FIELD(use_anakin, UseAnakin, bool);
 
   // Memory optimized related.
