@@ -14,19 +14,10 @@
 import sys
 import os
 from ..base.role_maker import MPISymetricRoleMaker
-from paddle.fluid.optimizer import Optimizer
-
-# this is a temporary solution
-# TODO(guru4elephant)
-# will make this more flexible for more Parameter Server Archs
-fleet_instance = Fleet()
-
-init = fleet_instance.init
-stop = fleet_instance.stop
-init_pserver = fleet_instance.init_pserver
-init_worker = fleet_instance.init_worker
-init_pserver_model = fleet_instance.init_pserver_model
-save_pserver_model = fleet_instance.save_pserver_model
+from .optimizer_factory import *
+from google.protobuf import text_format
+import paddle.fluid.optimizer as local_optimizer
+import paddle.fluid as fluid
 
 
 class Fleet(object):
@@ -35,7 +26,7 @@ class Fleet(object):
     """
 
     def __init__(self):
-        self.opt_info = None  # for fleet only
+        self._opt_info = None  # for fleet only
         self.role_maker_ = None
 
     def init(self):
@@ -44,7 +35,7 @@ class Fleet(object):
         # we will support more configurable RoleMaker for users in the future
         self.role_maker_ = MPISymetricRoleMaker()
         self.role_maker_.generate_role()
-        self._fleet_ptr = core.FleetWrapper()
+        self._fleet_ptr = fluid.core.Fleet()
 
     def stop(self):
         self.role_maker_.barrier_worker()
@@ -91,6 +82,12 @@ class Fleet(object):
             print("You should run DistributedOptimizer.minimize() first")
             sys.exit(-1)
 
+    def is_worker(self):
+        return self.role_maker_.is_worker()
+
+    def is_server(self):
+        return self.role_maker_.is_server()
+
     def init_pserver_model(self):
         if self.role_maker_.is_first_worker():
             self._fleet_ptr.init_model()
@@ -103,7 +100,7 @@ class Fleet(object):
         self._opt_info = opt_info
 
 
-class DistributedOptimizer(paddle.fluid.Optimizer):
+class DistributedOptimizer(object):
     def __init__(self, optimizer, dist_config={}):
         super(DistributedOptimizer, self).__init__()
         self._optimizer = optimizer
@@ -115,7 +112,7 @@ class DistributedOptimizer(paddle.fluid.Optimizer):
                   sys.stderr)
             self._optimizer_name = "DistributedAdam"
 
-        self._distributed_optimizer = globals()[self._optimizer_name]()
+        self._distributed_optimizer = globals()[self._optimizer_name](optimizer)
 
     def backward(self,
                  loss,
@@ -135,7 +132,6 @@ class DistributedOptimizer(paddle.fluid.Optimizer):
                  no_grad_set=None):
         optimize_ops, param_grads, opt_info = \
                       self._distributed_optimizer.minimize(
-                          self._optimizer,
                           loss,
                           startup_program,
                           parameter_list,
@@ -143,3 +139,18 @@ class DistributedOptimizer(paddle.fluid.Optimizer):
 
         fleet_instance._set_opt_info(opt_info)
         return [optimize_ops, param_grads]
+
+
+# this is a temporary solution
+# TODO(guru4elephant)
+# will make this more flexible for more Parameter Server Archs
+fleet_instance = Fleet()
+
+init = fleet_instance.init
+stop = fleet_instance.stop
+init_pserver = fleet_instance.init_pserver
+init_worker = fleet_instance.init_worker
+is_worker = fleet_instance.is_worker
+is_server = fleet_instance.is_server
+init_pserver_model = fleet_instance.init_pserver_model
+save_pserver_model = fleet_instance.save_pserver_model
