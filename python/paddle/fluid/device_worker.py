@@ -85,8 +85,8 @@ class DownpourSGD(DeviceWorker):
         opt_info = self.program_._fleet_opt
         program_configs = opt_info["program_configs"]
 
-        for program_id in program_configs:
-            if program_configs[program_id] == program_id:
+        for pid in program_configs:
+            if pid == program_id:
                 pc = downpour.program_config.add()
                 pc.program_id = program_id
                 for i in program_configs[program_id]["push_sparse"]:
@@ -98,21 +98,6 @@ class DownpourSGD(DeviceWorker):
                 for i in program_configs[program_id]["pull_dense"]:
                     pc.pull_dense_table_id.extend([i])
                 break
-        '''
-        for program_config in self.fleet_desc_.trainer_param.program_config:
-            if program_config.program_id == program_id:
-                pc = downpour.program_config.add()
-                pc.program_id = program_config.program_id
-                for i in program_config.push_sparse_table_id:
-                    pc.push_sparse_table_id.extend([i])
-                for i in program_config.push_dense_table_id:
-                    pc.push_dense_table_id.extend([i])
-                for i in program_config.pull_sparse_table_id:
-                    pc.pull_sparse_table_id.extend([i])
-                for i in program_config.pull_dense_table_id:
-                    pc.pull_dense_table_id.extend([i])
-                break
-        '''
 
 
 class DeviceWorkerFactory(object):
