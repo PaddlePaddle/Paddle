@@ -21,7 +21,7 @@ limitations under the License. */
 #endif
 #include <random>
 #include <atomic>
-#include <time.h>
+#include <ctime>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/scope.h"
@@ -116,13 +116,15 @@ class FleetWrapper {
 
   typedef std::function<int32_t (int, int, const std::string&)> MsgHandlerFunc;
   int registe_client2client_msg_handler(int msg_type, MsgHandlerFunc handler);
-  int send_client2client_msg(int msg_type, int to_client_id, const std::string& msg);
+  int send_client2client_msg(int msg_type,
+                             int to_client_id,
+                             const std::string& msg);
   std::default_random_engine& local_random_engine();
 
   template<typename T>
-  void Serialize(const T& t, std::string& str);
+  void Serialize(const T& t, std::string* str);
   template<typename T>
-  void Deserialize(T& t, const std::string& str);
+  void Deserialize(T* t, const std::string& str);
 
   static std::shared_ptr<FleetWrapper> GetInstance() {
     if (NULL == s_instance_) {

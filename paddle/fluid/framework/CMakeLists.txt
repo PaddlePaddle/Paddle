@@ -181,7 +181,7 @@ graph_to_program_pass variable_helper trainer_library data_feed_proto ${NGRAPH_E
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
-  cc_library(executor SRCS executor.cc multi_trainer.cc
+  cc_library(executor SRCS executor.cc multi_trainer.cc dataset_factory.cc
 dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
 data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
 pull_dense_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
@@ -202,7 +202,7 @@ cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.
            executor_thread_worker.cc multi_trainer.cc dist_multi_trainer.cc
            trainer_factory.cc trainer.cc device_worker.cc hogwild_worker.cc
            downpour_worker.cc pull_dense_worker.cc device_worker_factory.cc
-           data_set.cc
+           data_set.cc dataset_factory.cc
            DEPS op_registry device_context scope framework_proto
            trainer_desc_proto glog lod_rank_table fleet_wrapper lodtensor_printer
            feed_fetch_method graph_to_program_pass data_feed_proto
