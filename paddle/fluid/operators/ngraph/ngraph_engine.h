@@ -35,7 +35,6 @@ enum class OpState {                /* nGraph support state on ops          */
                      PARTIAL_TRAIN, /* Support partial ops for train        */
                      FULL_TEST,     /* Support full list of ops for test    */
                      PARTIAL_TEST,  /* Support partial list of ops for test */
-                     FULL,          /* All ops supported from feed to fetch */
                      UNKNOWN        /* Output all for debug purpose         */
 };
 
