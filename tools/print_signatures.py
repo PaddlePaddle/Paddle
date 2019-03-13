@@ -24,10 +24,17 @@ import inspect
 import collections
 import sys
 import pydoc
+import hashlib
 
 member_dict = collections.OrderedDict()
 
 experimental_namespace = {"paddle.fluid.imperative"}
+
+
+def md5(doc):
+    hash = hashlib.md5()
+    hash.update(str(doc).encode('utf-8'))
+    return hash.hexdigest()
 
 
 def visit_member(parent_name, member):
@@ -39,7 +46,10 @@ def visit_member(parent_name, member):
                 visit_member(cur_name, value)
     elif callable(member):
         try:
-            member_dict[cur_name] = inspect.getargspec(member)
+            doc = ('document', md5(member.__doc__))
+            args = inspect.getargspec(member)
+            all = (args, doc)
+            member_dict[cur_name] = all
         except TypeError:  # special for PyBind method
             member_dict[cur_name] = "  ".join([
                 line.strip() for line in pydoc.render_doc(member).split('\n')

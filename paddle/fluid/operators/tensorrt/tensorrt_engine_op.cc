@@ -31,6 +31,9 @@ class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("subgraph", "the subgraph.");
     AddAttr<std::string>("calibration_data", "the calibration data for int8");
     AddAttr<std::string>(
+        "engine_serialized_data",
+        "the serialized data contains the all info of the ICUDAEngine");
+    AddAttr<std::string>(
         "engine_key",
         "The engine_key here is used to distinguish different TRT Engines");
     AddAttr<int>("max_batch_size", "the maximum batch size.");

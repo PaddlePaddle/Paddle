@@ -63,7 +63,7 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     eptr = std::current_exception();
   }
 
-  platform::RecordEvent e("ScopeBufferedSSAGraphExecutorAfterRun", nullptr);
+  platform::RecordEvent e("ScopeBufferedSSAGraphExecutorAfterRun");
   ++drop_scope_counter_;
 
   bool stream_end = false;

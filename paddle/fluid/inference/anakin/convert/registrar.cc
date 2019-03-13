@@ -12,21 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/inference/anakin/convert/registrar.h"
 
 namespace paddle {
-namespace framework {
-namespace details {
+namespace inference {
+namespace anakin {
 
-class EagerDeletionPass : public ir::Pass {
- protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
-};
+std::shared_ptr<AnakinOpConverter> OpRegister::Get(const std::string &name) {
+  auto it = registry_.find(name);
+  if (it == registry_.end()) return nullptr;
+  return it->second();
+}
 
-}  // namespace details
-}  // namespace framework
+OpRegister *OpRegister::instance() {
+  static OpRegister factory;
+  return &factory;
+}
+
+}  // namespace anakin
+}  // namespace inference
 }  // namespace paddle
