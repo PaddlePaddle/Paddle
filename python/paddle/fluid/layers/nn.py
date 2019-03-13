@@ -3062,15 +3062,15 @@ def sync_batch_norm(input,
 
     The details of batch normalization can be referred to batch_norm interface.
     Different from batch_norm, sync_batch_norm synchronizes the mean and
-    variance through multi-GPUs in training phase.
+    variance through multi-devices in training phase.
 
-    Note: current implementation doesn't support FP16 training.
+    Current implementation doesn't support FP16 training and CPU.
     And only synchronous on one machine, not all machines. And dot not use
     this operator in inference.
 
-    **Note**: it's better to make sure that the operators execution sequence
-     is the same on multi-gpus, you can set the `build_strategy` when compiling
-     program for data parallelism:
+    Note: it's better to make sure that the operators execution sequence
+    is the same on multi-gpus, you can set the `build_strategy` when compiling
+    program for data parallelism:
 
         .. code-block:: python
 
