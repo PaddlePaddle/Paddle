@@ -40,7 +40,10 @@
 namespace paddle {
 namespace inference {
 namespace analysis {
+
 using framework::ir::Graph;
+using VarQuantScale =
+    std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
 
 /*
  * The argument definition of both Pass and PassManagers.
@@ -139,8 +142,6 @@ struct Argument {
                       std::unordered_set<int>);
 
   // Scales for variables to be quantized
-  using VarQuantScale =
-      std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
   DECL_ARGUMENT_FIELD(quant_var_scales, QuantVarScales, VarQuantScale);
 
   // Passed from config.
