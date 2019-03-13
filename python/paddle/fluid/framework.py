@@ -2002,6 +2002,19 @@ class IrGraph(object):
         self.graph = graph
         self._for_test = for_test
 
+    def clone(self):
+        """
+        Create a new and duplicated IrGraph.
+
+        Warns:
+            The method only clones the graph structure, not its attributes.
+
+        Returns:
+            IrGraph: A new and duplicated graph.
+        """
+        g = self.graph.clone()
+        return IrGraph(g, self._for_test)
+
     def is_test(self):
         """
         If the graph is used for testing, the function returns true. Otherwise, returns false.
@@ -2232,10 +2245,10 @@ class IrGraph(object):
         Notes: the `graph` cannot contain a circle.
 
         Returns:
-            set(IrNode): nodes in topology order.
+            list(IrNode): nodes in topology order.
         """
         ordered_nodes = core.topology_sort(self.graph)
-        return {IrNode(n) for n in ordered_nodes}
+        return [IrNode(n) for n in ordered_nodes]
 
     def build_adjacency_list(self):
         """
@@ -2303,7 +2316,7 @@ class IrGraph(object):
         """
         Convert the graph into a Program.
 
-        Notes: When the graph includes backward operator nodes, the
+        WARN: When the graph includes backward operator nodes, the
         conversion process may be failed. Usually, this function is
         only used to convert a test graph.
 
