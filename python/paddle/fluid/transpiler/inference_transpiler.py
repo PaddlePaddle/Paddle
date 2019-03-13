@@ -635,7 +635,7 @@ class InferenceTranspiler(object):
             attrs=fc_attrs)
         return fc_op_new
 
-    def _fuse_conv_eltwise(self, conv_op, eltwise_op):
+    def _fuse_conv_eltwise(self, index, conv_op, eltwise_op):
         '''
         fuse the conv op with elementwise_add
 
