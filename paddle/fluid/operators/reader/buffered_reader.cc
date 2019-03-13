@@ -51,10 +51,10 @@ BufferedReader::BufferedReader(
                                              .Get(place_)))
             ->stream();
     events.resize(buffer_size);
-    PADDLE_ENFORCE(cudaStreamCreate(&stream));
     for (auto &event : events) {
       PADDLE_ENFORCE(cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
     }
+    PADDLE_ENFORCE(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
   }
 #endif
   cpu_buffer_.resize(buffer_size);
@@ -112,9 +112,10 @@ void BufferedReader::ReadAsync(size_t i) {
                        boost::get<platform::CUDAPlace>(cpu_place), cpu_ptr,
                        size, stream);
         } else {
+          // TODO(zcd): The default stream should not be used here.
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
                        boost::get<platform::CPUPlace>(cpu_place), cpu_ptr, size,
-                       stream);
+                       0);
         }
         gpu[i].set_lod(cpu[i].lod());
       }
