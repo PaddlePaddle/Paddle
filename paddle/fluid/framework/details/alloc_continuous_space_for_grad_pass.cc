@@ -21,12 +21,18 @@
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
+DEFINE_uint32(fuse_parameter_memory_size, 131072,  // 128 KB
+              "fuse_parameter_memory_size is the memory size of the fused "
+              "gradients. The default value is a experimental result."
+              "If the fuse_parameter_memory_size is 0, it means that "
+              "not set group according to memory_size.");
 DEFINE_int32(
     fuse_parameter_groups_size, 3,
     "fuse_parameter_groups_size is the group size of the fused "
-    "parameters and gradients. The default value is a experimental result."
+    "gradients. The default value is a experimental result."
     "If the fuse_parameter_groups_size is -1, it means that the groups size is "
-    "the number of parameters(gradients)");
+    "the number of parameters(gradients). If the fuse_parameter_groups_size is "
+    "0, it means that the size is.");
 
 namespace paddle {
 namespace framework {
@@ -122,6 +128,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       const ParamsAndGrads &params_grads,
       GroupGradsAndParams *group_params_grads) const {
     SetGroupAccordingToLayers(var_nodes, params_grads, group_params_grads);
+    SetGroupAccordingToMemorySize(var_nodes, group_params_grads);
     SetGroupAccordingToGroupSize(var_nodes, group_params_grads);
   }
 
@@ -170,16 +177,79 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     }
   }
 
+  void SetGroupAccordingToMemorySize(
+      const std::unordered_map<std::string, ir::Node *> &var_nodes,
+      GroupGradsAndParams *group_grads_params) const {
+    if (FLAGS_fuse_parameter_memory_size == 0) {
+      return;
+    }
+    size_t group_memory_size =
+        static_cast<size_t>(FLAGS_fuse_parameter_memory_size);
+    GroupGradsAndParams local_group_grads_params;
+
+    size_t j = 0;
+    while (j < group_grads_params->size()) {
+      local_group_grads_params.emplace_back();
+      auto &group_p_g = local_group_grads_params.back();
+      size_t local_group_memory_size = 0;
+      while (j < group_grads_params->size()) {
+        std::for_each(
+            group_grads_params->at(j).begin(), group_grads_params->at(j).end(),
+            [&local_group_memory_size,
+             &var_nodes](const std::pair<std::string, std::string> &g_p) {
+              auto iter = var_nodes.find(g_p.second);
+              PADDLE_ENFORCE(iter != var_nodes.end(), "%s is not found.",
+                             g_p.second);
+              auto shape = iter->second->Var()->GetShape();
+              size_t size =
+                  framework::SizeOfType(iter->second->Var()->GetDataType());
+              std::for_each(shape.begin(), shape.end(),
+                            [&size](const int64_t &n) { size *= n; });
+              local_group_memory_size += size;
+            });
+        group_p_g.insert(group_p_g.end(), group_grads_params->at(j).begin(),
+                         group_grads_params->at(j).end());
+        ++j;
+        if (local_group_memory_size >= group_memory_size) {
+          break;
+        }
+      }
+    }
+
+    std::swap(*group_grads_params, local_group_grads_params);
+
+    VLOG(10) << string::Sprintf(
+        "SetGroupAccordingToMemorySize(memory_size: %d):",
+        FLAGS_fuse_parameter_memory_size);
+    for (size_t i = 0; i < group_grads_params->size(); ++i) {
+      VLOG(10) << "group " << i;
+      std::stringstream out;
+      for (auto &g_p : group_grads_params->at(i)) {
+        auto iter = var_nodes.find(g_p.second);
+        PADDLE_ENFORCE(iter != var_nodes.end(), "%s is not found.", g_p.second);
+        auto shape = iter->second->Var()->GetShape();
+        size_t size = framework::SizeOfType(iter->second->Var()->GetDataType());
+        std::for_each(shape.begin(), shape.end(),
+                      [&size](const int64_t &n) { size *= n; });
+        out << string::Sprintf("(%s(%d), %s)", g_p.second, size, g_p.first);
+      }
+      VLOG(10) << out.str();
+    }
+  }
+
   void SetGroupAccordingToGroupSize(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
       GroupGradsAndParams *group_params_grads) const {
+    if (FLAGS_fuse_parameter_groups_size == 0) {
+      return;
+    }
     size_t group_size = static_cast<size_t>(FLAGS_fuse_parameter_groups_size);
-    GroupGradsAndParams local_group_grads_params;
     if (FLAGS_fuse_parameter_groups_size == -1) {
       group_size = group_params_grads->size();
     }
 
     size_t groups = (group_params_grads->size() + group_size - 1) / group_size;
+    GroupGradsAndParams local_group_grads_params;
     local_group_grads_params.reserve(groups);
 
     size_t j = 0;
