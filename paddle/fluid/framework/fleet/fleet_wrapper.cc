@@ -292,21 +292,31 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
 #endif
 }
 
-int FleetWrapper::registe_client2client_msg_handler(
+int FleetWrapper::RegisterClientToClientMsgHandler(
     int msg_type, MsgHandlerFunc handler) {
+#ifdef PADDLE_WITH_PSLIB
   pslib_ptr_->_worker_ptr->registe_client2client_msg_handler(
       msg_type, handler);
+#else
+  VLOG(0) << "FleetWrapper::RegisterClientToClientMsgHandler"
+          << " does nothing when no pslib";
+#endif
   return 0;
 }
 
-int FleetWrapper::send_client2client_msg(
+int FleetWrapper::SendClientToClientMsg(
     int msg_type, int to_client_id, const std::string& msg) {
+#ifdef PADDLE_WITH_PSLIB
   pslib_ptr_->_worker_ptr->send_client2client_msg(
       msg_type, to_client_id, msg);
+#else
+  VLOG(0) << "FleetWrapper::SendClientToClientMsg"
+          << " does nothing when no pslib";
+#endif
   return 0;
 }
 
-std::default_random_engine& FleetWrapper::local_random_engine() {
+std::default_random_engine& FleetWrapper::LocalRandomEngine() {
   struct engine_wrapper_t {
     std::default_random_engine engine;
     engine_wrapper_t() {
@@ -330,7 +340,7 @@ void FleetWrapper::Serialize(const T& t, std::string* str) {
   ar << t;
   *str = std::string(ar.buffer(), ar.length());
 #else
-  VLOG(0) << "FleetWrapper::Serialize do nothing when no pslib";
+  VLOG(0) << "FleetWrapper::Serialize does nothing when no pslib";
 #endif
 }
 
@@ -341,7 +351,7 @@ void FleetWrapper::Deserialize(T* t, const std::string& str) {
   ar.set_read_buffer(const_cast<char*>(str.c_str()), str.length(), nullptr);
   *t = ar.get<T>();
 #else
-  VLOG(0) << "FleetWrapper::Deserialize do nothing when no pslib";
+  VLOG(0) << "FleetWrapper::Deserialize does nothing when no pslib";
 #endif
 }
 

@@ -314,21 +314,21 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
     // todo get ins id
     // std::string ins_id = memory_data_[i].ins_id;
     // todo hash
-    int64_t random_num = fleet_ptr->local_random_engine()();
+    int64_t random_num = fleet_ptr->LocalRandomEngine()();
     int64_t node_id = random_num % trainer_num_;
     std::string str;
     SerializeIns((*memory_data_)[i], &str);
     send_str_vec[node_id] += str;
     if (i % fleet_send_batch_size_ == 0 && i != 0) {
       for (int j = 0; j < send_str_vec.size(); ++j) {
-        fleet_ptr->send_client2client_msg(0, j, send_str_vec[j]);
+        fleet_ptr->SendClientToClientMsg(0, j, send_str_vec[j]);
         send_str_vec[j] = "";
       }
     }
   }
   for (int j = 0; j < send_str_vec.size(); ++j) {
     if (send_str_vec[j].length() != 0) {
-      fleet_ptr->send_client2client_msg(0, j, send_str_vec[j]);
+      fleet_ptr->SendClientToClientMsg(0, j, send_str_vec[j]);
     }
   }
 }
