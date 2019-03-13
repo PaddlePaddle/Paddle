@@ -321,7 +321,7 @@ class QuantizationTransformPass(object):
         """Insert fake_quantize_moving_average_abs_max
         """
         quant_var_node = graph.create_var_node(
-            name=_quantized_var_name(var_node.name()),
+            name=self._quantized_var_name(var_node.name()),
             var_type=var_node.type(),
             shape=var_node.shape(),
             var_dtype=var_node.dtype())
@@ -333,19 +333,19 @@ class QuantizationTransformPass(object):
         self._need_initialized[scale_in_node.var()] = Constant(value=0.001)
 
         scale_out_node = graph.create_var_node_from_desc(scale_in_node.var())
-        ins = {'X': var, 'InScale': scale_in_node}
-        outs = {'Out': quant_var, 'OutScale': scale_out_node}
-        if not self.is_test:
+        ins = {'X': var_node, 'InScale': scale_in_node}
+        outs = {'Out': quant_var_node, 'OutScale': scale_out_node}
+        if not self._is_test:
             state_in_node = graph.create_persistable_node(
                 name=unique_name.generate('state'),
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
-                val_dtype=var_node.dtype(),
+                var_dtype=var_node.dtype(),
                 shape=[1])
             self._need_initialized[state_in_node.var()] = Constant(value=1)
             accum_in_node = graph.create_persistable_node(
                 name=unique_name.generate('accum'),
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
-                val_dtype=var_node.dtype(),
+                var_dtype=var_node.dtype(),
                 shape=[1])
             self._need_initialized[accum_in_node.var()] = Constant(value=1)
             state_out_node = graph.create_var_node_from_desc(state_in_node.var(
@@ -359,8 +359,8 @@ class QuantizationTransformPass(object):
 
         attrs = {
             'bit_length': quant_bits,
-            'moving_rate': self.moving_rate,
-            'is_test': self.is_test,
+            'moving_rate': self._moving_rate,
+            'is_test': self._is_test,
             'op_role': core.op_proto_and_checker_maker.OpRole.Forward
         }
 

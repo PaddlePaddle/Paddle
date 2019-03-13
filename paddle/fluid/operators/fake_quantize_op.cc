@@ -322,8 +322,8 @@ class FakeQuantizeMovingAverageAbsMaxOpMaker
   void Make() override {
     AddInput("X", "(Tensor) Input is float data type.");
     AddInput("InScale", "Last scale.");
-    AddInput("InAccum", "Last accum.");
-    AddInput("InState", "Last state.");
+    AddInput("InAccum", "Last accum.").AsDispensable();
+    AddInput("InState", "Last state.").AsDispensable();
     AddOutput("Out", "(Tensor) Output of quantized low level tensor.");
     AddOutput("OutScale", " Current scale");
     AddOutput("OutState", "(Tensor) state buffer.").AsDispensable();

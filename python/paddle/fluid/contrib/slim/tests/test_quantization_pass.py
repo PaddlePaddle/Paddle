@@ -161,7 +161,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
         self.linear_fc_quant('range_abs_max', for_ci=True)
 
     def test_linear_fc_quant_moving_average_abs_max(self):
-        self.linear_fc_quant('moving_average_abs_max')
+        self.linear_fc_quant('moving_average_abs_max', for_ci=True)
 
     def residual_block_quant(self, quant_type, for_ci=False):
         main = fluid.Program()
@@ -201,8 +201,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
         self.residual_block_quant('range_abs_max', for_ci=True)
 
     def test_residual_block_moving_average_abs_max(self):
-        self.act_quant_op_type = 'fake_quantize_moving_average_abs_max'
-        self.residual_block_quant('moving_average_abs_max')
+        self.residual_block_quant('moving_average_abs_max', for_ci=True)
 
 
 class TestQuantizationFreezePass(unittest.TestCase):
