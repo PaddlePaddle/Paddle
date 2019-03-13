@@ -39,7 +39,7 @@ function(inference_analysis_api_test TARGET INSTALL_DIR)
 
       set(TESTER_ARGS --infer_model=${INSTALL_DIR}/model --infer_data=${INSTALL_DIR}/data.txt)
     else()
-      set(TESTER_ARGS --infer_model=${install_dir}/model)
+      set(TESTER_ARGS --infer_model=${INSTALL_DIR}/model)
     endif()
   else()
     message(FATAL_ERROR "Model file should be specified for inference api tester.")
@@ -164,8 +164,8 @@ inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR}
     URL   "http://paddlemodels.cdn.bcebos.com/"
     MODEL "inference-vis-demos%2Focr.tar.gz"
     SRCS  analyzer_vis_tester.cc
-    ARGS  --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt
-          --refer_result=${install_dir}/result.txt
+    ARGS  --infer_model=${OCR_INSTALL_DIR}/model --infer_data=${OCR_INSTALL_DIR}/data.txt
+          --refer_result=${OCR_INSTALL_DIR}/result.txt
     SERIAL)
 
 # mobilenet with transpose op
@@ -174,8 +174,8 @@ inference_analysis_api_test(test_analyzer_mobilenet_transpose ${MOBILENET_INSTAL
     URL   "http://paddlemodels.cdn.bcebos.com/"
     MODEL "inference-vis-demos%2Fmobilenet.tar.gz"
     SRCS  analyzer_vis_tester.cc
-    ARGS  --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt
-          --refer_result=${install_dir}/result.txt
+    ARGS  --infer_model=${MOBILENET_INSTALL_DIR}/model --infer_data=${MOBILENET_INSTALL_DIR}/data.txt
+          --refer_result=${MOBILENET_INSTALL_DIR}/result.txt
     SERIAL)
 
 # googlenet
@@ -208,21 +208,25 @@ if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
   # anakin rnn1
   set(ANAKIN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/anakin")
   set(ANAKIN_RNN1_INSTALL_DIR "${ANAKIN_INSTALL_DIR}/rnn1")
-  inference_analysis_api_test(test_anakin_rnn1 ${ANAKIN_RNN1_INSTALL_DIR}
-      MODEL "anakin_test%2Fditu_rnn.anakin2.model.bin"
-      DATA  "anakin_test%2Fditu_rnn_data.txt"
-      SRCS  anakin_rnn1_tester.cc
-      ARGS  --model=${ANAKIN_RNN1_INSTALL_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin
-            --datapath=${ANAKIN_RNN1_INSTALL_DIR}/anakin_test%2Fditu_rnn_data.txt
-      EXTRA_DEPS inference_anakin_api_shared SERIAL)
+  inference_download(anakin_rnn1_download_deps ${ANAKIN_RNN1_INSTALL_DIR} ${INFERENCE_URL} "anakin_test%2Fditu_rnn.anakin2.model.bin")
+  inference_download(anakin_rnn1_download_deps ${ANAKIN_RNN1_INSTALL_DIR} ${INFERENCE_URL} "anakin_test%2Fditu_rnn_data.txt")
+  cc_test(test_anakin_rnn1 SRCS anakin_rnn1_tester.cc
+      ARGS --model=${ANAKIN_RNN1_INSTALL_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin
+           --datapath=${ANAKIN_RNN1_INSTALL_DIR}/anakin_test%2Fditu_rnn_data.txt
+      DEPS inference_anakin_api_shared SERIAL)
+  if(anakin_rnn1_download_deps)
+    add_download_dependencies(test_anakin_rnn1 ${anakin_rnn1_download_deps})
+  endif()
   # anakin mobilenet
   if(WITH_GPU)
     set(ANAKIN_MOBILENET_INSTALL_DIR "${ANAKIN_INSTALL_DIR}/mobilenet")
-    inference_analysis_api_test(test_anakin_mobilenet ${ANAKIN_MOBILENET_INSTALL_DIR}
-        MODEL "mobilenet_v2.anakin.bin"
-        SRCS anakin_mobilenet_tester.cc
+    inference_download(anakin_mobilenet_download_deps ${ANAKIN_MOBILENET_INSTALL_DIR} ${INFERENCE_URL} "mobilenet_v2.anakin.bin")
+    cc_test(test_anakin_mobilenet SRCS anakin_mobilenet_tester.cc
         ARGS --model=${ANAKIN_MOBILENET_INSTALL_DIR}/mobilenet_v2.anakin.bin
-        EXTRA_DEPS inference_anakin_api_shared dynload_cuda SERIAL)
+        DEPS inference_anakin_api_shared dynload_cuda SERIAL)
+    if(anakin_mobilenet_download_deps)
+      add_download_dependencies(test_anakin_mobilenet ${anakin_mobilenet_download_deps})
+    endif()
   endif()
 endif()
 
