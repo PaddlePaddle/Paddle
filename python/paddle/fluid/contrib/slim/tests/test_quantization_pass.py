@@ -12,6 +12,7 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
+import os
 import unittest
 import random
 import numpy as np
@@ -24,6 +25,9 @@ from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
 from paddle.fluid.contrib.slim.quantization import ConvertToInt8Pass
 from paddle.fluid.contrib.slim.quantization import TransformForMobilePass
 from paddle.fluid import core
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CPU_NUM"] = "1"
 
 
 def linear_fc(num):
@@ -255,7 +259,11 @@ class TestQuantizationFreezePass(unittest.TestCase):
                     marked_nodes.add(op)
             test_graph.draw('.', 'test' + dev_name + quant_type, marked_nodes)
 
-        quantized_main_program = main_graph.to_program()
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.memory_optimize = False
+        build_strategy.enable_inplace = False
+        binary = fluid.CompiledProgram(main_graph.graph).with_data_parallel(
+            loss_name=loss.name, build_strategy=build_strategy)
         quantized_test_program = test_graph.to_program()
         iters = 5
         batch_size = 8
@@ -270,7 +278,7 @@ class TestQuantizationFreezePass(unittest.TestCase):
         with fluid.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())
-                loss_v = exe.run(program=quantized_main_program,
+                loss_v = exe.run(binary,
                                  feed=feeder.feed(data),
                                  fetch_list=[loss])
                 if not for_ci:
