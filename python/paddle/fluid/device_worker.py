@@ -11,13 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 
 __all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD']
 
 
 class DeviceWorker(object):
     def __init__(self):
-        pass
+        self.program_ = None
+
+    def set_fleet_desc(self, fleet_desc):
+        self.fleet_desc_ = fleet_desc
+
+    def set_program(self, program):
+        self.program_ = program
 
     def gen_worker_desc(self, trainer_desc):
         pass
@@ -33,7 +40,7 @@ class Hogwild(DeviceWorker):
 
 class DownpourSGD(DeviceWorker):
     def __init__(self):
-        super(Downpour, self).__init__()
+        super(DownpourSGD, self).__init__()
 
     def gen_worker_desc(self, trainer_desc):
         trainer_desc.device_worker_name = "DownpourWorker"
@@ -41,33 +48,71 @@ class DownpourSGD(DeviceWorker):
         pull_thread.device_num = trainer_desc.thread_num
         dense_table = pull_thread.dense_table.add()
         dense_table.dense_value_name.extend(
-            fleet_desc.trainer_param.dense_table[0].dense_variable_name)
+            self.fleet_desc_.trainer_param.dense_table[0].dense_variable_name)
         dense_table.table_id = \
-                    fleet_desc.trainer_param.dense_table[0].table_id
+            self.fleet_desc_.trainer_param.dense_table[0].table_id
         downpour = trainer_desc.downpour_param
         sparse_table = downpour.sparse_table.add()
         sparse_table.table_id = \
-                    fleet_desc.trainer_param.sparse_table[0].table_id
+                    self.fleet_desc_.trainer_param.sparse_table[0].table_id
         sparse_table.sparse_key_name.extend(
-            fleet_desc.trainer_param.sparse_table[0].slot_key)
+            self.fleet_desc_.trainer_param.sparse_table[0].slot_key)
         sparse_table.sparse_value_name.extend(
-            fleet_desc.trainer_param.sparse_table[0].slot_value)
+            self.fleet_desc_.trainer_param.sparse_table[0].slot_value)
         sparse_table.sparse_grad_name.extend(
-            fleet_desc.trainer_param.sparse_table[0].slot_gradient)
-        sparse_table.emb_dim = fleet_desc.server_param.downpour_server_param.downpour_table_param[
-            0].accessor.fea_dim - 2
+            self.fleet_desc_.trainer_param.sparse_table[0].slot_gradient)
+        sparse_table.emb_dim = \
+                    self.fleet_desc_.server_param.downpour_server_param.downpour_table_param[
+                        0].accessor.fea_dim - 2
         sparse_table.fea_dim = sparse_table.emb_dim + 2
         # TODO(guru4elephant): hard code here, need to improve
         sparse_table.label_var_name = "click"
 
         dense_table = downpour.dense_table.add()
         dense_table.table_id = \
-                    fleet_desc.trainer_param.dense_table[0].table_id
+                    self.fleet_desc_.trainer_param.dense_table[0].table_id
         dense_table.dense_value_name.extend(
-            fleet_desc.trainer_param.dense_table[0].dense_variable_name)
-        dense_table.dense_grad_name.extend(fleet_desc.trainer_param.dense_table[
-            0].dense_gradient_variable_name)
-        downpour.skip_ops.extend(fleet_desc.trainer_param.skip_op)
+            self.fleet_desc_.trainer_param.dense_table[0].dense_variable_name)
+        dense_table.dense_grad_name.extend(
+            self.fleet_desc_.trainer_param.dense_table[
+                0].dense_gradient_variable_name)
+        downpour.skip_ops.extend(self.fleet_desc_.trainer_param.skip_op)
+
+        program_id = str(id(self.program_))
+        if self.program_ == None:
+            print("program of current device worker is not configured")
+            sys.exit(-1)
+        opt_info = self.program_._fleet_opt
+        program_configs = opt_info["program_configs"]
+
+        for program_id in program_configs:
+            if program_configs[program_id] == program_id:
+                pc = downpour.program_config.add()
+                pc.program_id = program_id
+                for i in program_configs[program_id]["push_sparse"]:
+                    pc.push_sparse_table_id.extend([i])
+                for i in program_configs[program_id]["push_dense"]:
+                    pc.push_dense_table_id.extend([i])
+                for i in program_configs[program_id]["pull_sparse"]:
+                    pc.pull_sparse_table_id.extend([i])
+                for i in program_configs[program_id]["pull_dense"]:
+                    pc.pull_dense_table_id.extend([i])
+                break
+        '''
+        for program_config in self.fleet_desc_.trainer_param.program_config:
+            if program_config.program_id == program_id:
+                pc = downpour.program_config.add()
+                pc.program_id = program_config.program_id
+                for i in program_config.push_sparse_table_id:
+                    pc.push_sparse_table_id.extend([i])
+                for i in program_config.push_dense_table_id:
+                    pc.push_dense_table_id.extend([i])
+                for i in program_config.pull_sparse_table_id:
+                    pc.pull_sparse_table_id.extend([i])
+                for i in program_config.pull_dense_table_id:
+                    pc.pull_dense_table_id.extend([i])
+                break
+        '''
 
 
 class DeviceWorkerFactory(object):
