@@ -42,6 +42,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("dropout");
     teller_set.insert("im2sequence");
     teller_set.insert("sum");
+    teller_set.insert("dropout");
   }
 
   bool operator()(const std::string& op_type,
