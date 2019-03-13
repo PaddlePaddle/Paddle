@@ -43,6 +43,7 @@ namespace pybind {
 void BindFleetWrapper(py::module* m) {
   py::class_<framework::FleetWrapper>(*m, "Fleet")
       .def(py::init())
+      .def("push_dense", &framework::FleetWrapper::PushDenseVarsSync)
       .def("init_server", &framework::FleetWrapper::InitServer)
       .def("init_worker", &framework::FleetWrapper::InitWorker)
       .def("stop_server", &framework::FleetWrapper::StopServer)
