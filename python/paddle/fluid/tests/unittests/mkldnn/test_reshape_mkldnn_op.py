@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -92,16 +92,23 @@ class TestMKLDNNReshapeOpWithInputShape(TestReshapeOpWithInputShape):
 
 
 def create_test_class(parent):
+
+    #--------------------test mkldnn reshape with fp32 input--------------------
+
     class TestFp32Case(parent):
         def initInput(self):
             self.input_data = np.random.random(self.ori_shape).astype('float32')
             self.data_type = 'float32'
+
+#--------------------test mkldnn reshape with s8 input----------------------
 
     class TestINT8Case(parent):
         def initInput(self):
             self.input_data = (
                 np.random.randint(0, 100, self.ori_shape) - 50).astype('int8')
             self.data_type = 'int8'
+
+#--------------------test mkldnn reshape with u8 input----------------------
 
     class TestUINT8Case(parent):
         def initInput(self):
@@ -118,7 +125,6 @@ def create_test_class(parent):
     globals()[cls_name_fp32] = TestFp32Case
     globals()[cls_name_int8] = TestINT8Case
     globals()[cls_name_uint8] = TestUINT8Case
-
 
 create_test_class(TestMKLDNNReshapeOpDimInfer1)
 create_test_class(TestReshapeOpDimInfer2)
