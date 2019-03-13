@@ -160,6 +160,8 @@ class Timeline(object):
                         self._devices[(k, event.device_id, "GPUKernel")] = pid
                         self._chrome_trace.emit_pid("%s:gpu:%d" %
                                                     (k, event.device_id), pid)
+            if not hasattr(profile_pb, "mem_events"):
+                continue
             for mevent in profile_pb.mem_events:
                 if mevent.place == profiler_pb2.MemEvent.CUDAPlace:
                     if (k, mevent.device_id, "GPU") not in self._mem_devices:
@@ -220,6 +222,8 @@ class Timeline(object):
                     event.sub_device_id, 'Op', event.name, args)
 
     def _allocate_memory_event(self):
+        if not hasattr(profiler_pb2, "MemEvent"):
+            return
         place_to_str = {
             profiler_pb2.MemEvent.CPUPlace: "CPU",
             profiler_pb2.MemEvent.CUDAPlace: "GPU",
