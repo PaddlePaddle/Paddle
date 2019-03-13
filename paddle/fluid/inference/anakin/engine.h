@@ -15,6 +15,7 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -55,8 +56,9 @@ class AnakinEngine {
   using GraphT = ::anakin::graph::Graph<TargetT, PrecisionType>;
 
  public:
-  explicit AnakinEngine(bool need_summary = false, int device = 0,
-                        int max_batch_size = 1);
+  explicit AnakinEngine(
+      bool need_summary = false, int device = 0, int max_batch_size = 1,
+      std::map<std::string, std::vector<int>> max_input_shape = {});
   ~AnakinEngine();
   void InitGraph();
   void SetInputShape(const std::string &name, std::vector<int> shape);
@@ -73,10 +75,16 @@ class AnakinEngine {
   NetT *Net() { return net_.get(); }
   GraphT *Graph() { return graph_.get(); }
   std::unique_ptr<AnakinEngine> Clone();
+  const std::map<std::string, std::vector<int>> &GetMaxInputShape() {
+    return max_input_shape_;
+  }
+  void SetMaxInputShape(std::map<std::string, std::vector<int>> shape) {
+    max_input_shape_ = shape;
+  }
+  int GetMaxBatchSize() { return max_batch_size_; }
   void Freeze();
   void Optimize();
   void Save(std::string path) { graph_->save(path); }
-  int GetMaxBatch() { return max_batch_size_; }
   // void SaveSerializedData(std::string& data) { graph_->save_to_string(data);
   // }
   // void LoadSerializedData(const std::string& data) {
@@ -87,6 +95,7 @@ class AnakinEngine {
 
  private:
   int max_batch_size_;
+  std::map<std::string, std::vector<int>> max_input_shape_;
   int device_;
   std::unique_ptr<GraphT> graph_;
   std::unique_ptr<NetT> net_;
@@ -104,11 +113,13 @@ class AnakinEngineManager {
     return engines_.at(name).get();
   }
 
-  AnakinNvEngineT *Create(bool need_summary, int device, int max_batch_size,
-                          std::string engine_name) {
+  AnakinNvEngineT *Create(
+      bool need_summary, int device, int max_batch_size,
+      std::map<std::string, std::vector<int>> max_input_shape,
+      std::string engine_name) {
     std::unique_lock<std::mutex> lk(mut_);
-    auto *p = new AnakinEngine<NV, Precision::FP32>(need_summary, device,
-                                                    max_batch_size);
+    auto *p = new AnakinEngine<NV, Precision::FP32>(
+        need_summary, device, max_batch_size, max_input_shape);
     engines_[engine_name].reset(p);
     return p;
   }

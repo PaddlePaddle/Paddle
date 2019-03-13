@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -78,25 +79,57 @@ class AnakinOpConverter {
       const std::vector<std::string> &outputs, AnakinNvEngine *engine) {
     framework::proto::BlockDesc *block_proto = block_desc->Proto();
     ConvertBlock(*block_proto, parameters, scope, engine);
+
     engine->Freeze();
+    /*
     for (auto &input : inputs) {
       if (parameters.count(input)) continue;
-      auto *var = block_desc->FindVar(input);
-      PADDLE_ENFORCE(var, "no variable called %s", input);
-
-      auto var_shape = var->GetShape();
-      PADDLE_ENFORCE(var_shape.size() == 4);
+      engine->Graph()->RegistVar(input);
+    }
+    */
+    // if the max_batch size
+    int max_batch_size = engine->GetMaxBatchSize();
+    PADDLE_ENFORCE(max_batch_size > 0,
+                   "the max_batch_size setted from config->EnableAnakinEngine "
+                   "must largger than 0");
+    // If the user does not specify this variable, we use the input shape from
+    // the block_desc.
+    auto max_input_shape = engine->GetMaxInputShape();
+    std::map<std::string, std::vector<int>> temp_max_input_shape;
+    std::cout << "max batch size: " << engine->GetMaxBatchSize() << std::endl;
+    std::cout << "max input shape " << engine->GetMaxInputShape().size()
+              << std::endl;
+    for (auto &input : inputs) {
+      if (parameters.count(input)) continue;
       std::vector<int> input_shape;
-      for (int i = 0; i < var_shape.size(); i++) {
-        input_shape.push_back(var_shape[i]);
-      }
-      input_shape[0] = engine->GetMaxBatch();
+      input_shape.resize(4);
+      input_shape[0] = max_batch_size;
+      if (max_input_shape.count(input)) {
+        PADDLE_ENFORCE(max_input_shape[input].size() == 4,
+                       "the dimensions of  max_input_shape setted from "
+                       "config->EnableAnakinEngine must be 4");
+        for (int i = 1; i < 4; i++) {
+          input_shape[i] = max_input_shape[input][i];
+        }
+      } else {
+        auto *var = block_desc->FindVar(input);
+        PADDLE_ENFORCE(var, "no variable called %s", input);
 
+        auto var_shape = var->GetShape();
+        PADDLE_ENFORCE(var_shape.size() == 4);
+
+        for (int i = 1; i < var_shape.size(); i++) {
+          input_shape[i] = var_shape[i];
+        }
+      }
+      temp_max_input_shape[input] = input_shape;
       engine->SetInputShape(input, input_shape);
     }
+    engine->SetMaxInputShape(temp_max_input_shape);
 
     // engine->Graph()->RegistAllOut();
     engine->Optimize();
+    // engine->Save("life_feature_register_out.saved");
     engine->InitGraph();
   }
 

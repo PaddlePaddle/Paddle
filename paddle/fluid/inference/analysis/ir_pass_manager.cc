@@ -74,6 +74,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("engine_opt_info", new std::map<std::string, std::string>(
                                        argument->engine_opt_info()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
+      pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
+                                       argument->anakin_max_input_shape()));
       pass->Set("max_batch_size", new int(argument->anakin_max_batch_size()));
     }
 
