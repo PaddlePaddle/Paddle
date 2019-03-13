@@ -300,7 +300,7 @@ paddle.fluid.layers.abs (ArgSpec(args=['x', 'name'], varargs=None, keywords=None
 paddle.fluid.layers.ceil (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'c75d67dc5fe28f68e4cfffead4f698ad'))
 paddle.fluid.layers.floor (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '647b16c5da5ef909649ae02abb434973'))
 paddle.fluid.layers.cos (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '485f2686bcc2fe37a4bd893769c8a3e2'))
-paddle.fluid.layers.acos (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'c71a4c313c0b6a509afaf76705e5c7e3'))
+paddle.fluid.layers.acos (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '920a47734482276c069ba24c61c26b25'))
 paddle.fluid.layers.asin (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'cf4ee2c9b9d7293556f8c5173dfb5d2c'))
 paddle.fluid.layers.sin (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '01f1766aa76eff1df30147505b59f7c4'))
 paddle.fluid.layers.round (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'b47f5da13913d3e56bdb1e612a73f3f2'))
