@@ -51,6 +51,8 @@ def visit_member(parent_name, member):
             all = (args, doc)
             member_dict[cur_name] = all
         except TypeError:  # special for PyBind method
+            if cur_name == "paddle.reader.ComposeNotAligned.__init__":
+                return
             member_dict[cur_name] = "  ".join([
                 line.strip() for line in pydoc.render_doc(member).split('\n')
                 if "->" in line
@@ -82,5 +84,5 @@ modules = sys.argv[1].split(",")
 for m in modules:
     visit_all_module(importlib.import_module(m))
 
-for name in member_dict:
-    print(name, member_dict[name])
+#for name in member_dict:
+#print(name, member_dict[name])
