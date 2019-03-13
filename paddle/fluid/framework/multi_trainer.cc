@@ -65,6 +65,7 @@ void MultiTrainer::Finalize() {
   for (auto& th : threads_) {
     th.join();
   }
+  // todo  dataset->DestroyReaders();
 }
 
 }  // end namespace framework
