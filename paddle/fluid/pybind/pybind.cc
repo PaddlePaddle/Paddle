@@ -86,6 +86,22 @@ bool IsCompiledWithCUDA() {
 #endif
 }
 
+bool IsCompiledWithMKLDNN() {
+#ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithNGRAPH() {
+#ifndef PADDLE_WITH_NGRAPH
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithBrpc() {
 #ifndef PADDLE_WITH_DISTRIBUTE
   return false;
@@ -104,6 +120,11 @@ bool IsCompiledWithDIST() {
 #else
   return false;
 #endif
+}
+
+template <typename PlaceType1, typename PlaceType2>
+static inline bool IsSamePlace(const PlaceType1 &p1, const PlaceType2 &p2) {
+  return paddle::platform::Place(p1) == paddle::platform::Place(p2);
 }
 
 PYBIND11_MODULE(core, m) {
@@ -136,8 +157,14 @@ PYBIND11_MODULE(core, m) {
         []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
   py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
-      // .def(py::init<>())
-      .def(py::init<bool>(), py::arg("stop_gradient") = false)
+      .def(
+          py::init<const std::string &, paddle::framework::proto::VarType::Type,
+                   const std::vector<int64_t>, const paddle::platform::CPUPlace,
+                   bool, bool>())
+      .def(
+          py::init<const std::string &, paddle::framework::proto::VarType::Type,
+                   const std::vector<int64_t>,
+                   const paddle::platform::CUDAPlace, bool, bool>())
       .def("_run_backward",
            [](imperative::VarBase &self) { self.RunBackward(); })
       .def("_grad_name", &imperative::VarBase::GradName)
@@ -164,30 +191,31 @@ PYBIND11_MODULE(core, m) {
            py::return_value_policy::take_ownership)
       .def("value", [](const imperative::VarBase &self) { return self.var_; },
            py::return_value_policy::reference)
-      .def_property(
-          "desc",
-          [](const imperative::VarBase &self) { return self.var_desc_; },
-          [](imperative::VarBase &self, framework::VarDesc *var_desc) {
-            self.var_desc_ = var_desc;
-          },
-          py::return_value_policy::reference)
-      .def_property(
-          "stop_gradient",
-          [](const imperative::VarBase &self) { return self.IsStopGradient(); },
-          [](imperative::VarBase &self, bool stop_gradient) {
-            self.SetStopGradient(stop_gradient);
-          });
+      .def_property("name", &imperative::VarBase::Name,
+                    &imperative::VarBase::SetName)
+      .def_property_readonly("shape", &imperative::VarBase::Shape)
+      .def_property_readonly("dtype", &imperative::VarBase::DType)
+      .def_property("persistable", &imperative::VarBase::IsPersistable,
+                    &imperative::VarBase::SetPersistable)
+      .def_property("stop_gradient", &imperative::VarBase::IsStopGradient,
+                    &imperative::VarBase::SetStopGradient);
 
   py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
-      .def(py::init<>())
-      .def_property(
-          "desc", [](const imperative::OpBase &self) { return self.op_desc_; },
-          [](imperative::OpBase &self, framework::OpDesc *op_desc) {
-            if (op_desc) {
-              self.op_desc_ = op_desc;
-            }
-          },
-          py::return_value_policy::reference)
+      .def(py::init<const std::string &>())
+      .def("register_backward_hooks",
+           [](imperative::OpBase &self, const py::object &callable) {
+             self.RegisterBackwardHooks(callable);
+           })
+      .def_property("_trace_id",
+                    [](const imperative::OpBase &self) {
+                      pybind11::gil_scoped_release release;
+                      return self.trace_id_;
+                    },
+                    [](imperative::OpBase &self, int trace_id) {
+                      pybind11::gil_scoped_release release;
+                      self.trace_id_ = trace_id;
+                    },
+                    py::return_value_policy::reference)
       .def_property(
           "forward_id",
           [](const imperative::OpBase &self) { return self.forward_id_; },
@@ -216,7 +244,17 @@ PYBIND11_MODULE(core, m) {
           "apply",
           [](int func_id, const std::vector<imperative::VarBase *> &inputs)
               -> std::vector<imperative::VarBase *> {
-                return imperative::PyLayer::Apply(func_id, inputs);
+                auto ret_vars = imperative::PyLayer::Apply(func_id, inputs);
+                std::vector<imperative::VarBase *> outputs;
+                outputs.reserve(ret_vars.size());
+                for (size_t i = 0U; i != ret_vars.size(); ++i) {
+                  framework::Variable *v = ret_vars[i];
+                  // TODO(minqiyang): use unique_name generator to set a name
+                  outputs.emplace_back(
+                      new imperative::VarBase("", v, nullptr, true));
+                }
+
+                return outputs;
               },
           py::return_value_policy::take_ownership)
       .def_static("register_func",
@@ -373,7 +411,13 @@ PYBIND11_MODULE(core, m) {
              PADDLE_ENFORCE(CheckLoD(new_lod, vectorize(self.dims()).front()),
                             "the provided lod info is invalid");
              self.set_lod(new_lod);
-           })
+           },
+           py::arg("lod"), R"DOC(
+           Set LoD of the LoDTensor.
+
+           Args:
+               lod (List[List[int]]): the lod to be set.
+           )DOC")
       .def("set_recursive_sequence_lengths",
            [](LoDTensor &self, const std::vector<std::vector<size_t>>
                                    &recursive_sequence_lengths) {
@@ -389,7 +433,17 @@ PYBIND11_MODULE(core, m) {
                  CheckLoD(new_offset_lod, vectorize(self.dims()).front()),
                  "the provided recursive_sequence_lengths info is invalid");
              self.set_lod(new_offset_lod);
-           })
+           },
+           py::arg("recursive_sequence_lengths"), R"DOC(
+           Set LoD of the LoDTensor according to recursive sequence length.
+
+           For example, if recursive_sequence_lengths=[[2, 3]], meaning that
+           there are two sequences with length 2 and 3 respectively, the
+           corresponding lod would be [[0, 2, 2+3]], i.e, [[0, 2, 5]].
+
+           Args:
+                recursive_sequence_lengths (List[List[int]]): sequence lengths.
+           )DOC")
       .def("lod",
            [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
              // output the offset-based lod info
@@ -398,7 +452,13 @@ PYBIND11_MODULE(core, m) {
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
              return new_lod;
-           })
+           },
+           R"DOC(
+           Return the LoD of the LoDTensor.
+
+           Returns:
+               out (List[List[int]]): the lod of the LoDTensor.
+           )DOC")
       // Set above comments of set_lod.
       .def("recursive_sequence_lengths",
            [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
@@ -408,12 +468,25 @@ PYBIND11_MODULE(core, m) {
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
              return new_lod;
-           })
-      .def("has_valid_recursive_sequence_lengths", [](LoDTensor &self) -> bool {
-        // Check that the lod info is valid and match the outermost
-        // dimension of the LoDTensor data
-        return CheckLoD(self.lod(), vectorize(self.dims()).front());
-      });
+           },
+           R"DOC(
+           Return the sequence length of the LoDTensor corresponding to LoD.
+
+           Returns:
+               out (List[List[int]): the sequence lengths.
+           )DOC")
+      .def("has_valid_recursive_sequence_lengths",
+           [](LoDTensor &self) -> bool {
+             // Check that the lod info is valid and match the outermost
+             // dimension of the LoDTensor data
+             return CheckLoD(self.lod(), vectorize(self.dims()).front());
+           },
+           R"DOC(
+           Check whether the lod of the LoDTensor is valid.
+
+           Returns:
+               out (bool): whether the lod is valid.
+           )DOC");
 
   py::class_<SelectedRows>(m, "SelectedRows")
       .def("__init__",
@@ -549,11 +622,45 @@ All parameter, weight, gradient are variables in Paddle.
            [](Scope &self, const std::string &name) -> Variable * {
              return self.Var(name);
            },
+           py::arg("name"),
+           R"DOC(
+           Find or create variable named :code:`name` in the current scope.
+
+           If the variable named :code:`name` does not exist in the
+           current scope, the variable would be created. Otherwise,
+           return the existing variable.
+
+           Args:
+               name (str): the variable name.
+
+           Returns:
+               out (core.Variable): the found or created variable.
+           )DOC",
            py::return_value_policy::reference)
-      .def("find_var", &Scope::FindVar, py::return_value_policy::reference)
+      .def("find_var", &Scope::FindVar, py::arg("name"),
+           R"DOC(
+           Find variable named :code:`name` in the current scope or
+           its parent scope. Return None if not found.
+
+           Args:
+               name (str): the variable name.
+
+           Returns:
+               out (core.Variable|None): the found variable or None.
+           )DOC",
+           py::return_value_policy::reference)
       .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
+           R"DOC(
+           Create a new sub-scope of the current scope.
+
+           Returns:
+               out (core._Scope): the created sub-scope.
+           )DOC",
            py::return_value_policy::reference)
-      .def("drop_kids", &Scope::DropKids);
+      .def("drop_kids", &Scope::DropKids,
+           R"DOC(
+           Delete all sub-scopes of the current scope.
+           )DOC");
 
   m.def("Scope",
         []() -> Scope * {
@@ -561,6 +668,12 @@ All parameter, weight, gradient are variables in Paddle.
           ScopePool::Instance().Insert(std::unique_ptr<Scope>(s));
           return s;
         },
+        R"DOC(
+        Create a new scope.
+
+        Returns:
+            out (core._Scope): the created scope.
+        )DOC",
         py::return_value_policy::reference);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
@@ -657,23 +770,45 @@ All parameter, weight, gradient are variables in Paddle.
              PADDLE_THROW("Cannot use CUDAPlace in CPU only version");
 #endif
            })
+      .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::Place>)
+      .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CUDAPlace>)
+      .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CPUPlace>)
+      .def("_equals",
+           &IsSamePlace<platform::CUDAPlace, platform::CUDAPinnedPlace>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
       .def(py::init<>())
+      .def("_equals", &IsSamePlace<platform::CPUPlace, platform::Place>)
+      .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CUDAPlace>)
+      .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CPUPlace>)
+      .def("_equals",
+           &IsSamePlace<platform::CPUPlace, platform::CUDAPinnedPlace>)
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
   py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace")
       .def("__init__",
-           [](platform::CUDAPinnedPlace &) {
+           [](platform::CUDAPinnedPlace &self) {
 #ifndef PADDLE_WITH_CUDA
              PADDLE_THROW("Cannot use CUDAPinnedPlace in CPU only version");
 #endif
+             new (&self) platform::CUDAPinnedPlace();
            })
+      .def("_equals", &IsSamePlace<platform::CUDAPinnedPlace, platform::Place>)
+      .def("_equals",
+           &IsSamePlace<platform::CUDAPinnedPlace, platform::CUDAPlace>)
+      .def("_equals",
+           &IsSamePlace<platform::CUDAPinnedPlace, platform::CPUPlace>)
+      .def("_equals",
+           &IsSamePlace<platform::CUDAPinnedPlace, platform::CUDAPinnedPlace>)
       .def("__str__", string::to_string<const platform::CUDAPinnedPlace &>);
 
   py::class_<platform::Place>(m, "Place")
       .def(py::init<>())
+      .def("_equals", &IsSamePlace<platform::Place, platform::Place>)
+      .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPlace>)
+      .def("_equals", &IsSamePlace<platform::Place, platform::CPUPlace>)
+      .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPinnedPlace>)
       .def("is_gpu_place",
            [](platform::Place &self) { return platform::is_gpu_place(self); })
       .def("gpu_device_id",
@@ -735,9 +870,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
-                     int block_id, bool create_local_scope, bool create_vars) {
+                     int block_id, bool create_local_scope, bool create_vars,
+                     const std::vector<std::string> &fetch_vars) {
         pybind11::gil_scoped_release release;
-        self.Run(prog, scope, block_id, create_local_scope, create_vars);
+        self.Run(prog, scope, block_id, create_local_scope, create_vars,
+                 fetch_vars);
       });
 
   m.def("init_gflags", framework::InitGflags);
@@ -745,7 +882,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_devices",
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
+  m.def("is_compiled_with_ngraph", IsCompiledWithNGRAPH);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
 #ifdef PADDLE_WITH_CUDA
@@ -789,11 +928,13 @@ All parameter, weight, gradient are variables in Paddle.
              self[i].ShareDataWith(t);
              self[i].set_lod(t.lod());
            })
-      .def("append", [](LoDTensorArray &self, const LoDTensor &t) {
-        self.emplace_back();
-        self.back().ShareDataWith(t);
-        self.back().set_lod(t.lod());
-      });
+      .def("append",
+           [](LoDTensorArray &self, const LoDTensor &t) {
+             self.emplace_back();
+             self.back().ShareDataWith(t);
+             self.back().set_lod(t.lod());
+           },
+           py::arg("tensor"), "Append a LoDensor to LoDTensorArray.");
 
   m.def("IsInplace",
         [](std::string op) -> bool { return operators::IsInplace(op); });
@@ -872,6 +1013,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
 
   // -- python binds for parallel executor.
+
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
   py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
     ExecutionStrategy allows the user to more preciously control how to run
@@ -1109,9 +1251,9 @@ All parameter, weight, gradient are variables in Paddle.
                 cannot be updated after being finalized.)DOC");
 
   pe.def(py::init<const std::vector<platform::Place> &,
-                  const std::unordered_set<std::string> &, const ProgramDesc &,
-                  const std::string &, Scope *, std::vector<Scope *> &,
-                  const ExecutionStrategy &, const BuildStrategy &>())
+                  const std::vector<std::string> &, const std::string &,
+                  Scope *, std::vector<Scope *> &, const ExecutionStrategy &,
+                  const BuildStrategy &, ir::Graph *>())
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
       // We still cannot get local_scope from this vector, since the element
       // of vec<Scope*> will be freed by Python GC. We can only return Scope*
