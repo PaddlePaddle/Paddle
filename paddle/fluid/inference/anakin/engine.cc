@@ -34,10 +34,12 @@ namespace anakin {
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine(bool need_summary,
-                                                            int device)
+                                                            int device,
+                                                            int max_batch_size)
     : graph_(new AnakinGraphT<TargetT, PrecisionType>()),
       net_(new AnakinNetT<TargetT, PrecisionType, RunType>(need_summary)) {
   device_ = device;
+  max_batch_size_ = max_batch_size;
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -71,8 +73,8 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
   for (const auto &input : inputs) {
     auto *tensor = input.second;
     auto *data = tensor->data<float>();
-    auto fluid_input_shape = framework::vectorize2int(tensor->dims());
 
+    auto fluid_input_shape = framework::vectorize2int(tensor->dims());
     auto *anakin_input = net_->get_in(input.first);
     auto net_shape = anakin_input->shape();
     if (tensor->numel() > net_shape.count()) {
@@ -84,11 +86,13 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
 
     anakin_input->reshape(fluid_input_shape);
     net_shape = anakin_input->shape();
-    ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
-                                                       net_shape);
-    anakin_input->share_from(tmp_anakin_tensor);
-  }
 
+    ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
+                                                       // net_shape);
+                                                       fluid_input_shape);
+    anakin_input->copy_from(tmp_anakin_tensor);
+  }
+  cudaDeviceSynchronize();
   net_->prediction();
   for (const auto &output : outputs) {
     platform::CUDAPlace gpu_place(device_);
@@ -98,12 +102,10 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     auto anakin_output_shape = anakin_output->valid_shape();
     tensor->Resize(framework::make_ddim(anakin_output_shape));
     auto *fluid_data = tensor->mutable_data<float>(gpu_place);
-
     memory::Copy(gpu_place, static_cast<void *>(fluid_data), gpu_place,
                  static_cast<void *>(anakin_data),
                  tensor->numel() * sizeof(float), stream);
   }
-
   cudaDeviceSynchronize();
 }
 
