@@ -107,10 +107,6 @@ const Scope* Scope::FindScope(const Variable* var) const {
   return FindScopeInternal(var);
 }
 
-bool Scope::HasLocalVar(const std::string& name) const {
-  return vars_.find(name) != vars_.end();
-}
-
 void Scope::DropKids() {
   SCOPE_KIDS_WRITER_LOCK
   for (Scope* s : kids_) delete s;
