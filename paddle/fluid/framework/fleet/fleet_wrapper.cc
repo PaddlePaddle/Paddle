@@ -38,10 +38,9 @@ std::shared_ptr<FleetWrapper> FleetWrapper::s_instance_ = NULL;
 bool FleetWrapper::is_initialized_ = false;
 
 #ifdef PADDLE_WITH_PSLIB
-template<class AR>
-paddle::ps::Archive<AR>& operator << (
-    paddle::ps::Archive<AR>& ar,
-    const MultiSlotType& ins) {
+template <class AR>
+paddle::ps::Archive<AR>& operator<<(paddle::ps::Archive<AR>& ar,
+                                    const MultiSlotType& ins) {
   ar << ins.GetType();
   ar << ins.GetOffset();
   ar << ins.GetFloatData();
@@ -49,10 +48,9 @@ paddle::ps::Archive<AR>& operator << (
   return ar;
 }
 
-template<class AR>
-paddle::ps::Archive<AR>& operator >> (
-    paddle::ps::Archive<AR>& ar,
-    MultiSlotType& ins) {
+template <class AR>
+paddle::ps::Archive<AR>& operator>>(paddle::ps::Archive<AR>& ar,
+                                    MultiSlotType& ins) {
   ar >> ins.MutableType();
   ar >> ins.MutableOffset();
   ar >> ins.MutableFloatData();
@@ -205,6 +203,10 @@ void FleetWrapper::PullDenseVarsSync(
 #endif
 }
 
+void FleetWrapper::PushDenseVarsSync(
+    Scope* scope, const uint64_t table_id,
+    const std::vector<std::string>& var_names) {}
+
 void FleetWrapper::PushDenseVarsAsync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names,
@@ -324,8 +326,7 @@ std::default_random_engine& FleetWrapper::LocalRandomEngine() {
       clock_gettime(CLOCK_REALTIME, &tp);
       double cur_time = tp.tv_sec + tp.tv_nsec * 1e-9;
       static std::atomic<uint64_t> x(0);
-      std::seed_seq sseq = {x++, x++, x++,
-          (uint64_t)(cur_time * 1000)};
+      std::seed_seq sseq = {x++, x++, x++, (uint64_t)(cur_time * 1000)};
       engine.seed(sseq);
     }
   };
@@ -333,7 +334,7 @@ std::default_random_engine& FleetWrapper::LocalRandomEngine() {
   return r.engine;
 }
 
-template<typename T>
+template <typename T>
 void FleetWrapper::Serialize(const T& t, std::string* str) {
 #ifdef PADDLE_WITH_PSLIB
   paddle::ps::BinaryArchive ar;
@@ -344,7 +345,7 @@ void FleetWrapper::Serialize(const T& t, std::string* str) {
 #endif
 }
 
-template<typename T>
+template <typename T>
 void FleetWrapper::Deserialize(T* t, const std::string& str) {
 #ifdef PADDLE_WITH_PSLIB
   paddle::ps::BinaryArchive ar;
@@ -357,8 +358,8 @@ void FleetWrapper::Deserialize(T* t, const std::string& str) {
 
 template void FleetWrapper::Serialize<std::vector<MultiSlotType>>(
     const std::vector<MultiSlotType>&, std::string*);
-template void FleetWrapper::Deserialize(
-    std::vector<MultiSlotType>*, const std::string&);
+template void FleetWrapper::Deserialize(std::vector<MultiSlotType>*,
+                                        const std::string&);
 
 }  // end namespace framework
 }  // end namespace paddle
