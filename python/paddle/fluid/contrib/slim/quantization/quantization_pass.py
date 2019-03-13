@@ -352,6 +352,7 @@ class QuantizationTransformPass(object):
             ))
             accum_out_node = graph.create_var_node_from_desc(accum_in_node.var(
             ))
+
             ins['InState'] = state_in_node
             ins['InAccum'] = accum_in_node
             outs['OutState'] = state_out_node
