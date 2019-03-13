@@ -32,12 +32,6 @@ enum class ScaleAlgo {
   KL,      // Find scale based on KL Divergence
 };
 
-// The max value of a quantized integer.
-enum class QuantMax : unsigned int {
-  U8_MAX = 255,
-  S8_MAX = 127,
-};
-
 struct QuantizerConfig {
   QuantizerConfig();
 
