@@ -51,8 +51,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 // (f,w2,b2)->Conv2->i
 ProgramDesc BuildProgramDesc(bool use_mkldnn, float scale1, float scale2) {
   ProgramDesc prog;
-  for (auto& v : std::initializer_list<std::string>{"a", "w1", "b1", "d", "e",
-                                                    "f", "w2", "b2", "i"}) {
+  for (auto& v : std::initializer_list<std::string>(
+           {"a", "w1", "b1", "d", "e", "f", "w2", "b2", "i"})) {
     auto* var = prog.MutableBlock(0)->Var(v);
     if (v.find("w") == 0 || v.find("b") == 0) {
       var->SetPersistable(true);
