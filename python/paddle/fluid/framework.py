@@ -2707,6 +2707,7 @@ class Program(object):
         # if this program has been optimized by distributed optimizer
         # fleet_opt will be given a value
         self._fleet_opt = None
+        self._program_config = None
 
     @property
     def _is_mem_optimized(self):
