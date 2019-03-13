@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <fstream>
 
-#include "paddl e/fluid/platform/device_context.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -30,8 +30,9 @@ class LoadOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        ctx.Output<framework::LoDTensor>("Out")->type(), ctx.GetPlace());
+    framework::OpKernelType kt = framework::OpKernelType(
+        framework::proto::VarType::FP32, platform::CPUPlace());
+    return kt;
   }
 };
 

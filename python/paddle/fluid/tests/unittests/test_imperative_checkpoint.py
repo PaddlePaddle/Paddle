@@ -118,8 +118,8 @@ class TestImperativeCheckpoint(unittest.TestCase):
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
             dy_param_init_value = {}
-            para_list = []
 
+            step = 0
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(train_reader()):
                     dy_x_data = np.array(
@@ -138,28 +138,30 @@ class TestImperativeCheckpoint(unittest.TestCase):
 
                     dy_out = avg_loss._numpy()
 
-                    if epoch == 0 and batch_id == 0:
-                        para_list = [p for p in mnist.parameters()]
-
                     avg_loss._backward()
                     sgd.minimize(avg_loss)
+                    fluid.imperative.save_persistables(mnist, "save_dir")
                     mnist.clear_gradients()
-
-                    fluid.imperative.save_persistables(mnist.parameters(),
-                                                       "save_dir")
 
                     for param in mnist.parameters():
                         dy_param_init_value[param.name] = param._numpy()
 
-            poad_dict = fluid.imperative.load_persistables(para_list,
-                                                           "save_dir")
+                    mnist.load_dict(
+                        fluid.imperative.load_persistables(mnist, "save_dir"))
 
-        for key, value in six.iteritems(dy_param_init_value):
-            self.assertEqual(len(dy_param_init_value), len(poad_dict))
+                    restore = mnist.parameters()
 
-            self.assertTrue(np.allclose(value, poad_dict[key]))
-            self.assertTrue(np.isfinite(value.all()))
-            self.assertFalse(np.isnan(value.any()))
+                    self.assertEqual(len(dy_param_init_value), len(restore))
+                    for value in restore:
+                        self.assertTrue(
+                            np.allclose(value, dy_param_init_value[value.name]))
+                        self.assertTrue(np.isfinite(value.all()))
+                        self.assertFalse(np.isnan(value.any()))
+
+                    step += 1
+
+                    if step > 20:
+                        break
 
 
 if __name__ == '__main__':

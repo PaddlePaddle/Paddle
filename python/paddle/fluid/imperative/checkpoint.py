@@ -15,14 +15,16 @@
 from __future__ import print_function
 
 import os
+import collections
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.framework import Variable
+from paddle.fluid.framework import Variable, Parameter
+from paddle.fluid.imperative.layers import Layer
 
 __all__ = ['save_persistables', 'load_persistables']
 
 
-def save_persistables(var_list, dirname, filename=None):
+def save_persistables(obj, dirname, filename=None):
     """
     This function filters out all variables in layer.parameters from the
     give `layer` and then trys to load these variables from the folder
@@ -34,7 +36,7 @@ def save_persistables(var_list, dirname, filename=None):
     the file name.
 
     Args:
-        var_list(list of Parameters): The parameters will
+        var_list(dict of Parameters|Layer): The parameters will
                                     be saved. If it is None, nothing
                                     will be deal.
         dirname(str): The directory path.
@@ -71,11 +73,14 @@ def save_persistables(var_list, dirname, filename=None):
             fluid.imperative.checkpoint.save_persistables(ptb_model.parameters(), dirname=param_path,
                                        layer=ptb_model)
     """
-    if var_list:
-        _save_var_to_file(var_list, dirname, filename)
+    if isinstance(obj, collections.OrderedDict):
+        _save_var_to_file(obj, dirname, filename)
+    elif isinstance(obj, Layer):
+        _save_var_to_file(
+            obj.state_dict(include_sublayers=True), dirname, filename)
 
 
-def load_persistables(var_list, dirname, filename=None):
+def load_persistables(obj, dirname, filename=None):
     """
     This function trys to load persistable variables from the folder
     `dirname` or the file `filename`.
@@ -86,7 +91,7 @@ def load_persistables(var_list, dirname, filename=None):
     the file name.
 
     Args:
-        var_list(list of Parameters): The parameters will be loaded.
+        obj(dict of Parameters|Layer): The parameters will be loaded.
         dirname(str): The directory path.
         filename(str|None): The file which saved all variables, this file path should be end with '.npz'. If variables were
                             saved in differnet files, set it to None.
@@ -107,21 +112,24 @@ def load_persistables(var_list, dirname, filename=None):
             my_layer = layer(fluid.imperative.Layer)
             param_path = "./my_paddle_model"
             filename = "model.file"
-            param_dict = fluid.imperative.checkpoint.load_persistables(my_layer.parameters(), var_list, param_path,
+            param_dict = fluid.imperative.checkpoint.load_persistables(my_layer, var_list, param_path,
                                                                        filename=filename)
             param_1 = param_dict['PtbModel_0.w_1']
 
         """
-    if var_list:
-        return _load_var_from_file(var_list, dirname, filename)
+    if isinstance(obj, collections.OrderedDict):
+        return _load_var_from_file(obj, dirname, filename)
+    elif isinstance(obj, Layer):
+        return _load_var_from_file(
+            obj.state_dict(include_sublayers=True), dirname, filename)
 
     return {}
 
 
-def _save_var_to_file(var_list, file_dir, file_name):
+def _save_var_to_file(stat_dict, file_dir, file_name):
     save_block = fluid.default_main_program().global_block()
     save_var_map = {}
-    for each_var in var_list:
+    for each_var in stat_dict.items():
         save_var_map[each_var.name] = each_var
         if file_name is None:
             save_block.append_op(
@@ -142,17 +150,15 @@ def _save_var_to_file(var_list, file_dir, file_name):
             attrs={'file_path': os.path.join(file_dir, file_name)})
 
 
-def _load_var_from_file(var_list, file_dir, file_name):
+def _load_var_from_file(stat_dict, file_dir, file_name):
     load_block = fluid.default_main_program().global_block()
     load_var_map = {}
-    load_var_list_fetch = []
 
-    for each_var in var_list:
+    for each_var in stat_dict.items():
         assert isinstance(each_var, Variable)
         if each_var.type == core.VarDesc.VarType.RAW:
             continue
         new_var = _clone_var_in_block_(load_block, each_var)
-        load_var_list_fetch.append(new_var.name)
         if file_name is None:
             load_block.append_op(
                 type='load',
