@@ -17,9 +17,9 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "mkldnn.hpp"
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_MKLDNN
+#include "mkldnn.hpp"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
