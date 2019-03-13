@@ -121,36 +121,88 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
       const ParamsAndGrads &params_grads,
       GroupGradsAndParams *group_params_grads) const {
-    SetGroupAccordingToGroupSize(var_nodes, params_grads, group_params_grads);
+    SetGroupAccordingToLayers(var_nodes, params_grads, group_params_grads);
+    SetGroupAccordingToGroupSize(var_nodes, group_params_grads);
+  }
+
+  void SetGroupAccordingToLayers(
+      const std::unordered_map<std::string, ir::Node *> &var_nodes,
+      const ParamsAndGrads &params_grads,
+      GroupGradsAndParams *group_params_grads) const {
+    std::unordered_map<std::string, std::vector<int>> layer_params;
+
+    for (size_t i = 0; i < params_grads.size(); ++i) {
+      auto pos = params_grads[i].first.find_first_of(".");
+      if (pos == std::string::npos) {
+        layer_params["@UNKNOW@"].emplace_back(i);
+      } else {
+        layer_params[params_grads[i].first.substr(0, pos)].emplace_back(i);
+      }
+    }
+
+    group_params_grads->reserve(layer_params.size());
+    for (size_t i = 0; i < params_grads.size(); ++i) {
+      auto pos = params_grads[i].first.find_first_of(".");
+      std::string key = "@UNKNOW@";
+      if (pos != std::string::npos) {
+        key = params_grads[i].first.substr(0, pos);
+      }
+      auto iter = layer_params.find(key);
+      if (iter == layer_params.end()) continue;
+
+      group_params_grads->emplace_back();
+      auto &local_group_grads_params = group_params_grads->back();
+      for (auto &idx : iter->second) {
+        local_group_grads_params.emplace_back(
+            std::make_pair(params_grads[idx].second, params_grads[idx].first));
+      }
+      layer_params.erase(iter);
+    }
+
+    VLOG(10) << "SetGroupAccordingToLayers: ";
+    for (size_t i = 0; i < group_params_grads->size(); ++i) {
+      VLOG(10) << "group " << i;
+      std::stringstream out;
+      for (auto &p_g : group_params_grads->at(i)) {
+        out << "(" << p_g.second << ", " << p_g.first << "), ";
+      }
+      VLOG(10) << out.str();
+    }
   }
 
   void SetGroupAccordingToGroupSize(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
-      const ParamsAndGrads &params_grads,
       GroupGradsAndParams *group_params_grads) const {
     size_t group_size = static_cast<size_t>(FLAGS_fuse_parameter_groups_size);
+    GroupGradsAndParams local_group_grads_params;
     if (FLAGS_fuse_parameter_groups_size == -1) {
-      group_size = params_grads.size();
+      group_size = group_params_grads->size();
     }
-    VLOG(10) << "Group size: " << group_size;
-    size_t groups = (params_grads.size() + group_size - 1) / group_size;
-    group_params_grads->reserve(groups);
+
+    size_t groups = (group_params_grads->size() + group_size - 1) / group_size;
+    local_group_grads_params.reserve(groups);
 
     size_t j = 0;
     for (size_t i = 0; i < groups; ++i) {
-      group_params_grads->emplace_back();
-      auto &group_p_g = group_params_grads->back();
+      local_group_grads_params.emplace_back();
+      auto &group_p_g = local_group_grads_params.back();
       group_p_g.reserve(group_size);
-      VLOG(10) << "Group:" << i;
-      std::stringstream out;
-      while (j < params_grads.size()) {
-        group_p_g.emplace_back(
-            std::make_pair(params_grads.at(j).second /*grad*/,
-                           params_grads.at(j).first /*param*/));
-        out << params_grads.at(j).second << "[" << params_grads.at(j).first
-            << "]  ";
+      while (j < group_params_grads->size()) {
+        group_p_g.insert(group_p_g.end(), group_params_grads->at(j).begin(),
+                         group_params_grads->at(j).end());
         ++j;
         if (j % group_size == 0) break;
+      }
+    }
+    std::swap(*group_params_grads, local_group_grads_params);
+
+    VLOG(10) << "SetGroupAccordingToGroupSize(group_size: " << group_size
+             << "): ";
+    for (size_t i = 0; i < group_params_grads->size(); ++i) {
+      VLOG(10) << "group " << i;
+      std::stringstream out;
+      for (auto &p_g : group_params_grads->at(i)) {
+        out << "(" << p_g.second << ", " << p_g.first << "), ";
       }
       VLOG(10) << out.str();
     }
