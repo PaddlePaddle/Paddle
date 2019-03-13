@@ -33,9 +33,14 @@ namespace inference {
 namespace anakin {
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine(bool need_summary)
+AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine(bool need_summary,
+                                                            int device,
+                                                            int max_batch_size)
     : graph_(new AnakinGraphT<TargetT, PrecisionType>()),
-      net_(new AnakinNetT<TargetT, PrecisionType, RunType>(need_summary)) {}
+      net_(new AnakinNetT<TargetT, PrecisionType, RunType>(need_summary)) {
+  device_ = device;
+  max_batch_size_ = max_batch_size;
+}
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 AnakinEngine<TargetT, PrecisionType, RunType>::~AnakinEngine() {}
@@ -63,33 +68,44 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::AddOp(
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     const std::map<std::string, framework::LoDTensor *> &inputs,
-    const std::map<std::string, framework::LoDTensor *> &outputs) {
+    const std::map<std::string, framework::LoDTensor *> &outputs,
+    cudaStream_t stream) {
   for (const auto &input : inputs) {
     auto *tensor = input.second;
     auto *data = tensor->data<float>();
-    auto shape = framework::vectorize2int(tensor->dims());
+
+    auto fluid_input_shape = framework::vectorize2int(tensor->dims());
     auto *anakin_input = net_->get_in(input.first);
-    auto anakin_input_shape = anakin_input->valid_shape();
-    PADDLE_ENFORCE(tensor->numel(), anakin_input_shape.count(),
-                   "the fluid input size should be equal to anakin");
+    auto net_shape = anakin_input->shape();
+    if (tensor->numel() > net_shape.count()) {
+      graph_->Reshape(input.first, fluid_input_shape);
+      net_.reset(new AnakinNetT<TargetT, PrecisionType, RunType>(true));
+      net_->init(*graph_);
+      anakin_input = net_->get_in(input.first);
+    }
+
+    anakin_input->reshape(fluid_input_shape);
+    net_shape = anakin_input->shape();
+
     ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
-                                                       anakin_input_shape);
+                                                       // net_shape);
+                                                       fluid_input_shape);
     anakin_input->copy_from(tmp_anakin_tensor);
   }
-
-  for (const auto &output : outputs) {
-    auto *tensor = output.second;
-    auto *data = tensor->data<float>();
-    auto shape = framework::vectorize2int(tensor->dims());
-    auto *anakin_output = net_->get_out(output.first);
-    auto anakin_output_shape = anakin_output->valid_shape();
-    PADDLE_ENFORCE(tensor->numel(), anakin_output_shape.count(),
-                   "the fluid output size should be equal to anakin");
-    ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
-                                                       anakin_output_shape);
-    anakin_output->share_from(tmp_anakin_tensor);
-  }
+  cudaDeviceSynchronize();
   net_->prediction();
+  for (const auto &output : outputs) {
+    platform::CUDAPlace gpu_place(device_);
+    auto *tensor = output.second;
+    auto *anakin_output = net_->get_out(output.first);
+    auto *anakin_data = anakin_output->data();
+    auto anakin_output_shape = anakin_output->valid_shape();
+    tensor->Resize(framework::make_ddim(anakin_output_shape));
+    auto *fluid_data = tensor->mutable_data<float>(gpu_place);
+    memory::Copy(gpu_place, static_cast<void *>(fluid_data), gpu_place,
+                 static_cast<void *>(anakin_data),
+                 tensor->numel() * sizeof(float), stream);
+  }
   cudaDeviceSynchronize();
 }
 

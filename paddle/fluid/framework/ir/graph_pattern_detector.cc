@@ -1437,6 +1437,16 @@ PDNode *patterns::AnakinDetectionPattern::operator()(
                            ->assert_is_op_output("box_coder")
                            ->AsIntermediate();
 
+  auto transpose_before_nms =
+      pattern->NewNode(GetNodeName("transpose_before_nms"))
+          ->assert_is_op("transpose2");
+
+  auto transpose_before_nms_out =
+      pattern->NewNode(GetNodeName("transpose_before_nms_out"))
+          ->assert_is_op_output("transpose2")
+          ->assert_is_op_input("multiclass_nms", "Scores")
+          ->AsIntermediate();
+
   auto multiclass_nms_op = pattern->NewNode(GetNodeName("multiclass_nms"))
                                ->assert_is_op("multiclass_nms")
                                ->assert_op_has_n_inputs("multiclass_nms", 2);
@@ -1487,8 +1497,10 @@ PDNode *patterns::AnakinDetectionPattern::operator()(
       {concat_out1, concat_out2, conv_in[kBoxCoderThirdInputOffset]});
   box_coder_out->LinksFrom({box_coder_op});
 
-  multiclass_nms_op
-      ->LinksFrom({box_coder_out, conv_in[kMultiClassSecondInputNmsOffset]})
+  transpose_before_nms->LinksFrom({conv_in[kMultiClassSecondInputNmsOffset]});
+  transpose_before_nms_out->LinksFrom({transpose_before_nms});
+
+  multiclass_nms_op->LinksFrom({box_coder_out, transpose_before_nms_out})
       .LinksTo({multiclass_nms_out});
 
   return multiclass_nms_out;

@@ -168,7 +168,7 @@ class AnakinConvertValidation {
       outputs.insert({output, tensor});
     }
 
-    engine_->Execute(inputs, outputs);
+    engine_->Execute(inputs, outputs, stream_);
     int i_output = 0;
     for (const auto& output : op_desc_->OutputArgumentNames()) {
       if (neglected_output.count(output)) continue;

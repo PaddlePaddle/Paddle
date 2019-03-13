@@ -18,6 +18,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/engine.h"
@@ -26,7 +27,11 @@
 #include "framework/core/net/net.h"
 #include "framework/core/types.h"
 #include "framework/graph/graph.h"
+#include "framework/graph/graph_global_mem.h"
 #include "saber/saber_types.h"
+
+using anakin::Precision;
+using anakin::saber::NV;
 
 namespace anakin {
 
@@ -50,7 +55,8 @@ class AnakinEngine {
   using GraphT = ::anakin::graph::Graph<TargetT, PrecisionType>;
 
  public:
-  explicit AnakinEngine(bool need_summary = false);
+  explicit AnakinEngine(bool need_summary = false, int device = 0,
+                        int max_batch_size = 1);
   ~AnakinEngine();
   void InitGraph();
   void SetInputShape(const std::string &name, std::vector<int> shape);
@@ -65,18 +71,58 @@ class AnakinEngine {
                    "Add operation's attribution.");
   }
   NetT *Net() { return net_.get(); }
+  GraphT *Graph() { return graph_.get(); }
   std::unique_ptr<AnakinEngine> Clone();
   void Freeze();
   void Optimize();
   void Save(std::string path) { graph_->save(path); }
+  int GetMaxBatch() { return max_batch_size_; }
+  // void SaveSerializedData(std::string& data) { graph_->save_to_string(data);
+  // }
+  // void LoadSerializedData(const std::string& data) {
+  // graph_->load_from_string(data); }
   void Execute(const std::map<std::string, framework::LoDTensor *> &inputs,
-               const std::map<std::string, framework::LoDTensor *> &outputs);
+               const std::map<std::string, framework::LoDTensor *> &outputs,
+               cudaStream_t stream);
 
  private:
+  int max_batch_size_;
+  int device_;
   std::unique_ptr<GraphT> graph_;
   std::unique_ptr<NetT> net_;
 };
 
+class AnakinEngineManager {
+  using AnakinNvEngineT = AnakinEngine<NV, Precision::FP32>;
+
+ public:
+  bool HasEngine(const std::string &name) const {
+    if (engines_.count(name) == 0) return false;
+    return engines_.at(name).get() != nullptr;
+  }
+  AnakinNvEngineT *Get(const std::string &name) const {
+    return engines_.at(name).get();
+  }
+
+  AnakinNvEngineT *Create(bool need_summary, int device, int max_batch_size,
+                          std::string engine_name) {
+    std::unique_lock<std::mutex> lk(mut_);
+    auto *p = new AnakinEngine<NV, Precision::FP32>(need_summary, device,
+                                                    max_batch_size);
+    engines_[engine_name].reset(p);
+    return p;
+  }
+
+  void DeleteALL() {
+    for (auto &item : engines_) {
+      item.second.reset(nullptr);
+    }
+  }
+
+ private:
+  std::unordered_map<std::string, std::unique_ptr<AnakinNvEngineT>> engines_;
+  std::mutex mut_;
+};
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

@@ -33,7 +33,7 @@ void SoftMaxOpConverter::operator()(const framework::proto::OpDesc &op,
   auto output = op_desc.Output("Out").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
   engine_->AddOp(op_name, "Softmax", {input}, {output});
-  engine_->AddOpAttr(op_name, "axis", 1);
+  engine_->AddOpAttr(op_name, "axis", 2);
 }
 
 }  // namespace anakin

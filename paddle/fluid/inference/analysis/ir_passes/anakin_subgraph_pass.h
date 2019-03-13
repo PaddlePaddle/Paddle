@@ -15,8 +15,13 @@
 #pragma once
 #include <paddle/fluid/framework/ir/fuse_pass_base.h>
 #include <memory>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/inference/anakin/engine.h"
 
+using anakin::Precision;
+using anakin::saber::NV;
 namespace paddle {
 namespace inference {
 namespace analysis {
@@ -27,8 +32,9 @@ class AnakinSubgraphPass : public framework::ir::FusePassBase {
       std::unique_ptr<framework::ir::Graph> graph) const override;
 
  private:
-  void CreateAnakinOp(framework::ir::Node *x,
-                      framework::ir::Graph *graph) const;
+  void CreateAnakinOp(framework::ir::Node *x, framework::ir::Graph *graph,
+                      const std::vector<std::string> &graph_params,
+                      std::vector<std::string> *repetitive_params) const;
   void CleanIntermediateOutputs(framework::ir::Node *node);
 };
 
