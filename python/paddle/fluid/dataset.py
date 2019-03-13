@@ -37,7 +37,7 @@ class DatasetBase(object):
         # to decide whether we need create in memory instance
         self.proto_desc = data_feed_pb2.DataFeedDesc()
         self.proto_desc.pipe_command = "cat"
-        self.dataset = core.MultiSlotDataset()
+        self.dataset = core.Dataset("MultiSlotDataset")
         self.thread_num = 0
 
     def set_pipe_command(self, pipe_command):
@@ -119,10 +119,16 @@ class InMemoryDataset(DatasetBase):
         from .distributed import ps_instance
         instance = ps_instance.PaddlePSInstance(1, 2)
         self.dataset.set_trainer_num(instance.get_worker_num())
-        self.global_shuffle()
+        self.dataset.global_shuffle()
 
 
 class QueueDataset(DatasetBase):
     def __init__(self):
         super(QueueDataset, self).__init__()
         self.proto_desc.name = "MultiSlotDataFeed"
+
+    def local_shuffle(self):
+        pass
+
+    def global_shuffle(self):
+        pass

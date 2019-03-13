@@ -20,7 +20,7 @@ from google.protobuf import text_format
 __all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer']
 
 
-# can be initialized from train_desc, 
+# can be initialized from train_desc,
 class TrainerDesc(object):
     def __init__(self):
         '''
@@ -59,7 +59,7 @@ class MultiTrainer(TrainerDesc):
     def gen_trainer_desc(self):
         super(MultiTrainer, self).gen_trainer_desc()
         self.proto_desc.class_name = "MultiTrainer"
-        self.device_worker_.gen_worker_desc(self.proto_desc, fleet_desc_)
+        self.device_worker_.gen_worker_desc(self.proto_desc, self.fleet_desc_)
 
 
 class DistMultiTrainer(TrainerDesc):

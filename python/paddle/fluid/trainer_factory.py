@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from trainer_desc import *
+from device_worker import *
+
 __all__ = ["TrainerFactory"]
 
 
