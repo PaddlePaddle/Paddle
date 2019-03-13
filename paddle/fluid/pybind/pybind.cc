@@ -1358,6 +1358,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);
+  BindFleetWrapper(&m);
   BindGraph(&m);
   BindNode(&m);
   BindInferenceApi(&m);

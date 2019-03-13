@@ -120,7 +120,12 @@ packages=['paddle',
           'paddle.fluid.contrib.slim.distillation',
           'paddle.fluid.contrib.utils',
           'paddle.fluid.transpiler',
-          'paddle.fluid.transpiler.details']
+          'paddle.fluid.transpiler.details',
+          'paddle.fluid.incubate',
+          'paddle.fluid.incubate.fleet',
+          'paddle.fluid.incubate.fleet.base',
+          'paddle.fluid.incubate.fleet.parameter_server',
+          'paddle.fluid.incubate.fleet.p2p']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
