@@ -107,7 +107,7 @@ class CpuPassStrategy : public PassStrategy {
   void EnableMKLDNN() override {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
 #ifdef PADDLE_WITH_MKLDNN
-    if (!use_mkldnn_) {
+    if (!use_mkldnn_ && (*passes_.begin() != "mkldnn_placement_pass")) {
       passes_.insert(passes_.begin(), "mkldnn_placement_pass");
 
       for (auto &pass : std::vector<std::string>(
