@@ -278,7 +278,6 @@ std::pair<bool, LoDTensor> AnalysisPredictor::Quantizer::GetMaxChScalingFactor(
   scale_tensor.Resize({channels});
   auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
 
-#pragma omp parallel for
   for (int i = 0; i < channels; ++i) {
     const auto tensor = var_tensor.Slice(i, i + 1);
 

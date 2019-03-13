@@ -17,6 +17,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/naive_executor.h"
@@ -43,7 +44,7 @@ using framework::NaiveExecutor;
  * type.
  */
 using VarQuantScale =
-    std::map<std::string, std::pair<bool, framework::LoDTensor>>;
+    std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
 
 /** \brief This predictor is based on the original native predictor with IR and
  * Analysis support.

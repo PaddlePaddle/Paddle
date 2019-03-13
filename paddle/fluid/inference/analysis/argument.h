@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -141,7 +140,7 @@ struct Argument {
 
   // Scales for variables to be quantized
   using VarQuantScale =
-      std::map<std::string, std::pair<bool, framework::LoDTensor>>;
+      std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
   DECL_ARGUMENT_FIELD(quant_var_scales, QuantVarScales, VarQuantScale);
 
   // Passed from config.
