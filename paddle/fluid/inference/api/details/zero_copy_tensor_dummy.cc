@@ -37,7 +37,7 @@ template int64_t *ZeroCopyTensor::mutable_data(PaddlePlace place);
 
 void *ZeroCopyTensor::FindTensor() const { return nullptr; }
 
-std::vector<int64_t> ZeroCopyTensor::shape() const { return {}; }
+std::vector<int> ZeroCopyTensor::shape() const { return {}; }
 
 void ZeroCopyTensor::SetLoD(const std::vector<std::vector<size_t>> &x) {}
 

@@ -19,7 +19,6 @@ import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 from .core import VarDesc
 from . import unique_name
-from .imperative import base as imperative_base
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
@@ -166,7 +165,7 @@ class ConstantInitializer(Initializer):
                 'force_cpu': self._force_cpu or force_init_on_cpu()
             },
             stop_gradient=True)
-        if not imperative_base.enabled():
+        if not framework._in_imperative_mode():
             var.op = op
         return op
 
@@ -246,7 +245,7 @@ class UniformInitializer(Initializer):
                 attrs={"in_dtype": out_var.dtype,
                        "out_dtype": var.dtype})
 
-        if not imperative_base.enabled():
+        if not framework._in_imperative_mode():
             var.op = op
         return op
 
@@ -325,7 +324,7 @@ class NormalInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={"in_dtype": out_var.dtype,
                        "out_dtype": var.dtype})
-        if not imperative_base.enabled():
+        if not framework._in_imperative_mode():
             var.op = op
         return op
 
@@ -404,7 +403,7 @@ class TruncatedNormalInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={"in_dtype": out_var.dtype,
                        "out_dtype": var.dtype})
-        if not imperative_base.enabled():
+        if not framework._in_imperative_mode():
             var.op = op
         return op
 
@@ -510,7 +509,7 @@ class XavierInitializer(Initializer):
                     "seed": self._seed
                 },
                 stop_gradient=True)
-        if not imperative_base.enabled():
+        if not framework._in_imperative_mode():
             var.op = op
         return op
 
@@ -611,7 +610,7 @@ class MSRAInitializer(Initializer):
                     "seed": self._seed
                 },
                 stop_gradient=True)
-        if not imperative_base.enabled():
+        if not framework._in_imperative_mode():
             var.op = op
         return op
 
@@ -710,7 +709,7 @@ class BilinearInitializer(Initializer):
                 'shape': list(shape),
                 value_name: values
             })
-        if not imperative_base.enabled():
+        if not framework._in_imperative_mode():
             var.op = op
         return op
 
@@ -769,7 +768,7 @@ class NumpyArrayInitializer(Initializer):
                 value_name: values
             },
             stop_gradient=True)
-        if not imperative_base.enabled():
+        if not framework._in_imperative_mode():
             var.op = op
         return op
 

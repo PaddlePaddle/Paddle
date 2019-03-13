@@ -37,7 +37,7 @@ def _place_obj(place):
 
 def _is_pserver_mode(main_program):
     main = main_program if main_program \
-        else default_main_program()
+        else framework.default_main_program()
     for op in main.global_block().ops:
         if op.type in ["send", "recv"]:
             return True
@@ -224,12 +224,10 @@ class CompiledProgram(object):
             self._build_strategy.trainers_endpoints = tps
 
         self._persistable_vars = []
-        for block_id in range(self._program_desc.num_blocks()):
-            bdesc = self._program_desc.block(block_id)
-            self._persistable_vars.extend([
-                cpt.to_text(v.name()) for v in bdesc.all_vars()
-                if v.persistable() and v.type() != core.VarDesc.VarType.RAW
-            ])
+        for node in self._graph.nodes():
+            if node.is_var() and node.var() is not None and node.var().persistable() and \
+                    node.var().type() != core.VarDesc.VarType.RAW:
+                self._persistable_vars.append(cpt.to_text(node.name()))
 
         places = list(map(_place_obj, self._places))
 

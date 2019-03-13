@@ -17,6 +17,9 @@
 #include <NvInfer.h>
 #include <cuda.h>
 #include <glog/logging.h>
+#include <string>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/platform/dynload/tensorrt.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -72,6 +75,32 @@ class NaiveLogger : public nvinfer1::ILogger {
   }
 
   ~NaiveLogger() override {}
+};
+
+class NaiveProfiler : public nvinfer1::IProfiler {
+ public:
+  typedef std::pair<std::string, float> Record;
+  std::vector<Record> mProfile;
+
+  virtual void reportLayerTime(const char* layerName, float ms) {
+    auto record =
+        std::find_if(mProfile.begin(), mProfile.end(),
+                     [&](const Record& r) { return r.first == layerName; });
+    if (record == mProfile.end())
+      mProfile.push_back(std::make_pair(layerName, ms));
+    else
+      record->second += ms;
+  }
+
+  void printLayerTimes() {
+    float totalTime = 0;
+    for (size_t i = 0; i < mProfile.size(); i++) {
+      printf("%-40.40s %4.3fms\n", mProfile[i].first.c_str(),
+             mProfile[i].second);
+      totalTime += mProfile[i].second;
+    }
+    printf("Time over all layers: %4.3f\n", totalTime);
+  }
 };
 
 }  // namespace tensorrt
