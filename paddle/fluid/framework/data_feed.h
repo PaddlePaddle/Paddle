@@ -212,13 +212,16 @@ class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
   virtual void LoadIntoMemory();
   virtual void LocalShuffle();
   virtual void GlobalShuffle();
+
  protected:
-  virtual void AddInstanceToInsVec(T* vec_ins, const T& instance, int index) = 0;
+  virtual void AddInstanceToInsVec(T* vec_ins,
+                                   const T& instance,
+                                   int index) = 0;
   virtual bool ParseOneInstance(T* instance) = 0;
   virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
   virtual void PutToFeedVec(const T& ins_vec) = 0;
-  virtual void SerializeIns(const T& ins, std::string& str) = 0;
-  virtual void DeserializeIns(T& ins, const std::string& str) = 0;
+  virtual void SerializeIns(const T& ins, std::string* str) = 0;
+  virtual void DeserializeIns(T* ins, const std::string& str) = 0;
 
   int thread_id_;
   int thread_num_;
@@ -284,6 +287,28 @@ class MultiSlotType {
   const std::string& GetType() const { return type_; }
   std::string& MutableType() { return type_; }
 
+  std::string DebugString() {
+    std::stringstream ss;
+    ss << "type: " << type_ << "\n";
+    ss << "offset:\n";
+    ss << "[";
+    for (const size_t& i : offset_) {
+      ss << offset_[i] << ",";
+    }
+    ss << "]\ndata:\n[";
+    if (type_[0] == 'f') {
+      for (const float& i : float_feasign_) {
+        ss << i << ",";
+      }
+    } else {
+      for (const uint64_t& i : uint64_feasign_) {
+        ss << i << ",";
+      }
+    }
+    ss << "]\n";
+    return ss.str();
+  }
+
  private:
   void CheckType(const std::string& type) const {
     PADDLE_ENFORCE((type == "uint64") || (type == "float"),
@@ -336,8 +361,10 @@ class MultiSlotInMemoryDataFeed
   virtual bool ParseOneInstance(std::vector<MultiSlotType>* instance);
   virtual bool ParseOneInstanceFromPipe(std::vector<MultiSlotType>* instance);
   virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);
-  virtual void SerializeIns(const std::vector<MultiSlotType>& ins, std::string& str);
-  virtual void DeserializeIns(std::vector<MultiSlotType>& ins, const std::string& str);
+  virtual void SerializeIns(const std::vector<MultiSlotType>& ins,
+                            std::string* str);
+  virtual void DeserializeIns(std::vector<MultiSlotType>* ins,
+                              const std::string& str);
 };
 
 }  // namespace framework

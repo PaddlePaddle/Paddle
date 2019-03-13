@@ -27,6 +27,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include <utility>
 #include "paddle/fluid/framework/data_feed.h"
 
 namespace paddle {
@@ -45,7 +46,7 @@ paddle::ps::Archive<AR>& operator << (
   ar << ins.GetOffset();
   ar << ins.GetFloatData();
   ar << ins.GetUint64Data();
-return ar;
+  return ar;
 }
 
 template<class AR>
@@ -56,7 +57,7 @@ paddle::ps::Archive<AR>& operator >> (
   ar >> ins.MutableOffset();
   ar >> ins.MutableFloatData();
   ar >> ins.MutableUint64Data();
-return ar;
+  return ar;
 }
 #endif
 
@@ -291,42 +292,63 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
 #endif
 }
 
-// todo registe_client2client_msg_handler
-int FleetWrapper::registe_client2client_msg_handler(int msg_type, MsgHandlerFunc handler) {
-    return 0;
+int FleetWrapper::registe_client2client_msg_handler(
+    int msg_type, MsgHandlerFunc handler) {
+  pslib_ptr_->_worker_ptr->registe_client2client_msg_handler(
+      msg_type, handler);
+  return 0;
 }
 
-// todo send_client2client_msg
-int FleetWrapper::send_client2client_msg(int msg_type, int to_client_id, const std::string& msg) {
-    return 0;
+int FleetWrapper::send_client2client_msg(
+    int msg_type, int to_client_id, const std::string& msg) {
+  pslib_ptr_->_worker_ptr->send_client2client_msg(
+      msg_type, to_client_id, msg);
+  return 0;
+}
+
+std::default_random_engine& FleetWrapper::local_random_engine() {
+  struct engine_wrapper_t {
+    std::default_random_engine engine;
+    engine_wrapper_t() {
+      struct timespec tp;
+      clock_gettime(CLOCK_REALTIME, &tp);
+      double cur_time = tp.tv_sec + tp.tv_nsec * 1e-9;
+      static std::atomic<uint64_t> x(0);
+      std::seed_seq sseq = {x++, x++, x++,
+          (uint64_t)(cur_time * 1000)};
+      engine.seed(sseq);
+    }
+  };
+  thread_local engine_wrapper_t r;
+  return r.engine;
 }
 
 template<typename T>
-void FleetWrapper::Serialize(const T& t, std::string& str) {
+void FleetWrapper::Serialize(const T& t, std::string* str) {
 #ifdef PADDLE_WITH_PSLIB
   paddle::ps::BinaryArchive ar;
   ar << t;
-  str = std::string(ar.buffer(), ar.length());
+  *str = std::string(ar.buffer(), ar.length());
 #else
   VLOG(0) << "FleetWrapper::Serialize do nothing when no pslib";
 #endif
 }
 
 template<typename T>
-void FleetWrapper::Deserialize(T& t, const std::string& str) {
+void FleetWrapper::Deserialize(T* t, const std::string& str) {
 #ifdef PADDLE_WITH_PSLIB
   paddle::ps::BinaryArchive ar;
   ar.set_read_buffer(const_cast<char*>(str.c_str()), str.length(), nullptr);
-  t = ar.get<T>();
+  *t = ar.get<T>();
 #else
   VLOG(0) << "FleetWrapper::Deserialize do nothing when no pslib";
 #endif
 }
 
 template void FleetWrapper::Serialize<std::vector<MultiSlotType>>(
-    const std::vector<MultiSlotType>&, std::string&);
+    const std::vector<MultiSlotType>&, std::string*);
 template void FleetWrapper::Deserialize(
-    std::vector<MultiSlotType>&, const std::string&);
+    std::vector<MultiSlotType>*, const std::string&);
 
 }  // end namespace framework
 }  // end namespace paddle

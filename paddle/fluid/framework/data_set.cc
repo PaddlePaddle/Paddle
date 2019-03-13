@@ -54,7 +54,9 @@ void DatasetImpl<T>::SetThreadNum(int thread_num) {
 }
 
 template <typename T>
-void DatasetImpl<T>::SetTrainerNum(int trainer_num) { trainer_num_ = trainer_num; }
+void DatasetImpl<T>::SetTrainerNum(int trainer_num) {
+  trainer_num_ = trainer_num;
+}
 
 template <typename T>
 void DatasetImpl<T>::SetDataFeedDesc(const std::string& data_feed_desc_str) {
@@ -115,10 +117,12 @@ void DatasetImpl<T>::GlobalShuffle() {
   // if it is not InMemory, memory_data_ is empty
   std::random_shuffle(memory_data_.begin(), memory_data_.end());
   auto fleet_ptr = FleetWrapper::GetInstance();
+  VLOG(3) << "registe_client2client_msg_handler";
   fleet_ptr->registe_client2client_msg_handler(0,
     [this](int msg_type, int client_id, const std::string& msg) -> int {
     return this->ReceiveFromClient(msg_type, client_id, msg);
   });
+  VLOG(3) << "start global shuffle threads";
   std::vector<std::thread> global_shuffle_threads;
   for (int i = 0; i < thread_num_; ++i) {
     global_shuffle_threads.push_back(
