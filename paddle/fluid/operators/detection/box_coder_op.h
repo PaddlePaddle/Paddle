@@ -146,8 +146,8 @@ class BoxCoderKernel : public framework::OpKernel<T> {
         T target_box_width = 0, target_box_height = 0;
         int prior_var_offset = axis == 0 ? j * len : i * len;
         if (var_size == 2) {
-          var_ptr =
-              const_cast<T *>(prior_box_var->data<T>() + prior_var_offset);
+          std::memcpy(var_ptr, prior_box_var->data<T>() + prior_var_offset,
+                      4 * sizeof(T));
         } else if (var_size == 1) {
           var_ptr = reinterpret_cast<T *>(variance.data());
         }
