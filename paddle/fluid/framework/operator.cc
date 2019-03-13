@@ -20,7 +20,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/data_transform.h"
-#include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
@@ -877,19 +876,14 @@ std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
-  const Scope* cur_scope = &scope;
-  // RuntimeContext is used to relate input/output names of Operator with
-  // the corresponding variables in Scope.
-  // In a same Scope, since the input/output names of Operator do not change
-  // in the execution, RuntimeContext could be created only at the first
-  // iteration of the execution to save the elapsed time.
-  // Note that the Scope should not be the local scope, since local scope
-  // would be cleaned regularly.
-  if (scope.FindVar(details::kLocalExecScopeName)) {
+  if (!HasAttr(kEnableRuntimeContext)) {
     runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
-  } else if (!runtime_ctx_ || pre_scope_ != cur_scope) {
-    runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
-    pre_scope_ = cur_scope;
+  } else {
+    const Scope* cur_scope = &scope;
+    if (!runtime_ctx_ || pre_scope_ != cur_scope) {
+      runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+      pre_scope_ = cur_scope;
+    }
   }
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
