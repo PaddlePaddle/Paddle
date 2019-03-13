@@ -918,7 +918,8 @@ def save_inference_model(dirname,
             sgd.minimize(loss)
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(program=fluid.default_startup_program())
-            fluid.io.save_inference_model(dirname="./infer_model", feeded_var_names=[image.name],
+            fluid.io.save_inference_model(dirname="./infer_model",
+                         feeded_var_names=[image.name],
                          target_vars=[prediction], executor=exe)
 
             # In this example, the function will prune the default main program

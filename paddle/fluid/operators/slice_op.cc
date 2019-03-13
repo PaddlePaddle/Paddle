@@ -102,7 +102,7 @@ Following examples will explain how slice works:
 
     .. code-block:: text
 
-        Cast1:
+        Case1:
             Given:
                 data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
                 axes = [0, 1]
@@ -111,7 +111,7 @@ Following examples will explain how slice works:
             Then:
                 result = [ [5, 6, 7], ]
 
-        Cast2:
+        Case2:
             Given:
                 data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
                 starts = [0, 1]
