@@ -34,6 +34,7 @@ class TrainerDesc(object):
         self.proto_desc.thread_num = mp.cpu_count()
         self.fleet_desc_ = None
         self.device_worker_ = None
+        self.program_ = None
 
     def set_thread(self, thread_num):
         self.proto_desc.thread_num = thread_num
@@ -46,6 +47,9 @@ class TrainerDesc(object):
 
     def gen_trainer_desc(self):
         pass
+
+    def set_program(self, program):
+        self.program_ = program
 
     def _desc(self):
         return text_format.MessageToString(self.proto_desc)
@@ -70,19 +74,5 @@ class DistMultiTrainer(TrainerDesc):
     def gen_trainer_desc(self):
         super(DistMultiTrainer, self).gen_trainer_desc()
         self.proto_desc.class_name = "DistMultiTrainer"
+        self.device_worker_.set_program(self.program_)
         self.device_worker_.gen_worker_desc(self.proto_desc)
-
-    def set_program_config(self, fleet_desc, program_id):
-        for program_config in fleet_desc.trainer_param.program_config:
-            if program_config.program_id == program_id:
-                pc = self.proto_desc.downpour_param.program_config.add()
-                pc.program_id = program_config.program_id
-                for i in program_config.push_sparse_table_id:
-                    pc.push_sparse_table_id.extend([i])
-                for i in program_config.push_dense_table_id:
-                    pc.push_dense_table_id.extend([i])
-                for i in program_config.pull_sparse_table_id:
-                    pc.pull_sparse_table_id.extend([i])
-                for i in program_config.pull_dense_table_id:
-                    pc.pull_dense_table_id.extend([i])
-                break

@@ -84,15 +84,21 @@ class DistributedAdam(DistributedOptimizerImplBase):
         worker.add_sparse_table(sparse_table_index, self.learning_rate_,
                                 prefetch_slots, prefetch_slots_emb)
         dense_table_index = 1
-        program_configs = []
+        program_configs = {}
         param_grads_list = []
 
         for loss_index in range(len(losses)):
-            program_config = ps_param.trainer_param.program_config.add()
-            program_config.program_id = str(
-                id(losses[loss_index].block.program))
-            program_config.pull_sparse_table_id.extend([sparse_table_index])
-            program_config.push_sparse_table_id.extend([sparse_table_index])
+            #program_config = ps_param.trainer_param.program_config.add()
+            #program_config.program_id = str(
+            #    id(losses[loss_index].block.program))
+            program_id = str(id(losses[loss_index].block.program))
+            program_configs[program_id] = {
+                "pull_sparse": [sparse_table_index],
+                "push_sparse": [sparse_table_index]
+            }
+
+            #program_config.pull_sparse_table_id.extend([sparse_table_index])
+            #program_config.push_sparse_table_id.extend([sparse_table_index])
             params_grads = sorted(
                 fluid.backward.append_backward(losses[loss_index],
                                                parameter_list, no_grad_set),
@@ -122,8 +128,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                    params, grads)
             worker.add_dense_table(dense_table_index, self.learning_rate_,
                                    params, grads)
-            program_config.pull_dense_table_id.extend([dense_table_index])
-            program_config.push_dense_table_id.extend([dense_table_index])
+            program_configs[program_id]["pull_dense"] = [dense_table_index]
+            program_configs[program_id]["push_dense"] = [dense_table_index]
+            #program_config.pull_dense_table_id.extend([dense_table_index])
+            #program_config.push_dense_table_id.extend([dense_table_index])
             if len(data_norm_params) != 0 and len(data_norm_grads) != 0:
                 dense_table_index += 1
                 server.add_data_norm_table(dense_table_index,
@@ -131,20 +139,25 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                            data_norm_params, data_norm_grads)
                 worker.add_dense_table(dense_table_index, self.learning_rate_,
                                        data_norm_params, data_norm_grads)
-                program_config.pull_dense_table_id.extend([dense_table_index])
-                program_config.push_dense_table_id.extend([dense_table_index])
+                #program_config.pull_dense_table_id.extend([dense_table_index])
+                #program_config.push_dense_table_id.extend([dense_table_index])
+                program_config[program_id]["pull_dense"].extend(
+                    [dense_table_index])
+                program_config[program_id]["push_dense"].extend(
+                    [dense_table_index])
             dense_table_index += 1
-            program_configs.append(program_config)
+            #program_configs.append(program_config)
         ps_param.server_param.CopyFrom(server.get_desc())
         ps_param.trainer_param.CopyFrom(worker.get_desc())
-        for program_config in program_configs:
-            ps_param.trainer_param.program_config.extend([program_config])
+        #for program_config in program_configs:
+        #    ps_param.trainer_param.program_config.extend([program_config])
         # Todo(guru4elephant): figure out how to support more sparse parameters
         # currently only support lookup_table
         worker_skipped_ops = ["lookup_table", "lookup_table_grad"]
         ps_param.trainer_param.skip_op.extend(worker_skipped_ops)
 
         opt_info = {}
+        opt_info["program_configs"] = program_configs
         opt_info["trainer"] = "DistMultiTrainer"
         opt_info["device_worker"] = "DownpourSGD"
         opt_info["optimizer"] = "DownpourSGD"

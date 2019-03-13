@@ -294,14 +294,13 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
 #endif
 }
 
-int FleetWrapper::RegisterClientToClientMsgHandler(
-    int msg_type, MsgHandlerFunc handler) {
+int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
+                                                   MsgHandlerFunc handler) {
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "calling FleetWrapper::RegisterClientToClientMsgHandler";
   VLOG(3) << "pslib_ptr_=" << pslib_ptr_;
   VLOG(3) << "_worker_ptr=" << pslib_ptr_->_worker_ptr;
-  pslib_ptr_->_worker_ptr->registe_client2client_msg_handler(
-      msg_type, handler);
+  pslib_ptr_->_worker_ptr->registe_client2client_msg_handler(msg_type, handler);
 #else
   VLOG(0) << "FleetWrapper::RegisterClientToClientMsgHandler"
           << " does nothing when no pslib";
@@ -309,11 +308,10 @@ int FleetWrapper::RegisterClientToClientMsgHandler(
   return 0;
 }
 
-int FleetWrapper::SendClientToClientMsg(
-    int msg_type, int to_client_id, const std::string& msg) {
+int FleetWrapper::SendClientToClientMsg(int msg_type, int to_client_id,
+                                        const std::string& msg) {
 #ifdef PADDLE_WITH_PSLIB
-  pslib_ptr_->_worker_ptr->send_client2client_msg(
-      msg_type, to_client_id, msg);
+  pslib_ptr_->_worker_ptr->send_client2client_msg(msg_type, to_client_id, msg);
 #else
   VLOG(0) << "FleetWrapper::SendClientToClientMsg"
           << " does nothing when no pslib";
