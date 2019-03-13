@@ -54,10 +54,12 @@ class Fleet(object):
             else:
                 print("You should run DistributedOptimizer.minimize() first")
                 sys.exit(-1)
-            self._fleet_ptr.init_server(self._dist_desc_str)
-            ip = self._fleet_ptr.start_server()
-            ips = self.role_maker_.all_gather(ip)
-            self._fleet_ptr.gather_servers(ips, self.role_maker_.get_size())
+            self._fleet_ptr.init_server(self._dist_desc_str,
+                                        self.role_maker_.get_rank())
+            self.local_ip_ = self._fleet_ptr.run_server()
+            self.all_ips_ = self.role_maker_.all_gather(self.local_ip_)
+            self._fleet_ptr.gather_servers(self.all_ips_,
+                                           self.role_maker_.get_size())
             self.role_maker_.barrier_all()
         else:
             print("You should run DistributedOptimizer.minimize() first")
@@ -73,10 +75,9 @@ class Fleet(object):
                 print("You should run DistributedOptimizer.minimize() first")
                 sys.exit(-1)
             self.role_maker_.barrier_all()
-            self._fleet_ptr.init_work(self.dist_desc_str_,
-                                      self.role_maker.get_ips(),
-                                      self.role_maker_.get_size(),
-                                      self.role_maker_.get_rank())
+            self._fleet_ptr.init_worker(self._dist_desc_str, [0],
+                                        self.role_maker_.get_size(),
+                                        self.role_maker_.get_rank())
             self.role_maker_.barrier_worker()
         else:
             print("You should run DistributedOptimizer.minimize() first")

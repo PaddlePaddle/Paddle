@@ -632,14 +632,14 @@ class Executor(object):
             scope = global_scope()
         if fetch_list is None:
             fetch_list = []
-
         compiled = isinstance(program, compiler.CompiledProgram)
         if not compiled:
             trainer = TrainerFactory().create_trainer(program._fleet_opt)
+            trainer.set_program(program)
         else:
             trainer = TrainerFactory().create_trainer(
                 program.program._fleet_opt)
-
+            trainer.set_program(program.program)
         if thread <= 0:
             trainer.set_thread(dataset.thread_num)
         else:
