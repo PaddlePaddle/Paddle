@@ -16,12 +16,12 @@ limitations under the License. */
 
 #include <memory>
 #ifdef PADDLE_WITH_PSLIB
-#include <pslib.h>
 #include <archive.h>
+#include <pslib.h>
 #endif
-#include <random>
 #include <atomic>
 #include <ctime>
+#include <random>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/scope.h"
@@ -79,6 +79,9 @@ class FleetWrapper {
       const std::vector<std::string>& var_names,
       std::vector<::std::future<int32_t>>* push_sparse_status);
 
+  void PushDenseVarsSync(Scope* scope, const uint64_t table_id,
+                         const std::vector<std::string>& var_names);
+
   // Push sparse variables with labels to server in Async mode
   // This is specially designed for click/show stats in server
   // Param<in>: scope, table_id, var_grad_names,
@@ -121,9 +124,9 @@ class FleetWrapper {
                             const std::string& msg);
   std::default_random_engine& LocalRandomEngine();
 
-  template<typename T>
+  template <typename T>
   void Serialize(const T& t, std::string* str);
-  template<typename T>
+  template <typename T>
   void Deserialize(T* t, const std::string& str);
 
   static std::shared_ptr<FleetWrapper> GetInstance() {

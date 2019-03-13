@@ -142,4 +142,4 @@ class DistributedOptimizer(paddle.fluid.Optimizer):
                           no_grad_set)
 
         fleet_instance._set_opt_info(opt_info)
-        return [a, b]
+        return [optimize_ops, param_grads]
