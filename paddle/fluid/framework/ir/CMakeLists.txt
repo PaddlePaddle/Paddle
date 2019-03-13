@@ -66,6 +66,7 @@ pass_library(conv_elementwise_add_fuse_pass inference)
 pass_library(conv_affine_channel_fuse_pass inference)
 pass_library(transpose_flatten_concat_fuse_pass inference)
 pass_library(identity_scale_op_clean_pass base)
+pass_library(runtime_context_cache_pass base)
 
 # There may be many transpose-flatten structures in a model, and the output of
 # these structures will be used as inputs to the concat Op. This pattern will
