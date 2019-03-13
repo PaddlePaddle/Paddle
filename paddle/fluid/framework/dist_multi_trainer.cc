@@ -25,6 +25,7 @@ namespace framework {
 void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
                                   Dataset* dataset) {
   thread_num_ = trainer_desc.thread_num();
+  SetDataset(dataset);
   workers_.resize(thread_num_);
 
   dataset->CreateReaders();
@@ -55,6 +56,7 @@ void DistMultiTrainer::Finalize() {
     th.join();
   }
   pull_dense_worker_->Stop();
+  dataset_ptr_->DestroyReaders();
 }
 
 }  // end namespace framework
