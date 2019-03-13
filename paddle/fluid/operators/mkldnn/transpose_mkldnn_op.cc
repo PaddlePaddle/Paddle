@@ -70,7 +70,6 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         paddle::framework::vectorize2int(output->dims()),
         mkldnn::memory::format::blocked);
     output->set_mkldnn_prim_desc(output_mem_pd);
-    output->set_layout(DataLayout::kMKLDNN);
   }
 };
 
