@@ -753,32 +753,6 @@ EOF
     ./clean.sh
 }
 
-function travis_check_api() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-    cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF
-    build
-    assert_api_not_changed cp27-cp27m
-    assert_api_spec_approvals
-    pip uninstall paddlepaddle
-}
-
-function travis_check_api_py35() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-    cmake .. \
-        -DPY_VERSION=3.5 \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF
-    build
-    assert_api_not_changed cp35-cp35m
-    assert_api_spec_approvals
-}
-
 function main() {
     local CMD=$1
     init
@@ -863,10 +837,6 @@ function main() {
         ;;
       test_fluid_lib)
         test_fluid_lib
-        ;;
-      check_api)
-        travis_check_api 
-        travis_check_api_py35
         ;;
       *)
         print_usage
