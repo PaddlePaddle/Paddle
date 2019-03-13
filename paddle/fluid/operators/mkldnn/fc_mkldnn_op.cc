@@ -22,6 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/variant.h"
 
+extern char **environ;
+
 namespace paddle {
 namespace operators {
 
@@ -251,6 +253,12 @@ static int callback(struct dl_phdr_info *info, size_t size, void *data) {
     return 0; 
 }
 
+static void print_environ()
+{
+  for (char **env = environ; *env; ++env)
+        printf("%s\n", *env);
+}
+
 template <typename T>
 class FCMKLDNNOpKernel : public framework::OpKernel<T> {
  public:
@@ -268,6 +276,9 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T> {
     }
 
     dl_iterate_phdr(callback, NULL);
+
+    std::cout << "===> environment:" << std::endl;
+    print_environ();
 
     auto input = ctx.Input<Tensor>("Input");
     auto w = ctx.Input<Tensor>("W");
