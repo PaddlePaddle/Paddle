@@ -223,6 +223,9 @@ class CompiledProgram(object):
                 tps), "num_trainers == len(end_points)"
             self._build_strategy.trainers_endpoints = tps
 
+        if self._build_strategy.sync_batch_norm:
+            self._build_strategy.enable_sequential_execution = True
+
         self._persistable_vars = []
         for node in self._graph.nodes():
             if node.is_var() and node.var() is not None and node.var().persistable() and \

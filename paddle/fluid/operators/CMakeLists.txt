@@ -53,7 +53,6 @@ if (WITH_GPU)
     else()
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
     endif()
-    message(STATUS "CUDNN_VERSION ${CUDNN_VERSION}")
     # conv_fusion_op needs cudnn 7 above
     if (NOT ${CUDNN_VERSION} VERSION_LESS 7100)
         op_library(conv_fusion_op)

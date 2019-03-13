@@ -50,6 +50,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 
     // Add op fusion.
+    if (strategy.sync_batch_norm_) {
+      AppendPass("sync_batch_norm_pass");
+    }
+
+    // Add op fusion.
     if (strategy.fuse_relu_depthwise_conv_) {
       AppendPass("fuse_relu_depthwise_conv_pass");
     }
@@ -227,6 +232,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 }  // namespace framework
 }  // namespace paddle
 
+USE_PASS(sync_batch_norm_pass);
 USE_PASS(fuse_relu_depthwise_conv_pass);
 USE_PASS(fuse_elewise_add_act_pass);
 USE_PASS(graph_viz_pass);
