@@ -17,7 +17,6 @@
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/inference/api/paddle_quantizer_config.h"  // for QuantMax
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -35,6 +34,8 @@ void UnlinkNodes(ir::Node* a, ir::Node* b) {
 
 }  // namespace
 
+enum { U8_MAX = 255, S8_MAX = 127 };
+
 using EigenVectorArrayMap = Eigen::Map<Eigen::Array<double, Eigen::Dynamic, 1>>;
 using string::PrettyLogDetail;
 
@@ -42,8 +43,8 @@ void CPUQuantizePass::QuantizeInput(Graph* g, Node* op, Node* input,
                                     std::string input_name, double scale_to_one,
                                     bool is_unsigned,
                                     std::string scale_attr_name) const {
-  QuantMax max = is_unsigned ? QuantMax::U8_MAX : QuantMax::S8_MAX;
-  float scale = scale_to_one * (unsigned)max;
+  unsigned max = is_unsigned ? U8_MAX : S8_MAX;
+  float scale = scale_to_one * max;
 
   // Create quantize output variable
   VarDesc quantize_out_desc(patterns::PDNodeName("quantize", "out"));
@@ -76,8 +77,8 @@ void CPUQuantizePass::DequantizeOutput(Graph* g, Node* op, Node* output,
                                        std::string output_name,
                                        double scale_to_one, bool is_unsigned,
                                        std::string scale_attr_name) const {
-  QuantMax max = is_unsigned ? QuantMax::U8_MAX : QuantMax::S8_MAX;
-  float scale = scale_to_one * (unsigned)max;
+  unsigned max = is_unsigned ? U8_MAX : S8_MAX;
+  float scale = scale_to_one * max;
 
   // Create dequantize input variable
   VarDesc dequantize_in_desc(patterns::PDNodeName("dequantize", "in"));
@@ -146,7 +147,7 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     auto filter_scale_tensor = scales[conv_filter->Name()].second;
     EigenVectorArrayMap eigen_tensor{filter_scale_tensor.data<double>(),
                                      filter_scale_tensor.numel(), 1};
-    eigen_tensor *= static_cast<double>(QuantMax::S8_MAX);
+    eigen_tensor *= static_cast<double>(S8_MAX);
     std::vector<float> filter_scale{
         filter_scale_tensor.data<double>(),
         filter_scale_tensor.data<double>() + filter_scale_tensor.numel()};
