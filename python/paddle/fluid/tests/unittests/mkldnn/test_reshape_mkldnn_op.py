@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle.fluid.core as core
 
 from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_reshape_op import TestReshapeOp, TestReshapeOpDimInfer1, TestReshapeOpDimInfer2, TestReshapeOpWithInputShape
@@ -47,7 +48,8 @@ class TestMKLDNNReshape(TestReshapeOp):
         self.infered_shape = (1, 4)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output_with_place(
+            core.CPUPlace(), atol=0, no_check_set=['XShape'])
 
 
 class TestMKLDNNReshapeOpDimInfer1(TestMKLDNNReshape):
