@@ -290,7 +290,6 @@ class Variable(object):
                                                 dtype='float32')
     """
 
-    #  @profile
     def __init__(self,
                  block,
                  type=core.VarDesc.VarType.LOD_TENSOR,
@@ -646,7 +645,6 @@ class Operator(object):
         'checkpoint_notify', 'gen_nccl_id'
     }
 
-    #  @profile
     def __init__(self,
                  block,
                  desc,
@@ -1241,7 +1239,6 @@ class Block(object):
         return (item[1] for item in six.iteritems(self.vars)
                 if isinstance(item[1], Parameter))
 
-    #  @profile
     def create_var(self, *args, **kwargs):
         var = Variable(block=self, *args, **kwargs)
         if 'initializer' in kwargs:
@@ -1350,7 +1347,6 @@ class Block(object):
                 initializer(param, self)
         return param
 
-    #  @profile
     def append_op(self, *args, **kwargs):
         """
         Appends a new Operator according to the giving arguments.
