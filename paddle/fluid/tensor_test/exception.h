@@ -11,28 +11,17 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#pragma once
 
-#include "exception.h"
+#include <Python.h>
+
+#include "paddle/fluid/platform/enforce.h"
+#include "pybind11/pybind11.h"
 
 namespace paddle {
 namespace pybind {
 
-void BindException(pybind11::module* m) {
-  static pybind11::exception<platform::EOFException> eof(*m, "EOFException");
-  static pybind11::exception<platform::EnforceNotMet> exc(*m, "EnforceNotMet");
-  pybind11::register_exception_translator([](std::exception_ptr p) {
-    try {
-      if (p) std::rethrow_exception(p);
-    } catch (const platform::EOFException& e) {
-      eof(e.what());
-    } catch (const platform::EnforceNotMet& e) {
-      exc(e.what());
-    }
-  });
-
-  m->def("__unittest_throw_exception__",
-         [] { PADDLE_THROW("test exception"); });
-}
+void BindException(pybind11::module* m);
 
 }  // namespace pybind
 }  // namespace paddle

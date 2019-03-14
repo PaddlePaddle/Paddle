@@ -18,6 +18,7 @@ limitations under the License. */
 #include <tuple>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
@@ -190,55 +191,6 @@ inline void PyCPUTensorSetFromArray(
   auto *dst = self->mutable_data<platform::float16>(place);
   std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
 }
-
-framework::Tensor *PySliceTensor(framework::Tensor &self, py::object obj) {
-  const framework::DDim& srcDDim = self.dims();
-  if (py::isinstance<py::slice>(obj)) {
-    size_t start, stop, step, slicelength;
-    py::slice s = static_cast<py::slice>(obj);
-    if (!s.compute(srcDDim[0], &start, &stop, &step, &slicelength)) {
-      throw py::index_error();
-    }
-
-    if (srcDDim[0] == 1) {
-      return new framework::Tensor(self);
-    } else if (step == 1) {
-      return new framework::Tensor(self.Slice(start, stop));
-    } else {
-      framework::Tensor *output = new framework::Tensor();
-      std::vector<int64_t> tensor_shape(slicelength);
-      ssize_t feature_size = framework::product(srcDDim) / srcDDim[0];
-      for (int64_t i = 0, lstart = start;
-           i < slicelength && lstart < self.numel() && lstart >= 0;
-           ++i, lstart += step) {
-        tensor_shape[i] = static_cast<int64_t>(srcDDim[lstart]);
-      }
-
-//      output->mutable_data<self.type()>(framework::make_ddim(tensor_shape), self.place());
-      for (int64_t i = 0, lstart = start, soffset = lstart * framework::SizeOfType(self.type()), doffset = 0;
-           i < slicelength && lstart < self.numel() && lstart >= 0;
-           ++i) {
-        memory::Copy(self.place(), static_cast<uint8_t *>(self.data<void>()) + soffset,
-                     self.place(), static_cast<uint8_t *>(output->data<void>()) + doffset, feature_size);
-        lstart += step;
-        soffset += lstart * framework::SizeOfType(self.type());
-        doffset += tensor_shape[i] * framework::SizeOfType(self.type());
-      }
-      return output;
-    }
-  } else if (py::isinstance<py::int_>(obj)) {
-    int64_t s = static_cast<int64_t>(static_cast<py::int_>(obj));
-    if ((srcDDim[0] == 1 && s != 0) || s > srcDDim[0] || (s < 0 && s < -srcDDim[0])) {
-      throw py::index_error();
-    } else {
-      ssize_t index = s ? s > 0 : srcDDim[0] + s;
-      return new framework::Tensor(self.Slice(index, index + 1));
-    }
-  } else {
-    throw py::index_error();
-  }
-}
-
 
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
