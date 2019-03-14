@@ -24,11 +24,13 @@ class CrossEntropy2OpTestBase(OpTest):
 
     def calc_output(self, logits, label, ignore_index):
         ret = np.zeros(shape=label.shape, dtype=logits.dtype)
+        match_x = np.zeros(shape=label.shape, dtype=logits.dtype)
         for idx in six.moves.range(label.shape[0]):
             if label[idx] == ignore_index:
                 continue
-            ret[idx] = -np.log(logits[idx][label[idx]])
-        return ret
+            match_x[idx] = logits[idx][label[idx]]
+            ret[idx] = -np.log(match_x[idx])
+        return ret, match_x
 
     def setUp(self):
         self.shape, self.dtype, self.ignore_index = self.initParameters()
@@ -39,12 +41,13 @@ class CrossEntropy2OpTestBase(OpTest):
         label = np.random.random_integers(
             low=0, high=feature_size - 1,
             size=self.shape[0:-1] + [1]).astype('int64')
-        outputs = self.calc_output(
+        outputs, match_x = self.calc_output(
             np.reshape(logits, [batch_size, feature_size]),
             np.reshape(label, [batch_size, 1]), self.ignore_index)
         self.inputs = {'X': logits, 'Label': label}
         self.outputs = {
             'Y': np.reshape(outputs, label.shape),
+            'MatchX': np.reshape(match_x, label.shape),
             'XShape': np.zeros(
                 shape=logits.shape, dtype=logits.dtype)
         }
@@ -57,7 +60,7 @@ class CrossEntropy2OpTestBase(OpTest):
         self.check_grad(
             inputs_to_check=['X'],
             output_names=['Y'],
-            no_grad_set=['XShape', 'Label'])
+            no_grad_set=['XShape', 'MatchX', 'Label'])
 
 
 class CrossEntropy2OpTest2(CrossEntropy2OpTestBase):
