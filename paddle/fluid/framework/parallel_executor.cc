@@ -257,6 +257,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     std::unique_ptr<platform::NCCLContextMap> dev_nccl_ctxs;
     dev_nccl_ctxs.reset(new platform::NCCLContextMap(member_->places_));
     // Initialize device context's nccl comm
+    // Note, more than one ParallelExecutor with same place, the nccl comm will
+    // be rewrite and there will be some problem.
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
       auto &nccl_ctx = dev_nccl_ctxs->at(dev_id);
       platform::DeviceContextPool &pool =
