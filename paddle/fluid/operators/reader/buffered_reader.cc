@@ -17,6 +17,7 @@
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 
+#include "paddle/fluid/platform/profiler.h"
 namespace paddle {
 namespace operators {
 namespace reader {
@@ -87,12 +88,15 @@ void BufferedReader::ReadAsync(size_t i) {
 
 #ifdef PADDLE_WITH_CUDA
     // NOTE(liangdun): using async copy instead of TensorCopySync
-    // TensorCopySync would block other stream
+    // TensorCopySync would block other stream, because TensorCopySync
+    // issues the copying command to the default stream, it will make two
+    // commands from different streams cannot run concurrently.
     if (platform::is_gpu_place(place_)) {
       platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
       PADDLE_ENFORCE(cudaStreamWaitEvent(stream_, events_[i], 0));
       TensorVec &gpu = gpu_buffer_[i];
       gpu.resize(cpu.size());
+      platform::RecordEvent record_event("BufferedReader:MemoryCopy");
       for (size_t i = 0; i < cpu.size(); ++i) {
         gpu[i].Resize(cpu[i].dims());
         gpu[i].set_layout(cpu[i].layout());
@@ -112,6 +116,7 @@ void BufferedReader::ReadAsync(size_t i) {
         } else {
           // if cpu place is not pinned, async copy is slower than sync copy,
           // so we use sync copy instead.
+          // TODO(zcd): The default stream should not be used here.
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
                        boost::get<platform::CPUPlace>(cpu_place), cpu_ptr, size,
                        0);
