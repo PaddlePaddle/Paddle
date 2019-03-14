@@ -149,11 +149,10 @@ PYBIND11_MODULE(core, m) {
   m.def("print_mem_usage",
         []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
-  m.def("start_imperative_profiler",
+  m.def("start_imperative_gperf_profiler",
         []() { imperative::StartProfile(); });
 
-  m.def("stop_imperative_profiler",
-        []() { imperative::StopProfile(); });
+  m.def("stop_imperative_gperf_profiler", []() { imperative::StopProfile(); });
 
   py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
       .def(
