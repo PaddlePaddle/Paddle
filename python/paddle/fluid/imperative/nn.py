@@ -471,7 +471,6 @@ class Embedding(layers.Layer):
         return out
 
 
-@layer_function_generator.templatedoc()
 class LayerNorm(layers.Layer):
     def __init__(self,
                  name_scope,
@@ -579,7 +578,7 @@ class LayerNorm(layers.Layer):
         layer_norm_out = self._helper.create_variable_for_type_inference(
             self._dtype)
 
-        self.append_op(
+        self._helper.append_op(
             type="layer_norm",
             inputs=self.inputs,
             outputs={
