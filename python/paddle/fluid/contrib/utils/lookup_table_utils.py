@@ -135,8 +135,8 @@ def load_persistables_for_increment(dirname, executor, program,
     """
     WARNING: this function will only be used for distributed training with distributed lookup table.
     for increment trainning, the pserver will not only load dense variables,
-    but also load the suitable lookup table var. Because of slice lookup table
-    var with HASH, we must load the correct slice var.
+    but also load the suitable lookup table var. Because of sliced lookup table
+    var with HASH, we must load the correct sliced var.
 
     Args:
         dirname(str): The directory path
