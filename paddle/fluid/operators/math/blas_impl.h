@@ -567,8 +567,8 @@ template <>
 template <typename T>
 void Blas<platform::CPUDeviceContext>::BatchedGEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
-    T alpha, const T *A, int lda, const T *B, int ldb, T beta, T *C, int ldc,
-    int batchCount, int64_t strideA, int64_t strideB) const {
+    T alpha, const T *A, const int lda, const T *B, const int ldb, T beta, T *C,
+    const int ldc, int batchCount, int64_t strideA, int64_t strideB) const {
 #ifdef PADDLE_WITH_MKLML
   auto a_array = std::vector<const T *>(batchCount);
   auto b_array = std::vector<const T *>(batchCount);
@@ -647,38 +647,36 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
     PADDLE_ENFORCE(dim_a.batch_size_ == dim_b.batch_size_ ||
                    dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0);
     this->template BatchedGEMM<T>(
-      transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
-      mat_a.data<T>(), mat_b.data<T>(), beta, mat_out->data<T>(),
-      std::max(dim_a.batch_size_, dim_b.batch_size_),
-      dim_a.stride_, dim_b.stride_);
+        transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
+        mat_a.data<T>(), mat_b.data<T>(), beta, mat_out->data<T>(),
+        dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
+        dim_a.stride_, dim_b.stride_);
   }
 }
 
-
 template <typename DeviceContext>
 template <typename T>
-void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
-                                 const MatDescriptor &dim_a, int lda,
-                                 const framework::Tensor &mat_b,
-                                 const MatDescriptor &dim_b, int ldb,
-                                 T alpha, framework::Tensor *mat_out, int ldc,
-                                 T beta) const {
+void Blas<DeviceContext>::MatMul(
+    const framework::Tensor &mat_a, const MatDescriptor &dim_a, const int ld_a,
+    int64_t stride_a, const framework::Tensor &mat_b,
+    const MatDescriptor &dim_b, const int ld_b, int64_t stride_b, T alpha,
+    framework::Tensor *mat_out, const int ld_out, T beta) const {
   PADDLE_ENFORCE_EQ(dim_a.width_, dim_b.height_);
   CBLAS_TRANSPOSE transA = !dim_a.trans_ ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = !dim_b.trans_ ? CblasNoTrans : CblasTrans;
   if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
-      this->template GEMM<T>(transA, transB, dim_a.height_, dim_b.width_,
-                             dim_a.width_, alpha, mat_a.data<T>(), lda,
-                             mat_b.data<T>(), ldb, beta, mat_out->data<T>(), ldc);
+    this->template GEMM<T>(transA, transB, dim_a.height_, dim_b.width_,
+                           dim_a.width_, alpha, mat_a.data<T>(), ld_a,
+                           mat_b.data<T>(), ld_b, beta, mat_out->data<T>(),
+                           ld_out);
   } else {
     PADDLE_ENFORCE(dim_a.batch_size_ == dim_b.batch_size_ ||
                    dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0);
-      this->template BatchedGEMM<T>(
+    this->template BatchedGEMM<T>(
         transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
-        mat_a.data<T>(), lda, mat_b.data<T>(), ldb, beta,
-        mat_out->data<T>(), ldc,
-        std::max(dim_a.batch_size_, dim_b.batch_size_),
-        dim_a.stride_, dim_b.stride_);
+        mat_a.data<T>(), ld_a, mat_b.data<T>(), ld_b, beta, mat_out->data<T>(),
+        ld_out, dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
+        stride_a, stride_b);
   }
 }
 

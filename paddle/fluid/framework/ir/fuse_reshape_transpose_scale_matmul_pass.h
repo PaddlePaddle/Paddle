@@ -23,20 +23,24 @@ namespace paddle {
 namespace framework {
 namespace ir {
 namespace patterns {
+
 struct ReshapeTransposeScaleMatmul : public PatternBase {
   ReshapeTransposeScaleMatmul(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope,
-                    "reshape_transpose_scale_matmul_fuse") {}
-  PDNode* operator()(PDNode* matmul_output);
+      : PatternBase(pattern, name_scope, "reshape_transpose_matmul_fuse") {}
+  PDNode* operator()(PDNode* matmul_output, bool scale = false);
   // declare operator node's name
   PATTERN_DECL_NODE(reshape);
   PATTERN_DECL_NODE(transpose);
+  PATTERN_DECL_NODE(scale);
   PATTERN_DECL_NODE(matmul);
+  PATTERN_DECL_NODE(eltwise_add);
   // declare variable node's name
   PATTERN_DECL_NODE(reshape_input);
   PATTERN_DECL_NODE(transpose_input);
+  PATTERN_DECL_NODE(scale_input);
   PATTERN_DECL_NODE(matmul_input);
 };
+
 };  // namespace patterns
 
 /*

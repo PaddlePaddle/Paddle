@@ -21,6 +21,116 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+#define MATMUL_COMPUTE_DIMENSION 2
+
+/**
+ * To validate the input dimension and return the final shape.
+ */
+static framework::DDim ValidateShape(const std::vector<int> shape,
+                                     const framework::DDim &in_dims) {
+  const int64_t in_size = framework::product(in_dims);
+  auto in_dims_vec = framework::vectorize(in_dims);
+  bool all_positive = std::all_of(in_dims_vec.cbegin(), in_dims_vec.cend(),
+                                  [](int64_t i) { return i > 0; });
+  // only one dimension can be set to -1, whose size will be automatically
+  // infered.
+  const int64_t unk_dim_val = -1;
+  const int64_t copy_dim_val = 0;
+
+  std::vector<int64_t> output_shape(shape.size(), 0);
+  int64_t capacity = 1;
+  int unk_dim_idx = -1;
+  for (size_t i = 0; i < shape.size(); ++i) {
+    if (shape[i] == unk_dim_val) {
+      PADDLE_ENFORCE(unk_dim_idx == -1,
+                     "Only one input dimension of Attr(shape) can be unknown.");
+      unk_dim_idx = i;
+    } else if (shape[i] == copy_dim_val) {
+      PADDLE_ENFORCE(
+          static_cast<int>(i) < in_dims.size(),
+          "The index of dimension to copy from input shape must be less "
+          "than the size of input shape.");
+    } else {
+      PADDLE_ENFORCE(
+          shape[i] > 0,
+          "Each input dimension of Attr(shape) must not be negtive except "
+          "one unknown dimension.");
+    }
+
+    capacity *= (shape[i] ? shape[i] : in_dims[i]);
+    output_shape[i] = (shape[i] ? static_cast<int64_t>(shape[i]) : in_dims[i]);
+  }
+
+  if (unk_dim_idx != -1) {
+    if (all_positive) {
+      // in_size < 0 and is un-determinate in compile time, skip the check,
+      // for example, in_dims = [-1, 8, 1, 1], shape = [-1, 3, 8],
+      // capacity = -24, in_size = -8, output_shape[0] = 0
+      // the following check will fail.
+      output_shape[unk_dim_idx] = -in_size / capacity;
+      PADDLE_ENFORCE_EQ(output_shape[unk_dim_idx] * capacity, -in_size,
+                        "Invalid shape is given.");
+    } else {
+      output_shape[unk_dim_idx] = -1;
+    }
+  } else {
+    PADDLE_ENFORCE_EQ(capacity, in_size, "Invalid shape is given.");
+  }
+  return framework::make_ddim(output_shape);
+}
+
+/**
+ * To do the transpose the dimension with axis.
+ */
+static framework::DDim transpose(const std::vector<int> axis,
+                                 const framework::DDim &in_dims) {
+  size_t axis_size = axis.size();
+  size_t in_rank = in_dims.size();
+
+  PADDLE_ENFORCE_EQ(in_rank, axis_size,
+                    "The input tensor's rank(%d) "
+                    "should be equal to the axis's size(%d)",
+                    in_rank, axis_size);
+
+  std::vector<int> count(axis_size, 0);
+  for (size_t i = 0; i < axis_size; i++) {
+    PADDLE_ENFORCE(
+        axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1,
+        "Each element of Attribute axis should be a unique value "
+        "range from 0 to (dims - 1), "
+        "where the dims is the axis's size");
+  }
+
+  framework::DDim out_dims(in_dims);
+  for (size_t i = 0; i < axis_size; i++) {
+    out_dims[i] = in_dims[axis[i]];
+  }
+
+  return out_dims;
+}
+
+/**
+ * Use the input dimension and axis to update the stride and leading dimension.
+ */
+static void UpdateStrideLd(const framework::DDim &dims,
+                           const std::vector<int> axis, int &stride,  // NOLINT
+                           int &ld) {                                 // NOLINT
+  int ndmis = dims.size();
+
+  stride = 1;
+  ld = 1;
+
+  for (auto i = axis[ndmis - MATMUL_COMPUTE_DIMENSION - 1] + 1; i < ndmis;
+       i++) {
+    stride *= dims[i];
+  }
+
+  for (auto i = axis[ndmis - MATMUL_COMPUTE_DIMENSION] + 1; i < ndmis; i++) {
+    ld *= dims[i];
+  }
+}
+
 /**
  * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
  * original x_dim is returned.
@@ -47,39 +157,51 @@ template <typename DeviceContext, typename T>
 class MatMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    using framework::Tensor;
     auto &x =
-        detail::Ref(context.Input<Tensor>("X"), "Cannot find X");
+        detail::Ref(context.Input<framework::Tensor>("X"), "Cannot find X");
     auto &y =
-        detail::Ref(context.Input<Tensor>("Y"), "Cannot find Y");
+        detail::Ref(context.Input<framework::Tensor>("Y"), "Cannot find Y");
     auto *out = context.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(context.GetPlace());
 
-    T beta;
-    if(context.HasInput("Bias")) {
-      auto* bias = context.Input<Tensor>("Bias");
-      out->ShareDataWith(*bias);
-      beta = T(1.0);
-    } else {
-      out->mutable_data<T>(context.GetPlace());
-      beta = T(0);
+    auto transpose_x = context.Attr<bool>("transpose_X");
+    auto transpose_y = context.Attr<bool>("transpose_Y");
+    const std::vector<int> &shape_x = context.Attr<std::vector<int>>("shape_X");
+    const std::vector<int> &shape_y = context.Attr<std::vector<int>>("shape_Y");
+    const std::vector<int> &axis_x = context.Attr<std::vector<int>>("axis_X");
+    const std::vector<int> &axis_y = context.Attr<std::vector<int>>("axis_Y");
+    int ld_x = 0, ld_y = 0, ld_out = 0, stride_x = 0, stride_y = 0;
+    auto dim_x = x.dims();
+    auto dim_y = y.dims();
+
+    if (shape_x.size() > 0 && shape_x.size() == axis_x.size()) {
+      dim_x = ValidateShape(shape_x, dim_x);
+      UpdateStrideLd(dim_x, axis_x, stride_x, ld_x);
+      dim_x = transpose(axis_x, dim_x);
     }
 
-    int LDX = context.Attr<int>("LDX");
-    int LDY = context.Attr<int>("LDY");
-    int LDOut = context.Attr<int>("LDOut");
+    if (shape_y.size() > 0 && shape_y.size() == axis_y.size()) {
+      dim_y = ValidateShape(shape_y, dim_y);
+      UpdateStrideLd(dim_y, axis_y, stride_y, ld_y);
+      dim_y = transpose(axis_y, dim_y);
+    }
 
     auto blas = math::GetBlas<DeviceContext, T>(context);
-    auto mat_dim_a = math::CreateMatrixDescriptor(
-        RowMatrixFromVector(x.dims()), 0, context.Attr<bool>("transpose_X"));
-    auto mat_dim_b = math::CreateMatrixDescriptor(
-        ColumnMatrixFromVector(y.dims()), 0, context.Attr<bool>("transpose_Y"));
+    auto mat_dim_a = math::CreateMatrixDescriptor(RowMatrixFromVector(dim_x), 0,
+                                                  transpose_x);
+    auto mat_dim_b = math::CreateMatrixDescriptor(ColumnMatrixFromVector(dim_y),
+                                                  0, transpose_y);
     auto scale = static_cast<T>(context.Attr<float>("alpha"));
-    if(LDX == LDY && LDY == LDOut && LDOut == 0) {
-      blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, beta);
-    } else {
-      blas.MatMul(x, mat_dim_a, LDX, y, mat_dim_b, LDY, scale, out, LDOut,
-                  beta);
-    }
+    ld_x =
+        ld_x != 0 ? ld_x : (transpose_x ? mat_dim_a.height_ : mat_dim_a.width_);
+    ld_y =
+        ld_y != 0 ? ld_y : (transpose_y ? mat_dim_a.width_ : mat_dim_b.width_);
+    ld_out = ld_out != 0 ? ld_out : mat_dim_b.width_;
+    stride_x = stride_x != 0 ? stride_x : mat_dim_a.stride_;
+    stride_y = stride_y != 0 ? stride_y : mat_dim_b.stride_;
+
+    blas.MatMul(x, mat_dim_a, ld_x, stride_x, y, mat_dim_b, ld_y, stride_y,
+                scale, out, ld_out, T(0));
   }
 };
 
@@ -301,6 +423,26 @@ class MatMulOp : public framework::OperatorWithKernel {
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
 
+    const std::vector<int> &shape_x =
+        context->Attrs().Get<std::vector<int>>("shape_X");
+    const std::vector<int> &shape_y =
+        context->Attrs().Get<std::vector<int>>("shape_Y");
+    const std::vector<int> &axis_x =
+        context->Attrs().Get<std::vector<int>>("axis_X");
+    const std::vector<int> &axis_y =
+        context->Attrs().Get<std::vector<int>>("axis_Y");
+
+    if (shape_x.size() > 0 && shape_x.size() == axis_x.size()) {
+      dim_x = ValidateShape(shape_x, dim_x);
+
+      dim_x = transpose(axis_x, dim_x);
+    }
+
+    if (shape_y.size() > 0 && shape_y.size() == axis_y.size()) {
+      dim_y = ValidateShape(shape_y, dim_y);
+      dim_y = transpose(axis_y, dim_y);
+    }
+
     auto mat_dim_x =
         math::CreateMatrixDescriptor(RowMatrixFromVector(dim_x), 0,
                                      context->Attrs().Get<bool>("transpose_X"));
@@ -346,7 +488,6 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The first input of MatMul op");
     AddInput("Y", "The second input of MatMul op");
-    AddInput("Bias", "The bias input of MatMul op").AsDispensable();
     AddOutput("Out", "The output of MatMul op");
     AddAttr<bool>("transpose_X",
                   R"DOC(If true, use the transpose of `X`.
@@ -357,9 +498,22 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(false);
     AddAttr<float>("alpha", "The scale of Out").SetDefault(1.0f);
-    AddAttr<int>("LDX", "The leading dimension of X").SetDefault(0);
-    AddAttr<int>("LDY", "The leading dimension of Y").SetDefault(0);
-    AddAttr<int>("LDOut", "The leading dimension of Output").SetDefault(0);
+    AddAttr<std::vector<int>>("shape_X",
+                              "(vector<int>) "
+                              "the shape of x input. ")
+        .SetDefault(std::vector<int>{});
+    AddAttr<std::vector<int>>("shape_Y",
+                              "(vector<int>) "
+                              "the shape of y input.")
+        .SetDefault(std::vector<int>{});
+    AddAttr<std::vector<int>>("axis_X",
+                              "(vector<int>) "
+                              "the axis of x input. ")
+        .SetDefault(std::vector<int>{});
+    AddAttr<std::vector<int>>("axis_Y",
+                              "(vector<int>) "
+                              "the axis of y input.")
+        .SetDefault(std::vector<int>{});
     AddComment(R"DOC(
 MatMul Operator.
 

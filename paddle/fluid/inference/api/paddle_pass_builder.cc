@@ -108,19 +108,20 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
       "seqpool_concat_fuse_pass",       //
       "seqconv_eltadd_relu_fuse_pass",  //
       // "embedding_fc_lstm_fuse_pass", //
-      "fc_lstm_fuse_pass",             //
-      "mul_lstm_fuse_pass",            //
-      "fc_gru_fuse_pass",              //
-      "mul_gru_fuse_pass",             //
-      "seq_concat_fc_fuse_pass",       //
-      "fc_fuse_pass",                  //
-      "repeated_fc_relu_fuse_pass",    //
-      "squared_mat_sub_fuse_pass",     //
-      "conv_bn_fuse_pass",             //
-      "conv_eltwiseadd_bn_fuse_pass",  //
-      "is_test_pass",                  //
-      "identity_scale_op_clean_pass",  //
-      "runtime_context_cache_pass",    //
+      "fc_lstm_fuse_pass",                         //
+      "mul_lstm_fuse_pass",                        //
+      "fc_gru_fuse_pass",                          //
+      "mul_gru_fuse_pass",                         //
+      "seq_concat_fc_fuse_pass",                   //
+      "fc_fuse_pass",                              //
+      "repeated_fc_relu_fuse_pass",                //
+      "squared_mat_sub_fuse_pass",                 //
+      "conv_bn_fuse_pass",                         //
+      "conv_eltwiseadd_bn_fuse_pass",              //
+      "is_test_pass",                              //
+      "identity_scale_op_clean_pass",              //
+      "runtime_context_cache_pass",                //
+      "fuse_reshape_transpose_scale_matmul_pass",  //
   });
   use_gpu_ = false;
 }
