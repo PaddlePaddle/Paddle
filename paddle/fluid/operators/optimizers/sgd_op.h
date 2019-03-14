@@ -48,7 +48,8 @@ class SGDOpKernel : public framework::OpKernel<T> {
         T *out_data = param_out->mutable_data<T>(ctx.GetPlace());
 
         auto sgd =
-            jit::Get<jit::kSgd, jit::SgdTuples<T>, platform::CPUPlace>(attr);
+            jit::KernelFuncs<jit::SgdTuple<T>, platform::CPUPlace>::Cache().At(
+                attr);
         sgd(lr, param_data, grad_data, &rows_idx, out_data, &attr);
       } else if (grad_var->IsType<framework::SelectedRows>()) {
         // TODO(qijun): In Sparse SGD operator, in-place update is enforced.
@@ -82,7 +83,8 @@ class SGDOpKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(attr.grad_width, attr.param_width);
 
         auto sgd =
-            jit::Get<jit::kSgd, jit::SgdTuples<T>, platform::CPUPlace>(attr);
+            jit::KernelFuncs<jit::SgdTuple<T>, platform::CPUPlace>::Cache().At(
+                attr);
         sgd(lr, param_data, grad_data, rows_data, out_data, &attr);
       } else {
         PADDLE_THROW("Unsupported Variable Type of Grad");
