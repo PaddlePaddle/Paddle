@@ -33,8 +33,6 @@ PDNode* patterns::ReshapeTransposeScaleMatmul::operator()(
   auto* transpose_op =
       pattern->NewNode(transpose_repr())->assert_is_op("transpose2");
   auto* scale_op = pattern->NewNode(scale_repr())->assert_is_op("scale");
-  auto* eltwise_add_op =
-      pattern->NewNode(eltwise_add_repr())->assert_is_op("elementwise_add");
 
   // Create variables
   auto* reshape_input_var = pattern->NewNode(reshape_input_repr())
@@ -68,7 +66,6 @@ PDNode* patterns::ReshapeTransposeScaleMatmul::operator()(
   }
 
   matmul_op->LinksFrom({matmul_input_var}).LinksTo({matmul_output});
-  eltwise_add_op->LinksFrom({matmul_output});
   return matmul_output;
 }
 

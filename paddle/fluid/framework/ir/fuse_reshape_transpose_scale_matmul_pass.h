@@ -33,7 +33,6 @@ struct ReshapeTransposeScaleMatmul : public PatternBase {
   PATTERN_DECL_NODE(transpose);
   PATTERN_DECL_NODE(scale);
   PATTERN_DECL_NODE(matmul);
-  PATTERN_DECL_NODE(eltwise_add);
   // declare variable node's name
   PATTERN_DECL_NODE(reshape_input);
   PATTERN_DECL_NODE(transpose_input);
