@@ -30,6 +30,7 @@ message TrainerDesc {
   repeated string filelist = 5;
   repeated string fetch_var_names = 6;
   optional int32 batch_per_print = 7 [ default = 100 ];
+  optional bool debug = 8 [ default = false ];
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
