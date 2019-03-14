@@ -12,19 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import unittest
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.imperative.nn import Conv2D, Pool2D, FC
 from paddle.fluid.imperative.base import to_variable
-from test_imperative_base import new_program_scope
 
 
 class SimpleImgConvPool(fluid.imperative.Layer):

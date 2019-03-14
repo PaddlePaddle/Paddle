@@ -16,10 +16,9 @@ from __future__ import print_function
 
 import os
 import collections
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.framework import Variable, Parameter
-from paddle.fluid.imperative.layers import Layer
+from .. import core
+from ..framework import Variable, Parameter, default_main_program
+from .layers import Layer
 
 __all__ = ['save_persistables', 'load_persistables']
 
@@ -127,7 +126,7 @@ def load_persistables(obj, dirname, filename=None):
 
 
 def _save_var_to_file(stat_dict, file_dir, file_name):
-    save_block = fluid.default_main_program().global_block()
+    save_block = default_main_program().global_block()
     save_var_map = {}
     for each_var in stat_dict.items():
         save_var_map[each_var.name] = each_var
@@ -151,7 +150,7 @@ def _save_var_to_file(stat_dict, file_dir, file_name):
 
 
 def _load_var_from_file(stat_dict, file_dir, file_name):
-    load_block = fluid.default_main_program().global_block()
+    load_block = default_main_program().global_block()
     load_var_map = {}
 
     for each_var in stat_dict.items():
