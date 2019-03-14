@@ -25,6 +25,7 @@
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 
@@ -33,8 +34,10 @@ using framework::LoDTensor;
 using framework::ir::Graph;
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<float, Eigen::Dynamic, 1>>;
+using string::PrettyLogH1;
 
 bool AnalysisPredictor::Quantizer::CalculateScales() {
+  PrettyLogH1("--- Calculating scales for quantization");
   using VariableNameMap = std::map<std::string, std::vector<std::string>>;
   std::map<std::string, std::map<std::string, LoDTensor>> gathered_data;
   for (const auto* op : predictor_.inference_program_->Block(0).AllOps()) {
@@ -380,12 +383,11 @@ bool AnalysisPredictor::Quantizer::RunWarmup() const {
   auto warmup_data = qconfig_->warmup_data();
   PADDLE_ENFORCE_NOT_NULL(warmup_data,
                           "Warmup data cannot be NULL in the config.");
+  PrettyLogH1("--- Running warmup iteration for quantization");
 
   // Run the inference program
   std::vector<PaddleTensor> output_slots;
-  std::cout << "Running warmup iteration." << std::endl;
   predictor_.Run(*warmup_data, &output_slots, qconfig_->warmup_batch_size());
-  std::cout << "Done." << std::endl;
 
   return true;
 }

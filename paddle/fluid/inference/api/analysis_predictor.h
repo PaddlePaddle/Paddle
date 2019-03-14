@@ -185,9 +185,7 @@ class AnalysisPredictor::Quantizer {
  public:
   explicit Quantizer(AnalysisPredictor &predictor,  // NOLINT
                      const std::shared_ptr<QuantizerConfig> &qconfig)
-      : predictor_(predictor), qconfig_(qconfig) {
-    std::cout << "Quantizer constructor" << std::endl;
-  }
+      : predictor_(predictor), qconfig_(qconfig) {}
 
   // Execute full quantization procedure.
   bool Quantize();

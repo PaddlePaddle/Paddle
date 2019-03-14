@@ -250,12 +250,12 @@ class QuantizerTest : public testing::Test {
   QuantizerTest() {
     AnalysisConfig config(FLAGS_dirname);
 
-    auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
-    auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
+    predictor.reset(new AnalysisPredictor(config));
+    auto* predictor_p = static_cast<AnalysisPredictor*>(predictor.get());
 
     auto qconfig = std::make_shared<QuantizerConfig>();
 
-    quantizer.reset(new AnalysisPredictor::Quantizer(*predictor, qconfig));
+    quantizer.reset(new AnalysisPredictor::Quantizer(*predictor_p, qconfig));
   }
 
   std::pair<std::vector<int>, float> Histogram(
@@ -265,21 +265,22 @@ class QuantizerTest : public testing::Test {
   }
 
   std::pair<bool, framework::LoDTensor> GetMaxScalingFactor(
-      const framework::LoDTensor& var_tensor, bool qmax) const {
-    return quantizer->GetMaxScalingFactor(var_tensor, qmax);
+      const framework::LoDTensor& var_tensor, bool is_unsigned) const {
+    return quantizer->GetMaxScalingFactor(var_tensor, is_unsigned);
   }
 
   std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
-      const framework::LoDTensor& var_tensor, bool qmax) const {
-    return quantizer->GetMaxChScalingFactor(var_tensor, qmax);
+      const framework::LoDTensor& var_tensor, bool is_unsigned) const {
+    return quantizer->GetMaxChScalingFactor(var_tensor, is_unsigned);
   }
 
   std::pair<bool, framework::LoDTensor> GetKLScalingFactor(
-      const framework::LoDTensor& var_tensor, bool qmax) const {
-    return quantizer->GetKLScalingFactor(var_tensor, qmax);
+      const framework::LoDTensor& var_tensor, bool is_unsigned) const {
+    return quantizer->GetKLScalingFactor(var_tensor, is_unsigned);
   }
 
  protected:
+  std::unique_ptr<PaddlePredictor> predictor;
   std::unique_ptr<AnalysisPredictor::Quantizer> quantizer;
   float abs_error = 1e-6;
   static const std::array<float, 10> non_negative_values;
