@@ -44,6 +44,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   pull_dense_worker_ = PullDenseWorker::GetInstance();
   pull_dense_worker_->Initialize(trainer_desc);
   VLOG(3) << "initialize pull dense worker";
+  SetDebug(trainer_desc.debug());
 }
 
 void DistMultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {

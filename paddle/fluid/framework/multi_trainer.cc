@@ -41,6 +41,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   }
 
   // set debug here
+  SetDebug(trainer_desc.debug());
 }
 
 // call only after all resources are set in current trainer
@@ -57,8 +58,13 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 void MultiTrainer::Run() {
   VLOG(3) << "Going to run";
   for (int thidx = 0; thidx < thread_num_; ++thidx) {
-    threads_.push_back(
-        std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
+    if (!debug_) {
+      threads_.push_back(
+          std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
+    } else {
+      threads_.push_back(std::thread(&DeviceWorker::TrainFilesWithProfiler,
+                                     workers_[thidx].get()));
+    }
   }
 }
 

@@ -155,6 +155,7 @@ class DownpourWorker : public HogwildWorker {
   virtual ~DownpourWorker() {}
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
+  virtual void TrainFilesWithProfiler();
 
  protected:
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
