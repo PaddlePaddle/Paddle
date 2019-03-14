@@ -452,12 +452,8 @@ class TestDistBase(unittest.TestCase):
             sys.stderr.write("ps1 stderr: %s\n" % fn.read())
 
         # print log
-        # if stat0 == 0:
-        #     sys.stderr.write('trainer 0 stdout: %s\n' % pickle.loads(tr0_out))
         with open("/tmp/tr0_err.log", "r") as fn:
             sys.stderr.write('trainer 0 stderr: %s\n' % fn.read())
-        # if stat1 == 0:
-        #     sys.stderr.write('trainer 1 stdout: %s\n' % pickle.loads(tr1_out))
         with open("/tmp/tr1_err.log", "r") as fn:
             sys.stderr.write('trainer 1 stderr: %s\n' % fn.read())
 

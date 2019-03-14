@@ -58,10 +58,8 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   bool UseGPU() const;
 
-  bool NeedCollectiveOpHandle(const std::string &grad_name,
-                              std::vector<ir::Node *> ops) const;
-
-  bool NeedCollectiveOps() const;
+  bool NeedCollectiveForGrad(const std::string &grad_name,
+                             std::vector<ir::Node *> ops) const;
 
   bool IsScaleLossOp(ir::Node *node) const;
 
