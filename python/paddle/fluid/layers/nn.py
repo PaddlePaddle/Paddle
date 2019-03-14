@@ -1450,11 +1450,13 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
     helper = LayerHelper('cross_entropy2', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     xshape = helper.create_variable_for_type_inference(dtype=input.dtype)
+    match_x = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type='cross_entropy2',
         inputs={'X': [input],
                 'Label': [label]},
         outputs={'Y': [out],
+                 'MatchX': [match_x],
                  'XShape': [xshape]},
         attrs={'ignore_index': ignore_index})
     return out
