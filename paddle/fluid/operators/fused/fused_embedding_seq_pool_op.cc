@@ -23,9 +23,6 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    if (ctx->IsRuntime()) {
-      return;
-    }
     PADDLE_ENFORCE(ctx->HasInput("W"),
                    "Input W of FusedEmbeddingSeqPoolOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Ids"),
@@ -91,6 +88,8 @@ class FusedEmbeddingSeqPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(boolean, default false) "
                   "Sparse update.")
         .SetDefault(false);
+    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape, "")
+        .SetDefault(true);
     AddComment(R"DOC(
 FusedEmbeddingSeqPool Operator.
 
