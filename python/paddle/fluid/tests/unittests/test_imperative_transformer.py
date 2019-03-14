@@ -16,13 +16,10 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid.imperative import Embedding, LayerNorm, FC, to_variable, Layer, guard, to_parameter
-import paddle.fluid.framework as framework
-from paddle.fluid.optimizer import SGDOptimizer
+from paddle.fluid.imperative import Embedding, LayerNorm, FC, to_variable, Layer, guard
 from test_imperative_base import new_program_scope
 import numpy as np
 import six
-import pdb
 
 
 # Copy from models
@@ -164,7 +161,7 @@ pos_inp2 = position_encoding_init(ModelHyperParams.max_length,
                                   ModelHyperParams.d_model)
 
 
-def create_data(is_static=False, init=False):
+def create_data(is_static=False):
     np.random.seed = 1
     src_word_np = np.random.randint(
         1, 10000, size=(batch_size, seq_len, 1), dtype='int64')
@@ -187,18 +184,11 @@ def create_data(is_static=False, init=False):
     lbl_weight_np = np.random.randn(batch_size * seq_len, 1).astype('float32')
 
     if is_static:
-        if init:
-            return [
-                src_word_np, src_pos_np, src_slf_attn_bias_np, trg_word_np,
-                trg_pos_np, trg_slf_attn_bias_np, trg_src_attn_bias_np,
-                lbl_word_np, lbl_weight_np, pos_inp1, pos_inp2
-            ]
-        else:
-            return [
-                src_word_np, src_pos_np, src_slf_attn_bias_np, trg_word_np,
-                trg_pos_np, trg_slf_attn_bias_np, trg_src_attn_bias_np,
-                lbl_word_np, lbl_weight_np
-            ]
+        return [
+            src_word_np, src_pos_np, src_slf_attn_bias_np, trg_word_np,
+            trg_pos_np, trg_slf_attn_bias_np, trg_src_attn_bias_np, lbl_word_np,
+            lbl_weight_np
+        ]
     else:
         enc_inputs = [
             to_variable(src_word_np), to_variable(src_pos_np),
@@ -586,18 +576,18 @@ class PrepareEncoderDecoderLayer(Layer):
             param_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
                 initializer=fluid.initializer.Normal(0., src_emb_dim**-0.5)))
+        if pos_enc_param_name is pos_enc_param_names[0]:
+            pos_inp = pos_inp1
+        else:
+            pos_inp = pos_inp2
         self._pos_emb = Embedding(
             name_scope=self.full_name(),
             size=[self._src_max_len, src_emb_dim],
             param_attr=fluid.ParamAttr(
-                name=pos_enc_param_name, trainable=False))
-        if framework._in_imperative_mode():
-            if pos_enc_param_name is pos_enc_param_names[0]:
-                self._pos_emb._w = to_parameter(
-                    pos_inp1, name=pos_enc_param_name)
-            else:
-                self._pos_emb._w = to_parameter(
-                    pos_inp2, name=pos_enc_param_name)
+                name=pos_enc_param_name,
+                initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
+                trainable=False))
+
         # use in imperative_mode to fit different length batch
         # self._pos_emb._w = to_variable(
         #     position_encoding_init(self._src_max_len, self._src_emb_dim))
@@ -922,7 +912,6 @@ class TestImperativeTransformer(unittest.TestCase):
         with guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
-            pdb.set_trace()
             transformer = TransFormer(
                 'transformer',
                 ModelHyperParams.src_vocab_size,
@@ -955,9 +944,6 @@ class TestImperativeTransformer(unittest.TestCase):
                     epsilon=TrainTaskConfig.eps)
             else:
                 optimizer = fluid.optimizer.SGD(learning_rate=0.003)
-            for param in transformer._wrap_encoder_layer._prepare_encoder_layer.parameters(
-            ):
-                print(param.name)
             dy_param_init = dict()
             dy_param_updated = dict()
 
@@ -972,10 +958,9 @@ class TestImperativeTransformer(unittest.TestCase):
 
                 dy_avg_cost._backward()
                 optimizer.minimize(dy_avg_cost)
-                if i == 1:
+                if i == batch_num:
                     for param in transformer.parameters():
                         dy_param_updated[param.name] = param._numpy()
-
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -1026,25 +1011,15 @@ class TestImperativeTransformer(unittest.TestCase):
                           fetch_list=static_param_name_list)
 
             for i in range(len(static_param_name_list)):
-                if static_param_name_list[
-                        i] not in ['trg_pos_enc_table', 'src_pos_enc_table']:
-                    static_param_init[static_param_name_list[i]] = out[i]
+                static_param_init[static_param_name_list[i]] = out[i]
 
             static_sum_cost_value = None
             static_avg_cost_value = None
             static_predict_value = None
             static_token_num_value = None
 
-            for i in range(1):
-                feed_dict = create_feed_dict_list(create_data(True, False))
-                if i == 0:
-                    feed_dict[
-                        transformer._wrap_encoder_layer._prepare_encoder_layer.
-                        _pos_emb._w.name] = pos_inp1
-                    feed_dict[
-                        transformer._wrap_decoder_layer._prepare_decoder_layer.
-                        _pos_emb._w.name] = pos_inp2
-
+            for i in range(batch_num):
+                feed_dict = create_feed_dict_list(create_data(True))
                 fetch_list = [
                     static_sum_cost, static_avg_cost, static_predict,
                     static_token_num
@@ -1058,7 +1033,7 @@ class TestImperativeTransformer(unittest.TestCase):
                 static_avg_cost_value = out[1]
                 static_predict_value = out[2]
                 static_token_num_value = out[3]
-                if i == 1:
+                if i == batch_num:
                     for k in range(4, len(out)):
                         static_param_updated[static_param_name_list[k -
                                                                     4]] = out[k]

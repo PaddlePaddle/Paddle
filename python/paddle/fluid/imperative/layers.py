@@ -72,6 +72,9 @@ class Layer(core.Layer):
 
         Returns created parameter Variable.
         """
+
+        if (attr is not None) and (attr.name is not None):
+            attr.name = ".".join([self._full_name, attr.name])
         return self._helper.create_parameter(attr, shape, dtype, is_bias,
                                              default_initializer)
 

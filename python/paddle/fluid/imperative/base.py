@@ -18,7 +18,7 @@ from paddle.fluid import core
 from paddle.fluid import framework
 from .tracer import Tracer
 
-__all__ = ['enabled', 'guard', 'to_variable', 'to_parameter']
+__all__ = ['enabled', 'guard', 'to_variable']
 
 
 def enabled():
@@ -61,25 +61,4 @@ def to_variable(value, block=None, name=None):
         tensor.set(value, framework._current_expected_place())
         return py_var
     elif isinstance(value, framework.Variable):
-        return value
-
-
-def to_parameter(value, block=None, name=None, trainable=True):
-    if isinstance(value, np.ndarray):
-        assert enabled(), "to_variable could only be called in imperative mode"
-
-        if not block:
-            block = framework.default_main_program().current_block()
-        py_param = framework.Parameter(
-            block,
-            name=name,
-            shape=value.shape,
-            dtype=value.dtype,
-            trainable=trainable)
-        var = py_param._ivar.value()
-        tensor = var.get_tensor()
-        tensor.set(value, framework._current_expected_place())
-        return py_param
-
-    elif isinstance(value, framework.Parameter):
         return value
