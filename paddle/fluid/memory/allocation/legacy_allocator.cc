@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/legacy_allocator.h"
-
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -23,9 +22,11 @@
 #endif
 
 #include "glog/logging.h"
+#include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
 
@@ -328,18 +329,22 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 }  // namespace legacy
 
 namespace allocation {
-
 LegacyMemMonitor GPUMemMonitor;
 
 Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
-  return new Allocation(ptr, size, place_);
+  auto *tmp_alloc = new Allocation(ptr, size, place_);
+  platform::MemEvenRecorder::Instance().PushMemRecord(
+      static_cast<void *>(tmp_alloc), place_, size);
+  return tmp_alloc;
 }
 
 void LegacyAllocator::Free(Allocation *allocation) {
   boost::apply_visitor(
       legacy::FreeVisitor(allocation->ptr(), allocation->size()),
       allocation->place());
+  platform::MemEvenRecorder::Instance().PopMemRecord(
+      static_cast<void *>(allocation), place_);
   delete allocation;
 }
 
