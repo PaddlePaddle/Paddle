@@ -25,8 +25,8 @@ from paddle.fluid import compiler
 
 class TestSyncBatchNormOpTraining(unittest.TestCase):
     def setUp(self):
-        self.dtype = np.float32
-        # or set self.dtype = np.float64
+        #self.dtype = np.float32
+        self.dtype = np.float64
         self.N = 32
         self.C = 16
         self.H = 64
@@ -52,33 +52,22 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     append_batch_size=False)
                 conv = fluid.layers.conv2d(
                     input=data,
-                    num_filters=8,  #32,
+                    num_filters=32,
                     filter_size=1,
                     param_attr=fluid.ParamAttr(name='conv2d_weight'),
                     bias_attr=False,
                     use_cudnn=False)
-                if sync_bn:
-                    bn = fluid.layers.sync_batch_norm(
-                        conv,
-                        param_attr=fluid.ParamAttr(name='bn_scale'),
-                        bias_attr=fluid.ParamAttr(name='bn_bias'),
-                        moving_mean_name='bn_moving_mean_sync',
-                        moving_variance_name='bn_moving_variance_sync',
-                        data_layout=layout,
-                        is_test=only_forward)
-                    sigmoid = fluid.layers.sigmoid(bn)
-                    out = fluid.layers.reduce_sum(sigmoid)
-                else:
-                    bn = fluid.layers.batch_norm(
-                        conv,
-                        param_attr=fluid.ParamAttr(name='bn_scale'),
-                        bias_attr=fluid.ParamAttr(name='bn_bias'),
-                        moving_mean_name='bn_moving_mean_async',
-                        moving_variance_name='bn_moving_variance_async',
-                        data_layout=layout,
-                        is_test=only_forward)
-                    sigmoid = fluid.layers.sigmoid(bn)
-                    out = fluid.layers.reduce_sum(sigmoid)
+                bn = fluid.layers.batch_norm(
+                    conv,
+                    param_attr=fluid.ParamAttr(name='bn_scale'),
+                    bias_attr=fluid.ParamAttr(name='bn_bias'),
+                    moving_mean_name='bn_moving_mean',
+                    moving_variance_name='bn_moving_variance',
+                    data_layout=layout,
+                    is_test=only_forward)
+                sigmoid = fluid.layers.sigmoid(bn)
+                out = fluid.layers.reduce_sum(sigmoid)
+                if not sync_bn:
                     out = out / core.get_cuda_device_count()
                 if not only_forward:
                     sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
@@ -95,8 +84,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(startup)
         fetch_names = [v.name for v in outs] + [
-            'bn_moving_mean_async', 'bn_moving_variance_async', 'bn_scale',
-            'bn_bias'
+            'bn_moving_mean', 'bn_moving_variance', 'bn_scale', 'bn_bias'
         ]
         if not only_forward:
             others = [
@@ -114,25 +102,28 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                                                  only_forward)
         exe = fluid.Executor(place)
         exe.run(startup)
-        sync_fetch_names = [v.name for v in outs] + [
-            'bn_moving_mean_sync', 'bn_moving_variance_sync', 'bn_scale',
-            'bn_bias'
+        fetch_names = [v.name for v in outs] + [
+            'bn_moving_mean', 'bn_moving_variance', 'bn_scale', 'bn_bias'
         ]
         if not only_forward:
             others = [
-                'sync_batch_norm_0.tmp_0', 'sync_batch_norm_0.tmp_1',
-                'bn_scale@GRAD', 'bn_bias@GRAD', 'sync_batch_norm_0.tmp_2@GRAD',
-                'conv2d_0.tmp_0@GRAD'
+                'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
+                'bn_bias@GRAD', 'batch_norm_0.tmp_2@GRAD', 'conv2d_0.tmp_0@GRAD'
             ]
             fetch_names += others
-        for nm in sync_fetch_names:
+        for nm in fetch_names:
             fv = fluid.framework._get_var(str(nm), program=main)
             fv.persistable = True
-        comp_prog = compiler.CompiledProgram(main).with_data_parallel(outs[
-            0].name if not only_forward else None)
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.sync_batch_norm = True
+        build_strategy.enable_inplace = False
+        build_strategy.memory_optimize = False
+        comp_prog = compiler.CompiledProgram(main).with_data_parallel(
+            outs[0].name if not only_forward else None,
+            build_strategy=build_strategy)
         sync_bn_fetches = exe.run(program=comp_prog,
                                   feed={'input': data},
-                                  fetch_list=sync_fetch_names)
+                                  fetch_list=fetch_names)
 
         for i in six.moves.xrange(1, len(sync_bn_fetches)):
             bn_val = bn_fetches[i]

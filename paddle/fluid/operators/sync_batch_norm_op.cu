@@ -227,7 +227,7 @@ __global__ void KeBackwardLocalStats(const T *dy, const T *x, const T *means,
     T sum1 = 0;
     T sum2 = 0;
     T mean = means[k];
-    for (int i = threadIdx.x; i < M; i += blockDim.x) {
+    for (int i = threadIdx.x; i < N * M; i += blockDim.x) {
       int id = layout == framework::DataLayout::kNCHW
                    ? (i / M) * C * M + k * M + i % M
                    : i * C + k;
@@ -383,17 +383,18 @@ class SyncBatchNormGradKernel : public framework::OpKernel<T> {
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     int grid = std::min(C, (max_threads + threads - 1) / threads);
     int x_numel = x->numel();
+    int fsize = H * W * D;
 
     if (layout == framework::DataLayout::kNCHW) {
       KeBackwardLocalStats<
           T, threads,
           framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
-          dy_d, x_d, saved_mean, N, H * W * D, C, stats);
+          dy_d, x_d, saved_mean, N, fsize, C, stats);
     } else {
       KeBackwardLocalStats<
           T, threads,
           framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
-          dy_d, x_d, saved_mean, N, H * W * D, C, stats);
+          dy_d, x_d, saved_mean, N, fsize, C, stats);
     }
     int dtype = platform::ToNCCLDataType(x->type());
     // In-place operation
@@ -408,14 +409,14 @@ class SyncBatchNormGradKernel : public framework::OpKernel<T> {
         KeBNBackwardScaleBias<
             T, threads,
             framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
-            dy_d, x_d, saved_mean, saved_inv_var, epsilon, N, C, H * W * D,
+            dy_d, x_d, saved_mean, saved_inv_var, epsilon, N, C, fsize,
             d_scale->data<T>(), d_bias->data<T>());
       }
       if (d_x) {
         KeBNBackwardData<
             T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
             dy_d, x_d, scale->data<T>(), saved_mean, saved_inv_var, stats,
-            stats + C, stats + 2 * C, epsilon, C, H * W, x->numel(),
+            stats + C, stats + 2 * C, epsilon, C, fsize, x->numel(),
             d_x->data<T>());
       }
     } else {
@@ -423,14 +424,14 @@ class SyncBatchNormGradKernel : public framework::OpKernel<T> {
         KeBNBackwardScaleBias<
             T, threads,
             framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
-            dy_d, x_d, saved_mean, saved_inv_var, epsilon, N, C, H * W * D,
+            dy_d, x_d, saved_mean, saved_inv_var, epsilon, N, C, fsize,
             d_scale->data<T>(), d_bias->data<T>());
       }
       if (d_x) {
         KeBNBackwardData<
             T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
             dy_d, x_d, scale->data<T>(), saved_mean, saved_inv_var, stats,
-            stats + C, stats + 2 * C, epsilon, C, H * W, x->numel(),
+            stats + C, stats + 2 * C, epsilon, C, fsize, x->numel(),
             d_x->data<T>());
       }
     }

@@ -31,10 +31,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include "paddle/fluid/platform/nccl_helper.h"
-#endif
-
 DEFINE_int32(paddle_num_threads, 1,
              "Number of threads for each paddle instance.");
 DEFINE_int32(multiple_of_cupti_buffer_size, 1,
