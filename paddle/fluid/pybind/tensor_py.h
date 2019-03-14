@@ -191,7 +191,7 @@ inline void PyCPUTensorSetFromArray(
   std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
 }
 
-framework::Tensor *PySliceTensor(framework::Tensor &self, py::object obj) {
+inline framework::Tensor* PySliceTensor(framework::Tensor &self, py::object obj) {
   const framework::DDim& srcDDim = self.dims();
   if (py::isinstance<py::slice>(obj)) {
     size_t start, stop, step, slicelength;
@@ -211,15 +211,31 @@ framework::Tensor *PySliceTensor(framework::Tensor &self, py::object obj) {
       for (int64_t i = 0, lstart = start;
            i < slicelength && lstart < self.numel() && lstart >= 0;
            ++i, lstart += step) {
-        tensor_shape[i] = static_cast<int64_t>(srcDDim[lstart]);
+        if (i == 0) {
+          tensor_shape[i] = slicelength;
+        } else {
+          tensor_shape[i] = static_cast<int64_t>(srcDDim[lstart]);
+        }
       }
 
+//#ifdef PADDLE_WITH_CUDA
 //      output->mutable_data<self.type()>(framework::make_ddim(tensor_shape), self.place());
+//#else
+//      output->mutable_data<self.type()>(framework::make_ddim(tensor_shape),
+//        boost::get<platform::CPUPlace>(self.place()));
+//#endif
       for (int64_t i = 0, lstart = start, soffset = lstart * framework::SizeOfType(self.type()), doffset = 0;
            i < slicelength && lstart < self.numel() && lstart >= 0;
            ++i) {
+#ifdef PADDLE_WITH_CUDA
         memory::Copy(self.place(), static_cast<uint8_t *>(self.data<void>()) + soffset,
                      self.place(), static_cast<uint8_t *>(output->data<void>()) + doffset, feature_size);
+#else
+        memory::Copy(boost::get<platform::CPUPlace>(self.place()),
+                     static_cast<uint8_t *>(self.data<void>()) + soffset,
+                     boost::get<platform::CPUPlace>(self.place()),
+                     static_cast<uint8_t *>(output->data<void>()) + doffset, feature_size);
+#endif
         lstart += step;
         soffset += lstart * framework::SizeOfType(self.type());
         doffset += tensor_shape[i] * framework::SizeOfType(self.type());
@@ -238,7 +254,6 @@ framework::Tensor *PySliceTensor(framework::Tensor &self, py::object obj) {
     throw py::index_error();
   }
 }
-
 
 #ifdef PADDLE_WITH_CUDA
 template <typename T>

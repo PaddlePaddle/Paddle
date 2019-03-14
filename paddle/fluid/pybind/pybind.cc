@@ -48,7 +48,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/async_executor_py.h"
 #include "paddle/fluid/pybind/const_value.h"
-#include "paddle/fluid/tensor_test/exception.h"
+#include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
@@ -329,7 +329,7 @@ PYBIND11_MODULE(core, m) {
       .def("_dtype", [](Tensor &self) { return self.type(); })
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference);
 
-py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
+  py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
 
     np.array(lod_tensor) can convert LoDTensor to numpy array.
@@ -474,11 +474,18 @@ py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
              // dimension of the LoDTensor data
              return CheckLoD(self.lod(), vectorize(self.dims()).front());
            },
-           R"DOC(
+      R"DOC(
            Check whether the lod of the LoDTensor is valid.
 
            Returns:
                out (bool): whether the lod is valid.
+           )DOC")
+      .def("__getitem__", PySliceTensor, py::return_value_policy::reference,
+      R"DOC(
+           Slice the original LoDTensor, and Lod information would be abondon.
+
+           Returns:
+               out (Tensor): new tensor without Lod information.
            )DOC");
 
   py::class_<SelectedRows>(m, "SelectedRows")
