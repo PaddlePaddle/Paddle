@@ -1060,8 +1060,30 @@ PDNode *patterns::ConvBias::operator()(
   return eltwise_out_var;
 }
 
-PDNode *patterns::Conv::operator()(bool with_residual_data) {
+PDNode *patterns::Conv::operator()() {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+
+  auto input_var = pattern->NewNode(conv_input_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("conv2d", "Input");
+
+  auto filter_var = pattern->NewNode(conv_filter_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("conv2d", "Filter");
+
+  auto output_var = pattern->NewNode(conv_output_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("conv2d", "Output");
+
+  conv_op->LinksFrom({input_var, filter_var}).LinksTo({output_var});
+  return output_var;
+}
+
+PDNode *patterns::ConvResidual::operator()(bool with_residual_data) {
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+
+  if (!with_residual_data)
+    conv_op->assert_op_attr("fuse_residual_connection", false);
 
   auto input_var = pattern->NewNode(conv_input_repr())
                        ->AsInput()

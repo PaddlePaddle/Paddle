@@ -110,7 +110,7 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
                                    bool with_residual_data) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
-  patterns::Conv conv_pattern{pattern, name_scope_};
+  patterns::ConvResidual conv_pattern{pattern, name_scope_};
   conv_pattern(with_residual_data);
 
   int quantize_conv_count = 0;
@@ -124,13 +124,6 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     if (!conv_op_desc->HasAttr("use_quantizer") ||
         !boost::get<bool>(conv_op_desc->GetAttr("use_quantizer")))
       return;
-
-    // skip if already quantized
-    if (conv_op_desc->HasAttr("quantized") &&
-        boost::get<bool>(conv_op_desc->GetAttr("quantized")))
-      return;
-
-    conv_op_desc->SetAttr("quantized", true);
 
     GET_IR_NODE_FROM_SUBGRAPH(conv_filter, conv_filter, conv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(conv_input, conv_input, conv_pattern);
@@ -199,13 +192,6 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
     if (!pool_op_desc->HasAttr("use_quantizer") ||
         !boost::get<bool>(pool_op_desc->GetAttr("use_quantizer")))
       return;
-
-    // skip if already quantized
-    if (pool_op_desc->HasAttr("quantized") &&
-        boost::get<bool>(pool_op_desc->GetAttr("quantized")))
-      return;
-
-    pool_op_desc->SetAttr("quantized", true);
 
     GET_IR_NODE_FROM_SUBGRAPH(pool_input, pool_input, pool_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(pool_output, pool_output, pool_pattern);

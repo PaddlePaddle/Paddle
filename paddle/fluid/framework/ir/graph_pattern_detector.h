@@ -650,7 +650,21 @@ struct Conv : public PatternBase {
   Conv(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "convolution") {}
 
-  PDNode* operator()(bool with_residual_data = false);
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_input);
+  PATTERN_DECL_NODE(conv_filter);
+  PATTERN_DECL_NODE(conv_residual_data);
+  PATTERN_DECL_NODE(conv_output);
+};
+
+// Convolution op with residual data
+struct ConvResidual : public PatternBase {
+  ConvResidual(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_residual") {}
+
+  PDNode* operator()(bool with_residual_data);
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_input);

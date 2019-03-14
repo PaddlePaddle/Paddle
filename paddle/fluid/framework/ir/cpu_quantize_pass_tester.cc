@@ -44,6 +44,9 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     }
     op->SetOutput("Output", {outputs[0]});
     op->SetAttr("use_quantizer", use_quantizer);
+    op->SetAttr("Scale_in", 1.0f);
+    op->SetAttr("Scale_out", 1.0f);
+    op->SetAttr("Scale_weights", 1.0f);
   } else if (type == "pool2d") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
@@ -123,7 +126,7 @@ std::unique_ptr<ir::Graph> MainTest(const ProgramDesc& prog,
     LoDTensor tensor;
     tensor.Resize({1});
     auto* ptr = tensor.mutable_data<double>(place);
-    ptr[0] = 1.0;
+    ptr[0] = 2.0;
 
     (*scales)[v] = std::make_pair(false, std::move(tensor));
   }
@@ -165,14 +168,16 @@ TEST(CpuQuantizePass, quantize) {
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
       auto* op = node->Op();
-      if (op->Type() == "conv2d" || op->Type() == "pool2d") {
-        EXPECT_TRUE(op->HasAttr("quantized"))
-            << "For node '" + boost::get<std::string>(op->GetAttr("name")) +
-                   "'.";
-        if (op->HasAttr("quantized"))
-          EXPECT_TRUE(boost::get<bool>(op->GetAttr("quantized")))
+      if (op->Type() == "conv2d") {
+        for (const std::string& scale_name :
+             {"Scale_in", "Scale_out", "Scale_weights"}) {
+          ASSERT_TRUE(op->HasAttr(scale_name)) << "Conv2d op has to have the " +
+                                                      scale_name +
+                                                      " scale attribute.";
+          EXPECT_EQ(boost::get<float>(op->GetAttr(scale_name)), 2.0f)
               << "For node '" + boost::get<std::string>(op->GetAttr("name")) +
                      "'.";
+        }
       }
     }
   }
@@ -188,9 +193,16 @@ TEST(CpuQuantizePass, do_not_quantize) {
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
       auto* op = node->Op();
-      if (op->Type() == "conv2d" || op->Type() == "pool2d") {
-        if (op->HasAttr("quantized"))
-          EXPECT_FALSE(boost::get<bool>(op->GetAttr("quantized")));
+      if (op->Type() == "conv2d") {
+        for (const std::string& scale_name :
+             {"Scale_in", "Scale_out", "Scale_weights"}) {
+          ASSERT_TRUE(op->HasAttr(scale_name)) << "Conv2d op has to have the " +
+                                                      scale_name +
+                                                      " scale attribute.";
+          EXPECT_EQ(boost::get<float>(op->GetAttr(scale_name)), 1.0f)
+              << "For node '" + boost::get<std::string>(op->GetAttr("name")) +
+                     "'.";
+        }
       }
     }
   }
