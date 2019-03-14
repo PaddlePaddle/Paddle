@@ -433,21 +433,7 @@ function assert_api_spec_approvals() {
         BRANCH="develop"
     fi
 
-    API_FILES=("paddle/fluid/API.spec"
-               "python/paddle/fluid/parallel_executor.py"
-               "paddle/fluid/framework/operator.h"
-               "paddle/fluid/framework/tensor.h"
-               "paddle/fluid/framework/lod_tensor.h"
-               "paddle/fluid/framework/selected_rows.h"
-               "paddle/fluid/framework/op_desc.h"
-               "paddle/fluid/framework/block_desc.h"
-               "paddle/fluid/framework/var_desc.h"
-               "paddle/fluid/framework/scope.h"
-               "paddle/fluid/framework/ir/node.h"
-               "paddle/fluid/framework/ir/graph.h"
-               "paddle/fluid/framework/framework.proto"
-               "python/paddle/fluid/compiler.py"
-               "paddle/fluid/operators/distributed/send_recv.proto.in")
+    API_FILES=("paddle/fluid/API.spec")
     for API_FILE in ${API_FILES[*]}; do
       API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" || true`
       echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
@@ -475,17 +461,6 @@ function assert_api_spec_approvals() {
           fi
       fi
     done
-
-    HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true`
-    if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
-        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
-        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
-        if [ "${APPROVALS}" == "FALSE" ]; then
-            echo "You must have panyx0718 approval for the const_cast"
-            exit 1
-        fi
-    fi
 }
 
 
