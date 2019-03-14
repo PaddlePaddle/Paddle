@@ -139,6 +139,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   if (init_p2p) {
     InitP2P(devices);
   }
+  places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
   platform::DeviceTemporaryAllocator::Init();
 
