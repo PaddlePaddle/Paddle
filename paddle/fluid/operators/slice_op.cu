@@ -97,14 +97,12 @@ class SliceGradKernel<paddle::platform::CUDADeviceContext,
       case 1:
         Padding<1><<<blocks, threads, 0, stream>>>(
             d_out->data<paddle::platform::float16>(), out_dims_ptr, in_dims_ptr,
-            offsets_ptr, numel,
-            d_in->mutable_data<paddle::platform::float16>(ctx.GetPlace()));
+            offsets_ptr, numel, d_in->data<paddle::platform::float16>());
         break;
       case 2:
         Padding<2><<<blocks, threads, 0, stream>>>(
             d_out->data<paddle::platform::float16>(), out_dims_ptr, in_dims_ptr,
-            offsets_ptr, numel,
-            d_in->mutable_data<paddle::platform::float16>(ctx.GetPlace()));
+            offsets_ptr, numel, d_in->data<paddle::platform::float16>());
         break;
       case 3:
         Padding<3><<<blocks, threads, 0, stream>>>(
