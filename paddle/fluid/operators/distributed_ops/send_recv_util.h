@@ -54,6 +54,7 @@ inline int FindOutIdx(int row, const std::vector<int64_t>& abs_sections) {
       return i - 1;
     }
   }
+  PADDLE_ENFORCE_LT(row, abs_sections.back(), "row should be less then max id");
   return abs_sections.size() - 1;
 }
 
