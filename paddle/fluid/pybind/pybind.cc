@@ -1286,13 +1286,30 @@ All parameter, weight, gradient are variables in Paddle.
              return cryptor.release();
            },
            py::return_value_policy::reference)
-      .def("encryptInMemory",
-           [](Cryption &self, const char *inputStr) {
-             return py::bytes(self.EncryptMemoryWithKeyInMemory(inputStr));
+      .def("encrypt_memory_with_key_in_memory",
+           [](Cryption &self,
+              const char *inputStr) -> std::tuple<py::bytes, size_t> {
+             size_t encryptLen = 0;
+             py::bytes encryptStr = py::bytes(
+                 self.EncryptMemoryWithKeyInMemory(inputStr, &encryptLen));
+             return std::make_tuple(encryptStr, encryptLen);
            })
-      .def("decryptInMemory", [](Cryption &self, const char *encryptStr) {
-        return self.DecryptMemoryWithKeyInMemory(encryptStr);
-      });
+      .def("decrypt_memory_with_key_in_memory",
+           [](Cryption &self, const char *encryptStr,
+              size_t &strLen) -> py::bytes {
+             return py::bytes(
+                 self.DecryptMemoryWithKeyInMemory(encryptStr, strLen));
+           })
+      .def("encrypt_file_with_key_in_file",
+           [](Cryption &self, std::string &inputFilePath,
+              std::string &encryptFilePath) {
+             self.EncryptFileWithKeyInFile(inputFilePath, encryptFilePath);
+           })
+      .def("decrypt_file_with_key_in_file",
+           [](Cryption &self, std::string &encryptFilePath,
+              std::string &decryptFilePath) {
+             self.DecryptFileWithKeyInFile(encryptFilePath, decryptFilePath);
+           });
 
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);

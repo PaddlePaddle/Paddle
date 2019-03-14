@@ -30,6 +30,8 @@ void readFile(const std::string& path, char* buf, size_t len) {
   fin.open(path, std::ios::binary);
   fin.read(buf, len);
 
+  buf[len] = '\0';
+
   fin.close();
   return;
 }
@@ -47,8 +49,10 @@ void writeFile(const std::string& path, const char* buf, size_t len) {
 TEST(Cryption, BaseTest) {
   Cryption& c = *Cryption::GetCryptionInstance();
   const char* inputStr = "0123456789abcdef0123456789abcdef";
-  char* encryptStr = c.EncryptMemoryWithKeyInMemory(inputStr);
-  char* decryptStr = c.DecryptMemoryWithKeyInMemory(encryptStr);
+  size_t encryptLen = 0;
+
+  char* encryptStr = c.EncryptMemoryWithKeyInMemory(inputStr, &encryptLen);
+  char* decryptStr = c.DecryptMemoryWithKeyInMemory(encryptStr, encryptLen);
 
   EXPECT_STREQ(inputStr, decryptStr);
 }
@@ -83,8 +87,10 @@ TEST(Cryption, LongStringTest) {
       "250fb72a28ddfea28907b510606b702590adb8589c105932f8a17d489cb60a913f78b814"
       "fabe538da023afc376eded5983dc3d57f024c9cbc2606b7a2f5b29d7ffbce662aee304ca"
       "fa746ca8bca4cb";
-  char* encryptStr = c.EncryptMemoryWithKeyInMemory(inputStr);
-  char* decryptStr = c.DecryptMemoryWithKeyInMemory(encryptStr);
+  size_t encryptLen = 0;
+
+  char* encryptStr = c.EncryptMemoryWithKeyInMemory(inputStr, &encryptLen);
+  char* decryptStr = c.DecryptMemoryWithKeyInMemory(encryptStr, encryptLen);
 
   // EXPECT_EQ(std::string(inputStr), std::string(decryptStr));
   EXPECT_STREQ(inputStr, decryptStr);
@@ -93,10 +99,10 @@ TEST(Cryption, LongStringTest) {
 TEST(Cryption, CryptWithFile) {
   Cryption& c = *Cryption::GetCryptionInstance();
   const char* inputStr = "0123456789abcdef0123456789abcdef";
-  int strLen = strlen(inputStr) + 1;
-  char* inputStrCopy = new char[strLen + 1];
-  char* encryptStr = new char[strLen + 1];
-  char* decryptStr = new char[strLen + 1];
+  int strLen = strlen(inputStr);
+  char* inputStrCopy = new char[strLen];
+  char* encryptStr = new char[strLen];
+  char* decryptStr = new char[strLen];
 
   std::string inputPath("./__input_str__");
   std::string encryptPath("./__encrypt_str__");
@@ -141,10 +147,10 @@ TEST(Cryption, CryptWithLongFile) {
       "250fb72a28ddfea28907b510606b702590adb8589c105932f8a17d489cb60a913f78b814"
       "fabe538da023afc376eded5983dc3d57f024c9cbc2606b7a2f5b29d7ffbce662aee304ca"
       "fa746ca8bca4cb";
-  int strLen = strlen(inputStr) + 1;
-  char* inputStrCopy = new char[strLen + 1];
-  char* encryptStr = new char[strLen + 1];
-  char* decryptStr = new char[strLen + 1];
+  int strLen = strlen(inputStr);
+  char* inputStrCopy = new char[strLen];
+  char* encryptStr = new char[strLen];
+  char* decryptStr = new char[strLen];
 
   std::string inputPath("./__input_str__");
   std::string encryptPath("./__encrypt_str__");
