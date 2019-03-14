@@ -31,13 +31,13 @@ class Cryption {
 
   static Cryption* GetCryptionInstance();
 
-  char* EncryptInMemory(const char* inputStr);
-  char* DecryptInMemory(const char* encryptStr);
+  char* EncryptMemoryWithKeyInMemory(const char* inputStr);
+  char* DecryptMemoryWithKeyInMemory(const char* encryptStr);
 
-  void EncryptInFile(const std::string& inputFilePath,
-                     const std::string& encryptFilePath);
-  void DecryptInFile(const std::string& encryptFilePath,
-                     const std::string& decryptTFilePath);
+  void EncryptFileWithKeyInFile(const std::string& inputFilePath,
+                                const std::string& encryptFilePath);
+  void DecryptFileWithKeyInFile(const std::string& encryptFilePath,
+                                const std::string& decryptTFilePath);
 
   char* GetEncryptKey() { return encrypt_key; }
   char* GetDecryptKey() { return decrypt_key; }
@@ -45,6 +45,8 @@ class Cryption {
  private:
   void CreateKeyInMemory();
   void FreeKeyInMemory();
+
+  void CreateKeyInFile();
 
  private:
   const char* key_string = "0123456789abcdef";
@@ -54,6 +56,9 @@ class Cryption {
   char* decrypt_key;
   int encrypt_key_length;
   int decrypt_key_length;
+
+  const char* encrypt_key_path = "./encrypt.key";
+  const char* decrypt_key_path = "./decrypt.key";
 
   int original_str_len;
 

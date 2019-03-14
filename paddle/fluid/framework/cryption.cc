@@ -42,6 +42,7 @@ Cryption::Cryption() {
   decrypt_text = nullptr;
   // Init keys
   CreateKeyInMemory();
+  CreateKeyInFile();
 }
 
 void Cryption::CreateKeyInMemory() {
@@ -56,6 +57,17 @@ void Cryption::CreateKeyInMemory() {
   // encrypt_key_length);
   // LOG(INFO) << "decrypt_key: " << ConvertHexString(decrypt_key,
   // decrypt_key_length);
+
+  return;
+}
+
+void Cryption::CreateKeyInFile() {
+  int result = WBAES_OK;
+  result =
+      WBAES_CREATE_KEY_IN_FILE(key_string, encrypt_key_path, decrypt_key_path);
+  PADDLE_ENFORCE(WBAES_OK == result, "WBAES create key in file failed.");
+
+  return;
 }
 
 Cryption* Cryption::GetCryptionInstance() {
@@ -63,9 +75,12 @@ Cryption* Cryption::GetCryptionInstance() {
   return cryption_instance;
 }
 
-char* Cryption::EncryptInMemory(const char* inputStr) {
+char* Cryption::EncryptMemoryWithKeyInMemory(const char* inputStr) {
   int result = WBAES_OK;
   original_str_len = strlen(inputStr);
+
+  // Input Check
+  PADDLE_ENFORCE_NOT_NULL(inputStr, "Input string is null.");
 
   // Alloc memory
   encrypt_text.reset(new char[((original_str_len + 15) / 16) * 16]);
@@ -84,8 +99,11 @@ char* Cryption::EncryptInMemory(const char* inputStr) {
   return encrypt_text.get();
 }
 
-char* Cryption::DecryptInMemory(const char* encryptStr) {
+char* Cryption::DecryptMemoryWithKeyInMemory(const char* encryptStr) {
   int result = WBAES_OK;
+
+  // Input Check
+  PADDLE_ENFORCE_NOT_NULL(encryptStr, "Encrypt string is null.");
 
   // Alloc memory
   decrypt_text.reset(new char[original_str_len]);
@@ -107,13 +125,17 @@ char* Cryption::DecryptInMemory(const char* encryptStr) {
   return decrypt_text.get();
 }
 
-void Cryption::EncryptInFile(const std::string& inputFilePath,
-                             const std::string& encryptFilePath) {
+void Cryption::EncryptFileWithKeyInFile(const std::string& inputFilePath,
+                                        const std::string& encryptFilePath) {
   int result = WBAES_OK;
 
   // Encrypt
-  result = WBAES_INIT_MEMORY(encrypt_key, NULL);
+  result = WBAES_INIT(encrypt_key_path, NULL);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES init memory failed.");
+
+  LOG(INFO) << inputFilePath.data();
+  LOG(INFO) << encryptFilePath.data();
+
   result = WBAES_ENCRYPT_FILE(inputFilePath.data(), encryptFilePath.data(),
                               block_size);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES encrypt file failed.");
@@ -121,14 +143,14 @@ void Cryption::EncryptInFile(const std::string& inputFilePath,
   return;
 }
 
-void Cryption::DecryptInFile(const std::string& encryptFilePath,
-                             const std::string& decryptFilePath) {
+void Cryption::DecryptFileWithKeyInFile(const std::string& encryptFilePath,
+                                        const std::string& decryptFilePath) {
   int result = WBAES_OK;
 
   // Decrypt
-  result = WBAES_INIT_MEMORY(NULL, decrypt_key);
+  result = WBAES_INIT(NULL, decrypt_key_path);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES init memory failed.");
-  result = WBAES_ENCRYPT_FILE(encryptFilePath.data(), decryptFilePath.data(),
+  result = WBAES_DECRYPT_FILE(encryptFilePath.data(), decryptFilePath.data(),
                               block_size);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES encrypt file failed.");
 
@@ -138,7 +160,7 @@ void Cryption::DecryptInFile(const std::string& encryptFilePath,
 std::string ConvertHexString(const char* buf, int len) {
   int i = 0, j = 0;
   static char str_buf[1024];
-  for (; (i < 1024 - 2) && (j < len); i += 2, ++j) {
+  (; (i < 1024 - 2) && (j < len); i += 2, ++j) {
     snprintf(&str_buf[i], 3, "%02x", (unsigned char)buf[j]);  // NOLINT
   }
   return std::string(str_buf);

@@ -1288,10 +1288,10 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference)
       .def("encryptInMemory",
            [](Cryption &self, const char *inputStr) {
-             return py::bytes(self.EncryptInMemory(inputStr));
+             return py::bytes(self.EncryptMemoryWithKeyInMemory(inputStr));
            })
       .def("decryptInMemory", [](Cryption &self, const char *encryptStr) {
-        return self.DecryptInMemory(encryptStr);
+        return self.DecryptMemoryWithKeyInMemory(encryptStr);
       });
 
   BindRecordIOWriter(&m);

@@ -24,7 +24,7 @@ limitations under the License. */
 
 using paddle::framework::Cryption;
 
-void readFile(const std::string& path, char* buf, int len) {
+void readFile(const std::string& path, char* buf, size_t len) {
   std::ifstream fin;
 
   fin.open(path, std::ios::binary);
@@ -34,7 +34,7 @@ void readFile(const std::string& path, char* buf, int len) {
   return;
 }
 
-void writeFile(const std::string& path, const char* buf, int len) {
+void writeFile(const std::string& path, const char* buf, size_t len) {
   std::ofstream fout;
 
   fout.open(path, std::ios::binary);
@@ -47,8 +47,8 @@ void writeFile(const std::string& path, const char* buf, int len) {
 TEST(Cryption, BaseTest) {
   Cryption& c = *Cryption::GetCryptionInstance();
   const char* inputStr = "0123456789abcdef0123456789abcdef";
-  char* encryptStr = c.EncryptInMemory(inputStr);
-  char* decryptStr = c.DecryptInMemory(encryptStr);
+  char* encryptStr = c.EncryptMemoryWithKeyInMemory(inputStr);
+  char* decryptStr = c.DecryptMemoryWithKeyInMemory(encryptStr);
 
   EXPECT_STREQ(inputStr, decryptStr);
 }
@@ -83,8 +83,8 @@ TEST(Cryption, LongStringTest) {
       "250fb72a28ddfea28907b510606b702590adb8589c105932f8a17d489cb60a913f78b814"
       "fabe538da023afc376eded5983dc3d57f024c9cbc2606b7a2f5b29d7ffbce662aee304ca"
       "fa746ca8bca4cb";
-  char* encryptStr = c.EncryptInMemory(inputStr);
-  char* decryptStr = c.DecryptInMemory(encryptStr);
+  char* encryptStr = c.EncryptMemoryWithKeyInMemory(inputStr);
+  char* decryptStr = c.DecryptMemoryWithKeyInMemory(encryptStr);
 
   // EXPECT_EQ(std::string(inputStr), std::string(decryptStr));
   EXPECT_STREQ(inputStr, decryptStr);
@@ -112,11 +112,11 @@ TEST(Cryption, CryptWithFile) {
   readFile(inputPath, inputStrCopy, strLen);
   LOG(INFO) << "inputFile: " << std::string(inputStrCopy);
 
-  c.EncryptInFile(inputPath, encryptPath);
+  c.EncryptFileWithKeyInFile(inputPath, encryptPath);
   readFile(encryptPath, encryptStr, strLen);
   LOG(INFO) << "encryptFile: " << std::string(encryptStr);
 
-  c.EncryptInFile(encryptPath, decryptPath);
+  c.DecryptFileWithKeyInFile(encryptPath, decryptPath);
   readFile(decryptPath, decryptStr, strLen);
   LOG(INFO) << "decryptFile: " << std::string(decryptStr);
 
@@ -160,11 +160,11 @@ TEST(Cryption, CryptWithLongFile) {
   readFile(inputPath, inputStrCopy, strLen);
   LOG(INFO) << "inputFile: " << std::string(inputStrCopy);
 
-  c.EncryptInFile(inputPath, encryptPath);
+  c.EncryptFileWithKeyInFile(inputPath, encryptPath);
   readFile(encryptPath, encryptStr, strLen);
   LOG(INFO) << "encryptFile: " << std::string(encryptStr);
 
-  c.EncryptInFile(encryptPath, decryptPath);
+  c.DecryptFileWithKeyInFile(encryptPath, decryptPath);
   readFile(decryptPath, decryptStr, strLen);
   LOG(INFO) << "decryptFile: " << std::string(decryptStr);
 
