@@ -113,7 +113,7 @@ class Executor {
   void EnableMKLDNN(const ProgramDesc& program);
 
   void RunFromDataset(const ProgramDesc& main_program, Scope* scope,
-                      MultiSlotDataset* dataset,
+                      Dataset* dataset,
                       const std::string& trainer_desc_str);
 
  private:

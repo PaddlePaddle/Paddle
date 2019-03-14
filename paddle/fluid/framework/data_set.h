@@ -83,10 +83,6 @@ class DatasetImpl : public Dataset {
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers_;
   std::vector<T> memory_data_;
   std::mutex mutex_for_update_memory_data_;
-  std::vector<std::shared_ptr<paddle::framework::BlockingQueue<T>>>
-      shuffled_ins_vec_;
-  std::vector<std::shared_ptr<paddle::framework::BlockingQueue<T>>>
-      shuffled_ins_out_vec_;
   int thread_num_;
   paddle::framework::DataFeedDesc data_feed_desc_;
   std::vector<std::string> filelist_;
