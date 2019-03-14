@@ -72,6 +72,12 @@ class MPIRoleMaker(RoleMakerBase):
 
 
 class MPISymetricRoleMaker(MPIRoleMaker):
+    """
+    MPISymetricRoleMaker is designed for worker and server assignment
+    under MPI. Typically, a worker and a server node will be appointed
+    on each physical node. This role maker can be only used under MPI.
+    """
+
     def __init__(self):
         super(MPISymetricRoleMaker, self).__init__()
         self.node_type_ = None
