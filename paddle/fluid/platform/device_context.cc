@@ -53,7 +53,11 @@ inline void EmplaceDeviceContext(
 DeviceContextPool::DeviceContextPool(
     const std::vector<platform::Place>& places) {
   PADDLE_ENFORCE_GT(places.size(), 0);
+  std::set<Place> set;
   for (auto& p : places) {
+    set.insert(p);
+  }
+  for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
       EmplaceDeviceContext<MKLDNNDeviceContext, CPUPlace>(&device_contexts_, p);
@@ -312,6 +316,7 @@ CUDADeviceContext::~CUDADeviceContext() {
   eigen_stream_.reset();
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
+  PADDLE_ENFORCE(dynload::ncclCommDestroy(nccl_comm_));
 }
 
 Place CUDADeviceContext::GetPlace() const { return place_; }

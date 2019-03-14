@@ -124,7 +124,7 @@ void InitDevices(bool init_p2p) {
 }
 
 void InitDevices(bool init_p2p, const std::vector<int> devices) {
-  std::set<platform::Place> places;
+  std::vector<platform::Place> places;
 
   for (size_t i = 0; i < devices.size(); ++i) {
     // In multi process multi gpu mode, we may have gpuid = 7
@@ -134,14 +134,12 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
       continue;
     }
 
-    places.insert(platform::CUDAPlace(devices[i]));
+    places.emplace_back(platform::CUDAPlace(devices[i]));
   }
   if (init_p2p) {
     InitP2P(devices);
   }
-  places.insert(platform::CPUPlace());
-  std::vector<platform::Place> devs(places.begin(), places.end());
-  platform::DeviceContextPool::Init(devs);
+  platform::DeviceContextPool::Init(places);
   platform::DeviceTemporaryAllocator::Init();
 
 #ifndef PADDLE_WITH_MKLDNN
