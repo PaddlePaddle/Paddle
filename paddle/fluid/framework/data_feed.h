@@ -98,15 +98,10 @@ class DataFeed {
   virtual void GlobalShuffle() {
     PADDLE_THROW("This function(GlobalShuffle) is not implemented.");
   }
-  virtual void FillMemoryDataToChannel() {
-    PADDLE_THROW("This function(FillMemoryDataToChannel) is not implemented.");
-  }
-  virtual void FillChannelToMemoryData() {
-    PADDLE_THROW("This function(FillChannelToMemoryData) is not implemented.");
-  }
-  virtual void PutInsToChannel(const std::string& ins_str) {
-    PADDLE_THROW("This function(PutInsToChannel) is not implemented.");
-  }
+  // This function will do nothing at default
+  virtual void FillMemoryDataToChannel() { }
+  virtual void FillChannelToMemoryData() { }
+  virtual void PutInsToChannel(const std::string& ins_str) { }
 
  protected:
   // The following three functions are used to check if it is executed in this
