@@ -64,6 +64,39 @@ class FakeQuantizeAbsMaxKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
+class FakeChannelWiseQuantizeAbsMaxKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* in = context.Input<framework::Tensor>("X");
+
+    auto* out = context.Output<framework::Tensor>("Out");
+    auto* out_scales = context.Output<framework::Tensor>("OutScales");
+    T* out_scales_data = out_scales->mutable_data<T>(context.GetPlace());
+    out->mutable_data<T>(context.GetPlace());
+
+    int bit_length = context.Attr<int>("bit_length");
+    int bin_cnt = std::pow(2, bit_length - 1) - 1;
+
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto find_abs_max = FindAbsMaxFunctor<DeviceContext, T>();
+    for (int64_t i = 0; i < in->dims()[0]; i++) {
+      framework::Tensor one_channel = in->Slice(i, i + 1);
+      const T* one_channel_data = one_channel.data<T>();
+      find_abs_max(dev_ctx, one_channel_data, one_channel.numel(),
+                   &out_scales_data[i]);
+    }
+    auto clip_quant = ClipAndFakeQuantFunctor<DeviceContext, T>();
+    for (int64_t i = 0; i < in->dims()[0]; i++) {
+      framework::Tensor one_channel_in = in->Slice(i, i + 1);
+      framework::Tensor one_channel_out = out->Slice(i, i + 1);
+      framework::Tensor one_channel_scale = out_scales->Slice(i, i + 1);
+      clip_quant(dev_ctx, one_channel_in, one_channel_scale, bin_cnt,
+                 &one_channel_out);
+    }
+  }
+};
+
+template <typename DeviceContext, typename T>
 class FakeQuantizeRangeAbsMaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

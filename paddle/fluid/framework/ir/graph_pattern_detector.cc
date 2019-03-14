@@ -1324,6 +1324,51 @@ PDNode *patterns::ConvAffineChannel::operator()(
   return ac_out_var;
 }
 
+PDNode *patterns::DequantQuantAny::operator()() {
+  auto *dequant_in = pattern->NewNode(dequant_in_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("dequantize", "Input");
+
+  auto *dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
+
+  auto *dequant_out = pattern->NewNode(dequant_out_repr())
+                          ->AsOutput()
+                          ->assert_is_op_output("dequantize", "Output");
+
+  auto *quant_op = pattern->NewNode(quant_op_repr())
+                       ->assert_is_op("quantize")
+                       ->AsIntermediate();
+
+  auto *quant_out = pattern->NewNode(quant_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("quantize");
+
+  auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  dequant_op->LinksFrom({dequant_in}).LinksTo({dequant_out});
+  quant_op->LinksFrom({dequant_out}).LinksTo({quant_out});
+  next_op->LinksFrom({quant_out});
+
+  return quant_out;
+}
+
+PDNode *patterns::DequantAny::operator()() {
+  auto *dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
+
+  auto *dequant_out = pattern->NewNode(dequant_out_repr())
+                          ->AsOutput()
+                          ->assert_is_op_output("dequantize", "Output");
+
+  auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  dequant_op->LinksTo({dequant_out});
+  next_op->LinksFrom({dequant_out});
+
+  return dequant_out;
+}
+
 // a -> transpose_op(1) -> transpose_out_a -> flatten_op(1) -> flatten_out_a
 // b -> transpose_op(2) -> transpose_out_b -> flatten_op(2) -> flatten_out_b
 // ...
