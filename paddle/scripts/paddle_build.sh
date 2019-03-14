@@ -455,7 +455,11 @@ function assert_api_spec_approvals() {
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
           if [ "$API_FILE" == "paddle/fluid/API.spec" ];then
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-            python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 2887803 35982308`
+            python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 2887803 35982308 46782768 30176695`
+            if [ "${APPROVALS}" == "TRUE" ];then
+              APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+              python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 35982308`
+            fi
           else
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
             python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
@@ -463,7 +467,7 @@ function assert_api_spec_approvals() {
           echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
           if [ "${APPROVALS}" == "FALSE" ]; then
             if [ "$API_FILE" == "paddle/fluid/API.spec" ];then
-              echo "You must have panyx0718 and shanyi15 approval for the api change! ${API_FILE}"
+              echo "You must have one RD (panyx0718 or chengduoZH or XiaoguangHu01) and one PM (shanyi15) approval for the api change! ${API_FILE}"
             else
               echo "You must have panyx0718 approval for the api change! ${API_FILE}"
             fi
