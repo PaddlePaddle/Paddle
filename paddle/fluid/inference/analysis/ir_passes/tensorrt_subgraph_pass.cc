@@ -214,13 +214,16 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                                       std::to_string(0));
 
   // Get "" when there is no cached calibration table data.
-  std::string calibration_data = GetTrtCalibTableData(
-      Get<std::string>("model_opt_cache_dir"), engine_key, enable_int8);
+  bool load_from_memory = Get<bool>("model_from_memory");
+  std::string calibration_data = "";
+  if (!load_from_memory) {
+    calibration_data = GetTrtCalibTableData(
+        Get<std::string>("model_opt_cache_dir"), engine_key, enable_int8);
+  }
   SetAttr(op_desc->Proto(), "calibration_data", calibration_data);
 
   SetAttr(op_desc->Proto(), "enable_int8", enable_int8);
   SetAttr(op_desc->Proto(), "engine_key", engine_key);
-  bool load_from_memory = Get<bool>("model_from_memory");
   std::string trt_engine_serialized_data = "";
   if (load_from_memory) {
     std::map<std::string, std::string> engine_opt_info =

@@ -122,6 +122,8 @@ class AnakinConvertValidation {
     Singleton<AnakinOpConverter>::Global().ConvertOp(
         desc, parameters_, scope_, engine_.get(), true /*test_mode*/);
     engine_->Freeze();
+
+    std::map<std::string, std::vector<int>> temp_max_input_shape;
     for (const auto& input : op_desc_->InputArgumentNames()) {
       if (parameters_.count(input)) continue;
       auto& t = inference::analysis::GetFromScope<framework::LoDTensor>(scope_,
@@ -131,7 +133,9 @@ class AnakinConvertValidation {
         t_shape.push_back(1);
       }
       engine_->SetInputShape(input, t_shape);
+      temp_max_input_shape[input] = t_shape;
     }
+    engine_->SetMaxInputShape(temp_max_input_shape);
     engine_->Optimize();
     engine_->InitGraph();
   }

@@ -85,6 +85,7 @@ class AnakinEngine {
   void Freeze();
   void Optimize();
   void Save(std::string path) { graph_->save(path); }
+  int GetDevice() { return device_; }
   // void SaveSerializedData(std::string& data) { graph_->save_to_string(data);
   // }
   // void LoadSerializedData(const std::string& data) {

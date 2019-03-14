@@ -272,7 +272,7 @@ void AnakinSubgraphPass::CreateAnakinOp(
 
   inference::Singleton<inference::anakin::AnakinOpConverter>::Global()
       .ConvertBlockToAnakinEngine(
-          &block_desc_temp, *scope,
+          &block_desc_temp, scope,
           std::vector<std::string>(input_names.begin(), input_names.end()),
           param_set, output_mapping, anakin_engine);
 }

@@ -799,6 +799,21 @@ struct AnakinDetectionPattern : public PatternBase {
   }
 };
 
+struct AnakinFillConstantElementWiseMulFuse : public PatternBase {
+  AnakinFillConstantElementWiseMulFuse(PDPattern* pattern,
+                                       const std::string& name_scope)
+      : PatternBase(pattern, name_scope,
+                    "anakin_fillconstant_elementwisemul_fuse") {}
+
+  PDNode* operator()(PDNode* elementwise_op_input);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(fill_constant);
+  PATTERN_DECL_NODE(fill_constant_out);
+  PATTERN_DECL_NODE(elementwise_mul);
+  PATTERN_DECL_NODE(elementwise_mul_out);
+};
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.

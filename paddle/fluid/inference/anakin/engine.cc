@@ -76,11 +76,15 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     auto *data = tensor->data<float>();
 
     auto fluid_input_shape = framework::vectorize2int(tensor->dims());
+    while (fluid_input_shape.size() < 4) {
+      fluid_input_shape.push_back(1);
+    }
     auto *anakin_input = net_->get_in(input.first);
     std::vector<int> max_input_shape = max_input_shape_[input.first];
     int max_shape_sum =
         std::accumulate(max_input_shape.begin(), max_input_shape.end(), 1,
                         std::multiplies<int>());
+
     PADDLE_ENFORCE(max_shape_sum >= tensor->numel(),
                    "The anakin input max shape should be greater than"
                    " or equal to the real input shape, Please set the max "
@@ -97,7 +101,6 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     anakin_input->reshape(fluid_input_shape);
 
     ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
-                                                       // net_shape);
                                                        fluid_input_shape);
     anakin_input->copy_from(tmp_anakin_tensor);
   }
