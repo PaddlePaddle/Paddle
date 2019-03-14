@@ -176,7 +176,6 @@ void DatasetImpl<T>::DestroyReaders() {
   for (std::thread& t : fill_threads) {
     t.join();
   }
-  std::vector<std::string>().swap(filelist_);
   std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
 }
 

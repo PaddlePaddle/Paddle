@@ -297,6 +297,9 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
 int FleetWrapper::RegisterClientToClientMsgHandler(
     int msg_type, MsgHandlerFunc handler) {
 #ifdef PADDLE_WITH_PSLIB
+  VLOG(3) << "calling FleetWrapper::RegisterClientToClientMsgHandler";
+  VLOG(3) << "pslib_ptr_=" << pslib_ptr_;
+  VLOG(3) << "_worker_ptr=" << pslib_ptr_->_worker_ptr;
   pslib_ptr_->_worker_ptr->registe_client2client_msg_handler(
       msg_type, handler);
 #else
