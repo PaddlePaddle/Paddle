@@ -934,8 +934,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx_);
-  this->InferShape(&infer_shape_ctx);
+  if (!HasAttr(kAllKernelsMustComputeRuntimeShape)) {
+    RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx_);
+    this->InferShape(&infer_shape_ctx);
+  }
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx,

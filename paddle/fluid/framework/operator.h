@@ -70,6 +70,15 @@ constexpr char kNewGradSuffix[] = "@NEWGRAD@";
 /// execution to save the elapsed time.
 constexpr char kEnableRuntimeContext[] = "@ENABLE_RUNTIME_CONTEXT@";
 
+/// If an Op has this attribute, all its kernels should calculate output
+/// variable's shape in the corresponding Compute() function. And
+/// OperatorWithKernel::RunImpl() would skip call this Op's InferShape()
+/// function in its runtime for speedup.
+/// TODO(luotao): Note that this temporal attribute would be deleted after all
+/// ops contain it.
+constexpr char kAllKernelsMustComputeRuntimeShape[] =
+    "@ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@";
+
 // define some kernel priority
 /* Define multiple kernel type fallback order*/
 extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
