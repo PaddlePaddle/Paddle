@@ -464,6 +464,7 @@ const Variable* ExecutionContext::InputVar(const std::string& name) const {
   PADDLE_ENFORCE_LE(it->second.size(), 1UL,
                     "Operator %s's input %s should contain only one variable.",
                     op_.Type(), name);
+  ctx_.RecordVisitedInput(name);
   return it->second.empty() ? nullptr : it->second[0];
 }
 
@@ -474,6 +475,7 @@ Variable* ExecutionContext::OutputVar(const std::string& name) const {
   PADDLE_ENFORCE_LE(it->second.size(), 1UL,
                     "Operator %s's output %s should contain only one variable.",
                     op_.Type(), name);
+  ctx_.RecordVisitedOutput(name);
   return it->second.empty() ? nullptr : it->second[0];
 }
 
@@ -501,6 +503,7 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
                        ToTypeName(var->Type()));
                    return &(var->Get<LoDTensor>());
                  });
+  ctx_.RecordVisitedInput(name);
   return res;
 }
 
@@ -524,6 +527,7 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
                    return var == nullptr ? nullptr
                                          : var->GetMutable<LoDTensor>();
                  });
+  ctx_.RecordVisitedOutput(name);
   return res;
 }
 
@@ -874,6 +878,60 @@ std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
   return kernel_configs;
 }
 
+static size_t GetVarSize(const Variable* var) {
+  if (var == nullptr) return 0;
+  const Tensor* t = nullptr;
+  if (var->IsType<LoDTensor>()) {
+    t = &(var->Get<LoDTensor>());
+  } else if (var->IsType<SelectedRows>()) {
+    t = &(var->Get<SelectedRows>().value());
+  } else if (var->IsType<Tensor>()) {
+    t = &(var->Get<Tensor>());
+  }
+  if (t == nullptr || !t->IsInitialized()) {
+    return 0;
+  }
+  return t->numel() * SizeOfType(t->type());
+}
+
+static void PrintUsedVariables(const std::string& op_type,
+                               const RuntimeContext& ctx) {
+  std::unordered_map<std::string, size_t> visited_ins;
+  for (auto& in_name : ctx.visited_inputs) {
+    ++visited_ins[in_name];
+  }
+
+  auto& all_in_vars = ctx.inputs;
+  size_t total_unused_size = 0;
+  std::unordered_map<std::string, size_t> unused_vars;
+  for (auto& pair : all_in_vars) {
+    auto& name = pair.first;
+    if (visited_ins.count(name) > 0) continue;
+    auto& vars = pair.second;
+    size_t sz = 0;
+    for (auto* var : vars) {
+      sz += GetVarSize(var);
+    }
+    if (sz > 0) {
+      unused_vars[name] += sz;
+      total_unused_size += sz;
+    }
+  }
+
+  if (unused_vars.empty()) return;
+
+  std::string log_str = "Unused variables in Operator " + op_type +
+                        ". No need " + std::to_string(unused_vars.size()) +
+                        " vars, total memory " +
+                        string::HumanReadableSize(total_unused_size) + " : ";
+  for (auto& pair : unused_vars) {
+    log_str +=
+        (pair.first + "(" + std::to_string(all_in_vars.at(pair.first).size()) +
+         ", " + string::HumanReadableSize(pair.second) + "), ");
+  }
+  LOG(WARNING) << log_str;
+}
+
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   RuntimeContext ctx(Inputs(), Outputs(), scope);
@@ -930,10 +988,15 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
     this->InferShape(&infer_shape_ctx);
   }
+
+  ctx.ClearVisitedCount();
+
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   kernel_iter->second(
       ExecutionContext(*this, exec_scope, *dev_ctx, ctx, kernel_configs));
+
+  PrintUsedVariables(this->Type(), ctx);
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.

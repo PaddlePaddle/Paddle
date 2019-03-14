@@ -20,6 +20,7 @@ limitations under the License. */
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -110,6 +111,22 @@ class RuntimeContext {
 
   VariableValueMap inputs;
   VariableValueMap outputs;
+
+  mutable std::unordered_multiset<std::string> visited_inputs;
+  mutable std::unordered_multiset<std::string> visited_outputs;
+
+  void RecordVisitedInput(const std::string& name) const {
+    visited_inputs.insert(name);
+  }
+
+  void RecordVisitedOutput(const std::string& name) const {
+    visited_outputs.insert(name);
+  }
+
+  void ClearVisitedCount() const {
+    visited_inputs.clear();
+    visited_outputs.clear();
+  }
 };
 
 /**
@@ -252,6 +269,7 @@ class ExecutionContext {
     if (it == ctx_.inputs.end()) {
       return {};
     }
+    ctx_.RecordVisitedInput(name);
     return {it->second.begin(), it->second.end()};
   }
 
@@ -261,6 +279,7 @@ class ExecutionContext {
     if (it == ctx_.outputs.end()) {
       return {};
     }
+    ctx_.RecordVisitedOutput(name);
     return it->second;
   }
 
@@ -289,6 +308,7 @@ class ExecutionContext {
                    [&](Variable* var) -> const T* {
                      return var == nullptr ? nullptr : &var->Get<T>();
                    });
+    ctx_.RecordVisitedInput(name);
     return res;
   }
 
@@ -305,6 +325,7 @@ class ExecutionContext {
                    [&](Variable* var) -> T* {
                      return var == nullptr ? nullptr : var->GetMutable<T>();
                    });
+    ctx_.RecordVisitedOutput(name);
     return res;
   }
 

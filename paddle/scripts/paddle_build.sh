@@ -19,6 +19,7 @@
 #=================================================
 
 set -ex
+TESTING_DEBUG_MODE=ON
 
 function print_usage() {
     echo -e "\n${RED}Usage${NONE}:
