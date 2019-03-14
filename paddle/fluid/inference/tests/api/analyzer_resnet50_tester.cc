@@ -47,6 +47,7 @@ void profile(bool use_mkldnn = false) {
   SetInput(&input_slots_all);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                  input_slots_all, &outputs, FLAGS_num_threads);
+  LOG(INFO) << "outputs " << outputs.size();
 }
 
 TEST(Analyzer_resnet50, profile) { profile(); }

@@ -66,8 +66,8 @@ void NaiveExecutor::Run(bool async) {
                 << " stream ids";
       stream_engine_.reset(
           new StreamEngine(&ops_, scope_, place_, *parallel_meta_));
-      stream_engine_->Run(true);
     }
+    stream_engine_->Run(true);
   }
 }
 
