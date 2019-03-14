@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>

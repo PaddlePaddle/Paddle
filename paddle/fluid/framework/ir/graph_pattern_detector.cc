@@ -14,7 +14,10 @@
 
 #include <algorithm>
 #include <array>
+#include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
