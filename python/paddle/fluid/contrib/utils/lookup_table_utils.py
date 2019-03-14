@@ -25,7 +25,7 @@ from paddle.fluid import Program
 
 __all__ = [
     "load_persistables_for_increment", "load_persistables_for_inference",
-    "convert_dist_to_sparse_program", "get_inference_model"
+    "convert_dist_to_sparse_program"
 ]
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
