@@ -17,6 +17,7 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/node.h"
@@ -199,7 +200,12 @@ class Graph {
   // WARN: After a series of passes, the current graph can be quite
   // different from OriginProgram. Caller shouldn't assume much from
   // the returned OriginProgram.
-  const ProgramDesc &OriginProgram() const { return program_; }
+  const ProgramDesc &OriginProgram() const {
+    LOG(WARNING) << "WARN: After a series of passes, the current graph can be "
+                    "quite different from OriginProgram. So, please avoid "
+                    "using the `OriginProgram()` method!";
+    return program_;
+  }
 
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
@@ -211,6 +217,10 @@ class Graph {
 
   void ResolveHazard(
       const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
+
+  // Create a new and duplicated graph.
+  // WARN: The method only clones the graph structure, not its attributes.
+  std::shared_ptr<Graph> Clone();
 
  private:
   std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
