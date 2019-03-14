@@ -206,4 +206,6 @@ REGISTER_OPERATOR(save, ops::SaveOp, paddle::framework::EmptyGradOpMaker,
 
 REGISTER_OP_CPU_KERNEL(
     save, ops::SaveOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int64_t>);

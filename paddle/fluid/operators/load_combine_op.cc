@@ -167,4 +167,6 @@ REGISTER_OPERATOR(load_combine, ops::LoadCombineOp,
 REGISTER_OP_CPU_KERNEL(
     load_combine,
     ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
