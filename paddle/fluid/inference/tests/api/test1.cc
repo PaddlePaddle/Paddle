@@ -16,15 +16,19 @@
 #include <glog/logging.h>
 #include <thread>
 #include "gflags/gflags.h"
+//#include "gperftools/heap-profiler.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "gperftools/heap-profiler.h"
 
 DEFINE_string(model, "", "");
+DEFINE_string(dataset,
+              "/home/chunwei/project2/models/mt_diff_verify.input.5005", "");
 DEFINE_int32(batch_size, 1, "");
 
 namespace paddle {
 
+/*
 const int kTimeMaxSentNum = 30;
 const int kPositionFeatTypeNum = 20;
 
@@ -205,7 +209,6 @@ void PrepareInputs(std::vector<PaddleTensor>& inputs) {
   PrepareUnigram(&inputs.back());
 
   inputs.emplace_back();
-
   PreparePosition(&inputs.back());
 
   inputs.emplace_back();
@@ -235,21 +238,141 @@ TEST(test, test) {
   std::vector<PaddleTensor> inputs, outputs;
   PrepareInputs(inputs);
 
-  HeapProfilerStart("/home/chunwei/project2/perfs");
+  // HeapProfilerStart("/home/chunwei/project2/perfs");
   for (int i = 0; i < 10000; i++) {
     ASSERT_TRUE(predictor->Run(inputs, &outputs));
     if (i % 100 == 0) {
-      HeapProfilerDump("/home/chunwei/project2/perfs");
+      // HeapProfilerDump("/home/chunwei/project2/perfs");
     }
   }
-  HeapProfilerStop();
+  // HeapProfilerStop();
 
   for (auto& output : outputs) {
     LOG(INFO) << output.data.length();
   }
 }
 
-/*
+class Dataset {
+ public:
+};
+
+void LoadDataset(const std::string& path,
+                 std::vector<std::vector<PaddleTensor>>& inputs) {
+  std::ifstream file(path);
+  ASSERT_TRUE(file.is_open());
+
+  std::string line;
+  int idx = 0;
+  while (std::getline(file, line)) {
+    LOG(INFO) << "load line " << line;
+    if (idx && idx % 9 == 0) {
+      continue;
+    }
+    if (idx % 10 == 0) {
+      inputs.emplace_back();
+    }
+
+    std::vector<std::string> vs;
+    inference::split(line, ' ', &vs);
+
+    PaddleTensor tensor;
+    // deal with shape
+    if (idx % 2 == 0) {
+      LOG(INFO) << "process shape";
+      for (auto& v : vs) {
+        tensor.shape.push_back(atoi(v.c_str()));
+      }
+    } else {  // deal with data
+      LOG(INFO) << "process data";
+      if ((idx % 9) < 5) {  // int64 data
+        tensor.dtype = PaddleDType::INT64;
+
+        auto length = sizeof(int64_t) *
+                      std::accumulate(tensor.shape.begin(), tensor.shape.end(),
+                                      1, [](int a, int b) { return a * b; });
+        LOG(INFO) << "length " << length;
+        tensor.data.Resize(length);
+        auto* data = static_cast<int64_t*>(tensor.data.data());
+
+        for (int i = 0; i < vs.size(); i++) {
+          data[i] = atoi(vs[i].c_str());
+        }
+      } else {  // dense data
+        tensor.dtype = PaddleDType::FLOAT32;
+        auto length = sizeof(float) *
+                      std::accumulate(tensor.shape.begin(), tensor.shape.end(),
+                                      1, [](int a, int b) { return a * b; });
+        LOG(INFO) << "data size " << length;
+        tensor.data.Resize(length);
+        auto* data = static_cast<float*>(tensor.data.data());
+
+        for (int i = 0; i < vs.size(); i++) {
+          data[i] = atof(vs[i].c_str());
+        }
+      }
+    }
+    inputs.back().push_back(std::move(tensor));
+
+    idx++;
+  }
+}
+ */
+
+struct DataSet {
+  DataSet(const std::string& path) {
+    file.open(path);
+    CHECK(file.is_open());
+  }
+
+  std::vector<PaddleTensor> NextBatch() {
+    std::vector<PaddleTensor> res;
+
+    std::string line;
+    for (int i = 0; i < 9 * 2; i++) {
+      bool isfloat = i > 5 * 2;
+      std::getline(file, line);
+      std::vector<std::string> vs;
+      inference::split(line, ' ', &vs);
+      if (i % 2 == 0) {
+        std::vector<int> shape;
+        for (auto& v : vs) {
+          int vi = std::stoi(v);
+          shape.push_back(vi);
+        }
+        res.emplace_back();
+        res.back().shape = shape;
+      } else {
+        auto& tensor = res.back();
+        auto num_elems =
+            std::accumulate(tensor.shape.begin(), tensor.shape.end(), 1,
+                            [](int a, int b) { return a * b; });
+        tensor.data.Resize(num_elems *
+                           (isfloat ? sizeof(float) : sizeof(int64_t)));
+        for (int i = 0; i < vs.size(); i++) {
+          if (vs[i] == "inf") vs[i] = "0";
+          if (isfloat) {
+            tensor.dtype = PaddleDType::FLOAT32;
+            static_cast<float*>(tensor.data.data())[i] = atof(vs[i].c_str());
+          } else {
+            tensor.dtype = PaddleDType::INT64;
+            auto id = atoi(vs[i].c_str());
+            // LOG(INFO) << "id " << id;
+            // if (id > 4000) id = 4000;
+            // if (id < 0) id = 0;
+            static_cast<int64_t*>(tensor.data.data())[i] = id;
+          }
+        }
+      }
+    }
+    // skip line
+    std::getline(file, line);
+
+    return res;
+  }
+
+  std::ifstream file;
+};
+
 TEST(test, test_multi_threads) {
   LOG(INFO) << "model: " << FLAGS_model;
   AnalysisConfig config(FLAGS_model);
@@ -257,16 +380,88 @@ TEST(test, test_multi_threads) {
   config.pass_builder()->DeletePass("identity_scale_op_clean_pass");
 
   auto predictor = CreatePaddlePredictor(config);
+  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
+  predictors.emplace_back(std::move(predictor));
+  std::vector<std::vector<PaddleTensor>> inputs;
 
-  std::vector<PaddleTensor> inputs, outputs;
-  PrepareInputs(inputs);
+  std::vector<std::vector<PaddleTensor>> outputs;
 
+  DataSet dataset(FLAGS_dataset);
+  for (int i = 0; i < 5005; i++) {
+    auto is = dataset.NextBatch();
+    if (i == 2063) continue;  // broken data
+    if (!(i > 401 && i < 410)) continue;
+    inputs.push_back(is);
+  }
+
+  auto pred = [&](int tid) {
+    std::vector<PaddleTensor>& res = outputs[tid];
+    res.clear();
+    for (const auto& is : inputs) {
+      std::vector<PaddleTensor> outputs;
+      ASSERT_TRUE(predictors[0]->Run(is, &outputs));
+      res.push_back(outputs.front());
+    }
+  };
+
+  const int num_threads = 2;
+
+  outputs.resize(num_threads);
+  std::vector<std::thread> threads;
+
+  for (auto i = 1; i < num_threads; i++) {
+    predictors.push_back(predictors[0]->Clone());
+  }
+
+  pred(0);
+  pred(1);
+
+
+  /*
+  for (auto i = 1; i < num_threads; i++) {
+    threads.emplace_back([&, i] { pred(i); });
+  }
+
+  for (auto& t : threads) {
+    t.join();
+  }
+   */
+
+  int same = 0;
+  int diff = 0;
+  for (int i = 1; i < num_threads; i++) {
+    ASSERT_EQ(outputs[0].size(), outputs[i].size());
+    for (int j = 0; j < outputs[0].size(); j++) {
+      auto& baseline_tensor = outputs[0][j];
+      auto& cmp_tensor = outputs[i][j];
+      ASSERT_EQ(baseline_tensor.shape.size(), cmp_tensor.shape.size());
+      ASSERT_EQ(cmp_tensor.data.length(), baseline_tensor.data.length());
+      const int length = std::accumulate(baseline_tensor.shape.begin(),
+                                         baseline_tensor.shape.end(), 1,
+                                         [](int a, int b) { return a * b; });
+      for (int k = 0; k < length; k++) {
+        auto a = static_cast<float*>(cmp_tensor.data.data())[k];
+        auto b = static_cast<float*>(baseline_tensor.data.data())[k];
+        if (a != b ) {
+          LOG(INFO) << "diff " << j << " " << k << " : " << a << " " << b;
+          diff ++;
+        } else {
+          same ++;
+        }
+      }
+    }
+  }
+
+  LOG(INFO) << "diff ratio: " << float(diff) / (diff + same);
+
+  /*
   std::vector<std::thread> threads;
   for (int i = 0; i < 10; i++) {
     threads.emplace_back([&] {
+      std::vector<PaddleTensor> outputs;
       auto p = predictor->Clone();
-      for (int j = 0; j < 100; j++) {
-        ASSERT_TRUE(p->Run(inputs, &outputs));
+      for (auto input : inputs) {
+        ASSERT_TRUE(p->Run(input, &outputs));
       }
 
       for (auto& output : outputs) {
@@ -277,6 +472,6 @@ TEST(test, test_multi_threads) {
   }
 
   for (auto& t : threads) t.join();
+   */
 }
- */
 }

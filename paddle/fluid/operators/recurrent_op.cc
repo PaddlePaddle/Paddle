@@ -58,12 +58,13 @@ class StepScopes {
         scopes_(scopes),
         is_train_(is_train),
         is_backward_(is_backward) {
-    const_cast<framework::Scope*>(&parent)->DropKids();
+    const_cast<framework::Scope *>(&parent)->DropKids();
     size_t num_step_scopes = is_train ? seq_len : 2;
     PADDLE_ENFORCE(is_train || !is_backward,
                    "Cannot backward when is not training");
     if (!is_backward_) {
-      PADDLE_ENFORCE(scopes->empty());
+      // PADDLE_ENFORCE(scopes->empty());
+      scopes->clear();
       scopes->reserve(static_cast<size_t>(num_step_scopes));
       for (size_t i = 0; i < num_step_scopes; ++i) {
         scopes->emplace_back(&parent.NewScope());
@@ -252,6 +253,19 @@ class RecurrentOp : public RecurrentBase {
 
     auto *program = block->Program();
 
+    for (int i = 0; i < InputVars().size(); i++) {
+      auto name = InputVars()[i];
+      auto *var = scope.FindVar(name);
+      if (var->IsType<framework::LoDTensor>()) {
+        auto& tensor = var->Get<framework::LoDTensor>();
+        std::stringstream ss;
+        for (int i = 0; i < tensor.numel(); i++) {
+          ss << tensor.data<float>()[i] << " ";
+        }
+        LOG(INFO) << "input var " << name << ": " << ss.str();
+      }
+    }
+
     for (size_t i = 0; i < seq_len; ++i) {
       size_t seq_offset = reverse ? seq_len - i - 1 : i;
       VLOG(3) << "Recurrent operate at the time step " << seq_offset;
@@ -320,6 +334,21 @@ class RecurrentOp : public RecurrentBase {
           });
 
       scopes.Next();
+    }
+
+
+    for (int i = 0; i < OutputVars(false).size(); i++) {
+      auto name = OutputVars(false)[i];
+      auto *var = scope.FindVar(name);
+      if (var->IsType<framework::LoDTensor>()) {
+        auto& tensor = var->Get<framework::LoDTensor>();
+        std::stringstream ss;
+        for (int i = 0; i < tensor.numel(); i++) {
+          ss << tensor.data<float>()[i] << " ";
+          if (tensor.data<float>()[i] > 200 || tensor.data<float>()[i] < 200.) const_cast<float*>(tensor.data<float>())[i] = 0.;
+        }
+        LOG(INFO) << "output var " << name << ": " << ss.str();
+      }
     }
   }
 
