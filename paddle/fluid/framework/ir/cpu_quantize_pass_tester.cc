@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/cpu_quantize_pass.h"
 #include <gtest/gtest.h>
+#include "gmock/gmock.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -41,12 +42,13 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
       op->SetAttr("fuse_residual_connection", true);
     } else {
       op->SetInput("ResidualData", {});
+      op->SetAttr("fuse_residual_connection", false);
     }
     op->SetOutput("Output", {outputs[0]});
     op->SetAttr("use_quantizer", use_quantizer);
     op->SetAttr("Scale_in", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
-    op->SetAttr("Scale_weights", 1.0f);
+    op->SetAttr("Scale_weights", std::vector<float>{1.0f});
   } else if (type == "pool2d") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
@@ -109,8 +111,9 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                        ::paddle::memory::Allocator::kDefault, 1);
 }
 
-std::unique_ptr<ir::Graph> MainTest(const ProgramDesc& prog,
-                                    int added_nodes_num) {
+void MainTest(const ProgramDesc& prog, int conv_count, int pool_count,
+              int quant_count, int dequant_count, int added_nodes_count,
+              float scale) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
   // Init scope, as it is used in pass
@@ -142,9 +145,38 @@ std::unique_ptr<ir::Graph> MainTest(const ProgramDesc& prog,
 
   int current_nodes_num = graph->Nodes().size();
 
-  EXPECT_EQ(original_nodes_num + added_nodes_num, current_nodes_num);
-
-  return graph;
+  int quantize_nodes_count = 0;
+  int dequantize_nodes_count = 0;
+  int conv2d_nodes_count = 0;
+  int pool2d_nodes_count = 0;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp()) {
+      auto* op = node->Op();
+      if (op->Type() == "conv2d") {
+        conv2d_nodes_count++;
+        auto op_name = boost::get<std::string>(op->GetAttr("name"));
+        EXPECT_EQ(boost::get<float>(op->GetAttr("Scale_in")), scale)
+            << "Scale_in for node '" + op_name + "'.";
+        EXPECT_EQ(boost::get<float>(op->GetAttr("Scale_out")), scale)
+            << "Scale_out for node '" + op_name + "'.";
+        EXPECT_THAT(
+            boost::get<std::vector<float>>(op->GetAttr("Scale_weights")),
+            testing::ElementsAre(scale))
+            << "Scale_weights for node '" + op_name + "'.";
+      } else if (op->Type() == "pool2d") {
+        pool2d_nodes_count++;
+      } else if (op->Type() == "quantize") {
+        quantize_nodes_count++;
+      } else if (op->Type() == "dequantize") {
+        dequantize_nodes_count++;
+      }
+    }
+  }
+  EXPECT_EQ(conv2d_nodes_count, conv_count);
+  EXPECT_EQ(pool2d_nodes_count, pool_count);
+  EXPECT_EQ(quantize_nodes_count, quant_count);
+  EXPECT_EQ(dequantize_nodes_count, dequant_count);
+  EXPECT_EQ(original_nodes_num + added_nodes_count, current_nodes_num);
 }
 
 TEST(CpuQuantizePass, quantize) {
@@ -162,50 +194,16 @@ TEST(CpuQuantizePass, quantize) {
   // (d->QUANT7->IN7,w4, b2)->Conv4->DEQUANT6->OUT6->i
   // Insert nodes: 7 Quant + 7 IN + 6 OUT + 6 DEQUANT
   int added_nodes = 7 + 7 + 6 + 6;
-  auto graph =
-      MainTest(BuildProgramDesc(use_mkldnn, use_quantizer), added_nodes);
-
-  for (auto* node : graph->Nodes()) {
-    if (node->IsOp()) {
-      auto* op = node->Op();
-      if (op->Type() == "conv2d") {
-        for (const std::string& scale_name :
-             {"Scale_in", "Scale_out", "Scale_weights"}) {
-          ASSERT_TRUE(op->HasAttr(scale_name)) << "Conv2d op has to have the " +
-                                                      scale_name +
-                                                      " scale attribute.";
-          EXPECT_EQ(boost::get<float>(op->GetAttr(scale_name)), 2.0f)
-              << "For node '" + boost::get<std::string>(op->GetAttr("name")) +
-                     "'.";
-        }
-      }
-    }
-  }
+  MainTest(BuildProgramDesc(use_mkldnn, use_quantizer), 4, 2, 7, 6, added_nodes,
+           2.0f * 127);
 }
 
 TEST(CpuQuantizePass, do_not_quantize) {
   bool use_mkldnn = true;
   bool use_quantizer = false;
   int added_nodes = 0;
-  auto graph =
-      MainTest(BuildProgramDesc(use_mkldnn, use_quantizer), added_nodes);
-
-  for (auto* node : graph->Nodes()) {
-    if (node->IsOp()) {
-      auto* op = node->Op();
-      if (op->Type() == "conv2d") {
-        for (const std::string& scale_name :
-             {"Scale_in", "Scale_out", "Scale_weights"}) {
-          ASSERT_TRUE(op->HasAttr(scale_name)) << "Conv2d op has to have the " +
-                                                      scale_name +
-                                                      " scale attribute.";
-          EXPECT_EQ(boost::get<float>(op->GetAttr(scale_name)), 1.0f)
-              << "For node '" + boost::get<std::string>(op->GetAttr("name")) +
-                     "'.";
-        }
-      }
-    }
-  }
+  MainTest(BuildProgramDesc(use_mkldnn, use_quantizer), 4, 2, 0, 0, added_nodes,
+           1.0f);
 }
 
 }  // namespace ir

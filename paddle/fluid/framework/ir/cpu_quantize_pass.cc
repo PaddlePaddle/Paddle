@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/cpu_quantize_pass.h"
-#include <map>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"

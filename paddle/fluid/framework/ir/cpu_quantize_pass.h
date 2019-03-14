@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -31,7 +31,8 @@ namespace ir {
  * bool denotes whether quantization of the variable should be done to unsigned
  * type.
  */
-using VarQuantScale = std::map<std::string, std::pair<bool, LoDTensor>>;
+using VarQuantScale =
+    std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
 
 /*
  * Quantize all supported operators.

@@ -61,9 +61,6 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new std::unordered_set<std::string>(
                     argument->mkldnn_enabled_op_types()));
     } else if (pass_name == "cpu_quantize_pass") {
-      using VarQuantScale =
-          std::unordered_map<std::string,
-                             std::pair<bool, framework::LoDTensor>>;
       pass->Set("quant_var_scales",
                 new VarQuantScale(argument->quant_var_scales()));
     } else if (pass_name == "tensorrt_subgraph_pass") {
