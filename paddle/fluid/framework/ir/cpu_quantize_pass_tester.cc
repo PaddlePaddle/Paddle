@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/ir/cpu_quantize_pass.h"
 #include <gtest/gtest.h>
-#include "gmock/gmock.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -158,9 +157,9 @@ void MainTest(const ProgramDesc& prog, int conv_count, int pool_count,
             << "Scale_in for node '" + op_name + "'.";
         EXPECT_EQ(boost::get<float>(op->GetAttr("Scale_out")), scale)
             << "Scale_out for node '" + op_name + "'.";
-        EXPECT_THAT(
-            boost::get<std::vector<float>>(op->GetAttr("Scale_weights")),
-            testing::ElementsAre(scale))
+        EXPECT_EQ(
+            boost::get<std::vector<float>>(op->GetAttr("Scale_weights"))[0],
+            scale)
             << "Scale_weights for node '" + op_name + "'.";
       } else if (op->Type() == "pool2d") {
         pool2d_nodes_count++;
