@@ -44,8 +44,6 @@ class ComputationOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
-  bool NeedWait(VarHandleBase *in_var) override;
-
  private:
   std::unique_ptr<OperatorBase> op_;
   Scope *scope_;

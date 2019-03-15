@@ -29,15 +29,24 @@ void FusedBroadcastOpHandle::RunImpl() {
   auto in_var_handles = DynamicCast<VarHandle>(inputs_);
   auto out_var_handles = DynamicCast<VarHandle>(outputs_);
 
-  WaitInputVarGenerated();
+  size_t place_num = places_.size();
+  PADDLE_ENFORCE_EQ(in_var_handles.size() * place_num, out_var_handles.size());
+
+  std::map<platform::Place, std::vector<VarHandle *>> place_in_vars;
+  for (auto in_var : in_var_handles) {
+    if (in_var && in_var->GeneratedOp()) {
+      place_in_vars[in_var->place()].emplace_back(in_var);
+    }
+  }
+
+  for (auto &p_var : place_in_vars) {
+    RecordWaitEventOnCtx2(p_var.second, dev_ctxes_.at(p_var.first));
+  }
 
   std::vector<const Scope *> var_scopes;
   for (auto *s : local_scopes_) {
     var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
   }
-
-  size_t place_num = places_.size();
-  PADDLE_ENFORCE_EQ(in_var_handles.size() * place_num, out_var_handles.size());
 
   for (size_t i = 0; i < in_var_handles.size(); ++i) {
     BroadcastOneVar(

@@ -119,16 +119,15 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
           "graph_printer", new details::GraphvizSSAGraphPrinter);
     }
 
+    if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce ||
+        SeqOnlyAllReduceOps(strategy)) {
+      AppendPass("all_reduce_deps_pass");
+    }
+
     // Verify that the graph is correct for multi-device executor.
+    // NOTE(zcd): multi_devices_check_pass should be the last pass before
+    // running by ParallelExecutor.
     AppendPass("multi_devices_check_pass");
-
-    if (VLOG_IS_ON(2)) {
-      AppendPass("all_reduce_deps_pass");
-    }
-
-    if (SeqOnlyAllReduceOps(strategy)) {
-      AppendPass("all_reduce_deps_pass");
-    }
 
     if (strategy_.remove_unnecessary_lock_) {
       AppendPass("modify_op_lock_and_record_event_pass");

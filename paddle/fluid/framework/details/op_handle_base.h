@@ -55,18 +55,6 @@ class OpHandleBase {
 
   void AddOutput(VarHandleBase *out);
 
-  // This method adds the wait events of all the input on all the device
-  // context.
-  // NODE: This Wait is asynchronous operation.
-  virtual void WaitInputVarGenerated();
-
-  // This method adds the wait events of all the input on the specified device
-  // context.
-  // NODE: This Wait is asynchronous operation.
-  virtual void WaitInputVarGenerated(const platform::Place &place);
-
-  virtual bool NeedWait(VarHandleBase *in_var);
-
   // If the Op involves data transfer of multiple devices that
   // will likely block other computations.
   virtual bool IsMultiDeviceTransfer() const { return false; }

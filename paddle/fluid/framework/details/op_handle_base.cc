@@ -111,7 +111,9 @@ void OpHandleBase::RecordWaitEventOnCtx2(
   std::unordered_set<cudaEvent_t> generate_input_events;
 
   for (auto &in_var : in_vars) {
-    if (in_var->HasEvent()) generate_input_events.insert(in_var->GetEvent());
+    if (in_var->HasEvent()) {
+      generate_input_events.insert(in_var->GetEvent());
+    }
   }
 
   if (platform::is_cpu_place(waited_ctx->GetPlace()) ||
@@ -146,24 +148,6 @@ void OpHandleBase::AddOutput(VarHandleBase *out) {
   out->AddInput(this, this->Node());
 }
 
-void OpHandleBase::WaitInputVarGenerated() {
-  for (auto in_var : inputs_) {
-    if (NeedWait(in_var)) {
-      for (auto &pair : dev_ctxes_) {
-        in_var->GeneratedOp()->RecordWaitEventOnCtx(pair.second);
-      }
-    }
-  }
-}
-
-void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
-  for (auto *in : inputs_) {
-    if (NeedWait(in)) {
-      in->GeneratedOp()->RecordWaitEventOnCtx(dev_ctxes_.at(place));
-    }
-  }
-}
-
 size_t OpHandleBase::NoDummyInputSize() const {
   size_t cnt = 0;
   for (auto *in : inputs_) {
@@ -172,10 +156,6 @@ size_t OpHandleBase::NoDummyInputSize() const {
     }
   }
   return cnt;
-}
-
-bool OpHandleBase::NeedWait(VarHandleBase *in_var) {
-  return in_var && in_var->GeneratedOp();
 }
 
 void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {

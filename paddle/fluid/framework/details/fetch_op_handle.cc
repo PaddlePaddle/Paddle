@@ -76,15 +76,6 @@ void FetchOpHandle::RunImpl() {
   this->WaitAndMergeCPUTensors();
 }
 
-void FetchOpHandle::WaitInputVarGenerated(const platform::Place &place) {
-  auto cpu_ctx = platform::DeviceContextPool::Instance().Get(place);
-  for (auto *input : inputs_) {
-    if (input->GeneratedOp()) {
-      input->GeneratedOp()->RecordWaitEventOnCtx(cpu_ctx);
-    }
-  }
-}
-
 std::string FetchOpHandle::Name() const { return "Fetch"; }
 
 }  // namespace details
