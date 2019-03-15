@@ -16,7 +16,6 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <thread>  // NOLINT
-#include "gmock/gmock.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -327,8 +326,9 @@ TEST_F(QuantizerTest, histogram_non_negative_to_3) {
   ASSERT_NEAR(bin_width, std::abs(max_val - min_val) / 3.f, abs_error)
       << "Improperly calculated bin_width.";
 
-  ASSERT_THAT(histogram, testing::ElementsAre(4, 4, 2))
-      << "Improperly calculated histogram.";
+  ASSERT_EQ(histogram[0], 4);
+  ASSERT_EQ(histogram[1], 4);
+  ASSERT_EQ(histogram[2], 2);
 }
 
 TEST_F(QuantizerTest, histogram_positive_and_negative_to_3) {
@@ -349,8 +349,9 @@ TEST_F(QuantizerTest, histogram_positive_and_negative_to_3) {
   ASSERT_NEAR(bin_width, std::abs(max_val - min_val) / 3.0f, abs_error)
       << "Improperly calculated bin_width.";
 
-  ASSERT_THAT(histogram, testing::ElementsAre(3, 5, 2))
-      << "Improperly calculated histogram.";
+  ASSERT_EQ(histogram[0], 3);
+  ASSERT_EQ(histogram[1], 5);
+  ASSERT_EQ(histogram[2], 2);
 }
 
 TEST_F(QuantizerTest, histogram_zero_bins) {
