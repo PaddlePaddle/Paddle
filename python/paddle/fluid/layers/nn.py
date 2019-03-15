@@ -10276,6 +10276,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
         x(Variable): ${x_comment}
         seg_num(int): ${seg_num_comment}
         shift_ratio(float): ${shift_ratio_comment}
+        name (str, default None): The name of this layer.
 
     Returns:
         out(Variable): The temporal shifting result is a tensor variable with the 
