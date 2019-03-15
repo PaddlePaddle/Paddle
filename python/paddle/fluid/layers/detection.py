@@ -49,6 +49,7 @@ __all__ = [
     'box_coder',
     'polygon_box_transform',
     'yolov3_loss',
+    'yolo_box',
     'box_clip',
     'multiclass_nms',
     'distribute_fpn_proposals',
@@ -626,6 +627,83 @@ def yolov3_loss(x,
         },
         attrs=attrs)
     return loss
+
+
+@templatedoc(op_type="yolo_box")
+def yolo_box(x,
+             img_size,
+             anchors,
+             class_num,
+             conf_thresh,
+             downsample_ratio,
+             name=None):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): ${x_comment}
+        img_size (Variable): ${img_size_comment}
+        anchors (list|tuple): ${anchors_comment}
+        class_num (int): ${class_num_comment}
+        conf_thresh (float): ${conf_thresh_comment}
+        downsample_ratio (int): ${downsample_ratio_comment}
+        name (string): the name of yolo box layer. Default None.
+
+    Returns:
+        Variable: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
+        and a 3-D tensor with shape [N, M, :attr:`class_num`], the classification 
+        scores of boxes.
+
+    Raises:
+        TypeError: Input x of yolov_box must be Variable
+        TypeError: Attr anchors of yolo box must be list or tuple
+        TypeError: Attr class_num of yolo box must be an integer
+        TypeError: Attr conf_thresh of yolo box must be a float number
+
+    Examples:
+
+    .. code-block:: python
+
+        x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
+        anchors = [10, 13, 16, 30, 33, 23]
+        loss = fluid.layers.yolo_box(x=x, class_num=80, anchors=anchors, 
+                                        conf_thresh=0.01, downsample_ratio=32)
+    """
+    helper = LayerHelper('yolo_box', **locals())
+
+    if not isinstance(x, Variable):
+        raise TypeError("Input x of yolo_box must be Variable")
+    if not isinstance(img_size, Variable):
+        raise TypeError("Input img_size of yolo_box must be Variable")
+    if not isinstance(anchors, list) and not isinstance(anchors, tuple):
+        raise TypeError("Attr anchors of yolo_box must be list or tuple")
+    if not isinstance(class_num, int):
+        raise TypeError("Attr class_num of yolo_box must be an integer")
+    if not isinstance(conf_thresh, float):
+        raise TypeError("Attr ignore_thresh of yolo_box must be a float number")
+
+    boxes = helper.create_variable_for_type_inference(dtype=x.dtype)
+    scores = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    attrs = {
+        "anchors": anchors,
+        "class_num": class_num,
+        "conf_thresh": conf_thresh,
+        "downsample_ratio": downsample_ratio,
+    }
+
+    helper.append_op(
+        type='yolo_box',
+        inputs={
+            "X": x,
+            "ImgSize": img_size,
+        },
+        outputs={
+            'Boxes': boxes,
+            'Scores': scores,
+        },
+        attrs=attrs)
+    return boxes, scores
 
 
 @templatedoc()
