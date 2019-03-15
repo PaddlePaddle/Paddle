@@ -82,8 +82,6 @@ struct NCCLContext {
   cudaStream_t stream() const { return ctx_->stream(); }
   ncclComm_t comm() const { return comm_; }
 
-  ncclComm_t comm() const { return comm_; }
-
   int device_id() const {
     return boost::get<platform::CUDAPlace>(ctx_->GetPlace()).device;
   }
