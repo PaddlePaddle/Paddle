@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/split_selected_rows_op.h"
 
+#include <memory>
+
 namespace paddle {
 namespace operators {
 

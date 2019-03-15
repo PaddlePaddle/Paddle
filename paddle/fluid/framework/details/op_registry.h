@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <string>
 #include <tuple>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/inplace_op_inference.h"

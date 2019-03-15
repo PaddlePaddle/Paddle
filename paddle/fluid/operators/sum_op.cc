@@ -12,6 +12,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/sum_op.h"
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 

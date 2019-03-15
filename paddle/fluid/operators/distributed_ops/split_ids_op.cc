@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/distributed_ops/split_ids_op.h"
 
+#include <memory>
+
 namespace paddle {
 namespace operators {
 

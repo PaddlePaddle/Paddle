@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/scale_op.h"
 
+#include <memory>
 #include <string>
 
 #include "paddle/fluid/operators/detail/safe_ref.h"
