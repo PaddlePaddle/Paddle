@@ -115,9 +115,7 @@ inline mkldnn::memory::format MKLDNNFormatForSize(
   } else if (dims_size == 2) {
     return mkldnn::memory::format::nc;
   } else if (dims_size == 3) {
-    if (data_format == mkldnn::memory::format::nchw ||
-        data_format == mkldnn::memory::format::nChw16c ||
-        data_format == mkldnn::memory::format::nChw8c) {
+    if (data_format == mkldnn::memory::format::nchw) {
       return mkldnn::memory::format::ncw;
     } else if (data_format == mkldnn::memory::format::nhwc) {
       return mkldnn::memory::format::nwc;
@@ -128,6 +126,8 @@ inline mkldnn::memory::format MKLDNNFormatForSize(
     } else if (data_format == mkldnn::memory::format::nhwc) {
       return mkldnn::memory::format::ndhwc;
     }
+  } else if (dims_size == 6) {
+    return mkldnn::memory::format::goidhw;
   }
   return data_format;
 }

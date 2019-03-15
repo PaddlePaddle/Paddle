@@ -20,8 +20,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-static framework::DDim ValidateShape(const std::vector<int> shape,
-                                     const framework::DDim &in_dims) {
+static inline framework::DDim ValidateShape(const std::vector<int> shape,
+                                            const framework::DDim &in_dims) {
   const int64_t in_size = framework::product(in_dims);
   const int64_t unk_dim_val = -1;
   const int64_t copy_dim_val = 0;
@@ -69,7 +69,7 @@ static framework::DDim ValidateShape(const std::vector<int> shape,
   return framework::make_ddim(output_shape);
 }
 
-static void ReshapeFunc(const framework::ExecutionContext &ctx) {
+static inline void ReshapeFunc(const framework::ExecutionContext &ctx) {
   auto *out = ctx.Output<framework::LoDTensor>("Out");
   auto *in = ctx.Input<framework::LoDTensor>("X");
 
