@@ -206,12 +206,12 @@ def fc(input,
 
     This function creates a fully connected layer in the network. It can take
     one or multiple tensors as its inputs(input can be a list of Variable, see
-    Args in detail). It creates a variable called weights foreach input tensor,
+    Args in detail). It creates a variable called weights for each input tensor,
     which represents a fully connected weight matrix from each input unit to
     each output unit. The fully connected layer multiplies each input tensor
     with its corresponding weight to produce an output Tensor with shape [M, `size`],
     where M is batch size. If multiple input tensors are given, the results of
-    multiple output tensors with shape [M, `size`] will be sumed up. If bias_attr
+    multiple output tensors with shape [M, `size`] will be summed up. If bias_attr
     is not None, a bias variable will be created and added to the output.
     Finally, if activation is not None, it will be applied to the output as well.
 
