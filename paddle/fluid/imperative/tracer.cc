@@ -230,7 +230,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
                                       outvars_name_map, attrs_map);
 
   if (info.infer_var_type_) {
-    RuntimeInferVarTypeContext infer_var_type_ctx(op, &inputs, &outputs,
+    RuntimeInferVarTypeContext infer_var_type_ctx(&inputs, &outputs,
                                                   &attrs_map);
     info.infer_var_type_(infer_var_type_ctx);
   }
