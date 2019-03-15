@@ -103,7 +103,8 @@ class TestDistRunnerBase(object):
             trainer_prog = fluid.default_main_program()
 
         if args.use_cuda:
-            place = fluid.CUDAPlace(0)
+            device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+            place = fluid.CUDAPlace(device_id)
         else:
             place = fluid.CPUPlace()
 
@@ -242,6 +243,7 @@ class TestDistBase(unittest.TestCase):
         self._dc_asgd = False  # must use with async mode
         self._use_reader_alloc = True
         self._nccl2_mode = False
+        self._mp_mode = False
         self._lr = 0.001
         self._setup_config()
         self._after_setup_config()
@@ -468,6 +470,10 @@ class TestDistBase(unittest.TestCase):
         else:
             env0 = {'CPU_NUM': '1'}
             env1 = {'CPU_NUM': '1'}
+
+        if self._mp_mode:
+            env0 = {"FLAGS_selected_gpus": "0"}
+            env1 = {"FLAGS_selected_gpus": "1"}
 
         env0.update(envs)
         env1.update(envs)
