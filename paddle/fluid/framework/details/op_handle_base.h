@@ -15,6 +15,7 @@
 #pragma once
 #include <map>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/ir/node.h"

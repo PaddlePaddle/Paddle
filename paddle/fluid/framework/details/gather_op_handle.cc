@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/details/gather_op_handle.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
@@ -27,20 +28,22 @@ GatherOpHandle::GatherOpHandle(ir::Node *node,
 
 void GatherOpHandle::RunImpl() {
   if (places_.size() == 1) return;
+  platform::RecordEvent record_event(Name());
+
   // the input and output may have dummy var.
   auto in_var_handles = DynamicCast<VarHandle>(inputs_);
+  auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
 
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), places_.size(),
       "The number of output should equal to the number of places.");
+  PADDLE_ENFORCE_EQ(out_var_handles.size(), 1,
+                    "The number of output should be one.");
 
-  VarHandle *out_var_handle;
-  {
-    auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
-    PADDLE_ENFORCE_EQ(out_var_handles.size(), 1,
-                      "The number of output should be one.");
-    out_var_handle = out_var_handles.front();
-  }
+  RecordWaitEventOnCtx2(in_var_handles,
+                        dev_ctxes_.at(out_var_handles[0]->place()));
+
+  VarHandle *out_var_handle = out_var_handles.front();
 
   std::vector<const Scope *> var_scopes;
   for (auto *s : local_scopes_) {
@@ -54,9 +57,6 @@ void GatherOpHandle::RunImpl() {
 
   PADDLE_ENFORCE(pre_in_var->IsType<framework::SelectedRows>(),
                  "Currently, gather_op only can gather SelectedRows.");
-
-  // Wait input done, this Wait is asynchronous operation
-  WaitInputVarGenerated();
 
   auto &pre_in_value = pre_in_var->Get<framework::SelectedRows>();
   std::vector<int64_t> out_rows;

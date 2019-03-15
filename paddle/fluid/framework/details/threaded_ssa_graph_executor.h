@@ -15,13 +15,14 @@
 #pragma once
 
 #include <deque>
+#include <functional>
 #include <list>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
-#include <functional>
 #include "ThreadPool.h"  // ThreadPool in thrird party
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/details/exception_holder.h"

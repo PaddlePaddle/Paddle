@@ -15,9 +15,9 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
