@@ -110,12 +110,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
                   op_name[i].c_str(), op_total_time[i] / batch_cnt);
         }
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
-        /*
-        int fetch_var_num = fetch_var_names_.size();
-        for (int i = 0; i < fetch_var_num; ++i) {
-          print_fetch_var(thread_scope_, fetch_var_names_[i]);
-        }
-        */
+        fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
       }
     }
     timeline.Start();
