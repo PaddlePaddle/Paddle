@@ -186,14 +186,14 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     VLOG(3) << place << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet exception) {
     if (Attrs().count("sub_block") != 0) {
-      throw;
+      throw std::move(exception);
     }
 
     auto& callstack = Attr<std::vector<std::string>>(
         OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
 
     if (callstack.empty()) {
-      throw;
+      throw std::move(exception);
     }
     std::ostringstream sout;
     sout << "Invoke operator " << Type() << " error.\n";
@@ -204,7 +204,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     sout << "C++ Callstacks: \n";
     sout << exception.err_str_;
     exception.err_str_ = sout.str();
-    throw;
+    throw std::move(exception);
   } catch (...) {
     std::rethrow_exception(std::current_exception());
   }
@@ -926,8 +926,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
-  this->InferShape(&infer_shape_ctx);
+  if (!HasAttr(kAllKernelsMustComputeRuntimeShape)) {
+    RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
+    this->InferShape(&infer_shape_ctx);
+  }
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   kernel_iter->second(

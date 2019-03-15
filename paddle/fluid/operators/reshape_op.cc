@@ -219,14 +219,6 @@ class ReshapeKernel {
           std::vector<int>(shape_data, shape_data + shape_tensor->numel());
       out_dims = ReshapeOp::ValidateShape(shape, in->dims());
     }
-    if (!in->lod().empty()) {
-      PADDLE_ENFORCE_EQ(
-          out_dims[0], in->dims()[0],
-          "Reshape operator cannot reshape an input sequence batch "
-          "into an output sequence batch that has a different "
-          "number of time steps. Please consider using "
-          "sequence_reshape op.");
-    }
 
     out->mutable_data(ctx.GetPlace(), in->type());
     framework::TensorCopy(
