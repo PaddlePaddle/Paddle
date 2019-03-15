@@ -53,6 +53,18 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
   VLOG(3) << "init other env done.";
 }
 
+void DistMultiTrainer::Run() {
+  for (int thidx = 0; thidx < thread_num_; ++thidx) {
+    if (!debug_) {
+      threads_.push_back(
+          std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
+    } else {
+      threads_.push_back(std::thread(&DeviceWorker::TrainFilesWithProfiler,
+                                     workers_[thidx].get()));
+    }
+  }
+}
+
 void DistMultiTrainer::Finalize() {
   for (auto& th : threads_) {
     th.join();
