@@ -188,6 +188,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
   double push_dense_time = 0.0;
   int cur_batch;
   int batch_cnt = 0;
+  uint64_t total_inst = 0;
   timeline.Start();
   while ((cur_batch = device_reader_->Next()) > 0) {
     timeline.Pause();
@@ -315,6 +316,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
     }
 
     thread_scope_->DropKids();
+    total_inst += cur_batch;
     ++batch_cnt;
 
     if (thread_id_ == 0) {
@@ -326,6 +328,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
+        fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
       }
     }
     timeline.Start();
