@@ -99,7 +99,6 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnDestroy);                                  \
   __macro(cudnnSetStream);                                \
   __macro(cudnnActivationForward);                        \
-  __macro(cudnnActivationBackward);                       \
   __macro(cudnnConvolutionForward);                       \
   __macro(cudnnConvolutionBackwardBias);                  \
   __macro(cudnnGetConvolutionForwardWorkspaceSize);       \
