@@ -434,13 +434,14 @@ class Embedding(layers.Layer):
                  is_distributed=False,
                  padding_idx=None,
                  param_attr=None,
+                 stop_gradient=False,
                  dtype='float32'):
 
         super(Embedding, self).__init__(name_scope)
         self._size = size
         self._is_sparse = is_sparse
         self._is_distributed = is_distributed
-
+        self._stop_gradient = stop_gradient
         self._padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
             size[0] + padding_idx)
 
@@ -468,7 +469,8 @@ class Embedding(layers.Layer):
                 'is_distributed': self._is_distributed,
                 'remote_prefetch': self._remote_prefetch,
                 'padding_idx': self._padding_idx
-            })
+            },
+            stop_gradient=self._stop_gradient)
 
         return out
 

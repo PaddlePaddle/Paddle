@@ -18,8 +18,10 @@ import unittest
 import paddle.fluid as fluid
 from paddle.fluid.imperative import Embedding, LayerNorm, FC, to_variable, Layer, guard
 from test_imperative_base import new_program_scope
+from paddle.fluid import core
 import numpy as np
 import six
+import pdb
 
 
 # Copy from models
@@ -576,6 +578,7 @@ class PrepareEncoderDecoderLayer(Layer):
             param_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
                 initializer=fluid.initializer.Normal(0., src_emb_dim**-0.5)))
+
         if pos_enc_param_name is pos_enc_param_names[0]:
             pos_inp = pos_inp1
         else:
@@ -586,7 +589,8 @@ class PrepareEncoderDecoderLayer(Layer):
             param_attr=fluid.ParamAttr(
                 name=pos_enc_param_name,
                 initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
-                trainable=False))
+                trainable=False),
+            stop_gradient=True)
 
         # use in imperative_mode to fit different length batch
         # self._pos_emb._w = to_variable(
@@ -598,7 +602,6 @@ class PrepareEncoderDecoderLayer(Layer):
             x=src_word_emb, scale=self._src_emb_dim**0.5)
         # # TODO change this to fit dynamic length input
         src_pos_emb = self._pos_emb(src_pos)
-        src_pos_emb.stop_gradient = True
         enc_input = src_word_emb + src_pos_emb
         return fluid.layers.dropout(
             enc_input,
@@ -908,7 +911,6 @@ class TransFormer(Layer):
 class TestImperativeTransformer(unittest.TestCase):
     def test_transformer_float32(self):
         seed = 90
-
         with guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -946,7 +948,6 @@ class TestImperativeTransformer(unittest.TestCase):
                 optimizer = fluid.optimizer.SGD(learning_rate=0.003)
             dy_param_init = dict()
             dy_param_updated = dict()
-
             for i in range(batch_num):
                 enc_inputs, dec_inputs, label, weights = create_data()
 
@@ -957,10 +958,12 @@ class TestImperativeTransformer(unittest.TestCase):
                         dy_param_init[param.name] = param._numpy()
 
                 dy_avg_cost._backward()
-                optimizer.minimize(dy_avg_cost)
+                optimizer.minimize(
+                    dy_avg_cost, parameter_list=transformer.parameters())
                 if i == batch_num:
                     for param in transformer.parameters():
                         dy_param_updated[param.name] = param._numpy()
+
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -984,7 +987,8 @@ class TestImperativeTransformer(unittest.TestCase):
                 TrainTaskConfig.label_smooth_eps,
                 use_py_reader=use_py_reader,
                 is_test=False)
-            exe = fluid.Executor(fluid.CUDAPlace(0))
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             optimizer = fluid.optimizer.SGD(learning_rate=0.003)
 
             data_input_names = encoder_data_input_fields + decoder_data_input_fields[:
