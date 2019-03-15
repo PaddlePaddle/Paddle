@@ -123,7 +123,7 @@ class CustomReaderInferShape : public framework::InferShapeBase {
 
 class CustomReaderInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::InferVarTypeContext& ctx) const override {
+  void operator()(framework::InferVarTypeContext& ctx) const override {
     auto& out_var_name = ctx.Output("Out")[0];
     PADDLE_ENFORCE(ctx.HasVar(out_var_name));
     ctx.SetType(out_var_name, framework::proto::VarType::READER);
