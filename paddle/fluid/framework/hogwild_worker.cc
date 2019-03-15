@@ -90,7 +90,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
   int batch_cnt = 0;
   timeline.Start();
   while ((cur_batch = device_reader_->Next()) > 0) {
-    LOG(WARNING) << "read a batch in thread " << thread_id_;
+    VLOG(3) << "read a batch in thread " << thread_id_;
     timeline.Pause();
     read_time += timeline.ElapsedSec();
     total_time += timeline.ElapsedSec();

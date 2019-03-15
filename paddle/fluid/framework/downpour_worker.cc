@@ -82,14 +82,10 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
   auto& feature = features_[table_id];
   auto& feature_label = feature_labels_[table_id];
   feature_label.resize(feature.size());
-  VLOG(3) << "going to get label_var_name " << label_var_name_[table_id];
   Variable* var = thread_scope_->FindVar(label_var_name_[table_id]);
-  VLOG(3) << "going to get tensor";
   LoDTensor* tensor = var->GetMutable<LoDTensor>();
-  VLOG(3) << "going to get ptr";
   int64_t* label_ptr = tensor->data<int64_t>();
 
-  VLOG(3) << "lele";
   int global_index = 0;
   for (size_t i = 0; i < sparse_key_names_[table_id].size(); ++i) {
     VLOG(3) << "sparse_key_names_[" << i
@@ -98,7 +94,6 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
     LoDTensor* tensor = fea_var->GetMutable<LoDTensor>();
     int64_t* ids = tensor->data<int64_t>();
     int fea_idx = 0;
-    VLOG(3) << "Haha";
     // tensor->lod()[0].size() == batch_size + 1
     for (auto lod_idx = 1u; lod_idx < tensor->lod()[0].size(); ++lod_idx) {
       for (; fea_idx < tensor->lod()[0][lod_idx]; ++fea_idx) {
@@ -110,7 +105,6 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
             static_cast<float>(label_ptr[lod_idx - 1]);
       }
     }
-    VLOG(3) << "EE";
   }
   CHECK(global_index == feature.size())
       << "expect fea info size:" << feature.size() << " real:" << global_index;
@@ -163,6 +157,174 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
 void DownpourWorker::TrainFilesWithProfiler() {
   VLOG(3) << "Begin to train files with profiler";
   platform::SetNumThreads(1);
+  device_reader_->Start();
+  std::vector<double> op_total_time;
+  std::vector<std::string> op_name;
+  for (auto& op : ops_) {
+    bool need_skip = false;
+    for (auto t = 0u; t < skip_ops_.size(); ++t) {
+      if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+        need_skip = true;
+        break;
+      }
+    }
+    if (!need_skip) {
+      op_name.push_back(op->Type());
+    }
+  }
+
+  VLOG(3) << "op name size: " << op_name.size();
+  op_total_time.resize(op_name.size());
+  for (size_t i = 0; i < op_total_time.size(); ++i) {
+    op_total_time[i] = 0.0;
+  }
+  platform::Timer timeline;
+  double total_time = 0.0;
+  double read_time = 0.0;
+  double pull_sparse_time = 0.0;
+  double collect_label_time = 0.0;
+  double fill_sparse_time = 0.0;
+  double push_sparse_time = 0.0;
+  double push_dense_time = 0.0;
+  int cur_batch;
+  int batch_cnt = 0;
+  timeline.Start();
+  while ((cur_batch = device_reader_->Next()) > 0) {
+    timeline.Pause();
+    read_time += timeline.ElapsedSec();
+    total_time += timeline.ElapsedSec();
+    VLOG(3) << "program config size: " << param_.program_config_size();
+    for (size_t i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
+         ++i) {
+      uint64_t tid = static_cast<uint64_t>(
+          param_.program_config(0).pull_sparse_table_id(i));
+      TableParameter table;
+      for (auto i : param_.sparse_table()) {
+        if (i.table_id() == tid) {
+          table = i;
+          break;
+        }
+      }
+      timeline.Start();
+      fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
+                                     sparse_key_names_[tid], &features_[tid],
+                                     &feature_values_[tid], table.fea_dim());
+      timeline.Pause();
+      pull_sparse_time += timeline.ElapsedSec();
+      CollectLabelInfo(i);
+      timeline.Pause();
+      collect_label_time += timeline.ElapsedSec();
+      timeline.Start();
+      FillSparseValue(i);
+      timeline.Pause();
+      fill_sparse_time += timeline.ElapsedSec();
+    }
+    VLOG(3) << "Fill sparse value for all sparse table done.";
+
+    int run_op_idx = 0;
+    for (auto& op : ops_) {
+      bool need_skip = false;
+      for (auto t = 0u; t < skip_ops_.size(); ++t) {
+        if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+          need_skip = true;
+          break;
+        }
+      }
+      if (!need_skip) {
+        timeline.Start();
+        op->Run(*thread_scope_, place_);
+        timeline.Pause();
+        op_total_time[run_op_idx++] += timeline.ElapsedSec();
+        total_time += timeline.ElapsedSec();
+      }
+    }
+
+    for (size_t i = 0; i < param_.program_config(0).push_sparse_table_id_size();
+         ++i) {
+      uint64_t tid = static_cast<uint64_t>(
+          param_.program_config(0).push_sparse_table_id(i));
+      TableParameter table;
+      for (auto i : param_.sparse_table()) {
+        if (i.table_id() == tid) {
+          table = i;
+          break;
+        }
+      }
+      timeline.Start();
+      fleet_ptr_->PushSparseVarsWithLabelAsync(
+          *thread_scope_, tid, features_[tid], feature_labels_[tid],
+          sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
+          &feature_grads_[tid], &push_sparse_status_);
+      timeline.Pause();
+      push_sparse_time += timeline.ElapsedSec();
+    }
+
+    timeline.Start();
+    for (size_t i = 0; i < param_.program_config(0).push_dense_table_id_size();
+         ++i) {
+      uint64_t tid = static_cast<uint64_t>(
+          param_.program_config(0).push_dense_table_id(i));
+      fleet_ptr_->PushDenseVarsAsync(
+          *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_);
+    }
+    timeline.Pause();
+    push_dense_time += timeline.ElapsedSec();
+
+    VLOG(3) << "push sparse and dense gradient done.";
+    int32_t tmp_push_dense_wait_times = -1;
+    int32_t tmp_push_sparse_wait_times = -1;
+    static uint32_t push_dense_wait_times =
+        static_cast<uint32_t>(tmp_push_dense_wait_times);
+    static uint32_t push_sparse_wait_times =
+        static_cast<uint32_t>(tmp_push_sparse_wait_times);
+    if (push_dense_status_.size() >= push_dense_wait_times) {
+      for (auto& t : push_dense_status_) {
+        t.wait();
+      }
+      push_dense_status_.resize(0);
+    }
+
+    if (tmp_push_dense_wait_times == -1) {
+      push_dense_status_.resize(0);
+    }
+
+    if (push_sparse_status_.size() >= push_sparse_wait_times) {
+      for (auto& t : push_sparse_status_) {
+        t.wait();
+      }
+      push_sparse_status_.resize(0);
+    }
+
+    if (tmp_push_sparse_wait_times == -1) {
+      push_sparse_status_.resize(0);
+    }
+    VLOG(3) << "going to increase thread version";
+
+    VLOG(3) << "push dense table id size: "
+            << param_.program_config(0).push_dense_table_id_size();
+
+    for (size_t i = 0; i < param_.program_config(0).push_dense_table_id_size();
+         ++i) {
+      uint64_t tid = static_cast<uint64_t>(
+          param_.program_config(0).push_dense_table_id(i));
+      pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
+    }
+
+    thread_scope_->DropKids();
+    ++batch_cnt;
+
+    if (thread_id_ == 0) {
+      // should be configured here
+      if (batch_cnt > 0 && batch_cnt % 100 == 0) {
+        for (size_t i = 0; i < op_total_time.size(); ++i) {
+          fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
+                  op_name[i].c_str(), op_total_time[i] / batch_cnt);
+        }
+        fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
+        fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
+      }
+    }
+  }
 }
 
 void DownpourWorker::TrainFiles() {

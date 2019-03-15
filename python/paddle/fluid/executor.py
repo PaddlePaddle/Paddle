@@ -627,7 +627,7 @@ class Executor(object):
                            fetch_list=None,
                            scope=None,
                            thread=0,
-                           opt_info=None):
+                           debug=False):
         if scope is None:
             scope = global_scope()
         if fetch_list is None:
@@ -636,6 +636,8 @@ class Executor(object):
         if not compiled:
             trainer = TrainerFactory().create_trainer(program._fleet_opt)
             trainer.set_program(program)
+            with open("fleet_desc.prototxt", "w") as fout:
+                fout.write(str(program._fleet_opt["fleet_desc"]))
         else:
             trainer = TrainerFactory().create_trainer(
                 program.program._fleet_opt)
@@ -644,8 +646,11 @@ class Executor(object):
             trainer.set_thread(dataset.thread_num)
         else:
             trainer.set_thread(thread)
+        trainer.set_debug(debug)
         trainer.gen_trainer_desc()
         dataset._prepare_to_run()
+        with open("trainer_desc.prototxt", "w") as fout:
+            fout.write(trainer._desc())
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
