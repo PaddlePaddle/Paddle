@@ -2922,11 +2922,17 @@ def batch_norm(input,
         y_i &\\gets \\gamma \\hat{x_i} + \\beta
 
     Args:
-        input(variable): The input variable which is a LoDTensor.
+        input(variable): The rank of input variable can be 2, 3, 4, 5.
         act(string, Default None): Activation type, linear|relu|prelu|...
-        is_test(bool, Default False): Used for training or training.
-        momentum(float, Default 0.9):
-        epsilon(float, Default 1e-05):
+        is_test (bool, Default False): A flag indicating whether it is in
+            test phrase or not.
+        momentum(float, Default 0.9): The value used for the moving_mean and
+            moving_var computation. The updated formula is:
+            :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
+            :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
+            Default is 0.9.
+        epsilon(float, Default 1e-05): A value added to the denominator for
+            numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
              will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -2984,15 +2990,8 @@ def batch_norm(input,
         shape=param_shape,
         dtype=dtype,
         default_initializer=Constant(1.0))
-    # setting stop_gradient=True to reduce computation
-    if use_global_stats and helper.param_attr.learning_rate == 0.:
-        scale.stop_gradient = True
-
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
-    # setting stop_gradient=True to reduce computation
-    if use_global_stats and helper.bias_attr.learning_rate == 0.:
-        bias.stop_gradient = True
 
     mean = helper.create_parameter(
         attr=ParamAttr(
