@@ -25,9 +25,10 @@ cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_DOC=OFF -DWITH_GPU=OFF -DWITH_DISTRIBUTE=OFF -DWITH_MKLDNN=ON -DWITH_MKL=ON -DWITH_GOLANG=OFF -DWITH_SWIG_PY=ON -DWITH_STYLE_CHECK=OFF -DWITH_TESTING=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DWITH_PROFILER=OFF -DWITH_NGRAPH=ON
 ```
 ## 2. Download pre-trained model:
-Still keep staying in /ngraph dir and download the model from a repository:
+In order to download model, go to /save_models directory and run download_resnet50.sh script:
 ```
-http://paddle-imagenet-models-name.bj.bcebos.com/ResNet50_pretrained.zip
+$ cd save_models/
+$ ./download_resnet50.sh
 ```
 
 ## 3. Set env exports for nGraph and OMP
