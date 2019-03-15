@@ -47,9 +47,26 @@ If everything built sucessfully, you can run the following command to start the 
 
 Run the training job using the nGraph:
 ```
-numactl -l python train_resnet.py --skip_batch_num=<num> --device=CPU --iterations=<num> --pass_num=1 --batch_size=<num> --model=resnet_imagenet --data_set=flowers --use_fake_data --save_model --save_model_path=<path_to_directory_to_save_model>
+numactl -l python train_resnet.py \
+            --skip_batch_num=<num> \
+            --device=CPU \
+            --iterations=<num> \
+            --pass_num=1 \
+            --batch_size=<num> \
+            --model=resnet_imagenet \
+            --data_set=flowers \
+            --use_fake_data \
+            --save_model \
+            --save_model_path=<path_to_directory_to_save_model>
 ```
 Run the inference job using the nGraph:
 ```
-numactl --membind=0 --physcpubind=<num_cpu_cores; from-to> python infer_image_classification.py --device=CPU --skip_batch_num=<num> --iterations=<num> --batch_size=<batch_size> --data_set=imagenet --infer_model_path=<path_to_directory_with_the_model> --use_fake_data
+numactl -l --physcpubind=<num_cpu_cores; from-to> python infer_image_classification.py \
+                  --device=CPU \
+                  --skip_batch_num=<num> \
+                  --iterations=<num> \
+                  --batch_size=<batch_size> \
+                  --data_set=imagenet \
+                  --infer_model_path=<path_to_directory_with_the_model> \
+                  --use_fake_data
 ```
