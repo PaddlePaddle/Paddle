@@ -265,6 +265,12 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
+  /*! \brief  Return nccl communicators. */
+  ncclComm_t nccl_comm() const { return nccl_comm_; }
+
+  /*! \brief  Set nccl communicators. */
+  void set_nccl_comm(ncclComm_t comm) { nccl_comm_ = comm; }
+
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
     callback();
@@ -288,6 +294,13 @@ class CUDADeviceContext : public DeviceContext {
 
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
+
+  // NCCL communicator (single process version) for NCCL collective operations.
+  // NCCL collective operations provides fast collectives over multiple GPUs
+  // both within and across nodes.
+  // But, this collectives is used for collectives over multiple GPUs within
+  // nodes.
+  ncclComm_t nccl_comm_{nullptr};
 
   int compute_capability_;
   int runtime_version_;
