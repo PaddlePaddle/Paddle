@@ -33,6 +33,7 @@ Example:
     Total PARAMs: 48017344(0.0480G)
     Total FLOPs: 11692747751(11.69G)
 '''
+from collections import OrderedDict
 from prettytable import PrettyTable
 
 
@@ -49,7 +50,7 @@ def summary(main_prog):
     for one_b in main_prog.blocks:
         block_vars = one_b.vars
         for one_op in one_b.ops:
-            op_info = {}
+            op_info = OrderedDict()
             spf_res = _summary_model(block_vars, one_op)
             if spf_res is None:
                 continue
@@ -153,11 +154,15 @@ def _format_summary(collected_ops_list):
     total_params = []
     total_flops = []
     for i, one_op in enumerate(collected_ops_list):
-        table_row = [i]
-        for k, v in one_op.items():
-            if k in ['PARAMs', 'FLOPs']:
-                v = int(v)
-            table_row.append(v)
+        # notice the order
+        table_row = [
+            i,
+            one_op['type'],
+            one_op['input_shape'],
+            one_op['out_shape'],
+            int(one_op['PARAMs']),
+            int(one_op['FLOPs']),
+        ]
         summary_table.add_row(table_row)
         total_params.append(int(one_op['PARAMs']))
         total_flops.append(int(one_op['FLOPs']))
