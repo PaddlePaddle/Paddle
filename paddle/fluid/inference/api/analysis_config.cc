@@ -204,20 +204,6 @@ void AnalysisConfig::Update() {
     }
   }
 
-  if (use_mkldnn_) {
-    if (!enable_ir_optim_) {
-      LOG(ERROR)
-          << "EnableMKLDNN() only works when IR optimization is enabled.";
-    }
-#ifdef PADDLE_WITH_MKLDNN
-    pass_builder()->EnableMKLDNN();
-    use_mkldnn_ = true;
-#else
-    LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
-    use_mkldnn_ = false;
-#endif
-  }
-
   if (enable_memory_optim_) {
     pass_builder()->AppendAnalysisPass("memory_optimize_pass");
   }
