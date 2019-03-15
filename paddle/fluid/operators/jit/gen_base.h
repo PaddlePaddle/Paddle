@@ -31,9 +31,10 @@ class GenBase : public Kernel {
   virtual ~GenBase() = default;
   virtual std::string name() const = 0;
   virtual size_t getSize() const = 0;
-  virtual const unsigned char* getCodeInternal() = 0;
+  virtual const unsigned char* getCodeInternal() const = 0;
+  const char* ImplType() const override { return "JitCode"; }
   template <typename Func>
-  Func getCode() {
+  Func getCode() const {
     const unsigned char* code = this->getCodeInternal();
     if (FLAGS_dump_jitcode) {
       this->dumpCode(code);
@@ -65,7 +66,7 @@ class JitCodeCreator : public GenCreator {
   virtual ~JitCodeCreator() = default;
 
   // condition when this jit code can be used.
-  virtual bool UseMe(const Attr& attr) const = 0;
+  virtual bool CanBeUsed(const Attr& attr) const = 0;
 
   // estimate this code size
   virtual size_t CodeSize(const Attr& attr) const = 0;

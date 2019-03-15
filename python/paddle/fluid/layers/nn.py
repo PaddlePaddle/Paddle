@@ -187,6 +187,7 @@ __all__ = [
     'teacher_student_sigmoid_loss',
     'huber_loss',
     'tree_conv',
+    'npair_loss',
 ]
 
 kIgnoreIndex = -100
@@ -1431,6 +1432,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
           predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
           cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
+    if not soft_label:
+        return cross_entropy2(input, label, ignore_index)
     helper = LayerHelper('cross_entropy', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -1440,6 +1443,22 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
         outputs={'Y': [out]},
         attrs={"soft_label": soft_label,
                "ignore_index": ignore_index})
+    return out
+
+
+def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
+    helper = LayerHelper('cross_entropy2', **locals())
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    xshape = helper.create_variable_for_type_inference(dtype=input.dtype)
+    match_x = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='cross_entropy2',
+        inputs={'X': [input],
+                'Label': [label]},
+        outputs={'Y': [out],
+                 'MatchX': [match_x],
+                 'XShape': [xshape]},
+        attrs={'ignore_index': ignore_index})
     return out
 
 
@@ -2903,11 +2922,17 @@ def batch_norm(input,
         y_i &\\gets \\gamma \\hat{x_i} + \\beta
 
     Args:
-        input(variable): The input variable which is a LoDTensor.
+        input(variable): The rank of input variable can be 2, 3, 4, 5.
         act(string, Default None): Activation type, linear|relu|prelu|...
-        is_test(bool, Default False): Used for training or training.
-        momentum(float, Default 0.9):
-        epsilon(float, Default 1e-05):
+        is_test (bool, Default False): A flag indicating whether it is in
+            test phrase or not.
+        momentum(float, Default 0.9): The value used for the moving_mean and
+            moving_var computation. The updated formula is:
+            :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
+            :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
+            Default is 0.9.
+        epsilon(float, Default 1e-05): A value added to the denominator for
+            numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
              will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -2965,15 +2990,8 @@ def batch_norm(input,
         shape=param_shape,
         dtype=dtype,
         default_initializer=Constant(1.0))
-    # setting stop_gradient=True to reduce computation
-    if use_global_stats and helper.param_attr.learning_rate == 0.:
-        scale.stop_gradient = True
-
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
-    # setting stop_gradient=True to reduce computation
-    if use_global_stats and helper.bias_attr.learning_rate == 0.:
-        bias.stop_gradient = True
 
     mean = helper.create_parameter(
         attr=ParamAttr(
@@ -6977,7 +6995,6 @@ def image_resize(input,
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
-
           else:
            
               input : (N,C,H_in,W_in)
@@ -10652,3 +10669,61 @@ def tree_conv(nodes_vector,
     else:
         pre_activation = out
     return helper.append_activation(pre_activation)
+
+
+from .ops import square
+from .control_flow import equal
+
+
+def npair_loss(anchor, positive, labels, l2_reg=0.002):
+    '''
+  **Npair Loss Layer**
+
+  Read `Improved Deep Metric Learning with Multi class N pair Loss Objective <http://www.nec-labs.com/uploads/images/Department-Images/MediaAnalytics/papers/nips16_npairmetriclearning.pdf>`_ .
+
+  Npair loss requires paired data. Npair loss has two parts: the first part is L2
+  regularizer on the embedding vector; the second part is cross entropy loss which
+  takes the similarity matrix of anchor and positive as logits.
+
+  Args:
+    anchor(Variable): embedding vector for the anchor image. shape=[batch_size, embedding_dims]
+    positive(Variable): embedding vector for the positive image. shape=[batch_size, embedding_dims]
+    labels(Variable): 1-D tensor. shape=[batch_size]
+    l2_reg(float32): L2 regularization term on embedding vector, default: 0.002
+
+  Returns:
+    npair loss(Variable): return npair loss, shape=[1]
+
+  Examples:
+    .. code-block:: python
+
+       anchor = fluid.layers.data(
+                     name = 'anchor', shape = [18, 6], dtype = 'float32', append_batch_size=False)
+       positive = fluid.layers.data(
+                     name = 'positive', shape = [18, 6], dtype = 'float32', append_batch_size=False)
+       labels = fluid.layers.data(
+                     name = 'labels', shape = [18], dtype = 'float32', append_batch_size=False)
+
+       npair_loss = fluid.layers.npair_loss(anchor, positive, labels, l2_reg = 0.002)
+  '''
+    Beta = 0.25
+    batch_size = labels.shape[0]
+
+    labels = reshape(labels, shape=[batch_size, 1], inplace=True)
+    labels = expand(labels, expand_times=[1, batch_size])
+
+    labels = equal(labels, transpose(labels, perm=[1, 0])).astype('float32')
+    labels = labels / reduce_sum(labels, dim=1, keep_dim=True)
+
+    l2loss = reduce_mean(reduce_sum(square(anchor), 1)) \
+             + reduce_mean(reduce_sum(square(positive), 1))
+    l2loss = l2loss * Beta * l2_reg
+
+    similarity_matrix = matmul(
+        anchor, positive, transpose_x=False, transpose_y=True)
+    softmax_ce = softmax_with_cross_entropy(
+        logits=similarity_matrix, label=labels, soft_label=True)
+    cross_entropy = reduce_sum(labels * softmax_ce, 0)
+    celoss = reduce_mean(cross_entropy)
+
+    return l2loss + celoss
