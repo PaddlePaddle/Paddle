@@ -94,6 +94,14 @@ bool IsCompiledWithMKLDNN() {
 #endif
 }
 
+bool IsCompiledWithNGRAPH() {
+#ifndef PADDLE_WITH_NGRAPH
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithBrpc() {
 #ifndef PADDLE_WITH_DISTRIBUTE
   return false;
@@ -874,6 +882,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_devices",
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
+  m.def("is_compiled_with_ngraph", IsCompiledWithNGRAPH);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
@@ -1222,6 +1231,21 @@ All parameter, weight, gradient are variables in Paddle.
                       This options is only available in GPU devices.
                       Default False)DOC")
       .def_property(
+          "sync_batch_norm",
+          [](const BuildStrategy &self) { return self.sync_batch_norm_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.sync_batch_norm_ = b;
+          },
+          R"DOC(The type is BOOL, sync_batch_norm indicates whether to use
+                synchronous batch normalization which synchronizes the mean
+                and variance through multi-devices in training phase.
+
+                Current implementation doesn't support FP16 training and CPU.
+                And only synchronous on one machine, not all machines.
+
+                Default False)DOC")
+      .def_property(
           "memory_optimize",
           [](const BuildStrategy &self) { return self.memory_optimize_; },
           [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; })
@@ -1242,7 +1266,7 @@ All parameter, weight, gradient are variables in Paddle.
                 cannot be updated after being finalized.)DOC");
 
   pe.def(py::init<const std::vector<platform::Place> &,
-                  const std::unordered_set<std::string> &, const std::string &,
+                  const std::vector<std::string> &, const std::string &,
                   Scope *, std::vector<Scope *> &, const ExecutionStrategy &,
                   const BuildStrategy &, ir::Graph *>())
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
