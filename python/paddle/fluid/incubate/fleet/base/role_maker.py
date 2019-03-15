@@ -115,6 +115,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             self.node_type_comm_.barrier()
 
     def generate_role(self):
+        # TODO(guru4elephant): only allow to be called once
         self.trainer_endpoints_ = self.get_ips()
         self.pserver_endpoints_ = self.get_ips()
 
