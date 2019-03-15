@@ -211,13 +211,16 @@ void DownpourWorker::TrainFilesWithProfiler() {
                                      &feature_values_[tid], table.fea_dim());
       timeline.Pause();
       pull_sparse_time += timeline.ElapsedSec();
+      total_time += timeline.ElapsedSec();
       CollectLabelInfo(i);
       timeline.Pause();
       collect_label_time += timeline.ElapsedSec();
+      total_time += timeline.ElapsedSec();
       timeline.Start();
       FillSparseValue(i);
       timeline.Pause();
       fill_sparse_time += timeline.ElapsedSec();
+      total_time += timeline.ElapsedSec();
     }
     VLOG(3) << "Fill sparse value for all sparse table done.";
 
@@ -257,6 +260,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
           &feature_grads_[tid], &push_sparse_status_);
       timeline.Pause();
       push_sparse_time += timeline.ElapsedSec();
+      total_time += timeline.ElapsedSec();
     }
 
     timeline.Start();
@@ -269,7 +273,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
     }
     timeline.Pause();
     push_dense_time += timeline.ElapsedSec();
-
+    total_time += timeline.ElapsedSec();
     VLOG(3) << "push sparse and dense gradient done.";
     int32_t tmp_push_dense_wait_times = -1;
     int32_t tmp_push_sparse_wait_times = -1;
@@ -324,6 +328,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
       }
     }
+    timeline.Start();
   }
 }
 
