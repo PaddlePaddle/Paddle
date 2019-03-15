@@ -88,7 +88,11 @@ class FusedEmbeddingSeqPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(boolean, default false) "
                   "Sparse update.")
         .SetDefault(false);
-    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape, "")
+    AddAttr<bool>(
+        framework::kAllKernelsMustComputeRuntimeShape,
+        "If an Op has this attribute, all its kernels should calculate output"
+        "variable's shape in the corresponding Compute() function. Note that "
+        "this temporal attribute would be deleted after all ops contain it.")
         .SetDefault(true);
     AddComment(R"DOC(
 FusedEmbeddingSeqPool Operator.
