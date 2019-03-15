@@ -278,7 +278,7 @@ struct AnalysisConfig {
   // since the input/output names of this Op do not change in the execution,
   // RuntimeContext could be created only at the first iteration of this Op's
   // execution to save the elapsed time.
-  bool enable_runtime_context_cache_{true};
+  bool enable_runtime_context_cache_{false};
 
   // A runtime cache, shouldn't be transferred to others.
   std::string serialized_info_cache_;
