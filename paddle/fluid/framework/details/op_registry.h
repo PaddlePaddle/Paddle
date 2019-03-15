@@ -127,9 +127,9 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
 template <typename T>
 struct OpInfoFiller<T, kVarTypeInference> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->infer_var_type_ = [](const OpDesc& fwd_op, BlockDesc* block) {
+    info->infer_var_type_ = [](InferVarTypeContext& context) {
       T inference;
-      inference(fwd_op, block);
+      inference(context);
     };
   }
 };
