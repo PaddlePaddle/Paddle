@@ -83,6 +83,7 @@ class DistMultiTrainer : public MultiTrainer {
   virtual ~DistMultiTrainer() {}
   virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set);
   virtual void InitOtherEnv(const ProgramDesc& main_program);
+  virtual void Run();
   virtual void Finalize();
 
  protected:
