@@ -474,14 +474,14 @@ PYBIND11_MODULE(core, m) {
              // dimension of the LoDTensor data
              return CheckLoD(self.lod(), vectorize(self.dims()).front());
            },
-      R"DOC(
+           R"DOC(
            Check whether the lod of the LoDTensor is valid.
 
            Returns:
                out (bool): whether the lod is valid.
            )DOC")
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference,
-      R"DOC(
+            R"DOC(
            Slice the original LoDTensor, and Lod information would be abondon.
 
            Returns:
