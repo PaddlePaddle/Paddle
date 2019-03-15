@@ -131,8 +131,7 @@ framework::VariableNameMap CreateOutputVarNameMap(
   return result;
 }
 
-Tracer::Tracer(framework::BlockDesc* root_block) : root_block_(root_block) {
-}
+Tracer::Tracer(framework::BlockDesc* root_block) : root_block_(root_block) {}
 
 std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
                                     const VarBasePtrMap& outputs,
