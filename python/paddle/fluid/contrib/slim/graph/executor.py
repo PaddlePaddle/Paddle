@@ -12,51 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import abc
-from abc import abstractmethod
+from ....compiler import CompiledProgram
+from ....data_feeder import DataFeeder
 from .... import executor
-from .graph import IRGraph, ImitationGraph
+from .graph_wrapper import GraphWrapper
 
-__all__ = ['get_executor']
+__all__ = ['SlimGraphExecutor']
 
 
-class GraphExecutor(object):
-    __metaclass__ = abc.ABCMeta
-
+class SlimGraphExecutor(object):
     def __init__(self, place):
+        self.exe = executor.Executor(place)
         self.place = place
 
-    @abstractmethod
-    def run(self, graph, feches=None, feed=None):
-        pass
+    def run(self, graph, scope, data=None, feed=None, fetches=None):
+        assert isinstance(graph, GraphWrapper)
+        if data is not None:
+            feeder = DataFeeder(
+                feed_list=graph.in_nodes.values(),
+                place=self.place,
+                program=graph.program)
+            feed = feeder.feed(data)
 
-
-class IRGraphExecutor(GraphExecutor):
-    def run(self, grah, fetches, feed=None):
-        pass
-
-
-class ImitationGraphExecutor(GraphExecutor):
-    def __init__(self, place):
-        super(ImitationGraphExecutor, self).__init__(place)
-        self.exe = executor.Executor(place)
-
-    def run(self, graph, scope=None, fetches=None, feed=None):
-        assert isinstance(graph, ImitationGraph)
-        fetch_list = None
-        if fetches:
-            fetch_list = [
-                graph.program.global_block().var(name) for name in fetches
-            ]
-        results = self.exe.run(graph.program,
+        fetch_list = fetches if fetches else graph.out_nodes.values()
+        program = graph.compiled_graph if graph.compiled_graph else graph.program
+        results = self.exe.run(program,
                                scope=scope,
                                fetch_list=fetch_list,
                                feed=feed)
         return results
-
-
-def get_executor(graph, place):
-    if isinstance(graph, ImitationGraph):
-        return ImitationGraphExecutor(place)
-    if isinstance(graph, IRGraph):
-        return IRGraphExecutor(place)

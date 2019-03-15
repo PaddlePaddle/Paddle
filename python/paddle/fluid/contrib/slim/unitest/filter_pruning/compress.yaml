@@ -1,0 +1,25 @@
+version: 1.0
+pruners:
+    pruner_1:
+        class: 'StructurePruner'
+        pruning_axis:
+            '*': 0
+        criterions:
+            '*': 'l1_norm'
+strategies:
+    sensitive_pruning_strategy:
+        class: 'SensitivePruneStrategy'
+        pruner: 'pruner_1'
+        start_epoch: 1
+        delta_rate: 0.2
+        target_ratio: 0.08
+        num_steps: 1
+        eval_rate: 0.5
+        pruned_params: 'conv6_sep_weights'
+        sensitivities_file: 'mobilenet_acc_top1_sensitive.data'
+        metric_name: 'acc_top1'
+compress_pass:
+    epoch: 2
+    checkpoint_path: './checkpoints/'
+    strategies:
+        - sensitive_pruning_strategy

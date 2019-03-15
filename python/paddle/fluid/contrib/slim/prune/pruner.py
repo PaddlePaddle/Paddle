@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import numpy as np
+import collections
 from .... import layers
 
-__all__ = ['Pruner', 'MagnitudePruner', 'RatioPruner']
+__all__ = ['Pruner', 'MagnitudePruner', 'RatioPruner', 'StructurePruner']
 
 
 class Pruner(object):
@@ -46,6 +47,42 @@ class MagnitudePruner(Pruner):
             thres = threshold
         zeros_mask = layers.less_than(x=param, y=thres)
         return zeros_mask
+
+
+class StructurePruner(Pruner):
+    """
+    Pruner used to pruning parameters by groups.
+    """
+
+    def __init__(self, pruning_axis, criterions):
+        self.pruning_axis = pruning_axis
+        self.criterions = criterions
+
+    def cal_pruned_idx(self, name, param, ratio, axis):
+        criterion = self.criterions[
+            name] if name in self.criterions else self.criterions['*']
+        prune_num = int(round(param.shape[axis] * ratio))
+        reduce_dims = [i for i in range(len(param.shape)) if i != axis]
+        if criterion == 'l1_norm':
+            criterions = np.sum(np.abs(param), axis=tuple(reduce_dims))
+        pruned_idx = criterions.argsort()[:prune_num]
+        return pruned_idx
+
+    def prune_tensor(self, tensor, pruned_idx, pruned_axis, lazy=False):
+        mask = np.zeros(tensor.shape[pruned_axis], dtype=bool)
+        mask[pruned_idx] = True
+
+        def func(data):
+            return data[~mask]
+
+        def lazy_func(data):
+            data[mask] = 0
+            return data
+
+        if lazy:
+            return np.apply_along_axis(lazy_func, pruned_axis, tensor)
+        else:
+            return np.apply_along_axis(func, pruned_axis, tensor)
 
 
 class RatioPruner(Pruner):

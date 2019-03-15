@@ -13,65 +13,274 @@
 # limitations under the License.
 
 from ....core import CPUPlace
-from ..graph import get_executor
+from .... import compiler
+from .... import io
+from .... import profiler
+from .... import scope_guard
+from ....data_feeder import DataFeeder
+from .....reader import xmap_readers
+from ..graph import *
+from config import ConfigFactory
+import numpy as np
+from collections import Iterable
+import time
+import os
+import logging
+import sys
+import pickle
+import functools
 
 __all__ = ['Context', 'CompressPass']
+
+FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
+logging.basicConfig(level=logging.INFO, format=FORMAT, stream=sys.stdout)
+logger = logging.getLogger(__name__)
+
+
+def feed_reader(reader, feed_list, place, program=None):
+    """
+    A decorator for speedup data feeder.
+    """
+    feeder = DataFeeder(feed_list, place, program)
+
+    def feed(data, feeder):
+        return feeder.feed(data)
+
+    mapper = functools.partial(feed, feeder=feeder)
+    return xmap_readers(mapper, reader, 2, 2)
+
+
+def cached_reader(reader, sampled_rate, cache_path, cached_id):
+    """
+    Sample partial data from reader and cache them into local file system.
+    Args:
+        reader: Iterative data source.
+        sampled_rate(float): The sampled rate used to sample partial data for evaluation. None means using all data in eval_reader. default: None.
+        cache_path(str): The path to cache the sampled data.
+        cached_id(int): The id of dataset sampled. Evaluations with same cached_id use the same sampled dataset. default: 0.
+    """
+    np.random.seed(cached_id)
+    cache_path = cache_path + "/" + str(cached_id)
+    logger.debug('read data from: {}'.format(cache_path))
+
+    def s_reader():
+        if os.path.isdir(cache_path):
+            for file_name in open(cache_path + "/list"):
+                yield np.load(cache_path + '/' + file_name.strip())
+        else:
+            os.makedirs(cache_path)
+            list_file = open(cache_path + "/list", 'w')
+            batch = 0
+            dtype = None
+            for data in reader():
+                if batch == 0 or (np.random.uniform() < sampled_rate):
+                    np.save(cache_path + '/batch' + str(batch), data)
+                    list_file.write('batch' + str(batch) + '.npy\n')
+                    batch += 1
+                    yield data
+
+    return s_reader
 
 
 class Context(object):
     """
     The context in the process of compression.
-    Args:
-        exe: The executor used to execute graph.
-        graph: The graph to be compressed.
-        scope: The scope used to execute graph.
-        program_exe: The program_exe is used to execute the program
-                     created for modifying the variables in scope.
     """
 
-    def __init__(self, exe, graph, scope, program_exe=None):
+    def __init__(self,
+                 place,
+                 scope,
+                 train_graph=None,
+                 train_reader=None,
+                 eval_graph=None,
+                 eval_reader=None,
+                 teacher_graphs=None,
+                 train_optimizer=None,
+                 distiller_optimizer=None):
+        """
+        Args:
+            place: The device place where the compression job running.
+            scope: The scope used in compression job.
+            train_graph: The graph with loss as output node.
+            eval_graph: The graph used for evaluation.
+            eval_reader: The data reader used for evaluation.
+            teacher_graphs: The teacher graphs used in distillation strategies.
+            train_optimizer: The optimizer used to append backward ops and
+                             optimization ops into train_graph.
+            distiller_optimizer: The optimizer used by distillation strategies.
+        """
         # The total number of epoches to be trained.
         self.epoch = 0
         # Current epoch
         self.epoch_id = 0
         # Current batch
         self.batch_id = 0
-        self.exe = exe
-        self.graph = graph
+
+        self.k_v = {}
+
+        self.place = place
         self.scope = scope
-        self.program_exe = program_exe
+        self.train_graph = train_graph
+        self.train_reader = train_reader
+        self.eval_graph = eval_graph
+        self.eval_reader = eval_reader
+        self.executor = None
+        self.teacher_graphs = teacher_graphs
+        self.train_optimizer = train_optimizer
+        self.distiller_optimizer = distiller_optimizer
+        self.optimize_graph = None
+        self.cache_path = './eval_cache'
+        self.eval_results = {}
+
+    def to_file(self, file_name):
+        """
+        Save the context into file.
+        """
+        data = {}
+        data['epoch_id'] = self.epoch_id
+        data['eval_results'] = self.eval_results
+        with open(file_name, 'wb') as context_file:
+            pickle.dump(data, context_file)
+
+    def from_file(self, file_name):
+        """
+        Load the context from file.
+        """
+        with open(file_name) as context_file:
+            data = pickle.load(context_file)
+            self.epoch_id = data['epoch_id']
+            self.eval_results = data['eval_results']
+
+    def eval_converged(self, metric_name, delta=0.001):
+        """
+        Check whether the training has been converged.
+        Args:
+            metric_name(str): The metric used to check convergence.
+            delta(float): '(metric[k] - metric[k-1] / metric[k-1]) < delta'
+                          means that the training has been converged.
+        Returns:
+            bool: True means the training has been converged.
+        """
+        # TODO(wanghaoshuang@baidu.com): enhence this method.
+        if (metric_name not in self.eval_results
+            ) or len(self.eval_results[metric_name]) < 2:
+            return False
+        results = self.eval_results[metric_name][-2:]
+        logger.info('Latest evaluations: {}'.format(results))
+        return abs(results[1] - results[0]) / results[0] < delta
+
+    def run_eval_graph(self, sampled_rate=None, cached_id=0):
+        """
+        Evaluate the current mode in context.
+        Args:
+            sampled_rate(float): The sampled rate used to sample partial data
+            for evaluation. None means using all data in eval_reader. default: None.
+            cached_id(int): The id of dataset sampled. Evaluations with same
+                            cached_id use the same sampled dataset. default: 0.
+        """
+        logger.info('Running evaluation')
+        assert self.eval_graph is not None
+        assert self.eval_reader is not None
+        eval_graph = self.eval_graph.clone(for_test=True)
+
+        executor = SlimGraphExecutor(self.place)
+        results = []
+        batch_id = 0
+        s_time = time.time()
+        reader = self.eval_reader
+        if sampled_rate:
+            reader = cached_reader(reader, sampled_rate, self.cache_path,
+                                   cached_id)
+        for data in reader():
+            result = executor.run(eval_graph, self.scope, data=data)
+            result = [np.mean(r) for r in result]
+            results.append(result)
+            if batch_id % 20 == 0:
+                logger.info("batch-{}; {}={}".format(
+                    batch_id, eval_graph.out_nodes.keys(), result))
+            batch_id += 1
+        result = np.mean(np.array(results), axis=0)
+        logger.info("Final eval result: {}={}".format(eval_graph.out_nodes.keys(
+        ), result))
+        if not isinstance(result, Iterable):
+            result = [result]
+        logger.info('Finish evaluation')
+        return result, eval_graph.out_nodes.keys()
+
+    def put(self, key, value):
+        self.k_v[key] = value
+
+    def get(self, key):
+        return self.k_v.get(key)
 
 
 class CompressPass(object):
     """
     The pass used to compress model.
-    Args:
-        place: The device used in compression.
-        data_reader: The data_reader used to run graph.
-        data_feeder: The data_feeder used to run graph.
-        scope: The scope used to run graph.
-        metrics: The metrics for evaluating model.
-        epoch: The total epoches of trainning in compression.
-        program_exe: The program_exe is used to execute the program
-                     created for modifying the variables in scope.
     """
 
     def __init__(self,
-                 place=None,
-                 data_reader=None,
-                 data_feeder=None,
-                 scope=None,
-                 metrics=None,
-                 epoch=None,
-                 program_exe=None):
+                 place,
+                 scope,
+                 train_program,
+                 train_reader=None,
+                 train_feed_list=None,
+                 train_fetch_list=None,
+                 eval_program=None,
+                 eval_reader=None,
+                 eval_feed_list=None,
+                 eval_fetch_list=None,
+                 teacher_programs=[],
+                 checkpoint_path='./checkpoints',
+                 train_optimizer=None,
+                 distiller_optimizer=None):
+        """
+        Args:
+            place(fluid.Place): The device place where the compression job running.
+            scope(fluid.core.Scope): The scope used to run graph.
+            train_program(Program): The main program to be compressed. It must have loss op.
+            train_reader: The data reader used for training.
+            train_feed_list(dict): A dict to indicate the input variable of the training program.
+                                   The key is user-defined and human-readable name.
+                                   The value is the name of Variable.
+            train_fetch_list(dict): A dict to indicate the output variable of the training program.
+                                   The key is user-defined and human-readable name.
+                                   The value is the name of Variable.
+            eval_program(Program): The program used for evaluation.
+            eval_reader: The data reader used for evaluation.
+            eval_feed_list(dict): A dict to indicate the input variable of the evaluation program.
+                                   The key is user-defined and human-readable name.
+                                   The value is the name of Variable.
+            eval_fetch_list(dict): A dict to indicate the output variable of the evaluation program.
+                                   The key is user-defined and human-readable name.
+                                   The value is the name of Variable.
+            teacher_programs: The teacher graphs used in distillation strategies.
+            train_optimizer: The optimizer used to append backward ops and
+                             optimization ops into train_graph.
+            distiller_optimizer: The optimizer used by distillation strategies.
+
+        """
         self.strategies = []
+        self.epoch = 0
         self.place = CPUPlace() if place is None else place
-        self.data_reader = data_reader
-        self.data_feeder = data_feeder
         self.scope = scope
-        self.metrics = metrics
-        self.epoch = epoch
-        self.program_exe = program_exe
+        self.train_graph = GraphWrapper(
+            train_program, in_nodes=train_feed_list, out_nodes=train_fetch_list)
+        self.eval_graph = GraphWrapper(
+            eval_program, in_nodes=eval_feed_list, out_nodes=eval_fetch_list)
+        self.train_reader = train_reader
+        self.eval_reader = eval_reader
+        self.teacher_graphs = []
+        for teacher in teacher_programs:
+            self.teacher_graphs.append(ImitationGraph(teacher, scope=scope))
+
+        self.checkpoint = None
+        self.checkpoint_path = checkpoint_path
+        self.eval_epoch = 1
+
+        self.train_optimizer = train_optimizer
+        self.distiller_optimizer = distiller_optimizer
+        self.init_model = None
 
     def add_strategy(self, strategy):
         """
@@ -82,48 +291,185 @@ class CompressPass(object):
         self.strategies.append(strategy)
         self.epoch = max(strategy.end_epoch, self.epoch)
 
-    def apply(self, graph):
+    def config(self, config_file):
         """
-        Compress a model.
+        Configure the compress pass from file with yaml format.
         Args:
-            graph: The target graph to be compressed.
+            config_file(str): The config file in local file system.
         """
-        self.executor = get_executor(graph, self.place)
+        factory = ConfigFactory(config_file)
+        self.epoch = factory.compress_pass['epoch']
+        for strategy in factory.compress_pass['strategies']:
+            self.add_strategy(strategy)
+        if 'checkpoint_path' in factory.compress_pass:
+            self.checkpoint_path = factory.compress_pass['checkpoint_path']
+
+        if 'init_model' in factory.compress_pass:
+            self.init_model = factory.compress_pass['init_model']
+
+    def _init_model(self, context):
+        """
+        Load model that has been compressed. 
+        """
+        if self.init_model and os.path.exists(self.init_model):
+            exe = SlimGraphExecutor(context.place)
+            with scope_guard(context.scope):
+                context.train_graph.load_persistables(self.init_model, exe)
+            context.eval_graph.update_param_shape(context.scope)
+            context.eval_graph.update_groups_of_conv()
+            context.train_graph.infer_shape()
+            logger.info("Init model from: {}".format(self.init_model))
+
+    def _load_checkpoint(self, context):
+        """
+        Load checkpoints from file.
+        """
+        logger.debug('_load_checkpoint')
+        strategies = self.strategies
+        if self.checkpoint_path:
+            if not os.path.exists(self.checkpoint_path):
+                os.makedirs(self.checkpoint_path)
+            checkpoints = [
+                dir for dir in os.listdir(self.checkpoint_path)
+                if os.path.isdir(os.path.join(self.checkpoint_path, dir))
+            ]
+            logger.debug('self.checkpoint_path: {}'.format(
+                self.checkpoint_path))
+            logger.info('checkpoints: {}'.format(checkpoints))
+            if len(checkpoints) > 0:
+                latest = max([int(ck) for ck in checkpoints])
+                latest_ck_path = os.path.join(self.checkpoint_path, str(latest))
+
+                model_path = os.path.join(latest_ck_path, 'model')
+                context_path = os.path.join(latest_ck_path, 'context')
+                strategy_path = os.path.join(latest_ck_path, 'strategies')
+                if os.path.exists(context_path):
+                    context.from_file(context_path)
+                    context.epoch_id += 1
+                if os.path.exists(strategy_path):
+                    with open(strategy_path, 'rb') as strategy_file:
+                        strategies = pickle.load(strategy_file)
+
+                if os.path.exists(model_path):
+                    exe = SlimGraphExecutor(context.place)
+                    with scope_guard(context.scope):
+                        context.optimize_graph.load_persistables(model_path,
+                                                                 exe)
+                    context.optimize_graph.update_param_shape(context.scope)
+                    context.optimize_graph.update_groups_of_conv()
+                    context.eval_graph.update_param_shape(context.scope)
+                    context.eval_graph.update_groups_of_conv()
+                    logger.info("Loaded params from: {}".format(model_path))
+        return context, strategies
+
+    def _save_checkpoint(self, context):
+        """
+        Save checkpoints to file.
+        """
+        if context.epoch_id % 1 == 0 and self.checkpoint_path:
+            checkpoint_path = os.path.join(self.checkpoint_path,
+                                           str(context.epoch_id))
+            model_path = os.path.join(checkpoint_path, 'model')
+            context_path = os.path.join(checkpoint_path, 'context')
+            strategy_path = os.path.join(checkpoint_path, 'strategies')
+            if not os.path.isdir(model_path):
+                os.makedirs(model_path)
+            exe = SlimGraphExecutor(context.place)
+            with scope_guard(context.scope):
+                context.optimize_graph.save_persistables(model_path, exe)
+            context.to_file(context_path)
+            with open(strategy_path, 'wb') as strategy_file:
+                pickle.dump(self.strategies, strategy_file)
+            logger.info('Saved checkpoint to: {}'.format(checkpoint_path))
+
+    def _train_one_epoch(self, context):
+        """
+        Train one epoch.
+        """
+
+        executor = SlimGraphExecutor(self.place)
+
+        reader = feed_reader(
+            context.train_reader,
+            context.optimize_graph.in_nodes.values(),
+            self.place,
+            program=context.optimize_graph.program)
+
+        if context.optimize_graph.compiled_graph is None:
+            context.optimize_graph.compiled_graph = compiler.CompiledProgram(
+                context.optimize_graph.program).with_data_parallel(
+                    loss_name=context.optimize_graph.out_nodes['loss'])
+
+        for feed in reader():
+            for strategy in self.strategies:
+                strategy.on_batch_begin(context)
+            results = executor.run(context.optimize_graph,
+                                   context.scope,
+                                   data=None,
+                                   feed=feed)
+            results = [float(np.mean(result)) for result in results]
+            if context.batch_id % 20 == 0:
+                logger.info("epoch:{}; batch_id:{}; {} = {}".format(
+                    context.epoch_id, context.batch_id,
+                    context.optimize_graph.out_nodes.keys(
+                    ), [round(r, 3) for r in results]))
+            for strategy in self.strategies:
+                strategy.on_batch_end(context)
+            context.batch_id += 1
+        context.batch_id = 0
+
+    def _eval(self, context):
+        """
+        Runing evaluation.
+        """
+        results, names = context.run_eval_graph()
+        for name, result in zip(names, results):
+            if name not in context.eval_results:
+                context.eval_results[name] = []
+            context.eval_results[name].append(result)
+
+    def run(self):
+        """
+        Execute compressiong pass.
+        """
         context = Context(
-            self.executor, graph, self.scope, program_exe=self.program_exe)
+            place=self.place,
+            scope=self.scope,
+            train_graph=self.train_graph,
+            train_reader=self.train_reader,
+            eval_graph=self.eval_graph,
+            eval_reader=self.eval_reader,
+            teacher_graphs=self.teacher_graphs,
+            train_optimizer=self.train_optimizer,
+            distiller_optimizer=self.distiller_optimizer)
+        self.context = context
+        if self.teacher_graphs:
+            context.put('teachers', self.teacher_graphs)
+        self._init_model(context)
+        if not context.optimize_graph:
+            if context.train_optimizer:
+                context.train_optimizer._name = 'train_opt'
+                context.optimize_graph = context.train_graph.get_optimize_graph(
+                    context.train_optimizer, context.place, context.scope)
+            else:
+                context.optimize_graph = context.train_graph
+
+        context, self.strategies = self._load_checkpoint(context)
 
         for strategy in self.strategies:
-            strategy.on_compress_begin(context)
-
-        for epoch in range(self.epoch):
-
+            strategy.on_compression_begin(context)
+        start = context.epoch_id
+        self._eval(context)
+        for epoch in range(start, self.epoch):
+            context.epoch_id = epoch
             for strategy in self.strategies:
                 strategy.on_epoch_begin(context)
-
-            for data in self.data_reader():
-
-                for strategy in self.strategies:
-                    strategy.on_batch_begin(context)
-                fetches = None
-                if self.metrics:
-                    fetches = self.metrics.values()
-                feed = None
-                if self.data_feeder:
-                    feed = self.data_feeder.feed(data)
-                results = self.executor.run(graph,
-                                            fetches=fetches,
-                                            scope=self.scope,
-                                            feed=feed)
-                if results:
-                    print("results: {}".format(
-                        zip(self.metrics.keys(), results)))
-                for strategy in self.strategies:
-                    strategy.on_batch_end(context)
-                context.batch_id += 1
-
+            self._train_one_epoch(context)
             for strategy in self.strategies:
                 strategy.on_epoch_end(context)
-            context.epoch_id += 1
-
+            if self.eval_epoch and epoch % self.eval_epoch == 0:
+                self._eval(context)
+            self._save_checkpoint(context)
         for strategy in self.strategies:
-            strategy.on_compress_end(context)
+            strategy.on_compression_end(context)
+        return context.eval_graph
