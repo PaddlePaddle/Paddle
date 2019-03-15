@@ -24,6 +24,8 @@ limitations under the License. */
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
+namespace py = pybind11;
+
 namespace paddle {
 namespace pybind {
 namespace details {
@@ -191,63 +193,62 @@ inline void PyCPUTensorSetFromArray(
   std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
 }
 
-inline framework::Tensor* PySliceTensor(framework::Tensor &self, py::object obj) {
-  const framework::DDim& srcDDim = self.dims();
+inline framework::Tensor *PySliceTensor(framework::Tensor &self,
+                                        py::object obj) {
+  const framework::DDim &srcDDim = self.dims();
   if (py::isinstance<py::slice>(obj)) {
     size_t start, stop, step, slicelength;
-    py::slice s = static_cast<py::slice>(obj);
+    py::slice &s = static_cast<py::slice>(obj);
     if (!s.compute(srcDDim[0], &start, &stop, &step, &slicelength)) {
       throw py::index_error();
     }
-
     if (srcDDim[0] == 1) {
       return new framework::Tensor(self);
-    } else if (step == 1) {
+    } else if (static_cast<int64_t>(step) == 1) {
       return new framework::Tensor(self.Slice(start, stop));
     } else {
       framework::Tensor *output = new framework::Tensor();
-      std::vector<int64_t> tensor_shape(slicelength);
-      ssize_t feature_size = framework::product(srcDDim) / srcDDim[0];
-      for (int64_t i = 0, lstart = start;
-           i < slicelength && lstart < self.numel() && lstart >= 0;
-           ++i, lstart += step) {
-        if (i == 0) {
-          tensor_shape[i] = slicelength;
-        } else {
-          tensor_shape[i] = static_cast<int64_t>(srcDDim[lstart]);
-        }
-      }
+      framework::DDim dstDDim = srcDDim;
+      dstDDim[0] = static_cast<int64_t>(slicelength);
+      output->Resize(dstDDim);
+      int64_t feature_size = framework::product(srcDDim) / srcDDim[0];
+      int64_t stride = feature_size * framework::SizeOfType(self.type());
 
-//#ifdef PADDLE_WITH_CUDA
-//      output->mutable_data<self.type()>(framework::make_ddim(tensor_shape), self.place());
-//#else
-//      output->mutable_data<self.type()>(framework::make_ddim(tensor_shape),
-//        boost::get<platform::CPUPlace>(self.place()));
-//#endif
-      for (int64_t i = 0, lstart = start, soffset = lstart * framework::SizeOfType(self.type()), doffset = 0;
-           i < slicelength && lstart < self.numel() && lstart >= 0;
-           ++i) {
 #ifdef PADDLE_WITH_CUDA
-        memory::Copy(self.place(), static_cast<uint8_t *>(self.data<void>()) + soffset,
-                     self.place(), static_cast<uint8_t *>(output->data<void>()) + doffset, feature_size);
+      output->mutable_data(self.place(), self.type());
+#else
+      output->mutable_data(boost::get<platform::CPUPlace>(self.place()),
+                           self.type());
+#endif
+      for (int64_t i = 0, lstart = static_cast<int64_t>(start),
+                   soffset = lstart * stride, doffset = 0;
+           i < slicelength && lstart < self.numel() && lstart >= 0; ++i) {
+#ifdef PADDLE_WITH_CUDA
+        memory::Copy(self.place(),
+                     static_cast<uint8_t *>(output->data<void>()) + doffset,
+                     self.place(),
+                     static_cast<uint8_t *>(self.data<void>()) + soffset,
+                     stride);
 #else
         memory::Copy(boost::get<platform::CPUPlace>(self.place()),
-                     static_cast<uint8_t *>(self.data<void>()) + soffset,
+                     static_cast<uint8_t *>(output->data<void>()) + doffset,
                      boost::get<platform::CPUPlace>(self.place()),
-                     static_cast<uint8_t *>(output->data<void>()) + doffset, feature_size);
+                     static_cast<uint8_t *>(self.data<void>()) + soffset,
+                     stride);
 #endif
-        lstart += step;
-        soffset += lstart * framework::SizeOfType(self.type());
-        doffset += tensor_shape[i] * framework::SizeOfType(self.type());
+        lstart += static_cast<int64_t>(step);
+        soffset = lstart * stride;
+        doffset += stride;
       }
       return output;
     }
   } else if (py::isinstance<py::int_>(obj)) {
     int64_t s = static_cast<int64_t>(static_cast<py::int_>(obj));
-    if ((srcDDim[0] == 1 && s != 0) || s > srcDDim[0] || (s < 0 && s < -srcDDim[0])) {
+    if ((srcDDim[0] == 1 && s != 0) || s > srcDDim[0] ||
+        (s < 0 && s < -srcDDim[0])) {
       throw py::index_error();
     } else {
-      ssize_t index = s ? s > 0 : srcDDim[0] + s;
+      ssize_t index = s >= 0 ? s : (srcDDim[0] + s);
       return new framework::Tensor(self.Slice(index, index + 1));
     }
   } else {
