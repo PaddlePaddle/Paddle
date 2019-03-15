@@ -89,6 +89,12 @@ class Fleet(object):
             print("You should run DistributedOptimizer.minimize() first")
             sys.exit(-1)
 
+    def get_worker_num(self):
+        return self.role_maker_.worker_num()
+
+    def get_server_num(self):
+        return self.role_maker_.server_num()
+
     def is_worker(self):
         return self.role_maker_.is_worker()
 
@@ -161,3 +167,5 @@ is_worker = fleet_instance.is_worker
 is_server = fleet_instance.is_server
 init_pserver_model = fleet_instance.init_pserver_model
 save_pserver_model = fleet_instance.save_pserver_model
+worker_num = fleet_instance.get_worker_num
+server_num = fleet_instance.get_server_num
