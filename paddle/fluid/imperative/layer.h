@@ -112,31 +112,53 @@ class OpBase;
  */
 class VarBase {
  public:
-  VarBase() : VarBase(new framework::Variable(), new VarBase(true)) {}
+  // Internal interface, create VarBase from exist variable
+  VarBase(const std::string& name, framework::Variable* var, VarBase* grad,
+          bool stop_gradient)
+      : VarBase(name, var->Get<framework::LoDTensor>().type(),
+                var->Get<framework::LoDTensor>().dims(),
+                var->Get<framework::LoDTensor>().place(), var, grad,
+                stop_gradient, false) {}
 
-  explicit VarBase(bool stop_gradient)
-      : VarBase(new framework::Variable(),
-                stop_gradient ? nullptr : new VarBase(true), stop_gradient) {}
+  // Python interface
+  VarBase(const std::string& name, const framework::proto::VarType::Type dtype,
+          const std::vector<int64_t>& shape, const platform::Place& place,
+          bool stop_gradient, bool persistable)
+      : VarBase(name, dtype, framework::make_ddim(shape), place, stop_gradient,
+                persistable) {}
 
-  VarBase(framework::Variable* var, VarBase* grad)
-      : VarBase(var, grad, false) {}
+  // Internal interface, create VarBase from with ddim
+  VarBase(const std::string& name, const framework::proto::VarType::Type dtype,
+          const framework::DDim& shape, const platform::Place& place,
+          bool stop_gradient, bool persistable)
+      : VarBase(name, dtype, shape, place, nullptr, nullptr, stop_gradient,
+                persistable) {}
 
  private:
-  VarBase(framework::Variable* var, VarBase* grad, bool stop_gradient)
-      : name_(),
-        var_desc_(nullptr),
+  VarBase(const std::string& name, framework::proto::VarType::Type dtype,
+          const framework::DDim& shape, const platform::Place& place,
+          framework::Variable* var, VarBase* grad, bool stop_gradient,
+          bool persistable)
+      : name_(name),
+        dtype_(dtype),
+        place_(place),
         var_(var),
         grads_(grad),
-        block_(nullptr),
-        persistable_(false),
         stop_gradient_(stop_gradient),
+        persistable_(persistable),
         pre_op_(nullptr),
         pre_op_out_name_(),
-        pre_op_out_idx_(-1) {}
+        pre_op_out_idx_(-1) {
+    if (!var_) {
+      var_ = new framework::Variable();
+      auto tensor = var_->GetMutable<framework::LoDTensor>();
+      tensor->Resize(shape);
+      tensor->mutable_data(place_, dtype_);
+    }
+  }
 
  public:
   virtual ~VarBase() {
-    // TODO(minqiyang): remove var desc from block desc
     if (var_) {
       delete var_;
       var_ = nullptr;
@@ -151,13 +173,29 @@ class VarBase {
     pre_op_out_idx_ = -1;
   }
 
-  inline OpBase* PreOp() const { return pre_op_; }
-  inline int PreOpOutIdx() const { return pre_op_out_idx_; }
+  inline void SetName(const std::string& name) { name_ = name; }
+  inline std::string Name() const { return name_; }
+
+  inline std::vector<int64_t> Shape() const {
+    if (var_->IsInitialized()) {
+      return framework::vectorize(var_->Get<framework::LoDTensor>().dims());
+    } else {
+      return {};
+    }
+  }
+
+  inline framework::proto::VarType::Type DType() const { return dtype_; }
 
   inline void SetStopGradient(bool stop_gradient) {
     stop_gradient_ = stop_gradient;
   }
   inline bool IsStopGradient() const { return stop_gradient_; }
+
+  inline void SetPersistable(bool persistable) { persistable_ = persistable; }
+  inline bool IsPersistable() const { return persistable_; }
+
+  inline OpBase* PreOp() const { return pre_op_; }
+  inline int PreOpOutIdx() const { return pre_op_out_idx_; }
 
   void RunBackward();
 
@@ -180,7 +218,7 @@ class VarBase {
   }
 
   void ClearGradient() {
-    VLOG(1) << "clear gradient of " << var_desc_->Name();
+    VLOG(1) << "clear gradient of " << Name();
     if (grads_ && grads_->var_ && grads_->var_->IsInitialized()) {
       auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
       operators::math::set_constant(
@@ -196,23 +234,20 @@ class VarBase {
                                       const bool blocking) const;
 
   inline std::string GradName() const {
-    PADDLE_ENFORCE(
-        var_desc_,
-        "Couldn't get gradient variable's name, please call backward() first");
-    return string::Sprintf("%s@IGrad", var_desc_->Name());
+    return string::Sprintf("%s@IGrad", Name());
   }
 
   std::string name_;
-  framework::VarDesc* var_desc_;
+  framework::proto::VarType::Type dtype_;
+  platform::Place place_;
 
   framework::Variable* var_;
   VarBase* grads_;
 
-  framework::BlockDesc* block_;
-  bool persistable_;
-
  private:
   bool stop_gradient_;
+  bool persistable_;
+
   OpBase* pre_op_;
   std::string pre_op_out_name_;
   int pre_op_out_idx_;
@@ -223,11 +258,11 @@ class VarBase {
  */
 class PYBIND11_HIDDEN OpBase {
  public:
-  OpBase()
-      : op_desc_(nullptr),
+  OpBase(const std::string& type)
+      : type_(type),
+        trace_id_(-1),
         forward_id_(-1),
         backward_id_(-1),
-        trace_id_(-1),
         place_(platform::CPUPlace()),
         backward_hooks_() {}
 
@@ -249,13 +284,34 @@ class PYBIND11_HIDDEN OpBase {
 
   std::map<std::string, std::vector<VarBase*>> ApplyGrad();
 
+  inline std::string Type() const { return type_; }
+  inline std::string GradOpType(size_t index) const {
+    PADDLE_ENFORCE_NOT_NULL(grad_op_descs_[index]);
+    return grad_op_descs_[index]->Type();
+  }
+
   void RegisterBackwardHooks(const py::object& callable);
 
   void InvokeBackwardHooks();
 
-  // One of `op_desc_` or `forward_id_` is set, not both.
-  // For pure python PyLayer, use `forward_id_`, otherwise, use op_desc_.
-  framework::OpDesc* op_desc_;
+  void TrackPreOp(const VarBase* inp_var, const std::string& inp_name) {
+    if (inp_var->PreOp() && !inp_var->IsStopGradient()) {
+      VLOG(3) << "add pre op " << inp_var->PreOp()->Type() << " in slot "
+              << inp_name;
+      pre_ops_[inp_name].push_back(inp_var->PreOp());
+      pre_ops_out_idx_[inp_name].push_back(inp_var->PreOpOutIdx());
+    } else {
+      VLOG(3) << "no pre op in slot " << inp_name
+              << " input var stop_gradient: " << inp_var->IsStopGradient();
+      pre_ops_[inp_name].push_back(nullptr);
+      // pre_ops_out_idx_[inp_name].push_back(-1);
+    }
+  }
+
+  std::string type_;
+  // One of `trace_id_` or `forward_id_` is set, not both.
+  // For pure python PyLayer, use `forward_id_`, otherwise, use trace_id_.
+  int trace_id_;
   int forward_id_;
 
   // When has backward, one of `grad_op_descs_` or `backward_id_` is set,
@@ -263,7 +319,6 @@ class PYBIND11_HIDDEN OpBase {
   // Note: each fwd op corresponds to a vector of bwd ops.
   std::vector<framework::OpDesc*> grad_op_descs_;
   int backward_id_;
-  int trace_id_;
 
   platform::Place place_;
 
@@ -276,8 +331,6 @@ class PYBIND11_HIDDEN OpBase {
   std::vector<framework::VariableValueMap> grad_input_vars_;
   // Outputs to a vector of bwd ops.
   std::vector<framework::VariableValueMap> grad_output_vars_;
-
-  framework::BlockDesc* block_;
 
   std::vector<py::object> backward_hooks_;
 };
@@ -303,8 +356,8 @@ class PyLayer {
 
   static int NumFuncs();
 
-  static std::vector<VarBase*> Apply(int func_id,
-                                     const std::vector<VarBase*>& inputs);
+  static std::vector<framework::Variable*> Apply(
+      int func_id, const std::vector<VarBase*>& inputs);
 
   static std::vector<framework::Variable*> ApplyGrad(
       int func_id, const std::vector<framework::Variable*>& inputs);
