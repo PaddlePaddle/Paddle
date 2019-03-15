@@ -53,11 +53,14 @@ TEST(TensorPy, PySliceTensor) {
     p[i] = i;
   }
 
-  //paddle::framework::Tensor s1 = *paddle::pybind::PySliceTensor(t, *new py::object(py::cast(0)));
-  paddle::framework::Tensor s2 = *paddle::pybind::PySliceTensor(t, *new py::slice(0,-1,2));
+  // paddle::framework::Tensor s1 = *paddle::pybind::PySliceTensor(t, *new
+  // py::object(py::cast(0)));
+  paddle::framework::Tensor s2 =
+      *paddle::pybind::PySliceTensor(t, *new py::slice(0, -1, 2));
   pybind11::buffer_info bi = paddle::pybind::CastToPyBuffer(s2);
   EXPECT_EQ(bi.itemsize, static_cast<size_t>(sizeof(ElemType)));
-  EXPECT_EQ(bi.size, static_cast<size_t>(paddle::framework::product(paddle::framework::make_ddim({ 2, 3, 3 }))));
+  EXPECT_EQ(bi.size, static_cast<size_t>(paddle::framework::product(
+                         paddle::framework::make_ddim({2, 3, 3}))));
   EXPECT_EQ(bi.ndim, static_cast<size_t>(3));  // 3-dimensional as d.
   EXPECT_EQ(bi.shape.size(), 3U);              // as Dim d.
   EXPECT_EQ(bi.shape[0], static_cast<size_t>(2));
