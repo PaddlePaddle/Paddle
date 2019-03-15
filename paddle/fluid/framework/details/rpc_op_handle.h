@@ -36,7 +36,7 @@ struct RPCOpHandle : public OpHandleBase {
 
   // Delay and buffer nccl_all_reduce together can significantly increase
   // performance. Disable this feature by returning false.
-  bool IsMultiDeviceTransfer() override { return false; };
+  bool IsMultiDeviceTransfer() const override { return false; };
 
  protected:
   void RunImpl() override;

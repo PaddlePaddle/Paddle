@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
-
 #include <string>
+#include "paddle/fluid/framework/details/container_cast.h"
 
 namespace paddle {
 namespace framework {
@@ -29,7 +29,8 @@ ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
       scope_idx_(scope_idx) {}
 
 void ComputationOpHandle::RunImpl() {
-  WaitInputVarGenerated(place_);
+  auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
+  RecordWaitEventOnCtx2(in_var_handles, dev_ctxes_.at(place_));
 
   auto run_func = [this]() {
     op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);

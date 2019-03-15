@@ -85,7 +85,7 @@ struct ReduceOpHandle : public OpHandleBase {
 
   std::string Name() const override;
 
-  bool IsMultiDeviceTransfer() override { return true; };
+  bool IsMultiDeviceTransfer() const override { return true; };
 
  protected:
   void RunImpl() override;

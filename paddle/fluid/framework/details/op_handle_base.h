@@ -46,6 +46,9 @@ class OpHandleBase {
 
   virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
 
+  virtual void RecordWaitEventOnCtx2(const std::vector<VarHandle *> &in_vars,
+                                     platform::DeviceContext *waited_ctx);
+
   void AddInput(VarHandleBase *in);
 
   void AddOutput(VarHandleBase *out);
@@ -64,12 +67,13 @@ class OpHandleBase {
 
   // If the Op involves data transfer of multiple devices that
   // will likely block other computations.
-  virtual bool IsMultiDeviceTransfer() { return false; }
+  virtual bool IsMultiDeviceTransfer() const { return false; }
 
   const platform::DeviceContext *DeviceContext(platform::Place place) {
     auto it = dev_ctxes_.find(place);
     return it != dev_ctxes_.end() ? it->second : nullptr;
   }
+
   const std::map<platform::Place, platform::DeviceContext *> &DeviceContext() {
     return dev_ctxes_;
   }

@@ -55,16 +55,6 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 void AllReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name());
 
-  std::map<platform::Place, std::vector<VarHandleBase *>> place_vars;
-  for (auto in_var : inputs_) {
-    if (NeedWait(in_var)) {
-      auto &dev_ctx = in_var->GeneratedOp()->DeviceContext();
-      if (dev_ctx.size() == 1) {
-        place_vars[dev_ctx.begin()->first].emplace_back(in_var);
-      }
-    }
-  }
-
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
 
@@ -75,10 +65,17 @@ void AllReduceOpHandle::RunImpl() {
       in_var_handles.size(), out_var_handles.size(),
       "The NoDummyInputSize and NoDummyOutputSize should be equal.");
 
+  std::map<platform::Place, std::vector<VarHandle *>> place_vars;
+  for (auto in_var : in_var_handles) {
+    if (in_var && in_var->GeneratedOp()) {
+      place_vars[in_var->place()].emplace_back(in_var);
+    }
+  }
+
   std::vector<const LoDTensor *> lod_tensors;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
-    auto *s = local_scopes_[i];
-    auto &local_scope = *s->FindVar(kLocalExecScopeName)->Get<Scope *>();
+    Scope &local_scope =
+        *local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
     auto &lod_tensor =
         local_scope.FindVar(in_var_handles[i]->name())->Get<LoDTensor>();
     lod_tensors.emplace_back(&lod_tensor);
@@ -93,7 +90,7 @@ void AllReduceOpHandle::RunImpl() {
     size_t numel = 0;
     std::vector<std::function<void()>> all_reduce_calls;
     for (size_t i = 0; i < local_scopes_.size(); ++i) {
-      auto p = places_[i];
+      auto &p = places_[i];
       auto &lod_tensor = *lod_tensors[i];
       void *buffer = const_cast<void *>(lod_tensor.data<void>());
 
@@ -108,14 +105,11 @@ void AllReduceOpHandle::RunImpl() {
       int dev_id = boost::get<platform::CUDAPlace>(p).device;
       auto &nccl_ctx = nccl_ctxs_->at(dev_id);
       auto dev_ctx = nccl_ctxs_->DevCtx(p);
-      auto stream = nccl_ctx.stream();
       auto &vars = place_vars[p];
+      auto stream = nccl_ctx.stream();
       auto comm = nccl_ctx.comm_;
       all_reduce_calls.emplace_back([=] {
-        for (auto &var : vars) {
-          var->GeneratedOp()->RecordWaitEventOnCtx(dev_ctx);
-        }
-
+        RecordWaitEventOnCtx2(vars, dev_ctx);
         PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
             buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
             comm, stream));
@@ -142,7 +136,6 @@ void AllReduceOpHandle::RunImpl() {
         cudaStreamSynchronize(stream);
       }
     }
-
 #else
     PADDLE_THROW("Not compiled with CUDA");
 #endif

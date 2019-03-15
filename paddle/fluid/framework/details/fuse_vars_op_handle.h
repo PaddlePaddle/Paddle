@@ -48,7 +48,7 @@ struct FuseVarsOpHandle : public OpHandleBase {
 
   std::string Name() const override;
 
-  bool IsMultiDeviceTransfer() override { return false; };
+  bool IsMultiDeviceTransfer() const override { return false; };
 
  protected:
   void RunImpl() override;

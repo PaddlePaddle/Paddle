@@ -139,38 +139,33 @@ void ReduceOpHandle::GatherSelectedRows(
 #endif
 
 void ReduceOpHandle::RunImpl() {
+  if (places_.size() == 1) return;
   platform::RecordEvent record_event(Name());
 
-  if (places_.size() == 1) return;
   // the input and output may have dummy var.
   auto in_var_handles = DynamicCast<VarHandle>(inputs_);
+  auto out_var_handles = DynamicCast<VarHandle>(outputs_);
 
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), places_.size(),
       "The number of output should equal to the number of places.");
+  PADDLE_ENFORCE_EQ(out_var_handles.size(), 1UL,
+                    "The number of output should be one.");
 
-  VarHandle *out_var_handle;
-  {
-    auto out_var_handles = DynamicCast<VarHandle>(outputs_);
-
-    PADDLE_ENFORCE_EQ(out_var_handles.size(), 1UL,
-                      "The number of output should be one.");
-    out_var_handle = out_var_handles.front();
-  }
-
-  auto in_0_handle = in_var_handles[0];
+  RecordWaitEventOnCtx2(in_var_handles,
+                        dev_ctxes_.at(out_var_handles[0]->place()));
 
   std::vector<const Scope *> var_scopes;
   for (auto *s : local_scopes_) {
     var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
   }
 
+  auto *out_var_handle = out_var_handles.front();
+  auto in_0_handle = in_var_handles[0];
+
   auto pre_in_var =
       var_scopes.at(in_0_handle->scope_idx())->FindVar(in_0_handle->name());
   PADDLE_ENFORCE_NOT_NULL(pre_in_var);
-
-  // Wait input done, this Wait is asynchronous operation
-  WaitInputVarGenerated();
 
   // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
   std::vector<platform::Place> in_places;  // used to get dev_ctx

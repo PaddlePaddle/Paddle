@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
-
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/details/container_cast.h"
 
 namespace paddle {
 namespace framework {
@@ -44,7 +44,10 @@ void FetchOpHandle::WaitAndMergeCPUTensors() const {
 }
 
 void FetchOpHandle::RunImpl() {
-  WaitInputVarGenerated(platform::CPUPlace());
+  auto cpu_ctx =
+      platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
+  auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
+  RecordWaitEventOnCtx2(in_var_handles, cpu_ctx);
 
   tensors_.resize(inputs_.size());
   platform::CPUPlace cpu;
