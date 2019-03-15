@@ -431,7 +431,7 @@ class Variable(object):
             str: The debug string.
         """
         if _in_imperative_mode():
-            # TODO(panyx0718): add imperative debug info.
+            # TODO(panyx0718): add more imperative debug info.
             return 'name %s, dtype: %s shape: %s' % (self.name, self.dtype,
                                                      self.shape)
 

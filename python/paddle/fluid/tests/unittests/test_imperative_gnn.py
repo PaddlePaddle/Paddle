@@ -21,7 +21,7 @@ import sys
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.optimizer import SGDOptimizer
+from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.imperative.nn import Conv2D, Pool2D, FC
 from test_imperative_base import new_program_scope
 from paddle.fluid.imperative.base import to_variable
@@ -65,24 +65,79 @@ class TestImperativeGNN(unittest.TestCase):
     def test_gnn_float32(self):
         seed = 90
 
+        startup = fluid.Program()
+        startup.random_seed = seed
+        main = fluid.Program()
+        main.random_seed = seed
+
+        scope = fluid.core.Scope()
+        with new_program_scope(main=main, startup=startup, scope=scope):
+            features = fluid.layers.data(
+                name='features',
+                shape=[1, 100, 50],
+                dtype='float32',
+                append_batch_size=False)
+            # Use selected rows when it's supported.
+            adj = fluid.layers.data(
+                name='adj',
+                shape=[1, 100, 100],
+                dtype='float32',
+                append_batch_size=False)
+            labels = fluid.layers.data(
+                name='labels',
+                shape=[100, 1],
+                dtype='int64',
+                append_batch_size=False)
+
+            model = GCN('test_gcn', 50)
+            logits = model(features, adj)
+            logits = fluid.layers.reshape(logits, logits.shape[1:])
+            # In other example, it's nll with log_softmax. However, paddle's
+            # log_loss only supports binary classification now.
+            loss = fluid.layers.softmax_with_cross_entropy(logits, labels)
+            loss = fluid.layers.reduce_sum(loss)
+
+            adam = AdamOptimizer(learning_rate=1e-3)
+            adam.minimize(loss)
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+            exe.run(startup)
+            static_loss = exe.run(feed={
+                'features': np.zeros(
+                    [1, 100, 50], dtype=np.float32),
+                'adj': np.zeros(
+                    [1, 100, 100], dtype=np.float32),
+                'labels': np.zeros(
+                    [100, 1], dtype=np.int64)
+            },
+                                  fetch_list=[loss])[0]
+
+            static_weight = np.array(
+                scope.find_var(model.gc.weight.name).get_tensor())
+
         with fluid.imperative.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
             features = np.zeros([1, 100, 50], dtype=np.float32)
+            # Use selected rows when it's supported.
             adj = np.zeros([1, 100, 100], dtype=np.float32)
             labels = np.zeros([100, 1], dtype=np.int64)
 
             model = GCN('test_gcn', 50)
             logits = model(to_variable(features), to_variable(adj))
-            sys.stderr.write('%s\n' % logits)
             logits = fluid.layers.reshape(logits, logits.shape[1:])
             # In other example, it's nll with log_softmax. However, paddle's
             # log_loss only supports binary classification now.
             loss = fluid.layers.softmax_with_cross_entropy(logits,
                                                            to_variable(labels))
             loss = fluid.layers.reduce_sum(loss)
-            sys.stderr.write('%s\n' % loss._numpy())
+            adam = AdamOptimizer(learning_rate=1e-3)
+            adam.minimize(loss)
+            self.assertEqual(static_loss, loss._numpy())
+            self.assertTrue(
+                np.allclose(static_weight, model.gc.weight._numpy()))
+            sys.stderr.write('%s %s\n' % (static_loss, loss._numpy()))
 
 
 if __name__ == '__main__':
