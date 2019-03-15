@@ -35,7 +35,7 @@ class NgraphEngineOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::OpKernelType kt = framework::OpKernelType(
-        framework::proto::VarType::FP32, ctx.GetPlace());
+        framework::proto::VarType::FP32, platform::CPUPlace());
     return kt;
   }
 };
@@ -46,10 +46,8 @@ class NgraphEngineKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& scope = ctx.scope();
     auto place = ctx.GetPlace();
-    std::string serialized_graph = ctx.Attr<std::string>("graph");
-    auto interval = ctx.Attr<std::vector<int>>("interval");
 
-    NgraphEngine ngraph_engine(scope, place, serialized_graph, interval);
+    NgraphEngine ngraph_engine(scope, place, ctx);
     ngraph_engine.Run(scope, place);
   }
 };

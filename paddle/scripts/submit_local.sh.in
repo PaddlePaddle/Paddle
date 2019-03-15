@@ -6,10 +6,7 @@ function version(){
         echo "    with_gpu: @WITH_GPU@"
         echo "    with_mkl: @WITH_MKL@"
         echo "    with_mkldnn: @WITH_MKLDNN@"
-        echo "    with_double: @WITH_DOUBLE@"
         echo "    with_python: @WITH_PYTHON@"
-        echo "    with_rdma: @WITH_RDMA@"
-        echo "    with_timer: @WITH_TIMER@"
 }
 
 function ver2num() {

@@ -16,12 +16,9 @@ import os
 import unittest
 os.environ['FLAGS_eager_delete_tensor_gb'] = "0.0"
 
+os.environ['RECORDIO_FILENAME'] = './eager_deletion_transformer.wmt16.recordio'
+
 from test_parallel_executor_transformer import TestTransformer
-
-
-class EagerDeletionTestTransformer(TestTransformer):
-    pass
-
 
 if __name__ == '__main__':
     unittest.main()

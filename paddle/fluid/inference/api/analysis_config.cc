@@ -89,7 +89,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(params_file_);
   CP_MEMBER(model_from_memory_);  // the memory model reuses prog_file_ and
                                   // params_file_ fields.
-  // Gpu releated.
+  // Gpu related.
   CP_MEMBER(use_gpu_);
   CP_MEMBER(device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
@@ -97,13 +97,14 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(enable_memory_optim_);
   CP_MEMBER(static_memory_optim_);
   CP_MEMBER(static_memory_optim_force_update_);
-  // TensorRT releated.
+  // TensorRT related.
   CP_MEMBER(use_tensorrt_);
   CP_MEMBER(tensorrt_workspace_size_);
   CP_MEMBER(tensorrt_max_batchsize_);
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
-  // MKLDNN releated.
+  CP_MEMBER(trt_use_static_engine_);
+  // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
 
@@ -144,7 +145,7 @@ void AnalysisConfig::EnableMKLDNN() {
 
 void AnalysisConfig::EnableTensorRtEngine(
     int workspace_size, int max_batch_size, int min_subgraph_size,
-    AnalysisConfig::Precision precision_mode) {
+    AnalysisConfig::Precision precision_mode, bool use_static) {
 #ifdef PADDLE_WITH_CUDA
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
@@ -156,6 +157,7 @@ void AnalysisConfig::EnableTensorRtEngine(
   tensorrt_max_batchsize_ = max_batch_size;
   tensorrt_min_subgraph_size_ = min_subgraph_size;
   tensorrt_precision_mode_ = precision_mode;
+  trt_use_static_engine_ = use_static;
 
   Update();
 #else
@@ -316,6 +318,11 @@ NativeConfig AnalysisConfig::ToNativeConfig() const {
   config.fraction_of_gpu_memory = fraction_of_gpu_memory_for_pool();
   config.specify_input_name = specify_input_name_;
   return config;
+}
+
+void AnalysisConfig::SwitchIrDebug(int x) {
+  ir_debug_ = x;
+  Update();
 }
 
 }  // namespace paddle

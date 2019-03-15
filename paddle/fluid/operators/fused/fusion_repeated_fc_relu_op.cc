@@ -37,7 +37,7 @@ void FusionRepeatedFCReluOp::InferShape(
                  "Output(Out) of FusionRepeatedFCReluOp should not be null.");
 
   auto i_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_EQ(i_dims.size(), 2UL, "Input shape size should be 2");
+  PADDLE_ENFORCE_EQ(i_dims.size(), 2, "Input shape size should be 2");
 
   auto w_dims = ctx->GetInputsDim("W");
   auto b_dims = ctx->GetInputsDim("Bias");
@@ -49,7 +49,7 @@ void FusionRepeatedFCReluOp::InferShape(
                     "inpute width should be equal with weight height");
 
   for (size_t i = 1; i < sz; ++i) {
-    PADDLE_ENFORCE_EQ(w_dims[i].size(), 2UL,
+    PADDLE_ENFORCE_EQ(w_dims[i].size(), 2,
                       "Every weight shape size should be 2.");
     PADDLE_ENFORCE_EQ(framework::product(b_dims[i]), w_dims[i][1],
                       "The length of Bias must be equal with w_dims[1].");
@@ -79,17 +79,19 @@ void FusionRepeatedFCReluOpMaker::Make() {
 }
 
 template <typename T>
-static void fc_relu(const T* x, const T* w, const T* b, T* y, int m, int n,
-                    int k) {
+static void fc_relu(const T* x, const T* w, const T* b, T* y,
+                    const jit::matmul_attr_t& attr) {
   auto matmul =
-      jit::Get<jit::kMatMul, jit::MatMulTuples<T>, platform::CPUPlace>(k);
+      jit::KernelFuncs<jit::MatMulTuple<T>, platform::CPUPlace>::Cache().At(
+          attr);
   auto addbias_relu =
-      jit::Get<jit::kVAddRelu, jit::XYZNTuples<T>, platform::CPUPlace>(n);
-  matmul(x, w, y, m, n, k);
+      jit::KernelFuncs<jit::VAddReluTuple<T>, platform::CPUPlace>::Cache().At(
+          attr.n);
+  matmul(x, w, y, &attr);
   T* dst = y;
-  for (int i = 0; i < m; ++i) {
-    addbias_relu(b, dst, dst, n);
-    dst += n;
+  for (int i = 0; i < attr.m; ++i) {
+    addbias_relu(b, dst, dst, attr.n);
+    dst += attr.n;
   }
 }
 
@@ -107,32 +109,33 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
 
     auto i_dims = in->dims();
     auto w_dims = weights[0]->dims();
-    int m = i_dims[0];
-    int n = w_dims[1];
-    int k = w_dims[0];
-    relus[0]->Resize({m, n});
+    jit::matmul_attr_t attr;
+    attr.m = i_dims[0];
+    attr.n = w_dims[1];
+    attr.k = w_dims[0];
+    relus[0]->Resize({attr.m, attr.n});
     fc_relu(in->data<T>(), weights[0]->data<T>(), biases[0]->data<T>(),
-            relus[0]->mutable_data<T>(place), m, n, k);
+            relus[0]->mutable_data<T>(place), attr);
 
     for (int i = 1; i < weight_sz - 1; ++i) {
       auto i_dims = relus[i - 1]->dims();
       auto w_dims = weights[i]->dims();
-      int m = i_dims[0];
-      int n = w_dims[1];
-      int k = w_dims[0];
-      relus[i]->Resize({m, n});
+      attr.m = i_dims[0];
+      attr.n = w_dims[1];
+      attr.k = w_dims[0];
+      relus[i]->Resize({attr.m, attr.n});
       fc_relu(relus[i - 1]->data<T>(), weights[i]->data<T>(),
-              biases[i]->data<T>(), relus[i]->mutable_data<T>(place), m, n, k);
+              biases[i]->data<T>(), relus[i]->mutable_data<T>(place), attr);
     }
 
     auto i_dims_last = relus[weight_sz - 2]->dims();
     auto w_dims_last = weights[weight_sz - 1]->dims();
-    m = i_dims_last[0];
-    n = w_dims_last[1];
-    k = w_dims_last[0];
+    attr.m = i_dims_last[0];
+    attr.n = w_dims_last[1];
+    attr.k = w_dims_last[0];
     fc_relu(relus[weight_sz - 2]->data<T>(), weights[weight_sz - 1]->data<T>(),
-            biases[weight_sz - 1]->data<T>(), out->mutable_data<T>(place), m, n,
-            k);
+            biases[weight_sz - 1]->data<T>(), out->mutable_data<T>(place),
+            attr);
   }
 };
 

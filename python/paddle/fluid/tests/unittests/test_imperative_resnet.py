@@ -21,7 +21,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.imperative.nn import Conv2D, Pool2D, BatchNorm, FC
 from paddle.fluid.imperative.base import to_variable
 from test_imperative_base import new_program_scope
@@ -71,15 +70,17 @@ def optimizer_setting(params):
 
 class ConvBNLayer(fluid.imperative.Layer):
     def __init__(self,
+                 name_scope,
                  num_channels,
                  num_filters,
                  filter_size,
                  stride=1,
                  groups=1,
                  act=None):
-        super(ConvBNLayer, self).__init__()
+        super(ConvBNLayer, self).__init__(name_scope)
 
         self._conv = Conv2D(
+            self.full_name(),
             num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
@@ -89,7 +90,7 @@ class ConvBNLayer(fluid.imperative.Layer):
             act=None,
             bias_attr=None)
 
-        self._batch_norm = BatchNorm(num_filters, act=act)
+        self._batch_norm = BatchNorm(self.full_name(), num_filters, act=act)
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -99,21 +100,29 @@ class ConvBNLayer(fluid.imperative.Layer):
 
 
 class BottleneckBlock(fluid.imperative.Layer):
-    def __init__(self, num_channels, num_filters, stride, shortcut=True):
-        super(BottleneckBlock, self).__init__()
+    def __init__(self,
+                 name_scope,
+                 num_channels,
+                 num_filters,
+                 stride,
+                 shortcut=True):
+        super(BottleneckBlock, self).__init__(name_scope)
 
         self.conv0 = ConvBNLayer(
+            self.full_name(),
             num_channels=num_channels,
             num_filters=num_filters,
             filter_size=1,
             act='relu')
         self.conv1 = ConvBNLayer(
+            self.full_name(),
             num_channels=num_filters,
             num_filters=num_filters,
             filter_size=3,
             stride=stride,
             act='relu')
         self.conv2 = ConvBNLayer(
+            self.full_name(),
             num_channels=num_filters,
             num_filters=num_filters * 4,
             filter_size=1,
@@ -121,6 +130,7 @@ class BottleneckBlock(fluid.imperative.Layer):
 
         if not shortcut:
             self.short = ConvBNLayer(
+                self.full_name(),
                 num_channels=num_channels,
                 num_filters=num_filters * 4,
                 filter_size=1,
@@ -142,13 +152,13 @@ class BottleneckBlock(fluid.imperative.Layer):
 
         y = fluid.layers.elementwise_add(x=short, y=conv2)
 
-        layer_helper = LayerHelper('elementwise_add_activation', act='relu')
+        layer_helper = LayerHelper(self.full_name(), act='relu')
         return layer_helper.append_activation(y)
 
 
 class ResNet(fluid.imperative.Layer):
-    def __init__(self, layers=50, class_dim=102):
-        super(ResNet, self).__init__()
+    def __init__(self, name_scope, layers=50, class_dim=102):
+        super(ResNet, self).__init__(name_scope)
 
         self.layers = layers
         supported_layers = [50, 101, 152]
@@ -164,31 +174,44 @@ class ResNet(fluid.imperative.Layer):
         num_filters = [64, 128, 256, 512]
 
         self.conv = ConvBNLayer(
-            num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu')
+            self.full_name(),
+            num_channels=3,
+            num_filters=64,
+            filter_size=7,
+            stride=2,
+            act='relu')
         self.pool2d_max = Pool2D(
-            pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
+            self.full_name(),
+            pool_size=3,
+            pool_stride=2,
+            pool_padding=1,
+            pool_type='max')
 
         self.bottleneck_block_list = []
         num_channels = 64
         for block in range(len(depth)):
             shortcut = False
             for i in range(depth[block]):
-                bottleneck_block = BottleneckBlock(
-                    num_channels=num_channels,
-                    num_filters=num_filters[block],
-                    stride=2 if i == 0 and block != 0 else 1,
-                    shortcut=shortcut)
+                bottleneck_block = self.add_sublayer(
+                    'bb_%d_%d' % (block, i),
+                    BottleneckBlock(
+                        self.full_name(),
+                        num_channels=num_channels,
+                        num_filters=num_filters[block],
+                        stride=2 if i == 0 and block != 0 else 1,
+                        shortcut=shortcut))
                 num_channels = bottleneck_block._num_channels_out
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
 
         self.pool2d_avg = Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True)
+            self.full_name(), pool_size=7, pool_type='avg', global_pooling=True)
 
         import math
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
-        self.out = FC(size=class_dim,
+        self.out = FC(self.full_name(),
+                      size=class_dim,
                       act='softmax',
                       param_attr=fluid.param_attr.ParamAttr(
                           initializer=fluid.initializer.Uniform(-stdv, stdv)))
@@ -208,12 +231,12 @@ class TestImperativeResnet(unittest.TestCase):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
-        batch_num = 1
+        batch_num = 20
         with fluid.imperative.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            resnet = ResNet()
+            resnet = ResNet("resnet")
             optimizer = optimizer_setting(train_parameters)
             np.random.seed(seed)
             import random
@@ -223,8 +246,7 @@ class TestImperativeResnet(unittest.TestCase):
                 batch_size=batch_size)
 
             dy_param_init_value = {}
-            for param in fluid.default_main_program().global_block(
-            ).all_parameters():
+            for param in resnet.parameters():
                 dy_param_init_value[param.name] = param._numpy()
 
             for batch_id, data in enumerate(train_reader()):
@@ -247,17 +269,15 @@ class TestImperativeResnet(unittest.TestCase):
                 dy_out = avg_loss._numpy()
 
                 if batch_id == 0:
-                    for param in fluid.default_main_program().global_block(
-                    ).all_parameters():
+                    for param in resnet.parameters():
                         if param.name not in dy_param_init_value:
                             dy_param_init_value[param.name] = param._numpy()
 
                 avg_loss._backward()
 
                 dy_grad_value = {}
-                for param in fluid.default_main_program().global_block(
-                ).all_parameters():
-                    if not param.stop_gradient:
+                for param in resnet.parameters():
+                    if param.trainable:
                         np_array = np.array(param._ivar._grad_ivar().value()
                                             .get_tensor())
                         dy_grad_value[param.name + core.grad_var_suffix(
@@ -267,8 +287,7 @@ class TestImperativeResnet(unittest.TestCase):
                 resnet.clear_gradients()
 
                 dy_param_value = {}
-                for param in fluid.default_main_program().global_block(
-                ).all_parameters():
+                for param in resnet.parameters():
                     dy_param_value[param.name] = param._numpy()
 
         with new_program_scope():
@@ -278,7 +297,7 @@ class TestImperativeResnet(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            resnet = ResNet()
+            resnet = ResNet("resnet")
             optimizer = optimizer_setting(train_parameters)
 
             np.random.seed(seed)
@@ -300,12 +319,10 @@ class TestImperativeResnet(unittest.TestCase):
             static_param_init_value = {}
             static_param_name_list = []
             static_grad_name_list = []
-            for param in fluid.default_startup_program().global_block(
-            ).all_parameters():
+            for param in resnet.parameters():
                 static_param_name_list.append(param.name)
-            for param in fluid.default_main_program().global_block(
-            ).all_parameters():
-                if not param.stop_gradient:
+            for param in resnet.parameters():
+                if param.trainable:
                     static_grad_name_list.append(param.name +
                                                  core.grad_var_suffix())
 
@@ -349,6 +366,7 @@ class TestImperativeResnet(unittest.TestCase):
         self.assertTrue(np.allclose(static_out, dy_out))
 
         self.assertEqual(len(dy_param_init_value), len(static_param_init_value))
+
         for key, value in six.iteritems(static_param_init_value):
             self.assertTrue(np.allclose(value, dy_param_init_value[key]))
             self.assertTrue(np.isfinite(value.all()))

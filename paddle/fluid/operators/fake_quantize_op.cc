@@ -21,26 +21,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVectorArrayMap =
-    Eigen::TensorMap<Eigen::Tensor<T, 1, MajorType, IndexType>>;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using ConstEigenVectorArrayMap =
-    Eigen::TensorMap<const Eigen::Tensor<T, 1, MajorType, IndexType>>;
+template <typename T>
+struct Compare {
+ public:
+  bool operator()(const T a, const T b) { return (std::abs(a) < std::abs(b)); }
+};
 
 template <typename T>
 struct FindAbsMaxFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx, const T* in,
                   const int num, T* out) {
-    Eigen::DSizes<Eigen::DenseIndex, 1> idim(num);
-    Eigen::DSizes<Eigen::DenseIndex, 1> odim(1);
-    Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor>> in_e(in, idim);
-    Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor>> out_e(out, odim);
-
-    out_e = in_e.abs().maximum();
+    *out = std::abs(*(std::max_element(in + 0, in + num, Compare<T>())));
   }
 };
 
@@ -55,10 +46,8 @@ struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
     platform::Transform<platform::CPUDeviceContext> trans;
     trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
           out->mutable_data<T>(ctx.GetPlace()), ClipFunctor<T>(-s, s));
-    auto in_e = framework::EigenVector<T>::Flatten(in);
     auto out_e = framework::EigenVector<T>::Flatten(*out);
-
-    out_e.device(*ctx.eigen_device()) = (bin_cnt / s * in_e).round();
+    out_e.device(*ctx.eigen_device()) = (bin_cnt / s * out_e).round();
   }
 };
 
@@ -141,6 +130,60 @@ $$scale = max(abs(X))$$
 $$range = 2^{bit_length - 1} - 1$$
 $$Out = round(X/scale * range)$$
 
+)DOC");
+  }
+};
+
+class FakeChannelWiseQuantizeAbsMaxOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of FakeChannelWiseQuantizeOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("Out"),
+        "Output(Out) of FakeChannelWiseQuantizeOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("OutScales"),
+        "Output(Scales) of FakeChannelWiseQuantizeOp should not be null.");
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->SetOutputDim("OutScales", {ctx->GetInputDim("X")[0]});
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.GetPlace());
+  }
+};
+
+class FakeChannelWiseQuantizeAbsMaxOpMaker
+    : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor) Input is float data type.");
+    AddOutput("Out",
+              "(Tensor) Output of quantized low level tensor, "
+              "but also saved as float data type.");
+    AddOutput("OutScales", "(Tensor) Current channel wise scale");
+    AddAttr<int>("bit_length", "(int, default 8)")
+        .SetDefault(8)
+        .AddCustomChecker([](const int& bit_length) {
+          PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
+                         "'bit_length' should be between 1 and 16.");
+        });
+    AddComment(R"DOC(
+The scale of FakeChannelWiseQuantize operator is a vector.
+In detail, each channel of the input X has a scale value.
+
+$$scale_c = max(abs(X_c))$$
+$$range = 2^{bit\_length - 1} - 1$$
+$$Out_c = round(\frac{X_c * range} {scale_c})$$
+In above three formulas, the range value of c is as follow:
+$$0 \leq c \lt \ the\ channel\ number\ of\ X$$
 )DOC");
   }
 };
@@ -229,3 +272,10 @@ REGISTER_OPERATOR(fake_quantize_range_abs_max, ops::FakeQuantizeRangeAbsMaxOp,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(fake_quantize_range_abs_max,
                        ops::FakeQuantizeRangeAbsMaxKernel<CPU, float>);
+
+REGISTER_OPERATOR(fake_channel_wise_quantize_abs_max,
+                  ops::FakeChannelWiseQuantizeAbsMaxOp,
+                  ops::FakeChannelWiseQuantizeAbsMaxOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OP_CPU_KERNEL(fake_channel_wise_quantize_abs_max,
+                       ops::FakeChannelWiseQuantizeAbsMaxKernel<CPU, float>);

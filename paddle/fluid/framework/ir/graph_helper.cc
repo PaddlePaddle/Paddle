@@ -52,16 +52,29 @@ bool HasCircleHelper(
     ir::Node *node,
     const std::map<ir::Node *, std::unordered_set<ir::Node *>> &adj_list,
     std::unordered_set<ir::Node *> *visited,
-    std::unordered_set<ir::Node *> *in_trace) {
+    std::unordered_set<ir::Node *> *in_trace,
+    std::vector<std::vector<ir::Node *>> *circles) {
   if (visited->find(node) == visited->end()) {
     visited->insert(node);
     in_trace->insert(node);
 
     for (ir::Node *in : adj_list.at(node)) {
       if (visited->find(in) == visited->end() &&
-          HasCircleHelper(in, adj_list, visited, in_trace)) {
+          HasCircleHelper(in, adj_list, visited, in_trace, circles)) {
         return true;
       } else if (in_trace->find(in) != in_trace->end()) {
+        if (circles != nullptr) {
+          std::vector<ir::Node *> circle;
+          circle.emplace_back(in);
+          ir::Node *p = in;
+          for (auto &adj : adj_list.at(p)) {
+            if (in_trace->count(adj)) {
+              circle.emplace_back(adj);
+              p = adj;
+            }
+          }
+          circles->emplace_back(circle);
+        }
         return true;
       }
     }
@@ -71,11 +84,12 @@ bool HasCircleHelper(
 }
 
 bool HasCircleInternal(
-    const std::map<ir::Node *, std::unordered_set<ir::Node *>> &adj_list) {
+    const std::map<ir::Node *, std::unordered_set<ir::Node *>> &adj_list,
+    std::vector<std::vector<ir::Node *>> *circles) {
   std::unordered_set<ir::Node *> visited;
   std::unordered_set<ir::Node *> in_trace;
   for (auto &adj : adj_list) {
-    if (HasCircleHelper(adj.first, adj_list, &visited, &in_trace)) {
+    if (HasCircleHelper(adj.first, adj_list, &visited, &in_trace, circles)) {
       return true;
     }
   }
@@ -84,13 +98,18 @@ bool HasCircleInternal(
 }  // namespace
 
 bool HasCircle(const Graph &graph) {
-  return HasCircleInternal(BuildOperationAdjList(graph));
+  return HasCircleInternal(BuildOperationAdjList(graph), nullptr);
+}
+
+bool FindCircleSubGraph(const Graph &graph,
+                        std::vector<std::vector<ir::Node *>> *circles) {
+  return HasCircleInternal(BuildOperationAdjList(graph), circles);
 }
 
 std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
   std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list =
       BuildOperationAdjList(graph);
-  PADDLE_ENFORCE(!HasCircleInternal(adj_list));
+  PADDLE_ENFORCE(!HasCircleInternal(adj_list, nullptr));
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
   for (auto adj : adj_list) {
@@ -111,15 +130,21 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     if (adj_list.find(n) == adj_list.end()) {
       adj_list[n] = std::unordered_set<ir::Node *>();
     }
+    std::vector<ir::Node *> nodes;
     for (auto &var : n->inputs) {
       for (auto &adj_n : var->inputs) {
         PADDLE_ENFORCE(adj_n->NodeType() == ir::Node::Type::kOperation);
         VLOG(4) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
                 << " -> " << n->Name() << reinterpret_cast<void *>(n)
                 << "  via " << var->Name() << reinterpret_cast<void *>(var);
-        adj_list[n].insert(adj_n);
+        nodes.push_back(adj_n);
       }
     }
+    std::sort(nodes.begin(), nodes.end(), [](ir::Node *node1, ir::Node *node2) {
+      return node1->id() > node2->id();
+    });
+    adj_list[n].insert(std::make_move_iterator(nodes.begin()),
+                       std::make_move_iterator(nodes.end()));
   }
   return adj_list;
 }
