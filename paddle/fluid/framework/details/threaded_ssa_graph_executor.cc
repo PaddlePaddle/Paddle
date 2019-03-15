@@ -36,25 +36,13 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
   CopyOpDeps();
 }
 
-template <typename U>
-std::string Print(const U &ops) {
-  std::stringstream out;
-  for (auto &op : ops) {
-    out << op->Name() << ", ";
-  }
-  return out.str();
-}
-
 FeedFetchList ThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   std::unique_ptr<platform::RecordEvent> event(
       new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare"));
-  std::unique_ptr<platform::RecordEvent> event2(
-      new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare2"));
   std::unique_ptr<OpDependentData> op_deps = op_deps_futures_.get();
   CopyOpDeps();
-  event2.release();
-  VLOG(10) << "ThreadedSSAGraphExecutor::Run";
+
   std::shared_ptr<BlockingQueue<VarHandleBase *>> ready_vars(
       new BlockingQueue<VarHandleBase *>);
   auto &pending_ops = op_deps->pending_ops_;
@@ -89,7 +77,6 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   event.reset(nullptr);
   // Step 3. Execution
   while (!pending_vars.empty()) {
-    VLOG(10) << "ready_ops: " << Print(ready_ops);
     // 1. Run All Ready ops
     // Keep loop until all vars are ready.
     //
@@ -99,10 +86,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
     // 2. Find ready variable
     bool timeout;
-    //    std::unique_ptr<platform::RecordEvent> event3(
-    //        new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare3"));
     auto cur_ready_vars = ready_vars->PopAll(1, &timeout);
-    VLOG(10) << "ready_vars: " << Print(cur_ready_vars);
 
     if (timeout) {
       if (exception_holder_.IsCaught()) {
@@ -115,10 +99,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
         continue;
       }
     }
-    //    event3.release();
 
-    //    std::unique_ptr<platform::RecordEvent> event4(
-    //        new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare4"));
     // 3. Remove the dependency of ready_var.
     // Find the ready_ops after the ready_var.
     for (auto ready_var : cur_ready_vars) {
@@ -132,8 +113,6 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
         }
       }
     }
-    //    event4.release();
-    VLOG(10) << "ready_ops: " << Print(ready_ops);
   }
   PADDLE_ENFORCE(ready_ops.empty());
   // Wait FetchOps.
