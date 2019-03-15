@@ -29,14 +29,17 @@ class Fleet(object):
         self._opt_info = None  # for fleet only
         self.role_maker_ = None
         self.local_ip_ = 0
+        self.is_initialized_ = False
 
     def init(self):
         # TODO(guru4elephant)
         # this is a temporary solution
         # we will support more configurable RoleMaker for users in the future
-        self.role_maker_ = MPISymetricRoleMaker()
-        self.role_maker_.generate_role()
-        self._fleet_ptr = fluid.core.Fleet()
+        if not self.is_initialized_:
+            self.role_maker_ = MPISymetricRoleMaker()
+            self.role_maker_.generate_role()
+            self._fleet_ptr = fluid.core.Fleet()
+            self.is_initialized_ = True
 
     def stop(self):
         self.role_maker_.barrier_worker()
