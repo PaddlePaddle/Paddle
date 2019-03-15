@@ -77,8 +77,8 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
         "shift_ratio",
         "The shift ratio of the channels, the first :attr:`shift_ratio` part "
         "of channels will be shifted by -1 along the temporal dimension, "
-        "and the second :attr:`shift_ratio` part of channels will be shifted by "
-        "1 along the temporal dimension. Default 0.25.")
+        "and the second :attr:`shift_ratio` part of channels will be shifted "
+        "by 1 along the temporal dimension. Default 0.25.")
         .SetDefault(0.25);
 
     AddComment(R"DOC(
