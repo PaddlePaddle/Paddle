@@ -30,34 +30,122 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
-static inline void string_split(const std::string& s, const char delimiter,
-                                std::vector<std::string>* output) {
-  size_t start = 0;
-  size_t end = s.find_first_of(delimiter);
+typedef std::unordered_map<std::string, std::vector<int64_t>> SlotMap;
+typedef std::unordered_map<std::string, size_t> SlotIndex;
 
-  while (end <= std::string::npos) {
-    output->emplace_back(s.substr(start, end - start));
-    if (end == std::string::npos) {
-      break;
+template <typename T>
+std::vector<T> slice(const std::vector<T>& v, int m, int n) {
+  std::vector<T> vec(n - m);
+
+  if (m == n) {
+    return vec;
+  }
+  std::copy(v.begin() + m, v.begin() + n, vec.begin());
+  return vec;
+}
+
+template <typename T>
+std::vector<std::vector<std::vector<T>>> combination(std::vector<T> x,
+                                                     std::vector<T> y) {
+  std::vector<std::vector<std::vector<T>>> pairs_all;
+
+  for (auto& xi : x) {
+    std::vector<std::vector<T>> pairs;
+    for (auto& yi : y) {
+      std::vector<T> pair;
+      pair.push_back(xi);
+      pair.push_back(yi);
+      pairs.push_back(pair);
     }
-    start = end + 1;
-    end = s.find_first_of(delimiter, start);
+    pairs_all.push_back(pairs);
+  }
+  return pairs_all;
+}
+
+static inline std::vector<std::string> split(const std::string& s,
+                                             char delimiter) {
+  std::vector<std::string> tokens;
+  std::string token;
+  std::istringstream tokenStream(s);
+  while (std::getline(tokenStream, token, delimiter)) {
+    tokens.push_back(token);
+  }
+  return tokens;
+}
+
+std::vector<int> bucket(const int v_size, const int b_size) {
+  int remainder = v_size % b_size;
+  int bucket = v_size / b_size;
+  std::vector<int> ret_vec(b_size, bucket);
+  for (int i = 0; i < remainder; ++i) {
+    ret_vec[i] = ret_vec[i] + 1;
+  }
+  int cur_bucket = 0;
+  for (int j = 0; j < ret_vec.size(); ++j) {
+    int tmp = ret_vec[j];
+    ret_vec[j] = cur_bucket;
+    cur_bucket += tmp;
+  }
+  ret_vec.push_back(cur_bucket);
+  return ret_vec;
+}
+
+static inline std::vector<int> paging(const int v_size, const int g_size) {
+  int remainder = v_size % g_size;
+  int paging_size = v_size / g_size + 1;
+
+  paging_size = remainder ? paging_size + 1 : paging_size;
+  std::vector<int> ret_vec(paging_size, 0);
+
+  for (int i = 0; i < paging_size; ++i) {
+    ret_vec[i] = i * g_size >= v_size ? v_size : i * g_size;
+  }
+
+  return ret_vec;
+}
+
+static inline void parse_line_to_slots(const std::string& line,
+                                       const SlotIndex& slot_to_index,
+                                       std::vector<SlotMap>* slot_to_datas) {
+  std::vector<std::vector<int64_t>> one_data;
+  std::vector<std::string> groups = split(line, ';');
+
+  for (auto& group : groups) {
+    std::vector<int64_t> colvals;
+    std::vector<std::string> cols = split(group, ' ');
+    std::transform(
+        cols.begin(), cols.end(), std::back_inserter(colvals),
+        [](const std::string& str) { return (int64_t)std::stoi(str); });
+    one_data.push_back(colvals);
+  }
+
+  if (one_data[1][0] + one_data[1][1] != one_data.size() - 3) {
+    return;
+  }
+
+  auto paris_all = combination<std::vector<int64_t>>(
+      slice<std::vector<int64_t>>(one_data, 3, 3 + one_data[1][0]),
+      slice<std::vector<int64_t>>(one_data, 3 + one_data[1][0],
+                                  one_data.size()));
+
+  for (auto& paris : paris_all.front()) {
+    SlotMap slot;
+    slot["1"] = one_data[2];
+    slot["2"] = paris[0];
+    slot["3"] = paris[1];
+    slot_to_datas->push_back(slot);
   }
 }
 
-static inline void parse_line(
-    const std::string& line,
-    const std::unordered_map<std::string, size_t>& slot_to_index,
-    int64_t* label,
-    std::unordered_map<std::string, std::vector<int64_t>>* slot_to_data) {
-  std::vector<std::string> ret;
-  string_split(line, ' ', &ret);
+static inline void parse_line(const std::string& line,
+                              const SlotIndex& slot_to_index, int64_t* label,
+                              SlotMap* slot_to_data) {
+  std::vector<std::string> ret = split(line, ' ');
   *label = std::stoi(ret[2]) > 0;
 
   for (size_t i = 3; i < ret.size(); ++i) {
     const std::string& item = ret[i];
-    std::vector<std::string> feasign_and_slot;
-    string_split(item, ':', &feasign_and_slot);
+    std::vector<std::string> feasign_and_slot = split(item, ':');
     if (feasign_and_slot.size() == 2 &&
         slot_to_index.find(feasign_and_slot[1]) != slot_to_index.end()) {
       int64_t feasign = std::strtoll(feasign_and_slot[0].c_str(), NULL, 10);
@@ -162,9 +250,86 @@ void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
   VLOG(3) << "monitor thread exited";
 }
 
+void PushSlotToQueue(const DataDesc& data_desc,
+                     const std::vector<SlotMap>& batch_data,
+                     const int batch_begin, const int const batch_end,
+                     std::shared_ptr<LoDTensorBlockingQueue> queue) {
+  std::vector<framework::LoDTensor> lod_datas;
+
+  // first insert tensor for each sparse_slots
+  for (auto& slot : data_desc.sparse_slot_ids_) {
+    std::vector<size_t> lod_data{0};
+    std::vector<int64_t> batch_feasign;
+
+    for (size_t i = batch_begin; i < batch_end; ++i) {
+      auto& feasign = batch_data[i][slot];
+      lod_data.push_back(lod_data.back() + feasign.size());
+      batch_feasign.insert(batch_feasign.end(), feasign.begin(), feasign.end());
+    }
+
+    framework::LoDTensor lod_tensor;
+    framework::LoD lod{lod_data};
+    lod_tensor.set_lod(lod);
+    int64_t* tensor_data = lod_tensor.mutable_data<int64_t>(
+        framework::make_ddim({static_cast<int64_t>(batch_feasign.size()), 1}),
+        platform::CPUPlace());
+    memcpy(tensor_data, batch_feasign.data(),
+           batch_feasign.size() * sizeof(int64_t));
+    lod_datas.push_back(lod_tensor);
+  }
+
+  queue->Push(lod_datas);
+  VLOG(4) << "push one data, queue_size=" << queue->Size();
+}
+
+void ReadPairWiseData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
+                      std::shared_ptr<LoDTensorBlockingQueue> queue) {
+  SlotIndex slot_to_index;
+
+  for (size_t i = 0; i < data_desc.sparse_slot_ids_.size(); ++i) {
+    slot_to_index[data_desc.sparse_slot_ids_[i]] = i;
+  }
+
+  std::string line;
+  std::vector<SlotMap> batch_datas;
+
+  while (reader->HasNext()) {
+    for (int i = 0; i < data_desc.batch_size_; ++i) {
+      if (reader->HasNext()) {
+        reader->NextLine(&line);
+        std::vector<SlotMap> slot_to_datas;
+
+        parse_line_to_slots(line, slot_to_index, &slot_to_datas);
+
+        for (auto& slot : slot_to_datas) {
+          batch_datas.push_back(slot);
+        }
+      } else {
+        break;
+      }
+    }
+
+    std::vector<int> slots = paging(static_cast<const int>(batch_datas.size()),
+                                    data_desc.batch_size_);
+
+    for (int x = 1; x < slots.size() - 1; ++x) {
+      PushSlotToQueue(data_desc, batch_datas, slots[x - 1], slots[x], queue);
+    }
+
+    if (slots.back() % data_desc.batch_size_ == 0 || !reader->HasNext()) {
+      PushSlotToQueue(data_desc, batch_datas, slots[slots.size() - 2],
+                      slots[slots.size() - 1], queue);
+      batch_datas.clear();
+    } else {
+      batch_datas.erase(batch_datas.begin(),
+                        batch_datas.begin() + slots[slots.size() - 2]);
+    }
+  }
+}
+
 void ReadSvmData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
                  std::shared_ptr<LoDTensorBlockingQueue> queue) {
-  std::unordered_map<std::string, size_t> slot_to_index;
+  SlotIndex slot_to_index;
   for (size_t i = 0; i < data_desc.sparse_slot_ids_.size(); ++i) {
     slot_to_index[data_desc.sparse_slot_ids_[i]] = i;
   }
@@ -239,15 +404,13 @@ static inline void parse_csv_line(
     const std::string& line, const DataDesc& data_desc, int64_t* label,
     std::vector<std::vector<float>>* dense_datas,
     std::vector<std::vector<int64_t>>* sparse_datas) {
-  std::vector<std::string> ret;
-  string_split(line, ' ', &ret);
+  std::vector<std::string> ret = split(line, ' ');
   *label = std::stol(ret[0]);
   dense_datas->resize(data_desc.dense_slot_index_.size());
   for (size_t i = 0; i < data_desc.dense_slot_index_.size(); ++i) {
     int slot_idx = data_desc.dense_slot_index_[i];
     auto& slot_data = ret[slot_idx];
-    std::vector<std::string> data_in_slot_str;
-    string_split(slot_data, ',', &data_in_slot_str);
+    std::vector<std::string> data_in_slot_str = split(slot_data, ',');
     std::vector<float> data_in_slot;
     for (auto& data_str : data_in_slot_str) {
       (*dense_datas)[i].push_back(std::stof(data_str));
@@ -257,8 +420,7 @@ static inline void parse_csv_line(
   for (size_t i = 0; i < data_desc.sparse_slot_index_.size(); ++i) {
     int slot_idx = data_desc.sparse_slot_index_[i];
     auto& slot_data = ret[slot_idx];
-    std::vector<std::string> data_in_slot_str;
-    string_split(slot_data, ',', &data_in_slot_str);
+    std::vector<std::string> data_in_slot_str = split(slot_data, ',');
     std::vector<int64_t> data_in_slot;
     for (auto& data_str : data_in_slot_str) {
       auto id = std::stol(data_str);
@@ -378,7 +540,7 @@ void ReadThread(const std::vector<std::string>& file_list,
   } else if (data_desc.file_type_ == "plain") {
     reader.reset(new MultiFileReader<PlainFileReader>(file_list));
   } else {
-    PADDLE_THROW("do not support file format %s", data_desc.file_type_);
+    PADDLE_THROW("do not support file type %s", data_desc.file_type_);
   }
 
   VLOG(3) << "reader inited";
@@ -387,6 +549,10 @@ void ReadThread(const std::vector<std::string>& file_list,
     ReadSvmData(data_desc, reader, queue);
   } else if (data_desc.file_format_ == "csv") {
     ReadCsvData(data_desc, reader, queue);
+  } else if (data_desc.file_format_ == "pw") {
+    ReadPairWiseData(data_desc, reader, queue);
+  } else {
+    PADDLE_THROW("do not support file format %s", data_desc.file_format_);
   }
 
   (*thread_status)[thread_id] = Stopped;
