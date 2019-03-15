@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -19,17 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 namespace math {
-
-namespace {
-
-__device__ __forceinline__ float real_log(float x) { return logf(x); }
-
-__device__ __forceinline__ double real_log(double x) { return log(x); }
-
-__device__ __forceinline__ platform::float16 real_log(
-    const platform::float16& val) {
-  return static_cast<platform::float16>(logf(static_cast<float>(val)));
-}
 
 template <typename T>
 __global__ void CrossEntropyKernel(T* Y, const T* X, const int64_t* label,
@@ -61,7 +51,6 @@ __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
     Y[blockIdx.x] = -val;
   }
 }
-}  // namespace
 
 template <typename T>
 class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
