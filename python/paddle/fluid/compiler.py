@@ -223,22 +223,27 @@ class CompiledProgram(object):
                 tps), "num_trainers == len(end_points)"
             self._build_strategy.trainers_endpoints = tps
 
+        if self._build_strategy.sync_batch_norm:
+            self._build_strategy.enable_sequential_execution = True
+
         self._persistable_vars = []
-        for block_id in range(self._program_desc.num_blocks()):
-            bdesc = self._program_desc.block(block_id)
-            self._persistable_vars.extend([
-                cpt.to_text(v.name()) for v in bdesc.all_vars()
-                if v.persistable() and v.type() != core.VarDesc.VarType.RAW
-            ])
+        for node in self._graph.nodes():
+            if node.is_var() and node.var() is not None and node.var().persistable() and \
+                    node.var().type() != core.VarDesc.VarType.RAW:
+                self._persistable_vars.append(cpt.to_text(node.name()))
 
         places = list(map(_place_obj, self._places))
+        # ParallelExecutor would broadcast all the parameters during initializing.
+        # The parameters of each process should be in the same ordered for the data-parallelism
+        # distributed training to keep the broadcast correct.
+        self._persistable_vars = list(set(self._persistable_vars))
+        self._persistable_vars.sort()
 
-        return core.ParallelExecutor(places,
-                                     set(self._persistable_vars),
-                                     cpt.to_text(self._loss_name)
-                                     if self._loss_name else six.u(''), scope,
-                                     self._local_scopes, self._exec_strategy,
-                                     self._build_strategy, self._graph)
+        return core.ParallelExecutor(
+            places, self._persistable_vars,
+            cpt.to_text(self._loss_name)
+            if self._loss_name else six.u(''), self._scope, self._local_scopes,
+            self._exec_strategy, self._build_strategy, self._graph)
 
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)
