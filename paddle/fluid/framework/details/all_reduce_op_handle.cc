@@ -57,8 +57,11 @@ void AllReduceOpHandle::RunImpl() {
 
   std::map<platform::Place, std::vector<VarHandleBase *>> place_vars;
   for (auto in_var : inputs_) {
-    if (NeedWait(in_var)) {
+    if (in_var && in_var->GeneratedOp()) {
       auto &dev_ctx = in_var->GeneratedOp()->DeviceContext();
+      // If the dev_ctx.size() > 1, the in_var's generate Op is a
+      // communicate OpHandle(i.e AllReduceOpHandle, FetchOpHandle).
+      // The current OpHandle doesn't need add event for those OpHandle.
       if (dev_ctx.size() == 1) {
         place_vars[dev_ctx.begin()->first].emplace_back(in_var);
       }

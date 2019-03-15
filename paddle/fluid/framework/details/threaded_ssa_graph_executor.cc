@@ -30,7 +30,6 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
       local_scopes_(local_scopes),
       places_(places),
       fetch_ctxs_(places),
-      running_ops_(0),
       strategy_(strategy) {
   PrepareOpDeps();
   CopyOpDeps();
@@ -49,11 +48,9 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   std::unique_ptr<platform::RecordEvent> event(
       new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare"));
-  std::unique_ptr<platform::RecordEvent> event2(
-      new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare2"));
   std::unique_ptr<OpDependentData> op_deps = op_deps_futures_.get();
   CopyOpDeps();
-  event2.release();
+
   VLOG(10) << "ThreadedSSAGraphExecutor::Run";
   std::shared_ptr<BlockingQueue<VarHandleBase *>> ready_vars(
       new BlockingQueue<VarHandleBase *>);
@@ -72,12 +69,11 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   std::unordered_set<VarHandleBase *> fetch_dependencies;
   FeedFetchList fetch_data(fetch_tensors.size());
 
-  InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &pending_ops,
-                 &pending_vars, ready_vars.get(), &fetch_data);
+  InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &ready_ops,
+                 &pending_ops, &pending_vars, &fetch_data);
 
   auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
     for (auto *op : set) {
-      //      running_ops_++;
       RunOp(ready_vars, op);
     }
     set.clear();
@@ -128,7 +124,6 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
         --deps;
         if (deps == 0) {
           run_all_op(op);
-          //          ready_ops.insert(op);
         }
       }
     }
@@ -146,9 +141,10 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     const std::vector<std::string> &fetch_tensors,
     std::vector<FetchOpHandle *> *fetch_ops,
     std::unordered_set<VarHandleBase *> *fetch_dependencies,
+    std::unordered_set<OpHandleBase *> *ready_ops,
     std::unordered_map<OpHandleBase *, size_t> *pending_ops,
     std::unordered_set<VarHandleBase *> *pending_vars,
-    BlockingQueue<VarHandleBase *> *ready_vars, FeedFetchList *fetch_data) {
+    FeedFetchList *fetch_data) {
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
   std::unordered_set<VarHandleBase *> local_ready_vars;
   for (auto &fetch_var_name : fetch_tensors) {
@@ -188,10 +184,23 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     auto *fetch_dummy = new DummyVarHandle(fetch_var);
     op->AddOutput(fetch_dummy);
     fetch_dependencies->emplace(fetch_dummy);
+
     this->InsertPendingVar(pending_vars, &local_ready_vars, fetch_dummy);
-    this->InsertPendingOp(pending_ops, op);
+
+    size_t wait_input_num = 0;
+    std::unordered_set<VarHandleBase *> input_set(vars.begin(), vars.end());
+    for (auto *var : input_set) {
+      if (pending_vars->count(var)) {
+        ++wait_input_num;
+      }
+    }
+    if (wait_input_num) {
+      pending_ops->insert({op, wait_input_num});
+    } else {
+      ready_ops->insert(op);
+    }
   }
-  ready_vars->Extend(local_ready_vars);
+  PADDLE_ENFORCE_EQ(local_ready_vars.size(), 0);
 }
 
 void ThreadedSSAGraphExecutor::InsertPendingOp(
@@ -267,19 +276,12 @@ void ThreadedSSAGraphExecutor::RunOp(
   auto op_run = [ready_var_q, op, this] {
     try {
       if (VLOG_IS_ON(10)) {
-        if (op) {
-          VLOG(10) << "Op is nullptr" << op;
-          VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
-        } else {
-          VLOG(10) << "Op is nullptr";
-          VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
-        }
+        VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
       }
       if (LIKELY(!strategy_.dry_run_)) {
         op->Run(strategy_.use_cuda_);
       }
       VLOG(10) << op << " " << op->Name() << " Done ";
-      //      running_ops_--;
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << " Signal posted";
     } catch (...) {
