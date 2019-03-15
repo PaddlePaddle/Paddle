@@ -101,8 +101,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             t = np.ones([3, 3], dtype='float32')
             t2 = np.ones([3, 3], dtype='float32')
-            ret = layers.matmul(t, t2)
-            dy_ret = layers.relu(base.to_variable(ret))
+            dy_ret = layers.matmul(base.to_variable(t), base.to_variable(t2))
 
         self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
 
