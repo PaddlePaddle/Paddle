@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef PADDLE_FLUID_OPERATORS_NGRAPH_NGRAPH_ENGINE_H_
-#define PADDLE_FLUID_OPERATORS_NGRAPH_NGRAPH_ENGINE_H_
+#pragma once
+
 #include <memory>
 #include <set>
 #include <string>
@@ -118,4 +118,3 @@ class NgraphEngine {
 
 }  // namespace operators
 }  // namespace paddle
-#endif  // PADDLE_FLUID_OPERATORS_NGRAPH_NGRAPH_ENGINE_H_
