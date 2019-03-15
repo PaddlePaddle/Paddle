@@ -67,6 +67,7 @@ pass_library(conv_elementwise_add_fuse_pass inference)
 pass_library(conv_affine_channel_fuse_pass inference)
 pass_library(transpose_flatten_concat_fuse_pass inference)
 pass_library(identity_scale_op_clean_pass base)
+pass_library(sync_batch_norm_pass base)
 
 # There may be many transpose-flatten structures in a model, and the output of
 # these structures will be used as inputs to the concat Op. This pattern will
@@ -101,6 +102,7 @@ cc_test(test_graph_pattern_detector SRCS graph_pattern_detector_tester.cc DEPS g
 cc_test(test_fc_fuse_pass SRCS fc_fuse_pass_tester.cc DEPS fc_fuse_pass framework_proto)
 cc_test(test_seqpool_concat_fuse_pass SRCS seqpool_concat_fuse_pass_tester.cc DEPS seqpool_concat_fuse_pass framework_proto)
 cc_test(test_is_test_pass SRCS is_test_pass_tester.cc DEPS is_test_pass)
+cc_test(test_sync_batch_norm_pass SRCS sync_batch_norm_pass_tester.cc DEPS sync_batch_norm_pass)
 cc_test(test_cpu_quantize_squash_pass SRCS cpu_quantize_squash_pass_tester.cc DEPS cpu_quantize_squash_pass naive_executor)
 if (WITH_MKLDNN)
     cc_test(test_depthwise_conv_mkldnn_pass SRCS mkldnn/depthwise_conv_mkldnn_pass_tester.cc DEPS depthwise_conv_mkldnn_pass)
