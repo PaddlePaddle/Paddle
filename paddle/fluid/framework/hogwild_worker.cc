@@ -89,6 +89,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
   int cur_batch;
   int batch_cnt = 0;
   timeline.Start();
+  uint64_t total_inst = 0;
   while ((cur_batch = device_reader_->Next()) > 0) {
     VLOG(3) << "read a batch in thread " << thread_id_;
     timeline.Pause();
@@ -101,6 +102,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
       op_total_time[i] += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
     }
+    total_inst += cur_batch;
     ++batch_cnt;
     thread_scope_->DropKids();
     if (thread_id_ == 0) {
@@ -111,6 +113,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
         }
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
+        fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
       }
     }
     timeline.Start();
