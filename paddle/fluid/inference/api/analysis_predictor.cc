@@ -372,6 +372,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   if (config_.use_gpu() && config_.anakin_engine_enabled()) {
     argument_.SetAnakinMaxBatchSize(config_.anakin_max_batchsize_);
+    argument_.SetAnakinMaxInputShape(config_.anakin_max_input_shape_);
     LOG(INFO) << "Anakin subgraph engine is enabled";
   }
 
@@ -827,3 +828,4 @@ USE_ANAKIN_CONVERTER(softmax);
 
 USE_ANAKIN_CONVERTER(detection_out);
 USE_ANAKIN_CONVERTER(density_prior_box);
+USE_ANAKIN_CONVERTER(scale);
