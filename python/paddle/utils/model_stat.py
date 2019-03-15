@@ -122,16 +122,19 @@ def _summary_model(block_vars, one_op):
         out_data_shape = block_vars[one_op.output("Out")[0]].shape
         _, c_in, data_h, data_w = in_data_shape
         PARAMs = 0
+        if one_op.type == 'prelu':
+            PARAMs = 1
         FLOPs = data_h * data_w * c_in
 
     elif one_op.type == 'batch_norm':
         in_data_shape = block_vars[one_op.input("X")[0]].shape
         out_data_shape = block_vars[one_op.output("Y")[0]].shape
         _, c_in, data_h, data_w = in_data_shape
-        # gamma, beta, mean, std
-        PARAMs = c_in * 4
-        FLOPs = data_h * data_w * c_in
-
+        # gamma, beta
+        PARAMs = c_in * 2
+        # compute mean and std
+        FLOPs = data_h * data_w * c_in * 2
+        
     else:
         return None 
 
@@ -185,4 +188,4 @@ def _print_summary(summary_table, total):
     print(summary_table)
     print('Total PARAMs: {}({:.4f}G)'.format(sum(parmas), sum(parmas)/(10**9)))
     print('Total FLOPs: {}({:.2f}G)'.format(sum(flops), sum(flops) / 10**9))
-    
+    print("Notice: \n now supported ops include [Conv, DepthwiseConv, FC(mul), BatchNorm, Pool, Activation(sigmoid, tanh, relu, leaky_relu, prelu)]")
