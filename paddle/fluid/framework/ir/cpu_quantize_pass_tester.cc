@@ -77,7 +77,6 @@ static const std::initializer_list<std::string> variable_names{
 ProgramDesc BuildProgramDesc(bool use_mkldnn, bool use_quantizer) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
-    prog.MutableBlock(0)->Var(v);
     auto* var = prog.MutableBlock(0)->Var(v);
     if (v.find("w") == 0 || v.find("b") == 0) {
       var->SetPersistable(true);
