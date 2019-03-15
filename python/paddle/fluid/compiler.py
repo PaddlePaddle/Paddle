@@ -149,8 +149,7 @@ class CompiledProgram(object):
             self._places = [_place_obj(p) for p in places]
         else:
             self._places = None
-        self._build_strategy.is_distribution = framework.is_pserver_mode(
-            self._program)
+        self._build_strategy.is_distribution = _is_pserver_mode(self._program)
         return self
 
     def with_inference_optimize(self, config):
@@ -191,7 +190,7 @@ class CompiledProgram(object):
             assert scope is not None, ""
             self._local_scopes = []
 
-        self._exec_strategy.use_cuda = isinstance(self._place, core.CUDAPlace)
+        self._exec_strategy.use_cuda = use_cuda
         has_set_place = (self._places is not None)
         if has_set_place:
             desire_place = _place_obj(self._place)
