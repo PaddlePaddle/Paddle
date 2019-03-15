@@ -215,5 +215,9 @@ class TestTensor(unittest.TestCase):
         t5 = tensor_array[2::-2][0]
         self.assertTrue((numpy.array(n5) == numpy.array(t5)).all())
 
+        n6 = tensor[2:-1:-1]
+        t6 = tensor_array[2:-1:-1]
+        self.assertTrue((numpy.array(n6) == numpy.array(t6)).all())
+
 if __name__ == '__main__':
     unittest.main()

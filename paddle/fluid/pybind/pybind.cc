@@ -481,7 +481,7 @@ PYBIND11_MODULE(core, m) {
                out (bool): whether the lod is valid.
            )DOC")
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference,
-            R"DOC(
+           R"DOC(
            Slice the original Tensor, and remove the LoD information.
 
            Returns:
