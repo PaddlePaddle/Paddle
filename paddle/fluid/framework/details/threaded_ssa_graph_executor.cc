@@ -35,15 +35,6 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
   CopyOpDeps();
 }
 
-template <typename U>
-std::string Print(const U &ops) {
-  std::stringstream out;
-  for (auto &op : ops) {
-    out << op->Name() << ", ";
-  }
-  return out.str();
-}
-
 FeedFetchList ThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   std::unique_ptr<platform::RecordEvent> event(
@@ -84,30 +75,13 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   event.reset(nullptr);
   // Step 3. Execution
   while (!pending_vars.empty()) {
-    VLOG(10) << "ready_ops: " << Print(ready_ops);
-    VLOG(10) << "pending_vars: " << Print(pending_vars);
-    std::stringstream out;
-    for (auto var : pending_vars) {
-      out << "(" << var->Name() << ", " << var->GeneratedOp()->Name() << "["
-          << var->GeneratedOp()
-          << "], need input:" << pending_ops[var->GeneratedOp()] << "), ";
-      out << var->GeneratedOp()->DebugString();
-    }
-    VLOG(10) << "pending_vars: " << out.str();
-
     // 1. Run All Ready ops
     // Keep loop until all vars are ready.
-    //
-    // NOTE: DelayedOps have a lower priority. It will be scheduled after all
-    // ready_ops have been performed.
     run_all_ops(ready_ops);
 
     // 2. Find ready variable
     bool timeout;
     auto cur_ready_vars = ready_vars->PopAll(1, &timeout);
-
-    VLOG(10) << "ready_vars: " << Print(cur_ready_vars);
-
     if (timeout) {
       if (exception_holder_.IsCaught()) {
         for (auto &run_op_future : run_op_futures_) {
@@ -200,7 +174,7 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     if (wait_input_num) {
       pending_ops->insert({op, wait_input_num});
     } else {
-      ready_ops->insert(op);
+      ready_ops->insert(static_cast<OpHandleBase *>(op));
     }
   }
   PADDLE_ENFORCE_EQ(local_ready_vars.size(), 0);
@@ -279,19 +253,12 @@ void ThreadedSSAGraphExecutor::RunOp(
   auto op_run = [ready_var_q, op, this] {
     try {
       if (VLOG_IS_ON(10)) {
-        if (op) {
-          VLOG(10) << "Op is nullptr" << op;
-          VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
-        } else {
-          VLOG(10) << "Op is nullptr";
-          VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
-        }
+        VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
       }
       if (LIKELY(!strategy_.dry_run_)) {
         op->Run(strategy_.use_cuda_);
       }
       VLOG(10) << op << " " << op->Name() << " Done ";
-      //      running_ops_--;
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << " Signal posted";
     } catch (...) {

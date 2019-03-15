@@ -32,7 +32,7 @@ void ComputationOpHandle::RunImpl() {
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   std::vector<VarHandle *> other_place_var;
   for (auto &var : in_var_handles) {
-    if (platform::is_same_place(var->place(), place_)) {
+    if (!platform::is_same_place(var->place(), place_)) {
       other_place_var.emplace_back(var);
     }
   }

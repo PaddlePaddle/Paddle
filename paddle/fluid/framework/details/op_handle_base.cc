@@ -48,31 +48,38 @@ void OpHandleBase::Run(bool use_cuda) {
       PADDLE_ENFORCE(
           cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
     }
-    if (IsMultiDeviceTransfer()) {
-      // TODO(zcd): Get the relationshape of output and place
-      for (auto &var : outputs_) {
-        // The DummyVarHandle is only used to represent dependencies between
-        // operators,
-        auto *var_handle = dynamic_cast<VarHandle *>(var);
-        if (var_handle == nullptr) continue;
-        auto &var_place = var_handle->place();
-        int dev_id = boost::get<platform::CUDAPlace>(var_place).device;
-        var_handle->SetGenerateEvent(events_[dev_id]);
+    if (dev_ctxes_.size() > 0) {
+      if (IsMultiDeviceTransfer()) {
+        // TODO(zcd): Get the relationshape of output and place
+        for (auto &var : outputs_) {
+          // The DummyVarHandle is only used to represent dependencies between
+          // operators,
+          auto *var_handle = dynamic_cast<VarHandle *>(var);
+          if (var_handle == nullptr) continue;
+          auto &var_place = var_handle->place();
+          int dev_id = boost::get<platform::CUDAPlace>(var_place).device;
+          var_handle->SetGenerateEvent(events_[dev_id]);
+        }
+      } else {
+        PADDLE_ENFORCE_EQ(dev_ctxes_.size(), 1,
+                          "OpHandle(%s)'s should only have one dev_ctx.",
+                          Name());
+        auto &place = dev_ctxes_.begin()->first;
+        int dev_id = boost::get<platform::CUDAPlace>(place).device;
+        for (auto &var : outputs_) {
+          // The DummyVarHandle is only used to represent dependencies between
+          // operators,
+          auto *var_handle = dynamic_cast<VarHandle *>(var);
+          if (var_handle == nullptr) continue;
+          PADDLE_ENFORCE(
+              platform::is_same_place(var_handle->place(), place),
+              "The place of output VarHandle and OpHandle is not equal.");
+          var_handle->SetGenerateEvent(events_[dev_id]);
+        }
       }
     } else {
-      PADDLE_ENFORCE_EQ(dev_ctxes_.size(), 1, "%s OpHandle.", Name());
-      auto &place = dev_ctxes_.begin()->first;
-      int dev_id = boost::get<platform::CUDAPlace>(place).device;
-      for (auto &var : outputs_) {
-        // The DummyVarHandle is only used to represent dependencies between
-        // operators,
-        auto *var_handle = dynamic_cast<VarHandle *>(var);
-        if (var_handle == nullptr) continue;
-        PADDLE_ENFORCE(
-            platform::is_same_place(var_handle->place(), place),
-            "The place of output VarHandle and OpHandle is not equal.");
-        var_handle->SetGenerateEvent(events_[dev_id]);
-      }
+      VLOG(3) << string::Sprintf("OpHandle(%s)'s doesn't have dev_ctx.",
+                                 Name());
     }
   }
 #else
