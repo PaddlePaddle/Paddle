@@ -205,8 +205,6 @@ void AnalysisConfig::Update() {
       // Append after the Affine_channel_conv_fuse pass.
       pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
     }
-    // runtime_context_cache isn't fit for tensorrt.
-    enable_runtime_context_cache_ = false;
   }
 
   if (use_mkldnn_) {
