@@ -36,13 +36,11 @@ static bool gTracerProfilerStarted = false;
 #endif
 
 void StartProfile() {
-  LOG(ERROR) << "XX " << FLAGS_tracer_profile_fname;
   if (!FLAGS_tracer_profile_fname.empty()) {
     std::call_once(gTracerProfileOnce, [] {
 #ifdef WITH_GPERFTOOLS
       ProfilerStart(FLAGS_tracer_profile_fname.c_str());
       gTracerProfilerStarted = true;
-      LOG(ERROR) << "YY";
 #else
       LOG(WARNING) << "Paddle is not compiled with gperftools. "
                       "FLAGS_tracer_profile_fname will be ignored";
@@ -52,7 +50,6 @@ void StartProfile() {
 }
 
 void StopProfile() {
-  LOG(ERROR) << "ZZ " << FLAGS_tracer_profile_fname;
 #ifdef WITH_GPERFTOOLS
   ProfilerFlush();
 #else
