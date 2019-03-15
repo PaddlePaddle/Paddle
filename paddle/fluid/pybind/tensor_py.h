@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <Python.h>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <vector>
