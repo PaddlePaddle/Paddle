@@ -184,8 +184,8 @@ class TestTensor(unittest.TestCase):
             tensor_array = numpy.array(tensor)
             self.assertEqual((0, 1), tensor_array.shape)
 
-    def test_index_tensor(self):
-        place = core.CPUPlace()
+    def run_sliece_tensor(self, place):
+
         tensor = fluid.Tensor()
         shape = [3, 3, 3]
         tensor._set_dims(shape)
@@ -218,6 +218,16 @@ class TestTensor(unittest.TestCase):
         n6 = tensor[2:-1:-1]
         t6 = tensor_array[2:-1:-1]
         self.assertTrue((numpy.array(n6) == numpy.array(t6)).all())
+
+    def test_sliece_tensor(self):
+        # run cpu first
+        place = core.CPUPlace()
+        self.run_sliece_tensor(place)
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.run_sliece_tensor(place)
+
 
 if __name__ == '__main__':
     unittest.main()
