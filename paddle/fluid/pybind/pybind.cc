@@ -482,10 +482,10 @@ PYBIND11_MODULE(core, m) {
            )DOC")
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference,
             R"DOC(
-           Slice the original LoDTensor, and Lod information would be abondon.
+           Slice the original Tensor, and remove the LoD information.
 
            Returns:
-               out (Tensor): new tensor without Lod information.
+               out (Tensor): new Tensor(NOT LoDTensor).
            )DOC");
 
   py::class_<SelectedRows>(m, "SelectedRows")
