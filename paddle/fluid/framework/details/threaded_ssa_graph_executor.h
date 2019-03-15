@@ -70,7 +70,6 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<platform::Place> places_;
   platform::DeviceContextPool fetch_ctxs_;
   ExceptionHolder exception_holder_;
-  std::atomic<int> running_ops_;
 
   void InsertPendingOp(std::unordered_map<OpHandleBase *, size_t> *pending_ops,
                        OpHandleBase *op_instance) const;
@@ -82,9 +81,9 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   void InsertFetchOps(const std::vector<std::string> &fetch_tensors,
                       std::vector<FetchOpHandle *> *fetch_ops,
                       std::unordered_set<VarHandleBase *> *fetch_dependencies,
+                      std::unordered_set<OpHandleBase *> *ready_ops,
                       std::unordered_map<OpHandleBase *, size_t> *pending_ops,
                       std::unordered_set<VarHandleBase *> *pending_vars,
-                      BlockingQueue<VarHandleBase *> *ready_vars,
                       FeedFetchList *fetch_data);
 
   void PrepareOpDeps();

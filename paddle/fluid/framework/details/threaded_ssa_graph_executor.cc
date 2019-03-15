@@ -30,10 +30,18 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
       local_scopes_(local_scopes),
       places_(places),
       fetch_ctxs_(places),
-      running_ops_(0),
       strategy_(strategy) {
   PrepareOpDeps();
   CopyOpDeps();
+}
+
+template <typename U>
+std::string Print(const U &ops) {
+  std::stringstream out;
+  for (auto &op : ops) {
+    out << op->Name() << ", ";
+  }
+  return out.str();
 }
 
 FeedFetchList ThreadedSSAGraphExecutor::Run(
@@ -42,7 +50,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
       new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare"));
   std::unique_ptr<OpDependentData> op_deps = op_deps_futures_.get();
   CopyOpDeps();
-
+  VLOG(10) << "ThreadedSSAGraphExecutor::Run";
   std::shared_ptr<BlockingQueue<VarHandleBase *>> ready_vars(
       new BlockingQueue<VarHandleBase *>);
   auto &pending_ops = op_deps->pending_ops_;
@@ -60,12 +68,11 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   std::unordered_set<VarHandleBase *> fetch_dependencies;
   FeedFetchList fetch_data(fetch_tensors.size());
 
-  InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &pending_ops,
-                 &pending_vars, ready_vars.get(), &fetch_data);
+  InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &ready_ops,
+                 &pending_ops, &pending_vars, &fetch_data);
 
   auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
     for (auto *op : set) {
-      //      running_ops_++;
       RunOp(ready_vars, op);
     }
     set.clear();
@@ -77,6 +84,17 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   event.reset(nullptr);
   // Step 3. Execution
   while (!pending_vars.empty()) {
+    VLOG(10) << "ready_ops: " << Print(ready_ops);
+    VLOG(10) << "pending_vars: " << Print(pending_vars);
+    std::stringstream out;
+    for (auto var : pending_vars) {
+      out << "(" << var->Name() << ", " << var->GeneratedOp()->Name() << "["
+          << var->GeneratedOp()
+          << "], need input:" << pending_ops[var->GeneratedOp()] << "), ";
+      out << var->GeneratedOp()->DebugString();
+    }
+    VLOG(10) << "pending_vars: " << out.str();
+
     // 1. Run All Ready ops
     // Keep loop until all vars are ready.
     //
@@ -87,6 +105,8 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     // 2. Find ready variable
     bool timeout;
     auto cur_ready_vars = ready_vars->PopAll(1, &timeout);
+
+    VLOG(10) << "ready_vars: " << Print(cur_ready_vars);
 
     if (timeout) {
       if (exception_holder_.IsCaught()) {
@@ -109,7 +129,6 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
         --deps;
         if (deps == 0) {
           run_all_op(op);
-          //          ready_ops.insert(op);
         }
       }
     }
@@ -125,9 +144,10 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     const std::vector<std::string> &fetch_tensors,
     std::vector<FetchOpHandle *> *fetch_ops,
     std::unordered_set<VarHandleBase *> *fetch_dependencies,
+    std::unordered_set<OpHandleBase *> *ready_ops,
     std::unordered_map<OpHandleBase *, size_t> *pending_ops,
     std::unordered_set<VarHandleBase *> *pending_vars,
-    BlockingQueue<VarHandleBase *> *ready_vars, FeedFetchList *fetch_data) {
+    FeedFetchList *fetch_data) {
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
   std::unordered_set<VarHandleBase *> local_ready_vars;
   for (auto &fetch_var_name : fetch_tensors) {
@@ -167,10 +187,23 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     auto *fetch_dummy = new DummyVarHandle(fetch_var);
     op->AddOutput(fetch_dummy);
     fetch_dependencies->emplace(fetch_dummy);
+
     this->InsertPendingVar(pending_vars, &local_ready_vars, fetch_dummy);
-    this->InsertPendingOp(pending_ops, op);
+
+    size_t wait_input_num = 0;
+    std::unordered_set<VarHandleBase *> input_set(vars.begin(), vars.end());
+    for (auto *var : input_set) {
+      if (pending_vars->count(var)) {
+        ++wait_input_num;
+      }
+    }
+    if (wait_input_num) {
+      pending_ops->insert({op, wait_input_num});
+    } else {
+      ready_ops->insert(op);
+    }
   }
-  ready_vars->Extend(local_ready_vars);
+  PADDLE_ENFORCE_EQ(local_ready_vars.size(), 0);
 }
 
 void ThreadedSSAGraphExecutor::InsertPendingOp(
