@@ -55,14 +55,11 @@ class GradOpDescMakerBase {
                    std::back_inserter(ret_val),
                    [this](const std::string& fwd_var_name) -> std::string {
                      auto g_name = GradVarName(fwd_var_name);
-                     if (no_grad_set_.empty()) {
+                     if (no_grad_set_.empty() || !no_grad_set_.count(g_name)) {
                        (*this->grad_to_var_)[g_name] = fwd_var_name;
                        return g_name;
-                     } else if (no_grad_set_.count(g_name)) {
-                       return kEmptyVarName;
                      } else {
-                       (*this->grad_to_var_)[g_name] = fwd_var_name;
-                       return g_name;
+                       return kEmptyVarName;
                      }
                    });
     if (!drop_empty_grad) {
