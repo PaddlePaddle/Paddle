@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/prune.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include <sstream>
 
 #include <glog/logging.h>
 
@@ -73,9 +75,27 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
   auto& ops = block.ops();
 
   bool expect_feed = true;
+  auto&& log = COMPACT_GOOGLE_LOG_INFO;
   for (auto& op_desc : ops) {
     PADDLE_ENFORCE(op_desc.type() != kFeedOpType || expect_feed,
                    "All FeedOps are at the beginning of the ProgramDesc");
+    std::stringstream ss;
+    ss.str("");
+    ss.clear();
+    ss << "Input: ";
+    auto cpp_op_desc = framework::OpDesc(op_desc, nullptr);
+    //log.stream() << "========= Prune: Op[" << op_desc.type() << "], Input: ";
+    for (const auto &op_desc_input_name : cpp_op_desc.InputArgumentNames()) {
+      ss << op_desc_input_name << " | ";
+      //log.stream() << "[" << op_desc_input_name << "]";
+    }
+    ss << "Output: ";
+    for (const auto &op_desc_input_name : cpp_op_desc.OutputArgumentNames()) {
+      ss << op_desc_input_name << " | ";
+      //log.stream() << "[" << op_desc_input_name << "]";
+    }
+    LOG(INFO) << "======== op[" << cpp_op_desc.Type() << "]" << ss.str();
+    //LOG(INFO) << "========= Prune: op type[" << op_desc.type() << "], name[" << op_desc.name() << "]";
     expect_feed = (op_desc.type() == kFeedOpType);
   }
 
@@ -182,6 +202,29 @@ void Prune(const proto::ProgramDesc& input, proto::ProgramDesc* output) {
   std::set<std::string> dependent_vars;
   output->clear_blocks();
   prune_impl(input, output, 0, -1, &dependent_vars);
+
+  auto &block = output->blocks(0);
+  auto& ops = block.ops();
+
+  auto&& log = COMPACT_GOOGLE_LOG_INFO;
+  for (auto& op_desc : ops) {
+    std::stringstream ss;
+    ss.str("");
+    ss.clear();
+    auto cpp_op_desc = framework::OpDesc(op_desc, nullptr);
+    //log.stream() << "========= Prune: Op[" << op_desc.type() << "], Input: ";
+    ss << "Input: ";
+    for (const auto &op_desc_input_name : cpp_op_desc.InputArgumentNames()) {
+      ss << "[" << op_desc_input_name << "], ";
+      //log.stream() << "[" << op_desc_input_name << "]";
+    }
+    ss << "Output: ";
+    for (const auto &op_desc_input_name : cpp_op_desc.OutputArgumentNames()) {
+      ss << "[" << op_desc_input_name << "]";
+      //log.stream() << "[" << op_desc_input_name << "]";
+    }
+    LOG(INFO) << "########################### op[" << cpp_op_desc.Type() << "], " << ss.str();
+  }
 }
 }  // namespace framework
 }  // namespace paddle
