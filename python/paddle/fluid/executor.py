@@ -636,21 +636,28 @@ class Executor(object):
         if not compiled:
             trainer = TrainerFactory().create_trainer(program._fleet_opt)
             trainer.set_program(program)
-            with open("fleet_desc.prototxt", "w") as fout:
-                fout.write(str(program._fleet_opt["fleet_desc"]))
         else:
             trainer = TrainerFactory().create_trainer(
                 program.program._fleet_opt)
             trainer.set_program(program.program)
         if thread <= 0:
-            trainer.set_thread(dataset.thread_num)
+            if dataset.thread_num <= 0:
+                raise RuntimeError(
+                    "You should set thread num first, either in Dataset or in Executor.train_from_dataset"
+                )
+            else:
+                trainer.set_thread(dataset.thread_num)
         else:
             trainer.set_thread(thread)
         trainer.set_debug(debug)
         trainer.gen_trainer_desc()
         dataset._prepare_to_run()
-        with open("trainer_desc.prototxt", "w") as fout:
-            fout.write(trainer._desc())
+        if debug:
+            with open("train_desc.prototxt", "w") as fout:
+                fout.write(trainer._desc())
+            if program._fleet_opt:
+                with open("fleet_desc.prototxt", "w") as fout:
+                    fout.write(str(program._fleet_opt["fleet_desc"]))
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
