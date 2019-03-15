@@ -464,6 +464,7 @@ class OperatorWithKernel : public OperatorBase {
   // same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
+  RuntimeContext* GetRuntimeContext(const Scope& scope) const;
 
   /**
    * Transfer data from scope to a transfered scope. If there is no data need to
