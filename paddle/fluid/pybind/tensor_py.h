@@ -199,7 +199,7 @@ inline framework::Tensor *PySliceTensor(framework::Tensor &self,
   const framework::DDim &srcDDim = self.dims();
   if (py::isinstance<py::slice>(obj)) {
     size_t start, stop, step, slicelength;
-    py::slice &s = static_cast<py::slice>(obj);
+    py::slice s = static_cast<py::slice>(obj);
     if (!s.compute(srcDDim[0], &start, &stop, &step, &slicelength)) {
       throw py::index_error();
     }
