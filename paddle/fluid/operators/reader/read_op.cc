@@ -51,7 +51,7 @@ class ReadInferShape : public framework::InferShapeBase {
 
 class ReadInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::InferVarTypeContext& ctx) const override {
+  void operator()(framework::InferVarTypeContext& ctx) const override {
     bool infer_out = boost::get<bool>(ctx.GetAttr("infer_out"));
     if (infer_out) {
       std::string reader_name = ctx.Input("Reader")[0];

@@ -18,14 +18,16 @@
 #include "paddle/fluid/framework/python_headers.h"
 // clang-format on
 
-#include <map>     // NOLINT
-#include <string>  // NOLINT
-#include <vector>  // NOLINT
-#include <memory>  // NOLINT
+#include <map>            // NOLINT
+#include <string>         // NOLINT
+#include <vector>         // NOLINT
+#include <memory>         // NOLINT
+#include <unordered_map>  // NOLINT
 
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -184,6 +186,10 @@ class VarBase {
     }
   }
 
+  inline void SetDType(framework::proto::VarType::Type type) {
+    auto tensor = var_->GetMutable<framework::LoDTensor>();
+    tensor->mutable_data(place_, dtype_);
+  }
   inline framework::proto::VarType::Type DType() const { return dtype_; }
 
   inline void SetStopGradient(bool stop_gradient) {
@@ -328,9 +334,9 @@ class PYBIND11_HIDDEN OpBase {
   std::map<std::string, std::vector<int>> pre_ops_out_idx_;
 
   // Inputs to a vector of bwd ops.
-  std::vector<framework::VariableValueMap> grad_input_vars_;
+  std::vector<VarBasePtrMap> grad_input_vars_;
   // Outputs to a vector of bwd ops.
-  std::vector<framework::VariableValueMap> grad_output_vars_;
+  std::vector<VarBasePtrMap> grad_output_vars_;
 
   std::vector<py::object> backward_hooks_;
 };
@@ -359,12 +365,130 @@ class PyLayer {
   static std::vector<framework::Variable*> Apply(
       int func_id, const std::vector<VarBase*>& inputs);
 
-  static std::vector<framework::Variable*> ApplyGrad(
-      int func_id, const std::vector<framework::Variable*>& inputs);
+  static std::vector<VarBase*> ApplyGrad(int func_id,
+                                         const std::vector<VarBase*>& inputs);
 
  private:
   static std::vector<framework::Variable*> CallPythonFunc(
-      const py::object& callable, const std::vector<framework::Variable*>& ins);
+      const py::object& callable, const std::vector<VarBase*>& ins);
+};
+
+// infer var type context for imperative mode
+class PYBIND11_HIDDEN RuntimeInferVarTypeContext
+    : public framework::InferVarTypeContext {
+ public:
+  RuntimeInferVarTypeContext(imperative::OpBase* op,
+                             const imperative::VarBasePtrMap* inputs,
+                             imperative::VarBasePtrMap* outputs,
+                             const framework::AttributeMap* attrs_map)
+      : InferVarTypeContext(nullptr, nullptr),
+        op_(op),
+        inputs_(inputs),
+        outputs_(outputs),
+        attrs_(attrs_map),
+        input_names_(),
+        output_names_(),
+        var_set_() {
+    input_names_.reserve(inputs_->size());
+    for (auto& it : *inputs_) {
+      for (imperative::VarBase* var : it.second) {
+        input_names_[it.first].emplace_back(var->Name());
+        var_set_[var->Name()] = var;
+      }
+    }
+
+    output_names_.reserve(outputs_->size());
+    for (auto& it : *outputs_) {
+      for (imperative::VarBase* var : it.second) {
+        output_names_[it.first].emplace_back(var->Name());
+        var_set_[var->Name()] = var;
+      }
+    }
+  }
+
+  framework::Attribute GetAttr(const std::string& name) const {
+    PADDLE_ENFORCE_NOT_NULL(attrs_);
+    return attrs_->at(name);
+  }
+
+  inline bool HasVar(const std::string& name) const {
+    return var_set_.count(name) > 0;
+  }
+
+  inline bool HasInput(const std::string& name) const {
+    PADDLE_ENFORCE_NOT_NULL(inputs_);
+    return inputs_->count(name) > 0;
+  }
+
+  inline bool HasOutput(const std::string& name) const {
+    PADDLE_ENFORCE_NOT_NULL(outputs_);
+    return outputs_->count(name) > 0;
+  }
+
+  inline const std::vector<std::string>& Input(const std::string& name) const {
+    return input_names_.at(name);
+  }
+
+  inline const std::vector<std::string>& Output(const std::string& name) const {
+    return output_names_.at(name);
+  }
+
+  inline framework::proto::VarType::Type GetType(
+      const std::string& name) const {
+    return var_set_.at(name)->DType();
+  }
+
+  inline void SetType(const std::string& name,
+                      framework::proto::VarType::Type type) {
+    var_set_[name]->SetDType(type);
+  }
+
+  inline framework::proto::VarType::Type GetDataType(
+      const std::string& name) const {
+    return var_set_.at(name)->DType();
+  }
+
+  inline void SetDataType(const std::string& name,
+                          framework::proto::VarType::Type type) {
+    var_set_[name]->SetDType(type);
+  }
+
+  inline std::vector<framework::proto::VarType::Type> GetDataTypes(
+      const std::string& name) const {
+    PADDLE_THROW("GetDataTypes is not supported in runtime InferVarType");
+  }
+
+  inline void SetDataTypes(
+      const std::string& name,
+      const std::vector<framework::proto::VarType::Type>& multiple_data_type) {
+    PADDLE_THROW("SetDataTypes is not supported in runtime InferVarType");
+  }
+
+  inline std::vector<int64_t> GetShape(const std::string& name) const {
+    PADDLE_THROW("Do not handle Shape in runtime InferVarType");
+  }
+
+  inline void SetShape(const std::string& name,
+                       const std::vector<int64_t>& dims) {
+    PADDLE_THROW("Do not handle Shape in runtime InferVarType");
+  }
+
+  inline int32_t GetLoDLevel(const std::string& name) const {
+    PADDLE_THROW("Do not handle LoDLevel in runtime InferVarType");
+  }
+
+  inline void SetLoDLevel(const std::string& name, int32_t lod_level) {
+    PADDLE_THROW("Do not handle LoDLevel in runtime InferVarType");
+  }
+
+ private:
+  imperative::OpBase* op_;
+  const imperative::VarBasePtrMap* inputs_;
+  imperative::VarBasePtrMap* outputs_;
+  const framework::AttributeMap* attrs_;
+  std::unordered_map<std::string, std::vector<std::string>> input_names_;
+  std::unordered_map<std::string, std::vector<std::string>> output_names_;
+  std::unordered_map<std::string, imperative::VarBase*> var_set_;
 };
 
 }  // namespace imperative

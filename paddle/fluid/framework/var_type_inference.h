@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -80,6 +81,19 @@ class InferVarTypeContext {
     block_->FindRecursiveOrCreateVar(name).SetDataType(type);
   }
 
+  inline std::vector<proto::VarType::Type> GetDataTypes(
+      const std::string& name) const {
+    PADDLE_ENFORCE_NOT_NULL(block_);
+    return block_->FindRecursiveOrCreateVar(name).GetDataTypes();
+  }
+
+  inline void SetDataTypes(
+      const std::string& name,
+      const std::vector<proto::VarType::Type>& multiple_data_type) {
+    PADDLE_ENFORCE_NOT_NULL(block_);
+    block_->FindRecursiveOrCreateVar(name).SetDataTypes(multiple_data_type);
+  }
+
   inline std::vector<int64_t> GetShape(const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(block_);
     return block_->FindRecursiveOrCreateVar(name).GetShape();
@@ -101,15 +115,9 @@ class InferVarTypeContext {
     block_->FindRecursiveOrCreateVar(name).SetLoDLevel(lod_level);
   }
 
- private:
+ protected:
   const OpDesc* op_;
   BlockDesc* block_;
-};
-
-// infer var type context for imperative mode
-class RuntimeInferVarTypeContext : public InferVarTypeContext {
- public:
-  RuntimeInferVarTypeContext() : InferVarTypeContext(nullptr, nullptr) {}
 };
 
 class VarTypeInference {

@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -160,7 +161,7 @@ Tracer::Tracer(framework::BlockDesc* root_block) : root_block_(root_block) {
 }
 
 std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
-                                    const VarBasePtrMap& outputs,
+                                    VarBasePtrMap& outputs,
                                     framework::AttributeMap attrs_map,
                                     const platform::Place expected_place,
                                     const bool stop_gradient) {
@@ -228,6 +229,12 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
       framework::OpRegistry::CreateOp(op->Type(), invars_name_map,
                                       outvars_name_map, attrs_map);
 
+  if (info.infer_var_type_) {
+    RuntimeInferVarTypeContext infer_var_type_ctx(op, &inputs, &outputs,
+                                                  &attrs_map);
+    info.infer_var_type_(infer_var_type_ctx);
+  }
+
   // TODO(minqiyang): Support infer var type in imperative mode
   // Run forward op
   VLOG(3) << "tracer running " << op->Type();
@@ -278,12 +285,12 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
             auto fwd_var_it = current_vars_map.find(grad_invar);
             PADDLE_ENFORCE(fwd_var_it != current_vars_map.end());
             // Forward inputs or outputs.
-            grad_in_vars.emplace_back(fwd_var_it->second->var_);
+            grad_in_vars.emplace_back(fwd_var_it->second);
           } else {
             VarBase* var = current_vars_map[var_it->second];
             InitGrad(var, prepared_op.GetDeviceContext());
             // Douts.
-            grad_in_vars.emplace_back(var->grads_->var_);
+            grad_in_vars.emplace_back(var->grads_);
           }
 
           vars_saved_for_backward.insert(it.first);
@@ -300,7 +307,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
                          op->Type());
           VarBase* var = current_vars_map[var_it->second];
           InitGrad(var, prepared_op.GetDeviceContext());
-          grad_out_vars.push_back(var->grads_->var_);
+          grad_out_vars.push_back(var->grads_);
         }
       }
     }
@@ -342,23 +349,23 @@ std::vector<VarBase*> Tracer::PyTrace(OpBase* op,
     auto& grad_output_vars =
         op->grad_output_vars_[0][framework::GradVarName(PyLayer::kFwdOut)];
 
-    for (const VarBase* inp : inputs) {
-      grad_input_vars.push_back(inp->var_);
+    for (VarBase* inp : inputs) {
+      grad_input_vars.push_back(inp);
     }
     for (VarBase* out : outputs) {
-      grad_input_vars.push_back(out->var_);
+      grad_input_vars.push_back(out);
     }
 
     // TODO(minqiyang): Add GPU support for PyLayer, only support CPU now
     platform::CPUPlace place;
     for (VarBase* out : outputs) {
       InitGrad(out, platform::DeviceContextPool::Instance().Get(place));
-      grad_input_vars.push_back(out->grads_->var_);
+      grad_input_vars.push_back(out->grads_);
     }
 
     for (VarBase* inp : inputs) {
       InitGrad(inp, platform::DeviceContextPool::Instance().Get(place));
-      grad_output_vars.push_back(inp->grads_->var_);
+      grad_output_vars.push_back(inp->grads_);
     }
   }
   return outputs;

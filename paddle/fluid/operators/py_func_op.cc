@@ -14,8 +14,11 @@
 
 #include "paddle/fluid/operators/py_func_op.h"
 
+#include <memory>
 #include <set>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 
