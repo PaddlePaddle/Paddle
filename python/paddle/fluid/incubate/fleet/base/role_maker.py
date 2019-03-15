@@ -101,10 +101,10 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             return self.get_size()
 
     def worker_index(self):
-        return self.rank / self.proc_per_node_
+        return self.rank_ / self.proc_per_node_
 
     def server_index(self):
-        return self.rank / self.proc_per_node_
+        return self.rank_ / self.proc_per_node_
 
     def barrier_worker(self):
         if self.is_worker():

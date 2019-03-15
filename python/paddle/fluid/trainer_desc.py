@@ -36,6 +36,9 @@ class TrainerDesc(object):
         self.device_worker_ = None
         self.program_ = None
 
+    def set_debug(self, debug):
+        self.proto_desc.debug = debug
+
     def set_thread(self, thread_num):
         self.proto_desc.thread_num = thread_num
 
@@ -60,6 +63,10 @@ class MultiTrainer(TrainerDesc):
         super(MultiTrainer, self).__init__()
         pass
 
+    def set_program(self, program):
+        super(MultiTrainer, self).set_program(program)
+        self.program_ = program
+
     def gen_trainer_desc(self):
         super(MultiTrainer, self).gen_trainer_desc()
         self.proto_desc.class_name = "MultiTrainer"
@@ -71,8 +78,14 @@ class DistMultiTrainer(TrainerDesc):
         super(DistMultiTrainer, self).__init__()
         pass
 
+    def set_program(self, program):
+        super(DistMultiTrainer, self).set_program(program)
+        self.program_ = program
+
     def gen_trainer_desc(self):
         super(DistMultiTrainer, self).gen_trainer_desc()
         self.proto_desc.class_name = "DistMultiTrainer"
+        if self.program_ == None:
+            print("None program")
         self.device_worker_.set_program(self.program_)
         self.device_worker_.gen_worker_desc(self.proto_desc)
