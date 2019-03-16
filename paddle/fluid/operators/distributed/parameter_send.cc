@@ -99,7 +99,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
 
     // split rows index into output sparse vars
     for (size_t i = 0; i < send_rows.size(); ++i) {
-      int out_idx = FindOutIdx(send_rows[i], abs_sections);
+      int out_idx = GetSectionIndex(send_rows[i], abs_sections);
       outs_rows_idx[out_idx].push_back(send_rows[i]);
       outs_dense_idx[out_idx].push_back(i);
     }
