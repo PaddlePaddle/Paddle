@@ -14,9 +14,11 @@
 
 #include "paddle/fluid/pybind/ir.h"
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -53,12 +55,14 @@ void BindGraph(py::module *m) {
       "The graph is a Directed Acyclic Single Static Assignment Graph, see "
       "`paddle::ir::Graph` for details.")
       .def(py::init<const ProgramDesc &>())
+      .def("clone", &Graph::Clone)
       .def("has", &Graph::Has)
       .def("get_int", &Graph::Get<int>)
       .def("get_float", &Graph::Get<float>)
       .def("get_double", &Graph::Get<double>)
       .def("get_string", &Graph::Get<std::string>)
-      .def("get_marked_nodes", &Graph::Get<std::unordered_set<const Node *>>)
+      .def("get_marked_nodes", &Graph::Get<std::unordered_set<const Node *>>,
+           return_value_policy::reference)
       .def("set", [](Graph &self, const std::string &attr_name,
                      int attr) { return self.Set(attr_name, new int(attr)); })
       .def("set",
@@ -102,7 +106,8 @@ void BindGraph(py::module *m) {
       .def("retrieve_node", &Graph::RetrieveNode,
            return_value_policy::reference)
       .def("resolve_hazard", &Graph::ResolveHazard)
-      .def("origin_program_desc", &Graph::OriginProgram);
+      .def("origin_program_desc", &Graph::OriginProgram,
+           return_value_policy::reference);
 }
 
 void BindNode(py::module *m) {
@@ -116,7 +121,7 @@ void BindNode(py::module *m) {
       .def("is_var", &Node::IsVar)
       .def("is_ctrl_var", &Node::IsCtrlVar)
       .def("clear_inputs", [](Node &self) { self.inputs.clear(); })
-      .def("inputs_remove",
+      .def("remove_input",
            [](Node &self, int node_id) {
              auto pos = std::find_if(
                  self.inputs.begin(), self.inputs.end(),
@@ -125,7 +130,7 @@ void BindNode(py::module *m) {
                self.inputs.erase(pos);
              }
            })
-      .def("inputs_remove",
+      .def("remove_input",
            [](Node &self, Node &node) {
              auto pos =
                  std::find(self.inputs.begin(), self.inputs.end(), &node);
@@ -133,10 +138,10 @@ void BindNode(py::module *m) {
                self.inputs.erase(pos);
              }
            })
-      .def("inputs_append",
+      .def("append_input",
            [](Node &self, Node &node) { self.inputs.push_back(&node); })
       .def("clear_outputs", [](Node &self) { self.outputs.clear(); })
-      .def("outputs_remove",
+      .def("remove_output",
            [](Node &self, int node_id) {
              auto pos = std::find_if(
                  self.outputs.begin(), self.outputs.end(),
@@ -145,7 +150,7 @@ void BindNode(py::module *m) {
                self.outputs.erase(pos);
              }
            })
-      .def("outputs_remove",
+      .def("remove_output",
            [](Node &self, Node &node) {
              auto pos =
                  std::find(self.outputs.begin(), self.outputs.end(), &node);
@@ -153,7 +158,7 @@ void BindNode(py::module *m) {
                self.outputs.erase(pos);
              }
            })
-      .def("outputs_append",
+      .def("append_output",
            [](Node &self, Node &node) { self.outputs.push_back(&node); })
       .def_readwrite("inputs", &Node::inputs)
       .def_readwrite("outputs", &Node::outputs);

@@ -231,7 +231,7 @@ class TestImperativeResnet(unittest.TestCase):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
-        batch_num = 2
+        batch_num = 20
         with fluid.imperative.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -277,7 +277,7 @@ class TestImperativeResnet(unittest.TestCase):
 
                 dy_grad_value = {}
                 for param in resnet.parameters():
-                    if not param.stop_gradient:
+                    if param.trainable:
                         np_array = np.array(param._ivar._grad_ivar().value()
                                             .get_tensor())
                         dy_grad_value[param.name + core.grad_var_suffix(
@@ -285,8 +285,6 @@ class TestImperativeResnet(unittest.TestCase):
 
                 optimizer.minimize(avg_loss)
                 resnet.clear_gradients()
-
-                fluid.default_main_program().global_block()._clear_block()
 
                 dy_param_value = {}
                 for param in resnet.parameters():
@@ -324,7 +322,7 @@ class TestImperativeResnet(unittest.TestCase):
             for param in resnet.parameters():
                 static_param_name_list.append(param.name)
             for param in resnet.parameters():
-                if not param.stop_gradient:
+                if param.trainable:
                     static_grad_name_list.append(param.name +
                                                  core.grad_var_suffix())
 
