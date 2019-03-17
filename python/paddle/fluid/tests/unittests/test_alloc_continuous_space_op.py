@@ -31,11 +31,11 @@ class TestAllocContinuousSpace(OpTest):
         self.constant = attrs["constant"]
         self.set_constant = attrs["set_constant"]
         self.Inputs = self.init_input()
-        self.FusedOutput = self.init_output(self.Inputs, self.set_constant,
-                                            self.constant)
+        self.Outputs, self.FusedOutput = self.init_output(
+            self.Inputs, self.set_constant, self.constant)
         self.inputs = {'Input': self.Inputs}
         self.attrs = attrs
-        self.outputs = {'Output': self.Inputs, 'FusedOutput': self.FusedOutput}
+        self.outputs = {'Output': self.Outputs, 'FusedOutput': self.FusedOutput}
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -55,6 +55,8 @@ class TestAllocContinuousSpace(OpTest):
 
     def init_output(self, input_list, set_constant, constant):
         inputs = []
+        outputs = input_list
+
         for input in input_list:
             length = len(input[1].flatten())
             aligned_len = (length + alignment) / alignment * alignment
@@ -62,10 +64,14 @@ class TestAllocContinuousSpace(OpTest):
             out[0:length] = input[1].flatten()
             inputs.append(out)
 
-        output = np.concatenate([input for input in inputs])
+        alloc_continuous_space_var = np.concatenate([input for input in inputs])
         if set_constant:
-            output = np.ones((len(output))) * constant
-        return output
+            alloc_continuous_space_var = np.ones(
+                (len(alloc_continuous_space_var))) * constant
+            outputs = [(out[0],
+                        np.ones(out[1].shape).astype(self.dtype) * constant)
+                       for out in outputs]
+        return outputs, alloc_continuous_space_var
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -82,7 +88,9 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             self.check_output_with_place(
-                place=core.CUDAPlace(0), no_check_set=["Output"], atol=1e-5)
+                place=core.CUDAPlace(0),
+                no_check_set=["FusedOutput"],
+                atol=1e-5)
 
 
 if __name__ == '__main__':
