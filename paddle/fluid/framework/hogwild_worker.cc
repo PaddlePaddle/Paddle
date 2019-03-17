@@ -97,7 +97,9 @@ void HogwildWorker::TrainFilesWithProfiler() {
     total_time += timeline.ElapsedSec();
     for (size_t i = 0; i < ops_.size(); ++i) {
       timeline.Start();
+      VLOG(3) << "Going to run op " << op_name[i];
       ops_[i]->Run(*thread_scope_, place_);
+      VLOG(3) << "Op " << op_name[i] << " Finished";
       timeline.Pause();
       op_total_time[i] += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
