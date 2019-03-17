@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
+
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/details/container_cast.h"
 
 namespace paddle {
 namespace framework {
@@ -44,10 +44,7 @@ void FetchOpHandle::WaitAndMergeCPUTensors() const {
 }
 
 void FetchOpHandle::RunImpl() {
-  auto cpu_ctx =
-      platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
-  auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
-  RecordWaitEventOnCtx2(in_var_handles, cpu_ctx);
+  WaitInputVarGenerated(platform::CPUPlace());
 
   tensors_.resize(inputs_.size());
   platform::CPUPlace cpu;
@@ -74,6 +71,15 @@ void FetchOpHandle::RunImpl() {
   }
 
   this->WaitAndMergeCPUTensors();
+}
+
+void FetchOpHandle::WaitInputVarGenerated(const platform::Place &place) {
+  auto cpu_ctx = platform::DeviceContextPool::Instance().Get(place);
+  for (auto *input : inputs_) {
+    if (input->GeneratedOp()) {
+      input->GeneratedOp()->RecordWaitEventOnCtx(cpu_ctx);
+    }
+  }
 }
 
 std::string FetchOpHandle::Name() const { return "Fetch"; }

@@ -44,6 +44,8 @@ struct FetchOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
+  void WaitInputVarGenerated(const platform::Place &place) override;
+
  private:
   FeedFetchList *data_;
   size_t offset_;
