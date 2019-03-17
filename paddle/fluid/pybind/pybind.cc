@@ -1231,6 +1231,21 @@ All parameter, weight, gradient are variables in Paddle.
                       This options is only available in GPU devices.
                       Default False)DOC")
       .def_property(
+          "sync_batch_norm",
+          [](const BuildStrategy &self) { return self.sync_batch_norm_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.sync_batch_norm_ = b;
+          },
+          R"DOC(The type is BOOL, sync_batch_norm indicates whether to use
+                synchronous batch normalization which synchronizes the mean
+                and variance through multi-devices in training phase.
+
+                Current implementation doesn't support FP16 training and CPU.
+                And only synchronous on one machine, not all machines.
+
+                Default False)DOC")
+      .def_property(
           "memory_optimize",
           [](const BuildStrategy &self) { return self.memory_optimize_; },
           [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; })

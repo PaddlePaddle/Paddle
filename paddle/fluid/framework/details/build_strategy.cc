@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <memory>
+#include <utility>
 
 #include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
@@ -56,6 +57,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (strategy_.enable_sequential_execution_) {
       VLOG(10) << "Add sequential_execution_pass";
       AppendPass("sequential_execution_pass");
+    }
+
+    // Add op fusion.
+    if (strategy.sync_batch_norm_) {
+      AppendPass("sync_batch_norm_pass");
     }
 
     // Add op fusion.
@@ -265,6 +271,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 }  // namespace framework
 }  // namespace paddle
 
+USE_PASS(sync_batch_norm_pass);
 USE_PASS(fuse_relu_depthwise_conv_pass);
 USE_PASS(fuse_elewise_add_act_pass);
 USE_PASS(graph_viz_pass);
