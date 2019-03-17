@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -42,8 +43,16 @@ struct EmbeddingVSumFunctor {
     int64_t out_width = output_t->dims()[1];
     const int64_t *ids = ids_t->data<int64_t>();
     auto ids_lod = ids_t->lod()[0];
-    int64_t idx_width = ids_t->numel() / ids_lod.back();
     auto *output = output_t->mutable_data<T>(context.GetPlace());
+    auto& dev_ctx =
+            context.template device_context<platform::CPUDeviceContext>();
+    math::SetConstant<platform::CPUDeviceContext, T> set_zero;
+    set_zero(dev_ctx, reinterpret_cast<Tensor *>(output_t), static_cast<T>(0));
+    if (ids_t->numel() == 0 || ids_lod.back() == 0) {
+      return;  
+    }
+    int64_t idx_width = ids_t->numel() / ids_lod.back();
+
 
     PADDLE_ENFORCE_LE(table_width * idx_width, out_width);
     PADDLE_ENFORCE_GT(ids_lod.size(), 1UL, "The LoD[0] could NOT be empty");
@@ -52,10 +61,12 @@ struct EmbeddingVSumFunctor {
                                   out_width, jit::SeqPoolType::kSum);
     for (size_t i = 0; i != ids_lod.size() - 1; ++i) {
       attr.index_height = ids_lod[i + 1] - ids_lod[i];
-      auto emb_seqpool = jit::Get<jit::kEmbSeqPool, jit::EmbSeqPoolTuples<T>,
+      if (attr.index_height > 0) {
+        auto emb_seqpool = jit::Get<jit::kEmbSeqPool, jit::EmbSeqPoolTuples<T>,
                                   platform::CPUPlace>(attr);
-      emb_seqpool(table, ids + ids_lod[i] * idx_width, output + i * out_width,
+        emb_seqpool(table, ids + ids_lod[i] * idx_width, output + i * out_width,
                   &attr);
+      }
     }
   }
 };
@@ -128,20 +139,26 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
 
       framework::Vector<int64_t> *new_rows = d_table->mutable_rows();
       new_rows->resize(ids_num);
-      std::memcpy(&(*new_rows)[0], ids_data, ids_num * sizeof(int64_t));
 
       auto *d_table_value = d_table->mutable_value();
       d_table_value->Resize({ids_num, table_dim[1]});
       T *d_table_data = d_table_value->mutable_data<T>(context.GetPlace());
       const T *d_output_data = d_output->data<T>();
 
+      if (ids_num == 0) {
+        return;
+      }
+
+      std::memcpy(&(*new_rows)[0], ids_data, ids_num * sizeof(int64_t));
       auto vbroadcast = jit::Get<jit::kVBroadcast, jit::VBroadcastTuples<T>,
                                  platform::CPUPlace>(out_width);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
-        const T *src = d_output_data + i * out_width;
-        T *dst = d_table_data + lod[i] * out_width;
-        vbroadcast(src, dst, h, out_width);
+        if (h > 0) {
+          const T *src = d_output_data + i * out_width;
+          T *dst = d_table_data + lod[i] * out_width;
+          vbroadcast(src, dst, h, out_width);
+        }
       }
     } else {
       LOG(ERROR) << "Dense is not supported in fused_embedding_seq_pool_op now";

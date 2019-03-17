@@ -219,8 +219,10 @@ void ThreadedSSAGraphExecutor::RunOp(
       running_ops_--;
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << " Signal posted";
-    } catch (...) {
+    } catch (platform::EOFException &eof) {
       exception_holder_.Catch(std::current_exception());
+    } catch (...) {
+      throw platform::EnforceNotMet(std::current_exception(), __FILE__, __LINE__);
     }
   };
   if (pool_) {

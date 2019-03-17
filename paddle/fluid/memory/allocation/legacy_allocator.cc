@@ -100,7 +100,8 @@ void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
 #ifdef PADDLE_WITH_JEMALLOC
   void *p = malloc(size);
 #else
-  void *p = GetCPUBuddyAllocator()->Alloc(size);
+  //void *p = GetCPUBuddyAllocator()->Alloc(size);
+  void *p = malloc(size);
 #endif
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
@@ -116,7 +117,8 @@ void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p,
 #ifdef PADDLE_WITH_JEMALLOC
   free(p);
 #else
-  GetCPUBuddyAllocator()->Free(p);
+  //GetCPUBuddyAllocator()->Free(p);
+  free(p);
 #endif
 }
 

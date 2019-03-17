@@ -43,6 +43,12 @@ std::unique_ptr<ir::Graph> LockFreeOptimizePass::ApplyImpl(
     if (IsOpNamed(node, kOptimizerType)) {
       auto& param_out_vars = node->Op()->Output("ParamOut");
       PADDLE_ENFORCE(param_out_vars.size() == 1u);
+      //for test
+      //*
+      std::string tag("_emb_0");
+      if (param_out_vars[0].find(tag) == tag.npos) {
+         continue;
+      }//*/
       weight_var_set.insert(param_out_vars[0]);
     }
   }

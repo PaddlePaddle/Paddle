@@ -17,10 +17,127 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/fluid/platform/dynload/mklml.h"
 
 namespace paddle {
 namespace operators {
 
+// To align with Lego
+#ifndef LEGO_USE_FLOAT
+#define LEGO_USE_FLOAT
+#endif
+#ifndef LEGO_SSE
+#define LEGO_SSE
+#endif
+
+#if defined(LEGO_USE_FLOAT)
+
+#define __m256x __m256
+#define __m128x __m128
+
+static const unsigned int AVX_STEP_SIZE = 8;
+static const unsigned int SSE_STEP_SIZE = 4;
+static const unsigned int AVX_CUT_LEN_MASK = 7U;
+static const unsigned int SSE_CUT_LEN_MASK = 3U;
+
+#define _mm256_setzero_px _mm256_setzero_ps
+#define _mm256_mul_px _mm256_mul_ps
+#define _mm256_add_px _mm256_add_ps
+#define _mm256_load_px _mm256_loadu_ps
+#define _mm256_hadd_px _mm256_hadd_ps
+#define _mm256_permute2f128_px _mm256_permute2f128_ps
+#define _mm256_store_px _mm256_storeu_ps
+#define _mm256_broadcast_sx _mm256_broadcast_ss
+#define _mm256_castpx256_px128 _mm256_castps256_ps128
+#define _mm256_max_px _mm256_max_ps
+#define _mm256_sub_px _mm256_sub_ps
+#define _mm256_set1_px _mm256_set1_ps
+#define _mm256_sqrt_px _mm256_sqrt_ps
+#define _mm256_div_px _mm256_div_ps
+#define _mm_setzero_px _mm_setzero_ps
+#define _mm_add_px _mm_add_ps
+#define _mm_mul_px _mm_mul_ps
+#define _mm_load_px _mm_loadu_ps
+#define _mm_hadd_px _mm_hadd_ps
+#define _mm_store_sx _mm_store_ss
+#define _mm_store_px _mm_storeu_ps
+#define _mm_load1_px _mm_load1_ps
+#define _mm_max_px _mm_max_ps
+#define _mm_sub_px _mm_sub_ps
+#define _mm_set1_px _mm_set1_ps
+#define _mm_sqrt_px _mm_sqrt_ps
+#define _mm_div_px _mm_div_ps
+
+#elif defined(LEGO_USE_DOUBLE)
+
+#define __m256x __m256d
+#define __m128x __m128d
+
+static const unsigned int AVX_STEP_SIZE = 4;
+static const unsigned int SSE_STEP_SIZE = 2;
+static const unsigned int AVX_CUT_LEN_MASK = 3U;
+static const unsigned int SSE_CUT_LEN_MASK = 1U;
+
+#define _mm256_setzero_px _mm256_setzero_pd
+#define _mm256_mul_px _mm256_mul_pd
+#define _mm256_add_px _mm256_add_pd
+#define _mm256_load_px _mm256_loadu_pd
+#define _mm256_hadd_px _mm256_hadd_pd
+#define _mm256_permute2f128_px _mm256_permute2f128_pd
+#define _mm256_store_px _mm256_storeu_pd
+#define _mm256_broadcast_sx _mm256_broadcast_sd
+#define _mm256_castpx256_px128 _mm256_castpd256_pd128
+#define _mm256_max_px _mm256_max_pd
+#define _mm256_sub_px _mm256_sub_pd
+#define _mm256_set1_px _mm256_set1_pd
+#define _mm256_sqrt_px _mm256_sqrt_pd
+#define _mm256_div_px _mm256_div_pd
+#define _mm_setzero_px _mm_setzero_pd
+#define _mm_add_px _mm_add_pd
+#define _mm_mul_px _mm_mul_pd
+#define _mm_load_px _mm_loadu_pd
+#define _mm_hadd_px _mm_hadd_pd
+#define _mm_store_sx _mm_store_sd
+#define _mm_store_px _mm_storeu_pd
+#define _mm_load1_px _mm_load1_pd
+#define _mm_max_px _mm_max_pd
+#define _mm_sub_px _mm_sub_pd
+#define _mm_set1_px _mm_set1_pd
+#define _mm_sqrt_px _mm_sqrt_pd
+#define _mm_div_px _mm_div_pd
+#endif
+
+
+template <typename DTYPE>
+    inline void sse_axpy(const DTYPE* x, DTYPE* y, size_t len, const DTYPE alpha) {
+        unsigned int jjj, lll; 
+        jjj = lll = 0;
+
+#if defined(LEGO_AVX) 
+        lll = len&~AVX_CUT_LEN_MASK; 
+        __m256x mm_alpha = _mm256_broadcast_sx(&alpha); 
+        for (jjj = 0; jjj < lll; jjj += AVX_STEP_SIZE){ 
+            _mm256_store_px(y+jjj, 
+              _mm256_add_px(_mm256_load_px(y+jjj), 
+                  _mm256_mul_px(mm_alpha, 
+                      _mm256_load_px(x+jjj)))); 
+        }
+
+#elif defined(LEGO_SSE) 
+        lll = len&~SSE_CUT_LEN_MASK; 
+        __m128x mm_alpha = _mm_load1_px(&alpha); 
+        for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE){ 
+            _mm_store_px(y+jjj, 
+              _mm_add_px(_mm_load_px(y+jjj), 
+                  _mm_mul_px(mm_alpha, 
+                      _mm_load_px(x+jjj)))); 
+        }
+
+#endif
+        for (; jjj<len; jjj++){
+            y[jjj] += alpha * x[jjj];
+        }
+    }
 template <typename T>
 class SGDOpKernel : public framework::OpKernel<T> {
  public:
@@ -67,12 +184,29 @@ class SGDOpKernel : public framework::OpKernel<T> {
         auto out_dims = param_out->dims();
         PADDLE_ENFORCE_EQ(grad->height(), out_dims[0]);
         auto &grad_value = grad->value();
-        const T *param_data = param->data<T>();
+        //const T *param_data = param->data<T>();
         const T *grad_data = grad_value.data<T>();
         const T *lr = learning_rate->data<T>();
         const int64_t *rows_data = grad_rows.data();
         T *out_data = param_out->mutable_data<T>(ctx.GetPlace());
+        auto grad_row_width = grad->value().dims()[1];
+	
+        for (size_t i = 0; i < grad->rows().size(); i++) {
+	  int64_t id_index = rows_data[i];
+	  PADDLE_ENFORCE_GE(id_index, static_cast<int64_t>(0),
+			    "id should be in the table");
+	  for (int64_t j = 0; j < grad_row_width; j++) {
+	    if (188574148 == id_index * grad_row_width + j && grad_row_width == 1) {
+	      VLOG(1) << "qxz:  " << id_index * grad_row_width + j << " " << out_data[id_index * grad_row_width + j] << " - " << grad_data[i * grad_row_width + j] <<
+	      " * " << lr[0] ;
+	    }
+	    out_data[id_index * grad_row_width + j] -=
+		lr[0] * grad_data[i * grad_row_width + j];
+	  }
+	  //sse_axpy(&grad_data[i * grad_row_width], &out_data[id_index * grad_row_width], grad_row_width, static_cast<T>(-1*lr[0]));
+	}
 
+/*
         jit::sgd_attr_t attr;
         attr.param_height = out_dims[0];
         attr.param_width = param_out->numel() / attr.param_height;
@@ -83,7 +217,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
 
         auto sgd =
             jit::Get<jit::kSgd, jit::SgdTuples<T>, platform::CPUPlace>(attr);
-        sgd(lr, param_data, grad_data, rows_data, out_data, &attr);
+        sgd(lr, param_data, grad_data, rows_data, out_data, &attr);*/
       } else {
         PADDLE_THROW("Unsupported Variable Type of Grad");
       }
@@ -118,9 +252,14 @@ class SGDOpKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_GE(id_index, static_cast<int64_t>(0),
                           "id should be in the table");
         for (int64_t j = 0; j < grad_row_width; j++) {
+          if (188574148 == id_index * grad_row_width + j && grad_row_width == 1) {
+            VLOG(1) << "qxz:  " << id_index * grad_row_width + j << " " << out_data[id_index * grad_row_width + j] << " - " << grad_data[i * grad_row_width + j] <<
+            " * " << lr[0] ;
+          }
           out_data[id_index * grad_row_width + j] -=
               lr[0] * grad_data[i * grad_row_width + j];
         }
+        //sse_axpy(&grad_data[i * grad_row_width], &out_data[id_index * grad_row_width], grad_row_width, static_cast<T>(-1*lr[0]));
       }
     } else {
       PADDLE_THROW("Unsupported Variable Type of Parameter");

@@ -41,6 +41,8 @@ class SequenceEnumerateOp : public framework::OperatorWithKernel {
                       "dimension should be 1.");
 
     const auto win_size = ctx->Attrs().Get<int>("win_size");
+    // when need_pad is false, shape and lod of output 
+    // will be computed in compute kernel
     ctx->SetOutputDim("Out", {x_dims[0], win_size});
     ctx->ShareLoD("X", "Out");
   }
@@ -62,6 +64,8 @@ class SequenceEnumerateOpMaker : public framework::OpProtoAndCheckerMaker {
         });
     AddAttr<int>("pad_value", "(int) The enumerate sequence padding value.")
         .SetDefault(0);
+    AddAttr<bool>("need_pad", "(bool) Whether the enumerate sequence needs to pad value.")
+        .SetDefault(true);
     AddComment(R"DOC(
 Sequence Enumerate Operator.
 
@@ -79,6 +83,7 @@ Case 1:
   Attrs:
     win_size = 2
     pad_value = 0
+    need_pad = true
   Output:
     Out.lod = [[0, 3, 5]]
     Out.data = [[1, 2], [2, 3], [3, 0], [4, 5], [5, 0]]
