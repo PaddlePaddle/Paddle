@@ -45,6 +45,33 @@ __global__ void CalcOutPut(const T* in_data, const size_t* in_lod,
 }
 
 template <typename T>
+__global__ void CalcOutPutNoPad(const T* in_data, const size_t* in_lod,
+                           const size_t lod_len, const int64_t win_size,
+                           const size_t* new_lod, T* out_data) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index < in_lod[lod_len - 1]) {
+    int end_idx = 0;
+    int new_index  = 0;
+    // Get LoD interval of index
+    for (int i = 1; i < lod_len; ++i) {
+      if (index < in_lod[i]) {
+        end_idx = in_lod[i] - win_size;
+        new_index = index - in_lod[i-1] + new_lod[i]
+        break;
+      }
+    }
+    if (index < end_idx) {
+      new_index = index - in_lod[i-1]
+      for (size_t i = 0; i < win_size; ++i) {
+        int word_pos = index + i;
+        out_data[new_index * win_size + i] = in_data[word_pos];
+      }
+    }
+  }
+}
+
+
+template <typename T>
 class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -52,6 +79,7 @@ class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
     auto* out = context.Output<LoDTensor>("Out");
     int win_size = context.Attr<int>("win_size");
     int pad_value = context.Attr<int>("pad_value");
+    bool need_pad = context.Attr<bool>("need_pad");
 
     auto in_dims = in->dims();
     auto in_lod = in->lod();
@@ -67,13 +95,37 @@ class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
     auto in_data = in->data<T>();
     out->Resize({in_dims[0], win_size});
     auto out_data = out->mutable_data<T>(context.GetPlace());
-    // Copy LoD to GPU
-    const size_t* dev_in_lod_ptr = lod0.CUDAData(context.GetPlace());
-    // Calc output tensor
-    CalcOutPut<<<(in_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,
+    
+    int enumerate_shift = 0;
+    if (need_pad) {
+      // Copy LoD to GPU
+      const size_t* dev_in_lod_ptr = lod0.CUDAData(context.GetPlace());
+      // Calc output tensor
+      CalcOutPut<<<(in_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,
                  PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-        in_data, dev_in_lod_ptr, lod0.size(), win_size, pad_value, out_data);
-    out->set_lod(in->lod());
+      in_data, dev_in_lod_ptr, lod0.size(), win_size, pad_value, out_data);
+    } else {
+      framework::LoD new_lod;
+      enumerate_shift = win_size;
+      new_lod.emplace_back(1, 0);  // size = 1, value = 0;
+      auto new_lod0 = new_lod[0];
+      new_lod0.push_back(0);
+      for (size_t i = 1; i < lod0.size() - 1; ++i) {
+          if (lod0[i] - lod0[i - 1] - enumerate_shift > 0) {
+              offset = offset + lod0[i] - lod0[i - 1] - enumerate_shift;
+          }
+          new_lod0.push_back(offset);
+      }
+      new_lod.push_back(new_lod0);
+      out->set_lod(new_lod);
+      // Copy LoD to GPU
+      const size_t* dev_in_lod_ptr = lod0.CUDAData(context.GetPlace());
+      const size_t* dev_new_lod_ptr = new_lod0.CUDAData(context.GetPlace());
+      // Calc output tensor
+      CalcOutPutNoPad<<<(in_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,
+                 PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+      in_data, dev_in_lod_ptr, lod0.size(), win_size, dev_new_lod_ptr, out_data);
+    }
   }
 };
 

@@ -57,6 +57,7 @@ $$Out = scale * X$$
 )DOC");
     AddAttr<int>("num_hash", "").SetDefault(1);
     AddAttr<int>("mod_by", "").SetDefault(100000);
+    AddAttr<int>("rand_len", "").SetDefault(1);
   }
 };
 

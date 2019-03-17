@@ -22,7 +22,7 @@ class TestScaleOp(OpTest):
         self.op_type = "hash"
         self.init_test_case()
         self.inputs = {'X': (self.in_seq, self.lod)}
-        self.attrs = {'num_hash': 4, 'mod_by': 10000}
+        self.attrs = {'num_hash': 4, 'mod_by': 10000, 'rand_seed_len':4}
         self.outputs = {'Out': (self.out_seq, self.lod)}
 
     def init_test_case(self):
