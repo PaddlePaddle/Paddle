@@ -296,6 +296,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
     auto input_height = has_value_input->height();
     framework::SelectedRows& out = *output;
     std::set<int64_t> merged_row_set;
+    VLOG(1) << "merge begin " << input_width << ", " << input_height;
     for (auto* input : inputs) {
       if (input->rows().size() == 0) {
         continue;

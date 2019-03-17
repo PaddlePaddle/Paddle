@@ -8532,7 +8532,7 @@ def flatten(x, axis=1, name=None):
     return out
 
 
-def sequence_enumerate(input, win_size, pad_value=0, name=None):
+def sequence_enumerate(input, win_size, pad_value=0, name=None, need_pad=True):
     """
     Generate a new sequence for the input index sequence, which enumerates all the
     sub-sequences with length `win_size` of the input.
@@ -8579,6 +8579,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={'win_size': win_size,
+               'need_pad': need_pad,
                'pad_value': pad_value})
     return out
 
@@ -9806,7 +9807,7 @@ def similarity_focus(input, axis, indexes, name=None):
     return out
 
 
-def hash(input, hash_size, num_hash=1, name=None):
+def hash(input, hash_size, num_hash=1, rand_len=1, name=None):
     """
     Hash the input to an integer whose value is less than the given hash size.
 
@@ -9871,6 +9872,7 @@ def hash(input, hash_size, num_hash=1, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={'num_hash': num_hash,
+               'rand_len': rand_len,
                'mod_by': hash_size})
     return out
 

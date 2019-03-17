@@ -199,6 +199,9 @@ class SumSeqPoolGradFunctor {
                   const framework::Tensor& out_grad,
                   framework::LoDTensor* in_grad) {
     auto lod = in_grad->lod()[0];
+    if (in_grad->dims()[0] == 0 || in_grad->numel() == 0) {
+      return;
+    }
     int64_t out_w = out_grad.numel() / out_grad.dims()[0];
     int64_t in_w = in_grad->numel() / in_grad->dims()[0];
     PADDLE_ENFORCE(in_w == out_w);
@@ -252,6 +255,13 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       PADDLE_ENFORCE(platform::is_cpu_place(place));
       const T* src = input.data<T>();
       T* dst = output->mutable_data<T>(place);
+      math::SetConstant<platform::CPUDeviceContext, T> set_zero;
+      set_zero(context, reinterpret_cast<Tensor *>(output), static_cast<T>(0));
+
+      if (input.dims()[0] == 0 || input.numel() == 0) {
+        return;
+      }
+
       jit::seq_pool_attr_t attr(
           static_cast<int>(input.numel() / input.dims()[0]),
           jit::SeqPoolType::kSum);
@@ -260,9 +270,12 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
               attr);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         attr.h = static_cast<int>(lod[i + 1] - lod[i]);
-        seqpool(src, dst, &attr);
+        if (attr.h > 0) {
+          seqpool(src, dst, &attr);
+          src += attr.h * attr.w;
+        }
+        //even lod is empty, dst will increase, but src will not
         dst += attr.w;
-        src += attr.h * attr.w;
       }
       return;
     }

@@ -32,15 +32,19 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<Tensor>("Out");
     std::string pooltype = context.Attr<std::string>("pooltype");
+    //bool compatible_empty_lod = context.Attr<bool>("compatible_empty_lod");
 
     auto dims = in->dims();
     auto lod = in->lod();
     // InferShape by lod
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
-    PADDLE_ENFORCE_GE(
-        dims[0],
-        /*batch size = */ static_cast<int64_t>(lod[0].size() - 1),
-        "The first dimension of Input(X) must be large than batch size.");
+    /* 
+    if (!compatible_empty_lod) { 
+      PADDLE_ENFORCE_GE(
+          dims[0],
+          static_cast<int64_t>(lod[0].size() - 1),//batch size 
+          "The first dimension of Input(X) must be large than batch size.");
+    }*/
     dims[0] = lod[0].size() - 1;
     out->Resize({dims});
     out->mutable_data<T>(context.GetPlace());
