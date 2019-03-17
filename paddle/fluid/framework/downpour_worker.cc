@@ -236,7 +236,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
       }
       if (!need_skip) {
         timeline.Start();
+        VLOG(3) << "Going to run op " << op_name[run_op_idx];
         op->Run(*thread_scope_, place_);
+        VLOG(3) << "Op " << op_name[run_op_idx] << " Finished";
         timeline.Pause();
         op_total_time[run_op_idx++] += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
