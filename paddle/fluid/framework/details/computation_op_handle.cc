@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
+
 #include <string>
-#include "paddle/fluid/framework/details/container_cast.h"
 
 namespace paddle {
 namespace framework {
@@ -29,14 +29,7 @@ ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
       scope_idx_(scope_idx) {}
 
 void ComputationOpHandle::RunImpl() {
-  auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
-  std::vector<VarHandle *> other_place_var;
-  for (auto &var : in_var_handles) {
-    if (!platform::is_same_place(var->place(), place_)) {
-      other_place_var.emplace_back(var);
-    }
-  }
-  RecordWaitEventOnCtx2(other_place_var, dev_ctxes_.at(place_));
+  WaitInputVarGenerated(place_);
 
   auto run_func = [this]() {
     op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
@@ -47,6 +40,13 @@ void ComputationOpHandle::RunImpl() {
   } else {
     this->RunAndRecordEvent(run_func);
   }
+}
+
+bool ComputationOpHandle::NeedWait(VarHandleBase *in_var) {
+  bool need_wait =
+      in_var && in_var->GeneratedOp() &&
+      in_var->GeneratedOp()->DeviceContext(place_) != dev_ctxes_.at(place_);
+  return need_wait;
 }
 
 std::string ComputationOpHandle::Name() const { return op_->Type(); }

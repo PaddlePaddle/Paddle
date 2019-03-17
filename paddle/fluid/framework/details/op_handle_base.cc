@@ -87,6 +87,27 @@ void OpHandleBase::Run(bool use_cuda) {
 #endif
   RunImpl();
 }
+void OpHandleBase::WaitInputVarGenerated() {
+  for (auto in_var : inputs_) {
+    if (NeedWait(in_var)) {
+      for (auto &pair : dev_ctxes_) {
+        in_var->GeneratedOp()->RecordWaitEventOnCtx(pair.second);
+      }
+    }
+  }
+}
+
+void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
+  for (auto *in : inputs_) {
+    if (NeedWait(in)) {
+      in->GeneratedOp()->RecordWaitEventOnCtx(dev_ctxes_.at(place));
+    }
+  }
+}
+
+bool OpHandleBase::NeedWait(VarHandleBase *in_var) {
+  return in_var && in_var->GeneratedOp();
+}
 
 void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
 #ifdef PADDLE_WITH_CUDA

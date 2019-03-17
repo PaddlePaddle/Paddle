@@ -44,6 +44,18 @@ class OpHandleBase {
 
   virtual std::string Name() const = 0;
 
+  // This method adds the wait events of all the input on all the device
+  // context.
+  // NODE: This Wait is asynchronous operation.
+  virtual void WaitInputVarGenerated();
+
+  // This method adds the wait events of all the input on the specified device
+  // context.
+  // NODE: This Wait is asynchronous operation.
+  virtual void WaitInputVarGenerated(const platform::Place &place);
+
+  virtual bool NeedWait(VarHandleBase *in_var);
+
   void Run(bool use_cuda);
 
   virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
