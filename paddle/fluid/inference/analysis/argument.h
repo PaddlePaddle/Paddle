@@ -132,8 +132,6 @@ struct Argument {
   // Pass a set of op types to enable its mkldnn kernel
   DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types, MKLDNNEnabledOpTypes,
                       std::unordered_set<std::string>);
-  // Scales for variables to be quantized
-  DECL_ARGUMENT_FIELD(quant_var_scales, QuantVarScales, VarQuantScale);
 
   // A set of op types to enable their quantized kernels
   DECL_ARGUMENT_FIELD(quantize_enabled_op_types, QuantizeEnabledOpTypes,
