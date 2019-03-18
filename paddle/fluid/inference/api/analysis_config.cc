@@ -219,7 +219,14 @@ void AnalysisConfig::Update() {
   }
 
   if (enable_memory_optim_) {
-    pass_builder()->AppendAnalysisPass("memory_optimize_pass");
+    auto analysis_passes = pass_builder()->AnalysisPasses();
+    auto memory_opti_pass_name = "memory_optimize_pass";
+    bool already_exists =
+        std::find(analysis_passes.begin(), analysis_passes.end(),
+                  memory_opti_pass_name) != analysis_passes.end();
+    if (!already_exists) {
+      pass_builder()->AppendAnalysisPass(memory_opti_pass_name);
+    }
   }
 
   if (ir_debug_) {
