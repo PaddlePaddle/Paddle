@@ -74,10 +74,20 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       }
     }
 
-    auto &group_params_grads =
+    auto &group_grads_params =
         result.Get<GroupGradsAndParams>(kGroupGradsAndParams);
-    // Note:
-    SetGroupGradsAndParams(vars, params_grads, &group_params_grads);
+
+    // Note: the order of params_grads may be changed by SetGroupGradsAndParams.
+    SetGroupGradsAndParams(vars, params_grads, &group_grads_params);
+
+    params_grads.clear();
+    for (auto &group_p_g : group_grads_params) {
+      params_grads.insert(params_grads.begin(), group_p_g.begin(),
+                          group_p_g.end());
+    }
+    for (auto &p_g : params_grads) {
+      std::swap(p_g.first, p_g.second);
+    }
 
     // Set Gradients as Persistable to prevent this var becoming reusable.
     auto dtype = kDefaultDtype;
@@ -126,16 +136,16 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
   void SetGroupGradsAndParams(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
       const ParamsAndGrads &params_grads,
-      GroupGradsAndParams *group_params_grads) const {
-    SetGroupAccordingToLayers(var_nodes, params_grads, group_params_grads);
-    SetGroupAccordingToMemorySize(var_nodes, group_params_grads);
-    SetGroupAccordingToGroupSize(var_nodes, group_params_grads);
+      GroupGradsAndParams *group_grads_params) const {
+    SetGroupAccordingToLayers(var_nodes, params_grads, group_grads_params);
+    SetGroupAccordingToMemorySize(var_nodes, group_grads_params);
+    SetGroupAccordingToGroupSize(var_nodes, group_grads_params);
   }
 
   void SetGroupAccordingToLayers(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
       const ParamsAndGrads &params_grads,
-      GroupGradsAndParams *group_params_grads) const {
+      GroupGradsAndParams *group_grads_params) const {
     std::unordered_map<std::string, std::vector<int>> layer_params;
 
     for (size_t i = 0; i < params_grads.size(); ++i) {
@@ -147,7 +157,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       }
     }
 
-    group_params_grads->reserve(layer_params.size());
+    group_grads_params->reserve(layer_params.size());
     for (size_t i = 0; i < params_grads.size(); ++i) {
       auto pos = params_grads[i].first.find_first_of(".");
       std::string key = "@UNKNOW@";
@@ -157,8 +167,8 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       auto iter = layer_params.find(key);
       if (iter == layer_params.end()) continue;
 
-      group_params_grads->emplace_back();
-      auto &local_group_grads_params = group_params_grads->back();
+      group_grads_params->emplace_back();
+      auto &local_group_grads_params = group_grads_params->back();
       for (auto &idx : iter->second) {
         local_group_grads_params.emplace_back(
             std::make_pair(params_grads[idx].second, params_grads[idx].first));
@@ -167,10 +177,10 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     }
 
     VLOG(10) << "SetGroupAccordingToLayers: ";
-    for (size_t i = 0; i < group_params_grads->size(); ++i) {
+    for (size_t i = 0; i < group_grads_params->size(); ++i) {
       VLOG(10) << "group " << i;
       std::stringstream out;
-      for (auto &p_g : group_params_grads->at(i)) {
+      for (auto &p_g : group_grads_params->at(i)) {
         out << "(" << p_g.second << ", " << p_g.first << "), ";
       }
       VLOG(10) << out.str();
@@ -239,16 +249,16 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
 
   void SetGroupAccordingToGroupSize(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
-      GroupGradsAndParams *group_params_grads) const {
+      GroupGradsAndParams *group_grads_params) const {
     if (FLAGS_fuse_parameter_groups_size == 0) {
       return;
     }
     size_t group_size = static_cast<size_t>(FLAGS_fuse_parameter_groups_size);
     if (FLAGS_fuse_parameter_groups_size == -1) {
-      group_size = group_params_grads->size();
+      group_size = group_grads_params->size();
     }
 
-    size_t groups = (group_params_grads->size() + group_size - 1) / group_size;
+    size_t groups = (group_grads_params->size() + group_size - 1) / group_size;
     GroupGradsAndParams local_group_grads_params;
     local_group_grads_params.reserve(groups);
 
@@ -257,21 +267,21 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       local_group_grads_params.emplace_back();
       auto &group_p_g = local_group_grads_params.back();
       group_p_g.reserve(group_size);
-      while (j < group_params_grads->size()) {
-        group_p_g.insert(group_p_g.end(), group_params_grads->at(j).begin(),
-                         group_params_grads->at(j).end());
+      while (j < group_grads_params->size()) {
+        group_p_g.insert(group_p_g.end(), group_grads_params->at(j).begin(),
+                         group_grads_params->at(j).end());
         ++j;
         if (j % group_size == 0) break;
       }
     }
-    std::swap(*group_params_grads, local_group_grads_params);
+    std::swap(*group_grads_params, local_group_grads_params);
 
     VLOG(10) << "SetGroupAccordingToGroupSize(group_size: " << group_size
              << "): ";
-    for (size_t i = 0; i < group_params_grads->size(); ++i) {
+    for (size_t i = 0; i < group_grads_params->size(); ++i) {
       VLOG(10) << "group " << i;
       std::stringstream out;
-      for (auto &p_g : group_params_grads->at(i)) {
+      for (auto &p_g : group_grads_params->at(i)) {
         out << "(" << p_g.second << ", " << p_g.first << "), ";
       }
       VLOG(10) << out.str();
