@@ -14,28 +14,17 @@
 
 from __future__ import print_function
 
-from . import base
-from .base import *
+from .. import core
 
-from . import layers
-from .layers import *
+__all__ = [
+    'start_gperf_profiler',
+    'stop_gperf_profiler',
+]
 
-from . import nn
-from .nn import *
 
-from . import tracer
-from .tracer import *
+def start_gperf_profiler():
+    core.start_imperative_gperf_profiler()
 
-from . import checkpoint
-from .checkpoint import *
 
-from . import profiler
-from .profiler import *
-
-__all__ = []
-__all__ += layers.__all__
-__all__ += base.__all__
-__all__ += nn.__all__
-__all__ += tracer.__all__
-__all__ += checkpoint.__all__
-__all__ += profiler.__all__
+def stop_gperf_profiler():
+    core.stop_imperative_gperf_profiler()

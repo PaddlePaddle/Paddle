@@ -84,6 +84,27 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
 
+    def test_matmul(self):
+        with self.static_graph():
+            t = layers.data(name='t', shape=[3, 3], dtype='float32')
+            t2 = layers.data(name='t2', shape=[3, 3], dtype='float32')
+            ret = layers.matmul(t, t2)
+            static_ret = self.get_static_graph_result(
+                feed={
+                    't': np.ones(
+                        [3, 3], dtype='float32'),
+                    't2': np.ones(
+                        [3, 3], dtype='float32')
+                },
+                fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            t = np.ones([3, 3], dtype='float32')
+            t2 = np.ones([3, 3], dtype='float32')
+            dy_ret = layers.matmul(base.to_variable(t), base.to_variable(t2))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+
     def test_conv2d(self):
         with self.static_graph():
             images = layers.data(name='pixel', shape=[3, 5, 5], dtype='float32')
