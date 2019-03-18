@@ -13,27 +13,41 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
+#include <memory>
 #include <string>
-#include "paddle/fluid/operators/mkldnn_activation_op.h"
+#include <unordered_map>
+#include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
 
 using paddle::framework::Tensor;
 
-#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)               \
-  class OP_NAME##OpMaker                                                \
-      : public ::paddle::framework::OpProtoAndCheckerMaker {            \
-   public:                                                              \
-    void Make() override {                                              \
-      AddInput("X", "Input of " #OP_NAME " operator");                  \
-      AddOutput("Out", "Output of " #OP_NAME " operator").Reuse("X");   \
-      AddAttr<bool>("use_mkldnn",                                       \
-                    "(bool, default false) Only used in mkldnn kernel") \
-          .SetDefault(false);                                           \
-      AddComment(#OP_COMMENT);                                          \
-    }                                                                   \
+#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                    \
+  class OP_NAME##OpMaker                                                     \
+      : public ::paddle::framework::OpProtoAndCheckerMaker {                 \
+   public:                                                                   \
+    void Make() override {                                                   \
+      AddInput("X", "Input of " #OP_NAME " operator");                       \
+      AddOutput("Out", "Output of " #OP_NAME " operator");                   \
+      AddAttr<bool>("use_mkldnn",                                            \
+                    "(bool, default false) Only used in mkldnn kernel")      \
+          .SetDefault(false);                                                \
+      AddAttr<bool>("use_cudnn",                                             \
+                    "(bool, default false) Only used in cudnn kernel, need " \
+                    "install cudnn")                                         \
+          .SetDefault(false);                                                \
+      AddAttr<bool>(                                                         \
+          "is_test",                                                         \
+          "(bool, default false) Set to true for inference only, false "     \
+          "for training. Some layers may run faster when this is true.")     \
+          .SetDefault(false);                                                \
+      AddComment(OP_COMMENT);                                                \
+    }                                                                        \
   }
 
 #define REGISTER_ACTIVATION_OP_GRAD_MAKER(OP_NAME, KERNEL_TYPE)              \
@@ -62,6 +76,12 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
                                       const std::string& name) {
   framework::LibraryType library{framework::LibraryType::kPlain};
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_CUDA
+  auto it1 = oper.Attrs().find("use_cudnn");
+  if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
+    library = framework::LibraryType::kCUDNN;
+  }
+#endif
 #ifdef PADDLE_WITH_MKLDNN
   auto it = oper.Attrs().find("use_mkldnn");
   if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
@@ -71,8 +91,8 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
   }
 #endif
   return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::Tensor>(name)->type()),
-      ctx.GetPlace(), layout, library);
+      framework::GetDataTypeOfVar(ctx.InputVar(name)), ctx.GetPlace(), layout,
+      library);
 }
 
 class ActivationOp : public framework::OperatorWithKernel {
@@ -91,16 +111,12 @@ class ActivationOp : public framework::OperatorWithKernel {
   }
 };
 
-class ActivationOpInferVarType : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto x_name = op_desc.Input("X")[0];
-    auto out_name = op_desc.Output("Out")[0];
-    auto& x = block->FindRecursiveOrCreateVar(x_name);
-    auto& out = block->FindRecursiveOrCreateVar(out_name);
-    out.SetType(x.GetType());
-    out.SetDataType(x.GetDataType());
+class ActivationOpInferVarType
+    : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
   }
 };
 
@@ -123,7 +139,7 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
 UNUSED constexpr char SigmoidDoc[] = R"DOC(
 Sigmoid Activation Operator
 
-$$out = \frac{1}{1 + e^{-x}}$$
+$$out = \\frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
@@ -145,6 +161,13 @@ UNUSED constexpr char ReluDoc[] = R"DOC(
 Relu Activation Operator.
 
 $out = \max(x, 0)$
+
+)DOC";
+
+UNUSED constexpr char GeluDoc[] = R"DOC(
+Gelu Activation Operator.
+
+$out = \\frac{1 + erf(\\frac{x}{\\sqrt{2}})}{2} x$
 
 )DOC";
 
@@ -179,14 +202,14 @@ $out = |x|$
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Activation Operator.
 
-$out = ceil(x)$
+$out = \left \lceil x \right \rceil$
 
 )DOC";
 
 UNUSED constexpr char FloorDoc[] = R"DOC(
 Floor Activation Operator.
 
-$out = floor(x)$
+$out = \left \lfloor x \right \rfloor$
 
 )DOC";
 
@@ -244,9 +267,51 @@ $out = \ln(1 + e^{x})$
 UNUSED constexpr char SoftsignDoc[] = R"DOC(
 Softsign Activation Operator.
 
-$$out = \frac{x}{1 + |x|}$$
+$$out = \\frac{x}{1 + \|x\|}$$
 
 )DOC";
+
+class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of acos operator");
+    AddOutput("Out", "Output of acos operator");
+    AddComment(R"DOC(
+Arccosine Activation Operator.
+
+$$out = \cos^{-1}(x)$$
+
+)DOC");
+  }
+};
+
+class AsinOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of asin operator");
+    AddOutput("Out", "Output of asin operator");
+    AddComment(R"DOC(
+Arcsine Activation Operator.
+
+$$out = \sin^{-1}(x)$$
+
+)DOC");
+  }
+};
+
+class AtanOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of atan operator");
+    AddOutput("Out", "Output of atan operator");
+    AddComment(R"DOC(
+Arctanh Activation Operator.
+
+$$out = \tanh^{-1}(x)$$
+
+)DOC");
+  }
+};
 
 class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -273,7 +338,7 @@ class SoftShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
 :strong:`Softshrink Activation Operator`
 
 ..  math::
-    out = \begin{cases} 
+    out = \begin{cases}
          x - \lambda, \text{if } x > \lambda \\
          x + \lambda, \text{if } x < -\lambda \\
          0,  \text{otherwise}
@@ -439,7 +504,7 @@ class HardSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 HardSigmoid Activation Operator.
 
-Segment-wise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391), 
+Segment-wise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
 which is much faster than sigmoid.
 
 $out = \max(0, \min(1, slope * x + shift))$
@@ -471,6 +536,7 @@ REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(LogSigmoid, LogSigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(Exp, ExpDoc);
 REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);
+REGISTER_ACTIVATION_OP_MAKER(Gelu, GeluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
@@ -488,6 +554,7 @@ REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);
 
 REGISTER_ACTIVATION_OP_GRAD_MAKER(Sigmoid, sigmoid);
 REGISTER_ACTIVATION_OP_GRAD_MAKER(Relu, relu);
+REGISTER_ACTIVATION_OP_GRAD_MAKER(Gelu, gelu);
 REGISTER_ACTIVATION_OP_GRAD_MAKER(Exp, exp);
 REGISTER_ACTIVATION_OP_GRAD_MAKER(Tanh, tanh);
 REGISTER_ACTIVATION_OP_GRAD_MAKER(Ceil, ceil);
@@ -520,10 +587,14 @@ namespace ops = paddle::operators;
   __macro(SoftShrink, softshrink);   \
   __macro(Abs, abs);                 \
   __macro(Cos, cos);                 \
+  __macro(Acos, acos);               \
   __macro(Sin, sin);                 \
+  __macro(Asin, asin);               \
+  __macro(Atan, atan);               \
   __macro(Round, round);             \
   __macro(Log, log);                 \
   __macro(Square, square);           \
+  __macro(Gelu, gelu);               \
   __macro(BRelu, brelu);             \
   __macro(Pow, pow);                 \
   __macro(STanh, stanh);             \
@@ -536,12 +607,14 @@ namespace ops = paddle::operators;
   __macro(Swish, swish);             \
   __macro(ThresholdedRelu, thresholded_relu);
 
-#define REGISTER_INPLACE_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)        \
-  REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp, \
-                    ::paddle::operators::OP_NAME##OpMaker,          \
-                    ::paddle::operators::ActivationOpInferVarType,  \
-                    ::paddle::operators::OP_NAME##GradMaker);       \
-  REGISTER_OPERATOR(KERNEL_TYPE##_grad, ::paddle::operators::ActivationOpGrad)
+#define REGISTER_INPLACE_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)                   \
+  REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp,            \
+                    ::paddle::operators::OP_NAME##OpMaker,                     \
+                    ::paddle::operators::ActivationOpInferVarType,             \
+                    ::paddle::operators::OP_NAME##GradMaker,                   \
+                    ::paddle::framework::SingleOpInplaceInToOut);              \
+  REGISTER_OPERATOR(KERNEL_TYPE##_grad, ::paddle::operators::ActivationOpGrad, \
+                    ::paddle::framework::SingleOpInplaceInToOut)
 
 #define REGISTER_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)                    \
   REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp,     \

@@ -18,14 +18,15 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
-from scipy.special import expit
+from scipy.special import expit, erf
 
 
-class TestExp(OpTest):
+class TestActivation(OpTest):
     def setUp(self):
         self.op_type = "exp"
         self.dtype = np.float32
         self.init_dtype()
+        self.init_kernel_type()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.exp(x)
@@ -42,24 +43,15 @@ class TestExp(OpTest):
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
     def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_kernel_type(self):
         pass
 
 
-class TestFP16Exp(TestExp):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestSigmoid(OpTest):
+class TestSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "sigmoid"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
@@ -68,33 +60,15 @@ class TestSigmoid(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16Sigmoid(TestSigmoid):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestLogSigmoid(OpTest):
+class TestLogSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "logsigmoid"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
@@ -103,33 +77,15 @@ class TestLogSigmoid(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16LogSigmoid(TestLogSigmoid):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestTanh(OpTest):
+class TestTanh(TestActivation):
     def setUp(self):
         self.op_type = "tanh"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -138,33 +94,32 @@ class TestTanh(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestAtan(TestActivation):
+    def setUp(self):
+        self.op_type = "atan"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.arctan(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16Tanh(TestTanh):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestTanhShrink(OpTest):
+class TestTanhShrink(TestActivation):
     def setUp(self):
         self.op_type = "tanh_shrink"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [10, 17]).astype(self.dtype)
@@ -173,33 +128,15 @@ class TestTanhShrink(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16TanhShrink(TestTanhShrink):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestHardShrink(OpTest):
+class TestHardShrink(TestActivation):
     def setUp(self):
         self.op_type = "hard_shrink"
-        self.dtype = np.float32
         self.init_dtype()
 
         threshold = 0.5
@@ -211,33 +148,15 @@ class TestHardShrink(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.005)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16HardShrink(TestHardShrink):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestSoftShrink(OpTest):
+class TestSoftShrink(TestActivation):
     def setUp(self):
         self.op_type = "softshrink"
-        self.dtype = np.float32
         self.init_dtype()
 
         lambda_val = 0.1
@@ -250,33 +169,15 @@ class TestSoftShrink(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16SoftShrink(TestSoftShrink):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestSqrt(OpTest):
+class TestSqrt(TestActivation):
     def setUp(self):
         self.op_type = "sqrt"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -285,33 +186,15 @@ class TestSqrt(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16Sqrt(TestSqrt):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestAbs(OpTest):
+class TestAbs(TestActivation):
     def setUp(self):
         self.op_type = "abs"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
@@ -325,33 +208,15 @@ class TestAbs(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16Abs(TestAbs):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestCeil(OpTest):
+class TestCeil(TestActivation):
     def setUp(self):
         self.op_type = "ceil"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
@@ -360,30 +225,14 @@ class TestCeil(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     # The same reason with TestFloor
-
-    def init_dtype(self):
+    def test_check_grad(self):
         pass
 
 
-class TestFP16Ceil(TestCeil):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestFloor(OpTest):
+class TestFloor(TestActivation):
     def setUp(self):
         self.op_type = "floor"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
@@ -392,31 +241,16 @@ class TestFloor(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     # the gradient on floor, ceil, round is undefined.
     # we return zero as gradient, but the numpy return nan 
-
-    def init_dtype(self):
+    # The same reason with TestFloor
+    def test_check_grad(self):
         pass
 
 
-class TestFP16Floor(TestFloor):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestCos(OpTest):
+class TestCos(TestActivation):
     def setUp(self):
         self.op_type = "cos"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
@@ -425,33 +259,32 @@ class TestCos(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestAcos(TestActivation):
+    def setUp(self):
+        self.op_type = "acos"
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        out = np.arccos(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16Cos(TestCos):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestSin(OpTest):
+class TestSin(TestActivation):
     def setUp(self):
         self.op_type = "sin"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
@@ -460,33 +293,32 @@ class TestSin(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestAsin(TestActivation):
+    def setUp(self):
+        self.op_type = "asin"
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        out = np.arcsin(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16Sin(TestSin):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestRound(OpTest):
+class TestRound(TestActivation):
     def setUp(self):
         self.op_type = "round"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
@@ -495,28 +327,13 @@ class TestRound(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
-    def init_dtype(self):
+    def test_check_grad(self):
         pass
 
 
-class TestFP16Round(TestRound):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestRelu(OpTest):
+class TestRelu(TestActivation):
     def setUp(self):
         self.op_type = "relu"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
@@ -527,33 +344,32 @@ class TestRelu(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestGelu(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        out = 0.5 * x * (1.0 + erf(x / np.sqrt(2.0)))
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16Relu(TestRelu):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestBRelu(OpTest):
+class TestBRelu(TestActivation):
     def setUp(self):
         self.op_type = "brelu"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
@@ -570,33 +386,15 @@ class TestBRelu(OpTest):
         self.attrs = {'t_min': t_min, 't_max': t_max}
         self.outputs = {'Out': t}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16BRelu(TestBRelu):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestRelu6(OpTest):
+class TestRelu6(TestActivation):
     def setUp(self):
         self.op_type = "relu6"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(-1, 1, [4, 10]).astype(self.dtype)
@@ -610,33 +408,15 @@ class TestRelu6(OpTest):
         self.attrs = {'threshold': threshold}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16Relu6(TestRelu6):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestSoftRelu(OpTest):
+class TestSoftRelu(TestActivation):
     def setUp(self):
         self.op_type = "soft_relu"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(-3, 3, [4, 4]).astype(self.dtype)
@@ -653,33 +433,15 @@ class TestSoftRelu(OpTest):
         self.attrs = {'threshold': threshold}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16SoftRelu(TestSoftRelu):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestELU(OpTest):
+class TestELU(TestActivation):
     def setUp(self):
         self.op_type = "elu"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(-3, 3, [4, 4]).astype(self.dtype)
@@ -691,33 +453,15 @@ class TestELU(OpTest):
         self.attrs = {'alpha': alpha}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16ELU(TestELU):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestReciprocal(OpTest):
+class TestReciprocal(TestActivation):
     def setUp(self):
         self.op_type = "reciprocal"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
@@ -726,33 +470,15 @@ class TestReciprocal(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16Reciprocal(TestReciprocal):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestLog(OpTest):
+class TestLog(TestActivation):
     def setUp(self):
         self.op_type = "log"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -761,33 +487,15 @@ class TestLog(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16Log(TestLog):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestSquare(OpTest):
+class TestSquare(TestActivation):
     def setUp(self):
         self.op_type = "square"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -796,33 +504,15 @@ class TestSquare(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16Square(TestSquare):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestPow(OpTest):
+class TestPow(TestActivation):
     def setUp(self):
         self.op_type = "pow"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
@@ -832,33 +522,15 @@ class TestPow(OpTest):
         self.attrs = {'factor': 3.0}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16Pow(TestPow):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=5e-2)
-
-
-class TestSTanh(OpTest):
+class TestSTanh(TestActivation):
     def setUp(self):
         self.op_type = "stanh"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -870,34 +542,17 @@ class TestSTanh(OpTest):
         self.attrs = {'scale_a': scale_a, 'scale_b': scale_b}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16STanh(TestSTanh):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestSoftplus(OpTest):
+class TestSoftplus(TestActivation):
     def setUp(self):
         self.op_type = "softplus"
-        self.dtype = np.float64
         self.init_dtype()
+        self.dtype = np.float64
 
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         out = np.log(1 + np.exp(x))
@@ -905,33 +560,15 @@ class TestSoftplus(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16Softplus(TestSoftplus):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestSoftsign(OpTest):
+class TestSoftsign(TestActivation):
     def setUp(self):
         self.op_type = "softsign"
-        self.dtype = np.float32
         self.init_dtype()
 
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
@@ -940,33 +577,15 @@ class TestSoftsign(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16Softsign(TestSoftsign):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestThresholdedRelu(OpTest):
+class TestThresholdedRelu(TestActivation):
     def setUp(self):
         self.op_type = "thresholded_relu"
-        self.dtype = np.float32
         self.init_dtype()
 
         threshold = 0.25
@@ -981,33 +600,15 @@ class TestThresholdedRelu(OpTest):
         self.attrs = {'threshold': threshold}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=self.relative_error)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16ThresholdedRelu(TestThresholdedRelu):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestHardSigmoid(OpTest):
+class TestHardSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "hard_sigmoid"
-        self.dtype = np.float32
         self.init_dtype()
 
         self.relative_error = 0.002
@@ -1030,33 +631,15 @@ class TestHardSigmoid(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(X)}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.002)
 
-    def init_dtype(self):
-        pass
 
-
-class TestFP16HardSigmoid(TestHardSigmoid):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
-
-class TestSwish(OpTest):
+class TestSwish(TestActivation):
     def setUp(self):
         self.op_type = "swish"
-        self.dtype = np.float32
         self.init_dtype()
 
         X = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -1067,28 +650,93 @@ class TestSwish(OpTest):
         self.attrs = {'beta': beta}
         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output()
-
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
-    def init_dtype(self):
-        pass
+
+#------------------ Test Cudnn Activation----------------------
+def create_test_act_cudnn_class(parent, atol=1e-3, grad_atol=1e-3):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestActCudnn(parent):
+        def init_kernel_type(self):
+            self.attrs = {"use_cudnn": True}
+
+    cls_name = "{0}_{1}".format(parent.__name__, "cudnn")
+    TestActCudnn.__name__ = cls_name
+    globals()[cls_name] = TestActCudnn
 
 
-class TestFP16Swish(TestSwish):
-    def init_dtype(self):
-        self.dtype = np.float16
+create_test_act_cudnn_class(TestRelu)
+create_test_act_cudnn_class(TestRelu6)
+create_test_act_cudnn_class(TestSigmoid)
+create_test_act_cudnn_class(TestTanh)
 
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
+
+#------------------ Test Fp16 ----------------------
+def create_test_act_fp16_class(parent,
+                               atol=1e-3,
+                               grad_check=True,
+                               grad_atol=0.80):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestActFp16(parent):
+        def init_dtype(self):
+            self.dtype = np.float16
+
+        def test_check_output(self):
             place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+            support_fp16 = core.is_float16_supported(place)
+            if support_fp16:
+                self.check_output_with_place(place, atol=atol)
 
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            support_fp16 = core.is_float16_supported(place)
+            if support_fp16 and grad_check:
+                self.check_grad_with_place(
+                    place, ['X'], 'Out', max_relative_error=grad_atol)
+
+    cls_name = "{0}_{1}".format(parent.__name__, "fp16")
+    TestActFp16.__name__ = cls_name
+    globals()[cls_name] = TestActFp16
+
+
+create_test_act_fp16_class(TestActivation)
+create_test_act_fp16_class(TestSigmoid)
+create_test_act_fp16_class(TestLogSigmoid)
+create_test_act_fp16_class(TestTanh)
+create_test_act_fp16_class(TestTanhShrink)
+create_test_act_fp16_class(TestHardShrink)
+create_test_act_fp16_class(TestSoftShrink)
+create_test_act_fp16_class(TestSqrt)
+create_test_act_fp16_class(TestAbs)
+create_test_act_fp16_class(TestCeil, grad_check=False)
+create_test_act_fp16_class(TestFloor, grad_check=False)
+create_test_act_fp16_class(TestCos, grad_atol=0.85)
+create_test_act_fp16_class(TestAcos, grad_atol=0.85)
+create_test_act_fp16_class(TestSin)
+create_test_act_fp16_class(TestAsin)
+create_test_act_fp16_class(TestAtan)
+create_test_act_fp16_class(TestRound, grad_check=False)
+create_test_act_fp16_class(TestRelu)
+create_test_act_fp16_class(TestGelu)
+create_test_act_fp16_class(TestBRelu)
+create_test_act_fp16_class(TestRelu6)
+create_test_act_fp16_class(TestSoftRelu)
+create_test_act_fp16_class(TestELU)
+create_test_act_fp16_class(TestReciprocal)
+create_test_act_fp16_class(TestLog)
+create_test_act_fp16_class(TestSquare)
+create_test_act_fp16_class(TestPow, atol=5e-2)
+create_test_act_fp16_class(TestSTanh, grad_atol=0.9)
+create_test_act_fp16_class(TestSoftplus)
+create_test_act_fp16_class(TestSoftsign)
+create_test_act_fp16_class(TestThresholdedRelu)
+create_test_act_fp16_class(TestHardSigmoid)
+create_test_act_fp16_class(TestSwish)
 
 if __name__ == "__main__":
     unittest.main()

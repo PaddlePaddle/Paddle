@@ -13,12 +13,20 @@
 # limitations under the License.
 
 from __future__ import print_function
+import os
 # import all class inside framework into fluid module
 from . import framework
 from .framework import *
 # import all class inside executor into fluid module
 from . import executor
 from .executor import *
+
+from . import data_feed_desc
+from .data_feed_desc import *
+
+from . import async_executor
+from .async_executor import *
+
 from . import trainer
 from . import inferencer
 
@@ -26,6 +34,7 @@ from . import io
 from . import evaluator
 from . import initializer
 from . import layers
+from . import imperative
 from . import contrib
 from . import nets
 from . import optimizer
@@ -34,9 +43,10 @@ from . import regularizer
 from . import average
 from . import metrics
 from . import transpiler
+from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
-from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
+from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
@@ -46,17 +56,21 @@ from . import unique_name
 from . import recordio_writer
 from . import parallel_executor
 from .parallel_executor import *
+from . import compiler
+from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
     trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
-    parallel_executor.__all__ + lod_tensor.__all__ + [
+    parallel_executor.__all__ + lod_tensor.__all__ + \
+    data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__ + [
         'io',
         'initializer',
         'layers',
         'contrib',
+        'imperative',
         'transpiler',
         'nets',
         'optimizer',
@@ -89,6 +103,7 @@ def __bootstrap__():
     """
     import sys
     import os
+    import platform
     from . import core
 
     in_test = 'unittest' in sys.modules
@@ -108,22 +123,51 @@ def __bootstrap__():
         print('PLEASE USE OMP_NUM_THREADS WISELY.', file=sys.stderr)
 
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
-
+    sysstr = platform.system()
     read_env_flags = [
-        'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
-        'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb',
-        'init_allocated_mem', 'free_idle_memory', 'paddle_num_threads',
-        'dist_threadpool_size', 'cpu_deterministic', 'eager_delete_tensor_gb',
-        'reader_queue_speed_test_mode'
+        'check_nan_inf', 'benchmark', 'eager_delete_scope',
+        'initial_cpu_memory_in_mb', 'init_allocated_mem', 'free_idle_memory',
+        'paddle_num_threads', "dist_threadpool_size", 'eager_delete_tensor_gb',
+        'fast_eager_deletion_mode', 'memory_fraction_of_eager_deletion',
+        'allocator_strategy', 'reader_queue_speed_test_mode',
+        'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir',
+        'inner_op_parallelism', 'enable_parallel_graph',
+        'multiple_of_cupti_buffer_size', 'enable_subgraph_optimize',
+        'tracer_profile_fname'
     ]
+    if 'Darwin' not in sysstr:
+        read_env_flags.append('use_pinned_memory')
+
+    if os.name != 'nt':
+        read_env_flags.append('cpu_deterministic')
+
+    if core.is_compiled_with_mkldnn():
+        read_env_flags.append('use_mkldnn')
+
+    if core.is_compiled_with_ngraph():
+        read_env_flags.append('use_ngraph')
+
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')
-        read_env_flags.append('rpc_server_profile_period')
         read_env_flags.append('rpc_server_profile_path')
+        read_env_flags.append('enable_rpc_profiler')
+        read_env_flags.append('rpc_send_thread_num')
+        read_env_flags.append('rpc_get_thread_num')
+        read_env_flags.append('rpc_prefetch_thread_num')
+        read_env_flags.append('rpc_disable_reuse_port')
+        if core.is_compiled_with_brpc():
+            read_env_flags.append('max_body_size')
+            #set brpc max body size
+            os.environ['FLAGS_max_body_size'] = "2147483647"
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
-            'fraction_of_gpu_memory_to_use', 'cudnn_deterministic'
+            'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
+            'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
+            'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
+            'sync_nccl_allreduce', 'limit_of_tmp_allocation',
+            'times_excess_than_required_tmp_allocation',
+            'enable_inplace_whitelist'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])

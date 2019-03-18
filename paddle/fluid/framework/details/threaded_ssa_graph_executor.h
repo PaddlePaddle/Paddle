@@ -41,21 +41,21 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ThreadedSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,
                            const std::vector<platform::Place> &places,
-                           std::unique_ptr<ir::Graph> &&graph);
+                           ir::Graph *graph);
 
   const ir::Graph &Graph() const override { return *graph_; }
   // Run a SSAGraph by a thread pool
   // Use topological sort algorithm
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
 
-  ~ThreadedSSAGraphExecutor() {}
+  ~ThreadedSSAGraphExecutor() final = default;
 
  private:
-  void RunOp(BlockingQueue<VarHandleBase *> *ready_var_q,
+  void RunOp(const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
              details::OpHandleBase *op);
 
  private:
-  std::unique_ptr<ir::Graph> graph_;
+  ir::Graph *graph_;
   std::unique_ptr<::ThreadPool> pool_;
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
@@ -70,13 +70,13 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
                         BlockingQueue<VarHandleBase *> *ready_vars,
                         VarHandleBase *var) const;
 
-  void InsertFetchOps(
-      const std::vector<std::string> &fetch_tensors,
-      std::vector<std::unique_ptr<FetchOpHandle>> *fetch_ops,
-      std::unordered_set<std::unique_ptr<VarHandleBase>> *fetch_dependencies,
-      std::unordered_map<OpHandleBase *, size_t> *pending_ops,
-      std::unordered_set<VarHandleBase *> *pending_vars,
-      BlockingQueue<VarHandleBase *> *ready_vars, FeedFetchList *fetch_data);
+  void InsertFetchOps(const std::vector<std::string> &fetch_tensors,
+                      std::vector<FetchOpHandle *> *fetch_ops,
+                      std::unordered_set<VarHandleBase *> *fetch_dependencies,
+                      std::unordered_map<OpHandleBase *, size_t> *pending_ops,
+                      std::unordered_set<VarHandleBase *> *pending_vars,
+                      BlockingQueue<VarHandleBase *> *ready_vars,
+                      FeedFetchList *fetch_data);
 
  private:
   ExecutionStrategy strategy_;

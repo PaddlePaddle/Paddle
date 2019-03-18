@@ -27,5 +27,7 @@ void SetFeedVariable(Scope* scope, const LoDTensor& input,
 LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
                             size_t index);
 
+LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name);
+
 }  // namespace framework
 }  // namespace paddle

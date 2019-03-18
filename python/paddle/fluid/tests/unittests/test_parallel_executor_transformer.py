@@ -24,7 +24,7 @@ import paddle.fluid.core as core
 import paddle.dataset.wmt16 as wmt16
 import os
 
-WMT16_RECORDIO_FILE = "/tmp/wmt16.recordio"
+WMT16_RECORDIO_FILE = os.environ.get('RECORDIO_FILENAME', '/tmp/wmt16.recordio')
 
 
 class ModelHyperParams(object):
@@ -173,6 +173,8 @@ class TestTransformer(TestParallelExecutorBase):
     def test_main(self):
         if core.is_compiled_with_cuda():
             self.check_network_convergence(transformer, use_cuda=True)
+            self.check_network_convergence(
+                transformer, use_cuda=True, enable_sequential_execution=True)
         self.check_network_convergence(transformer, use_cuda=False, iter=5)
 
 

@@ -103,7 +103,7 @@ TEST(ProgramDesc, copy_ctor) {
       ASSERT_EQ(1, op->GetBlockAttrId("sub_block"));
       found_sub_block = true;
 
-      ASSERT_EQ(2, op->GetBlocksAttrIds("sub_blocks").size());
+      ASSERT_EQ(2UL, op->GetBlocksAttrIds("sub_blocks").size());
       found_sub_blocks = true;
     }
   }

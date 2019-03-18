@@ -77,16 +77,14 @@ template <>
 void set_constant_with_place<platform::CPUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
-  framework::VisitDataType(framework::ToDataType(tensor->type()),
-                           TensorSetConstantCPU(tensor, value));
+  framework::VisitDataType(tensor->type(), TensorSetConstantCPU(tensor, value));
 }
 
 template <>
 void set_constant_with_place<platform::CUDAPinnedPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
-  framework::VisitDataType(framework::ToDataType(tensor->type()),
-                           TensorSetConstantCPU(tensor, value));
+  framework::VisitDataType(tensor->type(), TensorSetConstantCPU(tensor, value));
 }
 
 struct TensorSetConstantWithPlace : public boost::static_visitor<void> {

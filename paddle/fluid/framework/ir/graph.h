@@ -17,6 +17,7 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/node.h"
@@ -26,6 +27,14 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+namespace details {
+
+// This attr is not recommended, because the graph should not dependence
+// the program once it is built.
+constexpr char kStaleProgramOpDescs[] = "stale_program_op_descs";
+}  //  namespace details
+
 namespace ir {
 
 /*
@@ -73,14 +82,21 @@ class Graph {
   }
 
   bool Has(const std::string &attr_name) const {
-    return attrs_.find(attr_name) != attrs_.end();
+    return attrs_.count(attr_name) > 0;
   }
 
   template <typename AttrType>
   AttrType &Get(const std::string &attr_name) const {
     PADDLE_ENFORCE(Has(attr_name), "%s attr not registered for graph.",
                    attr_name);
-    return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
+    try {
+      return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
+    } catch (boost::bad_any_cast &) {
+      PADDLE_THROW(
+          "Invalid attribute type of %s error, expected: %s, actual: %s",
+          attr_name, typeid(AttrType *).name(),
+          attrs_.at(attr_name).type().name());
+    }
   }
 
   template <typename AttrType>
@@ -102,18 +118,30 @@ class Graph {
     attr_dels_[attr_name] = []() {};
   }
 
+  void Erase(const std::string &attr_name) {
+    PADDLE_ENFORCE(attrs_.count(attr_name) != 0, "%s not set in the graph",
+                   attr_name);
+    attr_dels_[attr_name]();
+    attrs_.erase(attr_name);
+    attr_dels_.erase(attr_name);
+  }
+
   const std::unordered_set<ir::Node *> &Nodes() const { return node_set_; }
 
   // Create a normal variable with non-null VarDesc.
   ir::Node *CreateVarNode(VarDesc *var_desc) {
     PADDLE_ENFORCE(var_desc);
-    return AddNode(new ir::Node(var_desc));
+    auto *x = AddNode(new ir::Node(var_desc));
+    x->SetId(num_node_created_++);
+    return x;
   }
 
   // Create a normal runnable operator with OpDesc.
   ir::Node *CreateOpNode(OpDesc *op_desc) {
     PADDLE_ENFORCE(op_desc);
-    return AddNode(new ir::Node(op_desc));
+    auto *x = AddNode(new ir::Node(op_desc));
+    x->SetId(num_node_created_++);
+    return x;
   }
 
   // Create a control dependency var that connects 2 operations. The
@@ -122,14 +150,19 @@ class Graph {
   ir::Node *CreateControlDepVar() {
     // TODO(panyx0718): control var name should be really unique.
     const std::string name = string::Sprintf(
-        "%s@%llu", ir::Node::kControlDepVarName, node_set_.size());
-    return AddNode(new ir::Node(name, ir::Node::Type::kVariable));
+        "%s@%llu", static_cast<const char *>(ir::Node::kControlDepVarName),
+        num_node_created_);
+    auto *x = AddNode(new ir::Node(name, ir::Node::Type::kVariable));
+    x->SetId(num_node_created_++);
+    return x;
   }
 
   // A more free style way of creating a graph node. Mostly use for test
   // or "copy" from another node. Avoid using it if possible.
   ir::Node *CreateEmptyNode(const std::string &name, ir::Node::Type type) {
-    return AddNode(new ir::Node(name, type));
+    auto *x = AddNode(new ir::Node(name, type));
+    x->SetId(num_node_created_++);
+    return x;
   }
 
   // Clear all node information of the graph and return the ownership of the
@@ -144,14 +177,17 @@ class Graph {
     return ret;
   }
 
-  void RemoveNode(ir::Node *node) {
+  std::unique_ptr<ir::Node> RemoveNode(ir::Node *node) {
     PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
-    node_set_.erase(node);
+    std::unique_ptr<ir::Node> ret;
+    ret.reset(nodes_.at(node).release());
     nodes_.erase(node);
+    node_set_.erase(node);
+    return ret;
   }
 
   // NOTE low performance, but simple and secure.
-  Node *RetriveNode(int id) {
+  Node *RetrieveNode(int id) {
     for (auto &node : nodes_) {
       if (node.second->id() == id) {
         return node.second.get();
@@ -160,7 +196,17 @@ class Graph {
     return nullptr;
   }
 
- private:
+  // Returns reference to the original program.
+  // WARN: After a series of passes, the current graph can be quite
+  // different from OriginProgram. Caller shouldn't assume much from
+  // the returned OriginProgram.
+  const ProgramDesc &OriginProgram() const {
+    LOG(WARNING) << "WARN: After a series of passes, the current graph can be "
+                    "quite different from OriginProgram. So, please avoid "
+                    "using the `OriginProgram()` method!";
+    return program_;
+  }
+
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
     PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
@@ -169,12 +215,24 @@ class Graph {
     return node;
   }
 
+  void ResolveHazard(
+      const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
+
+  // Create a new and duplicated graph.
+  // WARN: The method only clones the graph structure, not its attributes.
+  std::shared_ptr<Graph> Clone();
+
+ private:
+  std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
+      const ProgramDesc &program);
+
   // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc program_;
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
+  size_t num_node_created_{0};  // help to generate a unique node id.
 };
 
 bool IsControlDepVar(const ir::Node &var);

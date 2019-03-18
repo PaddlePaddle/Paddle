@@ -54,14 +54,16 @@ class SliceOp : public framework::OperatorWithKernel {
       out_dims[axes[i]] = end - start;
     }
     ctx->SetOutputDim("Out", out_dims);
+    if (axes[0] != 0) {
+      ctx->ShareLoD("Input", /*->*/ "Out");
+    }
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Input")->type()),
-        ctx.GetPlace());
+    return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                   ctx.GetPlace());
   }
 };
 
