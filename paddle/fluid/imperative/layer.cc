@@ -239,7 +239,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
       VLOG(3) << "apply grad op " << grad_op_desc->Type();
 
       // Allocate tmp grad output variable
-      for (auto it : grad_output_variable_map) {
+      for (const auto& it : grad_output_variable_map) {
         auto& outputs = tmp_grad_outputs[k][it.first];
         outputs.reserve(it.second.size());
         for (size_t i = 0; i < it.second.size(); ++i) {
@@ -273,9 +273,9 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
 
   // Add tmp grad outputs to original grad vars
   for (size_t k = 0; k < grad_output_vars_.size(); ++k) {
-    for (auto it : grad_output_vars_[k]) {
+    for (const auto& it : grad_output_vars_[k]) {
       auto& outputs = tmp_grad_outputs[k][it.first];
-      auto& origin_outputs = it.second;
+      const auto& origin_outputs = it.second;
       PADDLE_ENFORCE_EQ(outputs.size(), origin_outputs.size());
 
       for (size_t i = 0; i < outputs.size(); ++i) {
