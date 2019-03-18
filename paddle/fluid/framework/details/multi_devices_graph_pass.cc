@@ -170,7 +170,6 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   result.Set(kGraphOps, new GraphOps);
 
   need_collection_ops_ = NeedCollectiveOps(sorted_ops);
-  bool insert_collection_ops = false;
   bool is_forwarding = true;
 
   for (ir::Node *node : sorted_ops) {
@@ -211,17 +210,11 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
             VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
 
             InsertCollectiveOp(&result, p_name, g_name);
-            insert_collection_ops = true;
           }
         } catch (boost::bad_get e) {
         }
       }
     }
-  }
-
-  if (need_collection_ops_) {
-    PADDLE_ENFORCE(insert_collection_ops,
-                   "Doesn't find trainable parameter's gradient.");
   }
 
   InsertPostprocessOps(&result);
