@@ -124,8 +124,8 @@ class FCMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     auto input = ctx.Input<framework::LoDTensor>("Input");
-    auto w = ctx.Input<framework::LoDTensor>("W");
-    auto bias = ctx.Input<framework::LoDTensor>("Bias");
+    auto w = ctx.Input<Tensor>("W");
+    auto bias = ctx.Input<Tensor>("Bias");
 
     PADDLE_ENFORCE(input->dims().size() == 2 || input->dims().size() == 4,
                    "Input must be with 2 or 4 dimensions, i.e. NCHW");
