@@ -78,12 +78,6 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
                    "The numel of 'pad_value' can only be 1 or be equal to the "
                    "'step_width'.");
 
-    if (!norm_by_times && seq_num == 1UL && pad_seq_len == max_seq_len) {
-      TensorCopy(seq_tensor, context.GetPlace(), context, pad_tensor);
-      pad_tensor->Resize(pad_tensor_dims);
-      return;
-    }
-
     const int kBlockSize = 512;
 
     /* At least use 32 threads to copy sequence_width elements,
