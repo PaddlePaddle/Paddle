@@ -335,11 +335,7 @@ void AnalysisPredictor::Quantizer::PrepareArgument() const {
   auto* builder = predictor_.config_.pass_builder();
   builder->AnalysisPasses().clear();
   builder->SetPasses({
-      "infer_clean_graph_pass",
-      /* "cpu_quantize_pass", */  // TODO(wojtuss): quantize chosen operators
-      /* "cpu_quantize_squash_pass", */  // TODO(wojtuss): squash
-                                         // dequantize-quantize
-                                         // pairs
+      "infer_clean_graph_pass", "cpu_quantize_pass", "cpu_quantize_squash_pass",
   });
   builder->TurnOnDebug();  // TODO(wojtuss): for development phase
   auto passes = builder->AllPasses();
