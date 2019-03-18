@@ -14,10 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/conv_op.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
 #ifdef PADDLE_WITH_MKLDNN
@@ -80,6 +82,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       framework::OpKernelType::kDefaultCustomizedTypeValue;
   framework::LibraryType library{framework::LibraryType::kPlain};
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+  auto input_data_type = ctx.Input<Tensor>("Input")->type();
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout = framework::StringToDataLayout(data_format);
 
@@ -93,11 +96,14 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       platform::CanMKLDNNBeUsed(ctx)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
-    customized_type_value = kConvMKLDNNFP32;
+    customized_type_value =
+        (input_data_type == framework::DataTypeTrait<int8_t>::DataType ||
+         input_data_type == framework::DataTypeTrait<uint8_t>::DataType)
+            ? kConvMKLDNNINT8
+            : kConvMKLDNNFP32;
   }
 #endif
 
-  auto input_data_type = ctx.Input<Tensor>("Input")->type();
   if (input_data_type != framework::proto::VarType::INT8 &&
       input_data_type != framework::proto::VarType::UINT8) {
     auto filter_data_type = ctx.Input<Tensor>("Filter")->type();
@@ -109,8 +115,20 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
                       "float16 can only be used when CUDNN is used");
   }
 
-  return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                 library, customized_type_value);
+  auto type = framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
+                                      library, customized_type_value);
+#ifdef PADDLE_WITH_CUDA
+  std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
+  // TODO(dangqingqing): Currently conv_fusion_op use cudnn but sets use_cudnn
+  // to false. It should be fixed and then here should only create if library
+  // is kCUDNN.
+  if (configs.empty()) {
+    std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>> p(
+        new framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>());
+    configs.push_back(p);
+  }
+#endif
+  return type;
 }
 
 void Conv2DOpMaker::Make() {
@@ -176,6 +194,12 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("use_quantizer",
+                "(bool, default false) "
+                "Set to true for operators that should be quantized and use "
+                "int8 kernel. "
+                "Only used on CPU.")
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
@@ -410,9 +434,25 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   }
 #endif
 
-  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                 ctx.GetPlace(), layout_, library_,
-                                 customized_type_value);
+  auto type = framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                      ctx.GetPlace(), layout_, library_,
+                                      customized_type_value);
+#ifdef PADDLE_WITH_CUDA
+  if (library_ == framework::LibraryType::kCUDNN) {
+    std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
+    if (configs.empty()) {
+      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>
+          p(new framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>());
+      configs.push_back(p);
+
+      std::shared_ptr<
+          framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>
+          p2(new framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>());
+      configs.push_back(p2);
+    }
+  }
+#endif
+  return type;
 }
 
 class Conv2dGradMaker : public framework::SingleGradOpDescMaker {

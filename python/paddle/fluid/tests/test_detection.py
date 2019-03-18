@@ -476,10 +476,28 @@ class TestYoloDetection(unittest.TestCase):
             x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
             gtbox = layers.data(name='gtbox', shape=[10, 4], dtype='float32')
             gtlabel = layers.data(name='gtlabel', shape=[10], dtype='int32')
-            loss = layers.yolov3_loss(x, gtbox, gtlabel, [10, 13, 30, 13],
-                                      [0, 1], 10, 0.7, 32)
+            gtscore = layers.data(name='gtscore', shape=[10], dtype='float32')
+            loss = layers.yolov3_loss(
+                x,
+                gtbox,
+                gtlabel, [10, 13, 30, 13], [0, 1],
+                10,
+                0.7,
+                32,
+                gtscore=gtscore,
+                use_label_smooth=False)
 
             self.assertIsNotNone(loss)
+
+    def test_yolo_box(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
+            img_size = layers.data(name='img_size', shape=[2], dtype='int32')
+            boxes, scores = layers.yolo_box(x, img_size, [10, 13, 30, 13], 10,
+                                            0.01, 32)
+            self.assertIsNotNone(boxes)
+            self.assertIsNotNone(scores)
 
 
 class TestBoxClip(unittest.TestCase):
@@ -502,6 +520,22 @@ class TestMulticlassNMS(unittest.TestCase):
             scores = layers.data(name='scores', shape=[-1, 10], dtype='float32')
             output = layers.multiclass_nms(bboxes, scores, 0.3, 400, 200, 0.7)
             self.assertIsNotNone(output)
+
+
+class TestDistributeFpnProposals(unittest.TestCase):
+    def test_distribute_fpn_proposals(self):
+        program = Program()
+        with program_guard(program):
+            fpn_rois = fluid.layers.data(
+                name='data', shape=[4], dtype='float32', lod_level=1)
+            multi_rois, restore_ind = layers.distribute_fpn_proposals(
+                fpn_rois=fpn_rois,
+                min_level=2,
+                max_level=5,
+                refer_level=4,
+                refer_scale=224)
+            self.assertIsNotNone(multi_rois)
+            self.assertIsNotNone(restore_ind)
 
 
 if __name__ == '__main__':

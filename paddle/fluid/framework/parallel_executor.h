@@ -14,9 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/details/build_strategy.h"
@@ -45,12 +47,12 @@ class ParallelExecutor {
 
  public:
   explicit ParallelExecutor(const std::vector<platform::Place> &places,
-                            const std::unordered_set<std::string> &bcast_vars,
-                            const ProgramDesc &main_program,
+                            const std::vector<std::string> &bcast_vars,
                             const std::string &loss_var_name, Scope *scope,
                             const std::vector<Scope *> &local_scopes,
                             const ExecutionStrategy &exec_strategy,
-                            const BuildStrategy &build_strategy);
+                            const BuildStrategy &build_strategy,
+                            ir::Graph *graph);
 
   ~ParallelExecutor();
 
@@ -70,8 +72,11 @@ class ParallelExecutor {
            const std::string &fetched_var_name);
 
  private:
-  void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;
-  bool EnableParallelGraphExecution(const ProgramDesc &main_program,
+  // broadcast the parameters from the 0th device.
+  // trainer_id the trainer index in nccl distributed training.
+  void BCastParamsToDevices(const std::vector<std::string> &vars,
+                            int trainer_id = 0) const;
+  bool EnableParallelGraphExecution(const ir::Graph &graph,
                                     const ExecutionStrategy &exec_strategy,
                                     const BuildStrategy &build_strategy) const;
 
