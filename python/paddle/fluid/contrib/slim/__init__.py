@@ -15,7 +15,6 @@
 from .core import *
 from .graph import *
 from .prune import *
-from .distillation import *
 __all__ = [
     'GraphWrapper',
     'VarWrapper',

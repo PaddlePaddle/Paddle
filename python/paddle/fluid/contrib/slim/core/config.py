@@ -18,7 +18,6 @@ import yaml
 from collections import OrderedDict
 from ..prune import *
 from ..quantization import *
-from ..distillation import *
 from .strategy import *
 
 __all__ = ['ConfigFactory']
