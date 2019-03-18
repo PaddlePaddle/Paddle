@@ -90,7 +90,8 @@ void GraphPatternDetector::operator()(Graph *graph,
   ValidateByNodeRole(&subgraphs);
 
   if (subgraphs.empty()) return;
-  PrettyLogEndl(Style::detail(), "---  detect %d subgraphs", subgraphs.size());
+  PrettyLogEndl(Style::detail(), "---  detected %d subgraphs",
+                subgraphs.size());
   int id = 0;
   for (auto &g : subgraphs) {
     VLOG(3) << "optimizing #" << id++ << " subgraph";
@@ -1074,9 +1075,53 @@ PDNode *patterns::Conv::operator()() {
                         ->AsOutput()
                         ->assert_is_op_output("conv2d", "Output");
 
-  conv_op->LinksFrom({input_var, filter_var});
-  conv_op->LinksTo({output_var});
+  conv_op->LinksFrom({input_var, filter_var}).LinksTo({output_var});
+  return output_var;
+}
 
+PDNode *patterns::ConvResidual::operator()(bool with_residual_data) {
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+
+  if (!with_residual_data)
+    conv_op->assert_op_attr("fuse_residual_connection", false);
+
+  auto input_var = pattern->NewNode(conv_input_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("conv2d", "Input");
+
+  auto filter_var = pattern->NewNode(conv_filter_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("conv2d", "Filter");
+
+  auto output_var = pattern->NewNode(conv_output_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("conv2d", "Output");
+
+  std::vector<PDNode *> links_from{input_var, filter_var};
+
+  if (with_residual_data) {
+    auto res_conn_var = pattern->NewNode(conv_residual_data_repr())
+                            ->AsInput()
+                            ->assert_is_op_input("conv2d", "ResidualData");
+    links_from.push_back(res_conn_var);
+  }
+
+  conv_op->LinksFrom(links_from).LinksTo({output_var});
+  return output_var;
+}
+
+PDNode *patterns::Pool::operator()() {
+  auto pool_op = pattern->NewNode(pool_op_repr())->assert_is_op("pool2d");
+
+  auto input_var = pattern->NewNode(pool_input_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("pool2d", "X");
+
+  auto output_var = pattern->NewNode(pool_output_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("pool2d", "Out");
+
+  pool_op->LinksFrom({input_var}).LinksTo({output_var});
   return output_var;
 }
 
@@ -1299,6 +1344,51 @@ PDNode *patterns::ConvAffineChannel::operator()(
         .LinksTo({ac_out_var});
   }
   return ac_out_var;
+}
+
+PDNode *patterns::DequantQuantAny::operator()() {
+  auto *dequant_in = pattern->NewNode(dequant_in_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("dequantize", "Input");
+
+  auto *dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
+
+  auto *dequant_out = pattern->NewNode(dequant_out_repr())
+                          ->AsOutput()
+                          ->assert_is_op_output("dequantize", "Output");
+
+  auto *quant_op = pattern->NewNode(quant_op_repr())
+                       ->assert_is_op("quantize")
+                       ->AsIntermediate();
+
+  auto *quant_out = pattern->NewNode(quant_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("quantize");
+
+  auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  dequant_op->LinksFrom({dequant_in}).LinksTo({dequant_out});
+  quant_op->LinksFrom({dequant_out}).LinksTo({quant_out});
+  next_op->LinksFrom({quant_out});
+
+  return quant_out;
+}
+
+PDNode *patterns::DequantAny::operator()() {
+  auto *dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
+
+  auto *dequant_out = pattern->NewNode(dequant_out_repr())
+                          ->AsOutput()
+                          ->assert_is_op_output("dequantize", "Output");
+
+  auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  dequant_op->LinksTo({dequant_out});
+  next_op->LinksFrom({dequant_out});
+
+  return dequant_out;
 }
 
 // a -> transpose_op(1) -> transpose_out_a -> flatten_op(1) -> flatten_out_a
