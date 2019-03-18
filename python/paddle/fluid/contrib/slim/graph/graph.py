@@ -163,8 +163,8 @@ class ImitationGraph(Graph):
         self.program = Program() if program is None else program
         self.compiled_graph = None
         self.scope = scope
-        self.in_nodes = in_nodes
-        self.out_nodes = out_nodes
+        self.in_nodes = OrderedDict(in_nodes)
+        self.out_nodes = OrderedDict(out_nodes)
         self._attrs = collections.OrderedDict()
 
     def init_vars(self, need_inited, place):

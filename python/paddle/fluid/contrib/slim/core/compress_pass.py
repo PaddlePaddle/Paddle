@@ -205,6 +205,12 @@ class CompressPass(object):
                  checkpoint_path='./checkpoints',
                  train_optimizer=None,
                  distiller_optimizer=None):
+        assert isinstance(
+            train_feed_list, list
+        ), "train_feed_list should be a list of tuple, such as [('image', image.name), ('label', gt.name)]"
+        assert isinstance(
+            eval_feed_list, list
+        ), "eval_feed_list should be a list of tuple, such as [('image', image.name), ('label', gt.name)]"
         self.strategies = []
         self.epoch = 0
         self.place = CPUPlace() if place is None else place
