@@ -56,7 +56,7 @@ def residual_block(num):
 
 class TestGraphWrapper(unittest.TestCase):
     def build_program(self):
-        place = fluid.CUPPlace()
+        place = fluid.CPUPlace()
         if fluid.core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
         main = fluid.Program()
@@ -86,7 +86,7 @@ class TestGraphWrapper(unittest.TestCase):
 
     def test_all_vars(self):
         self.build_program()
-        self.assertEquals(len(self.train_graph.vars()), 88)
+        self.assertEquals(len(self.train_graph.vars()), 90)
 
     def test_numel_params(self):
         self.build_program()
@@ -94,7 +94,7 @@ class TestGraphWrapper(unittest.TestCase):
 
     def test_compile(self):
         self.build_program()
-        place = fluid.CUPPlace()
+        place = fluid.CPUPlace()
         if fluid.core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
@@ -115,7 +115,7 @@ class TestGraphWrapper(unittest.TestCase):
 
     def test_get_optimize_graph(self):
         self.build_program()
-        place = fluid.CUPPlace()
+        place = fluid.CPUPlace()
         if fluid.core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
         opt = fluid.optimizer.SGD(learning_rate=0.001)

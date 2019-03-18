@@ -30,6 +30,8 @@ class TestFilterPruning(unittest.TestCase):
         step3: fine-tune one epoch
         step4: check top1_acc.
         """
+        if not fluid.core.is_compiled_with_cuda():
+            return
         class_dim = 10
         image_shape = [1, 28, 28]
         image = fluid.layers.data(
