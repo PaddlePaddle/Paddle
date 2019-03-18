@@ -214,7 +214,7 @@ inline framework::Tensor *PySliceTensor(framework::Tensor &self,
       output->Resize(dstDDim);
       int64_t feature_size = framework::product(srcDDim) / srcDDim[0];
       int64_t stride = feature_size * framework::SizeOfType(self.type());
-      auto &place = self.place();
+      auto place = self.place();
       if (platform::is_cpu_place(place)) {
         output->mutable_data(boost::get<platform::CPUPlace>(place),
                              self.type());
@@ -233,7 +233,9 @@ inline framework::Tensor *PySliceTensor(framework::Tensor &self,
 
       for (int64_t i = 0, lstart = static_cast<int64_t>(start),
                    soffset = lstart * stride, doffset = 0;
-           i < slicelength && lstart < self.numel() && lstart >= 0; ++i) {
+           i < static_cast<int64_t>(slicelength) && lstart < self.numel() &&
+           lstart >= 0;
+           ++i) {
         if (platform::is_cpu_place(place)) {
           memory::Copy(boost::get<platform::CPUPlace>(place),
                        static_cast<uint8_t *>(output->data<void>()) + doffset,
@@ -280,82 +282,84 @@ inline framework::Tensor *PySliceTensor(framework::Tensor &self,
   }
 
 #ifdef PADDLE_WITH_CUDA
-template <typename T>
-void PyCUDATensorSetFromArray(
-    framework::Tensor *self,
-    pybind11::array_t<T, pybind11::array::c_style | pybind11::array::forcecast>
-        array,
-    paddle::platform::CUDAPlace place) {
-  std::vector<int64_t> dims;
-  dims.reserve(array.ndim());
-  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
+  template <typename T>
+  void PyCUDATensorSetFromArray(
+      framework::Tensor * self,
+      pybind11::array_t<T,
+                        pybind11::array::c_style | pybind11::array::forcecast>
+          array,
+      paddle::platform::CUDAPlace place) {
+    std::vector<int64_t> dims;
+    dims.reserve(array.ndim());
+    for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
+      dims.push_back(static_cast<int>(array.shape()[i]));
+    }
+
+    self->Resize(framework::make_ddim(dims));
+    auto *dst = self->mutable_data<T>(place);
+    paddle::platform::GpuMemcpySync(dst, array.data(), sizeof(T) * array.size(),
+                                    cudaMemcpyHostToDevice);
   }
 
-  self->Resize(framework::make_ddim(dims));
-  auto *dst = self->mutable_data<T>(place);
-  paddle::platform::GpuMemcpySync(dst, array.data(), sizeof(T) * array.size(),
-                                  cudaMemcpyHostToDevice);
-}
+  template <>
+  // This following specialization maps uint16_t in the parameter type to
+  // platform::float16.
+  inline void PyCUDATensorSetFromArray(
+      framework::Tensor * self,
+      pybind11::array_t<uint16_t,
+                        pybind11::array::c_style | pybind11::array::forcecast>
+          array,
+      paddle::platform::CUDAPlace place) {
+    std::vector<int64_t> dims;
+    dims.reserve(array.ndim());
+    for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
+      dims.push_back(static_cast<int>(array.shape()[i]));
+    }
 
-template <>
-// This following specialization maps uint16_t in the parameter type to
-// platform::float16.
-inline void PyCUDATensorSetFromArray(
-    framework::Tensor *self,
-    pybind11::array_t<uint16_t,
-                      pybind11::array::c_style | pybind11::array::forcecast>
-        array,
-    paddle::platform::CUDAPlace place) {
-  std::vector<int64_t> dims;
-  dims.reserve(array.ndim());
-  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
+    self->Resize(framework::make_ddim(dims));
+    auto *dst = self->mutable_data<platform::float16>(place);
+    paddle::platform::GpuMemcpySync(dst, array.data(),
+                                    sizeof(uint16_t) * array.size(),
+                                    cudaMemcpyHostToDevice);
   }
 
-  self->Resize(framework::make_ddim(dims));
-  auto *dst = self->mutable_data<platform::float16>(place);
-  paddle::platform::GpuMemcpySync(dst, array.data(),
-                                  sizeof(uint16_t) * array.size(),
-                                  cudaMemcpyHostToDevice);
-}
+  template <typename T>
+  void PyCUDAPinnedTensorSetFromArray(
+      framework::Tensor * self,
+      pybind11::array_t<T,
+                        pybind11::array::c_style | pybind11::array::forcecast>
+          array,
+      const paddle::platform::CUDAPinnedPlace &place) {
+    std::vector<int64_t> dims;
+    dims.reserve(array.ndim());
+    for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
+      dims.push_back(static_cast<int>(array.shape()[i]));
+    }
 
-template <typename T>
-void PyCUDAPinnedTensorSetFromArray(
-    framework::Tensor *self,
-    pybind11::array_t<T, pybind11::array::c_style | pybind11::array::forcecast>
-        array,
-    const paddle::platform::CUDAPinnedPlace &place) {
-  std::vector<int64_t> dims;
-  dims.reserve(array.ndim());
-  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
+    self->Resize(framework::make_ddim(dims));
+    auto *dst = self->mutable_data<T>(place);
+    std::memcpy(dst, array.data(), sizeof(T) * array.size());
   }
 
-  self->Resize(framework::make_ddim(dims));
-  auto *dst = self->mutable_data<T>(place);
-  std::memcpy(dst, array.data(), sizeof(T) * array.size());
-}
+  template <>
+  // This following specialization maps uint16_t in the parameter type to
+  // platform::float16.
+  inline void PyCUDAPinnedTensorSetFromArray(
+      framework::Tensor * self,
+      pybind11::array_t<uint16_t,
+                        pybind11::array::c_style | pybind11::array::forcecast>
+          array,
+      const paddle::platform::CUDAPinnedPlace &place) {
+    std::vector<int64_t> dims;
+    dims.reserve(array.ndim());
+    for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
+      dims.push_back(static_cast<int>(array.shape()[i]));
+    }
 
-template <>
-// This following specialization maps uint16_t in the parameter type to
-// platform::float16.
-inline void PyCUDAPinnedTensorSetFromArray(
-    framework::Tensor *self,
-    pybind11::array_t<uint16_t,
-                      pybind11::array::c_style | pybind11::array::forcecast>
-        array,
-    const paddle::platform::CUDAPinnedPlace &place) {
-  std::vector<int64_t> dims;
-  dims.reserve(array.ndim());
-  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
+    self->Resize(framework::make_ddim(dims));
+    auto *dst = self->mutable_data<platform::float16>(place);
+    std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
   }
-
-  self->Resize(framework::make_ddim(dims));
-  auto *dst = self->mutable_data<platform::float16>(place);
-  std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
-}
 #endif
 
 }  // namespace pybind
