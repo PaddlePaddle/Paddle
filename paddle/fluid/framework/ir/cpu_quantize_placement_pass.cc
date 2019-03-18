@@ -52,5 +52,7 @@ std::unique_ptr<ir::Graph> CPUQuantizePlacementPass::ApplyImpl(
 
 REGISTER_PASS(cpu_quantize_placement_pass,
               paddle::framework::ir::CPUQuantizePlacementPass)
+    // a vector of operator type names to be quantized ("conv2d" etc.)
     .RequirePassAttr("quantize_enabled_op_types")
+    // a vector of operator ids that are to be excluded from quantization
     .RequirePassAttr("quantize_excluded_op_ids");
